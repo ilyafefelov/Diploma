@@ -1,0 +1,29 @@
+[project]
+name = "smart-energy-arbitrage-2026"
+version = "0.1.0"
+description = "Decision-Focused Framework для енергоарбітражу BESS на ринку України"
+requires-python = ">=3.11"
+dependencies = [
+    # Оркестрація та MLOps
+    "dagster",                 # Основний оркестратор [1, 2]
+    "dagster-webserver",       # UI для моніторингу активів [1]
+    "dagster-aws",             # Інтеграція з S3 та AWS Lambda [3, 4]
+    "dagster-dask",            # Розподілені обчислення для Optuna [5, 6]
+    
+    # Обробка даних та Валідація
+    "polars",                  # Швидка обробка в Silver-шарі [7, 8]
+    "pydantic>=2.0",           # Детермінований Gatekeeper [9, 10]
+    
+    # AI та Диференційована Оптимізація
+    "torch",                   # Моделі NBEATSx, TFT, Decision Transformer [11, 12]
+    "cvxpylayers",             # Реалізація теореми про неявну функцію [13, 14]
+    "cvxpy",                   # Опис задач оптимізації [13, 14]
+    "optuna",                  # Гіперпараметрична оптимізація стратегій [15-17]
+    
+    # IoT та Інтеграція
+    "paho-mqtt",               # Зв'язок з Victron/Huawei через MQTT [18, 19]
+    "httpx",                   # Асинхронні запити до API Укренерго [20]
+]
+
+[tool.dagster]
+module_name = "smart_arbitrage.definitions"
