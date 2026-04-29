@@ -39,6 +39,15 @@
 - Є список рекомендованих chart patterns для MVP dashboard.
 - Є рішення, де достатньо library-level charts, а де потрібен custom D3 layer.
 
+## Outcome
+
+- Closed by [docs/technical/CHART_STACK_DECISION.md](d:/School/GoIT/Courses/Diploma/docs/technical/CHART_STACK_DECISION.md)
+- Decision summary:
+  - Apache ECharts is the primary production chart layer for the new Nuxt/Vue dashboard
+  - D3 is reserved for signature visuals only
+  - Observable Plot is useful for prototyping, not as the production default
+  - Visx is rejected for the current stack because the project is Nuxt/Vue, not React
+
 ## Suggested Labels
 
 - enhancement
