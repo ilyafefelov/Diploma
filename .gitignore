@@ -1,0 +1,9 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/_legacy_smart-energy-ai
+AGENTS.md
+*\agents.md
+docs\agents.md
+master_execution_prompt.md
+.gitignore
+.git
