@@ -1,0 +1,82 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: 'Aptos', 'Segoe UI', sans-serif;
+
+  --color-green-50: #EFFDF5;
+  --color-green-100: #D9FBE8;
+  --color-green-200: #B3F5D1;
+  --color-green-300: #75EDAE;
+  --color-green-400: #00DC82;
+  --color-green-500: #00C16A;
+  --color-green-600: #00A155;
+  --color-green-700: #007F45;
+  --color-green-800: #016538;
+  --color-green-900: #0A5331;
+  --color-green-950: #052E16;
+}
+
+:root {
+  --canvas-base: #ece3d4;
+  --canvas-top: #f7f1e6;
+  --panel-base: rgba(255, 251, 245, 0.72);
+  --panel-strong: rgba(255, 251, 245, 0.9);
+  --line-soft: rgba(23, 37, 84, 0.12);
+  --ink-strong: #15243d;
+  --ink-soft: #5f6a7d;
+  --accent-cyan: #1c6872;
+  --accent-cyan-strong: #134a52;
+  --accent-amber: #d67e2c;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background:
+    radial-gradient(circle at top left, rgba(28, 104, 114, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(214, 126, 44, 0.16), transparent 28%),
+    linear-gradient(180deg, var(--canvas-top) 0%, var(--canvas-base) 100%);
+}
+
+body {
+  min-height: 100vh;
+  color: var(--ink-strong);
+  font-family: var(--font-sans);
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.28;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mix-blend-mode: soft-light;
+}
+
+#__nuxt {
+  isolation: isolate;
+}
+
+.surface-panel {
+  border: 1px solid var(--line-soft);
+  border-radius: 1.75rem;
+  background: var(--panel-base);
+  padding: 1.25rem;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 22px 60px rgba(20, 28, 51, 0.08);
+}
+
+.surface-panel-strong {
+  background: var(--panel-strong);
+}
+
+::selection {
+  background: rgba(28, 104, 114, 0.18);
+}
