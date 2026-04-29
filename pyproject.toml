@@ -9,6 +9,11 @@ dependencies = [
     "dagster-webserver",       # UI для моніторингу активів [1]
     "dagster-aws",             # Інтеграція з S3 та AWS Lambda [3, 4]
     "dagster-dask",            # Розподілені обчислення для Optuna [5, 6]
+    "mlflow",                  # Трекінг експериментів і regret-логування для MVP demo
+    "beautifulsoup4",          # HTML parsing for refactored OREE market scraper
+    "fastapi",                 # Lightweight API surface for tenant selection and experiment launch
+    "pyyaml",                  # YAML-backed tenant and location config loading
+    "uvicorn",                 # ASGI server for the FastAPI control plane
     
     # Обробка даних та Валідація
     "polars",                  # Швидка обробка в Silver-шарі [7, 8]
@@ -25,5 +30,16 @@ dependencies = [
     "httpx",                   # Асинхронні запити до API Укренерго [20]
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest",                 # Focused API and asset behavior tests
+]
+
 [tool.dagster]
 module_name = "smart_arbitrage.definitions"
+
+[tool.dg]
+directory_type = "project"
+
+[tool.dg.project]
+root_module = "smart_arbitrage"

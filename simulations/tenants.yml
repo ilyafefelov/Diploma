@@ -1,0 +1,99 @@
+# Canonical tenant registry for weather/location-aware MVP experiments.
+# The weather Bronze asset currently consumes only the `location` block,
+# but the rest of the fields are kept here to match future multi-tenant experiments.
+
+tenants:
+  - id: client_001_kyiv_mall
+    name: Kyiv Shopping Mall
+    type: commercial
+    location:
+      latitude: 50.45
+      longitude: 30.52
+      timezone: Europe/Kyiv
+    energy_system:
+      battery_type: LFP_280Ah
+      battery_capacity_kwh: 280.0
+      solar_capacity_kw: 150.0
+      peak_load_kw: 200.0
+      base_load_kw: 50.0
+      load_profile: commercial
+    economic_params:
+      electricity_tariff: 0.12
+      feed_in_tariff: 0.08
+      demand_charges: 15.0
+
+  - id: client_002_lviv_office
+    name: Lviv Business Center
+    type: office
+    location:
+      latitude: 49.84
+      longitude: 24.03
+      timezone: Europe/Kyiv
+    energy_system:
+      battery_type: NMC_LG_Chem
+      battery_capacity_kwh: 150.0
+      solar_capacity_kw: 80.0
+      peak_load_kw: 120.0
+      base_load_kw: 30.0
+      load_profile: office
+    economic_params:
+      electricity_tariff: 0.11
+      feed_in_tariff: 0.08
+      demand_charges: 12.0
+
+  - id: client_003_dnipro_factory
+    name: Dnipro Manufacturing Plant
+    type: industrial
+    location:
+      latitude: 48.46
+      longitude: 35.04
+      timezone: Europe/Kyiv
+    energy_system:
+      battery_type: LFP_280Ah
+      battery_capacity_kwh: 500.0
+      solar_capacity_kw: 300.0
+      peak_load_kw: 400.0
+      base_load_kw: 150.0
+      load_profile: industrial
+    economic_params:
+      electricity_tariff: 0.10
+      feed_in_tariff: 0.07
+      demand_charges: 20.0
+
+  - id: client_004_kharkiv_hospital
+    name: Kharkiv Regional Hospital
+    type: critical
+    location:
+      latitude: 49.99
+      longitude: 36.23
+      timezone: Europe/Kyiv
+    energy_system:
+      battery_type: LFP_280Ah
+      battery_capacity_kwh: 400.0
+      solar_capacity_kw: 200.0
+      peak_load_kw: 300.0
+      base_load_kw: 100.0
+      load_profile: hospital
+    economic_params:
+      electricity_tariff: 0.13
+      feed_in_tariff: 0.08
+      demand_charges: 18.0
+
+  - id: client_005_odesa_hotel
+    name: Odesa Seaside Hotel
+    type: hospitality
+    location:
+      latitude: 46.48
+      longitude: 30.73
+      timezone: Europe/Kyiv
+    energy_system:
+      battery_type: NMC_LG_Chem
+      battery_capacity_kwh: 200.0
+      solar_capacity_kw: 120.0
+      peak_load_kw: 180.0
+      base_load_kw: 60.0
+      load_profile: hotel
+    economic_params:
+      electricity_tariff: 0.12
+      feed_in_tariff: 0.08
+      demand_charges: 15.0

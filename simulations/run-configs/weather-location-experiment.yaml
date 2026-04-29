@@ -1,0 +1,11 @@
+# Generic CLI preset for location-aware weather experiments.
+# Replace `tenant_id` with any id from `simulations/tenants.yml`.
+#
+# Example usage:
+#   dg launch --assets weather_forecast_bronze --config-file simulations/run-configs/weather-location-experiment.yaml
+#   dg launch --assets "weather_forecast_bronze,dam_price_history+" --config-file simulations/run-configs/weather-location-experiment.yaml
+
+ops:
+  weather_forecast_bronze:
+    config:
+      tenant_id: client_001_kyiv_mall

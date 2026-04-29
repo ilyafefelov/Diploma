@@ -1,0 +1,1 @@
+"""Asset package for smart_arbitrage."""
