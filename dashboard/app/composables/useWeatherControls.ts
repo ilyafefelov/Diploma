@@ -28,6 +28,21 @@ export const useWeatherControls = () => {
   const isPreparing = ref(false)
   const isMaterializing = ref(false)
   const error = ref('')
+  const lastPreparedAt = ref<number | null>(null)
+  const lastMaterializedAt = ref<number | null>(null)
+
+  const lastActionLabel = computed(() => {
+    const latestActionAt = Math.max(lastPreparedAt.value || 0, lastMaterializedAt.value || 0)
+
+    if (latestActionAt === 0) {
+      return 'No actions yet'
+    }
+
+    return new Date(latestActionAt).toLocaleTimeString('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  })
 
   const statusLabel = computed(() => {
     if (isMaterializing.value) {
@@ -64,6 +79,7 @@ export const useWeatherControls = () => {
           tenant_id: tenantId
         }
       })
+      lastPreparedAt.value = Date.now()
     } catch (unknownError) {
       error.value = unknownError instanceof Error ? unknownError.message : 'Unable to prepare weather run config.'
     } finally {
@@ -87,6 +103,7 @@ export const useWeatherControls = () => {
           include_price_history: includePriceHistory
         }
       })
+      lastMaterializedAt.value = Date.now()
     } catch (unknownError) {
       error.value = unknownError instanceof Error ? unknownError.message : 'Unable to materialize weather assets.'
     } finally {
@@ -104,6 +121,9 @@ export const useWeatherControls = () => {
     isPreparing,
     isMaterializing,
     error,
+    lastPreparedAt,
+    lastMaterializedAt,
+    lastActionLabel,
     statusLabel,
     prepareRunConfig,
     materializeWeatherAssets,

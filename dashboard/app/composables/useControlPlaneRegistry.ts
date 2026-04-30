@@ -16,6 +16,7 @@ export const useControlPlaneRegistry = () => {
   const isLoading = ref(false)
   const error = ref('')
   const lastLoadedAt = ref<number | null>(null)
+  let refreshTimer: ReturnType<typeof setInterval> | null = null
 
   const selectedTenant = computed(() => {
     return tenants.value.find((tenant) => tenant.tenant_id === selectedTenantId.value) || null
@@ -48,6 +49,25 @@ export const useControlPlaneRegistry = () => {
     error.value = ''
   }
 
+  const startAutoRefresh = (intervalMs = 45_000): void => {
+    if (refreshTimer) {
+      return
+    }
+
+    refreshTimer = setInterval(() => {
+      void loadTenants()
+    }, intervalMs)
+  }
+
+  const stopAutoRefresh = (): void => {
+    if (!refreshTimer) {
+      return
+    }
+
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+
   return {
     tenants,
     selectedTenant,
@@ -56,6 +76,8 @@ export const useControlPlaneRegistry = () => {
     error,
     lastLoadedAt,
     loadTenants,
-    clearError
+    clearError,
+    startAutoRefresh,
+    stopAutoRefresh
   }
 }

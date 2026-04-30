@@ -149,6 +149,30 @@ def test_materialize_endpoint_returns_500_on_failed_materialization(
 	assert response.json() == {"detail": "Dagster materialization failed."}
 
 
+def test_dashboard_signal_preview_returns_tenant_aware_series(client: TestClient) -> None:
+	response = client.get(
+		"/dashboard/signal-preview",
+		params={
+			"tenant_id": "client_002_lviv_office",
+			"location_config_path": "simulations/tenants.yml",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_002_lviv_office"
+	assert response_payload["labels"] == ["06:00", "09:00", "12:00", "15:00", "18:00", "21:00"]
+	assert len(response_payload["market_price"]) == 6
+	assert len(response_payload["weather_bias"]) == 6
+	assert len(response_payload["charge_intent"]) == 6
+	assert len(response_payload["regret"]) == 6
+	assert response_payload["resolved_location"] == {
+		"latitude": 49.84,
+		"longitude": 24.03,
+		"timezone": "Europe/Kyiv",
+	}
+
+
 def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	response = client.get("/openapi.json")
 
@@ -157,3 +181,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["info"]["title"] == "Smart Energy Arbitrage API"
 	assert schema["paths"]["/tenants"]["get"]["summary"] == "List weather-aware tenants"
 	assert schema["paths"]["/weather/materialize"]["post"]["summary"] == "Materialize weather experiment assets"
+	assert schema["paths"]["/dashboard/signal-preview"]["get"]["summary"] == "Build dashboard signal preview"

@@ -1,6 +1,6 @@
 import type { EChartsOption } from 'echarts'
 
-import type { TenantSummary } from '~/types/control-plane'
+import type { SignalPreview, TenantSummary } from '~/types/control-plane'
 
 type TenantScatterPoint = {
   value: [number, number]
@@ -15,14 +15,6 @@ type TenantScatterPoint = {
   }
   symbolSize: number
   symbol: 'diamond' | 'circle'
-}
-
-type DemoSignalSeries = {
-  labels: string[]
-  market: number[]
-  weatherBias: number[]
-  dispatch: number[]
-  regret: number[]
 }
 
 export const dashboardChartTokens = {
@@ -53,37 +45,6 @@ const createTenantPoint = (tenant: TenantSummary, selectedTenantId: string): Ten
     },
     symbolSize: isSelected ? 30 : 18,
     symbol: isSelected ? 'diamond' : 'circle'
-  }
-}
-
-const resolveReferenceTenant = (tenants: TenantSummary[], selectedTenantId: string): TenantSummary | null => {
-  return tenants.find((tenant) => tenant.tenant_id === selectedTenantId) || tenants[0] || null
-}
-
-const buildDemoSignalSeries = (tenants: TenantSummary[], selectedTenantId: string): DemoSignalSeries => {
-  const referenceTenant = resolveReferenceTenant(tenants, selectedTenantId)
-  const labels = ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00']
-
-  if (!referenceTenant) {
-    return {
-      labels,
-      market: [92, 101, 118, 126, 114, 97],
-      weatherBias: [4, 6, 9, 7, 5, 3],
-      dispatch: [32, 44, 58, 52, 40, 28],
-      regret: [9, 8, 7, 6, 7, 8]
-    }
-  }
-
-  const latitudeBias = Math.round((referenceTenant.latitude - 45) * 2)
-  const longitudeBias = Math.round((referenceTenant.longitude - 22) * 1.5)
-  const tenantLoadBias = tenants.length * 3
-
-  return {
-    labels,
-    market: [84, 96, 113, 124, 117, 101].map((value, index) => value + latitudeBias + index),
-    weatherBias: [3, 5, 8, 7, 5, 4].map((value, index) => value + Math.max(0, longitudeBias - index)),
-    dispatch: [28, 42, 57, 54, 39, 26].map((value, index) => value + Math.round(tenantLoadBias / 4) - index),
-    regret: [10, 9, 8, 7, 8, 9].map((value, index) => Math.max(3, value + Math.round(longitudeBias / 2) - index))
   }
 }
 
@@ -204,10 +165,13 @@ export const buildTenantRegistryChartOption = (
 }
 
 export const buildMarketPulseChartOption = (
-  tenants: TenantSummary[],
-  selectedTenantId: string
+  signalPreview: SignalPreview | null
 ): EChartsOption => {
-  const signal = buildDemoSignalSeries(tenants, selectedTenantId)
+  const signal = signalPreview || {
+    labels: ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
+    market_price: [0, 0, 0, 0, 0, 0],
+    weather_bias: [0, 0, 0, 0, 0, 0]
+  }
 
   return {
     animationDuration: 1100,
@@ -267,7 +231,7 @@ export const buildMarketPulseChartOption = (
         type: 'line',
         name: 'DAM preview',
         smooth: true,
-        data: signal.market,
+        data: signal.market_price,
         symbol: 'circle',
         symbolSize: 8,
         lineStyle: {
@@ -285,7 +249,7 @@ export const buildMarketPulseChartOption = (
         type: 'line',
         name: 'Weather bias',
         smooth: true,
-        data: signal.weatherBias,
+        data: signal.weather_bias,
         symbol: 'diamond',
         symbolSize: 7,
         lineStyle: {
@@ -301,10 +265,13 @@ export const buildMarketPulseChartOption = (
 }
 
 export const buildDispatchBalanceChartOption = (
-  tenants: TenantSummary[],
-  selectedTenantId: string
+  signalPreview: SignalPreview | null
 ): EChartsOption => {
-  const signal = buildDemoSignalSeries(tenants, selectedTenantId)
+  const signal = signalPreview || {
+    labels: ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
+    charge_intent: [0, 0, 0, 0, 0, 0],
+    regret: [0, 0, 0, 0, 0, 0]
+  }
 
   return {
     animationDuration: 1100,
@@ -375,7 +342,7 @@ export const buildDispatchBalanceChartOption = (
       {
         type: 'bar',
         name: 'Charge intent',
-        data: signal.dispatch,
+        data: signal.charge_intent,
         barWidth: 18,
         itemStyle: {
           color: dashboardChartTokens.secondary,

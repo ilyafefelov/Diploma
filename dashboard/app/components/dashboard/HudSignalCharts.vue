@@ -7,18 +7,19 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 
-import type { TenantSummary } from '~/types/control-plane'
+import type { SignalPreview } from '~/types/control-plane'
 import { buildDispatchBalanceChartOption, buildMarketPulseChartOption } from '~/utils/dashboardChartTheme'
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
-  tenants: TenantSummary[]
-  selectedTenantId: string
+  signalPreview: SignalPreview | null
+  isLoading: boolean
+  lastLoadedLabel: string
 }>()
 
-const marketOption = computed(() => buildMarketPulseChartOption(props.tenants, props.selectedTenantId))
-const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.tenants, props.selectedTenantId))
+const marketOption = computed(() => buildMarketPulseChartOption(props.signalPreview))
+const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.signalPreview))
 </script>
 
 <template>
@@ -29,9 +30,12 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.tena
           <p class="signal-card__eyebrow">Market pulse</p>
           <h3 class="signal-card__title">Baseline price vs weather bias</h3>
         </div>
+
+        <p class="signal-card__meta">Updated {{ lastLoadedLabel }}</p>
       </div>
 
-      <VChart :option="marketOption" autoresize class="signal-chart" />
+      <div v-if="isLoading" class="signal-chart signal-chart-fallback">Loading market pulse...</div>
+      <VChart v-else :option="marketOption" autoresize class="signal-chart" />
     </section>
 
     <section class="signal-card">
@@ -40,9 +44,12 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.tena
           <p class="signal-card__eyebrow">Dispatch balance</p>
           <h3 class="signal-card__title">Charge intent and regret preview</h3>
         </div>
+
+        <p class="signal-card__meta">API-backed preview</p>
       </div>
 
-      <VChart :option="dispatchOption" autoresize class="signal-chart" />
+      <div v-if="isLoading" class="signal-chart signal-chart-fallback">Loading dispatch preview...</div>
+      <VChart v-else :option="dispatchOption" autoresize class="signal-chart" />
     </section>
   </div>
 </template>
@@ -77,8 +84,22 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.tena
   color: var(--ink-strong);
 }
 
+.signal-card__meta {
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
 .signal-chart {
   min-height: 16rem;
+}
+
+.signal-chart-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed rgba(0, 121, 193, 0.16);
+  border-radius: 1.25rem;
+  color: var(--ink-soft);
 }
 
 @media (min-width: 960px) {

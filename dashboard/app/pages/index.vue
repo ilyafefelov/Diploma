@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import HudMotiveBars from '~/components/dashboard/HudMotiveBars.vue'
 import HudSignalCharts from '~/components/dashboard/HudSignalCharts.vue'
 import TenantRegistryScatter from '~/components/dashboard/TenantRegistryScatter.vue'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
+import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
 
 const {
@@ -15,8 +16,18 @@ const {
   error,
   lastLoadedAt,
   loadTenants,
-  clearError
+  clearError,
+  startAutoRefresh,
+  stopAutoRefresh
 } = useControlPlaneRegistry()
+
+const {
+  signalPreview,
+  isLoading: isSignalPreviewLoading,
+  error: signalPreviewError,
+  lastLoadedLabel: signalPreviewLastLoadedLabel,
+  loadSignalPreview
+} = useSignalPreview(selectedTenantId)
 
 const {
   runConfig,
@@ -24,6 +35,7 @@ const {
   isPreparing,
   isMaterializing,
   error: weatherError,
+  lastActionLabel,
   statusLabel,
   prepareRunConfig,
   materializeWeatherAssets,
@@ -195,6 +207,13 @@ onMounted(async () => {
   if (tenants.value.length === 0) {
     await loadTenants()
   }
+
+  await loadSignalPreview()
+  startAutoRefresh()
+})
+
+onBeforeUnmount(() => {
+  stopAutoRefresh()
 })
 </script>
 
@@ -206,7 +225,7 @@ onMounted(async () => {
           <div class="hero-copy-block__topline">
             <div class="plumbob-chip">
               <span class="plumbob-chip__shape"></span>
-              Sims mode / operator HUD
+              Operator HUD
             </div>
 
             <div class="status-pill">
@@ -217,9 +236,9 @@ onMounted(async () => {
 
           <div class="hero-copy-block__body">
             <p class="eyebrow">Smart arbitrage / dashboard w1</p>
-            <h1 class="workspace-title">Run the tenant registry like a bright simulation HUD.</h1>
+            <h1 class="workspace-title">Run the tenant registry from a bright operator control surface.</h1>
             <p class="workspace-copy">
-              Clean white glass, Sims-blue actions, plumbob-green feedback, and a playful chart stage for the first
+              Clean white glass, fast operator controls, clear status feedback, and a playful chart stage for the first
               operator-facing baseline workspace.
             </p>
           </div>
@@ -279,10 +298,10 @@ onMounted(async () => {
         </article>
       </section>
 
-      <section v-if="error || weatherError" class="workspace-alert">
+      <section v-if="error || weatherError || signalPreviewError" class="workspace-alert">
         <div>
           <p class="workspace-alert__title">Control surface issue</p>
-          <p class="workspace-alert__copy">{{ error || weatherError }}</p>
+          <p class="workspace-alert__copy">{{ error || weatherError || signalPreviewError }}</p>
         </div>
 
         <button class="control-button control-button-secondary" type="button" @click="error ? clearError() : clearWeatherError()">
@@ -345,6 +364,8 @@ onMounted(async () => {
               <span class="status-badge">{{ statusLabel }}</span>
             </div>
 
+            <p class="control-meta">Last action {{ lastActionLabel }}</p>
+
             <label class="check-toggle">
               <input v-model="includePriceHistory" type="checkbox">
               <span>Include DAM price history</span>
@@ -396,7 +417,11 @@ onMounted(async () => {
           </div>
 
           <ClientOnly>
-            <HudSignalCharts :tenants="tenants" :selected-tenant-id="selectedTenantId" />
+            <HudSignalCharts
+              :signal-preview="signalPreview"
+              :is-loading="isSignalPreviewLoading"
+              :last-loaded-label="signalPreviewLastLoadedLabel"
+            />
 
             <template #fallback>
               <div class="chart-fallback chart-fallback-compact">Preparing signal charts...</div>
@@ -408,7 +433,7 @@ onMounted(async () => {
           <div class="panel-heading">
             <div>
               <p class="eyebrow">HUD notes</p>
-              <h2 class="section-title">Sim cues</h2>
+              <h2 class="section-title">Control cues</h2>
             </div>
 
             <div class="mini-plumbob mini-plumbob-green"></div>
@@ -795,6 +820,11 @@ onMounted(async () => {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--ink-strong);
+}
+
+.control-meta {
+  font-size: 0.84rem;
+  color: var(--ink-soft);
 }
 
 .detail-list {
