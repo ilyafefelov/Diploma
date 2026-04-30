@@ -253,8 +253,8 @@ onBeforeUnmount(() => {
             <p class="eyebrow">Smart arbitrage / dashboard w1</p>
             <h1 class="workspace-title">Run the tenant registry from a bright operator control surface.</h1>
             <p class="workspace-copy">
-              Clean white glass, fast operator controls, clear status feedback, and a playful chart stage for the first
-              operator-facing baseline workspace.
+              Clean white glass, upbeat Sims-like energy, clear operator status, and a planning stage where feasible
+              plans read instantly instead of feeling like back-office telemetry.
             </p>
           </div>
 
@@ -484,8 +484,8 @@ onBeforeUnmount(() => {
               <p class="note-block__title">What comes next</p>
               <ol class="note-list">
                 <li>Materialization controls for weather and bronze assets.</li>
-                <li>Market price history and baseline forecast overlays.</li>
-                <li>Dispatch and regret signatures with game-like motion.</li>
+                <li>Feasible plan review with units, SOC guardrails, and operator-ready explanations.</li>
+                <li>Dispatch and regret signatures with bright Sims-style motion cues.</li>
               </ol>
             </div>
 

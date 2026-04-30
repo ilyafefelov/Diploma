@@ -40,6 +40,36 @@ const economicsItems = computed(() => {
     { label: 'Throughput', value: `${economics.total_throughput_mwh.toFixed(2)} MWh` }
   ]
 })
+
+const feasiblePlanItems = computed(() => {
+  if (!props.baselinePreview) {
+    return [
+      { label: 'Power corridor', value: 'Waiting', note: 'Signed dispatch envelope in MW.' },
+      { label: 'SOC guardrails', value: 'Waiting', note: 'Projected battery band in %.' },
+      { label: 'Planning grain', value: 'Waiting', note: 'Hourly review step for the preview.' }
+    ]
+  }
+
+  const metrics = props.baselinePreview.battery_metrics
+
+  return [
+    {
+      label: 'Power corridor',
+      value: `-${metrics.max_power_mw.toFixed(1)} to +${metrics.max_power_mw.toFixed(1)} MW`,
+      note: 'Negative values mean charging, positive values mean discharge.'
+    },
+    {
+      label: 'SOC guardrails',
+      value: `${Math.round(metrics.soc_min_fraction * 100)}% to ${Math.round(metrics.soc_max_fraction * 100)}%`,
+      note: 'Projected state must stay inside the feasible battery window.'
+    },
+    {
+      label: 'Planning grain',
+      value: `${props.baselinePreview.interval_minutes} min`,
+      note: 'Every recommendation point is one operator review bucket.'
+    }
+  ]
+})
 </script>
 
 <template>
@@ -63,12 +93,21 @@ const economicsItems = computed(() => {
       </article>
     </div>
 
+    <div class="baseline-feasible-strip">
+      <article v-for="item in feasiblePlanItems" :key="item.label" class="feasible-pill">
+        <p class="feasible-pill__label">{{ item.label }}</p>
+        <p class="feasible-pill__value">{{ item.value }}</p>
+        <p class="feasible-pill__note">{{ item.note }}</p>
+      </article>
+    </div>
+
     <div class="baseline-slab__grid">
       <section class="baseline-card baseline-card-forecast">
         <div class="baseline-card__header">
           <div>
             <p class="baseline-card__eyebrow">Forecast horizon</p>
             <h4 class="baseline-card__title">Hourly DAM baseline forecast</h4>
+            <p class="baseline-card__summary">Y-axis values are quoted in <strong>UAH/MWh</strong>.</p>
           </div>
         </div>
 
@@ -81,6 +120,9 @@ const economicsItems = computed(() => {
           <div>
             <p class="baseline-card__eyebrow">Feasible plan</p>
             <h4 class="baseline-card__title">Signed MW schedule and projected SOC</h4>
+            <p class="baseline-card__summary">
+              Bars use signed <strong>MW</strong>; the pink line is projected <strong>SOC %</strong> after each feasible step.
+            </p>
           </div>
         </div>
 
@@ -95,6 +137,10 @@ const economicsItems = computed(() => {
         This surface shows a feasible hourly recommendation derived from the baseline LP and constrained battery state.
         It is for operator review and demo planning, not market-order or dispatch semantics.
       </p>
+      <p class="baseline-boundary__copy baseline-boundary__copy-strong">
+        Feasible plan means the preview already respects the visible power corridor, SOC guardrails, interval grain,
+        and degradation-aware projected state.
+      </p>
     </div>
   </section>
 </template>
@@ -106,9 +152,12 @@ const economicsItems = computed(() => {
   padding: 1.15rem;
   border-radius: 1.7rem;
   background:
+    radial-gradient(circle at top right, rgba(255, 111, 174, 0.14), transparent 28%),
+    radial-gradient(circle at top left, rgba(126, 211, 33, 0.14), transparent 24%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(240, 249, 255, 0.92)),
     linear-gradient(135deg, rgba(0, 121, 193, 0.05), rgba(126, 211, 33, 0.05));
   border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 24px 54px rgba(0, 121, 193, 0.08);
 }
 
 .baseline-slab__header,
@@ -161,12 +210,14 @@ const economicsItems = computed(() => {
 }
 
 .baseline-slab__economics,
+.baseline-feasible-strip,
 .baseline-slab__grid {
   display: grid;
   gap: 0.9rem;
 }
 
 .economics-pill,
+.feasible-pill,
 .baseline-card,
 .baseline-boundary {
   display: grid;
@@ -181,6 +232,32 @@ const economicsItems = computed(() => {
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--sims-blue-deep);
+}
+
+.feasible-pill {
+  align-content: start;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(249, 252, 255, 0.92));
+}
+
+.feasible-pill__label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.feasible-pill__value {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+
+.feasible-pill__note,
+.baseline-card__summary {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
 }
 
 .baseline-chart {
@@ -201,9 +278,18 @@ const economicsItems = computed(() => {
   color: var(--ink-soft);
 }
 
+.baseline-boundary__copy-strong {
+  color: var(--ink-strong);
+  font-weight: 600;
+}
+
 @media (min-width: 860px) {
   .baseline-slab__economics {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .baseline-feasible-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .baseline-slab__grid {

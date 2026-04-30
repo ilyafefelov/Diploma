@@ -24,10 +24,15 @@ export const dashboardChartTokens = {
   secondary: '#53b2ea',
   highlight: '#7ed321',
   warning: '#f5a623',
+  rose: '#ff6fae',
   tooltipBackground: 'rgba(255, 255, 255, 0.96)',
   tooltipText: '#1b3551',
   shadow: 'rgba(0, 121, 193, 0.16)'
 } as const
+
+const formatSignedMw = (value: number): string => `${value > 0 ? '+' : ''}${value.toFixed(2)} MW`
+
+const formatCurrency = (value: number): string => `${Math.round(value).toLocaleString('en-GB')} UAH`
 
 const createTenantPoint = (tenant: TenantSummary, selectedTenantId: string): TenantScatterPoint => {
   const isSelected = tenant.tenant_id === selectedTenantId
@@ -192,7 +197,8 @@ export const buildMarketPulseChartOption = (
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
         color: dashboardChartTokens.tooltipText
-      }
+      },
+      valueFormatter: (value: number | string) => `${Math.round(Number(value))} UAH/MWh`
     },
     grid: {
       left: 48,
@@ -216,9 +222,17 @@ export const buildMarketPulseChartOption = (
     },
     yAxis: {
       type: 'value',
+      name: 'UAH/MWh',
+      nameLocation: 'middle',
+      nameGap: 42,
       axisLabel: {
         color: dashboardChartTokens.axis,
-        fontWeight: 700
+        fontWeight: 700,
+        formatter: (value: number) => `${Math.round(value)}`
+      },
+      nameTextStyle: {
+        color: dashboardChartTokens.primary,
+        fontWeight: 800
       },
       splitLine: {
         lineStyle: {
@@ -292,6 +306,13 @@ export const buildDispatchBalanceChartOption = (
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
         color: dashboardChartTokens.tooltipText
+      },
+      formatter: (params: Array<{ axisValueLabel: string; seriesName: string; value: number }>) => {
+        const lines = params.map((item) => item.seriesName === 'Charge intent'
+          ? `${item.seriesName}: ${formatSignedMw(item.value)}`
+          : `${item.seriesName}: ${formatCurrency(item.value)}`)
+
+        return [params[0]?.axisValueLabel || '', ...lines].join('<br/>')
       }
     },
     grid: {
@@ -317,9 +338,17 @@ export const buildDispatchBalanceChartOption = (
     yAxis: [
       {
         type: 'value',
+        name: 'MW',
+        nameLocation: 'middle',
+        nameGap: 40,
         axisLabel: {
           color: dashboardChartTokens.axis,
-          fontWeight: 700
+          fontWeight: 700,
+          formatter: (value: number) => `${value.toFixed(1)}`
+        },
+        nameTextStyle: {
+          color: dashboardChartTokens.secondary,
+          fontWeight: 800
         },
         splitLine: {
           lineStyle: {
@@ -329,9 +358,17 @@ export const buildDispatchBalanceChartOption = (
       },
       {
         type: 'value',
+        name: 'UAH',
+        nameLocation: 'middle',
+        nameGap: 42,
         axisLabel: {
           color: dashboardChartTokens.axis,
-          fontWeight: 700
+          fontWeight: 700,
+          formatter: (value: number) => `${Math.round(value)}`
+        },
+        nameTextStyle: {
+          color: dashboardChartTokens.warning,
+          fontWeight: 800
         },
         splitLine: {
           show: false
@@ -386,7 +423,8 @@ export const buildBaselineForecastChartOption = (
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
         color: dashboardChartTokens.tooltipText
-      }
+      },
+      valueFormatter: (value: number | string) => `${Math.round(Number(value))} UAH/MWh`
     },
     grid: {
       left: 48,
@@ -470,6 +508,13 @@ export const buildBaselineScheduleChartOption = (
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
         color: dashboardChartTokens.tooltipText
+      },
+      formatter: (params: Array<{ axisValueLabel: string; seriesName: string; value: number }>) => {
+        const lines = params.map((item) => item.seriesName === 'Projected SOC'
+          ? `${item.seriesName}: ${Math.round(item.value)}%`
+          : `${item.seriesName}: ${formatSignedMw(item.value)}`)
+
+        return [params[0]?.axisValueLabel || '', ...lines].join('<br/>')
       }
     },
     grid: {
@@ -495,10 +540,17 @@ export const buildBaselineScheduleChartOption = (
     yAxis: [
       {
         type: 'value',
+        name: 'MW',
+        nameLocation: 'middle',
+        nameGap: 40,
         axisLabel: {
           color: dashboardChartTokens.axis,
           fontWeight: 700,
-          formatter: (value: number) => `${value} MW`
+          formatter: (value: number) => `${value.toFixed(1)}`
+        },
+        nameTextStyle: {
+          color: dashboardChartTokens.primary,
+          fontWeight: 800
         },
         splitLine: {
           lineStyle: {
@@ -510,10 +562,17 @@ export const buildBaselineScheduleChartOption = (
         type: 'value',
         min: 0,
         max: 100,
+        name: 'SOC %',
+        nameLocation: 'middle',
+        nameGap: 44,
         axisLabel: {
           color: dashboardChartTokens.axis,
           fontWeight: 700,
           formatter: (value: number) => `${value}%`
+        },
+        nameTextStyle: {
+          color: dashboardChartTokens.rose,
+          fontWeight: 800
         },
         splitLine: {
           show: false
@@ -541,10 +600,10 @@ export const buildBaselineScheduleChartOption = (
         symbolSize: 7,
         lineStyle: {
           width: 3,
-          color: dashboardChartTokens.highlight
+          color: dashboardChartTokens.rose
         },
         itemStyle: {
-          color: dashboardChartTokens.highlight
+          color: dashboardChartTokens.rose
         }
       }
     ]

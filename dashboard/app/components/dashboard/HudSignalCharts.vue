@@ -29,9 +29,18 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
         <div>
           <p class="signal-card__eyebrow">Market pulse</p>
           <h3 class="signal-card__title">Baseline price vs weather bias</h3>
+          <p class="signal-card__summary">
+            Both lines use <strong>UAH/MWh</strong>, so weather uplift is readable against the baseline DAM price without
+            guessing the units.
+          </p>
         </div>
 
         <p class="signal-card__meta">Updated {{ lastLoadedLabel }}</p>
+      </div>
+
+      <div class="signal-card__guide">
+        <span class="signal-guide-pill">Y-axis: UAH/MWh</span>
+        <span class="signal-guide-pill">Time: tenant local buckets</span>
       </div>
 
       <div v-if="isLoading" class="signal-chart signal-chart-fallback">Loading market pulse...</div>
@@ -43,9 +52,18 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
         <div>
           <p class="signal-card__eyebrow">Dispatch balance</p>
           <h3 class="signal-card__title">Charge intent and regret preview</h3>
+          <p class="signal-card__summary">
+            Blue bars are signed battery power in <strong>MW</strong>. Orange line is preview regret in
+            <strong>UAH</strong> for the same hour.
+          </p>
         </div>
 
         <p class="signal-card__meta">API-backed preview</p>
+      </div>
+
+      <div class="signal-card__guide">
+        <span class="signal-guide-pill signal-guide-pill-blue">Bars: MW</span>
+        <span class="signal-guide-pill signal-guide-pill-orange">Line: UAH</span>
       </div>
 
       <div v-if="isLoading" class="signal-chart signal-chart-fallback">Loading dispatch preview...</div>
@@ -62,11 +80,14 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
 
 .signal-card {
   display: grid;
-  gap: 0.75rem;
-  padding: 1rem;
+  gap: 0.9rem;
+  padding: 1.05rem;
   border-radius: 1.5rem;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(243, 250, 255, 0.84));
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(243, 250, 255, 0.84));
   border: 2px solid rgba(255, 255, 255, 0.92);
+  box-shadow: 0 20px 45px rgba(0, 121, 193, 0.08);
 }
 
 .signal-card__eyebrow {
@@ -84,13 +105,47 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
   color: var(--ink-strong);
 }
 
+.signal-card__summary {
+  margin-top: 0.45rem;
+  max-width: 38rem;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
 .signal-card__meta {
   font-size: 0.82rem;
   color: var(--ink-soft);
 }
 
+.signal-card__guide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.signal-guide-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: rgba(126, 211, 33, 0.12);
+  color: var(--ink-strong);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.signal-guide-pill-blue {
+  background: rgba(0, 121, 193, 0.12);
+}
+
+.signal-guide-pill-orange {
+  background: rgba(245, 166, 35, 0.16);
+}
+
 .signal-chart {
   min-height: 16rem;
+  padding: 0.2rem 0;
 }
 
 .signal-chart-fallback {
