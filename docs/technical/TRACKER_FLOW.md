@@ -7,6 +7,7 @@ Status: confirmed locally, external publish flow not yet automated in this works
 - Git remote points at GitHub: `https://github.com/ilyafefelov/Diploma`
 - The repository does not currently expose a workspace-local issue-tracker label mapping for the skill workflows.
 - GitHub CLI (`gh`) is not available in the current PowerShell environment, so AI issue publishing cannot be confirmed end-to-end from this session.
+- Local operator-flow tracking is now wired through backend-owned status contracts, so development can proceed without blocking on external issue automation.
 
 ## Canonical Workflow For This Repo Right Now
 

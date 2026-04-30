@@ -32,11 +32,13 @@ const {
 const {
   runConfig,
   materializeResult,
+  operatorStatus,
   isPreparing,
   isMaterializing,
   error: weatherError,
   lastActionLabel,
   statusLabel,
+  syncOperatorStatus,
   prepareRunConfig,
   materializeWeatherAssets,
   clearWeatherError
@@ -132,8 +134,8 @@ const activeRegistrySummary = computed(() => {
 const motiveItems = computed(() => {
   const tenantCount = tenants.value.length
   const coverage = Math.min(100, 46 + tenantCount * 9)
-  const readiness = Math.min(100, 52 + criticalTenantCount.value * 7 + (runConfig.value ? 12 : 0))
-  const pressure = Math.min(100, 34 + tenantCount * 5 + (materializeResult.value?.success ? 10 : 0))
+  const readiness = Math.min(100, 52 + criticalTenantCount.value * 7 + (operatorStatus.value?.status === 'prepared' ? 12 : 0))
+  const pressure = Math.min(100, 34 + tenantCount * 5 + (operatorStatus.value?.status === 'completed' ? 10 : 0))
 
   return [
     {
@@ -201,6 +203,7 @@ const handleMaterializeWeather = async (): Promise<void> => {
 
 watch(selectedTenantId, () => {
   clearWeatherError()
+  void syncOperatorStatus(selectedTenantId.value)
 })
 
 onMounted(async () => {
@@ -209,6 +212,7 @@ onMounted(async () => {
   }
 
   await loadSignalPreview()
+  await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
 })
 

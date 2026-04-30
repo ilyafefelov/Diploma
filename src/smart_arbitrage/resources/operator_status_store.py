@@ -42,11 +42,14 @@ class OperatorStatusStore(Protocol):
 
 
 class NullOperatorStatusStore:
+	def __init__(self) -> None:
+		self._records: dict[tuple[str, OperatorFlowType], OperatorStatusRecord] = {}
+
 	def upsert_status(self, record: OperatorStatusRecord) -> None:
-		return None
+		self._records[(record.tenant_id, record.flow_type)] = record
 
 	def get_status(self, *, tenant_id: str, flow_type: OperatorFlowType) -> OperatorStatusRecord | None:
-		return None
+		return self._records.get((tenant_id, flow_type))
 
 
 class PostgresOperatorStatusStore:

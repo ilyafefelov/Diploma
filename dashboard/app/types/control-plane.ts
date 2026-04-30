@@ -20,3 +20,16 @@ export interface SignalPreview {
     timezone: string
   }
 }
+
+export type OperatorFlowType = 'weather_control' | 'signal_preview' | 'baseline_lp' | 'gatekeeper' | 'dispatch_execution'
+
+export type OperatorFlowStatus = 'idle' | 'prepared' | 'running' | 'completed' | 'failed'
+
+export interface OperatorStatus {
+  tenant_id: string
+  flow_type: OperatorFlowType
+  status: OperatorFlowStatus
+  updated_at: string
+  payload: Record<string, unknown> | null
+  last_error: string | null
+}
