@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from functools import cache
 from typing import Any
 
@@ -12,6 +13,12 @@ from smart_arbitrage.assets.bronze.market_weather import (
 	build_weather_asset_run_config,
 	list_available_weather_tenants,
 	resolve_weather_location_for_tenant,
+)
+from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
+from smart_arbitrage.optimization.projected_battery_state import (
+	ProjectedBatterySimulationResult,
+	ScheduledPowerPoint,
+	simulate_projected_battery_state,
 )
 from smart_arbitrage.resources.operator_status_store import (
 	OperatorFlowStatus,
@@ -94,6 +101,39 @@ class OperatorStatusResponse(BaseModel):
 	updated_at: str
 	payload: dict[str, Any] | None
 	last_error: str | None
+
+
+class ProjectedBatterySchedulePointRequest(BaseModel):
+	interval_start: datetime
+	net_power_mw: float
+
+
+class ProjectedBatteryStateRequest(BaseModel):
+	tenant_id: str
+	current_soc_fraction: float | None = None
+	battery_metrics: BatteryPhysicalMetrics | None = None
+	schedule: list[ProjectedBatterySchedulePointRequest] | None = None
+
+
+class ProjectedBatteryTracePointResponse(BaseModel):
+	step_index: int
+	interval_start: datetime
+	requested_net_power_mw: float
+	feasible_net_power_mw: float
+	soc_before_fraction: float
+	soc_after_fraction: float
+	throughput_mwh: float
+	degradation_penalty_uah: float
+
+
+class ProjectedBatteryStateResponse(BaseModel):
+	tenant_id: str
+	interval_minutes: int
+	starting_soc_fraction: float
+	battery_metrics: BatteryPhysicalMetrics
+	total_throughput_mwh: float
+	total_degradation_penalty_uah: float
+	trace: list[ProjectedBatteryTracePointResponse]
 
 
 @cache
@@ -186,6 +226,85 @@ def _persist_operator_status(
 			payload=payload,
 			last_error=last_error,
 		)
+	)
+
+
+def _default_battery_metrics() -> BatteryPhysicalMetrics:
+	return BatteryPhysicalMetrics(
+		capacity_mwh=10.0,
+		max_power_mw=2.5,
+		round_trip_efficiency=0.95,
+		degradation_cost_per_cycle_uah=56.0,
+		soc_min_fraction=0.05,
+		soc_max_fraction=0.95,
+	)
+
+
+def _default_current_soc_fraction(location: WeatherLocation) -> float:
+	latitude_component = (location.latitude - 45.0) / 20.0
+	longitude_component = (location.longitude - 22.0) / 40.0
+	return round(max(0.2, min(0.8, 0.45 + latitude_component - longitude_component)), 3)
+
+
+def _default_projection_schedule(anchor_timestamp: datetime) -> list[ScheduledPowerPoint]:
+	default_net_power_mw = [-1.2, -0.8, 0.5, 1.4, 1.8, 0.6]
+	return [
+		ScheduledPowerPoint(
+			interval_start=anchor_timestamp + timedelta(hours=index),
+			net_power_mw=net_power_mw,
+		)
+		for index, net_power_mw in enumerate(default_net_power_mw)
+	]
+
+
+def _resolve_projection_request(
+	request: ProjectedBatteryStateRequest,
+) -> tuple[BatteryPhysicalMetrics, float, list[ScheduledPowerPoint]]:
+	resolved_location = _resolve_requested_location(
+		tenant_id=request.tenant_id,
+		location_config_path=None,
+	)
+	battery_metrics = request.battery_metrics or _default_battery_metrics()
+	starting_soc_fraction = request.current_soc_fraction
+	if starting_soc_fraction is None:
+		starting_soc_fraction = _default_current_soc_fraction(resolved_location)
+	if request.schedule is not None:
+		schedule = [
+			ScheduledPowerPoint(interval_start=point.interval_start, net_power_mw=point.net_power_mw)
+			for point in request.schedule
+		]
+	else:
+		anchor_timestamp = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
+		schedule = _default_projection_schedule(anchor_timestamp)
+	return battery_metrics, starting_soc_fraction, schedule
+
+
+def _to_projected_battery_state_response(
+	*,
+	tenant_id: str,
+	battery_metrics: BatteryPhysicalMetrics,
+	simulation_result: ProjectedBatterySimulationResult,
+) -> ProjectedBatteryStateResponse:
+	return ProjectedBatteryStateResponse(
+		tenant_id=tenant_id,
+		interval_minutes=simulation_result.interval_minutes,
+		starting_soc_fraction=simulation_result.starting_soc_fraction,
+		battery_metrics=battery_metrics,
+		total_throughput_mwh=simulation_result.total_throughput_mwh,
+		total_degradation_penalty_uah=simulation_result.total_degradation_penalty_uah,
+		trace=[
+			ProjectedBatteryTracePointResponse(
+				step_index=point.step_index,
+				interval_start=point.interval_start,
+				requested_net_power_mw=point.requested_net_power_mw,
+				feasible_net_power_mw=point.feasible_net_power_mw,
+				soc_before_fraction=point.soc_before_fraction,
+				soc_after_fraction=point.soc_after_fraction,
+				throughput_mwh=point.throughput_mwh,
+				degradation_penalty_uah=point.degradation_penalty_uah,
+			)
+			for point in simulation_result.trace
+		],
 	)
 
 
@@ -364,3 +483,40 @@ def get_operator_status(
 		raise HTTPException(status_code=404, detail="Operator flow status not found.")
 
 	return _to_operator_status_response(record)
+
+
+@app.post(
+	"/dashboard/projected-battery-state",
+	response_model=ProjectedBatteryStateResponse,
+	tags=["weather"],
+	summary="Build projected battery state preview",
+	description=(
+		"Simulates hourly projected SOC, throughput, and degradation-aware economics "
+		"for a signed MW recommendation schedule."
+	),
+)
+def build_projected_battery_state_preview(
+	request: ProjectedBatteryStateRequest,
+) -> ProjectedBatteryStateResponse:
+	battery_metrics, starting_soc_fraction, schedule = _resolve_projection_request(request)
+	try:
+		simulation_result = simulate_projected_battery_state(
+			schedule=schedule,
+			battery_metrics=battery_metrics,
+			starting_soc_fraction=starting_soc_fraction,
+		)
+	except ValueError as error:
+		raise HTTPException(status_code=400, detail=str(error)) from error
+
+	response = _to_projected_battery_state_response(
+		tenant_id=request.tenant_id,
+		battery_metrics=battery_metrics,
+		simulation_result=simulation_result,
+	)
+	_persist_operator_status(
+		tenant_id=request.tenant_id,
+		flow_type=OperatorFlowType.BASELINE_LP,
+		status=OperatorFlowStatus.COMPLETED,
+		payload=response.model_dump(mode="json"),
+	)
+	return response

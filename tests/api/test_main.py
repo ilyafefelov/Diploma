@@ -232,6 +232,49 @@ def test_dashboard_signal_preview_returns_tenant_aware_series(
 	assert status_record.status == OperatorFlowStatus.COMPLETED
 
 
+def test_projected_battery_state_returns_hourly_trace_with_override(
+	client: TestClient,
+	fake_status_store: _FakeOperatorStatusStore,
+) -> None:
+	response = client.post(
+		"/dashboard/projected-battery-state",
+		json={
+			"tenant_id": "client_003_dnipro_factory",
+			"current_soc_fraction": 0.5,
+			"battery_metrics": {
+				"capacity_mwh": 4.0,
+				"max_power_mw": 2.0,
+				"round_trip_efficiency": 0.81,
+				"degradation_cost_per_cycle_uah": 40.0,
+				"soc_min_fraction": 0.25,
+				"soc_max_fraction": 0.75,
+			},
+			"schedule": [
+				{"interval_start": "2026-05-01T06:00:00Z", "net_power_mw": 1.0},
+				{"interval_start": "2026-05-01T07:00:00Z", "net_power_mw": -2.0},
+				{"interval_start": "2026-05-01T08:00:00Z", "net_power_mw": 3.0},
+			],
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["interval_minutes"] == 60
+	assert response_payload["starting_soc_fraction"] == 0.5
+	assert response_payload["total_throughput_mwh"] == pytest.approx(4.52, rel=1e-3)
+	assert response_payload["total_degradation_penalty_uah"] == pytest.approx(22.6, rel=1e-3)
+	assert [point["requested_net_power_mw"] for point in response_payload["trace"]] == [1.0, -2.0, 3.0]
+	assert [point["feasible_net_power_mw"] for point in response_payload["trace"]] == pytest.approx([0.9, -2.0, 1.62], rel=1e-3)
+	assert [point["soc_after_fraction"] for point in response_payload["trace"]] == pytest.approx([0.25, 0.7, 0.25], rel=1e-3)
+	status_record = fake_status_store.get_status(
+		tenant_id="client_003_dnipro_factory",
+		flow_type=OperatorFlowType.BASELINE_LP,
+	)
+	assert status_record is not None
+	assert status_record.status == OperatorFlowStatus.COMPLETED
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -291,3 +334,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/weather/materialize"]["post"]["summary"] == "Materialize weather experiment assets"
 	assert schema["paths"]["/dashboard/signal-preview"]["get"]["summary"] == "Build dashboard signal preview"
 	assert schema["paths"]["/dashboard/operator-status"]["get"]["summary"] == "Get persisted operator flow status"
+	assert schema["paths"]["/dashboard/projected-battery-state"]["post"]["summary"] == "Build projected battery state preview"

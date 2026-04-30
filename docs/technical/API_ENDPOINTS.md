@@ -125,6 +125,72 @@ Operational notes:
 - The canonical status set is `idle`, `prepared`, `running`, `completed`, `failed`.
 - Current Slice 1 flow coverage is `weather_control` and `signal_preview`.
 
+### `POST /dashboard/projected-battery-state`
+
+Builds a constrained hourly battery-state preview from a signed MW recommendation schedule.
+
+Request body example:
+
+```json
+{
+  "tenant_id": "client_003_dnipro_factory",
+  "current_soc_fraction": 0.5,
+  "battery_metrics": {
+    "capacity_mwh": 4.0,
+    "max_power_mw": 2.0,
+    "round_trip_efficiency": 0.81,
+    "degradation_cost_per_cycle_uah": 40.0,
+    "soc_min_fraction": 0.25,
+    "soc_max_fraction": 0.75
+  },
+  "schedule": [
+    {"interval_start": "2026-05-01T06:00:00Z", "net_power_mw": 1.0},
+    {"interval_start": "2026-05-01T07:00:00Z", "net_power_mw": -2.0},
+    {"interval_start": "2026-05-01T08:00:00Z", "net_power_mw": 3.0}
+  ]
+}
+```
+
+Response example:
+
+```json
+{
+  "tenant_id": "client_003_dnipro_factory",
+  "interval_minutes": 60,
+  "starting_soc_fraction": 0.5,
+  "battery_metrics": {
+    "capacity_mwh": 4.0,
+    "max_power_mw": 2.0,
+    "round_trip_efficiency": 0.81,
+    "degradation_cost_per_cycle_uah": 40.0,
+    "soc_min_fraction": 0.25,
+    "soc_max_fraction": 0.75
+  },
+  "total_throughput_mwh": 4.52,
+  "total_degradation_penalty_uah": 22.6,
+  "trace": [
+    {
+      "step_index": 0,
+      "interval_start": "2026-05-01T06:00:00Z",
+      "requested_net_power_mw": 1.0,
+      "feasible_net_power_mw": 0.9,
+      "soc_before_fraction": 0.5,
+      "soc_after_fraction": 0.25,
+      "throughput_mwh": 0.9,
+      "degradation_penalty_uah": 4.5
+    }
+  ]
+}
+```
+
+Operational notes:
+
+- This endpoint is the narrow Slice 2 simulator for projected SOC, throughput, and degradation-aware UAH penalty.
+- It accepts scenario overrides for offline/demo use, but also supports a tenant-resolved default state and default hourly recommendation schedule when overrides are omitted.
+- The simulator enforces hourly Level 1 granularity, `soc_min`, `soc_max`, capacity, max power, and round-trip efficiency.
+- On success, the API updates the persisted `baseline_lp` flow state to `completed`.
+- This remains recommendation-preview language only. It does not emit `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
+
 ### `POST /weather/run-config`
 
 Builds the Dagster run-config payload for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76) without executing a run.
@@ -243,10 +309,12 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The dashboard should call `GET /dashboard/operator-status` when it needs the backend-owned latest visible state for a tenant and flow.
 - After selection, the dashboard should call `POST /weather/run-config` for preview and confirmation.
 - When the operator starts an experiment, the dashboard should call `POST /weather/materialize`.
+- For Slice 2 preview work, the dashboard can call `POST /dashboard/projected-battery-state` to render feasible hourly SOC and degradation-aware economics from a signed recommendation schedule.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
 
 - These endpoints are control-plane endpoints only.
 - They do not yet expose Baseline Forecast, Oracle Benchmark, Proposed Bid, Cleared Trade, or Dispatch Command resources.
+- The projected battery state endpoint is a simulator/read model only; it does not claim market-order or dispatch semantics.
 - The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.
