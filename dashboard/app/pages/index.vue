@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import HudBaselinePreview from '~/components/dashboard/HudBaselinePreview.vue'
 import HudMotiveBars from '~/components/dashboard/HudMotiveBars.vue'
 import HudSignalCharts from '~/components/dashboard/HudSignalCharts.vue'
 import TenantRegistryScatter from '~/components/dashboard/TenantRegistryScatter.vue'
+import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
@@ -28,6 +30,14 @@ const {
   lastLoadedLabel: signalPreviewLastLoadedLabel,
   loadSignalPreview
 } = useSignalPreview(selectedTenantId)
+
+const {
+  baselinePreview,
+  isLoading: isBaselinePreviewLoading,
+  error: baselinePreviewError,
+  lastLoadedLabel: baselinePreviewLastLoadedLabel,
+  loadBaselinePreview
+} = useBaselinePreview(selectedTenantId)
 
 const {
   runConfig,
@@ -212,6 +222,7 @@ onMounted(async () => {
   }
 
   await loadSignalPreview()
+  await loadBaselinePreview()
   await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
 })
@@ -302,10 +313,10 @@ onBeforeUnmount(() => {
         </article>
       </section>
 
-      <section v-if="error || weatherError || signalPreviewError" class="workspace-alert">
+      <section v-if="error || weatherError || signalPreviewError || baselinePreviewError" class="workspace-alert">
         <div>
           <p class="workspace-alert__title">Control surface issue</p>
-          <p class="workspace-alert__copy">{{ error || weatherError || signalPreviewError }}</p>
+          <p class="workspace-alert__copy">{{ error || weatherError || signalPreviewError || baselinePreviewError }}</p>
         </div>
 
         <button class="control-button control-button-secondary" type="button" @click="error ? clearError() : clearWeatherError()">
@@ -429,6 +440,18 @@ onBeforeUnmount(() => {
 
             <template #fallback>
               <div class="chart-fallback chart-fallback-compact">Preparing signal charts...</div>
+            </template>
+          </ClientOnly>
+
+          <ClientOnly>
+            <HudBaselinePreview
+              :baseline-preview="baselinePreview"
+              :is-loading="isBaselinePreviewLoading"
+              :last-loaded-label="baselinePreviewLastLoadedLabel"
+            />
+
+            <template #fallback>
+              <div class="chart-fallback chart-fallback-compact">Preparing baseline LP surface...</div>
             </template>
           </ClientOnly>
         </section>

@@ -1,6 +1,6 @@
 import type { EChartsOption } from 'echarts'
 
-import type { SignalPreview, TenantSummary } from '~/types/control-plane'
+import type { BaselineLpPreview, SignalPreview, TenantSummary } from '~/types/control-plane'
 
 type TenantScatterPoint = {
   value: [number, number]
@@ -363,6 +363,188 @@ export const buildDispatchBalanceChartOption = (
         },
         itemStyle: {
           color: dashboardChartTokens.warning
+        }
+      }
+    ]
+  }
+}
+
+export const buildBaselineForecastChartOption = (
+  baselinePreview: BaselineLpPreview | null
+): EChartsOption => {
+  const labels = baselinePreview?.forecast.map((point) => point.forecast_timestamp.slice(11, 16)) || []
+  const prices = baselinePreview?.forecast.map((point) => point.predicted_price_uah_mwh) || []
+
+  return {
+    animationDuration: 1200,
+    animationEasing: 'elasticOut',
+    backgroundColor: 'transparent',
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: dashboardChartTokens.tooltipBackground,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.96)',
+      textStyle: {
+        color: dashboardChartTokens.tooltipText
+      }
+    },
+    grid: {
+      left: 48,
+      right: 18,
+      top: 28,
+      bottom: 32,
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: labels,
+      axisLabel: {
+        color: dashboardChartTokens.axis,
+        fontWeight: 700
+      },
+      axisLine: {
+        lineStyle: {
+          color: dashboardChartTokens.grid
+        }
+      }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: {
+        color: dashboardChartTokens.axis,
+        fontWeight: 700,
+        formatter: (value: number) => `${Math.round(value)} UAH`
+      },
+      splitLine: {
+        lineStyle: {
+          color: dashboardChartTokens.grid
+        }
+      }
+    },
+    series: [
+      {
+        type: 'line',
+        name: 'Baseline forecast',
+        smooth: true,
+        data: prices,
+        symbol: 'circle',
+        symbolSize: 7,
+        lineStyle: {
+          width: 4,
+          color: dashboardChartTokens.primary
+        },
+        itemStyle: {
+          color: dashboardChartTokens.primary
+        },
+        areaStyle: {
+          color: 'rgba(0, 121, 193, 0.12)'
+        }
+      }
+    ]
+  }
+}
+
+export const buildBaselineScheduleChartOption = (
+  baselinePreview: BaselineLpPreview | null
+): EChartsOption => {
+  const labels = baselinePreview?.recommendation_schedule.map((point) => point.interval_start.slice(11, 16)) || []
+  const netPower = baselinePreview?.recommendation_schedule.map((point) => point.recommended_net_power_mw) || []
+  const soc = baselinePreview?.projected_state.trace.map((point) => Number((point.soc_after_fraction * 100).toFixed(1))) || []
+
+  return {
+    animationDuration: 1200,
+    animationEasing: 'elasticOut',
+    backgroundColor: 'transparent',
+    legend: {
+      top: 0,
+      right: 0,
+      textStyle: {
+        color: dashboardChartTokens.axis,
+        fontWeight: 700
+      }
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: dashboardChartTokens.tooltipBackground,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.96)',
+      textStyle: {
+        color: dashboardChartTokens.tooltipText
+      }
+    },
+    grid: {
+      left: 48,
+      right: 18,
+      top: 40,
+      bottom: 32,
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      data: labels,
+      axisLabel: {
+        color: dashboardChartTokens.axis,
+        fontWeight: 700
+      },
+      axisLine: {
+        lineStyle: {
+          color: dashboardChartTokens.grid
+        }
+      }
+    },
+    yAxis: [
+      {
+        type: 'value',
+        axisLabel: {
+          color: dashboardChartTokens.axis,
+          fontWeight: 700,
+          formatter: (value: number) => `${value} MW`
+        },
+        splitLine: {
+          lineStyle: {
+            color: dashboardChartTokens.grid
+          }
+        }
+      },
+      {
+        type: 'value',
+        min: 0,
+        max: 100,
+        axisLabel: {
+          color: dashboardChartTokens.axis,
+          fontWeight: 700,
+          formatter: (value: number) => `${value}%`
+        },
+        splitLine: {
+          show: false
+        }
+      }
+    ],
+    series: [
+      {
+        type: 'bar',
+        name: 'Signed recommendation',
+        data: netPower,
+        barWidth: 16,
+        itemStyle: {
+          color: dashboardChartTokens.secondary,
+          borderRadius: [10, 10, 10, 10]
+        }
+      },
+      {
+        type: 'line',
+        name: 'Projected SOC',
+        yAxisIndex: 1,
+        smooth: true,
+        data: soc,
+        symbol: 'diamond',
+        symbolSize: 7,
+        lineStyle: {
+          width: 3,
+          color: dashboardChartTokens.highlight
+        },
+        itemStyle: {
+          color: dashboardChartTokens.highlight
         }
       }
     ]
