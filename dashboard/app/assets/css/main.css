@@ -29,7 +29,7 @@
   --ink-soft: #6c7c92;
   --accent-cyan: #0079c1;
   --accent-cyan-strong: #005f96;
-  --accent-amber: #f5a623;
+  --accent-berry: #ff6fae;
   --sims-blue: #0079c1;
   --sims-blue-hover: #008be0;
   --sims-blue-deep: #10508f;
@@ -45,7 +45,8 @@ html {
   background:
     radial-gradient(circle at top left, rgba(0, 121, 193, 0.16), transparent 26%),
     radial-gradient(circle at top right, rgba(126, 211, 33, 0.16), transparent 20%),
-    radial-gradient(circle at bottom left, rgba(245, 166, 35, 0.18), transparent 24%),
+    radial-gradient(circle at bottom left, rgba(83, 178, 234, 0.18), transparent 24%),
+    radial-gradient(circle at 78% 72%, rgba(255, 111, 174, 0.12), transparent 18%),
     linear-gradient(180deg, var(--canvas-top) 0%, var(--canvas-base) 100%);
 }
 
@@ -76,7 +77,8 @@ body::after {
   background:
     radial-gradient(circle at 20% 12%, rgba(255, 255, 255, 0.8), transparent 0.18rem),
     radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.6), transparent 0.16rem),
-    radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.55), transparent 0.14rem);
+    radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.55), transparent 0.14rem),
+    linear-gradient(130deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0) 65%);
   opacity: 0.7;
 }
 

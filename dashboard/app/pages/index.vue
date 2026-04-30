@@ -720,7 +720,7 @@ onBeforeUnmount(() => {
 }
 
 .metric-strip-orange {
-  border-color: rgba(245, 166, 35, 0.18);
+  border-color: rgba(255, 111, 174, 0.18);
 }
 
 .metric-strip__value {
@@ -904,7 +904,7 @@ onBeforeUnmount(() => {
 }
 
 .note-block-orange {
-  background: linear-gradient(180deg, rgba(245, 166, 35, 0.13), rgba(255, 255, 255, 0.8));
+  background: linear-gradient(180deg, rgba(83, 178, 234, 0.12), rgba(255, 255, 255, 0.84));
 }
 
 .chart-panel-main {

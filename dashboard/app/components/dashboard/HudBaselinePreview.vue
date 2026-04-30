@@ -147,17 +147,30 @@ const feasiblePlanItems = computed(() => {
 
 <style scoped>
 .baseline-slab {
+  position: relative;
   display: grid;
   gap: 1rem;
   padding: 1.15rem;
   border-radius: 1.7rem;
   background:
-    radial-gradient(circle at top right, rgba(255, 111, 174, 0.14), transparent 28%),
+    radial-gradient(circle at top right, rgba(83, 178, 234, 0.16), transparent 28%),
     radial-gradient(circle at top left, rgba(126, 211, 33, 0.14), transparent 24%),
+    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.4), transparent 22%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(240, 249, 255, 0.92)),
     linear-gradient(135deg, rgba(0, 121, 193, 0.05), rgba(126, 211, 33, 0.05));
   border: 2px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 24px 54px rgba(0, 121, 193, 0.08);
+  overflow: hidden;
+}
+
+.baseline-slab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 24%, rgba(255, 255, 255, 0.22) 34%, rgba(255, 255, 255, 0) 44%);
+  transform: translateX(-120%);
+  animation: slab-sheen 8s ease-in-out infinite;
 }
 
 .baseline-slab__header,
@@ -226,6 +239,16 @@ const feasiblePlanItems = computed(() => {
   border-radius: 1.35rem;
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(0, 121, 193, 0.08);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.economics-pill:hover,
+.feasible-pill:hover,
+.baseline-card:hover,
+.baseline-boundary:hover {
+  transform: translateY(-2px);
+  border-color: rgba(0, 121, 193, 0.16);
+  box-shadow: 0 16px 30px rgba(0, 121, 193, 0.08);
 }
 
 .economics-pill__value {
@@ -236,7 +259,9 @@ const feasiblePlanItems = computed(() => {
 
 .feasible-pill {
   align-content: start;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(249, 252, 255, 0.92));
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.12), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(249, 252, 255, 0.92));
 }
 
 .feasible-pill__label {
@@ -281,6 +306,16 @@ const feasiblePlanItems = computed(() => {
 .baseline-boundary__copy-strong {
   color: var(--ink-strong);
   font-weight: 600;
+}
+
+@keyframes slab-sheen {
+  0%, 100% {
+    transform: translateX(-120%);
+  }
+
+  45%, 55% {
+    transform: translateX(120%);
+  }
 }
 
 @media (min-width: 860px) {

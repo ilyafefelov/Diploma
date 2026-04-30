@@ -35,6 +35,7 @@ const props = defineProps<{
 .motive-row {
   display: grid;
   gap: 0.45rem;
+  padding: 0.2rem 0;
 }
 
 .motive-row__topline {
@@ -73,7 +74,18 @@ const props = defineProps<{
 .motive-fill {
   height: 100%;
   border-radius: 999px;
-  transition: width 420ms ease;
+  position: relative;
+  overflow: hidden;
+  transition: width 420ms ease, filter 180ms ease;
+}
+
+.motive-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08));
+  transform: translateX(-100%);
+  animation: motive-sheen 3.8s ease-in-out infinite;
 }
 
 .motive-fill--blue {
@@ -85,11 +97,21 @@ const props = defineProps<{
 }
 
 .motive-fill--orange {
-  background: linear-gradient(90deg, #ffd67d 0%, var(--accent-amber) 100%);
+  background: linear-gradient(90deg, #ffb8d2 0%, var(--accent-berry) 100%);
 }
 
 .motive-row__hint {
   font-size: 0.88rem;
   line-height: 1.5;
+}
+
+@keyframes motive-sheen {
+  0%, 100% {
+    transform: translateX(-100%);
+  }
+
+  45%, 55% {
+    transform: translateX(100%);
+  }
 }
 </style>

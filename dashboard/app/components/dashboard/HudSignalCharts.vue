@@ -53,7 +53,7 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
           <p class="signal-card__eyebrow">Dispatch balance</p>
           <h3 class="signal-card__title">Charge intent and regret preview</h3>
           <p class="signal-card__summary">
-            Blue bars are signed battery power in <strong>MW</strong>. Orange line is preview regret in
+            Blue bars are signed battery power in <strong>MW</strong>. Pink line is preview regret in
             <strong>UAH</strong> for the same hour.
           </p>
         </div>
@@ -63,7 +63,7 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
 
       <div class="signal-card__guide">
         <span class="signal-guide-pill signal-guide-pill-blue">Bars: MW</span>
-        <span class="signal-guide-pill signal-guide-pill-orange">Line: UAH</span>
+        <span class="signal-guide-pill signal-guide-pill-berry">Line: UAH</span>
       </div>
 
       <div v-if="isLoading" class="signal-chart signal-chart-fallback">Loading dispatch preview...</div>
@@ -85,9 +85,16 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
   border-radius: 1.5rem;
   background:
     radial-gradient(circle at top right, rgba(126, 211, 33, 0.14), transparent 34%),
+    radial-gradient(circle at bottom left, rgba(83, 178, 234, 0.12), transparent 30%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(243, 250, 255, 0.84));
   border: 2px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 20px 45px rgba(0, 121, 193, 0.08);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.signal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 26px 52px rgba(0, 121, 193, 0.12);
 }
 
 .signal-card__eyebrow {
@@ -139,8 +146,8 @@ const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.sign
   background: rgba(0, 121, 193, 0.12);
 }
 
-.signal-guide-pill-orange {
-  background: rgba(245, 166, 35, 0.16);
+.signal-guide-pill-berry {
+  background: rgba(255, 111, 174, 0.14);
 }
 
 .signal-chart {
