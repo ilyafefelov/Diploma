@@ -17,13 +17,15 @@ type TenantScatterPoint = {
 }
 
 export const dashboardChartTokens = {
-  grid: 'rgba(21, 36, 61, 0.12)',
-  axis: '#5f6a7d',
-  primary: '#1c6872',
-  highlight: '#d67e2c',
-  tooltipBackground: 'rgba(20, 28, 51, 0.94)',
-  tooltipText: '#f8fafc',
-  shadow: 'rgba(20, 28, 51, 0.18)'
+  grid: 'rgba(0, 121, 193, 0.12)',
+  axis: '#6c7c92',
+  primary: '#0079c1',
+  secondary: '#53b2ea',
+  highlight: '#7ed321',
+  warning: '#f5a623',
+  tooltipBackground: 'rgba(255, 255, 255, 0.96)',
+  tooltipText: '#1b3551',
+  shadow: 'rgba(0, 121, 193, 0.16)'
 } as const
 
 const createTenantPoint = (tenant: TenantSummary, selectedTenantId: string): TenantScatterPoint => {
@@ -35,12 +37,13 @@ const createTenantPoint = (tenant: TenantSummary, selectedTenantId: string): Ten
     tenant,
     itemStyle: {
       color: isSelected ? dashboardChartTokens.highlight : dashboardChartTokens.primary,
-      borderColor: '#fffdf9',
-      borderWidth: isSelected ? 2 : 1,
-      shadowBlur: isSelected ? 18 : 10,
+      borderColor: '#ffffff',
+      borderWidth: isSelected ? 3 : 2,
+      shadowBlur: isSelected ? 22 : 12,
       shadowColor: dashboardChartTokens.shadow
     },
-    symbolSize: isSelected ? 24 : 16
+    symbolSize: isSelected ? 30 : 18,
+    symbol: isSelected ? 'diamond' : 'circle'
   }
 }
 
@@ -57,18 +60,21 @@ export const buildTenantRegistryChartOption = (
   const longitudeMax = longitudes.length > 0 ? Math.max(...longitudes) + 0.7 : 32
 
   return {
-    animationDuration: 500,
+    animationDuration: 1400,
+    animationEasing: 'elasticOut',
+    backgroundColor: 'transparent',
     grid: {
-      left: 56,
-      right: 24,
-      top: 36,
+      left: 64,
+      right: 28,
+      top: 28,
       bottom: 56,
       containLabel: true
     },
     tooltip: {
       trigger: 'item',
       backgroundColor: dashboardChartTokens.tooltipBackground,
-      borderWidth: 0,
+      borderWidth: 2,
+      borderColor: 'rgba(255, 255, 255, 0.96)',
       padding: [12, 14],
       textStyle: {
         color: dashboardChartTokens.tooltipText
@@ -94,13 +100,14 @@ export const buildTenantRegistryChartOption = (
       max: longitudeMax,
       name: 'Longitude',
       nameLocation: 'middle',
-      nameGap: 34,
+      nameGap: 36,
       axisLabel: {
-        color: dashboardChartTokens.axis
+        color: dashboardChartTokens.axis,
+        fontWeight: 700
       },
       nameTextStyle: {
-        color: dashboardChartTokens.axis,
-        fontWeight: 600
+        color: dashboardChartTokens.primary,
+        fontWeight: 800
       },
       axisLine: {
         lineStyle: {
@@ -121,11 +128,12 @@ export const buildTenantRegistryChartOption = (
       nameLocation: 'middle',
       nameGap: 42,
       axisLabel: {
-        color: dashboardChartTokens.axis
+        color: dashboardChartTokens.axis,
+        fontWeight: 700
       },
       nameTextStyle: {
-        color: dashboardChartTokens.axis,
-        fontWeight: 600
+        color: dashboardChartTokens.primary,
+        fontWeight: 800
       },
       axisLine: {
         lineStyle: {
@@ -142,9 +150,13 @@ export const buildTenantRegistryChartOption = (
       {
         type: 'scatter',
         data: points,
+        symbolKeepAspect: true,
         emphasis: {
           scale: true,
           focus: 'series'
+        },
+        itemStyle: {
+          opacity: 0.95
         }
       }
     ]

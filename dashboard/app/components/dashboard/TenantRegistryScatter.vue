@@ -30,8 +30,11 @@ const option = computed(() => {
 .registry-chart {
   width: 100%;
   min-height: 25rem;
-  border: 1px solid rgba(21, 36, 61, 0.1);
-  border-radius: 1.5rem;
-  background: rgba(255, 253, 249, 0.54);
+  border: 3px solid rgba(255, 255, 255, 0.94);
+  border-radius: 2rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.08), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 251, 255, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
 }
 </style>
