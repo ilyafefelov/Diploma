@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 
+import HudMotiveBars from '~/components/dashboard/HudMotiveBars.vue'
+import HudSignalCharts from '~/components/dashboard/HudSignalCharts.vue'
 import TenantRegistryScatter from '~/components/dashboard/TenantRegistryScatter.vue'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
+import { useWeatherControls } from '~/composables/useWeatherControls'
 
 const {
   tenants,
@@ -14,6 +17,20 @@ const {
   loadTenants,
   clearError
 } = useControlPlaneRegistry()
+
+const {
+  runConfig,
+  materializeResult,
+  isPreparing,
+  isMaterializing,
+  error: weatherError,
+  statusLabel,
+  prepareRunConfig,
+  materializeWeatherAssets,
+  clearWeatherError
+} = useWeatherControls()
+
+const includePriceHistory = ref(true)
 
 const selectedTenantName = computed(() => {
   if (!selectedTenant.value) {
@@ -100,9 +117,79 @@ const activeRegistrySummary = computed(() => {
   return `${tenants.value.length} live tenants / ${criticalTenantCount.value} critical`
 })
 
+const motiveItems = computed(() => {
+  const tenantCount = tenants.value.length
+  const coverage = Math.min(100, 46 + tenantCount * 9)
+  const readiness = Math.min(100, 52 + criticalTenantCount.value * 7 + (runConfig.value ? 12 : 0))
+  const pressure = Math.min(100, 34 + tenantCount * 5 + (materializeResult.value?.success ? 10 : 0))
+
+  return [
+    {
+      label: 'Registry health',
+      value: coverage,
+      tone: 'blue' as const,
+      hint: `${tenantCount || 0} lots mapped into the operator shell.`
+    },
+    {
+      label: 'Weather readiness',
+      value: readiness,
+      tone: 'green' as const,
+      hint: runConfig.value
+        ? `Run config staged for ${runConfig.value.tenant_id}.`
+        : 'Prepare a run config to stage the weather slice.'
+    },
+    {
+      label: 'Grid pressure',
+      value: pressure,
+      tone: 'orange' as const,
+      hint: materializeResult.value?.success
+        ? `Assets fired: ${materializeResult.value.selected_assets.join(', ')}.`
+        : 'Preview signal only until materialization succeeds.'
+    }
+  ]
+})
+
+const selectedRunConfigSnippet = computed(() => {
+  if (!runConfig.value) {
+    return 'Run config not prepared yet.'
+  }
+
+  return JSON.stringify(runConfig.value.run_config, null, 2)
+})
+
+const weatherLocationLabel = computed(() => {
+  const location = materializeResult.value?.resolved_location || runConfig.value?.resolved_location
+
+  if (!location) {
+    return 'No location prepared'
+  }
+
+  return `${location.latitude.toFixed(2)} / ${location.longitude.toFixed(2)} / ${location.timezone}`
+})
+
 const refreshRegistry = async (): Promise<void> => {
   await loadTenants()
 }
+
+const handlePrepareRunConfig = async (): Promise<void> => {
+  if (!selectedTenantId.value) {
+    return
+  }
+
+  await prepareRunConfig(selectedTenantId.value)
+}
+
+const handleMaterializeWeather = async (): Promise<void> => {
+  if (!selectedTenantId.value) {
+    return
+  }
+
+  await materializeWeatherAssets(selectedTenantId.value, includePriceHistory.value)
+}
+
+watch(selectedTenantId, () => {
+  clearWeatherError()
+})
 
 onMounted(async () => {
   if (tenants.value.length === 0) {
@@ -192,13 +279,13 @@ onMounted(async () => {
         </article>
       </section>
 
-      <section v-if="error" class="workspace-alert">
+      <section v-if="error || weatherError" class="workspace-alert">
         <div>
-          <p class="workspace-alert__title">Registry load failed</p>
-          <p class="workspace-alert__copy">{{ error }}</p>
+          <p class="workspace-alert__title">Control surface issue</p>
+          <p class="workspace-alert__copy">{{ error || weatherError }}</p>
         </div>
 
-        <button class="control-button control-button-secondary" type="button" @click="clearError()">
+        <button class="control-button control-button-secondary" type="button" @click="error ? clearError() : clearWeatherError()">
           Dismiss
         </button>
       </section>
@@ -248,6 +335,35 @@ onMounted(async () => {
             <p class="note-block__title">Registry mix</p>
             <p class="note-block__copy">{{ tenantTypeMix }}</p>
           </div>
+
+          <div class="control-stack">
+            <div class="panel-heading panel-heading-tight">
+              <div>
+                <p class="eyebrow">Weather slice</p>
+                <h3 class="subsection-title">Materialization controls</h3>
+              </div>
+              <span class="status-badge">{{ statusLabel }}</span>
+            </div>
+
+            <label class="check-toggle">
+              <input v-model="includePriceHistory" type="checkbox">
+              <span>Include DAM price history</span>
+            </label>
+
+            <div class="button-row">
+              <button class="control-button control-button-primary" type="button" :disabled="isPreparing || !selectedTenantId" @click="handlePrepareRunConfig">
+                {{ isPreparing ? 'Preparing' : 'Prepare run config' }}
+              </button>
+              <button class="control-button control-button-ghost" type="button" :disabled="isMaterializing || !selectedTenantId" @click="handleMaterializeWeather">
+                {{ isMaterializing ? 'Running' : 'Materialize weather' }}
+              </button>
+            </div>
+
+            <div class="note-block note-block-soft control-output">
+              <p class="note-block__title">Resolved location</p>
+              <p class="note-block__copy">{{ weatherLocationLabel }}</p>
+            </div>
+          </div>
         </aside>
 
         <section class="surface-panel chart-panel chart-panel-main">
@@ -278,6 +394,14 @@ onMounted(async () => {
           <div v-if="!isLoading && tenants.length === 0" class="chart-fallback">
             No tenant data available yet.
           </div>
+
+          <ClientOnly>
+            <HudSignalCharts :tenants="tenants" :selected-tenant-id="selectedTenantId" />
+
+            <template #fallback>
+              <div class="chart-fallback chart-fallback-compact">Preparing signal charts...</div>
+            </template>
+          </ClientOnly>
         </section>
 
         <aside class="surface-panel narrative-panel">
@@ -291,6 +415,11 @@ onMounted(async () => {
           </div>
 
           <div class="narrative-stack">
+            <div class="note-block note-block-soft">
+              <p class="note-block__title">Operator motives</p>
+              <HudMotiveBars :items="motiveItems" />
+            </div>
+
             <div class="note-block note-block-blue">
               <p class="note-block__title">Primary boundary</p>
               <p class="note-block__copy">
@@ -309,8 +438,8 @@ onMounted(async () => {
             </div>
 
             <div class="note-block note-block-orange">
-              <p class="note-block__title">Current data path</p>
-              <p class="note-block__copy">Nuxt route to FastAPI `/tenants` to operator HUD.</p>
+              <p class="note-block__title">Prepared config</p>
+              <pre class="config-preview">{{ selectedRunConfigSnippet }}</pre>
             </div>
           </div>
         </aside>
@@ -601,6 +730,17 @@ onMounted(async () => {
   gap: 1.25rem;
 }
 
+.subsection-title {
+  margin-top: 0.35rem;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--ink-strong);
+}
+
+.panel-heading-tight {
+  align-items: start;
+}
+
 .eyebrow-light {
   color: rgba(255, 255, 255, 0.72);
 }
@@ -622,6 +762,39 @@ onMounted(async () => {
   border-color: rgba(0, 121, 193, 0.38);
   box-shadow: 0 0 0 5px rgba(0, 121, 193, 0.14);
   transform: translateY(-1px);
+}
+
+.control-stack,
+.button-row {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.check-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+  color: var(--ink-soft);
+}
+
+.check-toggle input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--plumbob-green);
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.5rem 0.8rem;
+  background: rgba(126, 211, 33, 0.14);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-strong);
 }
 
 .detail-list {
@@ -648,6 +821,17 @@ onMounted(async () => {
   margin-top: 0.7rem;
   line-height: 1.7;
   color: var(--ink-soft);
+}
+
+.config-preview {
+  margin-top: 0.7rem;
+  overflow: auto;
+  border-radius: 1rem;
+  background: rgba(15, 49, 83, 0.08);
+  padding: 0.9rem;
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--ink-strong);
 }
 
 .note-block-soft {
@@ -699,6 +883,11 @@ onMounted(async () => {
   border: 2px dashed rgba(0, 121, 193, 0.18);
   border-radius: 1.5rem;
   color: var(--ink-soft);
+}
+
+.chart-fallback-compact {
+  min-height: 16rem;
+  margin-top: 1rem;
 }
 
 .narrative-stack {
@@ -756,6 +945,18 @@ onMounted(async () => {
   box-shadow: 0 16px 30px rgba(0, 121, 193, 0.28);
 }
 
+.control-button-ghost {
+  border: 2px solid rgba(0, 121, 193, 0.18);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 249, 255, 0.94));
+  color: var(--sims-blue-deep);
+  box-shadow: 0 10px 22px rgba(0, 121, 193, 0.08);
+}
+
+.control-button-ghost:hover:not(:disabled) {
+  background: rgba(240, 248, 255, 0.98);
+  box-shadow: 0 14px 28px rgba(0, 121, 193, 0.14);
+}
+
 .control-button-secondary {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(252, 240, 240, 0.92));
   border: 2px solid rgba(208, 2, 27, 0.2);
@@ -780,6 +981,10 @@ onMounted(async () => {
   .workspace-alert {
     flex-direction: row;
     align-items: center;
+  }
+
+  .button-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
