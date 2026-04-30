@@ -24,20 +24,68 @@ const scheduleOption = computed(() => buildBaselineScheduleChartOption(props.bas
 const economicsItems = computed(() => {
   if (!props.baselinePreview) {
     return [
-      { label: 'Gross value', value: 'Waiting' },
-      { label: 'Degradation', value: 'Waiting' },
-      { label: 'Net value', value: 'Waiting' },
-      { label: 'Throughput', value: 'Waiting' }
+      {
+        label: 'Gross value',
+        value: 'Waiting',
+        tooltipTitle: 'Gross market value',
+        tooltipBody: 'Projected market revenue before degradation cost is applied.',
+        tooltipFormula: 'Calculated by summing hourly market value across the recommendation schedule.'
+      },
+      {
+        label: 'Degradation',
+        value: 'Waiting',
+        tooltipTitle: 'Degradation penalty',
+        tooltipBody: 'Estimated battery wear cost from moving energy through the pack.',
+        tooltipFormula: 'Calculated from simulated throughput and the configured cost per full cycle.'
+      },
+      {
+        label: 'Net value',
+        value: 'Waiting',
+        tooltipTitle: 'Net plan value',
+        tooltipBody: 'Projected economic outcome after subtracting battery wear from gross market value.',
+        tooltipFormula: 'Gross value minus degradation penalty.'
+      },
+      {
+        label: 'Throughput',
+        value: 'Waiting',
+        tooltipTitle: 'Battery throughput',
+        tooltipBody: 'Total energy expected to pass through the battery during the feasible plan.',
+        tooltipFormula: 'Sum of hourly charge and discharge energy handled by the projected state model.'
+      }
     ]
   }
 
   const economics = props.baselinePreview.economics
 
   return [
-    { label: 'Gross value', value: `${Math.round(economics.total_gross_market_value_uah).toLocaleString('en-GB')} UAH` },
-    { label: 'Degradation', value: `${Math.round(economics.total_degradation_penalty_uah).toLocaleString('en-GB')} UAH` },
-    { label: 'Net value', value: `${Math.round(economics.total_net_value_uah).toLocaleString('en-GB')} UAH` },
-    { label: 'Throughput', value: `${economics.total_throughput_mwh.toFixed(2)} MWh` }
+    {
+      label: 'Gross value',
+      value: `${Math.round(economics.total_gross_market_value_uah).toLocaleString('en-GB')} UAH`,
+      tooltipTitle: 'Gross market value',
+      tooltipBody: 'This is the projected market-facing revenue from the baseline LP schedule before battery wear is charged against it.',
+      tooltipFormula: 'Built by summing the hourly gross market value of every scheduled recommendation point.'
+    },
+    {
+      label: 'Degradation',
+      value: `${Math.round(economics.total_degradation_penalty_uah).toLocaleString('en-GB')} UAH`,
+      tooltipTitle: 'Degradation penalty',
+      tooltipBody: 'This is the expected battery wear cost caused by executing the feasible plan through the projected battery model.',
+      tooltipFormula: 'Built from total simulated throughput and the configured degradation cost per equivalent full cycle.'
+    },
+    {
+      label: 'Net value',
+      value: `${Math.round(economics.total_net_value_uah).toLocaleString('en-GB')} UAH`,
+      tooltipTitle: 'Net plan value',
+      tooltipBody: 'This is the operator-facing value left after the battery wear penalty is deducted from gross market value.',
+      tooltipFormula: 'Built as gross value minus degradation penalty across the full recommendation horizon.'
+    },
+    {
+      label: 'Throughput',
+      value: `${economics.total_throughput_mwh.toFixed(2)} MWh`,
+      tooltipTitle: 'Battery throughput',
+      tooltipBody: 'This is the total energy volume that the battery is expected to process while following the feasible plan.',
+      tooltipFormula: 'Built by summing hourly charge and discharge energy from the projected state trace.'
+    }
   ]
 })
 
@@ -87,9 +135,21 @@ const feasiblePlanItems = computed(() => {
     </div>
 
     <div class="baseline-slab__economics">
-      <article v-for="item in economicsItems" :key="item.label" class="economics-pill">
+      <article
+        v-for="item in economicsItems"
+        :key="item.label"
+        class="economics-pill economics-pill-interactive"
+        tabindex="0"
+      >
         <p class="economics-pill__label">{{ item.label }}</p>
         <p class="economics-pill__value">{{ item.value }}</p>
+
+        <div class="sims-tooltip" role="tooltip">
+          <p class="sims-tooltip__eyebrow">Metric explainer</p>
+          <p class="sims-tooltip__title">{{ item.tooltipTitle }}</p>
+          <p class="sims-tooltip__body">{{ item.tooltipBody }}</p>
+          <p class="sims-tooltip__formula">{{ item.tooltipFormula }}</p>
+        </div>
       </article>
     </div>
 
@@ -242,6 +302,12 @@ const feasiblePlanItems = computed(() => {
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
 }
 
+.economics-pill-interactive {
+  position: relative;
+  cursor: help;
+  isolation: isolate;
+}
+
 .economics-pill:hover,
 .feasible-pill:hover,
 .baseline-card:hover,
@@ -254,6 +320,84 @@ const feasiblePlanItems = computed(() => {
 .economics-pill__value {
   font-size: 1.15rem;
   font-weight: 800;
+  color: var(--sims-blue-deep);
+}
+
+.sims-tooltip {
+  position: absolute;
+  left: 0;
+  right: auto;
+  bottom: calc(100% + 0.8rem);
+  z-index: 4;
+  width: min(18rem, calc(100vw - 3rem));
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(0, 121, 193, 0.16);
+  border-radius: 1.15rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.14), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(236, 248, 255, 0.98));
+  box-shadow:
+    0 18px 44px rgba(0, 121, 193, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(0.35rem) scale(0.98);
+  transform-origin: bottom left;
+  transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
+  pointer-events: none;
+}
+
+.sims-tooltip::after {
+  content: '';
+  position: absolute;
+  left: 1.2rem;
+  top: calc(100% - 0.08rem);
+  width: 1rem;
+  height: 1rem;
+  background: linear-gradient(135deg, rgba(236, 248, 255, 0.98), rgba(255, 255, 255, 0.98));
+  border-right: 1px solid rgba(0, 121, 193, 0.16);
+  border-bottom: 1px solid rgba(0, 121, 193, 0.16);
+  transform: rotate(45deg);
+}
+
+.economics-pill-interactive:hover .sims-tooltip,
+.economics-pill-interactive:focus-visible .sims-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.economics-pill-interactive:focus-visible {
+  outline: none;
+  border-color: rgba(0, 121, 193, 0.24);
+  box-shadow: 0 0 0 4px rgba(83, 178, 234, 0.16);
+}
+
+.sims-tooltip__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.sims-tooltip__title {
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--ink-strong);
+  line-height: 1.25;
+}
+
+.sims-tooltip__body,
+.sims-tooltip__formula {
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.sims-tooltip__formula {
   color: var(--sims-blue-deep);
 }
 
