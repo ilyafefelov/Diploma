@@ -7,6 +7,7 @@ import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 
+import CollapsibleTextCard from '~/components/dashboard/CollapsibleTextCard.vue'
 import type { BaselineLpPreview } from '~/types/control-plane'
 import { buildBaselineForecastChartOption, buildBaselineScheduleChartOption } from '~/utils/dashboardChartTheme'
 
@@ -16,6 +17,7 @@ const props = defineProps<{
   baselinePreview: BaselineLpPreview | null
   isLoading: boolean
   lastLoadedLabel: string
+  explanationMode: 'mvp' | 'future'
 }>()
 
 const forecastOption = computed(() => buildBaselineForecastChartOption(props.baselinePreview))
@@ -145,7 +147,10 @@ const feasiblePlanItems = computed(() => {
         <p class="economics-pill__value">{{ item.value }}</p>
 
         <div class="sims-tooltip" role="tooltip">
-          <p class="sims-tooltip__eyebrow">Metric explainer</p>
+          <div class="sims-tooltip__topline">
+            <span class="sims-tooltip__plumbob"></span>
+            <p class="sims-tooltip__eyebrow">Metric explainer</p>
+          </div>
           <p class="sims-tooltip__title">{{ item.tooltipTitle }}</p>
           <p class="sims-tooltip__body">{{ item.tooltipBody }}</p>
           <p class="sims-tooltip__formula">{{ item.tooltipFormula }}</p>
@@ -191,17 +196,103 @@ const feasiblePlanItems = computed(() => {
       </section>
     </div>
 
-    <div class="baseline-boundary">
-      <p class="baseline-boundary__title">Planning boundary</p>
-      <p class="baseline-boundary__copy">
-        This surface shows a feasible hourly recommendation derived from the baseline LP and constrained battery state.
-        It is for operator review and demo planning, not market-order or dispatch semantics.
-      </p>
-      <p class="baseline-boundary__copy baseline-boundary__copy-strong">
-        Feasible plan means the preview already respects the visible power corridor, SOC guardrails, interval grain,
-        and degradation-aware projected state.
-      </p>
+    <div class="baseline-explainer-grid">
+      <CollapsibleTextCard
+        :title="props.explanationMode === 'mvp' ? 'Where the current baseline forecast comes from' : 'Where the future forecast should come from'"
+        :eyebrow="props.explanationMode === 'mvp' ? 'Current forecast source' : 'Future forecast source'"
+        :open="true"
+      >
+        <template v-if="props.explanationMode === 'mvp'">
+          <p class="baseline-explainer-card__copy">
+            The baseline forecast line comes from <strong>HourlyDamBaselineSolver.solve_next_dispatch</strong> in the API.
+            The solver receives tenant-aware DAM price history, current SOC, and battery limits, then returns hourly
+            points from the <strong>forecast</strong> field.
+          </p>
+          <p class="baseline-explainer-card__formula">
+            Displayed series: <strong>forecast[i] = solve_result.forecast[i].predicted_price_uah_mwh</strong>
+          </p>
+          <p class="baseline-explainer-card__copy">
+            In the current MVP, the underlying history is still synthetic DAM history with tenant-specific bias and simple
+            time-of-day shaping.
+          </p>
+        </template>
+        <template v-else>
+          <p class="baseline-explainer-card__eyebrow">Future forecast source</p>
+          <p class="baseline-explainer-card__copy">
+            In production, this chart should be fed by the dedicated forecast stack, most likely <strong>NBEATSx</strong>
+            and <strong>TFT</strong>, with richer weather, calendar, and market-state features.
+          </p>
+          <p class="baseline-explainer-card__formula">
+            Target series: <strong>forecast = model(price_history, weather, calendar, market_state)</strong>
+          </p>
+          <p class="baseline-explainer-card__copy">
+            The explanation should move from “solver output” to “forecast model output plus uncertainty and attribution.”
+          </p>
+        </template>
+      </CollapsibleTextCard>
+
+      <CollapsibleTextCard
+        :title="props.explanationMode === 'mvp' ? 'How the feasible plan is built now' : 'How the future decision path should work'"
+        :eyebrow="props.explanationMode === 'mvp' ? 'Current feasible plan logic' : 'Future decision logic'"
+        tone="accent"
+      >
+        <template v-if="props.explanationMode === 'mvp'">
+          <p class="baseline-explainer-card__copy">
+            The bar chart uses <strong>recommendation_schedule[].recommended_net_power_mw</strong>. The pink line uses
+            <strong>projected_state.trace[].soc_after_fraction</strong> converted to percent after feasibility simulation.
+          </p>
+          <p class="baseline-explainer-card__formula">
+            Displayed SOC: <strong>soc_percent = projected_state.trace[i].soc_after_fraction * 100</strong>
+          </p>
+          <p class="baseline-explainer-card__copy">
+            The plan is feasible because it is run through the projected battery model with capacity, power, SOC limits,
+            efficiency, and degradation cost taken from the battery metrics in the API response.
+          </p>
+        </template>
+        <template v-else>
+          <p class="baseline-explainer-card__eyebrow">Future decision logic</p>
+          <p class="baseline-explainer-card__copy">
+            Once decisions move to <strong>DT/M3DT</strong>, the action path should come from a learned policy and then be
+            checked by the same deterministic battery and gatekeeper constraints.
+          </p>
+          <p class="baseline-explainer-card__formula">
+            Target flow: <strong>forecast state + battery state + return target -> policy schedule -> feasibility check</strong>
+          </p>
+          <p class="baseline-explainer-card__copy">
+            The SOC line can stay, but its explanation should tie back to the validated policy trajectory rather than the
+            current LP recommendation schedule.
+          </p>
+        </template>
+      </CollapsibleTextCard>
     </div>
+
+    <CollapsibleTextCard
+      class="baseline-boundary"
+      title="Planning boundary"
+      eyebrow="Operator boundary"
+      tone="default"
+    >
+      <template v-if="props.explanationMode === 'mvp'">
+        <p class="baseline-boundary__copy">
+          This surface shows a feasible hourly recommendation derived from the baseline LP and constrained battery state.
+          It is for operator review and demo planning, not market-order or dispatch semantics.
+        </p>
+        <p class="baseline-boundary__copy baseline-boundary__copy-strong">
+          Feasible plan means the preview already respects the visible power corridor, SOC guardrails, interval grain,
+          and degradation-aware projected state.
+        </p>
+      </template>
+      <template v-else>
+        <p class="baseline-boundary__copy">
+          In the future stack, this panel should become the policy-review surface: forecast output, chosen trajectory,
+          deterministic constraint checks, and operator-readable reasons for the action path.
+        </p>
+        <p class="baseline-boundary__copy baseline-boundary__copy-strong">
+          The LP surface remains useful as a benchmark, but the production explanation should reference the final policy,
+          its counterfactual value, and the safety checks that accepted or rejected it.
+        </p>
+      </template>
+    </CollapsibleTextCard>
   </section>
 </template>
 
@@ -220,7 +311,7 @@ const feasiblePlanItems = computed(() => {
     linear-gradient(135deg, rgba(0, 121, 193, 0.05), rgba(126, 211, 33, 0.05));
   border: 2px solid rgba(255, 255, 255, 0.92);
   box-shadow: 0 24px 54px rgba(0, 121, 193, 0.08);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .baseline-slab::after {
@@ -284,7 +375,8 @@ const feasiblePlanItems = computed(() => {
 
 .baseline-slab__economics,
 .baseline-feasible-strip,
-.baseline-slab__grid {
+.baseline-slab__grid,
+.baseline-explainer-grid {
   display: grid;
   gap: 0.9rem;
 }
@@ -300,6 +392,21 @@ const feasiblePlanItems = computed(() => {
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(0, 121, 193, 0.08);
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.baseline-explainer-card__eyebrow {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.baseline-explainer-card__copy,
+.baseline-explainer-card__formula {
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: var(--ink-strong);
 }
 
 .economics-pill-interactive {
@@ -327,38 +434,49 @@ const feasiblePlanItems = computed(() => {
   position: absolute;
   left: 0;
   right: auto;
-  bottom: calc(100% + 0.8rem);
+  top: calc(100% + 0.8rem);
   z-index: 4;
-  width: min(18rem, calc(100vw - 3rem));
+  width: min(19rem, calc(100vw - 3rem));
   display: grid;
-  gap: 0.35rem;
-  padding: 0.9rem 1rem;
-  border: 1px solid rgba(0, 121, 193, 0.16);
-  border-radius: 1.15rem;
+  gap: 0.45rem;
+  padding: 1rem 1.05rem;
+  border: 2px solid rgba(255, 255, 255, 0.92);
+  border-radius: 1.3rem;
   background:
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.14), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(236, 248, 255, 0.98));
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.18), transparent 28%),
+    radial-gradient(circle at bottom left, rgba(83, 178, 234, 0.14), transparent 24%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(236, 248, 255, 0.98));
   box-shadow:
-    0 18px 44px rgba(0, 121, 193, 0.16),
+    0 22px 48px rgba(0, 121, 193, 0.16),
     inset 0 1px 0 rgba(255, 255, 255, 0.92);
   opacity: 0;
   visibility: hidden;
   transform: translateY(0.35rem) scale(0.98);
-  transform-origin: bottom left;
+  transform-origin: top left;
   transition: opacity 160ms ease, transform 160ms ease, visibility 160ms ease;
   pointer-events: none;
+  overflow: hidden;
+}
+
+.sims-tooltip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 24%, rgba(255, 255, 255, 0.26) 38%, rgba(255, 255, 255, 0) 52%);
+  transform: translateX(-130%);
 }
 
 .sims-tooltip::after {
   content: '';
   position: absolute;
   left: 1.2rem;
-  top: calc(100% - 0.08rem);
+  bottom: calc(100% - 0.08rem);
   width: 1rem;
   height: 1rem;
-  background: linear-gradient(135deg, rgba(236, 248, 255, 0.98), rgba(255, 255, 255, 0.98));
-  border-right: 1px solid rgba(0, 121, 193, 0.16);
-  border-bottom: 1px solid rgba(0, 121, 193, 0.16);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(236, 248, 255, 0.98));
+  border-left: 1px solid rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(255, 255, 255, 0.92);
   transform: rotate(45deg);
 }
 
@@ -367,6 +485,12 @@ const feasiblePlanItems = computed(() => {
   opacity: 1;
   visibility: visible;
   transform: translateY(0) scale(1);
+  animation: sims-tooltip-pop 220ms ease-out, sims-tooltip-float 2.4s ease-in-out 220ms infinite;
+}
+
+.economics-pill-interactive:hover .sims-tooltip::before,
+.economics-pill-interactive:focus-visible .sims-tooltip::before {
+  animation: sims-tooltip-sheen 1.2s ease-out forwards;
 }
 
 .economics-pill-interactive:focus-visible {
@@ -383,8 +507,23 @@ const feasiblePlanItems = computed(() => {
   color: var(--ink-soft);
 }
 
+.sims-tooltip__topline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.sims-tooltip__plumbob {
+  width: 0.8rem;
+  height: 1.15rem;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+  background: linear-gradient(180deg, #cfff8e 0%, var(--plumbob-green) 100%);
+  box-shadow: 0 0 16px rgba(126, 211, 33, 0.34);
+  animation: sims-tooltip-plumbob 1.8s ease-in-out infinite;
+}
+
 .sims-tooltip__title {
-  font-size: 0.96rem;
+  font-size: 1rem;
   font-weight: 800;
   color: var(--ink-strong);
   line-height: 1.25;
@@ -392,13 +531,62 @@ const feasiblePlanItems = computed(() => {
 
 .sims-tooltip__body,
 .sims-tooltip__formula {
-  font-size: 0.84rem;
-  line-height: 1.5;
+  font-size: 0.85rem;
+  line-height: 1.55;
   color: var(--ink-soft);
 }
 
 .sims-tooltip__formula {
   color: var(--sims-blue-deep);
+  font-weight: 700;
+}
+
+@keyframes sims-tooltip-pop {
+  0% {
+    transform: translateY(0.45rem) scale(0.94);
+  }
+
+  65% {
+    transform: translateY(-0.08rem) scale(1.01);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes sims-tooltip-float {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-0.08rem) scale(1);
+  }
+}
+
+@keyframes sims-tooltip-sheen {
+  from {
+    transform: translateX(-130%);
+  }
+
+  to {
+    transform: translateX(130%);
+  }
+}
+
+@keyframes sims-tooltip-plumbob {
+  0%,
+  100% {
+    transform: translateY(0);
+    filter: brightness(1);
+  }
+
+  50% {
+    transform: translateY(-0.08rem);
+    filter: brightness(1.08);
+  }
 }
 
 .feasible-pill {

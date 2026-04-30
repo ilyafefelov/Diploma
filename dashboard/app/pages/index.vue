@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import HudBaselinePreview from '~/components/dashboard/HudBaselinePreview.vue'
+import CollapsibleTextCard from '~/components/dashboard/CollapsibleTextCard.vue'
 import HudMotiveBars from '~/components/dashboard/HudMotiveBars.vue'
 import HudSignalCharts from '~/components/dashboard/HudSignalCharts.vue'
 import TenantRegistryScatter from '~/components/dashboard/TenantRegistryScatter.vue'
@@ -27,6 +28,7 @@ const {
   signalPreview,
   isLoading: isSignalPreviewLoading,
   error: signalPreviewError,
+  clearError: clearSignalPreviewError,
   lastLoadedLabel: signalPreviewLastLoadedLabel,
   loadSignalPreview
 } = useSignalPreview(selectedTenantId)
@@ -35,6 +37,7 @@ const {
   baselinePreview,
   isLoading: isBaselinePreviewLoading,
   error: baselinePreviewError,
+  clearError: clearBaselinePreviewError,
   lastLoadedLabel: baselinePreviewLastLoadedLabel,
   loadBaselinePreview
 } = useBaselinePreview(selectedTenantId)
@@ -55,6 +58,9 @@ const {
 } = useWeatherControls()
 
 const includePriceHistory = ref(true)
+const explanationMode = ref<'mvp' | 'future'>('mvp')
+
+const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Current MVP logic' : 'Future production logic')
 
 const selectedTenantName = computed(() => {
   if (!selectedTenant.value) {
@@ -191,6 +197,29 @@ const weatherLocationLabel = computed(() => {
   return `${location.latitude.toFixed(2)} / ${location.longitude.toFixed(2)} / ${location.timezone}`
 })
 
+const workspaceCopy = computed(() => explanationMode.value === 'mvp'
+  ? 'Clean white glass, upbeat Sims-like energy, clear operator status, and a planning stage where feasible plans read instantly instead of feeling like back-office telemetry.'
+  : 'The same operator shell, but read as a future production surface: model-backed forecasts, policy-driven dispatch, and explanations grounded in uncertainty, attribution, and safety checks.'
+)
+
+const primaryBoundaryCopy = computed(() => explanationMode.value === 'mvp'
+  ? 'Browser requests stay same-origin and are forwarded by Nuxt to the control-plane API. That keeps the dashboard bright and simple while the data plumbing stays behind the glass.'
+  : 'The future surface should still keep the browser same-origin, but the meaning of the cards changes: forecast outputs come from dedicated models and dispatch intent comes from policy logic plus deterministic validation.'
+)
+
+const nextStepsItems = computed(() => explanationMode.value === 'mvp'
+  ? [
+      'Materialization controls for weather and bronze assets.',
+      'Feasible plan review with units, SOC guardrails, and operator-ready explanations.',
+      'Dispatch and regret signatures with bright Sims-style motion cues.'
+    ]
+  : [
+      'Forecast cards fed by NBEATSx and TFT with uncertainty bands and feature evidence.',
+      'Dispatch cards fed by DT or M3DT with policy intent, counterfactual value, and safety outcomes.',
+      'Benchmark views that keep the LP baseline visible as a comparison surface rather than the final decision layer.'
+    ]
+)
+
 const refreshRegistry = async (): Promise<void> => {
   await loadTenants()
 }
@@ -209,6 +238,13 @@ const handleMaterializeWeather = async (): Promise<void> => {
   }
 
   await materializeWeatherAssets(selectedTenantId.value, includePriceHistory.value)
+}
+
+const dismissSurfaceErrors = (): void => {
+  clearError()
+  clearWeatherError()
+  clearSignalPreviewError()
+  clearBaselinePreviewError()
 }
 
 watch(selectedTenantId, () => {
@@ -253,8 +289,7 @@ onBeforeUnmount(() => {
             <p class="eyebrow">Smart arbitrage / dashboard w1</p>
             <h1 class="workspace-title">Run the tenant registry from a bright operator control surface.</h1>
             <p class="workspace-copy">
-              Clean white glass, upbeat Sims-like energy, clear operator status, and a planning stage where feasible
-              plans read instantly instead of feeling like back-office telemetry.
+              {{ workspaceCopy }}
             </p>
           </div>
 
@@ -262,6 +297,11 @@ onBeforeUnmount(() => {
             <button class="control-button control-button-primary" type="button" :disabled="isLoading" @click="refreshRegistry">
               {{ isLoading ? 'Refreshing' : 'Refresh registry' }}
             </button>
+
+            <div class="hero-kicker hero-kicker-mode">
+              <span class="hero-kicker__label">Explanation mode</span>
+              <span class="hero-kicker__value">{{ explanationModeLabel }}</span>
+            </div>
 
             <div class="hero-kicker">
               <span class="hero-kicker__label">Registry mood</span>
@@ -319,7 +359,7 @@ onBeforeUnmount(() => {
           <p class="workspace-alert__copy">{{ error || weatherError || signalPreviewError || baselinePreviewError }}</p>
         </div>
 
-        <button class="control-button control-button-secondary" type="button" @click="error ? clearError() : clearWeatherError()">
+        <button class="control-button control-button-secondary" type="button" @click="dismissSurfaceErrors">
           Dismiss
         </button>
       </section>
@@ -409,9 +449,30 @@ onBeforeUnmount(() => {
               <h2 class="section-title">Tenant registry constellation</h2>
             </div>
 
-            <div class="chart-panel__legend">
+            <div class="chart-panel__toolbar">
+              <div class="chart-panel__toggle" role="tablist" aria-label="Explanation mode">
+                <button
+                  type="button"
+                  class="chart-panel__toggle-button"
+                  :class="{ 'chart-panel__toggle-button-active': explanationMode === 'mvp' }"
+                  @click="explanationMode = 'mvp'"
+                >
+                  Current MVP logic
+                </button>
+                <button
+                  type="button"
+                  class="chart-panel__toggle-button"
+                  :class="{ 'chart-panel__toggle-button-active': explanationMode === 'future' }"
+                  @click="explanationMode = 'future'"
+                >
+                  Future production logic
+                </button>
+              </div>
+
+              <div class="chart-panel__legend">
               <span class="legend-pill legend-pill-blue">Registry node</span>
               <span class="legend-pill legend-pill-green">Focused lot</span>
+              </div>
             </div>
           </div>
 
@@ -436,6 +497,7 @@ onBeforeUnmount(() => {
               :signal-preview="signalPreview"
               :is-loading="isSignalPreviewLoading"
               :last-loaded-label="signalPreviewLastLoadedLabel"
+              :explanation-mode="explanationMode"
             />
 
             <template #fallback>
@@ -448,6 +510,7 @@ onBeforeUnmount(() => {
               :baseline-preview="baselinePreview"
               :is-loading="isBaselinePreviewLoading"
               :last-loaded-label="baselinePreviewLastLoadedLabel"
+              :explanation-mode="explanationMode"
             />
 
             <template #fallback>
@@ -467,32 +530,25 @@ onBeforeUnmount(() => {
           </div>
 
           <div class="narrative-stack">
-            <div class="note-block note-block-soft">
-              <p class="note-block__title">Operator motives</p>
+            <CollapsibleTextCard title="Operator motives" eyebrow="HUD notes" tone="default" :open="true">
               <HudMotiveBars :items="motiveItems" />
-            </div>
+            </CollapsibleTextCard>
 
-            <div class="note-block note-block-blue">
-              <p class="note-block__title">Primary boundary</p>
+            <CollapsibleTextCard title="Primary boundary" eyebrow="System boundary" tone="blue">
               <p class="note-block__copy">
-                Browser requests stay same-origin and are forwarded by Nuxt to the control-plane API. That keeps the
-                dashboard bright and simple while the data plumbing stays behind the glass.
+                {{ primaryBoundaryCopy }}
               </p>
-            </div>
+            </CollapsibleTextCard>
 
-            <div class="note-block note-block-green">
-              <p class="note-block__title">What comes next</p>
+            <CollapsibleTextCard title="What comes next" eyebrow="Roadmap cue" tone="green">
               <ol class="note-list">
-                <li>Materialization controls for weather and bronze assets.</li>
-                <li>Feasible plan review with units, SOC guardrails, and operator-ready explanations.</li>
-                <li>Dispatch and regret signatures with bright Sims-style motion cues.</li>
+                <li v-for="item in nextStepsItems" :key="item">{{ item }}</li>
               </ol>
-            </div>
+            </CollapsibleTextCard>
 
-            <div class="note-block note-block-orange">
-              <p class="note-block__title">Prepared config</p>
+            <CollapsibleTextCard title="Prepared config" eyebrow="Runtime payload" tone="orange">
               <pre class="config-preview">{{ selectedRunConfigSnippet }}</pre>
-            </div>
+            </CollapsibleTextCard>
           </div>
         </aside>
       </section>
@@ -603,6 +659,10 @@ onBeforeUnmount(() => {
 .hero-kicker {
   display: grid;
   gap: 0.2rem;
+}
+
+.hero-kicker-mode {
+  min-width: 12rem;
 }
 
 .hero-kicker__label,
@@ -782,6 +842,36 @@ onBeforeUnmount(() => {
   gap: 1.25rem;
 }
 
+.chart-panel__toolbar {
+  display: grid;
+  gap: 0.65rem;
+  justify-items: end;
+}
+
+.chart-panel__toggle {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.45rem;
+}
+
+.chart-panel__toggle-button {
+  border: 1px solid rgba(0, 121, 193, 0.16);
+  border-radius: 999px;
+  padding: 0.42rem 0.82rem;
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  font-weight: 700;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.chart-panel__toggle-button-active {
+  background: rgba(0, 121, 193, 0.12);
+  border-color: rgba(0, 121, 193, 0.3);
+  color: var(--ink-strong);
+}
+
 .subsection-title {
   margin-top: 0.35rem;
   font-size: 1.05rem;
@@ -866,16 +956,8 @@ onBeforeUnmount(() => {
   font-weight: 700;
 }
 
-.note-block {
-  border: 1px solid var(--line-soft);
-  border-radius: 1.35rem;
-  background: rgba(255, 255, 255, 0.68);
-  padding: 1rem;
-}
-
 .note-block__copy,
 .note-list {
-  margin-top: 0.7rem;
   line-height: 1.7;
   color: var(--ink-soft);
 }
@@ -891,24 +973,8 @@ onBeforeUnmount(() => {
   color: var(--ink-strong);
 }
 
-.note-block-soft {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(241, 249, 255, 0.76));
-}
-
-.note-block-blue {
-  background: linear-gradient(180deg, rgba(0, 121, 193, 0.09), rgba(255, 255, 255, 0.8));
-}
-
-.note-block-green {
-  background: linear-gradient(180deg, rgba(126, 211, 33, 0.11), rgba(255, 255, 255, 0.82));
-}
-
-.note-block-orange {
-  background: linear-gradient(180deg, rgba(83, 178, 234, 0.12), rgba(255, 255, 255, 0.84));
-}
-
 .chart-panel-main {
-  overflow: hidden;
+  overflow: visible;
 }
 
 .chart-panel__legend {

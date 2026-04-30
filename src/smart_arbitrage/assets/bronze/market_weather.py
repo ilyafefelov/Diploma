@@ -203,6 +203,45 @@ def enrich_market_price_history_with_weather(
     )
 
 
+def build_weather_forecast_window(
+    *,
+    start_timestamp: datetime,
+    hours: int,
+    weather_location: WeatherLocation,
+) -> pl.DataFrame:
+    """Build a weather forecast window with live Open-Meteo overlay and synthetic fallback."""
+
+    if hours <= 0:
+        raise ValueError("Weather forecast window requires at least one hour.")
+
+    base_weather_history = _build_weather_history_for_market_window(
+        start_timestamp=start_timestamp,
+        hours=hours,
+        weather_location=weather_location,
+    )
+    live_weather_rows = _fetch_openmeteo_data(
+        weather_location.latitude,
+        weather_location.longitude,
+        weather_location.timezone,
+    )
+    if live_weather_rows is None:
+        return base_weather_history
+
+    live_weather_history = _tag_weather_location(
+        _add_solar_features(
+            _validate_weather_data(pl.DataFrame(live_weather_rows)),
+            latitude=weather_location.latitude,
+        ),
+        weather_location=weather_location,
+    )
+    window_end = start_timestamp + timedelta(hours=hours - 1)
+    return (
+        _overlay_weather_rows(base_weather_history, live_weather_history)
+        .filter(pl.col(DEFAULT_TIMESTAMP_COLUMN).is_between(start_timestamp, window_end, closed="both"))
+        .sort(DEFAULT_TIMESTAMP_COLUMN)
+    )
+
+
 def _synthetic_price_for_timestamp(*, timestamp: datetime, hour_index: int) -> float:
     hour_of_day = timestamp.hour
     weekday = timestamp.weekday()
@@ -974,6 +1013,7 @@ def _calculate_solar_elevation(timestamp_expression: pl.Expr, *, latitude: float
 
 __all__ = [
     "BRONZE_INGESTION_ASSETS",
+    "build_weather_forecast_window",
     "build_weather_asset_run_config",
     "build_demo_market_price_history",
     "build_synthetic_market_price_history",

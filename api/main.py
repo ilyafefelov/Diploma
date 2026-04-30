@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import cache
+import math
 from typing import Any
 
 import dagster as dg
@@ -12,7 +14,9 @@ from pydantic import BaseModel
 from smart_arbitrage.assets.bronze.market_weather import (
 	WeatherLocation,
 	build_synthetic_market_price_history,
+	build_weather_forecast_window,
 	build_weather_asset_run_config,
+	enrich_market_price_history_with_weather,
 	list_available_weather_tenants,
 	resolve_weather_location_for_tenant,
 )
@@ -100,6 +104,7 @@ class DashboardSignalPreviewResponse(BaseModel):
 	labels: list[str]
 	market_price: list[float]
 	weather_bias: list[float]
+	weather_sources: list[str]
 	charge_intent: list[float]
 	regret: list[float]
 	resolved_location: WeatherLocationResponse
@@ -186,6 +191,32 @@ class BaselineLpPreviewResponse(BaseModel):
 	economics: BaselinePreviewEconomicsResponse
 
 
+@dataclass(frozen=True, slots=True)
+class WeatherBiasCalibrationModel:
+	feature_names: tuple[str, ...]
+	feature_means: dict[str, float]
+	feature_scales: dict[str, float]
+	coefficients: dict[str, float]
+	intercept_uah_mwh: float
+	prediction_ceiling_uah_mwh: float
+
+	def predict_uah_mwh(self, *, weather_row: dict[str, Any]) -> float:
+		feature_values = _weather_feature_values_from_row(weather_row)
+		prediction_uah_mwh = self.intercept_uah_mwh
+		for feature_name in self.feature_names:
+			feature_scale = self.feature_scales[feature_name]
+			standardized_value = (feature_values[feature_name] - self.feature_means[feature_name]) / feature_scale
+			prediction_uah_mwh += self.coefficients[feature_name] * standardized_value
+		if prediction_uah_mwh > self.prediction_ceiling_uah_mwh:
+			soft_ceiling_margin_uah_mwh = max(25.0, self.prediction_ceiling_uah_mwh * 0.2)
+			overflow_uah_mwh = prediction_uah_mwh - self.prediction_ceiling_uah_mwh
+			prediction_uah_mwh = self.prediction_ceiling_uah_mwh + soft_ceiling_margin_uah_mwh * math.log1p(
+				overflow_uah_mwh / soft_ceiling_margin_uah_mwh
+			)
+		prediction_cap_uah_mwh = max(self.prediction_ceiling_uah_mwh, self.prediction_ceiling_uah_mwh * 2.5)
+		return round(max(0.0, min(prediction_cap_uah_mwh, prediction_uah_mwh)), 2)
+
+
 @cache
 def _mvp_asset_index() -> dict[str, Any]:
 	from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
@@ -227,24 +258,71 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 		tenant_id=tenant_id,
 		location_config_path=location_config_path,
 	)
-	labels = ["06:00", "09:00", "12:00", "15:00", "18:00", "21:00"]
-	latitude_bias = round((resolved_location.latitude - 45) * 2, 2)
-	longitude_bias = round((resolved_location.longitude - 22) * 1.5, 2)
-	market_price = [
-		round(value + latitude_bias + index, 2)
-		for index, value in enumerate([84.0, 96.0, 113.0, 124.0, 117.0, 101.0])
+	battery_metrics = _default_battery_metrics()
+	starting_soc_fraction = _default_current_soc_fraction(resolved_location)
+	price_history = _build_tenant_aware_price_history(resolved_location)
+	anchor_timestamp = _resolve_baseline_anchor(price_history)
+	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
+	weather_frame = _build_signal_preview_weather_frame(
+		price_history=price_history,
+		resolved_location=resolved_location,
+	)
+	weather_bias_model = _calibrate_weather_bias_model(
+		historical_prices=historical_prices,
+		weather_frame=weather_frame,
+	)
+	solver = HourlyDamBaselineSolver()
+	solve_result = solver.solve_next_dispatch(
+		historical_prices,
+		battery_metrics=battery_metrics,
+		current_soc_fraction=starting_soc_fraction,
+		anchor_timestamp=anchor_timestamp,
+	)
+	forecast_points = solve_result.forecast[::3][:6] or solve_result.forecast[:6]
+	labels = [point.forecast_timestamp.strftime("%H:%M") for point in forecast_points]
+	market_price = [round(point.predicted_price_uah_mwh, 2) for point in forecast_points]
+	weather_rows_by_timestamp = _select_weather_rows_by_timestamp(
+		forecast_points=forecast_points,
+		weather_frame=weather_frame,
+	)
+	weather_sources = [
+		str(weather_rows_by_timestamp.get(point.forecast_timestamp, {}).get("source", "SYNTHETIC"))
+		for point in forecast_points
 	]
 	weather_bias = [
-		round(value + max(0.0, longitude_bias - index), 2)
-		for index, value in enumerate([3.0, 5.0, 8.0, 7.0, 5.0, 4.0])
+		weather_bias_model.predict_uah_mwh(
+			weather_row=weather_rows_by_timestamp.get(point.forecast_timestamp, {}),
+		)
+		for point in forecast_points
 	]
+	adjusted_market_price = [
+		price + weather_bias[index]
+		for index, price in enumerate(market_price)
+	]
+	average_market_price = sum(adjusted_market_price) / len(adjusted_market_price)
+	max_price_deviation = max(abs(value - average_market_price) for value in adjusted_market_price) or 1.0
 	charge_intent = [
-		round(value + (latitude_bias / 3) - index, 2)
-		for index, value in enumerate([28.0, 42.0, 57.0, 54.0, 39.0, 26.0])
+		round(
+			max(
+				-battery_metrics.max_power_mw,
+				min(
+					battery_metrics.max_power_mw,
+					((value - average_market_price) / max_price_deviation) * battery_metrics.max_power_mw,
+				),
+			),
+			2,
+		)
+		for value in adjusted_market_price
 	]
 	regret = [
-		round(max(3.0, value + (longitude_bias / 2) - index), 2)
-		for index, value in enumerate([10.0, 9.0, 8.0, 7.0, 8.0, 9.0])
+		round(
+			max(
+				80.0,
+				weather_bias[index] * 2.4 + abs(value - average_market_price) * 0.45,
+			),
+			2,
+		)
+		for index, value in enumerate(adjusted_market_price)
 	]
 
 	return DashboardSignalPreviewResponse(
@@ -252,10 +330,288 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 		labels=labels,
 		market_price=market_price,
 		weather_bias=weather_bias,
+		weather_sources=weather_sources,
 		charge_intent=charge_intent,
 		regret=regret,
 		resolved_location=_location_response_from_model(resolved_location),
 	)
+
+
+def _build_signal_preview_weather_frame(
+	*,
+	price_history: pl.DataFrame,
+	resolved_location: WeatherLocation,
+	) -> pl.DataFrame:
+	window_start = price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0)
+	if not isinstance(window_start, datetime):
+		raise TypeError("Price history timestamp column must contain datetime values.")
+	return build_weather_forecast_window(
+		start_timestamp=window_start,
+		hours=price_history.height,
+		weather_location=resolved_location,
+	)
+
+
+def _select_weather_rows_by_timestamp(
+	*,
+	forecast_points: list[BaselineForecastPoint],
+	weather_frame: pl.DataFrame,
+) -> dict[datetime, dict[str, Any]]:
+	if not forecast_points:
+		return {}
+
+	selected_weather_frame = weather_frame.filter(
+		pl.col(DEFAULT_TIMESTAMP_COLUMN).is_in([point.forecast_timestamp for point in forecast_points])
+	).select(
+		[
+			DEFAULT_TIMESTAMP_COLUMN,
+			"temperature",
+			"wind_speed",
+			"cloudcover",
+			"precipitation",
+			"humidity",
+			"effective_solar",
+			"source",
+		]
+	)
+	return {
+		row[DEFAULT_TIMESTAMP_COLUMN]: row
+		for row in selected_weather_frame.iter_rows(named=True)
+	}
+
+
+def _calibrate_weather_bias_model(
+	*,
+	historical_prices: pl.DataFrame,
+	weather_frame: pl.DataFrame,
+) -> WeatherBiasCalibrationModel:
+	training_frame = _build_weather_bias_training_frame(
+		historical_prices=historical_prices,
+		weather_frame=weather_frame,
+	)
+	training_rows = list(training_frame.iter_rows(named=True))
+	if len(training_rows) < 24:
+		return _default_weather_bias_model()
+
+	feature_names = (
+		"cloudcover",
+		"precipitation",
+		"humidity_excess",
+		"temperature_gap",
+		"effective_solar",
+		"wind_speed",
+	)
+	targets = [float(row["weather_premium_target_uah_mwh"]) for row in training_rows]
+	target_mean = sum(targets) / len(targets)
+	feature_means = {
+		feature_name: sum(float(row[feature_name]) for row in training_rows) / len(training_rows)
+		for feature_name in feature_names
+	}
+	feature_scales = {
+		feature_name: max(1.0, _population_standard_deviation([float(row[feature_name]) for row in training_rows]))
+		for feature_name in feature_names
+	}
+	standardized_rows = [
+		[
+			(float(row[feature_name]) - feature_means[feature_name]) / feature_scales[feature_name]
+			for feature_name in feature_names
+		]
+		for row in training_rows
+	]
+	centered_targets = [target - target_mean for target in targets]
+	coefficients = _fit_ridge_regression(
+		standardized_rows=standardized_rows,
+		centered_targets=centered_targets,
+		feature_names=feature_names,
+	)
+	prediction_ceiling_uah_mwh = max(120.0, max(targets) * 1.15)
+	return WeatherBiasCalibrationModel(
+		feature_names=feature_names,
+		feature_means=feature_means,
+		feature_scales=feature_scales,
+		coefficients=coefficients,
+		intercept_uah_mwh=target_mean,
+		prediction_ceiling_uah_mwh=prediction_ceiling_uah_mwh,
+	)
+
+
+def _build_weather_bias_training_frame(
+	*,
+	historical_prices: pl.DataFrame,
+	weather_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	weather_enriched_history = enrich_market_price_history_with_weather(historical_prices, weather_frame)
+	hourly_baseline_by_hour = weather_enriched_history.select(
+		[
+			DEFAULT_TIMESTAMP_COLUMN,
+			DEFAULT_PRICE_COLUMN,
+			"weather_temperature",
+			"weather_wind_speed",
+			"weather_cloudcover",
+			"weather_precipitation",
+			"weather_humidity",
+			"weather_effective_solar",
+		]
+	).with_columns(
+		pl.col(DEFAULT_TIMESTAMP_COLUMN).dt.hour().alias("hour_of_day")
+	).group_by("hour_of_day").agg(
+		pl.col(DEFAULT_PRICE_COLUMN).mean().alias("hourly_baseline_price_uah_mwh")
+	)
+	return weather_enriched_history.select(
+		[
+			DEFAULT_TIMESTAMP_COLUMN,
+			DEFAULT_PRICE_COLUMN,
+			"weather_temperature",
+			"weather_wind_speed",
+			"weather_cloudcover",
+			"weather_precipitation",
+			"weather_humidity",
+			"weather_effective_solar",
+		]
+	).with_columns(
+		[
+			pl.col(DEFAULT_TIMESTAMP_COLUMN).dt.hour().alias("hour_of_day"),
+			pl.col("weather_cloudcover").fill_null(50.0).clip(0.0, 100.0).alias("cloudcover"),
+			pl.col("weather_precipitation").fill_null(0.0).clip(0.0, 100.0).alias("precipitation"),
+			(pl.col("weather_humidity").fill_null(60.0) - 65.0).clip(0.0, 100.0).alias("humidity_excess"),
+			(pl.col("weather_temperature").fill_null(18.0) - 18.0).abs().alias("temperature_gap"),
+			pl.col("weather_effective_solar").fill_null(0.0).clip(0.0, 1200.0).alias("effective_solar"),
+			pl.col("weather_wind_speed").fill_null(5.0).clip(0.0, 50.0).alias("wind_speed"),
+		]
+	).join(
+		hourly_baseline_by_hour,
+		on="hour_of_day",
+		how="left",
+	).with_columns(
+		(
+			pl.col(DEFAULT_PRICE_COLUMN) - pl.col("hourly_baseline_price_uah_mwh")
+		).clip(0.0, 1800.0).alias("weather_premium_target_uah_mwh")
+	).select(
+		[
+			"cloudcover",
+			"precipitation",
+			"humidity_excess",
+			"temperature_gap",
+			"effective_solar",
+			"wind_speed",
+			"weather_premium_target_uah_mwh",
+		]
+	)
+
+
+def _weather_feature_values_from_row(weather_row: dict[str, Any]) -> dict[str, float]:
+	temperature = _coerce_weather_metric(weather_row.get("temperature"), default=18.0)
+	humidity = _coerce_weather_metric(weather_row.get("humidity"), default=60.0)
+	return {
+		"cloudcover": _coerce_weather_metric(weather_row.get("cloudcover"), default=50.0),
+		"precipitation": _coerce_weather_metric(weather_row.get("precipitation"), default=0.0),
+		"humidity_excess": max(0.0, humidity - 65.0),
+		"temperature_gap": abs(temperature - 18.0),
+		"effective_solar": _coerce_weather_metric(weather_row.get("effective_solar"), default=0.0),
+		"wind_speed": _coerce_weather_metric(weather_row.get("wind_speed"), default=5.0),
+	}
+
+
+def _default_weather_bias_model() -> WeatherBiasCalibrationModel:
+	feature_names = (
+		"cloudcover",
+		"precipitation",
+		"humidity_excess",
+		"temperature_gap",
+		"effective_solar",
+		"wind_speed",
+	)
+	return WeatherBiasCalibrationModel(
+		feature_names=feature_names,
+		feature_means={feature_name: 0.0 for feature_name in feature_names},
+		feature_scales={feature_name: 1.0 for feature_name in feature_names},
+		coefficients={feature_name: 0.0 for feature_name in feature_names},
+		intercept_uah_mwh=120.0,
+		prediction_ceiling_uah_mwh=240.0,
+	)
+
+
+def _fit_ridge_regression(
+	*,
+	standardized_rows: list[list[float]],
+	centered_targets: list[float],
+	feature_names: tuple[str, ...],
+) -> dict[str, float]:
+	feature_count = len(feature_names)
+	x_transpose_x = [
+		[0.0 for _ in range(feature_count)]
+		for _ in range(feature_count)
+	]
+	x_transpose_y = [0.0 for _ in range(feature_count)]
+	for row_values, centered_target in zip(standardized_rows, centered_targets, strict=False):
+		for left_index in range(feature_count):
+			x_transpose_y[left_index] += row_values[left_index] * centered_target
+			for right_index in range(feature_count):
+				x_transpose_x[left_index][right_index] += row_values[left_index] * row_values[right_index]
+	ridge_penalty = 0.75
+	for feature_index in range(feature_count):
+		x_transpose_x[feature_index][feature_index] += ridge_penalty
+	coefficient_values = _solve_linear_system(
+		matrix=x_transpose_x,
+		vector=x_transpose_y,
+	)
+	return {
+		feature_name: coefficient_values[index]
+		for index, feature_name in enumerate(feature_names)
+	}
+
+
+def _solve_linear_system(*, matrix: list[list[float]], vector: list[float]) -> list[float]:
+	augmented_matrix = [
+		row_values[:] + [vector[row_index]]
+		for row_index, row_values in enumerate(matrix)
+	]
+	size = len(augmented_matrix)
+	for pivot_index in range(size):
+		pivot_row_index = max(
+			range(pivot_index, size),
+			key=lambda row_index: abs(augmented_matrix[row_index][pivot_index]),
+		)
+		pivot_value = augmented_matrix[pivot_row_index][pivot_index]
+		if abs(pivot_value) < 1e-9:
+			return [0.0 for _ in range(size)]
+		if pivot_row_index != pivot_index:
+			augmented_matrix[pivot_index], augmented_matrix[pivot_row_index] = (
+				augmented_matrix[pivot_row_index],
+				augmented_matrix[pivot_index],
+			)
+		pivot_value = augmented_matrix[pivot_index][pivot_index]
+		augmented_matrix[pivot_index] = [
+			value / pivot_value
+			for value in augmented_matrix[pivot_index]
+		]
+		for row_index in range(size):
+			if row_index == pivot_index:
+				continue
+			factor = augmented_matrix[row_index][pivot_index]
+			if abs(factor) < 1e-9:
+				continue
+			augmented_matrix[row_index] = [
+				current_value - factor * pivot_row_value
+				for current_value, pivot_row_value in zip(augmented_matrix[row_index], augmented_matrix[pivot_index], strict=False)
+			]
+	return [row_values[-1] for row_values in augmented_matrix]
+
+
+def _population_standard_deviation(values: list[float]) -> float:
+	if not values:
+		return 0.0
+	mean_value = sum(values) / len(values)
+	variance = sum((value - mean_value) ** 2 for value in values) / len(values)
+	return variance ** 0.5
+
+
+def _coerce_weather_metric(value: Any, *, default: float) -> float:
+	if isinstance(value, bool):
+		return float(value)
+	if isinstance(value, int | float):
+		return float(value)
+	return default
 
 
 def _persist_operator_status(

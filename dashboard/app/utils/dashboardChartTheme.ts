@@ -34,6 +34,20 @@ const formatSignedMw = (value: number): string => `${value > 0 ? '+' : ''}${valu
 
 const formatCurrency = (value: number): string => `${Math.round(value).toLocaleString('en-GB')} UAH`
 
+const formatSignedCurrencyPerMwh = (value: number): string => `${value > 0 ? '+' : ''}${Math.round(value).toLocaleString('en-GB')} UAH/MWh`
+
+export const formatWeatherSourceLabel = (source: string): string => {
+  if (source === 'OPEN_METEO') {
+    return 'Open-Meteo live'
+  }
+
+  if (source === 'SYNTHETIC') {
+    return 'Synthetic fallback'
+  }
+
+  return source.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\w/g, (letter) => letter.toUpperCase())
+}
+
 const createTenantPoint = (tenant: TenantSummary, selectedTenantId: string): TenantScatterPoint => {
   const isSelected = tenant.tenant_id === selectedTenantId
 
@@ -175,8 +189,10 @@ export const buildMarketPulseChartOption = (
   const signal = signalPreview || {
     labels: ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
     market_price: [0, 0, 0, 0, 0, 0],
-    weather_bias: [0, 0, 0, 0, 0, 0]
+    weather_bias: [0, 0, 0, 0, 0, 0],
+    weather_sources: ['SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC']
   }
+  const adjustedMarketPrice = signal.market_price.map((price, index) => Number((price + (signal.weather_bias[index] || 0)).toFixed(2)))
 
   return {
     animationDuration: 1100,
@@ -198,7 +214,24 @@ export const buildMarketPulseChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      valueFormatter: (value: number | string) => `${Math.round(Number(value))} UAH/MWh`
+      formatter: (params: Array<{ axisValueLabel: string; dataIndex: number; seriesName: string; value: number }>) => {
+        const price = params.find((item) => item.seriesName === 'Expected market price')?.value ?? 0
+        const uplift = params.find((item) => item.seriesName === 'Weather effect')?.value ?? 0
+        const adjusted = params.find((item) => item.seriesName === 'Price after weather')?.value ?? 0
+        const dataIndex = params[0]?.dataIndex ?? 0
+        const weatherSource = formatWeatherSourceLabel(signal.weather_sources[dataIndex] || 'SYNTHETIC')
+
+        return [
+          params[0]?.axisValueLabel || '',
+          `Expected market price: ${Math.round(price)} UAH/MWh`,
+          `Calibrated weather effect: ${formatSignedCurrencyPerMwh(uplift)}`,
+          `Price after weather: ${Math.round(adjusted)} UAH/MWh`,
+          `Weather source: ${weatherSource}`,
+          'Formula: price_after_weather = market_price + weather_bias',
+          'Weather inputs: cloud cover, precipitation, humidity excess, temperature gap, effective solar, wind speed',
+          'Current MVP source mix: tenant-aware synthetic DAM history + live or synthetic weather'
+        ].join('<br/>')
+      }
     },
     grid: {
       left: 48,
@@ -243,7 +276,7 @@ export const buildMarketPulseChartOption = (
     series: [
       {
         type: 'line',
-        name: 'DAM preview',
+        name: 'Expected market price',
         smooth: true,
         data: signal.market_price,
         symbol: 'circle',
@@ -260,14 +293,25 @@ export const buildMarketPulseChartOption = (
         }
       },
       {
-        type: 'line',
-        name: 'Weather bias',
-        smooth: true,
+        type: 'bar',
+        name: 'Weather effect',
         data: signal.weather_bias,
+        barWidth: 14,
+        itemStyle: {
+          color: 'rgba(126, 211, 33, 0.68)',
+          borderRadius: [10, 10, 0, 0]
+        }
+      },
+      {
+        type: 'line',
+        name: 'Price after weather',
+        smooth: true,
+        data: adjustedMarketPrice,
         symbol: 'diamond',
         symbolSize: 7,
         lineStyle: {
           width: 3,
+          type: 'dashed',
           color: dashboardChartTokens.highlight
         },
         itemStyle: {
@@ -308,11 +352,18 @@ export const buildDispatchBalanceChartOption = (
         color: dashboardChartTokens.tooltipText
       },
       formatter: (params: Array<{ axisValueLabel: string; seriesName: string; value: number }>) => {
-        const lines = params.map((item) => item.seriesName === 'Charge intent'
-          ? `${item.seriesName}: ${formatSignedMw(item.value)}`
-          : `${item.seriesName}: ${formatCurrency(item.value)}`)
+        const batteryAction = params.find((item) => item.seriesName === 'Battery action')?.value ?? 0
+        const missedValue = params.find((item) => item.seriesName === 'Missed value')?.value ?? 0
 
-        return [params[0]?.axisValueLabel || '', ...lines].join('<br/>')
+        return [
+          params[0]?.axisValueLabel || '',
+          `Battery action: ${formatSignedMw(batteryAction)}`,
+          `Missed value: ${formatCurrency(missedValue)}`,
+          'Battery action formula: clamp(((adjusted_price - avg_adjusted_price) / max_deviation) * max_power_mw)',
+          'Sign meaning: positive MW = discharge bias, negative MW = charge bias',
+          'Missed value formula: max(80, weather_bias * 2.4 + |adjusted_price - avg_adjusted_price| * 0.45)',
+          'Missed value is a current MVP opportunity score, not settlement revenue and not the final DT/M3DT policy metric'
+        ].join('<br/>')
       }
     },
     grid: {
@@ -367,7 +418,7 @@ export const buildDispatchBalanceChartOption = (
           formatter: (value: number) => `${Math.round(value)}`
         },
         nameTextStyle: {
-          color: dashboardChartTokens.warning,
+          color: dashboardChartTokens.rose,
           fontWeight: 800
         },
         splitLine: {
@@ -378,7 +429,7 @@ export const buildDispatchBalanceChartOption = (
     series: [
       {
         type: 'bar',
-        name: 'Charge intent',
+        name: 'Battery action',
         data: signal.charge_intent,
         barWidth: 18,
         itemStyle: {
@@ -388,7 +439,7 @@ export const buildDispatchBalanceChartOption = (
       },
       {
         type: 'line',
-        name: 'Regret',
+        name: 'Missed value',
         yAxisIndex: 1,
         smooth: true,
         data: signal.regret,
@@ -396,10 +447,10 @@ export const buildDispatchBalanceChartOption = (
         symbolSize: 8,
         lineStyle: {
           width: 3,
-          color: dashboardChartTokens.warning
+          color: dashboardChartTokens.rose
         },
         itemStyle: {
-          color: dashboardChartTokens.warning
+          color: dashboardChartTokens.rose
         }
       }
     ]
@@ -409,8 +460,9 @@ export const buildDispatchBalanceChartOption = (
 export const buildBaselineForecastChartOption = (
   baselinePreview: BaselineLpPreview | null
 ): EChartsOption => {
-  const labels = baselinePreview?.forecast.map((point) => point.forecast_timestamp.slice(11, 16)) || []
-  const prices = baselinePreview?.forecast.map((point) => point.predicted_price_uah_mwh) || []
+  const forecastPoints = baselinePreview?.forecast || []
+  const labels = forecastPoints.map((point) => point.forecast_timestamp.slice(11, 16))
+  const prices = forecastPoints.map((point) => point.predicted_price_uah_mwh)
 
   return {
     animationDuration: 1200,
@@ -424,7 +476,19 @@ export const buildBaselineForecastChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      valueFormatter: (value: number | string) => `${Math.round(Number(value))} UAH/MWh`
+      formatter: (params: Array<{ axisValueLabel: string; dataIndex: number; value: number }>) => {
+        const dataIndex = params[0]?.dataIndex ?? 0
+        const point = forecastPoints[dataIndex]
+        const price = params[0]?.value ?? 0
+
+        return [
+          params[0]?.axisValueLabel || '',
+          `Baseline forecast: ${Math.round(price)} UAH/MWh`,
+          point ? `Source timestamp: ${point.source_timestamp.slice(11, 16)}` : 'Source timestamp: not available',
+          'Field: forecast[].predicted_price_uah_mwh',
+          'Current MVP path: HourlyDamBaselineSolver over tenant-aware DAM history'
+        ].join('<br/>')
+      }
     },
     grid: {
       left: 48,
@@ -448,10 +512,17 @@ export const buildBaselineForecastChartOption = (
     },
     yAxis: {
       type: 'value',
+      name: 'UAH/MWh',
+      nameLocation: 'middle',
+      nameGap: 42,
       axisLabel: {
         color: dashboardChartTokens.axis,
         fontWeight: 700,
-        formatter: (value: number) => `${Math.round(value)} UAH`
+        formatter: (value: number) => `${Math.round(value)} UAH/MWh`
+      },
+      nameTextStyle: {
+        color: dashboardChartTokens.primary,
+        fontWeight: 800
       },
       splitLine: {
         lineStyle: {
@@ -485,9 +556,11 @@ export const buildBaselineForecastChartOption = (
 export const buildBaselineScheduleChartOption = (
   baselinePreview: BaselineLpPreview | null
 ): EChartsOption => {
-  const labels = baselinePreview?.recommendation_schedule.map((point) => point.interval_start.slice(11, 16)) || []
-  const netPower = baselinePreview?.recommendation_schedule.map((point) => point.recommended_net_power_mw) || []
-  const soc = baselinePreview?.projected_state.trace.map((point) => Number((point.soc_after_fraction * 100).toFixed(1))) || []
+  const schedulePoints = baselinePreview?.recommendation_schedule || []
+  const tracePoints = baselinePreview?.projected_state.trace || []
+  const labels = schedulePoints.map((point) => point.interval_start.slice(11, 16))
+  const netPower = schedulePoints.map((point) => point.recommended_net_power_mw)
+  const soc = tracePoints.map((point) => Number((point.soc_after_fraction * 100).toFixed(1)))
 
   return {
     animationDuration: 1200,
@@ -509,12 +582,22 @@ export const buildBaselineScheduleChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      formatter: (params: Array<{ axisValueLabel: string; seriesName: string; value: number }>) => {
-        const lines = params.map((item) => item.seriesName === 'Projected SOC'
-          ? `${item.seriesName}: ${Math.round(item.value)}%`
-          : `${item.seriesName}: ${formatSignedMw(item.value)}`)
+      formatter: (params: Array<{ axisValueLabel: string; dataIndex: number; seriesName: string; value: number }>) => {
+        const dataIndex = params[0]?.dataIndex ?? 0
+        const schedulePoint = schedulePoints[dataIndex]
+        const tracePoint = tracePoints[dataIndex]
+        const signedRecommendation = params.find((item) => item.seriesName === 'Signed recommendation')?.value ?? 0
+        const projectedSoc = params.find((item) => item.seriesName === 'Projected SOC')?.value ?? 0
 
-        return [params[0]?.axisValueLabel || '', ...lines].join('<br/>')
+        return [
+          params[0]?.axisValueLabel || '',
+          `Signed recommendation: ${formatSignedMw(signedRecommendation)}`,
+          `Projected SOC: ${Math.round(projectedSoc)}%`,
+          schedulePoint ? `Throughput: ${schedulePoint.throughput_mwh.toFixed(2)} MWh` : 'Throughput: not available',
+          tracePoint ? `Degradation penalty: ${formatCurrency(tracePoint.degradation_penalty_uah)}` : 'Degradation penalty: not available',
+          'Fields: recommendation_schedule[].recommended_net_power_mw and projected_state.trace[].soc_after_fraction',
+          'Current MVP path: baseline LP schedule followed by projected battery-state simulation'
+        ].join('<br/>')
       }
     },
     grid: {

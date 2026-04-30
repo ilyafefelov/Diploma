@@ -1,7 +1,8 @@
 from typing import Any
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
+import polars as pl
 import pytest
 
 import api.main as api_main
@@ -201,8 +202,28 @@ def test_materialize_endpoint_returns_500_on_failed_materialization(
 
 def test_dashboard_signal_preview_returns_tenant_aware_series(
 	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
 	fake_status_store: _FakeOperatorStatusStore,
 ) -> None:
+	def fake_build_weather_forecast_window(*, start_timestamp: datetime, hours: int, weather_location: Any) -> pl.DataFrame:
+		return pl.DataFrame(
+			{
+				api_main.DEFAULT_TIMESTAMP_COLUMN: [
+					start_timestamp + timedelta(hours=index)
+					for index in range(hours)
+				],
+				"temperature": [18.0 + (index * 0.9) for index in range(hours)],
+				"wind_speed": [2.0 + (index * 0.15) for index in range(hours)],
+				"cloudcover": [12.0 + (index * 3.5) for index in range(hours)],
+				"precipitation": [0.0 if index < 8 else 0.8 for index in range(hours)],
+				"humidity": [52.0 + (index * 1.2) for index in range(hours)],
+				"effective_solar": [max(0.0, 420.0 - (index * 18.0)) for index in range(hours)],
+				"source": ["OPEN_METEO" for _ in range(hours)],
+			}
+		)
+
+	monkeypatch.setattr(api_main, "build_weather_forecast_window", fake_build_weather_forecast_window)
+
 	response = client.get(
 		"/dashboard/signal-preview",
 		params={
@@ -214,11 +235,18 @@ def test_dashboard_signal_preview_returns_tenant_aware_series(
 	assert response.status_code == 200
 	response_payload = response.json()
 	assert response_payload["tenant_id"] == "client_002_lviv_office"
-	assert response_payload["labels"] == ["06:00", "09:00", "12:00", "15:00", "18:00", "21:00"]
+	assert len(response_payload["labels"]) == 6
+	assert all(len(label) == 5 and label[2] == ":" for label in response_payload["labels"])
 	assert len(response_payload["market_price"]) == 6
 	assert len(response_payload["weather_bias"]) == 6
+	assert response_payload["weather_sources"] == ["OPEN_METEO"] * 6
 	assert len(response_payload["charge_intent"]) == 6
 	assert len(response_payload["regret"]) == 6
+	assert min(response_payload["market_price"]) > 1000.0
+	assert min(response_payload["weather_bias"]) >= 0.0
+	assert len(set(response_payload["weather_bias"])) > 1
+	assert max(abs(value) for value in response_payload["charge_intent"]) <= 2.5
+	assert min(response_payload["regret"]) >= 80.0
 	assert response_payload["resolved_location"] == {
 		"latitude": 49.84,
 		"longitude": 24.03,

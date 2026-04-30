@@ -8,6 +8,10 @@ export const useSignalPreview = (selectedTenantId: Readonly<{ value: string }>) 
   const error = ref('')
   const lastLoadedAt = ref<number | null>(null)
 
+  const clearError = (): void => {
+    error.value = ''
+  }
+
   const lastLoadedLabel = computed(() => {
     if (!lastLoadedAt.value) {
       return 'Not loaded yet'
@@ -51,6 +55,7 @@ export const useSignalPreview = (selectedTenantId: Readonly<{ value: string }>) 
     signalPreview,
     isLoading,
     error,
+    clearError,
     lastLoadedLabel,
     loadSignalPreview
   }

@@ -12,6 +12,7 @@ export interface SignalPreview {
   labels: string[]
   market_price: number[]
   weather_bias: number[]
+  weather_sources: string[]
   charge_intent: number[]
   regret: number[]
   resolved_location: {
