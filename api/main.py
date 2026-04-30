@@ -6,13 +6,24 @@ from typing import Any
 
 import dagster as dg
 from fastapi import FastAPI, HTTPException
+import polars as pl
 from pydantic import BaseModel
 
 from smart_arbitrage.assets.bronze.market_weather import (
 	WeatherLocation,
+	build_synthetic_market_price_history,
 	build_weather_asset_run_config,
 	list_available_weather_tenants,
 	resolve_weather_location_for_tenant,
+)
+from smart_arbitrage.assets.gold.baseline_solver import (
+	DEFAULT_PRICE_COLUMN,
+	DEFAULT_TIMESTAMP_COLUMN,
+	LEVEL1_INTERVAL_MINUTES,
+	LEVEL1_MARKET_VENUE,
+	BaselineForecastPoint,
+	BaselineSolveResult,
+	HourlyDamBaselineSolver,
 )
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 from smart_arbitrage.optimization.projected_battery_state import (
@@ -136,6 +147,45 @@ class ProjectedBatteryStateResponse(BaseModel):
 	trace: list[ProjectedBatteryTracePointResponse]
 
 
+class BaselineForecastPointResponse(BaseModel):
+	forecast_timestamp: datetime
+	source_timestamp: datetime
+	predicted_price_uah_mwh: float
+
+
+class BaselineRecommendationPointResponse(BaseModel):
+	step_index: int
+	interval_start: datetime
+	forecast_price_uah_mwh: float
+	recommended_net_power_mw: float
+	projected_soc_before_fraction: float
+	projected_soc_after_fraction: float
+	throughput_mwh: float
+	degradation_penalty_uah: float
+	gross_market_value_uah: float
+	net_value_uah: float
+
+
+class BaselinePreviewEconomicsResponse(BaseModel):
+	total_gross_market_value_uah: float
+	total_degradation_penalty_uah: float
+	total_net_value_uah: float
+	total_throughput_mwh: float
+
+
+class BaselineLpPreviewResponse(BaseModel):
+	tenant_id: str
+	market_venue: str
+	interval_minutes: int
+	starting_soc_fraction: float
+	battery_metrics: BatteryPhysicalMetrics
+	resolved_location: WeatherLocationResponse
+	forecast: list[BaselineForecastPointResponse]
+	recommendation_schedule: list[BaselineRecommendationPointResponse]
+	projected_state: ProjectedBatteryStateResponse
+	economics: BaselinePreviewEconomicsResponse
+
+
 @cache
 def _mvp_asset_index() -> dict[str, Any]:
 	from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
@@ -255,6 +305,102 @@ def _default_projection_schedule(anchor_timestamp: datetime) -> list[ScheduledPo
 		)
 		for index, net_power_mw in enumerate(default_net_power_mw)
 	]
+
+
+def _tenant_price_bias(location: WeatherLocation) -> float:
+	latitude_bias = (location.latitude - 49.0) * 28.0
+	longitude_bias = (location.longitude - 31.0) * 12.0
+	return latitude_bias + longitude_bias
+
+
+def _build_tenant_aware_price_history(location: WeatherLocation) -> pl.DataFrame:
+	price_history = build_synthetic_market_price_history(history_hours=15 * 24, forecast_hours=24)
+	price_bias = _tenant_price_bias(location)
+	return price_history.with_columns(
+		(
+			pl.col(DEFAULT_PRICE_COLUMN)
+			+ pl.lit(price_bias)
+			+ pl.when(pl.col(DEFAULT_TIMESTAMP_COLUMN).dt.hour().is_between(18, 21, closed="both"))
+			.then(140.0)
+			.when(pl.col(DEFAULT_TIMESTAMP_COLUMN).dt.hour().is_between(0, 5, closed="both"))
+			.then(-90.0)
+			.otherwise(0.0)
+		).alias(DEFAULT_PRICE_COLUMN)
+	)
+
+
+def _resolve_baseline_anchor(price_history: pl.DataFrame) -> datetime:
+	latest_timestamp = price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1)
+	if not isinstance(latest_timestamp, datetime):
+		raise TypeError("Price history timestamp column must contain datetime values.")
+	return latest_timestamp - timedelta(hours=24)
+
+
+def _historical_prices_for_anchor(price_history: pl.DataFrame, anchor_timestamp: datetime) -> pl.DataFrame:
+	historical_prices = price_history.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN) <= anchor_timestamp)
+	if historical_prices.height < 168:
+		raise ValueError("At least 168 hourly DAM observations are required before the anchor timestamp.")
+	return historical_prices
+
+
+def _to_scheduled_power_points(schedule_result: BaselineSolveResult) -> list[ScheduledPowerPoint]:
+	return [
+		ScheduledPowerPoint(interval_start=point.interval_start, net_power_mw=point.net_power_mw)
+		for point in schedule_result.schedule
+	]
+
+
+def _to_baseline_lp_preview_response(
+	*,
+	tenant_id: str,
+	battery_metrics: BatteryPhysicalMetrics,
+	starting_soc_fraction: float,
+	resolved_location: WeatherLocation,
+	solve_result: BaselineSolveResult,
+	projected_state: ProjectedBatteryStateResponse,
+) -> BaselineLpPreviewResponse:
+	total_gross_market_value_uah = sum(point.gross_market_value_uah for point in solve_result.schedule)
+	total_degradation_penalty_uah = sum(point.degradation_penalty_uah for point in solve_result.schedule)
+	total_net_value_uah = sum(point.net_objective_value_uah for point in solve_result.schedule)
+	total_throughput_mwh = sum(point.throughput_mwh for point in solve_result.schedule)
+	return BaselineLpPreviewResponse(
+		tenant_id=tenant_id,
+		market_venue=LEVEL1_MARKET_VENUE,
+		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		starting_soc_fraction=starting_soc_fraction,
+		battery_metrics=battery_metrics,
+		resolved_location=_location_response_from_model(resolved_location),
+		forecast=[
+			BaselineForecastPointResponse(
+				forecast_timestamp=point.forecast_timestamp,
+				source_timestamp=point.source_timestamp,
+				predicted_price_uah_mwh=point.predicted_price_uah_mwh,
+			)
+			for point in solve_result.forecast
+		],
+		recommendation_schedule=[
+			BaselineRecommendationPointResponse(
+				step_index=point.step_index,
+				interval_start=point.interval_start,
+				forecast_price_uah_mwh=point.forecast_price_uah_mwh,
+				recommended_net_power_mw=point.net_power_mw,
+				projected_soc_before_fraction=point.soc_before_mwh / battery_metrics.capacity_mwh,
+				projected_soc_after_fraction=point.soc_after_mwh / battery_metrics.capacity_mwh,
+				throughput_mwh=point.throughput_mwh,
+				degradation_penalty_uah=point.degradation_penalty_uah,
+				gross_market_value_uah=point.gross_market_value_uah,
+				net_value_uah=point.net_objective_value_uah,
+			)
+			for point in solve_result.schedule
+		],
+		projected_state=projected_state,
+		economics=BaselinePreviewEconomicsResponse(
+			total_gross_market_value_uah=total_gross_market_value_uah,
+			total_degradation_penalty_uah=total_degradation_penalty_uah,
+			total_net_value_uah=total_net_value_uah,
+			total_throughput_mwh=total_throughput_mwh,
+		),
+	)
 
 
 def _resolve_projection_request(
@@ -515,6 +661,63 @@ def build_projected_battery_state_preview(
 	)
 	_persist_operator_status(
 		tenant_id=request.tenant_id,
+		flow_type=OperatorFlowType.BASELINE_LP,
+		status=OperatorFlowStatus.COMPLETED,
+		payload=response.model_dump(mode="json"),
+	)
+	return response
+
+
+@app.get(
+	"/dashboard/baseline-lp-preview",
+	response_model=BaselineLpPreviewResponse,
+	tags=["weather"],
+	summary="Build baseline LP preview",
+	description=(
+		"Returns a tenant-aware baseline LP recommendation preview with hourly forecast, "
+		"signed MW schedule, projected SOC trace, and UAH economics."
+	),
+)
+def build_baseline_lp_preview(
+	tenant_id: str,
+) -> BaselineLpPreviewResponse:
+	resolved_location = _resolve_requested_location(tenant_id=tenant_id, location_config_path=None)
+	battery_metrics = _default_battery_metrics()
+	starting_soc_fraction = _default_current_soc_fraction(resolved_location)
+	price_history = _build_tenant_aware_price_history(resolved_location)
+	anchor_timestamp = _resolve_baseline_anchor(price_history)
+	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
+	solver = HourlyDamBaselineSolver()
+	try:
+		solve_result = solver.solve_next_dispatch(
+			historical_prices,
+			battery_metrics=battery_metrics,
+			current_soc_fraction=starting_soc_fraction,
+			anchor_timestamp=anchor_timestamp,
+		)
+	except (RuntimeError, ValueError) as error:
+		raise HTTPException(status_code=500, detail=str(error)) from error
+
+	projected_simulation = simulate_projected_battery_state(
+		schedule=_to_scheduled_power_points(solve_result),
+		battery_metrics=battery_metrics,
+		starting_soc_fraction=starting_soc_fraction,
+	)
+	projected_state = _to_projected_battery_state_response(
+		tenant_id=tenant_id,
+		battery_metrics=battery_metrics,
+		simulation_result=projected_simulation,
+	)
+	response = _to_baseline_lp_preview_response(
+		tenant_id=tenant_id,
+		battery_metrics=battery_metrics,
+		starting_soc_fraction=starting_soc_fraction,
+		resolved_location=resolved_location,
+		solve_result=solve_result,
+		projected_state=projected_state,
+	)
+	_persist_operator_status(
+		tenant_id=tenant_id,
 		flow_type=OperatorFlowType.BASELINE_LP,
 		status=OperatorFlowStatus.COMPLETED,
 		payload=response.model_dump(mode="json"),

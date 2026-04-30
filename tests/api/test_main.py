@@ -275,6 +275,37 @@ def test_projected_battery_state_returns_hourly_trace_with_override(
 	assert status_record.status == OperatorFlowStatus.COMPLETED
 
 
+def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(
+	client: TestClient,
+	fake_status_store: _FakeOperatorStatusStore,
+) -> None:
+	response = client.get(
+		"/dashboard/baseline-lp-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["market_venue"] == "DAM"
+	assert response_payload["interval_minutes"] == 60
+	assert len(response_payload["forecast"]) == 24
+	assert len(response_payload["recommendation_schedule"]) == 24
+	assert len(response_payload["projected_state"]["trace"]) == 24
+	assert "committed_dispatch" not in response_payload
+	assert "proposed_bid" not in response_payload
+	assert response_payload["economics"]["total_degradation_penalty_uah"] >= 0.0
+	assert response_payload["economics"]["total_gross_market_value_uah"] != 0.0
+	status_record = fake_status_store.get_status(
+		tenant_id="client_003_dnipro_factory",
+		flow_type=OperatorFlowType.BASELINE_LP,
+	)
+	assert status_record is not None
+	assert status_record.status == OperatorFlowStatus.COMPLETED
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -335,3 +366,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/signal-preview"]["get"]["summary"] == "Build dashboard signal preview"
 	assert schema["paths"]["/dashboard/operator-status"]["get"]["summary"] == "Get persisted operator flow status"
 	assert schema["paths"]["/dashboard/projected-battery-state"]["post"]["summary"] == "Build projected battery state preview"
+	assert schema["paths"]["/dashboard/baseline-lp-preview"]["get"]["summary"] == "Build baseline LP preview"

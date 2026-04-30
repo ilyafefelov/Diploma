@@ -191,6 +191,30 @@ Operational notes:
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
 - This remains recommendation-preview language only. It does not emit `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
 
+### `GET /dashboard/baseline-lp-preview`
+
+Builds the first tenant-aware Slice 2 baseline LP read model for operator preview.
+
+Request query example:
+
+```text
+/dashboard/baseline-lp-preview?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `forecast`: hourly strict-similar-day price forecast in UAH/MWh
+- `recommendation_schedule`: hourly signed MW recommendation trace with projected SOC and per-slot economics
+- `projected_state`: projected SOC/throughput/degradation trace derived from the feasible schedule
+- `economics`: aggregated gross market value, degradation penalty, net value, and throughput in canonical UAH/MWh units
+
+Operational notes:
+
+- This is a recommendation preview only. It does not return `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
+- The read model is tenant-aware through location-resolved synthetic DAM history biasing.
+- The LP runs at Level 1 hourly DAM granularity and reuses the same battery constraints as the projected-state simulator.
+- On success, the API updates the persisted `baseline_lp` flow state to `completed`.
+
 ### `POST /weather/run-config`
 
 Builds the Dagster run-config payload for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76) without executing a run.
@@ -310,6 +334,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - After selection, the dashboard should call `POST /weather/run-config` for preview and confirmation.
 - When the operator starts an experiment, the dashboard should call `POST /weather/materialize`.
 - For Slice 2 preview work, the dashboard can call `POST /dashboard/projected-battery-state` to render feasible hourly SOC and degradation-aware economics from a signed recommendation schedule.
+- For baseline recommendation preview, the dashboard can call `GET /dashboard/baseline-lp-preview` to render forecast, feasible hourly signed MW schedule, projected SOC trace, and UAH economics for the selected tenant.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
@@ -317,4 +342,5 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - These endpoints are control-plane endpoints only.
 - They do not yet expose Baseline Forecast, Oracle Benchmark, Proposed Bid, Cleared Trade, or Dispatch Command resources.
 - The projected battery state endpoint is a simulator/read model only; it does not claim market-order or dispatch semantics.
+- The baseline LP preview endpoint is also a read model only; it exposes recommendation semantics, not market-order, clearing, or dispatch semantics.
 - The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.
