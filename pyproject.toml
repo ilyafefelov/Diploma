@@ -37,7 +37,7 @@ dev = [
 ]
 
 [tool.dagster]
-module_name = "smart_arbitrage.definitions"
+module_name = "smart_arbitrage.defs"
 
 [tool.dg]
 directory_type = "project"

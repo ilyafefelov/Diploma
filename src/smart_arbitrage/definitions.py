@@ -1,7 +1,8 @@
-"""Dagster definitions entrypoint for the smart_arbitrage package."""
+"""Backward-compatible Dagster definitions entrypoint.
 
-from dagster import Definitions
+Prefer ``smart_arbitrage.defs`` for modern ``dg`` workflows.
+"""
 
-from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
+from smart_arbitrage.defs import defs
 
-defs = Definitions(assets=MVP_DEMO_ASSETS)
+__all__ = ["defs"]
