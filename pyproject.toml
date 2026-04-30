@@ -12,6 +12,7 @@ dependencies = [
     "mlflow",                  # Трекінг експериментів і regret-логування для MVP demo
     "beautifulsoup4",          # HTML parsing for refactored OREE market scraper
     "fastapi",                 # Lightweight API surface for tenant selection and experiment launch
+    "psycopg[binary]",         # Lightweight Postgres gateway for operator-facing read models
     "pyyaml",                  # YAML-backed tenant and location config loading
     "uvicorn",                 # ASGI server for the FastAPI control plane
     

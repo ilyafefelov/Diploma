@@ -93,6 +93,38 @@ Operational notes:
 - Data is resolved from [simulations/tenants.yml](d:/School/GoIT/Courses/Diploma/simulations/tenants.yml) by default.
 - The payload is intended for dashboard/UI tenant selection and experiment pickers.
 
+### `GET /dashboard/operator-status`
+
+Returns the latest persisted operator-visible state for one `tenant_id + flow_type` pair.
+
+Request query example:
+
+```text
+/dashboard/operator-status?tenant_id=client_002_lviv_office&flow_type=weather_control
+```
+
+Response example:
+
+```json
+{
+  "tenant_id": "client_002_lviv_office",
+  "flow_type": "weather_control",
+  "status": "completed",
+  "updated_at": "2026-04-30T03:58:00+00:00",
+  "payload": {
+    "selected_assets": ["weather_forecast_bronze", "dam_price_history"]
+  },
+  "last_error": null
+}
+```
+
+Operational notes:
+
+- This is the backend-owned status contract for operator-facing read models.
+- The record grain is one latest state per `tenant_id + flow_type`.
+- The canonical status set is `idle`, `prepared`, `running`, `completed`, `failed`.
+- Current Slice 1 flow coverage is `weather_control` and `signal_preview`.
+
 ### `POST /weather/run-config`
 
 Builds the Dagster run-config payload for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76) without executing a run.
@@ -134,6 +166,7 @@ Operational notes:
 - This endpoint is useful for dashboard previews, operator confirmation flows, and future orchestration adapters.
 - If `location_config_path` is omitted, the service resolves the tenant against the canonical registry path.
 - If the `tenant_id` is unknown, the service returns `404`.
+- On success, the API updates the persisted `weather_control` flow state to `prepared`.
 
 ### `POST /weather/materialize`
 
@@ -183,6 +216,16 @@ Operational notes:
 - `include_price_history=true` materializes `weather_forecast_bronze` and [dam_price_history](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/mvp_demo.py#L35).
 - This endpoint is the first API-level bridge between Tenant Registry selection and location-aware Bronze ingestion.
 - On materialization failure, the service returns `500`.
+- During execution, the API updates persisted `weather_control` flow state through `running`, then `completed` or `failed`.
+
+### `GET /dashboard/signal-preview`
+
+Builds the current tenant-aware signal preview for the operator dashboard.
+
+Operational notes:
+
+- On success, the API updates the persisted `signal_preview` flow state to `completed`.
+- This remains a preview/read-model endpoint and does not create `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` semantics.
 
 ## CLI Preset
 
@@ -197,6 +240,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 ## Dashboard Integration Contract
 
 - The dashboard should call `GET /tenants` to populate the tenant selector.
+- The dashboard should call `GET /dashboard/operator-status` when it needs the backend-owned latest visible state for a tenant and flow.
 - After selection, the dashboard should call `POST /weather/run-config` for preview and confirmation.
 - When the operator starts an experiment, the dashboard should call `POST /weather/materialize`.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.

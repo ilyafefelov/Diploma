@@ -13,6 +13,13 @@ from smart_arbitrage.assets.bronze.market_weather import (
 	list_available_weather_tenants,
 	resolve_weather_location_for_tenant,
 )
+from smart_arbitrage.resources.operator_status_store import (
+	OperatorFlowStatus,
+	OperatorFlowType,
+	OperatorStatusRecord,
+	get_operator_status_store,
+	utc_now,
+)
 
 
 app = FastAPI(
@@ -78,6 +85,15 @@ class DashboardSignalPreviewResponse(BaseModel):
 	charge_intent: list[float]
 	regret: list[float]
 	resolved_location: WeatherLocationResponse
+
+
+class OperatorStatusResponse(BaseModel):
+	tenant_id: str
+	flow_type: OperatorFlowType
+	status: OperatorFlowStatus
+	updated_at: str
+	payload: dict[str, Any] | None
+	last_error: str | None
 
 
 @cache
@@ -152,6 +168,38 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 	)
 
 
+def _persist_operator_status(
+	*,
+	tenant_id: str,
+	flow_type: OperatorFlowType,
+	status: OperatorFlowStatus,
+	payload: dict[str, Any] | None = None,
+	last_error: str | None = None,
+) -> None:
+	store = get_operator_status_store()
+	store.upsert_status(
+		OperatorStatusRecord(
+			tenant_id=tenant_id,
+			flow_type=flow_type,
+			status=status,
+			updated_at=utc_now(),
+			payload=payload,
+			last_error=last_error,
+		)
+	)
+
+
+def _to_operator_status_response(record: OperatorStatusRecord) -> OperatorStatusResponse:
+	return OperatorStatusResponse(
+		tenant_id=record.tenant_id,
+		flow_type=record.flow_type,
+		status=record.status,
+		updated_at=record.updated_at.isoformat(),
+		payload=record.payload,
+		last_error=record.last_error,
+	)
+
+
 @app.get(
 	"/health",
 	tags=["system"],
@@ -196,11 +244,18 @@ def build_weather_run_config_endpoint(request: WeatherRunConfigRequest) -> Weath
 		tenant_id=request.tenant_id,
 		location_config_path=request.location_config_path,
 	)
-	return WeatherRunConfigResponse(
+	response = WeatherRunConfigResponse(
 		tenant_id=request.tenant_id,
 		run_config=run_config,
 		resolved_location=_location_response_from_model(resolved_location),
 	)
+	_persist_operator_status(
+		tenant_id=request.tenant_id,
+		flow_type=OperatorFlowType.WEATHER_CONTROL,
+		status=OperatorFlowStatus.PREPARED,
+		payload=response.model_dump(),
+	)
+	return response
 
 
 @app.post(
@@ -214,6 +269,15 @@ def build_weather_run_config_endpoint(request: WeatherRunConfigRequest) -> Weath
 	),
 )
 def materialize_weather_assets(request: WeatherMaterializeRequest) -> WeatherMaterializeResponse:
+	_persist_operator_status(
+		tenant_id=request.tenant_id,
+		flow_type=OperatorFlowType.WEATHER_CONTROL,
+		status=OperatorFlowStatus.RUNNING,
+		payload={
+			"tenant_id": request.tenant_id,
+			"include_price_history": request.include_price_history,
+		},
+	)
 	resolved_location = _resolve_requested_location(
 		tenant_id=request.tenant_id,
 		location_config_path=request.location_config_path,
@@ -225,15 +289,32 @@ def materialize_weather_assets(request: WeatherMaterializeRequest) -> WeatherMat
 	selected_assets = _selected_weather_assets(include_price_history=request.include_price_history)
 	result = dg.materialize(selected_assets, run_config=run_config)
 	if not result.success:
+		_persist_operator_status(
+			tenant_id=request.tenant_id,
+			flow_type=OperatorFlowType.WEATHER_CONTROL,
+			status=OperatorFlowStatus.FAILED,
+			payload={
+				"tenant_id": request.tenant_id,
+				"include_price_history": request.include_price_history,
+			},
+			last_error="Dagster materialization failed.",
+		)
 		raise HTTPException(status_code=500, detail="Dagster materialization failed.")
 
-	return WeatherMaterializeResponse(
+	response = WeatherMaterializeResponse(
 		tenant_id=request.tenant_id,
 		selected_assets=[asset.key.path[-1] for asset in selected_assets],
 		run_config=run_config,
 		resolved_location=_location_response_from_model(resolved_location),
 		success=True,
 	)
+	_persist_operator_status(
+		tenant_id=request.tenant_id,
+		flow_type=OperatorFlowType.WEATHER_CONTROL,
+		status=OperatorFlowStatus.COMPLETED,
+		payload=response.model_dump(),
+	)
+	return response
 
 
 @app.get(
@@ -250,7 +331,36 @@ def dashboard_signal_preview(
 	tenant_id: str,
 	location_config_path: str | None = None,
 ) -> DashboardSignalPreviewResponse:
-	return _build_signal_preview(
+	response = _build_signal_preview(
 		tenant_id=tenant_id,
 		location_config_path=location_config_path,
 	)
+	_persist_operator_status(
+		tenant_id=tenant_id,
+		flow_type=OperatorFlowType.SIGNAL_PREVIEW,
+		status=OperatorFlowStatus.COMPLETED,
+		payload=response.model_dump(),
+	)
+	return response
+
+
+@app.get(
+	"/dashboard/operator-status",
+	response_model=OperatorStatusResponse,
+	tags=["weather"],
+	summary="Get persisted operator flow status",
+	description=(
+		"Returns the latest persisted operator-visible state for a tenant and flow. "
+		"This is the backend-owned status contract for dashboard read models."
+	),
+)
+def get_operator_status(
+	tenant_id: str,
+	flow_type: OperatorFlowType,
+) -> OperatorStatusResponse:
+	store = get_operator_status_store()
+	record = store.get_status(tenant_id=tenant_id, flow_type=flow_type)
+	if record is None:
+		raise HTTPException(status_code=404, detail="Operator flow status not found.")
+
+	return _to_operator_status_response(record)
