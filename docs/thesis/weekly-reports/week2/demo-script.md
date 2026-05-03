@@ -16,7 +16,7 @@
 ## Передумови
 
 1. API доступний на `http://127.0.0.1:8010/`
-2. Dashboard доступний на `http://localhost:3611/`
+2. Dashboard доступний на `http://localhost:64163/`
 3. Dagster UI доступний на `http://127.0.0.1:3000/`
 4. MLflow UI доступний на `http://127.0.0.1:5000/`
 
@@ -25,7 +25,7 @@
 ### Крок 1. Показати operator dashboard
 
 Що відкрити:
-- `http://localhost:3611/`
+- `http://localhost:64163/`
 
 Що сказати:
 - Це операторська поверхня для поточного MVP.
@@ -106,7 +106,8 @@
 
 Що сказати:
 - Тут важливо, що degradation penalty винесено окремо, а не змішано з gross market value.
-- Це допомагає показати, що економіка батареї в MVP враховується явно, але без повного digital twin.
+- Це допомагає показати, що економіка батареї в MVP враховується явно.
+- Коректніше називати цей battery layer feasibility-and-economics preview model: він уже враховує SOC, ліміти потужності, спрощений ККД і throughput penalty, але ще не є full digital twin.
 
 ### Крок 9. Зафіксувати scope boundary
 
@@ -117,6 +118,7 @@
 Що сказати:
 - Поточний Slice 2 не повертає `Proposed Bid`, `Cleared Trade` або `Dispatch Command`.
 - Це свідоме обмеження MVP, щоб не змішувати operator preview з майбутніми market execution semantics.
+- Multi-market bidding і DRL/DFL належать до наступної фази, а не до поточного demo-stage.
 
 ## Частина 3. Підтверджувальні артефакти
 
@@ -142,4 +144,4 @@
 
 ## Короткий фінальний меседж
 
-> На цьому етапі MVP уже має operator-facing контур для двох пов’язаних slices. Slice 1 показує tenant-aware weather control flow з backend-owned status, а Slice 2 показує baseline LP recommendation preview з projected SOC та UAH economics. Обидва slices уже придатні для технічного демо, але ще не претендують на повний market execution контур.
+> На цьому етапі MVP уже має operator-facing контур для двох пов’язаних slices. Slice 1 показує tenant-aware weather control flow з backend-owned status, а Slice 2 показує baseline LP recommendation preview з projected SOC, UAH economics і явним degradation-aware feasibility-and-economics preview model. Обидва slices уже придатні для технічного демо, але ще не претендують на повний market execution контур, DRL/DFL execution layer або повний battery digital twin.

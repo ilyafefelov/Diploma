@@ -1,6 +1,6 @@
 export default defineEventHandler(async (event) => {
   const runtimeConfig = useRuntimeConfig()
-  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8000')
+  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8010')
   const body = await readBody<Record<string, unknown>>(event)
 
   try {

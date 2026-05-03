@@ -29,6 +29,12 @@ from smart_arbitrage.assets.gold.baseline_solver import (
 	BaselineSolveResult,
 	HourlyDamBaselineSolver,
 )
+from smart_arbitrage.assets.mvp_demo import (
+	DEMO_BATTERY_CAPACITY_MWH,
+	DEMO_BATTERY_MAX_POWER_MW,
+	DEMO_BATTERY_ROUND_TRIP_EFFICIENCY,
+	DEMO_DEGRADATION_COST_PER_CYCLE_UAH,
+)
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 from smart_arbitrage.optimization.projected_battery_state import (
 	ProjectedBatterySimulationResult,
@@ -637,10 +643,10 @@ def _persist_operator_status(
 
 def _default_battery_metrics() -> BatteryPhysicalMetrics:
 	return BatteryPhysicalMetrics(
-		capacity_mwh=10.0,
-		max_power_mw=2.5,
-		round_trip_efficiency=0.95,
-		degradation_cost_per_cycle_uah=56.0,
+		capacity_mwh=DEMO_BATTERY_CAPACITY_MWH,
+		max_power_mw=DEMO_BATTERY_MAX_POWER_MW,
+		round_trip_efficiency=DEMO_BATTERY_ROUND_TRIP_EFFICIENCY,
+		degradation_cost_per_cycle_uah=DEMO_DEGRADATION_COST_PER_CYCLE_UAH,
 		soc_min_fraction=0.05,
 		soc_max_fraction=0.95,
 	)

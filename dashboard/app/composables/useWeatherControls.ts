@@ -82,6 +82,9 @@ export const useWeatherControls = () => {
   const syncOperatorStatus = async (tenantId: string): Promise<void> => {
     if (!tenantId) {
       operatorStatus.value = null
+      runConfig.value = null
+      materializeResult.value = null
+      error.value = ''
       return
     }
 
@@ -103,11 +106,21 @@ export const useWeatherControls = () => {
       }
     } catch (unknownError) {
       operatorStatus.value = null
+      runConfig.value = null
+      materializeResult.value = null
 
       const fetchError = unknownError as { statusCode?: number; statusMessage?: string } | Error
+      if ('statusCode' in fetchError && fetchError.statusCode === 404) {
+        error.value = ''
+        return
+      }
+
       if ('statusCode' in fetchError && fetchError.statusCode === 502) {
         error.value = fetchError.statusMessage || 'Unable to sync operator status.'
+        return
       }
+
+      error.value = fetchError instanceof Error ? fetchError.message : 'Unable to sync operator status.'
     }
   }
 

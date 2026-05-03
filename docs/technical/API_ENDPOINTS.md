@@ -139,7 +139,7 @@ Request body example:
     "capacity_mwh": 4.0,
     "max_power_mw": 2.0,
     "round_trip_efficiency": 0.81,
-    "degradation_cost_per_cycle_uah": 40.0,
+    "degradation_cost_per_cycle_uah": 6737.3,
     "soc_min_fraction": 0.25,
     "soc_max_fraction": 0.75
   },
@@ -162,12 +162,12 @@ Response example:
     "capacity_mwh": 4.0,
     "max_power_mw": 2.0,
     "round_trip_efficiency": 0.81,
-    "degradation_cost_per_cycle_uah": 40.0,
+    "degradation_cost_per_cycle_uah": 6737.3,
     "soc_min_fraction": 0.25,
     "soc_max_fraction": 0.75
   },
   "total_throughput_mwh": 4.52,
-  "total_degradation_penalty_uah": 22.6,
+  "total_degradation_penalty_uah": 3806.6,
   "trace": [
     {
       "step_index": 0,
@@ -177,7 +177,7 @@ Response example:
       "soc_before_fraction": 0.5,
       "soc_after_fraction": 0.25,
       "throughput_mwh": 0.9,
-      "degradation_penalty_uah": 4.5
+      "degradation_penalty_uah": 757.9
     }
   ]
 }
@@ -186,6 +186,7 @@ Response example:
 Operational notes:
 
 - This endpoint is the narrow Slice 2 simulator for projected SOC, throughput, and degradation-aware UAH penalty.
+- The example above keeps the same throughput-based proxy as the Week 1 demo materials and scales cycle cost to the illustrated `4 MWh` battery, so the implied penalty stays near `842.2 UAH/MWh throughput`.
 - It accepts scenario overrides for offline/demo use, but also supports a tenant-resolved default state and default hourly recommendation schedule when overrides are omitted.
 - The simulator enforces hourly Level 1 granularity, `soc_min`, `soc_max`, capacity, max power, and round-trip efficiency.
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.

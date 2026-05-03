@@ -28,6 +28,7 @@
 - feasible signed MW recommendation surface
 - projected SOC trace
 - UAH economics with separate degradation component
+- current battery economics framed as a public-source capex-throughput proxy, not a folklore cycle-cost constant
 
 Основні технічні опори:
 - [api/main.py](d:/School/GoIT/Courses/Diploma/api/main.py)
@@ -53,14 +54,19 @@
 
 ## Weekly-report-ready artifact links
 
-- Dashboard UI: `http://localhost:3611/`
+- Dashboard UI: `http://localhost:64163/`
 - FastAPI docs: `http://127.0.0.1:8010/docs`
 - Dagster UI: `http://127.0.0.1:3000/`
 - MLflow UI: `http://127.0.0.1:5000/`
+- Vercel public entry: `https://dashboard-gilt-one-97.vercel.app/` (redirects to the Week 1 report)
+- Vercel operator dashboard: `https://dashboard-gilt-one-97.vercel.app/operator`
+- Vercel Week 1 report: `https://dashboard-gilt-one-97.vercel.app/week1/interactive_report1`
+- Week 1 report: [docs/thesis/weekly-reports/week1/report.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/report.md)
+- Week 1 short summary: [docs/thesis/weekly-reports/week1/supervisor-summary.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/supervisor-summary.md)
 - API contracts: [docs/technical/API_ENDPOINTS.md](d:/School/GoIT/Courses/Diploma/docs/technical/API_ENDPOINTS.md)
 - PRD and issue trace: [docs/technical/PRD-operator-mvp-slices.md](d:/School/GoIT/Courses/Diploma/docs/technical/PRD-operator-mvp-slices.md), [docs/technical/issues](d:/School/GoIT/Courses/Diploma/docs/technical/issues)
-- Week 2 demo script: [docs/thesis/weekly-reports/week2/demo-script.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week2/demo-script.md)
-- Week 2 report: [docs/thesis/weekly-reports/week2/report.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week2/report.md)
+- Week 1 presentation script: [docs/thesis/weekly-reports/week1/presentation-script.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/presentation-script.md)
+- Week 1 screenshots: [docs/thesis/weekly-reports/week1/assets/dagster-ui.png](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/assets/dagster-ui.png), [docs/thesis/weekly-reports/week1/assets/mlflow-ui.png](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/assets/mlflow-ui.png)
 
 ## Verified implementation commits
 

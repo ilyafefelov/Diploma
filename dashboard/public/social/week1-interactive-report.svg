@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="Week 1 interactive report social card">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fbfeff" />
+      <stop offset="55%" stop-color="#dff4ff" />
+      <stop offset="100%" stop-color="#b6e7ff" />
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.96" />
+      <stop offset="100%" stop-color="#f0fbff" stop-opacity="0.88" />
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#27a7ff" />
+      <stop offset="100%" stop-color="#0a5e9a" />
+    </linearGradient>
+    <linearGradient id="plumbob" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#92ff84" />
+      <stop offset="100%" stop-color="#20c7ff" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <circle cx="1040" cy="120" r="140" fill="#ffffff" opacity="0.45" />
+  <circle cx="190" cy="560" r="160" fill="#7ed321" opacity="0.12" />
+  <circle cx="880" cy="500" r="180" fill="#27a7ff" opacity="0.10" />
+
+  <rect x="58" y="56" width="748" height="518" rx="34" fill="url(#panel)" stroke="#ffffff" stroke-opacity="0.72" />
+  <rect x="828" y="56" width="314" height="518" rx="34" fill="#0d4e84" opacity="0.95" />
+
+  <rect x="92" y="92" width="168" height="42" rx="21" fill="#e9f7ff" />
+  <text x="176" y="119" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="700" letter-spacing="2" fill="#0a5e9a">WEEK 1 REPORT</text>
+
+  <text x="92" y="194" font-family="Segoe UI, Arial, sans-serif" font-size="58" font-weight="800" fill="#0d3d68">Interactive Diploma</text>
+  <text x="92" y="254" font-family="Segoe UI, Arial, sans-serif" font-size="58" font-weight="800" fill="#0d3d68">Supervisor Report</text>
+
+  <text x="92" y="320" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="600" fill="#4f6e90">Nuxt page with verified MVP metrics, ELT flow, battery economics,</text>
+  <text x="92" y="360" font-family="Segoe UI, Arial, sans-serif" font-size="28" font-weight="600" fill="#4f6e90">FastAPI surface, and DOI-backed architecture choices.</text>
+
+  <rect x="92" y="408" width="278" height="108" rx="24" fill="#f6fcff" stroke="#d4eefc" />
+  <text x="122" y="446" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#0a5e9a">VERIFIED ASSETS</text>
+  <text x="122" y="496" font-family="Segoe UI, Arial, sans-serif" font-size="44" font-weight="800" fill="#0d3d68">10</text>
+  <text x="122" y="526" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" fill="#557692">2 Bronze / 1 Silver / 7 Gold</text>
+
+  <rect x="392" y="408" width="278" height="108" rx="24" fill="#f6fcff" stroke="#d4eefc" />
+  <text x="422" y="446" font-family="Segoe UI, Arial, sans-serif" font-size="16" font-weight="700" fill="#0a5e9a">API ENDPOINTS</text>
+  <text x="422" y="496" font-family="Segoe UI, Arial, sans-serif" font-size="44" font-weight="800" fill="#0d3d68">7</text>
+  <text x="422" y="526" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" fill="#557692">Control-plane and dashboard reads</text>
+
+  <rect x="848" y="86" width="114" height="114" rx="24" fill="#ffffff" fill-opacity="0.12" />
+  <path d="M905 101 948 144 905 238 862 144Z" fill="url(#plumbob)" stroke="#ffffff" stroke-opacity="0.58" stroke-width="4" stroke-linejoin="round" />
+  <path d="M905 101 925 144 905 186 885 144Z" fill="#ffffff" fill-opacity="0.34" />
+
+  <text x="860" y="292" font-family="Segoe UI, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="2" fill="#b9e5ff">SMART ARBITRAGE</text>
+  <text x="860" y="348" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="800" fill="#ffffff">Bright, Vercel-ready</text>
+  <text x="860" y="390" font-family="Segoe UI, Arial, sans-serif" font-size="34" font-weight="800" fill="#ffffff">Week 1 walkthrough</text>
+
+  <rect x="860" y="434" width="246" height="60" rx="18" fill="#ffffff" fill-opacity="0.12" />
+  <text x="886" y="472" font-family="Segoe UI, Arial, sans-serif" font-size="22" font-weight="700" fill="#e9f7ff">/week1/interactive_report1</text>
+
+  <text x="860" y="548" font-family="Segoe UI, Arial, sans-serif" font-size="18" font-weight="600" fill="#cfefff">Battery layer framed as feasibility-and-economics preview model</text>
+</svg>

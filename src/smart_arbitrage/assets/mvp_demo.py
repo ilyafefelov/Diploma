@@ -29,6 +29,31 @@ from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics, BatteryTe
 DEMO_EXPERIMENT_NAME: Final[str] = "mvp-baseline-demo"
 DEMO_HISTORY_HOURS: Final[int] = 15 * 24
 DEMO_HORIZON_HOURS: Final[int] = 24
+DEMO_BATTERY_CAPACITY_MWH: Final[float] = 10.0
+DEMO_BATTERY_MAX_POWER_MW: Final[float] = 2.0
+DEMO_BATTERY_ROUND_TRIP_EFFICIENCY: Final[float] = 0.95
+DEMO_BATTERY_CAPEX_USD_PER_KWH: Final[float] = 210.0
+DEMO_USD_TO_UAH_RATE: Final[float] = 43.9129
+DEMO_BATTERY_LIFETIME_YEARS: Final[int] = 15
+DEMO_BATTERY_CYCLES_PER_DAY: Final[float] = 1.0
+DEMO_BATTERY_LIFETIME_CYCLES: Final[float] = (
+    DEMO_BATTERY_LIFETIME_YEARS * 365 * DEMO_BATTERY_CYCLES_PER_DAY
+)
+
+
+def _derive_demo_battery_replacement_cost_uah(capacity_mwh: float) -> float:
+    capacity_kwh = capacity_mwh * 1000.0
+    return DEMO_BATTERY_CAPEX_USD_PER_KWH * capacity_kwh * DEMO_USD_TO_UAH_RATE
+
+
+def _derive_demo_degradation_cost_per_cycle_uah(capacity_mwh: float) -> float:
+    replacement_cost_uah = _derive_demo_battery_replacement_cost_uah(capacity_mwh)
+    return replacement_cost_uah / DEMO_BATTERY_LIFETIME_CYCLES
+
+
+DEMO_DEGRADATION_COST_PER_CYCLE_UAH: Final[float] = _derive_demo_degradation_cost_per_cycle_uah(
+    DEMO_BATTERY_CAPACITY_MWH
+)
 
 
 @dg.asset(group_name="bronze")
@@ -70,10 +95,10 @@ def demo_battery_physical_metrics(context) -> BatteryPhysicalMetrics:
     """Canonical battery parameters for the week 2 MVP demo."""
 
     metrics = BatteryPhysicalMetrics(
-        capacity_mwh=10.0,
-        max_power_mw=2.0,
-        round_trip_efficiency=0.95,
-        degradation_cost_per_cycle_uah=56.0,
+        capacity_mwh=DEMO_BATTERY_CAPACITY_MWH,
+        max_power_mw=DEMO_BATTERY_MAX_POWER_MW,
+        round_trip_efficiency=DEMO_BATTERY_ROUND_TRIP_EFFICIENCY,
+        degradation_cost_per_cycle_uah=DEMO_DEGRADATION_COST_PER_CYCLE_UAH,
     )
     context.add_output_metadata(
         {
@@ -81,6 +106,14 @@ def demo_battery_physical_metrics(context) -> BatteryPhysicalMetrics:
             "max_power_mw": metrics.max_power_mw,
             "round_trip_efficiency": metrics.round_trip_efficiency,
             "degradation_cost_per_cycle_uah": metrics.degradation_cost_per_cycle_uah,
+            "degradation_cost_per_mwh_throughput_uah": metrics.degradation_cost_per_mwh_throughput_uah,
+            "degradation_cost_derivation": (
+                "210 USD/kWh * 10,000 kWh * 43.9129 UAH/USD / (15 * 365)"
+            ),
+            "battery_replacement_cost_uah": _derive_demo_battery_replacement_cost_uah(metrics.capacity_mwh),
+            "capex_usd_per_kwh": DEMO_BATTERY_CAPEX_USD_PER_KWH,
+            "usd_to_uah_rate": DEMO_USD_TO_UAH_RATE,
+            "lifetime_cycles": DEMO_BATTERY_LIFETIME_CYCLES,
         }
     )
     return metrics

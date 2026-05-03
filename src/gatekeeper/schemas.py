@@ -2,82 +2,99 @@
 # 🛡️ Крок 1: Safety Contracts (/src/contracts/schemas.py)
 # Цей модуль є першою лінією оборони. Він гарантує, що жодна команда від ШІ-агента не нашкодить обладнанню, навіть якщо градієнти в Decision Transformer «галюцинують»
 # 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
-from typing import Literal, Optional
+from pydantic import BaseModel, Field, ConfigDict, model_validator
+from typing import Literal, List, Optional, Dict
 from datetime import datetime
 
+# Ринкові константи України 2026 (UAH/MWh) [4, 6]
+MARKET_PRICE_CAPS: Dict[str, float] = {
+    "DAM": 15000.0,
+    "IDM": 15000.0,
+    "BALANCING": 16000.0
+}
+
 class BatteryPhysicalMetrics(BaseModel):
-    """
-    Фізичні параметри BESS для розрахунку економіки та лімітів інвертора.
-    Базується на академічних бенчмарках LFP [5-7].
-    """
-    capacity_mwh: float = Field(gt=0, description="Номінальна ємність батареї")
-    max_power_mw: float = Field(gt=0, description="Максимальна потужність інвертора (P_max)")
-    efficiency_rt: float = Field(ge=0.7, le=0.98, description="Round-trip ККД")
-    # Маржинальний штраф за деградацію (~$1.35/цикл згідно PoliTO) [7, 8]
-    degradation_cost_per_cycle_usd: float = 1.35 
+    """Фізичні ліміти та економіка зносу в єдиній валюті (UAH)."""
+    capacity_mwh: float = Field(gt=0)
+    max_power_mw: float = Field(gt=0)
+    efficiency_rt: float = Field(ge=0.7, le=0.98)
+    # Demo-параметр у UAH/цикл; поточне значення є прозорим capex-throughput proxy
+    # (210 USD/kWh, 15 років, ~1 цикл/день, NBU 43.9129), а не універсальною
+    # константою безпосередньо зі статті Grimaldi et al. (2024).
+    degradation_cost_per_cycle_uah: float = 16843.3
     
     model_config = ConfigDict(strict=True)
 
-class BatteryState(BaseModel):
-    """
-    Поточний стан системи, отриманий із Silver Layer (Digital Twin).
-    Використовується для валідації дій Strategy Master [9, 10].
-    """
-    current_soc: float = Field(ge=0.0, le=1.0, description="State of Charge (0.0-1.0)")
-    soh: float = Field(ge=0.0, le=1.0, description="State of Health")
-    is_faulty: bool = False
+class BatteryTelemetry(BaseModel):
+    """Сирі дані з IoT (MQTT/Victron) для фінального захисту [9, 10]."""
+    current_soc: float = Field(ge=0.0, le=1.0)
+    soh: float = Field(ge=0.0, le=1.0)
     last_updated: datetime
 
     model_config = ConfigDict(strict=True)
 
-class ProposedTrade(BaseModel):
-    """
-    Контракт торгової заявки, згенерований Decision Transformer (Gold Layer).
-    Впроваджує детерміновану валідацію через Context Injection [3, 4].
-    """
-    action: Literal["BUY", "SELL", "HOLD"]
-    volume_mw: float = Field(ge=0.0)
-    # Прайс-кепи України 2026: DAM 15,000 грн, Balancing 16,000 грн [11, 12]
-    bid_price_uah_mwh: float = Field(ge=10.0, le=16000.0)
+class ProjectedBatteryState(BaseModel):
+    """Прогнозний стан на початок торгового інтервалу (Silver Layer) [11]."""
+    expected_soc: float = Field(ge=0.0, le=1.0)
+    feasible_discharge_mwh: float # Макс. доступна енергія для продажу
+    feasible_charge_mwh: float    # Макс. доступний обсяг для купівлі
     
-    @field_validator('action')
-    @classmethod
-    def validate_safety_limits(cls, v: str, info):
-        """
-        Механізм Gatekeeper: захист від глибокого розряду та перевантаження.
-        Використовує контекст стану батареї, прокинутий з Dagster [3, 13].
-        """
-        state: Optional[BatteryState] = info.context.get("battery_state")
-        limits: Optional[BatteryPhysicalMetrics] = info.context.get("physical_metrics")
-        
-        if not state or not limits:
-            # Якщо контекст відсутній, ми не можемо гарантувати безпеку
-            return v 
-
-        # КРИТИЧНО: Захист фізичної цілісності (SOC 5-95%) [14, 15]
-        if v == "SELL" and state.current_soc <= 0.05:
-            raise ValueError(f"CRITICAL SAFETY: SELL blocked. Current SOC {state.current_soc:.2%} is below 5% threshold.")
-        
-        if v == "BUY" and state.current_soc >= 0.95:
-            raise ValueError(f"CRITICAL SAFETY: BUY blocked. Current SOC {state.current_soc:.2%} exceeds 95% threshold.")
-
-        # Перевірка лімітів потужності інвертора
-        if info.data.get('volume_mw', 0) > limits.max_power_mw:
-            raise ValueError(f"HARD LIMIT: Volume {info.data['volume_mw']}MW exceeds inverter max power {limits.max_power_mw}MW.")
-
-        return v
-
     model_config = ConfigDict(strict=True)
 
-# 🧠 Чому ця структура ідеальна для диплома:
-# Математична точність: Поле degradation_cost_per_cycle_usd ($1.35) безпосередньо посилається на академічні бенчмарки LFP
+class BidSegment(BaseModel):
+    """Атомарний сегмент ціново-обсягової кривої [3]."""
+    side: Literal["BUY", "SELL"]
+    price_uah_mwh: float = Field(ge=0.0)
+    volume_mw: float = Field(gt=0)
+
+class ProposedBid(BaseModel):
+    """Етап 1: Валідація ринкової заявки через Projected State."""
+    venue: Literal["DAM", "IDM", "BALANCING"]
+    interval_start: datetime
+    segments: List[BidSegment]
+
+    @model_validator(mode='after')
+    def validate_bid_feasibility(self) -> 'ProposedBid':
+        # Перевірка прайс-кепів [4]
+        cap = MARKET_PRICE_CAPS[self.venue]
+        for s in self.segments:
+            if s.price_uah_mwh > cap:
+                raise ValueError(f"Price {s.price_uah_mwh} exceeds {self.venue} cap.")
+
+        # Валідація через прогнозований стан (Step 1 Gatekeeper)
+        projection: Optional[ProjectedBatteryState] = self.model_config.get("context", {}).get("projection")
+        if projection:
+            total_sell = sum(s.volume_mw for s in self.segments if s.side == "SELL")
+            if total_sell > projection.feasible_discharge_mwh:
+                raise ValueError(f"Bid volume {total_sell}MW exceeds projected capacity.")
+        
+        return self
+
+    model_config = ConfigDict(strict=True, arbitrary_types_allowed=True)
+
+class DispatchCommand(BaseModel):
+    """Етап 2: Фінальна команда на інвертор через реальну телеметрію [1]."""
+    action: Literal["CHARGE", "DISCHARGE", "HOLD"]
+    power_mw: float = Field(ge=0.0)
+
+    @model_validator(mode='after')
+    def real_time_safety_guard(self) -> 'DispatchCommand':
+        telemetry: Optional[BatteryTelemetry] = self.model_config.get("context", {}).get("telemetry")
+        if telemetry:
+            # Жорстке блокування при SOC < 5% або > 95% [5]
+            if self.action == "DISCHARGE" and telemetry.current_soc <= 0.05:
+                raise ValueError("CRITICAL: SOC too low for execution. Force HOLD.")
+            if self.action == "CHARGE" and telemetry.current_soc >= 0.95:
+                raise ValueError("CRITICAL: SOC too high for execution. Force HOLD.")
+        return self
+# 
+# 
+# 🧠 Чому ця структура ідеальна для вашого диплома:
+# Математична новизна: Ви впровадили Bid Curve замість скалярних рішень, що відповідає SOTA-дослідженню Yi et al. (2025)
 # .
-# Дотримання законодавства: Поле bid_price_uah_mwh обмежене 16,000 грн, що відповідає постанові НКРЕКП № 70 від січня 2026 року
-# .
-# Інженерна відмовостійкість: Використання ConfigDict(strict=True) у Pydantic V2 гарантує, що система не приведе автоматично рядок "5.0" до числа, запобігаючи помилкам типу даних у критичних циклах управління
-# .
-# Context Injection: Валідатор використовує info.context, що дозволяє Dagster-активу прокидати реальний стан батареї (Silver Layer) у схему валідації Gold-активу без жорсткого зв'язування об'єктів
+# Двостадійний захист: Ви демонструєте розуміння різниці між "ринковим часом" та "фізичним часом", захищаючи систему як від подачі неможливих заявок, так і від небезпечного виконання [176, Master Prompt].
+# Економічне обґрунтування: прайс-кепи взяті з нормативного джерела, а підхід до
+# degradation-aware objective спирається на Grimaldi et al. (2024)
 # .
 
 # # --------------------------------------------------------------------------------
@@ -85,7 +102,7 @@ class ProposedTrade(BaseModel):
 
 # 1. **Profitability of energy arbitrage net profit for grid-scale battery energy storage considering dynamic efficiency and degradation (PoliTO)**
 #    * **DOI:** [10.1016/j.est.2024.112380](https://doi.org/10.1016/j.est.2024.112380)
-#    * **Пояснення:** Це ключове академічне джерело (Grimaldi et al., 2024) використане для обґрунтування параметра `degradation_cost_per_cycle_usd` ($1.35). Дослідження Politecnico di Torino доводить, що інтеграція вартості деградації в модель прийняття рішень є критичною для довгострокової прибутковості BESS.
+#    * **Пояснення:** Це ключове академічне джерело (Grimaldi et al., 2024), яке обґрунтовує включення витрат деградації та dynamic efficiency безпосередньо в objective function BESS arbitrage. Конкретне demo-значення `degradation_cost_per_cycle_uah` у цьому модулі слід описувати як public-source capex-throughput proxy для preview model, а не як універсальну константу зі статті.
 
 # 2. **Energy News Digest | December 2025 – January 2026 - GOLAW**
 #    * **Посилання (Legal Insight):** [GOLAW News](https://golaw.ua/insights/energy-alert/dajdzhest-energetichnih-novin-gruden-2025-sichen-2026/)
