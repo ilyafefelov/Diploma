@@ -8,6 +8,10 @@
   position: relative;
   display: grid;
   gap: 0.7rem;
+  --operator-left-rail-width: 18rem;
+  --operator-left-rail-width-compact: 16.2rem;
+  --operator-right-rail-min: 18rem;
+  --operator-right-rail-max: 20.25rem;
   max-width: 118rem;
   margin: 0 auto;
   border: 3px solid rgba(194, 241, 255, 0.95);
@@ -230,18 +234,6 @@
   outline: none;
 }
 
-.metric-capsule::after,
-.surface-panel::after,
-.schedule-dock::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(115deg, transparent 22%, rgba(255, 255, 255, 0.12) 36%, transparent 50%);
-  transform: translateX(-130%);
-  animation: hud-sheen 16s ease-in-out infinite;
-}
-
 .metric-capsule__icon {
   display: grid;
   width: 2rem;
@@ -381,7 +373,10 @@
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: 12rem minmax(0, 1fr) minmax(18rem, 20.25rem);
+  grid-template-columns:
+    var(--operator-left-rail-width)
+    minmax(0, 1fr)
+    minmax(var(--operator-right-rail-min), var(--operator-right-rail-max));
   gap: 0.75rem;
   align-items: start;
 }
@@ -527,75 +522,6 @@
   gap: 0.4rem;
   width: fit-content;
   cursor: help;
-}
-
-.tenant-card__meta-tooltip {
-  position: absolute;
-  left: 0.1rem;
-  top: calc(100% + 0.3rem);
-  z-index: 20;
-  display: grid;
-  gap: 0.22rem;
-  width: min(14rem, calc(100vw - 3rem));
-  padding: 0.62rem 0.72rem;
-  border: 1px solid rgba(202, 249, 255, 0.82);
-  border-radius: 0.72rem;
-  background:
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.22), transparent 36%),
-    linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 56, 112, 0.98));
-  color: rgba(238, 250, 255, 0.9);
-  font-size: 0.66rem;
-  font-weight: 700;
-  line-height: 1.32;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(0.24rem) scale(0.97);
-  transition: opacity 140ms ease, transform 140ms ease;
-}
-
-.tenant-card__meta-item:hover .tenant-card__meta-tooltip,
-.tenant-card__meta-item:focus-visible .tenant-card__meta-tooltip {
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
-
-.tenant-card__ukraine-map {
-  margin-top: 0.28rem;
-  overflow: hidden;
-  border: 1px solid rgba(215, 255, 79, 0.28);
-  border-radius: 0.55rem;
-  background:
-    radial-gradient(circle at 70% 45%, rgba(215, 255, 79, 0.2), transparent 22%),
-    linear-gradient(180deg, rgba(0, 65, 130, 0.6), rgba(0, 31, 78, 0.46));
-  padding: 0.25rem;
-}
-
-.tenant-card__ukraine-map svg {
-  display: block;
-  width: 100%;
-  height: 3.6rem;
-  overflow: visible;
-}
-
-.tenant-card__ukraine-body {
-  fill: rgba(215, 255, 79, 0.88);
-  stroke: rgba(255, 255, 255, 0.88);
-  stroke-width: 1.7;
-  filter: drop-shadow(0 0 7px rgba(215, 255, 79, 0.38));
-}
-
-.tenant-card__ukraine-river {
-  fill: none;
-  stroke: rgba(0, 89, 166, 0.5);
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
-.tenant-card__ukraine-pin {
-  fill: #50f0ff;
-  stroke: white;
-  stroke-width: 2;
-  animation: hud-pulse 4.6s ease-out infinite;
 }
 
 .hud-nav {
@@ -1824,7 +1750,10 @@
 
 .schedule-dock {
   display: grid;
-  grid-template-columns: 12rem minmax(0, 1fr) minmax(18rem, 20.25rem);
+  grid-template-columns:
+    var(--operator-left-rail-width)
+    minmax(0, 1fr)
+    minmax(var(--operator-right-rail-min), var(--operator-right-rail-max));
   gap: 0.75rem;
   align-items: stretch;
   overflow: visible;
@@ -2009,16 +1938,26 @@
   }
 }
 
-@keyframes hud-sheen {
-  0%,
-  100% {
-    transform: translateX(-130%);
-  }
+/* Static high-contrast glass pass: deeper cards without distracting sheen. */
+.operator-frame .metric-capsule {
+  border-color: rgba(202, 249, 255, 0.62);
+  background:
+    linear-gradient(180deg, rgba(0, 112, 178, 0.9), rgba(0, 52, 108, 0.97));
+  box-shadow:
+    0 14px 26px rgba(0, 36, 82, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+}
 
-  44%,
-  55% {
-    transform: translateX(130%);
-  }
+.operator-frame .surface-panel,
+.operator-frame .schedule-dock {
+  border-color: rgba(202, 249, 255, 0.58);
+  background:
+    linear-gradient(180deg, rgba(0, 118, 178, 0.76), rgba(0, 43, 96, 0.93));
+  box-shadow:
+    0 16px 34px rgba(0, 35, 78, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28);
 }
 
 @keyframes tenant-skyline-drift {
@@ -2042,7 +1981,7 @@
   }
 
   .operator-body {
-    grid-template-columns: 10.8rem minmax(0, 1fr);
+    grid-template-columns: var(--operator-left-rail-width-compact) minmax(0, 1fr);
   }
 
   .operator-right-rail {
@@ -2051,7 +1990,7 @@
   }
 
   .schedule-dock {
-    grid-template-columns: 10.8rem minmax(0, 1fr);
+    grid-template-columns: var(--operator-left-rail-width-compact) minmax(0, 1fr);
   }
 
   .dock-selectors {

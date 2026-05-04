@@ -200,6 +200,8 @@ onBeforeUnmount(() => {
           :selected-tenant-id="selectedTenantId"
           :nav-items="operatorNavItems"
           :active-registry-summary="activeRegistrySummary"
+          :signal-preview="signalPreview"
+          :baseline-preview="baselinePreview"
           @update:selected-tenant-id="setSelectedTenantId"
         />
 

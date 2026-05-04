@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import type { TenantSummary } from '~/types/control-plane'
+import type { BaselineLpPreview, SignalPreview, TenantSummary } from '~/types/control-plane'
 import type { OperatorNavItem } from '~/types/operator-dashboard'
 
 const props = defineProps<{
@@ -9,11 +9,18 @@ const props = defineProps<{
   selectedTenantId: string
   navItems: OperatorNavItem[]
   activeRegistrySummary: string
+  signalPreview?: SignalPreview | null
+  baselinePreview?: BaselineLpPreview | null
 }>()
 
 const emit = defineEmits<{
   'update:selectedTenantId': [value: string]
 }>()
+
+const compactBadgeUi = {
+  base: 'min-w-0 max-w-full',
+  label: 'truncate'
+}
 
 const tenantOptions = computed(() => {
   return props.tenants.map(tenant => ({
@@ -54,6 +61,13 @@ const ukraineMapBounds = {
   maxLon: 40.2
 }
 
+const ukraineMapProjectionInset = {
+  left: 8,
+  right: 8,
+  top: 12,
+  bottom: 14
+}
+
 type TenantMapMarker = TenantSummary & {
   left: number
   top: number
@@ -61,14 +75,17 @@ type TenantMapMarker = TenantSummary & {
 }
 
 const clamp01 = (value: number): number => Math.min(1, Math.max(0, value))
+const formatWholeNumber = (value: number): string => Math.round(value).toLocaleString('en-US')
 
 const tenantMarkers = computed<TenantMapMarker[]>(() => {
   const latSpan = ukraineMapBounds.maxLat - ukraineMapBounds.minLat
   const lonSpan = ukraineMapBounds.maxLon - ukraineMapBounds.minLon
+  const mapWidth = 100 - ukraineMapProjectionInset.left - ukraineMapProjectionInset.right
+  const mapHeight = 100 - ukraineMapProjectionInset.top - ukraineMapProjectionInset.bottom
 
   return props.tenants.map(tenant => {
-    const left = clamp01((tenant.longitude - ukraineMapBounds.minLon) / lonSpan) * 100
-    const top = clamp01((ukraineMapBounds.maxLat - tenant.latitude) / latSpan) * 100
+    const left = ukraineMapProjectionInset.left + clamp01((tenant.longitude - ukraineMapBounds.minLon) / lonSpan) * mapWidth
+    const top = ukraineMapProjectionInset.top + clamp01((ukraineMapBounds.maxLat - tenant.latitude) / latSpan) * mapHeight
 
     return {
       ...tenant,
@@ -86,6 +103,104 @@ const markerLabel = (tenant: TenantSummary): string => {
 const onSelectTenant = (tenantId: string): void => {
   emit('update:selectedTenantId', tenantId)
 }
+
+const weatherUpliftValue = computed(() => {
+  const currentBias = props.signalPreview?.weather_bias?.[0]
+
+  if (typeof currentBias === 'number') {
+    return currentBias
+  }
+
+  const values = props.signalPreview?.weather_bias || []
+
+  if (values.length === 0) {
+    return null
+  }
+
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+})
+
+const currentMarketPrice = computed(() => {
+  const signalPrice = props.signalPreview?.market_price?.[0]
+
+  if (typeof signalPrice === 'number') {
+    return signalPrice
+  }
+
+  const baselinePrice = props.baselinePreview?.forecast?.[0]?.predicted_price_uah_mwh
+
+  return typeof baselinePrice === 'number' ? baselinePrice : null
+})
+
+const currentWeatherEmoji = computed(() => {
+  const uplift = weatherUpliftValue.value
+
+  if (uplift === null) {
+    return '🌤️'
+  }
+
+  if (uplift >= 120) {
+    return '☀️'
+  }
+
+  if (uplift >= 40) {
+    return '🌤️'
+  }
+
+  if (uplift <= -40) {
+    return '🌧️'
+  }
+
+  return '⛅'
+})
+
+const currentWeatherLabel = computed(() => {
+  const uplift = weatherUpliftValue.value
+
+  if (uplift === null) {
+    return 'Weather pending'
+  }
+
+  if (uplift >= 120) {
+    return 'Sunny uplift'
+  }
+
+  if (uplift >= 40) {
+    return 'Mild uplift'
+  }
+
+  if (uplift <= -40) {
+    return 'Rain drag'
+  }
+
+  return 'Stable sky'
+})
+
+const weatherUpliftLabel = computed(() => {
+  const uplift = weatherUpliftValue.value
+
+  if (uplift === null) {
+    return 'Waiting'
+  }
+
+  return `${uplift > 0 ? '+' : ''}${formatWholeNumber(uplift)} UAH/MWh`
+})
+
+const currentMarketPriceLabel = computed(() => {
+  const price = currentMarketPrice.value
+
+  if (price === null) {
+    return 'Waiting'
+  }
+
+  return `${formatWholeNumber(price)} UAH/MWh`
+})
+
+const weatherSourceLabel = computed(() => {
+  const source = props.signalPreview?.weather_sources?.[0]
+
+  return source ? source.replaceAll('_', ' ') : 'Source pending'
+})
 </script>
 
 <template>
@@ -122,74 +237,127 @@ const onSelectTenant = (tenantId: string): void => {
         />
         <div class="tenant-card__meta">
           <span>{{ tenantMeta }}</span>
-          <span class="tenant-card__meta-item">
-            {{ tenantCoordinates }}
+          <UTooltip
+            text="Coordinate pair in decimal degrees from the selected tenant record."
+            :delay-duration="0"
+          >
             <span
-              class="tenant-card__meta-tooltip"
-              role="tooltip"
-            >
-              <span>Coordinate pair in decimal degrees from the selected tenant record.</span>
-              <span>Formula: latitude and longitude are lat/lon of the mapped installation.</span>
-            </span>
-          </span>
-        </div>
-        <div
-          class="tenant-card__ukraine-map"
-          role="img"
-          aria-label="Active tenant and sites on Ukraine map"
-        >
-          <p class="tenant-card__selection-info">
-            <span class="tenant-card__selection-info__title">
-              {{ selectedTenant ? 'Active lot' : 'Select a lot' }}
-            </span>
-            <span class="tenant-card__selection-info__name">
-              {{ selectedTenant ? markerLabel(selectedTenant) : 'No lot selected' }}
-            </span>
-            <span
-              class="tenant-card__selection-info__coords"
-              title="Coordinates of the selected tenant"
+              class="tenant-card__meta-item"
+              tabindex="0"
             >
               {{ tenantCoordinates }}
             </span>
-          </p>
-          <div class="tenant-card__ukraine-map-surface">
-            <img
-              class="tenant-card__ukraine-outline"
-              src="/design/ukraine-outline.svg"
-              alt="Outline of Ukraine"
-            />
-            <div
-              class="tenant-card__tenant-markers"
-              aria-hidden="true"
-            >
-              <button
-                v-for="marker in tenantMarkers"
-                :key="marker.tenant_id"
-                class="tenant-card__tenant-marker"
-                :class="{ 'tenant-card__tenant-marker--active': marker.isSelected }"
-                :style="{ left: `${marker.left}%`, top: `${marker.top}%` }"
-                type="button"
-                :aria-label="`Select tenant ${markerLabel(marker)}`"
-                @click="onSelectTenant(marker.tenant_id)"
-                @keydown.enter.prevent="onSelectTenant(marker.tenant_id)"
-                @keydown.space.prevent="onSelectTenant(marker.tenant_id)"
-              >
-                <span
-                  aria-hidden="true"
-                  class="tenant-card__tenant-marker-icon"
-                />
-              </button>
-            </div>
-          </div>
-          <ul class="tenant-card__ukraine-map-meta" role="list">
-            <li>Legend: active lot = green diamond, others = blue points</li>
-            <li>
-              Projection:
-              <code>x = (lon - 22.0) / (40.2 - 22.0), y = (52.6 - lat) / (52.6 - 44.0)</code>
-            </li>
-            <li>Markers are interactive: click any point to open that client</li>
-          </ul>
+          </UTooltip>
         </div>
+      </div>
+      <div
+        class="tenant-card__ukraine-map"
+        role="group"
+        aria-label="Active tenant and sites on Ukraine map"
+      >
+        <div class="tenant-card__location-weather">
+          <div class="tenant-card__weather-icon" aria-hidden="true">
+            {{ currentWeatherEmoji }}
+          </div>
+          <div class="tenant-card__weather-copy">
+            <div class="tenant-card__weather-row">
+              <span class="tenant-card__selection-info__name">
+                {{ selectedTenant ? markerLabel(selectedTenant) : 'No lot selected' }}
+              </span>
+              <UBadge
+                :label="currentWeatherLabel"
+                icon="i-lucide-cloud-sun"
+                color="success"
+                variant="soft"
+                size="xs"
+                :ui="compactBadgeUi"
+              />
+            </div>
+            <div class="tenant-card__weather-stats">
+              <UBadge
+                :label="currentMarketPriceLabel"
+                icon="i-lucide-zap"
+                color="warning"
+                variant="subtle"
+                size="xs"
+                :ui="compactBadgeUi"
+              />
+              <UBadge
+                :label="weatherUpliftLabel"
+                icon="i-lucide-cloud-sun"
+                color="success"
+                variant="subtle"
+                size="xs"
+                :ui="compactBadgeUi"
+              />
+              <UBadge
+                :label="tenantCoordinates"
+                icon="i-lucide-crosshair"
+                color="info"
+                variant="subtle"
+                size="xs"
+                :ui="compactBadgeUi"
+              />
+            </div>
+            <p class="tenant-card__weather-source">
+              {{ weatherSourceLabel }}
+            </p>
+          </div>
+        </div>
+        <div class="tenant-card__ukraine-map-surface">
+          <img
+            class="tenant-card__ukraine-outline"
+            src="/design/ukraine-outline.svg"
+            alt="Outline of Ukraine"
+          />
+          <div
+            class="tenant-card__tenant-markers"
+          >
+            <button
+              v-for="marker in tenantMarkers"
+              :key="marker.tenant_id"
+              class="tenant-card__tenant-marker"
+              :class="{ 'tenant-card__tenant-marker--active': marker.isSelected }"
+              :style="{ left: `${marker.left}%`, top: `${marker.top}%` }"
+              type="button"
+              :aria-label="`Select tenant ${markerLabel(marker)}`"
+              @click="onSelectTenant(marker.tenant_id)"
+              @keydown.enter.prevent="onSelectTenant(marker.tenant_id)"
+              @keydown.space.prevent="onSelectTenant(marker.tenant_id)"
+            >
+              <span
+                aria-hidden="true"
+                class="tenant-card__tenant-marker-icon"
+              />
+            </button>
+          </div>
+        </div>
+        <ul class="tenant-card__ukraine-map-meta" role="list">
+          <li>
+            <UBadge
+              label="Active"
+              icon="i-lucide-gem"
+              color="success"
+              variant="solid"
+              size="xs"
+              :ui="compactBadgeUi"
+            />
+            <span>green diamond</span>
+            <UBadge
+              label="Other"
+              icon="i-lucide-circle-dot"
+              color="info"
+              variant="subtle"
+              size="xs"
+              :ui="compactBadgeUi"
+            />
+            <span>blue points</span>
+          </li>
+          <li>
+            <UIcon name="i-lucide-mouse-pointer-click" />
+            <span>Click any point to open that client</span>
+          </li>
+        </ul>
       </div>
     </section>
 
@@ -272,8 +440,22 @@ const onSelectTenant = (tenantId: string): void => {
 </template>
 
 <style scoped>
+.tenant-card {
+  border-color: rgba(166, 245, 255, 0.32);
+  background:
+    linear-gradient(180deg, rgba(8, 26, 45, 0.82), rgba(3, 13, 31, 0.88));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(14, 255, 154, 0.12),
+    0 16px 34px rgba(0, 16, 36, 0.34);
+  backdrop-filter: blur(18px) saturate(1.25);
+}
+
 .tenant-card__ukraine-map {
-  margin-top: 0.45rem;
+  grid-column: 1 / -1;
+  width: calc(100% + 1.44rem);
+  margin-top: 0.54rem;
+  margin-inline: -0.72rem;
   padding: 0;
   background: transparent;
   border: 0;
@@ -284,29 +466,34 @@ const onSelectTenant = (tenantId: string): void => {
 .tenant-card__ukraine-map-surface {
   position: relative;
   width: 100%;
-  min-height: clamp(12rem, 32vw, 17rem);
-  aspect-ratio: 16 / 10;
+  min-height: 8.35rem;
+  aspect-ratio: 1 / 0.88;
+  padding-inline: 4px;
   overflow: hidden;
-  border: 1px solid rgba(163, 255, 132, 0.44);
-  border-radius: 1rem;
+  border-top: 1px solid rgba(141, 244, 255, 0.34);
+  border-bottom: 1px solid rgba(61, 255, 152, 0.22);
+  border-inline: 0;
+  border-radius: 0;
   isolation: isolate;
   background:
-    radial-gradient(circle at 18% 8%, rgba(178, 255, 132, 0.24), transparent 32%),
-    linear-gradient(145deg, rgba(6, 36, 83, 0.85), rgba(4, 26, 56, 0.8));
+    radial-gradient(circle at 56% 54%, rgba(57, 255, 152, 0.08), transparent 34%),
+    linear-gradient(180deg, rgba(4, 22, 43, 0.78), rgba(1, 8, 23, 0.94));
   box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.18),
-    inset 0 14px 34px rgba(5, 12, 34, 0.56),
-    0 20px 30px rgba(1, 8, 22, 0.48);
+    inset 0 10px 26px rgba(2, 9, 26, 0.62),
+    inset 0 -14px 24px rgba(36, 255, 149, 0.06),
+    inset 0 0 0 1px rgba(141, 244, 255, 0.08);
   backdrop-filter: blur(10px);
 }
 
 .tenant-card__ukraine-map-surface::before {
   content: '';
   position: absolute;
-  inset: 0.28rem;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 0.78rem;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  inset: 0;
+  background:
+    linear-gradient(rgba(141, 244, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(141, 244, 255, 0.04) 1px, transparent 1px);
+  background-size: 2.2rem 2.2rem;
+  mask-image: radial-gradient(circle at 50% 50%, black 32%, transparent 78%);
   pointer-events: none;
 }
 
@@ -315,12 +502,15 @@ const onSelectTenant = (tenantId: string): void => {
   height: 100%;
   object-fit: contain;
   display: block;
-  opacity: 0.9;
+  opacity: 0.96;
+  filter:
+    drop-shadow(0 0 8px rgba(141, 244, 255, 0.58))
+    drop-shadow(0 0 18px rgba(35, 205, 255, 0.22));
 }
 
 .tenant-card__tenant-markers {
   position: absolute;
-  inset: 0;
+  inset: 0 4px;
 }
 
 .tenant-card__tenant-marker {
@@ -328,8 +518,8 @@ const onSelectTenant = (tenantId: string): void => {
   left: 0;
   top: 0;
   transform: translate(-50%, -50%);
-  width: 0.72rem;
-  height: 0.72rem;
+  width: 0.62rem;
+  height: 0.62rem;
   min-width: 0;
   min-height: 0;
   padding: 0;
@@ -363,8 +553,8 @@ const onSelectTenant = (tenantId: string): void => {
 }
 
 .tenant-card__tenant-marker--active {
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.55rem;
+  height: 1.55rem;
   border: 0;
   background: transparent;
   animation:
@@ -376,8 +566,10 @@ const onSelectTenant = (tenantId: string): void => {
 
 .tenant-card__tenant-marker--active:hover,
 .tenant-card__tenant-marker--active:focus-visible {
-  transform: none;
-  box-shadow: none;
+  animation:
+    sims-active-hover-bounce 0.72s ease-in-out infinite;
+  filter:
+    drop-shadow(0 16px 20px rgba(66, 255, 73, 0.46));
 }
 
 .tenant-card__tenant-marker--active .tenant-card__tenant-marker-icon {
@@ -385,7 +577,7 @@ const onSelectTenant = (tenantId: string): void => {
   border-radius: 0.16rem;
   clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
   background:
-    linear-gradient(135deg, #8fff76, #2ed46f 58%, #2a9b47);
+    linear-gradient(135deg, #b6ff38 0%, #35f56f 48%, #119346 100%);
   box-shadow:
     inset -6px -6px 14px rgba(8, 48, 13, 0.35),
     inset 3px 4px 12px rgba(255, 255, 255, 0.52);
@@ -410,49 +602,99 @@ const onSelectTenant = (tenantId: string): void => {
 
 .tenant-card__ukraine-map-meta {
   list-style: none;
-  padding: 0.52rem 0.62rem;
-  margin: 0.45rem 0 0;
-  color: rgba(226, 255, 236, 0.91);
-  font-size: 0.64rem;
-  line-height: 1.35;
-  border-radius: 0.66rem;
-  border: 1px solid rgba(163, 255, 132, 0.32);
-  background:
-    linear-gradient(180deg, rgba(8, 45, 90, 0.55), rgba(10, 31, 57, 0.6));
-  display: grid;
-  gap: 0.22rem;
-}
-
-.tenant-card__selection-info {
-  position: absolute;
-  left: 0.55rem;
-  top: 0.55rem;
-  z-index: 5;
-  display: grid;
-  gap: 0.18rem;
+  padding: 0.42rem 0.72rem 0;
   margin: 0;
-  padding: 0.45rem 0.56rem;
-  border: 1px solid rgba(185, 255, 153, 0.35);
-  border-radius: 0.62rem;
-  backdrop-filter: blur(10px);
-  background:
-    linear-gradient(180deg, rgba(11, 41, 82, 0.82), rgba(7, 28, 53, 0.82));
-  font-size: 0.68rem;
-  line-height: 1.25;
-  color: rgba(227, 255, 234, 0.95);
-  width: max-content;
+  color: rgba(218, 249, 255, 0.78);
+  font-size: 0.58rem;
+  line-height: 1.35;
+  border: 0;
+  background: transparent;
+  display: flex;
+  gap: 0.42rem;
+  overflow: hidden;
+  flex-wrap: wrap;
 }
 
-.tenant-card__selection-info__title {
-  color: #a1ff87;
+.tenant-card__ukraine-map-meta li {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.tenant-card__ukraine-map-meta .icon {
+  flex: 0 0 auto;
+  color: #b8ff32;
+}
+
+.tenant-card__location-weather {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.52rem;
+  margin: 0 0.72rem 0.48rem;
+  padding: 0.55rem 0.58rem;
+  border: 1px solid rgba(164, 246, 255, 0.24);
+  border-radius: 0.72rem;
+  background: rgba(1, 15, 35, 0.46);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    0 12px 26px rgba(0, 9, 25, 0.26);
+  backdrop-filter: blur(14px) saturate(1.15);
+}
+
+.tenant-card__weather-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.64rem;
+  background:
+    linear-gradient(180deg, rgba(22, 76, 112, 0.82), rgba(6, 26, 50, 0.86));
+  font-size: 1.12rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.tenant-card__weather-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.tenant-card__weather-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.tenant-card__weather-stats {
+  display: flex;
+  gap: 0.26rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tenant-card__weather-source {
+  margin: 0;
+  color: rgba(220, 246, 255, 0.62);
   font-size: 0.58rem;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
 }
 
 .tenant-card__selection-info__name {
   font-weight: 700;
   font-size: 0.72rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tenant-card__selection-info__coords {
@@ -467,6 +709,11 @@ const onSelectTenant = (tenantId: string): void => {
     "Courier New",
     monospace;
   font-size: 0.64rem;
+}
+
+:deep(.tenant-card__location-weather .badge),
+:deep(.tenant-card__ukraine-map-meta .badge) {
+  max-width: 100%;
 }
 
 code {
@@ -530,6 +777,21 @@ code {
       inset -4px -4px 18px rgba(14, 56, 22, 0.28),
       inset 2px 2px 20px rgba(255, 255, 255, 0.7),
       0 0 0 6px rgba(89, 255, 122, 0.38);
+  }
+}
+
+@keyframes sims-active-hover-bounce {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(-8deg) scale(1.08);
+  }
+
+  35% {
+    transform: translate(-50%, -56%) rotate(10deg) scale(1.24);
+  }
+
+  70% {
+    transform: translate(-50%, -47%) rotate(-4deg) scale(1.14);
   }
 }
 </style>
