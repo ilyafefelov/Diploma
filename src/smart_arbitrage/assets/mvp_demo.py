@@ -25,6 +25,10 @@ from smart_arbitrage.assets.gold.baseline_solver import (
     HourlyDamBaselineSolver,
 )
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics, BatteryTelemetry, DispatchCommand
+from smart_arbitrage.resources.market_data_store import (
+    get_market_data_store,
+    market_price_observations_from_frame,
+)
 
 DEMO_EXPERIMENT_NAME: Final[str] = "mvp-baseline-demo"
 DEMO_HISTORY_HOURS: Final[int] = 15 * 24
@@ -77,11 +81,14 @@ def dam_price_history(
         str(value)
         for value in price_history.select("weather_source").drop_nulls().unique().to_series().to_list()
     )
+    market_observations = market_price_observations_from_frame(price_history)
+    get_market_data_store().upsert_market_prices(market_observations)
     context.add_output_metadata(
         {
             "source_values": ", ".join(source_values),
             "weather_source_values": ", ".join(weather_source_values),
             "rows": price_history.height,
+            "market_observation_rows": len(market_observations),
             "start_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0).isoformat(),
             "anchor_timestamp": anchor_timestamp.isoformat(),
             "end_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1).isoformat(),

@@ -16,6 +16,10 @@ import polars as pl
 import yaml
 
 from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DEFAULT_TIMESTAMP_COLUMN
+from smart_arbitrage.resources.market_data_store import (
+    get_market_data_store,
+    weather_observations_from_frame,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +42,13 @@ UAH_PER_EUR: Final[float] = 40.0
 OREE_PRICES_URL: Final[str] = "https://www.oree.com.ua/index.php/pricectr?lang=english"
 OREE_DATA_VIEW_URL: Final[str] = "https://www.oree.com.ua/index.php/pricectr/data_view"
 OPEN_METEO_URL: Final[str] = "https://api.open-meteo.com/v1/forecast"
+SYNTHETIC_MARKET_SOURCE_URL: Final[str] = "synthetic://smart_arbitrage/market_price_history"
+SYNTHETIC_WEATHER_SOURCE_URL: Final[str] = "synthetic://smart_arbitrage/weather_forecast"
+OBSERVED_SOURCE_KIND: Final[str] = "observed"
+SYNTHETIC_SOURCE_KIND: Final[str] = "synthetic"
+LEVEL1_MARKET_VENUE: Final[str] = "DAM"
+LEVEL1_MARKET_ZONE: Final[str] = "IPS"
+LEVEL1_MARKET_TIMEZONE: Final[str] = "Europe/Kyiv"
 DEFAULT_MARKET_HISTORY_HOURS: Final[int] = 15 * 24
 DEFAULT_MARKET_FORECAST_HOURS: Final[int] = 24
 DEFAULT_WEATHER_FORECAST_HOURS: Final[int] = 7 * 24
@@ -59,6 +70,11 @@ MARKET_WEATHER_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "season",
     "sky_condition",
     "source",
+    "source_kind",
+    "source_url",
+    "location_latitude",
+    "location_longitude",
+    "location_timezone",
 )
 
 
@@ -105,6 +121,9 @@ def weather_forecast_bronze(context, config: WeatherLocationConfig) -> pl.DataFr
         metadata["tenant_id"] = tenant_id
     if location_config_path is not None:
         metadata["location_config_path"] = location_config_path
+    weather_observations = weather_observations_from_frame(weather_frame, tenant_id=tenant_id)
+    get_market_data_store().upsert_weather_observations(weather_observations)
+    metadata["weather_observation_rows"] = len(weather_observations)
     context.add_output_metadata(metadata)
     return weather_frame
 
@@ -139,7 +158,11 @@ def build_demo_market_price_history(
     else:
         history_frame = base_history
 
-    return _validate_market_data(history_frame)
+    window_start = base_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0)
+    window_end = base_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1)
+    return _validate_market_data(
+        history_frame.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN).is_between(window_start, window_end, closed="both"))
+    )
 
 
 def build_synthetic_market_price_history(
@@ -261,13 +284,28 @@ def _build_market_row(
     price_uah_mwh: float,
     volume_mwh: float,
     source: str,
+    source_kind: str | None = None,
+    source_url: str | None = None,
+    market_venue: str = LEVEL1_MARKET_VENUE,
+    market_zone: str = LEVEL1_MARKET_ZONE,
+    market_timezone: str = LEVEL1_MARKET_TIMEZONE,
 ) -> dict[str, Any]:
+    resolved_source_kind = source_kind or (SYNTHETIC_SOURCE_KIND if source == "SYNTHETIC" else OBSERVED_SOURCE_KIND)
+    resolved_source_url = source_url or (SYNTHETIC_MARKET_SOURCE_URL if source == "SYNTHETIC" else OREE_PRICES_URL)
     return {
         DEFAULT_TIMESTAMP_COLUMN: timestamp,
         "price_eur_mwh": float(price_eur_mwh),
         DEFAULT_PRICE_COLUMN: float(price_uah_mwh),
         "volume_mwh": float(max(0.0, volume_mwh)),
         "source": source,
+        "source_kind": resolved_source_kind,
+        "source_url": resolved_source_url,
+        "market_venue": market_venue,
+        "market_zone": market_zone,
+        "market_timezone": market_timezone,
+        "price_spike": False,
+        "low_volume": False,
+        "fetched_at": datetime.now(),
     }
 
 
@@ -276,8 +314,11 @@ def _round_to_hour(value: datetime) -> datetime:
 
 
 def _overlay_market_rows(base_history: pl.DataFrame, live_history: pl.DataFrame) -> pl.DataFrame:
-    required_columns = [DEFAULT_TIMESTAMP_COLUMN, "price_eur_mwh", DEFAULT_PRICE_COLUMN, "volume_mwh", "source"]
-    aligned_live_history = live_history.select(required_columns)
+    required_columns = base_history.columns
+    missing_columns = [column_name for column_name in required_columns if column_name not in live_history.columns]
+    aligned_live_history = live_history.with_columns(
+        [pl.lit(None).alias(column_name) for column_name in missing_columns]
+    ).select(required_columns)
     return (
         pl.concat([base_history.select(required_columns), aligned_live_history], how="diagonal_relaxed")
         .sort(DEFAULT_TIMESTAMP_COLUMN)
@@ -347,18 +388,17 @@ def _fetch_oree_data_view_prices(target_date: date) -> list[dict[str, Any]] | No
                 OREE_DATA_VIEW_URL,
                 data={
                     "date": target_date.strftime("%m.%Y"),
-                    "market": "DAM",
-                    "zone": "IPS",
+                    "market": LEVEL1_MARKET_VENUE,
+                    "zone": LEVEL1_MARKET_ZONE,
+                },
+                headers={
+                    "Referer": OREE_PRICES_URL,
+                    "X-Requested-With": "XMLHttpRequest",
                 },
             )
             response.raise_for_status()
 
-        content_type = response.headers.get("content-type", "")
-        if "application/json" in content_type:
-            payload = response.json()
-            content_html = payload.get("content", "") if isinstance(payload, dict) else ""
-        else:
-            content_html = response.text
+        content_html = _extract_oree_data_view_content(response)
         if not content_html:
             return None
         parsed_rows = _extract_prices_from_data_view_content(content_html, target_date)
@@ -368,6 +408,21 @@ def _fetch_oree_data_view_prices(target_date: date) -> list[dict[str, Any]] | No
     except Exception as error:
         logger.warning("OREE data_view fetch failed for %s: %s", target_date, error)
         return None
+
+
+def _extract_oree_data_view_content(response: httpx.Response) -> str | None:
+    try:
+        payload = response.json()
+    except ValueError:
+        payload = None
+
+    if isinstance(payload, dict):
+        content_html = payload.get("content")
+        if isinstance(content_html, str) and content_html.strip():
+            return content_html
+
+    content_html = response.text
+    return content_html if content_html.strip() else None
 
 
 def _extract_prices_from_data_view_content(content_html: str, target_date: date) -> list[dict[str, Any]]:
@@ -399,6 +454,8 @@ def _extract_prices_from_data_view_content(content_html: str, target_date: date)
                     price_uah_mwh=price_uah,
                     volume_mwh=1000.0,
                     source="OREE_DATA_VIEW",
+                    source_kind=OBSERVED_SOURCE_KIND,
+                    source_url=OREE_DATA_VIEW_URL,
                 )
             )
         return parsed_rows
@@ -451,6 +508,8 @@ def _parse_table_rows(table: Any, target_date: date) -> list[dict[str, Any]]:
                 price_uah_mwh=price_uah,
                 volume_mwh=volume_raw,
                 source="OREE_HTML",
+                source_kind=OBSERVED_SOURCE_KIND,
+                source_url=OREE_PRICES_URL,
             )
         )
         seen_hours.add(hour)
@@ -902,6 +961,8 @@ def _fetch_openmeteo_data(latitude: float, longitude: float, timezone: str) -> l
                     "pressure": float(hourly.get("surface_pressure", [1013.0])[index] or 1013.0),
                     "humidity": float(hourly.get("relative_humidity_2m", [60.0])[index] or 60.0),
                     "source": "OPEN_METEO",
+                    "source_kind": OBSERVED_SOURCE_KIND,
+                    "source_url": OPEN_METEO_URL,
                 }
             )
         logger.info("Fetched %s Open-Meteo hourly rows.", len(weather_rows))
@@ -934,6 +995,8 @@ def _generate_synthetic_weather(
                 "pressure": 1008.0 + 7.0 * math.sin((hour_offset / 48.0) * 2.0 * math.pi),
                 "humidity": max(20.0, min(100.0, 65.0 + 20.0 * math.cos((hour_offset / 12.0) * math.pi))),
                 "source": "SYNTHETIC",
+                "source_kind": SYNTHETIC_SOURCE_KIND,
+                "source_url": SYNTHETIC_WEATHER_SOURCE_URL,
             }
         )
     return synthetic_rows
