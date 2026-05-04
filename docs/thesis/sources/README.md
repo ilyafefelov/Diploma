@@ -21,6 +21,9 @@
 | 10 | `batteries-11-00392-v2-Modelling of Battery Energy Storage Systems Under Real-World Applications and Conditions.pdf` | (MDPI Batteries 11, 392) | Моделювання BESS у реальних умовах | MDPI Batteries |
 | 11 | `Journal of Forecasting - 2025 - Jin - Seasonal Decomposition‐Enhanced Deep Learning Architecture for Probabilistic.pdf` | Jin et al., 2025 | **Probabilistic forecasting** з сезонною декомпозицією | J. of Forecasting, 2025 |
 | 12 | `Deep_Learning_for_Electricity_Price_Forecasting_A_.pdf` | (огляд) | Survey: глибоке навчання для прогнозування цін на електроенергію | — |
+| 13 | `nrel-2021-storage-futures-technology-modeling-input-data-report.pdf` | Augustine & Blair, 2021 | **NREL Storage Futures** — cost/performance assumptions for deployed storage technologies | NREL/TP-5700-78694 |
+| 14 | `2403.10617v1-depreciation-cost-poor-proxy-grid-storage-optimization.pdf` | Kumtepeli et al., 2024 | **Degradation depreciation as proxy** in rolling-horizon grid-storage optimization | arXiv:2403.10617 / 10.48550/arXiv.2403.10617 |
+| 15 | `nrel-atb-2023-pv-plus-battery.md` | NREL ATB, 2023 | **PV-plus-battery guide** — battery RTE, replacement, and cycle-degradation assumptions | NREL ATB web guide |
 
 ---
 
@@ -53,7 +56,7 @@
 - Grimaldi et al. 2024 · Hesse et al. 2019 · Chen et al. 2021 (Decision Transformer)
 
 ### Фізичне моделювання та деградація батарей
-- Maheshwari et al. 2020 · `batteries-11-00392-v2` · `Exploring Lithium-Ion Battery Degradation.pdf`
+- Maheshwari et al. 2020 · Hesse et al. 2019 · Kumtepeli et al. 2024 · NREL Storage Futures · NREL ATB · `batteries-11-00392-v2` · `Exploring Lithium-Ion Battery Degradation.pdf`
 
 ---
 
