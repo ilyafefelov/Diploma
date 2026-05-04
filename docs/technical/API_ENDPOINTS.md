@@ -192,6 +192,28 @@ Operational notes:
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
 - This remains recommendation-preview language only. It does not emit `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
 
+### `GET /dashboard/battery-state`
+
+Returns the latest physical battery telemetry and the latest hourly Level 1 battery-state snapshot for a tenant.
+
+Request query example:
+
+```text
+/dashboard/battery-state?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `latest_telemetry`: latest 5-minute raw telemetry row, or `null` if no MQTT/API telemetry has been ingested.
+- `hourly_snapshot`: latest hourly Silver snapshot with SOC open/close/mean, SOH, throughput, EFC delta, and freshness.
+- `fallback_reason`: `telemetry_unavailable`, `hourly_snapshot_unavailable`, `hourly_snapshot_stale`, or `null` when data is fresh.
+
+Operational notes:
+
+- This endpoint separates physical truth now from planning/projected state.
+- It is safe for the dashboard to show `latest_telemetry` and `hourly_snapshot` as separate panels.
+- If telemetry is missing or stale, optimization read models continue to fall back to tenant defaults.
+
 ### `GET /dashboard/baseline-lp-preview`
 
 Builds the first tenant-aware Slice 2 baseline LP read model for operator preview.
@@ -208,6 +230,8 @@ Response shape:
 - `recommendation_schedule`: hourly signed MW recommendation trace with projected SOC and per-slot economics
 - `projected_state`: projected SOC/throughput/degradation trace derived from the feasible schedule
 - `economics`: aggregated gross market value, degradation penalty, net value, and throughput in canonical UAH/MWh units
+- `starting_soc_source`: `telemetry_hourly` when a fresh hourly telemetry snapshot is available, otherwise `tenant_default`
+- `telemetry_freshness`: latest snapshot freshness metadata, or `null` when no telemetry snapshot exists
 
 Operational notes:
 

@@ -11,6 +11,11 @@ from smart_arbitrage.resources.operator_status_store import (
 	OperatorFlowType,
 	OperatorStatusRecord,
 )
+from smart_arbitrage.resources.battery_telemetry_store import (
+	BatteryStateHourlySnapshot,
+	BatteryTelemetryObservation,
+	InMemoryBatteryTelemetryStore,
+)
 
 
 class _MaterializeResult:
@@ -38,6 +43,13 @@ def client() -> TestClient:
 def fake_status_store(monkeypatch: pytest.MonkeyPatch) -> _FakeOperatorStatusStore:
 	store = _FakeOperatorStatusStore()
 	monkeypatch.setattr(api_main, "get_operator_status_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_battery_telemetry_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryBatteryTelemetryStore:
+	store = InMemoryBatteryTelemetryStore()
+	monkeypatch.setattr(api_main, "get_battery_telemetry_store", lambda: store)
 	return store
 
 
@@ -344,6 +356,98 @@ def test_projected_battery_state_uses_tenant_registry_defaults(
 	assert status_record.status == OperatorFlowStatus.COMPLETED
 
 
+def test_battery_state_endpoint_returns_latest_telemetry_and_hourly_snapshot(
+	client: TestClient,
+	fake_battery_telemetry_store: InMemoryBatteryTelemetryStore,
+) -> None:
+	latest_observed_at = datetime(2026, 5, 4, 11, 55, tzinfo=UTC)
+	fake_battery_telemetry_store.upsert_battery_telemetry(
+		[
+			BatteryTelemetryObservation(
+				tenant_id="client_003_dnipro_factory",
+				observed_at=latest_observed_at,
+				current_soc=0.62,
+				soh=0.961,
+				power_mw=-0.04,
+				temperature_c=25.6,
+				source="simulated_mqtt",
+				source_kind="synthetic",
+				raw_payload={"topic": "smart-arbitrage/client_003_dnipro_factory/battery/telemetry"},
+			)
+		]
+	)
+	fake_battery_telemetry_store.upsert_hourly_snapshots(
+		[
+			BatteryStateHourlySnapshot(
+				tenant_id="client_003_dnipro_factory",
+				snapshot_hour=datetime(2026, 5, 4, 11, tzinfo=UTC),
+				observation_count=12,
+				soc_open=0.58,
+				soc_close=0.62,
+				soc_mean=0.60,
+				soh_close=0.961,
+				power_mw_mean=-0.03,
+				throughput_mwh=0.08,
+				efc_delta=0.08,
+				telemetry_freshness="fresh",
+				first_observed_at=datetime(2026, 5, 4, 11, tzinfo=UTC),
+				last_observed_at=latest_observed_at,
+			)
+		]
+	)
+
+	response = client.get(
+		"/dashboard/battery-state",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["fallback_reason"] is None
+	assert response_payload["latest_telemetry"]["current_soc"] == pytest.approx(0.62)
+	assert response_payload["latest_telemetry"]["source"] == "simulated_mqtt"
+	assert response_payload["hourly_snapshot"]["snapshot_hour"] == "2026-05-04T11:00:00Z"
+	assert response_payload["hourly_snapshot"]["telemetry_freshness"] == "fresh"
+
+
+def test_baseline_lp_preview_uses_fresh_hourly_telemetry_soc(
+	client: TestClient,
+	fake_status_store: _FakeOperatorStatusStore,
+	fake_battery_telemetry_store: InMemoryBatteryTelemetryStore,
+) -> None:
+	fake_battery_telemetry_store.upsert_hourly_snapshots(
+		[
+			BatteryStateHourlySnapshot(
+				tenant_id="client_003_dnipro_factory",
+				snapshot_hour=datetime(2026, 5, 4, 11, tzinfo=UTC),
+				observation_count=12,
+				soc_open=0.58,
+				soc_close=0.62,
+				soc_mean=0.60,
+				soh_close=0.961,
+				power_mw_mean=-0.03,
+				throughput_mwh=0.08,
+				efc_delta=0.08,
+				telemetry_freshness="fresh",
+				first_observed_at=datetime(2026, 5, 4, 11, tzinfo=UTC),
+				last_observed_at=datetime(2026, 5, 4, 11, 55, tzinfo=UTC),
+			)
+		]
+	)
+
+	response = client.get(
+		"/dashboard/baseline-lp-preview",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["starting_soc_fraction"] == pytest.approx(0.62)
+	assert response_payload["starting_soc_source"] == "telemetry_hourly"
+	assert response_payload["telemetry_freshness"]["telemetry_freshness"] == "fresh"
+
+
 def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -361,6 +465,7 @@ def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(
 	assert response_payload["market_venue"] == "DAM"
 	assert response_payload["interval_minutes"] == 60
 	assert response_payload["starting_soc_fraction"] == pytest.approx(0.5)
+	assert response_payload["starting_soc_source"] == "tenant_default"
 	assert response_payload["battery_metrics"]["capacity_mwh"] == pytest.approx(0.5)
 	assert response_payload["battery_metrics"]["max_power_mw"] == pytest.approx(0.25)
 	assert len(response_payload["forecast"]) == 24
@@ -453,4 +558,5 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/signal-preview"]["get"]["summary"] == "Build dashboard signal preview"
 	assert schema["paths"]["/dashboard/operator-status"]["get"]["summary"] == "Get persisted operator flow status"
 	assert schema["paths"]["/dashboard/projected-battery-state"]["post"]["summary"] == "Build projected battery state preview"
+	assert schema["paths"]["/dashboard/battery-state"]["get"]["summary"] == "Get latest battery telemetry state"
 	assert schema["paths"]["/dashboard/baseline-lp-preview"]["get"]["summary"] == "Build baseline LP preview"

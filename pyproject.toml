@@ -36,6 +36,15 @@ dev = [
     "pytest",                 # Focused API and asset behavior tests
 ]
 
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+norecursedirs = [
+    "_legacy_smart-energy-ai",
+    "data",
+    ".venv",
+    "mlruns",
+]
+
 [tool.dagster]
 module_name = "smart_arbitrage.defs"
 

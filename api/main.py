@@ -49,6 +49,11 @@ from smart_arbitrage.resources.operator_status_store import (
 	get_operator_status_store,
 	utc_now,
 )
+from smart_arbitrage.resources.battery_telemetry_store import (
+	BatteryStateHourlySnapshot,
+	BatteryTelemetryObservation,
+	get_battery_telemetry_store,
+)
 
 
 app = FastAPI(
@@ -202,12 +207,48 @@ class BaselineLpPreviewResponse(BaseModel):
 	market_venue: str
 	interval_minutes: int
 	starting_soc_fraction: float
+	starting_soc_source: str
 	battery_metrics: BatteryPhysicalMetrics
 	resolved_location: WeatherLocationResponse
 	forecast: list[BaselineForecastPointResponse]
 	recommendation_schedule: list[BaselineRecommendationPointResponse]
 	projected_state: ProjectedBatteryStateResponse
 	economics: BaselinePreviewEconomicsResponse
+	telemetry_freshness: dict[str, Any] | None = None
+
+
+class BatteryTelemetryObservationResponse(BaseModel):
+	tenant_id: str
+	observed_at: datetime
+	current_soc: float
+	soh: float
+	power_mw: float
+	temperature_c: float | None
+	source: str
+	source_kind: str
+
+
+class BatteryStateHourlySnapshotResponse(BaseModel):
+	tenant_id: str
+	snapshot_hour: datetime
+	observation_count: int
+	soc_open: float
+	soc_close: float
+	soc_mean: float
+	soh_close: float
+	power_mw_mean: float
+	throughput_mwh: float
+	efc_delta: float
+	telemetry_freshness: str
+	first_observed_at: datetime
+	last_observed_at: datetime
+
+
+class DashboardBatteryStateResponse(BaseModel):
+	tenant_id: str
+	latest_telemetry: BatteryTelemetryObservationResponse | None
+	hourly_snapshot: BatteryStateHourlySnapshotResponse | None
+	fallback_reason: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,6 +281,13 @@ class WeatherBiasCalibrationModel:
 class TenantBatteryDefaults:
 	metrics: BatteryPhysicalMetrics
 	initial_soc_fraction: float
+
+
+@dataclass(frozen=True, slots=True)
+class StartingSocResolution:
+	starting_soc_fraction: float
+	source: str
+	telemetry_freshness: dict[str, Any] | None
 
 
 @cache
@@ -879,6 +927,8 @@ def _to_baseline_lp_preview_response(
 	tenant_id: str,
 	battery_metrics: BatteryPhysicalMetrics,
 	starting_soc_fraction: float,
+	starting_soc_source: str,
+	telemetry_freshness: dict[str, Any] | None,
 	resolved_location: WeatherLocation,
 	solve_result: BaselineSolveResult,
 	projected_state: ProjectedBatteryStateResponse,
@@ -892,6 +942,7 @@ def _to_baseline_lp_preview_response(
 		market_venue=LEVEL1_MARKET_VENUE,
 		interval_minutes=LEVEL1_INTERVAL_MINUTES,
 		starting_soc_fraction=starting_soc_fraction,
+		starting_soc_source=starting_soc_source,
 		battery_metrics=battery_metrics,
 		resolved_location=_location_response_from_model(resolved_location),
 		forecast=[
@@ -924,6 +975,7 @@ def _to_baseline_lp_preview_response(
 			total_net_value_uah=total_net_value_uah,
 			total_throughput_mwh=total_throughput_mwh,
 		),
+		telemetry_freshness=telemetry_freshness,
 	)
 
 
@@ -976,6 +1028,71 @@ def _to_projected_battery_state_response(
 			)
 			for point in simulation_result.trace
 		],
+	)
+
+
+def _to_battery_telemetry_response(observation: BatteryTelemetryObservation) -> BatteryTelemetryObservationResponse:
+	return BatteryTelemetryObservationResponse(
+		tenant_id=observation.tenant_id,
+		observed_at=observation.observed_at,
+		current_soc=observation.current_soc,
+		soh=observation.soh,
+		power_mw=observation.power_mw,
+		temperature_c=observation.temperature_c,
+		source=observation.source,
+		source_kind=observation.source_kind,
+	)
+
+
+def _to_hourly_snapshot_response(snapshot: BatteryStateHourlySnapshot) -> BatteryStateHourlySnapshotResponse:
+	return BatteryStateHourlySnapshotResponse(
+		tenant_id=snapshot.tenant_id,
+		snapshot_hour=snapshot.snapshot_hour,
+		observation_count=snapshot.observation_count,
+		soc_open=snapshot.soc_open,
+		soc_close=snapshot.soc_close,
+		soc_mean=snapshot.soc_mean,
+		soh_close=snapshot.soh_close,
+		power_mw_mean=snapshot.power_mw_mean,
+		throughput_mwh=snapshot.throughput_mwh,
+		efc_delta=snapshot.efc_delta,
+		telemetry_freshness=snapshot.telemetry_freshness,
+		first_observed_at=snapshot.first_observed_at,
+		last_observed_at=snapshot.last_observed_at,
+	)
+
+
+def _telemetry_freshness_payload(snapshot: BatteryStateHourlySnapshot) -> dict[str, Any]:
+	return {
+		"snapshot_hour": snapshot.snapshot_hour.isoformat(),
+		"observation_count": snapshot.observation_count,
+		"telemetry_freshness": snapshot.telemetry_freshness,
+		"last_observed_at": snapshot.last_observed_at.isoformat(),
+	}
+
+
+def _resolve_starting_soc_for_baseline(
+	*,
+	tenant_id: str,
+	battery_defaults: TenantBatteryDefaults,
+) -> StartingSocResolution:
+	latest_snapshot = get_battery_telemetry_store().get_latest_hourly_snapshot(tenant_id=tenant_id)
+	if latest_snapshot is not None and latest_snapshot.telemetry_freshness == "fresh":
+		return StartingSocResolution(
+			starting_soc_fraction=latest_snapshot.soc_close,
+			source="telemetry_hourly",
+			telemetry_freshness=_telemetry_freshness_payload(latest_snapshot),
+		)
+	if latest_snapshot is not None:
+		return StartingSocResolution(
+			starting_soc_fraction=battery_defaults.initial_soc_fraction,
+			source="tenant_default",
+			telemetry_freshness=_telemetry_freshness_payload(latest_snapshot),
+		)
+	return StartingSocResolution(
+		starting_soc_fraction=battery_defaults.initial_soc_fraction,
+		source="tenant_default",
+		telemetry_freshness=None,
 	)
 
 
@@ -1194,6 +1311,37 @@ def build_projected_battery_state_preview(
 
 
 @app.get(
+	"/dashboard/battery-state",
+	response_model=DashboardBatteryStateResponse,
+	tags=["weather"],
+	summary="Get latest battery telemetry state",
+	description=(
+		"Returns the latest physical telemetry snapshot and the latest hourly Level 1 battery-state "
+		"snapshot for the selected tenant."
+	),
+)
+def dashboard_battery_state(tenant_id: str) -> DashboardBatteryStateResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	store = get_battery_telemetry_store()
+	latest_telemetry = store.get_latest_battery_telemetry(tenant_id=tenant_id)
+	latest_snapshot = store.get_latest_hourly_snapshot(tenant_id=tenant_id)
+	fallback_reason = None
+	if latest_telemetry is None and latest_snapshot is None:
+		fallback_reason = "telemetry_unavailable"
+	elif latest_snapshot is None:
+		fallback_reason = "hourly_snapshot_unavailable"
+	elif latest_snapshot.telemetry_freshness != "fresh":
+		fallback_reason = "hourly_snapshot_stale"
+
+	return DashboardBatteryStateResponse(
+		tenant_id=tenant_id,
+		latest_telemetry=None if latest_telemetry is None else _to_battery_telemetry_response(latest_telemetry),
+		hourly_snapshot=None if latest_snapshot is None else _to_hourly_snapshot_response(latest_snapshot),
+		fallback_reason=fallback_reason,
+	)
+
+
+@app.get(
 	"/dashboard/baseline-lp-preview",
 	response_model=BaselineLpPreviewResponse,
 	tags=["weather"],
@@ -1209,7 +1357,11 @@ def build_baseline_lp_preview(
 	resolved_location = _resolve_requested_location(tenant_id=tenant_id, location_config_path=None)
 	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
 	battery_metrics = battery_defaults.metrics
-	starting_soc_fraction = battery_defaults.initial_soc_fraction
+	starting_soc_resolution = _resolve_starting_soc_for_baseline(
+		tenant_id=tenant_id,
+		battery_defaults=battery_defaults,
+	)
+	starting_soc_fraction = starting_soc_resolution.starting_soc_fraction
 	price_history = _build_tenant_aware_price_history(resolved_location)
 	anchor_timestamp = _resolve_baseline_anchor(price_history)
 	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
@@ -1238,6 +1390,8 @@ def build_baseline_lp_preview(
 		tenant_id=tenant_id,
 		battery_metrics=battery_metrics,
 		starting_soc_fraction=starting_soc_fraction,
+		starting_soc_source=starting_soc_resolution.source,
+		telemetry_freshness=starting_soc_resolution.telemetry_freshness,
 		resolved_location=resolved_location,
 		solve_result=solve_result,
 		projected_state=projected_state,

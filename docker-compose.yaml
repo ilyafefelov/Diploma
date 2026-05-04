@@ -1,0 +1,128 @@
+name: smart-energy-arbitrage
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: docker/backend.Dockerfile
+
+x-backend-env: &backend-env
+  PYTHONPATH: /app:/app/src
+  SMART_ARBITRAGE_MARKET_DATA_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
+  SMART_ARBITRAGE_BATTERY_TELEMETRY_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
+  SMART_ARBITRAGE_FORECAST_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
+  SMART_ARBITRAGE_SIMULATED_TRADE_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
+  SMART_ARBITRAGE_OPERATOR_STATUS_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  MQTT_HOST: mqtt
+  MQTT_PORT: "1883"
+  DAGSTER_HOME: /opt/dagster/dagster_home
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: smart_arbitrage
+      POSTGRES_USER: smart
+      POSTGRES_PASSWORD: arbitrage
+    ports:
+      - "${SMART_ARBITRAGE_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smart -d smart_arbitrage"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    ports:
+      - "${SMART_ARBITRAGE_MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt-data:/mosquitto/data
+
+  mlflow:
+    build: *backend-build
+    environment:
+      <<: *backend-env
+    command: >
+      uv run mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri postgresql+psycopg://smart:arbitrage@postgres:5432/smart_arbitrage
+      --default-artifact-root /mlflow/artifacts
+    ports:
+      - "${SMART_ARBITRAGE_MLFLOW_PORT:-5000}:5000"
+    volumes:
+      - mlflow-artifacts:/mlflow/artifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build: *backend-build
+    environment:
+      <<: *backend-env
+    command: uv run python -m uvicorn api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "${SMART_ARBITRAGE_API_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+
+  dagster-webserver:
+    build: *backend-build
+    environment:
+      <<: *backend-env
+    command: uv run dagster-webserver -h 0.0.0.0 -p 3000 -m smart_arbitrage.defs
+    ports:
+      - "${SMART_ARBITRAGE_DAGSTER_PORT:-3001}:3000"
+    volumes:
+      - ./docker/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml:ro
+      - dagster-storage:/opt/dagster/dagster_home/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  dagster-daemon:
+    build: *backend-build
+    environment:
+      <<: *backend-env
+    command: uv run dagster-daemon run -m smart_arbitrage.defs
+    volumes:
+      - ./docker/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml:ro
+      - dagster-storage:/opt/dagster/dagster_home/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  telemetry-ingestor:
+    build: *backend-build
+    environment:
+      <<: *backend-env
+    command: uv run python scripts/battery_mqtt_ingestor.py
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mqtt:
+        condition: service_started
+
+  telemetry-publisher:
+    build: *backend-build
+    environment:
+      <<: *backend-env
+      TELEMETRY_PUBLISH_SECONDS: "5"
+    command: uv run python scripts/simulated_battery_mqtt_publisher.py
+    depends_on:
+      mqtt:
+        condition: service_started
+      telemetry-ingestor:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  mqtt-data:
+  mlflow-artifacts:
+  dagster-storage:

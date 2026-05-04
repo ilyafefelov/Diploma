@@ -1,0 +1,16 @@
+.git
+.venv
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.nuxt
+dashboard/node_modules
+dashboard/.nuxt
+dashboard/.output
+mlruns
+data
+_legacy_smart-energy-ai
+tmp_dagster_home_*
+.tmp_dagster_home_*
+__pycache__
+*.pyc

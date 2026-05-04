@@ -60,5 +60,11 @@ Not yet SOTA:
 Acceptable next step:
 
 - Keep this as the deterministic LP baseline.
-- Add a Silver/Gold battery telemetry asset later that estimates SOH/EFC from measured inverter telemetry.
+- Add a Silver/Gold battery telemetry asset that estimates SOH/EFC from measured inverter telemetry.
 - Use this baseline to compare NBEATSx/TFT forecasts and later DFL regret metrics, while clearly labeling degradation as a throughput/EFC proxy.
+
+Implemented backend direction:
+
+- Raw 5-minute simulated MQTT telemetry is stored separately from hourly planning state.
+- `battery_state_hourly_silver` aggregates latest physical telemetry into hourly SOC/SOH/throughput/EFC snapshots.
+- Baseline LP uses a fresh hourly telemetry SOC snapshot when available, then falls back to tenant defaults when telemetry is missing or stale.

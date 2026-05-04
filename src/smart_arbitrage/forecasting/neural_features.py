@@ -20,6 +20,14 @@ WEATHER_FEATURE_DEFAULTS: Final[dict[str, float]] = {
 	"weather_effective_solar": 0.0,
 }
 
+BATTERY_TELEMETRY_FEATURE_DEFAULTS: Final[dict[str, float]] = {
+	"battery_soc": 0.5,
+	"battery_soh": 0.97,
+	"battery_throughput_mwh": 0.0,
+	"battery_efc_delta": 0.0,
+	"telemetry_is_fresh": 0.0,
+}
+
 NEURAL_FORECAST_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
 	"hour_sin",
 	"hour_cos",
@@ -34,12 +42,18 @@ NEURAL_FORECAST_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
 	"weather_cloudcover",
 	"weather_precipitation",
 	"weather_effective_solar",
+	"battery_soc",
+	"battery_soh",
+	"battery_throughput_mwh",
+	"battery_efc_delta",
+	"telemetry_is_fresh",
 )
 
 
 def build_neural_forecast_feature_frame(
 	price_history: pl.DataFrame,
 	*,
+	battery_state_hourly_snapshots: pl.DataFrame | None = None,
 	horizon_hours: int = DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
 	timestamp_column: str = DEFAULT_TIMESTAMP_COLUMN,
 	price_column: str = DEFAULT_PRICE_COLUMN,
@@ -58,7 +72,13 @@ def build_neural_forecast_feature_frame(
 		raise ValueError("Neural forecast features require at least 168 train rows plus the forecast horizon.")
 
 	anchor_timestamp = _resolve_anchor_timestamp(history, horizon_hours=horizon_hours, timestamp_column=timestamp_column)
+	history = _join_battery_state_hourly_snapshots(
+		history,
+		battery_state_hourly_snapshots=battery_state_hourly_snapshots,
+		timestamp_column=timestamp_column,
+	)
 	history = _ensure_weather_columns(history)
+	history = _ensure_battery_telemetry_columns(history)
 	feature_frame = (
 		history
 		.with_columns(
@@ -87,7 +107,10 @@ def build_neural_forecast_feature_frame(
 		.with_columns(
 			[
 				pl.col(column_name).fill_null(default_value).cast(pl.Float64).alias(column_name)
-				for column_name, default_value in WEATHER_FEATURE_DEFAULTS.items()
+				for column_name, default_value in {
+					**WEATHER_FEATURE_DEFAULTS,
+					**BATTERY_TELEMETRY_FEATURE_DEFAULTS,
+				}.items()
 			]
 		)
 		.select(
@@ -177,6 +200,64 @@ def _ensure_weather_columns(history: pl.DataFrame) -> pl.DataFrame:
 		else:
 			expressions.append(pl.lit(default_value).alias(column_name))
 	return history.with_columns(expressions)
+
+
+def _ensure_battery_telemetry_columns(history: pl.DataFrame) -> pl.DataFrame:
+	expressions: list[pl.Expr] = []
+	for column_name, default_value in BATTERY_TELEMETRY_FEATURE_DEFAULTS.items():
+		if column_name in history.columns:
+			expressions.append(pl.col(column_name).fill_null(default_value).alias(column_name))
+		else:
+			expressions.append(pl.lit(default_value).alias(column_name))
+	return history.with_columns(expressions)
+
+
+def _join_battery_state_hourly_snapshots(
+	history: pl.DataFrame,
+	*,
+	battery_state_hourly_snapshots: pl.DataFrame | None,
+	timestamp_column: str,
+) -> pl.DataFrame:
+	if battery_state_hourly_snapshots is None or battery_state_hourly_snapshots.height == 0:
+		return history
+	required_columns = {
+		"snapshot_hour",
+		"soc_close",
+		"soh_close",
+		"throughput_mwh",
+		"efc_delta",
+		"telemetry_freshness",
+	}
+	missing_columns = required_columns.difference(battery_state_hourly_snapshots.columns)
+	if missing_columns:
+		raise ValueError(f"battery_state_hourly_snapshots is missing required columns: {sorted(missing_columns)}")
+	battery_features = (
+		battery_state_hourly_snapshots
+		.select(
+			[
+				pl.col("snapshot_hour").alias(timestamp_column),
+				pl.col("soc_close").cast(pl.Float64).alias("battery_soc"),
+				pl.col("soh_close").cast(pl.Float64).alias("battery_soh"),
+				pl.col("throughput_mwh").cast(pl.Float64).alias("battery_throughput_mwh"),
+				pl.col("efc_delta").cast(pl.Float64).alias("battery_efc_delta"),
+				pl.when(pl.col("telemetry_freshness") == "fresh")
+				.then(pl.lit(1.0))
+				.otherwise(pl.lit(0.0))
+				.alias("telemetry_is_fresh"),
+			]
+		)
+		.group_by(timestamp_column)
+		.agg(
+			[
+				pl.col("battery_soc").mean(),
+				pl.col("battery_soh").mean(),
+				pl.col("battery_throughput_mwh").sum(),
+				pl.col("battery_efc_delta").sum(),
+				pl.col("telemetry_is_fresh").max(),
+			]
+		)
+	)
+	return history.join(battery_features, on=timestamp_column, how="left")
 
 
 def _resolve_anchor_timestamp(history: pl.DataFrame, *, horizon_hours: int, timestamp_column: str) -> datetime:
