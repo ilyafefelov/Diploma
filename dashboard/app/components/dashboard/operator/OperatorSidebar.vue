@@ -55,17 +55,16 @@ const tenantCoordinates = computed(() => {
 })
 
 const ukraineMapBounds = {
-  minLat: 44.0,
-  maxLat: 52.6,
-  minLon: 22.0,
-  maxLon: 40.2
+  minLat: 44.386,
+  maxLat: 52.375,
+  minLon: 22.1404,
+  maxLon: 40.2181
 }
 
-const ukraineMapProjectionInset = {
-  left: 8,
-  right: 8,
-  top: 12,
-  bottom: 14
+const ukraineMapViewport = {
+  width: 1000,
+  height: 720,
+  padding: 34
 }
 
 type TenantMapMarker = TenantSummary & {
@@ -74,23 +73,36 @@ type TenantMapMarker = TenantSummary & {
   isSelected: boolean
 }
 
-const clamp01 = (value: number): number => Math.min(1, Math.max(0, value))
+const clamp = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
+const degToRad = (value: number): number => value * Math.PI / 180
+const mercatorY = (lat: number): number => Math.log(Math.tan(Math.PI / 4 + degToRad(lat) / 2))
 const formatWholeNumber = (value: number): string => Math.round(value).toLocaleString('en-US')
 
 const tenantMarkers = computed<TenantMapMarker[]>(() => {
-  const latSpan = ukraineMapBounds.maxLat - ukraineMapBounds.minLat
-  const lonSpan = ukraineMapBounds.maxLon - ukraineMapBounds.minLon
-  const mapWidth = 100 - ukraineMapProjectionInset.left - ukraineMapProjectionInset.right
-  const mapHeight = 100 - ukraineMapProjectionInset.top - ukraineMapProjectionInset.bottom
+  const minX = degToRad(ukraineMapBounds.minLon)
+  const maxX = degToRad(ukraineMapBounds.maxLon)
+  const minY = mercatorY(ukraineMapBounds.minLat)
+  const maxY = mercatorY(ukraineMapBounds.maxLat)
+  const innerWidth = ukraineMapViewport.width - ukraineMapViewport.padding * 2
+  const innerHeight = ukraineMapViewport.height - ukraineMapViewport.padding * 2
+  const xSpan = maxX - minX
+  const ySpan = maxY - minY
+  const rawScale = Math.min(innerWidth / xSpan, innerHeight / ySpan)
+  const mapWidth = xSpan * rawScale
+  const mapHeight = ySpan * rawScale
+  const xOffset = (ukraineMapViewport.width - mapWidth) / 2
+  const yOffset = (ukraineMapViewport.height - mapHeight) / 2
 
   return props.tenants.map(tenant => {
-    const left = ukraineMapProjectionInset.left + clamp01((tenant.longitude - ukraineMapBounds.minLon) / lonSpan) * mapWidth
-    const top = ukraineMapProjectionInset.top + clamp01((ukraineMapBounds.maxLat - tenant.latitude) / latSpan) * mapHeight
+    const longitude = clamp(tenant.longitude, ukraineMapBounds.minLon, ukraineMapBounds.maxLon)
+    const latitude = clamp(tenant.latitude, ukraineMapBounds.minLat, ukraineMapBounds.maxLat)
+    const x = xOffset + (degToRad(longitude) - minX) * rawScale
+    const y = yOffset + (maxY - mercatorY(latitude)) * rawScale
 
     return {
       ...tenant,
-      left,
-      top,
+      left: x / ukraineMapViewport.width * 100,
+      top: y / ukraineMapViewport.height * 100,
       isSelected: tenant.tenant_id === props.selectedTenantId
     }
   })
@@ -467,7 +479,7 @@ const weatherSourceLabel = computed(() => {
   position: relative;
   width: 100%;
   min-height: 8.35rem;
-  aspect-ratio: 1 / 0.88;
+  aspect-ratio: 1 / 0.72;
   padding-inline: 4px;
   overflow: hidden;
   border-top: 1px solid rgba(141, 244, 255, 0.34);
