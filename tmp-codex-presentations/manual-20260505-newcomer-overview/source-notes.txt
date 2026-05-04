@@ -1,0 +1,7 @@
+Sources used:
+- docs/thesis/weekly-reports/week2/codebase-onboarding-presentation.marp.md
+- docs/thesis/weekly-reports/week2/report.md
+- CONTEXT.md
+- docs/technical/OPERATOR_DEMO_READY.md
+No external identity assets used.
+Metric notes: current output is recommendation preview; Level 1 is hourly DAM baseline; battery economics include 5-95% SOC, 842.2 UAH/MWh throughput proxy, and 16,843.3 UAH/cycle proxy.

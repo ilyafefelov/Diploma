@@ -1,0 +1,1 @@
+Design system: 1280x720; Aptos Display + Aptos + Aptos Mono; warm off-white, dark ink, cyan, green, amber, red, violet accents. Alternate macro layouts across title/pathway, process, medallion map, table, swimlane, timeline, solver board, metric panel, API matrix, dashboard flow, stack split, MVP/research split, reading ladder, contribution loop, closing rail.

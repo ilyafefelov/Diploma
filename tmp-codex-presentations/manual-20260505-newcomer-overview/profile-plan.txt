@@ -1,0 +1,6 @@
+Task mode: create
+Primary deck-profile: engineering-platform
+Secondary gates: academic thesis demo framing; no overclaiming planned DFL as implemented.
+Proof objects: architecture map, workflow map, API/dashboard contract map, solver objective, battery economics metric slide, MVP-vs-research boundary.
+Sources: Week 2 Marp onboarding deck, Week 2 report, CONTEXT.md, OPERATOR_DEMO_READY.md.
+Identity assets: no logos, screenshots, partner marks, or official product UI used.

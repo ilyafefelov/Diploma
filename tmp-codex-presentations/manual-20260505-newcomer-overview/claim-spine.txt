@@ -1,0 +1,16 @@
+Claim spine:
+1. Newcomers need the project boundary before files.
+2. The repo is an operator-preview pipeline, not a live trading engine.
+3. Dagster assets organize lineage.
+4. Repository map is read by responsibility.
+5. Domain terms prevent market intent, clearing, and dispatch from being mixed.
+6. Current MVP is tenant -> inputs -> forecast -> LP -> battery preview -> API/dashboard.
+7. Baseline LP is the anchor future DFL must beat.
+8. Battery wear is priced into the decision.
+9. FastAPI owns dashboard read-model contracts.
+10. Nuxt is the operator surface, not strategy logic.
+11. Local stack has lightweight and full-stack modes.
+12. Implemented MVP and planned research stay separate.
+13. Newcomers follow a specific reading path.
+14. First contributions are narrow, tested, and documented.
+15. The baseline contour is the thesis reference point.
