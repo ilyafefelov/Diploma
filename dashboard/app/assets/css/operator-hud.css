@@ -31,6 +31,18 @@
   border: 1px solid rgba(255, 255, 255, 0.75);
 }
 
+.operator-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 1.3rem;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 100% 2px;
+  mix-blend-mode: soft-light;
+  opacity: 0.28;
+}
+
 .operator-topbar,
 .metric-ribbon,
 .schedule-dock {
@@ -508,6 +520,45 @@
   overflow-wrap: anywhere;
 }
 
+.tenant-card__meta-item {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  width: fit-content;
+  cursor: help;
+}
+
+.tenant-card__meta-tooltip {
+  position: absolute;
+  left: 0.1rem;
+  top: calc(100% + 0.3rem);
+  z-index: 20;
+  display: grid;
+  gap: 0.22rem;
+  width: min(14rem, calc(100vw - 3rem));
+  padding: 0.62rem 0.72rem;
+  border: 1px solid rgba(202, 249, 255, 0.82);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.22), transparent 36%),
+    linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 56, 112, 0.98));
+  color: rgba(238, 250, 255, 0.9);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.32;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.24rem) scale(0.97);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.tenant-card__meta-item:hover .tenant-card__meta-tooltip,
+.tenant-card__meta-item:focus-visible .tenant-card__meta-tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
 .tenant-card__ukraine-map {
   margin-top: 0.28rem;
   overflow: hidden;
@@ -612,6 +663,102 @@
   font-size: 0.76rem;
   line-height: 1.35;
   overflow-wrap: anywhere;
+}
+
+.sidebar-status-card {
+  position: relative;
+  overflow: visible;
+}
+
+.sidebar-status-card__tooltip {
+  position: absolute;
+  left: 0.65rem;
+  top: calc(100% + 0.4rem);
+  z-index: 18;
+  display: grid;
+  width: min(16rem, calc(100vw - 3rem));
+  gap: 0.22rem;
+  padding: 0.54rem 0.64rem;
+  border: 1px solid rgba(202, 249, 255, 0.82);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.2), transparent 34%),
+    linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 61, 123, 0.98));
+  color: rgba(238, 250, 255, 0.89);
+  font-size: 0.66rem;
+  line-height: 1.34;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.2rem) scale(0.97);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.sidebar-status-card:hover .sidebar-status-card__tooltip,
+.sidebar-status-card:focus-within .sidebar-status-card__tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.sidebar-status-card__mini-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.38rem;
+  margin-top: 0.45rem;
+}
+
+.tenant-count-card {
+  position: relative;
+  display: grid;
+  gap: 0.14rem;
+  padding: 0.35rem 0.42rem;
+  border-radius: 0.58rem;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(0, 61, 119, 0.32);
+  color: rgba(229, 249, 255, 0.86);
+  overflow: visible;
+  cursor: help;
+}
+
+.tenant-count-card span,
+.tenant-count-card small {
+  font-size: 0.63rem;
+  line-height: 1.15;
+}
+
+.tenant-count-card strong {
+  font-size: 1.05rem;
+  color: #b8ff32;
+}
+
+.tenant-count-card__tooltip,
+.tenant-count-card__title {
+  font-size: 0.64rem;
+  color: rgba(238, 250, 255, 0.9);
+}
+
+.tenant-count-card__tooltip {
+  position: absolute;
+  left: 0.28rem;
+  top: calc(100% + 0.35rem);
+  z-index: 16;
+  display: grid;
+  gap: 0.2rem;
+  width: 12rem;
+  max-width: calc(100vw - 2.8rem);
+  border: 1px solid rgba(202, 249, 255, 0.82);
+  border-radius: 0.62rem;
+  background: rgba(0, 59, 120, 0.95);
+  padding: 0.45rem 0.55rem;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.24rem) scale(0.97);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.tenant-count-card:hover .tenant-count-card__tooltip,
+.tenant-count-card:focus-visible .tenant-count-card__tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .signal-bars {
@@ -839,6 +986,84 @@
 
 .market-signal-hero__updated {
   flex: 0 0 auto;
+}
+
+.market-signal-hero__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.hud-mini-stat {
+  position: relative;
+  display: grid;
+  min-height: 4.65rem;
+  min-width: 0;
+  gap: 0.2rem;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.15), transparent 32%),
+    linear-gradient(180deg, rgba(5, 122, 190, 0.86), rgba(4, 67, 122, 0.86));
+  padding: 0.58rem 0.66rem;
+  color: white;
+}
+
+.hud-mini-stat__label {
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(215, 255, 79, 0.82);
+}
+
+.hud-mini-stat strong {
+  font-size: 1.08rem;
+  line-height: 1.05;
+  color: #b8ff32;
+}
+
+.hud-mini-stat__meta {
+  margin-top: -0.02rem;
+  font-size: 0.72rem;
+  color: rgba(229, 249, 255, 0.74);
+}
+
+.hud-mini-stat__tooltip {
+  position: absolute;
+  left: 0.4rem;
+  top: calc(100% + 0.35rem);
+  z-index: 15;
+  display: grid;
+  width: min(18rem, calc(100vw - 3rem));
+  gap: 0.22rem;
+  padding: 0.58rem 0.65rem;
+  border: 1px solid rgba(202, 249, 255, 0.82);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.2), transparent 36%),
+    linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 56, 112, 0.98));
+  font-size: 0.66rem;
+  line-height: 1.32;
+  color: rgba(238, 250, 255, 0.9);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.2rem) scale(0.98);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.hud-mini-stat:hover .hud-mini-stat__tooltip,
+.hud-mini-stat:focus-visible .hud-mini-stat__tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.hud-mini-stat__tooltip-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(215, 255, 79, 0.88);
 }
 
 .map-pane__header {
@@ -1104,6 +1329,75 @@
 .battery-stat-grid article:first-child {
   border-left: 0;
   padding-left: 0;
+}
+
+.metric-lens-card {
+  position: relative;
+  padding: 0.5rem;
+  overflow: visible;
+}
+
+.metric-lens-card__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.metric-lens-card__label-row p {
+  margin-bottom: 0;
+  color: rgba(229, 249, 255, 0.76);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.metric-lens-card__icon {
+  width: 1rem;
+  height: 1rem;
+  color: #d7ff4f;
+}
+
+.metric-lens-card .metric-lens-card__kicker {
+  font-size: 0.66rem;
+  color: rgba(229, 249, 255, 0.76);
+  font-weight: 700;
+}
+
+.metric-lens-card__tooltip {
+  position: absolute;
+  left: 0.35rem;
+  top: calc(100% + 0.28rem);
+  z-index: 18;
+  display: grid;
+  gap: 0.22rem;
+  width: min(19rem, calc(100vw - 3rem));
+  border: 1px solid rgba(202, 249, 255, 0.82);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.22), transparent 36%),
+    linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 56, 112, 0.98));
+  padding: 0.56rem 0.65rem;
+  color: rgba(238, 250, 255, 0.9);
+  font-size: 0.66rem;
+  line-height: 1.3;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.22rem) scale(0.98);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.metric-lens-card:hover .metric-lens-card__tooltip,
+.metric-lens-card:focus-visible .metric-lens-card__tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.metric-lens-card__tooltip-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(215, 255, 79, 0.88);
 }
 
 .battery-stat-grid p {
@@ -1743,6 +2037,10 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .market-signal-hero__metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .operator-body {
     grid-template-columns: 10.8rem minmax(0, 1fr);
   }
@@ -1784,6 +2082,10 @@
   .market-signal-layout,
   .schedule-dock {
     grid-template-columns: 1fr;
+  }
+
+  .market-signal-hero__metrics {
+    grid-template-columns: 1fr 1fr;
   }
 
   .operator-sidebar {

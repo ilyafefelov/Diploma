@@ -94,9 +94,30 @@ const economicsItems = computed(() => {
 const feasiblePlanItems = computed(() => {
   if (!props.baselinePreview) {
     return [
-      { label: 'Power corridor', value: 'Waiting', note: 'Signed dispatch envelope in MW.' },
-      { label: 'SOC guardrails', value: 'Waiting', note: 'Projected battery band in %.' },
-      { label: 'Planning grain', value: 'Waiting', note: 'Hourly review step for the preview.' }
+      {
+        label: 'Power corridor',
+        value: 'Waiting',
+        note: 'Signed dispatch envelope in MW.',
+        tooltipTitle: 'Signed dispatch limits',
+        tooltipBody: 'Fallback clip band used to keep every simulated step within the inverter and safety envelope.',
+        tooltipFormula: 'power_cmd_clipped = clamp(recommended_net_power_mw, -Pmax, +Pmax)'
+      },
+      {
+        label: 'SOC guardrails',
+        value: 'Waiting',
+        note: 'Projected battery band in %.',
+        tooltipTitle: 'SOC guardrails',
+        tooltipBody: 'Preview SOC must remain inside feasible charge limits for every timestep.',
+        tooltipFormula: 'SOC_next = SOC_prev + (charge_eff × positive_power - discharge_power / discharge_eff) × Δt / E_cap'
+      },
+      {
+        label: 'Planning grain',
+        value: 'Waiting',
+        note: 'Hourly review step for the preview.',
+        tooltipTitle: 'Dispatch grain',
+        tooltipBody: 'Controls how often the recommendation point is evaluated and executed.',
+        tooltipFormula: 'control_points = total_horizon_minutes / interval_minutes'
+      }
     ]
   }
 
@@ -106,17 +127,26 @@ const feasiblePlanItems = computed(() => {
     {
       label: 'Power corridor',
       value: `-${metrics.max_power_mw.toFixed(1)} to +${metrics.max_power_mw.toFixed(1)} MW`,
-      note: 'Negative values mean charging, positive values mean discharge.'
+      note: 'Negative values mean charging, positive values mean discharge.',
+      tooltipTitle: 'Signed dispatch limits',
+      tooltipBody: 'The feasible model clamps every action to this battery-inverter corridor so no step violates nominal capability.',
+      tooltipFormula: 'power_command = clamp(raw_command, -Pmax, +Pmax)'
     },
     {
       label: 'SOC guardrails',
       value: `${Math.round(metrics.soc_min_fraction * 100)}% to ${Math.round(metrics.soc_max_fraction * 100)}%`,
-      note: 'Projected state must stay inside the feasible battery window.'
+      note: 'Projected state must stay inside the feasible battery window.',
+      tooltipTitle: 'SOC guardrails',
+      tooltipBody: 'Battery SOC is constrained to this admissible band for reliability and longevity.',
+      tooltipFormula: 'soc_min_fraction ≤ SOC_t ≤ soc_max_fraction'
     },
     {
       label: 'Planning grain',
       value: `${props.baselinePreview.interval_minutes} min`,
-      note: 'Every recommendation point is one operator review bucket.'
+      note: 'Every recommendation point is one operator review bucket.',
+      tooltipTitle: 'Dispatch grain',
+      tooltipBody: 'The interval length sets both smoothing of policy signal and schedule granularity.',
+      tooltipFormula: 'Δt = interval_minutes / 60'
     }
   ]
 })
@@ -185,7 +215,8 @@ const feasiblePlanItems = computed(() => {
       <article
         v-for="item in feasiblePlanItems"
         :key="item.label"
-        class="feasible-pill"
+        class="feasible-pill feasible-pill-interactive"
+        tabindex="0"
       >
         <p class="feasible-pill__label">
           {{ item.label }}
@@ -196,6 +227,26 @@ const feasiblePlanItems = computed(() => {
         <p class="feasible-pill__note">
           {{ item.note }}
         </p>
+        <div
+          class="sims-tooltip"
+          role="tooltip"
+        >
+          <div class="sims-tooltip__topline">
+            <span class="sims-tooltip__plumbob" />
+            <p class="sims-tooltip__eyebrow">
+              Metric explainer
+            </p>
+          </div>
+          <p class="sims-tooltip__title">
+            {{ item.tooltipTitle }}
+          </p>
+          <p class="sims-tooltip__body">
+            {{ item.tooltipBody }}
+          </p>
+          <p class="sims-tooltip__formula">
+            {{ item.tooltipFormula }}
+          </p>
+        </div>
       </article>
     </div>
 
