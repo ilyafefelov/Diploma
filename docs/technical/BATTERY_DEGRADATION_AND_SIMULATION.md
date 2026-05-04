@@ -2,6 +2,8 @@
 
 This note documents the current Level 1 battery simulator used by the FastAPI read models and LP baseline. It is intentionally scoped as an academically defensible MVP model, not a full electrochemical digital twin.
 
+Deep-research update: the current throughput/EFC model remains acceptable as a Level 1 economic proxy, but the thesis should not treat it as battery-physics SOTA. Its strongest role is to make LP decisions degradation-aware while the research benchmark measures realized net value and regret.
+
 ## Current Implementation
 
 - Tenant defaults come from `simulations/tenants.yml`, under each tenant `energy_system` block.
@@ -62,6 +64,21 @@ Acceptable next step:
 - Keep this as the deterministic LP baseline.
 - Add a Silver/Gold battery telemetry asset that estimates SOH/EFC from measured inverter telemetry.
 - Use this baseline to compare NBEATSx/TFT forecasts and later DFL regret metrics, while clearly labeling degradation as a throughput/EFC proxy.
+
+## Research Benchmark Implications
+
+The next thesis-grade experiments should keep the current proxy as the deterministic baseline and add sensitivity, not rewrite the physics layer first.
+
+Recommended sensitivity dimensions:
+
+- Battery capex and replacement-cost assumptions.
+- Lifetime years and cycles/day assumptions.
+- SOC window width and initial SOC source.
+- Round-trip efficiency.
+- Market Operator per-MWh transaction tariff.
+- Date-stamped FX assumptions for USD/EUR cost anchors.
+
+The evaluation table should report both physical and economic outcomes: net UAH value, oracle regret, throughput, EFC, degradation penalty, and feasibility violations. This makes the limitation explicit: the model estimates operational economics, not SEI growth, C-rate stress, calendar ageing, or temperature-dependent capacity fade.
 
 Implemented backend direction:
 

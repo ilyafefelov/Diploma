@@ -1,1 +1,0 @@
-Contact sheet plan: 1 title/pathway; 2 horizontal pipeline; 3 layered architecture; 4 repo map; 5 domain swimlane; 6 data-flow timeline; 7 solver board; 8 battery metric/gauge; 9 API contract matrix; 10 dashboard request path; 11 stack comparison; 12 MVP/research split; 13 reading ladder; 14 contribution loop; 15 closing pillars.

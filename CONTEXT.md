@@ -88,6 +88,22 @@ _Avoid_: production policy, market execution model, retrainable SOTA claim
 Gold-шар порівняння, у якому **Level 1 Naive Forecast**, **NBEATSx Forecast** і **TFT Forecast** проходять через однаковий LP-контур, після чого їхні рішення оцінюються проти **Oracle Benchmark** за UAH value, degradation penalty і regret.
 _Avoid_: production bidding, direct dispatch, forecast-only metric, Proposed Bid generation
 
+**Real-Data Research Benchmark**:
+Thesis-grade evaluation dataset and protocol built from observed Ukraine DAM history, timestamp-aligned weather, tenant battery assumptions, explicit provenance, effective-dated market constraints, FX assumptions, and market participation costs. It is the required empirical base before making strong claims about NBEATSx/TFT, DFL, or Ukraine market performance.
+_Avoid_: synthetic demo history, live-current overlay only, architecture demo, SOTA claim without backtest
+
+**Rolling-Origin Strategy Backtest**:
+Evaluation protocol where each anchor uses only past data to build features/forecasts, solves the strategy for the next horizon, executes/scored only feasible decisions against later realized prices, and compares the result with **Oracle Benchmark**.
+_Avoid_: hindsight training, one-off demo materialization, random train/test split across time, forecast-only leaderboard
+
+**Effective-Dated Market Constraint**:
+Regulatory or market parameter whose value depends on the delivery/decision date, such as DAM/IDM/Balancing price caps, operator transaction tariffs, or fixed participation fees.
+_Avoid_: timeless constant, hidden config, dashboard-only annotation, post-hoc correction
+
+**Market Participation Cost**:
+Explicit UAH-denominated cost of participating in a market venue, including per-MWh operator tariffs, fixed software fees when relevant, taxes/VAT treatment if modeled, and other settlement-side costs separate from **Interval Degradation Penalty**.
+_Avoid_: degradation penalty, spread capture, ignored fee, implicit transaction cost
+
 **M3DT-Inspired Research Strategy**:
 Дослідницька multi-client стратегія на основі ідеї Mixture-of-Expert Decision Transformer, де різні симульовані BESS-клієнти трактуються як пов'язані offline RL tasks. У межах диплома це SOTA-inspired experiment після стабілізації baseline, а не повне відтворення M3DT-паперу і не production market execution engine.
 _Avoid_: current MVP, full M3DT reproduction, guaranteed SOTA result, dispatch engine
@@ -208,6 +224,10 @@ _Avoid_: market bid, no bid, cleared trade
 - A **Registered Forecast Candidate** is evidence for research comparison, not a **Target Strategy** or **Dispatch Command**
 - **Forecast Strategy Evaluation** connects the **Neural Forecast Silver Layer** to Gold by routing forecast candidates through the same **Baseline Strategy** LP and scoring the resulting decisions against the **Oracle Benchmark**
 - **Forecast Strategy Evaluation** is evaluation evidence, not **Proposed Bid** generation or production market submission
+- **Real-Data Research Benchmark** upgrades **Forecast Strategy Evaluation** from demo evidence to thesis evidence by replacing synthetic history with observed market/weather inputs and explicit cost/constraint assumptions
+- **Rolling-Origin Strategy Backtest** is the canonical experiment design for comparing **Level 1 Naive Forecast**, **NBEATSx Forecast**, **TFT Forecast**, and later **Target Strategy**
+- **Effective-Dated Market Constraint** constrains **Market Venue** validation and benchmark scoring for the relevant delivery date
+- **Market Participation Cost** contributes to net UAH decision value alongside **Interval Degradation Penalty**
 - **M3DT-Inspired Research Strategy** is a candidate **Target Strategy** evaluated on simulated client tasks after the baseline is stable
 - **Baseline Forecast** is the live-available forecast input used by **Baseline Strategy**
 - **Level 1 Naive Forecast** is the canonical first implementation of **Baseline Forecast**
@@ -326,6 +346,10 @@ _Avoid_: market bid, no bid, cleared trade
 - "TFT" може змішувати forecast і strategy — resolved: **TFT Forecast** є interpretable прогнозним кандидатом у Silver, але не **Proposed Bid** і не **Dispatch Command**.
 - "model registry" може звучати як production deployment — resolved: у цьому slice це **Registered Forecast Candidate** для відтворюваності MLflow/Dagster експериментів, а не **Target Strategy**.
 - "connect Silver to Gold" може звучати як прямий перехід від прогнозу до ринкової заявки — resolved: поточний Gold-зв'язок є **Forecast Strategy Evaluation**, тобто LP/regret comparison, а не **Proposed Bid** або **Dispatch Command**.
+- "real data" може звучати як live overlay поверх synthetic history — resolved: для thesis-grade claims потрібен **Real-Data Research Benchmark**, де історія DAM/weather є observed або clearly provenance-marked.
+- "backtest" може звучати як будь-який replay — resolved: канонічний експеримент є **Rolling-Origin Strategy Backtest**, де майбутні ціни не доступні forecast/model layer до scoring.
+- "price cap" раніше звучав як статична константа — resolved: price caps, tariffs і related market rules є **Effective-Dated Market Constraint**, особливо перед IDM/Balancing expansion.
+- "profit" раніше міг означати gross spread мінус degradation only — resolved: thesis-grade net value також має враховувати **Market Participation Cost**.
 - "M3DT" може звучати як обіцянка повного відтворення SOTA paper або production-моделі — resolved: у межах диплома це **M3DT-Inspired Research Strategy** для симульованих multi-client experiments після baseline, а не поточний MVP.
 - "baseline forecast" раніше змішував live naive forecast і perfect foresight — resolved: live MVP використовує **Baseline Forecast**, а hindsight використовується лише як **Oracle Benchmark** офлайн.
 - "naive forecast" раніше змішував flat persistence і seasonal slot-based baseline — resolved: канонічний Level 1 baseline є **Level 1 Naive Forecast** з **Price Shape Preservation**, а не плоска персистенція.

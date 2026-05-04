@@ -2,6 +2,8 @@
 
 This slice keeps the battery model scoped as a Level 1 simulator: hourly SOC feasibility, throughput, EFC, and degradation-cost proxy. It does not claim full P2D, SEI, thermal, C-rate, or calendar-ageing digital twin behavior.
 
+Deep-research update: this backend slice is a valid engineering foundation, but final thesis claims should be made through the real-data and rolling-origin benchmark plan in [RESEARCH_INTEGRATION_PLAN.md](RESEARCH_INTEGRATION_PLAN.md), not from synthetic-history demo materializations alone.
+
 ## Runtime Flow
 
 - Docker Compose runs Postgres, Mosquitto MQTT, FastAPI, Dagster webserver/daemon, MLflow, a simulated telemetry publisher, and a telemetry ingestor.
@@ -20,6 +22,7 @@ This slice keeps the battery model scoped as a Level 1 simulator: hourly SOC fea
 - `forecast_strategy_comparison_frame` is the first Gold-layer bridge from Silver forecasts to strategy evidence. It routes strict similar-day, NBEATSx, and TFT forecasts through the same Level 1 LP, scores the resulting schedules against realized DAM horizon prices, and compares them to an oracle LP benchmark.
 - Gold forecast-strategy rows persist to `forecast_strategy_evaluations` with decision value, forecast-objective value, oracle value, regret, degradation penalty, throughput, committed action preview, starting SOC source, and an explanatory payload.
 - This Gold asset is evaluation evidence only. It does not create `ProposedBid`, `ClearedTrade`, settlement IDs, or physical dispatch commands.
+- For thesis-grade use, this Gold bridge must be run as a rolling-origin backtest on observed DAM/weather history with explicit provenance, effective-dated market constraints, and market participation costs.
 - `simulated_trade_training_frame` generates DAM-only simulated trajectories with IDM-compatible naming reserved for later.
 - Simulated transitions store state, action, feasible dispatch, reward, degradation penalty, baseline value, oracle value, regret, and a `ClearedTrade` payload with `provenance="simulated"`.
 
