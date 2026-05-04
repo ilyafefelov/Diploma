@@ -111,8 +111,8 @@ const registryEnvelope = computed(() => {
     return 'Registry envelope unavailable'
   }
 
-  const latitudes = tenants.value.map((tenant) => tenant.latitude)
-  const longitudes = tenants.value.map((tenant) => tenant.longitude)
+  const latitudes = tenants.value.map(tenant => tenant.latitude)
+  const longitudes = tenants.value.map(tenant => tenant.longitude)
   const latitudeSpan = Math.max(...latitudes) - Math.min(...latitudes)
   const longitudeSpan = Math.max(...longitudes) - Math.min(...longitudes)
 
@@ -120,7 +120,7 @@ const registryEnvelope = computed(() => {
 })
 
 const criticalTenantCount = computed(() => {
-  return tenants.value.filter((tenant) => tenant.type === 'critical').length
+  return tenants.value.filter(tenant => tenant.type === 'critical').length
 })
 
 const selectedTenantBadge = computed(() => {
@@ -275,30 +275,42 @@ onBeforeUnmount(() => {
         <div class="hero-copy-block surface-panel surface-panel-strong">
           <div class="hero-copy-block__topline">
             <div class="plumbob-chip">
-              <span class="plumbob-chip__shape"></span>
+              <span class="plumbob-chip__shape" />
               Operator HUD
             </div>
 
             <div class="status-pill">
-              <span class="status-pill__dot"></span>
+              <span class="status-pill__dot" />
               {{ isLoading ? 'Refreshing registry' : 'Control plane online' }}
             </div>
           </div>
 
           <div class="hero-copy-block__body">
-            <p class="eyebrow">Smart arbitrage / dashboard w1</p>
-            <h1 class="workspace-title">Run the tenant registry from a bright operator control surface.</h1>
+            <p class="eyebrow">
+              Smart arbitrage / dashboard w1
+            </p>
+            <h1 class="workspace-title">
+              Run the tenant registry from a bright operator control surface.
+            </h1>
             <p class="workspace-copy">
               {{ workspaceCopy }}
             </p>
           </div>
 
           <div class="hero-copy-block__actions">
-            <NuxtLink class="control-button control-button-primary" to="/week1/interactive_report1">
+            <NuxtLink
+              class="control-button control-button-primary"
+              to="/week1/interactive_report1"
+            >
               Open Week 1 supervisor report
             </NuxtLink>
 
-            <button class="control-button control-button-secondary" type="button" :disabled="isLoading" @click="refreshRegistry">
+            <button
+              class="control-button control-button-secondary"
+              type="button"
+              :disabled="isLoading"
+              @click="refreshRegistry"
+            >
               {{ isLoading ? 'Refreshing' : 'Refresh registry' }}
             </button>
 
@@ -315,13 +327,19 @@ onBeforeUnmount(() => {
         </div>
 
         <aside class="hero-stage surface-panel surface-panel-blue">
-          <div class="hero-stage__halo"></div>
-          <div class="hero-stage__plumbob"></div>
+          <div class="hero-stage__halo" />
+          <div class="hero-stage__plumbob" />
 
           <div class="hero-stage__content">
-            <p class="eyebrow eyebrow-light">Active lot</p>
-            <h2 class="hero-stage__title">{{ selectedTenantName }}</h2>
-            <p class="hero-stage__subtitle">{{ selectedTenantBadge }}</p>
+            <p class="eyebrow eyebrow-light">
+              Active lot
+            </p>
+            <h2 class="hero-stage__title">
+              {{ selectedTenantName }}
+            </h2>
+            <p class="hero-stage__subtitle">
+              {{ selectedTenantBadge }}
+            </p>
 
             <div class="hero-stage__facts">
               <div>
@@ -339,31 +357,60 @@ onBeforeUnmount(() => {
 
       <section class="workspace-metrics">
         <article class="metric-strip surface-panel metric-strip-blue">
-          <p class="metric-strip__label">Tenants</p>
-          <p class="metric-strip__value">{{ tenants.length }}</p>
-          <p class="metric-strip__meta">Last sync {{ lastSyncLabel }}</p>
+          <p class="metric-strip__label">
+            Tenants
+          </p>
+          <p class="metric-strip__value">
+            {{ tenants.length }}
+          </p>
+          <p class="metric-strip__meta">
+            Last sync {{ lastSyncLabel }}
+          </p>
         </article>
 
         <article class="metric-strip surface-panel metric-strip-green">
-          <p class="metric-strip__label">Critical sites</p>
-          <p class="metric-strip__value">{{ criticalTenantCount }}</p>
-          <p class="metric-strip__meta">Priority-safe lots under watch</p>
+          <p class="metric-strip__label">
+            Critical sites
+          </p>
+          <p class="metric-strip__value">
+            {{ criticalTenantCount }}
+          </p>
+          <p class="metric-strip__meta">
+            Priority-safe lots under watch
+          </p>
         </article>
 
         <article class="metric-strip surface-panel metric-strip-orange">
-          <p class="metric-strip__label">Location envelope</p>
-          <p class="metric-strip__value metric-strip__value--small">{{ registryEnvelope }}</p>
-          <p class="metric-strip__meta">Source: FastAPI tenant registry</p>
+          <p class="metric-strip__label">
+            Location envelope
+          </p>
+          <p class="metric-strip__value metric-strip__value--small">
+            {{ registryEnvelope }}
+          </p>
+          <p class="metric-strip__meta">
+            Source: FastAPI tenant registry
+          </p>
         </article>
       </section>
 
-      <section v-if="error || weatherError || signalPreviewError || baselinePreviewError" class="workspace-alert">
+      <section
+        v-if="error || weatherError || signalPreviewError || baselinePreviewError"
+        class="workspace-alert"
+      >
         <div>
-          <p class="workspace-alert__title">Control surface issue</p>
-          <p class="workspace-alert__copy">{{ error || weatherError || signalPreviewError || baselinePreviewError }}</p>
+          <p class="workspace-alert__title">
+            Control surface issue
+          </p>
+          <p class="workspace-alert__copy">
+            {{ error || weatherError || signalPreviewError || baselinePreviewError }}
+          </p>
         </div>
 
-        <button class="control-button control-button-secondary" type="button" @click="dismissSurfaceErrors">
+        <button
+          class="control-button control-button-secondary"
+          type="button"
+          @click="dismissSurfaceErrors"
+        >
           Dismiss
         </button>
       </section>
@@ -372,16 +419,31 @@ onBeforeUnmount(() => {
         <aside class="surface-panel inspector-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">Tenant registry</p>
-              <h2 class="section-title">Lot selector</h2>
+              <p class="eyebrow">
+                Tenant registry
+              </p>
+              <h2 class="section-title">
+                Lot selector
+              </h2>
             </div>
 
-            <div class="mini-plumbob"></div>
+            <div class="mini-plumbob" />
           </div>
 
-          <label class="field-label" for="tenant-select">Selected tenant</label>
-          <select id="tenant-select" v-model="selectedTenantId" class="field-select">
-            <option v-for="tenant in tenants" :key="tenant.tenant_id" :value="tenant.tenant_id">
+          <label
+            class="field-label"
+            for="tenant-select"
+          >Selected tenant</label>
+          <select
+            id="tenant-select"
+            v-model="selectedTenantId"
+            class="field-select"
+          >
+            <option
+              v-for="tenant in tenants"
+              :key="tenant.tenant_id"
+              :value="tenant.tenant_id"
+            >
               {{ tenant.name || tenant.tenant_id }}
             </option>
           </select>
@@ -410,38 +472,65 @@ onBeforeUnmount(() => {
           </dl>
 
           <div class="note-block note-block-soft">
-            <p class="note-block__title">Registry mix</p>
-            <p class="note-block__copy">{{ tenantTypeMix }}</p>
+            <p class="note-block__title">
+              Registry mix
+            </p>
+            <p class="note-block__copy">
+              {{ tenantTypeMix }}
+            </p>
           </div>
 
           <div class="control-stack">
             <div class="panel-heading panel-heading-tight">
               <div>
-                <p class="eyebrow">Weather slice</p>
-                <h3 class="subsection-title">Materialization controls</h3>
+                <p class="eyebrow">
+                  Weather slice
+                </p>
+                <h3 class="subsection-title">
+                  Materialization controls
+                </h3>
               </div>
               <span class="status-badge">{{ statusLabel }}</span>
             </div>
 
-            <p class="control-meta">Last action {{ lastActionLabel }}</p>
+            <p class="control-meta">
+              Last action {{ lastActionLabel }}
+            </p>
 
             <label class="check-toggle">
-              <input v-model="includePriceHistory" type="checkbox">
+              <input
+                v-model="includePriceHistory"
+                type="checkbox"
+              >
               <span>Include DAM price history</span>
             </label>
 
             <div class="button-row">
-              <button class="control-button control-button-primary" type="button" :disabled="isPreparing || !selectedTenantId" @click="handlePrepareRunConfig">
+              <button
+                class="control-button control-button-primary"
+                type="button"
+                :disabled="isPreparing || !selectedTenantId"
+                @click="handlePrepareRunConfig"
+              >
                 {{ isPreparing ? 'Preparing' : 'Prepare run config' }}
               </button>
-              <button class="control-button control-button-ghost" type="button" :disabled="isMaterializing || !selectedTenantId" @click="handleMaterializeWeather">
+              <button
+                class="control-button control-button-ghost"
+                type="button"
+                :disabled="isMaterializing || !selectedTenantId"
+                @click="handleMaterializeWeather"
+              >
                 {{ isMaterializing ? 'Running' : 'Materialize weather' }}
               </button>
             </div>
 
             <div class="note-block note-block-soft control-output">
-              <p class="note-block__title">Resolved location</p>
-              <p class="note-block__copy">{{ weatherLocationLabel }}</p>
+              <p class="note-block__title">
+                Resolved location
+              </p>
+              <p class="note-block__copy">
+                {{ weatherLocationLabel }}
+              </p>
             </div>
           </div>
         </aside>
@@ -449,12 +538,20 @@ onBeforeUnmount(() => {
         <section class="surface-panel chart-panel chart-panel-main">
           <div class="chart-panel__header">
             <div>
-              <p class="eyebrow">Analytical surface</p>
-              <h2 class="section-title">Tenant registry constellation</h2>
+              <p class="eyebrow">
+                Analytical surface
+              </p>
+              <h2 class="section-title">
+                Tenant registry constellation
+              </h2>
             </div>
 
             <div class="chart-panel__toolbar">
-              <div class="chart-panel__toggle" role="tablist" aria-label="Explanation mode">
+              <div
+                class="chart-panel__toggle"
+                role="tablist"
+                aria-label="Explanation mode"
+              >
                 <button
                   type="button"
                   class="chart-panel__toggle-button"
@@ -474,8 +571,8 @@ onBeforeUnmount(() => {
               </div>
 
               <div class="chart-panel__legend">
-              <span class="legend-pill legend-pill-blue">Registry node</span>
-              <span class="legend-pill legend-pill-green">Focused lot</span>
+                <span class="legend-pill legend-pill-blue">Registry node</span>
+                <span class="legend-pill legend-pill-green">Focused lot</span>
               </div>
             </div>
           </div>
@@ -488,11 +585,16 @@ onBeforeUnmount(() => {
             />
 
             <template #fallback>
-              <div class="chart-fallback">Preparing simulation map...</div>
+              <div class="chart-fallback">
+                Preparing simulation map...
+              </div>
             </template>
           </ClientOnly>
 
-          <div v-if="!isLoading && tenants.length === 0" class="chart-fallback">
+          <div
+            v-if="!isLoading && tenants.length === 0"
+            class="chart-fallback"
+          >
             No tenant data available yet.
           </div>
 
@@ -505,7 +607,9 @@ onBeforeUnmount(() => {
             />
 
             <template #fallback>
-              <div class="chart-fallback chart-fallback-compact">Preparing signal charts...</div>
+              <div class="chart-fallback chart-fallback-compact">
+                Preparing signal charts...
+              </div>
             </template>
           </ClientOnly>
 
@@ -518,7 +622,9 @@ onBeforeUnmount(() => {
             />
 
             <template #fallback>
-              <div class="chart-fallback chart-fallback-compact">Preparing baseline LP surface...</div>
+              <div class="chart-fallback chart-fallback-compact">
+                Preparing baseline LP surface...
+              </div>
             </template>
           </ClientOnly>
         </section>
@@ -526,31 +632,57 @@ onBeforeUnmount(() => {
         <aside class="surface-panel narrative-panel">
           <div class="panel-heading">
             <div>
-              <p class="eyebrow">HUD notes</p>
-              <h2 class="section-title">Control cues</h2>
+              <p class="eyebrow">
+                HUD notes
+              </p>
+              <h2 class="section-title">
+                Control cues
+              </h2>
             </div>
 
-            <div class="mini-plumbob mini-plumbob-green"></div>
+            <div class="mini-plumbob mini-plumbob-green" />
           </div>
 
           <div class="narrative-stack">
-            <CollapsibleTextCard title="Operator motives" eyebrow="HUD notes" tone="default" :open="true">
+            <CollapsibleTextCard
+              title="Operator motives"
+              eyebrow="HUD notes"
+              tone="default"
+              :open="true"
+            >
               <HudMotiveBars :items="motiveItems" />
             </CollapsibleTextCard>
 
-            <CollapsibleTextCard title="Primary boundary" eyebrow="System boundary" tone="blue">
+            <CollapsibleTextCard
+              title="Primary boundary"
+              eyebrow="System boundary"
+              tone="blue"
+            >
               <p class="note-block__copy">
                 {{ primaryBoundaryCopy }}
               </p>
             </CollapsibleTextCard>
 
-            <CollapsibleTextCard title="What comes next" eyebrow="Roadmap cue" tone="green">
+            <CollapsibleTextCard
+              title="What comes next"
+              eyebrow="Roadmap cue"
+              tone="green"
+            >
               <ol class="note-list">
-                <li v-for="item in nextStepsItems" :key="item">{{ item }}</li>
+                <li
+                  v-for="item in nextStepsItems"
+                  :key="item"
+                >
+                  {{ item }}
+                </li>
               </ol>
             </CollapsibleTextCard>
 
-            <CollapsibleTextCard title="Prepared config" eyebrow="Runtime payload" tone="orange">
+            <CollapsibleTextCard
+              title="Prepared config"
+              eyebrow="Runtime payload"
+              tone="orange"
+            >
               <pre class="config-preview">{{ selectedRunConfigSnippet }}</pre>
             </CollapsibleTextCard>
           </div>

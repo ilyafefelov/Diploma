@@ -64,6 +64,18 @@ app = FastAPI(
 	],
 )
 
+WEATHER_BIAS_FEATURE_NAMES: tuple[str, ...] = (
+	"cloudcover",
+	"precipitation",
+	"humidity_excess",
+	"temperature_gap",
+	"effective_solar",
+	"wind_speed",
+)
+MIN_WEATHER_BIAS_TARGET_PEAK_UAH_MWH = 1.0
+MIN_WEATHER_BIAS_TARGET_SPREAD_UAH_MWH = 1.0
+MIN_WEATHER_BIAS_PREDICTION_SPREAD_UAH_MWH = 0.01
+
 
 class TenantSummaryResponse(BaseModel):
 	tenant_id: str
@@ -301,6 +313,14 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 		)
 		for point in forecast_points
 	]
+	if not _weather_bias_predictions_have_signal(weather_bias):
+		fallback_weather_bias_model = _default_weather_bias_model()
+		weather_bias = [
+			fallback_weather_bias_model.predict_uah_mwh(
+				weather_row=weather_rows_by_timestamp.get(point.forecast_timestamp, {}),
+			)
+			for point in forecast_points
+		]
 	adjusted_market_price = [
 		price + weather_bias[index]
 		for index, price in enumerate(market_price)
@@ -399,28 +419,23 @@ def _calibrate_weather_bias_model(
 	if len(training_rows) < 24:
 		return _default_weather_bias_model()
 
-	feature_names = (
-		"cloudcover",
-		"precipitation",
-		"humidity_excess",
-		"temperature_gap",
-		"effective_solar",
-		"wind_speed",
-	)
 	targets = [float(row["weather_premium_target_uah_mwh"]) for row in training_rows]
+	if not _weather_bias_targets_have_signal(targets):
+		return _default_weather_bias_model()
+
 	target_mean = sum(targets) / len(targets)
 	feature_means = {
 		feature_name: sum(float(row[feature_name]) for row in training_rows) / len(training_rows)
-		for feature_name in feature_names
+		for feature_name in WEATHER_BIAS_FEATURE_NAMES
 	}
 	feature_scales = {
 		feature_name: max(1.0, _population_standard_deviation([float(row[feature_name]) for row in training_rows]))
-		for feature_name in feature_names
+		for feature_name in WEATHER_BIAS_FEATURE_NAMES
 	}
 	standardized_rows = [
 		[
 			(float(row[feature_name]) - feature_means[feature_name]) / feature_scales[feature_name]
-			for feature_name in feature_names
+			for feature_name in WEATHER_BIAS_FEATURE_NAMES
 		]
 		for row in training_rows
 	]
@@ -428,11 +443,11 @@ def _calibrate_weather_bias_model(
 	coefficients = _fit_ridge_regression(
 		standardized_rows=standardized_rows,
 		centered_targets=centered_targets,
-		feature_names=feature_names,
+		feature_names=WEATHER_BIAS_FEATURE_NAMES,
 	)
 	prediction_ceiling_uah_mwh = max(120.0, max(targets) * 1.15)
 	return WeatherBiasCalibrationModel(
-		feature_names=feature_names,
+		feature_names=WEATHER_BIAS_FEATURE_NAMES,
 		feature_means=feature_means,
 		feature_scales=feature_scales,
 		coefficients=coefficients,
@@ -518,22 +533,51 @@ def _weather_feature_values_from_row(weather_row: dict[str, Any]) -> dict[str, f
 	}
 
 
+def _weather_bias_targets_have_signal(targets: list[float]) -> bool:
+	if not targets:
+		return False
+	if max(targets) < MIN_WEATHER_BIAS_TARGET_PEAK_UAH_MWH:
+		return False
+	return _population_standard_deviation(targets) >= MIN_WEATHER_BIAS_TARGET_SPREAD_UAH_MWH
+
+
+def _weather_bias_predictions_have_signal(predictions: list[float]) -> bool:
+	if not predictions:
+		return False
+	if max(predictions) <= 0.0:
+		return False
+	return _population_standard_deviation(predictions) >= MIN_WEATHER_BIAS_PREDICTION_SPREAD_UAH_MWH
+
+
 def _default_weather_bias_model() -> WeatherBiasCalibrationModel:
-	feature_names = (
-		"cloudcover",
-		"precipitation",
-		"humidity_excess",
-		"temperature_gap",
-		"effective_solar",
-		"wind_speed",
-	)
 	return WeatherBiasCalibrationModel(
-		feature_names=feature_names,
-		feature_means={feature_name: 0.0 for feature_name in feature_names},
-		feature_scales={feature_name: 1.0 for feature_name in feature_names},
-		coefficients={feature_name: 0.0 for feature_name in feature_names},
-		intercept_uah_mwh=120.0,
-		prediction_ceiling_uah_mwh=240.0,
+		feature_names=WEATHER_BIAS_FEATURE_NAMES,
+		feature_means={
+			"cloudcover": 45.0,
+			"precipitation": 0.0,
+			"humidity_excess": 5.0,
+			"temperature_gap": 8.0,
+			"effective_solar": 250.0,
+			"wind_speed": 5.0,
+		},
+		feature_scales={
+			"cloudcover": 25.0,
+			"precipitation": 1.0,
+			"humidity_excess": 15.0,
+			"temperature_gap": 10.0,
+			"effective_solar": 250.0,
+			"wind_speed": 8.0,
+		},
+		coefficients={
+			"cloudcover": 55.0,
+			"precipitation": 70.0,
+			"humidity_excess": 28.0,
+			"temperature_gap": 32.0,
+			"effective_solar": -35.0,
+			"wind_speed": -12.0,
+		},
+		intercept_uah_mwh=135.0,
+		prediction_ceiling_uah_mwh=360.0,
 	)
 
 

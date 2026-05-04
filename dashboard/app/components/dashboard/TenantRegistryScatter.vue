@@ -23,7 +23,11 @@ const option = computed(() => {
 </script>
 
 <template>
-  <VChart :option="option" autoresize class="registry-chart" />
+  <VChart
+    :option="option"
+    autoresize
+    class="registry-chart"
+  />
 </template>
 
 <style scoped>

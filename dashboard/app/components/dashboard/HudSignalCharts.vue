@@ -29,7 +29,7 @@ const weatherSourceBadge = computed(() => {
     return 'Weather source: not loaded yet'
   }
 
-  const formattedSources = [...new Set(sources.map((source) => formatWeatherSourceLabel(source)))]
+  const formattedSources = [...new Set(sources.map(source => formatWeatherSourceLabel(source)))]
 
   if (formattedSources.length === 1) {
     return `Weather source: ${formattedSources[0]}`
@@ -44,8 +44,12 @@ const weatherSourceBadge = computed(() => {
     <section class="signal-card">
       <div class="signal-card__header">
         <div>
-          <p class="signal-card__eyebrow">Market pulse</p>
-          <h3 class="signal-card__title">How weather may change the expected electricity price</h3>
+          <p class="signal-card__eyebrow">
+            Market pulse
+          </p>
+          <h3 class="signal-card__title">
+            How weather may change the expected electricity price
+          </h3>
           <p class="signal-card__summary">
             This chart starts from the current MVP baseline DAM forecast for each hour, then adds a calibrated weather
             effect. Read it as: <strong>expected price</strong> + <strong>weather effect</strong> = <strong>weather-adjusted price</strong>.
@@ -53,7 +57,9 @@ const weatherSourceBadge = computed(() => {
           </p>
         </div>
 
-        <p class="signal-card__meta">Updated {{ lastLoadedLabel }}</p>
+        <p class="signal-card__meta">
+          Updated {{ lastLoadedLabel }}
+        </p>
       </div>
 
       <div class="signal-card__guide">
@@ -65,8 +71,18 @@ const weatherSourceBadge = computed(() => {
         <span class="signal-guide-pill">Bottom axis: local time of day</span>
       </div>
 
-      <div v-if="isLoading" class="signal-chart signal-chart-fallback">Loading market pulse...</div>
-      <VChart v-else :option="marketOption" autoresize class="signal-chart" />
+      <div
+        v-if="isLoading"
+        class="signal-chart signal-chart-fallback"
+      >
+        Loading market pulse...
+      </div>
+      <VChart
+        v-else
+        :option="marketOption"
+        autoresize
+        class="signal-chart"
+      />
 
       <div class="signal-explainer-grid">
         <CollapsibleTextCard
@@ -130,7 +146,9 @@ const weatherSourceBadge = computed(() => {
             </p>
           </template>
           <template v-else>
-            <p class="signal-explainer-card__eyebrow">Future production data sources</p>
+            <p class="signal-explainer-card__eyebrow">
+              Future production data sources
+            </p>
             <p class="signal-explainer-card__copy">
               <strong>Forecast inputs:</strong> DAM or IDM market history, weather history and forecasts, calendar signals,
               regime context, and possibly cross-market coupling features.
@@ -151,8 +169,12 @@ const weatherSourceBadge = computed(() => {
     <section class="signal-card">
       <div class="signal-card__header">
         <div>
-          <p class="signal-card__eyebrow">Dispatch balance</p>
-          <h3 class="signal-card__title">Battery action and missed-value preview</h3>
+          <p class="signal-card__eyebrow">
+            Dispatch balance
+          </p>
+          <h3 class="signal-card__title">
+            Battery action and missed-value preview
+          </h3>
           <p class="signal-card__summary">
             Blue bars show a simplified battery action preview derived from the weather-adjusted price curve. Pink line
             shows a simplified <strong>missed value</strong> score for operator review. Battery action is shown in
@@ -160,7 +182,9 @@ const weatherSourceBadge = computed(() => {
           </p>
         </div>
 
-        <p class="signal-card__meta">API-backed preview</p>
+        <p class="signal-card__meta">
+          API-backed preview
+        </p>
       </div>
 
       <div class="signal-card__guide">
@@ -169,8 +193,18 @@ const weatherSourceBadge = computed(() => {
         <span class="signal-guide-pill">Preview only: simplified operator explanation</span>
       </div>
 
-      <div v-if="isLoading" class="signal-chart signal-chart-fallback">Loading dispatch preview...</div>
-      <VChart v-else :option="dispatchOption" autoresize class="signal-chart" />
+      <div
+        v-if="isLoading"
+        class="signal-chart signal-chart-fallback"
+      >
+        Loading dispatch preview...
+      </div>
+      <VChart
+        v-else
+        :option="dispatchOption"
+        autoresize
+        class="signal-chart"
+      />
 
       <div class="signal-explainer-grid">
         <CollapsibleTextCard
@@ -230,7 +264,9 @@ const weatherSourceBadge = computed(() => {
             </p>
           </template>
           <template v-else>
-            <p class="signal-explainer-card__eyebrow">Future opportunity metric</p>
+            <p class="signal-explainer-card__eyebrow">
+              Future opportunity metric
+            </p>
             <p class="signal-explainer-card__copy">
               In production, the pink line should become an explicit decision-quality metric such as regret against a
               counterfactual optimum, policy value gap, or expected opportunity cost under uncertainty.

@@ -12,13 +12,27 @@ const props = withDefaults(defineProps<{
 </script>
 
 <template>
-  <details class="collapsible-card" :class="`collapsible-card-${props.tone}`" :open="props.open">
+  <details
+    class="collapsible-card"
+    :class="`collapsible-card-${props.tone}`"
+    :open="props.open"
+  >
     <summary class="collapsible-card__summary">
       <div>
-        <p v-if="props.eyebrow" class="collapsible-card__eyebrow">{{ props.eyebrow }}</p>
-        <p class="collapsible-card__title">{{ props.title }}</p>
+        <p
+          v-if="props.eyebrow"
+          class="collapsible-card__eyebrow"
+        >
+          {{ props.eyebrow }}
+        </p>
+        <p class="collapsible-card__title">
+          {{ props.title }}
+        </p>
       </div>
-      <span class="collapsible-card__chevron" aria-hidden="true"></span>
+      <span
+        class="collapsible-card__chevron"
+        aria-hidden="true"
+      />
     </summary>
 
     <div class="collapsible-card__body">

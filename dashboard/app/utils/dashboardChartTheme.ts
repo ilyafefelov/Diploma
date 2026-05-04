@@ -1,4 +1,4 @@
-import type { EChartsOption } from 'echarts'
+import type { EChartsOption, TooltipComponentFormatterCallbackParams } from 'echarts'
 
 import type { BaselineLpPreview, SignalPreview, TenantSummary } from '~/types/control-plane'
 
@@ -15,6 +15,14 @@ type TenantScatterPoint = {
   }
   symbolSize: number
   symbol: 'diamond' | 'circle'
+}
+
+type TooltipPoint = {
+  axisValueLabel: string
+  dataIndex: number
+  seriesName: string
+  value: number
+  data: unknown
 }
 
 export const dashboardChartTokens = {
@@ -36,6 +44,53 @@ const formatCurrency = (value: number): string => `${Math.round(value).toLocaleS
 
 const formatSignedCurrencyPerMwh = (value: number): string => `${value > 0 ? '+' : ''}${Math.round(value).toLocaleString('en-GB')} UAH/MWh`
 
+const asRecord = (value: unknown): Record<string, unknown> | null => {
+  if (typeof value !== 'object' || value === null) {
+    return null
+  }
+
+  return value as Record<string, unknown>
+}
+
+const numberFromValue = (value: unknown): number => {
+  if (typeof value === 'number') {
+    return value
+  }
+
+  if (typeof value === 'string') {
+    const numericValue = Number(value)
+    return Number.isFinite(numericValue) ? numericValue : 0
+  }
+
+  if (Array.isArray(value)) {
+    const numericValue = value.find((entry): entry is number => typeof entry === 'number')
+    return numericValue ?? 0
+  }
+
+  return 0
+}
+
+const normalizeTooltipItems = (params: TooltipComponentFormatterCallbackParams): TooltipPoint[] => {
+  const rawItems: unknown[] = Array.isArray(params) ? params : [params]
+
+  return rawItems.map((rawItem) => {
+    const item = asRecord(rawItem)
+
+    return {
+      axisValueLabel: typeof item?.axisValueLabel === 'string' ? item.axisValueLabel : '',
+      dataIndex: typeof item?.dataIndex === 'number' ? item.dataIndex : 0,
+      seriesName: typeof item?.seriesName === 'string' ? item.seriesName : '',
+      value: numberFromValue(item?.value),
+      data: item?.data
+    }
+  })
+}
+
+const isTenantScatterPoint = (value: unknown): value is TenantScatterPoint => {
+  const point = asRecord(value)
+  return point !== null && asRecord(point.tenant) !== null
+}
+
 export const formatWeatherSourceLabel = (source: string): string => {
   if (source === 'OPEN_METEO') {
     return 'Open-Meteo live'
@@ -45,7 +100,7 @@ export const formatWeatherSourceLabel = (source: string): string => {
     return 'Synthetic fallback'
   }
 
-  return source.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\w/g, (letter) => letter.toUpperCase())
+  return source.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\w/g, letter => letter.toUpperCase())
 }
 
 const createTenantPoint = (tenant: TenantSummary, selectedTenantId: string): TenantScatterPoint => {
@@ -71,9 +126,9 @@ export const buildTenantRegistryChartOption = (
   tenants: TenantSummary[],
   selectedTenantId: string
 ): EChartsOption => {
-  const points = tenants.map((tenant) => createTenantPoint(tenant, selectedTenantId))
-  const latitudes = tenants.map((tenant) => tenant.latitude)
-  const longitudes = tenants.map((tenant) => tenant.longitude)
+  const points = tenants.map(tenant => createTenantPoint(tenant, selectedTenantId))
+  const latitudes = tenants.map(tenant => tenant.latitude)
+  const longitudes = tenants.map(tenant => tenant.longitude)
   const latitudeMin = latitudes.length > 0 ? Math.min(...latitudes) - 0.7 : 44
   const latitudeMax = latitudes.length > 0 ? Math.max(...latitudes) + 0.7 : 52
   const longitudeMin = longitudes.length > 0 ? Math.min(...longitudes) - 0.7 : 22
@@ -99,8 +154,10 @@ export const buildTenantRegistryChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      formatter: (params: { data?: TenantScatterPoint }) => {
-        const tenant = params.data?.tenant
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const tooltipItems = normalizeTooltipItems(params)
+        const tooltipData = tooltipItems[0]?.data
+        const tenant = isTenantScatterPoint(tooltipData) ? tooltipData.tenant : null
 
         if (!tenant) {
           return 'Tenant data unavailable'
@@ -214,15 +271,16 @@ export const buildMarketPulseChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      formatter: (params: Array<{ axisValueLabel: string; dataIndex: number; seriesName: string; value: number }>) => {
-        const price = params.find((item) => item.seriesName === 'Expected market price')?.value ?? 0
-        const uplift = params.find((item) => item.seriesName === 'Weather effect')?.value ?? 0
-        const adjusted = params.find((item) => item.seriesName === 'Price after weather')?.value ?? 0
-        const dataIndex = params[0]?.dataIndex ?? 0
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const tooltipItems = normalizeTooltipItems(params)
+        const price = tooltipItems.find(item => item.seriesName === 'Expected market price')?.value ?? 0
+        const uplift = tooltipItems.find(item => item.seriesName === 'Weather effect')?.value ?? 0
+        const adjusted = tooltipItems.find(item => item.seriesName === 'Price after weather')?.value ?? 0
+        const dataIndex = tooltipItems[0]?.dataIndex ?? 0
         const weatherSource = formatWeatherSourceLabel(signal.weather_sources[dataIndex] || 'SYNTHETIC')
 
         return [
-          params[0]?.axisValueLabel || '',
+          tooltipItems[0]?.axisValueLabel || '',
           `Expected market price: ${Math.round(price)} UAH/MWh`,
           `Calibrated weather effect: ${formatSignedCurrencyPerMwh(uplift)}`,
           `Price after weather: ${Math.round(adjusted)} UAH/MWh`,
@@ -351,12 +409,13 @@ export const buildDispatchBalanceChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      formatter: (params: Array<{ axisValueLabel: string; seriesName: string; value: number }>) => {
-        const batteryAction = params.find((item) => item.seriesName === 'Battery action')?.value ?? 0
-        const missedValue = params.find((item) => item.seriesName === 'Missed value')?.value ?? 0
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const tooltipItems = normalizeTooltipItems(params)
+        const batteryAction = tooltipItems.find(item => item.seriesName === 'Battery action')?.value ?? 0
+        const missedValue = tooltipItems.find(item => item.seriesName === 'Missed value')?.value ?? 0
 
         return [
-          params[0]?.axisValueLabel || '',
+          tooltipItems[0]?.axisValueLabel || '',
           `Battery action: ${formatSignedMw(batteryAction)}`,
           `Missed value: ${formatCurrency(missedValue)}`,
           'Battery action formula: clamp(((adjusted_price - avg_adjusted_price) / max_deviation) * max_power_mw)',
@@ -461,8 +520,8 @@ export const buildBaselineForecastChartOption = (
   baselinePreview: BaselineLpPreview | null
 ): EChartsOption => {
   const forecastPoints = baselinePreview?.forecast || []
-  const labels = forecastPoints.map((point) => point.forecast_timestamp.slice(11, 16))
-  const prices = forecastPoints.map((point) => point.predicted_price_uah_mwh)
+  const labels = forecastPoints.map(point => point.forecast_timestamp.slice(11, 16))
+  const prices = forecastPoints.map(point => point.predicted_price_uah_mwh)
 
   return {
     animationDuration: 1200,
@@ -476,13 +535,14 @@ export const buildBaselineForecastChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      formatter: (params: Array<{ axisValueLabel: string; dataIndex: number; value: number }>) => {
-        const dataIndex = params[0]?.dataIndex ?? 0
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const tooltipItems = normalizeTooltipItems(params)
+        const dataIndex = tooltipItems[0]?.dataIndex ?? 0
         const point = forecastPoints[dataIndex]
-        const price = params[0]?.value ?? 0
+        const price = tooltipItems[0]?.value ?? 0
 
         return [
-          params[0]?.axisValueLabel || '',
+          tooltipItems[0]?.axisValueLabel || '',
           `Baseline forecast: ${Math.round(price)} UAH/MWh`,
           point ? `Source timestamp: ${point.source_timestamp.slice(11, 16)}` : 'Source timestamp: not available',
           'Field: forecast[].predicted_price_uah_mwh',
@@ -558,9 +618,9 @@ export const buildBaselineScheduleChartOption = (
 ): EChartsOption => {
   const schedulePoints = baselinePreview?.recommendation_schedule || []
   const tracePoints = baselinePreview?.projected_state.trace || []
-  const labels = schedulePoints.map((point) => point.interval_start.slice(11, 16))
-  const netPower = schedulePoints.map((point) => point.recommended_net_power_mw)
-  const soc = tracePoints.map((point) => Number((point.soc_after_fraction * 100).toFixed(1)))
+  const labels = schedulePoints.map(point => point.interval_start.slice(11, 16))
+  const netPower = schedulePoints.map(point => point.recommended_net_power_mw)
+  const soc = tracePoints.map(point => Number((point.soc_after_fraction * 100).toFixed(1)))
 
   return {
     animationDuration: 1200,
@@ -582,15 +642,16 @@ export const buildBaselineScheduleChartOption = (
       textStyle: {
         color: dashboardChartTokens.tooltipText
       },
-      formatter: (params: Array<{ axisValueLabel: string; dataIndex: number; seriesName: string; value: number }>) => {
-        const dataIndex = params[0]?.dataIndex ?? 0
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const tooltipItems = normalizeTooltipItems(params)
+        const dataIndex = tooltipItems[0]?.dataIndex ?? 0
         const schedulePoint = schedulePoints[dataIndex]
         const tracePoint = tracePoints[dataIndex]
-        const signedRecommendation = params.find((item) => item.seriesName === 'Signed recommendation')?.value ?? 0
-        const projectedSoc = params.find((item) => item.seriesName === 'Projected SOC')?.value ?? 0
+        const signedRecommendation = tooltipItems.find(item => item.seriesName === 'Signed recommendation')?.value ?? 0
+        const projectedSoc = tooltipItems.find(item => item.seriesName === 'Projected SOC')?.value ?? 0
 
         return [
-          params[0]?.axisValueLabel || '',
+          tooltipItems[0]?.axisValueLabel || '',
           `Signed recommendation: ${formatSignedMw(signedRecommendation)}`,
           `Projected SOC: ${Math.round(projectedSoc)}%`,
           schedulePoint ? `Throughput: ${schedulePoint.throughput_mwh.toFixed(2)} MWh` : 'Throughput: not available',

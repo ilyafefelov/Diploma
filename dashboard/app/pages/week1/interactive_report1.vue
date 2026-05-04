@@ -343,8 +343,8 @@ const focusCards = computed<FocusCard[]>(() => focusMode.value === 'implemented'
     ]
 )
 
-const maxArtifactCount = Math.max(...artifactLayers.map((item) => item.count))
-const maxEndpointCount = Math.max(...endpointGroups.map((item) => item.count))
+const maxArtifactCount = Math.max(...artifactLayers.map(item => item.count))
+const maxEndpointCount = Math.max(...endpointGroups.map(item => item.count))
 const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count, 0)
 </script>
 
@@ -354,13 +354,32 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
       <section class="report-hero">
         <div class="report-copy surface-panel surface-panel-strong">
           <div class="report-chip-row">
-            <UBadge color="primary" variant="subtle">Week 1</UBadge>
-            <UBadge color="info" variant="subtle">DAM / UAH / LP baseline</UBadge>
-            <UBadge color="success" variant="subtle">Current MVP + target architecture</UBadge>
+            <UBadge
+              color="primary"
+              variant="subtle"
+            >
+              Week 1
+            </UBadge>
+            <UBadge
+              color="info"
+              variant="subtle"
+            >
+              DAM / UAH / LP baseline
+            </UBadge>
+            <UBadge
+              color="success"
+              variant="subtle"
+            >
+              Current MVP + target architecture
+            </UBadge>
           </div>
 
-          <p class="report-eyebrow">Interactive project report</p>
-          <h1 class="report-title">Перший тиждень диплома, упакований як яскравий interactive report для керівника.</h1>
+          <p class="report-eyebrow">
+            Interactive project report
+          </p>
+          <h1 class="report-title">
+            Перший тиждень диплома, упакований як яскравий interactive report для керівника.
+          </h1>
           <p class="report-summary">
             Це інтерактивний week 1 report, який збирає
             <strong>реальні repo-grounded метрики</strong>, <strong>чіткі формули</strong>,
@@ -369,31 +388,51 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
           </p>
 
           <div class="report-action-row">
-            <NuxtLink class="report-link report-link-primary" to="/operator">
+            <NuxtLink
+              class="report-link report-link-primary"
+              to="/operator"
+            >
               Open operator dashboard
             </NuxtLink>
 
-            <a class="report-link report-link-secondary" href="#citations">
+            <a
+              class="report-link report-link-secondary"
+              href="#citations"
+            >
               Open DOI anchors
             </a>
           </div>
 
           <div class="report-metric-grid">
-            <article v-for="card in metricCards" :key="card.label" class="report-metric-card">
-              <p class="report-metric-card__label">{{ card.label }}</p>
-              <p class="report-metric-card__value">{{ card.value }}</p>
-              <p class="report-metric-card__detail">{{ card.detail }}</p>
+            <article
+              v-for="card in metricCards"
+              :key="card.label"
+              class="report-metric-card"
+            >
+              <p class="report-metric-card__label">
+                {{ card.label }}
+              </p>
+              <p class="report-metric-card__value">
+                {{ card.value }}
+              </p>
+              <p class="report-metric-card__detail">
+                {{ card.detail }}
+              </p>
             </article>
           </div>
         </div>
 
         <aside class="report-stage surface-panel surface-panel-blue">
-          <div class="report-stage__halo"></div>
-          <div class="report-stage__plumbob"></div>
+          <div class="report-stage__halo" />
+          <div class="report-stage__plumbob" />
 
           <div class="report-stage__content">
-            <p class="report-eyebrow report-eyebrow-light">Current MVP status</p>
-            <h2 class="report-stage__title">Поточний результат уже є демонстраційно придатним baseline contour</h2>
+            <p class="report-eyebrow report-eyebrow-light">
+              Current MVP status
+            </p>
+            <h2 class="report-stage__title">
+              Поточний результат уже є демонстраційно придатним baseline contour
+            </h2>
 
             <ol class="report-stage__list">
               <li>Scope свідомо обмежено: DAM-only, UAH, strict similar-day forecast і LP baseline.</li>
@@ -408,8 +447,12 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
       <section class="focus-surface surface-panel surface-panel-blue">
         <div class="section-header">
           <div>
-            <p class="report-eyebrow">Scope boundary</p>
-            <h2 class="section-title">Поточний MVP і цільова дослідницька архітектура</h2>
+            <p class="report-eyebrow">
+              Scope boundary
+            </p>
+            <h2 class="section-title">
+              Поточний MVP і цільова дослідницька архітектура
+            </h2>
           </div>
 
           <div class="mode-toggle">
@@ -434,10 +477,20 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
         </div>
 
         <div class="focus-grid">
-          <article v-for="card in focusCards" :key="card.title" class="focus-card">
-            <p class="focus-card__eyebrow">{{ card.eyebrow }}</p>
-            <h3 class="focus-card__title">{{ card.title }}</h3>
-            <p class="focus-card__detail">{{ card.detail }}</p>
+          <article
+            v-for="card in focusCards"
+            :key="card.title"
+            class="focus-card"
+          >
+            <p class="focus-card__eyebrow">
+              {{ card.eyebrow }}
+            </p>
+            <h3 class="focus-card__title">
+              {{ card.title }}
+            </h3>
+            <p class="focus-card__detail">
+              {{ card.detail }}
+            </p>
           </article>
         </div>
       </section>
@@ -446,8 +499,12 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
         <article class="report-panel surface-panel">
           <div class="section-header">
             <div>
-              <p class="report-eyebrow">Dagster contour</p>
-              <h2 class="section-title">MVP asset graph, який уже можна захищати словами й кодом</h2>
+              <p class="report-eyebrow">
+                Dagster contour
+              </p>
+              <h2 class="section-title">
+                MVP asset graph, який уже можна захищати словами й кодом
+              </h2>
             </div>
             <span class="section-chip">10 assets</span>
           </div>
@@ -458,12 +515,18 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
           </p>
 
           <div class="metric-bar-list">
-            <article v-for="item in artifactLayers" :key="item.label" class="metric-bar-card">
+            <article
+              v-for="item in artifactLayers"
+              :key="item.label"
+              class="metric-bar-card"
+            >
               <div class="metric-bar-card__topline">
                 <span>{{ item.label }}</span>
                 <strong>{{ item.count }}</strong>
               </div>
-              <p class="metric-bar-card__detail">{{ item.detail }}</p>
+              <p class="metric-bar-card__detail">
+                {{ item.detail }}
+              </p>
               <div class="metric-bar-track">
                 <span
                   class="metric-bar-fill"
@@ -471,13 +534,17 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
                     width: `${(item.count / maxArtifactCount) * 100}%`,
                     background: item.color
                   }"
-                ></span>
+                />
               </div>
             </article>
           </div>
 
           <div class="mini-grid">
-            <article v-for="item in artifactLayers" :key="item.label" class="mini-grid__card">
+            <article
+              v-for="item in artifactLayers"
+              :key="item.label"
+              class="mini-grid__card"
+            >
               <div class="mini-grid__topline">
                 <span>{{ item.label }}</span>
                 <strong>{{ item.count }}</strong>
@@ -490,8 +557,12 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
         <article class="report-panel surface-panel">
           <div class="section-header">
             <div>
-              <p class="report-eyebrow">FastAPI surface</p>
-              <h2 class="section-title">Control-plane API уже досить широкий для demo-stage walkthrough</h2>
+              <p class="report-eyebrow">
+                FastAPI surface
+              </p>
+              <h2 class="section-title">
+                Control-plane API уже досить широкий для demo-stage walkthrough
+              </h2>
             </div>
             <span class="section-chip">{{ totalEndpointCount }} endpoint-ів</span>
           </div>
@@ -502,12 +573,18 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
           </p>
 
           <div class="metric-bar-list metric-bar-list-endpoints">
-            <article v-for="item in endpointGroups" :key="item.label" class="metric-bar-card metric-bar-card-endpoint">
+            <article
+              v-for="item in endpointGroups"
+              :key="item.label"
+              class="metric-bar-card metric-bar-card-endpoint"
+            >
               <div class="metric-bar-card__topline">
                 <span>{{ item.label }}</span>
                 <strong>{{ item.count }}</strong>
               </div>
-              <p class="metric-bar-card__detail">{{ item.detail }}</p>
+              <p class="metric-bar-card__detail">
+                {{ item.detail }}
+              </p>
               <div class="metric-bar-track">
                 <span
                   class="metric-bar-fill"
@@ -515,13 +592,17 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
                     width: `${(item.count / maxEndpointCount) * 100}%`,
                     background: item.color
                   }"
-                ></span>
+                />
               </div>
             </article>
           </div>
 
           <div class="mini-grid mini-grid-endpoints">
-            <article v-for="item in endpointGroups" :key="item.label" class="mini-grid__card">
+            <article
+              v-for="item in endpointGroups"
+              :key="item.label"
+              class="mini-grid__card"
+            >
               <div class="mini-grid__topline">
                 <span>{{ item.label }}</span>
                 <strong>{{ item.count }}</strong>
@@ -536,8 +617,12 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
         <article class="report-panel surface-panel">
           <div class="section-header">
             <div>
-              <p class="report-eyebrow">Battery economics</p>
-              <h2 class="section-title">Чому current degradation proxy прозорий, а не довільний</h2>
+              <p class="report-eyebrow">
+                Battery economics
+              </p>
+              <h2 class="section-title">
+                Чому current degradation proxy прозорий, а не довільний
+              </h2>
             </div>
             <span class="section-chip">{{ degradationCostPerMwhLabel }} UAH/MWh proxy</span>
           </div>
@@ -548,10 +633,18 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
           </p>
 
           <div class="formula-board">
-            <p class="formula-board__line">MC_deg = C_cycle / (2 * Capacity_mwh)</p>
-            <p class="formula-board__line">Penalty_t = MC_deg * Throughput_t</p>
-            <p class="formula-board__line formula-board__line-subtle">{{ degradationCycleProxyWorkedExample }}</p>
-            <p class="formula-board__line formula-board__line-subtle">{{ degradationCostWorkedExample }}</p>
+            <p class="formula-board__line">
+              MC_deg = C_cycle / (2 * Capacity_mwh)
+            </p>
+            <p class="formula-board__line">
+              Penalty_t = MC_deg * Throughput_t
+            </p>
+            <p class="formula-board__line formula-board__line-subtle">
+              {{ degradationCycleProxyWorkedExample }}
+            </p>
+            <p class="formula-board__line formula-board__line-subtle">
+              {{ degradationCostWorkedExample }}
+            </p>
           </div>
 
           <div class="mini-grid mini-grid-proxy">
@@ -615,14 +708,22 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
         <article class="report-panel surface-panel">
           <div class="section-header">
             <div>
-              <p class="report-eyebrow">ELT walkthrough</p>
-              <h2 class="section-title">Реальний data flow, який можна показати без натяжок</h2>
+              <p class="report-eyebrow">
+                ELT walkthrough
+              </p>
+              <h2 class="section-title">
+                Реальний data flow, який можна показати без натяжок
+              </h2>
             </div>
             <span class="section-chip">Bronze -> Silver -> Gold</span>
           </div>
 
           <div class="flow-lane">
-            <article v-for="step in flowSteps" :key="step.phase" class="flow-lane__card">
+            <article
+              v-for="step in flowSteps"
+              :key="step.phase"
+              class="flow-lane__card"
+            >
               <span class="flow-lane__phase">{{ step.phase }}</span>
               <h3>{{ step.label }}</h3>
               <p>{{ step.detail }}</p>
@@ -634,35 +735,55 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
       <section class="sources-panel surface-panel">
         <div class="section-header">
           <div>
-            <p class="report-eyebrow">Source provenance</p>
-            <h2 class="section-title">Джерела, які можна назвати поіменно і з URL</h2>
+            <p class="report-eyebrow">
+              Source provenance
+            </p>
+            <h2 class="section-title">
+              Джерела, які можна назвати поіменно і з URL
+            </h2>
           </div>
           <span class="section-chip">Repo-grounded</span>
         </div>
 
         <div class="source-grid">
           <component
+            :is="source.url ? 'a' : 'article'"
             v-for="source in sourceCards"
             :key="source.label"
-            :is="source.url ? 'a' : 'article'"
             :href="source.url"
             class="source-card"
             :target="source.url ? '_blank' : undefined"
             :rel="source.url ? 'noopener noreferrer' : undefined"
           >
-            <p class="source-card__kind">{{ source.kind }}</p>
-            <h3 class="source-card__title">{{ source.label }}</h3>
-            <p class="source-card__detail">{{ source.detail }}</p>
-            <span v-if="source.url" class="source-card__link">{{ source.url }}</span>
+            <p class="source-card__kind">
+              {{ source.kind }}
+            </p>
+            <h3 class="source-card__title">
+              {{ source.label }}
+            </h3>
+            <p class="source-card__detail">
+              {{ source.detail }}
+            </p>
+            <span
+              v-if="source.url"
+              class="source-card__link"
+            >{{ source.url }}</span>
           </component>
         </div>
       </section>
 
-      <section id="citations" class="citation-panel surface-panel surface-panel-blue">
+      <section
+        id="citations"
+        class="citation-panel surface-panel surface-panel-blue"
+      >
         <div class="section-header">
           <div>
-            <p class="report-eyebrow">Research anchors</p>
-            <h2 class="section-title">DOI-посилання, які прямо підтримують обрані архітектурні рішення</h2>
+            <p class="report-eyebrow">
+              Research anchors
+            </p>
+            <h2 class="section-title">
+              DOI-посилання, які прямо підтримують обрані архітектурні рішення
+            </h2>
           </div>
           <span class="section-chip">5 ключових джерел</span>
         </div>
@@ -687,22 +808,40 @@ const totalEndpointCount = endpointGroups.reduce((sum, item) => sum + item.count
       <section class="qa-panel surface-panel">
         <div class="section-header">
           <div>
-            <p class="report-eyebrow">Clarifying notes</p>
-            <h2 class="section-title">Ключові уточнення до поточної версії системи</h2>
+            <p class="report-eyebrow">
+              Clarifying notes
+            </p>
+            <h2 class="section-title">
+              Ключові уточнення до поточної версії системи
+            </h2>
           </div>
           <span class="section-chip">4 відповіді</span>
         </div>
 
         <div class="qa-grid">
-          <details v-for="item in qaItems" :key="item.question" class="qa-card">
+          <details
+            v-for="item in qaItems"
+            :key="item.question"
+            class="qa-card"
+          >
             <summary>
               <span>{{ item.question }}</span>
               <span class="qa-card__summary-chip">{{ item.formula ? 'Formula' : 'Ready answer' }}</span>
             </summary>
 
             <div class="qa-card__body">
-              <p v-if="item.formula" class="qa-card__formula">{{ item.formula }}</p>
-              <p v-for="paragraph in item.answer" :key="paragraph">{{ paragraph }}</p>
+              <p
+                v-if="item.formula"
+                class="qa-card__formula"
+              >
+                {{ item.formula }}
+              </p>
+              <p
+                v-for="paragraph in item.answer"
+                :key="paragraph"
+              >
+                {{ paragraph }}
+              </p>
             </div>
           </details>
         </div>

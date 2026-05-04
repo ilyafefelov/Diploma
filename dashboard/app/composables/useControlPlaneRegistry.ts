@@ -19,7 +19,7 @@ export const useControlPlaneRegistry = () => {
   let refreshTimer: ReturnType<typeof setInterval> | null = null
 
   const selectedTenant = computed(() => {
-    return tenants.value.find((tenant) => tenant.tenant_id === selectedTenantId.value) || null
+    return tenants.value.find(tenant => tenant.tenant_id === selectedTenantId.value) || null
   })
 
   const loadTenants = async (): Promise<void> => {
@@ -31,7 +31,7 @@ export const useControlPlaneRegistry = () => {
       tenants.value = sortTenants(response)
       lastLoadedAt.value = Date.now()
 
-      const tenantStillExists = tenants.value.some((tenant) => tenant.tenant_id === selectedTenantId.value)
+      const tenantStillExists = tenants.value.some(tenant => tenant.tenant_id === selectedTenantId.value)
       if (!tenantStillExists) {
         selectedTenantId.value = tenants.value[0]?.tenant_id || ''
       }

@@ -126,13 +126,21 @@ const feasiblePlanItems = computed(() => {
   <section class="baseline-slab">
     <div class="baseline-slab__header">
       <div>
-        <p class="baseline-slab__eyebrow">Slice 2 preview</p>
-        <h3 class="baseline-slab__title">Baseline LP recommendation surface</h3>
+        <p class="baseline-slab__eyebrow">
+          Slice 2 preview
+        </p>
+        <h3 class="baseline-slab__title">
+          Baseline LP recommendation surface
+        </h3>
       </div>
 
       <div class="baseline-slab__meta-block">
-        <p class="baseline-slab__meta">Updated {{ lastLoadedLabel }}</p>
-        <p class="baseline-slab__meta baseline-slab__meta-soft">Recommendation preview only, not bid intent</p>
+        <p class="baseline-slab__meta">
+          Updated {{ lastLoadedLabel }}
+        </p>
+        <p class="baseline-slab__meta baseline-slab__meta-soft">
+          Recommendation preview only, not bid intent
+        </p>
       </div>
     </div>
 
@@ -143,26 +151,51 @@ const feasiblePlanItems = computed(() => {
         class="economics-pill economics-pill-interactive"
         tabindex="0"
       >
-        <p class="economics-pill__label">{{ item.label }}</p>
-        <p class="economics-pill__value">{{ item.value }}</p>
+        <p class="economics-pill__label">
+          {{ item.label }}
+        </p>
+        <p class="economics-pill__value">
+          {{ item.value }}
+        </p>
 
-        <div class="sims-tooltip" role="tooltip">
+        <div
+          class="sims-tooltip"
+          role="tooltip"
+        >
           <div class="sims-tooltip__topline">
-            <span class="sims-tooltip__plumbob"></span>
-            <p class="sims-tooltip__eyebrow">Metric explainer</p>
+            <span class="sims-tooltip__plumbob" />
+            <p class="sims-tooltip__eyebrow">
+              Metric explainer
+            </p>
           </div>
-          <p class="sims-tooltip__title">{{ item.tooltipTitle }}</p>
-          <p class="sims-tooltip__body">{{ item.tooltipBody }}</p>
-          <p class="sims-tooltip__formula">{{ item.tooltipFormula }}</p>
+          <p class="sims-tooltip__title">
+            {{ item.tooltipTitle }}
+          </p>
+          <p class="sims-tooltip__body">
+            {{ item.tooltipBody }}
+          </p>
+          <p class="sims-tooltip__formula">
+            {{ item.tooltipFormula }}
+          </p>
         </div>
       </article>
     </div>
 
     <div class="baseline-feasible-strip">
-      <article v-for="item in feasiblePlanItems" :key="item.label" class="feasible-pill">
-        <p class="feasible-pill__label">{{ item.label }}</p>
-        <p class="feasible-pill__value">{{ item.value }}</p>
-        <p class="feasible-pill__note">{{ item.note }}</p>
+      <article
+        v-for="item in feasiblePlanItems"
+        :key="item.label"
+        class="feasible-pill"
+      >
+        <p class="feasible-pill__label">
+          {{ item.label }}
+        </p>
+        <p class="feasible-pill__value">
+          {{ item.value }}
+        </p>
+        <p class="feasible-pill__note">
+          {{ item.note }}
+        </p>
       </article>
     </div>
 
@@ -170,29 +203,59 @@ const feasiblePlanItems = computed(() => {
       <section class="baseline-card baseline-card-forecast">
         <div class="baseline-card__header">
           <div>
-            <p class="baseline-card__eyebrow">Forecast horizon</p>
-            <h4 class="baseline-card__title">Hourly DAM baseline forecast</h4>
-            <p class="baseline-card__summary">Y-axis values are quoted in <strong>UAH/MWh</strong>.</p>
+            <p class="baseline-card__eyebrow">
+              Forecast horizon
+            </p>
+            <h4 class="baseline-card__title">
+              Hourly DAM baseline forecast
+            </h4>
+            <p class="baseline-card__summary">
+              Y-axis values are quoted in <strong>UAH/MWh</strong>.
+            </p>
           </div>
         </div>
 
-        <div v-if="isLoading" class="baseline-chart baseline-chart-fallback">Loading baseline forecast...</div>
-        <VChart v-else :option="forecastOption" autoresize class="baseline-chart" />
+        <div
+          v-if="isLoading"
+          class="baseline-chart baseline-chart-fallback"
+        >
+          Loading baseline forecast...
+        </div>
+        <VChart
+          v-else
+          :option="forecastOption"
+          autoresize
+          class="baseline-chart"
+        />
       </section>
 
       <section class="baseline-card baseline-card-balance">
         <div class="baseline-card__header">
           <div>
-            <p class="baseline-card__eyebrow">Feasible plan</p>
-            <h4 class="baseline-card__title">Signed MW schedule and projected SOC</h4>
+            <p class="baseline-card__eyebrow">
+              Feasible plan
+            </p>
+            <h4 class="baseline-card__title">
+              Signed MW schedule and projected SOC
+            </h4>
             <p class="baseline-card__summary">
               Bars use signed <strong>MW</strong>; the pink line is projected <strong>SOC %</strong> after each feasible step.
             </p>
           </div>
         </div>
 
-        <div v-if="isLoading" class="baseline-chart baseline-chart-fallback">Loading projected state...</div>
-        <VChart v-else :option="scheduleOption" autoresize class="baseline-chart" />
+        <div
+          v-if="isLoading"
+          class="baseline-chart baseline-chart-fallback"
+        >
+          Loading projected state...
+        </div>
+        <VChart
+          v-else
+          :option="scheduleOption"
+          autoresize
+          class="baseline-chart"
+        />
       </section>
     </div>
 
@@ -217,7 +280,9 @@ const feasiblePlanItems = computed(() => {
           </p>
         </template>
         <template v-else>
-          <p class="baseline-explainer-card__eyebrow">Future forecast source</p>
+          <p class="baseline-explainer-card__eyebrow">
+            Future forecast source
+          </p>
           <p class="baseline-explainer-card__copy">
             In production, this chart should be fed by the dedicated forecast stack, most likely <strong>NBEATSx</strong>
             and <strong>TFT</strong>, with richer weather, calendar, and market-state features.
@@ -250,7 +315,9 @@ const feasiblePlanItems = computed(() => {
           </p>
         </template>
         <template v-else>
-          <p class="baseline-explainer-card__eyebrow">Future decision logic</p>
+          <p class="baseline-explainer-card__eyebrow">
+            Future decision logic
+          </p>
           <p class="baseline-explainer-card__copy">
             Once decisions move to <strong>DT/M3DT</strong>, the action path should come from a learned policy and then be
             checked by the same deterministic battery and gatekeeper constraints.

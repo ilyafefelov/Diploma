@@ -109,7 +109,7 @@ export const useWeatherControls = () => {
       runConfig.value = null
       materializeResult.value = null
 
-      const fetchError = unknownError as { statusCode?: number; statusMessage?: string } | Error
+      const fetchError = unknownError as { statusCode?: number, statusMessage?: string } | Error
       if ('statusCode' in fetchError && fetchError.statusCode === 404) {
         error.value = ''
         return
@@ -232,7 +232,7 @@ const isWeatherMaterializePayload = (value: unknown): value is WeatherMaterializ
   return isRecord(value)
     && typeof value.tenant_id === 'string'
     && Array.isArray(value.selected_assets)
-    && value.selected_assets.every((item) => typeof item === 'string')
+    && value.selected_assets.every(item => typeof item === 'string')
     && isRecord(value.run_config)
     && isResolvedLocation(value.resolved_location)
     && typeof value.success === 'boolean'

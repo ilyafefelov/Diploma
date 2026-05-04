@@ -11,17 +11,27 @@ const props = defineProps<{
 
 <template>
   <div class="motive-stack">
-    <article v-for="item in props.items" :key="item.label" class="motive-row">
+    <article
+      v-for="item in props.items"
+      :key="item.label"
+      class="motive-row"
+    >
       <div class="motive-row__topline">
         <span class="motive-row__label">{{ item.label }}</span>
         <strong class="motive-row__value">{{ item.value }}%</strong>
       </div>
 
       <div class="motive-track">
-        <div class="motive-fill" :class="`motive-fill--${item.tone}`" :style="{ width: `${item.value}%` }"></div>
+        <div
+          class="motive-fill"
+          :class="`motive-fill--${item.tone}`"
+          :style="{ width: `${item.value}%` }"
+        />
       </div>
 
-      <p class="motive-row__hint">{{ item.hint }}</p>
+      <p class="motive-row__hint">
+        {{ item.hint }}
+      </p>
     </article>
   </div>
 </template>
