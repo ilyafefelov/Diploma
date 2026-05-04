@@ -10,6 +10,7 @@ x-backend-env: &backend-env
   SMART_ARBITRAGE_BATTERY_TELEMETRY_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
   SMART_ARBITRAGE_FORECAST_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
   SMART_ARBITRAGE_SIMULATED_TRADE_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
+  SMART_ARBITRAGE_STRATEGY_EVALUATION_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
   SMART_ARBITRAGE_OPERATOR_STATUS_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
   MLFLOW_TRACKING_URI: http://mlflow:5000
   GIT_PYTHON_REFRESH: quiet

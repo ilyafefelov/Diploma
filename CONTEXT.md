@@ -84,6 +84,10 @@ _Avoid_: production deployment, dispatch validation, one-off notebook result
 MLflow Model Registry версія frozen forecast artifact для NBEATSx/TFT comparison, яка відтворює збережені прогнозні рядки, але не є **Target Strategy** або **Dispatch Command**.
 _Avoid_: production policy, market execution model, retrainable SOTA claim
 
+**Forecast Strategy Evaluation**:
+Gold-шар порівняння, у якому **Level 1 Naive Forecast**, **NBEATSx Forecast** і **TFT Forecast** проходять через однаковий LP-контур, після чого їхні рішення оцінюються проти **Oracle Benchmark** за UAH value, degradation penalty і regret.
+_Avoid_: production bidding, direct dispatch, forecast-only metric, Proposed Bid generation
+
 **M3DT-Inspired Research Strategy**:
 Дослідницька multi-client стратегія на основі ідеї Mixture-of-Expert Decision Transformer, де різні симульовані BESS-клієнти трактуються як пов'язані offline RL tasks. У межах диплома це SOTA-inspired experiment після стабілізації baseline, а не повне відтворення M3DT-паперу і не production market execution engine.
 _Avoid_: current MVP, full M3DT reproduction, guaranteed SOTA result, dispatch engine
@@ -202,6 +206,8 @@ _Avoid_: market bid, no bid, cleared trade
 - **NBEATSx Forecast** and **TFT Forecast** can feed future **Target Strategy** experiments after evaluation against the baseline
 - A **Forecast Experiment Run** can produce one **Registered Forecast Candidate** in MLflow Model Registry
 - A **Registered Forecast Candidate** is evidence for research comparison, not a **Target Strategy** or **Dispatch Command**
+- **Forecast Strategy Evaluation** connects the **Neural Forecast Silver Layer** to Gold by routing forecast candidates through the same **Baseline Strategy** LP and scoring the resulting decisions against the **Oracle Benchmark**
+- **Forecast Strategy Evaluation** is evaluation evidence, not **Proposed Bid** generation or production market submission
 - **M3DT-Inspired Research Strategy** is a candidate **Target Strategy** evaluated on simulated client tasks after the baseline is stable
 - **Baseline Forecast** is the live-available forecast input used by **Baseline Strategy**
 - **Level 1 Naive Forecast** is the canonical first implementation of **Baseline Forecast**
@@ -319,6 +325,7 @@ _Avoid_: market bid, no bid, cleared trade
 - "embedding" раніше могло звучати як окремий representation-learning slice — resolved: для поточного Silver-шару йдеться про **NBEATSx Forecast**, а не про embedding-first модель.
 - "TFT" може змішувати forecast і strategy — resolved: **TFT Forecast** є interpretable прогнозним кандидатом у Silver, але не **Proposed Bid** і не **Dispatch Command**.
 - "model registry" може звучати як production deployment — resolved: у цьому slice це **Registered Forecast Candidate** для відтворюваності MLflow/Dagster експериментів, а не **Target Strategy**.
+- "connect Silver to Gold" може звучати як прямий перехід від прогнозу до ринкової заявки — resolved: поточний Gold-зв'язок є **Forecast Strategy Evaluation**, тобто LP/regret comparison, а не **Proposed Bid** або **Dispatch Command**.
 - "M3DT" може звучати як обіцянка повного відтворення SOTA paper або production-моделі — resolved: у межах диплома це **M3DT-Inspired Research Strategy** для симульованих multi-client experiments після baseline, а не поточний MVP.
 - "baseline forecast" раніше змішував live naive forecast і perfect foresight — resolved: live MVP використовує **Baseline Forecast**, а hindsight використовується лише як **Oracle Benchmark** офлайн.
 - "naive forecast" раніше змішував flat persistence і seasonal slot-based baseline — resolved: канонічний Level 1 baseline є **Level 1 Naive Forecast** з **Price Shape Preservation**, а не плоска персистенція.

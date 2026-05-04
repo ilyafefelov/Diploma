@@ -54,6 +54,7 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 	BatteryTelemetryObservation,
 	get_battery_telemetry_store,
 )
+from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 
 
 app = FastAPI(
@@ -249,6 +250,34 @@ class DashboardBatteryStateResponse(BaseModel):
 	latest_telemetry: BatteryTelemetryObservationResponse | None
 	hourly_snapshot: BatteryStateHourlySnapshotResponse | None
 	fallback_reason: str | None
+
+
+class ForecastStrategyComparisonPointResponse(BaseModel):
+	forecast_model_name: str
+	strategy_kind: str
+	decision_value_uah: float
+	forecast_objective_value_uah: float
+	oracle_value_uah: float
+	regret_uah: float
+	regret_ratio: float
+	total_degradation_penalty_uah: float
+	total_throughput_mwh: float
+	committed_action: str
+	committed_power_mw: float
+	rank_by_regret: int
+	evaluation_payload: dict[str, Any]
+
+
+class ForecastStrategyComparisonResponse(BaseModel):
+	tenant_id: str
+	market_venue: str
+	evaluation_id: str
+	anchor_timestamp: datetime
+	generated_at: datetime
+	horizon_hours: int
+	starting_soc_fraction: float
+	starting_soc_source: str
+	comparisons: list[ForecastStrategyComparisonPointResponse]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1062,6 +1091,60 @@ def _to_hourly_snapshot_response(snapshot: BatteryStateHourlySnapshot) -> Batter
 	)
 
 
+def _to_forecast_strategy_comparison_response(
+	*,
+	tenant_id: str,
+	evaluation_frame: pl.DataFrame,
+) -> ForecastStrategyComparisonResponse:
+	if evaluation_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Forecast strategy comparison not found.")
+	rows = [
+		row
+		for row in evaluation_frame.sort(["rank_by_regret", "forecast_model_name"]).iter_rows(named=True)
+	]
+	first_row = rows[0]
+	return ForecastStrategyComparisonResponse(
+		tenant_id=tenant_id,
+		market_venue=str(first_row["market_venue"]),
+		evaluation_id=str(first_row["evaluation_id"]),
+		anchor_timestamp=_datetime_row_value(first_row["anchor_timestamp"], field_name="anchor_timestamp"),
+		generated_at=_datetime_row_value(first_row["generated_at"], field_name="generated_at"),
+		horizon_hours=int(first_row["horizon_hours"]),
+		starting_soc_fraction=float(first_row["starting_soc_fraction"]),
+		starting_soc_source=str(first_row["starting_soc_source"]),
+		comparisons=[
+			ForecastStrategyComparisonPointResponse(
+				forecast_model_name=str(row["forecast_model_name"]),
+				strategy_kind=str(row["strategy_kind"]),
+				decision_value_uah=float(row["decision_value_uah"]),
+				forecast_objective_value_uah=float(row["forecast_objective_value_uah"]),
+				oracle_value_uah=float(row["oracle_value_uah"]),
+				regret_uah=float(row["regret_uah"]),
+				regret_ratio=float(row["regret_ratio"]),
+				total_degradation_penalty_uah=float(row["total_degradation_penalty_uah"]),
+				total_throughput_mwh=float(row["total_throughput_mwh"]),
+				committed_action=str(row["committed_action"]),
+				committed_power_mw=float(row["committed_power_mw"]),
+				rank_by_regret=int(row["rank_by_regret"]),
+				evaluation_payload=_mapping_row_value(row["evaluation_payload"]),
+			)
+			for row in rows
+		],
+	)
+
+
+def _datetime_row_value(value: Any, *, field_name: str) -> datetime:
+	if isinstance(value, datetime):
+		return value
+	raise ValueError(f"{field_name} must be a datetime value.")
+
+
+def _mapping_row_value(value: Any) -> dict[str, Any]:
+	if isinstance(value, dict):
+		return value
+	return {}
+
+
 def _telemetry_freshness_payload(snapshot: BatteryStateHourlySnapshot) -> dict[str, Any]:
 	return {
 		"snapshot_hour": snapshot.snapshot_hour.isoformat(),
@@ -1338,6 +1421,28 @@ def dashboard_battery_state(tenant_id: str) -> DashboardBatteryStateResponse:
 		latest_telemetry=None if latest_telemetry is None else _to_battery_telemetry_response(latest_telemetry),
 		hourly_snapshot=None if latest_snapshot is None else _to_hourly_snapshot_response(latest_snapshot),
 		fallback_reason=fallback_reason,
+	)
+
+
+@app.get(
+	"/dashboard/forecast-strategy-comparison",
+	response_model=ForecastStrategyComparisonResponse,
+	tags=["weather"],
+	summary="Get forecast strategy comparison",
+	description=(
+		"Returns the latest persisted Gold-layer comparison of strict similar-day, NBEATSx, and TFT "
+		"forecast candidates after routing each forecast through the same LP and oracle-regret scoring path. "
+		"This endpoint is a read model and does not return ProposedBid, ClearedTrade, or DispatchCommand contracts."
+	),
+)
+def dashboard_forecast_strategy_comparison(
+	tenant_id: str,
+) -> ForecastStrategyComparisonResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	evaluation_frame = get_strategy_evaluation_store().latest_evaluation_frame(tenant_id=tenant_id)
+	return _to_forecast_strategy_comparison_response(
+		tenant_id=tenant_id,
+		evaluation_frame=evaluation_frame,
 	)
 
 

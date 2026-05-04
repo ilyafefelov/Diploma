@@ -16,6 +16,7 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 	BatteryTelemetryObservation,
 	InMemoryBatteryTelemetryStore,
 )
+from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
 
 
 class _MaterializeResult:
@@ -50,6 +51,13 @@ def fake_status_store(monkeypatch: pytest.MonkeyPatch) -> _FakeOperatorStatusSto
 def fake_battery_telemetry_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryBatteryTelemetryStore:
 	store = InMemoryBatteryTelemetryStore()
 	monkeypatch.setattr(api_main, "get_battery_telemetry_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_strategy_evaluation_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryStrategyEvaluationStore:
+	store = InMemoryStrategyEvaluationStore()
+	monkeypatch.setattr(api_main, "get_strategy_evaluation_store", lambda: store)
 	return store
 
 
@@ -498,6 +506,85 @@ def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(
 	assert status_record.status == OperatorFlowStatus.COMPLETED
 
 
+def test_forecast_strategy_comparison_endpoint_returns_latest_gold_rows(
+	client: TestClient,
+	fake_strategy_evaluation_store: InMemoryStrategyEvaluationStore,
+) -> None:
+	fake_strategy_evaluation_store.upsert_evaluation_frame(
+		pl.DataFrame(
+			{
+				"evaluation_id": ["eval-001", "eval-001", "eval-001"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"forecast_model_name": [
+					"strict_similar_day",
+					"nbeatsx_silver_v0",
+					"tft_silver_v0",
+				],
+				"strategy_kind": [
+					"forecast_driven_lp",
+					"forecast_driven_lp",
+					"forecast_driven_lp",
+				],
+				"market_venue": ["DAM", "DAM", "DAM"],
+				"anchor_timestamp": [
+					datetime(2026, 5, 4, 20, tzinfo=UTC)
+					for _ in range(3)
+				],
+				"generated_at": [
+					datetime(2026, 5, 4, 20, 30, tzinfo=UTC)
+					for _ in range(3)
+				],
+				"horizon_hours": [24, 24, 24],
+				"starting_soc_fraction": [0.5, 0.5, 0.5],
+				"starting_soc_source": [
+					"tenant_default",
+					"tenant_default",
+					"tenant_default",
+				],
+				"decision_value_uah": [110.0, 125.0, 120.0],
+				"forecast_objective_value_uah": [105.0, 124.0, 119.0],
+				"oracle_value_uah": [130.0, 130.0, 130.0],
+				"regret_uah": [20.0, 5.0, 10.0],
+				"regret_ratio": [0.1538, 0.0385, 0.0769],
+				"total_degradation_penalty_uah": [9.0, 10.0, 10.0],
+				"total_throughput_mwh": [0.2, 0.25, 0.24],
+				"committed_action": ["HOLD", "DISCHARGE", "DISCHARGE"],
+				"committed_power_mw": [0.0, 0.12, 0.08],
+				"rank_by_regret": [3, 1, 2],
+				"evaluation_payload": [
+					{"scope": "test"},
+					{"scope": "test"},
+					{"scope": "test"},
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/forecast-strategy-comparison",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["market_venue"] == "DAM"
+	assert response_payload["evaluation_id"] == "eval-001"
+	assert [row["forecast_model_name"] for row in response_payload["comparisons"]] == [
+		"nbeatsx_silver_v0",
+		"tft_silver_v0",
+		"strict_similar_day",
+	]
+	assert response_payload["comparisons"][0]["rank_by_regret"] == 1
+	assert "proposed_bid" not in response_payload
+	assert "cleared_trade" not in response_payload
+	assert "dispatch_command" not in response_payload
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -560,3 +647,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/projected-battery-state"]["post"]["summary"] == "Build projected battery state preview"
 	assert schema["paths"]["/dashboard/battery-state"]["get"]["summary"] == "Get latest battery telemetry state"
 	assert schema["paths"]["/dashboard/baseline-lp-preview"]["get"]["summary"] == "Build baseline LP preview"
+	assert schema["paths"]["/dashboard/forecast-strategy-comparison"]["get"]["summary"] == "Get forecast strategy comparison"
