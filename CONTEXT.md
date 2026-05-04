@@ -64,6 +64,22 @@ _Avoid_: provisional hack, optional fallback, neural policy
 Навчувана DFL-стратегія, яка замінює baseline після побудови стабільного LP-контуру і оптимізує regret через диференційований market clearing.
 _Avoid_: initial MVP, ad-hoc heuristic, pure LP solver
 
+**Neural Forecast Silver Layer**:
+Дослідницький Silver-шар прогнозування, який створює model-ready часові фічі та SOTA-inspired прогнози цін через NBEATSx-style і TFT-style моделі. Він існує поруч із **Level 1 Naive Forecast** і не замінює production baseline, доки не пройде regret-aware порівняння.
+_Avoid_: baseline replacement, dashboard contract, market execution, unverified production forecast
+
+**NBEATSx Forecast**:
+Прогноз цін DAM, побудований на NBEATSx-style декомпозиції історичних цін із використанням екзогенних календарних і weather-aware ознак. У межах диплома це research forecast candidate для порівняння з **Level 1 Naive Forecast**.
+_Avoid_: embeddings, dispatch policy, oracle forecast, guaranteed SOTA reproduction
+
+**TFT Forecast**:
+Прогноз цін DAM, побудований на TFT-style multi-horizon model із явними вагами вибору ознак для пояснення впливу календарних, weather-aware та lagged-price сигналів. У межах диплома це interpretable research forecast candidate, а не самостійна market strategy.
+_Avoid_: opaque transformer output, dispatch command, market bid, dashboard-only feature
+
+**M3DT-Inspired Research Strategy**:
+Дослідницька multi-client стратегія на основі ідеї Mixture-of-Expert Decision Transformer, де різні симульовані BESS-клієнти трактуються як пов'язані offline RL tasks. У межах диплома це SOTA-inspired experiment після стабілізації baseline, а не повне відтворення M3DT-паперу і не production market execution engine.
+_Avoid_: current MVP, full M3DT reproduction, guaranteed SOTA result, dispatch engine
+
 **Baseline Forecast**:
 Простий deployable прогноз цін, доступний у момент прийняття рішення і достатній для запуску **Baseline Strategy** end-to-end у реальному часі.
 _Avoid_: hindsight price, offline oracle, research-only upper bound
@@ -174,6 +190,9 @@ _Avoid_: market bid, no bid, cleared trade
 - **Interval Degradation Penalty** is computed from **Equivalent Full Cycle (EFC)** and contributes directly to the DFL objective
 - **Baseline Strategy** provides the first guaranteed end-to-end MVP and the control group for later comparisons
 - **Target Strategy** is introduced after the **Baseline Strategy** is working and reuses the same market and safety contracts
+- **Neural Forecast Silver Layer** produces **NBEATSx Forecast** and **TFT Forecast** candidates beside the **Level 1 Naive Forecast**
+- **NBEATSx Forecast** and **TFT Forecast** can feed future **Target Strategy** experiments after evaluation against the baseline
+- **M3DT-Inspired Research Strategy** is a candidate **Target Strategy** evaluated on simulated client tasks after the baseline is stable
 - **Baseline Forecast** is the live-available forecast input used by **Baseline Strategy**
 - **Level 1 Naive Forecast** is the canonical first implementation of **Baseline Forecast**
 - **Price Shape Preservation** is required so **Baseline Strategy** can detect arbitrage spreads
@@ -287,6 +306,9 @@ _Avoid_: market bid, no bid, cleared trade
 - "settlement price" раніше міг виглядати як сегментний атрибут — resolved: у межах MVP використовується одна **Uniform Settlement Price** на весь **Cleared Trade**.
 - "degradation cost" раніше міг жити лише в звітності — resolved: використовується **Interval Degradation Penalty**, обчислений через **Equivalent Full Cycle (EFC)**, і входить безпосередньо в objective.
 - "MVP strategy" раніше змішувала baseline і цільову learned policy — resolved: перший гарантований рівень є **Baseline Strategy**, а нейромережева модель є окремою **Target Strategy** для наступного етапу.
+- "embedding" раніше могло звучати як окремий representation-learning slice — resolved: для поточного Silver-шару йдеться про **NBEATSx Forecast**, а не про embedding-first модель.
+- "TFT" може змішувати forecast і strategy — resolved: **TFT Forecast** є interpretable прогнозним кандидатом у Silver, але не **Proposed Bid** і не **Dispatch Command**.
+- "M3DT" може звучати як обіцянка повного відтворення SOTA paper або production-моделі — resolved: у межах диплома це **M3DT-Inspired Research Strategy** для симульованих multi-client experiments після baseline, а не поточний MVP.
 - "baseline forecast" раніше змішував live naive forecast і perfect foresight — resolved: live MVP використовує **Baseline Forecast**, а hindsight використовується лише як **Oracle Benchmark** офлайн.
 - "naive forecast" раніше змішував flat persistence і seasonal slot-based baseline — resolved: канонічний Level 1 baseline є **Level 1 Naive Forecast** з **Price Shape Preservation**, а не плоска персистенція.
 - "seasonal naive" раніше міг означати і strict copy, і smoothed average — resolved: канонічний baseline використовує **Strict Similar-Day Rule** без усереднення.
