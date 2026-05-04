@@ -12,6 +12,7 @@ x-backend-env: &backend-env
   SMART_ARBITRAGE_SIMULATED_TRADE_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
   SMART_ARBITRAGE_OPERATOR_STATUS_DSN: postgresql://smart:arbitrage@postgres:5432/smart_arbitrage
   MLFLOW_TRACKING_URI: http://mlflow:5000
+  GIT_PYTHON_REFRESH: quiet
   MQTT_HOST: mqtt
   MQTT_PORT: "1883"
   DAGSTER_HOME: /opt/dagster/dagster_home
@@ -49,6 +50,8 @@ services:
       uv run mlflow server
       --host 0.0.0.0
       --port 5000
+      --allowed-hosts localhost,localhost:5000,127.0.0.1,127.0.0.1:5000,mlflow,mlflow:5000
+      --cors-allowed-origins http://localhost:5000,http://127.0.0.1:5000,http://mlflow:5000
       --backend-store-uri postgresql+psycopg://smart:arbitrage@postgres:5432/smart_arbitrage
       --default-artifact-root /mlflow/artifacts
     ports:

@@ -186,14 +186,16 @@ def _summary_frame(
         return pl.DataFrame()
     _validate_forecast_frame(forecast_frame, point_prediction_column=point_prediction_column)
     predictions = forecast_frame.select(point_prediction_column).to_series()
+    min_prediction: Any = predictions.min()
+    max_prediction: Any = predictions.max()
     return pl.DataFrame(
         {
             "run_id": [run_id],
             "model_name": [model_name],
             "generated_at": [datetime.now(UTC)],
             "horizon_rows": [forecast_frame.height],
-            "min_prediction_uah_mwh": [float(predictions.min())],
-            "max_prediction_uah_mwh": [float(predictions.max())],
+            "min_prediction_uah_mwh": [float(min_prediction)],
+            "max_prediction_uah_mwh": [float(max_prediction)],
         }
     )
 

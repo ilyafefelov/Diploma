@@ -26,6 +26,7 @@ from smart_arbitrage.assets.mvp_demo import (
 )
 from smart_arbitrage.gatekeeper.schemas import (
     BatteryPhysicalMetrics,
+    BidSide,
     ClearedSegmentAllocation,
     ClearedTrade,
     MARKET_PRICE_CAPS_UAH_PER_MWH,
@@ -312,7 +313,7 @@ def _simulated_cleared_trade(
     feasible_net_power_mw: float,
 ) -> ClearedTrade:
     cleared_quantity_mw = abs(feasible_net_power_mw)
-    side = "SELL" if feasible_net_power_mw > 0.0 else "BUY"
+    side: BidSide = "SELL" if feasible_net_power_mw > 0.0 else "BUY"
     return ClearedTrade(
         provenance="simulated",
         venue="DAM",

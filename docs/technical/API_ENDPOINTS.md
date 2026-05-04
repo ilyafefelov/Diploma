@@ -50,6 +50,15 @@ PYTHONPATH=".:./src" .venv/Scripts/python.exe -m uvicorn api.main:app --host 127
 The FastAPI docs will then be available at `http://127.0.0.1:8000/docs`.
 The API imports both [api/main.py](d:/School/GoIT/Courses/Diploma/api/main.py) and the `src` package tree, so local launches must include both the repo root and `src` on `PYTHONPATH`.
 
+Docker Compose uses the same internal API port (`8000`) but allows host-port override:
+
+```powershell
+$env:SMART_ARBITRAGE_API_PORT = "8001"
+docker compose up -d api
+```
+
+Use this when another local process already owns host port `8000`.
+
 ## Endpoints
 
 ### `GET /health`

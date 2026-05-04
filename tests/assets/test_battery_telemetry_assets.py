@@ -1,7 +1,5 @@
 from datetime import UTC, datetime, timedelta
 
-import polars as pl
-
 from smart_arbitrage.assets.telemetry.battery import (
     BATTERY_TELEMETRY_ASSETS,
     battery_state_hourly_silver,

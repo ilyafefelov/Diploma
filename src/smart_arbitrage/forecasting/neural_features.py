@@ -183,6 +183,7 @@ def _prepare_price_history(
 		price_history
 		.select([timestamp_column, price_column, *[column for column in WEATHER_FEATURE_DEFAULTS if column in price_history.columns]])
 		.drop_nulls(subset=[timestamp_column, price_column])
+		.with_columns(pl.col(timestamp_column).dt.replace_time_zone(None).alias(timestamp_column))
 		.sort(timestamp_column)
 		.unique(subset=[timestamp_column], keep="last")
 		.sort(timestamp_column)
@@ -235,7 +236,7 @@ def _join_battery_state_hourly_snapshots(
 		battery_state_hourly_snapshots
 		.select(
 			[
-				pl.col("snapshot_hour").alias(timestamp_column),
+				pl.col("snapshot_hour").dt.replace_time_zone(None).alias(timestamp_column),
 				pl.col("soc_close").cast(pl.Float64).alias("battery_soc"),
 				pl.col("soh_close").cast(pl.Float64).alias("battery_soh"),
 				pl.col("throughput_mwh").cast(pl.Float64).alias("battery_throughput_mwh"),
