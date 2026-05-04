@@ -50,6 +50,15 @@ PYTHONPATH=".:./src" .venv/Scripts/python.exe -m uvicorn api.main:app --host 127
 The FastAPI docs will then be available at `http://127.0.0.1:8000/docs`.
 The API imports both [api/main.py](d:/School/GoIT/Courses/Diploma/api/main.py) and the `src` package tree, so local launches must include both the repo root and `src` on `PYTHONPATH`.
 
+Docker Compose uses the same internal API port (`8000`) but allows host-port override:
+
+```powershell
+$env:SMART_ARBITRAGE_API_PORT = "8001"
+docker compose up -d api
+```
+
+Use this when another local process already owns host port `8000`.
+
 ## Endpoints
 
 ### `GET /health`
@@ -192,6 +201,28 @@ Operational notes:
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
 - This remains recommendation-preview language only. It does not emit `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
 
+### `GET /dashboard/battery-state`
+
+Returns the latest physical battery telemetry and the latest hourly Level 1 battery-state snapshot for a tenant.
+
+Request query example:
+
+```text
+/dashboard/battery-state?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `latest_telemetry`: latest 5-minute raw telemetry row, or `null` if no MQTT/API telemetry has been ingested.
+- `hourly_snapshot`: latest hourly Silver snapshot with SOC open/close/mean, SOH, throughput, EFC delta, and freshness.
+- `fallback_reason`: `telemetry_unavailable`, `hourly_snapshot_unavailable`, `hourly_snapshot_stale`, or `null` when data is fresh.
+
+Operational notes:
+
+- This endpoint separates physical truth now from planning/projected state.
+- It is safe for the dashboard to show `latest_telemetry` and `hourly_snapshot` as separate panels.
+- If telemetry is missing or stale, optimization read models continue to fall back to tenant defaults.
+
 ### `GET /dashboard/baseline-lp-preview`
 
 Builds the first tenant-aware Slice 2 baseline LP read model for operator preview.
@@ -208,6 +239,8 @@ Response shape:
 - `recommendation_schedule`: hourly signed MW recommendation trace with projected SOC and per-slot economics
 - `projected_state`: projected SOC/throughput/degradation trace derived from the feasible schedule
 - `economics`: aggregated gross market value, degradation penalty, net value, and throughput in canonical UAH/MWh units
+- `starting_soc_source`: `telemetry_hourly` when a fresh hourly telemetry snapshot is available, otherwise `tenant_default`
+- `telemetry_freshness`: latest snapshot freshness metadata, or `null` when no telemetry snapshot exists
 
 Operational notes:
 
@@ -216,6 +249,35 @@ Operational notes:
 - The LP runs at Level 1 hourly DAM granularity and reuses the same battery constraints as the projected-state simulator.
 - Degradation is calculated with the same equivalent-full-cycle throughput proxy documented in [BATTERY_DEGRADATION_AND_SIMULATION.md](d:/School/GoIT/Courses/Diploma/docs/technical/BATTERY_DEGRADATION_AND_SIMULATION.md).
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
+
+### `GET /dashboard/forecast-strategy-comparison`
+
+Returns the latest Gold-layer comparison of strict similar-day, NBEATSx, and TFT Silver forecasts after each forecast has been routed through the same Level 1 LP and scored against realized DAM prices and an oracle LP benchmark.
+
+Request query example:
+
+```text
+/dashboard/forecast-strategy-comparison?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `tenant_id`: selected tenant from the Tenant Registry.
+- `generated_at`: timestamp of the latest persisted comparison batch.
+- `anchor_timestamp`: strategy anchor used for the evaluated forecast horizon.
+- `market_venue`: currently `DAM`.
+- `strategy_kind`: currently `forecast_driven_lp`.
+- `horizon_hours`: evaluated horizon length.
+- `starting_soc_fraction`: physical SOC used to initialize the LP.
+- `starting_soc_source`: `telemetry_hourly` when fresh Silver battery state exists, otherwise `tenant_default`.
+- `comparisons`: one row per forecast candidate with decision value, forecast objective value, oracle value, regret, regret ratio, degradation penalty, throughput, first committed action/power preview, rank, and evaluation payload.
+
+Operational notes:
+
+- This endpoint is dashboard-ready Gold evidence, not market execution.
+- It does not return `Proposed Bid`, `Cleared Trade`, settlement, or `Dispatch Command` semantics.
+- The comparison is only available after Dagster materializes `forecast_strategy_comparison_frame`.
+- If no rows exist for the tenant, the endpoint returns `404`.
 
 ### `POST /weather/run-config`
 
@@ -337,6 +399,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - When the operator starts an experiment, the dashboard should call `POST /weather/materialize`.
 - For Slice 2 preview work, the dashboard can call `POST /dashboard/projected-battery-state` to render feasible hourly SOC and degradation-aware economics from a signed recommendation schedule.
 - For baseline recommendation preview, the dashboard can call `GET /dashboard/baseline-lp-preview` to render forecast, feasible hourly signed MW schedule, projected SOC trace, and UAH economics for the selected tenant.
+- For Gold strategy evidence, the dashboard can call `GET /dashboard/forecast-strategy-comparison` to compare strict similar-day, NBEATSx, and TFT by LP decision value, oracle regret, degradation penalty, throughput, and starting SOC source.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
@@ -345,4 +408,5 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - They do not yet expose Baseline Forecast, Oracle Benchmark, Proposed Bid, Cleared Trade, or Dispatch Command resources.
 - The projected battery state endpoint is a simulator/read model only; it does not claim market-order or dispatch semantics.
 - The baseline LP preview endpoint is also a read model only; it exposes recommendation semantics, not market-order, clearing, or dispatch semantics.
+- The forecast strategy comparison endpoint is Gold-layer evidence only; it compares forecast-driven LP decisions and does not generate market contracts.
 - The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.

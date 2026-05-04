@@ -16,7 +16,7 @@
 
 ## Solution
 
-Будуємо MVP через два канонічні vertical slices в жорсткій послідовності.
+Будуємо MVP через два канонічні vertical slices в жорсткій послідовності. Після deep-research update ці slices лишаються валідними як operator/demo foundation, але research track переходить у окрему послідовність, описану в [RESEARCH_INTEGRATION_PLAN.md](RESEARCH_INTEGRATION_PLAN.md): real-data hardening -> rolling-origin benchmark -> forecast comparison -> robustness -> DFL pilot.
 
 ### Slice 1
 
@@ -46,6 +46,8 @@ Definition of done:
 - Slice 1 stores latest operator-visible state in Postgres by `tenant_id + flow_type`
 - Slice 2 stops at feasible economic recommendation preview and does not yet emit `Proposed Bid`
 - Slice 2 uses a `Projected Battery State` simulator, not a full digital twin
+- Research claims require a `Real-Data Research Benchmark`; synthetic demo history is allowed for product stability but not for final market-performance conclusions
+- NBEATSx/TFT are forecast candidates until rolling-origin value/regret results show their decision impact
 
 ## User Stories
 
@@ -90,6 +92,7 @@ Definition of done:
 - Slice 2 simulator starts from latest known persisted asset state / telemetry snapshot, with allowed scenario override for demo/offline mode.
 - Slice 2 explicitly does not emit `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
 - Multi-venue semantics, full digital twin physics, dispatch sandboxing, and universal dashboard abstraction are out of scope for these slices.
+- Post-Slice-2 research implementation should prioritize observed OREE history, historical weather alignment, effective-dated market constraints, operator transaction fees, and rolling-origin strategy evaluation before DFL training.
 
 ## Testing Decisions
 
@@ -115,3 +118,4 @@ Definition of done:
 - This PRD intentionally preserves the glossary boundary from [CONTEXT.md](d:/School/GoIT/Courses/Diploma/CONTEXT.md): recommendation preview is not the same thing as market intent, cleared result, or physical execution.
 - `gatekeeper` and `dispatch_execution` are reserved `flow_type` names, but their read models should not be implemented until later slices actually need them.
 - Academic/demo readiness matters for Slice 1 completion and should be treated as a first-class acceptance target, not as optional polish.
+- Deep-research follow-up is tracked in [RESEARCH_INTEGRATION_PLAN.md](RESEARCH_INTEGRATION_PLAN.md). That plan is the current source of truth for thesis benchmark sequencing.

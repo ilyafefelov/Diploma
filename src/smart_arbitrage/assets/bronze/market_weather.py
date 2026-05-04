@@ -948,7 +948,7 @@ def _resolve_timezone(
 
 
 def _fetch_openmeteo_data(latitude: float, longitude: float, timezone: str) -> list[dict[str, Any]] | None:
-    params = {
+    params: dict[str, str | int | float] = {
         "latitude": latitude,
         "longitude": longitude,
         "hourly": ",".join(

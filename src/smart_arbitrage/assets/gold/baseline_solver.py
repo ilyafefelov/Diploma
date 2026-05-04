@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Final, Literal
@@ -307,8 +308,10 @@ def _as_float_list(values: object, expected_length: int) -> list[float]:
         raise RuntimeError("Expected solver values, received None.")
     if hasattr(values, "tolist"):
         raw_values = values.tolist()
-    else:
+    elif isinstance(values, Iterable):
         raw_values = list(values)
+    else:
+        raise RuntimeError("Expected iterable solver values.")
     flattened = [float(item) for item in raw_values]
     if len(flattened) != expected_length:
         raise RuntimeError("Unexpected solver output length.")

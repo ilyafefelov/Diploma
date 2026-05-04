@@ -10,6 +10,7 @@
 docs/
 ├── technical/          # Технічна документація системи
 │   ├── API_ENDPOINTS.md
+│   ├── RESEARCH_INTEGRATION_PLAN.md
 │   ├── OPERATOR_DEMO_READY.md
 │   └── papers/         # Технічні статті та архів ключових PDF
 │
@@ -38,6 +39,7 @@ docs/
 | **Академічна записка** | [thesis/chapters/01-project-overview.md](thesis/chapters/01-project-overview.md) · [thesis/chapters/02-literature-review.md](thesis/chapters/02-literature-review.md) |
 | **Бібліографія / джерела** | [thesis/sources/README.md](thesis/sources/README.md) — індекс усіх PDF |
 | **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
+| **Research roadmap** | [technical/RESEARCH_INTEGRATION_PLAN.md](technical/RESEARCH_INTEGRATION_PLAN.md) · [technical/deep-research-reports/deep-research-report.md](technical/deep-research-reports/deep-research-report.md) |
 | **Інженер / розробник** | [../src/](../src/) · [../api/](../api/) · [../dashboard/](../dashboard/) |
 | **Дедлайни та вимоги** | [syllabus/Покрокова інструкція...](syllabus/) |
 
@@ -49,5 +51,6 @@ docs/
 - ✅ Week 1 звіт — повний пакет для керівника
 - ✅ Vercel demo — публічний URL, доступний без логіну
 - ✅ Локальний PDF-архів — 20+ джерел з індексом
+- ✅ Deep-research integration plan — real-data benchmark перед DFL claims
 - 🟡 Розділ 1 (Project Overview) — робоча версія, уточнюється
 - 🟡 Week 2 — в процесі

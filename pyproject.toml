@@ -33,7 +33,65 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+    "dagster-dg-cli",          # Provides dg check/launch CLI used by project verification
+    "mypy",                   # Static typing check for active backend Python code
     "pytest",                 # Focused API and asset behavior tests
+    "ruff",                   # Fast linting for active backend Python code
+    "types-PyYAML",            # Type stubs for tenant/location YAML loading
+]
+
+[tool.ruff]
+target-version = "py311"
+exclude = [
+    ".git",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tmp_dagster_home*",
+    ".venv",
+    "_legacy_smart-energy-ai",
+    "dashboard",
+    "data",
+    "mlruns",
+    "src/assets",
+    "src/gatekeeper",
+    "src/optimization",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+
+[tool.mypy]
+python_version = "3.11"
+files = ["api", "scripts", "src/smart_arbitrage"]
+mypy_path = "src"
+namespace_packages = true
+explicit_package_bases = true
+exclude = [
+    "^_legacy_smart-energy-ai/",
+    "^dashboard/",
+    "^data/",
+    "^mlruns/",
+    "^src/assets/",
+    "^src/gatekeeper/",
+    "^src/optimization/",
+    "^tests/",
+    "^\\.tmp_dagster_home",
+    "^\\.venv/",
+]
+ignore_missing_imports = true
+follow_imports = "silent"
+show_error_codes = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+norecursedirs = [
+    "_legacy_smart-energy-ai",
+    "data",
+    ".venv",
+    "mlruns",
 ]
 
 [tool.dagster]
