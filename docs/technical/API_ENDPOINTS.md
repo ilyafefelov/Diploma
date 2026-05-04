@@ -187,7 +187,7 @@ Operational notes:
 
 - This endpoint is the narrow Slice 2 simulator for projected SOC, throughput, and degradation-aware UAH penalty.
 - The example above keeps the same throughput-based proxy as the Week 1 demo materials and scales cycle cost to the illustrated `4 MWh` battery, so the implied penalty stays near `842.2 UAH/MWh throughput`.
-- It accepts scenario overrides for offline/demo use, but also supports a tenant-resolved default state and default hourly recommendation schedule when overrides are omitted.
+- It accepts scenario overrides for offline/demo use, but omitted battery values now resolve from the selected tenant `energy_system` block in [simulations/tenants.yml](d:/School/GoIT/Courses/Diploma/simulations/tenants.yml), including capacity, max power, RTE, initial SOC, SOC window, and cycle-cost inputs.
 - The simulator enforces hourly Level 1 granularity, `soc_min`, `soc_max`, capacity, max power, and round-trip efficiency.
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
 - This remains recommendation-preview language only. It does not emit `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
@@ -212,8 +212,9 @@ Response shape:
 Operational notes:
 
 - This is a recommendation preview only. It does not return `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
-- The read model is tenant-aware through location-resolved synthetic DAM history biasing.
+- The read model is tenant-aware through location-resolved synthetic DAM history biasing and tenant-registry battery assumptions.
 - The LP runs at Level 1 hourly DAM granularity and reuses the same battery constraints as the projected-state simulator.
+- Degradation is calculated with the same equivalent-full-cycle throughput proxy documented in [BATTERY_DEGRADATION_AND_SIMULATION.md](d:/School/GoIT/Courses/Diploma/docs/technical/BATTERY_DEGRADATION_AND_SIMULATION.md).
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
 
 ### `POST /weather/run-config`

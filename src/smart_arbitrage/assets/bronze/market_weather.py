@@ -737,6 +737,31 @@ def list_available_weather_tenants(*, location_config_path: str | None = None) -
     return []
 
 
+def resolve_tenant_registry_entry(*, tenant_id: str, location_config_path: str | None = None) -> dict[str, Any]:
+    """Resolve a full tenant registry entry and fail if the tenant is unknown."""
+
+    cleaned_tenant_id = _clean_optional_text(tenant_id)
+    if cleaned_tenant_id is None:
+        raise ValueError("tenant_id must be provided.")
+
+    candidate_paths = _candidate_weather_location_config_paths(_clean_optional_text(location_config_path))
+    for candidate_path in candidate_paths:
+        payload = _read_yaml_payload(candidate_path)
+        if payload is None:
+            continue
+
+        tenant_entries = payload.get("tenants")
+        if not isinstance(tenant_entries, list):
+            tenant_entries = payload.get("customers")
+        if not isinstance(tenant_entries, list):
+            continue
+
+        selected_entry = _select_tenant_entry(tenant_entries, tenant_id=cleaned_tenant_id)
+        if selected_entry is not None:
+            return selected_entry
+    raise ValueError(f"Unknown tenant_id: {cleaned_tenant_id}")
+
+
 def resolve_weather_location_for_tenant(*, tenant_id: str, location_config_path: str | None = None) -> WeatherLocation:
     """Resolve a tenant location explicitly and fail if the tenant is unknown."""
 
@@ -1082,6 +1107,7 @@ __all__ = [
     "build_synthetic_market_price_history",
     "enrich_market_price_history_with_weather",
     "list_available_weather_tenants",
+    "resolve_tenant_registry_entry",
     "resolve_weather_location_for_tenant",
     "weather_forecast_bronze",
 ]

@@ -18,6 +18,7 @@ from smart_arbitrage.assets.bronze.market_weather import (
 	build_weather_asset_run_config,
 	enrich_market_price_history_with_weather,
 	list_available_weather_tenants,
+	resolve_tenant_registry_entry,
 	resolve_weather_location_for_tenant,
 )
 from smart_arbitrage.assets.gold.baseline_solver import (
@@ -30,10 +31,10 @@ from smart_arbitrage.assets.gold.baseline_solver import (
 	HourlyDamBaselineSolver,
 )
 from smart_arbitrage.assets.mvp_demo import (
-	DEMO_BATTERY_CAPACITY_MWH,
-	DEMO_BATTERY_MAX_POWER_MW,
-	DEMO_BATTERY_ROUND_TRIP_EFFICIENCY,
-	DEMO_DEGRADATION_COST_PER_CYCLE_UAH,
+	DEMO_BATTERY_CAPEX_USD_PER_KWH,
+	DEMO_BATTERY_CYCLES_PER_DAY,
+	DEMO_BATTERY_LIFETIME_YEARS,
+	DEMO_USD_TO_UAH_RATE,
 )
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 from smart_arbitrage.optimization.projected_battery_state import (
@@ -235,6 +236,12 @@ class WeatherBiasCalibrationModel:
 		return round(max(0.0, min(prediction_cap_uah_mwh, prediction_uah_mwh)), 2)
 
 
+@dataclass(frozen=True, slots=True)
+class TenantBatteryDefaults:
+	metrics: BatteryPhysicalMetrics
+	initial_soc_fraction: float
+
+
 @cache
 def _mvp_asset_index() -> dict[str, Any]:
 	from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
@@ -276,8 +283,9 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 		tenant_id=tenant_id,
 		location_config_path=location_config_path,
 	)
-	battery_metrics = _default_battery_metrics()
-	starting_soc_fraction = _default_current_soc_fraction(resolved_location)
+	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	battery_metrics = battery_defaults.metrics
+	starting_soc_fraction = battery_defaults.initial_soc_fraction
 	price_history = _build_tenant_aware_price_history(resolved_location)
 	anchor_timestamp = _resolve_baseline_anchor(price_history)
 	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
@@ -685,21 +693,131 @@ def _persist_operator_status(
 	)
 
 
-def _default_battery_metrics() -> BatteryPhysicalMetrics:
-	return BatteryPhysicalMetrics(
-		capacity_mwh=DEMO_BATTERY_CAPACITY_MWH,
-		max_power_mw=DEMO_BATTERY_MAX_POWER_MW,
-		round_trip_efficiency=DEMO_BATTERY_ROUND_TRIP_EFFICIENCY,
-		degradation_cost_per_cycle_uah=DEMO_DEGRADATION_COST_PER_CYCLE_UAH,
-		soc_min_fraction=0.05,
-		soc_max_fraction=0.95,
+def _resolve_tenant_battery_defaults(*, tenant_id: str) -> TenantBatteryDefaults:
+	try:
+		tenant_entry = resolve_tenant_registry_entry(tenant_id=tenant_id)
+	except ValueError as error:
+		raise HTTPException(status_code=404, detail=str(error)) from error
+
+	try:
+		energy_system = _tenant_energy_system_from_entry(tenant_entry)
+		capacity_kwh = _required_positive_registry_float(
+			energy_system,
+			field_name="battery_capacity_kwh",
+		)
+		max_power_kw = _positive_registry_float(
+			energy_system,
+			field_name="battery_max_power_kw",
+			default_value=capacity_kwh * 0.5,
+		)
+		round_trip_efficiency = _bounded_registry_float(
+			energy_system,
+			field_name="round_trip_efficiency",
+			default_value=0.92,
+			minimum=0.0,
+			maximum=1.0,
+		)
+		initial_soc_fraction = _bounded_registry_float(
+			energy_system,
+			field_name="initial_soc_fraction",
+			default_value=0.52,
+			minimum=0.0,
+			maximum=1.0,
+		)
+		soc_min_fraction = _bounded_registry_float(
+			energy_system,
+			field_name="soc_min_fraction",
+			default_value=0.05,
+			minimum=0.0,
+			maximum=1.0,
+		)
+		soc_max_fraction = _bounded_registry_float(
+			energy_system,
+			field_name="soc_max_fraction",
+			default_value=0.95,
+			minimum=0.0,
+			maximum=1.0,
+		)
+		degradation_cost_per_cycle_uah = _tenant_degradation_cost_per_cycle_uah(
+			energy_system=energy_system,
+			capacity_kwh=capacity_kwh,
+		)
+		metrics = BatteryPhysicalMetrics(
+			capacity_mwh=capacity_kwh / 1000.0,
+			max_power_mw=max_power_kw / 1000.0,
+			round_trip_efficiency=round_trip_efficiency,
+			degradation_cost_per_cycle_uah=degradation_cost_per_cycle_uah,
+			soc_min_fraction=soc_min_fraction,
+			soc_max_fraction=soc_max_fraction,
+		)
+	except ValueError as error:
+		raise HTTPException(status_code=500, detail=f"Invalid tenant battery config for {tenant_id}: {error}") from error
+	return TenantBatteryDefaults(metrics=metrics, initial_soc_fraction=initial_soc_fraction)
+
+
+def _tenant_energy_system_from_entry(tenant_entry: dict[str, Any]) -> dict[str, Any]:
+	energy_system = tenant_entry.get("energy_system")
+	if not isinstance(energy_system, dict):
+		raise ValueError("energy_system mapping is required.")
+	return energy_system
+
+
+def _tenant_degradation_cost_per_cycle_uah(*, energy_system: dict[str, Any], capacity_kwh: float) -> float:
+	capex_usd_per_kwh = _positive_registry_float(
+		energy_system,
+		field_name="battery_capex_usd_per_kwh",
+		default_value=DEMO_BATTERY_CAPEX_USD_PER_KWH,
 	)
+	lifetime_years = _positive_registry_float(
+		energy_system,
+		field_name="battery_lifetime_years",
+		default_value=float(DEMO_BATTERY_LIFETIME_YEARS),
+	)
+	cycles_per_day = _positive_registry_float(
+		energy_system,
+		field_name="battery_cycles_per_day",
+		default_value=DEMO_BATTERY_CYCLES_PER_DAY,
+	)
+	lifetime_cycles = lifetime_years * 365.0 * cycles_per_day
+	replacement_cost_uah = capex_usd_per_kwh * capacity_kwh * DEMO_USD_TO_UAH_RATE
+	return replacement_cost_uah / lifetime_cycles
 
 
-def _default_current_soc_fraction(location: WeatherLocation) -> float:
-	latitude_component = (location.latitude - 45.0) / 20.0
-	longitude_component = (location.longitude - 22.0) / 40.0
-	return round(max(0.2, min(0.8, 0.45 + latitude_component - longitude_component)), 3)
+def _required_positive_registry_float(mapping: dict[str, Any], *, field_name: str) -> float:
+	if field_name not in mapping:
+		raise ValueError(f"{field_name} is required.")
+	return _positive_registry_float(mapping, field_name=field_name, default_value=0.0)
+
+
+def _positive_registry_float(mapping: dict[str, Any], *, field_name: str, default_value: float) -> float:
+	raw_value = mapping.get(field_name, default_value)
+	value = _registry_float_value(raw_value, field_name=field_name)
+	if value <= 0.0:
+		raise ValueError(f"{field_name} must be positive.")
+	return value
+
+
+def _bounded_registry_float(
+	mapping: dict[str, Any],
+	*,
+	field_name: str,
+	default_value: float,
+	minimum: float,
+	maximum: float,
+) -> float:
+	value = _registry_float_value(mapping.get(field_name, default_value), field_name=field_name)
+	if not minimum <= value <= maximum:
+		raise ValueError(f"{field_name} must be between {minimum} and {maximum}.")
+	return value
+
+
+def _registry_float_value(raw_value: Any, *, field_name: str) -> float:
+	if isinstance(raw_value, bool):
+		raise ValueError(f"{field_name} must be numeric.")
+	try:
+		return float(raw_value)
+	except (TypeError, ValueError) as error:
+		raise ValueError(f"{field_name} must be numeric.") from error
 
 
 def _default_projection_schedule(anchor_timestamp: datetime) -> list[ScheduledPowerPoint]:
@@ -812,14 +930,15 @@ def _to_baseline_lp_preview_response(
 def _resolve_projection_request(
 	request: ProjectedBatteryStateRequest,
 ) -> tuple[BatteryPhysicalMetrics, float, list[ScheduledPowerPoint]]:
-	resolved_location = _resolve_requested_location(
+	_resolve_requested_location(
 		tenant_id=request.tenant_id,
 		location_config_path=None,
 	)
-	battery_metrics = request.battery_metrics or _default_battery_metrics()
+	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=request.tenant_id)
+	battery_metrics = request.battery_metrics or battery_defaults.metrics
 	starting_soc_fraction = request.current_soc_fraction
 	if starting_soc_fraction is None:
-		starting_soc_fraction = _default_current_soc_fraction(resolved_location)
+		starting_soc_fraction = battery_defaults.initial_soc_fraction
 	if request.schedule is not None:
 		schedule = [
 			ScheduledPowerPoint(interval_start=point.interval_start, net_power_mw=point.net_power_mw)
@@ -1088,8 +1207,9 @@ def build_baseline_lp_preview(
 	tenant_id: str,
 ) -> BaselineLpPreviewResponse:
 	resolved_location = _resolve_requested_location(tenant_id=tenant_id, location_config_path=None)
-	battery_metrics = _default_battery_metrics()
-	starting_soc_fraction = _default_current_soc_fraction(resolved_location)
+	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	battery_metrics = battery_defaults.metrics
+	starting_soc_fraction = battery_defaults.initial_soc_fraction
 	price_history = _build_tenant_aware_price_history(resolved_location)
 	anchor_timestamp = _resolve_baseline_anchor(price_history)
 	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)

@@ -13,6 +13,14 @@ tenants:
     energy_system:
       battery_type: LFP_280Ah
       battery_capacity_kwh: 280.0
+      battery_max_power_kw: 140.0
+      round_trip_efficiency: 0.92
+      initial_soc_fraction: 0.52
+      soc_min_fraction: 0.05
+      soc_max_fraction: 0.95
+      battery_capex_usd_per_kwh: 210.0
+      battery_lifetime_years: 15.0
+      battery_cycles_per_day: 1.0
       solar_capacity_kw: 150.0
       peak_load_kw: 200.0
       base_load_kw: 50.0
@@ -32,6 +40,14 @@ tenants:
     energy_system:
       battery_type: NMC_LG_Chem
       battery_capacity_kwh: 150.0
+      battery_max_power_kw: 75.0
+      round_trip_efficiency: 0.90
+      initial_soc_fraction: 0.55
+      soc_min_fraction: 0.10
+      soc_max_fraction: 0.90
+      battery_capex_usd_per_kwh: 210.0
+      battery_lifetime_years: 15.0
+      battery_cycles_per_day: 1.0
       solar_capacity_kw: 80.0
       peak_load_kw: 120.0
       base_load_kw: 30.0
@@ -51,6 +67,14 @@ tenants:
     energy_system:
       battery_type: LFP_280Ah
       battery_capacity_kwh: 500.0
+      battery_max_power_kw: 250.0
+      round_trip_efficiency: 0.92
+      initial_soc_fraction: 0.50
+      soc_min_fraction: 0.05
+      soc_max_fraction: 0.95
+      battery_capex_usd_per_kwh: 210.0
+      battery_lifetime_years: 15.0
+      battery_cycles_per_day: 1.0
       solar_capacity_kw: 300.0
       peak_load_kw: 400.0
       base_load_kw: 150.0
@@ -70,6 +94,14 @@ tenants:
     energy_system:
       battery_type: LFP_280Ah
       battery_capacity_kwh: 400.0
+      battery_max_power_kw: 200.0
+      round_trip_efficiency: 0.92
+      initial_soc_fraction: 0.70
+      soc_min_fraction: 0.10
+      soc_max_fraction: 0.95
+      battery_capex_usd_per_kwh: 210.0
+      battery_lifetime_years: 15.0
+      battery_cycles_per_day: 1.0
       solar_capacity_kw: 200.0
       peak_load_kw: 300.0
       base_load_kw: 100.0
@@ -89,6 +121,14 @@ tenants:
     energy_system:
       battery_type: NMC_LG_Chem
       battery_capacity_kwh: 200.0
+      battery_max_power_kw: 100.0
+      round_trip_efficiency: 0.90
+      initial_soc_fraction: 0.48
+      soc_min_fraction: 0.10
+      soc_max_fraction: 0.90
+      battery_capex_usd_per_kwh: 210.0
+      battery_lifetime_years: 15.0
+      battery_cycles_per_day: 1.0
       solar_capacity_kw: 120.0
       peak_load_kw: 180.0
       base_load_kw: 60.0
