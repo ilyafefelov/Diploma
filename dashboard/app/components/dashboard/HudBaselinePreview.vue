@@ -263,7 +263,6 @@ const feasiblePlanItems = computed(() => {
       <CollapsibleTextCard
         :title="props.explanationMode === 'mvp' ? 'Where the current baseline forecast comes from' : 'Where the future forecast should come from'"
         :eyebrow="props.explanationMode === 'mvp' ? 'Current forecast source' : 'Future forecast source'"
-        :open="true"
       >
         <template v-if="props.explanationMode === 'mvp'">
           <p class="baseline-explainer-card__copy">
@@ -367,17 +366,17 @@ const feasiblePlanItems = computed(() => {
 .baseline-slab {
   position: relative;
   display: grid;
-  gap: 1rem;
-  padding: 1.15rem;
-  border-radius: 1.7rem;
+  gap: 0.85rem;
+  padding: 0.95rem;
+  border-radius: 0.95rem;
   background:
-    radial-gradient(circle at top right, rgba(83, 178, 234, 0.16), transparent 28%),
-    radial-gradient(circle at top left, rgba(126, 211, 33, 0.14), transparent 24%),
-    radial-gradient(circle at bottom right, rgba(255, 255, 255, 0.4), transparent 22%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(240, 249, 255, 0.92)),
-    linear-gradient(135deg, rgba(0, 121, 193, 0.05), rgba(126, 211, 33, 0.05));
-  border: 2px solid rgba(255, 255, 255, 0.92);
-  box-shadow: 0 24px 54px rgba(0, 121, 193, 0.08);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 42%),
+    radial-gradient(circle at top left, rgba(126, 211, 33, 0.18), transparent 24%),
+    linear-gradient(180deg, rgba(0, 117, 188, 0.96), rgba(0, 63, 122, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  box-shadow:
+    0 18px 38px rgba(0, 53, 103, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.34);
   overflow: visible;
 }
 
@@ -388,7 +387,7 @@ const feasiblePlanItems = computed(() => {
   pointer-events: none;
   background: linear-gradient(115deg, rgba(255, 255, 255, 0) 24%, rgba(255, 255, 255, 0.22) 34%, rgba(255, 255, 255, 0) 44%);
   transform: translateX(-120%);
-  animation: slab-sheen 8s ease-in-out infinite;
+  animation: slab-sheen 16s ease-in-out infinite;
 }
 
 .baseline-slab__header,
@@ -407,18 +406,19 @@ const feasiblePlanItems = computed(() => {
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: rgba(215, 255, 79, 0.82);
 }
 
 .baseline-slab__title,
 .baseline-card__title {
   margin-top: 0.35rem;
-  color: var(--ink-strong);
+  color: white;
   line-height: 1.05;
+  text-shadow: 0 2px 7px rgba(0, 42, 82, 0.28);
 }
 
 .baseline-slab__title {
-  font-size: 1.55rem;
+  font-size: 1.25rem;
 }
 
 .baseline-card__title {
@@ -433,11 +433,11 @@ const feasiblePlanItems = computed(() => {
 
 .baseline-slab__meta {
   font-size: 0.84rem;
-  color: var(--ink-strong);
+  color: rgba(236, 250, 255, 0.86);
 }
 
 .baseline-slab__meta-soft {
-  color: var(--ink-soft);
+  color: rgba(229, 249, 255, 0.68);
 }
 
 .baseline-slab__economics,
@@ -454,10 +454,12 @@ const feasiblePlanItems = computed(() => {
 .baseline-boundary {
   display: grid;
   gap: 0.35rem;
-  padding: 0.95rem;
-  border-radius: 1.35rem;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(0, 121, 193, 0.08);
+  padding: 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.12), transparent 28%),
+    linear-gradient(180deg, rgba(8, 132, 204, 0.74), rgba(3, 74, 137, 0.72));
   transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
 }
 
@@ -487,14 +489,16 @@ const feasiblePlanItems = computed(() => {
 .baseline-card:hover,
 .baseline-boundary:hover {
   transform: translateY(-2px);
-  border-color: rgba(0, 121, 193, 0.16);
-  box-shadow: 0 16px 30px rgba(0, 121, 193, 0.08);
+  border-color: rgba(255, 255, 255, 0.46);
+  box-shadow:
+    0 16px 30px rgba(0, 44, 87, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
 }
 
 .economics-pill__value {
   font-size: 1.15rem;
   font-weight: 800;
-  color: var(--sims-blue-deep);
+  color: #b8ff32;
 }
 
 .sims-tooltip {
@@ -660,7 +664,7 @@ const feasiblePlanItems = computed(() => {
   align-content: start;
   background:
     radial-gradient(circle at top right, rgba(126, 211, 33, 0.12), transparent 26%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(249, 252, 255, 0.92));
+    linear-gradient(180deg, rgba(8, 132, 204, 0.74), rgba(3, 74, 137, 0.72));
 }
 
 .feasible-pill__label {
@@ -668,24 +672,29 @@ const feasiblePlanItems = computed(() => {
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: rgba(215, 255, 79, 0.78);
 }
 
 .feasible-pill__value {
   font-size: 1rem;
   font-weight: 800;
-  color: var(--ink-strong);
+  color: white;
 }
 
 .feasible-pill__note,
 .baseline-card__summary {
   font-size: 0.88rem;
   line-height: 1.5;
-  color: var(--ink-soft);
+  color: rgba(229, 249, 255, 0.76);
 }
 
 .baseline-chart {
-  min-height: 15rem;
+  min-height: 19rem;
+  border: 1px solid rgba(255, 255, 255, 0.36);
+  border-radius: 0.72rem;
+  background:
+    linear-gradient(180deg, rgba(222, 245, 255, 0.94), rgba(191, 229, 250, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
 }
 
 .baseline-chart-fallback {
@@ -699,11 +708,11 @@ const feasiblePlanItems = computed(() => {
 
 .baseline-boundary__copy {
   line-height: 1.65;
-  color: var(--ink-soft);
+  color: rgba(229, 249, 255, 0.82);
 }
 
 .baseline-boundary__copy-strong {
-  color: var(--ink-strong);
+  color: white;
   font-weight: 600;
 }
 

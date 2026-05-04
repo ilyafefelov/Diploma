@@ -89,7 +89,6 @@ const weatherSourceBadge = computed(() => {
           v-if="props.explanationMode === 'mvp'"
           title="How the current price is calculated"
           eyebrow="Current calculation"
-          :open="true"
         >
           <p class="signal-explainer-card__copy">
             <strong>Expected price</strong> comes from the current baseline solver path in the API. The backend builds a
@@ -110,7 +109,6 @@ const weatherSourceBadge = computed(() => {
           v-else
           title="How the future price should be calculated"
           eyebrow="Future production calculation"
-          :open="true"
         >
           <p class="signal-explainer-card__copy">
             In the target architecture, <strong>expected price</strong> will come from a forecasting stack led by
@@ -288,54 +286,72 @@ const weatherSourceBadge = computed(() => {
 <style scoped>
 .signal-grid {
   display: grid;
-  gap: 1rem;
+  gap: 0.78rem;
 }
 
 .signal-card {
   display: grid;
-  gap: 0.9rem;
-  padding: 1.05rem;
-  border-radius: 1.5rem;
+  gap: 0.82rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 0.92rem;
   background:
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.14), transparent 34%),
-    radial-gradient(circle at bottom left, rgba(83, 178, 234, 0.12), transparent 30%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(243, 250, 255, 0.84));
-  border: 2px solid rgba(255, 255, 255, 0.92);
-  box-shadow: 0 20px 45px rgba(0, 121, 193, 0.08);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 42%),
+    radial-gradient(circle at top right, rgba(126, 211, 33, 0.2), transparent 32%),
+    linear-gradient(180deg, rgba(0, 111, 185, 0.94), rgba(0, 54, 112, 0.94));
+  box-shadow:
+    0 16px 34px rgba(0, 53, 103, 0.26),
+    inset 0 1px 0 rgba(255, 255, 255, 0.32);
   transition: transform 180ms ease, box-shadow 180ms ease;
 }
 
 .signal-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 26px 52px rgba(0, 121, 193, 0.12);
+  box-shadow:
+    0 20px 42px rgba(0, 53, 103, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42);
+}
+
+.signal-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
 }
 
 .signal-card__eyebrow {
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 800;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ink-soft);
+  color: rgba(215, 255, 79, 0.84);
 }
 
 .signal-card__title {
-  margin-top: 0.4rem;
-  font-size: 1.15rem;
+  margin-top: 0.2rem;
+  font-size: 1rem;
   line-height: 1.15;
-  color: var(--ink-strong);
+  color: white;
+  text-shadow: 0 2px 7px rgba(0, 42, 82, 0.28);
 }
 
 .signal-card__summary {
-  margin-top: 0.45rem;
+  margin-top: 0.34rem;
   max-width: 38rem;
-  font-size: 0.92rem;
-  line-height: 1.55;
-  color: var(--ink-soft);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(229, 249, 255, 0.78);
 }
 
 .signal-card__meta {
-  font-size: 0.82rem;
-  color: var(--ink-soft);
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: rgba(126, 211, 33, 0.16);
+  padding: 0.32rem 0.5rem;
+  font-size: 0.68rem;
+  color: rgba(230, 255, 179, 0.9);
+  font-weight: 900;
 }
 
 .signal-card__guide {
@@ -348,28 +364,33 @@ const weatherSourceBadge = computed(() => {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
-  padding: 0.45rem 0.75rem;
-  background: rgba(126, 211, 33, 0.12);
-  color: var(--ink-strong);
-  font-size: 0.78rem;
-  font-weight: 700;
+  padding: 0.34rem 0.56rem;
+  background: rgba(126, 211, 33, 0.18);
+  color: rgba(241, 253, 255, 0.9);
+  font-size: 0.66rem;
+  font-weight: 800;
 }
 
 .signal-guide-pill-blue {
-  background: rgba(0, 121, 193, 0.12);
+  background: rgba(83, 209, 255, 0.2);
 }
 
 .signal-guide-pill-berry {
-  background: rgba(255, 111, 174, 0.14);
+  background: rgba(255, 111, 174, 0.2);
 }
 
 .signal-guide-pill-source {
-  background: rgba(28, 208, 160, 0.16);
+  background: rgba(28, 208, 160, 0.22);
 }
 
 .signal-chart {
-  min-height: 16rem;
-  padding: 0.2rem 0;
+  min-height: 21rem;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.72rem;
+  background:
+    linear-gradient(180deg, rgba(222, 245, 255, 0.94), rgba(191, 229, 250, 0.9));
+  padding: 0.25rem 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.74);
 }
 
 .signal-chart-fallback {
@@ -378,12 +399,12 @@ const weatherSourceBadge = computed(() => {
   justify-content: center;
   border: 2px dashed rgba(0, 121, 193, 0.16);
   border-radius: 1.25rem;
-  color: var(--ink-soft);
+  color: rgba(230, 249, 255, 0.8);
 }
 
 .signal-explainer-grid {
   display: grid;
-  gap: 0.75rem;
+  gap: 0.55rem;
 }
 
 .signal-explainer-card__eyebrow {
@@ -396,7 +417,7 @@ const weatherSourceBadge = computed(() => {
 
 .signal-explainer-card__copy,
 .signal-explainer-card__formula {
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   line-height: 1.55;
   color: var(--ink-strong);
 }
@@ -411,7 +432,7 @@ const weatherSourceBadge = computed(() => {
 
 @media (min-width: 960px) {
   .signal-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr);
   }
 
   .signal-explainer-grid {

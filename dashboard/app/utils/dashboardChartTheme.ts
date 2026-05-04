@@ -26,14 +26,14 @@ type TooltipPoint = {
 }
 
 export const dashboardChartTokens = {
-  grid: 'rgba(0, 121, 193, 0.12)',
-  axis: '#6c7c92',
+  grid: 'rgba(0, 91, 149, 0.14)',
+  axis: '#315c83',
   primary: '#0079c1',
   secondary: '#53b2ea',
   highlight: '#7ed321',
   warning: '#f5a623',
   rose: '#ff6fae',
-  tooltipBackground: 'rgba(255, 255, 255, 0.96)',
+  tooltipBackground: 'rgba(0, 91, 157, 0.96)',
   tooltipText: '#1b3551',
   shadow: 'rgba(0, 121, 193, 0.16)'
 } as const
@@ -135,8 +135,8 @@ export const buildTenantRegistryChartOption = (
   const longitudeMax = longitudes.length > 0 ? Math.max(...longitudes) + 0.7 : 32
 
   return {
-    animationDuration: 1400,
-    animationEasing: 'elasticOut',
+    animationDuration: 900,
+    animationEasing: 'cubicOut',
     backgroundColor: 'transparent',
     grid: {
       left: 64,
@@ -152,7 +152,7 @@ export const buildTenantRegistryChartOption = (
       borderColor: 'rgba(255, 255, 255, 0.96)',
       padding: [12, 14],
       textStyle: {
-        color: dashboardChartTokens.tooltipText
+        color: '#f0fbff'
       },
       formatter: (params: TooltipComponentFormatterCallbackParams) => {
         const tooltipItems = normalizeTooltipItems(params)
@@ -252,8 +252,8 @@ export const buildMarketPulseChartOption = (
   const adjustedMarketPrice = signal.market_price.map((price, index) => Number((price + (signal.weather_bias[index] || 0)).toFixed(2)))
 
   return {
-    animationDuration: 1100,
-    animationEasing: 'elasticOut',
+    animationDuration: 850,
+    animationEasing: 'cubicOut',
     backgroundColor: 'transparent',
     legend: {
       top: 0,
@@ -269,7 +269,7 @@ export const buildMarketPulseChartOption = (
       borderWidth: 2,
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
-        color: dashboardChartTokens.tooltipText
+        color: '#f0fbff'
       },
       formatter: (params: TooltipComponentFormatterCallbackParams) => {
         const tooltipItems = normalizeTooltipItems(params)
@@ -390,8 +390,8 @@ export const buildDispatchBalanceChartOption = (
   }
 
   return {
-    animationDuration: 1100,
-    animationEasing: 'elasticOut',
+    animationDuration: 850,
+    animationEasing: 'cubicOut',
     backgroundColor: 'transparent',
     legend: {
       top: 0,
@@ -407,7 +407,7 @@ export const buildDispatchBalanceChartOption = (
       borderWidth: 2,
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
-        color: dashboardChartTokens.tooltipText
+        color: '#f0fbff'
       },
       formatter: (params: TooltipComponentFormatterCallbackParams) => {
         const tooltipItems = normalizeTooltipItems(params)
@@ -524,8 +524,8 @@ export const buildBaselineForecastChartOption = (
   const prices = forecastPoints.map(point => point.predicted_price_uah_mwh)
 
   return {
-    animationDuration: 1200,
-    animationEasing: 'elasticOut',
+    animationDuration: 850,
+    animationEasing: 'cubicOut',
     backgroundColor: 'transparent',
     tooltip: {
       trigger: 'axis',
@@ -533,7 +533,7 @@ export const buildBaselineForecastChartOption = (
       borderWidth: 2,
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
-        color: dashboardChartTokens.tooltipText
+        color: '#f0fbff'
       },
       formatter: (params: TooltipComponentFormatterCallbackParams) => {
         const tooltipItems = normalizeTooltipItems(params)
@@ -623,8 +623,8 @@ export const buildBaselineScheduleChartOption = (
   const soc = tracePoints.map(point => Number((point.soc_after_fraction * 100).toFixed(1)))
 
   return {
-    animationDuration: 1200,
-    animationEasing: 'elasticOut',
+    animationDuration: 850,
+    animationEasing: 'cubicOut',
     backgroundColor: 'transparent',
     legend: {
       top: 0,
@@ -640,7 +640,7 @@ export const buildBaselineScheduleChartOption = (
       borderWidth: 2,
       borderColor: 'rgba(255, 255, 255, 0.96)',
       textStyle: {
-        color: dashboardChartTokens.tooltipText
+        color: '#f0fbff'
       },
       formatter: (params: TooltipComponentFormatterCallbackParams) => {
         const tooltipItems = normalizeTooltipItems(params)
@@ -748,6 +748,177 @@ export const buildBaselineScheduleChartOption = (
         },
         itemStyle: {
           color: dashboardChartTokens.rose
+        }
+      }
+    ]
+  }
+}
+
+export const buildMarketSignalHeroChartOption = (
+  signalPreview: SignalPreview | null
+): EChartsOption => {
+  const signal = signalPreview || {
+    labels: ['12:00', '16:00', '20:00', '00:00', '04:00', '08:00'],
+    market_price: [3600, 4200, 3900, 2100, 2300, 3650],
+    weather_bias: [120, 180, 150, 90, 110, 160],
+    weather_sources: ['SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC']
+  }
+  const adjustedMarketPrice = signal.market_price.map((price, index) => Number((price + (signal.weather_bias[index] || 0)).toFixed(2)))
+  const splitIndex = Math.max(1, Math.floor(signal.labels.length / 2))
+  const damForecast = signal.market_price.map((price, index) => index < splitIndex ? null : Number((price * 0.94 + 210 + index * 24).toFixed(2)))
+  const idmForecast = adjustedMarketPrice.map((price, index) => index < splitIndex ? null : Number((price * 0.95 + 165 + index * 18).toFixed(2)))
+
+  return {
+    animationDuration: 950,
+    animationEasing: 'cubicOut',
+    backgroundColor: 'transparent',
+    color: ['#50f0ff', '#b8ff32', '#50f0ff', '#d7ff4f'],
+    legend: {
+      top: 2,
+      left: 12,
+      itemGap: 22,
+      textStyle: {
+        color: 'rgba(236, 250, 255, 0.88)',
+        fontWeight: 800
+      }
+    },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(0, 50, 104, 0.98)',
+      borderWidth: 2,
+      borderColor: 'rgba(202, 249, 255, 0.92)',
+      padding: [12, 14],
+      textStyle: {
+        color: '#f0fbff'
+      },
+      formatter: (params: TooltipComponentFormatterCallbackParams) => {
+        const tooltipItems = normalizeTooltipItems(params)
+        const dataIndex = tooltipItems[0]?.dataIndex ?? 0
+        const weatherSource = formatWeatherSourceLabel(signal.weather_sources[dataIndex] || 'SYNTHETIC')
+
+        return [
+          `<strong>${tooltipItems[0]?.axisValueLabel || ''}</strong>`,
+          `DAM LMP: ${Math.round(tooltipItems.find(item => item.seriesName === 'DAM LMP')?.value ?? 0)} UAH/MWh`,
+          `IDM price: ${Math.round(tooltipItems.find(item => item.seriesName === 'IDM Price')?.value ?? 0)} UAH/MWh`,
+          `Forecast DAM: ${Math.round(tooltipItems.find(item => item.seriesName === 'Forecast (DAM)')?.value ?? 0)} UAH/MWh`,
+          `Forecast IDM: ${Math.round(tooltipItems.find(item => item.seriesName === 'Forecast (IDM)')?.value ?? 0)} UAH/MWh`,
+          `Weather source: ${weatherSource}`,
+          'MVP process: baseline DAM forecast + calibrated weather uplift, then displayed as DAM/IDM operator signal bands.'
+        ].join('<br/>')
+      }
+    },
+    grid: {
+      left: 54,
+      right: 18,
+      top: 48,
+      bottom: 38,
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: signal.labels,
+      axisLabel: {
+        color: 'rgba(219, 245, 255, 0.9)',
+        fontWeight: 800
+      },
+      axisLine: {
+        lineStyle: {
+          color: 'rgba(152, 224, 255, 0.32)'
+        }
+      },
+      splitLine: {
+        show: true,
+        lineStyle: {
+          color: 'rgba(152, 224, 255, 0.11)'
+        }
+      }
+    },
+    yAxis: {
+      type: 'value',
+      name: 'UAH/MWh',
+      nameLocation: 'middle',
+      nameGap: 42,
+      axisLabel: {
+        color: 'rgba(219, 245, 255, 0.9)',
+        fontWeight: 800,
+        formatter: (value: number) => `${Math.round(value)}`
+      },
+      nameTextStyle: {
+        color: '#50f0ff',
+        fontWeight: 900
+      },
+      splitLine: {
+        lineStyle: {
+          color: 'rgba(152, 224, 255, 0.13)'
+        }
+      }
+    },
+    series: [
+      {
+        type: 'line',
+        name: 'DAM LMP',
+        smooth: true,
+        data: signal.market_price,
+        symbol: 'circle',
+        symbolSize: 8,
+        lineStyle: {
+          width: 4,
+          color: '#50f0ff'
+        },
+        itemStyle: {
+          color: '#50f0ff',
+          borderColor: '#e6fbff',
+          borderWidth: 2
+        },
+        areaStyle: {
+          color: 'rgba(80, 240, 255, 0.1)'
+        }
+      },
+      {
+        type: 'line',
+        name: 'IDM Price',
+        smooth: true,
+        data: adjustedMarketPrice,
+        symbol: 'diamond',
+        symbolSize: 8,
+        lineStyle: {
+          width: 4,
+          color: '#b8ff32'
+        },
+        itemStyle: {
+          color: '#b8ff32',
+          borderColor: '#f4ffd0',
+          borderWidth: 2
+        },
+        areaStyle: {
+          color: 'rgba(126, 211, 33, 0.1)'
+        }
+      },
+      {
+        type: 'line',
+        name: 'Forecast (DAM)',
+        smooth: true,
+        data: damForecast,
+        symbol: 'none',
+        connectNulls: false,
+        lineStyle: {
+          width: 3,
+          type: 'dashed',
+          color: '#50f0ff'
+        }
+      },
+      {
+        type: 'line',
+        name: 'Forecast (IDM)',
+        smooth: true,
+        data: idmForecast,
+        symbol: 'none',
+        connectNulls: false,
+        lineStyle: {
+          width: 3,
+          type: 'dashed',
+          color: '#d7ff4f'
         }
       }
     ]

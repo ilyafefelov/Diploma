@@ -2,6 +2,7 @@
 
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import "./operator-hud.css";
 
 @theme static {
   --font-sans: 'Montserrat', 'Segoe UI', sans-serif;

@@ -33,12 +33,14 @@ const option = computed(() => {
 <style scoped>
 .registry-chart {
   width: 100%;
-  min-height: 25rem;
-  border: 3px solid rgba(255, 255, 255, 0.94);
-  border-radius: 2rem;
+  min-height: 30rem;
+  border: 1px solid rgba(255, 255, 255, 0.66);
+  border-radius: 0.78rem;
   background:
     radial-gradient(circle at top right, rgba(126, 211, 33, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(245, 251, 255, 0.9));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    linear-gradient(180deg, rgba(222, 245, 255, 0.94), rgba(191, 229, 250, 0.9));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.86),
+    0 12px 24px rgba(0, 48, 95, 0.12);
 }
 </style>
