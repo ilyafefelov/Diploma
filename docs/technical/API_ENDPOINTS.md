@@ -5,8 +5,8 @@ This document describes the current control-plane API exposed by [api/main.py](d
 ## Purpose
 
 - The API is a control surface for selecting a tenant from the canonical Tenant Registry in [simulations/tenants.yml](d:/School/GoIT/Courses/Diploma/simulations/tenants.yml).
-- The API builds or executes Dagster config for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76), which then feeds weather and solar context into [dam_price_history](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/mvp_demo.py#L35).
-- The downstream caller chain remains: Weather Forecast Bronze asset -> Market Price History enrichment -> Baseline Forecast -> Baseline Strategy -> Oracle Benchmark / Dispatch Command validation.
+- The API builds or executes Dagster config for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76), which feeds weather and solar context into dashboard read models and future forecast features.
+- The baseline LP caller chain remains price-driven: Market Price History -> Baseline Forecast -> Baseline Strategy -> Oracle Benchmark / Dispatch Command validation. Weather is not a baseline LP control input until it is part of a validated weather-aware price forecast.
 
 ## Base Service
 
@@ -495,10 +495,21 @@ Operational notes:
 
 Builds the current tenant-aware signal preview for the operator dashboard.
 
+Response shape:
+
+- `market_price`: visible strict-similar-day price preview in `UAH/MWh`.
+- `weather_bias`: calibrated non-negative weather uplift in `UAH/MWh`.
+- `weather_sources`: source label per visible point, usually `OPEN_METEO` or `SYNTHETIC`.
+- `charge_intent`: simplified signed-MW visual preview derived from the weather-adjusted curve.
+- `regret`: MVP opportunity-score read model for the chart, not oracle regret.
+
 Operational notes:
 
 - On success, the API updates the persisted `signal_preview` flow state to `completed`.
 - This remains a preview/read-model endpoint and does not create `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` semantics.
+- The weather line is computed as `price_after_weather = market_price + weather_bias`.
+- `weather_bias` is estimated from cloud cover, precipitation, humidity excess, temperature gap, effective solar, and wind speed. `effective_solar = solar_radiation * (100 - cloudcover) / 100`.
+- This is an operator-facing weather-sensitivity explanation only. The baseline LP endpoint does not consume `weather_bias`; it still consumes the strict similar-day price forecast. Weather should enter dispatch only after it is part of a validated weather-aware forecast model and has been evaluated through rolling-origin realized-value/oracle-regret benchmarks.
 
 ## CLI Preset
 

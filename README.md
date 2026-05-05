@@ -34,6 +34,28 @@ forecast candidates upstream of the LP; the LP itself does not train or learn.
 Full formula, ML/non-ML boundaries, SOC handling, and academic support are documented
 in [docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md](docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md).
 
+## Operator Weather Signal
+
+The operator dashboard weather line is intentionally a read model, not the LP
+decision input. It shows:
+
+```text
+price_after_weather = market_price + weather_bias
+```
+
+`weather_bias` is a calibrated non-negative weather uplift in `UAH/MWh`, derived
+from cloud cover, precipitation, humidity excess, temperature gap, effective
+solar, and wind speed. This is fine for MVP explanation and supervisor demos, but
+it should not be described as a causal price model or routed directly into the LP.
+The planned upgrade path is weather-aware forecasting first, then LP dispatch:
+
+```text
+weather features -> NBEATSx/TFT/TimeXer-style price forecast -> LP schedule
+```
+
+The academic boundary and exact formula are documented in
+[docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal](docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal).
+
 Latest materialized result:
 
 | Model | Rows | Mean regret UAH | Median regret UAH | Win rate |

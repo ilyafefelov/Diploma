@@ -182,12 +182,94 @@ error alone. The current `dfl_relaxed_lp_pilot_frame` uses a relaxed differentia
 LP primitive for this future work, but final evaluation must still use the strict
 LP/simulator path.
 
+## Operator Weather Signal
+
+The operator dashboard currently shows a weather line/bar series named
+`weather_bias`. This is acceptable for the MVP as an explainable read model, but
+it must be described narrowly: it is a calibrated weather-associated price uplift
+in `UAH/MWh`, not a causal weather model and not the LP control input.
+
+The dashboard signal-preview endpoint builds:
+
+```text
+price_after_weather_t = market_price_t + weather_bias_t
+```
+
+where `weather_bias_t` is estimated from tenant-location weather features:
+
+```text
+cloudcover
+precipitation
+humidity_excess = max(0, humidity - 65)
+temperature_gap = abs(temperature - 18)
+effective_solar
+wind_speed
+```
+
+The derived solar feature is:
+
+```text
+effective_solar = solar_radiation * (100 - cloudcover) / 100
+```
+
+For the current read model, the calibration target is a positive hourly price
+premium:
+
+```text
+weather_premium_target_t =
+  max(0, market_price_t - mean_price_for_same_hour)
+```
+
+The API then fits a small ridge-style linear calibration:
+
+```text
+weather_bias_t =
+  intercept
+  + sum_i coefficient_i * ((feature_i,t - feature_mean_i) / feature_scale_i)
+```
+
+The prediction is clipped to non-negative values because the UI label is
+currently an uplift. If the project later wants a signed weather correction,
+the label and formula should change from `weather_bias` / `weather uplift` to a
+validated `weather_adjusted_price_forecast` that can be positive or negative.
+
+Current use:
+
+| Surface | Uses `weather_bias`? | Meaning |
+|---|---:|---|
+| Operator market pulse chart | Yes | Explain how weather may shift the visible price curve. |
+| Dashboard `charge_intent` preview | Yes | A simplified visual preview derived from the weather-adjusted curve. |
+| Baseline LP endpoint | No | LP still consumes strict similar-day price forecasts only. |
+| Gold forecast candidates | Indirect/future | Weather features belong upstream in NBEATSx/TFT/TimeXer-style forecast models. |
+
+Recommendation: keep the current dashboard signal for supervisor demos, but keep
+the LP unchanged. Weather should affect dispatch only through a validated forecast
+model:
+
+```text
+weather + market history + calendar
+  -> weather-aware price forecast
+  -> strict LP dispatch
+  -> realized-value / oracle-regret benchmark
+```
+
+This boundary is academically important. Electricity-price forecasting literature
+supports exogenous inputs, but Lago et al. argue that EPF models must be compared
+against strong simple baselines and evaluated rigorously across realistic test
+windows. NBEATSx and TFT support weather/calendar variables as forecast inputs;
+TimeXer is a newer reference for exogenous time-series modeling. None of these
+papers justify feeding an unvalidated dashboard uplift directly into a dispatch
+optimizer as if it were a proven price forecast.
+
 ## Research Support
 
 - Lee, A.-R., Kim, S.-M., Park, S.-Y., et al. (2017). "Linear Formulation for Short-Term Operational Scheduling of Energy Storage Systems in Power Grids." Energies, 10(2), 207. https://doi.org/10.3390/en10020207
 - Kumtepeli, V., Hesse, H., Morstyn, T., Nosratabadi, S. M., Aunedi, M., and Howey, D. A. (2024). "Depreciation Cost is a Poor Proxy for Revenue Lost to Aging in Grid Storage Optimization." ACC 2024. https://arxiv.org/abs/2403.10617
+- Lago, J., Marcjasz, G., De Schutter, B., and Weron, R. (2021). "Forecasting day-ahead electricity prices: A review of state-of-the-art algorithms, best practices and an open-access benchmark." Applied Energy, 293, 116983. https://doi.org/10.1016/j.apenergy.2021.116983
 - Olivares, K. G., Challu, C., Marcjasz, G., Weron, R., and Dubrawski, A. (2023). "Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx." International Journal of Forecasting, 39(2), 884-900. https://doi.org/10.1016/j.ijforecast.2022.03.001
 - Lim, B., Arik, S. O., Loeff, N., and Pfister, T. (2021). "Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting." International Journal of Forecasting, 37(4), 1748-1764. https://doi.org/10.1016/j.ijforecast.2021.03.012
+- Wang, Y., Wu, H., Dong, J., et al. (2024). "TimeXer: Empowering Transformers for Time Series Forecasting with Exogenous Variables." https://arxiv.org/abs/2402.19072
+- Yu, R., Bunn, D. W., Lin, J., et al. (2026). "Deep Learning for Electricity Price Forecasting: A Review of Day-Ahead, Intraday, and Balancing Electricity Markets." https://arxiv.org/abs/2602.10071
 - Agrawal, A., Amos, B., Barratt, S., Boyd, S., Diamond, S., and Kolter, J. Z. (2019). "Differentiable Convex Optimization Layers." NeurIPS 2019. https://papers.neurips.cc/paper/9152-differentiable-convex-optimization-layers
 - Amos, B., and Kolter, J. Z. (2017). "OptNet: Differentiable Optimization as a Layer in Neural Networks." ICML 2017. https://proceedings.mlr.press/v70/amos17a.html
 - Mandi, J., Kotary, J., Berden, S., Mulamba, M., Bucarey, V., Guns, T., and Fioretto, F. (2024). "Decision-Focused Learning: Foundations, State of the Art, Benchmark and Future Opportunities." Journal of Artificial Intelligence Research, 81, 1623-1701. https://doi.org/10.1613/jair.1.15320
@@ -201,3 +283,4 @@ LP/simulator path.
 - DFL research assets: `src/smart_arbitrage/assets/gold/dfl_research.py`
 - Telemetry aggregation: `src/smart_arbitrage/assets/telemetry/battery.py`
 - API baseline preview: `api/main.py`
+- Operator weather signal preview: `api/main.py`, `dashboard/app/utils/dashboardChartTheme.ts`
