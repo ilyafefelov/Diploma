@@ -45,12 +45,12 @@ docs/
 
 ---
 
-## 📌 Поточний стан (Week 1, May 2026)
+## 📌 Поточний стан (May 2026)
 
-- ✅ Розділ 2 (Огляд літератури) — перший submission-ready варіант
-- ✅ Week 1 звіт — повний пакет для керівника
-- ✅ Vercel demo — публічний URL, доступний без логіну
-- ✅ Локальний PDF-архів — 20+ джерел з індексом
-- ✅ Deep-research integration plan — real-data benchmark перед DFL claims
-- 🟡 Розділ 1 (Project Overview) — робоча версія, уточнюється
-- 🟡 Week 2 — в процесі
+- ✅ Real-data 90-anchor DAM benchmark — OREE observed prices + tenant Open-Meteo weather.
+- ✅ Gold research layer — forecast diagnostics, value-aware ensemble, DFL training table, regret-weighted TFT/NBEATSx calibration.
+- ✅ Strict LP/oracle re-evaluation — calibrated forecasts checked against same Level 1 simulator.
+- ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
+- ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.
+- 🟡 Full differentiable DFL — not implemented yet; next research candidate.
+- 🟡 Decision Transformer / M3DT-inspired strategy — future work after DFL and trajectory quality improve.

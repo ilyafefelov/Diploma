@@ -7,7 +7,11 @@ from typing import Any
 
 import polars as pl
 
-from smart_arbitrage.dfl.regret_weighted import run_regret_weighted_dfl_pilot
+from smart_arbitrage.dfl.regret_weighted import (
+    build_regret_weighted_forecast_calibration_frame,
+    build_regret_weighted_forecast_strategy_benchmark_frame,
+    run_regret_weighted_dfl_pilot,
+)
 from smart_arbitrage.resources.dfl_training_store import (
     DflTrainingStore,
     get_dfl_training_store,
@@ -28,7 +32,10 @@ class ResearchLayerOutputs:
     ensemble_frame: pl.DataFrame
     dfl_training_frame: pl.DataFrame
     pilot_frame: pl.DataFrame
+    regret_weighted_calibration_frame: pl.DataFrame
+    regret_weighted_benchmark_frame: pl.DataFrame
     model_summary: pl.DataFrame
+    regret_weighted_model_summary: pl.DataFrame
     dfl_training_summary: pl.DataFrame
 
 
@@ -60,6 +67,8 @@ def build_research_layer_outputs(
     pilot_tenant_id: str,
     pilot_model_name: str,
     validation_fraction: float = 0.2,
+    calibration_min_prior_anchors: int = 14,
+    calibration_window_anchors: int = 28,
 ) -> ResearchLayerOutputs:
     """Build ensemble, DFL-ready examples, pilot result, and summaries."""
 
@@ -74,12 +83,24 @@ def build_research_layer_outputs(
         forecast_model_name=pilot_model_name,
         validation_fraction=validation_fraction,
     )
+    calibration_frame = build_regret_weighted_forecast_calibration_frame(
+        training_frame,
+        min_prior_anchors=calibration_min_prior_anchors,
+        rolling_calibration_window_anchors=calibration_window_anchors,
+    )
+    regret_weighted_benchmark_frame = build_regret_weighted_forecast_strategy_benchmark_frame(
+        benchmark_frame,
+        calibration_frame,
+    )
     return ResearchLayerOutputs(
         benchmark_frame=benchmark_frame,
         ensemble_frame=ensemble_frame,
         dfl_training_frame=training_frame,
         pilot_frame=pilot_frame,
+        regret_weighted_calibration_frame=calibration_frame,
+        regret_weighted_benchmark_frame=regret_weighted_benchmark_frame,
         model_summary=_model_summary(combined_frame, training_frame),
+        regret_weighted_model_summary=_strategy_model_summary(regret_weighted_benchmark_frame),
         dfl_training_summary=_dfl_training_summary(training_frame),
     )
 
@@ -123,6 +144,9 @@ def persist_research_layer_outputs(
     """Persist ensemble rows and DFL research outputs."""
 
     (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(outputs.ensemble_frame)
+    (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(
+        outputs.regret_weighted_benchmark_frame
+    )
     resolved_dfl_store = dfl_store or get_dfl_training_store()
     resolved_dfl_store.upsert_training_frame(outputs.dfl_training_frame)
     resolved_dfl_store.upsert_pilot_frame(outputs.pilot_frame)
@@ -139,6 +163,12 @@ def write_research_layer_exports(
     output_dir = output_root / run_slug
     output_dir.mkdir(parents=True, exist_ok=True)
     outputs.model_summary.write_csv(output_dir / "research_layer_model_summary.csv")
+    outputs.regret_weighted_model_summary.write_csv(
+        output_dir / "regret_weighted_benchmark_summary.csv"
+    )
+    _calibration_summary(outputs.regret_weighted_calibration_frame).write_csv(
+        output_dir / "regret_weighted_calibration_summary.csv"
+    )
     outputs.dfl_training_summary.write_csv(output_dir / "dfl_training_summary.csv")
     outputs.pilot_frame.write_csv(output_dir / "regret_weighted_dfl_pilot_summary.csv")
     (output_dir / "regret_weighted_dfl_pilot_summary.json").write_text(
@@ -153,7 +183,7 @@ def write_research_layer_exports(
 
 
 def _model_summary(combined_frame: pl.DataFrame, training_frame: pl.DataFrame) -> pl.DataFrame:
-    win_summary = _win_summary(combined_frame)
+    win_summary = _min_regret_win_summary(combined_frame)
     base_summary = (
         training_frame
         .group_by(["forecast_model_name", "strategy_kind"])
@@ -188,7 +218,58 @@ def _model_summary(combined_frame: pl.DataFrame, training_frame: pl.DataFrame) -
     )
 
 
-def _win_summary(combined_frame: pl.DataFrame) -> pl.DataFrame:
+def _strategy_model_summary(frame: pl.DataFrame) -> pl.DataFrame:
+    if frame.height == 0:
+        return pl.DataFrame()
+    win_summary = _rank_win_summary(frame)
+    return (
+        frame
+        .group_by(["forecast_model_name", "strategy_kind"])
+        .agg(
+            [
+                pl.len().alias("rows"),
+                pl.col("tenant_id").n_unique().alias("tenant_count"),
+                pl.col("anchor_timestamp").n_unique().alias("anchor_count"),
+                pl.mean("regret_uah").alias("mean_regret_uah"),
+                pl.median("regret_uah").alias("median_regret_uah"),
+                pl.mean("regret_ratio").alias("mean_regret_ratio"),
+                pl.mean("decision_value_uah").alias("mean_decision_value_uah"),
+                pl.mean("oracle_value_uah").alias("mean_oracle_value_uah"),
+                pl.mean("total_degradation_penalty_uah").alias("mean_degradation_penalty_uah"),
+                pl.mean("total_throughput_mwh").alias("mean_throughput_mwh"),
+            ]
+        )
+        .join(win_summary, on="forecast_model_name", how="left")
+        .with_columns(
+            [
+                pl.col("wins").fill_null(0),
+                pl.col("win_rate").fill_null(0.0),
+            ]
+        )
+        .sort("mean_regret_uah")
+    )
+
+
+def _calibration_summary(calibration_frame: pl.DataFrame) -> pl.DataFrame:
+    if calibration_frame.height == 0:
+        return pl.DataFrame()
+    return (
+        calibration_frame
+        .group_by(["source_forecast_model_name", "corrected_forecast_model_name", "calibration_status"])
+        .agg(
+            [
+                pl.len().alias("rows"),
+                pl.col("tenant_id").n_unique().alias("tenant_count"),
+                pl.mean("regret_weighted_bias_uah_mwh").alias("mean_bias_uah_mwh"),
+                pl.median("regret_weighted_bias_uah_mwh").alias("median_bias_uah_mwh"),
+                pl.max("prior_anchor_count").alias("max_prior_anchor_count"),
+            ]
+        )
+        .sort(["source_forecast_model_name", "calibration_status"])
+    )
+
+
+def _min_regret_win_summary(combined_frame: pl.DataFrame) -> pl.DataFrame:
     minimums = combined_frame.group_by(["tenant_id", "anchor_timestamp"]).agg(
         pl.min("regret_uah").alias("_min_anchor_regret_uah")
     )
@@ -197,6 +278,24 @@ def _win_summary(combined_frame: pl.DataFrame) -> pl.DataFrame:
         .join(minimums, on=["tenant_id", "anchor_timestamp"])
         .with_columns(
             (pl.col("regret_uah") == pl.col("_min_anchor_regret_uah"))
+            .cast(pl.Int64)
+            .alias("_is_win")
+        )
+        .group_by("forecast_model_name")
+        .agg(
+            [
+                pl.sum("_is_win").alias("wins"),
+                pl.mean("_is_win").alias("win_rate"),
+            ]
+        )
+    )
+
+
+def _rank_win_summary(combined_frame: pl.DataFrame) -> pl.DataFrame:
+    return (
+        combined_frame
+        .with_columns(
+            (pl.col("rank_by_regret") == 1)
             .cast(pl.Int64)
             .alias("_is_win")
         )
@@ -238,12 +337,15 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
         "dfl_training_rows": outputs.dfl_training_frame.height,
         "dfl_pilot_rows": outputs.pilot_frame.height,
         "dfl_pilot_scope": str(pilot_row.get("scope", "")),
+        "regret_weighted_calibration_rows": outputs.regret_weighted_calibration_frame.height,
+        "regret_weighted_benchmark_rows": outputs.regret_weighted_benchmark_frame.height,
         "dfl_expansion_recommendation": (
             "expand_to_all_tenants"
             if expanded_to_all_tenants_ready
             else "keep_as_negative_or_neutral_pilot"
         ),
         "model_summary": outputs.model_summary.to_dicts(),
+        "regret_weighted_model_summary": outputs.regret_weighted_model_summary.to_dicts(),
     }
 
 

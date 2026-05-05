@@ -2,6 +2,7 @@
 name = "smart-energy-arbitrage-2026"
 version = "0.1.0"
 description = "Decision-Focused Framework для енергоарбітражу BESS на ринку України"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # Оркестрація та MLOps

@@ -96,6 +96,14 @@ _Avoid_: synthetic demo history, live-current overlay only, architecture demo, S
 Evaluation protocol where each anchor uses only past data to build features/forecasts, solves the strategy for the next horizon, executes/scored only feasible decisions against later realized prices, and compares the result with **Oracle Benchmark**.
 _Avoid_: hindsight training, one-off demo materialization, random train/test split across time, forecast-only leaderboard
 
+**Regret-Weighted Forecast Calibration**:
+DFL-inspired diagnostic layer that estimates a price-bias correction from prior-anchor forecast errors weighted by downstream regret, then re-evaluates corrected forecasts through the same strict LP/oracle scorer. It is not **Target Strategy** and not full differentiable DFL.
+_Avoid_: claiming trained DFL, replacing strict baseline, using future anchors, dashboard production default
+
+**Full Differentiable DFL**:
+Future **Target Strategy** training loop where a forecast model is optimized through a relaxed differentiable storage or bidding layer, then evaluated with the strict LP/simulator. It requires a separate no-leakage training protocol and must not be claimed from bias-calibration results.
+_Avoid_: regret-weighted post-hoc calibration, oracle dispatch imitation, unconstrained neural action, final evaluation on relaxed constraints
+
 **Effective-Dated Market Constraint**:
 Regulatory or market parameter whose value depends on the delivery/decision date, such as DAM/IDM/Balancing price caps, operator transaction tariffs, or fixed participation fees.
 _Avoid_: timeless constant, hidden config, dashboard-only annotation, post-hoc correction
@@ -226,6 +234,9 @@ _Avoid_: market bid, no bid, cleared trade
 - **Forecast Strategy Evaluation** is evaluation evidence, not **Proposed Bid** generation or production market submission
 - **Real-Data Research Benchmark** upgrades **Forecast Strategy Evaluation** from demo evidence to thesis evidence by replacing synthetic history with observed market/weather inputs and explicit cost/constraint assumptions
 - **Rolling-Origin Strategy Backtest** is the canonical experiment design for comparing **Level 1 Naive Forecast**, **NBEATSx Forecast**, **TFT Forecast**, and later **Target Strategy**
+- **Regret-Weighted Forecast Calibration** consumes **Real-Data Research Benchmark** outputs and produces corrected forecast candidates for another **Forecast Strategy Evaluation**
+- **Regret-Weighted Forecast Calibration** is a diagnostic predecessor to **Full Differentiable DFL**, not a replacement for **Target Strategy**
+- **Full Differentiable DFL** must be trained with only pre-anchor information and must still be scored through strict LP/simulator evaluation
 - **Effective-Dated Market Constraint** constrains **Market Venue** validation and benchmark scoring for the relevant delivery date
 - **Market Participation Cost** contributes to net UAH decision value alongside **Interval Degradation Penalty**
 - **M3DT-Inspired Research Strategy** is a candidate **Target Strategy** evaluated on simulated client tasks after the baseline is stable

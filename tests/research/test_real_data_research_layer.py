@@ -40,6 +40,8 @@ def test_research_layer_builds_outputs_from_latest_tenant_batches(tmp_path) -> N
     assert outputs.ensemble_frame.height == 5
     assert outputs.dfl_training_frame.height == 20
     assert outputs.pilot_frame.height == 1
+    assert outputs.regret_weighted_calibration_frame.height == 10
+    assert outputs.regret_weighted_benchmark_frame.height == 25
     assert set(outputs.model_summary.select("forecast_model_name").to_series().to_list()) == {
         "strict_similar_day",
         "nbeatsx_silver_v0",
@@ -49,10 +51,13 @@ def test_research_layer_builds_outputs_from_latest_tenant_batches(tmp_path) -> N
     assert (export_dir / "research_layer_model_summary.csv").exists()
     assert (export_dir / "dfl_training_summary.csv").exists()
     assert (export_dir / "regret_weighted_dfl_pilot_summary.json").exists()
+    assert (export_dir / "regret_weighted_calibration_summary.csv").exists()
+    assert (export_dir / "regret_weighted_benchmark_summary.csv").exists()
     summary = json.loads((export_dir / "research_layer_summary.json").read_text(encoding="utf-8"))
     assert summary["benchmark_rows"] == 15
     assert summary["dfl_training_rows"] == 20
     assert summary["dfl_pilot_scope"] == "pilot_not_full_dfl"
+    assert summary["regret_weighted_benchmark_rows"] == 25
 
 
 def _benchmark_frame(
@@ -98,14 +103,20 @@ def _benchmark_frame(
                         "observed_coverage_ratio": 1.0,
                         "horizon": [
                             {
+                                "step_index": 0,
+                                "interval_start": (anchor + timedelta(hours=1)).isoformat(),
                                 "forecast_price_uah_mwh": 1000.0 - regret_offset,
                                 "actual_price_uah_mwh": 1100.0,
                                 "net_power_mw": 0.0,
+                                "degradation_penalty_uah": 0.0,
                             },
                             {
+                                "step_index": 1,
+                                "interval_start": (anchor + timedelta(hours=2)).isoformat(),
                                 "forecast_price_uah_mwh": 1050.0 - regret_offset,
                                 "actual_price_uah_mwh": 1150.0,
                                 "net_power_mw": 0.0,
+                                "degradation_penalty_uah": 0.0,
                             },
                         ],
                     },

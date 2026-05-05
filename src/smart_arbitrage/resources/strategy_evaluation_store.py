@@ -208,7 +208,10 @@ def _append_or_replace(
         return base_frame
     if base_frame.height == 0:
         return incoming_frame.clone()
-    return pl.concat([base_frame, incoming_frame]).unique(subset=subset, keep="last")
+    return pl.concat([base_frame, incoming_frame], how="diagonal_relaxed").unique(
+        subset=subset,
+        keep="last",
+    )
 
 
 def _latest_tenant_frame(

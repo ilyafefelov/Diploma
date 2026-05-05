@@ -1,9 +1,15 @@
+import os
 from typing import Any
 
 import dagster as dg
 import polars as pl
 
-from smart_arbitrage.dfl.regret_weighted import run_regret_weighted_dfl_pilot
+from smart_arbitrage.dfl.regret_weighted import (
+    REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND,
+    build_regret_weighted_forecast_calibration_frame,
+    build_regret_weighted_forecast_strategy_benchmark_frame,
+    run_regret_weighted_dfl_pilot,
+)
 from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 from smart_arbitrage.strategy.ensemble_gate import build_value_aware_ensemble_frame
@@ -22,6 +28,14 @@ class RegretWeightedDflPilotAssetConfig(dg.Config):
     tenant_id: str = "client_003_dnipro_factory"
     forecast_model_name: str = "tft_silver_v0"
     validation_fraction: float = 0.2
+
+
+class RegretWeightedForecastCalibrationAssetConfig(dg.Config):
+    """Regret-weighted calibration expansion for TFT and NBEATSx."""
+
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    min_prior_anchors: int = 14
+    rolling_calibration_window_anchors: int = 28
 
 
 @dg.asset(group_name="gold")
@@ -103,13 +117,119 @@ def regret_weighted_dfl_pilot_frame(
     return pilot_frame
 
 
+@dg.asset(group_name="gold")
+def regret_weighted_forecast_calibration_frame(
+    context,
+    config: RegretWeightedForecastCalibrationAssetConfig,
+    dfl_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Pre-anchor regret-weighted forecast bias rows for TFT and NBEATSx."""
+
+    calibration_frame = build_regret_weighted_forecast_calibration_frame(
+        dfl_training_frame,
+        forecast_model_names=_forecast_model_names(config.forecast_model_names_csv),
+        min_prior_anchors=config.min_prior_anchors,
+        rolling_calibration_window_anchors=config.rolling_calibration_window_anchors,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": calibration_frame.height,
+            "tenant_count": calibration_frame.select("tenant_id").n_unique() if calibration_frame.height else 0,
+            "source_model_count": calibration_frame.select("source_forecast_model_name").n_unique()
+            if calibration_frame.height
+            else 0,
+            "scope": "regret_weighted_forecast_calibration_not_full_dfl",
+        },
+    )
+    return calibration_frame
+
+
+@dg.asset(group_name="gold")
+def regret_weighted_forecast_strategy_benchmark_frame(
+    context,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    regret_weighted_forecast_calibration_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP benchmark for original and regret-weight calibrated forecasts."""
+
+    benchmark_frame = build_regret_weighted_forecast_strategy_benchmark_frame(
+        real_data_rolling_origin_benchmark_frame,
+        regret_weighted_forecast_calibration_frame,
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(benchmark_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": benchmark_frame.height,
+            "tenant_count": benchmark_frame.select("tenant_id").n_unique() if benchmark_frame.height else 0,
+            "anchor_count": benchmark_frame.select("anchor_timestamp").n_unique() if benchmark_frame.height else 0,
+            "model_count": benchmark_frame.select("forecast_model_name").n_unique() if benchmark_frame.height else 0,
+            "strategy_kind": REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND,
+            "scope": "regret_weighted_forecast_calibration_benchmark_not_full_dfl",
+        },
+    )
+    _log_mlflow_summary(benchmark_frame)
+    return benchmark_frame
+
+
 DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
     regret_weighted_dfl_pilot_frame,
+    regret_weighted_forecast_calibration_frame,
+    regret_weighted_forecast_strategy_benchmark_frame,
 ]
 
 
 def _add_metadata(context: dg.AssetExecutionContext | None, metadata: dict[str, Any]) -> None:
     if context is not None:
         context.add_output_metadata(metadata)
+
+
+def _forecast_model_names(raw_value: str) -> tuple[str, ...]:
+    values = tuple(value.strip() for value in raw_value.split(",") if value.strip())
+    if not values:
+        raise ValueError("forecast_model_names_csv must contain at least one model.")
+    return values
+
+
+def _log_mlflow_summary(benchmark_frame: pl.DataFrame) -> None:
+    if benchmark_frame.height == 0:
+        return
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
+    if tracking_uri is None:
+        return
+    try:
+        import mlflow
+    except ImportError:
+        return
+
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment("smart-arbitrage-regret-weighted-dfl-expansion")
+    summary = (
+        benchmark_frame
+        .group_by("forecast_model_name")
+        .agg(
+            [
+                pl.len().alias("rows"),
+                pl.mean("regret_uah").alias("mean_regret_uah"),
+                pl.median("regret_uah").alias("median_regret_uah"),
+                pl.mean("decision_value_uah").alias("mean_decision_value_uah"),
+            ]
+        )
+    )
+    with mlflow.start_run(run_name="regret_weighted_forecast_calibration_benchmark"):
+        mlflow.set_tags(
+            {
+                "strategy_kind": REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND,
+                "academic_scope": "not_full_differentiable_dfl",
+            }
+        )
+        mlflow.log_metric("rows", benchmark_frame.height)
+        mlflow.log_metric("tenant_count", benchmark_frame.select("tenant_id").n_unique())
+        mlflow.log_metric("anchor_count", benchmark_frame.select("anchor_timestamp").n_unique())
+        for row in summary.iter_rows(named=True):
+            model_name = str(row["forecast_model_name"]).replace("-", "_")
+            mlflow.log_metric(f"{model_name}_mean_regret_uah", float(row["mean_regret_uah"]))
+            mlflow.log_metric(f"{model_name}_median_regret_uah", float(row["median_regret_uah"]))

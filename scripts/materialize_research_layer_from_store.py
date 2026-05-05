@@ -27,6 +27,8 @@ def main() -> None:
     parser.add_argument("--pilot-tenant-id", default="client_003_dnipro_factory")
     parser.add_argument("--pilot-model-name", default="tft_silver_v0")
     parser.add_argument("--validation-fraction", type=float, default=0.2)
+    parser.add_argument("--calibration-min-prior-anchors", type=int, default=14)
+    parser.add_argument("--calibration-window-anchors", type=int, default=28)
     args = parser.parse_args()
 
     benchmark_frame = load_latest_real_data_benchmark_frame_from_postgres(args.dsn)
@@ -38,6 +40,8 @@ def main() -> None:
         pilot_tenant_id=args.pilot_tenant_id,
         pilot_model_name=args.pilot_model_name,
         validation_fraction=args.validation_fraction,
+        calibration_min_prior_anchors=args.calibration_min_prior_anchors,
+        calibration_window_anchors=args.calibration_window_anchors,
     )
     persist_research_layer_outputs(
         outputs,
@@ -55,6 +59,8 @@ def main() -> None:
         "ensemble_rows": outputs.ensemble_frame.height,
         "dfl_training_rows": outputs.dfl_training_frame.height,
         "pilot_rows": outputs.pilot_frame.height,
+        "regret_weighted_calibration_rows": outputs.regret_weighted_calibration_frame.height,
+        "regret_weighted_benchmark_rows": outputs.regret_weighted_benchmark_frame.height,
     }
     print(json.dumps(summary, indent=2))
 

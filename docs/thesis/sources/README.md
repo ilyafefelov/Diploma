@@ -24,6 +24,7 @@
 | 13 | `nrel-2021-storage-futures-technology-modeling-input-data-report.pdf` | Augustine & Blair, 2021 | **NREL Storage Futures** — cost/performance assumptions for deployed storage technologies | NREL/TP-5700-78694 |
 | 14 | `2403.10617v1-depreciation-cost-poor-proxy-grid-storage-optimization.pdf` | Kumtepeli et al., 2024 | **Degradation depreciation as proxy** in rolling-horizon grid-storage optimization | arXiv:2403.10617 / 10.48550/arXiv.2403.10617 |
 | 15 | `nrel-atb-2023-pv-plus-battery.md` | NREL ATB, 2023 | **PV-plus-battery guide** — battery RTE, replacement, and cycle-degradation assumptions | NREL ATB web guide |
+| 16 | `2402.19072v2-timexer-exogenous-transformer-forecasting.pdf` | Wang et al., 2024 | **TimeXer** — Transformer architecture for time-series forecasting with exogenous variables; future-work reference | arXiv:2402.19072 |
 
 ---
 
@@ -50,7 +51,7 @@
 - Yi et al. 2025 · Elmachtoub & Grigas 2022 · Agrawal et al. 2019
 
 ### Прогнозування цін на електроенергію
-- Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Jin et al. 2025 · `Deep_Learning_for_Electricity_Price_Forecasting_A_.pdf`
+- Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Wang et al. 2024 (TimeXer) · Jin et al. 2025 · `Deep_Learning_for_Electricity_Price_Forecasting_A_.pdf`
 
 ### Стратегія батарейного накопичувача / Арбітраж
 - Grimaldi et al. 2024 · Hesse et al. 2019 · Chen et al. 2021 (Decision Transformer)

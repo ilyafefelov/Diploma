@@ -177,30 +177,38 @@ Still not claimed:
 
 ## Materialized Research Layer Results
 
-The downstream research layer was materialized from the persisted 90-anchor benchmark rows without re-scraping OREE or Open-Meteo. It selected the latest complete batch for each tenant, then built and persisted the value-aware ensemble rows, DFL-ready examples, and the one-tenant regret-weighted pilot.
+The downstream research layer was materialized from the persisted 90-anchor benchmark rows without re-scraping OREE or Open-Meteo. It selected the latest complete batch for each tenant, then built and persisted the value-aware ensemble rows, DFL-ready examples, one-tenant regret-weighted pilot, all-tenant TFT/NBEATSx regret-weighted calibration rows, and a strict LP re-evaluation of the corrected forecasts.
+
+Dagster downstream materialization run: `495dcfd3-cd1a-411f-9c9e-45de80941ac5`
+MLflow regret-weighted expansion run: <http://localhost:5000/#/experiments/3/runs/59316dec9d4246cc98f848eb7816a1b2>
 
 New exports:
 
-`data/research_runs/research_layer_20260505T_next_slice/research_layer_summary.json`
+`data/research_runs/dfl_forecast_expansion_20260505T132500/research_layer_summary.json`
 
-`data/research_runs/research_layer_20260505T_next_slice/research_layer_model_summary.csv`
+`data/research_runs/dfl_forecast_expansion_20260505T132500/research_layer_model_summary.csv`
 
-`data/research_runs/research_layer_20260505T_next_slice/dfl_training_summary.csv`
+`data/research_runs/dfl_forecast_expansion_20260505T132500/dfl_training_summary.csv`
 
-`data/research_runs/research_layer_20260505T_next_slice/regret_weighted_dfl_pilot_summary.json`
+`data/research_runs/dfl_forecast_expansion_20260505T132500/regret_weighted_calibration_summary.csv`
 
-Restoreable database dump after adding the research-layer rows:
+`data/research_runs/dfl_forecast_expansion_20260505T132500/regret_weighted_benchmark_summary.csv`
 
-`data/db_backups/smart_arbitrage_research_layer_20260505T_next_slice.dump`
+`data/research_runs/dfl_forecast_expansion_20260505T132500/regret_weighted_dfl_pilot_summary.json`
+
+Restoreable database dump after adding this research-layer slice:
+
+`data/db_backups/smart_arbitrage_dfl_forecast_expansion_20260505T132500.dump`
 
 Postgres persistence after this slice:
 
 | Table / rows | Count |
 |---|---:|
-| `forecast_strategy_evaluations` total rows | 1,818 |
+| `real_data_rolling_origin_benchmark` rows used by latest batch | 1,350 |
 | `value_aware_ensemble_v0` rows | 450 |
 | `dfl_training_examples` rows | 1,800 |
 | `regret_weighted_dfl_pilot_runs` rows | 1 |
+| `regret_weighted_forecast_calibration_benchmark` rows | 2,250 |
 
 Updated model comparison including the ensemble gate:
 
@@ -211,12 +219,33 @@ Updated model comparison including the ensemble gate:
 | tft_silver_v0 | 450 | 1,128.75 | 732.66 | 2,758.14 | 0.5858 | 128 | 28.44% |
 | nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 2,744.26 | 0.5637 | 92 | 20.44% |
 
+Strict LP re-evaluation of regret-weighted corrected forecasts:
+
+| Model | Rows | Mean regret UAH | Median regret UAH | Mean decision value UAH | Wins | Win rate |
+|---|---:|---:|---:|---:|---:|---:|
+| strict_similar_day | 450 | 851.04 | 535.62 | 2,795.55 | 225 | 50.00% |
+| tft_regret_weighted_calibrated_v0 | 450 | 1,125.56 | 752.80 | 2,521.03 | 67 | 14.89% |
+| tft_silver_v0 | 450 | 1,128.75 | 732.66 | 2,517.84 | 62 | 13.78% |
+| nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 2,482.42 | 34 | 7.56% |
+| nbeatsx_regret_weighted_calibrated_v0 | 450 | 1,171.75 | 833.18 | 2,474.83 | 62 | 13.78% |
+
+Regret-weighted calibration summary:
+
+| Source model | Corrected model | Status | Rows | Mean bias UAH/MWh | Median bias UAH/MWh |
+|---|---|---|---:|---:|---:|
+| nbeatsx_silver_v0 | nbeatsx_regret_weighted_calibrated_v0 | calibrated | 380 | -431.18 | -581.89 |
+| nbeatsx_silver_v0 | nbeatsx_regret_weighted_calibrated_v0 | insufficient_prior_history | 70 | 0.00 | 0.00 |
+| tft_silver_v0 | tft_regret_weighted_calibrated_v0 | calibrated | 380 | -635.25 | -992.87 |
+| tft_silver_v0 | tft_regret_weighted_calibrated_v0 | insufficient_prior_history | 70 | 0.00 | 0.00 |
+
 Interpretation:
 
-- The value-aware ensemble gate improves over both compact neural candidates, but it still does not beat the strict similar-day control.
-- `strict_similar_day` remains the default comparator and the safest dashboard default.
-- The ensemble result is still academically useful because it shows that pre-anchor validation regret can avoid some neural underperformance, but the current selector is not strong enough to replace the control baseline.
-- Forecast-error diagnostics now explain part of the regret pattern: the strict baseline has lower MAE, better directional accuracy, better spread ranking, and better top-k price recall than the compact neural candidates in this stored run.
+- `strict_similar_day` remains the control winner and dashboard default comparator.
+- `value_aware_ensemble_v0` improves over both compact neural candidates, but still does not beat the strict control.
+- The one-tenant regret-weighted pilot improved weighted MAE, but strict LP re-evaluation shows this simple bias calibration is not enough to claim DFL profit improvement.
+- TFT calibration is mildly useful as a diagnostic: mean regret improves by about 3.19 UAH versus raw TFT, but median regret worsens.
+- NBEATSx calibration is neutral/negative: it increases mean regret versus raw NBEATSx, even though it increases rank-1 wins. This means a scalar bias correction is too crude for NBEATSx dispatch value.
+- This is an academically valid negative/neutral result. It argues for a better value-oriented objective or relaxed differentiable layer, not for dropping the strict baseline.
 
 DFL training table:
 
@@ -241,9 +270,17 @@ Regret-weighted DFL pilot:
 | Weighted MAE delta | 478.28 UAH/MWh |
 | Mean validation regret | 1,009.08 UAH |
 
-Decision:
+Runtime and GPU note:
 
-The pilot is positive enough to expand to all five tenants as a diagnostic experiment. It is not yet a profit/regret improvement claim because it only validates a regret-weighted forecast calibration step; the corrected forecasts still need strict LP re-evaluation before any DFL performance claim.
+The current compact NBEATSx/TFT code uses PyTorch but the installed wheel is CPU-only (`torch 2.11.0+cpu`, `torch.cuda.is_available() == False`). The machine has an NVIDIA GTX 1050 Ti with 4 GB VRAM, but this slice is dominated by small rolling-origin training windows, tiny LP solves, Polars transforms, and Dagster/process overhead. GPU enablement is unlikely to materially improve this MVP slice. GPU becomes useful later only if the project switches to heavier NeuralForecast/PyTorch Forecasting training or larger TimeXer-style experiments with a CUDA-enabled PyTorch build.
+
+Research support:
+
+- Decision-focused learning is the right framing because it trains prediction models for downstream constrained decision quality rather than forecast error alone: <https://huggingface.co/papers/2307.13565>.
+- Perturbed DFL for strategic energy storage supports the next step beyond bias calibration: a differentiable decision-focused loss over a storage optimization layer: <https://arxiv.org/abs/2406.17085>.
+- Predict-then-bid storage work supports the thesis architecture of price prediction plus storage optimization plus market-clearing-aware training: <https://arxiv.org/abs/2505.01551>.
+- TimeXer is relevant future work for exogenous time-series modeling, but it is not needed for tonight's MVP because the current bottleneck is validated decision quality, not another heavy model: <https://huggingface.co/papers/2402.19072>.
+- Time-Series-Library is useful as a benchmark/reference implementation source for future TimeXer experiments: <https://huggingface.co/lwaekfjlk/Time-Series-Library>.
 
 ## Verification
 
@@ -254,6 +291,7 @@ uv run ruff check .
 uv run mypy .
 uv run pytest
 uv run dg check defs
+uv run dg list defs --json
 docker compose config --quiet
 ```
 
@@ -262,4 +300,4 @@ API smoke checks:
 - `GET /health` returned `{"status":"ok"}`.
 - `GET /dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory` returned the latest 90-anchor, 3-model benchmark summary and rows.
 
-Docker services were up for Postgres, MLflow, FastAPI, Dagster webserver, Dagster daemon, MQTT, and telemetry ingestor. The API remained exposed on `127.0.0.1:8001`, while Dagster UI remained on `127.0.0.1:3001`.
+Docker services were up for Postgres, MLflow, FastAPI, Dagster webserver, Dagster daemon, MQTT, and telemetry ingestor. The API is exposed on `127.0.0.1:8001`, while Dagster UI is on `127.0.0.1:3001`. Port `8000` is still occupied by a Windows `Manager` process that could not be stopped due to access denial, so the backend stack uses `SMART_ARBITRAGE_API_PORT=8001`.
