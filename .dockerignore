@@ -3,6 +3,8 @@
 .pytest_cache
 .mypy_cache
 .ruff_cache
+.tmp_runtime
+.uv-cache
 .nuxt
 dashboard/node_modules
 dashboard/.nuxt

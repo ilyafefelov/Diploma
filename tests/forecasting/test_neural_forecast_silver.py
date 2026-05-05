@@ -41,6 +41,46 @@ def test_neural_forecast_feature_frame_marks_train_and_horizon_rows() -> None:
 	assert feature_frame.select("lag_168_price_uah_mwh").drop_nulls().height > 0
 
 
+def test_neural_forecast_feature_frame_does_not_leak_future_realized_prices() -> None:
+	price_history = _synthetic_price_history()
+	control_features = build_neural_forecast_feature_frame(price_history)
+	anchor_timestamp = (
+		control_features
+		.filter(pl.col("split") == "train")
+		.select("timestamp")
+		.to_series()
+		.item(-1)
+	)
+	mutated_price_history = price_history.with_columns(
+		pl.when(pl.col("timestamp") > anchor_timestamp)
+		.then(pl.col("price_uah_mwh") + 50000.0)
+		.otherwise(pl.col("price_uah_mwh"))
+		.alias("price_uah_mwh")
+	)
+
+	mutated_features = build_neural_forecast_feature_frame(mutated_price_history)
+
+	forecast_columns = ["timestamp", *NEURAL_FORECAST_FEATURE_COLUMNS]
+	assert (
+		control_features
+		.filter(pl.col("split") == "forecast")
+		.select(forecast_columns)
+		.equals(
+			mutated_features
+			.filter(pl.col("split") == "forecast")
+			.select(forecast_columns)
+		)
+	)
+	assert (
+		mutated_features
+		.filter(pl.col("split") == "forecast")
+		.select("target_price_uah_mwh")
+		.null_count()
+		.item()
+		== DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
+	)
+
+
 def test_neural_forecast_feature_frame_can_include_hourly_battery_state_features() -> None:
 	price_history = _synthetic_price_history()
 	timestamp = price_history.select("timestamp").to_series().item(-3)

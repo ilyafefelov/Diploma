@@ -18,6 +18,7 @@ import yaml
 from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DEFAULT_TIMESTAMP_COLUMN
 from smart_arbitrage.resources.market_data_store import (
     get_market_data_store,
+    market_price_observations_from_frame,
     weather_observations_from_frame,
 )
 
@@ -42,6 +43,7 @@ UAH_PER_EUR: Final[float] = 40.0
 OREE_PRICES_URL: Final[str] = "https://www.oree.com.ua/index.php/pricectr?lang=english"
 OREE_DATA_VIEW_URL: Final[str] = "https://www.oree.com.ua/index.php/pricectr/data_view"
 OPEN_METEO_URL: Final[str] = "https://api.open-meteo.com/v1/forecast"
+OPEN_METEO_HISTORICAL_URL: Final[str] = "https://archive-api.open-meteo.com/v1/archive"
 SYNTHETIC_MARKET_SOURCE_URL: Final[str] = "synthetic://smart_arbitrage/market_price_history"
 SYNTHETIC_WEATHER_SOURCE_URL: Final[str] = "synthetic://smart_arbitrage/weather_forecast"
 OBSERVED_SOURCE_KIND: Final[str] = "observed"
@@ -88,6 +90,22 @@ class WeatherLocationConfig(dg.Config):
     location_config_path: str | None = None
 
 
+class ObservedMarketBackfillConfig(dg.Config):
+    """Observed-only OREE DAM backfill window."""
+
+    start_date: str = "2026-01-01"
+    end_date: str = "2026-05-04"
+
+
+class TenantHistoricalWeatherConfig(dg.Config):
+    """Observed-only historical Open-Meteo weather window for benchmark tenants."""
+
+    tenant_ids_csv: str = ""
+    start_date: str = "2026-01-01"
+    end_date: str = "2026-05-04"
+    location_config_path: str | None = None
+
+
 @dg.asset(group_name="bronze")
 def weather_forecast_bronze(context, config: WeatherLocationConfig) -> pl.DataFrame:
     """Weather forecast Bronze asset refactored from the legacy Open-Meteo ingestion flow."""
@@ -129,6 +147,70 @@ def weather_forecast_bronze(context, config: WeatherLocationConfig) -> pl.DataFr
 
 
 BRONZE_INGESTION_ASSETS = [weather_forecast_bronze]
+
+
+@dg.asset(group_name="bronze")
+def observed_market_price_history_bronze(
+    context,
+    config: ObservedMarketBackfillConfig,
+) -> pl.DataFrame:
+    """Observed-only OREE DAM hourly backfill for thesis benchmark runs."""
+
+    price_history = build_observed_market_price_history(
+        start_date=date.fromisoformat(config.start_date),
+        end_date=date.fromisoformat(config.end_date),
+    )
+    market_observations = market_price_observations_from_frame(price_history)
+    get_market_data_store().upsert_market_prices(market_observations)
+    _add_metadata(
+        context,
+        {
+            "rows": price_history.height,
+            "source_kind": "observed",
+            "market_observation_rows": len(market_observations),
+            "start_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0).isoformat(),
+            "end_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1).isoformat(),
+        },
+    )
+    return price_history
+
+
+@dg.asset(group_name="bronze")
+def tenant_historical_weather_bronze(
+    context,
+    config: TenantHistoricalWeatherConfig,
+) -> pl.DataFrame:
+    """Observed historical tenant weather aligned to real-data benchmark windows."""
+
+    rows: list[pl.DataFrame] = []
+    for tenant_id in _tenant_ids_from_csv(config.tenant_ids_csv):
+        rows.append(
+            build_observed_historical_weather_frame(
+                tenant_id=tenant_id,
+                start_date=date.fromisoformat(config.start_date),
+                end_date=date.fromisoformat(config.end_date),
+                location_config_path=config.location_config_path,
+            )
+        )
+    weather_frame = pl.concat(rows, how="diagonal_relaxed") if rows else pl.DataFrame()
+    weather_observations = weather_observations_from_frame(weather_frame, tenant_id=None) if weather_frame.height else []
+    get_market_data_store().upsert_weather_observations(weather_observations)
+    _add_metadata(
+        context,
+        {
+            "rows": weather_frame.height,
+            "tenant_count": weather_frame.select("tenant_id").n_unique() if weather_frame.height else 0,
+            "source_kind": "observed",
+            "weather_observation_rows": len(weather_observations),
+        },
+    )
+    return weather_frame
+
+
+REAL_DATA_BENCHMARK_BRONZE_ASSETS = [
+    observed_market_price_history_bronze,
+    tenant_historical_weather_bronze,
+]
 
 
 def build_demo_market_price_history(
@@ -193,6 +275,90 @@ def build_synthetic_market_price_history(
             )
         )
     return pl.DataFrame(rows)
+
+
+def build_observed_market_price_history(
+    *,
+    start_date: date,
+    end_date: date,
+) -> pl.DataFrame:
+    """Build an observed-only OREE DAM hourly history window."""
+
+    if end_date < start_date:
+        raise ValueError("end_date must be on or after start_date.")
+    observed_rows: list[dict[str, Any]] = []
+    requested_dates = _date_range(start_date, end_date)
+    requested_date_set = set(requested_dates)
+    rows_by_date: dict[date, list[dict[str, Any]]] = {
+        target_date: []
+        for target_date in requested_dates
+    }
+    for month_date in _month_range(start_date, end_date):
+        fetched_rows = _fetch_oree_data_view_month_prices(month_date)
+        if fetched_rows is None:
+            logger.warning(
+                "OREE monthly fetch failed for %s; falling back to per-day fetch.",
+                month_date.strftime("%Y-%m"),
+            )
+            fetched_rows = []
+        for row in fetched_rows:
+            timestamp = row.get(DEFAULT_TIMESTAMP_COLUMN)
+            if isinstance(timestamp, datetime) and timestamp.date() in requested_date_set:
+                rows_by_date[timestamp.date()].append(row)
+
+    missing_dates: list[date] = []
+    for target_date, rows in rows_by_date.items():
+        if not rows:
+            fallback_rows = _fetch_oree_prices(target_date)
+            rows = fallback_rows or []
+        if not rows:
+            missing_dates.append(target_date)
+            continue
+        observed_rows.extend(rows)
+    if missing_dates or not observed_rows:
+        missing_text = ", ".join(target_date.isoformat() for target_date in missing_dates)
+        raise ValueError(f"Missing observed OREE DAM rows for benchmark dates: {missing_text}.")
+
+    price_history = _validate_market_data(pl.DataFrame(observed_rows))
+    source_kinds = set(price_history.select("source_kind").to_series().to_list())
+    if source_kinds != {OBSERVED_SOURCE_KIND}:
+        raise ValueError("Observed market benchmark history must contain only observed source rows.")
+    return price_history
+
+
+def build_observed_historical_weather_frame(
+    *,
+    tenant_id: str,
+    start_date: date,
+    end_date: date,
+    location_config_path: str | None = None,
+) -> pl.DataFrame:
+    """Build observed historical weather rows for one tenant/location."""
+
+    location = resolve_weather_location_for_tenant(
+        tenant_id=tenant_id,
+        location_config_path=location_config_path,
+    )
+    weather_rows = _fetch_openmeteo_historical_data(
+        location.latitude,
+        location.longitude,
+        location.timezone,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    if not weather_rows:
+        raise ValueError(f"Missing observed historical weather rows for tenant {tenant_id}.")
+    weather_frame = _tag_weather_location(
+        _add_solar_features(
+            _validate_weather_data(pl.DataFrame(weather_rows)),
+            latitude=location.latitude,
+        ),
+        weather_location=location,
+    ).with_columns(pl.lit(tenant_id).alias("tenant_id"))
+    source_kinds = set(weather_frame.select("source_kind").to_series().to_list())
+    if source_kinds != {OBSERVED_SOURCE_KIND}:
+        raise ValueError("Historical weather benchmark frame must contain only observed source rows.")
+    return weather_frame
 
 
 def enrich_market_price_history_with_weather(
@@ -382,12 +548,28 @@ def _fetch_oree_prices(target_date: date) -> list[dict[str, Any]] | None:
 
 
 def _fetch_oree_data_view_prices(target_date: date) -> list[dict[str, Any]] | None:
+    month_rows = _fetch_oree_data_view_month_prices(target_date)
+    if month_rows is not None:
+        target_rows = [
+            row
+            for row in month_rows
+            if isinstance(row.get(DEFAULT_TIMESTAMP_COLUMN), datetime)
+            and row[DEFAULT_TIMESTAMP_COLUMN].date() == target_date
+        ]
+        if target_rows:
+            logger.info("Parsed %s OREE rows from data_view endpoint for %s.", len(target_rows), target_date)
+            return target_rows
+        return None
+    return None
+
+
+def _fetch_oree_data_view_month_prices(month_date: date) -> list[dict[str, Any]] | None:
     try:
         with httpx.Client(timeout=30.0, follow_redirects=True) as client:
             response = client.post(
                 OREE_DATA_VIEW_URL,
                 data={
-                    "date": target_date.strftime("%m.%Y"),
+                    "date": month_date.strftime("%m.%Y"),
                     "market": LEVEL1_MARKET_VENUE,
                     "zone": LEVEL1_MARKET_ZONE,
                 },
@@ -401,12 +583,16 @@ def _fetch_oree_data_view_prices(target_date: date) -> list[dict[str, Any]] | No
         content_html = _extract_oree_data_view_content(response)
         if not content_html:
             return None
-        parsed_rows = _extract_prices_from_data_view_content(content_html, target_date)
+        parsed_rows = _extract_all_prices_from_data_view_content(content_html)
         if parsed_rows:
-            logger.info("Parsed %s OREE rows from data_view endpoint for %s.", len(parsed_rows), target_date)
+            logger.info(
+                "Parsed %s OREE rows from data_view endpoint for %s.",
+                len(parsed_rows),
+                month_date.strftime("%m.%Y"),
+            )
         return parsed_rows or None
     except Exception as error:
-        logger.warning("OREE data_view fetch failed for %s: %s", target_date, error)
+        logger.warning("OREE data_view fetch failed for %s: %s", month_date.strftime("%m.%Y"), error)
         return None
 
 
@@ -426,8 +612,17 @@ def _extract_oree_data_view_content(response: httpx.Response) -> str | None:
 
 
 def _extract_prices_from_data_view_content(content_html: str, target_date: date) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in _extract_all_prices_from_data_view_content(content_html)
+        if isinstance(row.get(DEFAULT_TIMESTAMP_COLUMN), datetime)
+        and row[DEFAULT_TIMESTAMP_COLUMN].date() == target_date
+    ]
+
+
+def _extract_all_prices_from_data_view_content(content_html: str) -> list[dict[str, Any]]:
     soup = BeautifulSoup(content_html, "html.parser")
-    table = soup.find("table")
+    table = soup.find("table", id="price_table") or soup.find("table")
     if table is None:
         return []
 
@@ -435,18 +630,20 @@ def _extract_prices_from_data_view_content(content_html: str, target_date: date)
     if len(rows) < 2:
         return []
 
-    target_date_label = target_date.strftime("%d.%m.%Y")
+    parsed_rows: list[dict[str, Any]] = []
     for row in rows[1:]:
         cells = [cell.get_text(" ", strip=True) for cell in row.find_all(["th", "td"])]
-        if not cells or cells[0] != target_date_label:
+        if not cells:
             continue
-
-        parsed_rows: list[dict[str, Any]] = []
+        try:
+            row_date = datetime.strptime(cells[0], "%d.%m.%Y").date()
+        except ValueError:
+            continue
         for hour_index, price_text in enumerate(cells[1:25], start=1):
             price_uah = _parse_decimal(price_text)
             if price_uah is None or price_uah <= 0:
                 continue
-            timestamp = datetime.combine(target_date, datetime.min.time().replace(hour=hour_index - 1))
+            timestamp = datetime.combine(row_date, datetime.min.time().replace(hour=hour_index - 1))
             parsed_rows.append(
                 _build_market_row(
                     timestamp=timestamp,
@@ -458,8 +655,7 @@ def _extract_prices_from_data_view_content(content_html: str, target_date: date)
                     source_url=OREE_DATA_VIEW_URL,
                 )
             )
-        return parsed_rows
-    return []
+    return parsed_rows
 
 
 def _extract_oree_price_rows(soup: BeautifulSoup, target_date: date) -> list[dict[str, Any]]:
@@ -859,6 +1055,45 @@ def _clean_optional_text(value: object) -> str | None:
     return cleaned_value or None
 
 
+def _tenant_ids_from_csv(value: str) -> list[str]:
+    tenant_ids = [item.strip() for item in value.split(",") if item.strip()]
+    if tenant_ids:
+        return tenant_ids
+    return [
+        str(tenant["tenant_id"])
+        for tenant in list_available_weather_tenants()
+        if tenant.get("tenant_id") is not None
+    ]
+
+
+def _date_range(start_date: date, end_date: date) -> list[date]:
+    return [
+        start_date + timedelta(days=day_offset)
+        for day_offset in range((end_date - start_date).days + 1)
+    ]
+
+
+def _month_range(start_date: date, end_date: date) -> list[date]:
+    months: list[date] = []
+    current = date(start_date.year, start_date.month, 1)
+    final = date(end_date.year, end_date.month, 1)
+    while current <= final:
+        months.append(current)
+        if current.month == 12:
+            current = date(current.year + 1, 1, 1)
+        else:
+            current = date(current.year, current.month + 1, 1)
+    return months
+
+
+def _add_metadata(
+    context: dg.AssetExecutionContext | None,
+    metadata: dict[str, str | float | int],
+) -> None:
+    if context is not None:
+        context.add_output_metadata(metadata)
+
+
 def _location_from_weather_frame(weather_frame: pl.DataFrame) -> WeatherLocation | None:
     required_columns = {"location_latitude", "location_longitude", "location_timezone"}
     if weather_frame.height == 0 or not required_columns.issubset(set(weather_frame.columns)):
@@ -997,6 +1232,64 @@ def _fetch_openmeteo_data(latitude: float, longitude: float, timezone: str) -> l
         return None
 
 
+def _fetch_openmeteo_historical_data(
+    latitude: float,
+    longitude: float,
+    timezone: str,
+    *,
+    start_date: date,
+    end_date: date,
+) -> list[dict[str, Any]] | None:
+    params: dict[str, str | float] = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "hourly": ",".join(
+            [
+                "temperature_2m",
+                "shortwave_radiation",
+                "wind_speed_10m",
+                "cloud_cover",
+                "precipitation",
+                "surface_pressure",
+                "relative_humidity_2m",
+            ]
+        ),
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "timezone": timezone,
+        "wind_speed_unit": "ms",
+    }
+    try:
+        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+            response = client.get(OPEN_METEO_HISTORICAL_URL, params=params)
+            response.raise_for_status()
+        payload = response.json()
+        hourly = payload.get("hourly", {})
+        timestamps = hourly.get("time", [])
+        weather_rows: list[dict[str, Any]] = []
+        for index, timestamp_text in enumerate(timestamps):
+            weather_rows.append(
+                {
+                    DEFAULT_TIMESTAMP_COLUMN: datetime.fromisoformat(timestamp_text),
+                    "temperature": float(hourly.get("temperature_2m", [20.0])[index] or 20.0),
+                    "solar_radiation": float(hourly.get("shortwave_radiation", [0.0])[index] or 0.0),
+                    "wind_speed": float(hourly.get("wind_speed_10m", [5.0])[index] or 5.0),
+                    "cloudcover": float(hourly.get("cloud_cover", [50.0])[index] or 50.0),
+                    "precipitation": float(hourly.get("precipitation", [0.0])[index] or 0.0),
+                    "pressure": float(hourly.get("surface_pressure", [1013.0])[index] or 1013.0),
+                    "humidity": float(hourly.get("relative_humidity_2m", [60.0])[index] or 60.0),
+                    "source": "OPEN_METEO_HISTORICAL",
+                    "source_kind": OBSERVED_SOURCE_KIND,
+                    "source_url": OPEN_METEO_HISTORICAL_URL,
+                }
+            )
+        logger.info("Fetched %s Open-Meteo historical hourly rows.", len(weather_rows))
+        return weather_rows
+    except Exception as error:
+        logger.warning("Open-Meteo historical fetch failed: %s", error)
+        return None
+
+
 def _generate_synthetic_weather(
     *,
     forecast_hours: int = DEFAULT_WEATHER_FORECAST_HOURS,
@@ -1101,6 +1394,9 @@ def _calculate_solar_elevation(timestamp_expression: pl.Expr, *, latitude: float
 
 __all__ = [
     "BRONZE_INGESTION_ASSETS",
+    "REAL_DATA_BENCHMARK_BRONZE_ASSETS",
+    "build_observed_historical_weather_frame",
+    "build_observed_market_price_history",
     "build_weather_forecast_window",
     "build_weather_asset_run_config",
     "build_demo_market_price_history",

@@ -13,7 +13,10 @@ from smart_arbitrage.assets.gold.baseline_solver import (
 from smart_arbitrage.assets.gold.forecast_strategy import (
     FORECAST_STRATEGY_GOLD_ASSETS,
     ForecastStrategyComparisonAssetConfig,
+    RealDataRollingOriginBenchmarkAssetConfig,
+    _daily_benchmark_anchors,
     forecast_strategy_comparison_frame,
+    real_data_rolling_origin_benchmark_frame,
 )
 from smart_arbitrage.defs import defs
 from smart_arbitrage.resources.strategy_evaluation_store import (
@@ -131,5 +134,76 @@ def test_forecast_strategy_gold_asset_is_registered() -> None:
     asset_keys = {asset.key.to_user_string() for asset in FORECAST_STRATEGY_GOLD_ASSETS}
     registered_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
 
-    assert {"forecast_strategy_comparison_frame"}.issubset(asset_keys)
+    assert {
+        "forecast_strategy_comparison_frame",
+        "real_data_rolling_origin_benchmark_frame",
+    }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
+
+
+def test_real_data_rolling_origin_benchmark_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    price_history = build_synthetic_market_price_history(
+        history_hours=15 * 24 + 48,
+        forecast_hours=0,
+        now=datetime(2026, 5, 4, 12, 0),
+    ).with_columns(
+        [
+            pl.lit("observed").alias("source_kind"),
+            pl.lit("OREE_DATA_VIEW").alias("source"),
+        ]
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+
+    frame = real_data_rolling_origin_benchmark_frame(
+        None,
+        RealDataRollingOriginBenchmarkAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_anchors=1,
+        ),
+        price_history,
+        pl.DataFrame(),
+    )
+
+    assert frame.height == 3
+    assert store.latest_real_data_benchmark_frame(tenant_id="client_003_dnipro_factory").height == 3
+    assert set(frame.select("strategy_kind").to_series().to_list()) == {
+        "real_data_rolling_origin_benchmark"
+    }
+
+
+def test_daily_benchmark_anchors_skip_incomplete_realized_horizons() -> None:
+    start_timestamp = datetime(2026, 1, 1)
+    end_timestamp = datetime(2026, 5, 4, 23)
+    missing_timestamp = datetime(2026, 3, 29, 23)
+    timestamps: list[datetime] = []
+    current_timestamp = start_timestamp
+    while current_timestamp <= end_timestamp:
+        if current_timestamp != missing_timestamp:
+            timestamps.append(current_timestamp)
+        current_timestamp += timedelta(hours=1)
+    price_history = pl.DataFrame(
+        {
+            DEFAULT_TIMESTAMP_COLUMN: timestamps,
+            DEFAULT_PRICE_COLUMN: [1000.0 for _ in timestamps],
+        }
+    )
+
+    anchors = _daily_benchmark_anchors(price_history, max_anchors=90)
+
+    assert len(anchors) == 90
+    assert datetime(2026, 3, 28, 23) not in anchors
+    assert datetime(2026, 3, 29, 23) not in anchors
+    assert datetime(2026, 4, 4, 23) not in anchors
+    assert datetime(2026, 4, 5, 23) in anchors
+    assert anchors[-1] == datetime(2026, 5, 3, 23)
+    available_timestamps = set(timestamps)
+    for anchor in anchors:
+        required_window = [
+            anchor - timedelta(hours=167) + timedelta(hours=step_index)
+            for step_index in range(192)
+        ]
+        assert all(timestamp in available_timestamps for timestamp in required_window)

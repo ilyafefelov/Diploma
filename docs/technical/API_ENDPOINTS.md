@@ -279,6 +279,35 @@ Operational notes:
 - The comparison is only available after Dagster materializes `forecast_strategy_comparison_frame`.
 - If no rows exist for the tenant, the endpoint returns `404`.
 
+### `GET /dashboard/real-data-benchmark`
+
+Returns the latest persisted real-data rolling-origin benchmark for a tenant.
+
+Request query example:
+
+```text
+/dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `tenant_id`: selected tenant from the Tenant Registry.
+- `market_venue`: currently `DAM`.
+- `generated_at`: timestamp of the latest benchmark batch.
+- `data_quality_tier`: `thesis_grade` only when benchmark rows are observed-only; otherwise `demo_grade`.
+- `anchor_count`: number of rolling-origin anchors in the latest batch.
+- `model_count`: number of forecast candidates compared.
+- `best_model_name`: model with the most rank-1 anchor wins, tie-broken by lower mean regret.
+- `mean_regret_uah` and `median_regret_uah`: batch-level regret summaries.
+- `rows`: one row per anchor/model with decision value, oracle value, regret, degradation penalty, throughput, committed action preview, rank, and provenance payload.
+
+Operational notes:
+
+- This endpoint is a benchmark read model only. It does not emit `Proposed Bid`, `Cleared Trade`, settlement, or `Dispatch Command` contracts.
+- It is populated by the Dagster asset `real_data_rolling_origin_benchmark_frame`.
+- The benchmark trains/fits forecasts using rows available at or before each anchor and keeps realized future prices only for scoring and oracle comparison.
+- If no benchmark rows exist for the tenant, the endpoint returns `404`.
+
 ### `POST /weather/run-config`
 
 Builds the Dagster run-config payload for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76) without executing a run.
@@ -400,6 +429,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - For Slice 2 preview work, the dashboard can call `POST /dashboard/projected-battery-state` to render feasible hourly SOC and degradation-aware economics from a signed recommendation schedule.
 - For baseline recommendation preview, the dashboard can call `GET /dashboard/baseline-lp-preview` to render forecast, feasible hourly signed MW schedule, projected SOC trace, and UAH economics for the selected tenant.
 - For Gold strategy evidence, the dashboard can call `GET /dashboard/forecast-strategy-comparison` to compare strict similar-day, NBEATSx, and TFT by LP decision value, oracle regret, degradation penalty, throughput, and starting SOC source.
+- For thesis benchmark evidence, the dashboard can call `GET /dashboard/real-data-benchmark` to compare the same forecast candidates across observed-only rolling-origin anchors and show whether the result is thesis-grade or demo-grade.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
@@ -409,4 +439,5 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The projected battery state endpoint is a simulator/read model only; it does not claim market-order or dispatch semantics.
 - The baseline LP preview endpoint is also a read model only; it exposes recommendation semantics, not market-order, clearing, or dispatch semantics.
 - The forecast strategy comparison endpoint is Gold-layer evidence only; it compares forecast-driven LP decisions and does not generate market contracts.
+- The real-data benchmark endpoint is also evidence only; it reports rolling-origin regret and data quality, not trading instructions.
 - The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.

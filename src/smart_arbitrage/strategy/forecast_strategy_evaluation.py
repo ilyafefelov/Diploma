@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
@@ -17,6 +17,12 @@ from smart_arbitrage.assets.gold.baseline_solver import (
     BaselineSolveResult,
     HourlyDamBaselineSolver,
 )
+from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
+from smart_arbitrage.forecasting.neural_features import (
+    DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    build_neural_forecast_feature_frame,
+)
+from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.assets.mvp_demo import (
     DEMO_BATTERY_CAPEX_USD_PER_KWH,
     DEMO_BATTERY_CYCLES_PER_DAY,
@@ -29,6 +35,7 @@ from smart_arbitrage.gatekeeper.schemas import (
 )
 
 FORECAST_DRIVEN_LP_STRATEGY_KIND = "forecast_driven_lp"
+REAL_DATA_ROLLING_ORIGIN_STRATEGY_KIND = "real_data_rolling_origin_benchmark"
 
 
 @dataclass(frozen=True, slots=True)
@@ -151,6 +158,79 @@ def evaluate_forecast_candidates_against_oracle(
     return pl.DataFrame(rows).sort(["rank_by_regret", "forecast_model_name"])
 
 
+def evaluate_rolling_origin_forecast_benchmark(
+    *,
+    price_history: pl.DataFrame,
+    tenant_id: str,
+    battery_metrics: BatteryPhysicalMetrics,
+    starting_soc_fraction: float,
+    starting_soc_source: str,
+    anchor_timestamps: list[datetime],
+    horizon_hours: int = DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    max_anchors: int = 90,
+    evaluation_id: str | None = None,
+    generated_at: datetime | None = None,
+    require_observed_source_rows: bool = True,
+) -> pl.DataFrame:
+    """Run leakage-free rolling-origin forecast strategy evaluation."""
+
+    if horizon_hours != DEFAULT_NEURAL_FORECAST_HORIZON_HOURS:
+        raise ValueError("Real-data benchmark currently supports a 24-hour horizon.")
+    if max_anchors <= 0:
+        raise ValueError("max_anchors must be positive.")
+    if not anchor_timestamps:
+        raise ValueError("At least one anchor timestamp is required.")
+
+    benchmark_history = _prepare_benchmark_price_history(
+        price_history,
+        require_observed_source_rows=require_observed_source_rows,
+    )
+    selected_anchors = sorted(anchor_timestamps)[-max_anchors:]
+    resolved_generated_at = generated_at or datetime.now(UTC)
+    resolved_evaluation_id = evaluation_id or _benchmark_evaluation_id(
+        tenant_id=tenant_id,
+        generated_at=resolved_generated_at,
+    )
+    data_quality_tier = _data_quality_tier(benchmark_history)
+
+    rows: list[pl.DataFrame] = []
+    for anchor_timestamp in selected_anchors:
+        anchor_window = _benchmark_window_for_anchor(
+            benchmark_history,
+            anchor_timestamp=anchor_timestamp,
+            horizon_hours=horizon_hours,
+        )
+        candidates = _rolling_origin_candidates(
+            anchor_window,
+            anchor_timestamp=anchor_timestamp,
+        )
+        evaluation = evaluate_forecast_candidates_against_oracle(
+            price_history=anchor_window,
+            tenant_id=tenant_id,
+            battery_metrics=battery_metrics,
+            starting_soc_fraction=starting_soc_fraction,
+            starting_soc_source=starting_soc_source,
+            anchor_timestamp=anchor_timestamp,
+            candidates=candidates,
+            evaluation_id=f"{resolved_evaluation_id}:{anchor_timestamp.strftime('%Y%m%dT%H%M')}",
+            generated_at=resolved_generated_at,
+        )
+        rows.append(
+            _with_benchmark_metadata(
+                evaluation,
+                data_quality_tier=data_quality_tier,
+                observed_coverage_ratio=_observed_coverage_ratio(anchor_window),
+                tenant_id=tenant_id,
+                anchor_timestamp=anchor_timestamp,
+                battery_metrics=battery_metrics,
+            )
+        )
+
+    return pl.concat(rows, how="diagonal_relaxed").sort(
+        ["anchor_timestamp", "rank_by_regret", "forecast_model_name"]
+    )
+
+
 def tenant_battery_defaults_from_registry(
     tenant_id: str,
 ) -> ForecastStrategyTenantDefaults:
@@ -200,6 +280,150 @@ def tenant_battery_defaults_from_registry(
             maximum=1.0,
         ),
     )
+
+
+def _prepare_benchmark_price_history(
+    price_history: pl.DataFrame,
+    *,
+    require_observed_source_rows: bool,
+) -> pl.DataFrame:
+    required_columns = {DEFAULT_TIMESTAMP_COLUMN, DEFAULT_PRICE_COLUMN}
+    missing_columns = required_columns.difference(price_history.columns)
+    if missing_columns:
+        raise ValueError(
+            f"price_history is missing required columns: {sorted(missing_columns)}"
+        )
+    benchmark_history = (
+        price_history
+        .drop_nulls(subset=[DEFAULT_TIMESTAMP_COLUMN, DEFAULT_PRICE_COLUMN])
+        .sort(DEFAULT_TIMESTAMP_COLUMN)
+        .unique(subset=[DEFAULT_TIMESTAMP_COLUMN], keep="last")
+        .sort(DEFAULT_TIMESTAMP_COLUMN)
+    )
+    if benchmark_history.height == 0:
+        raise ValueError("price_history must contain observed source rows.")
+    if require_observed_source_rows:
+        if "source_kind" not in benchmark_history.columns:
+            raise ValueError("Benchmark price history must identify observed source rows.")
+        non_observed_rows = benchmark_history.filter(pl.col("source_kind") != "observed")
+        if non_observed_rows.height:
+            raise ValueError("Benchmark price history must contain only observed source rows.")
+    return benchmark_history
+
+
+def _benchmark_window_for_anchor(
+    price_history: pl.DataFrame,
+    *,
+    anchor_timestamp: datetime,
+    horizon_hours: int,
+) -> pl.DataFrame:
+    window_end = anchor_timestamp + timedelta(hours=horizon_hours)
+    window = price_history.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN) <= window_end)
+    forecast_timestamps = [
+        anchor_timestamp + timedelta(hours=step_index + 1)
+        for step_index in range(horizon_hours)
+    ]
+    _actual_prices_by_timestamp(window, forecast_timestamps=forecast_timestamps)
+    if window.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN) <= anchor_timestamp).height < 168:
+        raise ValueError("Rolling-origin benchmark requires at least 168 past observed rows before each anchor.")
+    return window
+
+
+def _rolling_origin_candidates(
+    price_history: pl.DataFrame,
+    *,
+    anchor_timestamp: datetime,
+) -> list[ForecastCandidate]:
+    historical_prices = price_history.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN) <= anchor_timestamp)
+    strict_forecast = HourlyDamBaselineSolver().build_forecast(
+        historical_prices,
+        anchor_timestamp=anchor_timestamp,
+    )
+    strict_frame = pl.DataFrame(
+        {
+            "forecast_timestamp": [point.forecast_timestamp for point in strict_forecast],
+            "source_timestamp": [point.source_timestamp for point in strict_forecast],
+            "predicted_price_uah_mwh": [point.predicted_price_uah_mwh for point in strict_forecast],
+        }
+    )
+    feature_frame = build_neural_forecast_feature_frame(price_history)
+    nbeatsx_forecast = build_nbeatsx_forecast(feature_frame)
+    tft_forecast = build_tft_forecast(feature_frame)
+    return [
+        ForecastCandidate(
+            model_name="strict_similar_day",
+            forecast_frame=strict_frame,
+            point_prediction_column="predicted_price_uah_mwh",
+        ),
+        ForecastCandidate(
+            model_name="nbeatsx_silver_v0",
+            forecast_frame=nbeatsx_forecast,
+            point_prediction_column="predicted_price_uah_mwh",
+        ),
+        ForecastCandidate(
+            model_name="tft_silver_v0",
+            forecast_frame=tft_forecast,
+            point_prediction_column="predicted_price_p50_uah_mwh",
+        ),
+    ]
+
+
+def _with_benchmark_metadata(
+    evaluation: pl.DataFrame,
+    *,
+    data_quality_tier: str,
+    observed_coverage_ratio: float,
+    tenant_id: str,
+    anchor_timestamp: datetime,
+    battery_metrics: BatteryPhysicalMetrics,
+) -> pl.DataFrame:
+    payloads: list[dict[str, Any]] = []
+    efc_values: list[float] = []
+    for row in evaluation.iter_rows(named=True):
+        payload = dict(row["evaluation_payload"])
+        total_throughput_mwh = float(row["total_throughput_mwh"])
+        efc_proxy = total_throughput_mwh / (2.0 * battery_metrics.capacity_mwh)
+        payload.update(
+            {
+                "benchmark_kind": "real_data_rolling_origin",
+                "academic_scope": (
+                    "Real-data rolling-origin DAM benchmark: each anchor fits forecasts on past rows only, "
+                    "routes candidates through the Level 1 LP, and scores feasible dispatch against realized prices."
+                ),
+                "data_quality_tier": data_quality_tier,
+                "observed_coverage_ratio": observed_coverage_ratio,
+                "tenant_id": tenant_id,
+                "anchor_timestamp": anchor_timestamp.isoformat(),
+                "efc_proxy": efc_proxy,
+            }
+        )
+        payloads.append(payload)
+        efc_values.append(efc_proxy)
+    return evaluation.with_columns(
+        [
+            pl.lit(REAL_DATA_ROLLING_ORIGIN_STRATEGY_KIND).alias("strategy_kind"),
+            pl.Series("evaluation_payload", payloads),
+            pl.Series("efc_proxy", efc_values),
+        ]
+    )
+
+
+def _data_quality_tier(price_history: pl.DataFrame) -> str:
+    if "source_kind" not in price_history.columns:
+        return "demo_grade"
+    source_kinds = set(str(value) for value in price_history.select("source_kind").to_series().to_list())
+    return "thesis_grade" if source_kinds == {"observed"} else "demo_grade"
+
+
+def _observed_coverage_ratio(price_history: pl.DataFrame) -> float:
+    if price_history.height == 0 or "source_kind" not in price_history.columns:
+        return 0.0
+    observed_rows = price_history.filter(pl.col("source_kind") == "observed").height
+    return observed_rows / price_history.height
+
+
+def _benchmark_evaluation_id(*, tenant_id: str, generated_at: datetime) -> str:
+    return f"{tenant_id}:real-data:{generated_at.strftime('%Y%m%dT%H%M%S')}:{uuid4().hex[:8]}"
 
 
 def _forecast_points_from_candidate(

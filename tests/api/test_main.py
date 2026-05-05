@@ -585,6 +585,82 @@ def test_forecast_strategy_comparison_endpoint_returns_latest_gold_rows(
 	assert "dispatch_command" not in response_payload
 
 
+def test_real_data_benchmark_endpoint_returns_latest_summary_and_rows(
+	client: TestClient,
+	fake_strategy_evaluation_store: InMemoryStrategyEvaluationStore,
+) -> None:
+	generated_at = datetime(2026, 5, 4, 20, 30, tzinfo=UTC)
+	fake_strategy_evaluation_store.upsert_evaluation_frame(
+		pl.DataFrame(
+			{
+				"evaluation_id": ["bench-001", "bench-001", "bench-001"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"forecast_model_name": [
+					"strict_similar_day",
+					"nbeatsx_silver_v0",
+					"tft_silver_v0",
+				],
+				"strategy_kind": [
+					"real_data_rolling_origin_benchmark",
+					"real_data_rolling_origin_benchmark",
+					"real_data_rolling_origin_benchmark",
+				],
+				"market_venue": ["DAM", "DAM", "DAM"],
+				"anchor_timestamp": [
+					datetime(2026, 5, 3, 20, tzinfo=UTC)
+					for _ in range(3)
+				],
+				"generated_at": [generated_at for _ in range(3)],
+				"horizon_hours": [24, 24, 24],
+				"starting_soc_fraction": [0.5, 0.5, 0.5],
+				"starting_soc_source": [
+					"tenant_default",
+					"tenant_default",
+					"tenant_default",
+				],
+				"decision_value_uah": [110.0, 125.0, 120.0],
+				"forecast_objective_value_uah": [105.0, 124.0, 119.0],
+				"oracle_value_uah": [130.0, 130.0, 130.0],
+				"regret_uah": [20.0, 5.0, 10.0],
+				"regret_ratio": [0.1538, 0.0385, 0.0769],
+				"total_degradation_penalty_uah": [9.0, 10.0, 10.0],
+				"total_throughput_mwh": [0.2, 0.25, 0.24],
+				"committed_action": ["HOLD", "DISCHARGE", "DISCHARGE"],
+				"committed_power_mw": [0.0, 0.12, 0.08],
+				"rank_by_regret": [3, 1, 2],
+				"evaluation_payload": [
+					{"data_quality_tier": "thesis_grade", "benchmark_kind": "real_data_rolling_origin"},
+					{"data_quality_tier": "thesis_grade", "benchmark_kind": "real_data_rolling_origin"},
+					{"data_quality_tier": "thesis_grade", "benchmark_kind": "real_data_rolling_origin"},
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/real-data-benchmark",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["data_quality_tier"] == "thesis_grade"
+	assert response_payload["anchor_count"] == 1
+	assert response_payload["model_count"] == 3
+	assert response_payload["best_model_name"] == "nbeatsx_silver_v0"
+	assert response_payload["mean_regret_uah"] == pytest.approx(35.0 / 3.0)
+	assert [row["forecast_model_name"] for row in response_payload["rows"]] == [
+		"nbeatsx_silver_v0",
+		"tft_silver_v0",
+		"strict_similar_day",
+	]
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -648,3 +724,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/battery-state"]["get"]["summary"] == "Get latest battery telemetry state"
 	assert schema["paths"]["/dashboard/baseline-lp-preview"]["get"]["summary"] == "Build baseline LP preview"
 	assert schema["paths"]["/dashboard/forecast-strategy-comparison"]["get"]["summary"] == "Get forecast strategy comparison"
+	assert schema["paths"]["/dashboard/real-data-benchmark"]["get"]["summary"] == "Get real-data benchmark"

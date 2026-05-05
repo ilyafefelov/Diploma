@@ -1,6 +1,6 @@
 __pycache__/
 *.py[cod]
-.pytest_cache/_legacy_smart-energy-ai
+.pytest_cache/
 data/
 AGENTS.md
 *\agents.md
@@ -11,3 +11,4 @@ master_execution_prompt.md
 _legacy_smart-energy-ai
 mlruns
 .tmp_dagster_home*/
+.tmp_runtime/

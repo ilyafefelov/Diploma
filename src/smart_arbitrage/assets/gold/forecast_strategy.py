@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+import os
 from typing import Any
 
 import dagster as dg
@@ -11,7 +12,9 @@ from smart_arbitrage.resources.strategy_evaluation_store import (
 )
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
     ForecastCandidate,
+    REAL_DATA_ROLLING_ORIGIN_STRATEGY_KIND,
     evaluate_forecast_candidates_against_oracle,
+    evaluate_rolling_origin_forecast_benchmark,
     tenant_battery_defaults_from_registry,
 )
 
@@ -20,6 +23,13 @@ class ForecastStrategyComparisonAssetConfig(dg.Config):
     """Tenant cap for Gold forecast-strategy comparison."""
 
     tenant_ids_csv: str = ""
+
+
+class RealDataRollingOriginBenchmarkAssetConfig(dg.Config):
+    """Tenant and anchor caps for thesis-grade real-data benchmark runs."""
+
+    tenant_ids_csv: str = ""
+    max_anchors: int = 90
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,7 +103,86 @@ def forecast_strategy_comparison_frame(
     return frame
 
 
-FORECAST_STRATEGY_GOLD_ASSETS = [forecast_strategy_comparison_frame]
+@dg.asset(group_name="gold")
+def real_data_rolling_origin_benchmark_frame(
+    context,
+    config: RealDataRollingOriginBenchmarkAssetConfig,
+    observed_market_price_history_bronze: pl.DataFrame,
+    tenant_historical_weather_bronze: pl.DataFrame,
+    battery_state_hourly_silver=None,
+) -> pl.DataFrame:
+    """Rolling-origin real-data benchmark for strict similar-day, NBEATSx, and TFT."""
+
+    rows: list[pl.DataFrame] = []
+    anchor_timestamps = _daily_benchmark_anchors(
+        observed_market_price_history_bronze,
+        max_anchors=config.max_anchors,
+    )
+    for tenant_id in _tenant_ids_from_csv(config.tenant_ids_csv):
+        defaults = tenant_battery_defaults_from_registry(tenant_id)
+        starting_soc = _starting_soc_for_tenant(
+            tenant_id=tenant_id,
+            default_soc_fraction=defaults.initial_soc_fraction,
+            battery_state_hourly_silver=battery_state_hourly_silver,
+        )
+        price_history = _join_tenant_weather_features(
+            observed_market_price_history_bronze,
+            tenant_historical_weather_bronze,
+            tenant_id=tenant_id,
+        )
+        rows.append(
+            evaluate_rolling_origin_forecast_benchmark(
+                price_history=price_history,
+                tenant_id=tenant_id,
+                battery_metrics=defaults.metrics,
+                starting_soc_fraction=starting_soc.fraction,
+                starting_soc_source=starting_soc.source,
+                anchor_timestamps=anchor_timestamps,
+                max_anchors=config.max_anchors,
+            )
+        )
+    frame = pl.concat(rows, how="diagonal_relaxed") if rows else pl.DataFrame()
+    get_strategy_evaluation_store().upsert_evaluation_frame(frame)
+    _log_real_data_benchmark_to_mlflow(frame)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "anchor_count": frame.select("anchor_timestamp").n_unique() if frame.height else 0,
+            "forecast_candidate_count": frame.select("forecast_model_name").n_unique()
+            if frame.height
+            else 0,
+            "market_venue": "DAM",
+            "strategy_kind": REAL_DATA_ROLLING_ORIGIN_STRATEGY_KIND,
+        },
+    )
+    return frame
+
+
+real_data_benchmark_daily_job = dg.define_asset_job(
+    "real_data_benchmark_daily",
+    selection=[real_data_rolling_origin_benchmark_frame],
+)
+
+real_data_benchmark_daily_schedule = dg.ScheduleDefinition(
+    name="real_data_benchmark_daily_schedule",
+    job=real_data_benchmark_daily_job,
+    cron_schedule="0 3 * * *",
+    execution_timezone="Europe/Kyiv",
+    default_status=dg.DefaultScheduleStatus.STOPPED,
+    description="Daily stopped-by-default materialization job for real-data rolling-origin benchmark assets.",
+)
+
+
+FORECAST_STRATEGY_GOLD_ASSETS = [
+    forecast_strategy_comparison_frame,
+    real_data_rolling_origin_benchmark_frame,
+]
+
+FORECAST_STRATEGY_GOLD_SCHEDULES = [
+    real_data_benchmark_daily_schedule,
+]
 
 
 def _tenant_ids_from_csv(value: str) -> list[str]:
@@ -119,6 +208,86 @@ def _anchor_from_forecast(forecast_frame: pl.DataFrame) -> datetime:
     if not isinstance(first_timestamp, datetime):
         raise TypeError("forecast_timestamp column must contain datetime values.")
     return first_timestamp - timedelta(hours=1)
+
+
+def _daily_benchmark_anchors(price_history: pl.DataFrame, *, max_anchors: int) -> list[datetime]:
+    if max_anchors <= 0:
+        raise ValueError("max_anchors must be positive.")
+    if price_history.height == 0:
+        raise ValueError("observed_market_price_history_bronze must contain rows.")
+    timestamps = [
+        value
+        for value in price_history.sort("timestamp").select("timestamp").to_series().to_list()
+        if isinstance(value, datetime)
+    ]
+    if not timestamps:
+        raise ValueError("price history timestamp column must contain datetime values.")
+    latest_anchor = timestamps[-1] - timedelta(hours=24)
+    earliest_anchor = timestamps[0] + timedelta(hours=168)
+    available_timestamps = set(timestamps)
+    anchors: list[datetime] = []
+    candidate_anchor = latest_anchor
+    while candidate_anchor >= earliest_anchor:
+        required_window_timestamps = [
+            candidate_anchor - timedelta(hours=167) + timedelta(hours=step_index)
+            for step_index in range(168 + 24)
+        ]
+        if all(
+            required_timestamp in available_timestamps
+            for required_timestamp in required_window_timestamps
+        ):
+            anchors.append(candidate_anchor)
+            if len(anchors) >= max_anchors:
+                break
+        candidate_anchor -= timedelta(hours=24)
+    if not anchors:
+        raise ValueError("Not enough observed history for a 168h train window plus 24h benchmark horizon.")
+    return sorted(anchors)
+
+
+def _join_tenant_weather_features(
+    price_history: pl.DataFrame,
+    weather_history: pl.DataFrame,
+    *,
+    tenant_id: str,
+) -> pl.DataFrame:
+    if weather_history.height == 0:
+        return price_history
+    required_columns = {"tenant_id", "timestamp"}
+    if not required_columns.issubset(weather_history.columns):
+        return price_history
+    tenant_weather = (
+        weather_history
+        .filter(pl.col("tenant_id") == tenant_id)
+        .select(
+            [
+                "timestamp",
+                *[
+                    column_name
+                    for column_name in [
+                        "temperature",
+                        "wind_speed",
+                        "cloudcover",
+                        "precipitation",
+                        "effective_solar",
+                    ]
+                    if column_name in weather_history.columns
+                ],
+            ]
+        )
+        .rename(
+            {
+                "temperature": "weather_temperature",
+                "wind_speed": "weather_wind_speed",
+                "cloudcover": "weather_cloudcover",
+                "precipitation": "weather_precipitation",
+                "effective_solar": "weather_effective_solar",
+            }
+        )
+    )
+    if tenant_weather.height == 0:
+        return price_history
+    return price_history.join(tenant_weather, on="timestamp", how="left")
 
 
 def _starting_soc_for_tenant(
@@ -157,3 +326,50 @@ def _add_metadata(
 ) -> None:
     if context is not None:
         context.add_output_metadata(metadata)
+
+
+def _log_real_data_benchmark_to_mlflow(frame: pl.DataFrame) -> None:
+    mlflow = _try_import_mlflow()
+    tracking_uri = os.environ.get("MLFLOW_TRACKING_URI")
+    if mlflow is None or tracking_uri is None or frame.height == 0:
+        return None
+    mlflow.set_tracking_uri(tracking_uri)
+    mlflow.set_experiment("smart-arbitrage-real-data-benchmark")
+    with mlflow.start_run(run_name="real-data-rolling-origin-benchmark"):
+        mlflow.log_param("strategy_kind", REAL_DATA_ROLLING_ORIGIN_STRATEGY_KIND)
+        mlflow.log_param("market_venue", "DAM")
+        mlflow.log_param("tenant_count", frame.select("tenant_id").n_unique())
+        mlflow.log_param("anchor_count", frame.select("anchor_timestamp").n_unique())
+        mlflow.log_metric("mean_regret_uah", float(frame.select("regret_uah").mean().item()))
+        mlflow.log_metric("median_regret_uah", float(frame.select("regret_uah").median().item()))
+        mlflow.log_metric("mean_decision_value_uah", float(frame.select("decision_value_uah").mean().item()))
+        for model_name, win_rate in _win_rate_by_model(frame).items():
+            mlflow.log_metric(f"win_rate_{model_name}", win_rate)
+        mlflow.set_tag("benchmark_kind", "real_data_rolling_origin")
+        mlflow.set_tag("model_registry_policy", "forecast_candidates_only")
+
+
+def _win_rate_by_model(frame: pl.DataFrame) -> dict[str, float]:
+    if frame.height == 0:
+        return {}
+    anchor_count = frame.select(["tenant_id", "anchor_timestamp"]).unique().height
+    if anchor_count == 0:
+        return {}
+    return {
+        str(row["forecast_model_name"]): float(row["wins"]) / anchor_count
+        for row in (
+            frame
+            .filter(pl.col("rank_by_regret") == 1)
+            .group_by("forecast_model_name")
+            .agg(pl.len().alias("wins"))
+            .iter_rows(named=True)
+        )
+    }
+
+
+def _try_import_mlflow() -> Any | None:
+    try:
+        import mlflow
+    except ModuleNotFoundError:
+        return None
+    return mlflow

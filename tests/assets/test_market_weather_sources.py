@@ -9,6 +9,8 @@ from smart_arbitrage.assets.bronze import market_weather
 from smart_arbitrage.assets.bronze.market_weather import (
     WeatherLocationConfig,
     _fetch_oree_data_view_prices,
+    build_observed_historical_weather_frame,
+    build_observed_market_price_history,
     build_synthetic_market_price_history,
     weather_forecast_bronze,
 )
@@ -185,6 +187,94 @@ def test_live_market_overlay_preserves_requested_history_window(monkeypatch) -> 
     assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0) == expected_start
     assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1) == expected_end
     assert "OREE_DATA_VIEW" in set(price_history.select("source").to_series().to_list())
+
+
+def test_observed_market_price_history_rejects_synthetic_fallback(monkeypatch) -> None:
+    def fake_fetch_oree_prices(target_date: date) -> list[dict[str, Any]] | None:
+        if target_date == date(2026, 5, 1):
+            return [
+                market_weather._build_market_row(
+                    timestamp=datetime(2026, 5, 1, hour_index),
+                    price_eur_mwh=50.0 + hour_index,
+                    price_uah_mwh=2000.0 + hour_index,
+                    volume_mwh=900.0,
+                    source="OREE_DATA_VIEW",
+                    source_kind="observed",
+                    source_url=market_weather.OREE_DATA_VIEW_URL,
+                )
+                for hour_index in range(24)
+            ]
+        return None
+
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", fake_fetch_oree_prices)
+
+    price_history = build_observed_market_price_history(
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+    )
+
+    assert price_history.height == 24
+    assert set(price_history.select("source_kind").to_series().to_list()) == {"observed"}
+    assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0) == datetime(2026, 5, 1)
+
+
+def test_observed_market_price_history_fails_when_required_day_missing(monkeypatch) -> None:
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date: None)
+
+    try:
+        build_observed_market_price_history(
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 5, 1),
+        )
+    except ValueError as error:
+        assert "observed OREE DAM rows" in str(error)
+    else:
+        raise AssertionError("Expected observed-only backfill to reject missing OREE data.")
+
+
+def test_observed_historical_weather_frame_tags_tenant_and_source(monkeypatch) -> None:
+    def fake_fetch_historical_weather(
+        latitude: float,
+        longitude: float,
+        timezone: str,
+        *,
+        start_date: date,
+        end_date: date,
+    ) -> list[dict[str, Any]]:
+        assert latitude == 49.84
+        assert longitude == 24.03
+        assert timezone == "Europe/Kyiv"
+        assert start_date == date(2026, 5, 1)
+        assert end_date == date(2026, 5, 1)
+        return [
+            {
+                DEFAULT_TIMESTAMP_COLUMN: datetime(2026, 5, 1, 10),
+                "temperature": 16.0,
+                "solar_radiation": 300.0,
+                "wind_speed": 5.0,
+                "cloudcover": 20.0,
+                "precipitation": 0.0,
+                "pressure": 1012.0,
+                "humidity": 55.0,
+                "source": "OPEN_METEO_HISTORICAL",
+                "source_kind": "observed",
+                "source_url": market_weather.OPEN_METEO_HISTORICAL_URL,
+            }
+        ]
+
+    monkeypatch.setattr(market_weather, "_fetch_openmeteo_historical_data", fake_fetch_historical_weather)
+
+    weather_frame = build_observed_historical_weather_frame(
+        tenant_id="client_002_lviv_office",
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+        location_config_path="simulations/tenants.yml",
+    )
+
+    assert weather_frame.height == 1
+    assert weather_frame.row(0, named=True)["tenant_id"] == "client_002_lviv_office"
+    assert weather_frame.row(0, named=True)["source"] == "OPEN_METEO_HISTORICAL"
+    assert weather_frame.row(0, named=True)["source_kind"] == "observed"
 
 
 def test_dam_price_history_asset_persists_market_observations(monkeypatch) -> None:

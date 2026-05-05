@@ -280,6 +280,35 @@ class ForecastStrategyComparisonResponse(BaseModel):
 	comparisons: list[ForecastStrategyComparisonPointResponse]
 
 
+class RealDataBenchmarkPointResponse(BaseModel):
+	evaluation_id: str
+	anchor_timestamp: datetime
+	forecast_model_name: str
+	decision_value_uah: float
+	oracle_value_uah: float
+	regret_uah: float
+	regret_ratio: float
+	total_degradation_penalty_uah: float
+	total_throughput_mwh: float
+	committed_action: str
+	committed_power_mw: float
+	rank_by_regret: int
+	evaluation_payload: dict[str, Any]
+
+
+class RealDataBenchmarkResponse(BaseModel):
+	tenant_id: str
+	market_venue: str
+	generated_at: datetime
+	data_quality_tier: str
+	anchor_count: int
+	model_count: int
+	best_model_name: str | None
+	mean_regret_uah: float
+	median_regret_uah: float
+	rows: list[RealDataBenchmarkPointResponse]
+
+
 @dataclass(frozen=True, slots=True)
 class WeatherBiasCalibrationModel:
 	feature_names: tuple[str, ...]
@@ -1133,6 +1162,76 @@ def _to_forecast_strategy_comparison_response(
 	)
 
 
+def _to_real_data_benchmark_response(
+	*,
+	tenant_id: str,
+	evaluation_frame: pl.DataFrame,
+) -> RealDataBenchmarkResponse:
+	if evaluation_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Real-data benchmark not found.")
+	rows = [
+		row
+		for row in evaluation_frame.sort(["anchor_timestamp", "rank_by_regret", "forecast_model_name"]).iter_rows(named=True)
+	]
+	first_row = rows[0]
+	regrets = [float(row["regret_uah"]) for row in rows]
+	payloads = [_mapping_row_value(row["evaluation_payload"]) for row in rows]
+	best_rows = [row for row in rows if int(row["rank_by_regret"]) == 1]
+	best_model_name = None
+	if best_rows:
+		best_model_name = str(
+			pl.DataFrame(best_rows)
+			.group_by("forecast_model_name")
+			.agg(pl.len().alias("wins"), pl.mean("regret_uah").alias("mean_regret_uah"))
+			.sort(["wins", "mean_regret_uah"], descending=[True, False])
+			.row(0, named=True)["forecast_model_name"]
+		)
+	return RealDataBenchmarkResponse(
+		tenant_id=tenant_id,
+		market_venue=str(first_row["market_venue"]),
+		generated_at=_datetime_row_value(first_row["generated_at"], field_name="generated_at"),
+		data_quality_tier=_benchmark_data_quality_tier(payloads),
+		anchor_count=evaluation_frame.select("anchor_timestamp").n_unique(),
+		model_count=evaluation_frame.select("forecast_model_name").n_unique(),
+		best_model_name=best_model_name,
+		mean_regret_uah=sum(regrets) / len(regrets),
+		median_regret_uah=_median_float(regrets),
+		rows=[
+			RealDataBenchmarkPointResponse(
+				evaluation_id=str(row["evaluation_id"]),
+				anchor_timestamp=_datetime_row_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+				forecast_model_name=str(row["forecast_model_name"]),
+				decision_value_uah=float(row["decision_value_uah"]),
+				oracle_value_uah=float(row["oracle_value_uah"]),
+				regret_uah=float(row["regret_uah"]),
+				regret_ratio=float(row["regret_ratio"]),
+				total_degradation_penalty_uah=float(row["total_degradation_penalty_uah"]),
+				total_throughput_mwh=float(row["total_throughput_mwh"]),
+				committed_action=str(row["committed_action"]),
+				committed_power_mw=float(row["committed_power_mw"]),
+				rank_by_regret=int(row["rank_by_regret"]),
+				evaluation_payload=_mapping_row_value(row["evaluation_payload"]),
+			)
+			for row in rows
+		],
+	)
+
+
+def _benchmark_data_quality_tier(payloads: list[dict[str, Any]]) -> str:
+	tiers = {str(payload.get("data_quality_tier", "demo_grade")) for payload in payloads}
+	if tiers == {"thesis_grade"}:
+		return "thesis_grade"
+	return "demo_grade"
+
+
+def _median_float(values: list[float]) -> float:
+	sorted_values = sorted(values)
+	midpoint = len(sorted_values) // 2
+	if len(sorted_values) % 2 == 1:
+		return sorted_values[midpoint]
+	return (sorted_values[midpoint - 1] + sorted_values[midpoint]) / 2.0
+
+
 def _datetime_row_value(value: Any, *, field_name: str) -> datetime:
 	if isinstance(value, datetime):
 		return value
@@ -1441,6 +1540,27 @@ def dashboard_forecast_strategy_comparison(
 	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
 	evaluation_frame = get_strategy_evaluation_store().latest_evaluation_frame(tenant_id=tenant_id)
 	return _to_forecast_strategy_comparison_response(
+		tenant_id=tenant_id,
+		evaluation_frame=evaluation_frame,
+	)
+
+
+@app.get(
+	"/dashboard/real-data-benchmark",
+	response_model=RealDataBenchmarkResponse,
+	tags=["weather"],
+	summary="Get real-data benchmark",
+	description=(
+		"Returns the latest persisted real-data rolling-origin benchmark summary and rows "
+		"for strict similar-day, NBEATSx, and TFT forecast candidates."
+	),
+)
+def dashboard_real_data_benchmark(
+	tenant_id: str,
+) -> RealDataBenchmarkResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	evaluation_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
+	return _to_real_data_benchmark_response(
 		tenant_id=tenant_id,
 		evaluation_frame=evaluation_frame,
 	)

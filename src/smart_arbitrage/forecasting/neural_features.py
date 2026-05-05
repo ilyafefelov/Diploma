@@ -11,6 +11,7 @@ from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DE
 
 DEFAULT_NEURAL_FORECAST_HORIZON_HOURS: Final[int] = 24
 MIN_NEURAL_FORECAST_TRAIN_ROWS: Final[int] = 168
+MODEL_VISIBLE_PRICE_COLUMN: Final[str] = "_model_visible_price_uah_mwh"
 
 WEATHER_FEATURE_DEFAULTS: Final[dict[str, float]] = {
 	"weather_temperature": 18.0,
@@ -79,15 +80,21 @@ def build_neural_forecast_feature_frame(
 	)
 	history = _ensure_weather_columns(history)
 	history = _ensure_battery_telemetry_columns(history)
+	history = _mask_future_prices_for_forecast_features(
+		history,
+		anchor_timestamp=anchor_timestamp,
+		timestamp_column=timestamp_column,
+		price_column=price_column,
+	)
 	feature_frame = (
 		history
 		.with_columns(
 			[
 				pl.col(timestamp_column).dt.hour().cast(pl.Float64).alias("_hour"),
 				pl.col(timestamp_column).dt.weekday().cast(pl.Float64).alias("_weekday"),
-				pl.col(price_column).shift(24).alias("lag_24_price_uah_mwh"),
-				pl.col(price_column).shift(168).alias("lag_168_price_uah_mwh"),
-				pl.col(price_column).shift(1).rolling_mean(window_size=24, min_samples=1).alias("rolling_24h_mean_uah_mwh"),
+				pl.col(MODEL_VISIBLE_PRICE_COLUMN).shift(24).alias("lag_24_price_uah_mwh"),
+				pl.col(MODEL_VISIBLE_PRICE_COLUMN).shift(168).alias("lag_168_price_uah_mwh"),
+				pl.col(MODEL_VISIBLE_PRICE_COLUMN).shift(1).rolling_mean(window_size=24, min_samples=1).alias("rolling_24h_mean_uah_mwh"),
 			]
 		)
 		.with_columns(
@@ -101,7 +108,7 @@ def build_neural_forecast_feature_frame(
 				.then(pl.lit("forecast"))
 				.otherwise(pl.lit("train"))
 				.alias("split"),
-				pl.col(price_column).alias("target_price_uah_mwh"),
+				pl.col(MODEL_VISIBLE_PRICE_COLUMN).alias("target_price_uah_mwh"),
 			]
 		)
 		.with_columns(
@@ -116,7 +123,7 @@ def build_neural_forecast_feature_frame(
 		.select(
 			[
 				pl.col(timestamp_column).alias("timestamp"),
-				pl.col(price_column).cast(pl.Float64).alias("price_uah_mwh"),
+				pl.col(MODEL_VISIBLE_PRICE_COLUMN).cast(pl.Float64).alias("price_uah_mwh"),
 				"target_price_uah_mwh",
 				"split",
 				*NEURAL_FORECAST_FEATURE_COLUMNS,
@@ -211,6 +218,21 @@ def _ensure_battery_telemetry_columns(history: pl.DataFrame) -> pl.DataFrame:
 		else:
 			expressions.append(pl.lit(default_value).alias(column_name))
 	return history.with_columns(expressions)
+
+
+def _mask_future_prices_for_forecast_features(
+	history: pl.DataFrame,
+	*,
+	anchor_timestamp: datetime,
+	timestamp_column: str,
+	price_column: str,
+) -> pl.DataFrame:
+	return history.with_columns(
+		pl.when(pl.col(timestamp_column) <= pl.lit(anchor_timestamp))
+		.then(pl.col(price_column))
+		.otherwise(pl.lit(None, dtype=pl.Float64))
+		.alias(MODEL_VISIBLE_PRICE_COLUMN)
+	)
 
 
 def _join_battery_state_hourly_snapshots(
