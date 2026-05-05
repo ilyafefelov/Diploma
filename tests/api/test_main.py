@@ -908,6 +908,108 @@ def test_risk_adjusted_value_gate_endpoint_returns_latest_gate_rows(
 	]
 
 
+def test_forecast_dispatch_sensitivity_endpoint_returns_diagnostic_buckets(
+	client: TestClient,
+	fake_strategy_evaluation_store: InMemoryStrategyEvaluationStore,
+) -> None:
+	generated_at = datetime(2026, 5, 4, 20, 30, tzinfo=UTC)
+	anchor_timestamp = datetime(2026, 5, 4, 20, tzinfo=UTC)
+	fake_strategy_evaluation_store.upsert_evaluation_frame(
+		pl.DataFrame(
+			{
+				"evaluation_id": ["sensitivity-001", "sensitivity-002"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"forecast_model_name": [
+					"strict_similar_day",
+					"tft_horizon_regret_weighted_calibrated_v0",
+				],
+				"strategy_kind": [
+					"horizon_regret_weighted_forecast_calibration_benchmark",
+					"horizon_regret_weighted_forecast_calibration_benchmark",
+				],
+				"market_venue": ["DAM", "DAM"],
+				"anchor_timestamp": [anchor_timestamp, anchor_timestamp],
+				"generated_at": [generated_at, generated_at],
+				"horizon_hours": [2, 2],
+				"starting_soc_fraction": [0.5, 0.5],
+				"starting_soc_source": ["tenant_default", "tenant_default"],
+				"decision_value_uah": [118.0, 116.0],
+				"forecast_objective_value_uah": [117.0, 115.0],
+				"oracle_value_uah": [130.0, 130.0],
+				"regret_uah": [12.0, 620.0],
+				"regret_ratio": [0.0923, 4.7692],
+				"total_degradation_penalty_uah": [10.0, 9.5],
+				"total_throughput_mwh": [0.25, 0.22],
+				"committed_action": ["DISCHARGE", "DISCHARGE"],
+				"committed_power_mw": [0.08, 0.08],
+				"rank_by_regret": [1, 2],
+				"evaluation_payload": [
+					{
+						"data_quality_tier": "thesis_grade",
+						"forecast_diagnostics": {"mae_uah_mwh": 50.0, "rmse_uah_mwh": 55.0},
+						"horizon": [
+							{
+								"step_index": 0,
+								"forecast_price_uah_mwh": 1000.0,
+								"actual_price_uah_mwh": 1010.0,
+								"net_power_mw": -0.1,
+							},
+							{
+								"step_index": 1,
+								"forecast_price_uah_mwh": 1400.0,
+								"actual_price_uah_mwh": 1410.0,
+								"net_power_mw": 0.1,
+							},
+						],
+					},
+					{
+						"data_quality_tier": "thesis_grade",
+						"forecast_diagnostics": {"mae_uah_mwh": 800.0, "rmse_uah_mwh": 850.0},
+						"horizon": [
+							{
+								"step_index": 0,
+								"forecast_price_uah_mwh": 1000.0,
+								"actual_price_uah_mwh": 1000.0,
+								"net_power_mw": -0.1,
+							},
+							{
+								"step_index": 1,
+								"forecast_price_uah_mwh": 1400.0,
+								"actual_price_uah_mwh": 1050.0,
+								"net_power_mw": 0.1,
+							},
+						],
+					},
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/forecast-dispatch-sensitivity",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["anchor_count"] == 1
+	assert response_payload["model_count"] == 2
+	assert response_payload["row_count"] == 2
+	assert [row["diagnostic_bucket"] for row in response_payload["rows"]] == [
+		"low_regret",
+		"spread_objective_mismatch",
+	]
+	assert {row["diagnostic_bucket"] for row in response_payload["bucket_summary"]} == {
+		"low_regret",
+		"spread_objective_mismatch",
+	}
+	assert response_payload["rows"][1]["dispatch_spread_error_uah_mwh"] == pytest.approx(350.0)
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -975,3 +1077,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/real-data-benchmark"]["get"]["summary"] == "Get real-data benchmark"
 	assert schema["paths"]["/dashboard/calibrated-ensemble-benchmark"]["get"]["summary"] == "Get calibrated ensemble benchmark"
 	assert schema["paths"]["/dashboard/risk-adjusted-value-gate"]["get"]["summary"] == "Get risk-adjusted value gate"
+	assert schema["paths"]["/dashboard/forecast-dispatch-sensitivity"]["get"]["summary"] == "Get forecast-dispatch sensitivity"

@@ -374,6 +374,30 @@ Operational notes:
 - Current 90-anchor result is negative: the risk-adjusted gate mean regret is `918.76` UAH, worse than `strict_similar_day` at `851.04` UAH and horizon-aware TFT at `834.32` UAH.
 - If no risk-adjusted gate rows exist for the tenant, the endpoint returns `404`.
 
+### `GET /dashboard/forecast-dispatch-sensitivity`
+
+Returns diagnostic rows derived from the latest persisted horizon-aware regret-weighted benchmark rows for a tenant. The endpoint does not persist new data and does not run a trading selector; it rebuilds the sensitivity read model from benchmark payloads already in Postgres.
+
+Request query example:
+
+```text
+/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `tenant_id`, `market_venue`, `generated_at`: source batch identity.
+- `source_strategy_kind`: currently `horizon_regret_weighted_forecast_calibration_benchmark`.
+- `anchor_count`, `model_count`, `row_count`: diagnostic coverage.
+- `bucket_summary`: count and mean diagnostics per `diagnostic_bucket`.
+- `rows`: per-anchor/model diagnostics including forecast MAE/RMSE, forecast-vs-realized dispatch spread error, regret, degradation, throughput, and committed action.
+
+Operational notes:
+
+- Buckets are `low_regret`, `forecast_error`, `spread_objective_mismatch`, and `lp_dispatch_sensitivity`.
+- This is the API read model the dashboard can use to explain why a strategy lost value; it is not a bid, dispatch command, or promoted model.
+- If no horizon-aware benchmark rows exist for the tenant, the endpoint returns `404`.
+
 ### `POST /weather/run-config`
 
 Builds the Dagster run-config payload for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76) without executing a run.
@@ -499,6 +523,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - For thesis benchmark evidence, the dashboard can call `GET /dashboard/real-data-benchmark` to compare the same forecast candidates across observed-only rolling-origin anchors and show whether the result is thesis-grade or demo-grade.
 - For calibrated selector evidence, the dashboard can call `GET /dashboard/calibrated-ensemble-benchmark` to show which prior-regret gate source was selected per anchor and why this selector is not yet a dashboard default.
 - For risk-adjusted selector evidence, the dashboard can call `GET /dashboard/risk-adjusted-value-gate` to show median/tail/win-rate gate decisions. Current results are diagnostic only and do not replace the strict control.
+- For forecast-to-dispatch explainability, the dashboard can call `GET /dashboard/forecast-dispatch-sensitivity` to show whether high regret is mostly forecast error, spread mismatch, or LP dispatch sensitivity.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
@@ -510,5 +535,6 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The forecast strategy comparison endpoint is Gold-layer evidence only; it compares forecast-driven LP decisions and does not generate market contracts.
 - The real-data benchmark endpoint is also evidence only; it reports rolling-origin regret and data quality, not trading instructions.
 - The calibrated and risk-adjusted selector endpoints are research read models only; neither is a promoted live selector.
+- The forecast-dispatch sensitivity endpoint is explainability evidence only; it does not create or validate physical dispatch actions.
 - The exogenous-signal endpoint is context only; it should be described as state awareness until benchmark evidence shows decision value.
 - The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.

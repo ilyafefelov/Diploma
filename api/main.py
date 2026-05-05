@@ -36,6 +36,7 @@ from smart_arbitrage.assets.mvp_demo import (
 	DEMO_BATTERY_LIFETIME_YEARS,
 	DEMO_USD_TO_UAH_RATE,
 )
+from smart_arbitrage.dfl.regret_weighted import HORIZON_REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 from smart_arbitrage.forecasting.grid_event_signals import (
 	build_grid_event_signal_frame,
@@ -65,6 +66,7 @@ from smart_arbitrage.strategy.ensemble_gate import (
 	CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
 	RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
 )
+from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
 
 
 app = FastAPI(
@@ -365,6 +367,50 @@ class RealDataBenchmarkResponse(BaseModel):
 	mean_regret_uah: float
 	median_regret_uah: float
 	rows: list[RealDataBenchmarkPointResponse]
+
+
+class ForecastDispatchSensitivityPointResponse(BaseModel):
+	diagnostic_id: str
+	evaluation_id: str
+	anchor_timestamp: datetime
+	forecast_model_name: str
+	diagnostic_bucket: str
+	regret_uah: float
+	regret_ratio: float
+	forecast_mae_uah_mwh: float
+	forecast_rmse_uah_mwh: float
+	mean_forecast_error_uah_mwh: float
+	forecast_dispatch_spread_uah_mwh: float
+	realized_dispatch_spread_uah_mwh: float
+	dispatch_spread_error_uah_mwh: float
+	total_degradation_penalty_uah: float
+	total_throughput_mwh: float
+	charge_energy_mwh: float
+	discharge_energy_mwh: float
+	committed_action: str
+	committed_power_mw: float
+	rank_by_regret: int
+	data_quality_tier: str
+
+
+class ForecastDispatchSensitivityBucketResponse(BaseModel):
+	diagnostic_bucket: str
+	rows: int
+	mean_regret_uah: float
+	mean_forecast_mae_uah_mwh: float
+	mean_dispatch_spread_error_uah_mwh: float
+
+
+class ForecastDispatchSensitivityResponse(BaseModel):
+	tenant_id: str
+	market_venue: str
+	generated_at: datetime
+	source_strategy_kind: str
+	anchor_count: int
+	model_count: int
+	row_count: int
+	bucket_summary: list[ForecastDispatchSensitivityBucketResponse]
+	rows: list[ForecastDispatchSensitivityPointResponse]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1473,6 +1519,91 @@ def _to_real_data_benchmark_response(
 	)
 
 
+def _to_forecast_dispatch_sensitivity_response(
+	*,
+	tenant_id: str,
+	evaluation_frame: pl.DataFrame,
+) -> ForecastDispatchSensitivityResponse:
+	if evaluation_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Forecast-dispatch sensitivity not found.")
+	sensitivity_frame = build_forecast_dispatch_sensitivity_frame(evaluation_frame)
+	if sensitivity_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Forecast-dispatch sensitivity not found.")
+	rows = [
+		row
+		for row in sensitivity_frame.sort(
+			["anchor_timestamp", "rank_by_regret", "forecast_model_name"]
+		).iter_rows(named=True)
+	]
+	first_row = rows[0]
+	return ForecastDispatchSensitivityResponse(
+		tenant_id=tenant_id,
+		market_venue=str(first_row["market_venue"]),
+		generated_at=_datetime_row_value(first_row["generated_at"], field_name="generated_at"),
+		source_strategy_kind=str(first_row["strategy_kind"]),
+		anchor_count=sensitivity_frame.select("anchor_timestamp").n_unique(),
+		model_count=sensitivity_frame.select("forecast_model_name").n_unique(),
+		row_count=sensitivity_frame.height,
+		bucket_summary=_forecast_dispatch_sensitivity_bucket_summary(sensitivity_frame),
+		rows=[
+			ForecastDispatchSensitivityPointResponse(
+				diagnostic_id=str(row["diagnostic_id"]),
+				evaluation_id=str(row["evaluation_id"]),
+				anchor_timestamp=_datetime_row_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+				forecast_model_name=str(row["forecast_model_name"]),
+				diagnostic_bucket=str(row["diagnostic_bucket"]),
+				regret_uah=float(row["regret_uah"]),
+				regret_ratio=float(row["regret_ratio"]),
+				forecast_mae_uah_mwh=float(row["forecast_mae_uah_mwh"]),
+				forecast_rmse_uah_mwh=float(row["forecast_rmse_uah_mwh"]),
+				mean_forecast_error_uah_mwh=float(row["mean_forecast_error_uah_mwh"]),
+				forecast_dispatch_spread_uah_mwh=float(row["forecast_dispatch_spread_uah_mwh"]),
+				realized_dispatch_spread_uah_mwh=float(row["realized_dispatch_spread_uah_mwh"]),
+				dispatch_spread_error_uah_mwh=float(row["dispatch_spread_error_uah_mwh"]),
+				total_degradation_penalty_uah=float(row["total_degradation_penalty_uah"]),
+				total_throughput_mwh=float(row["total_throughput_mwh"]),
+				charge_energy_mwh=float(row["charge_energy_mwh"]),
+				discharge_energy_mwh=float(row["discharge_energy_mwh"]),
+				committed_action=str(row["committed_action"]),
+				committed_power_mw=float(row["committed_power_mw"]),
+				rank_by_regret=int(row["rank_by_regret"]),
+				data_quality_tier=str(row["data_quality_tier"]),
+			)
+			for row in rows
+		],
+	)
+
+
+def _forecast_dispatch_sensitivity_bucket_summary(
+	sensitivity_frame: pl.DataFrame,
+) -> list[ForecastDispatchSensitivityBucketResponse]:
+	summary_frame = (
+		sensitivity_frame
+		.group_by("diagnostic_bucket")
+		.agg(
+			[
+				pl.len().alias("rows"),
+				pl.mean("regret_uah").alias("mean_regret_uah"),
+				pl.mean("forecast_mae_uah_mwh").alias("mean_forecast_mae_uah_mwh"),
+				pl.mean("dispatch_spread_error_uah_mwh").alias(
+					"mean_dispatch_spread_error_uah_mwh"
+				),
+			]
+		)
+		.sort("diagnostic_bucket")
+	)
+	return [
+		ForecastDispatchSensitivityBucketResponse(
+			diagnostic_bucket=str(row["diagnostic_bucket"]),
+			rows=int(row["rows"]),
+			mean_regret_uah=float(row["mean_regret_uah"]),
+			mean_forecast_mae_uah_mwh=float(row["mean_forecast_mae_uah_mwh"]),
+			mean_dispatch_spread_error_uah_mwh=float(row["mean_dispatch_spread_error_uah_mwh"]),
+		)
+		for row in summary_frame.iter_rows(named=True)
+	]
+
+
 def _benchmark_data_quality_tier(payloads: list[dict[str, Any]]) -> str:
 	tiers = {str(payload.get("data_quality_tier", "demo_grade")) for payload in payloads}
 	if tiers == {"thesis_grade"}:
@@ -1881,6 +2012,31 @@ def dashboard_risk_adjusted_value_gate(
 		strategy_kind=RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
 	)
 	return _to_real_data_benchmark_response(
+		tenant_id=tenant_id,
+		evaluation_frame=evaluation_frame,
+	)
+
+
+@app.get(
+	"/dashboard/forecast-dispatch-sensitivity",
+	response_model=ForecastDispatchSensitivityResponse,
+	tags=["weather"],
+	summary="Get forecast-dispatch sensitivity",
+	description=(
+		"Returns forecast-to-dispatch diagnostic rows derived from the latest horizon-aware "
+		"regret-weighted benchmark. Buckets separate low regret, forecast error, spread-objective "
+		"mismatch, and LP dispatch sensitivity."
+	),
+)
+def dashboard_forecast_dispatch_sensitivity(
+	tenant_id: str,
+) -> ForecastDispatchSensitivityResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	evaluation_frame = get_strategy_evaluation_store().latest_strategy_kind_frame(
+		tenant_id=tenant_id,
+		strategy_kind=HORIZON_REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND,
+	)
+	return _to_forecast_dispatch_sensitivity_response(
 		tenant_id=tenant_id,
 		evaluation_frame=evaluation_frame,
 	)

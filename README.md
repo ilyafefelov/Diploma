@@ -44,6 +44,7 @@ Useful local URLs:
 - FastAPI health: `http://localhost:8001/health`
 - Calibrated ensemble API: `http://localhost:8001/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory`
 - Risk-adjusted value gate API: `http://localhost:8001/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory`
+- Forecast-dispatch sensitivity API: `http://localhost:8001/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory`
 - Dagster UI: `http://localhost:3001`
 - MLflow UI: `http://localhost:5000`
 
@@ -58,7 +59,7 @@ uv run dg list defs --json
 docker compose config --quiet
 ```
 
-Latest full verification: `99 passed`.
+Latest full verification: `100 passed`.
 
 ## Research Artifacts
 

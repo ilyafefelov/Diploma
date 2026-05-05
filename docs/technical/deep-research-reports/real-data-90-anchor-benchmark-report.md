@@ -413,6 +413,7 @@ Interpretation:
 - Tail-risk weighting does not solve the selector problem yet because the best candidate changes by tenant/anchor regime, and the selector still sees only coarse trailing regret statistics.
 - The sensitivity frame is useful for the next DFL slice: it separates obvious price-error rows from LP sensitivity rows, so a future value-oriented loss can emphasize forecast shape and spread ordering instead of only scalar bias.
 - Backend read model added: `GET /dashboard/risk-adjusted-value-gate?tenant_id=...`. No dashboard UI was changed.
+- Forecast-dispatch explainability read model added: `GET /dashboard/forecast-dispatch-sensitivity?tenant_id=...`. It rebuilds sensitivity rows from persisted horizon-aware benchmark payloads and does not create bids or dispatch commands.
 
 Runtime and GPU note:
 
