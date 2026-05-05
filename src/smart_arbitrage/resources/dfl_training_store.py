@@ -12,6 +12,10 @@ class DflTrainingStore(Protocol):
 
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None: ...
 
+    def upsert_relaxed_pilot_frame(self, relaxed_pilot_frame: pl.DataFrame) -> None: ...
+
+    def latest_relaxed_pilot_frame(self, *, tenant_id: str) -> pl.DataFrame: ...
+
 
 class NullDflTrainingStore:
     def upsert_training_frame(self, training_frame: pl.DataFrame) -> None:
@@ -20,17 +24,39 @@ class NullDflTrainingStore:
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None:
         return None
 
+    def upsert_relaxed_pilot_frame(self, relaxed_pilot_frame: pl.DataFrame) -> None:
+        return None
+
+    def latest_relaxed_pilot_frame(self, *, tenant_id: str) -> pl.DataFrame:
+        return pl.DataFrame()
+
 
 class InMemoryDflTrainingStore:
     def __init__(self) -> None:
         self.training_frame = pl.DataFrame()
         self.pilot_frame = pl.DataFrame()
+        self.relaxed_pilot_frame = pl.DataFrame()
 
     def upsert_training_frame(self, training_frame: pl.DataFrame) -> None:
         self.training_frame = training_frame.clone()
 
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None:
         self.pilot_frame = pilot_frame.clone()
+
+    def upsert_relaxed_pilot_frame(self, relaxed_pilot_frame: pl.DataFrame) -> None:
+        self.relaxed_pilot_frame = _append_or_replace(
+            self.relaxed_pilot_frame,
+            relaxed_pilot_frame,
+            subset=["pilot_name", "evaluation_id"],
+        )
+
+    def latest_relaxed_pilot_frame(self, *, tenant_id: str) -> pl.DataFrame:
+        if self.relaxed_pilot_frame.height == 0:
+            return pl.DataFrame()
+        tenant_frame = self.relaxed_pilot_frame.filter(pl.col("tenant_id") == tenant_id)
+        if tenant_frame.height == 0:
+            return pl.DataFrame()
+        return tenant_frame.sort(["anchor_timestamp", "forecast_model_name"])
 
 
 class PostgresDflTrainingStore:
@@ -40,8 +66,9 @@ class PostgresDflTrainingStore:
 
     def _connect(self) -> Any:
         from psycopg import connect
+        from psycopg.rows import dict_row
 
-        return connect(self._dsn)
+        return connect(self._dsn, row_factory=dict_row)
 
     def _ensure_schema(self) -> None:
         with self._connect() as connection:
@@ -106,6 +133,25 @@ class PostgresDflTrainingStore:
                         expanded_to_all_tenants_ready BOOLEAN NOT NULL,
                         academic_scope TEXT NOT NULL,
                         PRIMARY KEY (pilot_name, tenant_id, forecast_model_name)
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS dfl_relaxed_lp_pilot_runs (
+                        pilot_name TEXT NOT NULL,
+                        evaluation_id TEXT NOT NULL,
+                        tenant_id TEXT NOT NULL,
+                        forecast_model_name TEXT NOT NULL,
+                        anchor_timestamp TIMESTAMP NOT NULL,
+                        horizon_hours INTEGER NOT NULL,
+                        relaxed_realized_value_uah DOUBLE PRECISION NOT NULL,
+                        relaxed_oracle_value_uah DOUBLE PRECISION NOT NULL,
+                        relaxed_regret_uah DOUBLE PRECISION NOT NULL,
+                        first_charge_mw DOUBLE PRECISION NOT NULL,
+                        first_discharge_mw DOUBLE PRECISION NOT NULL,
+                        academic_scope TEXT NOT NULL,
+                        PRIMARY KEY (pilot_name, evaluation_id)
                     )
                     """
                 )
@@ -241,6 +287,60 @@ class PostgresDflTrainingStore:
                 )
             connection.commit()
 
+    def upsert_relaxed_pilot_frame(self, relaxed_pilot_frame: pl.DataFrame) -> None:
+        if relaxed_pilot_frame.height == 0:
+            return None
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO dfl_relaxed_lp_pilot_runs (
+                        pilot_name,
+                        evaluation_id,
+                        tenant_id,
+                        forecast_model_name,
+                        anchor_timestamp,
+                        horizon_hours,
+                        relaxed_realized_value_uah,
+                        relaxed_oracle_value_uah,
+                        relaxed_regret_uah,
+                        first_charge_mw,
+                        first_discharge_mw,
+                        academic_scope
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (pilot_name, evaluation_id)
+                    DO UPDATE SET
+                        tenant_id = EXCLUDED.tenant_id,
+                        forecast_model_name = EXCLUDED.forecast_model_name,
+                        anchor_timestamp = EXCLUDED.anchor_timestamp,
+                        horizon_hours = EXCLUDED.horizon_hours,
+                        relaxed_realized_value_uah = EXCLUDED.relaxed_realized_value_uah,
+                        relaxed_oracle_value_uah = EXCLUDED.relaxed_oracle_value_uah,
+                        relaxed_regret_uah = EXCLUDED.relaxed_regret_uah,
+                        first_charge_mw = EXCLUDED.first_charge_mw,
+                        first_discharge_mw = EXCLUDED.first_discharge_mw,
+                        academic_scope = EXCLUDED.academic_scope
+                    """,
+                    [_relaxed_pilot_values(row) for row in relaxed_pilot_frame.iter_rows(named=True)],
+                )
+            connection.commit()
+
+    def latest_relaxed_pilot_frame(self, *, tenant_id: str) -> pl.DataFrame:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT *
+                    FROM dfl_relaxed_lp_pilot_runs
+                    WHERE tenant_id = %s
+                    ORDER BY anchor_timestamp, forecast_model_name
+                    """,
+                    (tenant_id,),
+                )
+                rows = cursor.fetchall()
+        return pl.DataFrame([dict(row) for row in rows])
+
 
 def _training_values(row: dict[str, Any]) -> tuple[Any, ...]:
     return (
@@ -299,6 +399,36 @@ def _pilot_values(row: dict[str, Any]) -> tuple[Any, ...]:
         row["mean_validation_regret_uah"],
         row["expanded_to_all_tenants_ready"],
         row["academic_scope"],
+    )
+
+
+def _relaxed_pilot_values(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row["pilot_name"],
+        row["evaluation_id"],
+        row["tenant_id"],
+        row["forecast_model_name"],
+        row["anchor_timestamp"],
+        row["horizon_hours"],
+        row["relaxed_realized_value_uah"],
+        row["relaxed_oracle_value_uah"],
+        row["relaxed_regret_uah"],
+        row["first_charge_mw"],
+        row["first_discharge_mw"],
+        row["academic_scope"],
+    )
+
+
+def _append_or_replace(
+    base_frame: pl.DataFrame, incoming_frame: pl.DataFrame, *, subset: list[str]
+) -> pl.DataFrame:
+    if incoming_frame.height == 0:
+        return base_frame
+    if base_frame.height == 0:
+        return incoming_frame.clone()
+    return pl.concat([base_frame, incoming_frame], how="diagonal_relaxed").unique(
+        subset=subset,
+        keep="last",
     )
 
 

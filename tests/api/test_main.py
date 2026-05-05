@@ -18,6 +18,8 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 )
 from smart_arbitrage.resources.grid_event_store import GridEventObservation, InMemoryGridEventStore
 from smart_arbitrage.resources.market_data_store import InMemoryMarketDataStore, WeatherObservation
+from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
+from smart_arbitrage.resources.simulated_trade_store import InMemorySimulatedTradeStore
 from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
 
 
@@ -60,6 +62,20 @@ def fake_battery_telemetry_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryBat
 def fake_strategy_evaluation_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryStrategyEvaluationStore:
 	store = InMemoryStrategyEvaluationStore()
 	monkeypatch.setattr(api_main, "get_strategy_evaluation_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_dfl_training_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryDflTrainingStore:
+	store = InMemoryDflTrainingStore()
+	monkeypatch.setattr(api_main, "get_dfl_training_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_simulated_trade_store(monkeypatch: pytest.MonkeyPatch) -> InMemorySimulatedTradeStore:
+	store = InMemorySimulatedTradeStore()
+	monkeypatch.setattr(api_main, "get_simulated_trade_store", lambda: store)
 	return store
 
 
@@ -1010,6 +1026,157 @@ def test_forecast_dispatch_sensitivity_endpoint_returns_diagnostic_buckets(
 	assert response_payload["rows"][1]["dispatch_spread_error_uah_mwh"] == pytest.approx(350.0)
 
 
+def test_dfl_relaxed_pilot_endpoint_returns_latest_rows(
+	client: TestClient,
+	fake_dfl_training_store: InMemoryDflTrainingStore,
+) -> None:
+	fake_dfl_training_store.upsert_relaxed_pilot_frame(
+		pl.DataFrame(
+			{
+				"pilot_name": ["relaxed_lp_dfl_pilot_v0", "relaxed_lp_dfl_pilot_v0"],
+				"evaluation_id": ["eval-001", "eval-002"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"forecast_model_name": ["tft_silver_v0", "nbeatsx_silver_v0"],
+				"anchor_timestamp": [
+					datetime(2026, 5, 3, 20, tzinfo=UTC),
+					datetime(2026, 5, 4, 20, tzinfo=UTC),
+				],
+				"horizon_hours": [24, 24],
+				"relaxed_realized_value_uah": [105.0, 112.0],
+				"relaxed_oracle_value_uah": [130.0, 130.0],
+				"relaxed_regret_uah": [25.0, 18.0],
+				"first_charge_mw": [0.0, 0.1],
+				"first_discharge_mw": [0.2, 0.0],
+				"academic_scope": [
+					"differentiable_relaxed_lp_pilot_not_final_dfl",
+					"differentiable_relaxed_lp_pilot_not_final_dfl",
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/dfl-relaxed-pilot",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["row_count"] == 2
+	assert response_payload["mean_relaxed_regret_uah"] == pytest.approx(21.5)
+	assert response_payload["academic_scope"] == "differentiable_relaxed_lp_pilot_not_final_dfl"
+	assert [row["forecast_model_name"] for row in response_payload["rows"]] == [
+		"tft_silver_v0",
+		"nbeatsx_silver_v0",
+	]
+
+
+def test_decision_transformer_trajectories_endpoint_returns_rows(
+	client: TestClient,
+	fake_simulated_trade_store: InMemorySimulatedTradeStore,
+) -> None:
+	fake_simulated_trade_store.upsert_decision_transformer_trajectory_frame(
+		pl.DataFrame(
+			{
+				"episode_id": ["episode-001", "episode-001"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"market_venue": ["DAM", "DAM"],
+				"scenario_index": [0, 0],
+				"step_index": [0, 1],
+				"interval_start": [
+					datetime(2026, 5, 5, 0, tzinfo=UTC),
+					datetime(2026, 5, 5, 1, tzinfo=UTC),
+				],
+				"state_soc_before": [0.5, 0.45],
+				"state_soc_after": [0.45, 0.55],
+				"state_soh": [0.96, 0.96],
+				"state_market_price_uah_mwh": [1400.0, 900.0],
+				"action_charge_mw": [0.0, 0.1],
+				"action_discharge_mw": [0.1, 0.0],
+				"reward_uah": [120.0, -95.0],
+				"return_to_go_uah": [25.0, -95.0],
+				"degradation_penalty_uah": [4.0, 3.5],
+				"baseline_value_uah": [20.0, 20.0],
+				"oracle_value_uah": [40.0, 40.0],
+				"regret_uah": [20.0, 20.0],
+				"academic_scope": [
+					"offline_dt_training_trajectory_not_live_policy",
+					"offline_dt_training_trajectory_not_live_policy",
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/decision-transformer-trajectories",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["row_count"] == 2
+	assert response_payload["episode_count"] == 1
+	assert response_payload["academic_scope"] == "offline_dt_training_trajectory_not_live_policy"
+	assert response_payload["rows"][0]["action_discharge_mw"] == pytest.approx(0.1)
+
+
+def test_simulated_live_trading_endpoint_returns_rows(
+	client: TestClient,
+	fake_simulated_trade_store: InMemorySimulatedTradeStore,
+) -> None:
+	fake_simulated_trade_store.upsert_simulated_live_trading_frame(
+		pl.DataFrame(
+			{
+				"episode_id": ["episode-001", "episode-001"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"interval_start": [
+					datetime(2026, 5, 5, 0, tzinfo=UTC),
+					datetime(2026, 5, 5, 1, tzinfo=UTC),
+				],
+				"step_index": [0, 1],
+				"state_soc_before": [0.5, 0.45],
+				"state_soc_after": [0.45, 0.55],
+				"proposed_trade_side": ["SELL", "BUY"],
+				"proposed_quantity_mw": [0.1, 0.1],
+				"feasible_net_power_mw": [0.1, -0.1],
+				"market_price_uah_mwh": [1400.0, 900.0],
+				"reward_uah": [120.0, -95.0],
+				"gatekeeper_status": ["accepted", "accepted"],
+				"paper_trade_provenance": ["simulated", "simulated"],
+				"settlement_id": [None, None],
+				"live_mode_warning": [
+					"simulated_paper_trade_not_market_execution",
+					"simulated_paper_trade_not_market_execution",
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/simulated-live-trading",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["row_count"] == 2
+	assert response_payload["simulated_only"] is True
+	assert response_payload["rows"][0]["paper_trade_provenance"] == "simulated"
+	assert response_payload["rows"][0]["settlement_id"] is None
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -1078,3 +1245,6 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/calibrated-ensemble-benchmark"]["get"]["summary"] == "Get calibrated ensemble benchmark"
 	assert schema["paths"]["/dashboard/risk-adjusted-value-gate"]["get"]["summary"] == "Get risk-adjusted value gate"
 	assert schema["paths"]["/dashboard/forecast-dispatch-sensitivity"]["get"]["summary"] == "Get forecast-dispatch sensitivity"
+	assert schema["paths"]["/dashboard/dfl-relaxed-pilot"]["get"]["summary"] == "Get relaxed DFL pilot"
+	assert schema["paths"]["/dashboard/decision-transformer-trajectories"]["get"]["summary"] == "Get Decision Transformer trajectories"
+	assert schema["paths"]["/dashboard/simulated-live-trading"]["get"]["summary"] == "Get simulated live trading"

@@ -46,6 +46,9 @@ Useful local URLs:
 - Calibrated ensemble API: `http://localhost:8001/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory`
 - Risk-adjusted value gate API: `http://localhost:8001/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory`
 - Forecast-dispatch sensitivity API: `http://localhost:8001/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory`
+- Relaxed DFL pilot API: `http://localhost:8001/dashboard/dfl-relaxed-pilot?tenant_id=client_003_dnipro_factory`
+- Offline DT trajectories API: `http://localhost:8001/dashboard/decision-transformer-trajectories?tenant_id=client_003_dnipro_factory`
+- Simulated live-trading API: `http://localhost:8001/dashboard/simulated-live-trading?tenant_id=client_003_dnipro_factory`
 - Dagster UI: `http://localhost:3001`
 - MLflow UI: `http://localhost:5000`
 
@@ -60,16 +63,24 @@ uv run dg list defs --json
 docker compose config --quiet
 ```
 
-Latest full verification: `110 passed`.
+Latest full verification: `113 passed`.
 
 ## Research Artifacts
 
 - Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`
 - Latest exports: `data/research_runs/risk_gate_diagnostics_20260505T151401/`
-- Latest DB dump: `data/db_backups/smart_arbitrage_risk_gate_diagnostics_20260505T151401.dump`
+- Latest DB dump: `data/db_backups/smart_arbitrage_20260505_research_read_models.dump`
 - MLflow run: `smart-arbitrage-horizon-regret-weighted-dfl-expansion`, run `9d61ef79a0d34214b2de6617346a616e`
 - Calibrated ensemble MLflow run: `smart-arbitrage-calibrated-ensemble-gate`, run `661189d0b8a1497784e26f3831f77fc7`
 - Risk-adjusted gate MLflow run: `smart-arbitrage-risk-adjusted-value-gate`, run `e30a3095d8bd48eb9e01b317e6b60bc1`
+
+Latest read-model smoke:
+
+| Output | Rows | Scope |
+|---|---:|---|
+| `dfl_relaxed_lp_pilot_runs` | 1 | differentiable relaxed LP primitive, not full DFL |
+| `decision_transformer_trajectories` | 6 | offline trajectory data, not live policy |
+| `simulated_live_trading_rows` | 6 | simulated paper-trading replay, no settlement IDs |
 
 `data/` and `mlruns/` are local artifacts and are intentionally not tracked.
 

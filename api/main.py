@@ -59,8 +59,10 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 	BatteryTelemetryObservation,
 	get_battery_telemetry_store,
 )
+from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.grid_event_store import get_grid_event_store
 from smart_arbitrage.resources.market_data_store import get_market_data_store
+from smart_arbitrage.resources.simulated_trade_store import get_simulated_trade_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 from smart_arbitrage.strategy.ensemble_gate import (
 	CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
@@ -411,6 +413,81 @@ class ForecastDispatchSensitivityResponse(BaseModel):
 	row_count: int
 	bucket_summary: list[ForecastDispatchSensitivityBucketResponse]
 	rows: list[ForecastDispatchSensitivityPointResponse]
+
+
+class DflRelaxedPilotPointResponse(BaseModel):
+	pilot_name: str
+	evaluation_id: str
+	anchor_timestamp: datetime
+	forecast_model_name: str
+	horizon_hours: int
+	relaxed_realized_value_uah: float
+	relaxed_oracle_value_uah: float
+	relaxed_regret_uah: float
+	first_charge_mw: float
+	first_discharge_mw: float
+	academic_scope: str
+
+
+class DflRelaxedPilotResponse(BaseModel):
+	tenant_id: str
+	row_count: int
+	mean_relaxed_regret_uah: float
+	academic_scope: str
+	rows: list[DflRelaxedPilotPointResponse]
+
+
+class DecisionTransformerTrajectoryPointResponse(BaseModel):
+	episode_id: str
+	market_venue: str
+	scenario_index: int
+	step_index: int
+	interval_start: datetime
+	state_soc_before: float
+	state_soc_after: float
+	state_soh: float
+	state_market_price_uah_mwh: float
+	action_charge_mw: float
+	action_discharge_mw: float
+	reward_uah: float
+	return_to_go_uah: float
+	degradation_penalty_uah: float
+	baseline_value_uah: float
+	oracle_value_uah: float
+	regret_uah: float
+	academic_scope: str
+
+
+class DecisionTransformerTrajectoryResponse(BaseModel):
+	tenant_id: str
+	row_count: int
+	episode_count: int
+	academic_scope: str
+	rows: list[DecisionTransformerTrajectoryPointResponse]
+
+
+class SimulatedLiveTradingPointResponse(BaseModel):
+	episode_id: str
+	interval_start: datetime
+	step_index: int
+	state_soc_before: float
+	state_soc_after: float
+	proposed_trade_side: str
+	proposed_quantity_mw: float
+	feasible_net_power_mw: float
+	market_price_uah_mwh: float
+	reward_uah: float
+	gatekeeper_status: str
+	paper_trade_provenance: str
+	settlement_id: str | None
+	live_mode_warning: str
+
+
+class SimulatedLiveTradingResponse(BaseModel):
+	tenant_id: str
+	row_count: int
+	simulated_only: bool
+	rows: list[SimulatedLiveTradingPointResponse]
 
 
 @dataclass(frozen=True, slots=True)
@@ -1574,6 +1651,121 @@ def _to_forecast_dispatch_sensitivity_response(
 	)
 
 
+def _to_dfl_relaxed_pilot_response(
+	*,
+	tenant_id: str,
+	relaxed_pilot_frame: pl.DataFrame,
+) -> DflRelaxedPilotResponse:
+	if relaxed_pilot_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Relaxed DFL pilot rows not found.")
+	rows = [
+		row
+		for row in relaxed_pilot_frame.sort(["anchor_timestamp", "forecast_model_name"]).iter_rows(named=True)
+	]
+	regrets = [float(row["relaxed_regret_uah"]) for row in rows]
+	return DflRelaxedPilotResponse(
+		tenant_id=tenant_id,
+		row_count=relaxed_pilot_frame.height,
+		mean_relaxed_regret_uah=sum(regrets) / len(regrets),
+		academic_scope=str(rows[0]["academic_scope"]),
+		rows=[
+			DflRelaxedPilotPointResponse(
+				pilot_name=str(row["pilot_name"]),
+				evaluation_id=str(row["evaluation_id"]),
+				anchor_timestamp=_datetime_row_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+				forecast_model_name=str(row["forecast_model_name"]),
+				horizon_hours=int(row["horizon_hours"]),
+				relaxed_realized_value_uah=float(row["relaxed_realized_value_uah"]),
+				relaxed_oracle_value_uah=float(row["relaxed_oracle_value_uah"]),
+				relaxed_regret_uah=float(row["relaxed_regret_uah"]),
+				first_charge_mw=float(row["first_charge_mw"]),
+				first_discharge_mw=float(row["first_discharge_mw"]),
+				academic_scope=str(row["academic_scope"]),
+			)
+			for row in rows
+		],
+	)
+
+
+def _to_decision_transformer_trajectory_response(
+	*,
+	tenant_id: str,
+	trajectory_frame: pl.DataFrame,
+) -> DecisionTransformerTrajectoryResponse:
+	if trajectory_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Decision Transformer trajectory rows not found.")
+	rows = [
+		row
+		for row in trajectory_frame.sort(["interval_start", "episode_id", "step_index"]).iter_rows(named=True)
+	]
+	return DecisionTransformerTrajectoryResponse(
+		tenant_id=tenant_id,
+		row_count=trajectory_frame.height,
+		episode_count=trajectory_frame.select("episode_id").n_unique(),
+		academic_scope=str(rows[0]["academic_scope"]),
+		rows=[
+			DecisionTransformerTrajectoryPointResponse(
+				episode_id=str(row["episode_id"]),
+				market_venue=str(row["market_venue"]),
+				scenario_index=int(row["scenario_index"]),
+				step_index=int(row["step_index"]),
+				interval_start=_datetime_row_value(row["interval_start"], field_name="interval_start"),
+				state_soc_before=float(row["state_soc_before"]),
+				state_soc_after=float(row["state_soc_after"]),
+				state_soh=float(row["state_soh"]),
+				state_market_price_uah_mwh=float(row["state_market_price_uah_mwh"]),
+				action_charge_mw=float(row["action_charge_mw"]),
+				action_discharge_mw=float(row["action_discharge_mw"]),
+				reward_uah=float(row["reward_uah"]),
+				return_to_go_uah=float(row["return_to_go_uah"]),
+				degradation_penalty_uah=float(row["degradation_penalty_uah"]),
+				baseline_value_uah=float(row["baseline_value_uah"]),
+				oracle_value_uah=float(row["oracle_value_uah"]),
+				regret_uah=float(row["regret_uah"]),
+				academic_scope=str(row["academic_scope"]),
+			)
+			for row in rows
+		],
+	)
+
+
+def _to_simulated_live_trading_response(
+	*,
+	tenant_id: str,
+	live_trading_frame: pl.DataFrame,
+) -> SimulatedLiveTradingResponse:
+	if live_trading_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Simulated live-trading rows not found.")
+	rows = [
+		row
+		for row in live_trading_frame.sort(["interval_start", "episode_id", "step_index"]).iter_rows(named=True)
+	]
+	return SimulatedLiveTradingResponse(
+		tenant_id=tenant_id,
+		row_count=live_trading_frame.height,
+		simulated_only=all(str(row["paper_trade_provenance"]) == "simulated" for row in rows),
+		rows=[
+			SimulatedLiveTradingPointResponse(
+				episode_id=str(row["episode_id"]),
+				interval_start=_datetime_row_value(row["interval_start"], field_name="interval_start"),
+				step_index=int(row["step_index"]),
+				state_soc_before=float(row["state_soc_before"]),
+				state_soc_after=float(row["state_soc_after"]),
+				proposed_trade_side=str(row["proposed_trade_side"]),
+				proposed_quantity_mw=float(row["proposed_quantity_mw"]),
+				feasible_net_power_mw=float(row["feasible_net_power_mw"]),
+				market_price_uah_mwh=float(row["market_price_uah_mwh"]),
+				reward_uah=float(row["reward_uah"]),
+				gatekeeper_status=str(row["gatekeeper_status"]),
+				paper_trade_provenance=str(row["paper_trade_provenance"]),
+				settlement_id=None if row["settlement_id"] is None else str(row["settlement_id"]),
+				live_mode_warning=str(row["live_mode_warning"]),
+			)
+			for row in rows
+		],
+	)
+
+
 def _forecast_dispatch_sensitivity_bucket_summary(
 	sensitivity_frame: pl.DataFrame,
 ) -> list[ForecastDispatchSensitivityBucketResponse]:
@@ -2039,6 +2231,77 @@ def dashboard_forecast_dispatch_sensitivity(
 	return _to_forecast_dispatch_sensitivity_response(
 		tenant_id=tenant_id,
 		evaluation_frame=evaluation_frame,
+	)
+
+
+@app.get(
+	"/dashboard/dfl-relaxed-pilot",
+	response_model=DflRelaxedPilotResponse,
+	tags=["weather"],
+	summary="Get relaxed DFL pilot",
+	description=(
+		"Returns persisted relaxed-LP DFL pilot rows for the selected tenant. "
+		"This is a differentiable optimization research primitive, not a full DFL claim."
+	),
+)
+def dashboard_dfl_relaxed_pilot(
+	tenant_id: str,
+) -> DflRelaxedPilotResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	relaxed_pilot_frame = get_dfl_training_store().latest_relaxed_pilot_frame(tenant_id=tenant_id)
+	return _to_dfl_relaxed_pilot_response(
+		tenant_id=tenant_id,
+		relaxed_pilot_frame=relaxed_pilot_frame,
+	)
+
+
+@app.get(
+	"/dashboard/decision-transformer-trajectories",
+	response_model=DecisionTransformerTrajectoryResponse,
+	tags=["weather"],
+	summary="Get Decision Transformer trajectories",
+	description=(
+		"Returns persisted offline Decision Transformer trajectory rows for the selected tenant. "
+		"Rows are training/evaluation data only and are not live policy actions."
+	),
+)
+def dashboard_decision_transformer_trajectories(
+	tenant_id: str,
+	limit: int = 200,
+) -> DecisionTransformerTrajectoryResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	trajectory_frame = get_simulated_trade_store().latest_decision_transformer_trajectory_frame(
+		tenant_id=tenant_id,
+		limit=limit,
+	)
+	return _to_decision_transformer_trajectory_response(
+		tenant_id=tenant_id,
+		trajectory_frame=trajectory_frame,
+	)
+
+
+@app.get(
+	"/dashboard/simulated-live-trading",
+	response_model=SimulatedLiveTradingResponse,
+	tags=["weather"],
+	summary="Get simulated live trading",
+	description=(
+		"Returns persisted simulated live-trading replay rows for the selected tenant. "
+		"Rows are marked simulated and never contain real settlement identifiers."
+	),
+)
+def dashboard_simulated_live_trading(
+	tenant_id: str,
+	limit: int = 200,
+) -> SimulatedLiveTradingResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	live_trading_frame = get_simulated_trade_store().latest_simulated_live_trading_frame(
+		tenant_id=tenant_id,
+		limit=limit,
+	)
+	return _to_simulated_live_trading_response(
+		tenant_id=tenant_id,
+		live_trading_frame=live_trading_frame,
 	)
 
 

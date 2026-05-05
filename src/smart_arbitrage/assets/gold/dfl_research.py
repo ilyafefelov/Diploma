@@ -154,6 +154,7 @@ def dfl_relaxed_lp_pilot_frame(
         real_data_rolling_origin_benchmark_frame,
         max_examples=config.max_examples,
     )
+    get_dfl_training_store().upsert_relaxed_pilot_frame(pilot_frame)
     _add_metadata(
         context,
         {

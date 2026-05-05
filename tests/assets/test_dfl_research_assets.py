@@ -216,6 +216,7 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "risk_adjusted_value_gate_v0"
     }
     assert relaxed_pilot.height > 0
+    assert dfl_store.relaxed_pilot_frame.height == relaxed_pilot.height
     assert relaxed_pilot.select("academic_scope").to_series().unique().to_list() == [
         "differentiable_relaxed_lp_pilot_not_final_dfl"
     ]

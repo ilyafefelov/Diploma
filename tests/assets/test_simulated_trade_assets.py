@@ -42,8 +42,10 @@ def test_simulated_trade_training_asset_persists_transition_frame(monkeypatch) -
     paper_frame = simulated_live_trading_frame(None, transition_frame)
 
     assert trajectory_frame.height == 6
+    assert store.decision_transformer_trajectory_frame.height == 6
     assert "return_to_go_uah" in trajectory_frame.columns
     assert paper_frame.height == 6
+    assert store.simulated_live_trading_frame.height == 6
     assert paper_frame.select("paper_trade_provenance").to_series().unique().to_list() == ["simulated"]
 
 

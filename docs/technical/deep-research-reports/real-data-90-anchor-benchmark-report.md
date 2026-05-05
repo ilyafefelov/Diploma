@@ -438,6 +438,36 @@ Research support:
 - TimeXer is relevant future work for exogenous time-series modeling, but it is not needed for tonight's MVP because the current bottleneck is validated decision quality, not another heavy model: <https://huggingface.co/papers/2402.19072>.
 - Time-Series-Library is useful as a benchmark/reference implementation source for future TimeXer experiments: <https://huggingface.co/lwaekfjlk/Time-Series-Library>.
 
+## Research Read-Model Smoke
+
+This slice persisted the new framework primitives behind backend read models and validated them through Dagster plus the Docker FastAPI service. The smoke was intentionally capped: it proves lineage, persistence, and API access without replacing the 90-anchor benchmark as the empirical source of truth.
+
+Dagster smoke runs:
+
+- Simulated DAM trade training -> offline DT trajectories -> simulated paper trading: `61ba2806-ee72-40fe-afbc-f8ccecb4e6f5`.
+- Observed OREE/Open-Meteo Silver bridge -> capped Gold benchmark -> relaxed LP DFL pilot: `6e6ea066-f528-47ab-a5a2-eb1bc257d4ea`.
+- Live exogenous Silver features -> SOTA forecast training contract: `2e5750e2-daf6-491a-a465-c502317f08d6`.
+
+Postgres persistence after this read-model smoke:
+
+| Table / rows | Count |
+|---|---:|
+| `dfl_relaxed_lp_pilot_runs` | 1 |
+| `decision_transformer_trajectories` | 6 |
+| `simulated_live_trading_rows` | 6 |
+
+Docker API smoke on `http://localhost:8001`:
+
+- `GET /dashboard/dfl-relaxed-pilot?tenant_id=client_003_dnipro_factory` returned 1 row with `academic_scope="differentiable_relaxed_lp_pilot_not_final_dfl"`.
+- `GET /dashboard/decision-transformer-trajectories?tenant_id=client_003_dnipro_factory` returned 6 rows with `academic_scope="offline_dt_training_trajectory_not_live_policy"`.
+- `GET /dashboard/simulated-live-trading?tenant_id=client_003_dnipro_factory` returned 6 rows with `simulated_only=true`.
+
+Restoreable database dump after this slice:
+
+`data/db_backups/smart_arbitrage_20260505_research_read_models.dump`
+
+Claim boundary: these endpoints are dashboard-ready read models only. They do not promote the relaxed LP pilot to full DFL, do not train a deployable Decision Transformer, and do not execute live trades.
+
 ## Verification
 
 Commands run successfully:
@@ -457,5 +487,8 @@ API smoke checks:
 - `GET /dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory` returned the latest 90-anchor, 3-model benchmark summary and rows.
 - `GET /dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory` returned the latest 90-anchor calibrated gate rows.
 - `GET /dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory` returns the latest risk-adjusted selector rows after rebuilding the API service with this slice.
+- `GET /dashboard/dfl-relaxed-pilot?tenant_id=client_003_dnipro_factory` returned the persisted relaxed-LP pilot row.
+- `GET /dashboard/decision-transformer-trajectories?tenant_id=client_003_dnipro_factory` returned the persisted offline DT trajectory rows.
+- `GET /dashboard/simulated-live-trading?tenant_id=client_003_dnipro_factory` returned simulated-only paper-trading rows.
 
 Docker services were up for Postgres, MLflow, FastAPI, Dagster webserver, Dagster daemon, MQTT, and telemetry ingestor. The API is exposed on `127.0.0.1:8001`, while Dagster UI is on `127.0.0.1:3001`. Port `8000` is still occupied by a Windows `Manager` process that could not be stopped due to access denial, so the backend stack uses `SMART_ARBITRAGE_API_PORT=8001`.

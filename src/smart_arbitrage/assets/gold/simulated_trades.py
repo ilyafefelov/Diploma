@@ -90,6 +90,7 @@ def decision_transformer_trajectory_frame(
     """Gold offline DT trajectory rows from simulated dispatch transitions."""
 
     frame = build_decision_transformer_trajectory_frame(simulated_trade_training_frame)
+    get_simulated_trade_store().upsert_decision_transformer_trajectory_frame(frame)
     _add_metadata(
         context,
         {
@@ -109,6 +110,7 @@ def simulated_live_trading_frame(
     """Gold simulated live-trading replay rows for backend/dashboard read models later."""
 
     frame = build_simulated_live_trading_frame(simulated_trade_training_frame)
+    get_simulated_trade_store().upsert_simulated_live_trading_frame(frame)
     _add_metadata(
         context,
         {
