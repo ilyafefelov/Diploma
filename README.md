@@ -12,6 +12,28 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, offline Decision Transformer trajectory rows, DT safety projection, and simulated paper-trading replay rows.
 - Dashboard UI is separate and was not changed in the latest research slice.
 
+## Pipeline And LP Baseline
+
+The current operational core is a deterministic Level 1 LP baseline, not an ML
+policy. The pipeline is:
+
+```text
+Bronze market/weather/telemetry data
+  -> Silver hourly features and forecast inputs
+  -> strict similar-day forecast or ML forecast candidates
+  -> LP battery dispatch optimizer
+  -> Pydantic safety validation
+  -> oracle/regret benchmark and dashboard/API read models
+```
+
+The LP maximizes forecast market value minus degradation cost under SOC, power,
+capacity, and efficiency constraints. It solves a 24-hour DAM schedule but commits
+only the first interval in a rolling-horizon pattern. NBEATSx/TFT are research
+forecast candidates upstream of the LP; the LP itself does not train or learn.
+
+Full formula, ML/non-ML boundaries, SOC handling, and academic support are documented
+in [docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md](docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md).
+
 Latest materialized result:
 
 | Model | Rows | Mean regret UAH | Median regret UAH | Win rate |
@@ -67,6 +89,7 @@ Latest full verification: `113 passed`.
 
 ## Research Artifacts
 
+- Baseline LP and pipeline note: `docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md`
 - Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`
 - Latest exports: `data/research_runs/risk_gate_diagnostics_20260505T151401/`
 - Latest DB dump: `data/db_backups/smart_arbitrage_20260505_research_read_models.dump`
