@@ -47,6 +47,11 @@ dev = [
     "ruff",                   # Fast linting for active backend Python code
     "types-PyYAML",            # Type stubs for tenant/location YAML loading
 ]
+sota = [
+    "neuralforecast",          # Official Nixtla NBEATSx adapter path for thesis SOTA smoke runs
+    "pytorch-forecasting",     # Official Temporal Fusion Transformer adapter path
+    "lightning",               # PyTorch Forecasting trainer runtime
+]
 
 [tool.ruff]
 target-version = "py311"

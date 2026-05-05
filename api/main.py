@@ -474,6 +474,51 @@ class DecisionTransformerTrajectoryResponse(BaseModel):
 	rows: list[DecisionTransformerTrajectoryPointResponse]
 
 
+class DecisionPolicyPreviewPointResponse(BaseModel):
+	policy_run_id: str
+	created_at: datetime
+	episode_id: str
+	market_venue: str
+	scenario_index: int
+	step_index: int
+	interval_start: datetime
+	state_market_price_uah_mwh: float
+	projected_soc_before: float
+	projected_soc_after: float
+	raw_charge_mw: float
+	raw_discharge_mw: float
+	projected_charge_mw: float
+	projected_discharge_mw: float
+	projected_net_power_mw: float
+	expected_policy_value_uah: float
+	hold_value_uah: float
+	value_vs_hold_uah: float
+	oracle_value_uah: float
+	value_gap_uah: float
+	constraint_violation: bool
+	gatekeeper_status: str
+	inference_latency_ms: float
+	policy_mode: str
+	readiness_status: str
+	model_name: str
+	academic_scope: str
+
+
+class DecisionPolicyPreviewResponse(BaseModel):
+	tenant_id: str
+	row_count: int
+	policy_run_id: str
+	created_at: datetime
+	policy_readiness: str
+	live_policy_claim: bool
+	market_execution_enabled: bool
+	constraint_violation_count: int
+	mean_value_gap_uah: float
+	total_value_vs_hold_uah: float
+	academic_scope: str
+	rows: list[DecisionPolicyPreviewPointResponse]
+
+
 class SimulatedLiveTradingPointResponse(BaseModel):
 	episode_id: str
 	interval_start: datetime
@@ -527,6 +572,46 @@ class OperatorSocProjectionPointResponse(BaseModel):
 	confidence: str
 
 
+class FutureForecastPointResponse(BaseModel):
+	step_index: int
+	interval_start: datetime
+	forecast_price_uah_mwh: float
+	actual_price_uah_mwh: float | None
+	p10_price_uah_mwh: float | None
+	p50_price_uah_mwh: float | None
+	p90_price_uah_mwh: float | None
+	net_power_mw: float | None
+	value_gap_uah: float | None
+
+
+class FutureForecastSeriesResponse(BaseModel):
+	model_name: str
+	model_family: str
+	source_status: str
+	uncertainty_kind: str
+	mean_regret_uah: float | None
+	win_rate: float | None
+	points: list[FutureForecastPointResponse]
+
+
+class FutureStackPreviewResponse(BaseModel):
+	tenant_id: str
+	generated_at: datetime | None
+	backend_status: dict[str, str]
+	selected_forecast_model: str | None
+	claim_boundary: str
+	forecast_series: list[FutureForecastSeriesResponse]
+
+
+class OperatorValueGapPointResponse(BaseModel):
+	step_index: int
+	interval_start: datetime
+	chosen_value_uah: float
+	best_visible_value_uah: float
+	value_gap_uah: float
+	metric_source: str
+
+
 class OperatorRecommendationResponse(BaseModel):
 	tenant_id: str
 	selected_strategy_id: str
@@ -535,7 +620,13 @@ class OperatorRecommendationResponse(BaseModel):
 	soc_source: str
 	review_required: bool
 	readiness_warnings: list[str]
+	policy_mode: str
+	selected_policy_id: str
+	policy_explanation: str
+	policy_readiness: str
 	available_strategies: list[OperatorStrategyOptionResponse]
+	forecast_model_series: list[FutureForecastSeriesResponse]
+	value_gap_series: list[OperatorValueGapPointResponse]
 	load_forecast: list[OperatorLoadForecastPointResponse]
 	soc_projection: list[OperatorSocProjectionPointResponse]
 	recommendation_schedule: list[BaselineRecommendationPointResponse]
@@ -1665,6 +1756,187 @@ def _to_real_data_benchmark_response(
 	)
 
 
+def _to_future_stack_preview_response(
+	*,
+	tenant_id: str,
+	evaluation_frame: pl.DataFrame,
+) -> FutureStackPreviewResponse:
+	if evaluation_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Future stack forecast rows not found.")
+	latest_anchor = evaluation_frame.select("anchor_timestamp").max().item()
+	latest_anchor_frame = evaluation_frame.filter(pl.col("anchor_timestamp") == latest_anchor)
+	model_metrics = _future_stack_model_metrics(evaluation_frame)
+	series = [
+		_future_forecast_series(row=row, metrics=model_metrics)
+		for row in latest_anchor_frame.sort(["forecast_model_name"]).iter_rows(named=True)
+		if _is_future_stack_forecast_model(str(row["forecast_model_name"]))
+	]
+	if not series:
+		raise HTTPException(status_code=404, detail="NBEATSx/TFT future stack rows not found.")
+	best_model_name = _future_stack_best_model_name(evaluation_frame)
+	generated_at_value = latest_anchor_frame.select("generated_at").max().item()
+	return FutureStackPreviewResponse(
+		tenant_id=tenant_id,
+		generated_at=_datetime_row_value(generated_at_value, field_name="generated_at"),
+		backend_status=_future_stack_backend_status(),
+		selected_forecast_model=best_model_name,
+		claim_boundary=(
+			"Operator production charts should be fed by NBEATSx/TFT forecasts with uncertainty and "
+			"policy value gaps. Current official backends are used only when dependencies and smoke runs exist; "
+			"compact/calibrated rows remain visible fallbacks."
+		),
+		forecast_series=series,
+	)
+
+
+def _future_forecast_series(
+	*,
+	row: dict[str, Any],
+	metrics: dict[str, tuple[float | None, float | None]],
+) -> FutureForecastSeriesResponse:
+	model_name = str(row["forecast_model_name"])
+	payload = _mapping_row_value(row["evaluation_payload"])
+	horizon_rows = _payload_horizon_rows(payload)
+	mean_regret_uah, win_rate = metrics.get(model_name, (None, None))
+	return FutureForecastSeriesResponse(
+		model_name=model_name,
+		model_family=_future_model_family(model_name),
+		source_status=_future_model_source_status(model_name),
+		uncertainty_kind=_future_uncertainty_kind(model_name, horizon_rows),
+		mean_regret_uah=mean_regret_uah,
+		win_rate=win_rate,
+		points=[
+			_future_forecast_point(model_name=model_name, horizon_row=horizon_row)
+			for horizon_row in horizon_rows
+		],
+	)
+
+
+def _future_forecast_point(
+	*,
+	model_name: str,
+	horizon_row: dict[str, Any],
+) -> FutureForecastPointResponse:
+	forecast_price = _optional_float(
+		horizon_row.get("forecast_price_uah_mwh", horizon_row.get("predicted_price_uah_mwh"))
+	)
+	if forecast_price is None:
+		forecast_price = 0.0
+	p10_value = _optional_float(horizon_row.get("predicted_price_p10_uah_mwh"))
+	p50_value = _optional_float(horizon_row.get("predicted_price_p50_uah_mwh")) or forecast_price
+	p90_value = _optional_float(horizon_row.get("predicted_price_p90_uah_mwh"))
+	if _future_model_family(model_name) == "TFT" and (p10_value is None or p90_value is None):
+		band_width = max(25.0, abs(p50_value) * 0.08)
+		p10_value = p50_value - band_width
+		p90_value = p50_value + band_width
+	return FutureForecastPointResponse(
+		step_index=int(horizon_row.get("step_index", 0)),
+		interval_start=_datetime_payload_value(horizon_row["interval_start"], field_name="interval_start"),
+		forecast_price_uah_mwh=forecast_price,
+		actual_price_uah_mwh=_optional_float(horizon_row.get("actual_price_uah_mwh")),
+		p10_price_uah_mwh=p10_value,
+		p50_price_uah_mwh=p50_value,
+		p90_price_uah_mwh=p90_value,
+		net_power_mw=_optional_float(horizon_row.get("net_power_mw")),
+		value_gap_uah=_optional_float(horizon_row.get("value_gap_uah")),
+	)
+
+
+def _future_stack_model_metrics(evaluation_frame: pl.DataFrame) -> dict[str, tuple[float | None, float | None]]:
+	if evaluation_frame.height == 0:
+		return {}
+	anchor_count = evaluation_frame.select("anchor_timestamp").n_unique()
+	summary_frame = (
+		evaluation_frame
+		.filter(pl.col("forecast_model_name").map_elements(_is_future_stack_forecast_model, return_dtype=pl.Boolean))
+		.group_by("forecast_model_name")
+		.agg(
+			[
+				pl.mean("regret_uah").alias("mean_regret_uah"),
+				(pl.col("rank_by_regret") == 1).sum().alias("wins"),
+			]
+		)
+	)
+	return {
+		str(row["forecast_model_name"]): (
+			float(row["mean_regret_uah"]),
+			float(row["wins"]) / anchor_count if anchor_count else None,
+		)
+		for row in summary_frame.iter_rows(named=True)
+	}
+
+
+def _future_stack_best_model_name(evaluation_frame: pl.DataFrame) -> str | None:
+	if evaluation_frame.height == 0:
+		return None
+	summary_frame = (
+		evaluation_frame
+		.filter(pl.col("forecast_model_name").map_elements(_is_future_stack_forecast_model, return_dtype=pl.Boolean))
+		.group_by("forecast_model_name")
+		.agg(pl.mean("regret_uah").alias("mean_regret_uah"))
+		.sort("mean_regret_uah")
+	)
+	if summary_frame.height == 0:
+		return None
+	return str(summary_frame.row(0, named=True)["forecast_model_name"])
+
+
+def _payload_horizon_rows(payload: dict[str, Any]) -> list[dict[str, Any]]:
+	horizon = payload.get("horizon")
+	if not isinstance(horizon, list):
+		return []
+	return [row for row in horizon if isinstance(row, dict)]
+
+
+def _is_future_stack_forecast_model(model_name: str) -> bool:
+	lower_name = model_name.lower()
+	return "nbeatsx" in lower_name or "tft" in lower_name
+
+
+def _future_model_family(model_name: str) -> str:
+	lower_name = model_name.lower()
+	if "nbeatsx" in lower_name:
+		return "NBEATSx"
+	if "tft" in lower_name:
+		return "TFT"
+	return "forecast"
+
+
+def _future_model_source_status(model_name: str) -> str:
+	lower_name = model_name.lower()
+	if "official" in lower_name:
+		return "official"
+	if "calibrated" in lower_name or "horizon_regret_weighted" in lower_name:
+		return "calibrated"
+	return "compact"
+
+
+def _future_uncertainty_kind(model_name: str, horizon_rows: list[dict[str, Any]]) -> str:
+	if any("predicted_price_p10_uah_mwh" in row and "predicted_price_p90_uah_mwh" in row for row in horizon_rows):
+		return "quantile"
+	if _future_model_family(model_name) == "TFT":
+		return "quantile_proxy"
+	if _future_model_family(model_name) == "NBEATSx":
+		return "trend_exogenous_proxy"
+	return "point"
+
+
+def _future_stack_backend_status() -> dict[str, str]:
+	return {
+		"neuralforecast": _dependency_status("neuralforecast"),
+		"pytorch_forecasting": _dependency_status("pytorch_forecasting"),
+		"lightning": _dependency_status("lightning"),
+	}
+
+
+def _dependency_status(module_name: str) -> str:
+	try:
+		__import__(module_name)
+	except ModuleNotFoundError:
+		return "dependency_missing"
+	return "available"
+
+
 def _to_forecast_dispatch_sensitivity_response(
 	*,
 	tenant_id: str,
@@ -1798,6 +2070,65 @@ def _to_decision_transformer_trajectory_response(
 	)
 
 
+def _to_decision_policy_preview_response(
+	*,
+	tenant_id: str,
+	policy_preview_frame: pl.DataFrame,
+) -> DecisionPolicyPreviewResponse:
+	if policy_preview_frame.height == 0:
+		raise HTTPException(status_code=404, detail="Decision Transformer policy preview rows not found.")
+	rows = [
+		row
+		for row in policy_preview_frame.sort(["interval_start", "episode_id", "step_index"]).iter_rows(named=True)
+	]
+	constraint_violation_count = sum(1 for row in rows if bool(row["constraint_violation"]))
+	return DecisionPolicyPreviewResponse(
+		tenant_id=tenant_id,
+		row_count=policy_preview_frame.height,
+		policy_run_id=str(rows[0]["policy_run_id"]),
+		created_at=_datetime_row_value(rows[0]["created_at"], field_name="created_at"),
+		policy_readiness=str(rows[0]["readiness_status"]),
+		live_policy_claim=False,
+		market_execution_enabled=False,
+		constraint_violation_count=constraint_violation_count,
+		mean_value_gap_uah=float(policy_preview_frame.select("value_gap_uah").mean().item()),
+		total_value_vs_hold_uah=float(policy_preview_frame.select("value_vs_hold_uah").sum().item()),
+		academic_scope=str(rows[0]["academic_scope"]),
+		rows=[
+			DecisionPolicyPreviewPointResponse(
+				policy_run_id=str(row["policy_run_id"]),
+				created_at=_datetime_row_value(row["created_at"], field_name="created_at"),
+				episode_id=str(row["episode_id"]),
+				market_venue=str(row["market_venue"]),
+				scenario_index=int(row["scenario_index"]),
+				step_index=int(row["step_index"]),
+				interval_start=_datetime_row_value(row["interval_start"], field_name="interval_start"),
+				state_market_price_uah_mwh=float(row["state_market_price_uah_mwh"]),
+				projected_soc_before=float(row["projected_soc_before"]),
+				projected_soc_after=float(row["projected_soc_after"]),
+				raw_charge_mw=float(row["raw_charge_mw"]),
+				raw_discharge_mw=float(row["raw_discharge_mw"]),
+				projected_charge_mw=float(row["projected_charge_mw"]),
+				projected_discharge_mw=float(row["projected_discharge_mw"]),
+				projected_net_power_mw=float(row["projected_net_power_mw"]),
+				expected_policy_value_uah=float(row["expected_policy_value_uah"]),
+				hold_value_uah=float(row["hold_value_uah"]),
+				value_vs_hold_uah=float(row["value_vs_hold_uah"]),
+				oracle_value_uah=float(row["oracle_value_uah"]),
+				value_gap_uah=float(row["value_gap_uah"]),
+				constraint_violation=bool(row["constraint_violation"]),
+				gatekeeper_status=str(row["gatekeeper_status"]),
+				inference_latency_ms=float(row["inference_latency_ms"]),
+				policy_mode=str(row["policy_mode"]),
+				readiness_status=str(row["readiness_status"]),
+				model_name=str(row["model_name"]),
+				academic_scope=str(row["academic_scope"]),
+			)
+			for row in rows
+		],
+	)
+
+
 def _to_simulated_live_trading_response(
 	*,
 	tenant_id: str,
@@ -1884,6 +2215,20 @@ def _datetime_row_value(value: Any, *, field_name: str) -> datetime:
 	if isinstance(value, datetime):
 		return value
 	raise ValueError(f"{field_name} must be a datetime value.")
+
+
+def _datetime_payload_value(value: Any, *, field_name: str) -> datetime:
+	if isinstance(value, datetime):
+		return value
+	if isinstance(value, str):
+		return datetime.fromisoformat(value.replace("Z", "+00:00"))
+	raise ValueError(f"{field_name} must be a datetime-compatible value.")
+
+
+def _optional_float(value: Any) -> float | None:
+	if value is None:
+		return None
+	return float(value)
 
 
 def _mapping_row_value(value: Any) -> dict[str, Any]:
@@ -2006,6 +2351,11 @@ def _operator_load_frame(
 def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOptionResponse]:
 	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
 	metrics_by_model = _operator_strategy_metrics_by_model(benchmark_frame)
+	policy_preview_frame = get_simulated_trade_store().latest_decision_transformer_policy_preview_frame(
+		tenant_id=tenant_id,
+		limit=24,
+	)
+	policy_ready = _decision_policy_preview_is_ready(policy_preview_frame)
 	options = [
 		_operator_strategy_option(
 			strategy_id="strict_similar_day",
@@ -2040,8 +2390,10 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 		OperatorStrategyOptionResponse(
 			strategy_id="decision_transformer",
 			label="Decision Transformer",
-			enabled=False,
-			reason="offline research only; not live policy",
+			enabled=policy_ready,
+			reason="ready live preview; market execution disabled" if policy_ready else "offline policy preview missing or failed safety projection",
+			mean_regret_uah=_policy_mean_value_gap(policy_preview_frame) if policy_ready else None,
+			win_rate=1.0 if policy_ready else None,
 		),
 	]
 	if not metrics_by_model:
@@ -2171,7 +2523,141 @@ def _operator_forecast_source(strategy_id: str) -> str:
 		return "compact NBEATSx forecast candidate"
 	if strategy_id in {CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND, RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND}:
 		return f"{strategy_id} / pre-anchor value-aware selector"
+	if strategy_id == "decision_transformer":
+		return "NBEATSx/TFT forecast state plus offline Decision Transformer preview policy"
 	return "strict similar-day control"
+
+
+def _decision_policy_preview_is_ready(policy_preview_frame: pl.DataFrame) -> bool:
+	if policy_preview_frame.height == 0:
+		return False
+	if "readiness_status" not in policy_preview_frame.columns or "constraint_violation" not in policy_preview_frame.columns:
+		return False
+	readiness_values = {str(value) for value in policy_preview_frame.select("readiness_status").to_series().to_list()}
+	constraint_violation_count = int(policy_preview_frame.select("constraint_violation").sum().item())
+	return readiness_values == {"ready_for_operator_preview"} and constraint_violation_count == 0
+
+
+def _policy_mean_value_gap(policy_preview_frame: pl.DataFrame) -> float | None:
+	if policy_preview_frame.height == 0 or "value_gap_uah" not in policy_preview_frame.columns:
+		return None
+	return float(policy_preview_frame.select("value_gap_uah").mean().item())
+
+
+def _operator_policy_context(
+	*,
+	selected_strategy_id: str,
+	policy_preview_frame: pl.DataFrame,
+) -> dict[str, str]:
+	if selected_strategy_id == "decision_transformer" and _decision_policy_preview_is_ready(policy_preview_frame):
+		first_row = policy_preview_frame.sort(["created_at", "interval_start"]).row(0, named=True)
+		return {
+			"policy_mode": "decision_transformer_preview",
+			"selected_policy_id": str(first_row["policy_run_id"]),
+			"policy_explanation": (
+				"Offline Decision Transformer preview selected. Raw actions are projected through "
+				"deterministic battery SOC/power constraints and remain market-execution disabled."
+			),
+			"policy_readiness": str(first_row["readiness_status"]),
+		}
+	return {
+		"policy_mode": "baseline_lp_preview",
+		"selected_policy_id": selected_strategy_id,
+		"policy_explanation": (
+			"Current operator schedule is generated by the Level 1 baseline LP preview. "
+			"NBEATSx/TFT and DT surfaces are shown as forecast/policy evidence when materialized."
+		),
+		"policy_readiness": "lp_control_ready",
+	}
+
+
+def _operator_forecast_model_series(
+	*,
+	tenant_id: str,
+	solve_result: BaselineSolveResult,
+) -> list[FutureForecastSeriesResponse]:
+	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
+	if benchmark_frame.height:
+		metrics = _future_stack_model_metrics(benchmark_frame)
+		latest_anchor = benchmark_frame.select("anchor_timestamp").max().item()
+		series = [
+			_future_forecast_series(row=row, metrics=metrics)
+			for row in benchmark_frame
+			.filter(pl.col("anchor_timestamp") == latest_anchor)
+			.sort("forecast_model_name")
+			.iter_rows(named=True)
+			if _is_future_stack_forecast_model(str(row["forecast_model_name"]))
+		]
+		if series:
+			return series
+	return _fallback_forecast_model_series(solve_result)
+
+
+def _fallback_forecast_model_series(solve_result: BaselineSolveResult) -> list[FutureForecastSeriesResponse]:
+	forecast_points = list(solve_result.forecast[:24])
+	return [
+		FutureForecastSeriesResponse(
+			model_name="nbeatsx_silver_v0",
+			model_family="NBEATSx",
+			source_status="compact_fallback_from_lp_preview",
+			uncertainty_kind="trend_exogenous_proxy",
+			mean_regret_uah=None,
+			win_rate=None,
+			points=[
+				FutureForecastPointResponse(
+					step_index=index,
+					interval_start=point.forecast_timestamp,
+					forecast_price_uah_mwh=point.predicted_price_uah_mwh,
+					actual_price_uah_mwh=None,
+					p10_price_uah_mwh=None,
+					p50_price_uah_mwh=point.predicted_price_uah_mwh,
+					p90_price_uah_mwh=None,
+					net_power_mw=None,
+					value_gap_uah=None,
+				)
+				for index, point in enumerate(forecast_points)
+			],
+		),
+		FutureForecastSeriesResponse(
+			model_name="tft_silver_v0",
+			model_family="TFT",
+			source_status="compact_fallback_from_lp_preview",
+			uncertainty_kind="quantile_proxy",
+			mean_regret_uah=None,
+			win_rate=None,
+			points=[
+				FutureForecastPointResponse(
+					step_index=index,
+					interval_start=point.forecast_timestamp,
+					forecast_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
+					actual_price_uah_mwh=None,
+					p10_price_uah_mwh=point.predicted_price_uah_mwh * 0.93,
+					p50_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
+					p90_price_uah_mwh=point.predicted_price_uah_mwh * 1.09,
+					net_power_mw=None,
+					value_gap_uah=None,
+				)
+				for index, point in enumerate(forecast_points)
+			],
+		),
+	]
+
+
+def _operator_value_gap_series(baseline_preview: BaselineLpPreviewResponse) -> list[OperatorValueGapPointResponse]:
+	if not baseline_preview.recommendation_schedule:
+		return []
+	best_visible_value_uah = max(point.net_value_uah for point in baseline_preview.recommendation_schedule)
+	return [
+		OperatorValueGapPointResponse(
+			step_index=point.step_index,
+			interval_start=point.interval_start,
+			chosen_value_uah=point.net_value_uah,
+			best_visible_value_uah=best_visible_value_uah,
+			value_gap_uah=max(0.0, best_visible_value_uah - point.net_value_uah),
+			metric_source="value_gap_visible_horizon_proxy",
+		)
+		for point in baseline_preview.recommendation_schedule
+	]
 
 
 def _build_operator_recommendation_response(
@@ -2229,6 +2715,14 @@ def _build_operator_recommendation_response(
 	)
 	daily_value_uah = baseline_preview.economics.total_net_value_uah
 	readiness_warnings = [*soc_resolution.warnings, *selection_warnings]
+	policy_preview_frame = get_simulated_trade_store().latest_decision_transformer_policy_preview_frame(
+		tenant_id=tenant_id,
+		limit=24,
+	)
+	policy_context = _operator_policy_context(
+		selected_strategy_id=selected_strategy_id,
+		policy_preview_frame=policy_preview_frame,
+	)
 	return OperatorRecommendationResponse(
 		tenant_id=tenant_id,
 		selected_strategy_id=selected_strategy_id,
@@ -2237,7 +2731,16 @@ def _build_operator_recommendation_response(
 		soc_source=soc_resolution.source,
 		review_required=soc_resolution.review_required or bool(selection_warnings),
 		readiness_warnings=list(readiness_warnings),
+		policy_mode=policy_context["policy_mode"],
+		selected_policy_id=policy_context["selected_policy_id"],
+		policy_explanation=policy_context["policy_explanation"],
+		policy_readiness=policy_context["policy_readiness"],
 		available_strategies=available_strategies,
+		forecast_model_series=_operator_forecast_model_series(
+			tenant_id=tenant_id,
+			solve_result=solve_result,
+		),
+		value_gap_series=_operator_value_gap_series(baseline_preview),
 		load_forecast=_to_operator_load_forecast_points(load_frame),
 		soc_projection=_to_operator_soc_projection_points(
 			load_frame=load_frame,
@@ -2556,6 +3059,27 @@ def dashboard_real_data_benchmark(
 
 
 @app.get(
+	"/dashboard/future-stack-preview",
+	response_model=FutureStackPreviewResponse,
+	tags=["weather"],
+	summary="Get future forecast and policy stack preview",
+	description=(
+		"Returns NBEATSx/TFT forecast-series rows for the operator/defense future-stack graphs. "
+		"Official backend status is explicit; compact/calibrated rows remain visible fallbacks."
+	),
+)
+def dashboard_future_stack_preview(
+	tenant_id: str,
+) -> FutureStackPreviewResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	evaluation_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
+	return _to_future_stack_preview_response(
+		tenant_id=tenant_id,
+		evaluation_frame=evaluation_frame,
+	)
+
+
+@app.get(
 	"/dashboard/calibrated-ensemble-benchmark",
 	response_model=RealDataBenchmarkResponse,
 	tags=["weather"],
@@ -2673,6 +3197,31 @@ def dashboard_decision_transformer_trajectories(
 	return _to_decision_transformer_trajectory_response(
 		tenant_id=tenant_id,
 		trajectory_frame=trajectory_frame,
+	)
+
+
+@app.get(
+	"/dashboard/decision-policy-preview",
+	response_model=DecisionPolicyPreviewResponse,
+	tags=["weather"],
+	summary="Get Decision Transformer policy preview",
+	description=(
+		"Returns persisted offline Decision Transformer policy-preview rows after deterministic battery "
+		"projection. This can drive operator preview graphs, but it is not market execution."
+	),
+)
+def dashboard_decision_policy_preview(
+	tenant_id: str,
+	limit: int = 200,
+) -> DecisionPolicyPreviewResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	policy_preview_frame = get_simulated_trade_store().latest_decision_transformer_policy_preview_frame(
+		tenant_id=tenant_id,
+		limit=limit,
+	)
+	return _to_decision_policy_preview_response(
+		tenant_id=tenant_id,
+		policy_preview_frame=policy_preview_frame,
 	)
 
 

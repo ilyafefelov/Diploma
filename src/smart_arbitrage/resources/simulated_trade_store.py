@@ -13,9 +13,13 @@ class SimulatedTradeStore(Protocol):
 
     def upsert_decision_transformer_trajectory_frame(self, trajectory_frame: pl.DataFrame) -> None: ...
 
+    def upsert_decision_transformer_policy_preview_frame(self, policy_preview_frame: pl.DataFrame) -> None: ...
+
     def upsert_simulated_live_trading_frame(self, live_trading_frame: pl.DataFrame) -> None: ...
 
     def latest_decision_transformer_trajectory_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame: ...
+
+    def latest_decision_transformer_policy_preview_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame: ...
 
     def latest_simulated_live_trading_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame: ...
 
@@ -27,10 +31,16 @@ class NullSimulatedTradeStore:
     def upsert_decision_transformer_trajectory_frame(self, trajectory_frame: pl.DataFrame) -> None:
         return None
 
+    def upsert_decision_transformer_policy_preview_frame(self, policy_preview_frame: pl.DataFrame) -> None:
+        return None
+
     def upsert_simulated_live_trading_frame(self, live_trading_frame: pl.DataFrame) -> None:
         return None
 
     def latest_decision_transformer_trajectory_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame:
+        return pl.DataFrame()
+
+    def latest_decision_transformer_policy_preview_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame:
         return pl.DataFrame()
 
     def latest_simulated_live_trading_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame:
@@ -42,6 +52,7 @@ class InMemorySimulatedTradeStore:
         self.episode_frame = pl.DataFrame()
         self.transition_frame = pl.DataFrame()
         self.decision_transformer_trajectory_frame = pl.DataFrame()
+        self.decision_transformer_policy_preview_frame = pl.DataFrame()
         self.simulated_live_trading_frame = pl.DataFrame()
 
     def upsert_training_frames(self, *, episode_frame: pl.DataFrame, transition_frame: pl.DataFrame) -> None:
@@ -55,6 +66,13 @@ class InMemorySimulatedTradeStore:
             subset=["episode_id", "step_index"],
         )
 
+    def upsert_decision_transformer_policy_preview_frame(self, policy_preview_frame: pl.DataFrame) -> None:
+        self.decision_transformer_policy_preview_frame = _append_or_replace(
+            self.decision_transformer_policy_preview_frame,
+            policy_preview_frame,
+            subset=["policy_run_id", "episode_id", "step_index"],
+        )
+
     def upsert_simulated_live_trading_frame(self, live_trading_frame: pl.DataFrame) -> None:
         self.simulated_live_trading_frame = _append_or_replace(
             self.simulated_live_trading_frame,
@@ -64,6 +82,9 @@ class InMemorySimulatedTradeStore:
 
     def latest_decision_transformer_trajectory_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame:
         return _latest_tenant_frame(self.decision_transformer_trajectory_frame, tenant_id=tenant_id, limit=limit)
+
+    def latest_decision_transformer_policy_preview_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame:
+        return _latest_tenant_frame(self.decision_transformer_policy_preview_frame, tenant_id=tenant_id, limit=limit)
 
     def latest_simulated_live_trading_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame:
         return _latest_tenant_frame(self.simulated_live_trading_frame, tenant_id=tenant_id, limit=limit)
@@ -149,6 +170,41 @@ class PostgresSimulatedTradeStore:
                         regret_uah DOUBLE PRECISION NOT NULL,
                         academic_scope TEXT NOT NULL,
                         PRIMARY KEY (episode_id, step_index)
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS decision_transformer_policy_steps (
+                        policy_run_id TEXT NOT NULL,
+                        created_at TIMESTAMPTZ NOT NULL,
+                        tenant_id TEXT NOT NULL,
+                        episode_id TEXT NOT NULL,
+                        market_venue TEXT NOT NULL,
+                        scenario_index INTEGER NOT NULL,
+                        step_index INTEGER NOT NULL,
+                        interval_start TIMESTAMP NOT NULL,
+                        state_market_price_uah_mwh DOUBLE PRECISION NOT NULL,
+                        projected_soc_before DOUBLE PRECISION NOT NULL,
+                        projected_soc_after DOUBLE PRECISION NOT NULL,
+                        raw_charge_mw DOUBLE PRECISION NOT NULL,
+                        raw_discharge_mw DOUBLE PRECISION NOT NULL,
+                        projected_charge_mw DOUBLE PRECISION NOT NULL,
+                        projected_discharge_mw DOUBLE PRECISION NOT NULL,
+                        projected_net_power_mw DOUBLE PRECISION NOT NULL,
+                        expected_policy_value_uah DOUBLE PRECISION NOT NULL,
+                        hold_value_uah DOUBLE PRECISION NOT NULL,
+                        value_vs_hold_uah DOUBLE PRECISION NOT NULL,
+                        oracle_value_uah DOUBLE PRECISION NOT NULL,
+                        value_gap_uah DOUBLE PRECISION NOT NULL,
+                        constraint_violation BOOLEAN NOT NULL,
+                        gatekeeper_status TEXT NOT NULL,
+                        inference_latency_ms DOUBLE PRECISION NOT NULL,
+                        policy_mode TEXT NOT NULL,
+                        readiness_status TEXT NOT NULL,
+                        model_name TEXT NOT NULL,
+                        academic_scope TEXT NOT NULL,
+                        PRIMARY KEY (policy_run_id, episode_id, step_index)
                     )
                     """
                 )
@@ -313,6 +369,76 @@ class PostgresSimulatedTradeStore:
                 )
             connection.commit()
 
+    def upsert_decision_transformer_policy_preview_frame(self, policy_preview_frame: pl.DataFrame) -> None:
+        if policy_preview_frame.height == 0:
+            return None
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO decision_transformer_policy_steps (
+                        policy_run_id,
+                        created_at,
+                        tenant_id,
+                        episode_id,
+                        market_venue,
+                        scenario_index,
+                        step_index,
+                        interval_start,
+                        state_market_price_uah_mwh,
+                        projected_soc_before,
+                        projected_soc_after,
+                        raw_charge_mw,
+                        raw_discharge_mw,
+                        projected_charge_mw,
+                        projected_discharge_mw,
+                        projected_net_power_mw,
+                        expected_policy_value_uah,
+                        hold_value_uah,
+                        value_vs_hold_uah,
+                        oracle_value_uah,
+                        value_gap_uah,
+                        constraint_violation,
+                        gatekeeper_status,
+                        inference_latency_ms,
+                        policy_mode,
+                        readiness_status,
+                        model_name,
+                        academic_scope
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (policy_run_id, episode_id, step_index)
+                    DO UPDATE SET
+                        created_at = EXCLUDED.created_at,
+                        tenant_id = EXCLUDED.tenant_id,
+                        market_venue = EXCLUDED.market_venue,
+                        scenario_index = EXCLUDED.scenario_index,
+                        interval_start = EXCLUDED.interval_start,
+                        state_market_price_uah_mwh = EXCLUDED.state_market_price_uah_mwh,
+                        projected_soc_before = EXCLUDED.projected_soc_before,
+                        projected_soc_after = EXCLUDED.projected_soc_after,
+                        raw_charge_mw = EXCLUDED.raw_charge_mw,
+                        raw_discharge_mw = EXCLUDED.raw_discharge_mw,
+                        projected_charge_mw = EXCLUDED.projected_charge_mw,
+                        projected_discharge_mw = EXCLUDED.projected_discharge_mw,
+                        projected_net_power_mw = EXCLUDED.projected_net_power_mw,
+                        expected_policy_value_uah = EXCLUDED.expected_policy_value_uah,
+                        hold_value_uah = EXCLUDED.hold_value_uah,
+                        value_vs_hold_uah = EXCLUDED.value_vs_hold_uah,
+                        oracle_value_uah = EXCLUDED.oracle_value_uah,
+                        value_gap_uah = EXCLUDED.value_gap_uah,
+                        constraint_violation = EXCLUDED.constraint_violation,
+                        gatekeeper_status = EXCLUDED.gatekeeper_status,
+                        inference_latency_ms = EXCLUDED.inference_latency_ms,
+                        policy_mode = EXCLUDED.policy_mode,
+                        readiness_status = EXCLUDED.readiness_status,
+                        model_name = EXCLUDED.model_name,
+                        academic_scope = EXCLUDED.academic_scope
+                    """,
+                    [_policy_preview_values(row) for row in policy_preview_frame.iter_rows(named=True)],
+                )
+            connection.commit()
+
     def upsert_simulated_live_trading_frame(self, live_trading_frame: pl.DataFrame) -> None:
         if live_trading_frame.height == 0:
             return None
@@ -370,6 +496,27 @@ class PostgresSimulatedTradeStore:
                     LIMIT %s
                     """,
                     (tenant_id, limit),
+                )
+                rows = cursor.fetchall()
+        return pl.DataFrame([dict(row) for row in rows])
+
+    def latest_decision_transformer_policy_preview_frame(self, *, tenant_id: str, limit: int = 200) -> pl.DataFrame:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT *
+                    FROM decision_transformer_policy_steps
+                    WHERE tenant_id = %s
+                      AND created_at = (
+                          SELECT max(created_at)
+                          FROM decision_transformer_policy_steps
+                          WHERE tenant_id = %s
+                      )
+                    ORDER BY interval_start, episode_id, step_index
+                    LIMIT %s
+                    """,
+                    (tenant_id, tenant_id, limit),
                 )
                 rows = cursor.fetchall()
         return pl.DataFrame([dict(row) for row in rows])
@@ -455,6 +602,39 @@ def _trajectory_values(row: dict[str, Any]) -> tuple[Any, ...]:
     )
 
 
+def _policy_preview_values(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row["policy_run_id"],
+        row["created_at"],
+        row["tenant_id"],
+        row["episode_id"],
+        row["market_venue"],
+        row["scenario_index"],
+        row["step_index"],
+        row["interval_start"],
+        row["state_market_price_uah_mwh"],
+        row["projected_soc_before"],
+        row["projected_soc_after"],
+        row["raw_charge_mw"],
+        row["raw_discharge_mw"],
+        row["projected_charge_mw"],
+        row["projected_discharge_mw"],
+        row["projected_net_power_mw"],
+        row["expected_policy_value_uah"],
+        row["hold_value_uah"],
+        row["value_vs_hold_uah"],
+        row["oracle_value_uah"],
+        row["value_gap_uah"],
+        row["constraint_violation"],
+        row["gatekeeper_status"],
+        row["inference_latency_ms"],
+        row["policy_mode"],
+        row["readiness_status"],
+        row["model_name"],
+        row["academic_scope"],
+    )
+
+
 def _live_trading_values(row: dict[str, Any]) -> tuple[Any, ...]:
     return (
         row["episode_id"],
@@ -494,6 +674,9 @@ def _latest_tenant_frame(frame: pl.DataFrame, *, tenant_id: str, limit: int) -> 
     tenant_frame = frame.filter(pl.col("tenant_id") == tenant_id)
     if tenant_frame.height == 0:
         return pl.DataFrame()
+    if "created_at" in tenant_frame.columns:
+        latest_created_at = tenant_frame.select("created_at").max().item()
+        tenant_frame = tenant_frame.filter(pl.col("created_at") == latest_created_at)
     return tenant_frame.sort(["interval_start", "episode_id", "step_index"]).head(limit)
 
 

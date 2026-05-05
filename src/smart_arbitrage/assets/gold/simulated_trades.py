@@ -4,6 +4,7 @@ import dagster as dg
 import polars as pl
 
 from smart_arbitrage.decision_transformer.trajectories import build_decision_transformer_trajectory_frame
+from smart_arbitrage.decision_transformer.policy_training import build_decision_transformer_policy_preview_frame
 from smart_arbitrage.live.paper_trading import build_simulated_live_trading_frame
 from smart_arbitrage.resources.simulated_trade_store import get_simulated_trade_store
 from smart_arbitrage.training.simulated_trades import (
@@ -102,6 +103,30 @@ def decision_transformer_trajectory_frame(
     return frame
 
 
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "decision_transformer"})
+def decision_transformer_policy_preview_frame(
+    context,
+    decision_transformer_trajectory_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gold DT policy preview rows after strict action projection.
+
+    This is an offline policy-evaluation read model, not market execution.
+    """
+
+    frame = build_decision_transformer_policy_preview_frame(decision_transformer_trajectory_frame)
+    get_simulated_trade_store().upsert_decision_transformer_policy_preview_frame(frame)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "constraint_violation_count": int(frame.select("constraint_violation").sum().item()) if frame.height else 0,
+            "scope": "offline_dt_policy_preview_not_market_execution",
+        },
+    )
+    return frame
+
+
 @dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "paper_trading"})
 def simulated_live_trading_frame(
     context,
@@ -126,6 +151,7 @@ SIMULATED_TRADE_TRAINING_ASSETS = [
     simulated_trade_silver_feature_frame,
     simulated_trade_training_frame,
     decision_transformer_trajectory_frame,
+    decision_transformer_policy_preview_frame,
     simulated_live_trading_frame,
 ]
 

@@ -613,6 +613,14 @@ def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns
 	assert "stale telemetry" in " ".join(response_payload["readiness_warnings"]).lower()
 	assert response_payload["value_vs_hold_uah"] == pytest.approx(response_payload["daily_value_uah"])
 	assert response_payload["hold_baseline_value_uah"] == pytest.approx(0.0)
+	assert response_payload["policy_mode"] == "baseline_lp_preview"
+	assert response_payload["policy_readiness"] == "lp_control_ready"
+	assert response_payload["selected_policy_id"] == "strict_similar_day"
+	assert len(response_payload["value_gap_series"]) == len(response_payload["recommendation_schedule"])
+	assert {
+		series["model_name"]
+		for series in response_payload["forecast_model_series"]
+	}.issuperset({"nbeatsx_silver_v0", "tft_silver_v0"})
 	assert response_payload["load_forecast"][0]["reason_code"] in {"first_shift", "second_shift", "off_hours"}
 	assert response_payload["available_strategies"][0]["strategy_id"] == "strict_similar_day"
 	assert any(strategy["enabled"] is False for strategy in response_payload["available_strategies"] if strategy["strategy_id"] == "decision_transformer")
@@ -821,6 +829,92 @@ def test_real_data_benchmark_endpoint_returns_latest_summary_and_rows(
 		"tft_silver_v0",
 		"strict_similar_day",
 	]
+
+
+def test_future_stack_preview_returns_nbeatsx_and_tft_series(
+	client: TestClient,
+	fake_strategy_evaluation_store: InMemoryStrategyEvaluationStore,
+) -> None:
+	generated_at = datetime(2026, 5, 4, 20, 30, tzinfo=UTC)
+	anchor_timestamp = datetime(2026, 5, 3, 20, tzinfo=UTC)
+	horizon = [
+		{
+			"step_index": 0,
+			"interval_start": "2026-05-03T21:00:00+00:00",
+			"forecast_price_uah_mwh": 1000.0,
+			"actual_price_uah_mwh": 1010.0,
+			"net_power_mw": -0.1,
+		},
+		{
+			"step_index": 1,
+			"interval_start": "2026-05-03T22:00:00+00:00",
+			"forecast_price_uah_mwh": 1400.0,
+			"actual_price_uah_mwh": 1395.0,
+			"net_power_mw": 0.1,
+		},
+	]
+	fake_strategy_evaluation_store.upsert_evaluation_frame(
+		pl.DataFrame(
+			{
+				"evaluation_id": ["bench-001", "bench-001"],
+				"tenant_id": ["client_003_dnipro_factory", "client_003_dnipro_factory"],
+				"forecast_model_name": ["nbeatsx_silver_v0", "tft_silver_v0"],
+				"strategy_kind": [
+					"real_data_rolling_origin_benchmark",
+					"real_data_rolling_origin_benchmark",
+				],
+				"market_venue": ["DAM", "DAM"],
+				"anchor_timestamp": [anchor_timestamp, anchor_timestamp],
+				"generated_at": [generated_at, generated_at],
+				"horizon_hours": [24, 24],
+				"starting_soc_fraction": [0.5, 0.5],
+				"starting_soc_source": ["tenant_default", "tenant_default"],
+				"decision_value_uah": [120.0, 125.0],
+				"forecast_objective_value_uah": [119.0, 124.0],
+				"oracle_value_uah": [130.0, 130.0],
+				"regret_uah": [10.0, 5.0],
+				"regret_ratio": [0.0769, 0.0385],
+				"total_degradation_penalty_uah": [10.0, 10.0],
+				"total_throughput_mwh": [0.25, 0.24],
+				"committed_action": ["DISCHARGE", "DISCHARGE"],
+				"committed_power_mw": [0.08, 0.08],
+				"rank_by_regret": [2, 1],
+				"evaluation_payload": [
+					{
+						"data_quality_tier": "thesis_grade",
+						"horizon": horizon,
+						"forecast_diagnostics": {"mae_uah_mwh": 8.0},
+					},
+					{
+						"data_quality_tier": "thesis_grade",
+						"horizon": horizon,
+						"forecast_diagnostics": {
+							"mae_uah_mwh": 5.0,
+							"pinball_loss_p10_uah_mwh": 4.0,
+							"pinball_loss_p50_uah_mwh": 3.0,
+							"pinball_loss_p90_uah_mwh": 4.5,
+						},
+					},
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/future-stack-preview",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["backend_status"]["neuralforecast"] in {"available", "dependency_missing"}
+	assert {series["model_name"] for series in response_payload["forecast_series"]} == {
+		"nbeatsx_silver_v0",
+		"tft_silver_v0",
+	}
+	assert len(response_payload["forecast_series"][0]["points"]) == 2
+	assert response_payload["forecast_series"][1]["uncertainty_kind"] == "quantile_proxy"
 
 
 def test_calibrated_ensemble_benchmark_endpoint_returns_latest_gate_rows(
@@ -1175,6 +1269,82 @@ def test_decision_transformer_trajectories_endpoint_returns_rows(
 	assert response_payload["rows"][0]["action_discharge_mw"] == pytest.approx(0.1)
 
 
+def test_decision_policy_preview_endpoint_returns_ready_rows(
+	client: TestClient,
+	fake_simulated_trade_store: InMemorySimulatedTradeStore,
+) -> None:
+	fake_simulated_trade_store.upsert_decision_transformer_policy_preview_frame(
+		pl.DataFrame(
+			{
+				"policy_run_id": ["dt-run-001", "dt-run-001"],
+				"created_at": [
+					datetime(2026, 5, 5, 12, tzinfo=UTC),
+					datetime(2026, 5, 5, 12, tzinfo=UTC),
+				],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"episode_id": ["episode-001", "episode-001"],
+				"market_venue": ["DAM", "DAM"],
+				"scenario_index": [0, 0],
+				"step_index": [0, 1],
+				"interval_start": [
+					datetime(2026, 5, 5, 0, tzinfo=UTC),
+					datetime(2026, 5, 5, 1, tzinfo=UTC),
+				],
+				"state_market_price_uah_mwh": [4200.0, 1600.0],
+				"projected_soc_before": [0.5, 0.45],
+				"projected_soc_after": [0.45, 0.55],
+				"raw_charge_mw": [0.0, 0.1],
+				"raw_discharge_mw": [0.1, 0.0],
+				"projected_charge_mw": [0.0, 0.1],
+				"projected_discharge_mw": [0.1, 0.0],
+				"projected_net_power_mw": [0.1, -0.1],
+				"expected_policy_value_uah": [416.0, -164.0],
+				"hold_value_uah": [0.0, 0.0],
+				"value_vs_hold_uah": [416.0, -164.0],
+				"oracle_value_uah": [550.0, 550.0],
+				"value_gap_uah": [134.0, 714.0],
+				"constraint_violation": [False, False],
+				"gatekeeper_status": ["accepted", "accepted"],
+				"inference_latency_ms": [0.4, 0.5],
+				"policy_mode": [
+					"decision_transformer_preview",
+					"decision_transformer_preview",
+				],
+				"readiness_status": [
+					"ready_for_operator_preview",
+					"ready_for_operator_preview",
+				],
+				"model_name": [
+					"decision_transformer_policy_v0",
+					"decision_transformer_policy_v0",
+				],
+				"academic_scope": [
+					"offline_dt_policy_preview_not_market_execution",
+					"offline_dt_policy_preview_not_market_execution",
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/decision-policy-preview",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["policy_run_id"] == "dt-run-001"
+	assert response_payload["policy_readiness"] == "ready_for_operator_preview"
+	assert response_payload["live_policy_claim"] is False
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["constraint_violation_count"] == 0
+	assert response_payload["rows"][0]["projected_net_power_mw"] == pytest.approx(0.1)
+
+
 def test_simulated_live_trading_endpoint_returns_rows(
 	client: TestClient,
 	fake_simulated_trade_store: InMemorySimulatedTradeStore,
@@ -1294,5 +1464,7 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/forecast-dispatch-sensitivity"]["get"]["summary"] == "Get forecast-dispatch sensitivity"
 	assert schema["paths"]["/dashboard/dfl-relaxed-pilot"]["get"]["summary"] == "Get relaxed DFL pilot"
 	assert schema["paths"]["/dashboard/decision-transformer-trajectories"]["get"]["summary"] == "Get Decision Transformer trajectories"
+	assert schema["paths"]["/dashboard/decision-policy-preview"]["get"]["summary"] == "Get Decision Transformer policy preview"
 	assert schema["paths"]["/dashboard/simulated-live-trading"]["get"]["summary"] == "Get simulated live trading"
+	assert schema["paths"]["/dashboard/future-stack-preview"]["get"]["summary"] == "Get future forecast and policy stack preview"
 	assert schema["paths"]["/dashboard/operator-recommendation"]["get"]["summary"] == "Get operator recommendation"

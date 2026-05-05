@@ -5,6 +5,7 @@ from smart_arbitrage.assets.gold.simulated_trades import (
     SIMULATED_TRADE_TRAINING_ASSETS,
     SimulatedTradeTrainingAssetConfig,
     decision_transformer_trajectory_frame,
+    decision_transformer_policy_preview_frame,
     simulated_live_trading_frame,
     simulated_trade_silver_feature_frame,
     simulated_trade_training_frame,
@@ -44,6 +45,18 @@ def test_simulated_trade_training_asset_persists_transition_frame(monkeypatch) -
     assert trajectory_frame.height == 6
     assert store.decision_transformer_trajectory_frame.height == 6
     assert "return_to_go_uah" in trajectory_frame.columns
+
+    policy_preview_frame = decision_transformer_policy_preview_frame(None, trajectory_frame)
+
+    assert policy_preview_frame.height == 6
+    assert store.decision_transformer_policy_preview_frame.height == 6
+    assert policy_preview_frame.select("constraint_violation").to_series().to_list() == [
+        False for _ in range(6)
+    ]
+    assert policy_preview_frame.select("readiness_status").to_series().unique().to_list() == [
+        "ready_for_operator_preview"
+    ]
+
     assert paper_frame.height == 6
     assert store.simulated_live_trading_frame.height == 6
     assert paper_frame.select("paper_trade_provenance").to_series().unique().to_list() == ["simulated"]
@@ -78,6 +91,7 @@ def test_simulated_trade_training_asset_is_registered() -> None:
         "simulated_trade_silver_feature_frame",
         "simulated_trade_training_frame",
         "decision_transformer_trajectory_frame",
+        "decision_transformer_policy_preview_frame",
         "simulated_live_trading_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
