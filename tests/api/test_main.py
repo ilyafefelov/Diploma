@@ -289,6 +289,10 @@ def test_dashboard_signal_preview_returns_tenant_aware_series(
 	assert response_payload["tenant_id"] == "client_002_lviv_office"
 	assert len(response_payload["labels"]) == 6
 	assert all(len(label) == 5 and label[2] == ":" for label in response_payload["labels"])
+	assert response_payload["latest_price_timestamp"] is not None
+	assert response_payload["forecast_window_start"] is not None
+	assert response_payload["forecast_window_end"] is not None
+	assert response_payload["timezone"] == "Europe/Kyiv"
 	assert len(response_payload["market_price"]) == 6
 	assert len(response_payload["weather_bias"]) == 6
 	assert response_payload["weather_sources"] == ["OPEN_METEO"] * 6
@@ -569,6 +573,49 @@ def test_baseline_lp_preview_uses_fresh_hourly_telemetry_soc(
 	assert response_payload["starting_soc_fraction"] == pytest.approx(0.62)
 	assert response_payload["starting_soc_source"] == "telemetry_hourly"
 	assert response_payload["telemetry_freshness"]["telemetry_freshness"] == "fresh"
+
+
+def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns(
+	client: TestClient,
+	fake_battery_telemetry_store: InMemoryBatteryTelemetryStore,
+) -> None:
+	fake_battery_telemetry_store.upsert_hourly_snapshots(
+		[
+			BatteryStateHourlySnapshot(
+				tenant_id="client_003_dnipro_factory",
+				snapshot_hour=datetime(2026, 5, 4, 11, tzinfo=UTC),
+				observation_count=4,
+				soc_open=0.60,
+				soc_close=0.58,
+				soc_mean=0.59,
+				soh_close=0.961,
+				power_mw_mean=-0.02,
+				throughput_mwh=0.04,
+				efc_delta=0.04,
+				telemetry_freshness="stale",
+				first_observed_at=datetime(2026, 5, 4, 11, tzinfo=UTC),
+				last_observed_at=datetime(2026, 5, 4, 11, 15, tzinfo=UTC),
+			)
+		]
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "strict_similar_day"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["selected_strategy_id"] == "strict_similar_day"
+	assert response_payload["soc_source"] == "telemetry_projected"
+	assert response_payload["review_required"] is True
+	assert "stale telemetry" in " ".join(response_payload["readiness_warnings"]).lower()
+	assert response_payload["value_vs_hold_uah"] == pytest.approx(response_payload["daily_value_uah"])
+	assert response_payload["hold_baseline_value_uah"] == pytest.approx(0.0)
+	assert response_payload["load_forecast"][0]["reason_code"] in {"first_shift", "second_shift", "off_hours"}
+	assert response_payload["available_strategies"][0]["strategy_id"] == "strict_similar_day"
+	assert any(strategy["enabled"] is False for strategy in response_payload["available_strategies"] if strategy["strategy_id"] == "decision_transformer")
 
 
 def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(
@@ -1248,3 +1295,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/dfl-relaxed-pilot"]["get"]["summary"] == "Get relaxed DFL pilot"
 	assert schema["paths"]["/dashboard/decision-transformer-trajectories"]["get"]["summary"] == "Get Decision Transformer trajectories"
 	assert schema["paths"]["/dashboard/simulated-live-trading"]["get"]["summary"] == "Get simulated live trading"
+	assert schema["paths"]["/dashboard/operator-recommendation"]["get"]["summary"] == "Get operator recommendation"

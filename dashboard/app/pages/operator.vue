@@ -16,6 +16,7 @@ import {
 import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
+import { useOperatorRecommendation } from '~/composables/useOperatorRecommendation'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
 import { buildOperatorResearchMetrics } from '~/utils/operatorResearchMetrics'
@@ -70,6 +71,15 @@ const {
 
 const includePriceHistory = ref(true)
 const explanationMode = ref<'mvp' | 'future'>('mvp')
+const selectedOperatorStrategyId = ref('strict_similar_day')
+
+const {
+  operatorRecommendation,
+  isLoading: isOperatorRecommendationLoading,
+  error: operatorRecommendationError,
+  clearError: clearOperatorRecommendationError,
+  loadOperatorRecommendation
+} = useOperatorRecommendation(selectedTenantId, selectedOperatorStrategyId)
 
 const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Current MVP logic' : 'Future production logic')
 
@@ -171,6 +181,7 @@ const dismissSurfaceErrors = (): void => {
   clearWeatherError()
   clearSignalPreviewError()
   clearBaselinePreviewError()
+  clearOperatorRecommendationError()
 }
 
 const setSelectedTenantId = (tenantId: string): void => {
@@ -189,6 +200,7 @@ onMounted(async () => {
 
   await loadSignalPreview()
   await loadBaselinePreview()
+  await loadOperatorRecommendation()
   await defense.loadDefenseDashboard()
   await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
@@ -212,8 +224,8 @@ onBeforeUnmount(() => {
       <OperatorMetricRibbon :metrics="headlineMetrics" />
 
       <OperatorAlertBanner
-        v-if="error || weatherError || signalPreviewError || baselinePreviewError"
-        :message="error || weatherError || signalPreviewError || baselinePreviewError"
+        v-if="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError"
+        :message="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError"
         @dismiss="dismissSurfaceErrors"
       />
 
@@ -256,8 +268,9 @@ onBeforeUnmount(() => {
             :sensitivity="defense.sensitivity.value"
             :battery-state="defense.batteryState.value"
             :baseline-preview="baselinePreview"
+            :operator-recommendation="operatorRecommendation"
             :exogenous-signals="defense.exogenousSignals.value"
-            :is-loading="defense.isLoading.value"
+            :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
           />
 
           <OperatorResearchPanel

@@ -25,6 +25,17 @@ tenants:
       peak_load_kw: 200.0
       base_load_kw: 50.0
       load_profile: commercial
+    consumption_schedule:
+      timezone: Europe/Kyiv
+      profile_label: mall_open_hours
+      off_hours_multiplier: 0.45
+      battery_support_fraction: 0.08
+      intervals:
+        - days: [mon, tue, wed, thu, fri, sat, sun]
+          start: "10:00"
+          end: "22:00"
+          load_multiplier: 1.0
+          reason_code: open_hours
     economic_params:
       electricity_tariff: 0.12
       feed_in_tariff: 0.08
@@ -52,6 +63,17 @@ tenants:
       peak_load_kw: 120.0
       base_load_kw: 30.0
       load_profile: office
+    consumption_schedule:
+      timezone: Europe/Kyiv
+      profile_label: office_workday
+      off_hours_multiplier: 0.35
+      battery_support_fraction: 0.06
+      intervals:
+        - days: [mon, tue, wed, thu, fri]
+          start: "08:00"
+          end: "18:00"
+          load_multiplier: 1.0
+          reason_code: office_hours
     economic_params:
       electricity_tariff: 0.11
       feed_in_tariff: 0.08
@@ -79,6 +101,22 @@ tenants:
       peak_load_kw: 400.0
       base_load_kw: 150.0
       load_profile: industrial
+    consumption_schedule:
+      timezone: Europe/Kyiv
+      profile_label: factory_two_shift
+      off_hours_multiplier: 0.5
+      battery_support_fraction: 0.1
+      intervals:
+        - days: [mon, tue, wed, thu, fri, sat]
+          start: "06:00"
+          end: "14:00"
+          load_multiplier: 0.95
+          reason_code: first_shift
+        - days: [mon, tue, wed, thu, fri, sat]
+          start: "14:00"
+          end: "22:00"
+          load_multiplier: 1.0
+          reason_code: second_shift
     economic_params:
       electricity_tariff: 0.10
       feed_in_tariff: 0.07
@@ -106,6 +144,17 @@ tenants:
       peak_load_kw: 300.0
       base_load_kw: 100.0
       load_profile: hospital
+    consumption_schedule:
+      timezone: Europe/Kyiv
+      profile_label: critical_24_7
+      off_hours_multiplier: 1.0
+      battery_support_fraction: 0.12
+      intervals:
+        - days: [mon, tue, wed, thu, fri, sat, sun]
+          start: "00:00"
+          end: "24:00"
+          load_multiplier: 1.0
+          reason_code: critical_24_7
     economic_params:
       electricity_tariff: 0.13
       feed_in_tariff: 0.08
@@ -133,6 +182,22 @@ tenants:
       peak_load_kw: 180.0
       base_load_kw: 60.0
       load_profile: hotel
+    consumption_schedule:
+      timezone: Europe/Kyiv
+      profile_label: hotel_daily_evening_peak
+      off_hours_multiplier: 0.55
+      battery_support_fraction: 0.09
+      intervals:
+        - days: [mon, tue, wed, thu, fri, sat, sun]
+          start: "06:00"
+          end: "18:00"
+          load_multiplier: 0.85
+          reason_code: guest_day_load
+        - days: [mon, tue, wed, thu, fri, sat, sun]
+          start: "18:00"
+          end: "23:00"
+          load_multiplier: 1.0
+          reason_code: evening_peak
     economic_params:
       electricity_tariff: 0.12
       feed_in_tariff: 0.08

@@ -10,6 +10,10 @@ export interface TenantSummary {
 export interface SignalPreview {
   tenant_id: string
   labels: string[]
+  latest_price_timestamp?: string | null
+  forecast_window_start?: string | null
+  forecast_window_end?: string | null
+  timezone?: string | null
   market_price: number[]
   weather_bias: number[]
   weather_sources: string[]
@@ -355,6 +359,53 @@ export interface SimulatedLiveTradingResponse {
   row_count: number
   simulated_only: boolean
   rows: SimulatedLiveTradingPointResponse[]
+}
+
+export interface OperatorStrategyOptionResponse {
+  strategy_id: string
+  label: string
+  enabled: boolean
+  reason: string
+  mean_regret_uah: number | null
+  win_rate: number | null
+}
+
+export interface OperatorLoadForecastPointResponse {
+  timestamp: string
+  load_mw: number
+  pv_estimate_mw: number
+  net_load_mw: number
+  btm_battery_power_mw: number
+  source_kind: string
+  weather_source_kind: string
+  reason_code: string
+}
+
+export interface OperatorSocProjectionPointResponse {
+  timestamp: string
+  physical_soc: number | null
+  estimated_soc: number
+  planning_soc: number
+  soc_source: string
+  confidence: string
+}
+
+export interface OperatorRecommendationResponse {
+  tenant_id: string
+  selected_strategy_id: string
+  selection_reason: string
+  forecast_source: string
+  soc_source: string
+  review_required: boolean
+  readiness_warnings: string[]
+  available_strategies: OperatorStrategyOptionResponse[]
+  load_forecast: OperatorLoadForecastPointResponse[]
+  soc_projection: OperatorSocProjectionPointResponse[]
+  recommendation_schedule: BaselineRecommendationPoint[]
+  daily_value_uah: number
+  hold_baseline_value_uah: number
+  value_vs_hold_uah: number
+  economics: BaselinePreviewEconomics
 }
 
 export type OperatorFlowType = 'weather_control' | 'signal_preview' | 'baseline_lp' | 'gatekeeper' | 'dispatch_execution'

@@ -136,7 +136,7 @@ try {
     Initialize-VerificationTemp
 
     Invoke-OptionalPythonTool -DisplayName "Ruff" -ModuleName "ruff" -Arguments @("check", "src", "tests", "api")
-    Invoke-OptionalPythonTool -DisplayName "Mypy" -ModuleName "mypy" -Arguments @("src", "tests", "api")
+    Invoke-OptionalPythonTool -DisplayName "Mypy" -ModuleName "mypy" -Arguments @("--config-file", "pyproject.toml")
     Invoke-OptionalPythonTool -DisplayName "Pytest" -ModuleName "pytest" -Arguments @("-p", "no:cacheprovider", "tests")
 
     if (-not (Test-PythonModule -ModuleName "dagster")) {

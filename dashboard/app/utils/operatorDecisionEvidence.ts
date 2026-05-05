@@ -3,6 +3,7 @@ import type {
   DashboardBatteryStateResponse,
   DashboardExogenousSignalsResponse,
   ForecastDispatchSensitivityResponse,
+  OperatorRecommendationResponse,
   RealDataBenchmarkResponse
 } from '../types/control-plane'
 import type { DefenseModelRow } from './defenseDataset'
@@ -102,6 +103,7 @@ export const buildSensitivityEvidenceRows = (
 }
 
 export const buildOperatorDecisionStateCards = (input: {
+  operatorRecommendation?: OperatorRecommendationResponse | null
   batteryState: DashboardBatteryStateResponse | null
   baselinePreview: BaselineLpPreview | null
   exogenousSignals: DashboardExogenousSignalsResponse | null
@@ -109,34 +111,39 @@ export const buildOperatorDecisionStateCards = (input: {
 }): OperatorDecisionStateCard[] => {
   const latestTelemetrySoc = input.batteryState?.latest_telemetry?.current_soc ?? null
   const hourlySoc = input.batteryState?.hourly_snapshot?.soc_close ?? null
-  const physicalSoc = latestTelemetrySoc ?? hourlySoc
-  const planningSoc = input.baselinePreview?.starting_soc_fraction ?? null
+  const firstSocProjection = input.operatorRecommendation?.soc_projection[0] ?? null
+  const physicalSoc = firstSocProjection?.physical_soc ?? latestTelemetrySoc ?? hourlySoc
+  const planningSoc = firstSocProjection?.planning_soc ?? input.baselinePreview?.starting_soc_fraction ?? null
   const gridRisk = input.exogenousSignals?.national_grid_risk_score ?? null
+  const bestOperatorStrategy = input.operatorRecommendation?.available_strategies
+    .filter(strategy => strategy.enabled && typeof strategy.mean_regret_uah === 'number')
+    .sort((left, right) => (left.mean_regret_uah ?? Number.POSITIVE_INFINITY) - (right.mean_regret_uah ?? Number.POSITIVE_INFINITY))[0] ?? null
   const bestRow = [...input.modelRows].sort((left, right) => left.meanRegretUah - right.meanRegretUah)[0] ?? null
 
   return [
     {
       label: 'Physical SOC',
       value: physicalSoc === null ? 'waiting' : formatFraction(physicalSoc),
-      meta: input.batteryState?.fallback_reason
+      meta: input.operatorRecommendation?.soc_source
+        || input.batteryState?.fallback_reason
         || input.batteryState?.hourly_snapshot?.telemetry_freshness
         || (latestTelemetrySoc === null ? 'latest snapshot' : 'latest telemetry'),
       tooltipTitle: 'Physical SOC',
-      tooltipBody: 'Latest battery state from telemetry when available, otherwise latest hourly Silver snapshot. This is physical truth, not a planned future state.',
-      tooltipFormula: 'physical_soc = latest_telemetry.current_soc ?? hourly_snapshot.soc_close'
+      tooltipBody: 'Latest battery state from live telemetry when available. If telemetry is stale, the operator recommendation read model projects from hourly SOC plus tenant load/PV schedule.',
+      tooltipFormula: 'physical_soc = live_telemetry ?? hourly_snapshot; projected_soc uses tenant net load'
     },
     {
       label: 'Planning SOC',
       value: planningSoc === null ? 'waiting' : formatFraction(planningSoc),
-      meta: input.baselinePreview?.starting_soc_source || 'baseline preview',
+      meta: input.operatorRecommendation?.selected_strategy_id || input.baselinePreview?.starting_soc_source || 'baseline preview',
       tooltipTitle: 'Planning SOC',
-      tooltipBody: 'Starting SOC used by the baseline LP preview. If live telemetry is fresh, backend can start from telemetry; otherwise it falls back to tenant defaults.',
-      tooltipFormula: 'starting_soc_source = request_override | telemetry_hourly | tenant_default'
+      tooltipBody: 'SOC after the first feasible planning step from the current selected operator strategy read model.',
+      tooltipFormula: 'planning_soc = feasible_schedule[0].projected_soc_after_fraction'
     },
     {
       label: 'Best comparator',
-      value: bestRow?.modelName ?? 'waiting',
-      meta: bestRow ? 'lowest mean regret in read model' : 'benchmark not loaded',
+      value: bestOperatorStrategy?.strategy_id ?? bestRow?.modelName ?? 'waiting',
+      meta: bestOperatorStrategy ? 'lowest mean regret in live read model' : bestRow ? 'lowest mean regret in defense model' : 'benchmark not loaded',
       tooltipTitle: 'Best comparator',
       tooltipBody: 'Lowest mean regret strategy in returned benchmark rows. It is a comparison signal, not automatic production model promotion.',
       tooltipFormula: 'best = argmin(mean_regret_uah) across benchmark model rows'
@@ -153,33 +160,42 @@ export const buildOperatorDecisionStateCards = (input: {
 }
 
 export const buildOperatorDecisionReadinessItems = (input: {
+  operatorRecommendation?: OperatorRecommendationResponse | null
   batteryState: DashboardBatteryStateResponse | null
   baselinePreview: BaselineLpPreview | null
   exogenousSignals: DashboardExogenousSignalsResponse | null
 }): OperatorDecisionReadinessItem[] => {
   const latestTelemetrySoc = input.batteryState?.latest_telemetry?.current_soc ?? null
   const hourlySoc = input.batteryState?.hourly_snapshot?.soc_close ?? null
-  const physicalSoc = latestTelemetrySoc ?? hourlySoc
-  const planningSoc = input.baselinePreview?.starting_soc_fraction ?? null
+  const firstSocProjection = input.operatorRecommendation?.soc_projection[0] ?? null
+  const physicalSoc = firstSocProjection?.physical_soc ?? latestTelemetrySoc ?? hourlySoc
+  const planningSoc = firstSocProjection?.planning_soc ?? input.baselinePreview?.starting_soc_fraction ?? null
   const gridFlags = collectGridFlags(input.exogenousSignals)
   const sourceFreshness = summarizeSourceFreshness(input.exogenousSignals)
+  const operatorWarnings = input.operatorRecommendation?.readiness_warnings ?? []
 
   return [
     {
       label: 'Physical SOC',
-      status: latestTelemetrySoc !== null ? 'live' : hourlySoc !== null ? 'snapshot' : 'missing',
-      tone: latestTelemetrySoc !== null ? 'green' : hourlySoc !== null ? 'orange' : 'red',
-      detail: latestTelemetrySoc !== null
-        ? `${formatFraction(latestTelemetrySoc)} from latest telemetry`
-        : hourlySoc !== null
-          ? `${formatFraction(hourlySoc)} from hourly snapshot`
-          : input.batteryState?.fallback_reason || 'no telemetry or hourly snapshot'
+      status: input.operatorRecommendation?.soc_source === 'telemetry_projected'
+        ? 'projected'
+        : latestTelemetrySoc !== null ? 'live' : hourlySoc !== null ? 'snapshot' : 'missing',
+      tone: input.operatorRecommendation?.soc_source === 'telemetry_projected'
+        ? 'orange'
+        : latestTelemetrySoc !== null ? 'green' : hourlySoc !== null ? 'orange' : 'red',
+      detail: input.operatorRecommendation
+        ? `${formatFraction(input.operatorRecommendation.soc_projection[0]?.estimated_soc ?? planningSoc ?? 0)} via ${input.operatorRecommendation.soc_source}`
+        : latestTelemetrySoc !== null
+          ? `${formatFraction(latestTelemetrySoc)} from latest telemetry`
+          : hourlySoc !== null
+            ? `${formatFraction(hourlySoc)} from hourly snapshot`
+            : input.batteryState?.fallback_reason || 'no telemetry or hourly snapshot'
     },
     {
-      label: 'Planning SOC',
-      status: planningReadinessStatus(physicalSoc, planningSoc),
-      tone: planningReadinessTone(physicalSoc, planningSoc),
-      detail: planningReadinessDetail(physicalSoc, planningSoc, input.baselinePreview?.starting_soc_source)
+      label: 'Selected strategy',
+      status: input.operatorRecommendation?.selected_strategy_id ?? 'pending',
+      tone: input.operatorRecommendation?.review_required ? 'orange' : input.operatorRecommendation ? 'green' : 'blue',
+      detail: input.operatorRecommendation?.selection_reason || planningReadinessDetail(physicalSoc, planningSoc, input.baselinePreview?.starting_soc_source)
     },
     {
       label: 'Grid context',
@@ -188,10 +204,10 @@ export const buildOperatorDecisionReadinessItems = (input: {
       detail: gridFlags.length > 0 ? gridFlags.join('; ') : input.exogenousSignals ? 'no active tenant-region flag' : 'no grid signal loaded'
     },
     {
-      label: 'Source freshness',
-      status: sourceFreshness.status,
-      tone: sourceFreshness.tone,
-      detail: sourceFreshness.detail
+      label: 'Readiness',
+      status: operatorWarnings.length > 0 ? 'review' : sourceFreshness.status,
+      tone: operatorWarnings.length > 0 ? 'orange' : sourceFreshness.tone,
+      detail: operatorWarnings[0] || sourceFreshness.detail
     }
   ]
 }
@@ -202,31 +218,6 @@ const formatAnchorLabel = (timestamp: string): string => new Date(timestamp).toL
 })
 
 const formatFraction = (value: number): string => `${Math.round(value * 100)}%`
-
-const planningReadinessStatus = (physicalSoc: number | null, planningSoc: number | null): string => {
-  if (physicalSoc === null || planningSoc === null) {
-    return 'missing'
-  }
-
-  const gap = Math.abs(physicalSoc - planningSoc)
-  if (gap <= 0.05) {
-    return 'aligned'
-  }
-
-  return gap <= 0.15 ? 'review' : 'reset'
-}
-
-const planningReadinessTone = (
-  physicalSoc: number | null,
-  planningSoc: number | null
-): OperatorDecisionReadinessItem['tone'] => {
-  const status = planningReadinessStatus(physicalSoc, planningSoc)
-  if (status === 'aligned') {
-    return 'green'
-  }
-
-  return status === 'review' ? 'orange' : 'red'
-}
 
 const planningReadinessDetail = (
   physicalSoc: number | null,

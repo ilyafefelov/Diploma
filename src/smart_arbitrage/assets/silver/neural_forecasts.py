@@ -28,6 +28,7 @@ def neural_forecast_feature_frame(
 	dam_price_history: pl.DataFrame,
 	battery_state_hourly_silver=None,
 	grid_event_signal_silver=None,
+	tenant_net_load_hourly_silver=None,
 ) -> pl.DataFrame:
 	"""Model-ready Silver feature frame for NBEATSx and TFT research forecasts."""
 

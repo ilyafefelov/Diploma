@@ -12,6 +12,7 @@ import type {
   DashboardBatteryStateResponse,
   DashboardExogenousSignalsResponse,
   ForecastDispatchSensitivityResponse,
+  OperatorRecommendationResponse,
   RealDataBenchmarkResponse
 } from '~/types/control-plane'
 import type { DefenseModelRow } from '~/utils/defenseDataset'
@@ -31,6 +32,7 @@ const props = defineProps<{
   sensitivity: ForecastDispatchSensitivityResponse | null
   batteryState: DashboardBatteryStateResponse | null
   baselinePreview: BaselineLpPreview | null
+  operatorRecommendation: OperatorRecommendationResponse | null
   exogenousSignals: DashboardExogenousSignalsResponse | null
   isLoading: boolean
 }>()
@@ -39,12 +41,14 @@ const strategyRows = computed(() => buildOperatorStrategyEvidenceRows(props.mode
 const controlTimeline = computed(() => buildControlRegretTimeline(props.benchmark, 24))
 const sensitivityRows = computed(() => buildSensitivityEvidenceRows(props.sensitivity))
 const stateCards = computed(() => buildOperatorDecisionStateCards({
+  operatorRecommendation: props.operatorRecommendation,
   batteryState: props.batteryState,
   baselinePreview: props.baselinePreview,
   exogenousSignals: props.exogenousSignals,
   modelRows: props.modelRows
 }))
 const readinessItems = computed(() => buildOperatorDecisionReadinessItems({
+  operatorRecommendation: props.operatorRecommendation,
   batteryState: props.batteryState,
   baselinePreview: props.baselinePreview,
   exogenousSignals: props.exogenousSignals

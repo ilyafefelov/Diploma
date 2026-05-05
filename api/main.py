@@ -69,6 +69,10 @@ from smart_arbitrage.strategy.ensemble_gate import (
 	RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
 )
 from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
+from smart_arbitrage.tenant_load import (
+	build_tenant_consumption_schedule_frame,
+	build_tenant_net_load_hourly_frame,
+)
 
 
 app = FastAPI(
@@ -141,6 +145,10 @@ class WeatherMaterializeResponse(BaseModel):
 class DashboardSignalPreviewResponse(BaseModel):
 	tenant_id: str
 	labels: list[str]
+	latest_price_timestamp: datetime | None = None
+	forecast_window_start: datetime | None = None
+	forecast_window_end: datetime | None = None
+	timezone: str
 	market_price: list[float]
 	weather_bias: list[float]
 	weather_sources: list[str]
@@ -490,6 +498,53 @@ class SimulatedLiveTradingResponse(BaseModel):
 	rows: list[SimulatedLiveTradingPointResponse]
 
 
+class OperatorStrategyOptionResponse(BaseModel):
+	strategy_id: str
+	label: str
+	enabled: bool
+	reason: str
+	mean_regret_uah: float | None = None
+	win_rate: float | None = None
+
+
+class OperatorLoadForecastPointResponse(BaseModel):
+	timestamp: datetime
+	load_mw: float
+	pv_estimate_mw: float
+	net_load_mw: float
+	btm_battery_power_mw: float
+	source_kind: str
+	weather_source_kind: str
+	reason_code: str
+
+
+class OperatorSocProjectionPointResponse(BaseModel):
+	timestamp: datetime
+	physical_soc: float | None
+	estimated_soc: float
+	planning_soc: float
+	soc_source: str
+	confidence: str
+
+
+class OperatorRecommendationResponse(BaseModel):
+	tenant_id: str
+	selected_strategy_id: str
+	selection_reason: str
+	forecast_source: str
+	soc_source: str
+	review_required: bool
+	readiness_warnings: list[str]
+	available_strategies: list[OperatorStrategyOptionResponse]
+	load_forecast: list[OperatorLoadForecastPointResponse]
+	soc_projection: list[OperatorSocProjectionPointResponse]
+	recommendation_schedule: list[BaselineRecommendationPointResponse]
+	daily_value_uah: float
+	hold_baseline_value_uah: float
+	value_vs_hold_uah: float
+	economics: BaselinePreviewEconomicsResponse
+
+
 @dataclass(frozen=True, slots=True)
 class WeatherBiasCalibrationModel:
 	feature_names: tuple[str, ...]
@@ -527,6 +582,16 @@ class StartingSocResolution:
 	starting_soc_fraction: float
 	source: str
 	telemetry_freshness: dict[str, Any] | None
+
+
+@dataclass(frozen=True, slots=True)
+class OperatorSocResolution:
+	physical_soc_fraction: float | None
+	starting_soc_fraction: float
+	source: str
+	confidence: str
+	review_required: bool
+	warnings: tuple[str, ...]
 
 
 @cache
@@ -649,6 +714,10 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 	return DashboardSignalPreviewResponse(
 		tenant_id=tenant_id,
 		labels=labels,
+		latest_price_timestamp=forecast_points[-1].forecast_timestamp if forecast_points else None,
+		forecast_window_start=forecast_points[0].forecast_timestamp if forecast_points else None,
+		forecast_window_end=forecast_points[-1].forecast_timestamp if forecast_points else None,
+		timezone=resolved_location.timezone,
 		market_price=market_price,
 		weather_bias=weather_bias,
 		weather_sources=weather_sources,
@@ -1857,6 +1926,333 @@ def _resolve_starting_soc_for_baseline(
 	)
 
 
+def _clamp_soc_fraction(value: float, battery_metrics: BatteryPhysicalMetrics) -> float:
+	return max(
+		battery_metrics.soc_min_fraction,
+		min(battery_metrics.soc_max_fraction, value),
+	)
+
+
+def _resolve_operator_soc(
+	*,
+	tenant_id: str,
+	battery_defaults: TenantBatteryDefaults,
+	load_frame: pl.DataFrame,
+) -> OperatorSocResolution:
+	battery_metrics = battery_defaults.metrics
+	telemetry_store = get_battery_telemetry_store()
+	latest_telemetry = telemetry_store.get_latest_battery_telemetry(tenant_id=tenant_id)
+	if latest_telemetry is not None:
+		return OperatorSocResolution(
+			physical_soc_fraction=latest_telemetry.current_soc,
+			starting_soc_fraction=_clamp_soc_fraction(latest_telemetry.current_soc, battery_metrics),
+			source="telemetry_live",
+			confidence="high",
+			review_required=False,
+			warnings=(),
+		)
+
+	latest_snapshot = telemetry_store.get_latest_hourly_snapshot(tenant_id=tenant_id)
+	if latest_snapshot is not None and latest_snapshot.telemetry_freshness == "fresh":
+		return OperatorSocResolution(
+			physical_soc_fraction=latest_snapshot.soc_close,
+			starting_soc_fraction=_clamp_soc_fraction(latest_snapshot.soc_close, battery_metrics),
+			source="hourly_snapshot",
+			confidence="medium",
+			review_required=False,
+			warnings=(),
+		)
+	if latest_snapshot is not None:
+		first_load_power_mw = _first_load_btm_power_mw(load_frame)
+		projected_soc = latest_snapshot.soc_close - (first_load_power_mw / battery_metrics.capacity_mwh)
+		return OperatorSocResolution(
+			physical_soc_fraction=latest_snapshot.soc_close,
+			starting_soc_fraction=_clamp_soc_fraction(projected_soc, battery_metrics),
+			source="telemetry_projected",
+			confidence="low",
+			review_required=True,
+			warnings=("Stale telemetry; SOC projected from latest hourly snapshot plus tenant load/PV schedule.",),
+		)
+	return OperatorSocResolution(
+		physical_soc_fraction=None,
+		starting_soc_fraction=battery_defaults.initial_soc_fraction,
+		source="tenant_default",
+		confidence="low",
+		review_required=True,
+		warnings=("Telemetry unavailable; using tenant default SOC.",),
+	)
+
+
+def _first_load_btm_power_mw(load_frame: pl.DataFrame) -> float:
+	if load_frame.height == 0:
+		return 0.0
+	return float(load_frame.sort("timestamp").select("btm_battery_power_mw").to_series().item(0))
+
+
+def _operator_load_frame(
+	*,
+	tenant_id: str,
+	anchor_timestamp: datetime,
+) -> pl.DataFrame:
+	schedule_frame = build_tenant_consumption_schedule_frame()
+	load_frame = build_tenant_net_load_hourly_frame(
+		schedule_frame,
+		anchor_timestamp=anchor_timestamp,
+		horizon_hours=24,
+	)
+	return load_frame.filter(pl.col("tenant_id") == tenant_id)
+
+
+def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOptionResponse]:
+	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
+	metrics_by_model = _operator_strategy_metrics_by_model(benchmark_frame)
+	options = [
+		_operator_strategy_option(
+			strategy_id="strict_similar_day",
+			label="Strict similar-day control",
+			reason="control baseline",
+			metrics_by_model=metrics_by_model,
+		),
+		_operator_strategy_option(
+			strategy_id="tft_silver_v0",
+			label="Compact TFT",
+			reason="materialized benchmark candidate",
+			metrics_by_model=metrics_by_model,
+		),
+		_operator_strategy_option(
+			strategy_id="nbeatsx_silver_v0",
+			label="Compact NBEATSx",
+			reason="materialized benchmark candidate",
+			metrics_by_model=metrics_by_model,
+		),
+		_operator_strategy_option(
+			strategy_id=CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
+			label="Calibrated value-aware gate",
+			reason="materialized ensemble gate",
+			metrics_by_model=metrics_by_model,
+		),
+		_operator_strategy_option(
+			strategy_id=RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
+			label="Risk-adjusted value gate",
+			reason="materialized ensemble gate",
+			metrics_by_model=metrics_by_model,
+		),
+		OperatorStrategyOptionResponse(
+			strategy_id="decision_transformer",
+			label="Decision Transformer",
+			enabled=False,
+			reason="offline research only; not live policy",
+		),
+	]
+	if not metrics_by_model:
+		options[0] = options[0].model_copy(update={"enabled": True, "mean_regret_uah": None, "win_rate": None})
+	return options
+
+
+def _operator_strategy_metrics_by_model(benchmark_frame: pl.DataFrame) -> dict[str, tuple[float, float]]:
+	if benchmark_frame.height == 0:
+		return {}
+	summary_frame = (
+		benchmark_frame
+		.group_by("forecast_model_name")
+		.agg(
+			[
+				pl.mean("regret_uah").alias("mean_regret_uah"),
+				(pl.col("rank_by_regret") == 1).mean().alias("win_rate"),
+			]
+		)
+	)
+	return {
+		str(row["forecast_model_name"]): (float(row["mean_regret_uah"]), float(row["win_rate"]))
+		for row in summary_frame.iter_rows(named=True)
+	}
+
+
+def _operator_strategy_option(
+	*,
+	strategy_id: str,
+	label: str,
+	reason: str,
+	metrics_by_model: dict[str, tuple[float, float]],
+) -> OperatorStrategyOptionResponse:
+	metrics = metrics_by_model.get(strategy_id)
+	if metrics is None and strategy_id == "strict_similar_day":
+		return OperatorStrategyOptionResponse(
+			strategy_id=strategy_id,
+			label=label,
+			enabled=True,
+			reason=reason,
+		)
+	if metrics is None:
+		return OperatorStrategyOptionResponse(
+			strategy_id=strategy_id,
+			label=label,
+			enabled=False,
+			reason="not materialized for this tenant",
+		)
+	mean_regret_uah, win_rate = metrics
+	return OperatorStrategyOptionResponse(
+		strategy_id=strategy_id,
+		label=label,
+		enabled=True,
+		reason=reason,
+		mean_regret_uah=mean_regret_uah,
+		win_rate=win_rate,
+	)
+
+
+def _select_operator_strategy(
+	*,
+	requested_strategy_id: str,
+	options: list[OperatorStrategyOptionResponse],
+) -> tuple[str, str, tuple[str, ...]]:
+	enabled_options = {option.strategy_id: option for option in options if option.enabled}
+	requested_option = enabled_options.get(requested_strategy_id)
+	if requested_option is not None:
+		return requested_option.strategy_id, f"manual strategy: {requested_option.label}", ()
+	return (
+		"strict_similar_day",
+		"fallback to strict similar-day control",
+		(f"Requested strategy {requested_strategy_id} is unavailable; using strict similar-day control.",),
+	)
+
+
+def _to_operator_load_forecast_points(load_frame: pl.DataFrame) -> list[OperatorLoadForecastPointResponse]:
+	return [
+		OperatorLoadForecastPointResponse(
+			timestamp=_datetime_row_value(row["timestamp"], field_name="timestamp"),
+			load_mw=float(row["load_mw"]),
+			pv_estimate_mw=float(row["pv_estimate_mw"]),
+			net_load_mw=float(row["net_load_mw"]),
+			btm_battery_power_mw=float(row["btm_battery_power_mw"]),
+			source_kind=str(row["source_kind"]),
+			weather_source_kind=str(row["weather_source_kind"]),
+			reason_code=str(row["reason_code"]),
+		)
+		for row in load_frame.sort("timestamp").iter_rows(named=True)
+	]
+
+
+def _to_operator_soc_projection_points(
+	*,
+	load_frame: pl.DataFrame,
+	solve_result: BaselineSolveResult,
+	soc_resolution: OperatorSocResolution,
+	battery_metrics: BatteryPhysicalMetrics,
+) -> list[OperatorSocProjectionPointResponse]:
+	load_by_timestamp = {
+		_datetime_row_value(row["timestamp"], field_name="timestamp"): float(row["btm_battery_power_mw"])
+		for row in load_frame.iter_rows(named=True)
+	}
+	estimated_soc = soc_resolution.starting_soc_fraction
+	points: list[OperatorSocProjectionPointResponse] = []
+	for schedule_point in solve_result.schedule:
+		load_soc_delta = load_by_timestamp.get(schedule_point.interval_start, 0.0) / battery_metrics.capacity_mwh
+		estimated_soc = _clamp_soc_fraction(estimated_soc - load_soc_delta, battery_metrics)
+		points.append(
+			OperatorSocProjectionPointResponse(
+				timestamp=schedule_point.interval_start,
+				physical_soc=soc_resolution.physical_soc_fraction,
+				estimated_soc=estimated_soc,
+				planning_soc=schedule_point.soc_after_mwh / battery_metrics.capacity_mwh,
+				soc_source=soc_resolution.source,
+				confidence=soc_resolution.confidence,
+			)
+		)
+	return points
+
+
+def _operator_forecast_source(strategy_id: str) -> str:
+	if strategy_id == "strict_similar_day":
+		return "HourlyDamBaselineSolver / strict similar-day baseline"
+	if strategy_id == "tft_silver_v0":
+		return "compact TFT forecast candidate"
+	if strategy_id == "nbeatsx_silver_v0":
+		return "compact NBEATSx forecast candidate"
+	if strategy_id in {CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND, RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND}:
+		return f"{strategy_id} / pre-anchor value-aware selector"
+	return "strict similar-day control"
+
+
+def _build_operator_recommendation_response(
+	*,
+	tenant_id: str,
+	strategy_id: str,
+) -> OperatorRecommendationResponse:
+	resolved_location = _resolve_requested_location(tenant_id=tenant_id, location_config_path=None)
+	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	battery_metrics = battery_defaults.metrics
+	price_history = _build_tenant_aware_price_history(resolved_location)
+	anchor_timestamp = _resolve_baseline_anchor(price_history)
+	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
+	load_frame = _operator_load_frame(tenant_id=tenant_id, anchor_timestamp=anchor_timestamp)
+	soc_resolution = _resolve_operator_soc(
+		tenant_id=tenant_id,
+		battery_defaults=battery_defaults,
+		load_frame=load_frame,
+	)
+	available_strategies = _operator_strategy_options(tenant_id=tenant_id)
+	selected_strategy_id, selection_reason, selection_warnings = _select_operator_strategy(
+		requested_strategy_id=strategy_id,
+		options=available_strategies,
+	)
+	solver = HourlyDamBaselineSolver()
+	try:
+		solve_result = solver.solve_next_dispatch(
+			historical_prices,
+			battery_metrics=battery_metrics,
+			current_soc_fraction=soc_resolution.starting_soc_fraction,
+			anchor_timestamp=anchor_timestamp,
+		)
+	except (RuntimeError, ValueError) as error:
+		raise HTTPException(status_code=500, detail=str(error)) from error
+
+	projected_simulation = simulate_projected_battery_state(
+		schedule=_to_scheduled_power_points(solve_result),
+		battery_metrics=battery_metrics,
+		starting_soc_fraction=soc_resolution.starting_soc_fraction,
+	)
+	projected_state = _to_projected_battery_state_response(
+		tenant_id=tenant_id,
+		battery_metrics=battery_metrics,
+		simulation_result=projected_simulation,
+	)
+	baseline_preview = _to_baseline_lp_preview_response(
+		tenant_id=tenant_id,
+		battery_metrics=battery_metrics,
+		starting_soc_fraction=soc_resolution.starting_soc_fraction,
+		starting_soc_source=soc_resolution.source,
+		telemetry_freshness=None,
+		resolved_location=resolved_location,
+		solve_result=solve_result,
+		projected_state=projected_state,
+	)
+	daily_value_uah = baseline_preview.economics.total_net_value_uah
+	readiness_warnings = [*soc_resolution.warnings, *selection_warnings]
+	return OperatorRecommendationResponse(
+		tenant_id=tenant_id,
+		selected_strategy_id=selected_strategy_id,
+		selection_reason=selection_reason,
+		forecast_source=_operator_forecast_source(selected_strategy_id),
+		soc_source=soc_resolution.source,
+		review_required=soc_resolution.review_required or bool(selection_warnings),
+		readiness_warnings=list(readiness_warnings),
+		available_strategies=available_strategies,
+		load_forecast=_to_operator_load_forecast_points(load_frame),
+		soc_projection=_to_operator_soc_projection_points(
+			load_frame=load_frame,
+			solve_result=solve_result,
+			soc_resolution=soc_resolution,
+			battery_metrics=battery_metrics,
+		),
+		recommendation_schedule=baseline_preview.recommendation_schedule,
+		daily_value_uah=daily_value_uah,
+		hold_baseline_value_uah=0.0,
+		value_vs_hold_uah=daily_value_uah,
+		economics=baseline_preview.economics,
+	)
+
+
 def _to_operator_status_response(record: OperatorStatusRecord) -> OperatorStatusResponse:
 	return OperatorStatusResponse(
 		tenant_id=record.tenant_id,
@@ -2303,6 +2699,33 @@ def dashboard_simulated_live_trading(
 		tenant_id=tenant_id,
 		live_trading_frame=live_trading_frame,
 	)
+
+
+@app.get(
+	"/dashboard/operator-recommendation",
+	response_model=OperatorRecommendationResponse,
+	tags=["weather"],
+	summary="Get operator recommendation",
+	description=(
+		"Returns a live operator read model that combines current or projected SOC, configured tenant "
+		"load/PV schedule, available materialized strategies, and a feasible hourly recommendation."
+	),
+)
+def dashboard_operator_recommendation(
+	tenant_id: str,
+	strategy_id: str = "strict_similar_day",
+) -> OperatorRecommendationResponse:
+	response = _build_operator_recommendation_response(
+		tenant_id=tenant_id,
+		strategy_id=strategy_id,
+	)
+	_persist_operator_status(
+		tenant_id=tenant_id,
+		flow_type=OperatorFlowType.BASELINE_LP,
+		status=OperatorFlowStatus.COMPLETED,
+		payload=response.model_dump(mode="json"),
+	)
+	return response
 
 
 @app.get(

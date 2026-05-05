@@ -37,6 +37,15 @@ def test_dg_list_defs_loads_without_manual_pythonpath() -> None:
     assert "regret_weighted_dfl_pilot_frame" in result.stdout
 
 
+def test_verify_wrapper_uses_project_mypy_file_set() -> None:
+    verify_script = (PROJECT_ROOT / "scripts" / "verify.ps1").read_text(encoding="utf-8")
+
+    assert (
+        'Invoke-OptionalPythonTool -DisplayName "Mypy" -ModuleName "mypy" '
+        '-Arguments @("--config-file", "pyproject.toml")'
+    ) in verify_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)

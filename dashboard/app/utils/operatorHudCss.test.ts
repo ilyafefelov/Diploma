@@ -39,4 +39,28 @@ describe('operator HUD CSS', () => {
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/overflow-x:\s*auto/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/flex-wrap:\s*nowrap/)
   })
+
+  it('renders schedule hover explanation outside the clipped horizontal scroller', () => {
+    const css = readFileSync(cssPath, 'utf8')
+    const scheduleDock = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorScheduleDock.vue', import.meta.url)),
+      'utf8'
+    )
+
+    expect(scheduleDock).toContain('schedule-dock__floating-tooltip')
+    expect(scheduleDock).not.toContain('class="schedule-tooltip"')
+    expect(getSelectorBlock(css, '.schedule-track')).not.toMatch(/overflow-y:\s*hidden/)
+    expect(getSelectorBlock(css, '.schedule-dock__floating-tooltip')).toMatch(/position:\s*fixed/)
+  })
+
+  it('renders explicit price and forecast period labels in the operator market signal hero', () => {
+    const marketSignalHero = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorMarketSignalHero.vue', import.meta.url)),
+      'utf8'
+    )
+
+    expect(marketSignalHero).toContain('latestPricePeriodLabel')
+    expect(marketSignalHero).toContain('forecastWindowPeriodLabel')
+    expect(marketSignalHero).not.toContain('Latest visible hour')
+  })
 })
