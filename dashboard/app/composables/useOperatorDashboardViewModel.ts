@@ -1,6 +1,12 @@
 import { computed, type Ref } from 'vue'
 
-import type { BaselineLpPreview, OperatorStatus, SignalPreview, TenantSummary } from '~/types/control-plane'
+import type {
+  BaselineLpPreview,
+  DashboardBatteryStateResponse,
+  OperatorStatus,
+  SignalPreview,
+  TenantSummary
+} from '~/types/control-plane'
 import type {
   OperatorGatekeeperAction,
   OperatorGatekeeperActionLabel,
@@ -13,12 +19,14 @@ import type {
   OperatorWeatherMaterializeResult,
   OperatorWeatherRunConfig
 } from '~/types/operator-dashboard'
+import { buildOperatorBatteryDisplay } from '~/utils/operatorBatteryDisplay'
 
 interface OperatorDashboardViewModelInput {
   tenants: Readonly<Ref<TenantSummary[]>>
   selectedTenant: Readonly<Ref<TenantSummary | null>>
   signalPreview: Readonly<Ref<SignalPreview | null>>
   baselinePreview: Readonly<Ref<BaselineLpPreview | null>>
+  batteryState?: Readonly<Ref<DashboardBatteryStateResponse | null>>
   runConfig: Readonly<Ref<OperatorWeatherRunConfig | null>>
   materializeResult: Readonly<Ref<OperatorWeatherMaterializeResult | null>>
   operatorStatus: Readonly<Ref<OperatorStatus | null>>
@@ -109,19 +117,17 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     return input.signalPreview.value?.charge_intent?.[0] ?? 0
   })
 
-  const batterySocPercent = computed(() => {
-    const baselineSoc = input.baselinePreview.value?.starting_soc_fraction
-    if (typeof baselineSoc === 'number') {
-      return Math.round(baselineSoc * 100)
-    }
+  const operatorBatteryDisplay = computed(() => buildOperatorBatteryDisplay({
+    batteryState: input.batteryState?.value ?? null,
+    baselinePreview: input.baselinePreview.value
+  }))
 
-    return 62
-  })
-
-  const batterySohProxyPercent = computed(() => {
-    const throughput = input.baselinePreview.value?.economics.total_throughput_mwh ?? 0
-    return Math.max(91, Number((96.2 - throughput * 0.12).toFixed(1)))
-  })
+  const batterySocPercent = computed(() => operatorBatteryDisplay.value.socPercent)
+  const batterySohProxyPercent = computed(() => operatorBatteryDisplay.value.sohPercent)
+  const batterySocSourceLabel = computed(() => operatorBatteryDisplay.value.socSourceLabel)
+  const batterySohSourceLabel = computed(() => operatorBatteryDisplay.value.sohSourceLabel)
+  const batterySocFormula = computed(() => operatorBatteryDisplay.value.socFormula)
+  const batterySohFormula = computed(() => operatorBatteryDisplay.value.sohFormula)
 
   const availabilityPercent = computed(() => {
     if (activeAlertCount.value > 0) {
@@ -434,8 +440,12 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   return {
     activeAlertCount,
     activeRegistrySummary,
+    batterySocFormula,
     batterySocPercent,
+    batterySocSourceLabel,
+    batterySohFormula,
     batterySohProxyPercent,
+    batterySohSourceLabel,
     batteryStatusLabel,
     dispatchModeLabel,
     gatekeeperActions,

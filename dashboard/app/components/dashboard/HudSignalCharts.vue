@@ -53,7 +53,8 @@ const weatherSourceBadge = computed(() => {
           <p class="signal-card__summary">
             This chart starts from the current MVP baseline DAM forecast for each hour, then adds a calibrated weather
             effect. Read it as: <strong>expected price</strong> + <strong>weather effect</strong> = <strong>weather-adjusted price</strong>.
-            All values use <strong>UAH/MWh</strong>, which means Ukrainian hryvnia for one megawatt-hour of electricity.
+            It is still the right operator chart for weather sensitivity; final strategy choice belongs to the LP/decision
+            evidence panels below. All values use <strong>UAH/MWh</strong>.
           </p>
         </div>
 
@@ -68,6 +69,7 @@ const weatherSourceBadge = computed(() => {
         <span class="signal-guide-pill">Green bars: extra effect from weather</span>
         <span class="signal-guide-pill">Dashed green: final price after weather</span>
         <span class="signal-guide-pill signal-guide-pill-source">{{ weatherSourceBadge }}</span>
+        <span class="signal-guide-pill signal-guide-pill-source">Use now: weather sensitivity, not final bid</span>
         <span class="signal-guide-pill">Bottom axis: local time of day</span>
       </div>
 
@@ -131,8 +133,8 @@ const weatherSourceBadge = computed(() => {
         >
           <template v-if="props.explanationMode === 'mvp'">
             <p class="signal-explainer-card__copy">
-              <strong>Price side:</strong> the MVP preview currently uses tenant-aware synthetic DAM history in the API, with
-              tenant location bias plus simple hour-of-day adjustments.
+              <strong>Price side:</strong> the API can use observed OREE DAM history when the real-data stack is
+              materialized. Any synthetic fallback is demo-grade only and should not support thesis-grade claims.
             </p>
             <p class="signal-explainer-card__copy">
               <strong>Weather side:</strong> weather comes from <strong>Open-Meteo</strong> when available, otherwise from a
@@ -176,7 +178,8 @@ const weatherSourceBadge = computed(() => {
           <p class="signal-card__summary">
             Blue bars show a simplified battery action preview derived from the weather-adjusted price curve. Pink line
             shows a simplified <strong>missed value</strong> score for operator review. Battery action is shown in
-            <strong>MW</strong>, and missed value is shown in <strong>UAH</strong>.
+            <strong>MW</strong>, and missed value is shown in <strong>UAH</strong>. Keep this chart as motive context;
+            the feasible LP schedule below is the constraint-checked plan.
           </p>
         </div>
 
@@ -188,7 +191,8 @@ const weatherSourceBadge = computed(() => {
       <div class="signal-card__guide">
         <span class="signal-guide-pill signal-guide-pill-blue">Bars: battery action in MW</span>
         <span class="signal-guide-pill signal-guide-pill-berry">Pink line: missed value in UAH</span>
-        <span class="signal-guide-pill">Preview only: simplified operator explanation</span>
+        <span class="signal-guide-pill">Preview only: not dispatch command</span>
+        <span class="signal-guide-pill">Use LP panel below for feasibility</span>
       </div>
 
       <div

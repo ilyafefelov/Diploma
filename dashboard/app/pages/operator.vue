@@ -4,8 +4,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   OperatorAlertBanner,
   OperatorBaselineConsole,
+  OperatorDecisionEvidencePanel,
   OperatorMarketConsole,
   OperatorMetricRibbon,
+  OperatorResearchPanel,
   OperatorRightRail,
   OperatorScheduleDock,
   OperatorSidebar,
@@ -16,6 +18,7 @@ import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
+import { buildOperatorResearchMetrics } from '~/utils/operatorResearchMetrics'
 
 const {
   tenants,
@@ -48,6 +51,8 @@ const {
   loadBaselinePreview
 } = useBaselinePreview(selectedTenantId)
 
+const defense = useDefenseDashboard(selectedTenantId)
+
 const {
   runConfig,
   materializeResult,
@@ -71,8 +76,12 @@ const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'C
 const {
   activeAlertCount,
   activeRegistrySummary,
+  batterySocFormula,
   batterySocPercent,
+  batterySocSourceLabel,
+  batterySohFormula,
   batterySohProxyPercent,
+  batterySohSourceLabel,
   batteryStatusLabel,
   dispatchModeLabel,
   gatekeeperActions,
@@ -94,6 +103,7 @@ const {
   selectedTenant,
   signalPreview,
   baselinePreview,
+  batteryState: defense.batteryState,
   runConfig,
   materializeResult,
   operatorStatus,
@@ -123,6 +133,18 @@ const nextStepsItems = computed(() => explanationMode.value === 'mvp'
       'Benchmark views that keep the LP baseline visible as a comparison surface rather than the final decision layer.'
     ]
 )
+
+const schedulePredictionHeadLabel = computed(() => explanationMode.value === 'mvp'
+  ? 'Prediction head: HourlyDamBaselineSolver -> baseline LP'
+  : 'Target head: NBEATSx/TFT -> policy review'
+)
+
+const operatorResearchMetrics = computed(() => buildOperatorResearchMetrics({
+  modelRows: defense.modelRows.value,
+  readinessRows: defense.researchReadinessRows.value,
+  exogenousSignals: defense.exogenousSignals.value,
+  batteryState: defense.batteryState.value
+}))
 
 const refreshRegistry = async (): Promise<void> => {
   await loadTenants()
@@ -167,6 +189,7 @@ onMounted(async () => {
 
   await loadSignalPreview()
   await loadBaselinePreview()
+  await defense.loadDefenseDashboard()
   await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
 })
@@ -226,6 +249,24 @@ onBeforeUnmount(() => {
             :last-loaded-label="baselinePreviewLastLoadedLabel"
             :explanation-mode="explanationMode"
           />
+
+          <OperatorDecisionEvidencePanel
+            :benchmark="defense.benchmark.value"
+            :model-rows="defense.modelRows.value"
+            :sensitivity="defense.sensitivity.value"
+            :battery-state="defense.batteryState.value"
+            :baseline-preview="baselinePreview"
+            :exogenous-signals="defense.exogenousSignals.value"
+            :is-loading="defense.isLoading.value"
+          />
+
+          <OperatorResearchPanel
+            :metrics="operatorResearchMetrics"
+            :sensitivity="defense.sensitivity.value"
+            :is-loading="defense.isLoading.value"
+            :last-loaded-label="defense.lastLoadedLabel.value"
+            :active-error-count="defense.activeErrorCount.value"
+          />
         </section>
 
         <OperatorRightRail
@@ -233,7 +274,11 @@ onBeforeUnmount(() => {
           :mood-chips="moodChips"
           :battery-status-label="batteryStatusLabel"
           :battery-soc-percent="batterySocPercent"
+          :battery-soc-source-label="batterySocSourceLabel"
+          :battery-soc-formula="batterySocFormula"
           :battery-soh-proxy-percent="batterySohProxyPercent"
+          :battery-soh-source-label="batterySohSourceLabel"
+          :battery-soh-formula="batterySohFormula"
           :latest-recommended-power-label="latestRecommendedPowerLabel"
           :gatekeeper-actions="gatekeeperActions"
           :active-alert-count="activeAlertCount"
@@ -257,6 +302,7 @@ onBeforeUnmount(() => {
         :selected-tenant-badge="selectedTenantBadge"
         :timeline-segments="timelineSegments"
         :dispatch-mode-label="dispatchModeLabel"
+        :prediction-head-label="schedulePredictionHeadLabel"
       />
     </div>
   </main>

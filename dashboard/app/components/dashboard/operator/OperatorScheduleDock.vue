@@ -6,6 +6,7 @@ defineProps<{
   selectedTenantBadge: string
   timelineSegments: OperatorTimelineSegment[]
   dispatchModeLabel: string
+  predictionHeadLabel: string
 }>()
 </script>
 
@@ -16,6 +17,7 @@ defineProps<{
       <div>
         <p>Schedule timeline</p>
         <span>{{ selectedTenantName }} / {{ selectedTenantBadge }}</span>
+        <small>{{ predictionHeadLabel }}</small>
       </div>
     </div>
 

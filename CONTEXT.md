@@ -92,6 +92,22 @@ _Avoid_: production bidding, direct dispatch, forecast-only metric, Proposed Bid
 Thesis-grade evaluation dataset and protocol built from observed Ukraine DAM history, timestamp-aligned weather, tenant battery assumptions, explicit provenance, effective-dated market constraints, FX assumptions, and market participation costs. It is the required empirical base before making strong claims about NBEATSx/TFT, DFL, or Ukraine market performance.
 _Avoid_: synthetic demo history, live-current overlay only, architecture demo, SOTA claim without backtest
 
+**Research Defense Dashboard**:
+Thesis-facing dashboard mode that explains benchmark evidence, model claim boundaries, regret diagnostics, and research readiness without presenting simulated or pilot outputs as operational trading decisions.
+_Avoid_: operator product dashboard, live trading console, production control plane, marketing dashboard
+
+**Operator Product Dashboard**:
+Operator-facing product demo surface that shows selected market, battery, telemetry, and planning metrics as operational status while preserving backend claim boundaries around simulated or research-only outputs.
+_Avoid_: thesis-only evidence board, raw research notebook, unrestricted trading console, oracle dashboard
+
+**Operator Decision Evidence Panel**:
+Підрозділ **Operator Product Dashboard**, який показує live-read-model порівняння фізичного SOC, planning SOC, regret benchmark, forecast-dispatch diagnostics і grid/weather context для операторського рішення. Це evidence surface, а не генератор **Proposed Bid** чи **Dispatch Command**.
+_Avoid_: live trading panel, oracle control panel, hidden model promotion, research-only defense page
+
+**Operator Decision Readiness Strip**:
+Компактний preflight-блок усередині **Operator Decision Evidence Panel**, який показує readiness фізичного SOC, planning SOC, grid context і source freshness перед тим, як оператор розглядатиме LP schedule як candidate dispatch review.
+_Avoid_: market approval, bid validation, dispatch authorization, replacing **Bid Gatekeeper**
+
 **Rolling-Origin Strategy Backtest**:
 Evaluation protocol where each anchor uses only past data to build features/forecasts, solves the strategy for the next horizon, executes/scored only feasible decisions against later realized prices, and compares the result with **Oracle Benchmark**.
 _Avoid_: hindsight training, one-off demo materialization, random train/test split across time, forecast-only leaderboard
@@ -237,6 +253,9 @@ _Avoid_: market bid, no bid, cleared trade
 - **Forecast Strategy Evaluation** connects the **Neural Forecast Silver Layer** to Gold by routing forecast candidates through the same **Baseline Strategy** LP and scoring the resulting decisions against the **Oracle Benchmark**
 - **Forecast Strategy Evaluation** is evaluation evidence, not **Proposed Bid** generation or production market submission
 - **Real-Data Research Benchmark** upgrades **Forecast Strategy Evaluation** from demo evidence to thesis evidence by replacing synthetic history with observed market/weather inputs and explicit cost/constraint assumptions
+- A **Research Defense Dashboard** presents **Real-Data Research Benchmark**, **Forecast Strategy Evaluation**, and DFL/DT readiness evidence without producing **Proposed Bid**, **Cleared Trade**, or **Dispatch Command** outputs
+- An **Operator Product Dashboard** may reuse selected **Research Defense Dashboard** metrics, but must present them as operational status or research diagnostics according to provenance
+- An **Operator Decision Evidence Panel** inside the **Operator Product Dashboard** may show regret and forecast diagnostics, but those remain read-model evidence until a **Bid Gatekeeper** produces a valid **Proposed Bid** and later dispatch safety checks produce a **Dispatch Command**
 - **Rolling-Origin Strategy Backtest** is the canonical experiment design for comparing **Level 1 Naive Forecast**, **NBEATSx Forecast**, **TFT Forecast**, and later **Target Strategy**
 - **Regret-Weighted Forecast Calibration** consumes **Real-Data Research Benchmark** outputs and produces corrected forecast candidates for another **Forecast Strategy Evaluation**
 - **Regret-Weighted Forecast Calibration** is a diagnostic predecessor to **Full Differentiable DFL**, not a replacement for **Target Strategy**
@@ -373,3 +392,5 @@ _Avoid_: market bid, no bid, cleared trade
 - "seasonal naive" раніше міг означати і strict copy, і smoothed average — resolved: канонічний baseline використовує **Strict Similar-Day Rule** без усереднення.
 - "baseline execution" раніше виглядало як статичний денний план — resolved: baseline працює через **Baseline Rolling Horizon**, а не через one-shot schedule.
 - "Level 1 scope" раніше міг тягнути за собою одразу кілька venue і 15-хвилинні інтервали — resolved: **Level 1 Market Scope** обмежений погодинним **DAM**, а розширення йде через **Sequential Complexity**.
+- "dashboard" може означати і thesis-demo evidence surface, і operator-facing control surface — resolved: наступний UI slice є **Research Defense Dashboard**, не production/live-trading dashboard.
+- "final product demo dashboard" відрізняється від thesis evidence surface — resolved: production-style demo surface є **Operator Product Dashboard**, який може reuse metrics, але не може маскувати pilot/simulated outputs as live controls.
