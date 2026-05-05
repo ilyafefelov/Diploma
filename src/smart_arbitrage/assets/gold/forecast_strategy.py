@@ -38,7 +38,7 @@ class _StartingSoc:
     source: str
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "forecast_strategy"})
 def forecast_strategy_comparison_frame(
     context,
     config: ForecastStrategyComparisonAssetConfig,
@@ -103,19 +103,18 @@ def forecast_strategy_comparison_frame(
     return frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "forecast_strategy"})
 def real_data_rolling_origin_benchmark_frame(
     context,
     config: RealDataRollingOriginBenchmarkAssetConfig,
-    observed_market_price_history_bronze: pl.DataFrame,
-    tenant_historical_weather_bronze: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
     battery_state_hourly_silver=None,
 ) -> pl.DataFrame:
     """Rolling-origin real-data benchmark for strict similar-day, NBEATSx, and TFT."""
 
     rows: list[pl.DataFrame] = []
     anchor_timestamps = _daily_benchmark_anchors(
-        observed_market_price_history_bronze,
+        _market_price_history_from_silver(real_data_benchmark_silver_feature_frame),
         max_anchors=config.max_anchors,
     )
     for tenant_id in _tenant_ids_from_csv(config.tenant_ids_csv):
@@ -125,9 +124,8 @@ def real_data_rolling_origin_benchmark_frame(
             default_soc_fraction=defaults.initial_soc_fraction,
             battery_state_hourly_silver=battery_state_hourly_silver,
         )
-        price_history = _join_tenant_weather_features(
-            observed_market_price_history_bronze,
-            tenant_historical_weather_bronze,
+        price_history = _tenant_price_history_from_silver(
+            real_data_benchmark_silver_feature_frame,
             tenant_id=tenant_id,
         )
         rows.append(
@@ -162,7 +160,10 @@ def real_data_rolling_origin_benchmark_frame(
 
 real_data_benchmark_daily_job = dg.define_asset_job(
     "real_data_benchmark_daily",
-    selection=[real_data_rolling_origin_benchmark_frame],
+    selection=dg.AssetSelection.assets(
+        "real_data_benchmark_silver_feature_frame",
+        "real_data_rolling_origin_benchmark_frame",
+    ),
 )
 
 real_data_benchmark_daily_schedule = dg.ScheduleDefinition(
@@ -290,6 +291,29 @@ def _join_tenant_weather_features(
     if tenant_weather.height == 0:
         return price_history
     return price_history.join(tenant_weather, on="timestamp", how="left")
+
+
+def _market_price_history_from_silver(silver_frame: pl.DataFrame) -> pl.DataFrame:
+    required_columns = {"timestamp", "price_uah_mwh"}
+    missing_columns = required_columns.difference(silver_frame.columns)
+    if missing_columns:
+        raise ValueError(f"real_data_benchmark_silver_feature_frame is missing required columns: {sorted(missing_columns)}")
+    return (
+        silver_frame
+        .select(["timestamp", "price_uah_mwh"])
+        .drop_nulls()
+        .unique(subset=["timestamp"], keep="last")
+        .sort("timestamp")
+    )
+
+
+def _tenant_price_history_from_silver(silver_frame: pl.DataFrame, *, tenant_id: str) -> pl.DataFrame:
+    if "tenant_id" not in silver_frame.columns:
+        return silver_frame
+    tenant_frame = silver_frame.filter(pl.col("tenant_id") == tenant_id)
+    if tenant_frame.height == 0:
+        raise ValueError(f"Missing real-data Silver benchmark rows for tenant_id={tenant_id}.")
+    return tenant_frame.drop("tenant_id")
 
 
 def _starting_soc_for_tenant(

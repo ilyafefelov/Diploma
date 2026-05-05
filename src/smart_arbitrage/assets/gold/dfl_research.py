@@ -13,6 +13,7 @@ from smart_arbitrage.dfl.regret_weighted import (
     build_regret_weighted_forecast_strategy_benchmark_frame,
     run_regret_weighted_dfl_pilot,
 )
+from smart_arbitrage.dfl.relaxed_pilot import build_relaxed_dfl_pilot_frame
 from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 from smart_arbitrage.strategy.ensemble_gate import (
@@ -56,7 +57,13 @@ class HorizonRegretWeightedForecastCalibrationAssetConfig(dg.Config):
     rolling_calibration_window_anchors: int = 28
 
 
-@dg.asset(group_name="gold")
+class RelaxedDflPilotAssetConfig(dg.Config):
+    """Small differentiable relaxed-LP DFL pilot scope."""
+
+    max_examples: int = 12
+
+
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def real_data_value_aware_ensemble_frame(
     context,
     real_data_rolling_origin_benchmark_frame: pl.DataFrame,
@@ -78,7 +85,7 @@ def real_data_value_aware_ensemble_frame(
     return ensemble_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def dfl_training_frame(
     context,
     config: DflTrainingAssetConfig,
@@ -108,7 +115,7 @@ def dfl_training_frame(
     return training_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def regret_weighted_dfl_pilot_frame(
     context,
     config: RegretWeightedDflPilotAssetConfig,
@@ -135,7 +142,29 @@ def regret_weighted_dfl_pilot_frame(
     return pilot_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
+def dfl_relaxed_lp_pilot_frame(
+    context,
+    config: RelaxedDflPilotAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Differentiable relaxed-LP pilot rows for future full DFL training."""
+
+    pilot_frame = build_relaxed_dfl_pilot_frame(
+        real_data_rolling_origin_benchmark_frame,
+        max_examples=config.max_examples,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": pilot_frame.height,
+            "scope": "differentiable_relaxed_lp_pilot_not_final_dfl",
+        },
+    )
+    return pilot_frame
+
+
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def regret_weighted_forecast_calibration_frame(
     context,
     config: RegretWeightedForecastCalibrationAssetConfig,
@@ -163,7 +192,7 @@ def regret_weighted_forecast_calibration_frame(
     return calibration_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def regret_weighted_forecast_strategy_benchmark_frame(
     context,
     real_data_rolling_origin_benchmark_frame: pl.DataFrame,
@@ -191,7 +220,7 @@ def regret_weighted_forecast_strategy_benchmark_frame(
     return benchmark_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def horizon_regret_weighted_forecast_calibration_frame(
     context,
     config: HorizonRegretWeightedForecastCalibrationAssetConfig,
@@ -221,7 +250,7 @@ def horizon_regret_weighted_forecast_calibration_frame(
     return calibration_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def horizon_regret_weighted_forecast_strategy_benchmark_frame(
     context,
     real_data_rolling_origin_benchmark_frame: pl.DataFrame,
@@ -257,7 +286,7 @@ def horizon_regret_weighted_forecast_strategy_benchmark_frame(
     return benchmark_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def calibrated_value_aware_ensemble_frame(
     context,
     horizon_regret_weighted_forecast_strategy_benchmark_frame: pl.DataFrame,
@@ -291,7 +320,7 @@ def calibrated_value_aware_ensemble_frame(
     return ensemble_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def forecast_dispatch_sensitivity_frame(
     context,
     horizon_regret_weighted_forecast_strategy_benchmark_frame: pl.DataFrame,
@@ -317,7 +346,7 @@ def forecast_dispatch_sensitivity_frame(
     return sensitivity_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "dfl_research"})
 def risk_adjusted_value_gate_frame(
     context,
     horizon_regret_weighted_forecast_strategy_benchmark_frame: pl.DataFrame,
@@ -355,6 +384,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
     regret_weighted_dfl_pilot_frame,
+    dfl_relaxed_lp_pilot_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,

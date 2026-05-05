@@ -7,6 +7,7 @@ from smart_arbitrage.assets.silver.neural_forecasts import (
 	NEURAL_FORECAST_SILVER_ASSETS,
 	nbeatsx_price_forecast,
 	neural_forecast_feature_frame,
+	sota_forecast_training_frame,
 	tft_price_forecast,
 )
 from smart_arbitrage.forecasting.neural_features import (
@@ -225,20 +226,29 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 
 	assert {
 		"neural_forecast_feature_frame",
+		"sota_forecast_training_frame",
 		"nbeatsx_price_forecast",
 		"tft_price_forecast",
 	}.issubset(asset_keys)
 	assert asset_keys.issubset(registered_asset_keys)
+	tags_by_key = {
+		asset_key.to_user_string(): tags
+		for asset in NEURAL_FORECAST_SILVER_ASSETS
+		for asset_key, tags in asset.tags_by_key.items()
+	}
+	assert tags_by_key["sota_forecast_training_frame"]["medallion"] == "silver"
 
 
 def test_neural_forecast_assets_materialize_dataframes() -> None:
 	price_history = _synthetic_price_history()
 
 	feature_asset_output = neural_forecast_feature_frame(None, price_history)
+	sota_asset_output = sota_forecast_training_frame(None, feature_asset_output)
 	nbeatsx_asset_output = nbeatsx_price_forecast(None, feature_asset_output)
 	tft_asset_output = tft_price_forecast(None, feature_asset_output)
 
 	assert feature_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
+	assert sota_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert nbeatsx_asset_output.height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert tft_asset_output.height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 

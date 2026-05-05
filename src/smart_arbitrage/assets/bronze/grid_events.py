@@ -66,7 +66,7 @@ class UkrenergoGridEventsConfig(dg.Config):
     max_posts: int = 20
 
 
-@dg.asset(group_name="bronze")
+@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "grid_events"})
 def ukrenergo_grid_events_bronze(context, config: UkrenergoGridEventsConfig) -> pl.DataFrame:
     """Observed public Ukrenergo Telegram posts with transparent rule-based event tags."""
 

@@ -9,6 +9,7 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Main control: `strict_similar_day`.
 - Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
+- New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, offline Decision Transformer trajectory rows, DT safety projection, and simulated paper-trading replay rows.
 - Dashboard UI is separate and was not changed in the latest research slice.
 
 Latest materialized result:
@@ -59,7 +60,7 @@ uv run dg list defs --json
 docker compose config --quiet
 ```
 
-Latest full verification: `100 passed`.
+Latest full verification: `110 passed`.
 
 ## Research Artifacts
 
@@ -79,5 +80,12 @@ Latest full verification: `100 passed`.
 - Decision-focused predict-then-bid for strategic energy storage: <https://arxiv.org/abs/2505.01551>
 - TimeXer for exogenous time-series forecasting: <https://huggingface.co/papers/2402.19072>
 - Time-Series-Library reference implementation: <https://huggingface.co/lwaekfjlk/Time-Series-Library>
+
+## Claim Boundaries
+
+- `sota_forecast_training_frame` is a backend contract for full NeuralForecast NBEATSx and PyTorch-Forecasting TFT experiments. It is not itself a tuned SOTA model result.
+- `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
+- `decision_transformer_trajectory_frame` and `DecisionTransformerPolicy` provide offline return-conditioned policy scaffolding plus deterministic action projection. They are not yet a trained deployable DT strategy.
+- `simulated_live_trading_frame` is paper-trading replay only. It never carries real settlement IDs and must not be described as market execution.
 
 GPU note: machine has GTX 1050 Ti, but current Python env has CPU-only PyTorch (`torch 2.11.0+cpu`). Current workload is mostly small rolling-origin training, tiny LP solves, Polars transforms, and Dagster/process overhead. GPU is not expected to help this MVP slice materially. CUDA PyTorch becomes useful only for heavier NeuralForecast/PyTorch Forecasting/TimeXer experiments.

@@ -106,7 +106,7 @@ class TenantHistoricalWeatherConfig(dg.Config):
     location_config_path: str | None = None
 
 
-@dg.asset(group_name="bronze")
+@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "weather"})
 def weather_forecast_bronze(context, config: WeatherLocationConfig) -> pl.DataFrame:
     """Weather forecast Bronze asset refactored from the legacy Open-Meteo ingestion flow."""
 
@@ -149,7 +149,7 @@ def weather_forecast_bronze(context, config: WeatherLocationConfig) -> pl.DataFr
 BRONZE_INGESTION_ASSETS = [weather_forecast_bronze]
 
 
-@dg.asset(group_name="bronze")
+@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "market_data"})
 def observed_market_price_history_bronze(
     context,
     config: ObservedMarketBackfillConfig,
@@ -175,7 +175,7 @@ def observed_market_price_history_bronze(
     return price_history
 
 
-@dg.asset(group_name="bronze")
+@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "weather"})
 def tenant_historical_weather_bronze(
     context,
     config: TenantHistoricalWeatherConfig,

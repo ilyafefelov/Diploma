@@ -27,7 +27,7 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 )
 
 
-@dg.asset(group_name="bronze")
+@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "battery_telemetry"})
 def battery_telemetry_bronze(context) -> pl.DataFrame:
     """Raw 5-minute battery telemetry observations from MQTT/Postgres."""
 
@@ -44,7 +44,7 @@ def battery_telemetry_bronze(context) -> pl.DataFrame:
     return telemetry_frame
 
 
-@dg.asset(group_name="silver")
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "battery_telemetry"})
 def battery_state_hourly_silver(
     context,
     battery_telemetry_bronze: pl.DataFrame,

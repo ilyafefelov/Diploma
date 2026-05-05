@@ -50,8 +50,10 @@ docs/
 - ✅ Real-data 90-anchor DAM benchmark — OREE observed prices + tenant Open-Meteo weather.
 - ✅ Gold research layer — forecast diagnostics, value-aware ensemble, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration.
 - ✅ Strict LP/oracle re-evaluation — calibrated forecasts checked against same Level 1 simulator.
+- ✅ Medallion cleanup — Dagster assets now carry explicit `medallion=bronze|silver|gold` tags, and the real-data benchmark has a Silver price/weather feature bridge before Gold evaluation.
+- ✅ DFL/DT foundation slice — added SOTA-ready forecast training schema, differentiable relaxed-LP pilot rows, offline Decision Transformer trajectory rows, deterministic action projection, and simulated paper-trading replay rows.
 - ✅ Backend read models — `/dashboard/calibrated-ensemble-benchmark`, `/dashboard/risk-adjusted-value-gate`, and `/dashboard/forecast-dispatch-sensitivity` expose selector and diagnostic evidence for dashboard redesign without touching dashboard UI.
 - ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
 - ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.
-- 🟡 Full differentiable DFL — not implemented yet; next research candidate.
-- 🟡 Decision Transformer / M3DT-inspired strategy — future work after DFL and trajectory quality improve.
+- 🟡 Full differentiable DFL training — primitive exists, but forecast models are not yet fine-tuned end-to-end on regret.
+- 🟡 Decision Transformer / M3DT-inspired strategy — policy scaffolding and trajectories exist; training/evaluation remains future work.

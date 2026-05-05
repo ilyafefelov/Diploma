@@ -60,7 +60,7 @@ DEMO_DEGRADATION_COST_PER_CYCLE_UAH: Final[float] = _derive_demo_degradation_cos
 )
 
 
-@dg.asset(group_name="bronze")
+@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "mvp_demo_market"})
 def dam_price_history(
     context,
     weather_forecast_bronze: pl.DataFrame,
@@ -97,7 +97,7 @@ def dam_price_history(
     return price_history
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "mvp_demo_battery"})
 def demo_battery_physical_metrics(context) -> BatteryPhysicalMetrics:
     """Canonical battery parameters for the week 2 MVP demo."""
 
@@ -126,7 +126,7 @@ def demo_battery_physical_metrics(context) -> BatteryPhysicalMetrics:
     return metrics
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "mvp_demo_battery"})
 def demo_battery_telemetry(
     context,
     dam_price_history: pl.DataFrame,
@@ -148,7 +148,7 @@ def demo_battery_telemetry(
     return telemetry
 
 
-@dg.asset(group_name="silver")
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "mvp_demo_forecast"})
 def strict_similar_day_forecast(
     context,
     dam_price_history: pl.DataFrame,
@@ -177,7 +177,7 @@ def strict_similar_day_forecast(
     return forecast_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "mvp_demo_dispatch"})
 def baseline_dispatch_plan(
     context,
     strict_similar_day_forecast: pl.DataFrame,
@@ -207,7 +207,7 @@ def baseline_dispatch_plan(
     return result
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "mvp_demo_gatekeeper"})
 def validated_dispatch_command(
     context,
     baseline_dispatch_plan: BaselineSolveResult,
@@ -232,7 +232,7 @@ def validated_dispatch_command(
     return validated_command
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "mvp_demo_gatekeeper"})
 def blocked_dispatch_command_demo(
     context,
     baseline_dispatch_plan: BaselineSolveResult,
@@ -269,7 +269,7 @@ def blocked_dispatch_command_demo(
     return safe_command
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "mvp_demo_benchmark"})
 def oracle_benchmark_metrics(
     context,
     dam_price_history: pl.DataFrame,
@@ -319,7 +319,7 @@ def oracle_benchmark_metrics(
     return metrics
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "mvp_demo_benchmark"})
 def baseline_regret_tracking(
     context,
     oracle_benchmark_metrics: dict,

@@ -170,10 +170,21 @@ Implemented:
 
 Still not claimed:
 
-- Full DFL with a differentiable optimizer.
-- Decision Transformer policy learning.
-- Full SOTA NBEATSx/TFT training.
+- Full DFL forecast fine-tuning. A differentiable relaxed-LP primitive now exists, but the compact forecast models are not yet trained end-to-end on regret.
+- Completed Decision Transformer policy learning. Offline trajectory rows, a small return-conditioned policy class, and a safety projection layer now exist; trained DT evaluation is still future work.
+- Full SOTA NBEATSx/TFT training. A backend-neutral Silver schema now exists for NeuralForecast/PyTorch-Forecasting experiments, but current benchmark results still use compact local candidates.
 - Operational live trading claims using realized future weather.
+
+## Framework Foundation Slice
+
+The latest implementation tightened the Dagster medallion structure and added research primitives needed before a full DFL/DT run:
+
+- All Dagster assets in the Bronze/Silver/Gold groups now carry matching `medallion` tags for clearer UI filtering and lineage.
+- `real_data_benchmark_silver_feature_frame` moves observed DAM price + tenant weather feature joining into Silver before Gold rolling-origin scoring.
+- `sota_forecast_training_frame` exposes the leakage-safe Silver frame as `unique_id`, `ds`, `y`, known-future covariates, historical-observed covariates, and static covariate metadata for full NBEATSx/TFT backends.
+- `dfl_relaxed_lp_pilot_frame` evaluates forecast rows through a `cvxpylayers` relaxed storage LP and reports relaxed oracle regret. This is a pilot primitive, not the final thesis metric.
+- `decision_transformer_trajectory_frame` converts simulated dispatch transitions into offline state/action/reward/return-to-go rows.
+- `simulated_live_trading_frame` provides simulated paper-trading replay rows with `paper_trade_provenance="simulated"` and no settlement IDs.
 
 ## Materialized Research Layer Results
 

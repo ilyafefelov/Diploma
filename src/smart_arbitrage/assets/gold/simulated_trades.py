@@ -3,6 +3,8 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.decision_transformer.trajectories import build_decision_transformer_trajectory_frame
+from smart_arbitrage.live.paper_trading import build_simulated_live_trading_frame
 from smart_arbitrage.resources.simulated_trade_store import get_simulated_trade_store
 from smart_arbitrage.training.simulated_trades import (
     SimulatedTradeTrainingConfig,
@@ -20,16 +22,41 @@ class SimulatedTradeTrainingAssetConfig(dg.Config):
     tenant_ids_csv: str = ""
 
 
-@dg.asset(group_name="gold")
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "simulated_trade_training"})
+def simulated_trade_silver_feature_frame(
+    context,
+    dam_price_history: pl.DataFrame,
+) -> pl.DataFrame:
+    """Silver DAM price frame prepared for simulated trade trajectory generation."""
+
+    frame = (
+        dam_price_history
+        .select([column for column in ["timestamp", "price_uah_mwh"] if column in dam_price_history.columns])
+        .drop_nulls()
+        .unique(subset=["timestamp"], keep="last")
+        .sort("timestamp")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "scope": "silver_bridge_for_simulated_dam_training",
+            "source_asset": "dam_price_history",
+        },
+    )
+    return frame
+
+
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "simulated_trade_training"})
 def simulated_trade_training_frame(
     context,
     config: SimulatedTradeTrainingAssetConfig,
-    dam_price_history: pl.DataFrame,
+    simulated_trade_silver_feature_frame: pl.DataFrame,
 ) -> pl.DataFrame:
     """Simulated DAM state-action-reward-regret trajectories for later DFL/DT training."""
 
     training_result = build_simulated_trade_training_data(
-        dam_price_history,
+        simulated_trade_silver_feature_frame,
         tenant_ids=_tenant_ids_from_csv(config.tenant_ids_csv),
         config=SimulatedTradeTrainingConfig(
             max_anchors_per_tenant=config.max_anchors_per_tenant,
@@ -55,7 +82,50 @@ def simulated_trade_training_frame(
     return training_result.transition_frame
 
 
-SIMULATED_TRADE_TRAINING_ASSETS = [simulated_trade_training_frame]
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "decision_transformer"})
+def decision_transformer_trajectory_frame(
+    context,
+    simulated_trade_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gold offline DT trajectory rows from simulated dispatch transitions."""
+
+    frame = build_decision_transformer_trajectory_frame(simulated_trade_training_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "episode_count": frame.select("episode_id").n_unique() if frame.height else 0,
+            "scope": "offline_dt_training_trajectory_not_live_policy",
+        },
+    )
+    return frame
+
+
+@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "paper_trading"})
+def simulated_live_trading_frame(
+    context,
+    simulated_trade_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gold simulated live-trading replay rows for backend/dashboard read models later."""
+
+    frame = build_simulated_live_trading_frame(simulated_trade_training_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "scope": "simulated_paper_trading_not_market_execution",
+        },
+    )
+    return frame
+
+
+SIMULATED_TRADE_TRAINING_ASSETS = [
+    simulated_trade_silver_feature_frame,
+    simulated_trade_training_frame,
+    decision_transformer_trajectory_frame,
+    simulated_live_trading_frame,
+]
 
 
 def _tenant_ids_from_csv(value: str) -> list[str] | None:

@@ -11,6 +11,7 @@ import polars as pl
 
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
+from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
 from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.resources.forecast_store import get_forecast_store
 
@@ -21,7 +22,7 @@ MLFLOW_FORECAST_MODEL_REGISTRY_NAMES = {
 }
 
 
-@dg.asset(group_name="silver")
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
 def neural_forecast_feature_frame(
 	context,
 	dam_price_history: pl.DataFrame,
@@ -48,7 +49,31 @@ def neural_forecast_feature_frame(
 	return feature_frame
 
 
-@dg.asset(group_name="silver")
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
+def sota_forecast_training_frame(
+	context,
+	neural_forecast_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Backend-neutral Silver frame for full NeuralForecast/PyTorch-Forecasting experiments."""
+
+	frame = build_sota_forecast_training_frame(
+		neural_forecast_feature_frame,
+		tenant_id="global_research_tenant",
+	)
+	_add_metadata(
+		context,
+		{
+			"rows": frame.height,
+			"train_rows": frame.filter(pl.col("split") == "train").height,
+			"forecast_rows": frame.filter(pl.col("split") == "forecast").height,
+			"schema_version": frame.select("sota_schema_version").to_series().item(0) if frame.height else "empty",
+			"scope": "sota_backend_contract_not_trained_model",
+		},
+	)
+	return frame
+
+
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
 def nbeatsx_price_forecast(
 	context,
 	neural_forecast_feature_frame: pl.DataFrame,
@@ -74,7 +99,7 @@ def nbeatsx_price_forecast(
 	return forecast
 
 
-@dg.asset(group_name="silver")
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
 def tft_price_forecast(
 	context,
 	neural_forecast_feature_frame: pl.DataFrame,
@@ -106,6 +131,7 @@ def tft_price_forecast(
 
 NEURAL_FORECAST_SILVER_ASSETS = [
 	neural_forecast_feature_frame,
+	sota_forecast_training_frame,
 	nbeatsx_price_forecast,
 	tft_price_forecast,
 ]

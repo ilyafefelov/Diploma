@@ -10,7 +10,7 @@ import polars as pl
 from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
 
 
-@dg.asset(group_name="silver")
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "grid_events"})
 def grid_event_signal_silver(
     context,
     dam_price_history: pl.DataFrame,

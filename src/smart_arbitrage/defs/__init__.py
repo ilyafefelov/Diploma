@@ -11,7 +11,11 @@ from smart_arbitrage.assets.gold.forecast_strategy import (
 )
 from smart_arbitrage.assets.gold.dfl_research import DFL_RESEARCH_GOLD_ASSETS
 from smart_arbitrage.assets.gold.simulated_trades import SIMULATED_TRADE_TRAINING_ASSETS
-from smart_arbitrage.assets.silver import GRID_EVENT_SILVER_ASSETS, NEURAL_FORECAST_SILVER_ASSETS
+from smart_arbitrage.assets.silver import (
+    GRID_EVENT_SILVER_ASSETS,
+    NEURAL_FORECAST_SILVER_ASSETS,
+    REAL_DATA_BENCHMARK_SILVER_ASSETS,
+)
 from smart_arbitrage.assets.telemetry import (
     BATTERY_TELEMETRY_ASSETS,
     BATTERY_TELEMETRY_SCHEDULES,
@@ -23,6 +27,7 @@ defs = Definitions(
         *REAL_DATA_BENCHMARK_BRONZE_ASSETS,
         *GRID_EVENT_BRONZE_ASSETS,
         *GRID_EVENT_SILVER_ASSETS,
+        *REAL_DATA_BENCHMARK_SILVER_ASSETS,
         *NEURAL_FORECAST_SILVER_ASSETS,
         *BATTERY_TELEMETRY_ASSETS,
         *FORECAST_STRATEGY_GOLD_ASSETS,

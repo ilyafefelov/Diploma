@@ -6,10 +6,12 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DFL_RESEARCH_GOLD_ASSETS,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
+    RelaxedDflPilotAssetConfig,
     RegretWeightedForecastCalibrationAssetConfig,
     RegretWeightedDflPilotAssetConfig,
     calibrated_value_aware_ensemble_frame,
     dfl_training_frame,
+    dfl_relaxed_lp_pilot_frame,
     forecast_dispatch_sensitivity_frame,
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
@@ -103,8 +105,15 @@ def test_dfl_research_assets_are_registered() -> None:
         "calibrated_value_aware_ensemble_frame",
         "forecast_dispatch_sensitivity_frame",
         "risk_adjusted_value_gate_frame",
+        "dfl_relaxed_lp_pilot_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
+    tags_by_key = {
+        asset_key.to_user_string(): tags
+        for asset in DFL_RESEARCH_GOLD_ASSETS
+        for asset_key, tags in asset.tags_by_key.items()
+    }
+    assert tags_by_key["dfl_relaxed_lp_pilot_frame"]["medallion"] == "gold"
 
 
 def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) -> None:
@@ -173,6 +182,7 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         None,
         horizon_calibrated_benchmark,
     )
+    relaxed_pilot = dfl_relaxed_lp_pilot_frame(None, RelaxedDflPilotAssetConfig(max_examples=4), benchmark)
 
     assert ensemble.height == 5
     assert strategy_store.evaluation_frame.height == 65
@@ -205,3 +215,7 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert set(risk_gate["forecast_model_name"].unique().to_list()) == {
         "risk_adjusted_value_gate_v0"
     }
+    assert relaxed_pilot.height > 0
+    assert relaxed_pilot.select("academic_scope").to_series().unique().to_list() == [
+        "differentiable_relaxed_lp_pilot_not_final_dfl"
+    ]

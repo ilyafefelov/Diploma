@@ -18,6 +18,10 @@ from smart_arbitrage.assets.gold.forecast_strategy import (
     forecast_strategy_comparison_frame,
     real_data_rolling_origin_benchmark_frame,
 )
+from smart_arbitrage.assets.silver.real_data_benchmark import (
+    REAL_DATA_BENCHMARK_SILVER_ASSETS,
+    real_data_benchmark_silver_feature_frame,
+)
 from smart_arbitrage.defs import defs
 from smart_arbitrage.resources.strategy_evaluation_store import (
     InMemoryStrategyEvaluationStore,
@@ -132,13 +136,22 @@ def test_forecast_strategy_comparison_asset_persists_gold_frame(monkeypatch) -> 
 
 def test_forecast_strategy_gold_asset_is_registered() -> None:
     asset_keys = {asset.key.to_user_string() for asset in FORECAST_STRATEGY_GOLD_ASSETS}
+    silver_asset_keys = {asset.key.to_user_string() for asset in REAL_DATA_BENCHMARK_SILVER_ASSETS}
     registered_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
+    benchmark_deps = {
+        asset_key.to_user_string()
+        for asset_key in real_data_rolling_origin_benchmark_frame.dependency_keys
+    }
 
     assert {
         "forecast_strategy_comparison_frame",
         "real_data_rolling_origin_benchmark_frame",
     }.issubset(asset_keys)
+    assert {"real_data_benchmark_silver_feature_frame"}.issubset(silver_asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
+    assert silver_asset_keys.issubset(registered_asset_keys)
+    assert "real_data_benchmark_silver_feature_frame" in benchmark_deps
+    assert "tenant_historical_weather_bronze" not in benchmark_deps
 
 
 def test_real_data_rolling_origin_benchmark_asset_persists_rows(monkeypatch) -> None:
@@ -158,14 +171,14 @@ def test_real_data_rolling_origin_benchmark_asset_persists_rows(monkeypatch) -> 
         lambda: store,
     )
 
+    silver_frame = real_data_benchmark_silver_feature_frame(None, price_history, pl.DataFrame())
     frame = real_data_rolling_origin_benchmark_frame(
         None,
         RealDataRollingOriginBenchmarkAssetConfig(
             tenant_ids_csv="client_003_dnipro_factory",
             max_anchors=1,
         ),
-        price_history,
-        pl.DataFrame(),
+        silver_frame,
     )
 
     assert frame.height == 3
