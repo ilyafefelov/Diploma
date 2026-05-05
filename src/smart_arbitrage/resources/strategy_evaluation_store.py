@@ -15,6 +15,8 @@ class StrategyEvaluationStore(Protocol):
 
     def latest_real_data_benchmark_frame(self, *, tenant_id: str) -> pl.DataFrame: ...
 
+    def latest_strategy_kind_frame(self, *, tenant_id: str, strategy_kind: str) -> pl.DataFrame: ...
+
 
 class NullStrategyEvaluationStore:
     def upsert_evaluation_frame(self, evaluation_frame: pl.DataFrame) -> None:
@@ -24,6 +26,9 @@ class NullStrategyEvaluationStore:
         return pl.DataFrame()
 
     def latest_real_data_benchmark_frame(self, *, tenant_id: str) -> pl.DataFrame:
+        return pl.DataFrame()
+
+    def latest_strategy_kind_frame(self, *, tenant_id: str, strategy_kind: str) -> pl.DataFrame:
         return pl.DataFrame()
 
 
@@ -50,6 +55,13 @@ class InMemoryStrategyEvaluationStore:
             self.evaluation_frame,
             tenant_id=tenant_id,
             strategy_kind="real_data_rolling_origin_benchmark",
+        )
+
+    def latest_strategy_kind_frame(self, *, tenant_id: str, strategy_kind: str) -> pl.DataFrame:
+        return _latest_tenant_frame(
+            self.evaluation_frame,
+            tenant_id=tenant_id,
+            strategy_kind=strategy_kind,
         )
 
 
@@ -200,6 +212,28 @@ class PostgresStrategyEvaluationStore:
                 rows = cursor.fetchall()
         return pl.DataFrame([_normalize_row(dict(row)) for row in rows])
 
+    def latest_strategy_kind_frame(self, *, tenant_id: str, strategy_kind: str) -> pl.DataFrame:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+					SELECT *
+					FROM forecast_strategy_evaluations
+					WHERE tenant_id = %s
+					  AND strategy_kind = %s
+					  AND generated_at = (
+					      SELECT max(generated_at)
+					      FROM forecast_strategy_evaluations
+					      WHERE tenant_id = %s
+					        AND strategy_kind = %s
+					  )
+					ORDER BY anchor_timestamp, rank_by_regret, forecast_model_name
+					""",
+                    (tenant_id, strategy_kind, tenant_id, strategy_kind),
+                )
+                rows = cursor.fetchall()
+        return pl.DataFrame([_normalize_row(dict(row)) for row in rows])
+
 
 def _append_or_replace(
     base_frame: pl.DataFrame, incoming_frame: pl.DataFrame, *, subset: list[str]
@@ -230,7 +264,7 @@ def _latest_tenant_frame(
         return pl.DataFrame()
     latest_generated_at = tenant_frame.select("generated_at").max().item()
     sort_columns = ["rank_by_regret", "forecast_model_name"]
-    if strategy_kind == "real_data_rolling_origin_benchmark":
+    if strategy_kind != "forecast_driven_lp":
         sort_columns = ["anchor_timestamp", "rank_by_regret", "forecast_model_name"]
     return tenant_frame.filter(pl.col("generated_at") == latest_generated_at).sort(sort_columns)
 

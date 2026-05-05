@@ -8,6 +8,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     RegretWeightedForecastCalibrationAssetConfig,
     RegretWeightedDflPilotAssetConfig,
+    calibrated_value_aware_ensemble_frame,
     dfl_training_frame,
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
@@ -97,6 +98,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "regret_weighted_forecast_strategy_benchmark_frame",
         "horizon_regret_weighted_forecast_calibration_frame",
         "horizon_regret_weighted_forecast_strategy_benchmark_frame",
+        "calibrated_value_aware_ensemble_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
 
@@ -155,9 +157,13 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         benchmark,
         horizon_calibration,
     )
+    calibrated_ensemble = calibrated_value_aware_ensemble_frame(
+        None,
+        horizon_calibrated_benchmark,
+    )
 
     assert ensemble.height == 5
-    assert strategy_store.evaluation_frame.height == 55
+    assert strategy_store.evaluation_frame.height == 60
     assert training.height == 20
     assert dfl_store.training_frame.height == 20
     assert pilot.height == 1
@@ -177,3 +183,7 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "nbeatsx_horizon_regret_weighted_calibrated_v0",
         "tft_horizon_regret_weighted_calibrated_v0",
     }.issubset(set(horizon_calibrated_benchmark["forecast_model_name"].unique().to_list()))
+    assert calibrated_ensemble.height == 5
+    assert set(calibrated_ensemble["forecast_model_name"].unique().to_list()) == {
+        "calibrated_value_aware_ensemble_v0"
+    }

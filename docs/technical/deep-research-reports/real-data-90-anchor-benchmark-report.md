@@ -312,6 +312,47 @@ Regret-weighted DFL pilot:
 | Weighted MAE delta | 478.28 UAH/MWh |
 | Mean validation regret | 1,009.08 UAH |
 
+Calibrated horizon-aware ensemble gate follow-up:
+
+This follow-up materialized `calibrated_value_aware_ensemble_v0`, a selector that only chooses among `strict_similar_day`, `tft_horizon_regret_weighted_calibrated_v0`, and `nbeatsx_horizon_regret_weighted_calibrated_v0`. The selector uses mean regret from prior anchors only and ignores raw compact neural rows.
+
+Artifacts:
+
+`data/research_runs/calibrated_ensemble_20260505T143258/calibrated_ensemble_summary.csv`
+
+`data/research_runs/calibrated_ensemble_20260505T143258/research_layer_summary.json`
+
+Dagster materialization run: `1b7959eb-f745-4a0a-9457-5b3d3bd85a89`
+MLflow run: <http://localhost:5000/#/experiments/5/runs/661189d0b8a1497784e26f3831f77fc7>
+
+Restoreable database dump:
+
+`data/db_backups/smart_arbitrage_calibrated_ensemble_20260505T143258.dump`
+
+Calibrated selector result:
+
+| Model | Rows | Mean regret UAH | Median regret UAH | Mean decision value UAH |
+|---|---:|---:|---:|---:|
+| tft_horizon_regret_weighted_calibrated_v0 | 450 | 834.32 | 558.87 | 2,812.26 |
+| strict_similar_day | 450 | 851.04 | 535.62 | 2,795.55 |
+| calibrated_value_aware_ensemble_v0 | 450 | 913.92 | 565.50 | 2,732.67 |
+| nbeatsx_horizon_regret_weighted_calibrated_v0 | 450 | 941.74 | 653.24 | 2,704.85 |
+
+Selector breakdown:
+
+| Selected source | Rows | Mean regret UAH | Median regret UAH |
+|---|---:|---:|---:|
+| strict_similar_day | 218 | 943.08 | 595.75 |
+| tft_horizon_regret_weighted_calibrated_v0 | 185 | 859.49 | 557.56 |
+| nbeatsx_horizon_regret_weighted_calibrated_v0 | 47 | 992.87 | 533.49 |
+
+Interpretation:
+
+- The calibrated gate is a negative selector result, not a promotion candidate. It improves over raw compact NBEATSx/TFT but is worse than both strict similar-day and horizon-aware TFT on mean regret.
+- The failure mode is useful: trailing mean regret over prior anchors is too blunt for switching among volatile strategies. It selects strict or NBEATSx in periods where horizon-aware TFT would have been better.
+- Dashboard default should remain `strict_similar_day`. Horizon-aware TFT remains a promising research candidate, but it needs a better pre-anchor selector or a true value-oriented DFL objective before operational claims.
+- Backend read model added: `GET /dashboard/calibrated-ensemble-benchmark?tenant_id=...`. No dashboard UI was changed.
+
 Runtime and GPU note:
 
 The current compact NBEATSx/TFT code uses PyTorch but the installed wheel is CPU-only (`torch 2.11.0+cpu`, `torch.cuda.is_available() == False`). The machine has an NVIDIA GTX 1050 Ti with 4 GB VRAM, but this slice is dominated by small rolling-origin training windows, tiny LP solves, Polars transforms, and Dagster/process overhead. GPU enablement is unlikely to materially improve this MVP slice. GPU becomes useful later only if the project switches to heavier NeuralForecast/PyTorch Forecasting training or larger TimeXer-style experiments with a CUDA-enabled PyTorch build.
@@ -341,5 +382,6 @@ API smoke checks:
 
 - `GET /health` returned `{"status":"ok"}`.
 - `GET /dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory` returned the latest 90-anchor, 3-model benchmark summary and rows.
+- `GET /dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory` returned the latest 90-anchor calibrated gate rows.
 
 Docker services were up for Postgres, MLflow, FastAPI, Dagster webserver, Dagster daemon, MQTT, and telemetry ingestor. The API is exposed on `127.0.0.1:8001`, while Dagster UI is on `127.0.0.1:3001`. Port `8000` is still occupied by a Windows `Manager` process that could not be stopped due to access denial, so the backend stack uses `SMART_ARBITRAGE_API_PORT=8001`.

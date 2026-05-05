@@ -760,6 +760,79 @@ def test_real_data_benchmark_endpoint_returns_latest_summary_and_rows(
 	]
 
 
+def test_calibrated_ensemble_benchmark_endpoint_returns_latest_gate_rows(
+	client: TestClient,
+	fake_strategy_evaluation_store: InMemoryStrategyEvaluationStore,
+) -> None:
+	generated_at = datetime(2026, 5, 4, 20, 30, tzinfo=UTC)
+	fake_strategy_evaluation_store.upsert_evaluation_frame(
+		pl.DataFrame(
+			{
+				"evaluation_id": ["calibrated-gate-001", "calibrated-gate-002"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"forecast_model_name": [
+					"calibrated_value_aware_ensemble_v0",
+					"calibrated_value_aware_ensemble_v0",
+				],
+				"strategy_kind": [
+					"calibrated_value_aware_ensemble_gate",
+					"calibrated_value_aware_ensemble_gate",
+				],
+				"market_venue": ["DAM", "DAM"],
+				"anchor_timestamp": [
+					datetime(2026, 5, 3, 20, tzinfo=UTC),
+					datetime(2026, 5, 4, 20, tzinfo=UTC),
+				],
+				"generated_at": [generated_at, generated_at],
+				"horizon_hours": [24, 24],
+				"starting_soc_fraction": [0.5, 0.5],
+				"starting_soc_source": ["tenant_default", "tenant_default"],
+				"decision_value_uah": [120.0, 110.0],
+				"forecast_objective_value_uah": [119.0, 109.0],
+				"oracle_value_uah": [130.0, 130.0],
+				"regret_uah": [10.0, 20.0],
+				"regret_ratio": [0.0769, 0.1538],
+				"total_degradation_penalty_uah": [10.0, 9.0],
+				"total_throughput_mwh": [0.25, 0.2],
+				"committed_action": ["DISCHARGE", "HOLD"],
+				"committed_power_mw": [0.08, 0.0],
+				"rank_by_regret": [1, 1],
+				"evaluation_payload": [
+					{
+						"data_quality_tier": "thesis_grade",
+						"selected_model_name": "tft_horizon_regret_weighted_calibrated_v0",
+					},
+					{
+						"data_quality_tier": "thesis_grade",
+						"selected_model_name": "strict_similar_day",
+					},
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/calibrated-ensemble-benchmark",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["data_quality_tier"] == "thesis_grade"
+	assert response_payload["anchor_count"] == 2
+	assert response_payload["model_count"] == 1
+	assert response_payload["best_model_name"] == "calibrated_value_aware_ensemble_v0"
+	assert response_payload["mean_regret_uah"] == pytest.approx(15.0)
+	assert [row["evaluation_payload"]["selected_model_name"] for row in response_payload["rows"]] == [
+		"tft_horizon_regret_weighted_calibrated_v0",
+		"strict_similar_day",
+	]
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -825,3 +898,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/baseline-lp-preview"]["get"]["summary"] == "Build baseline LP preview"
 	assert schema["paths"]["/dashboard/forecast-strategy-comparison"]["get"]["summary"] == "Get forecast strategy comparison"
 	assert schema["paths"]["/dashboard/real-data-benchmark"]["get"]["summary"] == "Get real-data benchmark"
+	assert schema["paths"]["/dashboard/calibrated-ensemble-benchmark"]["get"]["summary"] == "Get calibrated ensemble benchmark"

@@ -15,7 +15,11 @@ from smart_arbitrage.dfl.regret_weighted import (
 )
 from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
-from smart_arbitrage.strategy.ensemble_gate import build_value_aware_ensemble_frame
+from smart_arbitrage.strategy.ensemble_gate import (
+    CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
+    build_calibrated_value_aware_ensemble_frame,
+    build_value_aware_ensemble_frame,
+)
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 
 
@@ -250,6 +254,40 @@ def horizon_regret_weighted_forecast_strategy_benchmark_frame(
     return benchmark_frame
 
 
+@dg.asset(group_name="gold")
+def calibrated_value_aware_ensemble_frame(
+    context,
+    horizon_regret_weighted_forecast_strategy_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gold gate over strict control and horizon-aware calibrated forecast candidates."""
+
+    ensemble_frame = build_calibrated_value_aware_ensemble_frame(
+        horizon_regret_weighted_forecast_strategy_benchmark_frame
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(ensemble_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": ensemble_frame.height,
+            "tenant_count": ensemble_frame.select("tenant_id").n_unique()
+            if ensemble_frame.height
+            else 0,
+            "anchor_count": ensemble_frame.select("anchor_timestamp").n_unique()
+            if ensemble_frame.height
+            else 0,
+            "strategy_kind": CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
+            "selection_policy": "prior_anchor_validation_regret_only",
+            "scope": "selector_not_full_dfl",
+        },
+    )
+    _log_mlflow_summary(
+        ensemble_frame,
+        experiment_name="smart-arbitrage-calibrated-ensemble-gate",
+        strategy_kind=CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
+    )
+    return ensemble_frame
+
+
 DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
@@ -258,6 +296,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
+    calibrated_value_aware_ensemble_frame,
 ]
 
 

@@ -338,6 +338,24 @@ Operational notes:
 - The benchmark trains/fits forecasts using rows available at or before each anchor and keeps realized future prices only for scoring and oracle comparison.
 - If no benchmark rows exist for the tenant, the endpoint returns `404`.
 
+### `GET /dashboard/calibrated-ensemble-benchmark`
+
+Returns the latest persisted calibrated value-aware ensemble gate rows for a tenant. The selector chooses only from `strict_similar_day`, `tft_horizon_regret_weighted_calibrated_v0`, and `nbeatsx_horizon_regret_weighted_calibrated_v0` using prior-anchor validation regret.
+
+Request query example:
+
+```text
+/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory
+```
+
+Response shape is the same as `GET /dashboard/real-data-benchmark`, but `model_count` is `1` and each row payload includes `selected_model_name`, `selection_policy`, and `prior_validation_anchor_count`.
+
+Operational notes:
+
+- This endpoint is a dashboard read model for research evidence, not an operational trading selector.
+- Current 90-anchor result is negative: the calibrated gate improves over raw compact neural candidates but is worse than both `strict_similar_day` and horizon-aware TFT on mean regret.
+- If no calibrated ensemble rows exist for the tenant, the endpoint returns `404`.
+
 ### `POST /weather/run-config`
 
 Builds the Dagster run-config payload for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76) without executing a run.
@@ -461,6 +479,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - For live exogenous context, the dashboard can call `GET /dashboard/exogenous-signals` to show weather freshness and Ukrenergo grid-event risk without making a trading claim.
 - For Gold strategy evidence, the dashboard can call `GET /dashboard/forecast-strategy-comparison` to compare strict similar-day, NBEATSx, and TFT by LP decision value, oracle regret, degradation penalty, throughput, and starting SOC source.
 - For thesis benchmark evidence, the dashboard can call `GET /dashboard/real-data-benchmark` to compare the same forecast candidates across observed-only rolling-origin anchors and show whether the result is thesis-grade or demo-grade.
+- For calibrated selector evidence, the dashboard can call `GET /dashboard/calibrated-ensemble-benchmark` to show which prior-regret gate source was selected per anchor and why this selector is not yet a dashboard default.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary

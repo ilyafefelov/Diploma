@@ -22,7 +22,10 @@ from smart_arbitrage.resources.strategy_evaluation_store import (
     StrategyEvaluationStore,
     get_strategy_evaluation_store,
 )
-from smart_arbitrage.strategy.ensemble_gate import build_value_aware_ensemble_frame
+from smart_arbitrage.strategy.ensemble_gate import (
+    build_calibrated_value_aware_ensemble_frame,
+    build_value_aware_ensemble_frame,
+)
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 
 REAL_DATA_BENCHMARK_STRATEGY_KIND = "real_data_rolling_origin_benchmark"
@@ -38,9 +41,11 @@ class ResearchLayerOutputs:
     regret_weighted_benchmark_frame: pl.DataFrame
     horizon_regret_weighted_calibration_frame: pl.DataFrame
     horizon_regret_weighted_benchmark_frame: pl.DataFrame
+    calibrated_ensemble_frame: pl.DataFrame
     model_summary: pl.DataFrame
     regret_weighted_model_summary: pl.DataFrame
     horizon_regret_weighted_model_summary: pl.DataFrame
+    calibrated_ensemble_model_summary: pl.DataFrame
     dfl_training_summary: pl.DataFrame
 
 
@@ -108,6 +113,9 @@ def build_research_layer_outputs(
             horizon_calibration_frame,
         )
     )
+    calibrated_ensemble_frame = build_calibrated_value_aware_ensemble_frame(
+        horizon_regret_weighted_benchmark_frame
+    )
     return ResearchLayerOutputs(
         benchmark_frame=benchmark_frame,
         ensemble_frame=ensemble_frame,
@@ -117,11 +125,13 @@ def build_research_layer_outputs(
         regret_weighted_benchmark_frame=regret_weighted_benchmark_frame,
         horizon_regret_weighted_calibration_frame=horizon_calibration_frame,
         horizon_regret_weighted_benchmark_frame=horizon_regret_weighted_benchmark_frame,
+        calibrated_ensemble_frame=calibrated_ensemble_frame,
         model_summary=_model_summary(combined_frame, training_frame),
         regret_weighted_model_summary=_strategy_model_summary(regret_weighted_benchmark_frame),
         horizon_regret_weighted_model_summary=_strategy_model_summary(
             horizon_regret_weighted_benchmark_frame
         ),
+        calibrated_ensemble_model_summary=_strategy_model_summary(calibrated_ensemble_frame),
         dfl_training_summary=_dfl_training_summary(training_frame),
     )
 
@@ -171,6 +181,9 @@ def persist_research_layer_outputs(
     (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(
         outputs.horizon_regret_weighted_benchmark_frame
     )
+    (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(
+        outputs.calibrated_ensemble_frame
+    )
     resolved_dfl_store = dfl_store or get_dfl_training_store()
     resolved_dfl_store.upsert_training_frame(outputs.dfl_training_frame)
     resolved_dfl_store.upsert_pilot_frame(outputs.pilot_frame)
@@ -192,6 +205,9 @@ def write_research_layer_exports(
     )
     outputs.horizon_regret_weighted_model_summary.write_csv(
         output_dir / "horizon_regret_weighted_benchmark_summary.csv"
+    )
+    outputs.calibrated_ensemble_model_summary.write_csv(
+        output_dir / "calibrated_ensemble_summary.csv"
     )
     _calibration_summary(outputs.regret_weighted_calibration_frame).write_csv(
         output_dir / "regret_weighted_calibration_summary.csv"
@@ -395,6 +411,7 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
         "horizon_regret_weighted_benchmark_rows": (
             outputs.horizon_regret_weighted_benchmark_frame.height
         ),
+        "calibrated_ensemble_rows": outputs.calibrated_ensemble_frame.height,
         "dfl_expansion_recommendation": (
             "expand_to_all_tenants"
             if expanded_to_all_tenants_ready
@@ -404,6 +421,9 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
         "regret_weighted_model_summary": outputs.regret_weighted_model_summary.to_dicts(),
         "horizon_regret_weighted_model_summary": (
             outputs.horizon_regret_weighted_model_summary.to_dicts()
+        ),
+        "calibrated_ensemble_model_summary": (
+            outputs.calibrated_ensemble_model_summary.to_dicts()
         ),
     }
 

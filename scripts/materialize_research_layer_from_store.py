@@ -67,6 +67,7 @@ def main() -> None:
         "horizon_regret_weighted_benchmark_rows": (
             outputs.horizon_regret_weighted_benchmark_frame.height
         ),
+        "calibrated_ensemble_rows": outputs.calibrated_ensemble_frame.height,
     }
     print(json.dumps(summary, indent=2))
 
