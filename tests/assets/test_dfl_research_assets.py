@@ -1,0 +1,122 @@
+from datetime import datetime, timedelta
+
+import polars as pl
+
+from smart_arbitrage.assets.gold.dfl_research import (
+    DFL_RESEARCH_GOLD_ASSETS,
+    DflTrainingAssetConfig,
+    RegretWeightedDflPilotAssetConfig,
+    dfl_training_frame,
+    real_data_value_aware_ensemble_frame,
+    regret_weighted_dfl_pilot_frame,
+)
+from smart_arbitrage.defs import defs
+from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
+from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
+
+
+def _benchmark_frame() -> pl.DataFrame:
+    first_anchor = datetime(2026, 5, 1, 23)
+    rows: list[dict[str, object]] = []
+    for anchor_index in range(5):
+        anchor = first_anchor + timedelta(days=anchor_index)
+        for model_name, regret in [
+            ("strict_similar_day", 100.0),
+            ("nbeatsx_silver_v0", 150.0),
+            ("tft_silver_v0", 120.0),
+        ]:
+            rows.append(
+                {
+                    "evaluation_id": f"{anchor_index}:{model_name}",
+                    "tenant_id": "client_003_dnipro_factory",
+                    "forecast_model_name": model_name,
+                    "strategy_kind": "real_data_rolling_origin_benchmark",
+                    "market_venue": "DAM",
+                    "anchor_timestamp": anchor,
+                    "generated_at": datetime(2026, 5, 5),
+                    "horizon_hours": 2,
+                    "starting_soc_fraction": 0.5,
+                    "starting_soc_source": "tenant_default",
+                    "decision_value_uah": 1000.0 - regret,
+                    "forecast_objective_value_uah": 950.0,
+                    "oracle_value_uah": 1000.0,
+                    "regret_uah": regret,
+                    "regret_ratio": regret / 1000.0,
+                    "total_degradation_penalty_uah": 10.0,
+                    "total_throughput_mwh": 0.1,
+                    "committed_action": "HOLD",
+                    "committed_power_mw": 0.0,
+                    "rank_by_regret": 1,
+                    "evaluation_payload": {
+                        "data_quality_tier": "thesis_grade",
+                        "observed_coverage_ratio": 1.0,
+                        "forecast_diagnostics": {
+                            "mae_uah_mwh": regret,
+                            "rmse_uah_mwh": regret,
+                            "smape": 0.1,
+                        },
+                        "horizon": [
+                            {
+                                "forecast_price_uah_mwh": 1000.0,
+                                "actual_price_uah_mwh": 1100.0,
+                                "net_power_mw": 0.0,
+                            },
+                            {
+                                "forecast_price_uah_mwh": 1050.0,
+                                "actual_price_uah_mwh": 1150.0,
+                                "net_power_mw": 0.0,
+                            },
+                        ],
+                    },
+                }
+            )
+    return pl.DataFrame(rows)
+
+
+def test_dfl_research_assets_are_registered() -> None:
+    asset_keys = {asset.key.to_user_string() for asset in DFL_RESEARCH_GOLD_ASSETS}
+    registered_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
+
+    assert {
+        "real_data_value_aware_ensemble_frame",
+        "dfl_training_frame",
+        "regret_weighted_dfl_pilot_frame",
+    }.issubset(asset_keys)
+    assert asset_keys.issubset(registered_asset_keys)
+
+
+def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) -> None:
+    strategy_store = InMemoryStrategyEvaluationStore()
+    dfl_store = InMemoryDflTrainingStore()
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.dfl_research.get_strategy_evaluation_store",
+        lambda: strategy_store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.dfl_research.get_dfl_training_store",
+        lambda: dfl_store,
+    )
+    benchmark = _benchmark_frame()
+
+    ensemble = real_data_value_aware_ensemble_frame(None, benchmark)
+    training = dfl_training_frame(
+        None,
+        DflTrainingAssetConfig(),
+        benchmark,
+        ensemble,
+    )
+    pilot = regret_weighted_dfl_pilot_frame(
+        None,
+        RegretWeightedDflPilotAssetConfig(
+            tenant_id="client_003_dnipro_factory",
+            forecast_model_name="tft_silver_v0",
+        ),
+        training,
+    )
+
+    assert ensemble.height == 5
+    assert strategy_store.evaluation_frame.height == 5
+    assert training.height == 20
+    assert dfl_store.training_frame.height == 20
+    assert pilot.height == 1
+    assert dfl_store.pilot_frame.height == 1

@@ -270,6 +270,7 @@ def _join_tenant_weather_features(
                         "cloudcover",
                         "precipitation",
                         "effective_solar",
+                        "source_kind",
                     ]
                     if column_name in weather_history.columns
                 ],
@@ -282,6 +283,7 @@ def _join_tenant_weather_features(
                 "cloudcover": "weather_cloudcover",
                 "precipitation": "weather_precipitation",
                 "effective_solar": "weather_effective_solar",
+                "source_kind": "weather_source_kind",
             }
         )
     )

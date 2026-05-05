@@ -112,6 +112,59 @@ def test_neural_forecast_feature_frame_can_include_hourly_battery_state_features
 	assert matched_row["telemetry_is_fresh"] == 1.0
 
 
+def test_neural_forecast_feature_frame_adds_market_regime_features() -> None:
+	price_history = _synthetic_price_history()
+
+	feature_frame = build_neural_forecast_feature_frame(price_history)
+
+	assert {
+		"market_price_cap_max",
+		"market_price_cap_min",
+		"days_since_regime_change",
+		"is_price_cap_changed_recently",
+	}.issubset(set(NEURAL_FORECAST_FEATURE_COLUMNS))
+	latest_row = feature_frame.sort("timestamp").row(-1, named=True)
+	assert latest_row["market_price_cap_max"] == 15000.0
+	assert latest_row["market_price_cap_min"] == 10.0
+	assert latest_row["days_since_regime_change"] >= 0.0
+
+
+def test_forecast_only_weather_mode_masks_future_historical_weather() -> None:
+	price_history = _synthetic_price_history().with_columns(
+		[
+			pl.lit(77.0).alias("weather_temperature"),
+			pl.lit("observed").alias("weather_source_kind"),
+		]
+	)
+
+	feature_frame = build_neural_forecast_feature_frame(
+		price_history,
+		future_weather_mode="forecast_only",
+	)
+
+	forecast_rows = feature_frame.filter(pl.col("split") == "forecast")
+	assert forecast_rows.select("weather_temperature").to_series().unique().to_list() == [18.0]
+	assert forecast_rows.select("weather_known_future_available").to_series().unique().to_list() == [0.0]
+
+
+def test_forecast_only_weather_mode_keeps_future_forecast_weather() -> None:
+	price_history = _synthetic_price_history().with_columns(
+		[
+			pl.lit(11.0).alias("weather_temperature"),
+			pl.lit("forecast").alias("weather_source_kind"),
+		]
+	)
+
+	feature_frame = build_neural_forecast_feature_frame(
+		price_history,
+		future_weather_mode="forecast_only",
+	)
+
+	forecast_rows = feature_frame.filter(pl.col("split") == "forecast")
+	assert forecast_rows.select("weather_temperature").to_series().unique().to_list() == [11.0]
+	assert forecast_rows.select("weather_known_future_available").to_series().unique().to_list() == [1.0]
+
+
 def test_neural_forecast_feature_frame_normalizes_utc_battery_snapshot_timestamps() -> None:
 	price_history = _synthetic_price_history()
 	timestamp = price_history.select("timestamp").to_series().item(-5)

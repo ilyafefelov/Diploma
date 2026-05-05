@@ -206,6 +206,7 @@ def test_observed_market_price_history_rejects_synthetic_fallback(monkeypatch) -
             ]
         return None
 
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", lambda month_date: None)
     monkeypatch.setattr(market_weather, "_fetch_oree_prices", fake_fetch_oree_prices)
 
     price_history = build_observed_market_price_history(
@@ -219,6 +220,7 @@ def test_observed_market_price_history_rejects_synthetic_fallback(monkeypatch) -
 
 
 def test_observed_market_price_history_fails_when_required_day_missing(monkeypatch) -> None:
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", lambda month_date: None)
     monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date: None)
 
     try:

@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import Final
+from typing import Final, Literal
 
 import polars as pl
 
 from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DEFAULT_TIMESTAMP_COLUMN
+from smart_arbitrage.market_rules import market_rule_features
 
 DEFAULT_NEURAL_FORECAST_HORIZON_HOURS: Final[int] = 24
 MIN_NEURAL_FORECAST_TRAIN_ROWS: Final[int] = 168
 MODEL_VISIBLE_PRICE_COLUMN: Final[str] = "_model_visible_price_uah_mwh"
+WEATHER_SOURCE_KIND_COLUMN: Final[str] = "weather_source_kind"
+FutureWeatherMode = Literal["historical_benchmark", "forecast_only"]
 
 WEATHER_FEATURE_DEFAULTS: Final[dict[str, float]] = {
 	"weather_temperature": 18.0,
@@ -19,6 +22,7 @@ WEATHER_FEATURE_DEFAULTS: Final[dict[str, float]] = {
 	"weather_cloudcover": 50.0,
 	"weather_precipitation": 0.0,
 	"weather_effective_solar": 0.0,
+	"weather_known_future_available": 1.0,
 }
 
 BATTERY_TELEMETRY_FEATURE_DEFAULTS: Final[dict[str, float]] = {
@@ -43,11 +47,17 @@ NEURAL_FORECAST_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
 	"weather_cloudcover",
 	"weather_precipitation",
 	"weather_effective_solar",
+	"weather_known_future_available",
 	"battery_soc",
 	"battery_soh",
 	"battery_throughput_mwh",
 	"battery_efc_delta",
 	"telemetry_is_fresh",
+	"market_price_cap_max",
+	"market_price_cap_min",
+	"market_regime_code",
+	"days_since_regime_change",
+	"is_price_cap_changed_recently",
 )
 
 
@@ -58,11 +68,14 @@ def build_neural_forecast_feature_frame(
 	horizon_hours: int = DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
 	timestamp_column: str = DEFAULT_TIMESTAMP_COLUMN,
 	price_column: str = DEFAULT_PRICE_COLUMN,
+	future_weather_mode: FutureWeatherMode = "historical_benchmark",
 ) -> pl.DataFrame:
 	"""Build a full train/forecast feature frame for neural Silver forecasts."""
 
 	if horizon_hours <= 0:
 		raise ValueError("horizon_hours must be positive.")
+	if future_weather_mode not in {"historical_benchmark", "forecast_only"}:
+		raise ValueError("future_weather_mode must be historical_benchmark or forecast_only.")
 
 	history = _prepare_price_history(
 		price_history,
@@ -79,7 +92,14 @@ def build_neural_forecast_feature_frame(
 		timestamp_column=timestamp_column,
 	)
 	history = _ensure_weather_columns(history)
+	history = _apply_future_weather_mode(
+		history,
+		anchor_timestamp=anchor_timestamp,
+		timestamp_column=timestamp_column,
+		future_weather_mode=future_weather_mode,
+	)
 	history = _ensure_battery_telemetry_columns(history)
+	history = _add_market_rule_features(history, timestamp_column=timestamp_column)
 	history = _mask_future_prices_for_forecast_features(
 		history,
 		anchor_timestamp=anchor_timestamp,
@@ -126,6 +146,7 @@ def build_neural_forecast_feature_frame(
 				pl.col(MODEL_VISIBLE_PRICE_COLUMN).cast(pl.Float64).alias("price_uah_mwh"),
 				"target_price_uah_mwh",
 				"split",
+				"market_regime_id",
 				*NEURAL_FORECAST_FEATURE_COLUMNS,
 			]
 		)
@@ -188,7 +209,14 @@ def _prepare_price_history(
 		raise ValueError(f"price_history is missing required columns: {sorted(missing_columns)}")
 	history = (
 		price_history
-		.select([timestamp_column, price_column, *[column for column in WEATHER_FEATURE_DEFAULTS if column in price_history.columns]])
+		.select(
+			[
+				timestamp_column,
+				price_column,
+				*[column for column in WEATHER_FEATURE_DEFAULTS if column in price_history.columns],
+				*[column for column in [WEATHER_SOURCE_KIND_COLUMN] if column in price_history.columns],
+			]
+		)
 		.drop_nulls(subset=[timestamp_column, price_column])
 		.with_columns(pl.col(timestamp_column).dt.replace_time_zone(None).alias(timestamp_column))
 		.sort(timestamp_column)
@@ -217,7 +245,66 @@ def _ensure_battery_telemetry_columns(history: pl.DataFrame) -> pl.DataFrame:
 			expressions.append(pl.col(column_name).fill_null(default_value).alias(column_name))
 		else:
 			expressions.append(pl.lit(default_value).alias(column_name))
+	if WEATHER_SOURCE_KIND_COLUMN not in history.columns:
+		expressions.append(pl.lit("unknown").alias(WEATHER_SOURCE_KIND_COLUMN))
 	return history.with_columns(expressions)
+
+
+def _apply_future_weather_mode(
+	history: pl.DataFrame,
+	*,
+	anchor_timestamp: datetime,
+	timestamp_column: str,
+	future_weather_mode: FutureWeatherMode,
+) -> pl.DataFrame:
+	if future_weather_mode == "historical_benchmark":
+		return history.with_columns(pl.lit(1.0).alias("weather_known_future_available"))
+	future_non_forecast_weather = (
+		(pl.col(timestamp_column) > pl.lit(anchor_timestamp))
+		& (pl.col(WEATHER_SOURCE_KIND_COLUMN) != "forecast")
+	)
+	return history.with_columns(
+		[
+			pl.when(future_non_forecast_weather)
+			.then(pl.lit(default_value))
+			.otherwise(pl.col(column_name))
+			.alias(column_name)
+			for column_name, default_value in WEATHER_FEATURE_DEFAULTS.items()
+			if column_name != "weather_known_future_available"
+		]
+		+ [
+			pl.when(pl.col(timestamp_column) <= pl.lit(anchor_timestamp))
+			.then(pl.lit(1.0))
+			.when(pl.col(WEATHER_SOURCE_KIND_COLUMN) == "forecast")
+			.then(pl.lit(1.0))
+			.otherwise(pl.lit(0.0))
+			.alias("weather_known_future_available")
+		]
+	)
+
+
+def _add_market_rule_features(history: pl.DataFrame, *, timestamp_column: str) -> pl.DataFrame:
+	timestamps = history.select(timestamp_column).to_series().to_list()
+	feature_rows = []
+	for value in timestamps:
+		if not isinstance(value, datetime):
+			raise TypeError("timestamp column must contain datetime values.")
+		feature_rows.append(market_rule_features(venue="DAM", timestamp=value))
+	regime_ids = sorted({str(features["market_regime_id"]) for features in feature_rows})
+	regime_codes = {regime_id: float(index) for index, regime_id in enumerate(regime_ids)}
+	return history.with_columns(
+		[
+			pl.Series("market_price_cap_max", [float(features["market_price_cap_max"]) for features in feature_rows]),
+			pl.Series("market_price_cap_min", [float(features["market_price_cap_min"]) for features in feature_rows]),
+			pl.Series("market_regime_id", [str(features["market_regime_id"]) for features in feature_rows]),
+			pl.Series("market_regime_code", [regime_codes[str(features["market_regime_id"])] for features in feature_rows]),
+			pl.Series("days_since_regime_change", [float(features["days_since_regime_change"]) for features in feature_rows]),
+			pl.Series(
+				"is_price_cap_changed_recently",
+				[float(features["is_price_cap_changed_recently"]) for features in feature_rows],
+			),
+		]
+	)
 
 
 def _mask_future_prices_for_forecast_features(

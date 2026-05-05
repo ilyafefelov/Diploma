@@ -136,6 +136,26 @@ It does not yet support these stronger claims:
 5. Implement a small perturbed-DFL or regret-weighted training experiment for one tenant first, then expand to all five tenants if runtime is acceptable.
 6. Add a future-weather forecast mode before making any live operational claim.
 
+## Follow-Up Research Slice Status
+
+This follow-up slice keeps `strict_similar_day` as the control and adds research-grade diagnostics around the existing benchmark instead of changing dashboard code.
+
+Implemented:
+
+- Date-aware Ukrainian market-rule features from `configs/market_rules_ua.yaml`, including NEURC Resolution No. 621 effective `2026-04-30`.
+- Forecast diagnostics in each benchmark payload: MAE, RMSE, sMAPE, direction, ranking quality, top-k price recall, quantile pinball loss when available, and price-cap violation count.
+- A value-aware ensemble gate `value_aware_ensemble_v0` that selects only from prior-anchor validation regret and defaults to `strict_similar_day` when no prior validation history exists.
+- DFL-ready training examples persisted through a backend store: tenant, anchor, forecast model, LP committed action, oracle value, regret, degradation, throughput, EFC proxy, market regime features, and forecast diagnostics.
+- A small regret-weighted bias-correction pilot for one tenant/model, explicitly marked `pilot_not_full_dfl`.
+- A `forecast_only` weather mode in the neural feature builder that masks future historical weather unless the row is marked as forecast weather.
+
+Still not claimed:
+
+- Full DFL with a differentiable optimizer.
+- Decision Transformer policy learning.
+- Full SOTA NBEATSx/TFT training.
+- Operational live trading claims using realized future weather.
+
 ## Verification
 
 Commands run successfully:
