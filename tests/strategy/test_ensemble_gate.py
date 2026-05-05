@@ -4,8 +4,10 @@ import polars as pl
 
 from smart_arbitrage.strategy.ensemble_gate import (
     CALIBRATED_VALUE_AWARE_ENSEMBLE_MODEL_NAME,
+    RISK_ADJUSTED_VALUE_GATE_MODEL_NAME,
     VALUE_AWARE_ENSEMBLE_MODEL_NAME,
     build_calibrated_value_aware_ensemble_frame,
+    build_risk_adjusted_value_gate_frame,
     build_value_aware_ensemble_frame,
 )
 
@@ -181,6 +183,85 @@ def test_calibrated_value_aware_ensemble_selection_is_unchanged_by_future_regret
         pl.col("anchor_timestamp") <= first_anchor + timedelta(days=1)
     )
     mutated_selected = build_calibrated_value_aware_ensemble_frame(mutated_future).filter(
+        pl.col("anchor_timestamp") <= first_anchor + timedelta(days=1)
+    )
+
+    assert control_selected.select("evaluation_payload").to_series().to_list() == mutated_selected.select(
+        "evaluation_payload"
+    ).to_series().to_list()
+
+
+def test_risk_adjusted_value_gate_penalizes_prior_tail_regret() -> None:
+    first_anchor = datetime(2026, 5, 1, 23)
+    rows: list[dict[str, object]] = []
+    prior_regrets = [
+        {
+            "strict_similar_day": 220.0,
+            "tft_horizon_regret_weighted_calibrated_v0": 1.0,
+            "nbeatsx_horizon_regret_weighted_calibrated_v0": 150.0,
+        },
+        {
+            "strict_similar_day": 220.0,
+            "tft_horizon_regret_weighted_calibrated_v0": 1.0,
+            "nbeatsx_horizon_regret_weighted_calibrated_v0": 150.0,
+        },
+        {
+            "strict_similar_day": 220.0,
+            "tft_horizon_regret_weighted_calibrated_v0": 400.0,
+            "nbeatsx_horizon_regret_weighted_calibrated_v0": 150.0,
+        },
+        {
+            "strict_similar_day": 220.0,
+            "tft_horizon_regret_weighted_calibrated_v0": 1.0,
+            "nbeatsx_horizon_regret_weighted_calibrated_v0": 150.0,
+        },
+    ]
+    for anchor_index, model_regrets in enumerate(prior_regrets):
+        anchor = first_anchor + timedelta(days=anchor_index)
+        for model_name, regret in model_regrets.items():
+            rows.append(_evaluation_row(anchor_index=anchor_index, anchor=anchor, model_name=model_name, regret=regret))
+
+    gate = build_risk_adjusted_value_gate_frame(pl.DataFrame(rows), validation_window_anchors=3)
+
+    selected_rows = [
+        row["evaluation_payload"]
+        for row in gate.sort("anchor_timestamp").iter_rows(named=True)
+    ]
+    assert gate.select("forecast_model_name").to_series().unique().to_list() == [
+        RISK_ADJUSTED_VALUE_GATE_MODEL_NAME
+    ]
+    assert selected_rows[0]["selected_model_name"] == "strict_similar_day"
+    assert selected_rows[-1]["selected_model_name"] == "nbeatsx_horizon_regret_weighted_calibrated_v0"
+    assert selected_rows[-1]["selection_policy"] == "risk_adjusted_prior_anchor_regret_tail_and_win_rate"
+    assert selected_rows[-1]["prior_validation_anchor_count"] == 3
+
+
+def test_risk_adjusted_value_gate_selection_is_unchanged_by_future_regret_mutation() -> None:
+    first_anchor = datetime(2026, 5, 1, 23)
+    rows: list[dict[str, object]] = []
+    for anchor_index in range(4):
+        anchor = first_anchor + timedelta(days=anchor_index)
+        for model_name, regret in [
+            ("strict_similar_day", 50.0),
+            ("tft_horizon_regret_weighted_calibrated_v0", 75.0),
+            ("nbeatsx_horizon_regret_weighted_calibrated_v0", 100.0),
+        ]:
+            rows.append(_evaluation_row(anchor_index=anchor_index, anchor=anchor, model_name=model_name, regret=regret))
+    control = pl.DataFrame(rows)
+    mutated_future = control.with_columns(
+        pl.when(
+            (pl.col("anchor_timestamp") > first_anchor + timedelta(days=1))
+            & (pl.col("forecast_model_name") == "tft_horizon_regret_weighted_calibrated_v0")
+        )
+        .then(0.0)
+        .otherwise(pl.col("regret_uah"))
+        .alias("regret_uah")
+    )
+
+    control_selected = build_risk_adjusted_value_gate_frame(control).filter(
+        pl.col("anchor_timestamp") <= first_anchor + timedelta(days=1)
+    )
+    mutated_selected = build_risk_adjusted_value_gate_frame(mutated_future).filter(
         pl.col("anchor_timestamp") <= first_anchor + timedelta(days=1)
     )
 

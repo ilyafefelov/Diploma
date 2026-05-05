@@ -45,6 +45,8 @@ def test_research_layer_builds_outputs_from_latest_tenant_batches(tmp_path) -> N
     assert outputs.horizon_regret_weighted_calibration_frame.height == 10
     assert outputs.horizon_regret_weighted_benchmark_frame.height == 25
     assert outputs.calibrated_ensemble_frame.height == 5
+    assert outputs.forecast_dispatch_sensitivity_frame.height == 25
+    assert outputs.risk_adjusted_value_gate_frame.height == 5
     assert set(outputs.model_summary.select("forecast_model_name").to_series().to_list()) == {
         "strict_similar_day",
         "nbeatsx_silver_v0",
@@ -59,6 +61,8 @@ def test_research_layer_builds_outputs_from_latest_tenant_batches(tmp_path) -> N
     assert (export_dir / "horizon_regret_weighted_calibration_summary.csv").exists()
     assert (export_dir / "horizon_regret_weighted_benchmark_summary.csv").exists()
     assert (export_dir / "calibrated_ensemble_summary.csv").exists()
+    assert (export_dir / "forecast_dispatch_sensitivity_summary.csv").exists()
+    assert (export_dir / "risk_adjusted_value_gate_summary.csv").exists()
     summary = json.loads((export_dir / "research_layer_summary.json").read_text(encoding="utf-8"))
     assert summary["benchmark_rows"] == 15
     assert summary["dfl_training_rows"] == 20
@@ -66,6 +70,8 @@ def test_research_layer_builds_outputs_from_latest_tenant_batches(tmp_path) -> N
     assert summary["regret_weighted_benchmark_rows"] == 25
     assert summary["horizon_regret_weighted_benchmark_rows"] == 25
     assert summary["calibrated_ensemble_rows"] == 5
+    assert summary["forecast_dispatch_sensitivity_rows"] == 25
+    assert summary["risk_adjusted_value_gate_rows"] == 5
 
 
 def _benchmark_frame(

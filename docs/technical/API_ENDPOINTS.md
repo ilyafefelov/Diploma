@@ -356,6 +356,24 @@ Operational notes:
 - Current 90-anchor result is negative: the calibrated gate improves over raw compact neural candidates but is worse than both `strict_similar_day` and horizon-aware TFT on mean regret.
 - If no calibrated ensemble rows exist for the tenant, the endpoint returns `404`.
 
+### `GET /dashboard/risk-adjusted-value-gate`
+
+Returns the latest persisted risk-adjusted value-gate rows for a tenant. The selector chooses only from `strict_similar_day`, `tft_horizon_regret_weighted_calibrated_v0`, and `nbeatsx_horizon_regret_weighted_calibrated_v0` using prior-anchor median regret, tail regret, and win rate.
+
+Request query example:
+
+```text
+/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory
+```
+
+Response shape is the same as `GET /dashboard/real-data-benchmark`, but `model_count` is `1` and each row payload includes `selected_model_name`, `selection_policy`, `prior_validation_anchor_count`, `risk_adjusted_score`, and candidate score diagnostics.
+
+Operational notes:
+
+- This endpoint is a dashboard read model for research evidence, not an operational trading selector.
+- Current 90-anchor result is negative: the risk-adjusted gate mean regret is `918.76` UAH, worse than `strict_similar_day` at `851.04` UAH and horizon-aware TFT at `834.32` UAH.
+- If no risk-adjusted gate rows exist for the tenant, the endpoint returns `404`.
+
 ### `POST /weather/run-config`
 
 Builds the Dagster run-config payload for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76) without executing a run.
@@ -480,6 +498,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - For Gold strategy evidence, the dashboard can call `GET /dashboard/forecast-strategy-comparison` to compare strict similar-day, NBEATSx, and TFT by LP decision value, oracle regret, degradation penalty, throughput, and starting SOC source.
 - For thesis benchmark evidence, the dashboard can call `GET /dashboard/real-data-benchmark` to compare the same forecast candidates across observed-only rolling-origin anchors and show whether the result is thesis-grade or demo-grade.
 - For calibrated selector evidence, the dashboard can call `GET /dashboard/calibrated-ensemble-benchmark` to show which prior-regret gate source was selected per anchor and why this selector is not yet a dashboard default.
+- For risk-adjusted selector evidence, the dashboard can call `GET /dashboard/risk-adjusted-value-gate` to show median/tail/win-rate gate decisions. Current results are diagnostic only and do not replace the strict control.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
@@ -490,5 +509,6 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The baseline LP preview endpoint is also a read model only; it exposes recommendation semantics, not market-order, clearing, or dispatch semantics.
 - The forecast strategy comparison endpoint is Gold-layer evidence only; it compares forecast-driven LP decisions and does not generate market contracts.
 - The real-data benchmark endpoint is also evidence only; it reports rolling-origin regret and data quality, not trading instructions.
+- The calibrated and risk-adjusted selector endpoints are research read models only; neither is a promoted live selector.
 - The exogenous-signal endpoint is context only; it should be described as state awareness until benchmark evidence shows decision value.
 - The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.

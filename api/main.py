@@ -61,7 +61,10 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 from smart_arbitrage.resources.grid_event_store import get_grid_event_store
 from smart_arbitrage.resources.market_data_store import get_market_data_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
-from smart_arbitrage.strategy.ensemble_gate import CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND
+from smart_arbitrage.strategy.ensemble_gate import (
+	CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
+	RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
+)
 
 
 app = FastAPI(
@@ -1851,6 +1854,31 @@ def dashboard_calibrated_ensemble_benchmark(
 	evaluation_frame = get_strategy_evaluation_store().latest_strategy_kind_frame(
 		tenant_id=tenant_id,
 		strategy_kind=CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
+	)
+	return _to_real_data_benchmark_response(
+		tenant_id=tenant_id,
+		evaluation_frame=evaluation_frame,
+	)
+
+
+@app.get(
+	"/dashboard/risk-adjusted-value-gate",
+	response_model=RealDataBenchmarkResponse,
+	tags=["weather"],
+	summary="Get risk-adjusted value gate",
+	description=(
+		"Returns the latest persisted risk-adjusted value gate rows. "
+		"The gate chooses between strict similar-day and horizon-aware regret-weighted TFT/NBEATSx "
+		"using only prior-anchor median regret, tail regret, and win rate."
+	),
+)
+def dashboard_risk_adjusted_value_gate(
+	tenant_id: str,
+) -> RealDataBenchmarkResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	evaluation_frame = get_strategy_evaluation_store().latest_strategy_kind_frame(
+		tenant_id=tenant_id,
+		strategy_kind=RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
 	)
 	return _to_real_data_benchmark_response(
 		tenant_id=tenant_id,

@@ -833,6 +833,81 @@ def test_calibrated_ensemble_benchmark_endpoint_returns_latest_gate_rows(
 	]
 
 
+def test_risk_adjusted_value_gate_endpoint_returns_latest_gate_rows(
+	client: TestClient,
+	fake_strategy_evaluation_store: InMemoryStrategyEvaluationStore,
+) -> None:
+	generated_at = datetime(2026, 5, 4, 20, 30, tzinfo=UTC)
+	fake_strategy_evaluation_store.upsert_evaluation_frame(
+		pl.DataFrame(
+			{
+				"evaluation_id": ["risk-gate-001", "risk-gate-002"],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"forecast_model_name": [
+					"risk_adjusted_value_gate_v0",
+					"risk_adjusted_value_gate_v0",
+				],
+				"strategy_kind": [
+					"risk_adjusted_value_gate",
+					"risk_adjusted_value_gate",
+				],
+				"market_venue": ["DAM", "DAM"],
+				"anchor_timestamp": [
+					datetime(2026, 5, 3, 20, tzinfo=UTC),
+					datetime(2026, 5, 4, 20, tzinfo=UTC),
+				],
+				"generated_at": [generated_at, generated_at],
+				"horizon_hours": [24, 24],
+				"starting_soc_fraction": [0.5, 0.5],
+				"starting_soc_source": ["tenant_default", "tenant_default"],
+				"decision_value_uah": [118.0, 116.0],
+				"forecast_objective_value_uah": [117.0, 115.0],
+				"oracle_value_uah": [130.0, 130.0],
+				"regret_uah": [12.0, 14.0],
+				"regret_ratio": [0.0923, 0.1077],
+				"total_degradation_penalty_uah": [10.0, 9.5],
+				"total_throughput_mwh": [0.25, 0.22],
+				"committed_action": ["DISCHARGE", "HOLD"],
+				"committed_power_mw": [0.08, 0.0],
+				"rank_by_regret": [1, 1],
+				"evaluation_payload": [
+					{
+						"data_quality_tier": "thesis_grade",
+						"selected_model_name": "strict_similar_day",
+						"selection_policy": "risk_adjusted_prior_anchor_regret_tail_and_win_rate",
+					},
+					{
+						"data_quality_tier": "thesis_grade",
+						"selected_model_name": "tft_horizon_regret_weighted_calibrated_v0",
+						"selection_policy": "risk_adjusted_prior_anchor_regret_tail_and_win_rate",
+					},
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/risk-adjusted-value-gate",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
+	assert response_payload["data_quality_tier"] == "thesis_grade"
+	assert response_payload["anchor_count"] == 2
+	assert response_payload["model_count"] == 1
+	assert response_payload["best_model_name"] == "risk_adjusted_value_gate_v0"
+	assert response_payload["mean_regret_uah"] == pytest.approx(13.0)
+	assert [row["evaluation_payload"]["selected_model_name"] for row in response_payload["rows"]] == [
+		"strict_similar_day",
+		"tft_horizon_regret_weighted_calibrated_v0",
+	]
+
+
 def test_operator_status_endpoint_returns_persisted_record(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -899,3 +974,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/forecast-strategy-comparison"]["get"]["summary"] == "Get forecast strategy comparison"
 	assert schema["paths"]["/dashboard/real-data-benchmark"]["get"]["summary"] == "Get real-data benchmark"
 	assert schema["paths"]["/dashboard/calibrated-ensemble-benchmark"]["get"]["summary"] == "Get calibrated ensemble benchmark"
+	assert schema["paths"]["/dashboard/risk-adjusted-value-gate"]["get"]["summary"] == "Get risk-adjusted value gate"

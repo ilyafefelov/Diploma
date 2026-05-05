@@ -68,6 +68,8 @@ def main() -> None:
             outputs.horizon_regret_weighted_benchmark_frame.height
         ),
         "calibrated_ensemble_rows": outputs.calibrated_ensemble_frame.height,
+        "forecast_dispatch_sensitivity_rows": outputs.forecast_dispatch_sensitivity_frame.height,
+        "risk_adjusted_value_gate_rows": outputs.risk_adjusted_value_gate_frame.height,
     }
     print(json.dumps(summary, indent=2))
 

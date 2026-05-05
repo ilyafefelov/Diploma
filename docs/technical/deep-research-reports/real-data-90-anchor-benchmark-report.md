@@ -353,6 +353,67 @@ Interpretation:
 - Dashboard default should remain `strict_similar_day`. Horizon-aware TFT remains a promising research candidate, but it needs a better pre-anchor selector or a true value-oriented DFL objective before operational claims.
 - Backend read model added: `GET /dashboard/calibrated-ensemble-benchmark?tenant_id=...`. No dashboard UI was changed.
 
+Risk-adjusted selector and dispatch-sensitivity diagnostics follow-up:
+
+This follow-up materialized `forecast_dispatch_sensitivity_frame` and `risk_adjusted_value_gate_v0`. The sensitivity frame links forecast error, forecast/realized dispatch spread, LP action, degradation, throughput, and regret. The risk-adjusted gate chooses among `strict_similar_day`, `tft_horizon_regret_weighted_calibrated_v0`, and `nbeatsx_horizon_regret_weighted_calibrated_v0` using only prior-anchor median regret, tail regret, and win rate.
+
+Artifacts:
+
+`data/research_runs/risk_gate_diagnostics_20260505T151401/research_layer_summary.json`
+
+`data/research_runs/risk_gate_diagnostics_20260505T151401/forecast_dispatch_sensitivity_summary.csv`
+
+`data/research_runs/risk_gate_diagnostics_20260505T151401/risk_adjusted_value_gate_summary.csv`
+
+MLflow risk-adjusted gate run: <http://127.0.0.1:5000/#/experiments/6/runs/e30a3095d8bd48eb9e01b317e6b60bc1>
+
+Restoreable database dump:
+
+`data/db_backups/smart_arbitrage_risk_gate_diagnostics_20260505T151401.dump`
+
+Postgres persistence after this slice:
+
+| Table / rows | Count |
+|---|---:|
+| `horizon_regret_weighted_forecast_calibration_benchmark` rows | 2,250 |
+| `forecast_dispatch_sensitivity_frame` exported diagnostic rows | 2,250 |
+| `calibrated_value_aware_ensemble_gate` rows | 450 |
+| `risk_adjusted_value_gate` rows | 450 |
+
+Risk-adjusted selector result:
+
+| Model | Rows | Mean regret UAH | Median regret UAH | Mean decision value UAH |
+|---|---:|---:|---:|---:|
+| tft_horizon_regret_weighted_calibrated_v0 | 450 | 834.32 | 558.87 | 2,812.26 |
+| strict_similar_day | 450 | 851.04 | 535.62 | 2,795.55 |
+| calibrated_value_aware_ensemble_v0 | 450 | 913.92 | 565.50 | 2,732.67 |
+| risk_adjusted_value_gate_v0 | 450 | 918.76 | 566.70 | 2,727.83 |
+| nbeatsx_horizon_regret_weighted_calibrated_v0 | 450 | 941.74 | 653.24 | 2,704.85 |
+
+Risk-adjusted selector breakdown:
+
+| Selected source | Rows | Mean regret UAH |
+|---|---:|---:|
+| tft_horizon_regret_weighted_calibrated_v0 | 209 | 809.11 |
+| strict_similar_day | 163 | 1,058.98 |
+| nbeatsx_horizon_regret_weighted_calibrated_v0 | 78 | 919.54 |
+
+Sensitivity diagnosis:
+
+| Diagnostic bucket | Interpretation |
+|---|---|
+| `forecast_error` | Dominant bucket for all models; most high-regret rows still have large price errors. |
+| `spread_objective_mismatch` | Smaller bucket where mean price error is not extreme, but the forecasted dispatch spread differs materially from the realized spread. |
+| `lp_dispatch_sensitivity` | Rare strict/TFT rows where price error and spread error are moderate but LP action sensitivity still creates regret. |
+| `low_regret` | Rows below 250 UAH regret; useful positive examples for DFL table balancing. |
+
+Interpretation:
+
+- The risk-adjusted gate is also a negative selector result. It improves slightly over the mean-regret calibrated gate for selected TFT rows, but overall it is worse than both `strict_similar_day` and horizon-aware TFT.
+- Tail-risk weighting does not solve the selector problem yet because the best candidate changes by tenant/anchor regime, and the selector still sees only coarse trailing regret statistics.
+- The sensitivity frame is useful for the next DFL slice: it separates obvious price-error rows from LP sensitivity rows, so a future value-oriented loss can emphasize forecast shape and spread ordering instead of only scalar bias.
+- Backend read model added: `GET /dashboard/risk-adjusted-value-gate?tenant_id=...`. No dashboard UI was changed.
+
 Runtime and GPU note:
 
 The current compact NBEATSx/TFT code uses PyTorch but the installed wheel is CPU-only (`torch 2.11.0+cpu`, `torch.cuda.is_available() == False`). The machine has an NVIDIA GTX 1050 Ti with 4 GB VRAM, but this slice is dominated by small rolling-origin training windows, tiny LP solves, Polars transforms, and Dagster/process overhead. GPU enablement is unlikely to materially improve this MVP slice. GPU becomes useful later only if the project switches to heavier NeuralForecast/PyTorch Forecasting training or larger TimeXer-style experiments with a CUDA-enabled PyTorch build.
@@ -383,5 +444,6 @@ API smoke checks:
 - `GET /health` returned `{"status":"ok"}`.
 - `GET /dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory` returned the latest 90-anchor, 3-model benchmark summary and rows.
 - `GET /dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory` returned the latest 90-anchor calibrated gate rows.
+- `GET /dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory` returns the latest risk-adjusted selector rows after rebuilding the API service with this slice.
 
 Docker services were up for Postgres, MLflow, FastAPI, Dagster webserver, Dagster daemon, MQTT, and telemetry ingestor. The API is exposed on `127.0.0.1:8001`, while Dagster UI is on `127.0.0.1:3001`. Port `8000` is still occupied by a Windows `Manager` process that could not be stopped due to access denial, so the backend stack uses `SMART_ARBITRAGE_API_PORT=8001`.

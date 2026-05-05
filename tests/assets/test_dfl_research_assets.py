@@ -10,12 +10,14 @@ from smart_arbitrage.assets.gold.dfl_research import (
     RegretWeightedDflPilotAssetConfig,
     calibrated_value_aware_ensemble_frame,
     dfl_training_frame,
+    forecast_dispatch_sensitivity_frame,
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
     real_data_value_aware_ensemble_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     regret_weighted_dfl_pilot_frame,
+    risk_adjusted_value_gate_frame,
 )
 from smart_arbitrage.defs import defs
 from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
@@ -99,6 +101,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "horizon_regret_weighted_forecast_calibration_frame",
         "horizon_regret_weighted_forecast_strategy_benchmark_frame",
         "calibrated_value_aware_ensemble_frame",
+        "forecast_dispatch_sensitivity_frame",
+        "risk_adjusted_value_gate_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
 
@@ -161,9 +165,17 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         None,
         horizon_calibrated_benchmark,
     )
+    sensitivity = forecast_dispatch_sensitivity_frame(
+        None,
+        horizon_calibrated_benchmark,
+    )
+    risk_gate = risk_adjusted_value_gate_frame(
+        None,
+        horizon_calibrated_benchmark,
+    )
 
     assert ensemble.height == 5
-    assert strategy_store.evaluation_frame.height == 60
+    assert strategy_store.evaluation_frame.height == 65
     assert training.height == 20
     assert dfl_store.training_frame.height == 20
     assert pilot.height == 1
@@ -186,4 +198,10 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert calibrated_ensemble.height == 5
     assert set(calibrated_ensemble["forecast_model_name"].unique().to_list()) == {
         "calibrated_value_aware_ensemble_v0"
+    }
+    assert sensitivity.height == 25
+    assert "diagnostic_bucket" in sensitivity.columns
+    assert risk_gate.height == 5
+    assert set(risk_gate["forecast_model_name"].unique().to_list()) == {
+        "risk_adjusted_value_gate_v0"
     }

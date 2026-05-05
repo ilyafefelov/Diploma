@@ -22,8 +22,10 @@ from smart_arbitrage.resources.strategy_evaluation_store import (
     StrategyEvaluationStore,
     get_strategy_evaluation_store,
 )
+from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
 from smart_arbitrage.strategy.ensemble_gate import (
     build_calibrated_value_aware_ensemble_frame,
+    build_risk_adjusted_value_gate_frame,
     build_value_aware_ensemble_frame,
 )
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
@@ -42,10 +44,14 @@ class ResearchLayerOutputs:
     horizon_regret_weighted_calibration_frame: pl.DataFrame
     horizon_regret_weighted_benchmark_frame: pl.DataFrame
     calibrated_ensemble_frame: pl.DataFrame
+    forecast_dispatch_sensitivity_frame: pl.DataFrame
+    risk_adjusted_value_gate_frame: pl.DataFrame
     model_summary: pl.DataFrame
     regret_weighted_model_summary: pl.DataFrame
     horizon_regret_weighted_model_summary: pl.DataFrame
     calibrated_ensemble_model_summary: pl.DataFrame
+    forecast_dispatch_sensitivity_summary: pl.DataFrame
+    risk_adjusted_value_gate_summary: pl.DataFrame
     dfl_training_summary: pl.DataFrame
 
 
@@ -116,6 +122,12 @@ def build_research_layer_outputs(
     calibrated_ensemble_frame = build_calibrated_value_aware_ensemble_frame(
         horizon_regret_weighted_benchmark_frame
     )
+    sensitivity_frame = build_forecast_dispatch_sensitivity_frame(
+        horizon_regret_weighted_benchmark_frame
+    )
+    risk_adjusted_gate_frame = build_risk_adjusted_value_gate_frame(
+        horizon_regret_weighted_benchmark_frame
+    )
     return ResearchLayerOutputs(
         benchmark_frame=benchmark_frame,
         ensemble_frame=ensemble_frame,
@@ -126,12 +138,18 @@ def build_research_layer_outputs(
         horizon_regret_weighted_calibration_frame=horizon_calibration_frame,
         horizon_regret_weighted_benchmark_frame=horizon_regret_weighted_benchmark_frame,
         calibrated_ensemble_frame=calibrated_ensemble_frame,
+        forecast_dispatch_sensitivity_frame=sensitivity_frame,
+        risk_adjusted_value_gate_frame=risk_adjusted_gate_frame,
         model_summary=_model_summary(combined_frame, training_frame),
         regret_weighted_model_summary=_strategy_model_summary(regret_weighted_benchmark_frame),
         horizon_regret_weighted_model_summary=_strategy_model_summary(
             horizon_regret_weighted_benchmark_frame
         ),
         calibrated_ensemble_model_summary=_strategy_model_summary(calibrated_ensemble_frame),
+        forecast_dispatch_sensitivity_summary=_forecast_dispatch_sensitivity_summary(
+            sensitivity_frame
+        ),
+        risk_adjusted_value_gate_summary=_strategy_model_summary(risk_adjusted_gate_frame),
         dfl_training_summary=_dfl_training_summary(training_frame),
     )
 
@@ -184,6 +202,9 @@ def persist_research_layer_outputs(
     (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(
         outputs.calibrated_ensemble_frame
     )
+    (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(
+        outputs.risk_adjusted_value_gate_frame
+    )
     resolved_dfl_store = dfl_store or get_dfl_training_store()
     resolved_dfl_store.upsert_training_frame(outputs.dfl_training_frame)
     resolved_dfl_store.upsert_pilot_frame(outputs.pilot_frame)
@@ -208,6 +229,12 @@ def write_research_layer_exports(
     )
     outputs.calibrated_ensemble_model_summary.write_csv(
         output_dir / "calibrated_ensemble_summary.csv"
+    )
+    outputs.forecast_dispatch_sensitivity_summary.write_csv(
+        output_dir / "forecast_dispatch_sensitivity_summary.csv"
+    )
+    outputs.risk_adjusted_value_gate_summary.write_csv(
+        output_dir / "risk_adjusted_value_gate_summary.csv"
     )
     _calibration_summary(outputs.regret_weighted_calibration_frame).write_csv(
         output_dir / "regret_weighted_calibration_summary.csv"
@@ -394,6 +421,30 @@ def _dfl_training_summary(training_frame: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def _forecast_dispatch_sensitivity_summary(sensitivity_frame: pl.DataFrame) -> pl.DataFrame:
+    if sensitivity_frame.height == 0:
+        return pl.DataFrame()
+    return (
+        sensitivity_frame
+        .group_by(["forecast_model_name", "strategy_kind", "diagnostic_bucket"])
+        .agg(
+            [
+                pl.len().alias("rows"),
+                pl.col("tenant_id").n_unique().alias("tenant_count"),
+                pl.col("anchor_timestamp").n_unique().alias("anchor_count"),
+                pl.mean("regret_uah").alias("mean_regret_uah"),
+                pl.mean("forecast_mae_uah_mwh").alias("mean_forecast_mae_uah_mwh"),
+                pl.mean("dispatch_spread_error_uah_mwh").alias(
+                    "mean_dispatch_spread_error_uah_mwh"
+                ),
+                pl.mean("total_degradation_penalty_uah").alias("mean_degradation_penalty_uah"),
+                pl.mean("total_throughput_mwh").alias("mean_throughput_mwh"),
+            ]
+        )
+        .sort(["forecast_model_name", "diagnostic_bucket"])
+    )
+
+
 def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
     pilot_row = _first_row(outputs.pilot_frame)
     expanded_to_all_tenants_ready = bool(pilot_row.get("expanded_to_all_tenants_ready", False))
@@ -412,6 +463,8 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
             outputs.horizon_regret_weighted_benchmark_frame.height
         ),
         "calibrated_ensemble_rows": outputs.calibrated_ensemble_frame.height,
+        "forecast_dispatch_sensitivity_rows": outputs.forecast_dispatch_sensitivity_frame.height,
+        "risk_adjusted_value_gate_rows": outputs.risk_adjusted_value_gate_frame.height,
         "dfl_expansion_recommendation": (
             "expand_to_all_tenants"
             if expanded_to_all_tenants_ready
@@ -424,6 +477,12 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
         ),
         "calibrated_ensemble_model_summary": (
             outputs.calibrated_ensemble_model_summary.to_dicts()
+        ),
+        "forecast_dispatch_sensitivity_summary": (
+            outputs.forecast_dispatch_sensitivity_summary.to_dicts()
+        ),
+        "risk_adjusted_value_gate_summary": (
+            outputs.risk_adjusted_value_gate_summary.to_dicts()
         ),
     }
 

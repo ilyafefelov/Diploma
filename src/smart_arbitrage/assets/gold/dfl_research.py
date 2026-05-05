@@ -17,9 +17,12 @@ from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 from smart_arbitrage.strategy.ensemble_gate import (
     CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
+    RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
     build_calibrated_value_aware_ensemble_frame,
+    build_risk_adjusted_value_gate_frame,
     build_value_aware_ensemble_frame,
 )
+from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 
 
@@ -288,6 +291,66 @@ def calibrated_value_aware_ensemble_frame(
     return ensemble_frame
 
 
+@dg.asset(group_name="gold")
+def forecast_dispatch_sensitivity_frame(
+    context,
+    horizon_regret_weighted_forecast_strategy_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gold diagnostics connecting forecast errors to LP dispatch and realized regret."""
+
+    sensitivity_frame = build_forecast_dispatch_sensitivity_frame(
+        horizon_regret_weighted_forecast_strategy_benchmark_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": sensitivity_frame.height,
+            "tenant_count": sensitivity_frame.select("tenant_id").n_unique()
+            if sensitivity_frame.height
+            else 0,
+            "anchor_count": sensitivity_frame.select("anchor_timestamp").n_unique()
+            if sensitivity_frame.height
+            else 0,
+            "scope": "forecast_to_dispatch_diagnostics",
+        },
+    )
+    return sensitivity_frame
+
+
+@dg.asset(group_name="gold")
+def risk_adjusted_value_gate_frame(
+    context,
+    horizon_regret_weighted_forecast_strategy_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gold risk-adjusted gate using prior median regret, tail regret, and win rate."""
+
+    gate_frame = build_risk_adjusted_value_gate_frame(
+        horizon_regret_weighted_forecast_strategy_benchmark_frame
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(gate_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": gate_frame.height,
+            "tenant_count": gate_frame.select("tenant_id").n_unique()
+            if gate_frame.height
+            else 0,
+            "anchor_count": gate_frame.select("anchor_timestamp").n_unique()
+            if gate_frame.height
+            else 0,
+            "strategy_kind": RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
+            "selection_policy": "risk_adjusted_prior_anchor_regret_tail_and_win_rate",
+            "scope": "selector_not_full_dfl",
+        },
+    )
+    _log_mlflow_summary(
+        gate_frame,
+        experiment_name="smart-arbitrage-risk-adjusted-value-gate",
+        strategy_kind=RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
+    )
+    return gate_frame
+
+
 DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
@@ -297,6 +360,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
     calibrated_value_aware_ensemble_frame,
+    forecast_dispatch_sensitivity_frame,
+    risk_adjusted_value_gate_frame,
 ]
 
 
