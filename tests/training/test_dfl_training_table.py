@@ -103,3 +103,54 @@ def test_dfl_training_frame_rejects_demo_grade_rows_by_default() -> None:
 
     with pytest.raises(ValueError, match="thesis_grade"):
         build_dfl_training_frame(evaluation)
+
+
+def test_dfl_training_frame_computes_forecast_diagnostics_from_horizon_when_payload_is_legacy() -> None:
+    evaluation = pl.DataFrame(
+        [
+            {
+                "evaluation_id": "eval-legacy",
+                "tenant_id": "client_003_dnipro_factory",
+                "forecast_model_name": "tft_silver_v0",
+                "strategy_kind": "real_data_rolling_origin_benchmark",
+                "market_venue": "DAM",
+                "anchor_timestamp": datetime(2026, 5, 3, 23),
+                "generated_at": datetime(2026, 5, 5),
+                "horizon_hours": 2,
+                "starting_soc_fraction": 0.52,
+                "starting_soc_source": "tenant_default",
+                "decision_value_uah": 700.0,
+                "forecast_objective_value_uah": 800.0,
+                "oracle_value_uah": 1000.0,
+                "regret_uah": 300.0,
+                "regret_ratio": 0.3,
+                "total_degradation_penalty_uah": 25.0,
+                "total_throughput_mwh": 0.2,
+                "committed_action": "DISCHARGE",
+                "committed_power_mw": 0.2,
+                "rank_by_regret": 2,
+                "evaluation_payload": {
+                    "data_quality_tier": "thesis_grade",
+                    "observed_coverage_ratio": 1.0,
+                    "horizon": [
+                        {
+                            "forecast_price_uah_mwh": 900.0,
+                            "actual_price_uah_mwh": 1000.0,
+                            "net_power_mw": 0.2,
+                        },
+                        {
+                            "forecast_price_uah_mwh": 1300.0,
+                            "actual_price_uah_mwh": 1100.0,
+                            "net_power_mw": 0.0,
+                        },
+                    ],
+                },
+            }
+        ]
+    )
+
+    row = build_dfl_training_frame(evaluation).row(0, named=True)
+
+    assert row["forecast_mae_uah_mwh"] == pytest.approx(150.0)
+    assert row["forecast_rmse_uah_mwh"] == pytest.approx(158.113883, rel=1e-6)
+    assert row["directional_accuracy"] == pytest.approx(1.0)

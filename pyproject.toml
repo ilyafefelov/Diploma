@@ -31,6 +31,13 @@ dependencies = [
     "httpx",                   # Асинхронні запити до API Укренерго [20]
 ]
 
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.optional-dependencies]
 dev = [
     "dagster-dg-cli",          # Provides dg check/launch CLI used by project verification

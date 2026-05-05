@@ -156,6 +156,76 @@ Still not claimed:
 - Full SOTA NBEATSx/TFT training.
 - Operational live trading claims using realized future weather.
 
+## Materialized Research Layer Results
+
+The downstream research layer was materialized from the persisted 90-anchor benchmark rows without re-scraping OREE or Open-Meteo. It selected the latest complete batch for each tenant, then built and persisted the value-aware ensemble rows, DFL-ready examples, and the one-tenant regret-weighted pilot.
+
+New exports:
+
+`data/research_runs/research_layer_20260505T_next_slice/research_layer_summary.json`
+
+`data/research_runs/research_layer_20260505T_next_slice/research_layer_model_summary.csv`
+
+`data/research_runs/research_layer_20260505T_next_slice/dfl_training_summary.csv`
+
+`data/research_runs/research_layer_20260505T_next_slice/regret_weighted_dfl_pilot_summary.json`
+
+Restoreable database dump after adding the research-layer rows:
+
+`data/db_backups/smart_arbitrage_research_layer_20260505T_next_slice.dump`
+
+Postgres persistence after this slice:
+
+| Table / rows | Count |
+|---|---:|
+| `forecast_strategy_evaluations` total rows | 1,818 |
+| `value_aware_ensemble_v0` rows | 450 |
+| `dfl_training_examples` rows | 1,800 |
+| `regret_weighted_dfl_pilot_runs` rows | 1 |
+
+Updated model comparison including the ensemble gate:
+
+| Model | Rows | Mean regret UAH | Median regret UAH | Mean forecast MAE UAH/MWh | Directional accuracy | Wins | Win rate |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| strict_similar_day | 450 | 851.04 | 535.62 | 2,369.93 | 0.6155 | 230 | 51.11% |
+| value_aware_ensemble_v0 | 450 | 905.94 | 568.58 | 2,389.34 | 0.6129 | 208 | 46.22% |
+| tft_silver_v0 | 450 | 1,128.75 | 732.66 | 2,758.14 | 0.5858 | 128 | 28.44% |
+| nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 2,744.26 | 0.5637 | 92 | 20.44% |
+
+Interpretation:
+
+- The value-aware ensemble gate improves over both compact neural candidates, but it still does not beat the strict similar-day control.
+- `strict_similar_day` remains the default comparator and the safest dashboard default.
+- The ensemble result is still academically useful because it shows that pre-anchor validation regret can avoid some neural underperformance, but the current selector is not strong enough to replace the control baseline.
+- Forecast-error diagnostics now explain part of the regret pattern: the strict baseline has lower MAE, better directional accuracy, better spread ranking, and better top-k price recall than the compact neural candidates in this stored run.
+
+DFL training table:
+
+| Source model | Rows | Mean regret UAH | Mean training weight | Mean degradation penalty UAH | Mean throughput MWh |
+|---|---:|---:|---:|---:|---:|
+| strict_similar_day | 450 | 851.04 | 1.2591 | 710.94 | 0.8442 |
+| value_aware_ensemble_v0 | 450 | 905.94 | 1.2793 | 706.65 | 0.8391 |
+| tft_silver_v0 | 450 | 1,128.75 | 1.3232 | 587.51 | 0.6976 |
+| nbeatsx_silver_v0 | 450 | 1,164.17 | 1.3364 | 720.75 | 0.8558 |
+
+Regret-weighted DFL pilot:
+
+| Field | Value |
+|---|---:|
+| Tenant | `client_003_dnipro_factory` |
+| Model | `tft_silver_v0` |
+| Train rows | 72 |
+| Validation rows | 18 |
+| Regret-weighted bias | -752.67 UAH/MWh |
+| Validation weighted MAE before | 1,352.12 UAH/MWh |
+| Validation weighted MAE after | 873.84 UAH/MWh |
+| Weighted MAE delta | 478.28 UAH/MWh |
+| Mean validation regret | 1,009.08 UAH |
+
+Decision:
+
+The pilot is positive enough to expand to all five tenants as a diagnostic experiment. It is not yet a profit/regret improvement claim because it only validates a regret-weighted forecast calibration step; the corrected forecasts still need strict LP re-evaluation before any DFL performance claim.
+
 ## Verification
 
 Commands run successfully:
