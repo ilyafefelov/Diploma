@@ -1,4 +1,5 @@
 import type {
+  DecisionPolicyPreviewResponse,
   DecisionTransformerTrajectoryResponse,
   DflRelaxedPilotResponse,
   RealDataBenchmarkResponse,
@@ -31,7 +32,7 @@ export interface DefenseModelRow {
 }
 
 export interface ResearchReadinessRow {
-  label: 'DFL' | 'Decision Transformer' | 'Paper trading'
+  label: 'DFL' | 'Decision Transformer' | 'DT policy preview' | 'Paper trading'
   status: string
   metric: string
   boundary: string
@@ -84,6 +85,7 @@ export const buildDefenseModelRows = (
 export const buildResearchReadinessRows = (input: {
   dfl: DflRelaxedPilotResponse | null
   dt: DecisionTransformerTrajectoryResponse | null
+  dtPolicy: DecisionPolicyPreviewResponse | null
   live: SimulatedLiveTradingResponse | null
 }): ResearchReadinessRow[] => [
   {
@@ -97,6 +99,14 @@ export const buildResearchReadinessRows = (input: {
     status: input.dt && input.dt.row_count > 0 ? 'trajectory data' : 'not materialized',
     metric: input.dt ? `${input.dt.episode_count} episodes / ${input.dt.row_count} rows` : 'no rows',
     boundary: 'not live policy'
+  },
+  {
+    label: 'DT policy preview',
+    status: input.dtPolicy && input.dtPolicy.row_count > 0 ? input.dtPolicy.policy_readiness : 'not materialized',
+    metric: input.dtPolicy
+      ? `${formatCompactNumber(input.dtPolicy.mean_value_gap_uah)} UAH mean value gap`
+      : 'no rows',
+    boundary: input.dtPolicy?.market_execution_enabled ? 'market execution enabled' : 'preview only'
   },
   {
     label: 'Paper trading',

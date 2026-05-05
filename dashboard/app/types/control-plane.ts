@@ -337,6 +337,51 @@ export interface DecisionTransformerTrajectoryResponse {
   rows: DecisionTransformerTrajectoryPointResponse[]
 }
 
+export interface DecisionPolicyPreviewPointResponse {
+  policy_run_id: string
+  created_at: string
+  episode_id: string
+  market_venue: string
+  scenario_index: number
+  step_index: number
+  interval_start: string
+  state_market_price_uah_mwh: number
+  projected_soc_before: number
+  projected_soc_after: number
+  raw_charge_mw: number
+  raw_discharge_mw: number
+  projected_charge_mw: number
+  projected_discharge_mw: number
+  projected_net_power_mw: number
+  expected_policy_value_uah: number
+  hold_value_uah: number
+  value_vs_hold_uah: number
+  oracle_value_uah: number
+  value_gap_uah: number
+  constraint_violation: boolean
+  gatekeeper_status: string
+  inference_latency_ms: number
+  policy_mode: string
+  readiness_status: string
+  model_name: string
+  academic_scope: string
+}
+
+export interface DecisionPolicyPreviewResponse {
+  tenant_id: string
+  row_count: number
+  policy_run_id: string
+  created_at: string
+  policy_readiness: string
+  live_policy_claim: boolean
+  market_execution_enabled: boolean
+  constraint_violation_count: number
+  mean_value_gap_uah: number
+  total_value_vs_hold_uah: number
+  academic_scope: string
+  rows: DecisionPolicyPreviewPointResponse[]
+}
+
 export interface SimulatedLiveTradingPointResponse {
   episode_id: string
   interval_start: string
@@ -390,6 +435,46 @@ export interface OperatorSocProjectionPointResponse {
   confidence: string
 }
 
+export interface FutureForecastPointResponse {
+  step_index: number
+  interval_start: string
+  forecast_price_uah_mwh: number
+  actual_price_uah_mwh: number | null
+  p10_price_uah_mwh: number | null
+  p50_price_uah_mwh: number | null
+  p90_price_uah_mwh: number | null
+  net_power_mw: number | null
+  value_gap_uah: number | null
+}
+
+export interface FutureForecastSeriesResponse {
+  model_name: string
+  model_family: string
+  source_status: string
+  uncertainty_kind: string
+  mean_regret_uah: number | null
+  win_rate: number | null
+  points: FutureForecastPointResponse[]
+}
+
+export interface FutureStackPreviewResponse {
+  tenant_id: string
+  generated_at: string | null
+  backend_status: Record<string, string>
+  selected_forecast_model: string | null
+  claim_boundary: string
+  forecast_series: FutureForecastSeriesResponse[]
+}
+
+export interface OperatorValueGapPointResponse {
+  step_index: number
+  interval_start: string
+  chosen_value_uah: number
+  best_visible_value_uah: number
+  value_gap_uah: number
+  metric_source: string
+}
+
 export interface OperatorRecommendationResponse {
   tenant_id: string
   selected_strategy_id: string
@@ -398,7 +483,13 @@ export interface OperatorRecommendationResponse {
   soc_source: string
   review_required: boolean
   readiness_warnings: string[]
+  policy_mode: string
+  selected_policy_id: string
+  policy_explanation: string
+  policy_readiness: string
   available_strategies: OperatorStrategyOptionResponse[]
+  forecast_model_series: FutureForecastSeriesResponse[]
+  value_gap_series: OperatorValueGapPointResponse[]
   load_forecast: OperatorLoadForecastPointResponse[]
   soc_projection: OperatorSocProjectionPointResponse[]
   recommendation_schedule: BaselineRecommendationPoint[]

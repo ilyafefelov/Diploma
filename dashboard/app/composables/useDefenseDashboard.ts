@@ -3,9 +3,11 @@ import { computed, ref, type Ref, watch } from 'vue'
 import type {
   DashboardBatteryStateResponse,
   DashboardExogenousSignalsResponse,
+  DecisionPolicyPreviewResponse,
   DecisionTransformerTrajectoryResponse,
   DflRelaxedPilotResponse,
   ForecastDispatchSensitivityResponse,
+  FutureStackPreviewResponse,
   RealDataBenchmarkResponse,
   SimulatedLiveTradingResponse
 } from '~/types/control-plane'
@@ -22,7 +24,9 @@ type DefenseResourceKey
     | 'sensitivity'
     | 'dflPilot'
     | 'dtTrajectories'
+    | 'dtPolicyPreview'
     | 'simulatedLiveTrading'
+    | 'futureStack'
     | 'exogenousSignals'
     | 'batteryState'
 
@@ -35,7 +39,9 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
   const sensitivity = ref<ForecastDispatchSensitivityResponse | null>(null)
   const dflPilot = ref<DflRelaxedPilotResponse | null>(null)
   const dtTrajectories = ref<DecisionTransformerTrajectoryResponse | null>(null)
+  const dtPolicyPreview = ref<DecisionPolicyPreviewResponse | null>(null)
   const simulatedLiveTrading = ref<SimulatedLiveTradingResponse | null>(null)
+  const futureStack = ref<FutureStackPreviewResponse | null>(null)
   const exogenousSignals = ref<DashboardExogenousSignalsResponse | null>(null)
   const batteryState = ref<DashboardBatteryStateResponse | null>(null)
   const errors = ref<DefenseErrors>({})
@@ -64,6 +70,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
   const researchReadinessRows = computed(() => buildResearchReadinessRows({
     dfl: dflPilot.value,
     dt: dtTrajectories.value,
+    dtPolicy: dtPolicyPreview.value,
     live: simulatedLiveTrading.value
   }))
 
@@ -103,12 +110,20 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
         true
       ),
       loadResource(
+        'dtPolicyPreview',
+        dtPolicyPreview,
+        '/api/control-plane/dashboard/decision-policy-preview',
+        { limit: 120 },
+        true
+      ),
+      loadResource(
         'simulatedLiveTrading',
         simulatedLiveTrading,
         '/api/control-plane/dashboard/simulated-live-trading',
         { limit: 120 },
         true
       ),
+      loadResource('futureStack', futureStack, '/api/control-plane/dashboard/future-stack-preview', {}, true),
       loadResource('exogenousSignals', exogenousSignals, '/api/control-plane/dashboard/exogenous-signals'),
       loadResource('batteryState', batteryState, '/api/control-plane/dashboard/battery-state')
     ])
@@ -152,7 +167,9 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     sensitivity.value = null
     dflPilot.value = null
     dtTrajectories.value = null
+    dtPolicyPreview.value = null
     simulatedLiveTrading.value = null
+    futureStack.value = null
     exogenousSignals.value = null
     batteryState.value = null
     errors.value = {}
@@ -169,6 +186,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     benchmarkSummary,
     calibratedGate,
     dflPilot,
+    dtPolicyPreview,
     dtTrajectories,
     errors,
     exogenousSignals,
@@ -176,6 +194,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     lastLoadedAt,
     lastLoadedLabel,
     loadDefenseDashboard,
+    futureStack,
     modelRows,
     researchReadinessRows,
     riskGate,

@@ -20,6 +20,47 @@ const bestRow = computed(() => {
   return [...defense.modelRows.value].sort((left, right) => left.meanRegretUah - right.meanRegretUah)[0] || null
 })
 
+const futureForecastRows = computed(() => {
+  return defense.futureStack.value?.forecast_series
+    .filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
+    .map(series => ({
+      modelName: series.model_name,
+      modelFamily: series.model_family,
+      sourceStatus: series.source_status,
+      uncertaintyKind: series.uncertainty_kind,
+      pointCount: series.points.length,
+      firstForecast: series.points[0]?.forecast_price_uah_mwh ?? null,
+      lastForecast: series.points.at(-1)?.forecast_price_uah_mwh ?? null,
+      meanRegretUah: series.mean_regret_uah,
+      winRate: series.win_rate
+    })) ?? []
+})
+
+const futureBackendStatusText = computed(() => {
+  const statusEntries = Object.entries(defense.futureStack.value?.backend_status ?? {})
+  if (statusEntries.length === 0) {
+    return 'official backend status not loaded'
+  }
+
+  return statusEntries.map(([name, status]) => `${name}: ${status}`).join(' / ')
+})
+
+const dtPolicySummary = computed(() => {
+  const preview = defense.dtPolicyPreview.value
+  if (!preview) {
+    return null
+  }
+
+  return {
+    readiness: preview.policy_readiness,
+    rows: preview.row_count,
+    violations: preview.constraint_violation_count,
+    meanValueGap: preview.mean_value_gap_uah,
+    valueVsHold: preview.total_value_vs_hold_uah,
+    boundary: preview.academic_scope
+  }
+})
+
 const latestBatterySoc = computed(() => {
   const telemetrySoc = defense.batteryState.value?.latest_telemetry?.current_soc
   const hourlySoc = defense.batteryState.value?.hourly_snapshot?.soc_close
@@ -310,6 +351,89 @@ useHead({
             <span>{{ boundary }}</span>
           </li>
         </ul>
+      </aside>
+    </section>
+
+    <section class="section-grid">
+      <div class="wide-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              Future stack preview
+            </p>
+            <h2>NBEATSx/TFT forecast evidence</h2>
+            <p class="section-explainer">
+              This is the target architecture surface: price paths come from the forecast stack, while dispatch intent
+              moves toward a policy layer. These rows remain read-model evidence unless the backend marks them
+              materialized and safe.
+            </p>
+          </div>
+          <span class="source-pill">{{ defense.futureStack.value?.selected_forecast_model || 'forecast stack pending' }}</span>
+        </div>
+
+        <div
+          v-if="futureForecastRows.length > 0"
+          class="future-stack-grid"
+        >
+          <article
+            v-for="row in futureForecastRows"
+            :key="row.modelName"
+            class="future-stack-tile"
+          >
+            <span>{{ row.modelFamily }}</span>
+            <strong>{{ row.modelName }}</strong>
+            <small>{{ row.pointCount }} forecast points / {{ row.uncertaintyKind }}</small>
+            <small>
+              {{ row.firstForecast ? Math.round(row.firstForecast).toLocaleString('en-GB') : 'n/a' }}
+              to
+              {{ row.lastForecast ? Math.round(row.lastForecast).toLocaleString('en-GB') : 'n/a' }}
+              UAH/MWh
+            </small>
+            <small>
+              regret {{ row.meanRegretUah ? formatUah(row.meanRegretUah) : 'n/a' }} /
+              win {{ row.winRate ? formatPercent(row.winRate) : 'n/a' }}
+            </small>
+          </article>
+        </div>
+        <p
+          v-else
+          class="empty-state"
+        >
+          No NBEATSx/TFT forecast stack rows returned yet.
+        </p>
+      </div>
+
+      <aside class="side-panel">
+        <p class="eyebrow">
+          DT policy preview
+        </p>
+        <h2>Offline policy boundary</h2>
+        <div
+          v-if="dtPolicySummary"
+          class="readiness-list"
+        >
+          <article class="readiness-row">
+            <span>Readiness</span>
+            <strong>{{ dtPolicySummary.readiness }}</strong>
+            <small>{{ dtPolicySummary.rows }} rows / {{ dtPolicySummary.violations }} violations</small>
+            <em>{{ dtPolicySummary.boundary }}</em>
+          </article>
+          <article class="readiness-row">
+            <span>Value gap</span>
+            <strong>{{ formatUah(dtPolicySummary.meanValueGap) }}</strong>
+            <small>{{ formatUah(dtPolicySummary.valueVsHold) }} vs hold</small>
+            <em>preview only; not market execution</em>
+          </article>
+        </div>
+        <p
+          v-else
+          class="empty-state"
+        >
+          No DT policy preview rows returned yet.
+        </p>
+        <p class="section-explainer">
+          {{ futureBackendStatusText }}
+        </p>
       </aside>
     </section>
 
@@ -839,6 +963,7 @@ td {
 
 .bucket-grid,
 .context-grid,
+.future-stack-grid,
 .readiness-list,
 .error-list {
   display: grid;
@@ -846,12 +971,14 @@ td {
 }
 
 .bucket-grid,
-.context-grid {
+.context-grid,
+.future-stack-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .bucket-tile,
 .context-tile,
+.future-stack-tile,
 .readiness-row,
 .error-row {
   position: relative;
@@ -863,9 +990,28 @@ td {
 
 .bucket-tile strong,
 .context-tile strong,
+.future-stack-tile strong,
 .readiness-row strong,
 .error-row strong {
   font-size: 1rem;
+}
+
+.future-stack-tile {
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.future-stack-tile span {
+  color: #00669f;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.future-stack-tile small {
+  color: #617084;
+  line-height: 1.45;
 }
 
 .readiness-row em {
@@ -903,7 +1049,8 @@ td {
 
   .narrative-band,
   .bucket-grid,
-  .context-grid {
+  .context-grid,
+  .future-stack-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -936,7 +1083,8 @@ td {
   .metric-grid,
   .narrative-band,
   .bucket-grid,
-  .context-grid {
+  .context-grid,
+  .future-stack-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -6,6 +6,7 @@ import {
   summarizeDefenseBenchmark
 } from './defenseDataset'
 import type {
+  DecisionPolicyPreviewResponse,
   DecisionTransformerTrajectoryResponse,
   DflRelaxedPilotResponse,
   RealDataBenchmarkResponse,
@@ -139,8 +140,22 @@ describe('defense dataset summaries', () => {
       simulated_only: true,
       rows: []
     }
+    const dtPolicy: DecisionPolicyPreviewResponse = {
+      tenant_id: 'client_003_dnipro_factory',
+      row_count: 24,
+      policy_run_id: 'dt-preview-1',
+      created_at: '2026-05-05T12:00:00Z',
+      policy_readiness: 'ready_for_operator_preview',
+      live_policy_claim: false,
+      market_execution_enabled: false,
+      constraint_violation_count: 0,
+      mean_value_gap_uah: 17,
+      total_value_vs_hold_uah: 114,
+      academic_scope: 'offline_dt_policy_preview_not_market_execution',
+      rows: []
+    }
 
-    const rows = buildResearchReadinessRows({ dfl, dt, live })
+    const rows = buildResearchReadinessRows({ dfl, dt, dtPolicy, live })
 
     expect(rows).toEqual([
       {
@@ -154,6 +169,12 @@ describe('defense dataset summaries', () => {
         status: 'trajectory data',
         metric: '4 episodes / 96 rows',
         boundary: 'not live policy'
+      },
+      {
+        label: 'DT policy preview',
+        status: 'ready_for_operator_preview',
+        metric: '17 UAH mean value gap',
+        boundary: 'preview only'
       },
       {
         label: 'Paper trading',

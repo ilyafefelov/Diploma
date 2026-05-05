@@ -5,6 +5,7 @@ import {
   OperatorAlertBanner,
   OperatorBaselineConsole,
   OperatorDecisionEvidencePanel,
+  OperatorFutureStackPanel,
   OperatorMarketConsole,
   OperatorMetricRibbon,
   OperatorResearchPanel,
@@ -270,6 +271,13 @@ onBeforeUnmount(() => {
             :baseline-preview="baselinePreview"
             :operator-recommendation="operatorRecommendation"
             :exogenous-signals="defense.exogenousSignals.value"
+            :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+          />
+
+          <OperatorFutureStackPanel
+            :future-stack="defense.futureStack.value"
+            :decision-policy="defense.dtPolicyPreview.value"
+            :operator-recommendation="operatorRecommendation"
             :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
           />
 
