@@ -37,6 +37,10 @@ from smart_arbitrage.assets.mvp_demo import (
 	DEMO_USD_TO_UAH_RATE,
 )
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
+from smart_arbitrage.forecasting.grid_event_signals import (
+	build_grid_event_signal_frame,
+	is_operational_grid_event_row,
+)
 from smart_arbitrage.optimization.projected_battery_state import (
 	ProjectedBatterySimulationResult,
 	ScheduledPowerPoint,
@@ -54,6 +58,8 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 	BatteryTelemetryObservation,
 	get_battery_telemetry_store,
 )
+from smart_arbitrage.resources.grid_event_store import get_grid_event_store
+from smart_arbitrage.resources.market_data_store import get_market_data_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 
 
@@ -249,6 +255,54 @@ class DashboardBatteryStateResponse(BaseModel):
 	tenant_id: str
 	latest_telemetry: BatteryTelemetryObservationResponse | None
 	hourly_snapshot: BatteryStateHourlySnapshotResponse | None
+	fallback_reason: str | None
+
+
+class ExogenousWeatherSignalResponse(BaseModel):
+	timestamp: datetime
+	fetched_at: datetime
+	source: str
+	source_kind: str
+	source_url: str
+	temperature: float
+	cloudcover: float
+	wind_speed: float
+	precipitation: float
+	freshness_hours: float | None
+
+
+class ExogenousGridEventResponse(BaseModel):
+	post_id: str
+	post_url: str
+	published_at: datetime
+	fetched_at: datetime
+	raw_text_summary: str
+	source: str
+	source_kind: str
+	source_url: str
+	energy_system_status: bool
+	shelling_damage: bool
+	outage_or_restriction: bool
+	consumption_change: str
+	solar_shift_advice: bool
+	evening_saving_request: bool
+	affected_oblasts: list[str]
+	freshness_hours: float | None
+
+
+class DashboardExogenousSignalsResponse(BaseModel):
+	tenant_id: str
+	resolved_location: WeatherLocationResponse
+	latest_weather: ExogenousWeatherSignalResponse | None
+	latest_grid_event: ExogenousGridEventResponse | None
+	grid_event_count_24h: float
+	tenant_region_affected: bool
+	national_grid_risk_score: float
+	outage_flag: bool
+	saving_request_flag: bool
+	solar_shift_hint: bool
+	event_source_freshness_hours: float | None
+	source_urls: list[str]
 	fallback_reason: str | None
 
 
@@ -1120,6 +1174,204 @@ def _to_hourly_snapshot_response(snapshot: BatteryStateHourlySnapshot) -> Batter
 	)
 
 
+def _build_exogenous_signals_response(tenant_id: str) -> DashboardExogenousSignalsResponse:
+	resolved_location = _resolve_requested_location(tenant_id=tenant_id, location_config_path=None)
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	now = datetime.now(tz=UTC)
+	latest_weather_row = _latest_weather_row(tenant_id=tenant_id)
+	grid_event_frame = get_grid_event_store().list_grid_event_frame(source_kind="observed")
+	latest_grid_event_row = _latest_grid_event_row(grid_event_frame)
+	signal_timestamp = (
+		_datetime_row_value(latest_grid_event_row["published_at"], field_name="published_at")
+		if latest_grid_event_row is not None
+		else now
+	)
+	event_signal = _grid_event_signal_snapshot(
+		tenant_id=tenant_id,
+		signal_timestamp=signal_timestamp,
+		grid_event_frame=grid_event_frame,
+	)
+	latest_weather = (
+		None
+		if latest_weather_row is None
+		else _to_exogenous_weather_signal_response(latest_weather_row, now=now)
+	)
+	latest_grid_event = (
+		None
+		if latest_grid_event_row is None
+		else _to_exogenous_grid_event_response(latest_grid_event_row, now=now)
+	)
+	return DashboardExogenousSignalsResponse(
+		tenant_id=tenant_id,
+		resolved_location=_location_response_from_model(resolved_location),
+		latest_weather=latest_weather,
+		latest_grid_event=latest_grid_event,
+		grid_event_count_24h=float(event_signal.get("grid_event_count_24h", 0.0)),
+		tenant_region_affected=_bool_signal(event_signal.get("tenant_region_affected")),
+		national_grid_risk_score=float(event_signal.get("national_grid_risk_score", 0.0)),
+		outage_flag=_bool_signal(event_signal.get("outage_flag")),
+		saving_request_flag=_bool_signal(event_signal.get("saving_request_flag")),
+		solar_shift_hint=_bool_signal(event_signal.get("solar_shift_hint")),
+		event_source_freshness_hours=_optional_signal_float(event_signal.get("event_source_freshness_hours")),
+		source_urls=_exogenous_source_urls(
+			latest_weather_row=latest_weather_row,
+			latest_grid_event_row=latest_grid_event_row,
+		),
+		fallback_reason=_exogenous_fallback_reason(
+			latest_weather_row=latest_weather_row,
+			latest_grid_event_row=latest_grid_event_row,
+		),
+	)
+
+
+def _latest_weather_row(*, tenant_id: str) -> dict[str, Any] | None:
+	weather_frame = get_market_data_store().list_weather_observation_frame(tenant_id=tenant_id)
+	if weather_frame.height == 0:
+		return None
+	return weather_frame.sort("timestamp").row(-1, named=True)
+
+
+def _latest_grid_event_row(grid_event_frame: pl.DataFrame) -> dict[str, Any] | None:
+	if grid_event_frame.height == 0:
+		return None
+	operational_rows = [
+		row
+		for row in grid_event_frame.sort(["published_at", "post_id"]).iter_rows(named=True)
+		if is_operational_grid_event_row(row)
+	]
+	if not operational_rows:
+		return None
+	return operational_rows[-1]
+
+
+def _grid_event_signal_snapshot(
+	*,
+	tenant_id: str,
+	signal_timestamp: datetime,
+	grid_event_frame: pl.DataFrame,
+) -> dict[str, Any]:
+	signal_frame = build_grid_event_signal_frame(
+		price_history=pl.DataFrame({"timestamp": [signal_timestamp], "price_uah_mwh": [0.0]}),
+		grid_events=grid_event_frame,
+		tenant_ids=[tenant_id],
+	)
+	if signal_frame.height == 0:
+		return {}
+	return signal_frame.row(0, named=True)
+
+
+def _to_exogenous_weather_signal_response(
+	row: dict[str, Any],
+	*,
+	now: datetime,
+) -> ExogenousWeatherSignalResponse:
+	timestamp = _datetime_row_value(row["timestamp"], field_name="timestamp")
+	fetched_at = _datetime_row_value(row["fetched_at"], field_name="fetched_at")
+	return ExogenousWeatherSignalResponse(
+		timestamp=timestamp,
+		fetched_at=fetched_at,
+		source=str(row["source"]),
+		source_kind=str(row["source_kind"]),
+		source_url=str(row["source_url"]),
+		temperature=float(row["temperature"]),
+		cloudcover=float(row["cloudcover"]),
+		wind_speed=float(row["wind_speed"]),
+		precipitation=float(row["precipitation"]),
+		freshness_hours=_hours_between(now, fetched_at),
+	)
+
+
+def _to_exogenous_grid_event_response(
+	row: dict[str, Any],
+	*,
+	now: datetime,
+) -> ExogenousGridEventResponse:
+	published_at = _datetime_row_value(row["published_at"], field_name="published_at")
+	fetched_at = _datetime_row_value(row["fetched_at"], field_name="fetched_at")
+	return ExogenousGridEventResponse(
+		post_id=str(row["post_id"]),
+		post_url=str(row["post_url"]),
+		published_at=published_at,
+		fetched_at=fetched_at,
+		raw_text_summary=_short_text(str(row["raw_text"])),
+		source=str(row["source"]),
+		source_kind=str(row["source_kind"]),
+		source_url=str(row["source_url"]),
+		energy_system_status=bool(row["energy_system_status"]),
+		shelling_damage=bool(row["shelling_damage"]),
+		outage_or_restriction=bool(row["outage_or_restriction"]),
+		consumption_change=str(row["consumption_change"]),
+		solar_shift_advice=bool(row["solar_shift_advice"]),
+		evening_saving_request=bool(row["evening_saving_request"]),
+		affected_oblasts=_text_list(row["affected_oblasts"]),
+		freshness_hours=_hours_between(now, fetched_at),
+	)
+
+
+def _short_text(value: str, *, limit: int = 280) -> str:
+	if len(value) <= limit:
+		return value
+	return value[: limit - 1].rstrip() + "..."
+
+
+def _text_list(value: Any) -> list[str]:
+	if not isinstance(value, list):
+		return []
+	return [str(item) for item in value]
+
+
+def _bool_signal(value: Any) -> bool:
+	if isinstance(value, int | float):
+		return float(value) > 0.0
+	return bool(value)
+
+
+def _optional_signal_float(value: Any) -> float | None:
+	if isinstance(value, int | float):
+		resolved_value = float(value)
+		if resolved_value >= 999.0:
+			return None
+		return resolved_value
+	return None
+
+
+def _hours_between(now: datetime, earlier: datetime) -> float:
+	return max(0.0, (_to_utc_datetime(now) - _to_utc_datetime(earlier)).total_seconds() / 3600.0)
+
+
+def _to_utc_datetime(value: datetime) -> datetime:
+	if value.tzinfo is None:
+		return value.replace(tzinfo=UTC)
+	return value.astimezone(UTC)
+
+
+def _exogenous_source_urls(
+	*,
+	latest_weather_row: dict[str, Any] | None,
+	latest_grid_event_row: dict[str, Any] | None,
+) -> list[str]:
+	source_urls = []
+	if latest_weather_row is not None:
+		source_urls.append(str(latest_weather_row["source_url"]))
+	if latest_grid_event_row is not None:
+		source_urls.append(str(latest_grid_event_row["source_url"]))
+	return sorted(set(source_urls))
+
+
+def _exogenous_fallback_reason(
+	*,
+	latest_weather_row: dict[str, Any] | None,
+	latest_grid_event_row: dict[str, Any] | None,
+) -> str | None:
+	if latest_weather_row is None and latest_grid_event_row is None:
+		return "weather_and_grid_events_unavailable"
+	if latest_weather_row is None:
+		return "weather_unavailable"
+	if latest_grid_event_row is None:
+		return "grid_events_unavailable"
+	return None
+
+
 def _to_forecast_strategy_comparison_response(
 	*,
 	tenant_id: str,
@@ -1521,6 +1773,20 @@ def dashboard_battery_state(tenant_id: str) -> DashboardBatteryStateResponse:
 		hourly_snapshot=None if latest_snapshot is None else _to_hourly_snapshot_response(latest_snapshot),
 		fallback_reason=fallback_reason,
 	)
+
+
+@app.get(
+	"/dashboard/exogenous-signals",
+	response_model=DashboardExogenousSignalsResponse,
+	tags=["weather"],
+	summary="Get latest exogenous signals",
+	description=(
+		"Returns the latest tenant weather metadata and public Ukrenergo grid-event signal read model. "
+		"These are explanatory exogenous covariates, not live trading claims."
+	),
+)
+def dashboard_exogenous_signals(tenant_id: str) -> DashboardExogenousSignalsResponse:
+	return _build_exogenous_signals_response(tenant_id)
 
 
 @app.get(

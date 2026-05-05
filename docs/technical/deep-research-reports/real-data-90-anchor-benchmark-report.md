@@ -43,6 +43,25 @@ Tenant weather came from Open-Meteo historical weather. Open-Meteo documents the
 
 The benchmark uses observed DAM price rows only. Synthetic data is not silently admitted in benchmark mode. Weather is tenant/location-specific, while DAM prices remain market-wide.
 
+## Live Exogenous Variables
+
+The MVP now adds a live exogenous-signal layer for dashboard-ready context and future forecast features:
+
+- Open-Meteo remains the primary no-key weather source for tenant/location-specific live forecasts and historical weather.
+- OREE DAM rows already provide market-wide price, volume, low-volume, and price-spike metadata.
+- Public Ukrenergo Telegram posts at <https://t.me/s/Ukrenergo> are ingested as observed grid-event text because direct `ua.energy/news` and WordPress JSON access was WAF-rejected during the source probe.
+- The Silver grid-event layer converts posts into transparent hourly features: recent event count, national grid risk score, tenant-region affected flag, outage flag, evening saving request, solar-shift hint, and event freshness.
+- The API exposes these signals through `GET /dashboard/exogenous-signals?tenant_id=...` without changing dashboard UI code.
+
+Claim boundary: these news/Telegram features are operational context covariates. They are not yet proven causal price predictors and should not be used for live trading claims until evaluated through the same leakage-free rolling-origin benchmark.
+
+Deferred sources:
+
+- Energy Map's hourly IPS balance dataset is highly relevant for load/generation/interstate-flow features, but the probed dataset page reports subscription/download limits.
+- ENTSO-E Transparency Platform has useful price/load/generation/cross-border document types, but production use requires a security token.
+- Hugging Face datasets such as Spain energy-weather and Chronos electricity corpora are useful for method validation or pretraining experiments, not direct live Ukraine features.
+- Time-Series-Library/TimeXer is a SOTA-adjacent exogenous Transformer reference, but remains outside tonight's MVP scope.
+
 ## Run Coverage
 
 | Metric | Value |

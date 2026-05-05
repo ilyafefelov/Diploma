@@ -16,6 +16,8 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 	BatteryTelemetryObservation,
 	InMemoryBatteryTelemetryStore,
 )
+from smart_arbitrage.resources.grid_event_store import GridEventObservation, InMemoryGridEventStore
+from smart_arbitrage.resources.market_data_store import InMemoryMarketDataStore, WeatherObservation
 from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
 
 
@@ -58,6 +60,20 @@ def fake_battery_telemetry_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryBat
 def fake_strategy_evaluation_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryStrategyEvaluationStore:
 	store = InMemoryStrategyEvaluationStore()
 	monkeypatch.setattr(api_main, "get_strategy_evaluation_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_market_data_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryMarketDataStore:
+	store = InMemoryMarketDataStore()
+	monkeypatch.setattr(api_main, "get_market_data_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_grid_event_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryGridEventStore:
+	store = InMemoryGridEventStore()
+	monkeypatch.setattr(api_main, "get_grid_event_store", lambda: store)
 	return store
 
 
@@ -419,6 +435,89 @@ def test_battery_state_endpoint_returns_latest_telemetry_and_hourly_snapshot(
 	assert response_payload["hourly_snapshot"]["telemetry_freshness"] == "fresh"
 
 
+def test_exogenous_signals_endpoint_returns_weather_and_grid_event_read_model(
+	client: TestClient,
+	fake_market_data_store: InMemoryMarketDataStore,
+	fake_grid_event_store: InMemoryGridEventStore,
+) -> None:
+	fake_market_data_store.upsert_weather_observations(
+		[
+			WeatherObservation(
+				tenant_id="client_004_kharkiv_hospital",
+				timestamp=datetime(2026, 4, 30, 10, tzinfo=UTC),
+				location_latitude=49.99,
+				location_longitude=36.23,
+				location_timezone="Europe/Kyiv",
+				temperature=16.5,
+				solar_radiation=220.0,
+				wind_speed=5.2,
+				cloudcover=70.0,
+				precipitation=0.0,
+				pressure=1012.0,
+				humidity=64.0,
+				source="OPEN_METEO_FORECAST",
+				source_kind="observed",
+				source_url="https://api.open-meteo.com/v1/forecast",
+				fetched_at=datetime(2026, 4, 30, 9, 55, tzinfo=UTC),
+			)
+		]
+	)
+	fake_grid_event_store.upsert_grid_events(
+		[
+			GridEventObservation(
+				post_id="Ukrenergo/4914",
+				post_url="https://t.me/Ukrenergo/4914",
+				published_at=datetime(2026, 4, 30, 9, tzinfo=UTC),
+				fetched_at=datetime(2026, 4, 30, 9, 5, tzinfo=UTC),
+				raw_text="СТАН ЕНЕРГОСИСТЕМИ. Є нові знеструмлення на Харківщині.",
+				source="UKRENERGO_TELEGRAM",
+				source_kind="observed",
+				source_url="https://t.me/s/Ukrenergo",
+				energy_system_status=True,
+				shelling_damage=True,
+				outage_or_restriction=True,
+				consumption_change="unknown",
+				solar_shift_advice=False,
+				evening_saving_request=True,
+				affected_oblasts=["Kharkiv"],
+			),
+			GridEventObservation(
+				post_id="Ukrenergo/4932",
+				post_url="https://t.me/Ukrenergo/4932",
+				published_at=datetime(2026, 4, 30, 11, tzinfo=UTC),
+				fetched_at=datetime(2026, 4, 30, 11, 5, tzinfo=UTC),
+				raw_text="Запрошуємо на стажування Energy Hub від НЕК Укренерго.",
+				source="UKRENERGO_TELEGRAM",
+				source_kind="observed",
+				source_url="https://t.me/s/Ukrenergo",
+				energy_system_status=False,
+				shelling_damage=False,
+				outage_or_restriction=False,
+				consumption_change="unknown",
+				solar_shift_advice=False,
+				evening_saving_request=False,
+				affected_oblasts=[],
+			)
+		]
+	)
+
+	response = client.get(
+		"/dashboard/exogenous-signals",
+		params={"tenant_id": "client_004_kharkiv_hospital"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["tenant_id"] == "client_004_kharkiv_hospital"
+	assert response_payload["latest_weather"]["source"] == "OPEN_METEO_FORECAST"
+	assert response_payload["latest_grid_event"]["post_id"] == "Ukrenergo/4914"
+	assert response_payload["latest_grid_event"]["affected_oblasts"] == ["Kharkiv"]
+	assert response_payload["tenant_region_affected"] is True
+	assert response_payload["outage_flag"] is True
+	assert response_payload["national_grid_risk_score"] > 0.0
+	assert "https://t.me/s/Ukrenergo" in response_payload["source_urls"]
+
+
 def test_baseline_lp_preview_uses_fresh_hourly_telemetry_soc(
 	client: TestClient,
 	fake_status_store: _FakeOperatorStatusStore,
@@ -722,6 +821,7 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/operator-status"]["get"]["summary"] == "Get persisted operator flow status"
 	assert schema["paths"]["/dashboard/projected-battery-state"]["post"]["summary"] == "Build projected battery state preview"
 	assert schema["paths"]["/dashboard/battery-state"]["get"]["summary"] == "Get latest battery telemetry state"
+	assert schema["paths"]["/dashboard/exogenous-signals"]["get"]["summary"] == "Get latest exogenous signals"
 	assert schema["paths"]["/dashboard/baseline-lp-preview"]["get"]["summary"] == "Build baseline LP preview"
 	assert schema["paths"]["/dashboard/forecast-strategy-comparison"]["get"]["summary"] == "Get forecast strategy comparison"
 	assert schema["paths"]["/dashboard/real-data-benchmark"]["get"]["summary"] == "Get real-data benchmark"

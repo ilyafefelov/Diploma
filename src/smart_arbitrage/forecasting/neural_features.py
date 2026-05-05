@@ -8,6 +8,7 @@ from typing import Final, Literal
 import polars as pl
 
 from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DEFAULT_TIMESTAMP_COLUMN
+from smart_arbitrage.forecasting.grid_event_signals import GRID_EVENT_FEATURE_COLUMNS, GRID_EVENT_FEATURE_DEFAULTS
 from smart_arbitrage.market_rules import market_rule_features
 
 DEFAULT_NEURAL_FORECAST_HORIZON_HOURS: Final[int] = 24
@@ -33,6 +34,12 @@ BATTERY_TELEMETRY_FEATURE_DEFAULTS: Final[dict[str, float]] = {
 	"telemetry_is_fresh": 0.0,
 }
 
+MARKET_LIQUIDITY_FEATURE_DEFAULTS: Final[dict[str, float]] = {
+	"market_volume_mwh": 1000.0,
+	"market_low_volume": 0.0,
+	"market_price_spike": 0.0,
+}
+
 NEURAL_FORECAST_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
 	"hour_sin",
 	"hour_cos",
@@ -42,6 +49,9 @@ NEURAL_FORECAST_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
 	"lag_24_price_uah_mwh",
 	"lag_168_price_uah_mwh",
 	"rolling_24h_mean_uah_mwh",
+	"market_volume_mwh",
+	"market_low_volume",
+	"market_price_spike",
 	"weather_temperature",
 	"weather_wind_speed",
 	"weather_cloudcover",
@@ -58,6 +68,7 @@ NEURAL_FORECAST_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
 	"market_regime_code",
 	"days_since_regime_change",
 	"is_price_cap_changed_recently",
+	*GRID_EVENT_FEATURE_COLUMNS,
 )
 
 
@@ -69,6 +80,7 @@ def build_neural_forecast_feature_frame(
 	timestamp_column: str = DEFAULT_TIMESTAMP_COLUMN,
 	price_column: str = DEFAULT_PRICE_COLUMN,
 	future_weather_mode: FutureWeatherMode = "historical_benchmark",
+	grid_event_signal_frame: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
 	"""Build a full train/forecast feature frame for neural Silver forecasts."""
 
@@ -99,6 +111,13 @@ def build_neural_forecast_feature_frame(
 		future_weather_mode=future_weather_mode,
 	)
 	history = _ensure_battery_telemetry_columns(history)
+	history = _ensure_market_liquidity_columns(history)
+	history = _join_grid_event_signal_frame(
+		history,
+		grid_event_signal_frame=grid_event_signal_frame,
+		timestamp_column=timestamp_column,
+	)
+	history = _ensure_grid_event_columns(history)
 	history = _add_market_rule_features(history, timestamp_column=timestamp_column)
 	history = _mask_future_prices_for_forecast_features(
 		history,
@@ -137,6 +156,8 @@ def build_neural_forecast_feature_frame(
 				for column_name, default_value in {
 					**WEATHER_FEATURE_DEFAULTS,
 					**BATTERY_TELEMETRY_FEATURE_DEFAULTS,
+					**MARKET_LIQUIDITY_FEATURE_DEFAULTS,
+					**GRID_EVENT_FEATURE_DEFAULTS,
 				}.items()
 			]
 		)
@@ -215,6 +236,9 @@ def _prepare_price_history(
 				price_column,
 				*[column for column in WEATHER_FEATURE_DEFAULTS if column in price_history.columns],
 				*[column for column in [WEATHER_SOURCE_KIND_COLUMN] if column in price_history.columns],
+				*[column for column in ("volume_mwh", "low_volume", "price_spike") if column in price_history.columns],
+				*[column for column in MARKET_LIQUIDITY_FEATURE_DEFAULTS if column in price_history.columns],
+				*[column for column in GRID_EVENT_FEATURE_DEFAULTS if column in price_history.columns],
 			]
 		)
 		.drop_nulls(subset=[timestamp_column, price_column])
@@ -235,6 +259,43 @@ def _ensure_weather_columns(history: pl.DataFrame) -> pl.DataFrame:
 			expressions.append(pl.col(column_name).fill_null(default_value).alias(column_name))
 		else:
 			expressions.append(pl.lit(default_value).alias(column_name))
+	if WEATHER_SOURCE_KIND_COLUMN not in history.columns:
+		expressions.append(pl.lit("unknown").alias(WEATHER_SOURCE_KIND_COLUMN))
+	return history.with_columns(expressions)
+
+
+def _ensure_market_liquidity_columns(history: pl.DataFrame) -> pl.DataFrame:
+	expressions: list[pl.Expr] = []
+	if "market_volume_mwh" in history.columns:
+		expressions.append(pl.col("market_volume_mwh").fill_null(1000.0).cast(pl.Float64).alias("market_volume_mwh"))
+	elif "volume_mwh" in history.columns:
+		expressions.append(pl.col("volume_mwh").fill_null(1000.0).cast(pl.Float64).alias("market_volume_mwh"))
+	else:
+		expressions.append(pl.lit(1000.0).alias("market_volume_mwh"))
+
+	if "market_low_volume" in history.columns:
+		expressions.append(pl.col("market_low_volume").fill_null(0.0).cast(pl.Float64).alias("market_low_volume"))
+	elif "low_volume" in history.columns:
+		expressions.append(pl.col("low_volume").fill_null(False).cast(pl.Float64).alias("market_low_volume"))
+	else:
+		expressions.append(pl.lit(0.0).alias("market_low_volume"))
+
+	if "market_price_spike" in history.columns:
+		expressions.append(pl.col("market_price_spike").fill_null(0.0).cast(pl.Float64).alias("market_price_spike"))
+	elif "price_spike" in history.columns:
+		expressions.append(pl.col("price_spike").fill_null(False).cast(pl.Float64).alias("market_price_spike"))
+	else:
+		expressions.append(pl.lit(0.0).alias("market_price_spike"))
+	return history.with_columns(expressions)
+
+
+def _ensure_grid_event_columns(history: pl.DataFrame) -> pl.DataFrame:
+	expressions: list[pl.Expr] = []
+	for column_name, default_value in GRID_EVENT_FEATURE_DEFAULTS.items():
+		if column_name in history.columns:
+			expressions.append(pl.col(column_name).fill_null(default_value).cast(pl.Float64).alias(column_name))
+		else:
+			expressions.append(pl.lit(default_value).alias(column_name))
 	return history.with_columns(expressions)
 
 
@@ -245,8 +306,6 @@ def _ensure_battery_telemetry_columns(history: pl.DataFrame) -> pl.DataFrame:
 			expressions.append(pl.col(column_name).fill_null(default_value).alias(column_name))
 		else:
 			expressions.append(pl.lit(default_value).alias(column_name))
-	if WEATHER_SOURCE_KIND_COLUMN not in history.columns:
-		expressions.append(pl.lit("unknown").alias(WEATHER_SOURCE_KIND_COLUMN))
 	return history.with_columns(expressions)
 
 
@@ -368,6 +427,38 @@ def _join_battery_state_hourly_snapshots(
 		)
 	)
 	return history.join(battery_features, on=timestamp_column, how="left")
+
+
+def _join_grid_event_signal_frame(
+	history: pl.DataFrame,
+	*,
+	grid_event_signal_frame: pl.DataFrame | None,
+	timestamp_column: str,
+) -> pl.DataFrame:
+	if grid_event_signal_frame is None or grid_event_signal_frame.height == 0:
+		return history
+	required_columns = {timestamp_column, *GRID_EVENT_FEATURE_COLUMNS}
+	missing_columns = required_columns.difference(grid_event_signal_frame.columns)
+	if missing_columns:
+		raise ValueError(f"grid_event_signal_frame is missing required columns: {sorted(missing_columns)}")
+	aggregations: list[pl.Expr] = []
+	for column_name in GRID_EVENT_FEATURE_COLUMNS:
+		if column_name in {"days_since_grid_event", "event_source_freshness_hours"}:
+			aggregations.append(pl.col(column_name).min())
+		else:
+			aggregations.append(pl.col(column_name).max())
+	grid_features = (
+		grid_event_signal_frame
+		.select(
+			[
+				pl.col(timestamp_column).dt.replace_time_zone(None).alias(timestamp_column),
+				*[pl.col(column_name).cast(pl.Float64).alias(column_name) for column_name in GRID_EVENT_FEATURE_COLUMNS],
+			]
+		)
+		.group_by(timestamp_column)
+		.agg(aggregations)
+	)
+	return history.join(grid_features, on=timestamp_column, how="left")
 
 
 def _resolve_anchor_timestamp(history: pl.DataFrame, *, horizon_hours: int, timestamp_column: str) -> datetime:

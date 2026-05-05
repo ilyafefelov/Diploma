@@ -223,6 +223,36 @@ Operational notes:
 - It is safe for the dashboard to show `latest_telemetry` and `hourly_snapshot` as separate panels.
 - If telemetry is missing or stale, optimization read models continue to fall back to tenant defaults.
 
+### `GET /dashboard/exogenous-signals`
+
+Returns the latest tenant weather metadata plus public Ukrenergo grid-event context for dashboard and model diagnostics.
+
+Request query example:
+
+```text
+/dashboard/exogenous-signals?tenant_id=client_004_kharkiv_hospital
+```
+
+Response shape:
+
+```json
+{
+  "tenant_id": "client_004_kharkiv_hospital",
+  "latest_weather": {},
+  "latest_grid_event": {},
+  "grid_event_count_24h": 1.0,
+  "tenant_region_affected": true,
+  "national_grid_risk_score": 0.85,
+  "source_urls": ["https://t.me/s/Ukrenergo"]
+}
+```
+
+Operational notes:
+
+- This is a read model for exogenous context only.
+- Ukrenergo Telegram features are transparent rule-based covariates, not proven causal price predictors.
+- If no weather or grid-event rows exist yet, the endpoint still returns safe fallback metadata.
+
 ### `GET /dashboard/baseline-lp-preview`
 
 Builds the first tenant-aware Slice 2 baseline LP read model for operator preview.
@@ -428,6 +458,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - When the operator starts an experiment, the dashboard should call `POST /weather/materialize`.
 - For Slice 2 preview work, the dashboard can call `POST /dashboard/projected-battery-state` to render feasible hourly SOC and degradation-aware economics from a signed recommendation schedule.
 - For baseline recommendation preview, the dashboard can call `GET /dashboard/baseline-lp-preview` to render forecast, feasible hourly signed MW schedule, projected SOC trace, and UAH economics for the selected tenant.
+- For live exogenous context, the dashboard can call `GET /dashboard/exogenous-signals` to show weather freshness and Ukrenergo grid-event risk without making a trading claim.
 - For Gold strategy evidence, the dashboard can call `GET /dashboard/forecast-strategy-comparison` to compare strict similar-day, NBEATSx, and TFT by LP decision value, oracle regret, degradation penalty, throughput, and starting SOC source.
 - For thesis benchmark evidence, the dashboard can call `GET /dashboard/real-data-benchmark` to compare the same forecast candidates across observed-only rolling-origin anchors and show whether the result is thesis-grade or demo-grade.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
@@ -440,4 +471,5 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The baseline LP preview endpoint is also a read model only; it exposes recommendation semantics, not market-order, clearing, or dispatch semantics.
 - The forecast strategy comparison endpoint is Gold-layer evidence only; it compares forecast-driven LP decisions and does not generate market contracts.
 - The real-data benchmark endpoint is also evidence only; it reports rolling-origin regret and data quality, not trading instructions.
+- The exogenous-signal endpoint is context only; it should be described as state awareness until benchmark evidence shows decision value.
 - The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.

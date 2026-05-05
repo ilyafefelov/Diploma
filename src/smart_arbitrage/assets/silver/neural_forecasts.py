@@ -26,12 +26,15 @@ def neural_forecast_feature_frame(
 	context,
 	dam_price_history: pl.DataFrame,
 	battery_state_hourly_silver=None,
+	grid_event_signal_silver=None,
 ) -> pl.DataFrame:
 	"""Model-ready Silver feature frame for NBEATSx and TFT research forecasts."""
 
 	feature_frame = build_neural_forecast_feature_frame(
 		dam_price_history,
 		battery_state_hourly_snapshots=battery_state_hourly_silver,
+		future_weather_mode="forecast_only",
+		grid_event_signal_frame=grid_event_signal_silver,
 	)
 	_add_metadata(
 		context,
