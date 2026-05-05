@@ -100,6 +100,10 @@ _Avoid_: hindsight training, one-off demo materialization, random train/test spl
 DFL-inspired diagnostic layer that estimates a price-bias correction from prior-anchor forecast errors weighted by downstream regret, then re-evaluates corrected forecasts through the same strict LP/oracle scorer. It is not **Target Strategy** and not full differentiable DFL.
 _Avoid_: claiming trained DFL, replacing strict baseline, using future anchors, dashboard production default
 
+**Horizon-Aware Regret-Weighted Forecast Calibration**:
+DFL-inspired diagnostic layer that estimates one regret-weighted price-bias correction per forecast horizon step from prior anchors, then re-evaluates corrected NBEATSx/TFT forecasts through the same strict LP/oracle scorer. It can support a value-oriented DFL argument, but is still not **Full Differentiable DFL**.
+_Avoid_: claiming end-to-end trained DFL, using future anchors, replacing **Strict Similar-Day Rule** as dashboard default without live validation
+
 **Full Differentiable DFL**:
 Future **Target Strategy** training loop where a forecast model is optimized through a relaxed differentiable storage or bidding layer, then evaluated with the strict LP/simulator. It requires a separate no-leakage training protocol and must not be claimed from bias-calibration results.
 _Avoid_: regret-weighted post-hoc calibration, oracle dispatch imitation, unconstrained neural action, final evaluation on relaxed constraints
@@ -236,6 +240,8 @@ _Avoid_: market bid, no bid, cleared trade
 - **Rolling-Origin Strategy Backtest** is the canonical experiment design for comparing **Level 1 Naive Forecast**, **NBEATSx Forecast**, **TFT Forecast**, and later **Target Strategy**
 - **Regret-Weighted Forecast Calibration** consumes **Real-Data Research Benchmark** outputs and produces corrected forecast candidates for another **Forecast Strategy Evaluation**
 - **Regret-Weighted Forecast Calibration** is a diagnostic predecessor to **Full Differentiable DFL**, not a replacement for **Target Strategy**
+- **Horizon-Aware Regret-Weighted Forecast Calibration** deepens **Regret-Weighted Forecast Calibration** by preserving forecast-horizon structure before LP scoring
+- **Horizon-Aware Regret-Weighted Forecast Calibration** may beat the strict control on one aggregate metric, but remains a research diagnostic until live-available inputs and strict validation prove it is stable
 - **Full Differentiable DFL** must be trained with only pre-anchor information and must still be scored through strict LP/simulator evaluation
 - **Effective-Dated Market Constraint** constrains **Market Venue** validation and benchmark scoring for the relevant delivery date
 - **Market Participation Cost** contributes to net UAH decision value alongside **Interval Degradation Penalty**

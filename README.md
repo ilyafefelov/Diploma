@@ -8,20 +8,20 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Tenants: 5 simulated BESS tenants from `simulations/tenants.yml`.
 - Main control: `strict_similar_day`.
 - Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
-- Research layer: forecast diagnostics, value-aware ensemble gate, DFL-ready training table, regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
+- Research layer: forecast diagnostics, value-aware ensemble gate, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
 - Dashboard UI is separate and was not changed in the latest research slice.
 
 Latest materialized result:
 
 | Model | Rows | Mean regret UAH | Median regret UAH | Win rate |
 |---|---:|---:|---:|---:|
-| strict_similar_day | 450 | 851.04 | 535.62 | 50.00% |
-| tft_regret_weighted_calibrated_v0 | 450 | 1,125.56 | 752.80 | 14.89% |
-| tft_silver_v0 | 450 | 1,128.75 | 732.66 | 13.78% |
-| nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 7.56% |
-| nbeatsx_regret_weighted_calibrated_v0 | 450 | 1,171.75 | 833.18 | 13.78% |
+| tft_horizon_regret_weighted_calibrated_v0 | 450 | 834.32 | 558.87 | 22.00% |
+| strict_similar_day | 450 | 851.04 | 535.62 | 38.00% |
+| nbeatsx_horizon_regret_weighted_calibrated_v0 | 450 | 941.74 | 653.24 | 17.78% |
+| tft_silver_v0 | 450 | 1,128.75 | 732.66 | 13.56% |
+| nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 8.67% |
 
-Interpretation: regret-weighted calibration is useful as diagnostic evidence, but it is not full DFL and does not beat the strict baseline. Next research step should be a better value-oriented or relaxed differentiable objective.
+Interpretation: horizon-aware TFT calibration is the first diagnostic to beat the strict control on mean regret, but strict similar-day still has better median regret and more rank-1 wins. This is not full DFL and is not a dashboard default yet; it is evidence that horizon-structured value calibration is worth expanding into a real DFL objective.
 
 ## Local Stack
 
@@ -54,14 +54,14 @@ uv run dg list defs --json
 docker compose config --quiet
 ```
 
-Latest full verification: `89 passed`.
+Latest full verification: `91 passed`.
 
 ## Research Artifacts
 
 - Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`
-- Latest exports: `data/research_runs/dfl_forecast_expansion_20260505T132500/`
-- Latest DB dump: `data/db_backups/smart_arbitrage_dfl_forecast_expansion_20260505T132500.dump`
-- MLflow run: `smart-arbitrage-regret-weighted-dfl-expansion`, run `59316dec9d4246cc98f848eb7816a1b2`
+- Latest exports: `data/research_runs/horizon_dfl_expansion_20260505T140430/`
+- Latest DB dump: `data/db_backups/smart_arbitrage_horizon_dfl_expansion_20260505T140430.dump`
+- MLflow run: `smart-arbitrage-horizon-regret-weighted-dfl-expansion`, run `9d61ef79a0d34214b2de6617346a616e`
 
 `data/` and `mlruns/` are local artifacts and are intentionally not tracked.
 

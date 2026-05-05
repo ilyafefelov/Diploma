@@ -61,6 +61,12 @@ def main() -> None:
         "pilot_rows": outputs.pilot_frame.height,
         "regret_weighted_calibration_rows": outputs.regret_weighted_calibration_frame.height,
         "regret_weighted_benchmark_rows": outputs.regret_weighted_benchmark_frame.height,
+        "horizon_regret_weighted_calibration_rows": (
+            outputs.horizon_regret_weighted_calibration_frame.height
+        ),
+        "horizon_regret_weighted_benchmark_rows": (
+            outputs.horizon_regret_weighted_benchmark_frame.height
+        ),
     }
     print(json.dumps(summary, indent=2))
 

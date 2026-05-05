@@ -200,6 +200,21 @@ Restoreable database dump after adding this research-layer slice:
 
 `data/db_backups/smart_arbitrage_dfl_forecast_expansion_20260505T132500.dump`
 
+Additional horizon-aware calibration exports:
+
+`data/research_runs/horizon_dfl_expansion_20260505T140430/research_layer_summary.json`
+
+`data/research_runs/horizon_dfl_expansion_20260505T140430/horizon_regret_weighted_calibration_summary.csv`
+
+`data/research_runs/horizon_dfl_expansion_20260505T140430/horizon_regret_weighted_benchmark_summary.csv`
+
+Dagster horizon-aware materialization run: `16311f60-acb2-4eba-a158-0d04d083e7a6`
+MLflow horizon-aware run: <http://localhost:5000/#/experiments/4/runs/9d61ef79a0d34214b2de6617346a616e>
+
+Restoreable database dump after the horizon-aware slice:
+
+`data/db_backups/smart_arbitrage_horizon_dfl_expansion_20260505T140430.dump`
+
 Postgres persistence after this slice:
 
 | Table / rows | Count |
@@ -209,6 +224,7 @@ Postgres persistence after this slice:
 | `dfl_training_examples` rows | 1,800 |
 | `regret_weighted_dfl_pilot_runs` rows | 1 |
 | `regret_weighted_forecast_calibration_benchmark` rows | 2,250 |
+| `horizon_regret_weighted_forecast_calibration_benchmark` rows | 2,250 |
 
 Updated model comparison including the ensemble gate:
 
@@ -246,6 +262,32 @@ Interpretation:
 - TFT calibration is mildly useful as a diagnostic: mean regret improves by about 3.19 UAH versus raw TFT, but median regret worsens.
 - NBEATSx calibration is neutral/negative: it increases mean regret versus raw NBEATSx, even though it increases rank-1 wins. This means a scalar bias correction is too crude for NBEATSx dispatch value.
 - This is an academically valid negative/neutral result. It argues for a better value-oriented objective or relaxed differentiable layer, not for dropping the strict baseline.
+
+Horizon-aware regret-weighted corrected forecasts:
+
+| Model | Rows | Mean regret UAH | Median regret UAH | Mean decision value UAH | Wins | Win rate |
+|---|---:|---:|---:|---:|---:|---:|
+| tft_horizon_regret_weighted_calibrated_v0 | 450 | 834.32 | 558.87 | 2,812.26 | 99 | 22.00% |
+| strict_similar_day | 450 | 851.04 | 535.62 | 2,795.55 | 171 | 38.00% |
+| nbeatsx_horizon_regret_weighted_calibrated_v0 | 450 | 941.74 | 653.24 | 2,704.85 | 80 | 17.78% |
+| tft_silver_v0 | 450 | 1,128.75 | 732.66 | 2,517.84 | 61 | 13.56% |
+| nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 2,482.42 | 39 | 8.67% |
+
+Horizon-aware calibration summary:
+
+| Source model | Corrected model | Status | Rows | Mean horizon bias UAH/MWh | Median horizon bias UAH/MWh | Mean max abs horizon bias UAH/MWh |
+|---|---|---|---:|---:|---:|---:|
+| nbeatsx_silver_v0 | nbeatsx_horizon_regret_weighted_calibrated_v0 | calibrated | 380 | -431.18 | -581.89 | 3,057.19 |
+| nbeatsx_silver_v0 | nbeatsx_horizon_regret_weighted_calibrated_v0 | insufficient_prior_history | 70 | 0.00 | 0.00 | 0.00 |
+| tft_silver_v0 | tft_horizon_regret_weighted_calibrated_v0 | calibrated | 380 | -635.25 | -992.87 | 4,352.84 |
+| tft_silver_v0 | tft_horizon_regret_weighted_calibrated_v0 | insufficient_prior_history | 70 | 0.00 | 0.00 | 0.00 |
+
+Interpretation of the horizon-aware result:
+
+- Horizon-aware TFT correction is the first DFL-inspired diagnostic that beats `strict_similar_day` on mean regret: `834.32` UAH versus `851.04` UAH.
+- This is not enough to replace the strict baseline. The strict control still has lower median regret and far more rank-1 wins.
+- The result is still stronger than scalar bias correction because it preserves the 24-hour price-shape structure that the LP optimizer needs.
+- The thesis-safe claim is: horizon-structured value calibration is a promising bridge toward DFL. It is not yet full differentiable DFL because the forecast model is not trained through an optimizer layer.
 
 DFL training table:
 

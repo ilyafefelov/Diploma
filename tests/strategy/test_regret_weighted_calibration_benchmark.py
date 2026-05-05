@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 import polars as pl
 
 from smart_arbitrage.dfl.regret_weighted import (
+    HORIZON_REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND,
     REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND,
+    build_horizon_regret_weighted_forecast_strategy_benchmark_frame,
     build_regret_weighted_forecast_strategy_benchmark_frame,
 )
 
@@ -44,6 +46,52 @@ def test_regret_weighted_calibration_benchmark_routes_corrected_nbeatsx_and_tft_
     assert corrected_payload["source_forecast_model_name"] == "nbeatsx_silver_v0"
     assert corrected_payload["regret_weighted_bias_uah_mwh"] == 100.0
     assert corrected_payload["academic_scope"] == "Regret-weighted forecast calibration benchmark; not full differentiable DFL."
+
+
+def test_horizon_regret_weighted_calibration_benchmark_routes_step_biases_through_lp() -> None:
+    anchor = datetime(2026, 5, 1, 23)
+    source_frame = pl.DataFrame(
+        [
+            _evaluation_row(anchor, "strict_similar_day", [1000.0, 1400.0]),
+            _evaluation_row(anchor, "tft_silver_v0", [900.0, 1200.0]),
+            _evaluation_row(anchor, "nbeatsx_silver_v0", [900.0, 1200.0]),
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            _horizon_calibration_row(
+                anchor,
+                "tft_silver_v0",
+                "tft_horizon_regret_weighted_calibrated_v0",
+                [100.0, 300.0],
+            ),
+            _horizon_calibration_row(
+                anchor,
+                "nbeatsx_silver_v0",
+                "nbeatsx_horizon_regret_weighted_calibrated_v0",
+                [100.0, 300.0],
+            ),
+        ]
+    )
+
+    result = build_horizon_regret_weighted_forecast_strategy_benchmark_frame(
+        source_frame,
+        calibration_frame,
+    )
+
+    assert result.height == 5
+    assert set(result["strategy_kind"].to_list()) == {
+        HORIZON_REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND
+    }
+    corrected_payload = result.filter(
+        pl.col("forecast_model_name") == "tft_horizon_regret_weighted_calibrated_v0"
+    ).row(0, named=True)["evaluation_payload"]
+    assert corrected_payload["source_forecast_model_name"] == "tft_silver_v0"
+    assert corrected_payload["horizon_biases_uah_mwh"] == [100.0, 300.0]
+    assert corrected_payload["mean_horizon_bias_uah_mwh"] == 200.0
+    assert corrected_payload["academic_scope"] == (
+        "Horizon-aware regret-weighted forecast calibration benchmark; not full differentiable DFL."
+    )
 
 
 def _evaluation_row(anchor: datetime, model_name: str, forecast_prices: list[float]) -> dict[str, object]:
@@ -99,6 +147,27 @@ def _calibration_row(
         "source_forecast_model_name": source_model_name,
         "corrected_forecast_model_name": corrected_model_name,
         "regret_weighted_bias_uah_mwh": bias,
+        "prior_anchor_count": 14,
+        "calibration_window_anchor_count": 14,
+        "calibration_status": "calibrated",
+        "data_quality_tier": "thesis_grade",
+    }
+
+
+def _horizon_calibration_row(
+    anchor: datetime,
+    source_model_name: str,
+    corrected_model_name: str,
+    horizon_biases: list[float],
+) -> dict[str, object]:
+    return {
+        "tenant_id": "client_003_dnipro_factory",
+        "anchor_timestamp": anchor,
+        "source_forecast_model_name": source_model_name,
+        "corrected_forecast_model_name": corrected_model_name,
+        "horizon_biases_uah_mwh": horizon_biases,
+        "mean_horizon_bias_uah_mwh": sum(horizon_biases) / len(horizon_biases),
+        "max_abs_horizon_bias_uah_mwh": max(abs(value) for value in horizon_biases),
         "prior_anchor_count": 14,
         "calibration_window_anchor_count": 14,
         "calibration_status": "calibrated",

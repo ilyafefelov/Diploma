@@ -8,6 +8,8 @@ from typing import Any
 import polars as pl
 
 from smart_arbitrage.dfl.regret_weighted import (
+    build_horizon_regret_weighted_forecast_calibration_frame,
+    build_horizon_regret_weighted_forecast_strategy_benchmark_frame,
     build_regret_weighted_forecast_calibration_frame,
     build_regret_weighted_forecast_strategy_benchmark_frame,
     run_regret_weighted_dfl_pilot,
@@ -34,8 +36,11 @@ class ResearchLayerOutputs:
     pilot_frame: pl.DataFrame
     regret_weighted_calibration_frame: pl.DataFrame
     regret_weighted_benchmark_frame: pl.DataFrame
+    horizon_regret_weighted_calibration_frame: pl.DataFrame
+    horizon_regret_weighted_benchmark_frame: pl.DataFrame
     model_summary: pl.DataFrame
     regret_weighted_model_summary: pl.DataFrame
+    horizon_regret_weighted_model_summary: pl.DataFrame
     dfl_training_summary: pl.DataFrame
 
 
@@ -92,6 +97,17 @@ def build_research_layer_outputs(
         benchmark_frame,
         calibration_frame,
     )
+    horizon_calibration_frame = build_horizon_regret_weighted_forecast_calibration_frame(
+        benchmark_frame,
+        min_prior_anchors=calibration_min_prior_anchors,
+        rolling_calibration_window_anchors=calibration_window_anchors,
+    )
+    horizon_regret_weighted_benchmark_frame = (
+        build_horizon_regret_weighted_forecast_strategy_benchmark_frame(
+            benchmark_frame,
+            horizon_calibration_frame,
+        )
+    )
     return ResearchLayerOutputs(
         benchmark_frame=benchmark_frame,
         ensemble_frame=ensemble_frame,
@@ -99,8 +115,13 @@ def build_research_layer_outputs(
         pilot_frame=pilot_frame,
         regret_weighted_calibration_frame=calibration_frame,
         regret_weighted_benchmark_frame=regret_weighted_benchmark_frame,
+        horizon_regret_weighted_calibration_frame=horizon_calibration_frame,
+        horizon_regret_weighted_benchmark_frame=horizon_regret_weighted_benchmark_frame,
         model_summary=_model_summary(combined_frame, training_frame),
         regret_weighted_model_summary=_strategy_model_summary(regret_weighted_benchmark_frame),
+        horizon_regret_weighted_model_summary=_strategy_model_summary(
+            horizon_regret_weighted_benchmark_frame
+        ),
         dfl_training_summary=_dfl_training_summary(training_frame),
     )
 
@@ -147,6 +168,9 @@ def persist_research_layer_outputs(
     (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(
         outputs.regret_weighted_benchmark_frame
     )
+    (strategy_store or get_strategy_evaluation_store()).upsert_evaluation_frame(
+        outputs.horizon_regret_weighted_benchmark_frame
+    )
     resolved_dfl_store = dfl_store or get_dfl_training_store()
     resolved_dfl_store.upsert_training_frame(outputs.dfl_training_frame)
     resolved_dfl_store.upsert_pilot_frame(outputs.pilot_frame)
@@ -166,8 +190,14 @@ def write_research_layer_exports(
     outputs.regret_weighted_model_summary.write_csv(
         output_dir / "regret_weighted_benchmark_summary.csv"
     )
+    outputs.horizon_regret_weighted_model_summary.write_csv(
+        output_dir / "horizon_regret_weighted_benchmark_summary.csv"
+    )
     _calibration_summary(outputs.regret_weighted_calibration_frame).write_csv(
         output_dir / "regret_weighted_calibration_summary.csv"
+    )
+    _horizon_calibration_summary(outputs.horizon_regret_weighted_calibration_frame).write_csv(
+        output_dir / "horizon_regret_weighted_calibration_summary.csv"
     )
     outputs.dfl_training_summary.write_csv(output_dir / "dfl_training_summary.csv")
     outputs.pilot_frame.write_csv(output_dir / "regret_weighted_dfl_pilot_summary.csv")
@@ -269,6 +299,26 @@ def _calibration_summary(calibration_frame: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def _horizon_calibration_summary(calibration_frame: pl.DataFrame) -> pl.DataFrame:
+    if calibration_frame.height == 0:
+        return pl.DataFrame()
+    return (
+        calibration_frame
+        .group_by(["source_forecast_model_name", "corrected_forecast_model_name", "calibration_status"])
+        .agg(
+            [
+                pl.len().alias("rows"),
+                pl.col("tenant_id").n_unique().alias("tenant_count"),
+                pl.mean("mean_horizon_bias_uah_mwh").alias("mean_bias_uah_mwh"),
+                pl.median("mean_horizon_bias_uah_mwh").alias("median_bias_uah_mwh"),
+                pl.mean("max_abs_horizon_bias_uah_mwh").alias("mean_max_abs_bias_uah_mwh"),
+                pl.max("prior_anchor_count").alias("max_prior_anchor_count"),
+            ]
+        )
+        .sort(["source_forecast_model_name", "calibration_status"])
+    )
+
+
 def _min_regret_win_summary(combined_frame: pl.DataFrame) -> pl.DataFrame:
     minimums = combined_frame.group_by(["tenant_id", "anchor_timestamp"]).agg(
         pl.min("regret_uah").alias("_min_anchor_regret_uah")
@@ -339,6 +389,12 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
         "dfl_pilot_scope": str(pilot_row.get("scope", "")),
         "regret_weighted_calibration_rows": outputs.regret_weighted_calibration_frame.height,
         "regret_weighted_benchmark_rows": outputs.regret_weighted_benchmark_frame.height,
+        "horizon_regret_weighted_calibration_rows": (
+            outputs.horizon_regret_weighted_calibration_frame.height
+        ),
+        "horizon_regret_weighted_benchmark_rows": (
+            outputs.horizon_regret_weighted_benchmark_frame.height
+        ),
         "dfl_expansion_recommendation": (
             "expand_to_all_tenants"
             if expanded_to_all_tenants_ready
@@ -346,6 +402,9 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
         ),
         "model_summary": outputs.model_summary.to_dicts(),
         "regret_weighted_model_summary": outputs.regret_weighted_model_summary.to_dicts(),
+        "horizon_regret_weighted_model_summary": (
+            outputs.horizon_regret_weighted_model_summary.to_dicts()
+        ),
     }
 
 

@@ -48,7 +48,7 @@ docs/
 ## 📌 Поточний стан (May 2026)
 
 - ✅ Real-data 90-anchor DAM benchmark — OREE observed prices + tenant Open-Meteo weather.
-- ✅ Gold research layer — forecast diagnostics, value-aware ensemble, DFL training table, regret-weighted TFT/NBEATSx calibration.
+- ✅ Gold research layer — forecast diagnostics, value-aware ensemble, DFL training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration.
 - ✅ Strict LP/oracle re-evaluation — calibrated forecasts checked against same Level 1 simulator.
 - ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
 - ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.
