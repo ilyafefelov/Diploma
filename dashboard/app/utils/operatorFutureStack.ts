@@ -15,6 +15,19 @@ const MODEL_PRIORITY: Record<string, number> = {
   tft: 1
 }
 
+const READINESS_STRATEGY_IDS = new Set([
+  'nbeatsx_official_v0',
+  'tft_official_v0',
+  'decision_transformer'
+])
+
+export interface StrategyReadinessItem {
+  strategyId: string
+  label: string
+  status: 'ready' | 'blocked'
+  reason: string
+}
+
 export const formatForecastWindowLabel = (
   forecastWindowStart: string | null | undefined,
   forecastWindowEnd: string | null | undefined
@@ -49,6 +62,17 @@ export const buildStrategySelectItems = (
   value: strategy.strategy_id,
   disabled: !strategy.enabled
 }))
+
+export const buildStrategyReadinessItems = (
+  strategies: OperatorStrategyOptionResponse[]
+): StrategyReadinessItem[] => strategies
+  .filter(strategy => READINESS_STRATEGY_IDS.has(strategy.strategy_id))
+  .map(strategy => ({
+    strategyId: strategy.strategy_id,
+    label: strategy.label,
+    status: strategy.enabled ? 'ready' : 'blocked',
+    reason: strategy.reason
+  }))
 
 export const formatRuntimeAccelerationLabel = (
   runtime: RuntimeAccelerationResponse | null | undefined

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildStrategyReadinessItems,
   buildStrategySelectItems,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
@@ -27,12 +28,13 @@ const emptySeries = (modelName: string, sourceStatus: string): FutureForecastSer
 const strategy = (
   strategyId: string,
   label: string,
-  enabled: boolean
+  enabled: boolean,
+  reason?: string
 ): OperatorStrategyOptionResponse => ({
   strategy_id: strategyId,
   label,
   enabled,
-  reason: enabled ? 'materialized' : 'missing',
+  reason: reason ?? (enabled ? 'materialized' : 'missing'),
   mean_regret_uah: null,
   win_rate: null
 })
@@ -70,6 +72,39 @@ describe('operator future stack display helpers', () => {
       { label: 'Strict similar-day control', value: 'strict_similar_day', disabled: false },
       { label: 'Official NBEATSx', value: 'nbeatsx_official_v0', disabled: false },
       { label: 'Decision Transformer - missing', value: 'decision_transformer', disabled: true }
+    ])
+  })
+
+  it('builds visible readiness chips for official forecasts and DT policy', () => {
+    expect(buildStrategyReadinessItems([
+      strategy('strict_similar_day', 'Strict similar-day control', true),
+      strategy(
+        'nbeatsx_official_v0',
+        'Official NBEATSx',
+        false,
+        'official forecast rows need calibration: 1 out-of-cap rows'
+      ),
+      strategy('tft_official_v0', 'Official TFT', true, 'materialized forecast-store rows; values inside DAM caps'),
+      strategy('decision_transformer', 'Decision Transformer', false)
+    ])).toEqual([
+      {
+        strategyId: 'nbeatsx_official_v0',
+        label: 'Official NBEATSx',
+        status: 'blocked',
+        reason: 'official forecast rows need calibration: 1 out-of-cap rows'
+      },
+      {
+        strategyId: 'tft_official_v0',
+        label: 'Official TFT',
+        status: 'ready',
+        reason: 'materialized forecast-store rows; values inside DAM caps'
+      },
+      {
+        strategyId: 'decision_transformer',
+        label: 'Decision Transformer',
+        status: 'blocked',
+        reason: 'missing'
+      }
     ])
   })
 

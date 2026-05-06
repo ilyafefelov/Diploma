@@ -13,6 +13,7 @@ import type {
   OperatorRecommendationResponse
 } from '~/types/control-plane'
 import {
+  buildStrategyReadinessItems,
   buildStrategySelectItems,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
@@ -261,6 +262,9 @@ const forecastWindowLabel = computed(() => formatForecastWindowLabel(
 const strategySelectItems = computed(() => buildStrategySelectItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))
+const strategyReadinessItems = computed(() => buildStrategyReadinessItems(
+  props.operatorRecommendation?.available_strategies ?? []
+))
 
 const updateSelectedStrategy = (value: string | number | boolean | Record<string, unknown>): void => {
   if (typeof value === 'string') {
@@ -319,6 +323,21 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
         <span>{{ card.label }}</span>
         <strong>{{ card.value }}</strong>
         <small>{{ card.meta }}</small>
+      </article>
+    </div>
+
+    <div
+      v-if="strategyReadinessItems.length"
+      class="strategy-readiness-strip"
+    >
+      <article
+        v-for="item in strategyReadinessItems"
+        :key="item.strategyId"
+        :class="{ 'strategy-readiness-strip__item--blocked': item.status === 'blocked' }"
+      >
+        <span>{{ item.label }}</span>
+        <strong>{{ item.status }}</strong>
+        <small>{{ item.reason }}</small>
       </article>
     </div>
 
@@ -416,6 +435,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 }
 
 .future-status-grid,
+.strategy-readiness-strip,
 .future-chart-grid,
 .future-explainer-grid {
   display: grid;
@@ -424,6 +444,10 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 
 .future-status-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.strategy-readiness-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .future-control-stack {
@@ -463,6 +487,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 }
 
 .future-status-card,
+.strategy-readiness-strip article,
 .future-chart-card,
 .future-explainer-grid article {
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -478,7 +503,21 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   gap: 0.28rem;
 }
 
+.strategy-readiness-strip article {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.strategy-readiness-strip__item--blocked {
+  border-color: rgba(255, 191, 82, 0.66) !important;
+  background:
+    radial-gradient(circle at top right, rgba(255, 191, 82, 0.18), transparent 30%),
+    linear-gradient(180deg, rgba(183, 100, 17, 0.78), rgba(119, 65, 9, 0.82)) !important;
+}
+
 .future-status-card span,
+.strategy-readiness-strip span,
 .decision-chart-card__eyebrow,
 .future-explainer-grid span {
   color: rgba(215, 255, 79, 0.84);
@@ -495,13 +534,26 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   line-height: 1.08;
 }
 
+.strategy-readiness-strip strong {
+  overflow-wrap: anywhere;
+  color: #f2fbff;
+  font-size: 1rem;
+  line-height: 1.08;
+  text-transform: capitalize;
+}
+
 .future-status-card small,
+.strategy-readiness-strip small,
 .future-chart-card p,
 .future-explainer-grid p {
   color: rgba(229, 249, 255, 0.84);
   font-size: 0.78rem;
   font-weight: 720;
   line-height: 1.42;
+}
+
+.strategy-readiness-strip small {
+  overflow-wrap: anywhere;
 }
 
 .future-chart-card {
@@ -551,6 +603,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 
 @media (max-width: 1320px) {
   .future-status-grid,
+  .strategy-readiness-strip,
   .future-chart-grid,
   .future-explainer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -569,6 +622,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   }
 
   .future-status-grid,
+  .strategy-readiness-strip,
   .future-chart-grid,
   .future-explainer-grid {
     grid-template-columns: 1fr;
