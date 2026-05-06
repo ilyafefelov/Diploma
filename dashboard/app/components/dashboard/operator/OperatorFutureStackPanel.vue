@@ -14,6 +14,7 @@ import type {
 } from '~/types/control-plane'
 import {
   buildStrategySelectItems,
+  formatForecastQualityLabel,
   formatForecastWindowLabel,
   formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
@@ -51,6 +52,12 @@ const forecastLabels = computed(() => {
 
   return firstSeries.points.map(point => formatHour(point.interval_start))
 })
+
+const forecastQualityItems = computed(() => forecastSeries.value.map(series => ({
+  modelName: series.model_name,
+  label: formatForecastQualityLabel(series),
+  needsCalibration: series.out_of_dam_cap_rows > 0
+})))
 
 const forecastOption = computed(() => ({
   animationDuration: 500,
@@ -302,6 +309,15 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           </p>
           <h3>NBEATSx/TFT forecast paths</h3>
           <p>Prediction window: <strong>{{ forecastWindowLabel }}</strong>. Shows official model rows first; compact/calibrated rows remain fallback evidence.</p>
+          <div class="forecast-quality-strip">
+            <span
+              v-for="item in forecastQualityItems"
+              :key="item.modelName"
+              :class="{ 'forecast-quality-strip__item--warn': item.needsCalibration }"
+            >
+              {{ item.modelName }}: {{ item.label }}
+            </span>
+          </div>
         </div>
         <ClientOnly>
           <VChart
@@ -467,6 +483,29 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   color: white;
   font-size: 1rem;
   line-height: 1.2;
+}
+
+.forecast-quality-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+  margin-top: 0.45rem;
+}
+
+.forecast-quality-strip span {
+  border: 1px solid rgba(202, 249, 255, 0.34);
+  border-radius: 999px;
+  background: rgba(4, 67, 119, 0.74);
+  color: rgba(236, 250, 255, 0.9);
+  padding: 0.22rem 0.48rem;
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.forecast-quality-strip__item--warn {
+  border-color: rgba(255, 191, 82, 0.72) !important;
+  background: rgba(151, 82, 8, 0.74) !important;
+  color: #fff0c7 !important;
 }
 
 .future-chart {

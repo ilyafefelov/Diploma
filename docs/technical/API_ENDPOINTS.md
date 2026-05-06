@@ -525,7 +525,7 @@ Response shape:
 
 - `available_strategies`: materialized strategies the operator may inspect; unavailable future policies stay disabled.
 - `selected_strategy_id`, `selected_policy_id`, `policy_mode`, `policy_readiness`: current selection and its safety/readiness boundary.
-- `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when available.
+- `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when available, including per-series `out_of_dam_cap_rows` and `quality_boundary` so the operator can see whether an official forecast row is smoke-ready or needs calibration before value claims.
 - `value_gap_series`: per-hour counterfactual value-gap preview for the selected schedule.
 - `load_forecast`, `pv_forecast`, `projected_soc`: tenant schedule, PV, and SOC context.
 - `daily_value_uah`, `hold_value_uah`, `value_vs_hold_uah`: operator economics against a no-arbitrage hold baseline.
@@ -553,7 +553,7 @@ Response shape:
 - `runtime_acceleration`: Torch backend, device type (`cpu`, `cuda`, or `mps`), device name, CUDA version when available, and recommended experiment scope.
 - `selected_forecast_model`: lowest-regret forecast row available in the read model.
 - `forecast_window_start`, `forecast_window_end`: exact UTC timestamps covered by the returned forecast series.
-- `forecast_series`: NBEATSx/TFT paths with point forecasts and TFT-style p10/p50/p90 fields when available.
+- `forecast_series`: NBEATSx/TFT paths with point forecasts, TFT-style p10/p50/p90 fields when available, per-point `price_cap_status`, and per-series `out_of_dam_cap_rows` plus `quality_boundary`.
 - `claim_boundary`: text boundary that the series is evidence, not a bid.
 
 Operational notes:
@@ -561,6 +561,7 @@ Operational notes:
 - This endpoint supports the operator forecast graph and the defense future-stack section.
 - Current compact/calibrated NBEATSx/TFT rows may be displayed, but full SOTA claims require the optional official adapters and a materialized rolling-origin benchmark run.
 - Official rows are prioritized in the operator graph when present. The dashboard should display the forecast window in Europe/Kyiv local time for operator readability while preserving UTC timestamps in the API payload.
+- Official forecast smoke rows can be shown in the operator graph, but `quality_boundary=needs_calibration_before_value_claim` means the row must not drive a thesis value claim or a promoted live strategy until the forecast is calibrated and benchmarked through the strict LP/oracle path.
 - The local smoke command `.\.venv\Scripts\python.exe scripts\run_official_forecast_smoke.py --horizon-hours 6 --nbeatsx-max-steps 1 --tft-max-epochs 1` writes report artifacts under `reports/official_forecast_smoke/`. These artifacts verify backend execution and forecast quality flags, but they are not API payloads and are not thesis-grade value results.
 - If no forecast rows exist for the tenant, the endpoint returns an empty series rather than synthetic data.
 

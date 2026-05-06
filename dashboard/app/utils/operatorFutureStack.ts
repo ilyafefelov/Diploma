@@ -65,6 +65,18 @@ export const formatRuntimeAccelerationLabel = (
   return `${runtime.device_name} / ${runtime.backend}`
 }
 
+export const formatForecastQualityLabel = (series: FutureForecastSeriesResponse): string => {
+  if (series.out_of_dam_cap_rows > 0) {
+    return `${series.out_of_dam_cap_rows} out-of-cap row${series.out_of_dam_cap_rows === 1 ? '' : 's'}`
+  }
+
+  if (series.quality_boundary === 'smoke_values_inside_dam_cap_not_value_claim') {
+    return 'inside DAM cap / smoke only'
+  }
+
+  return 'inside DAM cap'
+}
+
 const sourcePriority = (sourceStatus: string): number => {
   const normalized = sourceStatus.toLowerCase()
   for (const [needle, priority] of Object.entries(SOURCE_PRIORITY)) {

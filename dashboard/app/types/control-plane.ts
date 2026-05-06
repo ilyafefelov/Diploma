@@ -449,6 +449,7 @@ export interface FutureForecastPointResponse {
   p90_price_uah_mwh: number | null
   net_power_mw: number | null
   value_gap_uah: number | null
+  price_cap_status: string
 }
 
 export interface FutureForecastSeriesResponse {
@@ -458,6 +459,8 @@ export interface FutureForecastSeriesResponse {
   uncertainty_kind: string
   mean_regret_uah: number | null
   win_rate: number | null
+  out_of_dam_cap_rows: number
+  quality_boundary: string
   points: FutureForecastPointResponse[]
 }
 

@@ -112,6 +112,8 @@ OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS: tuple[str, ...] = (
 	"nbeatsx_official_v0",
 	"tft_official_v0",
 )
+FUTURE_STACK_DAM_PRICE_CAP_MIN_UAH_MWH = 10.0
+FUTURE_STACK_DAM_PRICE_CAP_MAX_UAH_MWH = 15_000.0
 
 
 class TenantSummaryResponse(BaseModel):
@@ -598,6 +600,7 @@ class FutureForecastPointResponse(BaseModel):
 	p90_price_uah_mwh: float | None
 	net_power_mw: float | None
 	value_gap_uah: float | None
+	price_cap_status: str
 
 
 class FutureForecastSeriesResponse(BaseModel):
@@ -607,6 +610,8 @@ class FutureForecastSeriesResponse(BaseModel):
 	uncertainty_kind: str
 	mean_regret_uah: float | None
 	win_rate: float | None
+	out_of_dam_cap_rows: int
+	quality_boundary: str
 	points: list[FutureForecastPointResponse]
 
 
@@ -1842,17 +1847,18 @@ def _future_forecast_series(
 	payload = _mapping_row_value(row["evaluation_payload"])
 	horizon_rows = _payload_horizon_rows(payload)
 	mean_regret_uah, win_rate = metrics.get(model_name, (None, None))
-	return FutureForecastSeriesResponse(
+	points = [
+		_future_forecast_point(model_name=model_name, horizon_row=horizon_row)
+		for horizon_row in horizon_rows
+	]
+	return _future_forecast_series_response(
 		model_name=model_name,
 		model_family=_future_model_family(model_name),
 		source_status=_future_model_source_status(model_name),
 		uncertainty_kind=_future_uncertainty_kind(model_name, horizon_rows),
 		mean_regret_uah=mean_regret_uah,
 		win_rate=win_rate,
-		points=[
-			_future_forecast_point(model_name=model_name, horizon_row=horizon_row)
-			for horizon_row in horizon_rows
-		],
+		points=points,
 	)
 
 
@@ -1875,24 +1881,62 @@ def _forecast_store_series(
 		rows = list(model_frame.iter_rows(named=True))
 		mean_regret_uah, win_rate = metrics.get(model_name, (None, None))
 		horizon_payload_rows = [_forecast_store_horizon_payload(row) for row in rows]
+		points = [
+			_future_forecast_point(
+				model_name=model_name,
+				horizon_row=horizon_row,
+			)
+			for horizon_row in horizon_payload_rows
+		]
 		series.append(
-			FutureForecastSeriesResponse(
+			_future_forecast_series_response(
 				model_name=model_name,
 				model_family=_future_model_family(model_name),
 				source_status=_future_model_source_status(model_name),
 				uncertainty_kind=_future_uncertainty_kind(model_name, horizon_payload_rows),
 				mean_regret_uah=mean_regret_uah,
 				win_rate=win_rate,
-				points=[
-					_future_forecast_point(
-						model_name=model_name,
-						horizon_row=horizon_row,
-					)
-					for horizon_row in horizon_payload_rows
-				],
+				points=points,
 			)
 		)
 	return series
+
+
+def _future_forecast_series_response(
+	*,
+	model_name: str,
+	model_family: str,
+	source_status: str,
+	uncertainty_kind: str,
+	mean_regret_uah: float | None,
+	win_rate: float | None,
+	points: list[FutureForecastPointResponse],
+) -> FutureForecastSeriesResponse:
+	out_of_cap_rows = sum(
+		1 for point in points if point.price_cap_status != "inside_dam_cap"
+	)
+	return FutureForecastSeriesResponse(
+		model_name=model_name,
+		model_family=model_family,
+		source_status=source_status,
+		uncertainty_kind=uncertainty_kind,
+		mean_regret_uah=mean_regret_uah,
+		win_rate=win_rate,
+		out_of_dam_cap_rows=out_of_cap_rows,
+		quality_boundary=_future_forecast_quality_boundary(
+			source_status=source_status,
+			out_of_cap_rows=out_of_cap_rows,
+		),
+		points=points,
+	)
+
+
+def _future_forecast_quality_boundary(*, source_status: str, out_of_cap_rows: int) -> str:
+	if out_of_cap_rows:
+		return "needs_calibration_before_value_claim"
+	if source_status == "official":
+		return "smoke_values_inside_dam_cap_not_value_claim"
+	return "inside_dam_cap_not_value_claim"
 
 
 def _forecast_store_horizon_payload(row: dict[str, Any]) -> dict[str, Any]:
@@ -1982,7 +2026,16 @@ def _future_forecast_point(
 		p90_price_uah_mwh=p90_value,
 		net_power_mw=_optional_float(horizon_row.get("net_power_mw")),
 		value_gap_uah=_optional_float(horizon_row.get("value_gap_uah")),
+		price_cap_status=_future_forecast_price_cap_status(forecast_price),
 	)
+
+
+def _future_forecast_price_cap_status(forecast_price_uah_mwh: float) -> str:
+	if forecast_price_uah_mwh < FUTURE_STACK_DAM_PRICE_CAP_MIN_UAH_MWH:
+		return "below_dam_cap"
+	if forecast_price_uah_mwh > FUTURE_STACK_DAM_PRICE_CAP_MAX_UAH_MWH:
+		return "above_dam_cap"
+	return "inside_dam_cap"
 
 
 def _future_stack_model_metrics(evaluation_frame: pl.DataFrame) -> dict[str, tuple[float | None, float | None]]:
@@ -2866,50 +2919,54 @@ def _operator_forecast_model_series(
 
 def _fallback_forecast_model_series(solve_result: BaselineSolveResult) -> list[FutureForecastSeriesResponse]:
 	forecast_points = list(solve_result.forecast[:24])
+	nbeatsx_points = [
+		FutureForecastPointResponse(
+			step_index=index,
+			interval_start=point.forecast_timestamp,
+			forecast_price_uah_mwh=point.predicted_price_uah_mwh,
+			actual_price_uah_mwh=None,
+			p10_price_uah_mwh=None,
+			p50_price_uah_mwh=point.predicted_price_uah_mwh,
+			p90_price_uah_mwh=None,
+			net_power_mw=None,
+			value_gap_uah=None,
+			price_cap_status=_future_forecast_price_cap_status(point.predicted_price_uah_mwh),
+		)
+		for index, point in enumerate(forecast_points)
+	]
+	tft_points = [
+		FutureForecastPointResponse(
+			step_index=index,
+			interval_start=point.forecast_timestamp,
+			forecast_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
+			actual_price_uah_mwh=None,
+			p10_price_uah_mwh=point.predicted_price_uah_mwh * 0.93,
+			p50_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
+			p90_price_uah_mwh=point.predicted_price_uah_mwh * 1.09,
+			net_power_mw=None,
+			value_gap_uah=None,
+			price_cap_status=_future_forecast_price_cap_status(point.predicted_price_uah_mwh * 1.01),
+		)
+		for index, point in enumerate(forecast_points)
+	]
 	return [
-		FutureForecastSeriesResponse(
+		_future_forecast_series_response(
 			model_name="nbeatsx_silver_v0",
 			model_family="NBEATSx",
 			source_status="compact_fallback_from_lp_preview",
 			uncertainty_kind="trend_exogenous_proxy",
 			mean_regret_uah=None,
 			win_rate=None,
-			points=[
-				FutureForecastPointResponse(
-					step_index=index,
-					interval_start=point.forecast_timestamp,
-					forecast_price_uah_mwh=point.predicted_price_uah_mwh,
-					actual_price_uah_mwh=None,
-					p10_price_uah_mwh=None,
-					p50_price_uah_mwh=point.predicted_price_uah_mwh,
-					p90_price_uah_mwh=None,
-					net_power_mw=None,
-					value_gap_uah=None,
-				)
-				for index, point in enumerate(forecast_points)
-			],
+			points=nbeatsx_points,
 		),
-		FutureForecastSeriesResponse(
+		_future_forecast_series_response(
 			model_name="tft_silver_v0",
 			model_family="TFT",
 			source_status="compact_fallback_from_lp_preview",
 			uncertainty_kind="quantile_proxy",
 			mean_regret_uah=None,
 			win_rate=None,
-			points=[
-				FutureForecastPointResponse(
-					step_index=index,
-					interval_start=point.forecast_timestamp,
-					forecast_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
-					actual_price_uah_mwh=None,
-					p10_price_uah_mwh=point.predicted_price_uah_mwh * 0.93,
-					p50_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
-					p90_price_uah_mwh=point.predicted_price_uah_mwh * 1.09,
-					net_power_mw=None,
-					value_gap_uah=None,
-				)
-				for index, point in enumerate(forecast_points)
-			],
+			points=tft_points,
 		),
 	]
 

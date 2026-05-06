@@ -980,6 +980,41 @@ def test_future_stack_preview_prefers_persisted_forecast_store_rows(
 	assert official_tft["source_status"] == "official"
 	assert official_tft["uncertainty_kind"] == "quantile"
 	assert official_tft["points"][0]["p10_price_uah_mwh"] == pytest.approx(3900.0)
+	assert official_tft["out_of_dam_cap_rows"] == 0
+	assert official_tft["quality_boundary"] == "smoke_values_inside_dam_cap_not_value_claim"
+
+
+def test_future_stack_preview_flags_out_of_cap_official_forecast_rows(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	start = datetime(2026, 5, 4, 18, tzinfo=UTC)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [start, start + timedelta(hours=1)],
+				"predicted_price_uah_mwh": [-25.0, 52_000.0],
+				"predicted_price_p50_uah_mwh": [-25.0, 52_000.0],
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/future-stack-preview",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	official_nbeatsx = response.json()["forecast_series"][0]
+	assert official_nbeatsx["model_name"] == "nbeatsx_official_v0"
+	assert official_nbeatsx["out_of_dam_cap_rows"] == 2
+	assert official_nbeatsx["quality_boundary"] == "needs_calibration_before_value_claim"
+	assert [point["price_cap_status"] for point in official_nbeatsx["points"]] == [
+		"below_dam_cap",
+		"above_dam_cap",
+	]
 
 
 def test_operator_recommendation_uses_persisted_nbeatsx_tft_forecast_series(

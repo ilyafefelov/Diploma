@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   buildStrategySelectItems,
+  formatForecastQualityLabel,
   formatForecastWindowLabel,
   formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
@@ -16,6 +17,10 @@ const emptySeries = (modelName: string, sourceStatus: string): FutureForecastSer
   uncertainty_kind: modelName.includes('tft') ? 'quantile' : 'point',
   mean_regret_uah: null,
   win_rate: null,
+  out_of_dam_cap_rows: 0,
+  quality_boundary: sourceStatus === 'official'
+    ? 'smoke_values_inside_dam_cap_not_value_claim'
+    : 'inside_dam_cap_not_value_claim',
   points: []
 })
 
@@ -86,5 +91,17 @@ describe('operator future stack display helpers', () => {
       cuda_version: '12.6',
       recommended_scope: 'use GPU for official forecasts'
     })).toBe('CUDA / NVIDIA RTX')
+  })
+
+  it('summarizes forecast quality boundaries without hiding cap violations', () => {
+    expect(formatForecastQualityLabel(emptySeries('tft_official_v0', 'official'))).toBe(
+      'inside DAM cap / smoke only'
+    )
+
+    expect(formatForecastQualityLabel({
+      ...emptySeries('nbeatsx_official_v0', 'official'),
+      out_of_dam_cap_rows: 2,
+      quality_boundary: 'needs_calibration_before_value_claim'
+    })).toBe('2 out-of-cap rows')
   })
 })
