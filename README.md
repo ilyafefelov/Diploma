@@ -99,6 +99,14 @@ Official-backend status:
 - `/operator` and `/defense` now show whether the runtime is CPU, CUDA, or MPS. CPU-only is acceptable for smoke runs; full SOTA sweeps should wait for CUDA-enabled PyTorch or a remote GPU runner.
 - Install or refresh optional dependencies with `uv sync --extra dev --extra sota` before running the official backend experiment.
 
+Latest local official-adapter smoke run:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_official_forecast_smoke.py --horizon-hours 6 --nbeatsx-max-steps 1 --tft-max-epochs 1
+```
+
+The run wrote `reports/official_forecast_smoke/official_forecast_smoke_20260506T051503Z_summary.json` and forecast rows for both `nbeatsx_official_v0` and `tft_official_v0`. It confirms the optional backends execute on the current CPU-only environment, but it also flags the one-step NBEATSx smoke forecast as out-of-cap and therefore calibration-only. TFT stayed inside the DAM cap in this smoke run. This is implementation evidence, not a value benchmark.
+
 ## Local Stack
 
 ```powershell

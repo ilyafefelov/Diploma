@@ -1,0 +1,41 @@
+{
+  "adapter_errors": {},
+  "claim_boundary": "official_adapter_smoke_not_full_sota_benchmark",
+  "forecast_quality": {
+    "nbeatsx_official_v0": {
+      "max_predicted_price_uah_mwh": 51231.12109375,
+      "min_predicted_price_uah_mwh": -22032.72265625,
+      "out_of_dam_cap_rows": 5,
+      "quality_boundary": "needs_calibration_before_value_claim"
+    },
+    "tft_official_v0": {
+      "max_predicted_price_uah_mwh": 4117.490234375,
+      "min_predicted_price_uah_mwh": 3624.920654296875,
+      "out_of_dam_cap_rows": 0,
+      "quality_boundary": "smoke_values_inside_dam_cap_not_value_claim"
+    }
+  },
+  "forecast_rows": 6,
+  "forecast_window_end": "2026-05-01T11:00:00",
+  "forecast_window_start": "2026-05-01T06:00:00",
+  "horizon_hours": 6,
+  "market_source": "dagster_storage:D:\\School\\GoIT\\Courses\\Diploma\\data\\dagster_home\\storage\\dam_price_history",
+  "model_mean_price_uah_mwh": {
+    "nbeatsx_official_v0": 12069.715494791666,
+    "tft_official_v0": 3908.5621337890625
+  },
+  "model_rows": {
+    "nbeatsx_official_v0": 6,
+    "tft_official_v0": 6
+  },
+  "runtime_acceleration": {
+    "backend": "torch 2.11.0+cpu",
+    "cuda_version": null,
+    "device_name": "CPU only",
+    "device_type": "cpu",
+    "gpu_available": false,
+    "recommended_scope": "keep official NBEATSx/TFT and DT runs small; install CUDA torch before sweeps"
+  },
+  "tenant_id": "client_003_dnipro_factory",
+  "training_rows": 354
+}

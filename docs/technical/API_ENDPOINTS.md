@@ -561,6 +561,7 @@ Operational notes:
 - This endpoint supports the operator forecast graph and the defense future-stack section.
 - Current compact/calibrated NBEATSx/TFT rows may be displayed, but full SOTA claims require the optional official adapters and a materialized rolling-origin benchmark run.
 - Official rows are prioritized in the operator graph when present. The dashboard should display the forecast window in Europe/Kyiv local time for operator readability while preserving UTC timestamps in the API payload.
+- The local smoke command `.\.venv\Scripts\python.exe scripts\run_official_forecast_smoke.py --horizon-hours 6 --nbeatsx-max-steps 1 --tft-max-epochs 1` writes report artifacts under `reports/official_forecast_smoke/`. These artifacts verify backend execution and forecast quality flags, but they are not API payloads and are not thesis-grade value results.
 - If no forecast rows exist for the tenant, the endpoint returns an empty series rather than synthetic data.
 
 ### `GET /dashboard/decision-policy-preview`
