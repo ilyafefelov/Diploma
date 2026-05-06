@@ -59,4 +59,4 @@ Add these sources to the thesis narrative as literature context, not implemented
 - Reverso, arXiv `2602.17634`: watch-list source for efficient zero-shot time-series foundation models.
 - Distributional RL energy arbitrage, arXiv `2401.00015`: watch-list source for later risk-sensitive and multi-venue strategy work.
 
-The Week 4 modeling follow-up should run existing regret-calibration assets using [../../../configs/real_data_calibration_week4.yaml](../../../configs/real_data_calibration_week4.yaml). Outputs are calibration/selector evidence only, not full DFL or market execution.
+The Week 4 modeling follow-up ran existing regret-calibration assets using [../../../configs/real_data_calibration_week4.yaml](../../../configs/real_data_calibration_week4.yaml). Outputs are calibration/selector evidence only, not full DFL or market execution. The concise report/demo package is tracked in [../../thesis/weekly-reports/week4/report.md](../../thesis/weekly-reports/week4/report.md).

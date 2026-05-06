@@ -111,3 +111,43 @@ Latest verified Week 3 run:
 - Tenant-specific API response for `client_003_dnipro_factory`: `data_quality_tier=thesis_grade`, `anchor_count=30`, `model_count=3`, `best_model_name=strict_similar_day`.
 - Export directory: `data/research_runs/week3_real_data_benchmark`.
 - The export command currently aggregates latest persisted batches for all tenants in Postgres; the Week 3 acceptance target is the Dnipro tenant batch with 30 anchors and 90 benchmark rows.
+
+## Week 4 Calibration Evidence Protocol
+
+The Week 4 slice keeps the same real-data benchmark path and adds calibration/selector evidence only. It must not be described as full DFL or market execution.
+
+- Tenant: `client_003_dnipro_factory`.
+- Observed data window: `2026-01-01` to `2026-04-30`.
+- Benchmark cap: `max_anchors=90`.
+- Tracked Dagster run config: [configs/real_data_calibration_week4.yaml](../../configs/real_data_calibration_week4.yaml).
+- Source map: [docs/thesis/sources/week4-research-ingestion.md](../thesis/sources/week4-research-ingestion.md).
+
+Materialize the calibration path through the Compose Dagster service:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,real_data_rolling_origin_benchmark_frame,real_data_value_aware_ensemble_frame,dfl_training_frame,regret_weighted_forecast_calibration_frame,regret_weighted_forecast_strategy_benchmark_frame,horizon_regret_weighted_forecast_calibration_frame,horizon_regret_weighted_forecast_strategy_benchmark_frame,calibrated_value_aware_ensemble_frame,forecast_dispatch_sensitivity_frame,risk_adjusted_value_gate_frame -c configs/real_data_calibration_week4.yaml
+```
+
+Then export the research layer:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_research_layer_from_store.py --run-slug week4_calibration_dnipro_90 --calibration-min-prior-anchors 14 --calibration-window-anchors 28
+```
+
+Acceptance checks:
+
+- `/dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory` returns `data_quality_tier=thesis_grade`, `anchor_count=90`, `model_count=3`.
+- `/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory` returns 90 selector rows with `model_count=1`.
+- `/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory` returns 90 selector rows with risk diagnostics.
+- `/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory` returns 450 diagnostic rows across five candidate streams.
+
+Latest verified Week 4 run:
+
+- Materialization run succeeded on 2026-05-07 local time; Dagster run id `ce705fa2-b100-4b17-a33b-2011409f3e90`.
+- MLflow runs: rolling benchmark `2f1248a3822f4785af5332e867e09953`, regret-weighted benchmark `89389bea2c62495a99d1581ba7514d90`, horizon-aware benchmark `041bbbe236dd438393e442f9dbff3d59`, calibrated ensemble `fed333f97e9b4e33be2f6adab1415f17`, risk gate `e53ce78fdc1d462f9622e7d660241b20`.
+- Tenant-specific API response for `client_003_dnipro_factory`: raw benchmark `data_quality_tier=thesis_grade`, `anchor_count=90`, `model_count=3`, `best_model_name=strict_similar_day`.
+- Raw Dnipro means: `strict_similar_day=1384.70` UAH regret, `nbeatsx_silver_v0=2070.28`, `tft_silver_v0=2361.96`.
+- Horizon-aware calibration improved neural candidates: `tft_horizon_regret_weighted_calibrated_v0=1727.29` UAH mean regret and `nbeatsx_horizon_regret_weighted_calibrated_v0=1804.38`, while strict similar-day remained the strongest individual control.
+- Selector read models: calibrated ensemble mean regret `1479.65` UAH, risk-adjusted gate mean regret `1428.59` UAH.
+- Export directory: `data/research_runs/week4_calibration_dnipro_90`.
+- The export command still aggregates latest persisted batches for all tenants in Postgres; the Week 4 acceptance target is the tenant-specific Dnipro 90-anchor API result.

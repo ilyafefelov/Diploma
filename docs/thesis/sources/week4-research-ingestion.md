@@ -28,6 +28,8 @@ The next modeling step should use the existing regret-weighted and horizon-regre
 
 Tracked config for this follow-up: [configs/real_data_calibration_week4.yaml](../../../configs/real_data_calibration_week4.yaml).
 
+Latest calibration result: the Dnipro 90-anchor run completed on 2026-05-07 local time. Horizon-aware regret calibration improved the neural candidates versus their raw forms, but `strict_similar_day` remained the strongest individual control. The Week 4 report therefore frames the result as calibration/selector evidence and not as a full DFL claim.
+
 ## Firecrawl Decision
 
 Firecrawl is deferred. No local command, dependency, or callable tool was found in the repo/session, and adding it would be a new dependency. For Week 4, Hugging Face paper pages plus direct arXiv/HF links are sufficient.
