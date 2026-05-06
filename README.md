@@ -10,7 +10,7 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
-- Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, and strategy readiness without claiming market execution.
+- Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
 ## Pipeline And LP Baseline
 
@@ -129,6 +129,7 @@ docker compose up -d api dagster-webserver dagster-daemon
 Useful local URLs:
 
 - FastAPI health: `http://localhost:8001/health`
+- Battery telemetry state: `http://localhost:8001/dashboard/battery-state?tenant_id=client_003_dnipro_factory`
 - Calibrated ensemble API: `http://localhost:8001/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory`
 - Risk-adjusted value gate API: `http://localhost:8001/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory`
 - Forecast-dispatch sensitivity API: `http://localhost:8001/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory`
@@ -140,6 +141,8 @@ Useful local URLs:
 - Simulated live-trading API: `http://localhost:8001/dashboard/simulated-live-trading?tenant_id=client_003_dnipro_factory`
 - Dagster UI: `http://localhost:3001`
 - MLflow UI: `http://localhost:5000`
+
+Telemetry note: `GET /dashboard/battery-state` returns `telemetry_ingest_source` with the configured MQTT host, port, and tenant topic `smart-arbitrage/{tenant_id}/battery/telemetry`. This is configuration metadata for operator diagnostics; it is not a broker health check.
 
 ## Verification
 
