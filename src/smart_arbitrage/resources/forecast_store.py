@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 from functools import cache
 import json
@@ -10,6 +11,16 @@ from uuid import uuid4
 import polars as pl
 
 
+_LATEST_FORECAST_OBSERVATION_SCHEMA: dict[str, Any] = {
+    "run_id": pl.Utf8,
+    "model_name": pl.Utf8,
+    "generated_at": pl.Datetime,
+    "forecast_timestamp": pl.Datetime,
+    "predicted_price_uah_mwh": pl.Float64,
+    "prediction_payload": pl.Utf8,
+}
+
+
 class ForecastStore(Protocol):
     def upsert_forecast_run(
         self,
@@ -18,6 +29,13 @@ class ForecastStore(Protocol):
         forecast_frame: pl.DataFrame,
         point_prediction_column: str,
     ) -> str: ...
+
+    def latest_forecast_observation_frame(
+        self,
+        *,
+        model_names: Sequence[str],
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame: ...
 
 
 class NullForecastStore:
@@ -30,11 +48,21 @@ class NullForecastStore:
     ) -> str:
         return f"{model_name}:not_persisted"
 
+    def latest_forecast_observation_frame(
+        self,
+        *,
+        model_names: Sequence[str],
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame:
+        return _empty_latest_forecast_observation_frame()
+
 
 class InMemoryForecastStore:
     def __init__(self) -> None:
         self.summary_frame = pl.DataFrame()
         self.observation_frame = pl.DataFrame()
+        self._run_order_by_id: dict[str, int] = {}
+        self._run_sequence = 0
 
     def upsert_forecast_run(
         self,
@@ -44,6 +72,8 @@ class InMemoryForecastStore:
         point_prediction_column: str,
     ) -> str:
         run_id = _forecast_run_id(model_name)
+        self._run_sequence += 1
+        self._run_order_by_id[run_id] = self._run_sequence
         summary_frame = _summary_frame(
             run_id=run_id,
             model_name=model_name,
@@ -63,6 +93,39 @@ class InMemoryForecastStore:
             subset=["run_id", "forecast_timestamp"],
         )
         return run_id
+
+    def latest_forecast_observation_frame(
+        self,
+        *,
+        model_names: Sequence[str],
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame:
+        if self.summary_frame.is_empty() or self.observation_frame.is_empty() or not model_names:
+            return _empty_latest_forecast_observation_frame()
+        rows: list[pl.DataFrame] = []
+        for model_name in model_names:
+            model_summaries = self.summary_frame.filter(pl.col("model_name") == model_name)
+            if model_summaries.is_empty():
+                continue
+            latest_run_id = max(
+                (str(run_id) for run_id in model_summaries.select("run_id").to_series().to_list()),
+                key=lambda run_id: self._run_order_by_id.get(run_id, -1),
+            )
+            latest_summary = model_summaries.filter(pl.col("run_id") == latest_run_id).head(1)
+            latest_row = latest_summary.row(0, named=True)
+            model_rows = (
+                self.observation_frame
+                .filter(pl.col("run_id") == latest_row["run_id"])
+                .sort("forecast_timestamp")
+                .head(limit_per_model)
+                .with_columns(pl.lit(latest_row["generated_at"]).alias("generated_at"))
+                .select(list(_LATEST_FORECAST_OBSERVATION_SCHEMA))
+            )
+            if model_rows.height:
+                rows.append(model_rows)
+        if not rows:
+            return _empty_latest_forecast_observation_frame()
+        return pl.concat(rows, how="vertical").select(list(_LATEST_FORECAST_OBSERVATION_SCHEMA))
 
 
 class PostgresForecastStore:
@@ -170,6 +233,64 @@ class PostgresForecastStore:
             connection.commit()
         return run_id
 
+    def latest_forecast_observation_frame(
+        self,
+        *,
+        model_names: Sequence[str],
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame:
+        if not model_names:
+            return _empty_latest_forecast_observation_frame()
+        placeholders = ", ".join(["%s"] * len(model_names))
+        query = f"""
+            WITH latest_runs AS (
+                SELECT DISTINCT ON (model_name)
+                    run_id,
+                    model_name,
+                    generated_at
+                FROM forecast_run_summaries
+                WHERE model_name IN ({placeholders})
+                ORDER BY model_name, generated_at DESC, run_id DESC
+            ),
+            ranked_observations AS (
+                SELECT
+                    observations.run_id,
+                    observations.model_name,
+                    latest_runs.generated_at,
+                    observations.forecast_timestamp,
+                    observations.predicted_price_uah_mwh,
+                    observations.prediction_payload::text AS prediction_payload,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY observations.model_name
+                        ORDER BY observations.forecast_timestamp
+                    ) AS row_number
+                FROM price_forecast_observations observations
+                JOIN latest_runs
+                    ON latest_runs.run_id = observations.run_id
+            )
+            SELECT
+                run_id,
+                model_name,
+                generated_at,
+                forecast_timestamp,
+                predicted_price_uah_mwh,
+                prediction_payload
+            FROM ranked_observations
+            WHERE row_number <= %s
+            ORDER BY model_name, forecast_timestamp
+        """
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, [*model_names, limit_per_model])
+                records = cursor.fetchall()
+        if not records:
+            return _empty_latest_forecast_observation_frame()
+        return pl.DataFrame(
+            records,
+            schema=list(_LATEST_FORECAST_OBSERVATION_SCHEMA),
+            orient="row",
+        )
+
 
 def _forecast_run_id(model_name: str) -> str:
     return f"{model_name}:{datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}:{uuid4().hex[:8]}"
@@ -222,6 +343,10 @@ def _observation_frame(
             }
         )
     return pl.DataFrame(rows)
+
+
+def _empty_latest_forecast_observation_frame() -> pl.DataFrame:
+    return pl.DataFrame(schema=_LATEST_FORECAST_OBSERVATION_SCHEMA)
 
 
 def _validate_forecast_frame(forecast_frame: pl.DataFrame, *, point_prediction_column: str) -> None:

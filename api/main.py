@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from functools import cache
+import json
 import math
 from typing import Any
 
@@ -60,6 +61,7 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 	get_battery_telemetry_store,
 )
 from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
+from smart_arbitrage.resources.forecast_store import get_forecast_store
 from smart_arbitrage.resources.grid_event_store import get_grid_event_store
 from smart_arbitrage.resources.market_data_store import get_market_data_store
 from smart_arbitrage.resources.simulated_trade_store import get_simulated_trade_store
@@ -100,6 +102,12 @@ WEATHER_BIAS_FEATURE_NAMES: tuple[str, ...] = (
 MIN_WEATHER_BIAS_TARGET_PEAK_UAH_MWH = 1.0
 MIN_WEATHER_BIAS_TARGET_SPREAD_UAH_MWH = 1.0
 MIN_WEATHER_BIAS_PREDICTION_SPREAD_UAH_MWH = 0.01
+FUTURE_STACK_FORECAST_MODEL_NAMES: tuple[str, ...] = (
+	"nbeatsx_official_v0",
+	"tft_official_v0",
+	"nbeatsx_silver_v0",
+	"tft_silver_v0",
+)
 
 
 class TenantSummaryResponse(BaseModel):
@@ -1760,21 +1768,31 @@ def _to_future_stack_preview_response(
 	*,
 	tenant_id: str,
 	evaluation_frame: pl.DataFrame,
+	forecast_observation_frame: pl.DataFrame | None = None,
 ) -> FutureStackPreviewResponse:
-	if evaluation_frame.height == 0:
+	store_frame = forecast_observation_frame if forecast_observation_frame is not None else pl.DataFrame()
+	if evaluation_frame.height == 0 and store_frame.height == 0:
 		raise HTTPException(status_code=404, detail="Future stack forecast rows not found.")
-	latest_anchor = evaluation_frame.select("anchor_timestamp").max().item()
-	latest_anchor_frame = evaluation_frame.filter(pl.col("anchor_timestamp") == latest_anchor)
 	model_metrics = _future_stack_model_metrics(evaluation_frame)
-	series = [
-		_future_forecast_series(row=row, metrics=model_metrics)
-		for row in latest_anchor_frame.sort(["forecast_model_name"]).iter_rows(named=True)
-		if _is_future_stack_forecast_model(str(row["forecast_model_name"]))
-	]
+	store_series = _forecast_store_series(store_frame, metrics=model_metrics)
+	benchmark_series: list[FutureForecastSeriesResponse] = []
+	latest_anchor_frame = pl.DataFrame()
+	if evaluation_frame.height:
+		latest_anchor = evaluation_frame.select("anchor_timestamp").max().item()
+		latest_anchor_frame = evaluation_frame.filter(pl.col("anchor_timestamp") == latest_anchor)
+		benchmark_series = [
+			_future_forecast_series(row=row, metrics=model_metrics)
+			for row in latest_anchor_frame.sort(["forecast_model_name"]).iter_rows(named=True)
+			if _is_future_stack_forecast_model(str(row["forecast_model_name"]))
+		]
+	series = _merge_future_forecast_series(store_series, benchmark_series)
 	if not series:
 		raise HTTPException(status_code=404, detail="NBEATSx/TFT future stack rows not found.")
-	best_model_name = _future_stack_best_model_name(evaluation_frame)
-	generated_at_value = latest_anchor_frame.select("generated_at").max().item()
+	best_model_name = series[0].model_name if store_series else _future_stack_best_model_name(evaluation_frame)
+	generated_at_value = _future_stack_generated_at(
+		forecast_observation_frame=store_frame,
+		latest_anchor_frame=latest_anchor_frame,
+	)
 	return FutureStackPreviewResponse(
 		tenant_id=tenant_id,
 		generated_at=_datetime_row_value(generated_at_value, field_name="generated_at"),
@@ -1810,6 +1828,92 @@ def _future_forecast_series(
 			for horizon_row in horizon_rows
 		],
 	)
+
+
+def _forecast_store_series(
+	forecast_observation_frame: pl.DataFrame,
+	*,
+	metrics: dict[str, tuple[float | None, float | None]],
+) -> list[FutureForecastSeriesResponse]:
+	if forecast_observation_frame.height == 0:
+		return []
+	series: list[FutureForecastSeriesResponse] = []
+	for model_name in FUTURE_STACK_FORECAST_MODEL_NAMES:
+		model_frame = (
+			forecast_observation_frame
+			.filter(pl.col("model_name") == model_name)
+			.sort("forecast_timestamp")
+		)
+		if model_frame.height == 0:
+			continue
+		rows = list(model_frame.iter_rows(named=True))
+		mean_regret_uah, win_rate = metrics.get(model_name, (None, None))
+		horizon_payload_rows = [_forecast_store_horizon_payload(row) for row in rows]
+		series.append(
+			FutureForecastSeriesResponse(
+				model_name=model_name,
+				model_family=_future_model_family(model_name),
+				source_status=_future_model_source_status(model_name),
+				uncertainty_kind=_future_uncertainty_kind(model_name, horizon_payload_rows),
+				mean_regret_uah=mean_regret_uah,
+				win_rate=win_rate,
+				points=[
+					_future_forecast_point(
+						model_name=model_name,
+						horizon_row=horizon_row,
+					)
+					for horizon_row in horizon_payload_rows
+				],
+			)
+		)
+	return series
+
+
+def _forecast_store_horizon_payload(row: dict[str, Any]) -> dict[str, Any]:
+	payload = _json_mapping_value(row.get("prediction_payload"))
+	forecast_timestamp = row["forecast_timestamp"]
+	forecast_price = _optional_float(
+		payload.get("predicted_price_uah_mwh", row.get("predicted_price_uah_mwh"))
+	) or 0.0
+	return {
+		"step_index": int(payload.get("step_index", 0)),
+		"interval_start": payload.get("forecast_timestamp", forecast_timestamp),
+		"forecast_price_uah_mwh": forecast_price,
+		"predicted_price_uah_mwh": forecast_price,
+		"predicted_price_p10_uah_mwh": payload.get("predicted_price_p10_uah_mwh"),
+		"predicted_price_p50_uah_mwh": payload.get("predicted_price_p50_uah_mwh", forecast_price),
+		"predicted_price_p90_uah_mwh": payload.get("predicted_price_p90_uah_mwh"),
+		"net_power_mw": payload.get("net_power_mw"),
+		"value_gap_uah": payload.get("value_gap_uah"),
+	}
+
+
+def _merge_future_forecast_series(
+	primary_series: list[FutureForecastSeriesResponse],
+	fallback_series: list[FutureForecastSeriesResponse],
+) -> list[FutureForecastSeriesResponse]:
+	merged: list[FutureForecastSeriesResponse] = []
+	seen_model_names: set[str] = set()
+	for series in [*primary_series, *fallback_series]:
+		if series.model_name in seen_model_names:
+			continue
+		seen_model_names.add(series.model_name)
+		merged.append(series)
+	return merged
+
+
+def _future_stack_generated_at(
+	*,
+	forecast_observation_frame: pl.DataFrame,
+	latest_anchor_frame: pl.DataFrame,
+) -> datetime:
+	if forecast_observation_frame.height and "generated_at" in forecast_observation_frame.columns:
+		value = forecast_observation_frame.select("generated_at").max().item()
+		return _datetime_row_value(value, field_name="generated_at")
+	if latest_anchor_frame.height:
+		value = latest_anchor_frame.select("generated_at").max().item()
+		return _datetime_row_value(value, field_name="generated_at")
+	return datetime.now(UTC)
 
 
 def _future_forecast_point(
@@ -2237,6 +2341,19 @@ def _mapping_row_value(value: Any) -> dict[str, Any]:
 	return {}
 
 
+def _json_mapping_value(value: Any) -> dict[str, Any]:
+	if isinstance(value, dict):
+		return value
+	if isinstance(value, str):
+		try:
+			decoded = json.loads(value)
+		except json.JSONDecodeError:
+			return {}
+		if isinstance(decoded, dict):
+			return decoded
+	return {}
+
+
 def _telemetry_freshness_payload(snapshot: BatteryStateHourlySnapshot) -> dict[str, Any]:
 	return {
 		"snapshot_hour": snapshot.snapshot_hour.isoformat(),
@@ -2576,6 +2693,13 @@ def _operator_forecast_model_series(
 	tenant_id: str,
 	solve_result: BaselineSolveResult,
 ) -> list[FutureForecastSeriesResponse]:
+	forecast_observation_frame = get_forecast_store().latest_forecast_observation_frame(
+		model_names=FUTURE_STACK_FORECAST_MODEL_NAMES,
+		limit_per_model=24,
+	)
+	forecast_store_series = _forecast_store_series(forecast_observation_frame, metrics={})
+	if forecast_store_series:
+		return forecast_store_series
 	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
 	if benchmark_frame.height:
 		metrics = _future_stack_model_metrics(benchmark_frame)
@@ -3073,9 +3197,14 @@ def dashboard_future_stack_preview(
 ) -> FutureStackPreviewResponse:
 	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
 	evaluation_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
+	forecast_observation_frame = get_forecast_store().latest_forecast_observation_frame(
+		model_names=FUTURE_STACK_FORECAST_MODEL_NAMES,
+		limit_per_model=24,
+	)
 	return _to_future_stack_preview_response(
 		tenant_id=tenant_id,
 		evaluation_frame=evaluation_frame,
+		forecast_observation_frame=forecast_observation_frame,
 	)
 
 

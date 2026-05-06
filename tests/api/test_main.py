@@ -19,6 +19,7 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 from smart_arbitrage.resources.grid_event_store import GridEventObservation, InMemoryGridEventStore
 from smart_arbitrage.resources.market_data_store import InMemoryMarketDataStore, WeatherObservation
 from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
+from smart_arbitrage.resources.forecast_store import InMemoryForecastStore
 from smart_arbitrage.resources.simulated_trade_store import InMemorySimulatedTradeStore
 from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
 
@@ -76,6 +77,13 @@ def fake_dfl_training_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryDflTrain
 def fake_simulated_trade_store(monkeypatch: pytest.MonkeyPatch) -> InMemorySimulatedTradeStore:
 	store = InMemorySimulatedTradeStore()
 	monkeypatch.setattr(api_main, "get_simulated_trade_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_forecast_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryForecastStore:
+	store = InMemoryForecastStore()
+	monkeypatch.setattr(api_main, "get_forecast_store", lambda: store)
 	return store
 
 
@@ -915,6 +923,101 @@ def test_future_stack_preview_returns_nbeatsx_and_tft_series(
 	}
 	assert len(response_payload["forecast_series"][0]["points"]) == 2
 	assert response_payload["forecast_series"][1]["uncertainty_kind"] == "quantile_proxy"
+
+
+def test_future_stack_preview_prefers_persisted_forecast_store_rows(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	start = datetime(2026, 5, 4, 18, tzinfo=UTC)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [start, start + timedelta(hours=1)],
+				"predicted_price_uah_mwh": [4200.0, 4300.0],
+				"predicted_price_p50_uah_mwh": [4200.0, 4300.0],
+				"adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * 2,
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="tft_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [start, start + timedelta(hours=1)],
+				"predicted_price_uah_mwh": [4100.0, 4400.0],
+				"predicted_price_p10_uah_mwh": [3900.0, 4200.0],
+				"predicted_price_p50_uah_mwh": [4100.0, 4400.0],
+				"predicted_price_p90_uah_mwh": [4300.0, 4600.0],
+				"adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * 2,
+			}
+		),
+		point_prediction_column="predicted_price_p50_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/future-stack-preview",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["selected_forecast_model"] == "nbeatsx_official_v0"
+	assert {series["model_name"] for series in response_payload["forecast_series"]} == {
+		"nbeatsx_official_v0",
+		"tft_official_v0",
+	}
+	official_tft = next(series for series in response_payload["forecast_series"] if series["model_name"] == "tft_official_v0")
+	assert official_tft["source_status"] == "official"
+	assert official_tft["uncertainty_kind"] == "quantile"
+	assert official_tft["points"][0]["p10_price_uah_mwh"] == pytest.approx(3900.0)
+
+
+def test_operator_recommendation_uses_persisted_nbeatsx_tft_forecast_series(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	start = datetime(2026, 5, 4, 18, tzinfo=UTC)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [start],
+				"predicted_price_uah_mwh": [4200.0],
+				"predicted_price_p50_uah_mwh": [4200.0],
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="tft_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [start],
+				"predicted_price_uah_mwh": [4100.0],
+				"predicted_price_p10_uah_mwh": [3900.0],
+				"predicted_price_p50_uah_mwh": [4100.0],
+				"predicted_price_p90_uah_mwh": [4300.0],
+			}
+		),
+		point_prediction_column="predicted_price_p50_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "strict_similar_day"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert {series["model_name"] for series in response_payload["forecast_model_series"]} == {
+		"nbeatsx_official_v0",
+		"tft_official_v0",
+	}
+	assert response_payload["forecast_model_series"][0]["source_status"] == "official"
+	assert response_payload["forecast_model_series"][0]["points"][0]["forecast_price_uah_mwh"] == pytest.approx(4200.0)
 
 
 def test_calibrated_ensemble_benchmark_endpoint_returns_latest_gate_rows(
