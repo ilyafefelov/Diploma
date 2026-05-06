@@ -69,6 +69,32 @@ Do not touch dashboard code in this planning slice. Future dashboard redesign sh
 - Effective-dated market constraints: active price caps for selected delivery date and venue.
 - Research warning state when synthetic fallback data are present in a thesis benchmark run.
 
+## Dagster Lineage Taxonomy
+
+Dagster asset keys remain the stable execution contract. The lineage UI now uses medallion-prefixed groups so the graph reads by both layer and context instead of broad `bronze`, `silver`, and `gold` buckets.
+
+- Bronze ingestion groups include `bronze_market_data`, `bronze_weather`, `bronze_grid_events`, `bronze_tenant_load`, and `bronze_battery_telemetry`.
+- Silver transformation groups include `silver_forecast_features`, `silver_forecast_candidates`, `silver_real_data_benchmark`, and `silver_simulated_training`.
+- Gold evidence groups include `gold_real_data_benchmark`, `gold_calibration`, `gold_selector_diagnostics`, `gold_dfl_training`, `gold_mvp_dispatch`, and `gold_decision_transformer`.
+
+Every active asset carries the standard taxonomy tags: `medallion`, `domain`, `elt_stage`, `ml_stage`, and `evidence_scope`. Optional tags such as `backend` and `market_venue` refine forecast backends and DAM-specific evidence.
+
+Useful Dagster selection strings:
+
+```powershell
+--select group:gold_calibration
+--select tag:ml_stage=calibration
+--select tag:evidence_scope=thesis_grade
+```
+
+For the Dnipro calibration preview, read lineage in this order:
+
+1. `bronze_market_data` and `bronze_weather` load observed OREE DAM and historical Open-Meteo rows.
+2. `silver_real_data_benchmark` builds tenant-aligned price/weather features.
+3. `gold_real_data_benchmark` publishes the rolling-origin raw forecast comparison.
+4. `gold_calibration` publishes regret-weighted and horizon-regret-weighted calibration evidence.
+5. `gold_selector_diagnostics` publishes selector and dispatch-sensitivity diagnostics. These remain research evidence, not full DFL and not market execution.
+
 ## Done Criteria For The Next Research Slice
 
 - A Dagster materialization can produce a rolling-origin evaluation frame from observed historical DAM rows.

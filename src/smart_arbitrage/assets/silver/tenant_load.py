@@ -8,10 +8,20 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.tenant_load import build_tenant_net_load_hourly_frame
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "tenant_load"})
+@dg.asset(
+    group_name=taxonomy.SILVER_TENANT_LOAD,
+    tags=taxonomy.asset_tags(
+        medallion="silver",
+        domain="tenant_load",
+        elt_stage="transform",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+    ),
+)
 def tenant_net_load_hourly_silver(
     context,
     tenant_consumption_schedule_bronze: pl.DataFrame,

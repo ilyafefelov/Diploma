@@ -3,6 +3,7 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.decision_transformer.trajectories import build_decision_transformer_trajectory_frame
 from smart_arbitrage.decision_transformer.policy_training import build_decision_transformer_policy_preview_frame
 from smart_arbitrage.live.paper_trading import build_simulated_live_trading_frame
@@ -23,7 +24,17 @@ class SimulatedTradeTrainingAssetConfig(dg.Config):
     tenant_ids_csv: str = ""
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "simulated_trade_training"})
+@dg.asset(
+    group_name=taxonomy.SILVER_SIMULATED_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="silver",
+        domain="simulated_trade_training",
+        elt_stage="transform",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
 def simulated_trade_silver_feature_frame(
     context,
     dam_price_history: pl.DataFrame,
@@ -48,7 +59,17 @@ def simulated_trade_silver_feature_frame(
     return frame
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "decision_transformer"})
+@dg.asset(
+    group_name=taxonomy.SILVER_DECISION_TRANSFORMER,
+    tags=taxonomy.asset_tags(
+        medallion="silver",
+        domain="decision_transformer",
+        elt_stage="transform",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
 def decision_transformer_forecast_context_silver(
     context,
     nbeatsx_price_forecast: pl.DataFrame,
@@ -71,7 +92,17 @@ def decision_transformer_forecast_context_silver(
     return frame
 
 
-@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "simulated_trade_training"})
+@dg.asset(
+    group_name=taxonomy.GOLD_SIMULATED_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="simulated_trade_training",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
 def simulated_trade_training_frame(
     context,
     config: SimulatedTradeTrainingAssetConfig,
@@ -106,7 +137,17 @@ def simulated_trade_training_frame(
     return training_result.transition_frame
 
 
-@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "decision_transformer"})
+@dg.asset(
+    group_name=taxonomy.GOLD_DECISION_TRANSFORMER,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="decision_transformer",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
 def decision_transformer_trajectory_frame(
     context,
     simulated_trade_training_frame: pl.DataFrame,
@@ -132,7 +173,17 @@ def decision_transformer_trajectory_frame(
     return frame
 
 
-@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "decision_transformer"})
+@dg.asset(
+    group_name=taxonomy.GOLD_DECISION_TRANSFORMER,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="decision_transformer",
+        elt_stage="publish",
+        ml_stage="pilot",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
 def decision_transformer_policy_preview_frame(
     context,
     decision_transformer_trajectory_frame: pl.DataFrame,
@@ -156,7 +207,17 @@ def decision_transformer_policy_preview_frame(
     return frame
 
 
-@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "paper_trading"})
+@dg.asset(
+    group_name=taxonomy.GOLD_PAPER_TRADING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="paper_trading",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
 def simulated_live_trading_frame(
     context,
     simulated_trade_training_frame: pl.DataFrame,

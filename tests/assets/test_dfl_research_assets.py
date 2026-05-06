@@ -113,7 +113,20 @@ def test_dfl_research_assets_are_registered() -> None:
         for asset in DFL_RESEARCH_GOLD_ASSETS
         for asset_key, tags in asset.tags_by_key.items()
     }
+    groups_by_key = {
+        asset_key.to_user_string(): group
+        for asset in DFL_RESEARCH_GOLD_ASSETS
+        for asset_key, group in asset.group_names_by_key.items()
+    }
     assert tags_by_key["dfl_relaxed_lp_pilot_frame"]["medallion"] == "gold"
+    assert groups_by_key["dfl_training_frame"] == "gold_dfl_training"
+    assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
+    assert groups_by_key["horizon_regret_weighted_forecast_calibration_frame"] == "gold_calibration"
+    assert groups_by_key["regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
+    assert groups_by_key["horizon_regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
+    assert groups_by_key["calibrated_value_aware_ensemble_frame"] == "gold_selector_diagnostics"
+    assert groups_by_key["forecast_dispatch_sensitivity_frame"] == "gold_selector_diagnostics"
+    assert groups_by_key["risk_adjusted_value_gate_frame"] == "gold_selector_diagnostics"
 
 
 def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) -> None:

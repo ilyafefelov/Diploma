@@ -5,6 +5,7 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.assets.bronze.market_weather import (
     list_available_weather_tenants,
     resolve_tenant_registry_entry,
@@ -27,7 +28,16 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 )
 
 
-@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "battery_telemetry"})
+@dg.asset(
+    group_name=taxonomy.BRONZE_BATTERY_TELEMETRY,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="battery_telemetry",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="demo",
+    ),
+)
 def battery_telemetry_bronze(context) -> pl.DataFrame:
     """Raw 5-minute battery telemetry observations from MQTT/Postgres."""
 
@@ -44,7 +54,16 @@ def battery_telemetry_bronze(context) -> pl.DataFrame:
     return telemetry_frame
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "battery_telemetry"})
+@dg.asset(
+    group_name=taxonomy.SILVER_BATTERY_TELEMETRY,
+    tags=taxonomy.asset_tags(
+        medallion="silver",
+        domain="battery_telemetry",
+        elt_stage="transform",
+        ml_stage="feature_engineering",
+        evidence_scope="demo",
+    ),
+)
 def battery_state_hourly_silver(
     context,
     battery_telemetry_bronze: pl.DataFrame,

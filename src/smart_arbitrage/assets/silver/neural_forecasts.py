@@ -9,6 +9,7 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
 from smart_arbitrage.forecasting.official_adapters import (
@@ -29,7 +30,17 @@ MLFLOW_FORECAST_MODEL_REGISTRY_NAMES = {
 }
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
 def neural_forecast_feature_frame(
 	context,
 	dam_price_history: pl.DataFrame,
@@ -57,7 +68,17 @@ def neural_forecast_feature_frame(
 	return feature_frame
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
 def sota_forecast_training_frame(
 	context,
 	neural_forecast_feature_frame: pl.DataFrame,
@@ -81,7 +102,17 @@ def sota_forecast_training_frame(
 	return frame
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
 def nbeatsx_price_forecast(
 	context,
 	neural_forecast_feature_frame: pl.DataFrame,
@@ -107,7 +138,17 @@ def nbeatsx_price_forecast(
 	return forecast
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting"})
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
 def tft_price_forecast(
 	context,
 	neural_forecast_feature_frame: pl.DataFrame,
@@ -137,7 +178,18 @@ def tft_price_forecast(
 	return forecast
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting", "backend": "neuralforecast"})
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		backend="neuralforecast",
+		market_venue="DAM",
+	),
+)
 def nbeatsx_official_price_forecast(
 	context,
 	sota_forecast_training_frame: pl.DataFrame,
@@ -169,7 +221,18 @@ def nbeatsx_official_price_forecast(
 	return forecast
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting", "backend": "pytorch_forecasting"})
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		backend="pytorch_forecasting",
+		market_venue="DAM",
+	),
+)
 def tft_official_price_forecast(
 	context,
 	sota_forecast_training_frame: pl.DataFrame,

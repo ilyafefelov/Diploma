@@ -114,11 +114,11 @@ def test_simulated_trade_assets_use_medallion_tags_and_silver_bridge() -> None:
         for asset_key in decision_transformer_trajectory_frame.dependency_keys
     }
 
-    assert groups_by_key["simulated_trade_silver_feature_frame"] == "silver"
+    assert groups_by_key["simulated_trade_silver_feature_frame"] == "silver_simulated_training"
     assert tags_by_key["simulated_trade_silver_feature_frame"]["medallion"] == "silver"
-    assert groups_by_key["decision_transformer_forecast_context_silver"] == "silver"
+    assert groups_by_key["decision_transformer_forecast_context_silver"] == "silver_decision_transformer"
     assert tags_by_key["decision_transformer_forecast_context_silver"]["medallion"] == "silver"
-    assert groups_by_key["simulated_trade_training_frame"] == "gold"
+    assert groups_by_key["simulated_trade_training_frame"] == "gold_simulated_training"
     assert tags_by_key["simulated_trade_training_frame"]["medallion"] == "gold"
     assert "simulated_trade_silver_feature_frame" in training_deps
     assert "dam_price_history" not in training_deps

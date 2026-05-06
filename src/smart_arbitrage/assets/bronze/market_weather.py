@@ -16,6 +16,7 @@ import httpx
 import polars as pl
 import yaml
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DEFAULT_TIMESTAMP_COLUMN
 from smart_arbitrage.resources.market_data_store import (
     get_market_data_store,
@@ -108,7 +109,16 @@ class TenantHistoricalWeatherConfig(dg.Config):
     location_config_path: str | None = None
 
 
-@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "weather"})
+@dg.asset(
+    group_name=taxonomy.BRONZE_WEATHER,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="weather",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="demo",
+    ),
+)
 def weather_forecast_bronze(context, config: WeatherLocationConfig) -> pl.DataFrame:
     """Weather forecast Bronze asset refactored from the legacy Open-Meteo ingestion flow."""
 
@@ -151,7 +161,17 @@ def weather_forecast_bronze(context, config: WeatherLocationConfig) -> pl.DataFr
 BRONZE_INGESTION_ASSETS = [weather_forecast_bronze]
 
 
-@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "market_data"})
+@dg.asset(
+    group_name=taxonomy.BRONZE_MARKET_DATA,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="market_data",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="thesis_grade",
+        market_venue="DAM",
+    ),
+)
 def observed_market_price_history_bronze(
     context,
     config: ObservedMarketBackfillConfig,
@@ -177,7 +197,16 @@ def observed_market_price_history_bronze(
     return price_history
 
 
-@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "weather"})
+@dg.asset(
+    group_name=taxonomy.BRONZE_WEATHER,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="weather",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="thesis_grade",
+    ),
+)
 def tenant_historical_weather_bronze(
     context,
     config: TenantHistoricalWeatherConfig,

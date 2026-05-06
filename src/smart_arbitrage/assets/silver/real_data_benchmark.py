@@ -7,10 +7,21 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.assets.bronze.market_weather import list_available_weather_tenants
 
 
-@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "real_data_benchmark"})
+@dg.asset(
+    group_name=taxonomy.SILVER_REAL_DATA_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="silver",
+        domain="real_data_benchmark",
+        elt_stage="transform",
+        ml_stage="feature_engineering",
+        evidence_scope="thesis_grade",
+        market_venue="DAM",
+    ),
+)
 def real_data_benchmark_silver_feature_frame(
     context,
     observed_market_price_history_bronze: pl.DataFrame,

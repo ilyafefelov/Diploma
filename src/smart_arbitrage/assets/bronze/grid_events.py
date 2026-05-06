@@ -11,6 +11,7 @@ import dagster as dg
 import httpx
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.resources.grid_event_store import (
     GridEventObservation,
     get_grid_event_store,
@@ -66,7 +67,16 @@ class UkrenergoGridEventsConfig(dg.Config):
     max_posts: int = 20
 
 
-@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "grid_events"})
+@dg.asset(
+    group_name=taxonomy.BRONZE_GRID_EVENTS,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="grid_events",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="research_only",
+    ),
+)
 def ukrenergo_grid_events_bronze(context, config: UkrenergoGridEventsConfig) -> pl.DataFrame:
     """Observed public Ukrenergo Telegram posts with transparent rule-based event tags."""
 

@@ -6,6 +6,7 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.assets.bronze.market_weather import list_available_weather_tenants
 from smart_arbitrage.resources.strategy_evaluation_store import (
     get_strategy_evaluation_store,
@@ -38,7 +39,17 @@ class _StartingSoc:
     source: str
 
 
-@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "forecast_strategy"})
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
 def forecast_strategy_comparison_frame(
     context,
     config: ForecastStrategyComparisonAssetConfig,
@@ -103,7 +114,17 @@ def forecast_strategy_comparison_frame(
     return frame
 
 
-@dg.asset(group_name="gold", tags={"medallion": "gold", "domain": "forecast_strategy"})
+@dg.asset(
+    group_name=taxonomy.GOLD_REAL_DATA_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="thesis_grade",
+        market_venue="DAM",
+    ),
+)
 def real_data_rolling_origin_benchmark_frame(
     context,
     config: RealDataRollingOriginBenchmarkAssetConfig,

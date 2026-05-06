@@ -7,10 +7,20 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.tenant_load import build_tenant_consumption_schedule_frame
 
 
-@dg.asset(group_name="bronze", tags={"medallion": "bronze", "domain": "tenant_load"})
+@dg.asset(
+    group_name=taxonomy.BRONZE_TENANT_LOAD,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="tenant_load",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="research_only",
+    ),
+)
 def tenant_consumption_schedule_bronze(context) -> pl.DataFrame:
     """Configured tenant consumption/open-hour schedules from the canonical tenant registry."""
 
