@@ -184,11 +184,20 @@ export interface BatteryStateHourlySnapshotResponse {
   last_observed_at: string
 }
 
+export interface TelemetryIngestSourceResponse {
+  protocol: string
+  broker_host: string
+  broker_port: number
+  topic: string
+  source_kind: string
+}
+
 export interface DashboardBatteryStateResponse {
   tenant_id: string
   latest_telemetry: BatteryTelemetryObservationResponse | null
   hourly_snapshot: BatteryStateHourlySnapshotResponse | null
   fallback_reason: string | null
+  telemetry_ingest_source?: TelemetryIngestSourceResponse | null
 }
 
 export interface ExogenousWeatherSignalResponse {

@@ -1247,6 +1247,29 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.battery-ingest-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.32rem;
+  margin: 0.34rem 0 0.42rem;
+  border: 1px solid rgba(124, 227, 255, 0.38);
+  border-radius: 999px;
+  background: rgba(0, 75, 130, 0.45);
+  padding: 0.26rem 0.52rem;
+  color: rgba(229, 249, 255, 0.86);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.battery-ingest-pill svg {
+  width: 0.82rem;
+  height: 0.82rem;
+  color: #b8ff32;
+}
+
 .battery-stat-grid article {
   display: grid;
   gap: 0.3rem;

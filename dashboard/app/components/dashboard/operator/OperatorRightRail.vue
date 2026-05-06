@@ -23,6 +23,8 @@ defineProps<{
   batterySohProxyPercent: number
   batterySohSourceLabel: string
   batterySohFormula: string
+  batteryTelemetryIngestLabel: string
+  batteryTelemetryIngestTooltip: string
   latestRecommendedPowerLabel: string
   gatekeeperActions: OperatorGatekeeperAction[]
   activeAlertCount: number
@@ -56,6 +58,8 @@ const emit = defineEmits<{
       :soh-percent="batterySohProxyPercent"
       :soh-source-label="batterySohSourceLabel"
       :soh-formula="batterySohFormula"
+      :telemetry-ingest-label="batteryTelemetryIngestLabel"
+      :telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
       :power-label="latestRecommendedPowerLabel"
     />
 

@@ -413,7 +413,10 @@ def test_projected_battery_state_uses_tenant_registry_defaults(
 def test_battery_state_endpoint_returns_latest_telemetry_and_hourly_snapshot(
 	client: TestClient,
 	fake_battery_telemetry_store: InMemoryBatteryTelemetryStore,
+	monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+	monkeypatch.setenv("MQTT_HOST", "mqtt1")
+	monkeypatch.setenv("MQTT_PORT", "1883")
 	latest_observed_at = datetime(2026, 5, 4, 11, 55, tzinfo=UTC)
 	fake_battery_telemetry_store.upsert_battery_telemetry(
 		[
@@ -463,6 +466,13 @@ def test_battery_state_endpoint_returns_latest_telemetry_and_hourly_snapshot(
 	assert response_payload["latest_telemetry"]["source"] == "simulated_mqtt"
 	assert response_payload["hourly_snapshot"]["snapshot_hour"] == "2026-05-04T11:00:00Z"
 	assert response_payload["hourly_snapshot"]["telemetry_freshness"] == "fresh"
+	assert response_payload["telemetry_ingest_source"] == {
+		"protocol": "mqtt",
+		"broker_host": "mqtt1",
+		"broker_port": 1883,
+		"topic": "smart-arbitrage/client_003_dnipro_factory/battery/telemetry",
+		"source_kind": "configured_ingest_path_not_connectivity_probe",
+	}
 
 
 def test_exogenous_signals_endpoint_returns_weather_and_grid_event_read_model(

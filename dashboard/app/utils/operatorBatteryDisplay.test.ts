@@ -32,6 +32,13 @@ describe('operator battery display', () => {
         first_observed_at: '2026-05-05T11:00:00Z',
         last_observed_at: '2026-05-05T11:55:00Z'
       },
+      telemetry_ingest_source: {
+        protocol: 'mqtt',
+        broker_host: 'mqtt1',
+        broker_port: 1883,
+        topic: 'smart-arbitrage/client_003_dnipro_factory/battery/telemetry',
+        source_kind: 'configured_ingest_path_not_connectivity_probe'
+      },
       fallback_reason: null
     }
 
@@ -40,6 +47,7 @@ describe('operator battery display', () => {
       sohPercent: 96,
       socSourceLabel: 'latest telemetry',
       sohSourceLabel: 'latest telemetry',
+      telemetryIngestLabel: 'MQTT mqtt1:1883',
       socFormula: 'SOC = latest_telemetry.current_soc * 100'
     })
   })

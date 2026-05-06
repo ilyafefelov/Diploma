@@ -94,6 +94,8 @@ const {
   batterySohProxyPercent,
   batterySohSourceLabel,
   batteryStatusLabel,
+  batteryTelemetryIngestLabel,
+  batteryTelemetryIngestTooltip,
   dispatchModeLabel,
   gatekeeperActions,
   headlineMetrics,
@@ -306,6 +308,8 @@ onBeforeUnmount(() => {
           :battery-soh-proxy-percent="batterySohProxyPercent"
           :battery-soh-source-label="batterySohSourceLabel"
           :battery-soh-formula="batterySohFormula"
+          :battery-telemetry-ingest-label="batteryTelemetryIngestLabel"
+          :battery-telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
           :latest-recommended-power-label="latestRecommendedPowerLabel"
           :gatekeeper-actions="gatekeeperActions"
           :active-alert-count="activeAlertCount"

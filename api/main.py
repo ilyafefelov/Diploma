@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 from functools import cache
 import json
 import math
+import os
 from typing import Any
 
 import dagster as dg
@@ -75,6 +76,7 @@ from smart_arbitrage.tenant_load import (
 	build_tenant_consumption_schedule_frame,
 	build_tenant_net_load_hourly_frame,
 )
+from smart_arbitrage.telemetry.mqtt import battery_telemetry_topic
 
 
 app = FastAPI(
@@ -282,11 +284,20 @@ class BatteryStateHourlySnapshotResponse(BaseModel):
 	last_observed_at: datetime
 
 
+class TelemetryIngestSourceResponse(BaseModel):
+	protocol: str
+	broker_host: str
+	broker_port: int
+	topic: str
+	source_kind: str
+
+
 class DashboardBatteryStateResponse(BaseModel):
 	tenant_id: str
 	latest_telemetry: BatteryTelemetryObservationResponse | None
 	hourly_snapshot: BatteryStateHourlySnapshotResponse | None
 	fallback_reason: str | None
+	telemetry_ingest_source: TelemetryIngestSourceResponse
 
 
 class ExogenousWeatherSignalResponse(BaseModel):
@@ -1510,6 +1521,26 @@ def _to_hourly_snapshot_response(snapshot: BatteryStateHourlySnapshot) -> Batter
 		first_observed_at=snapshot.first_observed_at,
 		last_observed_at=snapshot.last_observed_at,
 	)
+
+
+def _battery_telemetry_ingest_source_response(tenant_id: str) -> TelemetryIngestSourceResponse:
+	return TelemetryIngestSourceResponse(
+		protocol="mqtt",
+		broker_host=os.environ.get("MQTT_HOST", "localhost"),
+		broker_port=_int_env("MQTT_PORT", default=1883),
+		topic=battery_telemetry_topic(tenant_id),
+		source_kind="configured_ingest_path_not_connectivity_probe",
+	)
+
+
+def _int_env(name: str, *, default: int) -> int:
+	raw_value = os.environ.get(name)
+	if raw_value is None:
+		return default
+	try:
+		return int(raw_value)
+	except ValueError:
+		return default
 
 
 def _build_exogenous_signals_response(tenant_id: str) -> DashboardExogenousSignalsResponse:
@@ -3537,6 +3568,7 @@ def dashboard_battery_state(tenant_id: str) -> DashboardBatteryStateResponse:
 		latest_telemetry=None if latest_telemetry is None else _to_battery_telemetry_response(latest_telemetry),
 		hourly_snapshot=None if latest_snapshot is None else _to_hourly_snapshot_response(latest_snapshot),
 		fallback_reason=fallback_reason,
+		telemetry_ingest_source=_battery_telemetry_ingest_source_response(tenant_id),
 	)
 
 

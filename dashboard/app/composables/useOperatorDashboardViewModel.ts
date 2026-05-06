@@ -128,6 +128,8 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   const batterySohSourceLabel = computed(() => operatorBatteryDisplay.value.sohSourceLabel)
   const batterySocFormula = computed(() => operatorBatteryDisplay.value.socFormula)
   const batterySohFormula = computed(() => operatorBatteryDisplay.value.sohFormula)
+  const batteryTelemetryIngestLabel = computed(() => operatorBatteryDisplay.value.telemetryIngestLabel)
+  const batteryTelemetryIngestTooltip = computed(() => operatorBatteryDisplay.value.telemetryIngestTooltip)
 
   const availabilityPercent = computed(() => {
     if (activeAlertCount.value > 0) {
@@ -447,6 +449,8 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     batterySohProxyPercent,
     batterySohSourceLabel,
     batteryStatusLabel,
+    batteryTelemetryIngestLabel,
+    batteryTelemetryIngestTooltip,
     dispatchModeLabel,
     gatekeeperActions,
     headlineMetrics,

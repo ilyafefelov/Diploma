@@ -10,6 +10,8 @@ const props = defineProps<{
   sohSourceLabel: string
   sohFormula: string
   powerLabel: string
+  telemetryIngestLabel: string
+  telemetryIngestTooltip: string
 }>()
 
 const socBandLabel = computed(() => {
@@ -56,6 +58,14 @@ const safePowerMode = computed(() => {
         class="rail-heading__icon"
         name="i-lucide-battery-charging"
       />
+    </div>
+
+    <div
+      class="battery-ingest-pill"
+      :title="telemetryIngestTooltip"
+    >
+      <UIcon name="i-lucide-radio-tower" />
+      <span>{{ telemetryIngestLabel }}</span>
     </div>
 
     <div class="battery-stat-grid">

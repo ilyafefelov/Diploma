@@ -216,12 +216,14 @@ Response shape:
 - `latest_telemetry`: latest 5-minute raw telemetry row, or `null` if no MQTT/API telemetry has been ingested.
 - `hourly_snapshot`: latest hourly Silver snapshot with SOC open/close/mean, SOH, throughput, EFC delta, and freshness.
 - `fallback_reason`: `telemetry_unavailable`, `hourly_snapshot_unavailable`, `hourly_snapshot_stale`, or `null` when data is fresh.
+- `telemetry_ingest_source`: configured MQTT ingest path for this tenant. It includes `protocol`, `broker_host`, `broker_port`, and the tenant-specific topic `smart-arbitrage/{tenant_id}/battery/telemetry`.
 
 Operational notes:
 
 - This endpoint separates physical truth now from planning/projected state.
 - It is safe for the dashboard to show `latest_telemetry` and `hourly_snapshot` as separate panels.
 - If telemetry is missing or stale, optimization read models continue to fall back to tenant defaults.
+- `telemetry_ingest_source` is configuration metadata, not a broker connectivity probe. Broker health still requires the Docker/MQTT smoke test.
 
 ### `GET /dashboard/exogenous-signals`
 
