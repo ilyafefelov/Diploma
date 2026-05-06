@@ -2655,7 +2655,7 @@ def _operator_load_frame(
 def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOptionResponse]:
 	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
 	metrics_by_model = _operator_strategy_metrics_by_model(benchmark_frame)
-	forecast_store_model_names = _available_forecast_store_model_names()
+	forecast_store_cap_counts = _available_forecast_store_model_cap_counts()
 	policy_preview_frame = get_simulated_trade_store().latest_decision_transformer_policy_preview_frame(
 		tenant_id=tenant_id,
 		limit=24,
@@ -2683,12 +2683,12 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 		_operator_forecast_store_strategy_option(
 			strategy_id="nbeatsx_official_v0",
 			label="Official NBEATSx",
-			model_names=forecast_store_model_names,
+			model_cap_counts=forecast_store_cap_counts,
 		),
 		_operator_forecast_store_strategy_option(
 			strategy_id="tft_official_v0",
 			label="Official TFT",
-			model_names=forecast_store_model_names,
+			model_cap_counts=forecast_store_cap_counts,
 		),
 		_operator_strategy_option(
 			strategy_id=CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
@@ -2716,28 +2716,54 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 	return options
 
 
-def _available_forecast_store_model_names() -> set[str]:
+def _available_forecast_store_model_cap_counts() -> dict[str, int]:
 	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
 		model_names=OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS,
-		limit_per_model=1,
+		limit_per_model=24,
 	)
 	if forecast_frame.height == 0:
-		return set()
-	return {str(value) for value in forecast_frame.select("model_name").to_series().to_list()}
+		return {}
+	cap_counts: dict[str, int] = {}
+	for model_name in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
+		model_frame = forecast_frame.filter(pl.col("model_name") == model_name)
+		if model_frame.height == 0:
+			continue
+		out_of_cap_rows = 0
+		for row in model_frame.iter_rows(named=True):
+			payload = _forecast_store_horizon_payload(row)
+			status = _future_forecast_price_cap_status(float(payload["forecast_price_uah_mwh"]))
+			if status != "inside_dam_cap":
+				out_of_cap_rows += 1
+		cap_counts[model_name] = out_of_cap_rows
+	return cap_counts
 
 
 def _operator_forecast_store_strategy_option(
 	*,
 	strategy_id: str,
 	label: str,
-	model_names: set[str],
+	model_cap_counts: dict[str, int],
 ) -> OperatorStrategyOptionResponse:
-	enabled = strategy_id in model_names
+	out_of_cap_rows = model_cap_counts.get(strategy_id)
+	if out_of_cap_rows is None:
+		return OperatorStrategyOptionResponse(
+			strategy_id=strategy_id,
+			label=label,
+			enabled=False,
+			reason="official forecast rows not materialized",
+		)
+	if out_of_cap_rows:
+		return OperatorStrategyOptionResponse(
+			strategy_id=strategy_id,
+			label=label,
+			enabled=False,
+			reason=f"official forecast rows need calibration: {out_of_cap_rows} out-of-cap rows",
+		)
 	return OperatorStrategyOptionResponse(
 		strategy_id=strategy_id,
 		label=label,
-		enabled=enabled,
-		reason="materialized forecast-store rows" if enabled else "official forecast rows not materialized",
+		enabled=True,
+		reason="materialized forecast-store rows; values inside DAM caps",
 	)
 
 
