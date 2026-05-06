@@ -104,7 +104,7 @@ export const buildResearchReadinessRows = (input: {
     label: 'DT policy preview',
     status: input.dtPolicy && input.dtPolicy.row_count > 0 ? input.dtPolicy.policy_readiness : 'not materialized',
     metric: input.dtPolicy
-      ? `${formatCompactNumber(input.dtPolicy.mean_value_gap_uah)} UAH mean value gap`
+      ? `${formatCompactNumber(input.dtPolicy.mean_value_gap_uah)} UAH mean value gap / ${formatPercent(input.dtPolicy.forecast_context_coverage_ratio)} forecast-conditioned`
       : 'no rows',
     boundary: input.dtPolicy?.market_execution_enabled ? 'market execution enabled' : 'preview only'
   },

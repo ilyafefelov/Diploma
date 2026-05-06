@@ -180,7 +180,7 @@ describe('defense dataset summaries', () => {
       {
         label: 'DT policy preview',
         status: 'ready_for_operator_preview',
-        metric: '17 UAH mean value gap',
+        metric: '17 UAH mean value gap / 100% forecast-conditioned',
         boundary: 'preview only'
       },
       {
