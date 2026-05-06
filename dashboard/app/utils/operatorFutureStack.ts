@@ -1,4 +1,5 @@
 import type {
+  DecisionPolicyPreviewPointResponse,
   FutureForecastSeriesResponse,
   RuntimeAccelerationResponse,
   OperatorStrategyOptionResponse
@@ -27,6 +28,24 @@ export interface StrategyReadinessItem {
   status: 'ready' | 'blocked'
   reason: string
 }
+
+export interface PolicyForecastContextPoint {
+  label: string
+  nbeatsxForecastUahMwh: number
+  tftForecastUahMwh: number
+  forecastUncertaintyUahMwh: number
+  forecastSpreadUahMwh: number
+}
+
+type PolicyForecastContextRow = Pick<
+  DecisionPolicyPreviewPointResponse,
+  | 'interval_start'
+  | 'state_market_price_uah_mwh'
+  | 'state_nbeatsx_forecast_uah_mwh'
+  | 'state_tft_forecast_uah_mwh'
+  | 'state_forecast_uncertainty_uah_mwh'
+  | 'state_forecast_spread_uah_mwh'
+>
 
 export const formatForecastWindowLabel = (
   forecastWindowStart: string | null | undefined,
@@ -73,6 +92,21 @@ export const buildStrategyReadinessItems = (
     status: strategy.enabled ? 'ready' : 'blocked',
     reason: strategy.reason
   }))
+
+export const buildPolicyForecastContextPoints = (
+  policyRows: PolicyForecastContextRow[]
+): PolicyForecastContextPoint[] => policyRows.map((row) => {
+  const nbeatsxForecast = row.state_nbeatsx_forecast_uah_mwh ?? row.state_market_price_uah_mwh
+  const tftForecast = row.state_tft_forecast_uah_mwh ?? nbeatsxForecast
+  const forecastSpread = row.state_forecast_spread_uah_mwh ?? tftForecast - nbeatsxForecast
+  return {
+    label: formatWindowTimestamp(row.interval_start),
+    nbeatsxForecastUahMwh: nbeatsxForecast,
+    tftForecastUahMwh: tftForecast,
+    forecastUncertaintyUahMwh: row.state_forecast_uncertainty_uah_mwh ?? Math.abs(forecastSpread),
+    forecastSpreadUahMwh: forecastSpread
+  }
+})
 
 export const formatRuntimeAccelerationLabel = (
   runtime: RuntimeAccelerationResponse | null | undefined

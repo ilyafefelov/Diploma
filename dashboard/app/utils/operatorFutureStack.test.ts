@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildPolicyForecastContextPoints,
   buildStrategyReadinessItems,
   buildStrategySelectItems,
   formatForecastQualityLabel,
@@ -138,5 +139,41 @@ describe('operator future stack display helpers', () => {
       out_of_dam_cap_rows: 2,
       quality_boundary: 'needs_calibration_before_value_claim'
     })).toBe('2 out-of-cap rows')
+  })
+
+  it('extracts NBEATSx and TFT forecast context from DT policy rows', () => {
+    expect(buildPolicyForecastContextPoints([
+      {
+        interval_start: '2026-05-05T18:00:00Z',
+        state_market_price_uah_mwh: 4200,
+        state_nbeatsx_forecast_uah_mwh: 4100,
+        state_tft_forecast_uah_mwh: 4350,
+        state_forecast_uncertainty_uah_mwh: 360,
+        state_forecast_spread_uah_mwh: 250
+      },
+      {
+        interval_start: '2026-05-05T19:00:00Z',
+        state_market_price_uah_mwh: 3900,
+        state_nbeatsx_forecast_uah_mwh: null,
+        state_tft_forecast_uah_mwh: 4000,
+        state_forecast_uncertainty_uah_mwh: null,
+        state_forecast_spread_uah_mwh: null
+      }
+    ])).toEqual([
+      {
+        label: '05 May, 21:00',
+        nbeatsxForecastUahMwh: 4100,
+        tftForecastUahMwh: 4350,
+        forecastUncertaintyUahMwh: 360,
+        forecastSpreadUahMwh: 250
+      },
+      {
+        label: '05 May, 22:00',
+        nbeatsxForecastUahMwh: 3900,
+        tftForecastUahMwh: 4000,
+        forecastUncertaintyUahMwh: 100,
+        forecastSpreadUahMwh: 100
+      }
+    ])
   })
 })

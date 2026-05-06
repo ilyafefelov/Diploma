@@ -13,6 +13,7 @@ import type {
   OperatorRecommendationResponse
 } from '~/types/control-plane'
 import {
+  buildPolicyForecastContextPoints,
   buildStrategyReadinessItems,
   buildStrategySelectItems,
   formatForecastQualityLabel,
@@ -135,6 +136,7 @@ const forecastOption = computed(() => ({
 
 const policyRows = computed(() => props.decisionPolicy?.rows ?? [])
 const valueGapRows = computed(() => props.operatorRecommendation?.value_gap_series ?? [])
+const policyForecastContextRows = computed(() => buildPolicyForecastContextPoints(policyRows.value))
 const policyProjectionSummary = computed(() => {
   if (policyRows.value.length === 0) {
     return []
@@ -187,7 +189,7 @@ const policyOption = computed(() => ({
   yAxis: [
     {
       type: 'value',
-      name: 'UAH',
+      name: 'UAH / UAH/MWh',
       axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
     },
     {
@@ -212,6 +214,22 @@ const policyOption = computed(() => ({
           yAxisIndex: 1,
           data: policyRows.value.map(row => Number(row.projected_net_power_mw.toFixed(3))),
           itemStyle: { color: 'rgba(83, 178, 234, 0.78)', borderRadius: [8, 8, 0, 0] }
+        },
+        {
+          type: 'line',
+          name: 'State NBEATSx forecast',
+          smooth: true,
+          data: policyForecastContextRows.value.map(row => Math.round(row.nbeatsxForecastUahMwh)),
+          lineStyle: { width: 2.5, color: '#b8ff32', type: 'dashed' },
+          itemStyle: { color: '#b8ff32' }
+        },
+        {
+          type: 'line',
+          name: 'State TFT forecast',
+          smooth: true,
+          data: policyForecastContextRows.value.map(row => Math.round(row.tftForecastUahMwh)),
+          lineStyle: { width: 2.5, color: '#ff6fae', type: 'dashed' },
+          itemStyle: { color: '#ff6fae' }
         }
       ]
     : [
@@ -374,7 +392,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
             Policy value
           </p>
           <h3>DT action and value gap</h3>
-          <p>Value gap is counterfactual lost value; action bars are projected through battery feasibility before display.</p>
+          <p>Value gap is counterfactual lost value; action bars are projected through battery feasibility. Dashed forecast lines show the NBEATSx/TFT state seen by the DT preview.</p>
           <div
             v-if="policyProjectionSummary.length"
             class="forecast-quality-strip"
