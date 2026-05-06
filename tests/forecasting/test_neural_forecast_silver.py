@@ -5,9 +5,11 @@ import polars as pl
 from smart_arbitrage.assets.bronze.market_weather import build_synthetic_market_price_history
 from smart_arbitrage.assets.silver.neural_forecasts import (
 	NEURAL_FORECAST_SILVER_ASSETS,
+	nbeatsx_official_price_forecast,
 	nbeatsx_price_forecast,
 	neural_forecast_feature_frame,
 	sota_forecast_training_frame,
+	tft_official_price_forecast,
 	tft_price_forecast,
 )
 from smart_arbitrage.forecasting.neural_features import (
@@ -229,6 +231,8 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 		"sota_forecast_training_frame",
 		"nbeatsx_price_forecast",
 		"tft_price_forecast",
+		"nbeatsx_official_price_forecast",
+		"tft_official_price_forecast",
 	}.issubset(asset_keys)
 	assert asset_keys.issubset(registered_asset_keys)
 	tags_by_key = {
@@ -246,11 +250,15 @@ def test_neural_forecast_assets_materialize_dataframes() -> None:
 	sota_asset_output = sota_forecast_training_frame(None, feature_asset_output)
 	nbeatsx_asset_output = nbeatsx_price_forecast(None, feature_asset_output)
 	tft_asset_output = tft_price_forecast(None, feature_asset_output)
+	official_nbeatsx_output = nbeatsx_official_price_forecast(None, sota_asset_output)
+	official_tft_output = tft_official_price_forecast(None, sota_asset_output)
 
 	assert feature_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert sota_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert nbeatsx_asset_output.height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert tft_asset_output.height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
+	assert {"model_name", "backend_status", "forecast_timestamp", "predicted_price_uah_mwh"}.issubset(official_nbeatsx_output.columns)
+	assert {"model_name", "backend_status", "forecast_timestamp", "predicted_price_uah_mwh"}.issubset(official_tft_output.columns)
 
 
 def test_neural_forecast_assets_persist_model_runs(monkeypatch) -> None:

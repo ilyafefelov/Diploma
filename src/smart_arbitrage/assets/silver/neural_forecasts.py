@@ -11,6 +11,11 @@ import polars as pl
 
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
+from smart_arbitrage.forecasting.official_adapters import (
+	build_official_nbeatsx_forecast,
+	build_official_tft_forecast,
+	inspect_official_forecast_backends,
+)
 from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
 from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.resources.forecast_store import get_forecast_store
@@ -19,6 +24,8 @@ MLFLOW_FORECAST_EXPERIMENT_NAME = "smart-arbitrage-forecast-research"
 MLFLOW_FORECAST_MODEL_REGISTRY_NAMES = {
 	"nbeatsx_silver_v0": "smart-arbitrage-nbeatsx-silver",
 	"tft_silver_v0": "smart-arbitrage-tft-silver",
+	"nbeatsx_official_v0": "smart-arbitrage-nbeatsx-official",
+	"tft_official_v0": "smart-arbitrage-tft-official",
 }
 
 
@@ -130,11 +137,79 @@ def tft_price_forecast(
 	return forecast
 
 
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting", "backend": "neuralforecast"})
+def nbeatsx_official_price_forecast(
+	context,
+	sota_forecast_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Official NeuralForecast NBEATSx candidate when optional SOTA dependencies exist."""
+
+	forecast = build_official_nbeatsx_forecast(sota_forecast_training_frame)
+	forecast_run_id = (
+		_persist_forecast_run(
+			model_name="nbeatsx_official_v0",
+			forecast=forecast,
+			point_prediction_column="predicted_price_uah_mwh",
+		)
+		if forecast.height
+		else "not_materialized"
+	)
+	backend_status = inspect_official_forecast_backends()["neuralforecast"]
+	_add_metadata(
+		context,
+		{
+			"model_name": "nbeatsx_official_v0",
+			"forecast_run_id": forecast_run_id,
+			"forecast_rows": forecast.height,
+			"backend_available": backend_status.available,
+			"backend_status": backend_status.reason,
+			"scope": "official_neuralforecast_adapter_not_live_strategy",
+		},
+	)
+	return forecast
+
+
+@dg.asset(group_name="silver", tags={"medallion": "silver", "domain": "forecasting", "backend": "pytorch_forecasting"})
+def tft_official_price_forecast(
+	context,
+	sota_forecast_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Official PyTorch-Forecasting TFT candidate readiness asset."""
+
+	forecast = build_official_tft_forecast(sota_forecast_training_frame)
+	forecast_run_id = (
+		_persist_forecast_run(
+			model_name="tft_official_v0",
+			forecast=forecast,
+			point_prediction_column="predicted_price_uah_mwh",
+		)
+		if forecast.height
+		else "not_materialized"
+	)
+	backend_status = inspect_official_forecast_backends()
+	_add_metadata(
+		context,
+		{
+			"model_name": "tft_official_v0",
+			"forecast_run_id": forecast_run_id,
+			"forecast_rows": forecast.height,
+			"pytorch_forecasting_available": backend_status["pytorch_forecasting"].available,
+			"lightning_available": backend_status["lightning"].available,
+			"pytorch_forecasting_status": backend_status["pytorch_forecasting"].reason,
+			"lightning_status": backend_status["lightning"].reason,
+			"scope": "official_pytorch_forecasting_adapter_not_live_strategy",
+		},
+	)
+	return forecast
+
+
 NEURAL_FORECAST_SILVER_ASSETS = [
 	neural_forecast_feature_frame,
 	sota_forecast_training_frame,
 	nbeatsx_price_forecast,
 	tft_price_forecast,
+	nbeatsx_official_price_forecast,
+	tft_official_price_forecast,
 ]
 
 
