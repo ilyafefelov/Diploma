@@ -76,3 +76,38 @@ Do not touch dashboard code in this planning slice. Future dashboard redesign sh
 - The benchmark can be filtered by tenant, anchor date, forecast model, and data provenance.
 - The API/dashboard read model can show whether the result is demo-grade or thesis-grade.
 - Documentation states clearly when a result is based on synthetic fallback and therefore not a market-performance claim.
+
+## Week 3 Evidence Slice Protocol
+
+The Week 3 slice operationalizes the real-data benchmark for one tenant before any wider tenant or DFL expansion:
+
+- Tenant: `client_003_dnipro_factory`.
+- Observed data window: `2026-01-01` to `2026-04-30`.
+- Benchmark cap: `max_anchors=30`.
+- Tracked Dagster run config: [configs/real_data_benchmark_week3.yaml](../../configs/real_data_benchmark_week3.yaml).
+
+Materialize the benchmark through the Compose Dagster service:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,real_data_rolling_origin_benchmark_frame -c configs/real_data_benchmark_week3.yaml
+```
+
+Then export downstream research summaries from the persisted benchmark rows:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_research_layer_from_store.py --run-slug week3_real_data_benchmark
+```
+
+Acceptance checks:
+
+- `/dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory` returns `data_quality_tier=thesis_grade`.
+- The response has `model_count=3`.
+- The response has at least `30` anchors.
+- Any generated research export must be described as benchmark evidence, not market execution or full DFL.
+
+Latest verified Week 3 run:
+
+- Materialization run succeeded on 2026-05-06 with MLflow run `deb0633303de4430967aece6767315f2`.
+- Tenant-specific API response for `client_003_dnipro_factory`: `data_quality_tier=thesis_grade`, `anchor_count=30`, `model_count=3`, `best_model_name=strict_similar_day`.
+- Export directory: `data/research_runs/week3_real_data_benchmark`.
+- The export command currently aggregates latest persisted batches for all tenants in Postgres; the Week 3 acceptance target is the Dnipro tenant batch with 30 anchors and 90 benchmark rows.

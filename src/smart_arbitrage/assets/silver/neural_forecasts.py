@@ -295,7 +295,8 @@ def _forecast_metrics(forecast: pl.DataFrame, *, point_prediction_column: str) -
 			forecast.select("predicted_price_p90_uah_mwh").to_series()
 			- forecast.select("predicted_price_p10_uah_mwh").to_series()
 		)
-		metrics["mean_prediction_interval_width_uah_mwh"] = _series_mean_float(interval_width)
+		if not interval_width.drop_nulls().is_empty():
+			metrics["mean_prediction_interval_width_uah_mwh"] = _series_mean_float(interval_width)
 	if "top_feature_weight" in forecast.columns:
 		metrics["max_top_feature_weight"] = _series_max_float(forecast.select("top_feature_weight").to_series())
 	return metrics

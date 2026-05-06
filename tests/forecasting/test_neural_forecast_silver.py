@@ -5,6 +5,7 @@ import polars as pl
 from smart_arbitrage.assets.bronze.market_weather import build_synthetic_market_price_history
 from smart_arbitrage.assets.silver.neural_forecasts import (
 	NEURAL_FORECAST_SILVER_ASSETS,
+	_forecast_metrics,
 	nbeatsx_official_price_forecast,
 	nbeatsx_price_forecast,
 	neural_forecast_feature_frame,
@@ -275,6 +276,23 @@ def test_neural_forecast_assets_persist_model_runs(monkeypatch) -> None:
 		"nbeatsx_silver_v0",
 		"tft_silver_v0",
 	}
+
+
+def test_forecast_metrics_skip_empty_prediction_interval_width_for_point_forecasts() -> None:
+	forecast = pl.DataFrame(
+		{
+			"forecast_timestamp": [datetime(2026, 5, 6, 14), datetime(2026, 5, 6, 15)],
+			"predicted_price_uah_mwh": [4200.0, 4300.0],
+			"predicted_price_p10_uah_mwh": [None, None],
+			"predicted_price_p90_uah_mwh": [None, None],
+		}
+	)
+
+	metrics = _forecast_metrics(forecast, point_prediction_column="predicted_price_uah_mwh")
+
+	assert metrics["horizon_rows"] == 2.0
+	assert metrics["mean_prediction_uah_mwh"] == 4250.0
+	assert "mean_prediction_interval_width_uah_mwh" not in metrics
 
 
 def test_neural_forecast_asset_registers_frozen_candidate_when_tracking_uri_is_set(monkeypatch) -> None:

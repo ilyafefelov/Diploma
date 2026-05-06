@@ -76,6 +76,11 @@ export const sortFutureForecastSeries = (
   return left.model_name.localeCompare(right.model_name)
 })
 
+export const filterOfficialPolicyValueSeries = (
+  series: FutureForecastSeriesResponse[]
+): FutureForecastSeriesResponse[] => sortFutureForecastSeries(series)
+  .filter(candidate => candidate.source_status.toLowerCase().includes('official') && candidate.points.length > 0)
+
 export const buildStrategySelectItems = (
   strategies: OperatorStrategyOptionResponse[]
 ): Array<{ label: string, value: string, disabled: boolean }> => strategies.map(strategy => ({

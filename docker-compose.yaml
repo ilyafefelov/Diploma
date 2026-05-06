@@ -85,6 +85,8 @@ services:
       - "${SMART_ARBITRAGE_DAGSTER_PORT:-3001}:3000"
     volumes:
       - ./docker/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml:ro
+      - dagster-history:/opt/dagster/dagster_home/history
+      - dagster-schedules:/opt/dagster/dagster_home/schedules
       - dagster-storage:/opt/dagster/dagster_home/storage
     depends_on:
       postgres:
@@ -97,6 +99,8 @@ services:
     command: uv run dagster-daemon run -m smart_arbitrage.defs
     volumes:
       - ./docker/dagster.yaml:/opt/dagster/dagster_home/dagster.yaml:ro
+      - dagster-history:/opt/dagster/dagster_home/history
+      - dagster-schedules:/opt/dagster/dagster_home/schedules
       - dagster-storage:/opt/dagster/dagster_home/storage
     depends_on:
       postgres:
@@ -129,4 +133,6 @@ volumes:
   postgres-data:
   mqtt-data:
   mlflow-artifacts:
+  dagster-history:
+  dagster-schedules:
   dagster-storage:

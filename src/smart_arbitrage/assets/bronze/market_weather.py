@@ -7,6 +7,7 @@ import logging
 import math
 import os
 import re
+from time import sleep
 from typing import Any, Final
 
 from bs4 import BeautifulSoup
@@ -54,6 +55,7 @@ LEVEL1_MARKET_TIMEZONE: Final[str] = "Europe/Kyiv"
 DEFAULT_MARKET_HISTORY_HOURS: Final[int] = 15 * 24
 DEFAULT_MARKET_FORECAST_HOURS: Final[int] = 24
 DEFAULT_WEATHER_FORECAST_HOURS: Final[int] = 7 * 24
+OREE_DATA_VIEW_MONTH_REQUEST_PAUSE_SECONDS: Final[float] = 2.0
 MARKET_WEATHER_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "temperature",
     "solar_radiation",
@@ -94,7 +96,7 @@ class ObservedMarketBackfillConfig(dg.Config):
     """Observed-only OREE DAM backfill window."""
 
     start_date: str = "2026-01-01"
-    end_date: str = "2026-05-04"
+    end_date: str = "2026-01-31"
 
 
 class TenantHistoricalWeatherConfig(dg.Config):
@@ -102,7 +104,7 @@ class TenantHistoricalWeatherConfig(dg.Config):
 
     tenant_ids_csv: str = ""
     start_date: str = "2026-01-01"
-    end_date: str = "2026-05-04"
+    end_date: str = "2026-01-31"
     location_config_path: str | None = None
 
 
@@ -293,7 +295,9 @@ def build_observed_market_price_history(
         target_date: []
         for target_date in requested_dates
     }
-    for month_date in _month_range(start_date, end_date):
+    for month_index, month_date in enumerate(_month_range(start_date, end_date)):
+        if month_index > 0:
+            _pause_between_oree_month_requests()
         fetched_rows = _fetch_oree_data_view_month_prices(month_date)
         if fetched_rows is None:
             logger.warning(
@@ -1084,6 +1088,10 @@ def _month_range(start_date: date, end_date: date) -> list[date]:
         else:
             current = date(current.year, current.month + 1, 1)
     return months
+
+
+def _pause_between_oree_month_requests() -> None:
+    sleep(OREE_DATA_VIEW_MONTH_REQUEST_PAUSE_SECONDS)
 
 
 def _add_metadata(

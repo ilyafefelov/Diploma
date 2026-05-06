@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  filterOfficialPolicyValueSeries,
   buildPolicyForecastContextPoints,
   buildStrategyReadinessItems,
   buildStrategySelectItems,
@@ -63,6 +64,54 @@ describe('operator future stack display helpers', () => {
       'tft_official_v0',
       'nbeatsx_silver_v0',
       'tft_silver_v0'
+    ])
+  })
+
+  it('keeps only official rows for the policy-value official-row mode', () => {
+    const officialNbeatsx = {
+      ...emptySeries('nbeatsx_official_v0', 'official'),
+      points: [
+        {
+          step_index: 0,
+          interval_start: '2026-05-06T14:00:00Z',
+          forecast_price_uah_mwh: 4200,
+          actual_price_uah_mwh: null,
+          p10_price_uah_mwh: null,
+          p50_price_uah_mwh: 4200,
+          p90_price_uah_mwh: null,
+          net_power_mw: null,
+          value_gap_uah: null,
+          price_cap_status: 'inside_dam_cap'
+        }
+      ]
+    }
+    const officialTft = {
+      ...emptySeries('tft_official_v0', 'official'),
+      points: [
+        {
+          step_index: 0,
+          interval_start: '2026-05-06T14:00:00Z',
+          forecast_price_uah_mwh: 4100,
+          actual_price_uah_mwh: null,
+          p10_price_uah_mwh: 3900,
+          p50_price_uah_mwh: 4100,
+          p90_price_uah_mwh: 4300,
+          net_power_mw: null,
+          value_gap_uah: null,
+          price_cap_status: 'inside_dam_cap'
+        }
+      ]
+    }
+
+    const officialSeries = filterOfficialPolicyValueSeries([
+      emptySeries('tft_silver_v0', 'compact'),
+      officialTft,
+      officialNbeatsx
+    ])
+
+    expect(officialSeries.map(series => series.model_name)).toEqual([
+      'nbeatsx_official_v0',
+      'tft_official_v0'
     ])
   })
 

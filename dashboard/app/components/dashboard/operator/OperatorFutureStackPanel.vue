@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import { BarChart, LineChart } from 'echarts/charts'
 import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
@@ -16,6 +16,7 @@ import {
   buildPolicyForecastContextPoints,
   buildStrategyReadinessItems,
   buildStrategySelectItems,
+  filterOfficialPolicyValueSeries,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
   formatOperatorPolicyForecastContextLabel,
@@ -37,6 +38,10 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:selectedStrategyId': [value: string]
 }>()
+
+type PolicyValueMode = 'dt' | 'official'
+
+const policyValueMode = ref<PolicyValueMode>('dt')
 
 const forecastSeries = computed(() => {
   const apiSeries = props.futureStack?.forecast_series?.length
@@ -138,6 +143,9 @@ const forecastOption = computed(() => ({
 
 const policyRows = computed(() => props.decisionPolicy?.rows ?? [])
 const valueGapRows = computed(() => props.operatorRecommendation?.value_gap_series ?? [])
+const officialPolicyForecastSeries = computed(() => filterOfficialPolicyValueSeries(forecastSeries.value))
+const hasOfficialPolicyRows = computed(() => officialPolicyForecastSeries.value.length > 0)
+const isOfficialPolicyMode = computed(() => policyValueMode.value === 'official' && hasOfficialPolicyRows.value)
 const policyForecastContextRows = computed(() => buildPolicyForecastContextPoints(policyRows.value))
 const policyForecastContextLabel = computed(() => props.decisionPolicy
   ? formatPolicyForecastContextLabel(props.decisionPolicy)
@@ -163,13 +171,70 @@ const policyProjectionSummary = computed(() => {
     }
   ]
 })
+const officialPolicyProjectionSummary = computed(() => officialPolicyForecastSeries.value.map(series => ({
+  label: series.model_name,
+  value: `${series.points.length} row${series.points.length === 1 ? '' : 's'}`,
+  meta: series.out_of_dam_cap_rows > 0 ? `${series.out_of_dam_cap_rows} out-of-cap` : formatForecastQualityLabel(series)
+})))
+const policyChartSummary = computed(() => isOfficialPolicyMode.value
+  ? officialPolicyProjectionSummary.value
+  : policyProjectionSummary.value)
+const officialPolicyLabels = computed(() => officialPolicyForecastSeries.value[0]?.points.map(point => formatHour(point.interval_start)) ?? [])
 const policyLabels = computed(() => {
+  if (isOfficialPolicyMode.value) {
+    return officialPolicyLabels.value
+  }
+
   if (policyRows.value.length > 0) {
     return policyRows.value.map(row => formatHour(row.interval_start))
   }
 
   return valueGapRows.value.map(row => formatHour(row.interval_start))
 })
+const officialPolicyChartSeries = computed(() => officialPolicyForecastSeries.value.flatMap((series) => {
+  const isTft = series.model_family === 'TFT'
+  const color = isTft ? '#ff6fae' : '#b8ff32'
+  const baseLine = {
+    type: 'line',
+    name: isTft ? `${series.model_name} p50` : series.model_name,
+    smooth: true,
+    symbol: isTft ? 'diamond' : 'circle',
+    symbolSize: 7,
+    lineStyle: { width: 3, color },
+    itemStyle: { color },
+    data: series.points.map(point => Math.round(point.p50_price_uah_mwh ?? point.forecast_price_uah_mwh))
+  }
+
+  const quantileLines = []
+  if (series.points.some(point => point.p10_price_uah_mwh !== null)) {
+    quantileLines.push({
+      type: 'line',
+      name: `${series.model_name} p10`,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { width: 1.5, color: 'rgba(255, 111, 174, 0.45)', type: 'dashed' },
+      data: series.points.map(point => roundOptionalPrice(point.p10_price_uah_mwh))
+    })
+  }
+  if (series.points.some(point => point.p90_price_uah_mwh !== null)) {
+    quantileLines.push({
+      type: 'line',
+      name: `${series.model_name} p90`,
+      smooth: true,
+      symbol: 'none',
+      lineStyle: { width: 1.5, color: 'rgba(255, 111, 174, 0.45)', type: 'dashed' },
+      data: series.points.map(point => roundOptionalPrice(point.p90_price_uah_mwh))
+    })
+  }
+
+  return [baseLine, ...quantileLines]
+}))
+const policyChartTitle = computed(() => isOfficialPolicyMode.value
+  ? 'Official forecast rows'
+  : 'DT action and value gap')
+const policyChartDescription = computed(() => isOfficialPolicyMode.value
+  ? 'Direct forecast-store rows from official NBEATSx/TFT candidates. These rows are evidence only; blocked rows are not routed to dispatch.'
+  : 'Value gap is counterfactual lost value; action bars are projected through battery feasibility. Dashed forecast lines show the NBEATSx/TFT state seen by the DT preview.')
 
 const policyOption = computed(() => ({
   animationDuration: 500,
@@ -191,62 +256,70 @@ const policyOption = computed(() => ({
     data: policyLabels.value,
     axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
   },
-  yAxis: [
-    {
-      type: 'value',
-      name: 'UAH / UAH/MWh',
-      axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
-    },
-    {
-      type: 'value',
-      name: 'MW',
-      axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
-    }
-  ],
-  series: policyRows.value.length > 0
-    ? [
-        {
-          type: 'line',
-          name: 'DT value gap',
-          smooth: true,
-          data: policyRows.value.map(row => Math.round(row.value_gap_uah)),
-          lineStyle: { width: 4, color: '#f5a623' },
-          itemStyle: { color: '#f5a623' }
-        },
-        {
-          type: 'bar',
-          name: 'Projected action',
-          yAxisIndex: 1,
-          data: policyRows.value.map(row => Number(row.projected_net_power_mw.toFixed(3))),
-          itemStyle: { color: 'rgba(83, 178, 234, 0.78)', borderRadius: [8, 8, 0, 0] }
-        },
-        {
-          type: 'line',
-          name: 'State NBEATSx forecast',
-          smooth: true,
-          data: policyForecastContextRows.value.map(row => Math.round(row.nbeatsxForecastUahMwh)),
-          lineStyle: { width: 2.5, color: '#b8ff32', type: 'dashed' },
-          itemStyle: { color: '#b8ff32' }
-        },
-        {
-          type: 'line',
-          name: 'State TFT forecast',
-          smooth: true,
-          data: policyForecastContextRows.value.map(row => Math.round(row.tftForecastUahMwh)),
-          lineStyle: { width: 2.5, color: '#ff6fae', type: 'dashed' },
-          itemStyle: { color: '#ff6fae' }
-        }
-      ]
+  yAxis: isOfficialPolicyMode.value
+    ? {
+        type: 'value',
+        name: 'UAH/MWh',
+        axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+      }
     : [
         {
-          type: 'line',
-          name: 'Visible value gap',
-          smooth: true,
-          data: valueGapRows.value.map(row => Math.round(row.value_gap_uah)),
-          lineStyle: { width: 4, color: '#f5a623' },
-          itemStyle: { color: '#f5a623' }
+          type: 'value',
+          name: 'UAH / UAH/MWh',
+          axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+        },
+        {
+          type: 'value',
+          name: 'MW',
+          axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
         }
-      ]
+      ],
+  series: isOfficialPolicyMode.value
+    ? officialPolicyChartSeries.value
+    : policyRows.value.length > 0
+      ? [
+          {
+            type: 'line',
+            name: 'DT value gap',
+            smooth: true,
+            data: policyRows.value.map(row => Math.round(row.value_gap_uah)),
+            lineStyle: { width: 4, color: '#f5a623' },
+            itemStyle: { color: '#f5a623' }
+          },
+          {
+            type: 'bar',
+            name: 'Projected action',
+            yAxisIndex: 1,
+            data: policyRows.value.map(row => Number(row.projected_net_power_mw.toFixed(3))),
+            itemStyle: { color: 'rgba(83, 178, 234, 0.78)', borderRadius: [8, 8, 0, 0] }
+          },
+          {
+            type: 'line',
+            name: 'State NBEATSx forecast',
+            smooth: true,
+            data: policyForecastContextRows.value.map(row => Math.round(row.nbeatsxForecastUahMwh)),
+            lineStyle: { width: 2.5, color: '#b8ff32', type: 'dashed' },
+            itemStyle: { color: '#b8ff32' }
+          },
+          {
+            type: 'line',
+            name: 'State TFT forecast',
+            smooth: true,
+            data: policyForecastContextRows.value.map(row => Math.round(row.tftForecastUahMwh)),
+            lineStyle: { width: 2.5, color: '#ff6fae', type: 'dashed' },
+            itemStyle: { color: '#ff6fae' }
+          }
+        ]
+      : [
+          {
+            type: 'line',
+            name: 'Visible value gap',
+            smooth: true,
+            data: valueGapRows.value.map(row => Math.round(row.value_gap_uah)),
+            lineStyle: { width: 4, color: '#f5a623' },
+            itemStyle: { color: '#f5a623' }
+          }
+        ]
 }))
 
 const statusCards = computed(() => [
@@ -296,6 +369,16 @@ const updateSelectedStrategy = (value: string | number | boolean | Record<string
     emit('update:selectedStrategyId', value)
   }
 }
+
+const setPolicyValueMode = (mode: PolicyValueMode): void => {
+  if (mode === 'official' && !hasOfficialPolicyRows.value) {
+    return
+  }
+
+  policyValueMode.value = mode
+}
+
+const roundOptionalPrice = (value: number | null): number | null => value === null ? null : Math.round(value)
 
 const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {
   day: '2-digit',
@@ -394,18 +477,47 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
       </article>
 
       <article class="future-chart-card">
-        <div>
-          <p class="decision-chart-card__eyebrow">
-            Policy value
-          </p>
-          <h3>DT action and value gap</h3>
-          <p>Value gap is counterfactual lost value; action bars are projected through battery feasibility. Dashed forecast lines show the NBEATSx/TFT state seen by the DT preview.</p>
+        <div class="policy-chart-heading">
+          <div>
+            <p class="decision-chart-card__eyebrow">
+              Policy value
+            </p>
+            <h3>{{ policyChartTitle }}</h3>
+            <p>{{ policyChartDescription }}</p>
+          </div>
           <div
-            v-if="policyProjectionSummary.length"
+            class="policy-chart-toggle"
+            role="group"
+            aria-label="Policy value source"
+          >
+            <button
+              type="button"
+              :aria-pressed="!isOfficialPolicyMode"
+              :class="{ 'policy-chart-toggle__button--active': !isOfficialPolicyMode }"
+              @click="setPolicyValueMode('dt')"
+            >
+              <UIcon name="i-lucide-brain" />
+              <span>DT</span>
+            </button>
+            <button
+              type="button"
+              :aria-pressed="isOfficialPolicyMode"
+              :disabled="!hasOfficialPolicyRows"
+              :class="{ 'policy-chart-toggle__button--active': isOfficialPolicyMode }"
+              @click="setPolicyValueMode('official')"
+            >
+              <UIcon name="i-lucide-database" />
+              <span>Official rows</span>
+            </button>
+          </div>
+        </div>
+        <div>
+          <div
+            v-if="policyChartSummary.length"
             class="forecast-quality-strip"
           >
             <span
-              v-for="item in policyProjectionSummary"
+              v-for="item in policyChartSummary"
               :key="item.label"
             >
               {{ item.label }}: {{ item.value }} / {{ item.meta }}
@@ -595,6 +707,59 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   line-height: 1.2;
 }
 
+.policy-chart-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.policy-chart-heading > div:first-child {
+  min-width: 0;
+}
+
+.policy-chart-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(202, 249, 255, 0.34);
+  border-radius: 0.48rem;
+  background: rgba(4, 67, 119, 0.78);
+}
+
+.policy-chart-toggle button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 1.85rem;
+  border: 0;
+  border-right: 1px solid rgba(202, 249, 255, 0.22);
+  background: transparent;
+  color: rgba(236, 250, 255, 0.9);
+  cursor: pointer;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 0 0.55rem;
+  white-space: nowrap;
+}
+
+.policy-chart-toggle button:last-child {
+  border-right: 0;
+}
+
+.policy-chart-toggle button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.policy-chart-toggle__button--active {
+  background: rgba(215, 255, 79, 0.22) !important;
+  color: #eaff6b !important;
+}
+
 .forecast-quality-strip {
   display: flex;
   flex-wrap: wrap;
@@ -652,6 +817,10 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   .future-chart-grid,
   .future-explainer-grid {
     grid-template-columns: 1fr;
+  }
+
+  .policy-chart-heading {
+    flex-direction: column;
   }
 }
 </style>

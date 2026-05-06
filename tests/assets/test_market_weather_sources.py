@@ -7,6 +7,7 @@ import polars as pl
 
 from smart_arbitrage.assets.bronze import market_weather
 from smart_arbitrage.assets.bronze.market_weather import (
+    ObservedMarketBackfillConfig,
     WeatherLocationConfig,
     _fetch_oree_data_view_prices,
     build_observed_historical_weather_frame,
@@ -217,6 +218,82 @@ def test_observed_market_price_history_rejects_synthetic_fallback(monkeypatch) -
     assert price_history.height == 24
     assert set(price_history.select("source_kind").to_series().to_list()) == {"observed"}
     assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0) == datetime(2026, 5, 1)
+
+
+def test_observed_market_backfill_default_window_uses_stable_contiguous_month(monkeypatch) -> None:
+    def fake_fetch_month_prices(month_date: date) -> list[dict[str, Any]] | None:
+        if month_date != date(2026, 1, 1):
+            return None
+        return [
+            market_weather._build_market_row(
+                timestamp=datetime(2026, 1, day, hour_index),
+                price_eur_mwh=50.0 + hour_index,
+                price_uah_mwh=2000.0 + hour_index,
+                volume_mwh=900.0,
+                source="OREE_DATA_VIEW",
+                source_kind="observed",
+                source_url=market_weather.OREE_DATA_VIEW_URL,
+            )
+            for day in range(1, 32)
+            for hour_index in range(24)
+        ]
+
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", fake_fetch_month_prices)
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date: None)
+
+    config = ObservedMarketBackfillConfig()
+    weather_config = market_weather.TenantHistoricalWeatherConfig()
+    assert weather_config.start_date == config.start_date
+    assert weather_config.end_date == config.end_date
+
+    price_history = build_observed_market_price_history(
+        start_date=date.fromisoformat(config.start_date),
+        end_date=date.fromisoformat(config.end_date),
+    )
+
+    assert price_history.height == 31 * 24
+    assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0) == datetime(2026, 1, 1)
+    assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1) == datetime(2026, 1, 31, 23)
+
+
+def test_observed_market_backfill_paces_monthly_oree_requests(monkeypatch) -> None:
+    requested_months: list[date] = []
+    pauses: list[float] = []
+
+    def fake_fetch_month_prices(month_date: date) -> list[dict[str, Any]]:
+        requested_months.append(month_date)
+        next_month = date(month_date.year, month_date.month + 1, 1)
+        return [
+            market_weather._build_market_row(
+                timestamp=datetime(month_date.year, month_date.month, day, hour_index),
+                price_eur_mwh=50.0 + hour_index,
+                price_uah_mwh=2000.0 + hour_index,
+                volume_mwh=900.0,
+                source="OREE_DATA_VIEW",
+                source_kind="observed",
+                source_url=market_weather.OREE_DATA_VIEW_URL,
+            )
+            for day in range(1, (next_month - month_date).days + 1)
+            for hour_index in range(24)
+        ]
+
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", fake_fetch_month_prices)
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date: None)
+    monkeypatch.setattr(
+        market_weather,
+        "_pause_between_oree_month_requests",
+        lambda: pauses.append(2.0),
+        raising=False,
+    )
+
+    price_history = build_observed_market_price_history(
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 2, 28),
+    )
+
+    assert requested_months == [date(2026, 1, 1), date(2026, 2, 1)]
+    assert pauses == [2.0]
+    assert price_history.height == (31 + 28) * 24
 
 
 def test_observed_market_price_history_fails_when_required_day_missing(monkeypatch) -> None:
