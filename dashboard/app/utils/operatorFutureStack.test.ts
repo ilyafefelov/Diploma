@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildStrategySelectItems,
   formatForecastWindowLabel,
   sortFutureForecastSeries
 } from './operatorFutureStack'
 
-import type { FutureForecastSeriesResponse } from '~/types/control-plane'
+import type { FutureForecastSeriesResponse, OperatorStrategyOptionResponse } from '~/types/control-plane'
 
 const emptySeries = (modelName: string, sourceStatus: string): FutureForecastSeriesResponse => ({
   model_name: modelName,
@@ -15,6 +16,19 @@ const emptySeries = (modelName: string, sourceStatus: string): FutureForecastSer
   mean_regret_uah: null,
   win_rate: null,
   points: []
+})
+
+const strategy = (
+  strategyId: string,
+  label: string,
+  enabled: boolean
+): OperatorStrategyOptionResponse => ({
+  strategy_id: strategyId,
+  label,
+  enabled,
+  reason: enabled ? 'materialized' : 'missing',
+  mean_regret_uah: null,
+  win_rate: null
 })
 
 describe('operator future stack display helpers', () => {
@@ -38,6 +52,18 @@ describe('operator future stack display helpers', () => {
       'tft_official_v0',
       'nbeatsx_silver_v0',
       'tft_silver_v0'
+    ])
+  })
+
+  it('builds manual strategy switch items from backend availability', () => {
+    expect(buildStrategySelectItems([
+      strategy('strict_similar_day', 'Strict similar-day control', true),
+      strategy('nbeatsx_official_v0', 'Official NBEATSx', true),
+      strategy('decision_transformer', 'Decision Transformer', false)
+    ])).toEqual([
+      { label: 'Strict similar-day control', value: 'strict_similar_day', disabled: false },
+      { label: 'Official NBEATSx', value: 'nbeatsx_official_v0', disabled: false },
+      { label: 'Decision Transformer - missing', value: 'decision_transformer', disabled: true }
     ])
   })
 })

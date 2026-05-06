@@ -533,6 +533,7 @@ Response shape:
 Operational notes:
 
 - This endpoint is the main `/operator` read model. It does not submit bids.
+- When `strategy_id` is `nbeatsx_official_v0` or `tft_official_v0` and forecast-store rows exist, the endpoint routes those forecast prices through the deterministic Level 1 LP preview. The resulting schedule is still a preview, not market execution.
 - DT is exposed only when a policy-preview table has materialized safe rows. Even then, `market_execution_enabled` remains false until a full evaluation promotes it.
 - `strict_similar_day` remains the control comparator and safe fallback.
 

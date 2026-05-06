@@ -1,4 +1,7 @@
-import type { FutureForecastSeriesResponse } from '~/types/control-plane'
+import type {
+  FutureForecastSeriesResponse,
+  OperatorStrategyOptionResponse
+} from '~/types/control-plane'
 
 const SOURCE_PRIORITY: Record<string, number> = {
   official: 0,
@@ -37,6 +40,14 @@ export const sortFutureForecastSeries = (
 
   return left.model_name.localeCompare(right.model_name)
 })
+
+export const buildStrategySelectItems = (
+  strategies: OperatorStrategyOptionResponse[]
+): Array<{ label: string, value: string, disabled: boolean }> => strategies.map(strategy => ({
+  label: strategy.enabled ? strategy.label : `${strategy.label} - ${strategy.reason}`,
+  value: strategy.strategy_id,
+  disabled: !strategy.enabled
+}))
 
 const sourcePriority = (sourceStatus: string): number => {
   const normalized = sourceStatus.toLowerCase()

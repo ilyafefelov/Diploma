@@ -13,6 +13,7 @@ import type {
   OperatorRecommendationResponse
 } from '~/types/control-plane'
 import {
+  buildStrategySelectItems,
   formatForecastWindowLabel,
   sortFutureForecastSeries
 } from '~/utils/operatorFutureStack'
@@ -23,7 +24,12 @@ const props = defineProps<{
   futureStack: FutureStackPreviewResponse | null
   decisionPolicy: DecisionPolicyPreviewResponse | null
   operatorRecommendation: OperatorRecommendationResponse | null
+  selectedStrategyId: string
   isLoading: boolean
+}>()
+
+const emit = defineEmits<{
+  'update:selectedStrategyId': [value: string]
 }>()
 
 const forecastSeries = computed(() => {
@@ -218,6 +224,15 @@ const forecastWindowLabel = computed(() => formatForecastWindowLabel(
   props.futureStack?.forecast_window_start,
   props.futureStack?.forecast_window_end
 ))
+const strategySelectItems = computed(() => buildStrategySelectItems(
+  props.operatorRecommendation?.available_strategies ?? []
+))
+
+const updateSelectedStrategy = (value: string | number | boolean | Record<string, unknown>): void => {
+  if (typeof value === 'string') {
+    emit('update:selectedStrategyId', value)
+  }
+}
 
 const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {
   day: '2-digit',
@@ -238,12 +253,27 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           NBEATSx, TFT, and DT policy evidence
         </h2>
       </div>
-      <UBadge
-        class="status-badge"
-        :label="isLoading ? 'Refreshing' : 'FastAPI live'"
-        color="success"
-        variant="soft"
-      />
+      <div class="future-control-stack">
+        <label>
+          <span>Strategy preview</span>
+          <USelect
+            class="future-strategy-select"
+            :model-value="selectedStrategyId"
+            :items="strategySelectItems"
+            value-key="value"
+            label-key="label"
+            color="info"
+            variant="none"
+            @update:model-value="updateSelectedStrategy"
+          />
+        </label>
+        <UBadge
+          class="status-badge"
+          :label="isLoading ? 'Refreshing' : 'FastAPI live'"
+          color="success"
+          variant="soft"
+        />
+      </div>
     </div>
 
     <div class="future-status-grid">
@@ -339,6 +369,34 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.future-control-stack {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  min-width: min(100%, 26rem);
+}
+
+.future-control-stack label {
+  display: grid;
+  gap: 0.22rem;
+  min-width: 18rem;
+}
+
+.future-control-stack span {
+  color: rgba(215, 255, 79, 0.84);
+  font-size: 0.64rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.future-strategy-select {
+  min-height: 2.4rem;
+  border: 1px solid rgba(202, 249, 255, 0.34);
+  border-radius: 0.55rem;
+  background: rgba(4, 67, 119, 0.84);
+}
+
 .future-chart-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -420,6 +478,16 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 }
 
 @media (max-width: 720px) {
+  .future-control-stack {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .future-control-stack label {
+    min-width: 0;
+  }
+
   .future-status-grid,
   .future-chart-grid,
   .future-explainer-grid {

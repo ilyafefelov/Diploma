@@ -1024,6 +1024,42 @@ def test_operator_recommendation_uses_persisted_nbeatsx_tft_forecast_series(
 	assert response_payload["forecast_model_series"][0]["points"][0]["forecast_price_uah_mwh"] == pytest.approx(4200.0)
 
 
+def test_operator_recommendation_routes_selected_official_forecast_into_lp_preview(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	start = datetime(2026, 5, 4, 18, tzinfo=UTC)
+	forecast_prices = [1800.0, 5200.0, 1900.0, 5300.0]
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [
+					start + timedelta(hours=index)
+					for index in range(len(forecast_prices))
+				],
+				"predicted_price_uah_mwh": forecast_prices,
+				"predicted_price_p50_uah_mwh": forecast_prices,
+				"adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * len(forecast_prices),
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "nbeatsx_official_v0"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["selected_strategy_id"] == "nbeatsx_official_v0"
+	assert response_payload["policy_mode"] == "forecast_to_lp_preview"
+	assert response_payload["forecast_source"] == "official NBEATSx forecast candidate routed through Level 1 LP preview"
+	assert response_payload["recommendation_schedule"][0]["forecast_price_uah_mwh"] == pytest.approx(1800.0)
+	assert response_payload["recommendation_schedule"][1]["forecast_price_uah_mwh"] == pytest.approx(5200.0)
+
+
 def test_calibrated_ensemble_benchmark_endpoint_returns_latest_gate_rows(
 	client: TestClient,
 	fake_strategy_evaluation_store: InMemoryStrategyEvaluationStore,

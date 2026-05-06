@@ -108,6 +108,10 @@ FUTURE_STACK_FORECAST_MODEL_NAMES: tuple[str, ...] = (
 	"nbeatsx_silver_v0",
 	"tft_silver_v0",
 )
+OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS: tuple[str, ...] = (
+	"nbeatsx_official_v0",
+	"tft_official_v0",
+)
 
 
 class TenantSummaryResponse(BaseModel):
@@ -2489,6 +2493,7 @@ def _operator_load_frame(
 def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOptionResponse]:
 	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
 	metrics_by_model = _operator_strategy_metrics_by_model(benchmark_frame)
+	forecast_store_model_names = _available_forecast_store_model_names()
 	policy_preview_frame = get_simulated_trade_store().latest_decision_transformer_policy_preview_frame(
 		tenant_id=tenant_id,
 		limit=24,
@@ -2512,6 +2517,16 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 			label="Compact NBEATSx",
 			reason="materialized benchmark candidate",
 			metrics_by_model=metrics_by_model,
+		),
+		_operator_forecast_store_strategy_option(
+			strategy_id="nbeatsx_official_v0",
+			label="Official NBEATSx",
+			model_names=forecast_store_model_names,
+		),
+		_operator_forecast_store_strategy_option(
+			strategy_id="tft_official_v0",
+			label="Official TFT",
+			model_names=forecast_store_model_names,
 		),
 		_operator_strategy_option(
 			strategy_id=CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
@@ -2537,6 +2552,31 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 	if not metrics_by_model:
 		options[0] = options[0].model_copy(update={"enabled": True, "mean_regret_uah": None, "win_rate": None})
 	return options
+
+
+def _available_forecast_store_model_names() -> set[str]:
+	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
+		model_names=OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS,
+		limit_per_model=1,
+	)
+	if forecast_frame.height == 0:
+		return set()
+	return {str(value) for value in forecast_frame.select("model_name").to_series().to_list()}
+
+
+def _operator_forecast_store_strategy_option(
+	*,
+	strategy_id: str,
+	label: str,
+	model_names: set[str],
+) -> OperatorStrategyOptionResponse:
+	enabled = strategy_id in model_names
+	return OperatorStrategyOptionResponse(
+		strategy_id=strategy_id,
+		label=label,
+		enabled=enabled,
+		reason="materialized forecast-store rows" if enabled else "official forecast rows not materialized",
+	)
 
 
 def _operator_strategy_metrics_by_model(benchmark_frame: pl.DataFrame) -> dict[str, tuple[float, float]]:
@@ -2655,6 +2695,10 @@ def _to_operator_soc_projection_points(
 def _operator_forecast_source(strategy_id: str) -> str:
 	if strategy_id == "strict_similar_day":
 		return "HourlyDamBaselineSolver / strict similar-day baseline"
+	if strategy_id == "nbeatsx_official_v0":
+		return "official NBEATSx forecast candidate routed through Level 1 LP preview"
+	if strategy_id == "tft_official_v0":
+		return "official TFT forecast candidate routed through Level 1 LP preview"
 	if strategy_id == "tft_silver_v0":
 		return "compact TFT forecast candidate"
 	if strategy_id == "nbeatsx_silver_v0":
@@ -2697,6 +2741,16 @@ def _operator_policy_context(
 				"deterministic battery SOC/power constraints and remain market-execution disabled."
 			),
 			"policy_readiness": str(first_row["readiness_status"]),
+		}
+	if selected_strategy_id in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
+		return {
+			"policy_mode": "forecast_to_lp_preview",
+			"selected_policy_id": selected_strategy_id,
+			"policy_explanation": (
+				"Official NBEATSx/TFT forecast rows are routed through the same deterministic "
+				"Level 1 LP and battery projection. This is still operator preview, not market execution."
+			),
+			"policy_readiness": "forecast_to_lp_ready",
 		}
 	return {
 		"policy_mode": "baseline_lp_preview",
@@ -2829,8 +2883,16 @@ def _build_operator_recommendation_response(
 	)
 	solver = HourlyDamBaselineSolver()
 	try:
-		solve_result = solver.solve_next_dispatch(
+		baseline_solve_result = solver.solve_next_dispatch(
 			historical_prices,
+			battery_metrics=battery_metrics,
+			current_soc_fraction=soc_resolution.starting_soc_fraction,
+			anchor_timestamp=anchor_timestamp,
+		)
+		solve_result = _operator_solve_result_for_strategy(
+			selected_strategy_id=selected_strategy_id,
+			solver=solver,
+			baseline_solve_result=baseline_solve_result,
 			battery_metrics=battery_metrics,
 			current_soc_fraction=soc_resolution.starting_soc_fraction,
 			anchor_timestamp=anchor_timestamp,
@@ -2899,6 +2961,59 @@ def _build_operator_recommendation_response(
 		value_vs_hold_uah=daily_value_uah,
 		economics=baseline_preview.economics,
 	)
+
+
+def _operator_solve_result_for_strategy(
+	*,
+	selected_strategy_id: str,
+	solver: HourlyDamBaselineSolver,
+	baseline_solve_result: BaselineSolveResult,
+	battery_metrics: BatteryPhysicalMetrics,
+	current_soc_fraction: float,
+	anchor_timestamp: datetime,
+) -> BaselineSolveResult:
+	forecast = _operator_forecast_store_forecast(
+		model_name=selected_strategy_id,
+		anchor_timestamp=anchor_timestamp,
+	)
+	if not forecast:
+		return baseline_solve_result
+	return solver.solve_dispatch_from_forecast(
+		forecast=forecast,
+		battery_metrics=battery_metrics,
+		current_soc_fraction=current_soc_fraction,
+		anchor_timestamp=anchor_timestamp,
+		commit_reason=f"{selected_strategy_id}_forecast_to_lp_preview",
+	)
+
+
+def _operator_forecast_store_forecast(
+	*,
+	model_name: str,
+	anchor_timestamp: datetime,
+) -> list[BaselineForecastPoint]:
+	if model_name not in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
+		return []
+	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
+		model_names=[model_name],
+		limit_per_model=24,
+	)
+	if forecast_frame.height == 0:
+		return []
+	points: list[BaselineForecastPoint] = []
+	for row in forecast_frame.sort("forecast_timestamp").iter_rows(named=True):
+		payload = _forecast_store_horizon_payload(row)
+		points.append(
+			BaselineForecastPoint(
+				forecast_timestamp=_datetime_payload_value(
+					payload["interval_start"],
+					field_name="forecast_timestamp",
+				),
+				source_timestamp=anchor_timestamp,
+				predicted_price_uah_mwh=float(payload["forecast_price_uah_mwh"]),
+			)
+		)
+	return points
 
 
 def _to_operator_status_response(record: OperatorStatusRecord) -> OperatorStatusResponse:

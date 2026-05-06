@@ -145,10 +145,14 @@ const nextStepsItems = computed(() => explanationMode.value === 'mvp'
     ]
 )
 
-const schedulePredictionHeadLabel = computed(() => explanationMode.value === 'mvp'
-  ? 'Prediction head: HourlyDamBaselineSolver -> baseline LP'
-  : 'Target head: NBEATSx/TFT -> policy review'
-)
+const schedulePredictionHeadLabel = computed(() => {
+  if (operatorRecommendation.value) {
+    return `Prediction head: ${operatorRecommendation.value.forecast_source}`
+  }
+  return explanationMode.value === 'mvp'
+    ? 'Prediction head: HourlyDamBaselineSolver -> baseline LP'
+    : 'Target head: NBEATSx/TFT -> policy review'
+})
 
 const operatorResearchMetrics = computed(() => buildOperatorResearchMetrics({
   modelRows: defense.modelRows.value,
@@ -278,7 +282,9 @@ onBeforeUnmount(() => {
             :future-stack="defense.futureStack.value"
             :decision-policy="defense.dtPolicyPreview.value"
             :operator-recommendation="operatorRecommendation"
+            :selected-strategy-id="selectedOperatorStrategyId"
             :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+            @update:selected-strategy-id="value => selectedOperatorStrategyId = value"
           />
 
           <OperatorResearchPanel
