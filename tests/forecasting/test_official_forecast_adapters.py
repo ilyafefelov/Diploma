@@ -39,6 +39,52 @@ def test_official_nbeatsx_adapter_returns_empty_readiness_frame_when_backend_mis
     assert forecast.columns == list(OFFICIAL_FORECAST_COLUMNS)
 
 
+def test_official_nbeatsx_adapter_keeps_input_window_trainable_after_lag_drop() -> None:
+    captured: dict[str, int] = {}
+
+    class FakeNBEATSx:
+        def __init__(self, **kwargs: object) -> None:
+            captured["horizon_rows"] = int(kwargs["h"])
+            captured["input_size"] = int(kwargs["input_size"])
+            assert kwargs["logger"] is False
+            assert kwargs["enable_progress_bar"] is False
+            assert kwargs["enable_model_summary"] is False
+
+    class FakeNeuralForecast:
+        def __init__(self, *, models: list[object], freq: str) -> None:
+            self._model = models[0]
+            assert freq == "h"
+            assert isinstance(self._model, FakeNBEATSx)
+
+        def fit(self, df: object) -> None:
+            captured["training_rows"] = len(df)  # type: ignore[arg-type]
+            assert captured["training_rows"] > captured["input_size"] + captured["horizon_rows"]
+
+        def predict(self, *, futr_df: object) -> object:
+            frame = futr_df[["unique_id", "ds"]].copy()  # type: ignore[index]
+            frame["NBEATSx"] = [4100.0 + index for index in range(len(frame))]
+            return frame
+
+    class FakeNeuralForecastModule:
+        NeuralForecast = FakeNeuralForecast
+
+    class FakeNeuralForecastModels:
+        NBEATSx = FakeNBEATSx
+
+    def fake_importer(name: str) -> object:
+        if name == "neuralforecast":
+            return FakeNeuralForecastModule()
+        if name == "neuralforecast.models":
+            return FakeNeuralForecastModels()
+        raise ModuleNotFoundError(name)
+
+    forecast = build_official_nbeatsx_forecast(_training_frame(), importer=fake_importer)
+
+    assert forecast.height == 24
+    assert forecast.select("backend_status").to_series().unique().to_list() == ["trained"]
+    assert captured["input_size"] <= captured["training_rows"] - captured["horizon_rows"] - 1
+
+
 def test_official_tft_adapter_returns_empty_readiness_frame_when_backend_missing() -> None:
     def missing_importer(name: str) -> object:
         raise ModuleNotFoundError(name)

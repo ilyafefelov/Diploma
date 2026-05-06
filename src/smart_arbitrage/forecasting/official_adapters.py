@@ -106,15 +106,34 @@ def build_official_nbeatsx_forecast(
     except Exception as exc:  # pragma: no cover - depends on optional backend internals
         raise OfficialForecastAdapterError(f"unable to import official NBEATSx backend: {exc}") from exc
 
-    train_frame = training_frame.filter(pl.col("is_train") & pl.col("y").is_not_null())
-    future_frame = training_frame.filter(pl.col("is_forecast")).head(horizon_hours)
+    feature_columns = _existing_feature_columns(training_frame)
+    train_frame = (
+        training_frame
+        .filter(pl.col("is_train") & pl.col("y").is_not_null())
+        .select(["unique_id", "ds", "y", *feature_columns])
+        .drop_nulls(subset=["y", *feature_columns])
+    )
+    future_frame = (
+        training_frame
+        .filter(pl.col("is_forecast"))
+        .head(horizon_hours)
+        .select(["unique_id", "ds", *feature_columns])
+        .with_columns([
+            pl.col(column).fill_null(strategy="forward").fill_null(strategy="backward").fill_null(0.0)
+            for column in feature_columns
+        ])
+    )
     if train_frame.is_empty() or future_frame.is_empty():
         return _empty_forecast_frame()
 
-    feature_columns = _existing_feature_columns(training_frame)
     hist_exog = _csv_columns(training_frame, "historical_observed_feature_columns_csv")
     futr_exog = _csv_columns(training_frame, "known_future_feature_columns_csv")
-    input_size = max(horizon_hours, min(168, train_frame.height))
+    input_size = _nbeatsx_input_size(
+        training_rows=train_frame.height,
+        horizon_rows=future_frame.height,
+    )
+    if input_size is None:
+        return _empty_forecast_frame()
 
     try:
         model = nbeatsx_cls(
@@ -125,11 +144,14 @@ def build_official_nbeatsx_forecast(
             max_steps=max_steps,
             random_seed=20260506,
             scaler_type="robust",
+            logger=False,
+            enable_progress_bar=False,
+            enable_model_summary=False,
         )
         neural_forecast = neural_forecast_cls(models=[model], freq="h")
-        neural_forecast.fit(df=train_frame.select(["unique_id", "ds", "y", *feature_columns]).to_pandas())
+        neural_forecast.fit(df=train_frame.to_pandas())
         prediction_frame = neural_forecast.predict(
-            futr_df=future_frame.select(["unique_id", "ds", *feature_columns]).to_pandas()
+            futr_df=future_frame.to_pandas()
         )
     except Exception as exc:  # pragma: no cover - requires optional backend training
         raise OfficialForecastAdapterError(f"official NBEATSx training failed: {exc}") from exc
@@ -242,6 +264,15 @@ def _prediction_column(prediction_frame: pl.DataFrame) -> str:
         if column_name not in {"unique_id", "ds"} and prediction_frame.schema[column_name].is_numeric():
             return column_name
     raise OfficialForecastAdapterError("official backend returned no numeric prediction column")
+
+
+def _nbeatsx_input_size(*, training_rows: int, horizon_rows: int) -> int | None:
+    """Choose a smoke-safe input window that leaves at least one training window."""
+
+    max_trainable_input_size = training_rows - horizon_rows - 1
+    if max_trainable_input_size < 1:
+        return None
+    return min(168, max_trainable_input_size)
 
 
 def _official_forecast_frame(
