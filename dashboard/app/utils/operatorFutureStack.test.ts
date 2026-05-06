@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildStrategySelectItems,
   formatForecastWindowLabel,
+  formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
 } from './operatorFutureStack'
 
@@ -65,5 +66,25 @@ describe('operator future stack display helpers', () => {
       { label: 'Official NBEATSx', value: 'nbeatsx_official_v0', disabled: false },
       { label: 'Decision Transformer - missing', value: 'decision_transformer', disabled: true }
     ])
+  })
+
+  it('formats runtime acceleration for SOTA and DT status cards', () => {
+    expect(formatRuntimeAccelerationLabel({
+      backend: 'torch 2.11.0+cpu',
+      device_type: 'cpu',
+      device_name: 'CPU only',
+      gpu_available: false,
+      cuda_version: null,
+      recommended_scope: 'keep official NBEATSx/TFT and DT runs small'
+    })).toBe('CPU only / torch 2.11.0+cpu')
+
+    expect(formatRuntimeAccelerationLabel({
+      backend: 'torch 2.11.0',
+      device_type: 'cuda',
+      device_name: 'NVIDIA RTX',
+      gpu_available: true,
+      cuda_version: '12.6',
+      recommended_scope: 'use GPU for official forecasts'
+    })).toBe('CUDA / NVIDIA RTX')
   })
 })

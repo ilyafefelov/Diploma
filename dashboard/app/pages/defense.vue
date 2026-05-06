@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import { formatPercent, formatUah } from '~/utils/defenseDataset'
+import { formatRuntimeAccelerationLabel } from '~/utils/operatorFutureStack'
 
 const preferredTenantId = 'client_003_dnipro_factory'
 const selectedTenantId = ref(preferredTenantId)
@@ -38,11 +39,12 @@ const futureForecastRows = computed(() => {
 
 const futureBackendStatusText = computed(() => {
   const statusEntries = Object.entries(defense.futureStack.value?.backend_status ?? {})
+  const runtimeText = formatRuntimeAccelerationLabel(defense.futureStack.value?.runtime_acceleration)
   if (statusEntries.length === 0) {
-    return 'official backend status not loaded'
+    return `official backend status not loaded / runtime ${runtimeText}`
   }
 
-  return statusEntries.map(([name, status]) => `${name}: ${status}`).join(' / ')
+  return `${statusEntries.map(([name, status]) => `${name}: ${status}`).join(' / ')} / runtime ${runtimeText}`
 })
 
 const dtPolicySummary = computed(() => {

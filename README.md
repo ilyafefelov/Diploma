@@ -83,7 +83,7 @@ NBEATSx/TFT forecast evidence
 
 New FastAPI read models:
 
-- `GET /dashboard/future-stack-preview?tenant_id=...` returns NBEATSx/TFT forecast series, selected forecast model, backend availability for optional SOTA packages, and claim boundary text.
+- `GET /dashboard/future-stack-preview?tenant_id=...` returns NBEATSx/TFT forecast series, selected forecast model, backend availability for optional SOTA packages, runtime acceleration status, and claim boundary text.
 - `GET /dashboard/decision-policy-preview?tenant_id=...` returns offline DT policy-preview rows with projected feasible actions, value gap, gatekeeper status, and `market_execution_enabled=false`.
 - `GET /dashboard/operator-recommendation?tenant_id=...&strategy_id=...` now includes available materialized strategies, selected policy id, policy readiness, forecast model series, and value-gap series for the operator dashboard.
 
@@ -94,6 +94,7 @@ Official-backend status:
 - `nbeatsx_official_price_forecast` is registered as a Silver asset and uses Nixtla NeuralForecast NBEATSx only when the optional `sota` dependencies are installed.
 - `tft_official_price_forecast` is registered as a Silver asset and uses PyTorch Forecasting TFT with p10/p50/p90 quantile output when `pytorch-forecasting` and Lightning are available.
 - The official adapters use deliberately tiny CPU-safe smoke settings first. They create dashboard/read-model rows, not thesis-grade SOTA claims, until they are included in a full rolling-origin LP/oracle benchmark.
+- `/operator` and `/defense` now show whether the runtime is CPU, CUDA, or MPS. CPU-only is acceptable for smoke runs; full SOTA sweeps should wait for CUDA-enabled PyTorch or a remote GPU runner.
 - Install or refresh optional dependencies with `uv sync --extra dev --extra sota` before running the official backend experiment.
 
 ## Local Stack

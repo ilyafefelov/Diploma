@@ -550,6 +550,7 @@ Request query example:
 Response shape:
 
 - `backend_status`: optional package availability for NeuralForecast, PyTorch Forecasting, and Lightning.
+- `runtime_acceleration`: Torch backend, device type (`cpu`, `cuda`, or `mps`), device name, CUDA version when available, and recommended experiment scope.
 - `selected_forecast_model`: lowest-regret forecast row available in the read model.
 - `forecast_window_start`, `forecast_window_end`: exact UTC timestamps covered by the returned forecast series.
 - `forecast_series`: NBEATSx/TFT paths with point forecasts and TFT-style p10/p50/p90 fields when available.

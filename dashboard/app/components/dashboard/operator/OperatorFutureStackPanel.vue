@@ -15,6 +15,7 @@ import type {
 import {
   buildStrategySelectItems,
   formatForecastWindowLabel,
+  formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
 } from '~/utils/operatorFutureStack'
 
@@ -213,6 +214,11 @@ const statusCards = computed(() => [
     meta: props.operatorRecommendation?.selected_policy_id || 'no selected policy'
   },
   {
+    label: 'Runtime',
+    value: formatRuntimeAccelerationLabel(props.futureStack?.runtime_acceleration),
+    meta: props.futureStack?.runtime_acceleration?.recommended_scope || 'training runtime not reported'
+  },
+  {
     label: 'Execution boundary',
     value: props.decisionPolicy?.market_execution_enabled ? 'market enabled' : 'preview only',
     meta: 'deterministic gatekeeper still required'
@@ -343,6 +349,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
         <span>Backend status</span>
         <p>
           {{ backendStatusItems.length > 0 ? backendStatusItems.map(([name, status]) => `${name}: ${status}`).join(' / ') : 'Official backend status not loaded yet.' }}
+          Runtime: {{ formatRuntimeAccelerationLabel(futureStack?.runtime_acceleration) }}.
         </p>
       </article>
     </div>

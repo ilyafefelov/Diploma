@@ -607,12 +607,22 @@ class FutureForecastSeriesResponse(BaseModel):
 	points: list[FutureForecastPointResponse]
 
 
+class RuntimeAccelerationResponse(BaseModel):
+	backend: str
+	device_type: str
+	device_name: str
+	gpu_available: bool
+	cuda_version: str | None = None
+	recommended_scope: str
+
+
 class FutureStackPreviewResponse(BaseModel):
 	tenant_id: str
 	generated_at: datetime | None
 	forecast_window_start: datetime | None
 	forecast_window_end: datetime | None
 	backend_status: dict[str, str]
+	runtime_acceleration: RuntimeAccelerationResponse
 	selected_forecast_model: str | None
 	claim_boundary: str
 	forecast_series: list[FutureForecastSeriesResponse]
@@ -1809,6 +1819,7 @@ def _to_future_stack_preview_response(
 		forecast_window_start=forecast_window_start,
 		forecast_window_end=forecast_window_end,
 		backend_status=_future_stack_backend_status(),
+		runtime_acceleration=_runtime_acceleration_status(),
 		selected_forecast_model=best_model_name,
 		claim_boundary=(
 			"Operator production charts should be fed by NBEATSx/TFT forecasts with uncertainty and "
@@ -2056,6 +2067,51 @@ def _future_stack_backend_status() -> dict[str, str]:
 		"pytorch_forecasting": _dependency_status("pytorch_forecasting"),
 		"lightning": _dependency_status("lightning"),
 	}
+
+
+def _runtime_acceleration_status() -> RuntimeAccelerationResponse:
+	try:
+		import torch
+	except ModuleNotFoundError:
+		return RuntimeAccelerationResponse(
+			backend="torch unavailable",
+			device_type="cpu",
+			device_name="CPU fallback",
+			gpu_available=False,
+			recommended_scope="install torch before official SOTA forecast/DT runs",
+		)
+
+	torch_version = str(getattr(torch, "__version__", "unknown"))
+	cuda_available = bool(torch.cuda.is_available())
+	if cuda_available:
+		device_name = str(torch.cuda.get_device_name(0))
+		cuda_version = str(getattr(torch.version, "cuda", None) or "")
+		return RuntimeAccelerationResponse(
+			backend=f"torch {torch_version}",
+			device_type="cuda",
+			device_name=device_name,
+			gpu_available=True,
+			cuda_version=cuda_version or None,
+			recommended_scope="use GPU for official NBEATSx/TFT training and DT sweeps",
+		)
+	mps_backend = getattr(getattr(torch, "backends", None), "mps", None)
+	mps_available = bool(mps_backend is not None and mps_backend.is_available())
+	if mps_available:
+		return RuntimeAccelerationResponse(
+			backend=f"torch {torch_version}",
+			device_type="mps",
+			device_name="Apple Metal Performance Shaders",
+			gpu_available=True,
+			recommended_scope="use MPS for smoke-sized official forecasts; verify numerical parity on CPU",
+		)
+	return RuntimeAccelerationResponse(
+		backend=f"torch {torch_version}",
+		device_type="cpu",
+		device_name="CPU only",
+		gpu_available=False,
+		cuda_version=str(getattr(torch.version, "cuda", None) or "") or None,
+		recommended_scope="keep official NBEATSx/TFT and DT runs small; GPU will help only after CUDA torch is installed",
+	)
 
 
 def _dependency_status(module_name: str) -> str:

@@ -458,12 +458,22 @@ export interface FutureForecastSeriesResponse {
   points: FutureForecastPointResponse[]
 }
 
+export interface RuntimeAccelerationResponse {
+  backend: string
+  device_type: string
+  device_name: string
+  gpu_available: boolean
+  cuda_version: string | null
+  recommended_scope: string
+}
+
 export interface FutureStackPreviewResponse {
   tenant_id: string
   generated_at: string | null
   forecast_window_start: string | null
   forecast_window_end: string | null
   backend_status: Record<string, string>
+  runtime_acceleration: RuntimeAccelerationResponse
   selected_forecast_model: string | null
   claim_boundary: string
   forecast_series: FutureForecastSeriesResponse[]

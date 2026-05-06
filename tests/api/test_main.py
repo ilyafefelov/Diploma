@@ -925,6 +925,9 @@ def test_future_stack_preview_returns_nbeatsx_and_tft_series(
 	}
 	assert len(response_payload["forecast_series"][0]["points"]) == 2
 	assert response_payload["forecast_series"][1]["uncertainty_kind"] == "quantile_proxy"
+	assert response_payload["runtime_acceleration"]["device_type"] in {"cpu", "cuda", "mps"}
+	assert "torch" in response_payload["runtime_acceleration"]["backend"]
+	assert response_payload["runtime_acceleration"]["recommended_scope"]
 
 
 def test_future_stack_preview_prefers_persisted_forecast_store_rows(

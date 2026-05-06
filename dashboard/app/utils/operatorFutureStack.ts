@@ -1,5 +1,6 @@
 import type {
   FutureForecastSeriesResponse,
+  RuntimeAccelerationResponse,
   OperatorStrategyOptionResponse
 } from '~/types/control-plane'
 
@@ -48,6 +49,21 @@ export const buildStrategySelectItems = (
   value: strategy.strategy_id,
   disabled: !strategy.enabled
 }))
+
+export const formatRuntimeAccelerationLabel = (
+  runtime: RuntimeAccelerationResponse | null | undefined
+): string => {
+  if (!runtime) {
+    return 'runtime pending'
+  }
+  if (runtime.device_type === 'cuda') {
+    return `CUDA / ${runtime.device_name}`
+  }
+  if (runtime.device_type === 'mps') {
+    return `MPS / ${runtime.device_name}`
+  }
+  return `${runtime.device_name} / ${runtime.backend}`
+}
 
 const sourcePriority = (sourceStatus: string): number => {
   const normalized = sourceStatus.toLowerCase()
