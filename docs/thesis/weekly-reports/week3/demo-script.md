@@ -90,6 +90,20 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 
 > Week 3 не додає market execution і не робить full DFL claim. Він закриває критичний методологічний gap: тепер є observed-only rolling-origin benchmark, через який можна чесно порівнювати strict control, NBEATSx і TFT за regret та decision value.
 
+## Опційний preview, якщо керівник питає про наступний крок
+
+Показувати тільки після основного Week 3 story:
+
+- `data/research_runs/week4_calibration_dnipro_90`
+- [docs/thesis/weekly-reports/week4/report.md](../week4/report.md)
+
+Що сказати:
+
+- 90-anchor calibration path уже підготовлено як draft evidence для наступного календарного етапу.
+- Це не headline поточного Week 3 demo і не replacement для 30-anchor acceptance result.
+- Його правильна роль: second-demo preview для Week 4, де raw forecast candidates, calibrated candidates і selector diagnostics будуть показані окремо.
+- Навіть якщо calibration покращує neural candidates, це лишається calibration/selector evidence, не full DFL і не market execution.
+
 ## Короткий фінальний меседж
 
-Після Week 3 проєкт має не лише operator-facing MVP, а й перший thesis-grade evidence contour. Для одного tenant підтверджено observed-only provenance, 30 rolling-origin anchors, 3 forecast candidates, oracle-regret scoring і downstream research exports. Наступний безпечний крок: розширення на all-tenants / 90 anchors і calibration robustness, а не передчасне оголошення live DFL strategy.
+Після Week 3 проєкт має не лише operator-facing MVP, а й перший thesis-grade evidence contour. Для одного tenant підтверджено observed-only provenance, 30 rolling-origin anchors, 3 forecast candidates, oracle-regret scoring і downstream research exports. Наступний безпечний крок: підготувати Week 4 second-demo package з `Вступом`, `Оглядом літератури` і calibration/selector evidence, не оголошуючи live DFL strategy.

@@ -77,6 +77,10 @@ Do not touch dashboard code in this planning slice. Future dashboard redesign sh
 - The API/dashboard read model can show whether the result is demo-grade or thesis-grade.
 - Documentation states clearly when a result is based on synthetic fallback and therefore not a market-performance claim.
 
+## Calendar Alignment Note
+
+The current academic reporting package remains Week 3. The accepted Week 3 result is the 30-anchor Dnipro real-data benchmark below. The 90-anchor calibration path is already prepared as draft Week 4 evidence, but it should be presented only as next-step calibration/selector material for the second demo and chapter work. It must not replace the Week 3 headline, and it must not be described as full DFL or market execution.
+
 ## Week 3 Evidence Slice Protocol
 
 The Week 3 slice operationalizes the real-data benchmark for one tenant before any wider tenant or DFL expansion:

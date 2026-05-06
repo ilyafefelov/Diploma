@@ -48,7 +48,13 @@ Per-model summary для Dnipro batch:
 - MLflow run: `deb0633303de4430967aece6767315f2`
 - API evidence: `GET /dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory`
 
-## 5. Ризики та виклики
+## 5. Підготовлено наперед, але не як Week 3 claim
+
+Після стабілізації 30-anchor contour було підготовлено draft calibration path для 90 anchors: `data/research_runs/week4_calibration_dnipro_90` і відповідні Week 4 draft artifacts. Це корисний матеріал для другого демо та пояснювальної записки, але він не замінює Week 3 acceptance result. У цьому звіті Week 3 headline лишається вузьким і перевіреним: 30 rolling-origin anchors для `client_003_dnipro_factory`, observed-only provenance, три raw forecast candidates і thesis-grade API read model.
+
+90-anchor calibration треба описувати тільки як підготовлений наступний крок: calibration/selector evidence, не full DFL, не market execution і не доказ того, що neural strategy вже перемагає baseline.
+
+## 6. Ризики та виклики
 
 | Ризик / виклик | Чому це важливо | Відповідь |
 |---|---|---|
@@ -57,14 +63,14 @@ Per-model summary для Dnipro batch:
 | Neural candidates програють strict control на цьому slice | Не можна робити SOTA claim із forecast models без value evidence | Наступний крок: calibration/robustness і ширший rolling-origin protocol |
 | DFL pilot outputs вже генеруються downstream | Є ризик описати їх як full DFL або live strategy | Усі матеріали маркують їх як downstream research evidence, not market execution |
 
-## 6. План на наступний тиждень
+## 7. План на наступний тиждень
 
-1. Розширити benchmark з Dnipro-only до all-tenants run, але лише після перевірки стабільності observed backfill.
-2. Порівняти 30-anchor і 90-anchor варіанти для одного tenant, щоб оцінити чутливість висновків.
-3. Винести у defense/dashboard surface чітку різницю між thesis-grade benchmark rows та demo-grade/synthetic rows.
-4. Підготувати calibration follow-up для NBEATSx/TFT: оцінювати не тільки MAE/RMSE, а й regret, rank-1 wins, throughput, degradation penalty.
-5. Не переходити до full DFL claim, поки strict LP/oracle benchmark не стабільний для всіх tenants.
+1. Підготувати друге демо на основі вже перевіреного Week 3 benchmark contour і, за потреби, показати 90-anchor calibration як prepared-ahead preview.
+2. Підготувати перші submission-ready draft sections: `Вступ` і `Огляд літератури`, прив'язавши літературу до rolling-origin no-leakage benchmark, exogenous forecasting і regret-aware calibration.
+3. Використати 90-anchor calibration тільки як Week 4 calibration/selector evidence: raw forecast candidates окремо, calibrated candidates окремо, selector diagnostics окремо.
+4. Розширювати benchmark на all-tenants лише після supervisor review, бо Dnipro 30-anchor path уже виконав Week 3 acceptance target.
+5. Не переходити до full DFL або market execution claim, поки strict LP/oracle benchmark і calibration semantics не узгоджені з керівником.
 
-## 7. Короткий висновок
+## 8. Короткий висновок
 
 Week 3 slice перевів проєкт від demo-ready operator surface до першого відтворюваного thesis-grade evidence path. Для `client_003_dnipro_factory` отримано 30 rolling-origin anchors із observed-only provenance, трьома forecast candidates і oracle-regret scoring через той самий LP контур. Поточний контрольний baseline сильніший за compact neural candidates на цьому slice, тому наступний research крок має бути calibration/robustness, а не передчасний live DFL.
