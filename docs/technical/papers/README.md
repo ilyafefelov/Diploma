@@ -45,3 +45,18 @@ Recommended additional bibliography entries to keep in the thesis source map:
 - Olivares et al. (2023), "Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx", DOI `10.1016/j.ijforecast.2022.03.001`.
 - Lim et al. (2021), "Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting", DOI `10.1016/j.ijforecast.2021.03.012`.
 - Yi et al. (2025), "A Decision-Focused Predict-then-Bid Framework for Strategic Energy Storage", DOI `10.48550/arXiv.2505.01551`, open preprint and not yet peer-reviewed.
+
+## Week 4 Source Refresh
+
+Week 4 refreshes the source map through Hugging Face paper metadata without adding a crawler or new model dependency. The detailed intake lives in [../../thesis/sources/week4-research-ingestion.md](../../thesis/sources/week4-research-ingestion.md).
+
+Add these sources to the thesis narrative as literature context, not implemented features:
+
+- PriceFM, arXiv `2508.04875`: electricity-price foundation model for European probabilistic forecasting with cross-region context.
+- THieF, arXiv `2508.11372`: temporal hierarchy forecasting for day-ahead prices across hourly/block/baseload levels.
+- TSFM leakage evaluation, arXiv `2510.13654`: guardrail for no-leakage rolling-origin evaluation.
+- TFMAdapter, arXiv `2509.13906`: watch-list source for future covariate adaptation.
+- Reverso, arXiv `2602.17634`: watch-list source for efficient zero-shot time-series foundation models.
+- Distributional RL energy arbitrage, arXiv `2401.00015`: watch-list source for later risk-sensitive and multi-venue strategy work.
+
+The Week 4 modeling follow-up should run existing regret-calibration assets using [../../../configs/real_data_calibration_week4.yaml](../../../configs/real_data_calibration_week4.yaml). Outputs are calibration/selector evidence only, not full DFL or market execution.

@@ -32,6 +32,23 @@
 
 ---
 
+## Week 4 source refresh
+
+Week 4 adds a metadata-first intake before any new model dependency. The canonical intake artifact is [week4-research-ingestion.md](./week4-research-ingestion.md).
+
+| Status | Source | Role in thesis |
+|---|---|---|
+| include | [PriceFM](https://huggingface.co/papers/2508.04875), arXiv `2508.04875` | Electricity-price foundation model and European cross-region benchmark context; future forecast-layer reference. |
+| include/watch | [THieF](https://huggingface.co/papers/2508.11372), arXiv `2508.11372` | Temporal hierarchy forecasting for day-ahead prices; future calibration/market-product structure reference. |
+| include | [TSFM leakage evaluation](https://huggingface.co/papers/2510.13654), arXiv `2510.13654` | Methodological guardrail for rolling-origin and no-leakage evaluation. |
+| watch | [TFMAdapter](https://huggingface.co/papers/2509.13906), arXiv `2509.13906` | Future covariate-adaptation direction for weather and market-coupling signals. |
+| watch | [Reverso](https://huggingface.co/papers/2602.17634), arXiv `2602.17634` | Future lightweight zero-shot TSFM direction; not current MVP. |
+| watch | [Distributional RL energy arbitrage](https://huggingface.co/papers/2401.00015), arXiv `2401.00015` | Later risk-sensitive/multi-venue strategy context; not current DAM-only DFL evidence. |
+
+These sources are not downloaded PDFs in this slice. They are tracked as paper-page/arXiv metadata so Chapter 2 can distinguish implemented evidence from future research direction.
+
+---
+
 ## 🔎 Source Map: Baseline LP and Current Data Pipeline
 
 These sources support [technical/BASELINE_LP_AND_DATA_PIPELINE.md](../../technical/BASELINE_LP_AND_DATA_PIPELINE.md). Each entry below records why the source is used in this project rather than only listing the citation.
@@ -75,10 +92,10 @@ These sources support [technical/BASELINE_LP_AND_DATA_PIPELINE.md](../../technic
 - Yi et al. 2025 · Elmachtoub & Grigas 2022 · Agrawal et al. 2019 · Amos & Kolter 2017 · Mandi et al. 2024
 
 ### Прогнозування цін на електроенергію
-- Lago et al. 2021 (EPF benchmark) · Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Wang et al. 2024 (TimeXer) · Yu et al. 2026 (deep-learning EPF review) · Jin et al. 2025
+- Lago et al. 2021 (EPF benchmark) · Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Wang et al. 2024 (TimeXer) · Yu et al. 2026 (deep-learning EPF review) · Jin et al. 2025 · PriceFM 2025 · THieF 2025
 
 ### Стратегія батарейного накопичувача / Арбітраж
-- Park et al. 2017 · Grimaldi et al. 2024 · Hesse et al. 2019 · Chen et al. 2021 (Decision Transformer)
+- Park et al. 2017 · Grimaldi et al. 2024 · Hesse et al. 2019 · Chen et al. 2021 (Decision Transformer) · Madahi et al. 2023 (risk-sensitive distributional RL, watch)
 
 ### Фізичне моделювання та деградація батарей
 - Maheshwari et al. 2020 · Hesse et al. 2019 · Kumtepeli et al. 2024 · NREL Storage Futures · NREL ATB · `batteries-11-00392-v2` · `Exploring Lithium-Ion Battery Degradation.pdf`
