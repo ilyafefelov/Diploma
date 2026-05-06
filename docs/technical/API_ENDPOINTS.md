@@ -550,13 +550,15 @@ Response shape:
 
 - `backend_status`: optional package availability for NeuralForecast, PyTorch Forecasting, and Lightning.
 - `selected_forecast_model`: lowest-regret forecast row available in the read model.
+- `forecast_window_start`, `forecast_window_end`: exact UTC timestamps covered by the returned forecast series.
 - `forecast_series`: NBEATSx/TFT paths with point forecasts and TFT-style p10/p50/p90 fields when available.
 - `claim_boundary`: text boundary that the series is evidence, not a bid.
 
 Operational notes:
 
 - This endpoint supports the operator forecast graph and the defense future-stack section.
-- Current compact/calibrated NBEATSx/TFT rows may be displayed, but full SOTA claims require the optional official adapters and a materialized benchmark run.
+- Current compact/calibrated NBEATSx/TFT rows may be displayed, but full SOTA claims require the optional official adapters and a materialized rolling-origin benchmark run.
+- Official rows are prioritized in the operator graph when present. The dashboard should display the forecast window in Europe/Kyiv local time for operator readability while preserving UTC timestamps in the API payload.
 - If no forecast rows exist for the tenant, the endpoint returns an empty series rather than synthetic data.
 
 ### `GET /dashboard/decision-policy-preview`

@@ -967,6 +967,8 @@ def test_future_stack_preview_prefers_persisted_forecast_store_rows(
 	assert response.status_code == 200
 	response_payload = response.json()
 	assert response_payload["selected_forecast_model"] == "nbeatsx_official_v0"
+	assert response_payload["forecast_window_start"] == "2026-05-04T18:00:00Z"
+	assert response_payload["forecast_window_end"] == "2026-05-04T19:00:00Z"
 	assert {series["model_name"] for series in response_payload["forecast_series"]} == {
 		"nbeatsx_official_v0",
 		"tft_official_v0",

@@ -461,6 +461,8 @@ export interface FutureForecastSeriesResponse {
 export interface FutureStackPreviewResponse {
   tenant_id: string
   generated_at: string | null
+  forecast_window_start: string | null
+  forecast_window_end: string | null
   backend_status: Record<string, string>
   selected_forecast_model: string | null
   claim_boundary: string

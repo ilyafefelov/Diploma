@@ -12,6 +12,10 @@ import type {
   FutureStackPreviewResponse,
   OperatorRecommendationResponse
 } from '~/types/control-plane'
+import {
+  formatForecastWindowLabel,
+  sortFutureForecastSeries
+} from '~/utils/operatorFutureStack'
 
 use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
@@ -27,7 +31,9 @@ const forecastSeries = computed(() => {
     ? props.futureStack.forecast_series
     : props.operatorRecommendation?.forecast_model_series ?? []
 
-  return apiSeries.filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
+  return sortFutureForecastSeries(
+    apiSeries.filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
+  )
 })
 
 const forecastLabels = computed(() => {
@@ -208,6 +214,10 @@ const statusCards = computed(() => [
 ])
 
 const backendStatusItems = computed(() => Object.entries(props.futureStack?.backend_status ?? {}))
+const forecastWindowLabel = computed(() => formatForecastWindowLabel(
+  props.futureStack?.forecast_window_start,
+  props.futureStack?.forecast_window_end
+))
 
 const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {
   day: '2-digit',
@@ -255,7 +265,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
             Forecast stack
           </p>
           <h3>NBEATSx/TFT forecast paths</h3>
-          <p>Shows model price paths from official rows when present; compact/calibrated rows remain visible fallback evidence.</p>
+          <p>Prediction window: <strong>{{ forecastWindowLabel }}</strong>. Shows official model rows first; compact/calibrated rows remain fallback evidence.</p>
         </div>
         <ClientOnly>
           <VChart

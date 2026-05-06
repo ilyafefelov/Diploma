@@ -92,8 +92,9 @@ The `/operator` dashboard uses these live read models for the NBEATSx/TFT foreca
 Official-backend status:
 
 - `nbeatsx_official_price_forecast` is registered as a Silver asset and uses Nixtla NeuralForecast NBEATSx only when the optional `sota` dependencies are installed.
-- `tft_official_price_forecast` is registered as a Silver readiness asset for PyTorch Forecasting TFT; it reports backend availability and keeps the model unmaterialized until the heavier trainer is enabled.
-- In the current local environment the optional SOTA libraries are not installed, so these assets do not create official forecast rows yet. Install with `uv sync --extra dev --extra sota` before running the official backend experiment.
+- `tft_official_price_forecast` is registered as a Silver asset and uses PyTorch Forecasting TFT with p10/p50/p90 quantile output when `pytorch-forecasting` and Lightning are available.
+- The official adapters use deliberately tiny CPU-safe smoke settings first. They create dashboard/read-model rows, not thesis-grade SOTA claims, until they are included in a full rolling-origin LP/oracle benchmark.
+- Install or refresh optional dependencies with `uv sync --extra dev --extra sota` before running the official backend experiment.
 
 ## Local Stack
 

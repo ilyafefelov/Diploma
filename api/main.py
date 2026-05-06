@@ -606,6 +606,8 @@ class FutureForecastSeriesResponse(BaseModel):
 class FutureStackPreviewResponse(BaseModel):
 	tenant_id: str
 	generated_at: datetime | None
+	forecast_window_start: datetime | None
+	forecast_window_end: datetime | None
 	backend_status: dict[str, str]
 	selected_forecast_model: str | None
 	claim_boundary: str
@@ -1796,9 +1798,12 @@ def _to_future_stack_preview_response(
 		forecast_observation_frame=store_frame,
 		latest_anchor_frame=latest_anchor_frame,
 	)
+	forecast_window_start, forecast_window_end = _future_stack_forecast_window(series)
 	return FutureStackPreviewResponse(
 		tenant_id=tenant_id,
 		generated_at=_datetime_row_value(generated_at_value, field_name="generated_at"),
+		forecast_window_start=forecast_window_start,
+		forecast_window_end=forecast_window_end,
 		backend_status=_future_stack_backend_status(),
 		selected_forecast_model=best_model_name,
 		claim_boundary=(
@@ -1903,6 +1908,19 @@ def _merge_future_forecast_series(
 		seen_model_names.add(series.model_name)
 		merged.append(series)
 	return merged
+
+
+def _future_stack_forecast_window(
+	series: list[FutureForecastSeriesResponse],
+) -> tuple[datetime | None, datetime | None]:
+	timestamps = [
+		point.interval_start
+		for forecast_series in series
+		for point in forecast_series.points
+	]
+	if not timestamps:
+		return None, None
+	return min(timestamps), max(timestamps)
 
 
 def _future_stack_generated_at(
