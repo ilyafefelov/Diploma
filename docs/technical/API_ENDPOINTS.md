@@ -525,6 +525,7 @@ Response shape:
 
 - `available_strategies`: materialized strategies the operator may inspect; unavailable future policies stay disabled.
 - `selected_strategy_id`, `selected_policy_id`, `policy_mode`, `policy_readiness`: current selection and its safety/readiness boundary.
+- `policy_forecast_context_source`, `policy_forecast_context_row_count`, `policy_forecast_context_coverage_ratio`, `policy_forecast_context_warning`: DT forecast-state coverage copied into the operator read model; non-DT strategies return `not_applicable`.
 - `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when available, including per-series `out_of_dam_cap_rows` and `quality_boundary` so the operator can see whether an official forecast row is smoke-ready or needs calibration before value claims.
 - `value_gap_series`: per-hour counterfactual value-gap preview for the selected schedule.
 - `load_forecast`, `pv_forecast`, `projected_soc`: tenant schedule, PV, and SOC context.

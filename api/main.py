@@ -669,6 +669,10 @@ class OperatorRecommendationResponse(BaseModel):
 	selected_policy_id: str
 	policy_explanation: str
 	policy_readiness: str
+	policy_forecast_context_source: str
+	policy_forecast_context_row_count: int
+	policy_forecast_context_coverage_ratio: float
+	policy_forecast_context_warning: str | None = None
 	available_strategies: list[OperatorStrategyOptionResponse]
 	forecast_model_series: list[FutureForecastSeriesResponse]
 	value_gap_series: list[OperatorValueGapPointResponse]
@@ -2974,9 +2978,17 @@ def _operator_policy_context(
 	*,
 	selected_strategy_id: str,
 	policy_preview_frame: pl.DataFrame,
-) -> dict[str, str]:
+) -> dict[str, Any]:
 	if selected_strategy_id == "decision_transformer" and _decision_policy_preview_is_ready(policy_preview_frame):
 		first_row = policy_preview_frame.sort(["created_at", "interval_start"]).row(0, named=True)
+		forecast_context_summary = _policy_forecast_context_summary(
+			[
+				row
+				for row in policy_preview_frame.sort(["interval_start", "episode_id", "step_index"]).iter_rows(
+					named=True
+				)
+			]
+		)
 		return {
 			"policy_mode": "decision_transformer_preview",
 			"selected_policy_id": str(first_row["policy_run_id"]),
@@ -2985,6 +2997,10 @@ def _operator_policy_context(
 				"deterministic battery SOC/power constraints and remain market-execution disabled."
 			),
 			"policy_readiness": str(first_row["readiness_status"]),
+			"forecast_context_source": forecast_context_summary["source"],
+			"forecast_context_row_count": forecast_context_summary["row_count"],
+			"forecast_context_coverage_ratio": forecast_context_summary["coverage_ratio"],
+			"forecast_context_warning": forecast_context_summary["warning"],
 		}
 	if selected_strategy_id in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
 		return {
@@ -2995,6 +3011,7 @@ def _operator_policy_context(
 				"Level 1 LP and battery projection. This is still operator preview, not market execution."
 			),
 			"policy_readiness": "forecast_to_lp_ready",
+			**_operator_policy_context_not_applicable(),
 		}
 	return {
 		"policy_mode": "baseline_lp_preview",
@@ -3004,6 +3021,16 @@ def _operator_policy_context(
 			"NBEATSx/TFT and DT surfaces are shown as forecast/policy evidence when materialized."
 		),
 		"policy_readiness": "lp_control_ready",
+		**_operator_policy_context_not_applicable(),
+	}
+
+
+def _operator_policy_context_not_applicable() -> dict[str, Any]:
+	return {
+		"forecast_context_source": "not_applicable",
+		"forecast_context_row_count": 0,
+		"forecast_context_coverage_ratio": 0.0,
+		"forecast_context_warning": None,
 	}
 
 
@@ -3190,6 +3217,10 @@ def _build_operator_recommendation_response(
 		selected_policy_id=policy_context["selected_policy_id"],
 		policy_explanation=policy_context["policy_explanation"],
 		policy_readiness=policy_context["policy_readiness"],
+		policy_forecast_context_source=str(policy_context["forecast_context_source"]),
+		policy_forecast_context_row_count=int(policy_context["forecast_context_row_count"]),
+		policy_forecast_context_coverage_ratio=float(policy_context["forecast_context_coverage_ratio"]),
+		policy_forecast_context_warning=policy_context["forecast_context_warning"],
 		available_strategies=available_strategies,
 		forecast_model_series=_operator_forecast_model_series(
 			tenant_id=tenant_id,

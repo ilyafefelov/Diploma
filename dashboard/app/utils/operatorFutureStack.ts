@@ -2,6 +2,7 @@ import type {
   DecisionPolicyPreviewPointResponse,
   DecisionPolicyPreviewResponse,
   FutureForecastSeriesResponse,
+  OperatorRecommendationResponse,
   RuntimeAccelerationResponse,
   OperatorStrategyOptionResponse
 } from '~/types/control-plane'
@@ -121,6 +122,20 @@ export const formatPolicyForecastContextLabel = (
 
   const percentage = Math.round(decisionPolicy.forecast_context_coverage_ratio * 100)
   return `${percentage}% forecast-conditioned (${decisionPolicy.forecast_context_row_count}/${decisionPolicy.row_count} rows)`
+}
+
+export const formatOperatorPolicyForecastContextLabel = (
+  operatorRecommendation: Pick<
+    OperatorRecommendationResponse,
+    'policy_forecast_context_coverage_ratio' | 'policy_forecast_context_row_count'
+  > | null | undefined
+): string => {
+  if (!operatorRecommendation) {
+    return 'forecast context pending'
+  }
+
+  const percentage = Math.round(operatorRecommendation.policy_forecast_context_coverage_ratio * 100)
+  return `${percentage}% forecast-conditioned (${operatorRecommendation.policy_forecast_context_row_count} rows)`
 }
 
 export const formatRuntimeAccelerationLabel = (

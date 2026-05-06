@@ -18,6 +18,7 @@ import {
   buildStrategySelectItems,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
+  formatOperatorPolicyForecastContextLabel,
   formatPolicyForecastContextLabel,
   formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
@@ -138,6 +139,9 @@ const forecastOption = computed(() => ({
 const policyRows = computed(() => props.decisionPolicy?.rows ?? [])
 const valueGapRows = computed(() => props.operatorRecommendation?.value_gap_series ?? [])
 const policyForecastContextRows = computed(() => buildPolicyForecastContextPoints(policyRows.value))
+const policyForecastContextLabel = computed(() => props.decisionPolicy
+  ? formatPolicyForecastContextLabel(props.decisionPolicy)
+  : formatOperatorPolicyForecastContextLabel(props.operatorRecommendation))
 const policyProjectionSummary = computed(() => {
   if (policyRows.value.length === 0) {
     return []
@@ -255,8 +259,8 @@ const statusCards = computed(() => [
     label: 'DT preview',
     value: props.decisionPolicy?.policy_readiness || props.operatorRecommendation?.policy_readiness || 'not materialized',
     meta: props.decisionPolicy
-      ? `${props.decisionPolicy.constraint_violation_count} safety violations / ${formatPolicyForecastContextLabel(props.decisionPolicy)}`
-      : 'policy endpoint optional'
+      ? `${props.decisionPolicy.constraint_violation_count} safety violations / ${policyForecastContextLabel.value}`
+      : policyForecastContextLabel.value
   },
   {
     label: 'Policy mode',
@@ -431,7 +435,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
         <p>
           DT preview consumes forecast state, SOC, economic context, and return target. The raw action is never trusted;
           it is projected and checked before the operator sees it.
-          {{ decisionPolicy ? `Forecast context: ${formatPolicyForecastContextLabel(decisionPolicy)}.` : '' }}
+          Forecast context: {{ policyForecastContextLabel }}.
           {{ decisionPolicy?.policy_state_features?.length ? `State features: ${decisionPolicy.policy_state_features.join(', ')}.` : '' }}
           {{ decisionPolicy?.policy_value_interpretation || '' }}
         </p>

@@ -518,6 +518,10 @@ export interface OperatorRecommendationResponse {
   selected_policy_id: string
   policy_explanation: string
   policy_readiness: string
+  policy_forecast_context_source: string
+  policy_forecast_context_row_count: number
+  policy_forecast_context_coverage_ratio: number
+  policy_forecast_context_warning: string | null
   available_strategies: OperatorStrategyOptionResponse[]
   forecast_model_series: FutureForecastSeriesResponse[]
   value_gap_series: OperatorValueGapPointResponse[]

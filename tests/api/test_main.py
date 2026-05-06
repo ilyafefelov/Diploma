@@ -626,6 +626,10 @@ def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns
 	assert response_payload["policy_mode"] == "baseline_lp_preview"
 	assert response_payload["policy_readiness"] == "lp_control_ready"
 	assert response_payload["selected_policy_id"] == "strict_similar_day"
+	assert response_payload["policy_forecast_context_source"] == "not_applicable"
+	assert response_payload["policy_forecast_context_row_count"] == 0
+	assert response_payload["policy_forecast_context_coverage_ratio"] == pytest.approx(0.0)
+	assert response_payload["policy_forecast_context_warning"] is None
 	assert len(response_payload["value_gap_series"]) == len(response_payload["recommendation_schedule"])
 	assert {
 		series["model_name"]
@@ -634,6 +638,61 @@ def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns
 	assert response_payload["load_forecast"][0]["reason_code"] in {"first_shift", "second_shift", "off_hours"}
 	assert response_payload["available_strategies"][0]["strategy_id"] == "strict_similar_day"
 	assert any(strategy["enabled"] is False for strategy in response_payload["available_strategies"] if strategy["strategy_id"] == "decision_transformer")
+
+
+def test_operator_recommendation_reports_dt_forecast_context_when_selected(
+	client: TestClient,
+	fake_simulated_trade_store: InMemorySimulatedTradeStore,
+) -> None:
+	fake_simulated_trade_store.upsert_decision_transformer_policy_preview_frame(
+		pl.DataFrame(
+			{
+				"policy_run_id": ["dt-run-001", "dt-run-001"],
+				"created_at": [
+					datetime(2026, 5, 5, 12, tzinfo=UTC),
+					datetime(2026, 5, 5, 12, tzinfo=UTC),
+				],
+				"tenant_id": [
+					"client_003_dnipro_factory",
+					"client_003_dnipro_factory",
+				],
+				"episode_id": ["episode-001", "episode-001"],
+				"step_index": [0, 1],
+				"interval_start": [
+					datetime(2026, 5, 5, 0, tzinfo=UTC),
+					datetime(2026, 5, 5, 1, tzinfo=UTC),
+				],
+				"state_nbeatsx_forecast_uah_mwh": [4100.0, 1700.0],
+				"state_tft_forecast_uah_mwh": [4350.0, 1550.0],
+				"value_gap_uah": [134.0, 714.0],
+				"constraint_violation": [False, False],
+				"readiness_status": [
+					"ready_for_operator_preview",
+					"ready_for_operator_preview",
+				],
+			}
+		)
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "decision_transformer"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["selected_strategy_id"] == "decision_transformer"
+	assert response_payload["policy_mode"] == "decision_transformer_preview"
+	assert response_payload["selected_policy_id"] == "dt-run-001"
+	assert response_payload["policy_forecast_context_source"] == "nbeatsx_tft_forecast_context"
+	assert response_payload["policy_forecast_context_row_count"] == 2
+	assert response_payload["policy_forecast_context_coverage_ratio"] == pytest.approx(1.0)
+	assert response_payload["policy_forecast_context_warning"] is None
+	assert any(
+		strategy["enabled"] is True
+		for strategy in response_payload["available_strategies"]
+		if strategy["strategy_id"] == "decision_transformer"
+	)
 
 
 def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(

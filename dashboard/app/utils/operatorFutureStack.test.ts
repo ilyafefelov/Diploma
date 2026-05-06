@@ -6,6 +6,7 @@ import {
   buildStrategySelectItems,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
+  formatOperatorPolicyForecastContextLabel,
   formatPolicyForecastContextLabel,
   formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
@@ -138,6 +139,10 @@ describe('operator future stack display helpers', () => {
     })).toBe('88% forecast-conditioned (21/24 rows)')
 
     expect(formatPolicyForecastContextLabel(null)).toBe('forecast context pending')
+    expect(formatOperatorPolicyForecastContextLabel({
+      policy_forecast_context_coverage_ratio: 0.5,
+      policy_forecast_context_row_count: 12
+    })).toBe('50% forecast-conditioned (12 rows)')
   })
 
   it('summarizes forecast quality boundaries without hiding cap violations', () => {
