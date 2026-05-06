@@ -587,7 +587,7 @@ Response shape:
 - `live_policy_claim`: always false for this slice.
 - `market_execution_enabled`: false until the policy passes full offline evaluation and gatekeeper promotion.
 - `constraint_violation_count`, `mean_value_gap_uah`, `total_value_vs_hold_uah`: safety and value diagnostics.
-- `rows`: interval-level DT raw action, projected feasible action, SOC before/after, expected policy value, oracle value, value gap, gatekeeper status, and inference latency.
+- `rows`: interval-level DT raw action, projected feasible action, `projected_action_label`, `projection_status`, `projection_adjustment_mw`, SOC before/after, expected policy value, oracle value, value gap, `value_gap_ratio`, gatekeeper status, and inference latency.
 
 Operational notes:
 

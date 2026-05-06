@@ -134,6 +134,27 @@ const forecastOption = computed(() => ({
 
 const policyRows = computed(() => props.decisionPolicy?.rows ?? [])
 const valueGapRows = computed(() => props.operatorRecommendation?.value_gap_series ?? [])
+const policyProjectionSummary = computed(() => {
+  if (policyRows.value.length === 0) {
+    return []
+  }
+
+  const projectedRows = policyRows.value.filter(row => row.projection_status !== 'accepted_without_projection').length
+  const meanValueGapRatio = policyRows.value.reduce((total, row) => total + (row.value_gap_ratio ?? 0), 0) / policyRows.value.length
+
+  return [
+    {
+      label: 'Safety projection',
+      value: `${projectedRows}/${policyRows.value.length}`,
+      meta: 'DT rows changed by feasibility layer'
+    },
+    {
+      label: 'Mean value gap',
+      value: `${Math.round(meanValueGapRatio * 100)}%`,
+      meta: 'oracle-normalized counterfactual gap'
+    }
+  ]
+})
 const policyLabels = computed(() => {
   if (policyRows.value.length > 0) {
     return policyRows.value.map(row => formatHour(row.interval_start))
@@ -335,6 +356,17 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           </p>
           <h3>DT action and value gap</h3>
           <p>Value gap is counterfactual lost value; action bars are projected through battery feasibility before display.</p>
+          <div
+            v-if="policyProjectionSummary.length"
+            class="forecast-quality-strip"
+          >
+            <span
+              v-for="item in policyProjectionSummary"
+              :key="item.label"
+            >
+              {{ item.label }}: {{ item.value }} / {{ item.meta }}
+            </span>
+          </div>
         </div>
         <ClientOnly>
           <VChart

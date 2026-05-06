@@ -505,11 +505,15 @@ class DecisionPolicyPreviewPointResponse(BaseModel):
 	projected_charge_mw: float
 	projected_discharge_mw: float
 	projected_net_power_mw: float
+	projected_action_label: str
+	projection_status: str
+	projection_adjustment_mw: float
 	expected_policy_value_uah: float
 	hold_value_uah: float
 	value_vs_hold_uah: float
 	oracle_value_uah: float
 	value_gap_uah: float
+	value_gap_ratio: float | None
 	constraint_violation: bool
 	gatekeeper_status: str
 	inference_latency_ms: float
@@ -2365,11 +2369,15 @@ def _to_decision_policy_preview_response(
 				projected_charge_mw=float(row["projected_charge_mw"]),
 				projected_discharge_mw=float(row["projected_discharge_mw"]),
 				projected_net_power_mw=float(row["projected_net_power_mw"]),
+				projected_action_label=_projected_action_label(float(row["projected_net_power_mw"])),
+				projection_status=_projection_status(row),
+				projection_adjustment_mw=_projection_adjustment_mw(row),
 				expected_policy_value_uah=float(row["expected_policy_value_uah"]),
 				hold_value_uah=float(row["hold_value_uah"]),
 				value_vs_hold_uah=float(row["value_vs_hold_uah"]),
 				oracle_value_uah=float(row["oracle_value_uah"]),
 				value_gap_uah=float(row["value_gap_uah"]),
+				value_gap_ratio=_value_gap_ratio(row),
 				constraint_violation=bool(row["constraint_violation"]),
 				gatekeeper_status=str(row["gatekeeper_status"]),
 				inference_latency_ms=float(row["inference_latency_ms"]),
@@ -2381,6 +2389,35 @@ def _to_decision_policy_preview_response(
 			for row in rows
 		],
 	)
+
+
+def _projected_action_label(projected_net_power_mw: float) -> str:
+	if projected_net_power_mw > 1e-9:
+		return "discharge"
+	if projected_net_power_mw < -1e-9:
+		return "charge"
+	return "hold"
+
+
+def _projection_status(row: dict[str, Any]) -> str:
+	if bool(row["constraint_violation"]):
+		return "blocked_by_gatekeeper"
+	if _projection_adjustment_mw(row) > 1e-9:
+		return "projected_by_safety_layer"
+	return "accepted_without_projection"
+
+
+def _projection_adjustment_mw(row: dict[str, Any]) -> float:
+	return abs(float(row["raw_charge_mw"]) - float(row["projected_charge_mw"])) + abs(
+		float(row["raw_discharge_mw"]) - float(row["projected_discharge_mw"])
+	)
+
+
+def _value_gap_ratio(row: dict[str, Any]) -> float | None:
+	oracle_value = float(row["oracle_value_uah"])
+	if abs(oracle_value) <= 1e-9:
+		return None
+	return max(0.0, float(row["value_gap_uah"]) / oracle_value)
 
 
 def _to_simulated_live_trading_response(

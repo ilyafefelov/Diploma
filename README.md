@@ -84,7 +84,7 @@ NBEATSx/TFT forecast evidence
 New FastAPI read models:
 
 - `GET /dashboard/future-stack-preview?tenant_id=...` returns NBEATSx/TFT forecast series, selected forecast model, backend availability for optional SOTA packages, runtime acceleration status, DAM-cap quality flags, and claim boundary text.
-- `GET /dashboard/decision-policy-preview?tenant_id=...` returns offline DT policy-preview rows with projected feasible actions, value gap, gatekeeper status, and `market_execution_enabled=false`.
+- `GET /dashboard/decision-policy-preview?tenant_id=...` returns offline DT policy-preview rows with projected feasible actions, action labels, safety-projection status, value gap, gatekeeper status, and `market_execution_enabled=false`.
 - `GET /dashboard/operator-recommendation?tenant_id=...&strategy_id=...` now includes available materialized strategies, selected policy id, policy readiness, forecast model series, and value-gap series for the operator dashboard.
 
 The `/operator` dashboard uses these live read models for the NBEATSx/TFT forecast graph and DT value-gap/action graph. When official NBEATSx/TFT forecast rows are materialized, the operator can manually route that selected forecast path through the Level 1 LP preview, so the schedule becomes forecast-to-LP instead of silent strict-similar-day fallback. DT remains a preview-only policy surface until a full offline evaluation run proves safety and regret performance across all tenants.

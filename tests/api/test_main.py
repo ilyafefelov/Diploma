@@ -1537,6 +1537,10 @@ def test_decision_policy_preview_endpoint_returns_ready_rows(
 	)
 	assert response_payload["operator_boundary"] == "preview_only_requires_gatekeeper_and_operator_review"
 	assert response_payload["rows"][0]["projected_net_power_mw"] == pytest.approx(0.1)
+	assert response_payload["rows"][0]["projected_action_label"] == "discharge"
+	assert response_payload["rows"][0]["projection_status"] == "accepted_without_projection"
+	assert response_payload["rows"][0]["projection_adjustment_mw"] == pytest.approx(0.0)
+	assert response_payload["rows"][0]["value_gap_ratio"] == pytest.approx(134.0 / 550.0)
 
 
 def test_simulated_live_trading_endpoint_returns_rows(

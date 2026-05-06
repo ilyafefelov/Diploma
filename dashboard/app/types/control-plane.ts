@@ -354,11 +354,15 @@ export interface DecisionPolicyPreviewPointResponse {
   projected_charge_mw: number
   projected_discharge_mw: number
   projected_net_power_mw: number
+  projected_action_label: string
+  projection_status: string
+  projection_adjustment_mw: number
   expected_policy_value_uah: number
   hold_value_uah: number
   value_vs_hold_uah: number
   oracle_value_uah: number
   value_gap_uah: number
+  value_gap_ratio: number | null
   constraint_violation: boolean
   gatekeeper_status: string
   inference_latency_ms: number
