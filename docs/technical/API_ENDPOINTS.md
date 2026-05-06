@@ -569,7 +569,7 @@ Returns projected offline Decision Transformer policy-preview rows.
 
 Response adds response-level explanation fields:
 
-- `policy_state_features`: human-readable inputs represented in the preview state.
+- `policy_state_features`: human-readable inputs represented in the preview state. Current DT preview includes SOC, SOH, market price, time-of-day, degradation penalty, return target, and previous action context.
 - `policy_value_interpretation`: how the displayed value gap is calculated.
 - `operator_boundary`: explicit reminder that this is preview-only and still requires deterministic gatekeeper plus operator review.
 

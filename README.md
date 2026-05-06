@@ -89,6 +89,8 @@ New FastAPI read models:
 
 The `/operator` dashboard uses these live read models for the NBEATSx/TFT forecast graph and DT value-gap/action graph. When official NBEATSx/TFT forecast rows are materialized, the operator can manually route that selected forecast path through the Level 1 LP preview, so the schedule becomes forecast-to-LP instead of silent strict-similar-day fallback. DT remains a preview-only policy surface until a full offline evaluation run proves safety and regret performance across all tenants.
 
+The DT preview state now includes SOC, SOH, price, time-of-day, degradation penalty, return target, and previous action context before deterministic battery projection. This keeps the operator explanation aligned with the target `forecast state + battery state + return target -> policy action trajectory` flow without claiming live market execution.
+
 Official-backend status:
 
 - `nbeatsx_official_price_forecast` is registered as a Silver asset and uses Nixtla NeuralForecast NBEATSx only when the optional `sota` dependencies are installed.

@@ -1,10 +1,13 @@
 from datetime import UTC, datetime, timedelta
 
 import polars as pl
+import pytest
 
 from smart_arbitrage.decision_transformer.policy_training import (
+    DECISION_TRANSFORMER_STATE_FEATURE_NAMES,
     DecisionTransformerTrainingConfig,
     build_decision_transformer_policy_preview_frame,
+    _state_features,
 )
 
 
@@ -69,6 +72,30 @@ def test_policy_preview_projects_trained_dt_actions_into_feasible_steps() -> Non
     assert set(preview_frame.select("policy_mode").to_series().unique().to_list()) == {
         "decision_transformer_preview"
     }
+
+
+def test_dt_state_features_include_time_and_degradation_context() -> None:
+    row = {
+        "interval_start": datetime(2026, 5, 5, 6, tzinfo=UTC),
+        "state_soc_before": 0.5,
+        "state_soh": 0.97,
+        "state_market_price_uah_mwh": 4200.0,
+        "degradation_penalty_uah": 12.0,
+    }
+
+    features = _state_features(row)
+
+    assert DECISION_TRANSFORMER_STATE_FEATURE_NAMES == (
+        "state_soc_before",
+        "state_soh",
+        "state_market_price_scaled",
+        "hour_sin",
+        "hour_cos",
+        "degradation_penalty_scaled",
+    )
+    assert len(features) == len(DECISION_TRANSFORMER_STATE_FEATURE_NAMES)
+    assert features[3] == pytest.approx(1.0)
+    assert features[4] == pytest.approx(0.0, abs=1e-9)
 
 
 def test_policy_preview_uses_latest_rows_for_requested_tenant_only() -> None:

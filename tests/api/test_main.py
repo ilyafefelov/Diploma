@@ -1492,8 +1492,10 @@ def test_decision_policy_preview_endpoint_returns_ready_rows(
 		"SOC",
 		"SOH",
 		"market price",
+		"time of day",
+		"degradation penalty",
 		"return target",
-		"battery action history",
+		"previous battery action",
 	]
 	assert response_payload["policy_value_interpretation"] == (
 		"value_gap = oracle_value_uah - expected_policy_value_uah after deterministic projection"

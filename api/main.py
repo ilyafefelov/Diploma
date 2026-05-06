@@ -2281,7 +2281,15 @@ def _to_decision_policy_preview_response(
 		constraint_violation_count=constraint_violation_count,
 		mean_value_gap_uah=float(policy_preview_frame.select("value_gap_uah").mean().item()),
 		total_value_vs_hold_uah=float(policy_preview_frame.select("value_vs_hold_uah").sum().item()),
-		policy_state_features=["SOC", "SOH", "market price", "return target", "battery action history"],
+		policy_state_features=[
+			"SOC",
+			"SOH",
+			"market price",
+			"time of day",
+			"degradation penalty",
+			"return target",
+			"previous battery action",
+		],
 		policy_value_interpretation=(
 			"value_gap = oracle_value_uah - expected_policy_value_uah after deterministic projection"
 		),

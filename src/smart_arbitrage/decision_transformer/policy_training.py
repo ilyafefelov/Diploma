@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import math
 from typing import Any, Final
 
 import polars as pl
@@ -21,6 +22,14 @@ DECISION_TRANSFORMER_POLICY_SCOPE: Final[str] = "offline_dt_policy_preview_not_m
 DECISION_TRANSFORMER_POLICY_MODE: Final[str] = "decision_transformer_preview"
 READY_FOR_OPERATOR_PREVIEW: Final[str] = "ready_for_operator_preview"
 NOT_READY_FOR_OPERATOR_PREVIEW: Final[str] = "not_ready_for_operator_preview"
+DECISION_TRANSFORMER_STATE_FEATURE_NAMES: Final[tuple[str, ...]] = (
+    "state_soc_before",
+    "state_soh",
+    "state_market_price_scaled",
+    "hour_sin",
+    "hour_cos",
+    "degradation_penalty_scaled",
+)
 
 REQUIRED_POLICY_TRAINING_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -126,7 +135,7 @@ def _train_policy_model(
         return None
     torch.manual_seed(config.seed)
     model = DecisionTransformerPolicy(
-        state_dim=3,
+        state_dim=len(DECISION_TRANSFORMER_STATE_FEATURE_NAMES),
         action_dim=2,
         hidden_dim=config.hidden_dim,
         context_length=config.context_length,
@@ -285,10 +294,15 @@ def _raw_policy_actions(
 
 
 def _state_features(row: dict[str, Any]) -> list[float]:
+    interval_start = _row_datetime(row, "interval_start")
+    hour_angle = (interval_start.hour + interval_start.minute / 60.0) / 24.0 * math.tau
     return [
         _row_float(row, "state_soc_before"),
         _row_float(row, "state_soh"),
         _row_float(row, "state_market_price_uah_mwh") / 10_000.0,
+        math.sin(hour_angle),
+        math.cos(hour_angle),
+        _row_float(row, "degradation_penalty_uah") / 1_000.0,
     ]
 
 
@@ -323,3 +337,14 @@ def _policy_run_id(*, created_at: datetime, tenant_id: str | None) -> str:
 
 def _row_float(row: dict[str, Any], column_name: str) -> float:
     return float(row[column_name])
+
+
+def _row_datetime(row: dict[str, Any], column_name: str) -> datetime:
+    value = row[column_name]
+    if isinstance(value, datetime):
+        return value if value.tzinfo is not None else value.replace(tzinfo=UTC)
+    if isinstance(value, str):
+        normalized = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized)
+        return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=UTC)
+    raise TypeError(f"{column_name} must be a datetime or ISO timestamp string.")
