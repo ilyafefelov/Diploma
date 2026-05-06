@@ -33,9 +33,10 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 
 Що сказати:
 
-- Bronze layer бере observed OREE DAM і historical Open-Meteo.
-- Silver layer створює tenant-expanded benchmark feature frame.
-- Gold layer робить rolling-origin evaluation: кожен anchor бачить лише минуле, forecast candidates проходять через один LP contour, результат скориться проти oracle LP.
+- Bronze groups `bronze_market_data` і `bronze_weather` беруть observed OREE DAM і historical Open-Meteo.
+- Silver group `silver_real_data_benchmark` створює tenant-expanded benchmark feature frame.
+- Gold group `gold_real_data_benchmark` робить rolling-origin evaluation: кожен anchor бачить лише минуле, forecast candidates проходять через один LP contour, результат скориться проти oracle LP.
+- Для preview calibration lineage читати далі як `gold_calibration` і `gold_selector_diagnostics`, але це не headline поточного Week 3 demo.
 
 ## Крок 3. Показати API evidence
 
@@ -94,15 +95,15 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 
 Показувати тільки після основного Week 3 story:
 
-- `data/research_runs/week4_calibration_dnipro_90`
+- `data/research_runs/week3_calibration_preview_dnipro_90`
 - [docs/thesis/weekly-reports/week4/report.md](../week4/report.md)
 
 Що сказати:
 
-- 90-anchor calibration path уже підготовлено як draft evidence для наступного календарного етапу.
+- 90-anchor calibration path уже повторно запущено після Dagster lineage taxonomy update як preview evidence для наступного календарного етапу.
 - Це не headline поточного Week 3 demo і не replacement для 30-anchor acceptance result.
 - Його правильна роль: second-demo preview для Week 4, де raw forecast candidates, calibrated candidates і selector diagnostics будуть показані окремо.
-- Навіть якщо calibration покращує neural candidates, це лишається calibration/selector evidence, не full DFL і не market execution.
+- На Dnipro 90-anchor preview calibration покращує neural candidates проти raw TFT/NBEATSx, але `strict_similar_day` лишається найсильнішим individual control. Це calibration/selector evidence, не full DFL і не market execution.
 
 ## Короткий фінальний меседж
 

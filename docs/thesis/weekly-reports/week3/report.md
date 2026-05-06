@@ -10,6 +10,7 @@
 
 - Додано tracked Dagster run config: [configs/real_data_benchmark_week3.yaml](../../../../configs/real_data_benchmark_week3.yaml).
 - Оновлено research protocol у [docs/technical/RESEARCH_INTEGRATION_PLAN.md](../../../technical/RESEARCH_INTEGRATION_PLAN.md).
+- Додано зрозумілішу Dagster lineage taxonomy: `bronze_market_data`, `silver_real_data_benchmark`, `gold_real_data_benchmark`, `gold_calibration`, `gold_selector_diagnostics`.
 - Матеріалізовано Compose-backed Dagster chain:
   `observed_market_price_history_bronze -> tenant_historical_weather_bronze -> real_data_benchmark_silver_feature_frame -> real_data_rolling_origin_benchmark_frame`.
 - Виправлено крихкість observed OREE ingestion: Docker-side endpoint потребував паузи між monthly data_view requests, інакше частина місяців повертала порожній результат.
@@ -53,6 +54,40 @@ Per-model summary для Dnipro batch:
 Після стабілізації 30-anchor contour було підготовлено draft calibration path для 90 anchors: `data/research_runs/week4_calibration_dnipro_90` і відповідні Week 4 draft artifacts. Це корисний матеріал для другого демо та пояснювальної записки, але він не замінює Week 3 acceptance result. У цьому звіті Week 3 headline лишається вузьким і перевіреним: 30 rolling-origin anchors для `client_003_dnipro_factory`, observed-only provenance, три raw forecast candidates і thesis-grade API read model.
 
 90-anchor calibration треба описувати тільки як підготовлений наступний крок: calibration/selector evidence, не full DFL, не market execution і не доказ того, що neural strategy вже перемагає baseline.
+
+### 5.1. Week 3 calibration preview rerun
+
+Після lineage taxonomy update було повторно запущено Dnipro 90-anchor calibration path як preview для наступного slice. Це не змінює Week 3 headline, але дає готовий матеріал для discussion про calibration/selector evidence.
+
+- Dagster run id: `ffc8d05b-7121-4c11-a761-de37535cd161`.
+- Export slug: `data/research_runs/week3_calibration_preview_dnipro_90`.
+- MLflow runs: raw rolling benchmark `23e6753901f4406785de4e8e8f928931`, regret-weighted benchmark `10404087f8b74e5f9285f5bfc36e1bea`, horizon-aware benchmark `d50600af8ab240dda88ddc71c0980261`, calibrated ensemble `78e06490adde4ae2a151c2f211313ea2`, risk gate `2cc4a3513849419aa4256d2e87ef3ba5`.
+
+API validation for `client_003_dnipro_factory`:
+
+| Read model | Key result |
+|---|---|
+| `/dashboard/real-data-benchmark` | `data_quality_tier=thesis_grade`, `anchor_count=90`, `model_count=3`, `best_model_name=strict_similar_day` |
+| `/dashboard/calibrated-ensemble-benchmark` | 90 selector rows, `model_count=1`, mean regret `1479.65` UAH |
+| `/dashboard/risk-adjusted-value-gate` | 90 selector rows, diagnostics present, mean regret `1428.59` UAH |
+| `/dashboard/forecast-dispatch-sensitivity` | 450 diagnostic rows across `forecast_error`, `low_regret`, `lp_dispatch_sensitivity`, `spread_objective_mismatch` |
+
+Raw 90-anchor candidates:
+
+| Model | Rows | Mean regret UAH | Median regret UAH | Rank-1 wins |
+|---|---:|---:|---:|---:|
+| `strict_similar_day` | 90 | 1384.70 | 999.20 | 48 |
+| `nbeatsx_silver_v0` | 90 | 2070.28 | 1805.15 | 15 |
+| `tft_silver_v0` | 90 | 2361.96 | 1985.18 | 27 |
+
+Calibrated 90-anchor candidates:
+
+| Model | Rows | Mean regret UAH | Median regret UAH | Rank-1 wins |
+|---|---:|---:|---:|---:|
+| `tft_horizon_regret_weighted_calibrated_v0` | 90 | 1727.29 | 1196.85 | 20 |
+| `nbeatsx_horizon_regret_weighted_calibrated_v0` | 90 | 1804.38 | 1471.52 | 10 |
+
+Week 3 preview finding: horizon-aware calibration improves the neural candidate means versus raw TFT/NBEATSx, but strict similar-day remains the strongest individual control. The calibrated ensemble and risk-adjusted gate narrow the gap, but they remain selector diagnostics, not full DFL and not market execution.
 
 ## 6. Ризики та виклики
 

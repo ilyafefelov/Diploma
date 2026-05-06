@@ -181,3 +181,15 @@ Latest verified Week 4 run:
 - Selector read models: calibrated ensemble mean regret `1479.65` UAH, risk-adjusted gate mean regret `1428.59` UAH.
 - Export directory: `data/research_runs/week4_calibration_dnipro_90`.
 - The export command still aggregates latest persisted batches for all tenants in Postgres; the Week 4 acceptance target is the tenant-specific Dnipro 90-anchor API result.
+
+## Week 3 Calibration Preview After Lineage Taxonomy
+
+The lineage taxonomy slice reran the same Dnipro 90-anchor calibration path after rebuilding Dagster/API images so the new groups and tags were visible in Dagster UI. This is still prepared-ahead calibration/selector evidence, not a Week 3 headline and not full DFL.
+
+- Dagster run id: `ffc8d05b-7121-4c11-a761-de37535cd161`.
+- Export directory: `data/research_runs/week3_calibration_preview_dnipro_90`.
+- API validation for `client_003_dnipro_factory`: raw benchmark `data_quality_tier=thesis_grade`, `anchor_count=90`, `model_count=3`, `best_model_name=strict_similar_day`.
+- Selector read models: calibrated ensemble 90 rows, risk-adjusted gate 90 rows with diagnostics, forecast-dispatch sensitivity 450 rows across four diagnostic buckets.
+- Raw forecast candidate means: `strict_similar_day=1384.70` UAH regret, `nbeatsx_silver_v0=2070.28`, `tft_silver_v0=2361.96`.
+- Horizon-aware calibration improved neural candidates: `tft_horizon_regret_weighted_calibrated_v0=1727.29` UAH mean regret and `nbeatsx_horizon_regret_weighted_calibrated_v0=1804.38`, while strict similar-day remained the strongest individual control.
+- Selector means: calibrated ensemble `1479.65` UAH regret, risk-adjusted gate `1428.59`.
