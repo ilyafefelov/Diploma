@@ -9,7 +9,7 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Main control: `strict_similar_day`.
 - Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
-- New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
+- New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, and strategy readiness without claiming market execution.
 
 ## Pipeline And LP Baseline
@@ -77,6 +77,7 @@ The current future-stack implementation is deliberately split into evidence surf
 ```text
 NBEATSx/TFT forecast evidence
   -> operator forecast graph and uncertainty path
+  -> Silver DT forecast context
   -> DT policy preview / value-gap graph
   -> deterministic battery projection and gatekeeper boundary
 ```
@@ -91,7 +92,7 @@ The `/operator` dashboard uses these live read models for the NBEATSx/TFT foreca
 
 The operator forecast graph now surfaces each model's forecast quality boundary. Rows with out-of-cap DAM prices are tagged `needs_calibration_before_value_claim`; rows inside the DAM cap are still smoke/read-model evidence until they pass the rolling-origin LP/oracle benchmark.
 
-The DT preview state now includes SOC, SOH, market price, NBEATSx forecast, TFT forecast, forecast uncertainty/spread, time-of-day, degradation penalty, return target, and previous action context before deterministic battery projection. Existing rows without forecast fields fall back to the market-price context, so older preview runs remain readable. This keeps the operator explanation aligned with the target `forecast state + battery state + return target -> policy action trajectory` flow without claiming live market execution.
+The DT preview state now includes SOC, SOH, market price, NBEATSx forecast, TFT forecast, forecast uncertainty/spread, time-of-day, degradation penalty, return target, and previous action context before deterministic battery projection. The Dagster lineage is explicit: `nbeatsx_price_forecast` and `tft_price_forecast` feed `decision_transformer_forecast_context_silver`, then `decision_transformer_trajectory_frame`. Existing rows without forecast fields fall back to the market-price context, so older preview runs remain readable. This keeps the operator explanation aligned with the target `forecast state + battery state + return target -> policy action trajectory` flow without claiming live market execution.
 
 Official-backend status:
 
@@ -187,7 +188,7 @@ Latest read-model smoke:
 - `sota_forecast_training_frame` is a backend contract for full NeuralForecast NBEATSx and PyTorch-Forecasting TFT experiments. It is not itself a tuned SOTA model result.
 - `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are adapter/readiness assets. They must not be cited as SOTA results until they materialize forecast rows and pass the rolling-origin LP/oracle benchmark.
 - `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
-- `decision_transformer_trajectory_frame`, `decision_transformer_policy_preview_frame`, and `DecisionTransformerPolicy` provide offline return-conditioned policy scaffolding plus deterministic action projection. They are not a market-execution strategy until full offline evaluation is materialized and safety/regret checks pass across tenants.
+- `decision_transformer_forecast_context_silver`, `decision_transformer_trajectory_frame`, `decision_transformer_policy_preview_frame`, and `DecisionTransformerPolicy` provide forecast-conditioned offline return-conditioned policy scaffolding plus deterministic action projection. They are not a market-execution strategy until full offline evaluation is materialized and safety/regret checks pass across tenants.
 - `simulated_live_trading_frame` is paper-trading replay only. It never carries real settlement IDs and must not be described as market execution.
 
 GPU note: machine has GTX 1050 Ti, but current Python env has CPU-only PyTorch (`torch 2.11.0+cpu`). Current workload is mostly small rolling-origin training, tiny LP solves, Polars transforms, and Dagster/process overhead. GPU is not expected to help this MVP slice materially. CUDA PyTorch becomes useful only for heavier NeuralForecast/PyTorch Forecasting/TimeXer experiments.

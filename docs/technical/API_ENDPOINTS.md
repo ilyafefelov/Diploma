@@ -572,7 +572,7 @@ Returns projected offline Decision Transformer policy-preview rows.
 
 Response adds response-level explanation fields:
 
-- `policy_state_features`: human-readable inputs represented in the preview state. Current DT preview includes SOC, SOH, market price, NBEATSx forecast, TFT forecast, forecast uncertainty/spread, time-of-day, degradation penalty, return target, and previous action context. Older rows without forecast fields remain valid and use market-price fallback context.
+- `policy_state_features`: human-readable inputs represented in the preview state. Current DT preview includes SOC, SOH, market price, NBEATSx forecast, TFT forecast, forecast uncertainty/spread, time-of-day, degradation penalty, return target, and previous action context. The forecast fields are materialized through the Silver `decision_transformer_forecast_context_silver` bridge when NBEATSx/TFT forecast assets are available. Older rows without forecast fields remain valid and use market-price fallback context.
 - `policy_value_interpretation`: how the displayed value gap is calculated.
 - `operator_boundary`: explicit reminder that this is preview-only and still requires deterministic gatekeeper plus operator review.
 
@@ -588,11 +588,12 @@ Response shape:
 - `live_policy_claim`: always false for this slice.
 - `market_execution_enabled`: false until the policy passes full offline evaluation and gatekeeper promotion.
 - `constraint_violation_count`, `mean_value_gap_uah`, `total_value_vs_hold_uah`: safety and value diagnostics.
-- `rows`: interval-level DT raw action, projected feasible action, `projected_action_label`, `projection_status`, `projection_adjustment_mw`, SOC before/after, expected policy value, oracle value, value gap, `value_gap_ratio`, gatekeeper status, and inference latency.
+- `rows`: interval-level DT raw action, projected feasible action, `projected_action_label`, `projection_status`, `projection_adjustment_mw`, SOC before/after, `state_nbeatsx_forecast_uah_mwh`, `state_tft_forecast_uah_mwh`, `state_forecast_uncertainty_uah_mwh`, `state_forecast_spread_uah_mwh`, expected policy value, oracle value, value gap, `value_gap_ratio`, gatekeeper status, and inference latency.
 
 Operational notes:
 
 - The raw DT action is never trusted directly. It is projected through the deterministic battery feasibility layer before display.
+- The DT forecast context is state evidence for offline policy preview. It does not promote DT to a live policy and does not submit bids.
 - This endpoint is suitable for dashboards and defense explanation, not for dispatch command execution.
 - If no policy-preview rows exist, the endpoint returns `404`; the dashboard should show the DT surface as not materialized.
 

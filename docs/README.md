@@ -55,7 +55,7 @@ docs/
 - ✅ Operator weather signal boundary — dashboard `weather_bias` is documented as an explanatory weather-uplift read model, not the LP control input; see [BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal](technical/BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal).
 - ✅ LP/data-pipeline bibliography archive — PDFs and 2-3 sentence source notes are indexed in [thesis/sources/README.md](thesis/sources/README.md#-source-map-baseline-lp-and-current-data-pipeline).
 - ✅ Medallion cleanup — Dagster assets now carry explicit `medallion=bronze|silver|gold` tags, and the real-data benchmark has a Silver price/weather feature bridge before Gold evaluation.
-- ✅ DFL/DT foundation slice — added SOTA-ready forecast training schema, differentiable relaxed-LP pilot rows, offline Decision Transformer trajectory rows, deterministic action projection, and simulated paper-trading replay rows.
+- ✅ DFL/DT foundation slice — added SOTA-ready forecast training schema, differentiable relaxed-LP pilot rows, Silver NBEATSx/TFT forecast context for DT state, offline Decision Transformer trajectory rows, deterministic action projection, and simulated paper-trading replay rows.
 - ✅ Backend read models — `/dashboard/calibrated-ensemble-benchmark`, `/dashboard/risk-adjusted-value-gate`, and `/dashboard/forecast-dispatch-sensitivity` expose selector and diagnostic evidence for dashboard redesign without touching dashboard UI.
 - ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
 - ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.

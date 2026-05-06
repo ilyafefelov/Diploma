@@ -26,7 +26,10 @@ flowchart TD
   G --> J["Oracle benchmark and regret tracking"]
   H --> K["DFL training frame and regret calibration"]
   K --> L["Differentiable relaxed-LP pilot"]
-  K --> M["Decision Transformer trajectory data"]
+  E --> M["Silver DT forecast context"]
+  F --> M
+  M --> N["Decision Transformer trajectory data"]
+  K --> N
 ```
 
 ## Where ML Exists
@@ -43,7 +46,8 @@ ML exists only in forecast and research branches:
 | Forecast candidates | `nbeatsx_price_forecast`, `tft_price_forecast` | Yes | Train compact PyTorch research forecast candidates. |
 | Forecast evaluation | `forecast_strategy_comparison_frame` | Mixed | Route ML and non-ML forecasts through the same LP and score regret. |
 | DFL pilot | `dfl_relaxed_lp_pilot_frame` | ML-adjacent | Use `cvxpylayers` so a relaxed LP can support future gradient-based DFL. |
-| DT preparation | `decision_transformer_trajectory_frame` | Training data only | Prepare offline trajectories; no live trained policy yet. |
+| DT forecast context | `decision_transformer_forecast_context_silver` | Training-state bridge | Join NBEATSx/TFT forecast state onto DT trajectory construction. |
+| DT preparation | `decision_transformer_trajectory_frame` | Training data only | Prepare forecast-conditioned offline trajectories; no live trained policy yet. |
 
 ## Baseline LP Formula
 
