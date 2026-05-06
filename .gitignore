@@ -15,3 +15,5 @@ lightning_logs/
 checkpoints/
 .tmp_dagster_home*/
 .tmp_runtime/
+.demo-api.err.log
+.demo-api.out.log
