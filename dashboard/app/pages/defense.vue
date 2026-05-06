@@ -59,6 +59,9 @@ const dtPolicySummary = computed(() => {
     violations: preview.constraint_violation_count,
     meanValueGap: preview.mean_value_gap_uah,
     valueVsHold: preview.total_value_vs_hold_uah,
+    stateFeatures: preview.policy_state_features.join(', '),
+    valueInterpretation: preview.policy_value_interpretation,
+    operatorBoundary: preview.operator_boundary,
     boundary: preview.academic_scope
   }
 })
@@ -418,13 +421,15 @@ useHead({
             <span>Readiness</span>
             <strong>{{ dtPolicySummary.readiness }}</strong>
             <small>{{ dtPolicySummary.rows }} rows / {{ dtPolicySummary.violations }} violations</small>
+            <small>{{ dtPolicySummary.stateFeatures }}</small>
             <em>{{ dtPolicySummary.boundary }}</em>
           </article>
           <article class="readiness-row">
             <span>Value gap</span>
             <strong>{{ formatUah(dtPolicySummary.meanValueGap) }}</strong>
             <small>{{ formatUah(dtPolicySummary.valueVsHold) }} vs hold</small>
-            <em>preview only; not market execution</em>
+            <small>{{ dtPolicySummary.valueInterpretation }}</small>
+            <em>{{ dtPolicySummary.operatorBoundary }}</em>
           </article>
         </div>
         <p

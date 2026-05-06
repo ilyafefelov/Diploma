@@ -379,6 +379,9 @@ export interface DecisionPolicyPreviewResponse {
   constraint_violation_count: number
   mean_value_gap_uah: number
   total_value_vs_hold_uah: number
+  policy_state_features: string[]
+  policy_value_interpretation: string
+  operator_boundary: string
   academic_scope: string
   rows: DecisionPolicyPreviewPointResponse[]
 }

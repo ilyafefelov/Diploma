@@ -151,6 +151,9 @@ describe('defense dataset summaries', () => {
       constraint_violation_count: 0,
       mean_value_gap_uah: 17,
       total_value_vs_hold_uah: 114,
+      policy_state_features: ['SOC', 'SOH', 'market price'],
+      policy_value_interpretation: 'value_gap = oracle - expected',
+      operator_boundary: 'preview_only_requires_gatekeeper_and_operator_review',
       academic_scope: 'offline_dt_policy_preview_not_market_execution',
       rows: []
     }

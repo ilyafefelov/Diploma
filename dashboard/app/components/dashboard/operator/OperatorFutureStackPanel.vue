@@ -343,6 +343,8 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
         <p>
           DT preview consumes forecast state, SOC, economic context, and return target. The raw action is never trusted;
           it is projected and checked before the operator sees it.
+          {{ decisionPolicy?.policy_state_features?.length ? `State features: ${decisionPolicy.policy_state_features.join(', ')}.` : '' }}
+          {{ decisionPolicy?.policy_value_interpretation || '' }}
         </p>
       </article>
       <article>

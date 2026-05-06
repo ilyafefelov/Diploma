@@ -528,6 +528,9 @@ class DecisionPolicyPreviewResponse(BaseModel):
 	constraint_violation_count: int
 	mean_value_gap_uah: float
 	total_value_vs_hold_uah: float
+	policy_state_features: list[str]
+	policy_value_interpretation: str
+	operator_boundary: str
 	academic_scope: str
 	rows: list[DecisionPolicyPreviewPointResponse]
 
@@ -2278,6 +2281,11 @@ def _to_decision_policy_preview_response(
 		constraint_violation_count=constraint_violation_count,
 		mean_value_gap_uah=float(policy_preview_frame.select("value_gap_uah").mean().item()),
 		total_value_vs_hold_uah=float(policy_preview_frame.select("value_vs_hold_uah").sum().item()),
+		policy_state_features=["SOC", "SOH", "market price", "return target", "battery action history"],
+		policy_value_interpretation=(
+			"value_gap = oracle_value_uah - expected_policy_value_uah after deterministic projection"
+		),
+		operator_boundary="preview_only_requires_gatekeeper_and_operator_review",
 		academic_scope=str(rows[0]["academic_scope"]),
 		rows=[
 			DecisionPolicyPreviewPointResponse(

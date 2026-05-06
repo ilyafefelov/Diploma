@@ -1488,6 +1488,17 @@ def test_decision_policy_preview_endpoint_returns_ready_rows(
 	assert response_payload["live_policy_claim"] is False
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["constraint_violation_count"] == 0
+	assert response_payload["policy_state_features"] == [
+		"SOC",
+		"SOH",
+		"market price",
+		"return target",
+		"battery action history",
+	]
+	assert response_payload["policy_value_interpretation"] == (
+		"value_gap = oracle_value_uah - expected_policy_value_uah after deterministic projection"
+	)
+	assert response_payload["operator_boundary"] == "preview_only_requires_gatekeeper_and_operator_review"
 	assert response_payload["rows"][0]["projected_net_power_mw"] == pytest.approx(0.1)
 
 
