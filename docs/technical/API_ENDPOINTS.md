@@ -563,6 +563,7 @@ Operational notes:
 - Official rows are prioritized in the operator graph when present. The dashboard should display the forecast window in Europe/Kyiv local time for operator readability while preserving UTC timestamps in the API payload.
 - Official forecast smoke rows can be shown in the operator graph, but `quality_boundary=needs_calibration_before_value_claim` means the row must not drive a thesis value claim or a promoted live strategy until the forecast is calibrated and benchmarked through the strict LP/oracle path.
 - The local smoke command `.\.venv\Scripts\python.exe scripts\run_official_forecast_smoke.py --horizon-hours 6 --nbeatsx-max-steps 1 --tft-max-epochs 1` writes report artifacts under `reports/official_forecast_smoke/`. These artifacts verify backend execution and forecast quality flags, but they are not API payloads and are not thesis-grade value results.
+- Add `--persist-forecast-store` to the smoke command when Postgres and `SMART_ARBITRAGE_FORECAST_DSN` or `SMART_ARBITRAGE_MARKET_DATA_DSN` are available. That writes official smoke rows into the forecast store so `/dashboard/future-stack-preview` and `/dashboard/operator-recommendation` can show them in the NBEATSx/TFT graphs.
 - If no forecast rows exist for the tenant, the endpoint returns an empty series rather than synthetic data.
 
 ### `GET /dashboard/decision-policy-preview`

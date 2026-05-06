@@ -10,6 +10,8 @@ from typing import Any, Final
 
 import polars as pl
 
+from smart_arbitrage.resources.forecast_store import ForecastStore
+
 
 OFFICIAL_FORECAST_SMOKE_CLAIM_BOUNDARY: Final[str] = (
     "official_adapter_smoke_not_full_sota_benchmark"
@@ -80,6 +82,25 @@ def write_official_forecast_smoke_exports(
     )
 
 
+def persist_official_forecast_runs(
+    *,
+    forecast_frames: Mapping[str, pl.DataFrame],
+    forecast_store: ForecastStore,
+) -> dict[str, str]:
+    """Persist non-empty official forecast frames for FastAPI/dashboard read models."""
+
+    run_ids: dict[str, str] = {}
+    for model_name, forecast_frame in forecast_frames.items():
+        if forecast_frame.is_empty():
+            continue
+        run_ids[model_name] = forecast_store.upsert_forecast_run(
+            model_name=model_name,
+            forecast_frame=forecast_frame,
+            point_prediction_column=_point_prediction_column(forecast_frame),
+        )
+    return run_ids
+
+
 def detect_runtime_acceleration() -> dict[str, Any]:
     """Return torch runtime information relevant to official forecast/DT runs."""
 
@@ -130,6 +151,14 @@ def _concat_forecasts(forecast_frames: Mapping[str, pl.DataFrame]) -> pl.DataFra
     if not frames:
         return pl.DataFrame()
     return pl.concat(frames, how="vertical_relaxed")
+
+
+def _point_prediction_column(forecast_frame: pl.DataFrame) -> str:
+    if "predicted_price_p50_uah_mwh" in forecast_frame.columns:
+        return "predicted_price_p50_uah_mwh"
+    if "predicted_price_uah_mwh" in forecast_frame.columns:
+        return "predicted_price_uah_mwh"
+    raise ValueError("official forecast frame must include predicted_price_uah_mwh or predicted_price_p50_uah_mwh")
 
 
 def _forecast_timestamp_values(frames: Iterable[pl.DataFrame]) -> list[Any]:

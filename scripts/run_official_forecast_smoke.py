@@ -22,8 +22,10 @@ from smart_arbitrage.forecasting.sota_training import build_sota_forecast_traini
 from smart_arbitrage.research.official_forecast_smoke import (
     build_official_forecast_smoke_summary,
     detect_runtime_acceleration,
+    persist_official_forecast_runs,
     write_official_forecast_smoke_exports,
 )
+from smart_arbitrage.resources.forecast_store import get_forecast_store
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -43,6 +45,7 @@ def main() -> None:
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT_DIR)
     parser.add_argument("--market-storage-path", type=Path, default=DEFAULT_MARKET_STORAGE_PATH)
     parser.add_argument("--synthetic-only", action="store_true")
+    parser.add_argument("--persist-forecast-store", action="store_true")
     args = parser.parse_args()
 
     market_history, market_source = _load_market_history(
@@ -97,6 +100,13 @@ def main() -> None:
             "adapter_errors": adapter_errors,
         }
     )
+    if bool(args.persist_forecast_store):
+        summary["forecast_store_run_ids"] = persist_official_forecast_runs(
+            forecast_frames=forecast_frames,
+            forecast_store=get_forecast_store(),
+        )
+    else:
+        summary["forecast_store_run_ids"] = {}
     run_id = f"official_forecast_smoke_{datetime.now(tz=UTC).strftime('%Y%m%dT%H%M%SZ')}"
     exports = write_official_forecast_smoke_exports(
         forecast_frames=forecast_frames,

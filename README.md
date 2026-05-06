@@ -107,6 +107,8 @@ Latest local official-adapter smoke run:
 .\.venv\Scripts\python.exe scripts\run_official_forecast_smoke.py --horizon-hours 6 --nbeatsx-max-steps 1 --tft-max-epochs 1
 ```
 
+Add `--persist-forecast-store` when Postgres/`SMART_ARBITRAGE_FORECAST_DSN` is available and the smoke rows should feed `/dashboard/future-stack-preview` and the operator NBEATSx/TFT graph.
+
 The run wrote `reports/official_forecast_smoke/official_forecast_smoke_20260506T051503Z_summary.json` and forecast rows for both `nbeatsx_official_v0` and `tft_official_v0`. It confirms the optional backends execute on the current CPU-only environment, but it also flags the one-step NBEATSx smoke forecast as out-of-cap and therefore calibration-only. TFT stayed inside the DAM cap in this smoke run. This is implementation evidence, not a value benchmark.
 
 ## Local Stack

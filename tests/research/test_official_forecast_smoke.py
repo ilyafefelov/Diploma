@@ -7,8 +7,10 @@ import polars as pl
 from smart_arbitrage.research.official_forecast_smoke import (
     build_official_forecast_smoke_summary,
     detect_runtime_acceleration,
+    persist_official_forecast_runs,
     write_official_forecast_smoke_exports,
 )
+from smart_arbitrage.resources.forecast_store import InMemoryForecastStore
 
 
 def test_official_forecast_smoke_summary_reports_rows_window_and_runtime() -> None:
@@ -105,3 +107,36 @@ def test_detect_runtime_acceleration_reports_backend_and_scope() -> None:
     assert "backend" in runtime
     assert runtime["device_type"] in {"cpu", "cuda", "mps", "unknown"}
     assert runtime["recommended_scope"]
+
+
+def test_persist_official_forecast_runs_uses_quantile_p50_when_available() -> None:
+    store = InMemoryForecastStore()
+    forecast_frames = {
+        "nbeatsx_official_v0": pl.DataFrame(
+            {
+                "forecast_timestamp": [datetime(2026, 5, 6, 0, tzinfo=UTC)],
+                "predicted_price_uah_mwh": [4200.0],
+            }
+        ),
+        "tft_official_v0": pl.DataFrame(
+            {
+                "forecast_timestamp": [datetime(2026, 5, 6, 0, tzinfo=UTC)],
+                "predicted_price_uah_mwh": [4100.0],
+                "predicted_price_p50_uah_mwh": [4150.0],
+            }
+        ),
+        "empty_model": pl.DataFrame(),
+    }
+
+    run_ids = persist_official_forecast_runs(
+        forecast_frames=forecast_frames,
+        forecast_store=store,
+    )
+
+    assert set(run_ids) == {"nbeatsx_official_v0", "tft_official_v0"}
+    latest = store.latest_forecast_observation_frame(
+        model_names=["nbeatsx_official_v0", "tft_official_v0"],
+        limit_per_model=1,
+    )
+    tft_row = latest.filter(pl.col("model_name") == "tft_official_v0").row(0, named=True)
+    assert tft_row["predicted_price_uah_mwh"] == 4150.0
