@@ -36,6 +36,22 @@
 - [dashboard/app/components/dashboard/HudBaselinePreview.vue](d:/School/GoIT/Courses/Diploma/dashboard/app/components/dashboard/HudBaselinePreview.vue)
 - [dashboard/server/api/control-plane/dashboard/baseline-lp-preview.get.ts](d:/School/GoIT/Courses/Diploma/dashboard/server/api/control-plane/dashboard/baseline-lp-preview.get.ts)
 
+### Slice 3: future-stack evidence surface
+
+Підтверджені операторські кроки:
+- operator recommendation read model with manual strategy switch and selected-policy explanation
+- NBEATSx/TFT forecast-stack graph from FastAPI read models
+- DT policy-preview value-gap/action graph when policy rows exist
+- daily value against hold/no-arbitrage baseline
+- explicit policy boundary: preview/read model, not market execution
+
+Основні технічні опори:
+- [api/main.py](d:/School/GoIT/Courses/Diploma/api/main.py)
+- [src/smart_arbitrage/decision_transformer/policy_training.py](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/decision_transformer/policy_training.py)
+- [src/smart_arbitrage/assets/gold/simulated_trades.py](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/gold/simulated_trades.py)
+- [dashboard/app/components/dashboard/operator/OperatorFutureStackPanel.vue](d:/School/GoIT/Courses/Diploma/dashboard/app/components/dashboard/operator/OperatorFutureStackPanel.vue)
+- [dashboard/app/composables/useDefenseDashboard.ts](d:/School/GoIT/Courses/Diploma/dashboard/app/composables/useDefenseDashboard.ts)
+
 ## Scope boundary
 
 Поточна demo-ready поверхня не повинна описуватися як:
@@ -44,6 +60,8 @@
 - `Dispatch Command`
 - market execution engine
 - full digital twin battery physics
+- live DT/M3DT market execution
+- full SOTA NeuralForecast/PyTorch-Forecasting study unless official-adapter runs are materialized
 
 Поточна demo-ready поверхня повинна описуватися як:
 - operator-facing read model
@@ -51,6 +69,7 @@
 - tenant-aware control surface
 - constrained baseline LP analytical surface
 - projected battery state preview
+- forecast-stack and DT-policy evidence surface with deterministic safety boundary
 
 ## Weekly-report-ready artifact links
 
@@ -75,11 +94,14 @@
 - `25ab328` — Add projected battery state simulator preview
 - `13e482b` — Add baseline LP preview read model
 - `f8792f0` — Surface baseline LP preview in dashboard
+- `f72a366` — Add DT policy preview backend read models
+- `21b2bba` — Add future stack dashboard graphs
 
 ## Validation snapshot
 
 - Focused API tests are green in [tests/api/test_main.py](d:/School/GoIT/Courses/Diploma/tests/api/test_main.py)
 - Dashboard production build succeeds in [dashboard](d:/School/GoIT/Courses/Diploma/dashboard)
+- Future-stack dashboard lint/typecheck/build and the touched defense dataset Vitest file pass.
 - Browser smoke-check confirms the visible Slice 2 slab `Baseline LP recommendation surface`
 
 ## Recommended demo framing
@@ -87,4 +109,5 @@
 Найкраще представляти систему як поетапно зібраний operator MVP:
 - спочатку tenant-aware weather control slice
 - потім baseline recommendation preview slice
+- далі future-stack evidence slice: NBEATSx/TFT graph, DT policy-preview graph, policy readiness, and value-vs-hold economics
 - окремо підкреслювати, що execution semantics і повний DFL contour є наступним етапом, а не поточним deliverable

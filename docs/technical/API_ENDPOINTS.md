@@ -511,6 +511,78 @@ Operational notes:
 - `weather_bias` is estimated from cloud cover, precipitation, humidity excess, temperature gap, effective solar, and wind speed. `effective_solar = solar_radiation * (100 - cloudcover) / 100`.
 - This is an operator-facing weather-sensitivity explanation only. The baseline LP endpoint does not consume `weather_bias`; it still consumes the strict similar-day price forecast. Weather should enter dispatch only after it is part of a validated weather-aware forecast model and has been evaluated through rolling-origin realized-value/oracle-regret benchmarks.
 
+### `GET /dashboard/operator-recommendation`
+
+Returns the operator-facing recommendation read model for the selected tenant and optional strategy.
+
+Request query example:
+
+```text
+/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory&strategy_id=risk_adjusted_value_gate_v0
+```
+
+Response shape:
+
+- `available_strategies`: materialized strategies the operator may inspect; unavailable future policies stay disabled.
+- `selected_strategy_id`, `selected_policy_id`, `policy_mode`, `policy_readiness`: current selection and its safety/readiness boundary.
+- `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when available.
+- `value_gap_series`: per-hour counterfactual value-gap preview for the selected schedule.
+- `load_forecast`, `pv_forecast`, `projected_soc`: tenant schedule, PV, and SOC context.
+- `daily_value_uah`, `hold_value_uah`, `value_vs_hold_uah`: operator economics against a no-arbitrage hold baseline.
+
+Operational notes:
+
+- This endpoint is the main `/operator` read model. It does not submit bids.
+- DT is exposed only when a policy-preview table has materialized safe rows. Even then, `market_execution_enabled` remains false until a full evaluation promotes it.
+- `strict_similar_day` remains the control comparator and safe fallback.
+
+### `GET /dashboard/future-stack-preview`
+
+Returns target-architecture forecast evidence for the dashboard and defense route.
+
+Request query example:
+
+```text
+/dashboard/future-stack-preview?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `backend_status`: optional package availability for NeuralForecast, PyTorch Forecasting, and Lightning.
+- `selected_forecast_model`: lowest-regret forecast row available in the read model.
+- `forecast_series`: NBEATSx/TFT paths with point forecasts and TFT-style p10/p50/p90 fields when available.
+- `claim_boundary`: text boundary that the series is evidence, not a bid.
+
+Operational notes:
+
+- This endpoint supports the operator forecast graph and the defense future-stack section.
+- Current compact/calibrated NBEATSx/TFT rows may be displayed, but full SOTA claims require the optional official adapters and a materialized benchmark run.
+- If no forecast rows exist for the tenant, the endpoint returns an empty series rather than synthetic data.
+
+### `GET /dashboard/decision-policy-preview`
+
+Returns projected offline Decision Transformer policy-preview rows.
+
+Request query example:
+
+```text
+/dashboard/decision-policy-preview?tenant_id=client_003_dnipro_factory&limit=120
+```
+
+Response shape:
+
+- `policy_run_id`, `created_at`, `policy_readiness`, `academic_scope`: preview batch identity and thesis boundary.
+- `live_policy_claim`: always false for this slice.
+- `market_execution_enabled`: false until the policy passes full offline evaluation and gatekeeper promotion.
+- `constraint_violation_count`, `mean_value_gap_uah`, `total_value_vs_hold_uah`: safety and value diagnostics.
+- `rows`: interval-level DT raw action, projected feasible action, SOC before/after, expected policy value, oracle value, value gap, gatekeeper status, and inference latency.
+
+Operational notes:
+
+- The raw DT action is never trusted directly. It is projected through the deterministic battery feasibility layer before display.
+- This endpoint is suitable for dashboards and defense explanation, not for dispatch command execution.
+- If no policy-preview rows exist, the endpoint returns `404`; the dashboard should show the DT surface as not materialized.
+
 ## CLI Preset
 
 CLI users can still launch the same weather experiment path without the API by using [simulations/run-configs/weather-location-experiment.yaml](d:/School/GoIT/Courses/Diploma/simulations/run-configs/weather-location-experiment.yaml).
@@ -535,6 +607,9 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - For calibrated selector evidence, the dashboard can call `GET /dashboard/calibrated-ensemble-benchmark` to show which prior-regret gate source was selected per anchor and why this selector is not yet a dashboard default.
 - For risk-adjusted selector evidence, the dashboard can call `GET /dashboard/risk-adjusted-value-gate` to show median/tail/win-rate gate decisions. Current results are diagnostic only and do not replace the strict control.
 - For forecast-to-dispatch explainability, the dashboard can call `GET /dashboard/forecast-dispatch-sensitivity` to show whether high regret is mostly forecast error, spread mismatch, or LP dispatch sensitivity.
+- For the live operator product surface, the dashboard should call `GET /dashboard/operator-recommendation` to render selected strategy, SOC/load/PV context, daily value against hold, forecast model series, and value-gap series.
+- For NBEATSx/TFT forecast graphs, the dashboard can call `GET /dashboard/future-stack-preview`; this keeps forecast evidence separate from dispatch commands.
+- For DT policy preview graphs, the dashboard can call `GET /dashboard/decision-policy-preview`; this remains preview-only unless the backend explicitly enables market execution after full evaluation.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
@@ -548,4 +623,6 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The calibrated and risk-adjusted selector endpoints are research read models only; neither is a promoted live selector.
 - The forecast-dispatch sensitivity endpoint is explainability evidence only; it does not create or validate physical dispatch actions.
 - The exogenous-signal endpoint is context only; it should be described as state awareness until benchmark evidence shows decision value.
-- The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.
+- The operator recommendation endpoint is a product read model; it may show selected strategy and value previews, but it still does not emit market contracts.
+- The future-stack endpoint is forecast evidence only. Full NeuralForecast NBEATSx / PyTorch-Forecasting TFT claims require official-adapter materialization and benchmark results.
+- The DT policy-preview endpoint is an offline policy surface. It is not a live policy while `live_policy_claim=false` and `market_execution_enabled=false`.

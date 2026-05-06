@@ -9,8 +9,8 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Main control: `strict_similar_day`.
 - Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
-- New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, offline Decision Transformer trajectory rows, DT safety projection, and simulated paper-trading replay rows.
-- Dashboard UI is separate and was not changed in the latest research slice.
+- New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
+- Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, and strategy readiness without claiming market execution.
 
 ## Pipeline And LP Baseline
 
@@ -70,6 +70,25 @@ Latest materialized result:
 
 Interpretation: horizon-aware TFT calibration is the first diagnostic to beat the strict control on mean regret, but strict similar-day still has better median regret and more rank-1 wins. The calibrated and risk-adjusted gates are negative selector results: they are better than raw compact neural candidates but worse than both strict and horizon-TFT. This is not full DFL and is not a dashboard default yet; it is evidence that horizon-structured value calibration is worth expanding into a real DFL objective.
 
+## Future Stack Read Models
+
+The current future-stack implementation is deliberately split into evidence surfaces:
+
+```text
+NBEATSx/TFT forecast evidence
+  -> operator forecast graph and uncertainty path
+  -> DT policy preview / value-gap graph
+  -> deterministic battery projection and gatekeeper boundary
+```
+
+New FastAPI read models:
+
+- `GET /dashboard/future-stack-preview?tenant_id=...` returns NBEATSx/TFT forecast series, selected forecast model, backend availability for optional SOTA packages, and claim boundary text.
+- `GET /dashboard/decision-policy-preview?tenant_id=...` returns offline DT policy-preview rows with projected feasible actions, value gap, gatekeeper status, and `market_execution_enabled=false`.
+- `GET /dashboard/operator-recommendation?tenant_id=...&strategy_id=...` now includes available materialized strategies, selected policy id, policy readiness, forecast model series, and value-gap series for the operator dashboard.
+
+The `/operator` dashboard uses these live read models for the NBEATSx/TFT forecast graph and DT value-gap/action graph. DT remains a preview-only policy surface until a full offline evaluation run proves safety and regret performance across all tenants.
+
 ## Local Stack
 
 ```powershell
@@ -92,6 +111,9 @@ Useful local URLs:
 - Forecast-dispatch sensitivity API: `http://localhost:8001/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory`
 - Relaxed DFL pilot API: `http://localhost:8001/dashboard/dfl-relaxed-pilot?tenant_id=client_003_dnipro_factory`
 - Offline DT trajectories API: `http://localhost:8001/dashboard/decision-transformer-trajectories?tenant_id=client_003_dnipro_factory`
+- DT policy preview API: `http://localhost:8001/dashboard/decision-policy-preview?tenant_id=client_003_dnipro_factory`
+- Future stack forecast API: `http://localhost:8001/dashboard/future-stack-preview?tenant_id=client_003_dnipro_factory`
+- Operator recommendation API: `http://localhost:8001/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory`
 - Simulated live-trading API: `http://localhost:8001/dashboard/simulated-live-trading?tenant_id=client_003_dnipro_factory`
 - Dagster UI: `http://localhost:3001`
 - MLflow UI: `http://localhost:5000`
@@ -125,6 +147,7 @@ Latest read-model smoke:
 |---|---:|---|
 | `dfl_relaxed_lp_pilot_runs` | 1 | differentiable relaxed LP primitive, not full DFL |
 | `decision_transformer_trajectories` | 6 | offline trajectory data, not live policy |
+| `decision_transformer_policy_steps` | optional | projected offline DT policy preview, market execution disabled |
 | `simulated_live_trading_rows` | 6 | simulated paper-trading replay, no settlement IDs |
 
 `data/` and `mlruns/` are local artifacts and are intentionally not tracked.
@@ -141,7 +164,7 @@ Latest read-model smoke:
 
 - `sota_forecast_training_frame` is a backend contract for full NeuralForecast NBEATSx and PyTorch-Forecasting TFT experiments. It is not itself a tuned SOTA model result.
 - `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
-- `decision_transformer_trajectory_frame` and `DecisionTransformerPolicy` provide offline return-conditioned policy scaffolding plus deterministic action projection. They are not yet a trained deployable DT strategy.
+- `decision_transformer_trajectory_frame`, `decision_transformer_policy_preview_frame`, and `DecisionTransformerPolicy` provide offline return-conditioned policy scaffolding plus deterministic action projection. They are not a market-execution strategy until full offline evaluation is materialized and safety/regret checks pass across tenants.
 - `simulated_live_trading_frame` is paper-trading replay only. It never carries real settlement IDs and must not be described as market execution.
 
 GPU note: machine has GTX 1050 Ti, but current Python env has CPU-only PyTorch (`torch 2.11.0+cpu`). Current workload is mostly small rolling-origin training, tiny LP solves, Polars transforms, and Dagster/process overhead. GPU is not expected to help this MVP slice materially. CUDA PyTorch becomes useful only for heavier NeuralForecast/PyTorch Forecasting/TimeXer experiments.

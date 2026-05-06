@@ -468,6 +468,36 @@ Restoreable database dump after this slice:
 
 Claim boundary: these endpoints are dashboard-ready read models only. They do not promote the relaxed LP pilot to full DFL, do not train a deployable Decision Transformer, and do not execute live trades.
 
+## Future Stack And Operator Dashboard Update
+
+The latest follow-up slice adds a target-architecture read model and dashboard surface without changing the benchmark source of truth. It is meant to show where the system is going:
+
+```text
+NBEATSx/TFT forecast stack
+  -> policy preview / value-gap evidence
+  -> deterministic battery projection and gatekeeper boundary
+  -> operator dashboard graph
+```
+
+Backend additions:
+
+- `GET /dashboard/future-stack-preview?tenant_id=...` exposes NBEATSx/TFT forecast paths, backend availability for official SOTA libraries, selected forecast model, and claim boundary text.
+- `GET /dashboard/decision-policy-preview?tenant_id=...` exposes projected offline DT policy-preview rows with value gap, feasible action, SOC before/after, and gatekeeper status.
+- `GET /dashboard/operator-recommendation?tenant_id=...&strategy_id=...` now includes policy mode, selected policy id, policy readiness, forecast model series, and value-gap series for `/operator`.
+
+Dashboard additions:
+
+- `/operator` now has an NBEATSx/TFT forecast-stack graph and a DT value-gap/action graph fed by FastAPI read models.
+- `/defense` now shows the future-stack forecast rows and a separate DT policy-preview boundary, so offline trajectory data is not confused with a deployed policy.
+- The UI keeps DT as preview-only while `market_execution_enabled=false`; this prevents a premature live-trading claim.
+
+Verification for this slice:
+
+- Backend focused checks passed for DT policy preview, simulated-trade store persistence, Dagster asset wiring, and API responses.
+- Dashboard `npm run lint`, `npm run typecheck`, `npm run build`, and `npx vitest run app/utils/defenseDataset.test.ts` passed.
+
+Claim boundary: this update makes the future stack visible to operators and examiners, but it is still a read-model surface. Full NeuralForecast NBEATSx / PyTorch-Forecasting TFT and a deployable Decision Transformer require a separate materialized all-tenant experiment and promotion criteria.
+
 ## Verification
 
 Commands run successfully:
