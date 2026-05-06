@@ -1571,6 +1571,10 @@ def test_decision_policy_preview_endpoint_returns_ready_rows(
 	assert response_payload["live_policy_claim"] is False
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["constraint_violation_count"] == 0
+	assert response_payload["forecast_context_source"] == "nbeatsx_tft_forecast_context"
+	assert response_payload["forecast_context_row_count"] == 2
+	assert response_payload["forecast_context_coverage_ratio"] == pytest.approx(1.0)
+	assert response_payload["forecast_context_warning"] is None
 	assert response_payload["policy_state_features"] == [
 		"SOC",
 		"SOH",

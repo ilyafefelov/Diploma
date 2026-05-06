@@ -538,6 +538,10 @@ class DecisionPolicyPreviewResponse(BaseModel):
 	constraint_violation_count: int
 	mean_value_gap_uah: float
 	total_value_vs_hold_uah: float
+	forecast_context_source: str
+	forecast_context_row_count: int
+	forecast_context_coverage_ratio: float
+	forecast_context_warning: str | None = None
 	policy_state_features: list[str]
 	policy_value_interpretation: str
 	operator_boundary: str
@@ -2331,6 +2335,7 @@ def _to_decision_policy_preview_response(
 		for row in policy_preview_frame.sort(["interval_start", "episode_id", "step_index"]).iter_rows(named=True)
 	]
 	constraint_violation_count = sum(1 for row in rows if bool(row["constraint_violation"]))
+	forecast_context_summary = _policy_forecast_context_summary(rows)
 	return DecisionPolicyPreviewResponse(
 		tenant_id=tenant_id,
 		row_count=policy_preview_frame.height,
@@ -2342,6 +2347,10 @@ def _to_decision_policy_preview_response(
 		constraint_violation_count=constraint_violation_count,
 		mean_value_gap_uah=float(policy_preview_frame.select("value_gap_uah").mean().item()),
 		total_value_vs_hold_uah=float(policy_preview_frame.select("value_vs_hold_uah").sum().item()),
+		forecast_context_source=forecast_context_summary["source"],
+		forecast_context_row_count=int(forecast_context_summary["row_count"]),
+		forecast_context_coverage_ratio=float(forecast_context_summary["coverage_ratio"]),
+		forecast_context_warning=forecast_context_summary["warning"],
 		policy_state_features=[
 			"SOC",
 			"SOH",
@@ -2400,6 +2409,41 @@ def _to_decision_policy_preview_response(
 			)
 			for row in rows
 		],
+	)
+
+
+def _policy_forecast_context_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+	row_count = len(rows)
+	if row_count == 0:
+		return {
+			"source": "missing_policy_rows",
+			"row_count": 0,
+			"coverage_ratio": 0.0,
+			"warning": "no_policy_preview_rows",
+		}
+	forecast_context_row_count = sum(1 for row in rows if _row_has_policy_forecast_context(row))
+	coverage_ratio = forecast_context_row_count / row_count
+	if forecast_context_row_count == row_count:
+		source = "nbeatsx_tft_forecast_context"
+		warning = None
+	elif forecast_context_row_count == 0:
+		source = "market_price_fallback"
+		warning = "policy_rows_use_market_price_fallback"
+	else:
+		source = "mixed_forecast_context"
+		warning = "some_policy_rows_use_market_price_fallback"
+	return {
+		"source": source,
+		"row_count": forecast_context_row_count,
+		"coverage_ratio": coverage_ratio,
+		"warning": warning,
+	}
+
+
+def _row_has_policy_forecast_context(row: dict[str, Any]) -> bool:
+	return (
+		row.get("state_nbeatsx_forecast_uah_mwh") is not None
+		and row.get("state_tft_forecast_uah_mwh") is not None
 	)
 
 

@@ -387,6 +387,10 @@ export interface DecisionPolicyPreviewResponse {
   constraint_violation_count: number
   mean_value_gap_uah: number
   total_value_vs_hold_uah: number
+  forecast_context_source: string
+  forecast_context_row_count: number
+  forecast_context_coverage_ratio: number
+  forecast_context_warning: string | null
   policy_state_features: string[]
   policy_value_interpretation: string
   operator_boundary: string

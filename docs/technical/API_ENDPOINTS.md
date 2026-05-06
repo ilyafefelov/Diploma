@@ -588,6 +588,7 @@ Response shape:
 - `live_policy_claim`: always false for this slice.
 - `market_execution_enabled`: false until the policy passes full offline evaluation and gatekeeper promotion.
 - `constraint_violation_count`, `mean_value_gap_uah`, `total_value_vs_hold_uah`: safety and value diagnostics.
+- `forecast_context_source`, `forecast_context_row_count`, `forecast_context_coverage_ratio`, `forecast_context_warning`: whether the DT preview rows are actually conditioned on both NBEATSx/TFT forecast state or using fallback market-price context.
 - `rows`: interval-level DT raw action, projected feasible action, `projected_action_label`, `projection_status`, `projection_adjustment_mw`, SOC before/after, `state_nbeatsx_forecast_uah_mwh`, `state_tft_forecast_uah_mwh`, `state_forecast_uncertainty_uah_mwh`, `state_forecast_spread_uah_mwh`, expected policy value, oracle value, value gap, `value_gap_ratio`, gatekeeper status, and inference latency.
 
 Operational notes:

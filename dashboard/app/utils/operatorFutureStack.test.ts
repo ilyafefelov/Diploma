@@ -6,6 +6,7 @@ import {
   buildStrategySelectItems,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
+  formatPolicyForecastContextLabel,
   formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
 } from './operatorFutureStack'
@@ -127,6 +128,16 @@ describe('operator future stack display helpers', () => {
       cuda_version: '12.6',
       recommended_scope: 'use GPU for official forecasts'
     })).toBe('CUDA / NVIDIA RTX')
+  })
+
+  it('formats DT forecast-context coverage for operator status cards', () => {
+    expect(formatPolicyForecastContextLabel({
+      forecast_context_coverage_ratio: 0.875,
+      forecast_context_row_count: 21,
+      row_count: 24
+    })).toBe('88% forecast-conditioned (21/24 rows)')
+
+    expect(formatPolicyForecastContextLabel(null)).toBe('forecast context pending')
   })
 
   it('summarizes forecast quality boundaries without hiding cap violations', () => {

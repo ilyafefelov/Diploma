@@ -18,6 +18,7 @@ import {
   buildStrategySelectItems,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
+  formatPolicyForecastContextLabel,
   formatRuntimeAccelerationLabel,
   sortFutureForecastSeries
 } from '~/utils/operatorFutureStack'
@@ -253,7 +254,9 @@ const statusCards = computed(() => [
   {
     label: 'DT preview',
     value: props.decisionPolicy?.policy_readiness || props.operatorRecommendation?.policy_readiness || 'not materialized',
-    meta: props.decisionPolicy ? `${props.decisionPolicy.constraint_violation_count} safety violations` : 'policy endpoint optional'
+    meta: props.decisionPolicy
+      ? `${props.decisionPolicy.constraint_violation_count} safety violations / ${formatPolicyForecastContextLabel(props.decisionPolicy)}`
+      : 'policy endpoint optional'
   },
   {
     label: 'Policy mode',
@@ -428,6 +431,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
         <p>
           DT preview consumes forecast state, SOC, economic context, and return target. The raw action is never trusted;
           it is projected and checked before the operator sees it.
+          {{ decisionPolicy ? `Forecast context: ${formatPolicyForecastContextLabel(decisionPolicy)}.` : '' }}
           {{ decisionPolicy?.policy_state_features?.length ? `State features: ${decisionPolicy.policy_state_features.join(', ')}.` : '' }}
           {{ decisionPolicy?.policy_value_interpretation || '' }}
         </p>

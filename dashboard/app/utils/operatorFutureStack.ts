@@ -1,5 +1,6 @@
 import type {
   DecisionPolicyPreviewPointResponse,
+  DecisionPolicyPreviewResponse,
   FutureForecastSeriesResponse,
   RuntimeAccelerationResponse,
   OperatorStrategyOptionResponse
@@ -107,6 +108,20 @@ export const buildPolicyForecastContextPoints = (
     forecastSpreadUahMwh: forecastSpread
   }
 })
+
+export const formatPolicyForecastContextLabel = (
+  decisionPolicy: Pick<
+    DecisionPolicyPreviewResponse,
+    'forecast_context_coverage_ratio' | 'forecast_context_row_count' | 'row_count'
+  > | null | undefined
+): string => {
+  if (!decisionPolicy) {
+    return 'forecast context pending'
+  }
+
+  const percentage = Math.round(decisionPolicy.forecast_context_coverage_ratio * 100)
+  return `${percentage}% forecast-conditioned (${decisionPolicy.forecast_context_row_count}/${decisionPolicy.row_count} rows)`
+}
 
 export const formatRuntimeAccelerationLabel = (
   runtime: RuntimeAccelerationResponse | null | undefined
