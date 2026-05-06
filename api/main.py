@@ -153,6 +153,7 @@ class WeatherMaterializeResponse(BaseModel):
 class DashboardSignalPreviewResponse(BaseModel):
 	tenant_id: str
 	labels: list[str]
+	label_timestamps: list[datetime]
 	latest_price_timestamp: datetime | None = None
 	forecast_window_start: datetime | None = None
 	forecast_window_end: datetime | None = None
@@ -757,6 +758,7 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 	)
 	forecast_points = solve_result.forecast[::3][:6] or solve_result.forecast[:6]
 	labels = [point.forecast_timestamp.strftime("%H:%M") for point in forecast_points]
+	label_timestamps = [point.forecast_timestamp for point in forecast_points]
 	market_price = [round(point.predicted_price_uah_mwh, 2) for point in forecast_points]
 	weather_rows_by_timestamp = _select_weather_rows_by_timestamp(
 		forecast_points=forecast_points,
@@ -813,6 +815,7 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 	return DashboardSignalPreviewResponse(
 		tenant_id=tenant_id,
 		labels=labels,
+		label_timestamps=label_timestamps,
 		latest_price_timestamp=forecast_points[-1].forecast_timestamp if forecast_points else None,
 		forecast_window_start=forecast_points[0].forecast_timestamp if forecast_points else None,
 		forecast_window_end=forecast_points[-1].forecast_timestamp if forecast_points else None,

@@ -296,6 +296,8 @@ def test_dashboard_signal_preview_returns_tenant_aware_series(
 	response_payload = response.json()
 	assert response_payload["tenant_id"] == "client_002_lviv_office"
 	assert len(response_payload["labels"]) == 6
+	assert len(response_payload["label_timestamps"]) == 6
+	assert response_payload["label_timestamps"][0].startswith("2026-")
 	assert all(len(label) == 5 and label[2] == ":" for label in response_payload["labels"])
 	assert response_payload["latest_price_timestamp"] is not None
 	assert response_payload["forecast_window_start"] is not None

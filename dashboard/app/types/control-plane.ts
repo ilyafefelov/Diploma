@@ -10,6 +10,7 @@ export interface TenantSummary {
 export interface SignalPreview {
   tenant_id: string
   labels: string[]
+  label_timestamps?: string[]
   latest_price_timestamp?: string | null
   forecast_window_start?: string | null
   forecast_window_end?: string | null
