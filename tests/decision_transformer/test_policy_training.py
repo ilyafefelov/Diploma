@@ -80,6 +80,10 @@ def test_dt_state_features_include_time_and_degradation_context() -> None:
         "state_soc_before": 0.5,
         "state_soh": 0.97,
         "state_market_price_uah_mwh": 4200.0,
+        "state_nbeatsx_forecast_uah_mwh": 4100.0,
+        "state_tft_forecast_uah_mwh": 4300.0,
+        "state_forecast_uncertainty_uah_mwh": 350.0,
+        "state_forecast_spread_uah_mwh": 200.0,
         "degradation_penalty_uah": 12.0,
     }
 
@@ -89,13 +93,58 @@ def test_dt_state_features_include_time_and_degradation_context() -> None:
         "state_soc_before",
         "state_soh",
         "state_market_price_scaled",
+        "state_nbeatsx_forecast_scaled",
+        "state_tft_forecast_scaled",
+        "state_forecast_uncertainty_scaled",
+        "state_forecast_spread_scaled",
         "hour_sin",
         "hour_cos",
         "degradation_penalty_scaled",
     )
     assert len(features) == len(DECISION_TRANSFORMER_STATE_FEATURE_NAMES)
-    assert features[3] == pytest.approx(1.0)
-    assert features[4] == pytest.approx(0.0, abs=1e-9)
+    assert features[7] == pytest.approx(1.0)
+    assert features[8] == pytest.approx(0.0, abs=1e-9)
+
+
+def test_policy_preview_exposes_forecast_conditioning_features() -> None:
+    timestamp = datetime(2026, 5, 5, tzinfo=UTC)
+    trajectory_frame = pl.DataFrame(
+        {
+            "episode_id": ["episode-forecast-001"],
+            "tenant_id": ["client_003_dnipro_factory"],
+            "market_venue": ["DAM"],
+            "scenario_index": [0],
+            "step_index": [0],
+            "interval_start": [timestamp],
+            "state_soc_before": [0.5],
+            "state_soc_after": [0.45],
+            "state_soh": [0.97],
+            "state_market_price_uah_mwh": [4200.0],
+            "state_nbeatsx_forecast_uah_mwh": [4100.0],
+            "state_tft_forecast_uah_mwh": [4350.0],
+            "state_forecast_uncertainty_uah_mwh": [360.0],
+            "state_forecast_spread_uah_mwh": [250.0],
+            "action_charge_mw": [0.0],
+            "action_discharge_mw": [0.1],
+            "reward_uah": [416.0],
+            "return_to_go_uah": [416.0],
+            "degradation_penalty_uah": [4.0],
+            "baseline_value_uah": [90.0],
+            "oracle_value_uah": [550.0],
+            "regret_uah": [134.0],
+            "academic_scope": ["offline_dt_training_trajectory_not_live_policy"],
+        }
+    )
+
+    preview_frame = build_decision_transformer_policy_preview_frame(
+        trajectory_frame,
+        config=DecisionTransformerTrainingConfig(max_epochs=0),
+    )
+
+    assert preview_frame.select("state_nbeatsx_forecast_uah_mwh").to_series().to_list() == [4100.0]
+    assert preview_frame.select("state_tft_forecast_uah_mwh").to_series().to_list() == [4350.0]
+    assert preview_frame.select("state_forecast_uncertainty_uah_mwh").to_series().to_list() == [360.0]
+    assert preview_frame.select("state_forecast_spread_uah_mwh").to_series().to_list() == [250.0]
 
 
 def test_policy_preview_uses_latest_rows_for_requested_tenant_only() -> None:

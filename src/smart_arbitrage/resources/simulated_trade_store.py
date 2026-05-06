@@ -160,6 +160,10 @@ class PostgresSimulatedTradeStore:
                         state_soc_after DOUBLE PRECISION NOT NULL,
                         state_soh DOUBLE PRECISION NOT NULL,
                         state_market_price_uah_mwh DOUBLE PRECISION NOT NULL,
+                        state_nbeatsx_forecast_uah_mwh DOUBLE PRECISION,
+                        state_tft_forecast_uah_mwh DOUBLE PRECISION,
+                        state_forecast_uncertainty_uah_mwh DOUBLE PRECISION,
+                        state_forecast_spread_uah_mwh DOUBLE PRECISION,
                         action_charge_mw DOUBLE PRECISION NOT NULL,
                         action_discharge_mw DOUBLE PRECISION NOT NULL,
                         reward_uah DOUBLE PRECISION NOT NULL,
@@ -185,6 +189,10 @@ class PostgresSimulatedTradeStore:
                         step_index INTEGER NOT NULL,
                         interval_start TIMESTAMP NOT NULL,
                         state_market_price_uah_mwh DOUBLE PRECISION NOT NULL,
+                        state_nbeatsx_forecast_uah_mwh DOUBLE PRECISION,
+                        state_tft_forecast_uah_mwh DOUBLE PRECISION,
+                        state_forecast_uncertainty_uah_mwh DOUBLE PRECISION,
+                        state_forecast_spread_uah_mwh DOUBLE PRECISION,
                         projected_soc_before DOUBLE PRECISION NOT NULL,
                         projected_soc_after DOUBLE PRECISION NOT NULL,
                         raw_charge_mw DOUBLE PRECISION NOT NULL,
@@ -208,6 +216,16 @@ class PostgresSimulatedTradeStore:
                     )
                     """
                 )
+                for table_name in ("decision_transformer_trajectories", "decision_transformer_policy_steps"):
+                    cursor.execute(
+                        f"""
+                        ALTER TABLE {table_name}
+                        ADD COLUMN IF NOT EXISTS state_nbeatsx_forecast_uah_mwh DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS state_tft_forecast_uah_mwh DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS state_forecast_uncertainty_uah_mwh DOUBLE PRECISION,
+                        ADD COLUMN IF NOT EXISTS state_forecast_spread_uah_mwh DOUBLE PRECISION
+                        """
+                    )
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS simulated_live_trading_rows (
@@ -334,6 +352,10 @@ class PostgresSimulatedTradeStore:
                         state_soc_after,
                         state_soh,
                         state_market_price_uah_mwh,
+                        state_nbeatsx_forecast_uah_mwh,
+                        state_tft_forecast_uah_mwh,
+                        state_forecast_uncertainty_uah_mwh,
+                        state_forecast_spread_uah_mwh,
                         action_charge_mw,
                         action_discharge_mw,
                         reward_uah,
@@ -344,7 +366,7 @@ class PostgresSimulatedTradeStore:
                         regret_uah,
                         academic_scope
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (episode_id, step_index)
                     DO UPDATE SET
                         tenant_id = EXCLUDED.tenant_id,
@@ -355,6 +377,10 @@ class PostgresSimulatedTradeStore:
                         state_soc_after = EXCLUDED.state_soc_after,
                         state_soh = EXCLUDED.state_soh,
                         state_market_price_uah_mwh = EXCLUDED.state_market_price_uah_mwh,
+                        state_nbeatsx_forecast_uah_mwh = EXCLUDED.state_nbeatsx_forecast_uah_mwh,
+                        state_tft_forecast_uah_mwh = EXCLUDED.state_tft_forecast_uah_mwh,
+                        state_forecast_uncertainty_uah_mwh = EXCLUDED.state_forecast_uncertainty_uah_mwh,
+                        state_forecast_spread_uah_mwh = EXCLUDED.state_forecast_spread_uah_mwh,
                         action_charge_mw = EXCLUDED.action_charge_mw,
                         action_discharge_mw = EXCLUDED.action_discharge_mw,
                         reward_uah = EXCLUDED.reward_uah,
@@ -386,6 +412,10 @@ class PostgresSimulatedTradeStore:
                         step_index,
                         interval_start,
                         state_market_price_uah_mwh,
+                        state_nbeatsx_forecast_uah_mwh,
+                        state_tft_forecast_uah_mwh,
+                        state_forecast_uncertainty_uah_mwh,
+                        state_forecast_spread_uah_mwh,
                         projected_soc_before,
                         projected_soc_after,
                         raw_charge_mw,
@@ -406,7 +436,7 @@ class PostgresSimulatedTradeStore:
                         model_name,
                         academic_scope
                     )
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (policy_run_id, episode_id, step_index)
                     DO UPDATE SET
                         created_at = EXCLUDED.created_at,
@@ -415,6 +445,10 @@ class PostgresSimulatedTradeStore:
                         scenario_index = EXCLUDED.scenario_index,
                         interval_start = EXCLUDED.interval_start,
                         state_market_price_uah_mwh = EXCLUDED.state_market_price_uah_mwh,
+                        state_nbeatsx_forecast_uah_mwh = EXCLUDED.state_nbeatsx_forecast_uah_mwh,
+                        state_tft_forecast_uah_mwh = EXCLUDED.state_tft_forecast_uah_mwh,
+                        state_forecast_uncertainty_uah_mwh = EXCLUDED.state_forecast_uncertainty_uah_mwh,
+                        state_forecast_spread_uah_mwh = EXCLUDED.state_forecast_spread_uah_mwh,
                         projected_soc_before = EXCLUDED.projected_soc_before,
                         projected_soc_after = EXCLUDED.projected_soc_after,
                         raw_charge_mw = EXCLUDED.raw_charge_mw,
@@ -590,6 +624,10 @@ def _trajectory_values(row: dict[str, Any]) -> tuple[Any, ...]:
         row["state_soc_after"],
         row["state_soh"],
         row["state_market_price_uah_mwh"],
+        row.get("state_nbeatsx_forecast_uah_mwh"),
+        row.get("state_tft_forecast_uah_mwh"),
+        row.get("state_forecast_uncertainty_uah_mwh"),
+        row.get("state_forecast_spread_uah_mwh"),
         row["action_charge_mw"],
         row["action_discharge_mw"],
         row["reward_uah"],
@@ -613,6 +651,10 @@ def _policy_preview_values(row: dict[str, Any]) -> tuple[Any, ...]:
         row["step_index"],
         row["interval_start"],
         row["state_market_price_uah_mwh"],
+        row.get("state_nbeatsx_forecast_uah_mwh"),
+        row.get("state_tft_forecast_uah_mwh"),
+        row.get("state_forecast_uncertainty_uah_mwh"),
+        row.get("state_forecast_spread_uah_mwh"),
         row["projected_soc_before"],
         row["projected_soc_after"],
         row["raw_charge_mw"],

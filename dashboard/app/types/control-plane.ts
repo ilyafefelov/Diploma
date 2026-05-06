@@ -347,6 +347,10 @@ export interface DecisionPolicyPreviewPointResponse {
   step_index: number
   interval_start: string
   state_market_price_uah_mwh: number
+  state_nbeatsx_forecast_uah_mwh: number | null
+  state_tft_forecast_uah_mwh: number | null
+  state_forecast_uncertainty_uah_mwh: number | null
+  state_forecast_spread_uah_mwh: number | null
   projected_soc_before: number
   projected_soc_after: number
   raw_charge_mw: number

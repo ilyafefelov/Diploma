@@ -91,7 +91,7 @@ The `/operator` dashboard uses these live read models for the NBEATSx/TFT foreca
 
 The operator forecast graph now surfaces each model's forecast quality boundary. Rows with out-of-cap DAM prices are tagged `needs_calibration_before_value_claim`; rows inside the DAM cap are still smoke/read-model evidence until they pass the rolling-origin LP/oracle benchmark.
 
-The DT preview state now includes SOC, SOH, price, time-of-day, degradation penalty, return target, and previous action context before deterministic battery projection. This keeps the operator explanation aligned with the target `forecast state + battery state + return target -> policy action trajectory` flow without claiming live market execution.
+The DT preview state now includes SOC, SOH, market price, NBEATSx forecast, TFT forecast, forecast uncertainty/spread, time-of-day, degradation penalty, return target, and previous action context before deterministic battery projection. Existing rows without forecast fields fall back to the market-price context, so older preview runs remain readable. This keeps the operator explanation aligned with the target `forecast state + battery state + return target -> policy action trajectory` flow without claiming live market execution.
 
 Official-backend status:
 

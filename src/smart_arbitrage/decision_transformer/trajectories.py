@@ -41,6 +41,27 @@ def build_decision_transformer_trajectory_frame(transition_frame: pl.DataFrame) 
         returns_to_go = _returns_to_go([float(row["reward_uah"]) for row in materialized_rows])
         for row, return_to_go in zip(materialized_rows, returns_to_go, strict=True):
             net_power_mw = float(row["feasible_net_power_mw"])
+            market_price_uah_mwh = float(row["market_price_uah_mwh"])
+            nbeatsx_forecast_uah_mwh = _optional_forecast_value(
+                row,
+                ("state_nbeatsx_forecast_uah_mwh", "nbeatsx_forecast_uah_mwh", "nbeatsx_predicted_price_uah_mwh"),
+                default=market_price_uah_mwh,
+            )
+            tft_forecast_uah_mwh = _optional_forecast_value(
+                row,
+                ("state_tft_forecast_uah_mwh", "tft_forecast_p50_uah_mwh", "tft_predicted_price_uah_mwh"),
+                default=nbeatsx_forecast_uah_mwh,
+            )
+            forecast_uncertainty_uah_mwh = _optional_forecast_value(
+                row,
+                ("state_forecast_uncertainty_uah_mwh", "forecast_uncertainty_uah_mwh"),
+                default=abs(tft_forecast_uah_mwh - nbeatsx_forecast_uah_mwh),
+            )
+            forecast_spread_uah_mwh = _optional_forecast_value(
+                row,
+                ("state_forecast_spread_uah_mwh", "forecast_spread_uah_mwh"),
+                default=tft_forecast_uah_mwh - nbeatsx_forecast_uah_mwh,
+            )
             rows.append(
                 {
                     "episode_id": str(row["episode_id"]),
@@ -52,7 +73,11 @@ def build_decision_transformer_trajectory_frame(transition_frame: pl.DataFrame) 
                     "state_soc_before": float(row["state_soc_before"]),
                     "state_soc_after": float(row["state_soc_after"]),
                     "state_soh": float(row["state_soh"]),
-                    "state_market_price_uah_mwh": float(row["market_price_uah_mwh"]),
+                    "state_market_price_uah_mwh": market_price_uah_mwh,
+                    "state_nbeatsx_forecast_uah_mwh": nbeatsx_forecast_uah_mwh,
+                    "state_tft_forecast_uah_mwh": tft_forecast_uah_mwh,
+                    "state_forecast_uncertainty_uah_mwh": forecast_uncertainty_uah_mwh,
+                    "state_forecast_spread_uah_mwh": forecast_spread_uah_mwh,
                     "action_charge_mw": max(0.0, -net_power_mw),
                     "action_discharge_mw": max(0.0, net_power_mw),
                     "reward_uah": float(row["reward_uah"]),
@@ -76,3 +101,11 @@ def _returns_to_go(rewards: list[float]) -> list[float]:
         running_total += reward
         values.append(running_total)
     return list(reversed(values))
+
+
+def _optional_forecast_value(row: dict[str, Any], column_names: tuple[str, ...], *, default: float) -> float:
+    for column_name in column_names:
+        value = row.get(column_name)
+        if value is not None:
+            return float(value)
+    return default

@@ -1519,6 +1519,10 @@ def test_decision_policy_preview_endpoint_returns_ready_rows(
 					datetime(2026, 5, 5, 1, tzinfo=UTC),
 				],
 				"state_market_price_uah_mwh": [4200.0, 1600.0],
+				"state_nbeatsx_forecast_uah_mwh": [4100.0, 1700.0],
+				"state_tft_forecast_uah_mwh": [4350.0, 1550.0],
+				"state_forecast_uncertainty_uah_mwh": [360.0, 220.0],
+				"state_forecast_spread_uah_mwh": [250.0, -150.0],
 				"projected_soc_before": [0.5, 0.45],
 				"projected_soc_after": [0.45, 0.55],
 				"raw_charge_mw": [0.0, 0.1],
@@ -1571,6 +1575,10 @@ def test_decision_policy_preview_endpoint_returns_ready_rows(
 		"SOC",
 		"SOH",
 		"market price",
+		"NBEATSx forecast",
+		"TFT forecast",
+		"forecast uncertainty",
+		"forecast spread",
 		"time of day",
 		"degradation penalty",
 		"return target",
@@ -1585,6 +1593,10 @@ def test_decision_policy_preview_endpoint_returns_ready_rows(
 	assert response_payload["rows"][0]["projection_status"] == "accepted_without_projection"
 	assert response_payload["rows"][0]["projection_adjustment_mw"] == pytest.approx(0.0)
 	assert response_payload["rows"][0]["value_gap_ratio"] == pytest.approx(134.0 / 550.0)
+	assert response_payload["rows"][0]["state_nbeatsx_forecast_uah_mwh"] == pytest.approx(4100.0)
+	assert response_payload["rows"][0]["state_tft_forecast_uah_mwh"] == pytest.approx(4350.0)
+	assert response_payload["rows"][0]["state_forecast_uncertainty_uah_mwh"] == pytest.approx(360.0)
+	assert response_payload["rows"][0]["state_forecast_spread_uah_mwh"] == pytest.approx(250.0)
 
 
 def test_simulated_live_trading_endpoint_returns_rows(

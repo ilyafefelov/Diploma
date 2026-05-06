@@ -498,6 +498,10 @@ class DecisionPolicyPreviewPointResponse(BaseModel):
 	step_index: int
 	interval_start: datetime
 	state_market_price_uah_mwh: float
+	state_nbeatsx_forecast_uah_mwh: float | None = None
+	state_tft_forecast_uah_mwh: float | None = None
+	state_forecast_uncertainty_uah_mwh: float | None = None
+	state_forecast_spread_uah_mwh: float | None = None
 	projected_soc_before: float
 	projected_soc_after: float
 	raw_charge_mw: float
@@ -2342,6 +2346,10 @@ def _to_decision_policy_preview_response(
 			"SOC",
 			"SOH",
 			"market price",
+			"NBEATSx forecast",
+			"TFT forecast",
+			"forecast uncertainty",
+			"forecast spread",
 			"time of day",
 			"degradation penalty",
 			"return target",
@@ -2362,6 +2370,10 @@ def _to_decision_policy_preview_response(
 				step_index=int(row["step_index"]),
 				interval_start=_datetime_row_value(row["interval_start"], field_name="interval_start"),
 				state_market_price_uah_mwh=float(row["state_market_price_uah_mwh"]),
+				state_nbeatsx_forecast_uah_mwh=_optional_float(row.get("state_nbeatsx_forecast_uah_mwh")),
+				state_tft_forecast_uah_mwh=_optional_float(row.get("state_tft_forecast_uah_mwh")),
+				state_forecast_uncertainty_uah_mwh=_optional_float(row.get("state_forecast_uncertainty_uah_mwh")),
+				state_forecast_spread_uah_mwh=_optional_float(row.get("state_forecast_spread_uah_mwh")),
 				projected_soc_before=float(row["projected_soc_before"]),
 				projected_soc_after=float(row["projected_soc_after"]),
 				raw_charge_mw=float(row["raw_charge_mw"]),

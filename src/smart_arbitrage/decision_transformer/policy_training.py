@@ -26,6 +26,10 @@ DECISION_TRANSFORMER_STATE_FEATURE_NAMES: Final[tuple[str, ...]] = (
     "state_soc_before",
     "state_soh",
     "state_market_price_scaled",
+    "state_nbeatsx_forecast_scaled",
+    "state_tft_forecast_scaled",
+    "state_forecast_uncertainty_scaled",
+    "state_forecast_spread_scaled",
     "hour_sin",
     "hour_cos",
     "degradation_penalty_scaled",
@@ -217,6 +221,7 @@ def _evaluate_policy_rows(
             projected_soc = projected_action.next_soc_fraction
             projected_net_power_mw = projected_action.discharge_mw - projected_action.charge_mw
             market_price_uah_mwh = _row_float(row, "state_market_price_uah_mwh")
+            forecast_context = _forecast_context(row)
             degradation_penalty_uah = (
                 projected_action.charge_mw + projected_action.discharge_mw
             ) * config.degradation_cost_uah_per_mwh
@@ -239,6 +244,10 @@ def _evaluate_policy_rows(
                     "step_index": int(row["step_index"]),
                     "interval_start": row["interval_start"],
                     "state_market_price_uah_mwh": market_price_uah_mwh,
+                    "state_nbeatsx_forecast_uah_mwh": forecast_context["state_nbeatsx_forecast_uah_mwh"],
+                    "state_tft_forecast_uah_mwh": forecast_context["state_tft_forecast_uah_mwh"],
+                    "state_forecast_uncertainty_uah_mwh": forecast_context["state_forecast_uncertainty_uah_mwh"],
+                    "state_forecast_spread_uah_mwh": forecast_context["state_forecast_spread_uah_mwh"],
                     "projected_soc_before": projected_soc_before,
                     "projected_soc_after": projected_action.next_soc_fraction,
                     "raw_charge_mw": raw_action[0],
@@ -296,10 +305,15 @@ def _raw_policy_actions(
 def _state_features(row: dict[str, Any]) -> list[float]:
     interval_start = _row_datetime(row, "interval_start")
     hour_angle = (interval_start.hour + interval_start.minute / 60.0) / 24.0 * math.tau
+    forecast_context = _forecast_context(row)
     return [
         _row_float(row, "state_soc_before"),
         _row_float(row, "state_soh"),
         _row_float(row, "state_market_price_uah_mwh") / 10_000.0,
+        forecast_context["state_nbeatsx_forecast_uah_mwh"] / 10_000.0,
+        forecast_context["state_tft_forecast_uah_mwh"] / 10_000.0,
+        forecast_context["state_forecast_uncertainty_uah_mwh"] / 10_000.0,
+        forecast_context["state_forecast_spread_uah_mwh"] / 10_000.0,
         math.sin(hour_angle),
         math.cos(hour_angle),
         _row_float(row, "degradation_penalty_uah") / 1_000.0,
@@ -337,6 +351,43 @@ def _policy_run_id(*, created_at: datetime, tenant_id: str | None) -> str:
 
 def _row_float(row: dict[str, Any], column_name: str) -> float:
     return float(row[column_name])
+
+
+def _forecast_context(row: dict[str, Any]) -> dict[str, float]:
+    market_price_uah_mwh = _row_float(row, "state_market_price_uah_mwh")
+    nbeatsx_forecast_uah_mwh = _row_optional_float(
+        row,
+        "state_nbeatsx_forecast_uah_mwh",
+        default=market_price_uah_mwh,
+    )
+    tft_forecast_uah_mwh = _row_optional_float(
+        row,
+        "state_tft_forecast_uah_mwh",
+        default=nbeatsx_forecast_uah_mwh,
+    )
+    forecast_uncertainty_uah_mwh = _row_optional_float(
+        row,
+        "state_forecast_uncertainty_uah_mwh",
+        default=abs(tft_forecast_uah_mwh - nbeatsx_forecast_uah_mwh),
+    )
+    forecast_spread_uah_mwh = _row_optional_float(
+        row,
+        "state_forecast_spread_uah_mwh",
+        default=tft_forecast_uah_mwh - nbeatsx_forecast_uah_mwh,
+    )
+    return {
+        "state_nbeatsx_forecast_uah_mwh": nbeatsx_forecast_uah_mwh,
+        "state_tft_forecast_uah_mwh": tft_forecast_uah_mwh,
+        "state_forecast_uncertainty_uah_mwh": forecast_uncertainty_uah_mwh,
+        "state_forecast_spread_uah_mwh": forecast_spread_uah_mwh,
+    }
+
+
+def _row_optional_float(row: dict[str, Any], column_name: str, *, default: float) -> float:
+    value = row.get(column_name)
+    if value is None:
+        return default
+    return float(value)
 
 
 def _row_datetime(row: dict[str, Any], column_name: str) -> datetime:
