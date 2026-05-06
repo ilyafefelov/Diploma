@@ -484,6 +484,7 @@ Backend additions:
 - `GET /dashboard/future-stack-preview?tenant_id=...` exposes NBEATSx/TFT forecast paths, backend availability for official SOTA libraries, selected forecast model, and claim boundary text.
 - `GET /dashboard/decision-policy-preview?tenant_id=...` exposes projected offline DT policy-preview rows with value gap, feasible action, SOC before/after, and gatekeeper status.
 - `GET /dashboard/operator-recommendation?tenant_id=...&strategy_id=...` now includes policy mode, selected policy id, policy readiness, forecast model series, and value-gap series for `/operator`.
+- `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are registered as Silver SOTA-adapter assets. They report optional backend readiness and only emit official model rows when the optional NeuralForecast/PyTorch Forecasting stack is installed and runnable.
 
 Dashboard additions:
 

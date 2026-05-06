@@ -89,6 +89,12 @@ New FastAPI read models:
 
 The `/operator` dashboard uses these live read models for the NBEATSx/TFT forecast graph and DT value-gap/action graph. DT remains a preview-only policy surface until a full offline evaluation run proves safety and regret performance across all tenants.
 
+Official-backend status:
+
+- `nbeatsx_official_price_forecast` is registered as a Silver asset and uses Nixtla NeuralForecast NBEATSx only when the optional `sota` dependencies are installed.
+- `tft_official_price_forecast` is registered as a Silver readiness asset for PyTorch Forecasting TFT; it reports backend availability and keeps the model unmaterialized until the heavier trainer is enabled.
+- In the current local environment the optional SOTA libraries are not installed, so these assets do not create official forecast rows yet. Install with `uv sync --extra dev --extra sota` before running the official backend experiment.
+
 ## Local Stack
 
 ```powershell
@@ -163,6 +169,7 @@ Latest read-model smoke:
 ## Claim Boundaries
 
 - `sota_forecast_training_frame` is a backend contract for full NeuralForecast NBEATSx and PyTorch-Forecasting TFT experiments. It is not itself a tuned SOTA model result.
+- `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are adapter/readiness assets. They must not be cited as SOTA results until they materialize forecast rows and pass the rolling-origin LP/oracle benchmark.
 - `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
 - `decision_transformer_trajectory_frame`, `decision_transformer_policy_preview_frame`, and `DecisionTransformerPolicy` provide offline return-conditioned policy scaffolding plus deterministic action projection. They are not a market-execution strategy until full offline evaluation is materialized and safety/regret checks pass across tenants.
 - `simulated_live_trading_frame` is paper-trading replay only. It never carries real settlement IDs and must not be described as market execution.
