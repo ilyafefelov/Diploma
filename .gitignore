@@ -11,5 +11,7 @@ master_execution_prompt.md
 .git
 _legacy_smart-energy-ai
 mlruns
+lightning_logs/
+checkpoints/
 .tmp_dagster_home*/
 .tmp_runtime/

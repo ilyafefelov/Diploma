@@ -1,3 +1,5 @@
+from typing import cast
+
 import polars as pl
 
 from smart_arbitrage.assets.bronze.market_weather import build_synthetic_market_price_history
@@ -44,8 +46,12 @@ def test_official_nbeatsx_adapter_keeps_input_window_trainable_after_lag_drop() 
 
     class FakeNBEATSx:
         def __init__(self, **kwargs: object) -> None:
-            captured["horizon_rows"] = int(kwargs["h"])
-            captured["input_size"] = int(kwargs["input_size"])
+            horizon_rows = kwargs["h"]
+            input_size = kwargs["input_size"]
+            assert isinstance(horizon_rows, int)
+            assert isinstance(input_size, int)
+            captured["horizon_rows"] = horizon_rows
+            captured["input_size"] = input_size
             assert kwargs["logger"] is False
             assert kwargs["enable_progress_bar"] is False
             assert kwargs["enable_model_summary"] is False
@@ -93,3 +99,102 @@ def test_official_tft_adapter_returns_empty_readiness_frame_when_backend_missing
 
     assert forecast.height == 0
     assert forecast.columns == list(OFFICIAL_FORECAST_COLUMNS)
+
+
+def test_official_tft_adapter_trains_quantile_smoke_when_backend_available() -> None:
+    captured: dict[str, object] = {}
+
+    class FakeTimeSeriesDataSet:
+        def __init__(self, data: object, **kwargs: object) -> None:
+            captured["training_rows"] = len(data)  # type: ignore[arg-type]
+            captured.setdefault("max_prediction_length", kwargs["max_prediction_length"])
+            captured.setdefault("time_varying_known_reals", kwargs["time_varying_known_reals"])
+            captured.setdefault("time_varying_unknown_reals", kwargs["time_varying_unknown_reals"])
+
+        @classmethod
+        def from_dataset(
+            cls,
+            dataset: object,
+            data: object,
+            *,
+            predict: bool,
+            stop_randomization: bool,
+        ) -> "FakeTimeSeriesDataSet":
+            captured["prediction_rows"] = len(data)  # type: ignore[arg-type]
+            assert predict is True
+            assert stop_randomization is True
+            return cls(data, max_prediction_length=24, time_varying_known_reals=[], time_varying_unknown_reals=[])
+
+        def to_dataloader(self, *, train: bool, batch_size: int, num_workers: int) -> str:
+            assert num_workers == 0
+            captured[f"batch_size_{train}"] = batch_size
+            return f"loader:{train}"
+
+    class FakeTemporalFusionTransformer:
+        @classmethod
+        def from_dataset(cls, dataset: object, **kwargs: object) -> "FakeTemporalFusionTransformer":
+            captured["output_size"] = kwargs["output_size"]
+            captured["hidden_size"] = kwargs["hidden_size"]
+            captured["loss"] = kwargs["loss"]
+            return cls()
+
+        def predict(self, data: object, *, mode: str, return_x: bool) -> list[list[list[float]]]:
+            assert data == "loader:False"
+            assert mode == "quantiles"
+            assert return_x is False
+            return [
+                [
+                    [4000.0 + step, 4100.0 + step, 4200.0 + step]
+                    for step in range(24)
+                ]
+            ]
+
+    class FakeQuantileLoss:
+        def __init__(self, quantiles: list[float]) -> None:
+            captured["quantiles"] = quantiles
+
+    class FakeTrainer:
+        def __init__(self, **kwargs: object) -> None:
+            captured["trainer_max_epochs"] = kwargs["max_epochs"]
+            assert kwargs["logger"] is False
+            assert kwargs["enable_checkpointing"] is False
+            assert kwargs["enable_progress_bar"] is False
+            assert kwargs["enable_model_summary"] is False
+
+        def fit(self, model: object, *, train_dataloaders: object) -> None:
+            captured["fit_loader"] = train_dataloaders
+
+    class FakePyTorchForecastingModule:
+        TimeSeriesDataSet = FakeTimeSeriesDataSet
+        TemporalFusionTransformer = FakeTemporalFusionTransformer
+
+    class FakeMetricsModule:
+        QuantileLoss = FakeQuantileLoss
+
+    class FakeLightningModule:
+        Trainer = FakeTrainer
+
+    def fake_importer(name: str) -> object:
+        if name == "pytorch_forecasting":
+            return FakePyTorchForecastingModule()
+        if name == "pytorch_forecasting.metrics":
+            return FakeMetricsModule()
+        if name == "lightning.pytorch":
+            return FakeLightningModule()
+        raise ModuleNotFoundError(name)
+
+    forecast = build_official_tft_forecast(_training_frame(), importer=fake_importer)
+
+    assert forecast.height == 24
+    assert forecast.select("model_name").to_series().unique().to_list() == ["tft_official_v0"]
+    assert forecast.select("backend_status").to_series().unique().to_list() == ["trained"]
+    assert forecast.select("prediction_interval_kind").to_series().unique().to_list() == ["quantile"]
+    assert forecast.select("predicted_price_p10_uah_mwh").to_series().item(0) == 4000.0
+    assert forecast.select("predicted_price_p50_uah_mwh").to_series().item(0) == 4100.0
+    assert forecast.select("predicted_price_p90_uah_mwh").to_series().item(0) == 4200.0
+    assert captured["max_prediction_length"] == 24
+    assert "y" in cast(list[str], captured["time_varying_unknown_reals"])
+    assert captured["quantiles"] == [0.1, 0.5, 0.9]
+    assert captured["output_size"] == 3
+    assert captured["trainer_max_epochs"] == 1
+    assert captured["fit_loader"] == "loader:True"
