@@ -14,6 +14,7 @@ policy is production-ready.
 |---|---|---|
 | Week 3 accepted thesis evidence | Pass | Dnipro 30-anchor real-data benchmark remains the current weekly headline. |
 | Dnipro 90-anchor calibration preview | Pass | Sufficient to start a controlled offline DFL experiment design later. |
+| Offline DFL experiment | Diagnostic pass | The first relaxed-LP training asset materializes and preserves temporal holdout discipline, but its held-out regret is worse than raw candidates. |
 | Full differentiable DFL claim | Blocked | Requires a trained differentiable objective, frozen temporal splits, and comparison against the same oracle/regret protocol. |
 | Market execution claim | Blocked | Requires a live/paper execution protocol, gatekeeper audit trail, and operator approval boundary. |
 
@@ -110,9 +111,9 @@ conditions are true:
 | [Distributional RL energy arbitrage](https://huggingface.co/papers/2401.00015) | Supports later risk-sensitive strategy discussion, not the current MVP implementation. |
 | [Dagster asset checks](https://release-1-8-9.dagster.dagster-docs.io/concepts/assets/asset-checks/define-execute-asset-checks) | Justifies making evidence rules visible as asset-attached checks in lineage. |
 
-## Next DFL Step After Pass
+## First DFL Step After Pass
 
-After the gate passes, the next DFL slice should still be offline and bounded:
+After the gate passed, the first DFL slice stayed offline and bounded:
 
 1. Freeze the Dnipro 90-anchor temporal split and manifest.
 2. Build a small differentiable-training experiment from `dfl_training_frame`.
@@ -120,6 +121,36 @@ After the gate passes, the next DFL slice should still be offline and bounded:
 4. Compare against strict similar-day, raw TFT/NBEATSx, calibrated candidates, and selector outputs.
 5. Report improvement only if the learned objective beats calibrated/selector baselines on the same no-leakage anchors.
 
-That slice can claim "DFL experiment started" only after the gate passes. It
-still cannot claim market execution without a separate execution and gatekeeper
-audit protocol.
+This slice can claim "DFL experiment started" because the gate passed. It still
+cannot claim full DFL or market execution without a stronger held-out result and
+a separate execution/gatekeeper audit protocol.
+
+## Offline DFL Experiment Result
+
+The next bounded slice was executed after this gate and is documented in
+[OFFLINE_DFL_EXPERIMENT.md](OFFLINE_DFL_EXPERIMENT.md). It adds
+`offline_dfl_experiment_frame` as a Gold research asset, not a public API or
+dashboard contract.
+
+Latest offline run:
+
+| Field | Value |
+|---|---|
+| Dagster run id | `54afa042-332c-459e-b6ea-e1b0308fa508` |
+| Asset | `offline_dfl_experiment_frame` |
+| Latest raw benchmark batch | `2026-05-07T10:01:50.67257Z` |
+| Evidence check | `dnipro_thesis_grade_90_anchor_evidence` passed |
+| Output rows | 2 |
+| Claim scope | `offline_dfl_experiment_not_full_dfl` |
+
+Held-out relaxed-LP result:
+
+| Model | Raw relaxed regret | Offline DFL relaxed regret | Delta | Decision |
+|---|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 1477.37 | 1499.85 | -22.47 | Keep diagnostic only. |
+| `tft_silver_v0` | 1974.55 | 2460.07 | -485.52 | Keep diagnostic only. |
+
+Interpretation: the first differentiable relaxed-LP loop runs on the gated
+evidence, but it does not improve held-out regret. The next DFL step should
+improve validation-safe training design before broadening tenant scope or
+making stronger thesis claims.

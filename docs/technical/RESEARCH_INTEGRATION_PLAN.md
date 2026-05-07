@@ -278,3 +278,49 @@ Latest verified DFL readiness gate:
   inference could drop calibration counts from corrected candidate payloads when
   the strict control row ranked first. The fix preserves calibration metadata;
   it does not change model semantics or public contracts.
+
+## Offline DFL Experiment After Readiness Gate
+
+After the DFL readiness gate passed, the next slice started a bounded offline
+DFL experiment without changing API contracts, dashboard contracts, Pydantic
+schemas, Dagster asset keys, resources, IO managers, or dependencies.
+
+Implementation:
+
+- New asset: `offline_dfl_experiment_frame`.
+- Dagster group: `gold_dfl_training`.
+- Source asset: `real_data_rolling_origin_benchmark_frame`.
+- Training rule: sort by anchor, hold out the latest validation anchors, and
+  train horizon-specific price biases only on earlier anchors.
+- Claim scope: `offline_dfl_experiment_not_full_dfl`.
+
+Materialization command:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,real_data_rolling_origin_benchmark_frame,offline_dfl_experiment_frame -c configs/real_data_calibration_week4.yaml
+```
+
+Latest run:
+
+- Dagster run id: `54afa042-332c-459e-b6ea-e1b0308fa508`.
+- Latest raw benchmark batch:
+  `2026-05-07T10:01:50.67257Z`.
+- `real_data_rolling_origin_benchmark_frame:dnipro_thesis_grade_90_anchor_evidence`
+  passed during the materialization.
+- Output rows: 2, one for `nbeatsx_silver_v0` and one for `tft_silver_v0`.
+
+Held-out result:
+
+| Model | Raw relaxed regret | Offline DFL relaxed regret | Delta | Finding |
+|---|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 1477.37 | 1499.85 | -22.47 | Diagnostic only; no improvement. |
+| `tft_silver_v0` | 1974.55 | 2460.07 | -485.52 | Diagnostic only; no improvement. |
+
+This is useful negative evidence: the first differentiable relaxed-LP training
+loop runs against the gated real-data split and preserves temporal discipline,
+but it does not beat the raw held-out relaxed-LP baseline. The next research
+slice should improve the validation-safe training design before expanding to
+more tenants or stronger DFL claims.
+
+Tracked note:
+[OFFLINE_DFL_EXPERIMENT.md](OFFLINE_DFL_EXPERIMENT.md).

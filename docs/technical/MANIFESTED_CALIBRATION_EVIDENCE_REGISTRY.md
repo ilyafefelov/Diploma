@@ -13,6 +13,7 @@ the concise values needed to audit the claim.
 | Week 3 accepted evidence | Verified | Dnipro 30-anchor real-data benchmark, observed OREE DAM plus historical Open-Meteo, thesis-grade provenance. |
 | Dnipro calibration preview | Verified here | Dnipro 90-anchor calibration and selector evidence for the next demo path. |
 | DFL readiness gate | Dagster checks added | The 90-anchor Dnipro preview can seed a later offline DFL experiment only when evidence checks pass. |
+| Offline DFL experiment | Diagnostic only | The first relaxed-LP training asset materialized after the gate, but held-out regret worsened versus raw candidates. |
 | Full DFL | Not claimed | The export explicitly sets `not_full_dfl=true`. |
 | Market execution | Not claimed | The export explicitly sets `not_market_execution=true`; rows are offline benchmark and selector diagnostics. |
 
@@ -136,6 +137,38 @@ Latest Postgres persisted totals for Dnipro:
 As before, Postgres totals include older persisted Dnipro batches. The
 supervisor-facing gate uses the latest `generated_at` batch, which the manifest
 and API report as 90 anchors for the Dnipro calibration preview.
+
+## Offline DFL Experiment Addendum
+
+After the DFL readiness gate passed, the first bounded offline DFL asset was
+materialized. This addendum is not part of the manifest export because
+`offline_dfl_experiment_frame` is a Dagster research artifact, not a persisted
+strategy read model.
+
+| Field | Value |
+|---|---|
+| Dagster run id | `54afa042-332c-459e-b6ea-e1b0308fa508` |
+| Asset | `offline_dfl_experiment_frame` |
+| Latest raw benchmark batch | `2026-05-07T10:01:50.67257Z` |
+| Output rows | 2 |
+| Claim scope | `offline_dfl_experiment_not_full_dfl` |
+| Tracked note | [OFFLINE_DFL_EXPERIMENT.md](OFFLINE_DFL_EXPERIMENT.md) |
+
+Held-out relaxed-LP result:
+
+| Model | Raw relaxed regret | Offline DFL relaxed regret | Delta | Registry use |
+|---|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 1477.37 | 1499.85 | -22.47 | Negative research evidence; do not promote. |
+| `tft_silver_v0` | 1974.55 | 2460.07 | -485.52 | Negative research evidence; do not promote. |
+
+Current API summary after the offline run:
+
+| Endpoint | Generated at | Anchors | Models | Tier | Mean regret UAH | Best / diagnostic |
+|---|---|---:|---:|---|---:|---|
+| `/dashboard/real-data-benchmark` | `2026-05-07T10:01:50.67257Z` | 90 | 3 | `thesis_grade` | 1938.98 | `strict_similar_day` |
+| `/dashboard/calibrated-ensemble-benchmark` | `2026-05-07T02:24:42.974392Z` | 90 | 1 | `thesis_grade` | 1479.65 | `calibrated_value_aware_ensemble_v0` |
+| `/dashboard/risk-adjusted-value-gate` | `2026-05-07T02:24:42.974392Z` | 90 | 1 | `thesis_grade` | 1428.59 | `risk_adjusted_value_gate_v0` |
+| `/dashboard/forecast-dispatch-sensitivity` | `2026-05-07T02:24:42.974392Z` | 90 | 5 | Diagnostic rows | n/a | 4 buckets |
 
 ## API Validation
 

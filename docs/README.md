@@ -14,6 +14,7 @@ docs/
 │   ├── BASELINE_LP_AND_DATA_PIPELINE.md
 │   ├── DFL_READINESS_GATE.md
 │   ├── MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md
+│   ├── OFFLINE_DFL_EXPERIMENT.md
 │   ├── RESEARCH_INTEGRATION_PLAN.md
 │   ├── WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md
 │   ├── OPERATOR_DEMO_READY.md
@@ -45,7 +46,7 @@ docs/
 | **Академічна записка** | [thesis/chapters/01-project-overview.md](thesis/chapters/01-project-overview.md) · [thesis/chapters/02-literature-review.md](thesis/chapters/02-literature-review.md) |
 | **Бібліографія / джерела** | [thesis/sources/README.md](thesis/sources/README.md) — індекс усіх PDF |
 | **Архітектура і data flow** | [technical/ARCHITECTURE_AND_DATA_FLOW.md](technical/ARCHITECTURE_AND_DATA_FLOW.md) — інфографіка архітектури, потоків даних і safety boundary |
-| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md) · [technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md) · [technical/DFL_READINESS_GATE.md](technical/DFL_READINESS_GATE.md) · [technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md](technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
+| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md) · [technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md) · [technical/DFL_READINESS_GATE.md](technical/DFL_READINESS_GATE.md) · [technical/OFFLINE_DFL_EXPERIMENT.md](technical/OFFLINE_DFL_EXPERIMENT.md) · [technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md](technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
 | **Research roadmap** | [technical/RESEARCH_INTEGRATION_PLAN.md](technical/RESEARCH_INTEGRATION_PLAN.md) · [technical/deep-research-reports/deep-research-report.md](technical/deep-research-reports/deep-research-report.md) |
 | **Next slice plan** | [technical/NEXT_SLICE_PLAN_RESEARCH_GROUNDED_CALIBRATION_QA.md](technical/NEXT_SLICE_PLAN_RESEARCH_GROUNDED_CALIBRATION_QA.md) |
 | **Інженер / розробник** | [../src/](../src/) · [../api/](../api/) · [../dashboard/](../dashboard/) |
@@ -70,6 +71,7 @@ docs/
 - ✅ Calibration QA manifest — research-layer exports now write `research_layer_manifest.json` with tenant/strategy freshness, row/anchor counts, source links, and conservative claim flags.
 - ✅ Manifested calibration evidence registry — latest Dnipro 90-anchor calibration preview is indexed in [MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md), with manifest/API/Postgres agreement and generated `data/` artifacts kept local.
 - ✅ Dagster evidence checks and DFL readiness gate — thesis-grade, no-leakage, selector-cardinality, and claim-boundary checks are registered in Dagster and documented in [DFL_READINESS_GATE.md](technical/DFL_READINESS_GATE.md).
+- ✅ Offline DFL experiment started — `offline_dfl_experiment_frame` materializes a bounded relaxed-LP training experiment on the gated Dnipro 90-anchor evidence; the first held-out result is negative and documented as research-only in [OFFLINE_DFL_EXPERIMENT.md](technical/OFFLINE_DFL_EXPERIMENT.md).
 - ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
 - ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.
 - 🟡 Full differentiable DFL training — primitive exists, but forecast models are not yet fine-tuned end-to-end on regret.
