@@ -27,6 +27,7 @@ from smart_arbitrage.strategy.ensemble_gate import (
 )
 from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
+from smart_arbitrage.dfl.training_examples import build_dfl_training_example_frame
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -147,6 +148,41 @@ def dfl_training_frame(
         },
     )
     return training_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def dfl_training_example_frame(
+    context,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Vector-rich sidecar DFL examples from strict LP/oracle benchmark rows."""
+
+    training_example_frame = build_dfl_training_example_frame(real_data_rolling_origin_benchmark_frame)
+    get_dfl_training_store().upsert_training_example_frame(training_example_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": training_example_frame.height,
+            "tenant_count": training_example_frame.select("tenant_id").n_unique()
+            if training_example_frame.height
+            else 0,
+            "anchor_count": training_example_frame.select("anchor_timestamp").n_unique()
+            if training_example_frame.height
+            else 0,
+            "scope": "dfl_training_examples_not_full_dfl",
+        },
+    )
+    return training_example_frame
 
 
 @dg.asset(
@@ -551,6 +587,7 @@ def risk_adjusted_value_gate_frame(
 DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
+    dfl_training_example_frame,
     regret_weighted_dfl_pilot_frame,
     dfl_relaxed_lp_pilot_frame,
     offline_dfl_experiment_frame,

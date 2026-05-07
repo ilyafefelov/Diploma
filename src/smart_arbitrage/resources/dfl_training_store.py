@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import cache
+import json
 import os
 from typing import Any, Protocol
 
@@ -9,6 +10,8 @@ import polars as pl
 
 class DflTrainingStore(Protocol):
     def upsert_training_frame(self, training_frame: pl.DataFrame) -> None: ...
+
+    def upsert_training_example_frame(self, training_example_frame: pl.DataFrame) -> None: ...
 
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None: ...
 
@@ -19,6 +22,9 @@ class DflTrainingStore(Protocol):
 
 class NullDflTrainingStore:
     def upsert_training_frame(self, training_frame: pl.DataFrame) -> None:
+        return None
+
+    def upsert_training_example_frame(self, training_example_frame: pl.DataFrame) -> None:
         return None
 
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None:
@@ -34,11 +40,15 @@ class NullDflTrainingStore:
 class InMemoryDflTrainingStore:
     def __init__(self) -> None:
         self.training_frame = pl.DataFrame()
+        self.training_example_frame = pl.DataFrame()
         self.pilot_frame = pl.DataFrame()
         self.relaxed_pilot_frame = pl.DataFrame()
 
     def upsert_training_frame(self, training_frame: pl.DataFrame) -> None:
         self.training_frame = training_frame.clone()
+
+    def upsert_training_example_frame(self, training_example_frame: pl.DataFrame) -> None:
+        self.training_example_frame = training_example_frame.clone()
 
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None:
         self.pilot_frame = pilot_frame.clone()
@@ -73,6 +83,49 @@ class PostgresDflTrainingStore:
     def _ensure_schema(self) -> None:
         with self._connect() as connection:
             with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS dfl_training_example_vectors (
+                        training_example_id TEXT PRIMARY KEY,
+                        evaluation_id TEXT NOT NULL,
+                        baseline_evaluation_id TEXT NOT NULL,
+                        tenant_id TEXT NOT NULL,
+                        anchor_timestamp TIMESTAMP NOT NULL,
+                        horizon_start TIMESTAMP NOT NULL,
+                        horizon_end TIMESTAMP NOT NULL,
+                        horizon_hours INTEGER NOT NULL,
+                        market_venue TEXT NOT NULL,
+                        currency TEXT NOT NULL,
+                        forecast_model_name TEXT NOT NULL,
+                        strategy_kind TEXT NOT NULL,
+                        baseline_strategy_name TEXT NOT NULL,
+                        baseline_forecast_model_name TEXT NOT NULL,
+                        forecast_price_vector_uah_mwh JSONB NOT NULL,
+                        actual_price_vector_uah_mwh JSONB NOT NULL,
+                        candidate_dispatch_vector_mw JSONB NOT NULL,
+                        baseline_dispatch_vector_mw JSONB NOT NULL,
+                        candidate_degradation_penalty_vector_uah JSONB NOT NULL,
+                        baseline_degradation_penalty_vector_uah JSONB NOT NULL,
+                        candidate_net_value_uah DOUBLE PRECISION NOT NULL,
+                        baseline_net_value_uah DOUBLE PRECISION NOT NULL,
+                        oracle_net_value_uah DOUBLE PRECISION NOT NULL,
+                        candidate_regret_uah DOUBLE PRECISION NOT NULL,
+                        baseline_regret_uah DOUBLE PRECISION NOT NULL,
+                        regret_delta_vs_baseline_uah DOUBLE PRECISION NOT NULL,
+                        total_throughput_mwh DOUBLE PRECISION NOT NULL,
+                        total_degradation_penalty_uah DOUBLE PRECISION NOT NULL,
+                        candidate_feasible BOOLEAN NOT NULL,
+                        baseline_feasible BOOLEAN NOT NULL,
+                        safety_violation_count INTEGER NOT NULL,
+                        data_quality_tier TEXT NOT NULL,
+                        observed_coverage_ratio DOUBLE PRECISION NOT NULL,
+                        claim_scope TEXT NOT NULL,
+                        not_full_dfl BOOLEAN NOT NULL,
+                        not_market_execution BOOLEAN NOT NULL,
+                        generated_at TIMESTAMP NOT NULL
+                    )
+                    """
+                )
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS dfl_training_examples (
@@ -154,6 +207,96 @@ class PostgresDflTrainingStore:
                         PRIMARY KEY (pilot_name, evaluation_id)
                     )
                     """
+                )
+            connection.commit()
+
+    def upsert_training_example_frame(self, training_example_frame: pl.DataFrame) -> None:
+        if training_example_frame.height == 0:
+            return None
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO dfl_training_example_vectors (
+                        training_example_id,
+                        evaluation_id,
+                        baseline_evaluation_id,
+                        tenant_id,
+                        anchor_timestamp,
+                        horizon_start,
+                        horizon_end,
+                        horizon_hours,
+                        market_venue,
+                        currency,
+                        forecast_model_name,
+                        strategy_kind,
+                        baseline_strategy_name,
+                        baseline_forecast_model_name,
+                        forecast_price_vector_uah_mwh,
+                        actual_price_vector_uah_mwh,
+                        candidate_dispatch_vector_mw,
+                        baseline_dispatch_vector_mw,
+                        candidate_degradation_penalty_vector_uah,
+                        baseline_degradation_penalty_vector_uah,
+                        candidate_net_value_uah,
+                        baseline_net_value_uah,
+                        oracle_net_value_uah,
+                        candidate_regret_uah,
+                        baseline_regret_uah,
+                        regret_delta_vs_baseline_uah,
+                        total_throughput_mwh,
+                        total_degradation_penalty_uah,
+                        candidate_feasible,
+                        baseline_feasible,
+                        safety_violation_count,
+                        data_quality_tier,
+                        observed_coverage_ratio,
+                        claim_scope,
+                        not_full_dfl,
+                        not_market_execution,
+                        generated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (training_example_id)
+                    DO UPDATE SET
+                        evaluation_id = EXCLUDED.evaluation_id,
+                        baseline_evaluation_id = EXCLUDED.baseline_evaluation_id,
+                        tenant_id = EXCLUDED.tenant_id,
+                        anchor_timestamp = EXCLUDED.anchor_timestamp,
+                        horizon_start = EXCLUDED.horizon_start,
+                        horizon_end = EXCLUDED.horizon_end,
+                        horizon_hours = EXCLUDED.horizon_hours,
+                        market_venue = EXCLUDED.market_venue,
+                        currency = EXCLUDED.currency,
+                        forecast_model_name = EXCLUDED.forecast_model_name,
+                        strategy_kind = EXCLUDED.strategy_kind,
+                        baseline_strategy_name = EXCLUDED.baseline_strategy_name,
+                        baseline_forecast_model_name = EXCLUDED.baseline_forecast_model_name,
+                        forecast_price_vector_uah_mwh = EXCLUDED.forecast_price_vector_uah_mwh,
+                        actual_price_vector_uah_mwh = EXCLUDED.actual_price_vector_uah_mwh,
+                        candidate_dispatch_vector_mw = EXCLUDED.candidate_dispatch_vector_mw,
+                        baseline_dispatch_vector_mw = EXCLUDED.baseline_dispatch_vector_mw,
+                        candidate_degradation_penalty_vector_uah = EXCLUDED.candidate_degradation_penalty_vector_uah,
+                        baseline_degradation_penalty_vector_uah = EXCLUDED.baseline_degradation_penalty_vector_uah,
+                        candidate_net_value_uah = EXCLUDED.candidate_net_value_uah,
+                        baseline_net_value_uah = EXCLUDED.baseline_net_value_uah,
+                        oracle_net_value_uah = EXCLUDED.oracle_net_value_uah,
+                        candidate_regret_uah = EXCLUDED.candidate_regret_uah,
+                        baseline_regret_uah = EXCLUDED.baseline_regret_uah,
+                        regret_delta_vs_baseline_uah = EXCLUDED.regret_delta_vs_baseline_uah,
+                        total_throughput_mwh = EXCLUDED.total_throughput_mwh,
+                        total_degradation_penalty_uah = EXCLUDED.total_degradation_penalty_uah,
+                        candidate_feasible = EXCLUDED.candidate_feasible,
+                        baseline_feasible = EXCLUDED.baseline_feasible,
+                        safety_violation_count = EXCLUDED.safety_violation_count,
+                        data_quality_tier = EXCLUDED.data_quality_tier,
+                        observed_coverage_ratio = EXCLUDED.observed_coverage_ratio,
+                        claim_scope = EXCLUDED.claim_scope,
+                        not_full_dfl = EXCLUDED.not_full_dfl,
+                        not_market_execution = EXCLUDED.not_market_execution,
+                        generated_at = EXCLUDED.generated_at
+                    """,
+                    [_training_example_values(row) for row in training_example_frame.iter_rows(named=True)],
                 )
             connection.commit()
 
@@ -381,6 +524,48 @@ def _training_values(row: dict[str, Any]) -> tuple[Any, ...]:
         row["market_regime_id"],
         row["days_since_regime_change"],
         row["is_price_cap_changed_recently"],
+    )
+
+
+def _training_example_values(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row["training_example_id"],
+        row["evaluation_id"],
+        row["baseline_evaluation_id"],
+        row["tenant_id"],
+        row["anchor_timestamp"],
+        row["horizon_start"],
+        row["horizon_end"],
+        row["horizon_hours"],
+        row["market_venue"],
+        row["currency"],
+        row["forecast_model_name"],
+        row["strategy_kind"],
+        row["baseline_strategy_name"],
+        row["baseline_forecast_model_name"],
+        json.dumps(row["forecast_price_vector_uah_mwh"]),
+        json.dumps(row["actual_price_vector_uah_mwh"]),
+        json.dumps(row["candidate_dispatch_vector_mw"]),
+        json.dumps(row["baseline_dispatch_vector_mw"]),
+        json.dumps(row["candidate_degradation_penalty_vector_uah"]),
+        json.dumps(row["baseline_degradation_penalty_vector_uah"]),
+        row["candidate_net_value_uah"],
+        row["baseline_net_value_uah"],
+        row["oracle_net_value_uah"],
+        row["candidate_regret_uah"],
+        row["baseline_regret_uah"],
+        row["regret_delta_vs_baseline_uah"],
+        row["total_throughput_mwh"],
+        row["total_degradation_penalty_uah"],
+        row["candidate_feasible"],
+        row["baseline_feasible"],
+        row["safety_violation_count"],
+        row["data_quality_tier"],
+        row["observed_coverage_ratio"],
+        row["claim_scope"],
+        row["not_full_dfl"],
+        row["not_market_execution"],
+        row["generated_at"],
     )
 
 

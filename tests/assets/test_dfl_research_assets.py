@@ -17,6 +17,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
     offline_dfl_experiment_frame,
+    dfl_training_example_frame,
     real_data_value_aware_ensemble_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
@@ -99,6 +100,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert {
         "real_data_value_aware_ensemble_frame",
         "dfl_training_frame",
+        "dfl_training_example_frame",
         "regret_weighted_dfl_pilot_frame",
         "regret_weighted_forecast_calibration_frame",
         "regret_weighted_forecast_strategy_benchmark_frame",
@@ -124,6 +126,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_relaxed_lp_pilot_frame"]["medallion"] == "gold"
     assert tags_by_key["offline_dfl_experiment_frame"]["evidence_scope"] == "not_market_execution"
     assert groups_by_key["dfl_training_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_training_example_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["horizon_regret_weighted_forecast_calibration_frame"] == "gold_calibration"
@@ -154,6 +157,7 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         benchmark,
         ensemble,
     )
+    training_examples = dfl_training_example_frame(None, benchmark)
     pilot = regret_weighted_dfl_pilot_frame(
         None,
         RegretWeightedDflPilotAssetConfig(
@@ -217,6 +221,8 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert strategy_store.evaluation_frame.height == 65
     assert training.height == 20
     assert dfl_store.training_frame.height == 20
+    assert training_examples.height == 15
+    assert dfl_store.training_example_frame.height == 15
     assert pilot.height == 1
     assert dfl_store.pilot_frame.height == 1
     assert calibration.height == 10
