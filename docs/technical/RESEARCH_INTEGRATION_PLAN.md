@@ -325,6 +325,60 @@ more tenants or stronger DFL claims.
 Tracked note:
 [OFFLINE_DFL_EXPERIMENT.md](OFFLINE_DFL_EXPERIMENT.md).
 
+## All-Tenant Offline DFL Panel v2
+
+The next DFL stability slice expanded the offline experiment to all five
+canonical tenants without changing API contracts, dashboard contracts, Pydantic
+schemas, existing asset keys, resources, IO managers, or dependencies.
+
+Implementation:
+
+- New asset: `offline_dfl_panel_experiment_frame`.
+- Dagster group: `gold_dfl_training`.
+- Source asset: `real_data_rolling_origin_benchmark_frame`.
+- Run config:
+  [../../configs/real_data_offline_dfl_panel_week3.yaml](../../configs/real_data_offline_dfl_panel_week3.yaml).
+- Tenants: all five canonical tenants in `simulations/tenants.yml`.
+- Split rule: 90 anchors per tenant, latest 18 anchors per tenant held out as
+  the final validation panel, giving 90 tenant-anchor validation rows per
+  model.
+- Checkpoint rule: v2 horizon-bias checkpoint is selected only on prior
+  inner-validation anchors, not on the final holdout.
+- Claim scope: `offline_dfl_panel_experiment_not_full_dfl`.
+
+Materialization command:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,real_data_rolling_origin_benchmark_frame,offline_dfl_panel_experiment_frame -c configs/real_data_offline_dfl_panel_week3.yaml
+```
+
+Latest run:
+
+- Dagster run id: `5b759ed9-ae80-4c10-b049-7d39eed64d04`.
+- Output rows: 10, one row per tenant/model pair for two forecast candidates.
+- Export directory:
+  `data/research_runs/week3_offline_dfl_panel_v2_90`.
+- Latest raw benchmark rows: 270 rows and 90 anchors for each of the five
+  tenants.
+- Dnipro API read model remains thesis-grade with `anchor_count=90`,
+  `model_count=3`, and `best_model_name=strict_similar_day`.
+
+Final-holdout result:
+
+| Model | Final holdout tenant-anchors | Raw relaxed regret | v2 relaxed regret | Improvement | Finding |
+|---|---:|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 90 | 2154.92 | 2121.83 | 1.54% | Development gate passes; strict promotion still blocked. |
+| `tft_silver_v0` | 90 | 2791.38 | 2665.30 | 4.52% | Best relaxed panel signal; strict promotion still blocked. |
+
+This improves on the negative Dnipro-only offline v0 result, but it remains
+relaxed-LP development evidence. It must not be described as full DFL, a live
+strategy, a Decision Transformer, or a replacement for the frozen
+`strict_similar_day` control. Production promotion remains blocked until a later
+strict-LP/oracle promotion gate passes.
+
+Tracked note:
+[OFFLINE_DFL_PANEL_EXPERIMENT.md](OFFLINE_DFL_PANEL_EXPERIMENT.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

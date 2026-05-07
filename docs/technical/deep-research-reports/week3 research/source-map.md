@@ -27,6 +27,7 @@ exists, but full differentiable DFL is not yet a positive result.
 | Evidence uses rolling-origin temporal discipline. | `run_real_data_rolling_origin_benchmark` and Dagster check `dnipro_thesis_grade_90_anchor_evidence`. |
 | DFL readiness is gated before stronger claims. | `DFL_READINESS_GATE.md`, `smart_arbitrage.evidence.quality_checks`, and registered asset checks. |
 | First offline DFL experiment exists but is negative. | `offline_dfl_experiment_frame` and `OFFLINE_DFL_EXPERIMENT.md`. |
+| All-tenant offline DFL panel exists as v2 development evidence. | `offline_dfl_panel_experiment_frame`, `configs/real_data_offline_dfl_panel_week3.yaml`, and `OFFLINE_DFL_PANEL_EXPERIMENT.md`. |
 
 ## Supported By Benchmark Evidence
 
@@ -38,6 +39,7 @@ exists, but full differentiable DFL is not yet a positive result.
 | Horizon-aware calibration | Improves neural candidate diagnostics in some runs, but does not replace strict similar-day as frozen control. |
 | Risk-adjusted selector | Selector evidence only; not full DFL and not market execution. |
 | Offline relaxed-LP DFL v0 | Proves the training loop can run on gated data, but held-out regret worsens and must not be promoted. |
+| Offline relaxed-LP DFL panel v2 | Five tenants x 90 anchors passed the development gate with positive relaxed-regret improvement; production promotion remains blocked until strict-LP/oracle promotion passes. |
 
 ## Planned Research
 
@@ -49,6 +51,7 @@ exists, but full differentiable DFL is not yet a positive result.
 | Decision Transformer / M3DT-inspired strategy | Useful offline research primitive once DFL data and gates are mature. | Not live, not deployed, not next implementation slice. |
 | Probabilistic/diffusion forecasting | Useful for uncertainty and CRPS/pinball methodology. | Literature/watch track only. |
 | ProbTS/TFB/Monash benchmarks | Useful external reproducibility reference. | Separate environment/spec only; no root dependency change. |
+| European dataset bridge | Useful for future external validation and market-coupling context. | Mention ENTSO-E, OPSD, Nord Pool, and Ember now; do not ingest or add dependencies in the Week 3 panel slice. |
 
 ## Out Of Scope / Not Claimed
 
@@ -60,6 +63,7 @@ exists, but full differentiable DFL is not yet a positive result.
 - Decision Transformer deployment.
 - SOTA deep-learning superiority.
 - Diffusion/foundation-model implementation in the current stack.
+- European dataset ingestion, external-market training, or market-coupling claims.
 
 ## Report Mapping
 
@@ -79,3 +83,16 @@ exists, but full differentiable DFL is not yet a positive result.
 - [Decision-Focused Learning survey](https://huggingface.co/papers/2307.13565) supports decision-quality learning through constrained optimization, while also justifying cautious benchmark-first sequencing.
 - [PriceFM](https://huggingface.co/papers/2508.04875) supports future electricity-price foundation-model work with European cross-region context.
 - [THieF](https://huggingface.co/papers/2508.11372) supports later temporal hierarchy forecasting after the current evaluation protocol is stable.
+
+## European Dataset Bridge
+
+These sources are now indexed as future validation context only. The current
+engineering evidence remains Ukrainian OREE DAM plus tenant Open-Meteo weather.
+
+| Source | Why it is useful later | Current status |
+|---|---|---|
+| [ENTSO-E Transparency Platform](https://www.entsoe.eu/data/transparency-platform/) | European electricity market fundamentals for generation, load, transmission, balancing, and market-coupling context. | Mention only. |
+| [Open Power System Data](https://open-power-system-data.org/) | Open, documented European power-system data packages for reproducibility. | Mention only. |
+| [OPSD time series](https://data.open-power-system-data.org/time_series/) | Future spot-price, load, wind, and solar time-series comparison. | Mention only. |
+| [Nord Pool Data Portal](https://www.nordpoolgroup.com/en/services/power-market-data-services/dataportalregistration/) | Future Nordic day-ahead/intraday market-data reference if access is approved. | Mention only. |
+| [Ember API](https://ember-energy.org/data/api) | Future high-level electricity demand, generation, emissions, and carbon-intensity context. | Mention only. |

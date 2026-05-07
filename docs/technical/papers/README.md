@@ -60,3 +60,18 @@ Add these sources to the thesis narrative as literature context, not implemented
 - Distributional RL energy arbitrage, arXiv `2401.00015`: watch-list source for later risk-sensitive and multi-venue strategy work.
 
 The Week 4 modeling follow-up ran existing regret-calibration assets using [../../../configs/real_data_calibration_week4.yaml](../../../configs/real_data_calibration_week4.yaml). Outputs are calibration/selector evidence only, not full DFL or market execution. The concise report/demo package is tracked in [../../thesis/weekly-reports/week4/report.md](../../thesis/weekly-reports/week4/report.md).
+
+## European Dataset Bridge
+
+The Week 3 all-tenant offline DFL panel keeps implemented evidence on Ukrainian
+OREE DAM plus Open-Meteo. European data sources are now cited only as future
+external-validation and market-coupling context:
+
+- [ENTSO-E Transparency Platform](https://www.entsoe.eu/data/transparency-platform/) — future European generation, load, transmission, and balancing-data context.
+- [Open Power System Data](https://open-power-system-data.org/) — future open-data reproducibility source for European power-system packages.
+- [OPSD time series](https://data.open-power-system-data.org/time_series/) — future spot-price, load, wind, and solar time-series comparison.
+- [Nord Pool Data Portal](https://www.nordpoolgroup.com/en/services/power-market-data-services/dataportalregistration/) — future Nordic market-data reference if access is approved.
+- [Ember API](https://ember-energy.org/data/api) — future high-level electricity demand, generation, emissions, and carbon-intensity context.
+
+No European dataset is ingested in the current codebase, and none of these
+sources supports a current market-coupling or external generalization claim.
