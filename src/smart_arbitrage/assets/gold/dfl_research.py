@@ -20,6 +20,11 @@ from smart_arbitrage.dfl.offline_experiment import (
     build_offline_dfl_experiment_frame,
     build_offline_dfl_panel_experiment_frame,
 )
+from smart_arbitrage.dfl.action_targeting import (
+    ACTION_TARGET_STRICT_LP_STRATEGY_KIND,
+    build_offline_dfl_action_target_panel_frame,
+    build_offline_dfl_action_target_strict_lp_benchmark_frame,
+)
 from smart_arbitrage.dfl.decision_targeting import (
     DECISION_TARGET_STRICT_LP_STRATEGY_KIND,
     build_offline_dfl_decision_target_panel_frame,
@@ -30,6 +35,7 @@ from smart_arbitrage.dfl.panel_strict import (
     build_offline_dfl_panel_strict_lp_benchmark_frame,
 )
 from smart_arbitrage.dfl.promotion_gate import (
+    evaluate_offline_dfl_action_target_promotion_gate,
     evaluate_offline_dfl_decision_target_promotion_gate,
     evaluate_offline_dfl_panel_development_gate,
     evaluate_offline_dfl_panel_strict_promotion_gate,
@@ -136,6 +142,24 @@ class OfflineDflDecisionTargetAssetConfig(dg.Config):
     spread_scale_grid_csv: str = "0.75,1.0,1.25,1.5"
     mean_shift_grid_uah_mwh_csv: str = "-500.0,0.0,500.0"
     include_panel_v2_bias_options_csv: str = "false,true"
+
+
+class OfflineDflActionTargetAssetConfig(dg.Config):
+    """Action-targeted v4 strict LP candidate scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    max_train_anchors_per_tenant: int = 72
+    inner_validation_fraction: float = 0.2
+    charge_hour_count_grid_csv: str = "2,3"
+    discharge_hour_count_grid_csv: str = "2,3"
+    action_spread_grid_uah_mwh_csv: str = "500.0,1000.0,1500.0"
+    include_panel_v2_bias_options_csv: str = "false,true"
+    include_decision_v3_correction_options_csv: str = "false,true"
 
 
 @dg.asset(
@@ -568,6 +592,127 @@ def offline_dfl_decision_target_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def offline_dfl_action_target_panel_frame(
+    context,
+    config: OfflineDflActionTargetAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    offline_dfl_panel_experiment_frame: pl.DataFrame,
+    offline_dfl_decision_target_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Action-targeted v4 parameter selection from prior strict LP/oracle regret."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    action_panel_frame = build_offline_dfl_action_target_panel_frame(
+        real_data_rolling_origin_benchmark_frame,
+        offline_dfl_panel_experiment_frame,
+        offline_dfl_decision_target_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        max_train_anchors_per_tenant=config.max_train_anchors_per_tenant,
+        inner_validation_fraction=config.inner_validation_fraction,
+        charge_hour_count_grid=_int_csv_values(
+            config.charge_hour_count_grid_csv,
+            field_name="charge_hour_count_grid_csv",
+        ),
+        discharge_hour_count_grid=_int_csv_values(
+            config.discharge_hour_count_grid_csv,
+            field_name="discharge_hour_count_grid_csv",
+        ),
+        action_spread_grid_uah_mwh=_float_csv_values(
+            config.action_spread_grid_uah_mwh_csv,
+            field_name="action_spread_grid_uah_mwh_csv",
+        ),
+        include_panel_v2_bias_options=_bool_csv_values(
+            config.include_panel_v2_bias_options_csv,
+            field_name="include_panel_v2_bias_options_csv",
+        ),
+        include_decision_v3_correction_options=_bool_csv_values(
+            config.include_decision_v3_correction_options_csv,
+            field_name="include_decision_v3_correction_options_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": action_panel_frame.height,
+            "tenant_count": action_panel_frame.select("tenant_id").n_unique()
+            if action_panel_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "scope": "offline_dfl_action_target_v4_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return action_panel_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def offline_dfl_action_target_strict_lp_benchmark_frame(
+    context,
+    config: OfflineDflActionTargetAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    offline_dfl_panel_experiment_frame: pl.DataFrame,
+    offline_dfl_decision_target_panel_frame: pl.DataFrame,
+    offline_dfl_action_target_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle benchmark for action-targeted v4 candidates."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_offline_dfl_action_target_strict_lp_benchmark_frame(
+        real_data_rolling_origin_benchmark_frame,
+        offline_dfl_panel_experiment_frame,
+        offline_dfl_decision_target_panel_frame,
+        offline_dfl_action_target_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        generated_at=_latest_generated_at(real_data_rolling_origin_benchmark_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    promotion_gate = evaluate_offline_dfl_action_target_promotion_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+    )
+    v4_rows = strict_frame.filter(pl.col("forecast_model_name").str.starts_with("offline_dfl_action_target_v4_"))
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "source_model_count": len(source_model_names),
+            "v4_validation_tenant_anchor_count": v4_rows.height,
+            "strategy_kind": ACTION_TARGET_STRICT_LP_STRATEGY_KIND,
+            "promotion_gate_decision": promotion_gate.decision,
+            "promotion_gate_description": promotion_gate.description,
+            "scope": "offline_dfl_action_target_v4_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -864,6 +1009,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     offline_dfl_panel_strict_lp_benchmark_frame,
     offline_dfl_decision_target_panel_frame,
     offline_dfl_decision_target_strict_lp_benchmark_frame,
+    offline_dfl_action_target_panel_frame,
+    offline_dfl_action_target_strict_lp_benchmark_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
@@ -900,6 +1047,21 @@ def _float_csv_values(raw_value: str, *, field_name: str) -> tuple[float, ...]:
             values.append(float(part))
         except ValueError as exc:
             raise ValueError(f"{field_name} must contain only numeric values.") from exc
+    if not values:
+        raise ValueError(f"{field_name} must contain at least one value.")
+    return tuple(values)
+
+
+def _int_csv_values(raw_value: str, *, field_name: str) -> tuple[int, ...]:
+    values: list[int] = []
+    for raw_part in raw_value.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        try:
+            values.append(int(part))
+        except ValueError as exc:
+            raise ValueError(f"{field_name} must contain only integer values.") from exc
     if not values:
         raise ValueError(f"{field_name} must contain at least one value.")
     return tuple(values)
