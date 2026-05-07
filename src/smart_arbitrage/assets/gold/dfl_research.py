@@ -20,11 +20,17 @@ from smart_arbitrage.dfl.offline_experiment import (
     build_offline_dfl_experiment_frame,
     build_offline_dfl_panel_experiment_frame,
 )
+from smart_arbitrage.dfl.decision_targeting import (
+    DECISION_TARGET_STRICT_LP_STRATEGY_KIND,
+    build_offline_dfl_decision_target_panel_frame,
+    build_offline_dfl_decision_target_strict_lp_benchmark_frame,
+)
 from smart_arbitrage.dfl.panel_strict import (
     OFFLINE_DFL_PANEL_STRICT_LP_STRATEGY_KIND,
     build_offline_dfl_panel_strict_lp_benchmark_frame,
 )
 from smart_arbitrage.dfl.promotion_gate import (
+    evaluate_offline_dfl_decision_target_promotion_gate,
     evaluate_offline_dfl_panel_development_gate,
     evaluate_offline_dfl_panel_strict_promotion_gate,
 )
@@ -114,6 +120,22 @@ class OfflineDflPanelStrictLpBenchmarkAssetConfig(dg.Config):
     )
     forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
     final_validation_anchor_count_per_tenant: int = 18
+
+
+class OfflineDflDecisionTargetAssetConfig(dg.Config):
+    """Decision-targeted v3 strict LP candidate scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    max_train_anchors_per_tenant: int = 72
+    inner_validation_fraction: float = 0.2
+    spread_scale_grid_csv: str = "0.75,1.0,1.25,1.5"
+    mean_shift_grid_uah_mwh_csv: str = "-500.0,0.0,500.0"
+    include_panel_v2_bias_options_csv: str = "false,true"
 
 
 @dg.asset(
@@ -440,6 +462,112 @@ def offline_dfl_panel_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def offline_dfl_decision_target_panel_frame(
+    context,
+    config: OfflineDflDecisionTargetAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    offline_dfl_panel_experiment_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Decision-targeted v3 parameter selection from prior strict LP/oracle regret."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    decision_panel_frame = build_offline_dfl_decision_target_panel_frame(
+        real_data_rolling_origin_benchmark_frame,
+        offline_dfl_panel_experiment_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        max_train_anchors_per_tenant=config.max_train_anchors_per_tenant,
+        inner_validation_fraction=config.inner_validation_fraction,
+        spread_scale_grid=_float_csv_values(config.spread_scale_grid_csv, field_name="spread_scale_grid_csv"),
+        mean_shift_grid_uah_mwh=_float_csv_values(
+            config.mean_shift_grid_uah_mwh_csv,
+            field_name="mean_shift_grid_uah_mwh_csv",
+        ),
+        include_panel_v2_bias_options=_bool_csv_values(
+            config.include_panel_v2_bias_options_csv,
+            field_name="include_panel_v2_bias_options_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": decision_panel_frame.height,
+            "tenant_count": decision_panel_frame.select("tenant_id").n_unique()
+            if decision_panel_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "scope": "offline_dfl_decision_target_v3_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return decision_panel_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def offline_dfl_decision_target_strict_lp_benchmark_frame(
+    context,
+    config: OfflineDflDecisionTargetAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    offline_dfl_panel_experiment_frame: pl.DataFrame,
+    offline_dfl_decision_target_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle benchmark for decision-targeted v3 candidates."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_offline_dfl_decision_target_strict_lp_benchmark_frame(
+        real_data_rolling_origin_benchmark_frame,
+        offline_dfl_panel_experiment_frame,
+        offline_dfl_decision_target_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        generated_at=_latest_generated_at(real_data_rolling_origin_benchmark_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    promotion_gate = evaluate_offline_dfl_decision_target_promotion_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+    )
+    v3_rows = strict_frame.filter(pl.col("forecast_model_name").str.starts_with("offline_dfl_decision_target_v3_"))
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "source_model_count": len(source_model_names),
+            "v3_validation_tenant_anchor_count": v3_rows.height,
+            "strategy_kind": DECISION_TARGET_STRICT_LP_STRATEGY_KIND,
+            "promotion_gate_decision": promotion_gate.decision,
+            "promotion_gate_description": promotion_gate.description,
+            "scope": "offline_dfl_decision_target_v3_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -734,6 +862,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     offline_dfl_experiment_frame,
     offline_dfl_panel_experiment_frame,
     offline_dfl_panel_strict_lp_benchmark_frame,
+    offline_dfl_decision_target_panel_frame,
+    offline_dfl_decision_target_strict_lp_benchmark_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
@@ -758,6 +888,38 @@ def _csv_values(raw_value: str, *, field_name: str) -> tuple[str, ...]:
     if not values:
         raise ValueError(f"{field_name} must contain at least one value.")
     return values
+
+
+def _float_csv_values(raw_value: str, *, field_name: str) -> tuple[float, ...]:
+    values: list[float] = []
+    for raw_part in raw_value.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        try:
+            values.append(float(part))
+        except ValueError as exc:
+            raise ValueError(f"{field_name} must contain only numeric values.") from exc
+    if not values:
+        raise ValueError(f"{field_name} must contain at least one value.")
+    return tuple(values)
+
+
+def _bool_csv_values(raw_value: str, *, field_name: str) -> tuple[bool, ...]:
+    values: list[bool] = []
+    for raw_part in raw_value.split(","):
+        part = raw_part.strip().lower()
+        if not part:
+            continue
+        if part in {"true", "1", "yes"}:
+            values.append(True)
+        elif part in {"false", "0", "no"}:
+            values.append(False)
+        else:
+            raise ValueError(f"{field_name} must contain boolean values.")
+    if not values:
+        raise ValueError(f"{field_name} must contain at least one value.")
+    return tuple(values)
 
 
 def _latest_generated_at(frame: pl.DataFrame) -> datetime | None:

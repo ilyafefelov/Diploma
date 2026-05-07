@@ -7,6 +7,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflExperimentAssetConfig,
+    OfflineDflDecisionTargetAssetConfig,
     OfflineDflPanelExperimentAssetConfig,
     OfflineDflPanelStrictLpBenchmarkAssetConfig,
     RelaxedDflPilotAssetConfig,
@@ -19,6 +20,8 @@ from smart_arbitrage.assets.gold.dfl_research import (
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
     offline_dfl_experiment_frame,
+    offline_dfl_decision_target_panel_frame,
+    offline_dfl_decision_target_strict_lp_benchmark_frame,
     offline_dfl_panel_experiment_frame,
     offline_dfl_panel_strict_lp_benchmark_frame,
     dfl_training_example_frame,
@@ -117,6 +120,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "offline_dfl_experiment_frame",
         "offline_dfl_panel_experiment_frame",
         "offline_dfl_panel_strict_lp_benchmark_frame",
+        "offline_dfl_decision_target_panel_frame",
+        "offline_dfl_decision_target_strict_lp_benchmark_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -136,8 +141,15 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["offline_dfl_decision_target_panel_frame"] == "gold_dfl_training"
+    assert groups_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
+    assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
     assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["horizon_regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
@@ -248,9 +260,40 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         benchmark,
         offline_panel,
     )
+    decision_target_panel = offline_dfl_decision_target_panel_frame(
+        None,
+        OfflineDflDecisionTargetAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            forecast_model_names_csv="tft_silver_v0",
+            final_validation_anchor_count_per_tenant=2,
+            max_train_anchors_per_tenant=3,
+            inner_validation_fraction=0.34,
+            spread_scale_grid_csv="1.0",
+            mean_shift_grid_uah_mwh_csv="0.0",
+            include_panel_v2_bias_options_csv="true",
+        ),
+        benchmark,
+        offline_panel,
+    )
+    decision_target_strict = offline_dfl_decision_target_strict_lp_benchmark_frame(
+        None,
+        OfflineDflDecisionTargetAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            forecast_model_names_csv="tft_silver_v0",
+            final_validation_anchor_count_per_tenant=2,
+            max_train_anchors_per_tenant=3,
+            inner_validation_fraction=0.34,
+            spread_scale_grid_csv="1.0",
+            mean_shift_grid_uah_mwh_csv="0.0",
+            include_panel_v2_bias_options_csv="true",
+        ),
+        benchmark,
+        offline_panel,
+        decision_target_panel,
+    )
 
     assert ensemble.height == 5
-    assert strategy_store.evaluation_frame.height == 71
+    assert strategy_store.evaluation_frame.height == 79
     assert training.height == 20
     assert dfl_store.training_frame.height == 20
     assert training_examples.height == 15
@@ -302,3 +345,14 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "offline_dfl_panel_strict_lp_benchmark"
     ]
     assert "offline_dfl_panel_v2_tft_silver_v0" in strict_panel["forecast_model_name"].unique().to_list()
+    assert decision_target_panel.height == 1
+    assert decision_target_panel.select("claim_scope").to_series().unique().to_list() == [
+        "offline_dfl_decision_target_v3_not_full_dfl"
+    ]
+    assert decision_target_strict.height == 8
+    assert decision_target_strict.select("strategy_kind").to_series().unique().to_list() == [
+        "offline_dfl_decision_target_strict_lp_benchmark"
+    ]
+    assert "offline_dfl_decision_target_v3_tft_silver_v0" in decision_target_strict[
+        "forecast_model_name"
+    ].unique().to_list()
