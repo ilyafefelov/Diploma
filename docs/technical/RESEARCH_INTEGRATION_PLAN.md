@@ -379,6 +379,49 @@ strict-LP/oracle promotion gate passes.
 Tracked note:
 [OFFLINE_DFL_PANEL_EXPERIMENT.md](OFFLINE_DFL_PANEL_EXPERIMENT.md).
 
+## Strict-LP Offline DFL Panel Promotion Gate
+
+The follow-up strict gate reuses the existing
+`evaluate_forecast_candidates_against_oracle` path so panel v2 candidates are
+judged by the same frozen Level 1 LP, oracle regret, UAH economics, SOC
+feasibility, and `strict_similar_day` control comparator.
+
+Implementation:
+
+- New asset: `offline_dfl_panel_strict_lp_benchmark_frame`.
+- Dagster group: `gold_dfl_training`.
+- Strategy kind: `offline_dfl_panel_strict_lp_benchmark`.
+- Run config:
+  [../../configs/real_data_offline_dfl_panel_strict_week3.yaml](../../configs/real_data_offline_dfl_panel_strict_week3.yaml).
+- Split rule: latest 18 final-holdout anchors per tenant, giving 90
+  tenant-anchor validation rows per source model.
+- Claim scope: `offline_dfl_panel_strict_lp_gate_not_full_dfl`.
+
+Latest strict run:
+
+- Dagster run id: `ebea6ab3-d295-4585-8cc2-566bb7692581`.
+- Output rows: 540, covering two source models, five tenants, 18 final-holdout
+  timestamps, and three evaluated candidates per source model.
+- Local summary:
+  `data/research_runs/week3_offline_dfl_panel_strict_gate_90/strict_gate_summary.json`.
+- Provenance flags: all 540 rows are `thesis_grade`, observed-only,
+  `not_full_dfl=true`, and `not_market_execution=true`.
+
+Strict-gate result:
+
+| Source model | Raw mean regret | V2 mean regret | Strict control mean regret | Improvement vs raw | Improvement vs strict | Decision |
+|---|---:|---:|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 813.40 | 816.62 | 314.81 | -0.40% | -159.40% | blocked |
+| `tft_silver_v0` | 1003.54 | 989.55 | 314.81 | 1.39% | -214.33% | blocked |
+
+The finding is conservative and useful: v2 checkpointing is not enough to beat
+the frozen strict control under strict LP/oracle scoring. Production promotion
+remains blocked. The next DFL slice should improve the decision target or
+candidate construction before making stronger DFL claims.
+
+Tracked note:
+[OFFLINE_DFL_PANEL_STRICT_PROMOTION_GATE.md](OFFLINE_DFL_PANEL_STRICT_PROMOTION_GATE.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under
