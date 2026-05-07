@@ -7,6 +7,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflExperimentAssetConfig,
+    OfflineDflPanelExperimentAssetConfig,
     RelaxedDflPilotAssetConfig,
     RegretWeightedForecastCalibrationAssetConfig,
     RegretWeightedDflPilotAssetConfig,
@@ -17,6 +18,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
     offline_dfl_experiment_frame,
+    offline_dfl_panel_experiment_frame,
     dfl_training_example_frame,
     real_data_value_aware_ensemble_frame,
     regret_weighted_forecast_calibration_frame,
@@ -111,6 +113,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "risk_adjusted_value_gate_frame",
         "dfl_relaxed_lp_pilot_frame",
         "offline_dfl_experiment_frame",
+        "offline_dfl_panel_experiment_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -128,6 +131,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_training_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_training_example_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
+    assert groups_by_key["offline_dfl_panel_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["horizon_regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
@@ -216,6 +220,18 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         ),
         benchmark,
     )
+    offline_panel = offline_dfl_panel_experiment_frame(
+        None,
+        OfflineDflPanelExperimentAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            forecast_model_names_csv="tft_silver_v0",
+            final_validation_anchor_count_per_tenant=2,
+            max_train_anchors_per_tenant=3,
+            inner_validation_fraction=0.34,
+            epoch_count=2,
+        ),
+        benchmark,
+    )
 
     assert ensemble.height == 5
     assert strategy_store.evaluation_frame.height == 65
@@ -260,3 +276,8 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "offline_dfl_experiment_not_full_dfl"
     ]
     assert offline_experiment.select("not_market_execution").to_series().unique().to_list() == [True]
+    assert offline_panel.height == 1
+    assert offline_panel.select("claim_scope").to_series().unique().to_list() == [
+        "offline_dfl_panel_experiment_not_full_dfl"
+    ]
+    assert offline_panel.select("not_market_execution").to_series().unique().to_list() == [True]

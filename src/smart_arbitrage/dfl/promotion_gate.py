@@ -35,6 +35,20 @@ REQUIRED_OFFLINE_DFL_COLUMNS: Final[frozenset[str]] = frozenset(
         "not_market_execution",
     }
 )
+REQUIRED_OFFLINE_DFL_PANEL_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "forecast_model_name",
+        "final_validation_anchor_count",
+        "baseline_final_holdout_relaxed_regret_uah",
+        "v2_final_holdout_relaxed_regret_uah",
+        "v2_improved_over_baseline",
+        "data_quality_tier",
+        "observed_coverage_ratio",
+        "not_full_dfl",
+        "not_market_execution",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -170,6 +184,67 @@ def evaluate_offline_dfl_promotion_gate(
     )
 
 
+def evaluate_offline_dfl_panel_development_gate(
+    offline_panel_frame: pl.DataFrame,
+    *,
+    min_validation_tenant_anchor_count: int = DEFAULT_MIN_ANCHOR_COUNT,
+) -> PromotionGateResult:
+    """Evaluate whether an all-tenant offline DFL panel is ready for deeper experiments."""
+
+    failures = _missing_column_failures(offline_panel_frame, REQUIRED_OFFLINE_DFL_PANEL_COLUMNS)
+    if failures:
+        return _result(failures=failures, metrics={})
+    rows = list(offline_panel_frame.iter_rows(named=True))
+    if not rows:
+        return _result(failures=["offline DFL panel has no rows"], metrics={})
+
+    if any(str(row["data_quality_tier"]) != "thesis_grade" for row in rows):
+        failures.append("offline DFL panel development gate requires thesis_grade rows")
+    observed_coverage_min = min(float(row["observed_coverage_ratio"]) for row in rows)
+    if observed_coverage_min < 1.0:
+        failures.append("offline DFL panel development gate requires observed coverage ratio of 1.0")
+    if any(not bool(row["not_full_dfl"]) for row in rows):
+        failures.append("offline DFL panel must remain not_full_dfl")
+    if any(not bool(row["not_market_execution"]) for row in rows):
+        failures.append("offline DFL panel must remain not_market_execution")
+
+    model_summaries = _offline_panel_model_summaries(rows)
+    passing_models = [
+        summary
+        for summary in model_summaries
+        if summary["validation_tenant_anchor_count"] >= min_validation_tenant_anchor_count
+        and summary["mean_relaxed_regret_improvement_ratio"] > 0.0
+    ]
+    max_validation_count = max(
+        int(summary["validation_tenant_anchor_count"]) for summary in model_summaries
+    )
+    if max_validation_count < min_validation_tenant_anchor_count:
+        failures.append(
+            "validation tenant-anchor count must be at least "
+            f"{min_validation_tenant_anchor_count}; observed {max_validation_count}"
+        )
+    if not passing_models:
+        failures.append("v2 relaxed regret must improve over the raw relaxed-LP baseline")
+
+    best_summary = max(
+        model_summaries,
+        key=lambda summary: float(summary["mean_relaxed_regret_improvement_ratio"]),
+    )
+    return _result(
+        failures=failures,
+        metrics={
+            "tenant_count": len({str(row["tenant_id"]) for row in rows}),
+            "model_count": len(model_summaries),
+            "validation_tenant_anchor_count": max_validation_count,
+            "best_forecast_model_name": best_summary["forecast_model_name"],
+            "baseline_mean_relaxed_regret_uah": best_summary["baseline_mean_relaxed_regret_uah"],
+            "v2_mean_relaxed_regret_uah": best_summary["v2_mean_relaxed_regret_uah"],
+            "mean_relaxed_regret_improvement_ratio": best_summary["mean_relaxed_regret_improvement_ratio"],
+            "model_summaries": model_summaries,
+        },
+    )
+
+
 def _coverage_failures(
     *,
     candidate_rows: list[dict[str, Any]],
@@ -212,6 +287,51 @@ def _provenance_failures(rows: list[dict[str, Any]]) -> list[str]:
 def _missing_column_failures(frame: pl.DataFrame, required_columns: frozenset[str]) -> list[str]:
     missing_columns = sorted(required_columns.difference(frame.columns))
     return [f"frame is missing required columns: {missing_columns}"] if missing_columns else []
+
+
+def _offline_panel_model_summaries(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    summaries: list[dict[str, Any]] = []
+    model_names = sorted({str(row["forecast_model_name"]) for row in rows})
+    for model_name in model_names:
+        model_rows = [row for row in rows if str(row["forecast_model_name"]) == model_name]
+        validation_count = sum(int(row["final_validation_anchor_count"]) for row in model_rows)
+        baseline_mean = _weighted_mean(
+            [
+                (
+                    float(row["baseline_final_holdout_relaxed_regret_uah"]),
+                    int(row["final_validation_anchor_count"]),
+                )
+                for row in model_rows
+            ]
+        )
+        v2_mean = _weighted_mean(
+            [
+                (
+                    float(row["v2_final_holdout_relaxed_regret_uah"]),
+                    int(row["final_validation_anchor_count"]),
+                )
+                for row in model_rows
+            ]
+        )
+        improvement_ratio = (baseline_mean - v2_mean) / abs(baseline_mean) if abs(baseline_mean) > 1e-9 else 0.0
+        summaries.append(
+            {
+                "forecast_model_name": model_name,
+                "tenant_count": len({str(row["tenant_id"]) for row in model_rows}),
+                "validation_tenant_anchor_count": validation_count,
+                "baseline_mean_relaxed_regret_uah": baseline_mean,
+                "v2_mean_relaxed_regret_uah": v2_mean,
+                "mean_relaxed_regret_improvement_ratio": improvement_ratio,
+            }
+        )
+    return summaries
+
+
+def _weighted_mean(values: list[tuple[float, int]]) -> float:
+    total_weight = sum(weight for _, weight in values)
+    if total_weight <= 0:
+        return 0.0
+    return sum(value * weight for value, weight in values) / total_weight
 
 
 def _result(*, failures: list[str], metrics: dict[str, Any]) -> PromotionGateResult:

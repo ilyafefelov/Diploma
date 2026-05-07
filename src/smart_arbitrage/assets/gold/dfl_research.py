@@ -15,7 +15,11 @@ from smart_arbitrage.dfl.regret_weighted import (
     run_regret_weighted_dfl_pilot,
 )
 from smart_arbitrage.dfl.relaxed_pilot import build_relaxed_dfl_pilot_frame
-from smart_arbitrage.dfl.offline_experiment import build_offline_dfl_experiment_frame
+from smart_arbitrage.dfl.offline_experiment import (
+    build_offline_dfl_experiment_frame,
+    build_offline_dfl_panel_experiment_frame,
+)
+from smart_arbitrage.dfl.promotion_gate import evaluate_offline_dfl_panel_development_gate
 from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 from smart_arbitrage.strategy.ensemble_gate import (
@@ -74,6 +78,21 @@ class OfflineDflExperimentAssetConfig(dg.Config):
     validation_fraction: float = 0.2
     max_train_anchors: int = 32
     max_validation_anchors: int = 18
+    epoch_count: int = 8
+    learning_rate: float = 10.0
+
+
+class OfflineDflPanelExperimentAssetConfig(dg.Config):
+    """All-tenant offline relaxed-LP DFL panel scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    max_train_anchors_per_tenant: int = 72
+    inner_validation_fraction: float = 0.2
     epoch_count: int = 8
     learning_rate: float = 10.0
 
@@ -296,6 +315,56 @@ def offline_dfl_experiment_frame(
         },
     )
     return experiment_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="pilot",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def offline_dfl_panel_experiment_frame(
+    context,
+    config: OfflineDflPanelExperimentAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """All-tenant offline DFL panel with prior-anchor checkpoint selection."""
+
+    panel_frame = build_offline_dfl_panel_experiment_frame(
+        real_data_rolling_origin_benchmark_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=_forecast_model_names(config.forecast_model_names_csv),
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        max_train_anchors_per_tenant=config.max_train_anchors_per_tenant,
+        inner_validation_fraction=config.inner_validation_fraction,
+        epoch_count=config.epoch_count,
+        learning_rate=config.learning_rate,
+    )
+    development_gate = evaluate_offline_dfl_panel_development_gate(panel_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": panel_frame.height,
+            "tenant_count": panel_frame.select("tenant_id").n_unique() if panel_frame.height else 0,
+            "model_count": panel_frame.select("forecast_model_name").n_unique()
+            if panel_frame.height
+            else 0,
+            "final_validation_tenant_anchor_count": development_gate.metrics.get(
+                "validation_tenant_anchor_count",
+                0,
+            ),
+            "development_gate_decision": development_gate.decision,
+            "development_gate_description": development_gate.description,
+            "scope": "offline_dfl_panel_experiment_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return panel_frame
 
 
 @dg.asset(
@@ -591,6 +660,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     regret_weighted_dfl_pilot_frame,
     dfl_relaxed_lp_pilot_frame,
     offline_dfl_experiment_frame,
+    offline_dfl_panel_experiment_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
@@ -607,9 +677,13 @@ def _add_metadata(context: dg.AssetExecutionContext | None, metadata: dict[str, 
 
 
 def _forecast_model_names(raw_value: str) -> tuple[str, ...]:
+    return _csv_values(raw_value, field_name="forecast_model_names_csv")
+
+
+def _csv_values(raw_value: str, *, field_name: str) -> tuple[str, ...]:
     values = tuple(value.strip() for value in raw_value.split(",") if value.strip())
     if not values:
-        raise ValueError("forecast_model_names_csv must contain at least one model.")
+        raise ValueError(f"{field_name} must contain at least one value.")
     return values
 
 
