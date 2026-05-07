@@ -155,11 +155,14 @@ uv run dg list defs --json
 docker compose config --quiet
 ```
 
-Latest full verification: `113 passed`.
+Latest full verification: `150 passed`.
 
 ## Research Artifacts
 
+- Architecture and evidence registry: `docs/technical/ARCHITECTURE_AND_DATA_FLOW.md`
 - Baseline LP and pipeline note: `docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md`
+- Week 3 accepted evidence: `data/research_runs/week3_real_data_benchmark/` for the Dnipro 30-anchor thesis-grade benchmark.
+- Week 3 calibration preview: `data/research_runs/week3_calibration_preview_dnipro_90/` for prepared-ahead 90-anchor calibration/selector diagnostics.
 - Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`
 - Latest exports: `data/research_runs/risk_gate_diagnostics_20260505T151401/`
 - Latest DB dump: `data/db_backups/smart_arbitrage_20260505_research_read_models.dump`
@@ -188,6 +191,7 @@ Latest read-model smoke:
 
 ## Claim Boundaries
 
+- Week 3 accepted thesis evidence remains the Dnipro 30-anchor rolling-origin benchmark on observed OREE/Open-Meteo data. The Dnipro 90-anchor calibration run is a prepared-ahead preview for calibration/selector discussion.
 - `sota_forecast_training_frame` is a backend contract for full NeuralForecast NBEATSx and PyTorch-Forecasting TFT experiments. It is not itself a tuned SOTA model result.
 - `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are adapter/readiness assets. They must not be cited as SOTA results until they materialize forecast rows and pass the rolling-origin LP/oracle benchmark.
 - `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
