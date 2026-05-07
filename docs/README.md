@@ -13,6 +13,7 @@ docs/
 │   ├── API_ENDPOINTS.md
 │   ├── BASELINE_LP_AND_DATA_PIPELINE.md
 │   ├── RESEARCH_INTEGRATION_PLAN.md
+│   ├── WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md
 │   ├── OPERATOR_DEMO_READY.md
 │   ├── assets/         # Діаграми та технічні зображення
 │   └── papers/         # Технічні статті та архів ключових PDF
@@ -42,8 +43,9 @@ docs/
 | **Академічна записка** | [thesis/chapters/01-project-overview.md](thesis/chapters/01-project-overview.md) · [thesis/chapters/02-literature-review.md](thesis/chapters/02-literature-review.md) |
 | **Бібліографія / джерела** | [thesis/sources/README.md](thesis/sources/README.md) — індекс усіх PDF |
 | **Архітектура і data flow** | [technical/ARCHITECTURE_AND_DATA_FLOW.md](technical/ARCHITECTURE_AND_DATA_FLOW.md) — інфографіка архітектури, потоків даних і safety boundary |
-| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
+| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md) · [technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md](technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
 | **Research roadmap** | [technical/RESEARCH_INTEGRATION_PLAN.md](technical/RESEARCH_INTEGRATION_PLAN.md) · [technical/deep-research-reports/deep-research-report.md](technical/deep-research-reports/deep-research-report.md) |
+| **Next slice plan** | [technical/NEXT_SLICE_PLAN_RESEARCH_GROUNDED_CALIBRATION_QA.md](technical/NEXT_SLICE_PLAN_RESEARCH_GROUNDED_CALIBRATION_QA.md) |
 | **Інженер / розробник** | [../src/](../src/) · [../api/](../api/) · [../dashboard/](../dashboard/) |
 | **Дедлайни та вимоги** | [syllabus/Покрокова інструкція...](syllabus/) |
 
