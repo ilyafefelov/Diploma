@@ -25,6 +25,24 @@ The first gate is intentionally narrow:
 This is a promotion gate, not a training objective. It does not change the
 existing API, dashboard, or Dagster asset contracts.
 
+## Latest Vector Evidence Run
+
+The first persisted DFL vector evidence run is indexed in
+[DFL_VECTOR_EVIDENCE_REGISTRY.md](DFL_VECTOR_EVIDENCE_REGISTRY.md).
+
+| Field | Value |
+|---|---|
+| Run slug | `week3_dfl_vector_evidence_dnipro_90` |
+| DFL vector rows | 270 |
+| Dnipro anchors | 90 |
+| Raw model count | 3 |
+| Vector length | 24 hours |
+| Overall promotion decision | `no_candidate_promoted` |
+
+The result is thesis-safe: `dfl_training_example_frame` now persists
+vector-rich rows for future DFL experiments, but all raw and horizon-calibrated
+forecast candidates remain blocked against `strict_similar_day`.
+
 ## Current Decision
 
 The current offline DFL v0 result is blocked:

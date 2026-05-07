@@ -13,6 +13,7 @@ docs/
 │   ├── API_ENDPOINTS.md
 │   ├── BASELINE_FREEZE.md
 │   ├── DFL_PROMOTION_GATE.md
+│   ├── DFL_VECTOR_EVIDENCE_REGISTRY.md
 │   ├── BASELINE_LP_AND_DATA_PIPELINE.md
 │   ├── DFL_READINESS_GATE.md
 │   ├── MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md
@@ -48,7 +49,7 @@ docs/
 | **Академічна записка** | [thesis/chapters/01-project-overview.md](thesis/chapters/01-project-overview.md) · [thesis/chapters/02-literature-review.md](thesis/chapters/02-literature-review.md) |
 | **Бібліографія / джерела** | [thesis/sources/README.md](thesis/sources/README.md) — індекс усіх PDF |
 | **Архітектура і data flow** | [technical/ARCHITECTURE_AND_DATA_FLOW.md](technical/ARCHITECTURE_AND_DATA_FLOW.md) — інфографіка архітектури, потоків даних і safety boundary |
-| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md) · [technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md) · [technical/DFL_READINESS_GATE.md](technical/DFL_READINESS_GATE.md) · [technical/DFL_PROMOTION_GATE.md](technical/DFL_PROMOTION_GATE.md) · [technical/OFFLINE_DFL_EXPERIMENT.md](technical/OFFLINE_DFL_EXPERIMENT.md) · [technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md](technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md) · [technical/BASELINE_FREEZE.md](technical/BASELINE_FREEZE.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
+| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md) · [technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md) · [technical/DFL_VECTOR_EVIDENCE_REGISTRY.md](technical/DFL_VECTOR_EVIDENCE_REGISTRY.md) · [technical/DFL_READINESS_GATE.md](technical/DFL_READINESS_GATE.md) · [technical/DFL_PROMOTION_GATE.md](technical/DFL_PROMOTION_GATE.md) · [technical/OFFLINE_DFL_EXPERIMENT.md](technical/OFFLINE_DFL_EXPERIMENT.md) · [technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md](technical/WEEK3_ARCHITECTURE_API_FOLLOWUP_REPORT.md) · [technical/BASELINE_FREEZE.md](technical/BASELINE_FREEZE.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
 | **Research roadmap** | [technical/RESEARCH_INTEGRATION_PLAN.md](technical/RESEARCH_INTEGRATION_PLAN.md) · [technical/deep-research-reports/deep-research-report.md](technical/deep-research-reports/deep-research-report.md) · [technical/deep-research-reports/week3 research/README.md](<technical/deep-research-reports/week3 research/README.md>) |
 | **Next slice plan** | [technical/NEXT_SLICE_PLAN_RESEARCH_GROUNDED_CALIBRATION_QA.md](technical/NEXT_SLICE_PLAN_RESEARCH_GROUNDED_CALIBRATION_QA.md) |
 | **Інженер / розробник** | [../src/](../src/) · [../api/](../api/) · [../dashboard/](../dashboard/) |
@@ -77,6 +78,7 @@ docs/
 - ✅ Week 3 deep-research source map — the new report intake is indexed in [technical/deep-research-reports/week3 research/README.md](<technical/deep-research-reports/week3 research/README.md>) and mapped to implementation claims in [source-map.md](<technical/deep-research-reports/week3 research/source-map.md>).
 - ✅ Baseline freeze — `strict_similar_day` is frozen as the Level 1 control comparator in [BASELINE_FREEZE.md](technical/BASELINE_FREEZE.md).
 - ✅ DFL promotion gate — conservative candidate promotion rules are tracked in [DFL_PROMOTION_GATE.md](technical/DFL_PROMOTION_GATE.md); current offline DFL v0 remains diagnostic only.
+- ✅ DFL vector evidence registry — `dfl_training_example_frame` now has a persisted 90-anchor Dnipro evidence run in [DFL_VECTOR_EVIDENCE_REGISTRY.md](technical/DFL_VECTOR_EVIDENCE_REGISTRY.md); all current candidates remain blocked against `strict_similar_day`.
 - ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
 - ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.
 - 🟡 Full differentiable DFL training — primitive exists, but forecast models are not yet fine-tuned end-to-end on regret.
