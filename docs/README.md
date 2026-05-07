@@ -65,6 +65,7 @@ docs/
 - ✅ Architecture/data-flow infographic — visual overview of Data Sources → Dagster Medallion assets → AI/optimization agents → Pydantic-backed Bid Gatekeeper → FastAPI/Postgres/MLflow/Nuxt observability is indexed in [ARCHITECTURE_AND_DATA_FLOW.md](technical/ARCHITECTURE_AND_DATA_FLOW.md), with an evidence registry that separates Week 3 accepted results from preview material.
 - ✅ Backend read models — `/dashboard/calibrated-ensemble-benchmark`, `/dashboard/risk-adjusted-value-gate`, and `/dashboard/forecast-dispatch-sensitivity` expose selector and diagnostic evidence for dashboard redesign without touching dashboard UI.
 - ✅ Postgres read-model freshness/performance — `forecast_strategy_evaluations` now has a latest-batch read index, documented in [API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md).
+- ✅ Calibration QA manifest — research-layer exports now write `research_layer_manifest.json` with tenant/strategy freshness, row/anchor counts, source links, and conservative claim flags.
 - ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
 - ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.
 - 🟡 Full differentiable DFL training — primitive exists, but forecast models are not yet fine-tuned end-to-end on regret.

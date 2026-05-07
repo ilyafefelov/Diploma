@@ -55,6 +55,7 @@ def main() -> None:
     )
     summary = {
         "export_dir": str(export_dir),
+        "research_layer_manifest": str(export_dir / "research_layer_manifest.json"),
         "benchmark_rows": outputs.benchmark_frame.height,
         "ensemble_rows": outputs.ensemble_frame.height,
         "dfl_training_rows": outputs.dfl_training_frame.height,

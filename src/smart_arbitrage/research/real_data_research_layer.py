@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 import json
 from pathlib import Path
 from typing import Any
@@ -31,6 +32,15 @@ from smart_arbitrage.strategy.ensemble_gate import (
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 
 REAL_DATA_BENCHMARK_STRATEGY_KIND = "real_data_rolling_origin_benchmark"
+RESEARCH_LAYER_MANIFEST_FILENAME = "research_layer_manifest.json"
+CALIBRATION_EVIDENCE_SOURCE_LINKS = [
+    "https://huggingface.co/papers/2508.04875",
+    "https://huggingface.co/papers/2508.11372",
+    "https://huggingface.co/papers/2510.13654",
+    "https://huggingface.co/papers/2509.13906",
+    "https://huggingface.co/papers/2602.17634",
+    "https://huggingface.co/papers/2401.00015",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -248,6 +258,10 @@ def write_research_layer_exports(
         json.dumps(_first_row(outputs.pilot_frame), indent=2, default=str),
         encoding="utf-8",
     )
+    (output_dir / RESEARCH_LAYER_MANIFEST_FILENAME).write_text(
+        json.dumps(_research_layer_manifest(outputs, run_slug=run_slug), indent=2, default=str),
+        encoding="utf-8",
+    )
     (output_dir / "research_layer_summary.json").write_text(
         json.dumps(_research_layer_summary(outputs), indent=2, default=str),
         encoding="utf-8",
@@ -449,6 +463,7 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
     pilot_row = _first_row(outputs.pilot_frame)
     expanded_to_all_tenants_ready = bool(pilot_row.get("expanded_to_all_tenants_ready", False))
     return {
+        "research_layer_manifest": RESEARCH_LAYER_MANIFEST_FILENAME,
         "benchmark_rows": outputs.benchmark_frame.height,
         "ensemble_rows": outputs.ensemble_frame.height,
         "dfl_training_rows": outputs.dfl_training_frame.height,
@@ -485,6 +500,119 @@ def _research_layer_summary(outputs: ResearchLayerOutputs) -> dict[str, Any]:
             outputs.risk_adjusted_value_gate_summary.to_dicts()
         ),
     }
+
+
+def _research_layer_manifest(outputs: ResearchLayerOutputs, *, run_slug: str) -> dict[str, Any]:
+    evidence_frame = _manifest_evidence_frame(outputs)
+    return {
+        "run_slug": run_slug,
+        "generated_at_utc": datetime.now(UTC).isoformat(),
+        "tenant_ids": _sorted_unique_strings(evidence_frame, "tenant_id"),
+        "strategy_kinds": _sorted_unique_strings(evidence_frame, "strategy_kind"),
+        "latest_generated_at_by_tenant_strategy": _latest_generated_at_by_tenant_strategy(
+            evidence_frame
+        ),
+        "anchor_count_by_tenant_strategy": _count_by_tenant_strategy(
+            evidence_frame,
+            column_name="anchor_timestamp",
+            count_kind="n_unique",
+        ),
+        "row_count_by_tenant_strategy": _count_by_tenant_strategy(
+            evidence_frame,
+            column_name="evaluation_id",
+            count_kind="len",
+        ),
+        "data_quality_tiers": _data_quality_tiers(outputs.benchmark_frame),
+        "claim_scope": "calibration_selector_evidence_not_full_dfl",
+        "not_full_dfl": True,
+        "not_market_execution": True,
+        "source_links": CALIBRATION_EVIDENCE_SOURCE_LINKS,
+    }
+
+
+def _manifest_evidence_frame(outputs: ResearchLayerOutputs) -> pl.DataFrame:
+    frames = [
+        outputs.benchmark_frame,
+        outputs.ensemble_frame,
+        outputs.regret_weighted_benchmark_frame,
+        outputs.horizon_regret_weighted_benchmark_frame,
+        outputs.calibrated_ensemble_frame,
+        outputs.risk_adjusted_value_gate_frame,
+    ]
+    usable_frames = [
+        frame
+        for frame in frames
+        if {"tenant_id", "strategy_kind", "generated_at", "anchor_timestamp"}.issubset(
+            frame.columns
+        )
+    ]
+    if not usable_frames:
+        return pl.DataFrame()
+    return pl.concat(usable_frames, how="diagonal_relaxed")
+
+
+def _latest_generated_at_by_tenant_strategy(frame: pl.DataFrame) -> dict[str, str]:
+    if frame.height == 0:
+        return {}
+    rows = (
+        frame.group_by(["tenant_id", "strategy_kind"])
+        .agg(pl.max("generated_at").alias("latest_generated_at"))
+        .sort(["tenant_id", "strategy_kind"])
+        .iter_rows(named=True)
+    )
+    return {
+        _tenant_strategy_key(row): _isoformat_value(row["latest_generated_at"])
+        for row in rows
+    }
+
+
+def _count_by_tenant_strategy(
+    frame: pl.DataFrame,
+    *,
+    column_name: str,
+    count_kind: str,
+) -> dict[str, int]:
+    if frame.height == 0:
+        return {}
+    if count_kind == "n_unique":
+        aggregate_expression = pl.col(column_name).n_unique().alias("count")
+    elif count_kind == "len":
+        aggregate_expression = pl.len().alias("count")
+    else:
+        raise ValueError(f"Unsupported count_kind: {count_kind}")
+    rows = (
+        frame.group_by(["tenant_id", "strategy_kind"])
+        .agg(aggregate_expression)
+        .sort(["tenant_id", "strategy_kind"])
+        .iter_rows(named=True)
+    )
+    return {_tenant_strategy_key(row): int(row["count"]) for row in rows}
+
+
+def _tenant_strategy_key(row: dict[str, Any]) -> str:
+    return f"{row['tenant_id']}|{row['strategy_kind']}"
+
+
+def _sorted_unique_strings(frame: pl.DataFrame, column_name: str) -> list[str]:
+    if frame.height == 0 or column_name not in frame.columns:
+        return []
+    return sorted(str(value) for value in frame.select(column_name).unique().to_series().to_list())
+
+
+def _data_quality_tiers(frame: pl.DataFrame) -> list[str]:
+    if frame.height == 0 or "evaluation_payload" not in frame.columns:
+        return []
+    tiers: set[str] = set()
+    for payload in frame.select("evaluation_payload").to_series().to_list():
+        if isinstance(payload, dict) and "data_quality_tier" in payload:
+            tiers.add(str(payload["data_quality_tier"]))
+    return sorted(tiers)
+
+
+def _isoformat_value(value: Any) -> str:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    return str(value)
 
 
 def _first_row(frame: pl.DataFrame) -> dict[str, Any]:

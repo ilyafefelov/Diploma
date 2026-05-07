@@ -62,6 +62,7 @@ Per-model summary для Dnipro batch:
 - Dagster run id: `ffc8d05b-7121-4c11-a761-de37535cd161`.
 - Export slug: `data/research_runs/week3_calibration_preview_dnipro_90`.
 - MLflow runs: raw rolling benchmark `23e6753901f4406785de4e8e8f928931`, regret-weighted benchmark `10404087f8b74e5f9285f5bfc36e1bea`, horizon-aware benchmark `d50600af8ab240dda88ddc71c0980261`, calibrated ensemble `78e06490adde4ae2a151c2f211313ea2`, risk gate `2cc4a3513849419aa4256d2e87ef3ba5`.
+- New export guardrail: future research-layer exports include `research_layer_manifest.json`, which records tenant/strategy freshness, row/anchor counts, `data_quality_tiers`, and explicit `not_full_dfl` / `not_market_execution` flags before calibration evidence is reported.
 
 API validation for `client_003_dnipro_factory`:
 
@@ -94,7 +95,7 @@ Week 3 preview finding: horizon-aware calibration improves the neural candidate 
 | Ризик / виклик | Чому це важливо | Відповідь |
 |---|---|---|
 | OREE data_view чутливий до частоти monthly requests | Без throttling observed-only backfill може хибно виглядати як неповний датасет | Додано паузу між monthly requests і тест на pacing |
-| Export script агрегує latest persisted batches для всіх tenants | Week 3 slice фокусується на одному tenant, але export total має більше рядків | У звіті явно відділено Dnipro batch: 30 anchors / 90 benchmark rows |
+| Export script агрегує latest persisted batches для всіх tenants | Week 3 slice фокусується на одному tenant, але export total має більше рядків | Додано `research_layer_manifest.json`, який фіксує tenant/strategy freshness, row/anchor counts і claim flags |
 | Neural candidates програють strict control на цьому slice | Не можна робити SOTA claim із forecast models без value evidence | Наступний крок: calibration/robustness і ширший rolling-origin protocol |
 | DFL pilot outputs вже генеруються downstream | Є ризик описати їх як full DFL або live strategy | Усі матеріали маркують їх як downstream research evidence, not market execution |
 

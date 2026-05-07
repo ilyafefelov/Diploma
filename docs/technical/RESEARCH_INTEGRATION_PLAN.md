@@ -164,12 +164,20 @@ Then export the research layer:
 .\.venv\Scripts\python.exe scripts\materialize_research_layer_from_store.py --run-slug week4_calibration_dnipro_90 --calibration-min-prior-anchors 14 --calibration-window-anchors 28
 ```
 
+The export now writes `research_layer_manifest.json` beside the existing CSV and
+summary artifacts. Use this manifest before reporting calibration evidence: it
+records the run slug, included tenants, strategy kinds, latest
+`generated_at` batch per `tenant_id + strategy_kind`, row/anchor counts,
+`data_quality_tiers`, and explicit `not_full_dfl=true` /
+`not_market_execution=true` claim flags.
+
 Acceptance checks:
 
 - `/dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory` returns `data_quality_tier=thesis_grade`, `anchor_count=90`, `model_count=3`.
 - `/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory` returns 90 selector rows with `model_count=1`.
 - `/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory` returns 90 selector rows with risk diagnostics.
 - `/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory` returns 450 diagnostic rows across five candidate streams.
+- Exported `research_layer_manifest.json` separates latest tenant batches from older persisted rows and repeats the conservative calibration/selector claim boundary.
 
 Latest verified Week 4 run:
 
@@ -193,3 +201,20 @@ The lineage taxonomy slice reran the same Dnipro 90-anchor calibration path afte
 - Raw forecast candidate means: `strict_similar_day=1384.70` UAH regret, `nbeatsx_silver_v0=2070.28`, `tft_silver_v0=2361.96`.
 - Horizon-aware calibration improved neural candidates: `tft_horizon_regret_weighted_calibrated_v0=1727.29` UAH mean regret and `nbeatsx_horizon_regret_weighted_calibrated_v0=1804.38`, while strict similar-day remained the strongest individual control.
 - Selector means: calibrated ensemble `1479.65` UAH regret, risk-adjusted gate `1428.59`.
+
+## Calibration QA Manifest
+
+The research export path now emits a report-ready `research_layer_manifest.json`
+for every new run. This is the guardrail against mixing Week 3 Dnipro evidence
+with all-tenant or older persisted batches.
+
+Manifest checks before supervisor-facing use:
+
+1. `claim_scope` must be `calibration_selector_evidence_not_full_dfl`.
+2. `not_full_dfl` and `not_market_execution` must both be `true`.
+3. `latest_generated_at_by_tenant_strategy` must match the intended tenant and
+   strategy batches being reported.
+4. `anchor_count_by_tenant_strategy` and `row_count_by_tenant_strategy` must
+   support the stated tenant-specific claim.
+5. `data_quality_tiers` must include only tiers that are acceptable for the
+   claim being made; Week 3 thesis evidence requires `thesis_grade`.

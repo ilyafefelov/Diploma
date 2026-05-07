@@ -2,6 +2,8 @@
 
 Date: 2026-05-07
 
+Status: implemented in `research_layer_manifest.json` export support.
+
 ## Recommendation
 
 The next slice should be **Calibration Evidence QA Manifest + No-Leakage
@@ -72,12 +74,12 @@ git diff --check
 
 ## Acceptance Criteria
 
-- Exported research runs include a manifest that separates latest Dnipro
+- [x] Exported research runs include a manifest that separates latest Dnipro
   tenant evidence from aggregate persisted rows.
-- Manifest states `not_full_dfl=true` and `not_market_execution=true`.
-- Week 3 report remains anchored on the accepted 30-anchor Dnipro result.
-- 90-anchor calibration stays framed as preview/calibration evidence.
-- No public API, Pydantic, Dagster key, dashboard, dependency, or legacy-folder
+- [x] Manifest states `not_full_dfl=true` and `not_market_execution=true`.
+- [x] Week 3 report remains anchored on the accepted 30-anchor Dnipro result.
+- [x] 90-anchor calibration stays framed as preview/calibration evidence.
+- [x] No public API, Pydantic, Dagster key, dashboard, dependency, or legacy-folder
   changes.
 
 ## Commit Plan
