@@ -344,6 +344,9 @@ promotion gate.
 Tracked baseline freeze:
 [BASELINE_FREEZE.md](BASELINE_FREEZE.md).
 
+Tracked promotion gate:
+[DFL_PROMOTION_GATE.md](DFL_PROMOTION_GATE.md).
+
 Freeze summary:
 
 - `strict_similar_day` remains the Level 1 control comparator.
