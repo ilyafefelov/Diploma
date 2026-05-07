@@ -422,6 +422,53 @@ candidate construction before making stronger DFL claims.
 Tracked note:
 [OFFLINE_DFL_PANEL_STRICT_PROMOTION_GATE.md](OFFLINE_DFL_PANEL_STRICT_PROMOTION_GATE.md).
 
+## Decision-Target Offline DFL v3
+
+The next strict-gate slice responded to the v2 finding by testing a
+decision-targeted affine correction selected on prior strict LP/oracle regret.
+It still does not train a neural DFL model and must not be presented as a
+Decision Transformer, market execution, or a production replacement for
+`strict_similar_day`.
+
+Implementation:
+
+- New assets: `offline_dfl_decision_target_panel_frame` and
+  `offline_dfl_decision_target_strict_lp_benchmark_frame`.
+- Dagster group: `gold_dfl_training`.
+- Strategy kind: `offline_dfl_decision_target_strict_lp_benchmark`.
+- Run config:
+  [../../configs/real_data_offline_dfl_decision_target_week3.yaml](../../configs/real_data_offline_dfl_decision_target_week3.yaml).
+- Split rule: latest 18 final-holdout anchors per tenant, giving 90
+  tenant-anchor validation rows per source model.
+- Claim scope: `offline_dfl_decision_target_v3_strict_lp_gate_not_full_dfl`.
+
+Latest decision-target run:
+
+- Dagster run id: `9f5962e9-fe56-4b45-bcfa-d1a233fbffdb`.
+- Output rows: 720, covering two source models, five tenants, 18
+  final-holdout timestamps, and four evaluated candidates per source model:
+  strict control, raw source, panel v2, and decision-target v3.
+- Local summary:
+  `data/research_runs/week3_offline_dfl_decision_target_v3_90/decision_target_v3_summary.json`.
+- API sanity check for `client_003_dnipro_factory`: `data_quality_tier=thesis_grade`,
+  `anchor_count=90`, and `model_count=3`.
+
+Strict-gate result:
+
+| Source model | Raw mean regret | Panel v2 mean regret | V3 mean regret | Strict control mean regret | V3 improvement vs raw | V3 improvement vs panel v2 | V3 improvement vs strict | Decision |
+|---|---:|---:|---:|---:|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 813.40 | 816.62 | 814.17 | 314.81 | -0.09% | 0.30% | -158.62% | blocked |
+| `tft_silver_v0` | 1003.54 | 989.55 | 1015.36 | 314.81 | -1.18% | -2.61% | -222.53% | blocked |
+
+The finding is deliberately conservative. NBEATSx v3 gives a tiny improvement
+over panel v2 but remains far behind `strict_similar_day`; TFT v3 regresses.
+The promotion gate therefore stays blocked. The next DFL step should use
+action-aligned or ranking-aware labels rather than only affine forecast
+correction.
+
+Tracked note:
+[OFFLINE_DFL_DECISION_TARGET_V3.md](OFFLINE_DFL_DECISION_TARGET_V3.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under
