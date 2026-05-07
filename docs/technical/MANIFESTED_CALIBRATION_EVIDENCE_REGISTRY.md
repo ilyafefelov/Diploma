@@ -12,6 +12,7 @@ the concise values needed to audit the claim.
 |---|---:|---|
 | Week 3 accepted evidence | Verified | Dnipro 30-anchor real-data benchmark, observed OREE DAM plus historical Open-Meteo, thesis-grade provenance. |
 | Dnipro calibration preview | Verified here | Dnipro 90-anchor calibration and selector evidence for the next demo path. |
+| DFL readiness gate | Dagster checks added | The 90-anchor Dnipro preview can seed a later offline DFL experiment only when evidence checks pass. |
 | Full DFL | Not claimed | The export explicitly sets `not_full_dfl=true`. |
 | Market execution | Not claimed | The export explicitly sets `not_market_execution=true`; rows are offline benchmark and selector diagnostics. |
 
@@ -71,6 +72,70 @@ Dnipro tenant-specific manifest evidence:
 The manifest covers strategy evaluation batches. Forecast-dispatch sensitivity is
 validated through the API/read model below because it is a diagnostic export rather
 than a `strategy_kind` batch in the manifest.
+
+## DFL Readiness Gate
+
+The DFL readiness gate is tracked in
+[DFL_READINESS_GATE.md](DFL_READINESS_GATE.md) and registered as Dagster asset
+checks on the existing benchmark, training, calibration, and selector assets.
+
+| Gate item | Dagster-visible check | Registry interpretation |
+|---|---|---|
+| Raw benchmark coverage | `real_data_rolling_origin_benchmark_frame:dnipro_thesis_grade_90_anchor_evidence` | Blocks DFL readiness unless the latest Dnipro batch has thesis-grade data, at least 90 anchors, exactly the three raw candidates, observed rows only, and non-leaky anchor/horizon ordering. |
+| DFL training table | `dfl_training_frame:dfl_training_readiness_evidence` | Warns when training rows are not ready as research evidence; this does not upgrade the current claim to full DFL. |
+| Horizon calibration | `horizon_regret_weighted_forecast_strategy_benchmark_frame:horizon_calibration_no_leakage_evidence` | Blocks future-anchor calibration metadata and missing 90-anchor coverage. |
+| Calibrated selector | `calibrated_value_aware_ensemble_frame:calibrated_selector_cardinality_evidence` | Blocks missing/duplicate selector rows per Dnipro anchor. |
+| Risk gate selector | `risk_adjusted_value_gate_frame:risk_adjusted_selector_cardinality_evidence` | Blocks missing/duplicate risk-gate rows per Dnipro anchor. |
+
+Fresh gate export slug: `week3_dfl_readiness_gate_dnipro_90`. Generated
+`data/` artifacts remain local; this registry records only concise values for
+supervisor review.
+
+Latest DFL readiness run:
+
+| Field | Value |
+|---|---|
+| Dagster run id | `b55b9e01-8688-4fc2-abe6-6380b96502b9` |
+| Latest Dnipro generated at | `2026-05-07T02:24:42.974392Z` |
+| Export directory | `data/research_runs/week3_dfl_readiness_gate_dnipro_90` |
+| Manifest path | `data/research_runs/week3_dfl_readiness_gate_dnipro_90/research_layer_manifest.json` |
+| Claim scope | `calibration_selector_evidence_not_full_dfl` |
+| Manifest flags | `not_full_dfl=true`, `not_market_execution=true` |
+
+Asset-check evidence:
+
+| Check | Result | Metadata snapshot |
+|---|---|---|
+| `dnipro_thesis_grade_90_anchor_evidence` | Pass | `anchor_count=90`, `model_count=3`, `data_quality_tiers=["thesis_grade"]`, `leaky_horizon_rows=0`. |
+| `dfl_training_readiness_evidence` | Pass | `row_count=360`, `anchor_count=90`, raw candidates plus `value_aware_ensemble_v0`, `market_execution_rows=0`. |
+| `horizon_calibration_no_leakage_evidence` | Pass | `anchor_count=90`, `model_count=5`, `missing_model_anchor_pairs=0`, `leaky_rows=0`. |
+| `calibrated_selector_cardinality_evidence` | Pass | `row_count=90`, `duplicate_anchor_count=0`, `full_dfl_claim_rows=0`. |
+| `risk_adjusted_selector_cardinality_evidence` | Pass | `row_count=90`, `duplicate_anchor_count=0`, `full_dfl_claim_rows=0`. |
+
+Fresh API validation for the latest Dnipro batch:
+
+| Endpoint | Anchors | Models | Rows | Tier | Mean regret UAH | Best model / diagnostic |
+|---|---:|---:|---:|---|---:|---|
+| `/dashboard/real-data-benchmark` | 90 | 3 | 270 | `thesis_grade` | 1938.98 | `strict_similar_day` |
+| `/dashboard/calibrated-ensemble-benchmark` | 90 | 1 | 90 | `thesis_grade` | 1479.65 | `calibrated_value_aware_ensemble_v0` |
+| `/dashboard/risk-adjusted-value-gate` | 90 | 1 | 90 | `thesis_grade` | 1428.59 | `risk_adjusted_value_gate_v0` |
+| `/dashboard/forecast-dispatch-sensitivity` | 90 | 5 | 450 | Diagnostic rows | n/a | Forecast/dispatch sensitivity buckets. |
+
+Latest Postgres persisted totals for Dnipro:
+
+| Strategy kind | Persisted rows | Distinct anchors | Latest generated at |
+|---|---:|---:|---|
+| `calibrated_value_aware_ensemble_gate` | 108 | 108 | `2026-05-07 02:24:42.974392+00` |
+| `forecast_driven_lp` | 9 | 2 | `2026-05-06 13:40:34.224105+00` |
+| `horizon_regret_weighted_forecast_calibration_benchmark` | 540 | 108 | `2026-05-07 02:24:42.974392+00` |
+| `real_data_rolling_origin_benchmark` | 1518 | 108 | `2026-05-07 02:24:42.974392+00` |
+| `regret_weighted_forecast_calibration_benchmark` | 540 | 108 | `2026-05-07 02:24:42.974392+00` |
+| `risk_adjusted_value_gate` | 108 | 108 | `2026-05-07 02:24:42.974392+00` |
+| `value_aware_ensemble_gate` | 503 | 108 | `2026-05-07 02:24:42.974392+00` |
+
+As before, Postgres totals include older persisted Dnipro batches. The
+supervisor-facing gate uses the latest `generated_at` batch, which the manifest
+and API report as 90 anchors for the Dnipro calibration preview.
 
 ## API Validation
 

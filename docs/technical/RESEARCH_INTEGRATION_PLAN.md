@@ -236,3 +236,45 @@ Latest manifested calibration registry run:
   those table totals from the latest generated batch used for reporting.
 - Tracked registry:
   [MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md).
+
+## DFL Readiness Gate
+
+The next stability slice moves the manifest/API/Postgres evidence rules into
+Dagster-visible asset checks before any full differentiable DFL training. The
+gate is documented in [DFL_READINESS_GATE.md](DFL_READINESS_GATE.md).
+
+Registered checks:
+
+- `real_data_rolling_origin_benchmark_frame:dnipro_thesis_grade_90_anchor_evidence`
+  blocks non-thesis-grade, missing raw candidates, insufficient Dnipro anchors,
+  synthetic provenance, and anchor/horizon misuse.
+- `dfl_training_frame:dfl_training_readiness_evidence` warns when the DFL
+  training table is not ready as research evidence, without invalidating the raw
+  benchmark.
+- `horizon_regret_weighted_forecast_strategy_benchmark_frame:horizon_calibration_no_leakage_evidence`
+  blocks future/leaky calibration metadata and missing 90-anchor coverage.
+- `calibrated_value_aware_ensemble_frame:calibrated_selector_cardinality_evidence`
+  and `risk_adjusted_value_gate_frame:risk_adjusted_selector_cardinality_evidence`
+  block missing or duplicate selector rows per anchor.
+
+Readiness decision: a passing gate is enough to begin a bounded offline DFL
+experiment design, but it is still not a full DFL claim and not market
+execution. TSFM leakage remains the blocking research guardrail: temporal
+evaluation must be latest-batch, no-leakage, and source-linked before stronger
+modeling claims are made.
+
+Latest verified DFL readiness gate:
+
+- Dagster run id: `b55b9e01-8688-4fc2-abe6-6380b96502b9`.
+- Latest Dnipro generated batch: `2026-05-07T02:24:42.974392Z`.
+- Export directory:
+  `data/research_runs/week3_dfl_readiness_gate_dnipro_90`.
+- Manifest path:
+  `data/research_runs/week3_dfl_readiness_gate_dnipro_90/research_layer_manifest.json`.
+- All five evidence checks passed for Dnipro 90 anchors: raw benchmark,
+  DFL training readiness, horizon calibration no-leakage, calibrated selector,
+  and risk-adjusted selector.
+- The run exposed and fixed a metadata persistence issue where Polars struct
+  inference could drop calibration counts from corrected candidate payloads when
+  the strict control row ranked first. The fix preserves calibration metadata;
+  it does not change model semantics or public contracts.
