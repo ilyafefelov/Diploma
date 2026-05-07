@@ -6,6 +6,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DFL_RESEARCH_GOLD_ASSETS,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
+    OfflineDflExperimentAssetConfig,
     RelaxedDflPilotAssetConfig,
     RegretWeightedForecastCalibrationAssetConfig,
     RegretWeightedDflPilotAssetConfig,
@@ -15,6 +16,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     forecast_dispatch_sensitivity_frame,
     horizon_regret_weighted_forecast_calibration_frame,
     horizon_regret_weighted_forecast_strategy_benchmark_frame,
+    offline_dfl_experiment_frame,
     real_data_value_aware_ensemble_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
@@ -106,6 +108,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "forecast_dispatch_sensitivity_frame",
         "risk_adjusted_value_gate_frame",
         "dfl_relaxed_lp_pilot_frame",
+        "offline_dfl_experiment_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -119,7 +122,9 @@ def test_dfl_research_assets_are_registered() -> None:
         for asset_key, group in asset.group_names_by_key.items()
     }
     assert tags_by_key["dfl_relaxed_lp_pilot_frame"]["medallion"] == "gold"
+    assert tags_by_key["offline_dfl_experiment_frame"]["evidence_scope"] == "not_market_execution"
     assert groups_by_key["dfl_training_frame"] == "gold_dfl_training"
+    assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["horizon_regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
@@ -196,6 +201,17 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         horizon_calibrated_benchmark,
     )
     relaxed_pilot = dfl_relaxed_lp_pilot_frame(None, RelaxedDflPilotAssetConfig(max_examples=4), benchmark)
+    offline_experiment = offline_dfl_experiment_frame(
+        None,
+        OfflineDflExperimentAssetConfig(
+            forecast_model_names_csv="tft_silver_v0",
+            validation_fraction=0.4,
+            max_train_anchors=3,
+            max_validation_anchors=2,
+            epoch_count=2,
+        ),
+        benchmark,
+    )
 
     assert ensemble.height == 5
     assert strategy_store.evaluation_frame.height == 65
@@ -233,3 +249,8 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert relaxed_pilot.select("academic_scope").to_series().unique().to_list() == [
         "differentiable_relaxed_lp_pilot_not_final_dfl"
     ]
+    assert offline_experiment.height == 1
+    assert offline_experiment.select("claim_scope").to_series().unique().to_list() == [
+        "offline_dfl_experiment_not_full_dfl"
+    ]
+    assert offline_experiment.select("not_market_execution").to_series().unique().to_list() == [True]

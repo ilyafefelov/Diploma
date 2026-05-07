@@ -15,6 +15,7 @@ from smart_arbitrage.dfl.regret_weighted import (
     run_regret_weighted_dfl_pilot,
 )
 from smart_arbitrage.dfl.relaxed_pilot import build_relaxed_dfl_pilot_frame
+from smart_arbitrage.dfl.offline_experiment import build_offline_dfl_experiment_frame
 from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 from smart_arbitrage.strategy.ensemble_gate import (
@@ -62,6 +63,18 @@ class RelaxedDflPilotAssetConfig(dg.Config):
     """Small differentiable relaxed-LP DFL pilot scope."""
 
     max_examples: int = 12
+
+
+class OfflineDflExperimentAssetConfig(dg.Config):
+    """Bounded offline relaxed-LP DFL experiment scope."""
+
+    tenant_id: str = "client_003_dnipro_factory"
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    validation_fraction: float = 0.2
+    max_train_anchors: int = 32
+    max_validation_anchors: int = 18
+    epoch_count: int = 8
+    learning_rate: float = 10.0
 
 
 @dg.asset(
@@ -204,6 +217,49 @@ def dfl_relaxed_lp_pilot_frame(
         },
     )
     return pilot_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="pilot",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def offline_dfl_experiment_frame(
+    context,
+    config: OfflineDflExperimentAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Bounded offline DFL experiment over prior-anchor relaxed-LP training."""
+
+    experiment_frame = build_offline_dfl_experiment_frame(
+        real_data_rolling_origin_benchmark_frame,
+        tenant_id=config.tenant_id,
+        forecast_model_names=_forecast_model_names(config.forecast_model_names_csv),
+        validation_fraction=config.validation_fraction,
+        max_train_anchors=config.max_train_anchors,
+        max_validation_anchors=config.max_validation_anchors,
+        epoch_count=config.epoch_count,
+        learning_rate=config.learning_rate,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": experiment_frame.height,
+            "tenant_id": config.tenant_id,
+            "model_count": experiment_frame.select("forecast_model_name").n_unique()
+            if experiment_frame.height
+            else 0,
+            "scope": "offline_dfl_experiment_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return experiment_frame
 
 
 @dg.asset(
@@ -497,6 +553,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_training_frame,
     regret_weighted_dfl_pilot_frame,
     dfl_relaxed_lp_pilot_frame,
+    offline_dfl_experiment_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
