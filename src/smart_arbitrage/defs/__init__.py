@@ -5,6 +5,7 @@ from dagster import Definitions
 from smart_arbitrage.assets.bronze.grid_events import GRID_EVENT_BRONZE_ASSETS
 from smart_arbitrage.assets.bronze.market_weather import REAL_DATA_BENCHMARK_BRONZE_ASSETS
 from smart_arbitrage.assets.bronze.tenant_load import TENANT_LOAD_BRONZE_ASSETS
+from smart_arbitrage.assets.checks import DFL_EVIDENCE_ASSET_CHECKS
 from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
 from smart_arbitrage.assets.gold.forecast_strategy import (
     FORECAST_STRATEGY_GOLD_ASSETS,
@@ -39,6 +40,7 @@ defs = Definitions(
         *SIMULATED_TRADE_TRAINING_ASSETS,
     ],
     schedules=[*BATTERY_TELEMETRY_SCHEDULES, *FORECAST_STRATEGY_GOLD_SCHEDULES],
+    asset_checks=[*DFL_EVIDENCE_ASSET_CHECKS],
 )
 
 __all__ = ["defs"]
