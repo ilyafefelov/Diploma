@@ -48,6 +48,40 @@ def test_regret_weighted_calibration_benchmark_routes_corrected_nbeatsx_and_tft_
     assert corrected_payload["academic_scope"] == "Regret-weighted forecast calibration benchmark; not full differentiable DFL."
 
 
+def test_regret_weighted_calibration_benchmark_keeps_metadata_when_control_ranks_first() -> None:
+    anchor = datetime(2026, 5, 1, 23)
+    source_frame = pl.DataFrame(
+        [
+            _evaluation_row(anchor, "strict_similar_day", [1000.0, 1500.0]),
+            _evaluation_row(anchor, "tft_silver_v0", [900.0, 1200.0]),
+            _evaluation_row(anchor, "nbeatsx_silver_v0", [900.0, 1200.0]),
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            _calibration_row(anchor, "tft_silver_v0", "tft_regret_weighted_calibrated_v0", 0.0),
+            _calibration_row(
+                anchor,
+                "nbeatsx_silver_v0",
+                "nbeatsx_regret_weighted_calibrated_v0",
+                0.0,
+            ),
+        ]
+    )
+
+    result = build_regret_weighted_forecast_strategy_benchmark_frame(
+        source_frame,
+        calibration_frame,
+    )
+
+    assert result.sort("rank_by_regret").row(0, named=True)["forecast_model_name"] == "strict_similar_day"
+    corrected_payload = result.filter(
+        pl.col("forecast_model_name") == "tft_regret_weighted_calibrated_v0"
+    ).row(0, named=True)["evaluation_payload"]
+    assert corrected_payload["prior_anchor_count"] == 14
+    assert corrected_payload["calibration_window_anchor_count"] == 14
+
+
 def test_horizon_regret_weighted_calibration_benchmark_routes_step_biases_through_lp() -> None:
     anchor = datetime(2026, 5, 1, 23)
     source_frame = pl.DataFrame(
@@ -92,6 +126,45 @@ def test_horizon_regret_weighted_calibration_benchmark_routes_step_biases_throug
     assert corrected_payload["academic_scope"] == (
         "Horizon-aware regret-weighted forecast calibration benchmark; not full differentiable DFL."
     )
+
+
+def test_horizon_regret_weighted_calibration_benchmark_keeps_metadata_when_control_ranks_first() -> None:
+    anchor = datetime(2026, 5, 1, 23)
+    source_frame = pl.DataFrame(
+        [
+            _evaluation_row(anchor, "strict_similar_day", [1000.0, 1500.0]),
+            _evaluation_row(anchor, "tft_silver_v0", [900.0, 1200.0]),
+            _evaluation_row(anchor, "nbeatsx_silver_v0", [900.0, 1200.0]),
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            _horizon_calibration_row(
+                anchor,
+                "tft_silver_v0",
+                "tft_horizon_regret_weighted_calibrated_v0",
+                [0.0, 0.0],
+            ),
+            _horizon_calibration_row(
+                anchor,
+                "nbeatsx_silver_v0",
+                "nbeatsx_horizon_regret_weighted_calibrated_v0",
+                [0.0, 0.0],
+            ),
+        ]
+    )
+
+    result = build_horizon_regret_weighted_forecast_strategy_benchmark_frame(
+        source_frame,
+        calibration_frame,
+    )
+
+    assert result.sort("rank_by_regret").row(0, named=True)["forecast_model_name"] == "strict_similar_day"
+    corrected_payload = result.filter(
+        pl.col("forecast_model_name") == "tft_horizon_regret_weighted_calibrated_v0"
+    ).row(0, named=True)["evaluation_payload"]
+    assert corrected_payload["prior_anchor_count"] == 14
+    assert corrected_payload["calibration_window_anchor_count"] == 14
 
 
 def _evaluation_row(anchor: datetime, model_name: str, forecast_prices: list[float]) -> dict[str, object]:

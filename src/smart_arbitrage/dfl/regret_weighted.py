@@ -772,6 +772,8 @@ def _with_calibration_metadata(
                 {
                     "source_forecast_model_name": model_name,
                     "regret_weighted_bias_uah_mwh": 0.0,
+                    "prior_anchor_count": 0,
+                    "calibration_window_anchor_count": 0,
                     "calibration_status": "comparator_source_row",
                 }
             )
@@ -820,6 +822,9 @@ def _with_horizon_calibration_metadata(
                     "source_forecast_model_name": model_name,
                     "horizon_biases_uah_mwh": [],
                     "mean_horizon_bias_uah_mwh": 0.0,
+                    "max_abs_horizon_bias_uah_mwh": 0.0,
+                    "prior_anchor_count": 0,
+                    "calibration_window_anchor_count": 0,
                     "calibration_status": "comparator_source_row",
                 }
             )
