@@ -218,3 +218,21 @@ Manifest checks before supervisor-facing use:
    support the stated tenant-specific claim.
 5. `data_quality_tiers` must include only tiers that are acceptable for the
    claim being made; Week 3 thesis evidence requires `thesis_grade`.
+
+Latest manifested calibration registry run:
+
+- Fresh export slug: `week3_calibration_preview_manifested_dnipro_90`.
+- Manifest path: `data/research_runs/week3_calibration_preview_manifested_dnipro_90/research_layer_manifest.json`.
+- Dnipro latest raw benchmark manifest entry:
+  `anchor_count=90`, `row_count=270`,
+  `latest_generated_at=2026-05-06T22:57:36.014876+00:00`,
+  `data_quality_tiers=["thesis_grade"]`.
+- Manifest claim flags: `claim_scope=calibration_selector_evidence_not_full_dfl`,
+  `not_full_dfl=true`, `not_market_execution=true`.
+- API read models agree on the latest Dnipro batch: raw benchmark 90 anchors
+  and 270 rows, calibrated selector 90 rows, risk-adjusted gate 90 rows, and
+  forecast-dispatch sensitivity 450 diagnostic rows.
+- Postgres still contains older Dnipro persisted rows; the registry separates
+  those table totals from the latest generated batch used for reporting.
+- Tracked registry:
+  [MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md).
