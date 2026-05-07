@@ -540,7 +540,7 @@ def _manifest_evidence_frame(outputs: ResearchLayerOutputs) -> pl.DataFrame:
         outputs.risk_adjusted_value_gate_frame,
     ]
     usable_frames = [
-        frame
+        _manifest_projection(frame)
         for frame in frames
         if {"tenant_id", "strategy_kind", "generated_at", "anchor_timestamp"}.issubset(
             frame.columns
@@ -549,6 +549,27 @@ def _manifest_evidence_frame(outputs: ResearchLayerOutputs) -> pl.DataFrame:
     if not usable_frames:
         return pl.DataFrame()
     return pl.concat(usable_frames, how="diagonal_relaxed")
+
+
+def _manifest_projection(frame: pl.DataFrame) -> pl.DataFrame:
+    evaluation_id_expression = (
+        pl.col("evaluation_id").cast(pl.Utf8)
+        if "evaluation_id" in frame.columns
+        else pl.lit("").alias("evaluation_id")
+    )
+    return frame.select(
+        [
+            pl.col("tenant_id").cast(pl.Utf8),
+            pl.col("strategy_kind").cast(pl.Utf8),
+            pl.col("generated_at")
+            .map_elements(_isoformat_value, return_dtype=pl.Utf8)
+            .alias("generated_at"),
+            pl.col("anchor_timestamp")
+            .map_elements(_isoformat_value, return_dtype=pl.Utf8)
+            .alias("anchor_timestamp"),
+            evaluation_id_expression,
+        ]
+    )
 
 
 def _latest_generated_at_by_tenant_strategy(frame: pl.DataFrame) -> dict[str, str]:

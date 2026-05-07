@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import polars as pl
 
@@ -13,9 +13,9 @@ from smart_arbitrage.research.real_data_research_layer import (
 
 
 def test_research_layer_manifest_separates_latest_tenant_batches(tmp_path) -> None:
-    stale_dnipro_generated_at = datetime(2026, 5, 4, 12)
-    latest_dnipro_generated_at = datetime(2026, 5, 5, 12)
-    lviv_generated_at = datetime(2026, 5, 5, 13)
+    stale_dnipro_generated_at = datetime(2026, 5, 4, 12, tzinfo=UTC)
+    latest_dnipro_generated_at = datetime(2026, 5, 5, 12, tzinfo=UTC)
+    lviv_generated_at = datetime(2026, 5, 5, 13, tzinfo=UTC)
     raw_frame = pl.concat(
         [
             _benchmark_frame(
