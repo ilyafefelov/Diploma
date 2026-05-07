@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 import polars as pl
 
 from smart_arbitrage.dfl.schemas import DFLTrainingExampleV2
 
-CONTROL_MODEL_NAME: Final[str] = "strict_similar_day"
-CLAIM_SCOPE: Final[str] = "dfl_training_examples_not_full_dfl"
+CONTROL_MODEL_NAME: Final[Literal["strict_similar_day"]] = "strict_similar_day"
+CLAIM_SCOPE: Final[Literal["dfl_training_examples_not_full_dfl"]] = "dfl_training_examples_not_full_dfl"
 REQUIRED_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "evaluation_id",
