@@ -1,0 +1,88 @@
+Here’s something you *actually* want if you’re diving into reproducible deep‑learning forecasting research — two concrete, vetted codebases and a clear path to standing up **exact implementations** of models that matter in time‑series forecasting. I’m sharing this because getting the *exact* repositories and execution steps eliminates guesswork when benchmarking models like NBEATSx and TFT.
+
+### Why this matters
+
+These aren’t abstracts — they’re real, **peer‑referenced implementations** of cutting‑edge forecasting architectures you can clone and run. One is an extension of a state‑of‑the‑art model with exogenous variables, and the other is a transformer‑based multi‑horizon forecasting comparator. Both are used in benchmark experiments and research reproductions.
+
+![Image](https://images.openai.com/static-rsc-4/-HKd3FTlHlFc9tZg7YTWzQtFYI8UQJYbDxa7XtylfQaOuXHM3we6Ctvh9yoDcJbSiSzWYJ5RdLiKMSbSY2ruLDdVevrjC-AdJ1oqv51RAmwRcbxReat_J85kZCUZZ6J6vgyED3kFWazq06G_W8-Nw2tpXHlFrzKm3ZkUvFyPg4Z-9bR_QLHV3_32Qn9DgPtb?purpose=fullsize)
+
+![Image](https://images.openai.com/static-rsc-4/HG9wsDPbPJm2UpxE71zKdfYpfN6UpLHMiUap_eal-k-mC7hS49q7Xl2qZhjmyMh9OSJbuM6f1PFfCMc8spFT6a-22ZJdQLhRDUQ-Tw1J9d-ykR8XjR0pTUpmdAp3-yRefsWjIDOLXunM971CALOe94f8ESB5STKKTlGWMsr0JbchXg_3QTmMoCokcsvBeHj2?purpose=fullsize)
+
+![Image](https://images.openai.com/static-rsc-4/NSG1qNcLu2LiucwZ_-c83EnfPLagniZ6Msugh87NP4cMBGiB2Co2Bpxb9mypdV4rvvcB0Cl4V2iCGyI6yB4SroJ0ffhYe5HVoiOmAtUL3nWGvTZn5iCCxkg-nV-5cqOEDuCVb8GtF_LEvXCTw-6eIa2D5oLJK1wuIVW30PhlUZznDaoYQFZ5dRDkw6paZbQr?purpose=fullsize)
+
+![Image](https://images.openai.com/static-rsc-4/oQDU57lzi--eSlPKcki1Ezg_rIMKj_1fiImORA3fg-amqrCNuNcNEbycJfGnsh5-9uYjNX2pUAfth0zEyWIakW1Wqi1RTiCr2ZGHDBK-qwcM5aoqbts9PS4SRARZbBc7ioxBaK8e5KJh0oj7zaUl21hR2y56onwWYnJyThipFuRXxyrfrPCA7D9GVkvSvDhR?purpose=fullsize)
+
+![Image](https://images.openai.com/static-rsc-4/egQfrumhkqgpIB4Hvfymn6hfik-VugmJThHD_MyLRbrd90s0IAWODfUYN7HZkFhtXHdj2qMO2auZBkqupHRsuSeaU8GK7e7T9luPeCp2WY6SwuMlpu6A1w68pJGR9-dSURLhqpRUtgy8aTRBWip8xSS48FR7lBJYnl4p_im_8KJlVPlPwQeskz6VGoRKUNZg?purpose=fullsize)
+
+![Image](https://images.openai.com/static-rsc-4/5zxj5zpRW2gJdWpbiaKbEoX7mDO-UTrqwMk8fJQ4tpj6IJCCRYZC0mUG8modHloQVntEFky3mf4HhDhKhNKyNWzJxK-7cr6-tBvpnga-_aF-9mLWHzg3mko3RWWk1tJoRIQ6-vjKGhcSaE47UzZhr1sLHuJhDiKFE9iNmJo8O_8vohb-vCKsNATUeO2zQlfF?purpose=fullsize)
+
+---
+
+### 🔍 **NBEATSx** — Neural Basis Expansion with Exogenous Input
+
+* **What it is:** A research implementation extending the classic N‑BEATS architecture to include *exogenous variables*, designed for tasks where external effects matter in prediction. It comes with an example pipeline to reproduce reported forecasts. ([GitHub][1])
+* **Paper:** *Neural basis expansion analysis with exogenous variables* — a peer‑reviewed extension that improved forecast accuracy versus original N‑BEATS and baselines on electricity price forecasting. ([arXiv][2])
+* **Code to clone & run:**
+
+  ```bash
+  git clone https://github.com/cchallu/nbeatsx.git
+  cd nbeatsx
+  conda create -n tsenv python=3.10 -y
+  conda activate tsenv
+  pip install -r requirements.txt
+  ```
+
+  or with GPUs via Docker:
+
+  ```bash
+  docker build -t nbeatsx .
+  docker run --gpus all -it nbeatsx bash
+  ```
+* **What’s inside:**
+
+  * Data loading and dataset utilities
+  * Example notebooks for quick start
+  * Scripts to reproduce forecast experiments from the original paper
+* **Why it’s useful:** You get a *research‑aligned baseline* with exogenous covariates built right into the forecasting pipeline, not just a toy example. ([GitHub][1])
+
+---
+
+### 🔀 **Temporal Fusion Transformer (TFT)** — Multi‑Horizon Comparator
+
+* **What it is:** A highly flexible, attention‑based model for **multi‑horizon forecasting** that supports static metadata, known future inputs, and historical covariates simultaneously. It’s widely used as a strong benchmark. ([PyTorch Forecasting Documentation][3])
+* **Core reference:** *Temporal Fusion Transformers for Interpretable Multi‑horizon Time Series Forecasting* — original paper introducing TFT’s LSTM encoder + attention decoder structure. ([arXiv][4])
+* **Official implementation:** Provided as part of **PyTorch Forecasting** (`TemporalFusionTransformer` class) with full support for dataset adapters and hyperparameter tuning. ([PyTorch Forecasting Documentation][3])
+* **Why it’s complementary:**
+
+  * Captures *multivariate and multi‑horizon* dependencies out of the box
+  * Supports interpretability via attention and feature selection
+  * Acts as a stable competitor to NBEATSx in head‑to‑head experiments ([Medium][5])
+* **Typical usage:** You construct a `TimeSeriesDataSet`, call `TemporalFusionTransformer.from_dataset()`, and train with standard PyTorch Lightning training loops (many tutorials available). ([PyTorch Forecasting Documentation][6])
+
+---
+
+### Quick Comparison Snapshot
+
+| Model                         | Primary Strength                                                        | Primary Use Case                                      |
+| ----------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------- |
+| **NBEATSx**                   | Incorporates exogenous variables in a basis‑expansion forecasting model | When external factors significantly impact the target |
+| **TFT (PyTorch‑Forecasting)** | Rich multi‑horizon + multivariate forecasting with gating + attention   | Benchmarking against transformer‑style forecasting    |
+
+---
+
+### Why you’ll take this further
+
+Getting *exact reproductions* matters when:
+
+* you’re comparing models objectively
+* you want reproducible benchmarks
+* you’re fine‑tuning architectures under controlled conditions
+
+Both codebases are **real, research or framework standards**, not prototypes — and they’re ready for extension or full experiments. ([GitHub][1])
+
+[1]: https://github.com/cchallu/nbeatsx?utm_source=chatgpt.com "cchallu/nbeatsx"
+[2]: https://arxiv.org/abs/2104.05522?utm_source=chatgpt.com "Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx"
+[3]: https://pytorch-forecasting.readthedocs.io/en/v1.0.0/api/pytorch_forecasting.models.temporal_fusion_transformer.TemporalFusionTransformer.html?utm_source=chatgpt.com "TemporalFusionTransformer — pytorch-forecasting ..."
+[4]: https://arxiv.org/abs/1912.09363?utm_source=chatgpt.com "Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting"
+[5]: https://medium.com/dataness-ai/understanding-temporal-fusion-transformer-9a7a4fcde74b?utm_source=chatgpt.com "Understanding Temporal Fusion Transformer"
+[6]: https://pytorch-forecasting.readthedocs.io/en/v1.4.0/tutorials/stallion.html?utm_source=chatgpt.com "Demand forecasting with the Temporal Fusion Transformer"

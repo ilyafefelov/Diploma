@@ -124,6 +124,14 @@ _Avoid_: claiming end-to-end trained DFL, using future anchors, replacing **Stri
 Future **Target Strategy** training loop where a forecast model is optimized through a relaxed differentiable storage or bidding layer, then evaluated with the strict LP/simulator. It requires a separate no-leakage training protocol and must not be claimed from bias-calibration results.
 _Avoid_: regret-weighted post-hoc calibration, oracle dispatch imitation, unconstrained neural action, final evaluation on relaxed constraints
 
+**DFL Training Example**:
+Research-only row that packages one tenant/anchor/model decision instance for later DFL experiments: point-in-time forecast inputs, realized evaluation labels, LP dispatch vectors, oracle/regret values, degradation/throughput economics, provenance, and claim-boundary flags.
+_Avoid_: live bid, production policy input, oracle forecast, dashboard contract
+
+**Promotion Gate**:
+Conservative research gate that blocks a forecast, calibration, selector, or DFL candidate from being described as improved control unless it beats the frozen **Strict Similar-Day Rule** on same-scope regret and safety evidence.
+_Avoid_: automatic deployment, dashboard default switch, forecast-only leaderboard, weak model promotion
+
 **Effective-Dated Market Constraint**:
 Regulatory or market parameter whose value depends on the delivery/decision date, such as DAM/IDM/Balancing price caps, operator transaction tariffs, or fixed participation fees.
 _Avoid_: timeless constant, hidden config, dashboard-only annotation, post-hoc correction

@@ -324,3 +324,33 @@ more tenants or stronger DFL claims.
 
 Tracked note:
 [OFFLINE_DFL_EXPERIMENT.md](OFFLINE_DFL_EXPERIMENT.md).
+
+## Week 3 Deep Research Source Map And Baseline Freeze
+
+The Week 3 deep-research intake is now indexed under
+[deep-research-reports/week3 research/README.md](deep-research-reports/week3%20research/README.md)
+with a report-to-code map in
+[deep-research-reports/week3 research/source-map.md](deep-research-reports/week3%20research/source-map.md).
+The source map separates implemented facts, benchmark-supported evidence,
+planned research, and out-of-scope claims.
+
+The main implementation decision from that intake is not to start a larger
+neural policy immediately. The current foundation already includes
+`dfl_training_frame`, calibration assets, selector diagnostics, Dagster evidence
+checks, and a bounded offline DFL experiment. The next safe step is therefore to
+freeze the control comparator and add richer sidecar DFL examples plus a
+promotion gate.
+
+Tracked baseline freeze:
+[BASELINE_FREEZE.md](BASELINE_FREEZE.md).
+
+Freeze summary:
+
+- `strict_similar_day` remains the Level 1 control comparator.
+- Forecast candidates must be evaluated through the same LP/oracle protocol.
+- Week 3 30-anchor Dnipro evidence, Dnipro 90-anchor preview evidence, and
+  all-tenant diagnostic snapshots must stay separately labeled.
+- Current offline DFL v0 is negative diagnostic evidence and must not be
+  promoted.
+- PriceFM and THieF support future forecast-layer direction; TSFM leakage and
+  the DFL survey support the current no-leakage, decision-value-first protocol.
