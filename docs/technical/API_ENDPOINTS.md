@@ -338,6 +338,7 @@ Operational notes:
 - This endpoint is a benchmark read model only. It does not emit `Proposed Bid`, `Cleared Trade`, settlement, or `Dispatch Command` contracts.
 - It is populated by the Dagster asset `real_data_rolling_origin_benchmark_frame`.
 - The benchmark trains/fits forecasts using rows available at or before each anchor and keeps realized future prices only for scoring and oracle comparison.
+- Freshness is represented by `generated_at`; the backing Postgres store returns the latest batch for the requested `tenant_id` and `strategy_kind`.
 - If no benchmark rows exist for the tenant, the endpoint returns `404`.
 
 ### `GET /dashboard/calibrated-ensemble-benchmark`
@@ -356,6 +357,7 @@ Operational notes:
 
 - This endpoint is a dashboard read model for research evidence, not an operational trading selector.
 - Current 90-anchor result is negative: the calibrated gate improves over raw compact neural candidates but is worse than both `strict_similar_day` and horizon-aware TFT on mean regret.
+- Freshness is represented by `generated_at`; older materialization batches may remain in Postgres but are not returned by this endpoint.
 - If no calibrated ensemble rows exist for the tenant, the endpoint returns `404`.
 
 ### `GET /dashboard/risk-adjusted-value-gate`
@@ -373,7 +375,8 @@ Response shape is the same as `GET /dashboard/real-data-benchmark`, but `model_c
 Operational notes:
 
 - This endpoint is a dashboard read model for research evidence, not an operational trading selector.
-- Current 90-anchor result is negative: the risk-adjusted gate mean regret is `918.76` UAH, worse than `strict_similar_day` at `851.04` UAH and horizon-aware TFT at `834.32` UAH.
+- Current Dnipro 90-anchor preview result is conservative: the risk-adjusted gate mean regret is `1428.59` UAH, narrower than the calibrated ensemble at `1479.65` UAH but still worse than `strict_similar_day` at `1384.70` UAH.
+- Freshness is represented by `generated_at`; older materialization batches may remain in Postgres but are not returned by this endpoint.
 - If no risk-adjusted gate rows exist for the tenant, the endpoint returns `404`.
 
 ### `GET /dashboard/forecast-dispatch-sensitivity`
@@ -398,7 +401,16 @@ Operational notes:
 
 - Buckets are `low_regret`, `forecast_error`, `spread_objective_mismatch`, and `lp_dispatch_sensitivity`.
 - This is the API read model the dashboard can use to explain why a strategy lost value; it is not a bid, dispatch command, or promoted model.
+- Freshness is represented by `generated_at`; this endpoint rebuilds diagnostics from the latest horizon-aware calibration batch for the requested tenant.
 - If no horizon-aware benchmark rows exist for the tenant, the endpoint returns `404`.
+
+### Read-model freshness and performance
+
+The Postgres-backed research read models use
+`forecast_strategy_evaluations_latest_read_idx` to retrieve the latest
+`tenant_id + strategy_kind + generated_at` batch. The measured local Compose
+result is documented in
+[API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md).
 
 ### `POST /weather/run-config`
 

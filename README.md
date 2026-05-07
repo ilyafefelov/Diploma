@@ -155,7 +155,7 @@ uv run dg list defs --json
 docker compose config --quiet
 ```
 
-Latest full verification: `150 passed`.
+Latest full verification: `151 passed`.
 
 ## Research Artifacts
 

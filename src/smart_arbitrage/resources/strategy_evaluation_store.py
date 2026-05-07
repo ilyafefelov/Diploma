@@ -107,6 +107,19 @@ class PostgresStrategyEvaluationStore:
 					)
 					"""
                 )
+                cursor.execute(
+                    """
+					CREATE INDEX IF NOT EXISTS forecast_strategy_evaluations_latest_read_idx
+					ON forecast_strategy_evaluations (
+					    tenant_id,
+					    strategy_kind,
+					    generated_at DESC,
+					    anchor_timestamp,
+					    rank_by_regret,
+					    forecast_model_name
+					)
+					"""
+                )
             connection.commit()
 
     def upsert_evaluation_frame(self, evaluation_frame: pl.DataFrame) -> None:

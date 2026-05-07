@@ -42,7 +42,7 @@ docs/
 | **Академічна записка** | [thesis/chapters/01-project-overview.md](thesis/chapters/01-project-overview.md) · [thesis/chapters/02-literature-review.md](thesis/chapters/02-literature-review.md) |
 | **Бібліографія / джерела** | [thesis/sources/README.md](thesis/sources/README.md) — індекс усіх PDF |
 | **Архітектура і data flow** | [technical/ARCHITECTURE_AND_DATA_FLOW.md](technical/ARCHITECTURE_AND_DATA_FLOW.md) — інфографіка архітектури, потоків даних і safety boundary |
-| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
+| **Технічна інтеграція** | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) · [technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md) · [technical/BASELINE_LP_AND_DATA_PIPELINE.md](technical/BASELINE_LP_AND_DATA_PIPELINE.md) · [technical/OPERATOR_DEMO_READY.md](technical/OPERATOR_DEMO_READY.md) |
 | **Research roadmap** | [technical/RESEARCH_INTEGRATION_PLAN.md](technical/RESEARCH_INTEGRATION_PLAN.md) · [technical/deep-research-reports/deep-research-report.md](technical/deep-research-reports/deep-research-report.md) |
 | **Інженер / розробник** | [../src/](../src/) · [../api/](../api/) · [../dashboard/](../dashboard/) |
 | **Дедлайни та вимоги** | [syllabus/Покрокова інструкція...](syllabus/) |
@@ -62,6 +62,7 @@ docs/
 - ✅ DFL/DT foundation slice — added SOTA-ready forecast training schema, differentiable relaxed-LP pilot rows, Silver NBEATSx/TFT forecast context for DT state, offline Decision Transformer trajectory rows, deterministic action projection, and simulated paper-trading replay rows.
 - ✅ Architecture/data-flow infographic — visual overview of Data Sources → Dagster Medallion assets → AI/optimization agents → Pydantic-backed Bid Gatekeeper → FastAPI/Postgres/MLflow/Nuxt observability is indexed in [ARCHITECTURE_AND_DATA_FLOW.md](technical/ARCHITECTURE_AND_DATA_FLOW.md), with an evidence registry that separates Week 3 accepted results from preview material.
 - ✅ Backend read models — `/dashboard/calibrated-ensemble-benchmark`, `/dashboard/risk-adjusted-value-gate`, and `/dashboard/forecast-dispatch-sensitivity` expose selector and diagnostic evidence for dashboard redesign without touching dashboard UI.
+- ✅ Postgres read-model freshness/performance — `forecast_strategy_evaluations` now has a latest-batch read index, documented in [API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](technical/API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md).
 - ✅ MLflow/Postgres/Dagster persistence — latest run documented in [real-data-90-anchor-benchmark-report.md](technical/deep-research-reports/real-data-90-anchor-benchmark-report.md).
 - ✅ Локальний PDF-архів — includes DFL, NBEATSx, TFT, storage DFL, TimeXer references.
 - 🟡 Full differentiable DFL training — primitive exists, but forecast models are not yet fine-tuned end-to-end on regret.
