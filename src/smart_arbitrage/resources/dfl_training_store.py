@@ -13,6 +13,8 @@ class DflTrainingStore(Protocol):
 
     def upsert_training_example_frame(self, training_example_frame: pl.DataFrame) -> None: ...
 
+    def upsert_action_label_frame(self, action_label_frame: pl.DataFrame) -> None: ...
+
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None: ...
 
     def upsert_relaxed_pilot_frame(self, relaxed_pilot_frame: pl.DataFrame) -> None: ...
@@ -25,6 +27,9 @@ class NullDflTrainingStore:
         return None
 
     def upsert_training_example_frame(self, training_example_frame: pl.DataFrame) -> None:
+        return None
+
+    def upsert_action_label_frame(self, action_label_frame: pl.DataFrame) -> None:
         return None
 
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None:
@@ -41,6 +46,7 @@ class InMemoryDflTrainingStore:
     def __init__(self) -> None:
         self.training_frame = pl.DataFrame()
         self.training_example_frame = pl.DataFrame()
+        self.action_label_frame = pl.DataFrame()
         self.pilot_frame = pl.DataFrame()
         self.relaxed_pilot_frame = pl.DataFrame()
 
@@ -49,6 +55,9 @@ class InMemoryDflTrainingStore:
 
     def upsert_training_example_frame(self, training_example_frame: pl.DataFrame) -> None:
         self.training_example_frame = training_example_frame.clone()
+
+    def upsert_action_label_frame(self, action_label_frame: pl.DataFrame) -> None:
+        self.action_label_frame = action_label_frame.clone()
 
     def upsert_pilot_frame(self, pilot_frame: pl.DataFrame) -> None:
         self.pilot_frame = pilot_frame.clone()
@@ -83,6 +92,59 @@ class PostgresDflTrainingStore:
     def _ensure_schema(self) -> None:
         with self._connect() as connection:
             with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS dfl_action_label_vectors (
+                        action_label_id TEXT PRIMARY KEY,
+                        evaluation_id TEXT NOT NULL,
+                        strict_baseline_evaluation_id TEXT NOT NULL,
+                        tenant_id TEXT NOT NULL,
+                        anchor_timestamp TIMESTAMP NOT NULL,
+                        split_name TEXT NOT NULL,
+                        is_final_holdout BOOLEAN NOT NULL,
+                        horizon_start TIMESTAMP NOT NULL,
+                        horizon_end TIMESTAMP NOT NULL,
+                        horizon_hours INTEGER NOT NULL,
+                        market_venue TEXT NOT NULL,
+                        currency TEXT NOT NULL,
+                        forecast_model_name TEXT NOT NULL,
+                        source_strategy_kind TEXT NOT NULL,
+                        strict_baseline_forecast_model_name TEXT NOT NULL,
+                        target_strategy_name TEXT NOT NULL,
+                        forecast_price_vector_uah_mwh JSONB NOT NULL,
+                        actual_price_vector_uah_mwh JSONB NOT NULL,
+                        candidate_signed_dispatch_vector_mw JSONB NOT NULL,
+                        strict_baseline_signed_dispatch_vector_mw JSONB NOT NULL,
+                        oracle_signed_dispatch_vector_mw JSONB NOT NULL,
+                        oracle_charge_mw_vector JSONB NOT NULL,
+                        oracle_discharge_mw_vector JSONB NOT NULL,
+                        oracle_soc_before_mwh_vector JSONB NOT NULL,
+                        oracle_soc_after_mwh_vector JSONB NOT NULL,
+                        oracle_degradation_penalty_vector_uah JSONB NOT NULL,
+                        target_charge_mask JSONB NOT NULL,
+                        target_discharge_mask JSONB NOT NULL,
+                        target_hold_mask JSONB NOT NULL,
+                        candidate_net_value_uah DOUBLE PRECISION NOT NULL,
+                        strict_baseline_net_value_uah DOUBLE PRECISION NOT NULL,
+                        oracle_net_value_uah DOUBLE PRECISION NOT NULL,
+                        candidate_regret_uah DOUBLE PRECISION NOT NULL,
+                        strict_baseline_regret_uah DOUBLE PRECISION NOT NULL,
+                        regret_delta_vs_strict_baseline_uah DOUBLE PRECISION NOT NULL,
+                        candidate_total_throughput_mwh DOUBLE PRECISION NOT NULL,
+                        strict_baseline_total_throughput_mwh DOUBLE PRECISION NOT NULL,
+                        candidate_total_degradation_penalty_uah DOUBLE PRECISION NOT NULL,
+                        strict_baseline_total_degradation_penalty_uah DOUBLE PRECISION NOT NULL,
+                        candidate_safety_violation_count INTEGER NOT NULL,
+                        strict_baseline_safety_violation_count INTEGER NOT NULL,
+                        data_quality_tier TEXT NOT NULL,
+                        observed_coverage_ratio DOUBLE PRECISION NOT NULL,
+                        claim_scope TEXT NOT NULL,
+                        not_full_dfl BOOLEAN NOT NULL,
+                        not_market_execution BOOLEAN NOT NULL,
+                        generated_at TIMESTAMP NOT NULL
+                    )
+                    """
+                )
                 cursor.execute(
                     """
                     CREATE TABLE IF NOT EXISTS dfl_training_example_vectors (
@@ -207,6 +269,116 @@ class PostgresDflTrainingStore:
                         PRIMARY KEY (pilot_name, evaluation_id)
                     )
                     """
+                )
+            connection.commit()
+
+    def upsert_action_label_frame(self, action_label_frame: pl.DataFrame) -> None:
+        if action_label_frame.height == 0:
+            return None
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO dfl_action_label_vectors (
+                        action_label_id,
+                        evaluation_id,
+                        strict_baseline_evaluation_id,
+                        tenant_id,
+                        anchor_timestamp,
+                        split_name,
+                        is_final_holdout,
+                        horizon_start,
+                        horizon_end,
+                        horizon_hours,
+                        market_venue,
+                        currency,
+                        forecast_model_name,
+                        source_strategy_kind,
+                        strict_baseline_forecast_model_name,
+                        target_strategy_name,
+                        forecast_price_vector_uah_mwh,
+                        actual_price_vector_uah_mwh,
+                        candidate_signed_dispatch_vector_mw,
+                        strict_baseline_signed_dispatch_vector_mw,
+                        oracle_signed_dispatch_vector_mw,
+                        oracle_charge_mw_vector,
+                        oracle_discharge_mw_vector,
+                        oracle_soc_before_mwh_vector,
+                        oracle_soc_after_mwh_vector,
+                        oracle_degradation_penalty_vector_uah,
+                        target_charge_mask,
+                        target_discharge_mask,
+                        target_hold_mask,
+                        candidate_net_value_uah,
+                        strict_baseline_net_value_uah,
+                        oracle_net_value_uah,
+                        candidate_regret_uah,
+                        strict_baseline_regret_uah,
+                        regret_delta_vs_strict_baseline_uah,
+                        candidate_total_throughput_mwh,
+                        strict_baseline_total_throughput_mwh,
+                        candidate_total_degradation_penalty_uah,
+                        strict_baseline_total_degradation_penalty_uah,
+                        candidate_safety_violation_count,
+                        strict_baseline_safety_violation_count,
+                        data_quality_tier,
+                        observed_coverage_ratio,
+                        claim_scope,
+                        not_full_dfl,
+                        not_market_execution,
+                        generated_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s::jsonb, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (action_label_id)
+                    DO UPDATE SET
+                        evaluation_id = EXCLUDED.evaluation_id,
+                        strict_baseline_evaluation_id = EXCLUDED.strict_baseline_evaluation_id,
+                        tenant_id = EXCLUDED.tenant_id,
+                        anchor_timestamp = EXCLUDED.anchor_timestamp,
+                        split_name = EXCLUDED.split_name,
+                        is_final_holdout = EXCLUDED.is_final_holdout,
+                        horizon_start = EXCLUDED.horizon_start,
+                        horizon_end = EXCLUDED.horizon_end,
+                        horizon_hours = EXCLUDED.horizon_hours,
+                        market_venue = EXCLUDED.market_venue,
+                        currency = EXCLUDED.currency,
+                        forecast_model_name = EXCLUDED.forecast_model_name,
+                        source_strategy_kind = EXCLUDED.source_strategy_kind,
+                        strict_baseline_forecast_model_name = EXCLUDED.strict_baseline_forecast_model_name,
+                        target_strategy_name = EXCLUDED.target_strategy_name,
+                        forecast_price_vector_uah_mwh = EXCLUDED.forecast_price_vector_uah_mwh,
+                        actual_price_vector_uah_mwh = EXCLUDED.actual_price_vector_uah_mwh,
+                        candidate_signed_dispatch_vector_mw = EXCLUDED.candidate_signed_dispatch_vector_mw,
+                        strict_baseline_signed_dispatch_vector_mw = EXCLUDED.strict_baseline_signed_dispatch_vector_mw,
+                        oracle_signed_dispatch_vector_mw = EXCLUDED.oracle_signed_dispatch_vector_mw,
+                        oracle_charge_mw_vector = EXCLUDED.oracle_charge_mw_vector,
+                        oracle_discharge_mw_vector = EXCLUDED.oracle_discharge_mw_vector,
+                        oracle_soc_before_mwh_vector = EXCLUDED.oracle_soc_before_mwh_vector,
+                        oracle_soc_after_mwh_vector = EXCLUDED.oracle_soc_after_mwh_vector,
+                        oracle_degradation_penalty_vector_uah = EXCLUDED.oracle_degradation_penalty_vector_uah,
+                        target_charge_mask = EXCLUDED.target_charge_mask,
+                        target_discharge_mask = EXCLUDED.target_discharge_mask,
+                        target_hold_mask = EXCLUDED.target_hold_mask,
+                        candidate_net_value_uah = EXCLUDED.candidate_net_value_uah,
+                        strict_baseline_net_value_uah = EXCLUDED.strict_baseline_net_value_uah,
+                        oracle_net_value_uah = EXCLUDED.oracle_net_value_uah,
+                        candidate_regret_uah = EXCLUDED.candidate_regret_uah,
+                        strict_baseline_regret_uah = EXCLUDED.strict_baseline_regret_uah,
+                        regret_delta_vs_strict_baseline_uah = EXCLUDED.regret_delta_vs_strict_baseline_uah,
+                        candidate_total_throughput_mwh = EXCLUDED.candidate_total_throughput_mwh,
+                        strict_baseline_total_throughput_mwh = EXCLUDED.strict_baseline_total_throughput_mwh,
+                        candidate_total_degradation_penalty_uah = EXCLUDED.candidate_total_degradation_penalty_uah,
+                        strict_baseline_total_degradation_penalty_uah = EXCLUDED.strict_baseline_total_degradation_penalty_uah,
+                        candidate_safety_violation_count = EXCLUDED.candidate_safety_violation_count,
+                        strict_baseline_safety_violation_count = EXCLUDED.strict_baseline_safety_violation_count,
+                        data_quality_tier = EXCLUDED.data_quality_tier,
+                        observed_coverage_ratio = EXCLUDED.observed_coverage_ratio,
+                        claim_scope = EXCLUDED.claim_scope,
+                        not_full_dfl = EXCLUDED.not_full_dfl,
+                        not_market_execution = EXCLUDED.not_market_execution,
+                        generated_at = EXCLUDED.generated_at
+                    """,
+                    [_action_label_values(row) for row in action_label_frame.iter_rows(named=True)],
                 )
             connection.commit()
 
@@ -560,6 +732,58 @@ def _training_example_values(row: dict[str, Any]) -> tuple[Any, ...]:
         row["candidate_feasible"],
         row["baseline_feasible"],
         row["safety_violation_count"],
+        row["data_quality_tier"],
+        row["observed_coverage_ratio"],
+        row["claim_scope"],
+        row["not_full_dfl"],
+        row["not_market_execution"],
+        row["generated_at"],
+    )
+
+
+def _action_label_values(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row["action_label_id"],
+        row["evaluation_id"],
+        row["strict_baseline_evaluation_id"],
+        row["tenant_id"],
+        row["anchor_timestamp"],
+        row["split_name"],
+        row["is_final_holdout"],
+        row["horizon_start"],
+        row["horizon_end"],
+        row["horizon_hours"],
+        row["market_venue"],
+        row["currency"],
+        row["forecast_model_name"],
+        row["source_strategy_kind"],
+        row["strict_baseline_forecast_model_name"],
+        row["target_strategy_name"],
+        json.dumps(row["forecast_price_vector_uah_mwh"]),
+        json.dumps(row["actual_price_vector_uah_mwh"]),
+        json.dumps(row["candidate_signed_dispatch_vector_mw"]),
+        json.dumps(row["strict_baseline_signed_dispatch_vector_mw"]),
+        json.dumps(row["oracle_signed_dispatch_vector_mw"]),
+        json.dumps(row["oracle_charge_mw_vector"]),
+        json.dumps(row["oracle_discharge_mw_vector"]),
+        json.dumps(row["oracle_soc_before_mwh_vector"]),
+        json.dumps(row["oracle_soc_after_mwh_vector"]),
+        json.dumps(row["oracle_degradation_penalty_vector_uah"]),
+        json.dumps(row["target_charge_mask"]),
+        json.dumps(row["target_discharge_mask"]),
+        json.dumps(row["target_hold_mask"]),
+        row["candidate_net_value_uah"],
+        row["strict_baseline_net_value_uah"],
+        row["oracle_net_value_uah"],
+        row["candidate_regret_uah"],
+        row["strict_baseline_regret_uah"],
+        row["regret_delta_vs_strict_baseline_uah"],
+        row["candidate_total_throughput_mwh"],
+        row["strict_baseline_total_throughput_mwh"],
+        row["candidate_total_degradation_penalty_uah"],
+        row["strict_baseline_total_degradation_penalty_uah"],
+        row["candidate_safety_violation_count"],
+        row["strict_baseline_safety_violation_count"],
         row["data_quality_tier"],
         row["observed_coverage_ratio"],
         row["claim_scope"],

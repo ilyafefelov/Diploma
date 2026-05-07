@@ -52,12 +52,39 @@ from smart_arbitrage.strategy.ensemble_gate import (
 from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 from smart_arbitrage.dfl.training_examples import build_dfl_training_example_frame
+from smart_arbitrage.dfl.data_expansion import (
+    build_dfl_action_label_panel_frame,
+    build_dfl_data_coverage_audit_frame,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
     """DFL training-table behavior for thesis-grade benchmark rows."""
 
     require_thesis_grade: bool = True
+
+
+class DflDataCoverageAuditAssetConfig(dg.Config):
+    """UA-first observed data coverage audit for DFL panel readiness."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    target_anchor_count_per_tenant: int = 90
+    required_past_hours: int = 168
+    horizon_hours: int = 24
+
+
+class DflActionLabelPanelAssetConfig(dg.Config):
+    """Strict LP/oracle action-label panel scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_holdout_anchor_count_per_tenant: int = 18
 
 
 class RegretWeightedDflPilotAssetConfig(dg.Config):
@@ -267,6 +294,99 @@ def dfl_training_example_frame(
         },
     )
     return training_example_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_data_coverage_audit_frame(
+    context,
+    config: DflDataCoverageAuditAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Observed OREE/Open-Meteo coverage ceiling for larger DFL panels."""
+
+    audit_frame = build_dfl_data_coverage_audit_frame(
+        real_data_benchmark_silver_feature_frame,
+        real_data_rolling_origin_benchmark_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        target_anchor_count_per_tenant=config.target_anchor_count_per_tenant,
+        required_past_hours=config.required_past_hours,
+        horizon_hours=config.horizon_hours,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "tenant_count": audit_frame.select("tenant_id").n_unique() if audit_frame.height else 0,
+            "target_anchor_count_per_tenant": config.target_anchor_count_per_tenant,
+            "minimum_eligible_anchor_count": audit_frame.select("eligible_anchor_count").min().item()
+            if audit_frame.height
+            else 0,
+            "scope": "ua_observed_dfl_data_coverage_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_action_label_panel_frame(
+    context,
+    config: DflActionLabelPanelAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    dfl_data_coverage_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Oracle action-label sidecar panel for future DFL training."""
+
+    action_label_frame = build_dfl_action_label_panel_frame(
+        real_data_rolling_origin_benchmark_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=_forecast_model_names(config.forecast_model_names_csv),
+        final_holdout_anchor_count_per_tenant=config.final_holdout_anchor_count_per_tenant,
+    )
+    get_dfl_training_store().upsert_action_label_frame(action_label_frame)
+    final_holdout_rows = (
+        action_label_frame.filter(pl.col("is_final_holdout"))
+        if action_label_frame.height
+        else pl.DataFrame()
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": action_label_frame.height,
+            "tenant_count": action_label_frame.select("tenant_id").n_unique()
+            if action_label_frame.height
+            else 0,
+            "source_model_count": action_label_frame.select("forecast_model_name").n_unique()
+            if action_label_frame.height
+            else 0,
+            "final_holdout_rows": final_holdout_rows.height,
+            "coverage_audit_rows": dfl_data_coverage_audit_frame.height,
+            "scope": "dfl_action_label_panel_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return action_label_frame
 
 
 @dg.asset(
@@ -1002,6 +1122,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
     dfl_training_example_frame,
+    dfl_data_coverage_audit_frame,
+    dfl_action_label_panel_frame,
     regret_weighted_dfl_pilot_frame,
     dfl_relaxed_lp_pilot_frame,
     offline_dfl_experiment_frame,
