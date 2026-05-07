@@ -469,6 +469,54 @@ correction.
 Tracked note:
 [OFFLINE_DFL_DECISION_TARGET_V3.md](OFFLINE_DFL_DECISION_TARGET_V3.md).
 
+## Action-Target Offline DFL v4
+
+The next strict-gate slice responded to the v3 result by adding raw-rank
+charge/discharge emphasis. The candidate is still selected on prior strict
+LP/oracle regret only; it is not a neural DFL training loop, not a Decision
+Transformer, not market execution, and not a production replacement for
+`strict_similar_day`.
+
+Implementation:
+
+- New assets: `offline_dfl_action_target_panel_frame` and
+  `offline_dfl_action_target_strict_lp_benchmark_frame`.
+- Dagster group: `gold_dfl_training`.
+- Strategy kind: `offline_dfl_action_target_strict_lp_benchmark`.
+- Run config:
+  [../../configs/real_data_offline_dfl_action_target_week3.yaml](../../configs/real_data_offline_dfl_action_target_week3.yaml).
+- Split rule: latest 18 final-holdout anchors per tenant, giving 90
+  tenant-anchor validation rows per source model.
+- Claim scope: `offline_dfl_action_target_v4_strict_lp_gate_not_full_dfl`.
+
+Latest action-target run:
+
+- Dagster run id: `54f1e320-b046-4aab-9d07-ff9c73714622`.
+- Output rows: 900, covering two source models, five tenants, 18
+  final-holdout timestamps, and five evaluated candidates per source model:
+  strict control, raw source, panel v2, decision-target v3, and action-target
+  v4.
+- Local summary:
+  `data/research_runs/week3_offline_dfl_action_target_v4_90/action_target_v4_summary.json`.
+- API sanity check for `client_003_dnipro_factory`: `data_quality_tier=thesis_grade`,
+  `anchor_count=90`, and `model_count=3`.
+
+Strict-gate result:
+
+| Source model | Raw mean regret | Panel v2 mean regret | V3 mean regret | V4 mean regret | Strict control mean regret | V4 improvement vs raw | V4 improvement vs v3 | V4 improvement vs strict | Decision |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 813.40 | 816.62 | 814.17 | 851.99 | 314.81 | -4.74% | -4.65% | -170.64% | blocked |
+| `tft_silver_v0` | 1003.54 | 989.55 | 1015.36 | 959.84 | 314.81 | 4.35% | 5.47% | -204.89% | blocked |
+
+The finding is conservative and useful. TFT v4 improves versus raw TFT, panel
+v2, and v3, which suggests action-rank emphasis is a more relevant direction
+than affine correction alone. But both source models still lose decisively to
+`strict_similar_day`, and their median regrets remain worse than the frozen
+control. The promotion gate therefore stays blocked.
+
+Tracked note:
+[OFFLINE_DFL_ACTION_TARGET_V4.md](OFFLINE_DFL_ACTION_TARGET_V4.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under
