@@ -517,6 +517,62 @@ control. The promotion gate therefore stays blocked.
 Tracked note:
 [OFFLINE_DFL_ACTION_TARGET_V4.md](OFFLINE_DFL_ACTION_TARGET_V4.md).
 
+## UA-First DFL Data Expansion And Action Labels
+
+The next foundation slice responds to the v4 result by improving the training
+substrate before adding another candidate. The current evidence suggests the
+main bottleneck is not neural complexity but in-domain coverage and decision
+labels that point directly at strict LP/oracle actions.
+
+Implementation:
+
+- New assets: `dfl_data_coverage_audit_frame` and
+  `dfl_action_label_panel_frame`.
+- Dagster group: `gold_dfl_training`.
+- Run config:
+  [../../configs/real_data_dfl_data_expansion_week3.yaml](../../configs/real_data_dfl_data_expansion_week3.yaml).
+- Observed Ukrainian window: `2026-01-01` to `2026-04-30`.
+- Benchmark cap: `max_anchors=120`; the audit reports the true tenant-specific
+  coverage ceiling rather than assuming expansion is possible.
+- Action-label split: latest 18 anchors per tenant/model are marked
+  `final_holdout`; all earlier anchors are `train_selection`.
+- Claim scope: `dfl_action_label_panel_not_full_dfl`.
+
+The action-label panel joins source-model rows with the frozen
+`strict_similar_day` control and recomputes oracle LP dispatch from realized
+horizon prices. It persists forecast vectors, actual vectors, strict-control
+dispatch, oracle dispatch/SOC vectors, action masks, regret, throughput,
+degradation proxy, observed coverage, and explicit `not_full_dfl=true` /
+`not_market_execution=true` flags.
+
+Verified evidence on 2026-05-07:
+
+- Dagster run `79a36ccc-f1e8-4bb0-aee4-0e66e9026205` materialized
+  `dfl_data_coverage_audit_frame` and `dfl_action_label_panel_frame` from the
+  latest IO-managed upstream benchmark frames.
+- The coverage audit found 104 eligible daily anchors per canonical tenant,
+  meeting the 90-anchor target while recording one price/weather source gap per
+  tenant in the wider feature frame.
+- The action-label panel persisted 900 rows in
+  `dfl_action_label_vectors`: 5 tenants x 2 source models x 90 anchors.
+- Each tenant/model split has 72 `train_selection` rows and 18
+  `final_holdout` rows, with the final holdout covering
+  `2026-04-12 23:00` through `2026-04-29 23:00`.
+- Vector-length validation found 0 bad rows, and all persisted action-label
+  rows are observed coverage, `thesis_grade`, `not_full_dfl=true`, and
+  `not_market_execution=true`.
+- Local export slug:
+  `data/research_runs/week3_dfl_data_expansion_ua_panel`.
+
+European datasets remain a research-only bridge. ENTSO-E, Open Power System
+Data, Ember, and Nord Pool are useful for future external validation and
+market-coupling context, but they are not training inputs until currency,
+timezone, price-cap, market-rule, API/licensing, and domain-shift normalization
+questions are resolved.
+
+Tracked note:
+[DFL_DATA_EXPANSION_AND_ACTION_LABELS.md](DFL_DATA_EXPANSION_AND_ACTION_LABELS.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under
