@@ -49,6 +49,16 @@ REQUIRED_OFFLINE_DFL_PANEL_COLUMNS: Final[frozenset[str]] = frozenset(
         "not_market_execution",
     }
 )
+REQUIRED_OFFLINE_DFL_PANEL_STRICT_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "forecast_model_name",
+        "anchor_timestamp",
+        "generated_at",
+        "regret_uah",
+        "evaluation_payload",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -245,6 +255,83 @@ def evaluate_offline_dfl_panel_development_gate(
     )
 
 
+def evaluate_offline_dfl_panel_strict_promotion_gate(
+    strict_panel_frame: pl.DataFrame,
+    *,
+    source_model_names: tuple[str, ...] | None = None,
+    control_model_name: str = CONTROL_MODEL_NAME,
+    min_tenant_count: int = 5,
+    min_validation_tenant_anchor_count: int = DEFAULT_MIN_ANCHOR_COUNT,
+    min_mean_regret_improvement_ratio: float = DEFAULT_MIN_MEAN_REGRET_IMPROVEMENT_RATIO,
+) -> PromotionGateResult:
+    """Evaluate strict LP/oracle promotion readiness for offline DFL panel candidates."""
+
+    failures = _missing_column_failures(strict_panel_frame, REQUIRED_OFFLINE_DFL_PANEL_STRICT_COLUMNS)
+    if failures:
+        return _result(failures=failures, metrics={})
+    rows = list(strict_panel_frame.iter_rows(named=True))
+    if not rows:
+        return _result(failures=["offline DFL panel strict benchmark has no rows"], metrics={})
+
+    source_names = source_model_names or tuple(sorted({_source_model_name(row) for row in rows}))
+    if not source_names:
+        return _result(
+            failures=["offline DFL panel strict benchmark rows must identify source_forecast_model_name"],
+            metrics={},
+        )
+
+    model_summaries: list[dict[str, Any]] = []
+    structural_failures: list[str] = []
+    for source_model_name in source_names:
+        source_rows = [row for row in rows if _source_model_name(row) == source_model_name]
+        if not source_rows:
+            structural_failures.append(f"{source_model_name} has no strict panel rows")
+            continue
+        summary, summary_failures = _offline_panel_strict_model_summary(
+            source_rows,
+            source_model_name=source_model_name,
+            control_model_name=control_model_name,
+            min_tenant_count=min_tenant_count,
+            min_validation_tenant_anchor_count=min_validation_tenant_anchor_count,
+            min_mean_regret_improvement_ratio=min_mean_regret_improvement_ratio,
+        )
+        model_summaries.append(summary)
+        structural_failures.extend(summary_failures)
+
+    if not model_summaries:
+        return _result(failures=structural_failures, metrics={})
+    passing_models = [summary for summary in model_summaries if bool(summary["passed"])]
+    failures.extend(structural_failures)
+    if not passing_models:
+        failures.append(
+            f"no v2 source model beats {control_model_name} by "
+            f"{min_mean_regret_improvement_ratio:.1%} with stable median regret"
+        )
+    best_summary = max(
+        model_summaries,
+        key=lambda summary: float(summary["mean_regret_improvement_ratio_vs_strict"]),
+    )
+    return _result(
+        failures=failures,
+        metrics={
+            "best_source_model_name": best_summary["source_model_name"],
+            "tenant_count": best_summary["tenant_count"],
+            "validation_tenant_anchor_count": best_summary["validation_tenant_anchor_count"],
+            "strict_mean_regret_uah": best_summary["strict_mean_regret_uah"],
+            "raw_mean_regret_uah": best_summary["raw_mean_regret_uah"],
+            "v2_mean_regret_uah": best_summary["v2_mean_regret_uah"],
+            "strict_median_regret_uah": best_summary["strict_median_regret_uah"],
+            "v2_median_regret_uah": best_summary["v2_median_regret_uah"],
+            "mean_regret_improvement_ratio_vs_strict": best_summary[
+                "mean_regret_improvement_ratio_vs_strict"
+            ],
+            "mean_regret_improvement_ratio_vs_raw": best_summary["mean_regret_improvement_ratio_vs_raw"],
+            "passing_source_model_names": [str(summary["source_model_name"]) for summary in passing_models],
+            "model_summaries": model_summaries,
+        },
+    )
+
+
 def _coverage_failures(
     *,
     candidate_rows: list[dict[str, Any]],
@@ -327,6 +414,102 @@ def _offline_panel_model_summaries(rows: list[dict[str, Any]]) -> list[dict[str,
     return summaries
 
 
+def _offline_panel_strict_model_summary(
+    rows: list[dict[str, Any]],
+    *,
+    source_model_name: str,
+    control_model_name: str,
+    min_tenant_count: int,
+    min_validation_tenant_anchor_count: int,
+    min_mean_regret_improvement_ratio: float,
+) -> tuple[dict[str, Any], list[str]]:
+    failures: list[str] = []
+    v2_model_name = f"offline_dfl_panel_v2_{source_model_name}"
+    control_rows = [row for row in rows if str(row["forecast_model_name"]) == control_model_name]
+    raw_rows = [row for row in rows if str(row["forecast_model_name"]) == source_model_name]
+    v2_rows = [row for row in rows if str(row["forecast_model_name"]) == v2_model_name]
+    control_anchors = _tenant_anchor_set(control_rows)
+    raw_anchors = _tenant_anchor_set(raw_rows)
+    v2_anchors = _tenant_anchor_set(v2_rows)
+    anchor_sets_match = control_anchors == raw_anchors == v2_anchors
+    validation_count = len(v2_anchors)
+    tenant_count = len({tenant_id for tenant_id, _ in v2_anchors})
+
+    if tenant_count < min_tenant_count:
+        failures.append(f"{source_model_name} tenant_count must be at least {min_tenant_count}; observed {tenant_count}")
+    if validation_count < min_validation_tenant_anchor_count:
+        failures.append(
+            f"{source_model_name} validation tenant-anchor count must be at least "
+            f"{min_validation_tenant_anchor_count}; observed {validation_count}"
+        )
+    if not anchor_sets_match:
+        failures.append(f"{source_model_name} strict/raw/v2 rows must cover matching tenant-anchor sets")
+    failures.extend(_offline_panel_strict_provenance_failures([*control_rows, *raw_rows, *v2_rows]))
+
+    strict_regrets = [float(row["regret_uah"]) for row in control_rows]
+    raw_regrets = [float(row["regret_uah"]) for row in raw_rows]
+    v2_regrets = [float(row["regret_uah"]) for row in v2_rows]
+    strict_mean = mean(strict_regrets) if strict_regrets else 0.0
+    raw_mean = mean(raw_regrets) if raw_regrets else 0.0
+    v2_mean = mean(v2_regrets) if v2_regrets else 0.0
+    strict_median = median(strict_regrets) if strict_regrets else 0.0
+    raw_median = median(raw_regrets) if raw_regrets else 0.0
+    v2_median = median(v2_regrets) if v2_regrets else 0.0
+    improvement_vs_strict = (strict_mean - v2_mean) / abs(strict_mean) if abs(strict_mean) > 1e-9 else 0.0
+    improvement_vs_raw = (raw_mean - v2_mean) / abs(raw_mean) if abs(raw_mean) > 1e-9 else 0.0
+    if v2_rows and control_rows and improvement_vs_strict < min_mean_regret_improvement_ratio:
+        failures.append(
+            f"{source_model_name} mean regret improvement vs {control_model_name} must be at least "
+            f"{min_mean_regret_improvement_ratio:.1%}; observed {improvement_vs_strict:.1%}"
+        )
+    if v2_rows and control_rows and v2_median > strict_median:
+        failures.append(
+            f"{source_model_name} median regret must not be worse than {control_model_name}; "
+            f"observed v2={v2_median:.2f}, strict={strict_median:.2f}"
+        )
+    summary = {
+        "source_model_name": source_model_name,
+        "v2_model_name": v2_model_name,
+        "tenant_count": tenant_count,
+        "validation_tenant_anchor_count": validation_count,
+        "strict_mean_regret_uah": strict_mean,
+        "raw_mean_regret_uah": raw_mean,
+        "v2_mean_regret_uah": v2_mean,
+        "strict_median_regret_uah": strict_median,
+        "raw_median_regret_uah": raw_median,
+        "v2_median_regret_uah": v2_median,
+        "mean_regret_improvement_ratio_vs_strict": improvement_vs_strict,
+        "mean_regret_improvement_ratio_vs_raw": improvement_vs_raw,
+        "passed": not failures,
+        "failures": failures,
+    }
+    return summary, failures
+
+
+def _offline_panel_strict_provenance_failures(rows: list[dict[str, Any]]) -> list[str]:
+    failures: list[str] = []
+    payloads = [_payload(row) for row in rows]
+    if any(str(payload.get("data_quality_tier", "demo_grade")) != "thesis_grade" for payload in payloads):
+        failures.append("offline DFL panel strict gate requires thesis_grade rows")
+    if any(float(payload.get("observed_coverage_ratio", 0.0)) < 1.0 for payload in payloads):
+        failures.append("offline DFL panel strict gate requires observed coverage ratio of 1.0")
+    safety_violation_count = sum(_safety_violation_count(payload) for payload in payloads)
+    if safety_violation_count:
+        failures.append(f"offline DFL panel strict gate requires zero safety violations; observed {safety_violation_count}")
+    if any(not bool(payload.get("not_full_dfl", False)) for payload in payloads):
+        failures.append("offline DFL panel strict gate requires not_full_dfl rows")
+    if any(not bool(payload.get("not_market_execution", False)) for payload in payloads):
+        failures.append("offline DFL panel strict gate requires not_market_execution rows")
+    return failures
+
+
+def _tenant_anchor_set(rows: list[dict[str, Any]]) -> set[tuple[str, datetime]]:
+    return {
+        (str(row["tenant_id"]), _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"))
+        for row in rows
+    }
+
+
 def _weighted_mean(values: list[tuple[float, int]]) -> float:
     total_weight = sum(weight for _, weight in values)
     if total_weight <= 0:
@@ -348,6 +531,12 @@ def _payload(row: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(payload, dict):
         return {}
     return payload
+
+
+def _source_model_name(row: dict[str, Any]) -> str:
+    payload = _payload(row)
+    source_model_name = payload.get("source_forecast_model_name")
+    return str(source_model_name) if source_model_name else ""
 
 
 def _anchor_set(rows: list[dict[str, Any]]) -> set[datetime]:
