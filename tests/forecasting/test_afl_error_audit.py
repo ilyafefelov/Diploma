@@ -149,7 +149,7 @@ def _afl_panel_frame() -> pl.DataFrame:
                     "feature_prior_regret_advantage_vs_strict_uah": strict_regret - regret,
                     "feature_forecast_price_spread_uah_mwh": forecast_spread,
                     "feature_forecast_active_hour_count": 4,
-                    "feature_forecast_top3_bottom3_rank_overlap": rank_overlap,
+                    "diagnostic_forecast_top3_bottom3_rank_overlap": rank_overlap,
                     "label_regret_uah": regret,
                     "label_regret_ratio": regret / 1000.0,
                     "label_decision_value_uah": 1000.0 - regret,

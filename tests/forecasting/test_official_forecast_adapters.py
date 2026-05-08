@@ -52,6 +52,8 @@ def test_official_nbeatsx_adapter_keeps_input_window_trainable_after_lag_drop() 
             assert isinstance(input_size, int)
             captured["horizon_rows"] = horizon_rows
             captured["input_size"] = input_size
+            captured["max_steps"] = kwargs["max_steps"]
+            captured["random_seed"] = kwargs["random_seed"]
             assert kwargs["logger"] is False
             assert kwargs["enable_progress_bar"] is False
             assert kwargs["enable_model_summary"] is False
@@ -84,11 +86,18 @@ def test_official_nbeatsx_adapter_keeps_input_window_trainable_after_lag_drop() 
             return FakeNeuralForecastModels()
         raise ModuleNotFoundError(name)
 
-    forecast = build_official_nbeatsx_forecast(_training_frame(), importer=fake_importer)
+    forecast = build_official_nbeatsx_forecast(
+        _training_frame(),
+        max_steps=100,
+        random_seed=20260509,
+        importer=fake_importer,
+    )
 
     assert forecast.height == 24
     assert forecast.select("backend_status").to_series().unique().to_list() == ["trained"]
     assert captured["input_size"] <= captured["training_rows"] - captured["horizon_rows"] - 1
+    assert captured["max_steps"] == 100
+    assert captured["random_seed"] == 20260509
 
 
 def test_official_tft_adapter_returns_empty_readiness_frame_when_backend_missing() -> None:
@@ -135,6 +144,8 @@ def test_official_tft_adapter_trains_quantile_smoke_when_backend_available() -> 
         def from_dataset(cls, dataset: object, **kwargs: object) -> "FakeTemporalFusionTransformer":
             captured["output_size"] = kwargs["output_size"]
             captured["hidden_size"] = kwargs["hidden_size"]
+            captured["hidden_continuous_size"] = kwargs["hidden_continuous_size"]
+            captured["learning_rate"] = kwargs["learning_rate"]
             captured["loss"] = kwargs["loss"]
             return cls()
 
@@ -183,7 +194,15 @@ def test_official_tft_adapter_trains_quantile_smoke_when_backend_available() -> 
             return FakeLightningModule()
         raise ModuleNotFoundError(name)
 
-    forecast = build_official_tft_forecast(_training_frame(), importer=fake_importer)
+    forecast = build_official_tft_forecast(
+        _training_frame(),
+        max_epochs=15,
+        batch_size=32,
+        learning_rate=0.005,
+        hidden_size=12,
+        hidden_continuous_size=6,
+        importer=fake_importer,
+    )
 
     assert forecast.height == 24
     assert forecast.select("model_name").to_series().unique().to_list() == ["tft_official_v0"]
@@ -196,5 +215,10 @@ def test_official_tft_adapter_trains_quantile_smoke_when_backend_available() -> 
     assert "y" in cast(list[str], captured["time_varying_unknown_reals"])
     assert captured["quantiles"] == [0.1, 0.5, 0.9]
     assert captured["output_size"] == 3
-    assert captured["trainer_max_epochs"] == 1
+    assert captured["trainer_max_epochs"] == 15
+    assert captured["batch_size_True"] == 32
+    assert captured["batch_size_False"] == 32
+    assert captured["hidden_size"] == 12
+    assert captured["hidden_continuous_size"] == 6
+    assert captured["learning_rate"] == 0.005
     assert captured["fit_loader"] == "loader:True"

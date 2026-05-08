@@ -1,7 +1,5 @@
 """NBEATSx and TFT Silver forecast assets."""
 
-from __future__ import annotations
-
 import os
 from datetime import date, datetime
 from typing import Any
@@ -28,6 +26,25 @@ MLFLOW_FORECAST_MODEL_REGISTRY_NAMES = {
 	"nbeatsx_official_v0": "smart-arbitrage-nbeatsx-official",
 	"tft_official_v0": "smart-arbitrage-tft-official",
 }
+
+
+class NbeatsxOfficialForecastAssetConfig(dg.Config):
+	"""CPU-safe official NBEATSx adapter controls."""
+
+	horizon_hours: int = 24
+	max_steps: int = 10
+	random_seed: int = 20260506
+
+
+class TftOfficialForecastAssetConfig(dg.Config):
+	"""CPU-safe official TFT adapter controls."""
+
+	horizon_hours: int = 24
+	max_epochs: int = 1
+	batch_size: int = 64
+	learning_rate: float = 0.01
+	hidden_size: int = 8
+	hidden_continuous_size: int = 4
 
 
 @dg.asset(
@@ -192,11 +209,17 @@ def tft_price_forecast(
 )
 def nbeatsx_official_price_forecast(
 	context,
+	config: NbeatsxOfficialForecastAssetConfig,
 	sota_forecast_training_frame: pl.DataFrame,
 ) -> pl.DataFrame:
 	"""Official NeuralForecast NBEATSx candidate when optional SOTA dependencies exist."""
 
-	forecast = build_official_nbeatsx_forecast(sota_forecast_training_frame)
+	forecast = build_official_nbeatsx_forecast(
+		sota_forecast_training_frame,
+		horizon_hours=config.horizon_hours,
+		max_steps=config.max_steps,
+		random_seed=config.random_seed,
+	)
 	forecast_run_id = (
 		_persist_forecast_run(
 			model_name="nbeatsx_official_v0",
@@ -213,6 +236,9 @@ def nbeatsx_official_price_forecast(
 			"model_name": "nbeatsx_official_v0",
 			"forecast_run_id": forecast_run_id,
 			"forecast_rows": forecast.height,
+			"horizon_hours": config.horizon_hours,
+			"max_steps": config.max_steps,
+			"random_seed": config.random_seed,
 			"backend_available": backend_status.available,
 			"backend_status": backend_status.reason,
 			"scope": "official_neuralforecast_adapter_not_live_strategy",
@@ -235,11 +261,20 @@ def nbeatsx_official_price_forecast(
 )
 def tft_official_price_forecast(
 	context,
+	config: TftOfficialForecastAssetConfig,
 	sota_forecast_training_frame: pl.DataFrame,
 ) -> pl.DataFrame:
 	"""Official PyTorch-Forecasting TFT candidate readiness asset."""
 
-	forecast = build_official_tft_forecast(sota_forecast_training_frame)
+	forecast = build_official_tft_forecast(
+		sota_forecast_training_frame,
+		horizon_hours=config.horizon_hours,
+		max_epochs=config.max_epochs,
+		batch_size=config.batch_size,
+		learning_rate=config.learning_rate,
+		hidden_size=config.hidden_size,
+		hidden_continuous_size=config.hidden_continuous_size,
+	)
 	forecast_run_id = (
 		_persist_forecast_run(
 			model_name="tft_official_v0",
@@ -256,6 +291,12 @@ def tft_official_price_forecast(
 			"model_name": "tft_official_v0",
 			"forecast_run_id": forecast_run_id,
 			"forecast_rows": forecast.height,
+			"horizon_hours": config.horizon_hours,
+			"max_epochs": config.max_epochs,
+			"batch_size": config.batch_size,
+			"learning_rate": config.learning_rate,
+			"hidden_size": config.hidden_size,
+			"hidden_continuous_size": config.hidden_continuous_size,
 			"pytorch_forecasting_available": backend_status["pytorch_forecasting"].available,
 			"lightning_available": backend_status["lightning"].available,
 			"pytorch_forecasting_status": backend_status["pytorch_forecasting"].reason,

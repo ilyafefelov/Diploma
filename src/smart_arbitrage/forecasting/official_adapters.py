@@ -89,6 +89,7 @@ def build_official_nbeatsx_forecast(
     *,
     horizon_hours: int = 24,
     max_steps: int = 10,
+    random_seed: int = 20260506,
     importer: _Importer = import_module,
 ) -> pl.DataFrame:
     """Train/predict with Nixtla NeuralForecast NBEATSx when the optional backend exists."""
@@ -142,7 +143,7 @@ def build_official_nbeatsx_forecast(
             futr_exog_list=[column for column in futr_exog if column in feature_columns],
             hist_exog_list=[column for column in hist_exog if column in feature_columns],
             max_steps=max_steps,
-            random_seed=20260506,
+            random_seed=random_seed,
             scaler_type="robust",
             logger=False,
             enable_progress_bar=False,
@@ -176,6 +177,9 @@ def build_official_tft_forecast(
     horizon_hours: int = 24,
     max_epochs: int = 1,
     batch_size: int = 64,
+    learning_rate: float = 0.01,
+    hidden_size: int = 8,
+    hidden_continuous_size: int = 4,
     importer: _Importer = import_module,
 ) -> pl.DataFrame:
     """Train/predict with PyTorch-Forecasting TFT when the optional backend exists."""
@@ -227,11 +231,11 @@ def build_official_tft_forecast(
         prediction_loader = prediction_dataset.to_dataloader(train=False, batch_size=batch_size, num_workers=0)
         model = temporal_fusion_transformer_cls.from_dataset(
             training_dataset,
-            learning_rate=0.01,
-            hidden_size=8,
+            learning_rate=learning_rate,
+            hidden_size=hidden_size,
             attention_head_size=1,
             dropout=0.1,
-            hidden_continuous_size=4,
+            hidden_continuous_size=hidden_continuous_size,
             output_size=3,
             loss=quantile_loss_cls(quantiles=[0.1, 0.5, 0.9]),
             log_interval=-1,

@@ -107,6 +107,11 @@ from smart_arbitrage.dfl.strict_failure_feature_selector import (
     build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
     evaluate_dfl_feature_aware_strict_failure_selector_gate,
 )
+from smart_arbitrage.dfl.forecast_dfl_v1 import (
+    DFL_FORECAST_DFL_V1_STRICT_LP_STRATEGY_KIND,
+    build_dfl_forecast_dfl_v1_panel_frame,
+    build_dfl_forecast_dfl_v1_strict_lp_benchmark_frame,
+)
 from smart_arbitrage.forecasting.afl import (
     build_afl_training_panel_frame,
     build_forecast_candidate_forensics_frame,
@@ -365,6 +370,21 @@ class DflFeatureAwareStrictFailureSelectorAssetConfig(dg.Config):
     price_regime_policies_csv: str = "all,low_medium,high_only"
     volatility_policies_csv: str = "all,non_volatile"
     min_validation_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflForecastDflV1AssetConfig(dg.Config):
+    """Tiny decision-loss DFL v1 correction scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    max_train_anchors_per_tenant: int = 72
+    inner_validation_fraction: float = 0.2
+    epoch_count: int = 8
+    learning_rate: float = 10.0
 
 
 class AflTrainingPanelAssetConfig(dg.Config):
@@ -635,13 +655,17 @@ def forecast_candidate_forensics_frame(
 def afl_training_panel_frame(
     context,
     config: AflTrainingPanelAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
     real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    tenant_historical_net_load_silver: pl.DataFrame,
 ) -> pl.DataFrame:
     """AFL sidecar panel with prior-only features and decision-value labels."""
 
     panel_frame = build_afl_training_panel_frame(
         real_data_rolling_origin_benchmark_frame,
         final_holdout_anchor_count_per_tenant=config.final_holdout_anchor_count_per_tenant,
+        weather_context_frame=real_data_benchmark_silver_feature_frame,
+        tenant_historical_net_load_frame=tenant_historical_net_load_silver,
     )
     _add_metadata(
         context,
@@ -2313,6 +2337,102 @@ def dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_forecast_dfl_v1_panel_frame(
+    context,
+    config: DflForecastDflV1AssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Tiny prior-only decision-loss correction panel for DFL v1 research."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    panel_frame = build_dfl_forecast_dfl_v1_panel_frame(
+        real_data_rolling_origin_benchmark_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        max_train_anchors_per_tenant=config.max_train_anchors_per_tenant,
+        inner_validation_fraction=config.inner_validation_fraction,
+        epoch_count=config.epoch_count,
+        learning_rate=config.learning_rate,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": panel_frame.height,
+            "tenant_count": panel_frame.select("tenant_id").n_unique()
+            if panel_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "final_validation_anchor_count": panel_frame.select(pl.sum("final_validation_anchor_count")).item()
+            if panel_frame.height
+            else 0,
+            "scope": "dfl_forecast_decision_loss_v1_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return panel_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_forecast_dfl_v1_strict_lp_benchmark_frame(
+    context,
+    config: DflForecastDflV1AssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    dfl_forecast_dfl_v1_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle score for the tiny DFL v1 correction candidate."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_forecast_dfl_v1_strict_lp_benchmark_frame(
+        real_data_rolling_origin_benchmark_frame,
+        dfl_forecast_dfl_v1_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        generated_at=_latest_generated_at(real_data_rolling_origin_benchmark_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    dfl_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_forecast_dfl_v1_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "dfl_validation_tenant_anchor_count": dfl_rows.height,
+            "strategy_kind": DFL_FORECAST_DFL_V1_STRICT_LP_STRATEGY_KIND,
+            "scope": "dfl_forecast_decision_loss_v1_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -2639,6 +2759,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_strict_failure_feature_audit_frame,
     dfl_feature_aware_strict_failure_selector_frame,
     dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
+    dfl_forecast_dfl_v1_panel_frame,
+    dfl_forecast_dfl_v1_strict_lp_benchmark_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,

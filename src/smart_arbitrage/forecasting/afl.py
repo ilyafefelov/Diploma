@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Final
 
 import polars as pl
@@ -75,6 +75,8 @@ def build_afl_training_panel_frame(
     benchmark_frame: pl.DataFrame,
     *,
     final_holdout_anchor_count_per_tenant: int = 18,
+    weather_context_frame: pl.DataFrame | None = None,
+    tenant_historical_net_load_frame: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Build a no-leakage sidecar panel for arbitrage-focused forecast learning.
 
@@ -96,6 +98,26 @@ def build_afl_training_panel_frame(
     )
     regrets_by_tenant_model = _prior_regrets_by_tenant_model(rows)
     strict_regrets_by_tenant = _prior_strict_regrets_by_tenant(rows)
+    weather_context_rows = _context_rows_by_tenant_timestamp(
+        weather_context_frame,
+        required_numeric_columns=(
+            "weather_temperature",
+            "weather_wind_speed",
+            "weather_cloudcover",
+            "weather_effective_solar",
+        ),
+        frame_name="weather_context_frame",
+    )
+    net_load_context_rows = _context_rows_by_tenant_timestamp(
+        tenant_historical_net_load_frame,
+        required_numeric_columns=(
+            "load_mw",
+            "pv_estimate_mw",
+            "net_load_mw",
+            "btm_battery_power_mw",
+        ),
+        frame_name="tenant_historical_net_load_frame",
+    )
 
     output_rows: list[dict[str, Any]] = []
     for row in rows:
@@ -123,6 +145,16 @@ def build_afl_training_panel_frame(
         net_power_values = [float(item.get("net_power_mw", 0.0)) for item in horizon]
         actual_spread = _spread(actual_values)
         metadata = _model_metadata(model_name)
+        weather_features = _prior_weather_features(
+            weather_context_rows,
+            tenant_id=tenant_id,
+            anchor_timestamp=anchor_timestamp,
+        )
+        net_load_features = _prior_net_load_features(
+            net_load_context_rows,
+            tenant_id=tenant_id,
+            anchor_timestamp=anchor_timestamp,
+        )
         output_rows.append(
             {
                 "tenant_id": tenant_id,
@@ -144,7 +176,8 @@ def build_afl_training_panel_frame(
                 "feature_prior_regret_advantage_vs_strict_uah": prior_strict_mean - prior_model_mean,
                 "feature_forecast_price_spread_uah_mwh": _spread(forecast_values),
                 "feature_forecast_active_hour_count": sum(1 for value in net_power_values if abs(value) > 1e-9),
-                "feature_forecast_top3_bottom3_rank_overlap": _top_bottom_overlap(forecast_values, actual_values),
+                **weather_features,
+                **net_load_features,
                 "label_regret_uah": float(row["regret_uah"]),
                 "label_regret_ratio": float(row["regret_ratio"]),
                 "label_decision_value_uah": float(row["decision_value_uah"]),
@@ -157,6 +190,7 @@ def build_afl_training_panel_frame(
                 "diagnostic_rmse_uah_mwh": _float_or_zero(diagnostics.get("rmse_uah_mwh")),
                 "diagnostic_top_k_price_recall": _float_or_zero(diagnostics.get("top_k_price_recall")),
                 "diagnostic_spread_ranking_quality": _float_or_zero(diagnostics.get("spread_ranking_quality")),
+                "diagnostic_forecast_top3_bottom3_rank_overlap": _top_bottom_overlap(forecast_values, actual_values),
                 "claim_scope": AFL_PANEL_CLAIM_SCOPE,
                 "not_full_dfl": True,
                 "not_market_execution": True,
@@ -270,6 +304,103 @@ def _top_bottom_overlap(forecast_values: list[float], actual_values: list[float]
     actual_top_bottom = set(_top_k_indices(actual_values, k=k) + _bottom_k_indices(actual_values, k=k))
     denominator = len(actual_top_bottom)
     return len(forecast_top_bottom.intersection(actual_top_bottom)) / denominator if denominator else 0.0
+
+
+def _context_rows_by_tenant_timestamp(
+    frame: pl.DataFrame | None,
+    *,
+    required_numeric_columns: tuple[str, ...],
+    frame_name: str,
+) -> dict[tuple[str, datetime], dict[str, Any]]:
+    if frame is None or frame.height == 0:
+        return {}
+    required_columns = {"tenant_id", "timestamp", *required_numeric_columns}
+    missing_columns = sorted(required_columns.difference(frame.columns))
+    if missing_columns:
+        raise ValueError(f"{frame_name} is missing required columns: {missing_columns}")
+    if frame_name == "tenant_historical_net_load_frame":
+        _validate_net_load_claim_flags(frame)
+    rows: dict[tuple[str, datetime], dict[str, Any]] = {}
+    for row in frame.iter_rows(named=True):
+        timestamp = row["timestamp"]
+        if not isinstance(timestamp, datetime):
+            raise TypeError(f"{frame_name}.timestamp must contain datetime values.")
+        rows[(str(row["tenant_id"]), timestamp)] = row
+    return rows
+
+
+def _validate_net_load_claim_flags(frame: pl.DataFrame) -> None:
+    required_columns = {"claim_scope", "not_full_dfl", "not_market_execution"}
+    missing_columns = sorted(required_columns.difference(frame.columns))
+    if missing_columns:
+        raise ValueError(f"tenant_historical_net_load_frame is missing required columns: {missing_columns}")
+    for row in frame.iter_rows(named=True):
+        if str(row["claim_scope"]) != "tenant_historical_net_load_configured_proxy":
+            raise ValueError("tenant_historical_net_load_frame must remain a configured proxy.")
+        if not bool(row["not_full_dfl"]) or not bool(row["not_market_execution"]):
+            raise ValueError("tenant_historical_net_load_frame must remain research-only evidence.")
+
+
+def _prior_weather_features(
+    rows: dict[tuple[str, datetime], dict[str, Any]],
+    *,
+    tenant_id: str,
+    anchor_timestamp: datetime,
+) -> dict[str, float]:
+    prior_rows = _prior_context_rows(rows, tenant_id=tenant_id, anchor_timestamp=anchor_timestamp)
+    return {
+        "feature_prior_weather_context_row_count": float(len(prior_rows)),
+        "feature_prior_weather_temperature_mean": _mean(
+            [_float_or_zero(row.get("weather_temperature")) for row in prior_rows]
+        ),
+        "feature_prior_weather_wind_speed_mean": _mean(
+            [_float_or_zero(row.get("weather_wind_speed")) for row in prior_rows]
+        ),
+        "feature_prior_weather_cloudcover_mean": _mean(
+            [_float_or_zero(row.get("weather_cloudcover")) for row in prior_rows]
+        ),
+        "feature_prior_weather_effective_solar_mean": _mean(
+            [_float_or_zero(row.get("weather_effective_solar")) for row in prior_rows]
+        ),
+    }
+
+
+def _prior_net_load_features(
+    rows: dict[tuple[str, datetime], dict[str, Any]],
+    *,
+    tenant_id: str,
+    anchor_timestamp: datetime,
+) -> dict[str, float]:
+    prior_rows = _prior_context_rows(rows, tenant_id=tenant_id, anchor_timestamp=anchor_timestamp)
+    return {
+        "feature_prior_net_load_context_row_count": float(len(prior_rows)),
+        "feature_prior_load_mean_mw": _mean([_float_or_zero(row.get("load_mw")) for row in prior_rows]),
+        "feature_prior_pv_estimate_mean_mw": _mean(
+            [_float_or_zero(row.get("pv_estimate_mw")) for row in prior_rows]
+        ),
+        "feature_prior_net_load_mean_mw": _mean(
+            [_float_or_zero(row.get("net_load_mw")) for row in prior_rows]
+        ),
+        "feature_prior_btm_battery_support_mean_mw": _mean(
+            [_float_or_zero(row.get("btm_battery_power_mw")) for row in prior_rows]
+        ),
+        "feature_prior_load_context_configured_proxy": 1.0 if prior_rows else 0.0,
+    }
+
+
+def _prior_context_rows(
+    rows: dict[tuple[str, datetime], dict[str, Any]],
+    *,
+    tenant_id: str,
+    anchor_timestamp: datetime,
+    lookback_hours: int = 24,
+) -> list[dict[str, Any]]:
+    window_start = anchor_timestamp - timedelta(hours=lookback_hours)
+    return [
+        row
+        for (row_tenant_id, row_timestamp), row in rows.items()
+        if row_tenant_id == tenant_id and window_start <= row_timestamp <= anchor_timestamp
+    ]
 
 
 def _top_k_indices(values: list[float], *, k: int) -> list[int]:

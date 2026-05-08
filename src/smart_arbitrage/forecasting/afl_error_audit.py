@@ -78,6 +78,7 @@ def build_afl_forecast_error_audit_frame(
         strict_regret_values: list[float] = []
         spread_error_ratios: list[float] = []
         rank_scores: list[float] = []
+        weather_load_failures = 0
 
         for row in rows:
             anchor_timestamp = _datetime(row["anchor_timestamp"])
@@ -111,12 +112,16 @@ def build_afl_forecast_error_audit_frame(
                 rank_failures += 1
             if strict_regret >= strict_threshold:
                 strict_high_regret_overlaps += 1
+            if weather_load_columns and _missing_weather_load_context(row):
+                weather_load_failures += 1
 
         failure_rates = {
             "lp_value_failure": lp_value_failures / row_count if row_count else 0.0,
             "spread_shape_failure": spread_failures / row_count if row_count else 0.0,
             "rank_extrema_failure": rank_failures / row_count if row_count else 0.0,
-            "weather_load_regime_failure": 0.0,
+            "weather_load_regime_failure": weather_load_failures / row_count
+            if row_count
+            else 0.0,
         }
         forensics = forensics_by_model[model_name]
         output_rows.append(
@@ -244,7 +249,7 @@ def _validate_source_frames(forensics_frame: pl.DataFrame, panel_frame: pl.DataF
         "anchor_timestamp",
         "split",
         "feature_forecast_price_spread_uah_mwh",
-        "feature_forecast_top3_bottom3_rank_overlap",
+        "diagnostic_forecast_top3_bottom3_rank_overlap",
         "label_regret_uah",
         "label_actual_price_spread_uah_mwh",
         "diagnostic_top_k_price_recall",
@@ -316,10 +321,16 @@ def _label_columns(frame: pl.DataFrame) -> list[str]:
 
 def _rank_score(row: dict[str, Any]) -> float:
     return min(
-        float(row["feature_forecast_top3_bottom3_rank_overlap"]),
+        float(row["diagnostic_forecast_top3_bottom3_rank_overlap"]),
         float(row["diagnostic_top_k_price_recall"]),
         float(row["diagnostic_spread_ranking_quality"]),
     )
+
+
+def _missing_weather_load_context(row: dict[str, Any]) -> bool:
+    weather_count = float(row.get("feature_prior_weather_context_row_count", 0.0))
+    net_load_count = float(row.get("feature_prior_net_load_context_row_count", 0.0))
+    return weather_count <= 0.0 or net_load_count <= 0.0
 
 
 def _dominant_failure_mode(failure_rates: dict[str, float]) -> str:

@@ -5,6 +5,8 @@ import polars as pl
 from smart_arbitrage.assets.bronze.market_weather import build_synthetic_market_price_history
 from smart_arbitrage.assets.silver.neural_forecasts import (
 	NEURAL_FORECAST_SILVER_ASSETS,
+	NbeatsxOfficialForecastAssetConfig,
+	TftOfficialForecastAssetConfig,
 	_forecast_metrics,
 	nbeatsx_official_price_forecast,
 	nbeatsx_price_forecast,
@@ -253,15 +255,76 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 	assert groups_by_key["tft_price_forecast"] == "silver_forecast_candidates"
 
 
-def test_neural_forecast_assets_materialize_dataframes() -> None:
+def test_neural_forecast_assets_materialize_dataframes(monkeypatch) -> None:
 	price_history = _synthetic_price_history()
+	captured: dict[str, object] = {}
+
+	def fake_official_forecast(
+		training_frame: pl.DataFrame,
+		**kwargs: object,
+	) -> pl.DataFrame:
+		captured.update(kwargs)
+		forecast_timestamps = (
+			training_frame
+			.filter(pl.col("split") == "forecast")
+			.select("ds")
+			.to_series()
+			.to_list()
+		)
+		return pl.DataFrame(
+			{
+				"model_name": ["official_fake_v0"] * len(forecast_timestamps),
+				"model_family": ["official_fake"] * len(forecast_timestamps),
+				"backend_name": ["fake"] * len(forecast_timestamps),
+				"backend_status": ["trained"] * len(forecast_timestamps),
+				"unique_id": ["global_research_tenant"] * len(forecast_timestamps),
+				"forecast_timestamp": forecast_timestamps,
+				"predicted_price_uah_mwh": [4100.0] * len(forecast_timestamps),
+				"predicted_price_p10_uah_mwh": [4000.0] * len(forecast_timestamps),
+				"predicted_price_p50_uah_mwh": [4100.0] * len(forecast_timestamps),
+				"predicted_price_p90_uah_mwh": [4200.0] * len(forecast_timestamps),
+				"prediction_interval_kind": ["fake"] * len(forecast_timestamps),
+				"training_rows": [training_frame.filter(pl.col("split") == "train").height] * len(forecast_timestamps),
+				"horizon_rows": [len(forecast_timestamps)] * len(forecast_timestamps),
+				"adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * len(forecast_timestamps),
+			}
+		)
+
+	def fake_backend_status() -> dict[str, object]:
+		class Status:
+			available = True
+			reason = "fake_backend"
+
+		return {
+			"neuralforecast": Status(),
+			"pytorch_forecasting": Status(),
+			"lightning": Status(),
+		}
+
+	monkeypatch.setattr("smart_arbitrage.assets.silver.neural_forecasts.build_official_nbeatsx_forecast", fake_official_forecast)
+	monkeypatch.setattr("smart_arbitrage.assets.silver.neural_forecasts.build_official_tft_forecast", fake_official_forecast)
+	monkeypatch.setattr("smart_arbitrage.assets.silver.neural_forecasts.inspect_official_forecast_backends", fake_backend_status)
 
 	feature_asset_output = neural_forecast_feature_frame(None, price_history)
 	sota_asset_output = sota_forecast_training_frame(None, feature_asset_output)
 	nbeatsx_asset_output = nbeatsx_price_forecast(None, feature_asset_output)
 	tft_asset_output = tft_price_forecast(None, feature_asset_output)
-	official_nbeatsx_output = nbeatsx_official_price_forecast(None, sota_asset_output)
-	official_tft_output = tft_official_price_forecast(None, sota_asset_output)
+	official_nbeatsx_output = nbeatsx_official_price_forecast(
+		None,
+		NbeatsxOfficialForecastAssetConfig(max_steps=100, random_seed=20260509),
+		sota_asset_output,
+	)
+	official_tft_output = tft_official_price_forecast(
+		None,
+		TftOfficialForecastAssetConfig(
+			max_epochs=15,
+			batch_size=32,
+			learning_rate=0.005,
+			hidden_size=12,
+			hidden_continuous_size=6,
+		),
+		sota_asset_output,
+	)
 
 	assert feature_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert sota_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
@@ -269,6 +332,13 @@ def test_neural_forecast_assets_materialize_dataframes() -> None:
 	assert tft_asset_output.height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert {"model_name", "backend_status", "forecast_timestamp", "predicted_price_uah_mwh"}.issubset(official_nbeatsx_output.columns)
 	assert {"model_name", "backend_status", "forecast_timestamp", "predicted_price_uah_mwh"}.issubset(official_tft_output.columns)
+	assert captured["max_steps"] == 100
+	assert captured["random_seed"] == 20260509
+	assert captured["max_epochs"] == 15
+	assert captured["batch_size"] == 32
+	assert captured["learning_rate"] == 0.005
+	assert captured["hidden_size"] == 12
+	assert captured["hidden_continuous_size"] == 6
 
 
 def test_neural_forecast_assets_persist_model_runs(monkeypatch) -> None:

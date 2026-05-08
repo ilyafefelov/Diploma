@@ -119,18 +119,24 @@ def test_afl_training_panel_splits_latest_anchors_and_uses_prior_features_only()
     assert tft_final["feature_prior_mean_strict_regret_uah"] == pytest.approx(101.0)
     assert tft_final["label_regret_uah"] == pytest.approx(123.0)
     assert tft_final["label_actual_price_spread_uah_mwh"] == pytest.approx(900.0)
+    assert "feature_forecast_top3_bottom3_rank_overlap" not in panel.columns
+    assert "diagnostic_forecast_top3_bottom3_rank_overlap" in panel.columns
     assert tft_final["label_decision_weight_uah"] > 0.0
 
 
-def test_afl_training_panel_final_holdout_mutation_does_not_change_prior_features() -> None:
+def test_afl_training_panel_final_holdout_actual_mutation_does_not_change_features() -> None:
     base = _benchmark_frame()
     latest_anchor = base.select("anchor_timestamp").to_series().max()
-    mutated = base.with_columns(
-        pl.when(pl.col("anchor_timestamp") == latest_anchor)
-        .then(pl.col("regret_uah") + 5000.0)
-        .otherwise(pl.col("regret_uah"))
-        .alias("regret_uah")
-    )
+    mutated_rows: list[dict[str, object]] = []
+    for row in base.iter_rows(named=True):
+        mutated_row = dict(row)
+        if mutated_row["anchor_timestamp"] == latest_anchor:
+            mutated_row["regret_uah"] = float(mutated_row["regret_uah"]) + 5000.0
+            mutated_row["evaluation_payload"] = _mutate_actual_horizon_prices(
+                mutated_row["evaluation_payload"]
+            )
+        mutated_rows.append(mutated_row)
+    mutated = pl.DataFrame(mutated_rows)
 
     base_panel = build_afl_training_panel_frame(base, final_holdout_anchor_count_per_tenant=1)
     mutated_panel = build_afl_training_panel_frame(mutated, final_holdout_anchor_count_per_tenant=1)
@@ -139,14 +145,102 @@ def test_afl_training_panel_final_holdout_mutation_does_not_change_prior_feature
         "forecast_model_name",
         "anchor_timestamp",
         "split",
-        "feature_prior_model_anchor_count",
-        "feature_prior_mean_model_regret_uah",
-        "feature_prior_mean_strict_regret_uah",
-        "feature_prior_regret_advantage_vs_strict_uah",
+        *sorted(column for column in base_panel.columns if column.startswith("feature_")),
     ]
 
     assert base_panel.select(feature_columns).equals(mutated_panel.select(feature_columns))
     assert not base_panel.select("label_regret_uah").equals(mutated_panel.select("label_regret_uah"))
+    assert not base_panel.select("label_actual_price_spread_uah_mwh").equals(
+        mutated_panel.select("label_actual_price_spread_uah_mwh")
+    )
+
+
+def test_afl_training_panel_adds_prior_weather_load_context_without_future_leakage() -> None:
+    benchmark = _benchmark_frame(anchor_count=4)
+    latest_anchor = benchmark.select("anchor_timestamp").to_series().max()
+    assert isinstance(latest_anchor, datetime)
+    context_rows = [
+        {
+            "tenant_id": "client_000",
+            "timestamp": latest_anchor - timedelta(hours=2),
+            "weather_temperature": 10.0,
+            "weather_wind_speed": 4.0,
+            "weather_cloudcover": 30.0,
+            "weather_effective_solar": 100.0,
+        },
+        {
+            "tenant_id": "client_000",
+            "timestamp": latest_anchor - timedelta(hours=1),
+            "weather_temperature": 14.0,
+            "weather_wind_speed": 6.0,
+            "weather_cloudcover": 50.0,
+            "weather_effective_solar": 300.0,
+        },
+        {
+            "tenant_id": "client_000",
+            "timestamp": latest_anchor + timedelta(hours=1),
+            "weather_temperature": 1000.0,
+            "weather_wind_speed": 1000.0,
+            "weather_cloudcover": 1000.0,
+            "weather_effective_solar": 1000.0,
+        },
+    ]
+    weather_context = pl.DataFrame(context_rows)
+    load_context = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_000",
+                "timestamp": latest_anchor - timedelta(hours=2),
+                "load_mw": 0.5,
+                "pv_estimate_mw": 0.1,
+                "net_load_mw": 0.4,
+                "btm_battery_power_mw": 0.04,
+                "claim_scope": "tenant_historical_net_load_configured_proxy",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            },
+            {
+                "tenant_id": "client_000",
+                "timestamp": latest_anchor - timedelta(hours=1),
+                "load_mw": 0.7,
+                "pv_estimate_mw": 0.2,
+                "net_load_mw": 0.5,
+                "btm_battery_power_mw": 0.05,
+                "claim_scope": "tenant_historical_net_load_configured_proxy",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            },
+            {
+                "tenant_id": "client_000",
+                "timestamp": latest_anchor + timedelta(hours=1),
+                "load_mw": 50.0,
+                "pv_estimate_mw": 50.0,
+                "net_load_mw": 50.0,
+                "btm_battery_power_mw": 50.0,
+                "claim_scope": "tenant_historical_net_load_configured_proxy",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            },
+        ]
+    )
+
+    panel = build_afl_training_panel_frame(
+        benchmark,
+        final_holdout_anchor_count_per_tenant=1,
+        weather_context_frame=weather_context,
+        tenant_historical_net_load_frame=load_context,
+    )
+
+    final_row = panel.filter(
+        (pl.col("forecast_model_name") == "tft_silver_v0")
+        & (pl.col("split") == "final_holdout")
+    ).row(0, named=True)
+    assert final_row["feature_prior_weather_context_row_count"] == 2
+    assert final_row["feature_prior_weather_temperature_mean"] == pytest.approx(12.0)
+    assert final_row["feature_prior_weather_wind_speed_mean"] == pytest.approx(5.0)
+    assert final_row["feature_prior_net_load_context_row_count"] == 2
+    assert final_row["feature_prior_net_load_mean_mw"] == pytest.approx(0.45)
+    assert final_row["feature_prior_load_context_configured_proxy"] == pytest.approx(1.0)
 
 
 def test_afl_training_panel_rejects_non_thesis_rows() -> None:
@@ -159,3 +253,20 @@ def test_afl_training_panel_rejects_non_thesis_rows() -> None:
 
     with pytest.raises(ValueError, match="thesis_grade"):
         build_afl_training_panel_frame(bad)
+
+
+def _mutate_actual_horizon_prices(payload: object) -> object:
+    if not isinstance(payload, dict):
+        return payload
+    horizon = payload.get("horizon")
+    if not isinstance(horizon, list):
+        return payload
+    mutated_horizon = []
+    for index, item in enumerate(horizon):
+        if not isinstance(item, dict):
+            mutated_horizon.append(item)
+            continue
+        mutated_item = dict(item)
+        mutated_item["actual_price_uah_mwh"] = 5000.0 - (index * 1000.0)
+        mutated_horizon.append(mutated_item)
+    return {**payload, "horizon": mutated_horizon}
