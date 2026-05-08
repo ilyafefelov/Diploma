@@ -32,6 +32,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
         ("calibrated_value_aware_ensemble_frame", "calibrated_selector_cardinality_evidence"),
         ("risk_adjusted_value_gate_frame", "risk_adjusted_selector_cardinality_evidence"),
         ("dfl_action_label_panel_frame", "dfl_action_label_panel_readiness_evidence"),
+        (
+            "dfl_action_classifier_failure_analysis_frame",
+            "dfl_action_classifier_failure_analysis_evidence",
+        ),
     }
 
     check_keys = {

@@ -21,6 +21,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     RegretWeightedDflPilotAssetConfig,
     calibrated_value_aware_ensemble_frame,
     dfl_action_classifier_baseline_frame,
+    dfl_action_classifier_failure_analysis_frame,
     dfl_action_classifier_strict_lp_benchmark_frame,
     dfl_value_aware_action_classifier_strict_lp_benchmark_frame,
     dfl_training_frame,
@@ -142,6 +143,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_action_classifier_baseline_frame",
         "dfl_action_classifier_strict_lp_benchmark_frame",
         "dfl_value_aware_action_classifier_strict_lp_benchmark_frame",
+        "dfl_action_classifier_failure_analysis_frame",
         "regret_weighted_dfl_pilot_frame",
         "regret_weighted_forecast_calibration_frame",
         "regret_weighted_forecast_strategy_benchmark_frame",
@@ -179,6 +181,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_action_classifier_baseline_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_classifier_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_action_classifier_failure_analysis_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_strict_lp_benchmark_frame"] == "gold_dfl_training"
@@ -213,6 +216,11 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
         tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert tags_by_key["dfl_action_classifier_failure_analysis_frame"]["ml_stage"] == "diagnostics"
+    assert (
+        tags_by_key["dfl_action_classifier_failure_analysis_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
@@ -283,6 +291,12 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         DflValueAwareActionClassifierStrictLpProjectionAssetConfig(value_weight_scale_uah=100.0),
         action_labels,
         benchmark,
+    )
+    failure_analysis = dfl_action_classifier_failure_analysis_frame(
+        None,
+        action_labels,
+        action_classifier_strict,
+        value_aware_action_classifier_strict,
     )
     pilot = regret_weighted_dfl_pilot_frame(
         None,
@@ -463,6 +477,10 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert "dfl_value_aware_action_classifier_v1_tft_silver_v0" in value_aware_action_classifier_strict[
         "forecast_model_name"
     ].unique().to_list()
+    assert failure_analysis.height == 2
+    assert failure_analysis.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_action_classifier_failure_analysis_not_full_dfl"
+    ]
     assert pilot.height == 1
     assert dfl_store.pilot_frame.height == 1
     assert calibration.height == 10

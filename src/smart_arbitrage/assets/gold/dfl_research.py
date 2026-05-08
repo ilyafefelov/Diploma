@@ -63,6 +63,9 @@ from smart_arbitrage.dfl.data_expansion import (
     build_dfl_action_label_panel_frame,
     build_dfl_data_coverage_audit_frame,
 )
+from smart_arbitrage.dfl.failure_analysis import (
+    build_dfl_action_classifier_failure_analysis_frame,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -564,6 +567,50 @@ def dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
         },
     )
     return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_action_classifier_failure_analysis_frame(
+    context,
+    dfl_action_label_panel_frame: pl.DataFrame,
+    dfl_action_classifier_strict_lp_benchmark_frame: pl.DataFrame,
+    dfl_value_aware_action_classifier_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Diagnostics explaining why action-classifier probes are blocked."""
+
+    failure_frame = build_dfl_action_classifier_failure_analysis_frame(
+        dfl_action_label_panel_frame,
+        dfl_action_classifier_strict_lp_benchmark_frame,
+        dfl_value_aware_action_classifier_strict_lp_benchmark_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": failure_frame.height,
+            "tenant_count": failure_frame.select("tenant_id").n_unique()
+            if failure_frame.height
+            else 0,
+            "source_model_count": failure_frame.select("source_model_name").n_unique()
+            if failure_frame.height
+            else 0,
+            "variant_count": failure_frame.select("classifier_variant").n_unique()
+            if failure_frame.height
+            else 0,
+            "scope": "dfl_action_classifier_failure_analysis_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return failure_frame
 
 
 @dg.asset(
@@ -1304,6 +1351,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_action_classifier_baseline_frame,
     dfl_action_classifier_strict_lp_benchmark_frame,
     dfl_value_aware_action_classifier_strict_lp_benchmark_frame,
+    dfl_action_classifier_failure_analysis_frame,
     regret_weighted_dfl_pilot_frame,
     dfl_relaxed_lp_pilot_frame,
     offline_dfl_experiment_frame,

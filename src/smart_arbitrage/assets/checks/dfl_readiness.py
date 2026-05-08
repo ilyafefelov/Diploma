@@ -13,6 +13,9 @@ from smart_arbitrage.evidence.quality_checks import (
     validate_real_data_benchmark_evidence,
     validate_selector_evidence,
 )
+from smart_arbitrage.dfl.failure_analysis import (
+    validate_dfl_action_classifier_failure_analysis_evidence,
+)
 
 
 @dg.asset_check(
@@ -52,6 +55,21 @@ def dfl_action_label_panel_readiness_evidence(
 ) -> dg.AssetCheckResult:
     return _asset_check_result(
         validate_dfl_action_label_panel_evidence(dfl_action_label_panel_frame)
+    )
+
+
+@dg.asset_check(
+    asset="dfl_action_classifier_failure_analysis_frame",
+    name="dfl_action_classifier_failure_analysis_evidence",
+    description="Checks action-classifier failure diagnostics are no-leakage research evidence.",
+)
+def dfl_action_classifier_failure_analysis_evidence(
+    dfl_action_classifier_failure_analysis_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_action_classifier_failure_analysis_evidence(
+            dfl_action_classifier_failure_analysis_frame
+        )
     )
 
 
@@ -108,6 +126,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dnipro_thesis_grade_90_anchor_evidence,
     dfl_training_readiness_evidence,
     dfl_action_label_panel_readiness_evidence,
+    dfl_action_classifier_failure_analysis_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,
