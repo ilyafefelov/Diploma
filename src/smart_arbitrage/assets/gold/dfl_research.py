@@ -1199,7 +1199,6 @@ def dfl_trajectory_value_selector_strict_lp_benchmark_frame(
     strict_frame = build_dfl_trajectory_value_selector_strict_lp_benchmark_frame(
         dfl_trajectory_value_candidate_panel_frame,
         dfl_trajectory_value_selector_frame,
-        generated_at=_latest_generated_at(dfl_trajectory_value_candidate_panel_frame),
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
     promotion_gate = evaluate_dfl_trajectory_value_selector_gate(

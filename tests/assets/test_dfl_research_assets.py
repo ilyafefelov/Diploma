@@ -50,6 +50,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     risk_adjusted_value_gate_frame,
 )
 from smart_arbitrage.defs import defs
+from smart_arbitrage.dfl.promotion_gate import PromotionGateResult
 from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
 from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
 
@@ -618,3 +619,75 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert trajectory_value_strict.select("strategy_kind").to_series().unique().to_list() == [
         "dfl_trajectory_value_selector_strict_lp_benchmark"
     ]
+
+
+def test_trajectory_value_strict_asset_uses_fresh_generated_at(monkeypatch) -> None:
+    captured: dict[str, object] = {}
+    strategy_store = InMemoryStrategyEvaluationStore()
+
+    def fake_builder(
+        candidate_panel: pl.DataFrame,
+        selector_frame: pl.DataFrame,
+        *,
+        generated_at: datetime | None = None,
+    ) -> pl.DataFrame:
+        captured["generated_at"] = generated_at
+        return pl.DataFrame(
+            [
+                {
+                    "evaluation_id": "trajectory-value-selector:test",
+                    "tenant_id": "client_003_dnipro_factory",
+                    "forecast_model_name": "dfl_trajectory_value_selector_v1_tft_silver_v0",
+                    "strategy_kind": "dfl_trajectory_value_selector_strict_lp_benchmark",
+                    "market_venue": "DAM",
+                    "anchor_timestamp": datetime(2026, 4, 29, 23),
+                    "generated_at": datetime(2026, 5, 8, 11),
+                    "horizon_hours": 2,
+                    "starting_soc_fraction": 0.5,
+                    "starting_soc_source": "tenant_default",
+                    "decision_value_uah": 900.0,
+                    "forecast_objective_value_uah": 900.0,
+                    "oracle_value_uah": 1000.0,
+                    "regret_uah": 100.0,
+                    "regret_ratio": 0.1,
+                    "total_degradation_penalty_uah": 1.0,
+                    "total_throughput_mwh": 0.1,
+                    "committed_action": "HOLD",
+                    "committed_power_mw": 0.0,
+                    "rank_by_regret": 1,
+                    "evaluation_payload": {
+                        "data_quality_tier": "thesis_grade",
+                        "observed_coverage_ratio": 1.0,
+                        "not_full_dfl": True,
+                        "not_market_execution": True,
+                    },
+                }
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.dfl_research.build_dfl_trajectory_value_selector_strict_lp_benchmark_frame",
+        fake_builder,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.dfl_research.evaluate_dfl_trajectory_value_selector_gate",
+        lambda strict_frame, **kwargs: PromotionGateResult(
+            passed=False,
+            decision="diagnostic_pass_production_blocked",
+            description="test",
+            metrics={"development_gate_passed": True},
+        ),
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.dfl_research.get_strategy_evaluation_store",
+        lambda: strategy_store,
+    )
+
+    dfl_trajectory_value_selector_strict_lp_benchmark_frame(
+        None,
+        OfflineDflTrajectoryValueSelectorAssetConfig(forecast_model_names_csv="tft_silver_v0"),
+        pl.DataFrame({"generated_at": [datetime(2026, 1, 1)]}),
+        pl.DataFrame(),
+    )
+
+    assert captured["generated_at"] is None
