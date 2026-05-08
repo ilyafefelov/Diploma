@@ -602,11 +602,30 @@ Latest run:
 - Per-model final-holdout accuracy: `tft_silver_v0` 0.6685,
   `nbeatsx_silver_v0` 0.6306.
 
-This is useful as a supervised action baseline for the next DFL step, but it is
-not promotion evidence yet. The predicted charge/discharge/hold labels still
-need to be projected into feasible dispatch vectors and scored by the same
-strict LP/oracle regret protocol before any comparison against the frozen
-`strict_similar_day` control can matter.
+Follow-up strict LP projection:
+
+- New asset: `dfl_action_classifier_strict_lp_benchmark_frame`.
+- Dagster run id: `97cac49e-b3f8-4829-b687-b4b5f3470d07`.
+- Strategy kind: `dfl_action_classifier_strict_lp_projection`.
+- Final-holdout rows: 360 total; 180 strict-control rows and 90 rows per
+  classifier source model.
+- Anchor range: `2026-04-12 23:00` to `2026-04-29 23:00`.
+- Claim flags: `not_full_dfl=true`, `not_market_execution=true`.
+- Leakage check: `uses_final_holdout_for_training=false` for all projected
+  classifier rows.
+
+Strict LP/oracle result:
+
+- `strict_similar_day`: 314.81 UAH mean regret, 202.61 UAH median regret.
+- `dfl_action_classifier_v0_tft_silver_v0`: 1,157.40 UAH mean regret,
+  715.66 UAH median regret.
+- `dfl_action_classifier_v0_nbeatsx_silver_v0`: 1,186.83 UAH mean regret,
+  1,054.08 UAH median regret.
+
+This closes the classifier baseline slice honestly: the action labels can be
+projected into feasible dispatch, but the projected candidates lose badly to the
+frozen `strict_similar_day` control. The result remains useful research
+evidence for future DFL data/model design, not a promoted controller.
 
 Tracked note:
 [DFL_ACTION_CLASSIFIER_BASELINE.md](DFL_ACTION_CLASSIFIER_BASELINE.md).

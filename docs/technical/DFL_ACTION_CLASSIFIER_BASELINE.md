@@ -3,9 +3,9 @@
 Date: 2026-05-08
 
 This note records the first supervised action-label baseline over the Ukrainian
-DAM DFL v2 action-label panel. It is a transparent classification probe for
-future DFL work, not full DFL, not Decision Transformer control, not strict LP
-promotion evidence, and not market execution.
+DAM DFL v2 action-label panel and the follow-up strict LP projection check. It
+is a transparent probe for future DFL work, not full DFL, not Decision
+Transformer control, not promotion evidence, and not market execution.
 
 ## Identity
 
@@ -58,18 +58,53 @@ future action-aware learners, but they do not prove decision value because these
 predicted action labels have not yet been projected through the frozen strict LP
 and oracle regret protocol.
 
+## Strict LP Projection Evidence
+
+The follow-up asset `dfl_action_classifier_strict_lp_benchmark_frame` converts
+the classifier's predicted charge/discharge/hold labels into feasible dispatch
+vectors under the same Level 1 SOC and power constraints, then scores those
+dispatch vectors on realized final-holdout prices. The classifier is still fit
+only on `train_selection`; final-holdout prices are used for scoring only.
+
+| Field | Value |
+|---|---|
+| Asset | `dfl_action_classifier_strict_lp_benchmark_frame` |
+| Dagster run id | `97cac49e-b3f8-4829-b687-b4b5f3470d07` |
+| Strategy kind | `dfl_action_classifier_strict_lp_projection` |
+| Projection method | `action_mask_lp_projection` |
+| Rows | 360 |
+| Tenants | 5 canonical Ukrainian tenants |
+| Final holdout | 18 anchors per tenant/model |
+| Anchor range | `2026-04-12 23:00` to `2026-04-29 23:00` |
+| Claim flags | `not_full_dfl=true`, `not_market_execution=true` |
+| Leakage check | `uses_final_holdout_for_training=false` for all candidate rows |
+
+Strict LP/oracle regret comparison:
+
+| Candidate | Rows | Mean value UAH | Mean regret UAH | Median regret UAH |
+|---|---:|---:|---:|---:|
+| `strict_similar_day` | 180 | 3,532.52 | 314.81 | 202.61 |
+| `dfl_action_classifier_v0_tft_silver_v0` | 90 | 2,689.92 | 1,157.40 | 715.66 |
+| `dfl_action_classifier_v0_nbeatsx_silver_v0` | 90 | 2,660.50 | 1,186.83 | 1,054.08 |
+
+Result: the action classifier is decisively blocked by the strict LP/oracle
+promotion gate. It produces feasible dispatch vectors and preserves the
+no-leakage split, but the projected decisions lose badly to the frozen
+`strict_similar_day` control. This is evidence that label accuracy alone is not
+enough; the next DFL step needs richer in-domain data or value-aware action
+learning, not promotion of this baseline.
+
 ## Claim Boundary
 
 - `strict_similar_day` remains the frozen Level 1 control comparator.
-- This baseline is classification evidence only.
-- A candidate still needs strict LP/oracle scoring, zero safety violations,
-  thesis-grade observed coverage, and the conservative promotion gate before it
-  can be considered for promotion.
-- The current status remains blocked: `blocked_classification_only_no_strict_lp_value`.
+- The classifier baseline is now classification plus strict projection evidence.
+- The projected candidates fail the conservative strict LP/oracle promotion gate.
+- The current status remains blocked: feasible research evidence, but not a
+  promoted controller.
 
 ## Next Step
 
-The next safe technical step is an action-to-dispatch strict LP projection: turn
-the classifier's predicted charge/discharge/hold labels into feasible dispatch
-vectors, score them on the same final holdout with realized prices, and compare
-decision regret against `strict_similar_day`.
+The next safe technical step is not another small classifier tweak. Expand the
+in-domain Ukrainian data/action-label coverage or add a value-aware supervised
+baseline that optimizes regret-aware action quality directly, then retest it
+through the same strict LP/oracle gate.
