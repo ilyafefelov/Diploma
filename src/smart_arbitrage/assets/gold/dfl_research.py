@@ -66,6 +66,13 @@ from smart_arbitrage.dfl.data_expansion import (
 from smart_arbitrage.dfl.failure_analysis import (
     build_dfl_action_classifier_failure_analysis_frame,
 )
+from smart_arbitrage.dfl.trajectory_value import (
+    TRAJECTORY_VALUE_SELECTOR_STRICT_LP_STRATEGY_KIND,
+    build_dfl_trajectory_value_candidate_panel_frame,
+    build_dfl_trajectory_value_selector_frame,
+    build_dfl_trajectory_value_selector_strict_lp_benchmark_frame,
+    evaluate_dfl_trajectory_value_selector_gate,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -216,6 +223,19 @@ class OfflineDflActionTargetAssetConfig(dg.Config):
     action_spread_grid_uah_mwh_csv: str = "500.0,1000.0,1500.0"
     include_panel_v2_bias_options_csv: str = "false,true"
     include_decision_v3_correction_options_csv: str = "false,true"
+
+
+class OfflineDflTrajectoryValueSelectorAssetConfig(dg.Config):
+    """Prior-only trajectory/value selector over strict LP-scored schedules."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    max_train_anchors_per_tenant: int = 72
+    min_final_holdout_tenant_anchor_count_per_source_model: int = 90
 
 
 @dg.asset(
@@ -1057,6 +1077,158 @@ def offline_dfl_action_target_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_trajectory_value_candidate_panel_frame(
+    context,
+    config: OfflineDflTrajectoryValueSelectorAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    offline_dfl_panel_strict_lp_benchmark_frame: pl.DataFrame,
+    offline_dfl_decision_target_strict_lp_benchmark_frame: pl.DataFrame,
+    offline_dfl_action_target_strict_lp_benchmark_frame: pl.DataFrame,
+    offline_dfl_panel_experiment_frame: pl.DataFrame,
+    offline_dfl_decision_target_panel_frame: pl.DataFrame,
+    offline_dfl_action_target_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Feasible strict-LP trajectory candidates plus prior-only selection metrics."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    candidate_panel = build_dfl_trajectory_value_candidate_panel_frame(
+        real_data_rolling_origin_benchmark_frame,
+        offline_dfl_panel_strict_lp_benchmark_frame,
+        offline_dfl_decision_target_strict_lp_benchmark_frame,
+        offline_dfl_action_target_strict_lp_benchmark_frame,
+        offline_dfl_panel_experiment_frame,
+        offline_dfl_decision_target_panel_frame,
+        offline_dfl_action_target_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        max_train_anchors_per_tenant=config.max_train_anchors_per_tenant,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": candidate_panel.height,
+            "tenant_count": candidate_panel.select("tenant_id").n_unique() if candidate_panel.height else 0,
+            "source_model_count": len(source_model_names),
+            "candidate_family_count": candidate_panel.select("candidate_family").n_unique()
+            if candidate_panel.height
+            else 0,
+            "scope": "dfl_trajectory_value_candidate_panel_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return candidate_panel
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_trajectory_value_selector_frame(
+    context,
+    config: OfflineDflTrajectoryValueSelectorAssetConfig,
+    dfl_trajectory_value_candidate_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Select one prior-best feasible schedule family per tenant/source model."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    selector_frame = build_dfl_trajectory_value_selector_frame(
+        dfl_trajectory_value_candidate_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        min_final_holdout_tenant_anchor_count_per_source_model=(
+            config.min_final_holdout_tenant_anchor_count_per_source_model
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": selector_frame.height,
+            "tenant_count": selector_frame.select("tenant_id").n_unique() if selector_frame.height else 0,
+            "source_model_count": len(source_model_names),
+            "development_gate_rows": selector_frame.filter(pl.col("development_gate_passed")).height
+            if selector_frame.height
+            else 0,
+            "production_promotion_rows": selector_frame.filter(pl.col("production_promotion_passed")).height
+            if selector_frame.height
+            else 0,
+            "scope": "dfl_trajectory_value_selector_v1_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return selector_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_trajectory_value_selector_strict_lp_benchmark_frame(
+    context,
+    config: OfflineDflTrajectoryValueSelectorAssetConfig,
+    dfl_trajectory_value_candidate_panel_frame: pl.DataFrame,
+    dfl_trajectory_value_selector_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle rows for the trajectory/value selector gate."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_trajectory_value_selector_strict_lp_benchmark_frame(
+        dfl_trajectory_value_candidate_panel_frame,
+        dfl_trajectory_value_selector_frame,
+        generated_at=_latest_generated_at(dfl_trajectory_value_candidate_panel_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    promotion_gate = evaluate_dfl_trajectory_value_selector_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=config.min_final_holdout_tenant_anchor_count_per_source_model,
+    )
+    selector_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_trajectory_value_selector_v1_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "source_model_count": len(source_model_names),
+            "selector_validation_tenant_anchor_count": selector_rows.height,
+            "strategy_kind": TRAJECTORY_VALUE_SELECTOR_STRICT_LP_STRATEGY_KIND,
+            "promotion_gate_decision": promotion_gate.decision,
+            "promotion_gate_description": promotion_gate.description,
+            "development_gate_passed": promotion_gate.metrics.get("development_gate_passed", False),
+            "scope": "dfl_trajectory_value_selector_v1_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -1361,6 +1533,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     offline_dfl_decision_target_strict_lp_benchmark_frame,
     offline_dfl_action_target_panel_frame,
     offline_dfl_action_target_strict_lp_benchmark_frame,
+    dfl_trajectory_value_candidate_panel_frame,
+    dfl_trajectory_value_selector_frame,
+    dfl_trajectory_value_selector_strict_lp_benchmark_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,

@@ -10,6 +10,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
+    OfflineDflTrajectoryValueSelectorAssetConfig,
     DflActionLabelPanelAssetConfig,
     DflDataCoverageAuditAssetConfig,
     OfflineDflExperimentAssetConfig,
@@ -34,6 +35,9 @@ from smart_arbitrage.assets.gold.dfl_research import (
     offline_dfl_experiment_frame,
     offline_dfl_action_target_panel_frame,
     offline_dfl_action_target_strict_lp_benchmark_frame,
+    dfl_trajectory_value_candidate_panel_frame,
+    dfl_trajectory_value_selector_frame,
+    dfl_trajectory_value_selector_strict_lp_benchmark_frame,
     offline_dfl_decision_target_panel_frame,
     offline_dfl_decision_target_strict_lp_benchmark_frame,
     offline_dfl_panel_experiment_frame,
@@ -160,6 +164,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "offline_dfl_decision_target_strict_lp_benchmark_frame",
         "offline_dfl_action_target_panel_frame",
         "offline_dfl_action_target_strict_lp_benchmark_frame",
+        "dfl_trajectory_value_candidate_panel_frame",
+        "dfl_trajectory_value_selector_frame",
+        "dfl_trajectory_value_selector_strict_lp_benchmark_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -189,6 +196,9 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_action_target_panel_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_trajectory_value_candidate_panel_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_trajectory_value_selector_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
     assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -199,6 +209,13 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
         tags_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert tags_by_key["dfl_trajectory_value_candidate_panel_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_trajectory_value_selector_frame"]["ml_stage"] == "selection"
+    assert tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
@@ -446,9 +463,48 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         decision_target_panel,
         action_target_panel,
     )
+    trajectory_value_panel = dfl_trajectory_value_candidate_panel_frame(
+        None,
+        OfflineDflTrajectoryValueSelectorAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            forecast_model_names_csv="tft_silver_v0",
+            final_validation_anchor_count_per_tenant=2,
+            max_train_anchors_per_tenant=3,
+        ),
+        benchmark,
+        strict_panel,
+        decision_target_strict,
+        action_target_strict,
+        offline_panel,
+        decision_target_panel,
+        action_target_panel,
+    )
+    trajectory_value_selector = dfl_trajectory_value_selector_frame(
+        None,
+        OfflineDflTrajectoryValueSelectorAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            forecast_model_names_csv="tft_silver_v0",
+            final_validation_anchor_count_per_tenant=2,
+            max_train_anchors_per_tenant=3,
+            min_final_holdout_tenant_anchor_count_per_source_model=2,
+        ),
+        trajectory_value_panel,
+    )
+    trajectory_value_strict = dfl_trajectory_value_selector_strict_lp_benchmark_frame(
+        None,
+        OfflineDflTrajectoryValueSelectorAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            forecast_model_names_csv="tft_silver_v0",
+            final_validation_anchor_count_per_tenant=2,
+            max_train_anchors_per_tenant=3,
+            min_final_holdout_tenant_anchor_count_per_source_model=2,
+        ),
+        trajectory_value_panel,
+        trajectory_value_selector,
+    )
 
     assert ensemble.height == 5
-    assert strategy_store.evaluation_frame.height == 97
+    assert strategy_store.evaluation_frame.height == 103
     assert training.height == 20
     assert dfl_store.training_frame.height == 20
     assert training_examples.height == 15
@@ -550,3 +606,15 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert "offline_dfl_action_target_v4_tft_silver_v0" in action_target_strict[
         "forecast_model_name"
     ].unique().to_list()
+    assert trajectory_value_panel.height == 10
+    assert trajectory_value_panel.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_trajectory_value_candidate_panel_not_full_dfl"
+    ]
+    assert trajectory_value_selector.height == 1
+    assert trajectory_value_selector.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_trajectory_value_selector_v1_not_full_dfl"
+    ]
+    assert trajectory_value_strict.height >= 4
+    assert trajectory_value_strict.select("strategy_kind").to_series().unique().to_list() == [
+        "dfl_trajectory_value_selector_strict_lp_benchmark"
+    ]
