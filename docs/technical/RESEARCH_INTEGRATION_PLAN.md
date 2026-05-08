@@ -627,6 +627,32 @@ projected into feasible dispatch, but the projected candidates lose badly to the
 frozen `strict_similar_day` control. The result remains useful research
 evidence for future DFL data/model design, not a promoted controller.
 
+Value-aware follow-up:
+
+- New asset: `dfl_value_aware_action_classifier_strict_lp_benchmark_frame`.
+- Dagster run id: `6db74e0f-958d-46ec-8360-8f6a7494fd8f`.
+- Strategy kind: `dfl_value_aware_action_classifier_strict_lp_projection`.
+- Weighting rule: `1 + (candidate_regret_gap + strict_opportunity) / 500`,
+  computed from `train_selection` rows only.
+- Final-holdout rows: 360 total; 180 strict-control rows and 90 rows per
+  value-aware classifier source model.
+- Claim flags: `not_full_dfl=true`, `not_market_execution=true`.
+- Leakage check: `uses_final_holdout_for_training=false` for all projected
+  classifier rows.
+
+Strict LP/oracle result:
+
+- `strict_similar_day`: 314.81 UAH mean regret, 202.61 UAH median regret.
+- `dfl_value_aware_action_classifier_v1_tft_silver_v0`: 1,198.74 UAH mean
+  regret, 975.43 UAH median regret.
+- `dfl_value_aware_action_classifier_v1_nbeatsx_silver_v0`: 1,498.95 UAH mean
+  regret, 1,341.77 UAH median regret.
+
+This blocks the value-aware variant too. The result is technically useful:
+weighted action-label voting does not solve the decision-value gap, so the next
+DFL slice should either expand Ukrainian in-domain coverage or move from
+per-hour action classification toward trajectory/value learning.
+
 Tracked note:
 [DFL_ACTION_CLASSIFIER_BASELINE.md](DFL_ACTION_CLASSIFIER_BASELINE.md).
 
