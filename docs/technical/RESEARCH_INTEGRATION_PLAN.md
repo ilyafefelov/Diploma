@@ -575,6 +575,42 @@ questions are resolved.
 Tracked note:
 [DFL_DATA_EXPANSION_AND_ACTION_LABELS.md](DFL_DATA_EXPANSION_AND_ACTION_LABELS.md).
 
+## Supervised DFL Action Classifier Baseline
+
+The next foundation slice materialized the first supervised action-label
+baseline over the checked Ukrainian DFL action-label panel. It is deliberately
+small and interpretable: no new dependency, no neural training loop, no Decision
+Transformer expansion, and no public API/dashboard contract change.
+
+Implementation:
+
+- New asset: `dfl_action_classifier_baseline_frame`.
+- Dagster group: `gold_dfl_training`.
+- Upstream asset: `dfl_action_label_panel_frame`.
+- Baseline name: `dfl_action_classifier_v0`.
+- Claim scope: `dfl_action_classifier_baseline_not_full_dfl`.
+- Promotion status: `blocked_classification_only_no_strict_lp_value`.
+
+Latest run:
+
+- Dagster run id: `91fe584d-73f9-41ca-b3e9-88288136b8b7`.
+- Training scope: 860 `train_selection` rows, or 20,640 labeled horizon-hours.
+- Final holdout: 180 rows, or 4,320 labeled horizon-hours, across five tenants
+  and two source models.
+- Final-holdout all-source accuracy: 0.6495.
+- Final-holdout all-source macro F1: 0.5364.
+- Per-model final-holdout accuracy: `tft_silver_v0` 0.6685,
+  `nbeatsx_silver_v0` 0.6306.
+
+This is useful as a supervised action baseline for the next DFL step, but it is
+not promotion evidence yet. The predicted charge/discharge/hold labels still
+need to be projected into feasible dispatch vectors and scored by the same
+strict LP/oracle regret protocol before any comparison against the frozen
+`strict_similar_day` control can matter.
+
+Tracked note:
+[DFL_ACTION_CLASSIFIER_BASELINE.md](DFL_ACTION_CLASSIFIER_BASELINE.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

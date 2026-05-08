@@ -88,12 +88,19 @@ resolved.
 
 ## Next Gate
 
-The next technical slice can train a very small supervised action baseline only
-if it:
+The first supervised action-label baseline has now materialized as
+`dfl_action_classifier_baseline_frame` in Dagster run
+`91fe584d-73f9-41ca-b3e9-88288136b8b7`. It trained only on
+`train_selection` and scored the immutable final holdout:
 
-- trains only on `train_selection`;
-- treats `final_holdout` as immutable;
-- reports action accuracy by class and split;
-- evaluates strict LP/oracle decision value;
-- remains blocked from promotion unless it beats `strict_similar_day` under the
-  existing promotion gate.
+| Scope | Final-holdout rows | Label hours | Accuracy | Macro F1 | Status |
+|---|---:|---:|---:|---:|---|
+| all source models | 180 | 4,320 | 0.6495 | 0.5364 | blocked |
+| `tft_silver_v0` | 90 | 2,160 | 0.6685 | 0.5589 | blocked |
+| `nbeatsx_silver_v0` | 90 | 2,160 | 0.6306 | 0.5141 | blocked |
+
+The status is
+`blocked_classification_only_no_strict_lp_value`: this is action-label
+classification evidence, not a strict LP/oracle decision-value result. The next
+technical gate is to project predicted actions into feasible dispatch vectors
+and score them against `strict_similar_day` under the existing promotion gate.
