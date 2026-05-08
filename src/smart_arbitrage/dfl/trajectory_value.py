@@ -316,8 +316,7 @@ def build_dfl_trajectory_value_selector_strict_lp_benchmark_frame(
         tenant_id = str(selector_row["tenant_id"])
         source_model_name = str(selector_row["source_model_name"])
         selected_family = str(selector_row["selected_candidate_family"])
-        families = _unique_families((CANDIDATE_FAMILY_STRICT, CANDIDATE_FAMILY_RAW, selected_family))
-        for family in families:
+        for family in (CANDIDATE_FAMILY_STRICT, CANDIDATE_FAMILY_RAW):
             family_rows = [
                 row
                 for row in candidate_panel_frame.iter_rows(named=True)
@@ -334,8 +333,28 @@ def build_dfl_trajectory_value_selector_strict_lp_benchmark_frame(
                         selected_family=selected_family,
                         source_model_name=source_model_name,
                         generated_at=resolved_generated_at,
+                        as_selector=False,
                     )
                 )
+        selected_rows = [
+            row
+            for row in candidate_panel_frame.iter_rows(named=True)
+            if row["tenant_id"] == tenant_id
+            and row["source_model_name"] == source_model_name
+            and row["candidate_family"] == selected_family
+        ]
+        if not selected_rows:
+            raise ValueError(f"missing selector strict rows for {tenant_id}/{source_model_name}/{selected_family}")
+        for row in selected_rows:
+            rows.append(
+                _strict_benchmark_row(
+                    row,
+                    selected_family=selected_family,
+                    source_model_name=source_model_name,
+                    generated_at=resolved_generated_at,
+                    as_selector=True,
+                )
+            )
     return pl.DataFrame(rows).sort(["tenant_id", "source_model_name", "anchor_timestamp", "forecast_model_name"])
 
 
@@ -547,11 +566,12 @@ def _strict_benchmark_row(
     selected_family: str,
     source_model_name: str,
     generated_at: datetime,
+    as_selector: bool,
 ) -> dict[str, Any]:
     family = str(row["candidate_family"])
     forecast_model_name = (
         trajectory_value_selector_model_name(source_model_name)
-        if family == selected_family
+        if as_selector
         else str(row["candidate_model_name"])
     )
     anchor_timestamp = _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp")
@@ -564,6 +584,7 @@ def _strict_benchmark_row(
             "trajectory_value_selected_candidate_family": selected_family,
             "trajectory_value_row_candidate_family": family,
             "trajectory_value_row_candidate_model_name": str(row["candidate_model_name"]),
+            "trajectory_value_row_role": "selector" if as_selector else "reference",
             "trajectory_value_prior_selection_mean_regret_uah": float(
                 row["prior_selection_mean_regret_uah"]
             ),
@@ -577,7 +598,8 @@ def _strict_benchmark_row(
     )
     return {
         "evaluation_id": (
-            f"{row['tenant_id']}:trajectory-value-selector:{source_model_name}:{family}:"
+            f"{row['tenant_id']}:trajectory-value-selector:{source_model_name}:"
+            f"{'selector' if as_selector else 'reference'}:{family}:"
             f"{anchor_timestamp.strftime('%Y%m%dT%H%M')}"
         ),
         "tenant_id": str(row["tenant_id"]),
@@ -987,17 +1009,6 @@ def _provenance_failures(rows: list[dict[str, Any]]) -> list[str]:
     if any(not bool(payload.get("not_market_execution", False)) for payload in payloads):
         failures.append("trajectory/value promotion evidence must remain not_market_execution")
     return failures
-
-
-def _unique_families(families: tuple[str, ...]) -> tuple[str, ...]:
-    seen: set[str] = set()
-    unique: list[str] = []
-    for family in families:
-        if family in seen:
-            continue
-        unique.append(family)
-        seen.add(family)
-    return tuple(unique)
 
 
 def _validate_common_config(

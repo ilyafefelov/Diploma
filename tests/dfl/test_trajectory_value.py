@@ -154,6 +154,29 @@ def test_selector_strict_benchmark_emits_selected_rows_with_selector_model_name(
     assert payload["not_market_execution"] is True
 
 
+def test_selector_strict_benchmark_keeps_control_reference_when_control_is_selected() -> None:
+    candidate_panel = _candidate_panel_from_final_regrets(
+        strict_regret=100.0,
+        raw_regret=500.0,
+        v2_regret=450.0,
+        v3_regret=400.0,
+        v4_regret=300.0,
+        v4_prior_regret=600.0,
+        strict_prior_regret=10.0,
+    )
+    selector = build_dfl_trajectory_value_selector_frame(
+        candidate_panel,
+        tenant_ids=CANONICAL_TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+    )
+
+    result = build_dfl_trajectory_value_selector_strict_lp_benchmark_frame(candidate_panel, selector)
+
+    assert selector.select("selected_candidate_family").to_series().unique().to_list() == ["strict_control"]
+    assert result.filter(pl.col("forecast_model_name") == "strict_similar_day").height == 180
+    assert result.filter(pl.col("forecast_model_name").str.starts_with("dfl_trajectory_value_selector_v1_")).height == 180
+
+
 def test_selector_gate_allows_development_diagnostic_but_blocks_production_when_strict_wins() -> None:
     candidate_panel = _candidate_panel_from_final_regrets(
         strict_regret=100.0,
@@ -318,6 +341,7 @@ def _candidate_panel_from_final_regrets(
     v4_regret: float,
     v4_prior_regret: float,
     strict_regret: float = 100.0,
+    strict_prior_regret: float | None = None,
     anchor_count_per_tenant: int = 18,
     data_quality_tier: str = "thesis_grade",
 ) -> pl.DataFrame:
@@ -325,6 +349,7 @@ def _candidate_panel_from_final_regrets(
         anchor_count_per_tenant=anchor_count_per_tenant + 2,
         strict_regret=strict_regret,
         raw_regret=raw_regret,
+        strict_prior_regret=strict_prior_regret,
     )
     panel = _panel_frame(
         anchor_count_per_tenant=anchor_count_per_tenant + 2,
@@ -385,6 +410,7 @@ def _benchmark_frame(
     anchor_count_per_tenant: int,
     strict_regret: float = 100.0,
     raw_regret: float = 500.0,
+    strict_prior_regret: float | None = None,
 ) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     for tenant_id in CANONICAL_TENANTS:
@@ -397,7 +423,7 @@ def _benchmark_frame(
                         source_model_name=source_model_name,
                         model_name="strict_similar_day",
                         anchor=anchor,
-                        regret=strict_regret,
+                        regret=float(strict_prior_regret if strict_prior_regret is not None else strict_regret),
                         forecast_prices=(1000.0, 5000.0),
                     )
                 )
