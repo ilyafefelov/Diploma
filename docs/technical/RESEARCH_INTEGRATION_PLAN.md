@@ -926,6 +926,55 @@ Current status:
 This remains research evidence only: not full DFL, not Decision Transformer
 control, and not market execution.
 
+## Strict-Failure Selector Robustness Gate
+
+The strict-failure selector result is the first source-specific strict-gate
+breakthrough, but it is not promoted yet. The robustness slice tests whether
+the result survives earlier temporal windows and tenant slices.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.strict_failure_robustness`.
+- New asset: `dfl_strict_failure_selector_robustness_frame`.
+- New asset check: `dfl_strict_failure_selector_robustness_evidence`.
+- Dagster group: `gold_dfl_training`.
+- Run config:
+  [../../configs/real_data_dfl_strict_failure_selector_robustness_week3.yaml](../../configs/real_data_dfl_strict_failure_selector_robustness_week3.yaml).
+
+Robustness protocol:
+
+- Use the current checked 104-anchor Ukrainian panel.
+- Generate four latest-first validation windows of 18 anchors each.
+- Require at least 30 prior anchors before each validation window.
+- Select thresholds using anchors strictly before each validation-window start.
+- Let validation actuals affect scoring only, never threshold selection.
+
+Gate labels:
+
+- `development_pass`: improves over raw neural schedules.
+- `source_specific_strict_pass`: beats `strict_similar_day` by at least 5%
+  mean regret and does not worsen median regret in a window.
+- `robust_research_challenger`: same source passes in the latest window and at
+  least three of four rolling windows.
+- `production_promote`: blocked in this slice.
+
+Latest run:
+
+- Dagster run id: `fd21fada-f453-404b-96a1-27d99b14b1a1`.
+- Asset check: `dfl_strict_failure_selector_robustness_evidence` passed.
+- Robustness frame: 8 rows, two source models x four rolling windows.
+- Coverage: 90 validation tenant-anchors per source model per window.
+- Result: every window improves over the raw neural schedule.
+- Result: no source earns `robust_research_challenger`. TFT passes the strict
+  threshold only in the latest window; earlier windows are development evidence
+  but not strict-control wins.
+- Decision: production promotion remains blocked. The next work should improve
+  prior-window features or extend Ukrainian observed coverage before promoting
+  any selector.
+
+Tracked note:
+[DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md](DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

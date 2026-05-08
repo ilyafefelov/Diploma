@@ -188,6 +188,32 @@ Latest strict-failure selector implementation:
 - Tracked note:
   [DFL_STRICT_FAILURE_SELECTOR.md](DFL_STRICT_FAILURE_SELECTOR.md).
 
+Strict-failure robustness gate:
+
+- New asset: `dfl_strict_failure_selector_robustness_frame`.
+- New asset check: `dfl_strict_failure_selector_robustness_evidence`.
+- Config:
+  [real_data_dfl_strict_failure_selector_robustness_week3.yaml](../../configs/real_data_dfl_strict_failure_selector_robustness_week3.yaml).
+- Purpose: replay the strict-failure selector across four latest-first
+  18-anchor validation windows, each with at least 30 prior anchors before the
+  validation start.
+- Selection rule: thresholds are learned from anchors strictly before the
+  validation window; validation actuals affect scoring only.
+- Claim boundary: even if the TFT-source selector passes repeated windows, the
+  claim is `robust_research_challenger`, not production control.
+- Latest run id: `fd21fada-f453-404b-96a1-27d99b14b1a1`.
+- Asset check: `dfl_strict_failure_selector_robustness_evidence` passed.
+- Result: all eight source/window rows improve over the raw neural schedule, so
+  development evidence is stable.
+- Result: no source is a robust strict-control challenger yet. TFT passes the
+  strict threshold only in the latest window, then loses or ties strict control
+  in earlier windows.
+- Decision: production promotion remains blocked; the next work should improve
+  prior-window features or extend Ukrainian observed coverage before claiming a
+  robust selector.
+- Tracked note:
+  [DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md](DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md).
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:

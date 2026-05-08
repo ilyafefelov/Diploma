@@ -12,6 +12,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     OfflineDflActionTargetAssetConfig,
     DflTrajectoryFeatureRankerAssetConfig,
     DflStrictFailureSelectorAssetConfig,
+    DflStrictFailureSelectorRobustnessAssetConfig,
     DflStrictChallengerAssetConfig,
     OfflineDflTrajectoryValueSelectorAssetConfig,
     DflActionLabelPanelAssetConfig,
@@ -48,6 +49,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     dfl_strict_baseline_autopsy_frame,
     dfl_strict_failure_selector_frame,
     dfl_strict_failure_selector_strict_lp_benchmark_frame,
+    dfl_strict_failure_selector_robustness_frame,
     dfl_trajectory_value_selector_frame,
     dfl_trajectory_value_selector_strict_lp_benchmark_frame,
     offline_dfl_decision_target_panel_frame,
@@ -189,6 +191,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_strict_baseline_autopsy_frame",
         "dfl_strict_failure_selector_frame",
         "dfl_strict_failure_selector_strict_lp_benchmark_frame",
+        "dfl_strict_failure_selector_robustness_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -230,6 +233,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_strict_baseline_autopsy_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_strict_failure_selector_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_strict_failure_selector_robustness_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
     assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -262,8 +266,13 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_strict_baseline_autopsy_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_strict_failure_selector_frame"]["ml_stage"] == "selection"
     assert tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_strict_failure_selector_robustness_frame"]["ml_stage"] == "evaluation"
     assert (
         tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_strict_failure_selector_robustness_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
@@ -615,6 +624,21 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         schedule_library_v2,
         strict_failure_selector,
     )
+    strict_failure_selector_robustness = dfl_strict_failure_selector_robustness_frame(
+        None,
+        DflStrictFailureSelectorRobustnessAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            forecast_model_names_csv="tft_silver_v0",
+            validation_window_count=1,
+            validation_anchor_count=2,
+            min_prior_anchors_before_window=1,
+            min_prior_anchor_count=1,
+            switch_threshold_grid_uah_csv="0.0,50.0",
+            min_robust_passing_windows=1,
+            min_validation_tenant_anchor_count_per_source_model=2,
+        ),
+        schedule_library_v2,
+    )
 
     assert ensemble.height == 5
     assert strategy_store.evaluation_frame.height == 117
@@ -771,6 +795,10 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert "dfl_strict_failure_selector_v1_tft_silver_v0" in strict_failure_selector_strict[
         "forecast_model_name"
     ].unique().to_list()
+    assert strict_failure_selector_robustness.height == 1
+    assert strict_failure_selector_robustness.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_strict_failure_selector_robustness_not_full_dfl"
+    ]
 
 
 def test_trajectory_value_strict_asset_uses_fresh_generated_at(monkeypatch) -> None:
