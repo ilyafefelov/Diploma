@@ -1021,6 +1021,53 @@ Latest run:
 Tracked note:
 [DFL_STRICT_FAILURE_FEATURE_AUDIT.md](DFL_STRICT_FAILURE_FEATURE_AUDIT.md).
 
+## Feature-Aware Strict-Failure Selector
+
+The feature-audit slice explained why the v1 selector only beat
+`strict_similar_day` in the latest TFT window. The follow-up adds a deterministic
+feature-aware selector without changing the existing v1 selector behavior.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.strict_failure_feature_selector`.
+- New assets: `dfl_feature_aware_strict_failure_selector_frame` and
+  `dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame`.
+- New asset check: `dfl_feature_aware_strict_failure_selector_evidence`.
+- Dagster group: `gold_dfl_training`.
+- Run config:
+  [../../configs/real_data_dfl_feature_aware_strict_failure_selector_week3.yaml](../../configs/real_data_dfl_feature_aware_strict_failure_selector_week3.yaml).
+
+Protocol:
+
+- Rule selection uses only earlier rolling windows (`2-4`).
+- Latest window (`1`) actuals affect strict LP/oracle scoring only.
+- Selector features include prior regret advantage, price regime, top/bottom
+  rank stability, and spread-volatility regime.
+- The strict benchmark compares `strict_similar_day`, raw source schedules,
+  best-prior non-strict schedules, and the feature-aware selector.
+- Production promotion remains blocked unless the conservative strict LP/oracle
+  gate clears.
+
+Latest run:
+
+- Dagster run id: `1cb76f8c-e321-4178-b54a-f85cd15838b6`.
+- Asset check: `dfl_feature_aware_strict_failure_selector_evidence` passed.
+- Selector frame: 10 rows, five tenants x two source models.
+- Strict benchmark: 720 rows, with 90 selector final-holdout tenant-anchors per
+  source model from `2026-04-12 23:00` through `2026-04-29 23:00`.
+- `dfl_feature_aware_strict_failure_selector_v2_nbeatsx_silver_v0`: 299.73 UAH
+  mean regret and 182.76 UAH median regret, improving 63.15% versus raw NBEATSx
+  and 4.79% versus `strict_similar_day`.
+- `dfl_feature_aware_strict_failure_selector_v2_tft_silver_v0`: 299.19 UAH mean
+  regret and 160.52 UAH median regret, improving 70.19% versus raw TFT and
+  4.96% versus `strict_similar_day`.
+- Decision: the selector is still useful development evidence, but it remains
+  blocked because neither source clears the conservative 5% strict-control
+  threshold.
+
+Tracked note:
+[DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md](DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

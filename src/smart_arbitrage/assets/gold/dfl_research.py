@@ -101,6 +101,12 @@ from smart_arbitrage.dfl.strict_failure_features import (
     build_dfl_strict_failure_feature_audit_frame,
     build_dfl_strict_failure_prior_feature_panel_frame,
 )
+from smart_arbitrage.dfl.strict_failure_feature_selector import (
+    DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR_STRICT_LP_STRATEGY_KIND,
+    build_dfl_feature_aware_strict_failure_selector_frame,
+    build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
+    evaluate_dfl_feature_aware_strict_failure_selector_gate,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -330,6 +336,23 @@ class DflStrictFailureFeatureAuditAssetConfig(dg.Config):
     validation_anchor_count: int = 18
     min_prior_anchors_before_window: int = 30
     min_prior_anchor_count: int = 3
+
+
+class DflFeatureAwareStrictFailureSelectorAssetConfig(dg.Config):
+    """Feature-aware prior-only strict-failure selector scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_window_index: int = 1
+    min_training_window_count: int = 3
+    switch_threshold_grid_uah_csv: str = "0.0,50.0,100.0,200.0,400.0"
+    rank_overlap_floor_grid_csv: str = "0.0,0.5,0.75"
+    price_regime_policies_csv: str = "all,low_medium,high_only"
+    volatility_policies_csv: str = "all,non_volatile"
+    min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
 @dg.asset(
@@ -1910,6 +1933,127 @@ def dfl_strict_failure_feature_audit_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_feature_aware_strict_failure_selector_frame(
+    context,
+    config: DflFeatureAwareStrictFailureSelectorAssetConfig,
+    dfl_strict_failure_prior_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Select feature-aware strict-failure rules from prior rolling windows only."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    selector_frame = build_dfl_feature_aware_strict_failure_selector_frame(
+        dfl_strict_failure_prior_feature_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_window_index=config.final_window_index,
+        min_training_window_count=config.min_training_window_count,
+        switch_threshold_grid_uah=_float_csv_values(
+            config.switch_threshold_grid_uah_csv,
+            field_name="switch_threshold_grid_uah_csv",
+        ),
+        rank_overlap_floor_grid=_float_csv_values(
+            config.rank_overlap_floor_grid_csv,
+            field_name="rank_overlap_floor_grid_csv",
+        ),
+        price_regime_policies=_csv_values(
+            config.price_regime_policies_csv,
+            field_name="price_regime_policies_csv",
+        ),
+        volatility_policies=_csv_values(
+            config.volatility_policies_csv,
+            field_name="volatility_policies_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": selector_frame.height,
+            "tenant_count": selector_frame.select("tenant_id").n_unique()
+            if selector_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "final_switch_count": selector_frame.select("final_switch_count").sum().item()
+            if selector_frame.height
+            else 0,
+            "scope": "dfl_feature_aware_strict_failure_selector_v2_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return selector_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
+    context,
+    config: DflFeatureAwareStrictFailureSelectorAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_feature_aware_strict_failure_selector_frame: pl.DataFrame,
+    dfl_strict_failure_prior_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle rows for the feature-aware strict-failure selector."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_feature_aware_strict_failure_selector_frame,
+        dfl_strict_failure_prior_feature_panel_frame,
+        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    promotion_gate = evaluate_dfl_feature_aware_strict_failure_selector_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    selector_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_feature_aware_strict_failure_selector_v2_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "selector_validation_tenant_anchor_count": selector_rows.height,
+            "strategy_kind": DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR_STRICT_LP_STRATEGY_KIND,
+            "promotion_gate_decision": promotion_gate.decision,
+            "promotion_gate_description": promotion_gate.description,
+            "development_gate_passed": promotion_gate.metrics.get(
+                "development_gate_passed",
+                False,
+            ),
+            "scope": "dfl_feature_aware_strict_failure_selector_v2_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -2229,6 +2373,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_strict_failure_selector_robustness_frame,
     dfl_strict_failure_prior_feature_panel_frame,
     dfl_strict_failure_feature_audit_frame,
+    dfl_feature_aware_strict_failure_selector_frame,
+    dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,

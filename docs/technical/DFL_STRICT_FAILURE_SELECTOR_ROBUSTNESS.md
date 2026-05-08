@@ -128,3 +128,29 @@ neural schedules remains strong, but average improvement versus
 
 Tracked note:
 [DFL_STRICT_FAILURE_FEATURE_AUDIT.md](DFL_STRICT_FAILURE_FEATURE_AUDIT.md).
+
+## Feature-Aware Selector Follow-Up
+
+The next selector slice now uses the audit panel without changing the existing
+v1 selector. It adds:
+
+- `dfl_feature_aware_strict_failure_selector_frame`;
+- `dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame`;
+- `dfl_feature_aware_strict_failure_selector_evidence`;
+- config
+  [real_data_dfl_feature_aware_strict_failure_selector_week3.yaml](../../configs/real_data_dfl_feature_aware_strict_failure_selector_week3.yaml).
+
+The rule grid is still deterministic and prior-only. It learns from windows
+`2-4` and scores window `1`, using price regime, rank stability, and spread
+volatility to decide whether a strict-failure switch should fire. Production
+promotion remains blocked unless the strict LP/oracle gate clears.
+
+Latest feature-aware run:
+
+- Dagster run id: `1cb76f8c-e321-4178-b54a-f85cd15838b6`.
+- Asset check: `dfl_feature_aware_strict_failure_selector_evidence` passed.
+- Result: NBEATSx feature-aware selector improved 63.15% versus raw but only
+  4.79% versus strict control.
+- Result: TFT feature-aware selector improved 70.19% versus raw but only 4.96%
+  versus strict control.
+- Decision: still blocked by the conservative strict-control threshold.

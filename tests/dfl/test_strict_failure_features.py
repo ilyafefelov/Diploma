@@ -13,6 +13,14 @@ from smart_arbitrage.dfl.strict_failure_features import (
     build_dfl_strict_failure_prior_feature_panel_frame,
     validate_dfl_strict_failure_feature_audit_evidence,
 )
+from smart_arbitrage.dfl.strict_failure_feature_selector import (
+    DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR_CLAIM_SCOPE,
+    DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR_PREFIX,
+    build_dfl_feature_aware_strict_failure_selector_frame,
+    build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
+    evaluate_dfl_feature_aware_strict_failure_selector_gate,
+    validate_dfl_feature_aware_strict_failure_selector_evidence,
+)
 from smart_arbitrage.dfl.strict_failure_robustness import (
     build_dfl_strict_failure_selector_robustness_frame,
 )
@@ -112,6 +120,132 @@ def test_feature_audit_summarizes_windows_and_validates_claim_boundary() -> None
             "tenant_specific_outlier",
         }
     )
+
+
+def test_feature_aware_selector_learns_rules_from_earlier_windows_only() -> None:
+    library = _candidate_library_104()
+    panel = _build_feature_panel(library, _build_robustness(library))
+
+    selector = build_dfl_feature_aware_strict_failure_selector_frame(
+        panel,
+        tenant_ids=CANONICAL_TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+        final_window_index=1,
+        min_training_window_count=3,
+    )
+
+    assert selector.height == 10
+    assert set(selector["claim_scope"]) == {DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR_CLAIM_SCOPE}
+    assert set(selector["not_full_dfl"]) == {True}
+    assert set(selector["not_market_execution"]) == {True}
+    assert set(selector["final_window_index"]) == {1}
+    assert {tuple(value) for value in selector["training_window_indices"].to_list()} == {(2, 3, 4)}
+    assert all(
+        str(model_name).startswith(DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR_PREFIX)
+        for model_name in selector["selector_model_name"]
+    )
+
+
+def test_feature_aware_selector_ignores_latest_window_labels_for_rule_selection() -> None:
+    library = _candidate_library_104()
+    panel = _build_feature_panel(library, _build_robustness(library))
+    mutated_panel = panel.with_columns(
+        pl.when(pl.col("window_index") == 1)
+        .then(pl.lit(10_000.0))
+        .otherwise(pl.col("analysis_only_best_non_strict_regret_uah"))
+        .alias("analysis_only_best_non_strict_regret_uah"),
+        pl.when(pl.col("window_index") == 1)
+        .then(pl.lit(10_000.0))
+        .otherwise(pl.col("analysis_only_selected_regret_uah"))
+        .alias("analysis_only_selected_regret_uah"),
+    )
+
+    selector = build_dfl_feature_aware_strict_failure_selector_frame(
+        panel,
+        tenant_ids=CANONICAL_TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+        final_window_index=1,
+        min_training_window_count=3,
+    )
+    mutated_selector = build_dfl_feature_aware_strict_failure_selector_frame(
+        mutated_panel,
+        tenant_ids=CANONICAL_TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+        final_window_index=1,
+        min_training_window_count=3,
+    )
+
+    rule_columns = [
+        "selected_rule_name",
+        "selected_switch_threshold_uah",
+        "selected_rank_overlap_floor",
+        "selected_price_regime_policy",
+        "selected_volatility_policy",
+    ]
+    assert selector.select(rule_columns).to_dicts() == mutated_selector.select(rule_columns).to_dicts()
+
+
+def test_feature_aware_strict_benchmark_emits_holdout_rows_and_keeps_promotion_blocked() -> None:
+    library = _candidate_library_104()
+    panel = _build_feature_panel(library, _build_robustness(library))
+    selector = build_dfl_feature_aware_strict_failure_selector_frame(
+        panel,
+        tenant_ids=CANONICAL_TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+        final_window_index=1,
+        min_training_window_count=3,
+    )
+
+    strict_frame = build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
+        library,
+        selector,
+        panel,
+        generated_at=datetime(2026, 5, 8, tzinfo=UTC),
+    )
+    evidence = validate_dfl_feature_aware_strict_failure_selector_evidence(strict_frame)
+    gate = evaluate_dfl_feature_aware_strict_failure_selector_gate(strict_frame)
+
+    assert strict_frame.height == 720
+    assert evidence.passed is True
+    assert gate.passed is False
+    assert gate.decision in {"diagnostic_pass_production_blocked", "blocked"}
+    assert set(strict_frame["strategy_kind"]) == {
+        "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark"
+    }
+    assert strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with(DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR_PREFIX)
+    ).height == 180
+
+
+def test_feature_aware_strict_benchmark_matches_naive_and_aware_timestamps() -> None:
+    library = _candidate_library_104()
+    panel = _build_feature_panel(library, _build_robustness(library))
+    selector = build_dfl_feature_aware_strict_failure_selector_frame(
+        panel,
+        tenant_ids=CANONICAL_TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+        final_window_index=1,
+        min_training_window_count=3,
+    )
+    naive_library = pl.DataFrame(
+        [
+            {
+                **row,
+                "anchor_timestamp": row["anchor_timestamp"].replace(tzinfo=None),
+                "generated_at": row["generated_at"].replace(tzinfo=None),
+            }
+            for row in library.to_dicts()
+        ]
+    )
+
+    strict_frame = build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
+        naive_library,
+        selector,
+        panel,
+        generated_at=datetime(2026, 5, 8, tzinfo=UTC),
+    )
+
+    assert strict_frame.height == 720
 
 
 @pytest.mark.parametrize(

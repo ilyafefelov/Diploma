@@ -235,6 +235,33 @@ Strict-failure prior feature audit:
 - Tracked note:
   [DFL_STRICT_FAILURE_FEATURE_AUDIT.md](DFL_STRICT_FAILURE_FEATURE_AUDIT.md).
 
+Feature-aware strict-failure selector:
+
+- New helper: `smart_arbitrage.dfl.strict_failure_feature_selector`.
+- New assets: `dfl_feature_aware_strict_failure_selector_frame` and
+  `dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame`.
+- New asset check: `dfl_feature_aware_strict_failure_selector_evidence`.
+- Config:
+  [real_data_dfl_feature_aware_strict_failure_selector_week3.yaml](../../configs/real_data_dfl_feature_aware_strict_failure_selector_week3.yaml).
+- Purpose: select a small deterministic switch rule from earlier rolling
+  windows using prior price regime, rank stability, and spread-volatility
+  features before scoring the latest final holdout.
+- Claim boundary: research-only, not full DFL, not Decision Transformer
+  control, and not market execution.
+- Latest run id: `1cb76f8c-e321-4178-b54a-f85cd15838b6`.
+- Asset check: `dfl_feature_aware_strict_failure_selector_evidence` passed.
+- Strict benchmark: 720 rows, with 90 selector final-holdout tenant-anchors per
+  source model.
+- Result: NBEATSx feature-aware selector reached 299.73 UAH mean regret,
+  improving 63.15% versus raw NBEATSx and 4.79% versus strict control.
+- Result: TFT feature-aware selector reached 299.19 UAH mean regret, improving
+  70.19% versus raw TFT and 4.96% versus strict control.
+- Decision: development evidence remains useful, but the conservative 5%
+  strict-control threshold is still not cleared. Production promotion remains
+  blocked.
+- Tracked note:
+  [DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md](DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md).
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:
