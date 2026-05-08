@@ -10,6 +10,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
+    DflTrajectoryFeatureRankerAssetConfig,
     OfflineDflTrajectoryValueSelectorAssetConfig,
     DflActionLabelPanelAssetConfig,
     DflDataCoverageAuditAssetConfig,
@@ -36,6 +37,9 @@ from smart_arbitrage.assets.gold.dfl_research import (
     offline_dfl_action_target_panel_frame,
     offline_dfl_action_target_strict_lp_benchmark_frame,
     dfl_trajectory_value_candidate_panel_frame,
+    dfl_schedule_candidate_library_frame,
+    dfl_trajectory_feature_ranker_frame,
+    dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
     dfl_trajectory_value_selector_frame,
     dfl_trajectory_value_selector_strict_lp_benchmark_frame,
     offline_dfl_decision_target_panel_frame,
@@ -168,6 +172,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_trajectory_value_candidate_panel_frame",
         "dfl_trajectory_value_selector_frame",
         "dfl_trajectory_value_selector_strict_lp_benchmark_frame",
+        "dfl_schedule_candidate_library_frame",
+        "dfl_trajectory_feature_ranker_frame",
+        "dfl_trajectory_feature_ranker_strict_lp_benchmark_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -200,6 +207,9 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_trajectory_value_candidate_panel_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_trajectory_value_selector_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_schedule_candidate_library_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_trajectory_feature_ranker_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
     assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -217,6 +227,13 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
         tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert tags_by_key["dfl_schedule_candidate_library_frame"]["ml_stage"] == "training_data"
+    assert tags_by_key["dfl_trajectory_feature_ranker_frame"]["ml_stage"] == "selection"
+    assert tags_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
@@ -503,9 +520,34 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         trajectory_value_panel,
         trajectory_value_selector,
     )
+    trajectory_ranker_config = DflTrajectoryFeatureRankerAssetConfig(
+        tenant_ids_csv="client_003_dnipro_factory",
+        forecast_model_names_csv="tft_silver_v0",
+        final_validation_anchor_count_per_tenant=2,
+        perturb_spread_scale_grid_csv="1.0",
+        perturb_mean_shift_grid_uah_mwh_csv="100.0",
+        min_final_holdout_tenant_anchor_count_per_source_model=2,
+    )
+    schedule_library = dfl_schedule_candidate_library_frame(
+        None,
+        trajectory_ranker_config,
+        benchmark,
+        trajectory_value_panel,
+    )
+    trajectory_ranker = dfl_trajectory_feature_ranker_frame(
+        None,
+        trajectory_ranker_config,
+        schedule_library,
+    )
+    trajectory_ranker_strict = dfl_trajectory_feature_ranker_strict_lp_benchmark_frame(
+        None,
+        trajectory_ranker_config,
+        schedule_library,
+        trajectory_ranker,
+    )
 
     assert ensemble.height == 5
-    assert strategy_store.evaluation_frame.height == 103
+    assert strategy_store.evaluation_frame.height == 109
     assert training.height == 20
     assert dfl_store.training_frame.height == 20
     assert training_examples.height == 15
@@ -619,6 +661,21 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert trajectory_value_strict.select("strategy_kind").to_series().unique().to_list() == [
         "dfl_trajectory_value_selector_strict_lp_benchmark"
     ]
+    assert schedule_library.height > 0
+    assert schedule_library.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_schedule_candidate_library_not_full_dfl"
+    ]
+    assert trajectory_ranker.height == 1
+    assert trajectory_ranker.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_trajectory_feature_ranker_v1_not_full_dfl"
+    ]
+    assert trajectory_ranker_strict.height == 6
+    assert trajectory_ranker_strict.select("strategy_kind").to_series().unique().to_list() == [
+        "dfl_trajectory_feature_ranker_strict_lp_benchmark"
+    ]
+    assert "dfl_trajectory_feature_ranker_v1_tft_silver_v0" in trajectory_ranker_strict[
+        "forecast_model_name"
+    ].unique().to_list()
 
 
 def test_trajectory_value_strict_asset_uses_fresh_generated_at(monkeypatch) -> None:

@@ -73,6 +73,13 @@ from smart_arbitrage.dfl.trajectory_value import (
     build_dfl_trajectory_value_selector_strict_lp_benchmark_frame,
     evaluate_dfl_trajectory_value_selector_gate,
 )
+from smart_arbitrage.dfl.trajectory_ranker import (
+    DFL_TRAJECTORY_FEATURE_RANKER_STRICT_LP_STRATEGY_KIND,
+    build_dfl_schedule_candidate_library_frame,
+    build_dfl_trajectory_feature_ranker_frame,
+    build_dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
+    evaluate_dfl_trajectory_feature_ranker_gate,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -235,6 +242,20 @@ class OfflineDflTrajectoryValueSelectorAssetConfig(dg.Config):
     forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
     final_validation_anchor_count_per_tenant: int = 18
     max_train_anchors_per_tenant: int = 72
+    min_final_holdout_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflTrajectoryFeatureRankerAssetConfig(dg.Config):
+    """Prior-only feature ranker over feasible LP-scored schedule candidates."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    perturb_spread_scale_grid_csv: str = "0.9,1.1"
+    perturb_mean_shift_grid_uah_mwh_csv: str = "-250.0,250.0"
     min_final_holdout_tenant_anchor_count_per_source_model: int = 90
 
 
@@ -1228,6 +1249,154 @@ def dfl_trajectory_value_selector_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_schedule_candidate_library_frame(
+    context,
+    config: DflTrajectoryFeatureRankerAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    dfl_trajectory_value_candidate_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Feasible strict-LP-scored schedule library for trajectory feature ranking."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    library_frame = build_dfl_schedule_candidate_library_frame(
+        real_data_rolling_origin_benchmark_frame,
+        dfl_trajectory_value_candidate_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        perturb_spread_scale_grid=_float_csv_values(
+            config.perturb_spread_scale_grid_csv,
+            field_name="perturb_spread_scale_grid_csv",
+        ),
+        perturb_mean_shift_grid_uah_mwh=_float_csv_values(
+            config.perturb_mean_shift_grid_uah_mwh_csv,
+            field_name="perturb_mean_shift_grid_uah_mwh_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "tenant_count": library_frame.select("tenant_id").n_unique() if library_frame.height else 0,
+            "source_model_count": len(source_model_names),
+            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            if library_frame.height
+            else 0,
+            "final_holdout_rows": library_frame.filter(pl.col("split_name") == "final_holdout").height
+            if library_frame.height
+            else 0,
+            "scope": "dfl_schedule_candidate_library_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_trajectory_feature_ranker_frame(
+    context,
+    config: DflTrajectoryFeatureRankerAssetConfig,
+    dfl_schedule_candidate_library_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Select a prior-only feature scoring profile for feasible schedule candidates."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    ranker_frame = build_dfl_trajectory_feature_ranker_frame(
+        dfl_schedule_candidate_library_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        min_final_holdout_tenant_anchor_count_per_source_model=(
+            config.min_final_holdout_tenant_anchor_count_per_source_model
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": ranker_frame.height,
+            "tenant_count": ranker_frame.select("tenant_id").n_unique() if ranker_frame.height else 0,
+            "source_model_count": len(source_model_names),
+            "weight_profile_count": ranker_frame.select("selected_weight_profile_name").n_unique()
+            if ranker_frame.height
+            else 0,
+            "scope": "dfl_trajectory_feature_ranker_v1_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return ranker_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_trajectory_feature_ranker_strict_lp_benchmark_frame(
+    context,
+    config: DflTrajectoryFeatureRankerAssetConfig,
+    dfl_schedule_candidate_library_frame: pl.DataFrame,
+    dfl_trajectory_feature_ranker_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle rows for the trajectory feature-ranker gate."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_trajectory_feature_ranker_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_frame,
+        dfl_trajectory_feature_ranker_frame,
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    promotion_gate = evaluate_dfl_trajectory_feature_ranker_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=config.min_final_holdout_tenant_anchor_count_per_source_model,
+    )
+    ranker_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_trajectory_feature_ranker_v1_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "source_model_count": len(source_model_names),
+            "ranker_validation_tenant_anchor_count": ranker_rows.height,
+            "strategy_kind": DFL_TRAJECTORY_FEATURE_RANKER_STRICT_LP_STRATEGY_KIND,
+            "promotion_gate_decision": promotion_gate.decision,
+            "promotion_gate_description": promotion_gate.description,
+            "development_gate_passed": promotion_gate.metrics.get("development_gate_passed", False),
+            "scope": "dfl_trajectory_feature_ranker_v1_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -1535,6 +1704,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_trajectory_value_candidate_panel_frame,
     dfl_trajectory_value_selector_frame,
     dfl_trajectory_value_selector_strict_lp_benchmark_frame,
+    dfl_schedule_candidate_library_frame,
+    dfl_trajectory_feature_ranker_frame,
+    dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
