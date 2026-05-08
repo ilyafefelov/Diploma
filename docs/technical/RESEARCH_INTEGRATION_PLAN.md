@@ -751,6 +751,68 @@ strict control, so the promotion gate stays blocked.
 Tracked note:
 [DFL_TRAJECTORY_VALUE_SELECTOR.md](DFL_TRAJECTORY_VALUE_SELECTOR.md).
 
+## Trajectory Feature Ranker v1
+
+The next slice expanded the feasible schedule evidence into a larger candidate
+library and a prior-only linear feature ranker. This is still DFL-lite
+trajectory/value evidence, not full differentiable training, not Decision
+Transformer control, and not market execution.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.trajectory_ranker`.
+- New assets: `dfl_schedule_candidate_library_frame`,
+  `dfl_trajectory_feature_ranker_frame`, and
+  `dfl_trajectory_feature_ranker_strict_lp_benchmark_frame`.
+- Dagster group: `gold_dfl_training`.
+- Strategy kind: `dfl_trajectory_feature_ranker_strict_lp_benchmark`.
+- Run config:
+  [../../configs/real_data_dfl_trajectory_ranker_week3.yaml](../../configs/real_data_dfl_trajectory_ranker_week3.yaml).
+- Ranker rule: grid-search a small linear scoring rule over feasible schedule
+  features using train-selection anchors only. Final-holdout actuals affect
+  strict scoring only.
+
+Latest run:
+
+- Full upstream materialization attempt exceeded the local 30-minute command
+  timeout; downstream ranker assets then materialized successfully from the
+  existing checked 104-anchor upstream benchmark and trajectory/value assets.
+- Dagster run id: `db2f6e2d-ae39-49fe-86f0-0e594af29a1e`.
+- Export directory:
+  `data/research_runs/week3_dfl_trajectory_feature_ranker_v1`.
+- Schedule library: 6,780 rows.
+- Ranker selection frame: 10 rows.
+- Strict benchmark frame: 540 rows.
+- Final-holdout range: `2026-04-12 23:00` to `2026-04-29 23:00`.
+- Claim flags: `not_full_dfl=true`, `not_market_execution=true`.
+
+Strict LP/oracle result:
+
+| Model | Tenant-anchor rows | Mean regret UAH | Median regret UAH | Finding |
+|---|---:|---:|---:|---|
+| `strict_similar_day` | 90 reference anchors per source model | 314.81 | 202.61 | Frozen Level 1 control still wins. |
+| `nbeatsx_silver_v0` | 90 | 813.40 | 520.48 | Raw neural comparator. |
+| `dfl_trajectory_feature_ranker_v1_nbeatsx_silver_v0` | 90 | 497.30 | 238.15 | Improves vs raw by 38.86%, blocked vs strict. |
+| `tft_silver_v0` | 90 | 1003.54 | 477.99 | Raw neural comparator. |
+| `dfl_trajectory_feature_ranker_v1_tft_silver_v0` | 90 | 607.96 | 218.72 | Improves vs raw by 39.42%, blocked vs strict. |
+
+This is the strongest DFL-adjacent selector evidence so far because it improves
+over both raw neural schedules by roughly 39% while preserving prior-only
+selection. It still does not beat the frozen `strict_similar_day` mean or median
+regret, so production promotion remains blocked.
+
+Hugging Face source refresh:
+
+- `RunyaoYu/PriceFM` remains include/watch for future European external
+  validation. Dataset Viewer is valid with 140,257 rows, 191 columns, one train
+  split, 15-minute UTC timestamps, and European price/load/generation columns.
+- `lipiecki/thief` remains watch-only because Dataset Viewer is unavailable.
+- External European datasets remain `training_use_allowed=false`; Ukrainian
+  OREE/Open-Meteo stays the only training source for this slice.
+
+Tracked note:
+[DFL_TRAJECTORY_FEATURE_RANKER.md](DFL_TRAJECTORY_FEATURE_RANKER.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

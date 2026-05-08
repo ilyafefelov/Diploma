@@ -109,6 +109,27 @@ Latest trajectory/value selector result:
 - Tracked note:
   [DFL_TRAJECTORY_VALUE_SELECTOR.md](DFL_TRAJECTORY_VALUE_SELECTOR.md).
 
+Latest trajectory feature-ranker result:
+
+- New assets: `dfl_schedule_candidate_library_frame`,
+  `dfl_trajectory_feature_ranker_frame`, and
+  `dfl_trajectory_feature_ranker_strict_lp_benchmark_frame`.
+- Config:
+  [real_data_dfl_trajectory_ranker_week3.yaml](../../configs/real_data_dfl_trajectory_ranker_week3.yaml).
+- Dagster run id: `db2f6e2d-ae39-49fe-86f0-0e594af29a1e`.
+- Schedule library: 6,780 feasible LP-scored schedule rows.
+- Ranker selection rows: 10, one per tenant/source model.
+- Strict benchmark: 540 rows, with 90 final-holdout tenant-anchors per source
+  model.
+- NBEATSx ranker mean regret: 497.30 UAH, improving 38.86% versus raw NBEATSx
+  but still losing to 314.81 UAH strict-control regret.
+- TFT ranker mean regret: 607.96 UAH, improving 39.42% versus raw TFT but still
+  losing to 314.81 UAH strict-control regret.
+- Decision: stronger development diagnostic than the family selector; production
+  promotion remains blocked by the frozen `strict_similar_day` control.
+- Tracked note:
+  [DFL_TRAJECTORY_FEATURE_RANKER.md](DFL_TRAJECTORY_FEATURE_RANKER.md).
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:
