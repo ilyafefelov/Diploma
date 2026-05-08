@@ -1068,6 +1068,31 @@ Latest run:
 Tracked note:
 [DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md](DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md).
 
+## Forecast AFL Hardening
+
+The feature-aware selector almost cleared the strict-control threshold, but the
+next blocker is forecast substrate quality. `nbeatsx_silver_v0` and
+`tft_silver_v0` are compact in-repo research candidates, not completed official
+NBEATSx/TFT training runs. The official adapter assets remain readiness paths
+until a tracked `sota` run is executed and scored through the same strict
+LP/oracle protocol.
+
+Implementation:
+
+- rolling-origin benchmark candidate generation now uses forecast-available
+  weather mode for NBEATSx/TFT features;
+- new asset `forecast_candidate_forensics_frame` labels frozen control,
+  compact Silver candidates, and official-backend readiness candidates;
+- new asset `afl_training_panel_frame` creates **Arbitrage-Focused Learning
+  (AFL)** rows with prior-only forecast features and realized decision-value
+  labels.
+
+Config:
+[../../configs/real_data_afl_hardening_week3.yaml](../../configs/real_data_afl_hardening_week3.yaml).
+
+Tracked note:
+[DFL_FORECAST_AFL_HARDENING.md](DFL_FORECAST_AFL_HARDENING.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

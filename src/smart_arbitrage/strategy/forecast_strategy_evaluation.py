@@ -357,7 +357,10 @@ def _rolling_origin_candidates(
             "predicted_price_uah_mwh": [point.predicted_price_uah_mwh for point in strict_forecast],
         }
     )
-    feature_frame = build_neural_forecast_feature_frame(price_history)
+    feature_frame = build_neural_forecast_feature_frame(
+        price_history,
+        future_weather_mode="forecast_only",
+    )
     nbeatsx_forecast = build_nbeatsx_forecast(feature_frame)
     tft_forecast = build_tft_forecast(feature_frame)
     return [

@@ -120,6 +120,10 @@ _Avoid_: claiming trained DFL, replacing strict baseline, using future anchors, 
 DFL-inspired diagnostic layer that estimates one regret-weighted price-bias correction per forecast horizon step from prior anchors, then re-evaluates corrected NBEATSx/TFT forecasts through the same strict LP/oracle scorer. It can support a value-oriented DFL argument, but is still not **Full Differentiable DFL**.
 _Avoid_: claiming end-to-end trained DFL, using future anchors, replacing **Strict Similar-Day Rule** as dashboard default without live validation
 
+**Arbitrage-Focused Learning (AFL)**:
+Forecast-layer research protocol that trains or evaluates price forecasts by arbitrage-relevant signals such as spread shape, top/bottom price ranking, LP value, oracle regret, degradation-adjusted economics, and forecast-available covariates. It is a bridge from forecast-only learning to **Full Differentiable DFL**, not a **Target Strategy** by itself.
+_Avoid_: action imitation, full differentiable DFL, Decision Transformer control, production bidding, forecast-only MAE leaderboard
+
 **Full Differentiable DFL**:
 Future **Target Strategy** training loop where a forecast model is optimized through a relaxed differentiable storage or bidding layer, then evaluated with the strict LP/simulator. It requires a separate no-leakage training protocol and must not be claimed from bias-calibration results.
 _Avoid_: regret-weighted post-hoc calibration, oracle dispatch imitation, unconstrained neural action, final evaluation on relaxed constraints
@@ -269,6 +273,8 @@ _Avoid_: market bid, no bid, cleared trade
 - **Regret-Weighted Forecast Calibration** is a diagnostic predecessor to **Full Differentiable DFL**, not a replacement for **Target Strategy**
 - **Horizon-Aware Regret-Weighted Forecast Calibration** deepens **Regret-Weighted Forecast Calibration** by preserving forecast-horizon structure before LP scoring
 - **Horizon-Aware Regret-Weighted Forecast Calibration** may beat the strict control on one aggregate metric, but remains a research diagnostic until live-available inputs and strict validation prove it is stable
+- **Arbitrage-Focused Learning (AFL)** hardens **NBEATSx Forecast** and **TFT Forecast** by weighting forecast evidence toward LP-relevant price shape and regret labels before attempting **Full Differentiable DFL**
+- **Arbitrage-Focused Learning (AFL)** must use forecast-available covariates only; realized horizon prices and oracle values are labels, not live forecast inputs
 - **Full Differentiable DFL** must be trained with only pre-anchor information and must still be scored through strict LP/simulator evaluation
 - **Effective-Dated Market Constraint** constrains **Market Venue** validation and benchmark scoring for the relevant delivery date
 - **Market Participation Cost** contributes to net UAH decision value alongside **Interval Degradation Penalty**

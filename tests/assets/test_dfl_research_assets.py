@@ -13,6 +13,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflTrajectoryFeatureRankerAssetConfig,
     DflStrictFailureSelectorAssetConfig,
     DflStrictFailureSelectorRobustnessAssetConfig,
+    AflTrainingPanelAssetConfig,
     DflStrictChallengerAssetConfig,
     OfflineDflTrajectoryValueSelectorAssetConfig,
     DflActionLabelPanelAssetConfig,
@@ -50,6 +51,8 @@ from smart_arbitrage.assets.gold.dfl_research import (
     dfl_strict_failure_selector_frame,
     dfl_strict_failure_selector_strict_lp_benchmark_frame,
     dfl_strict_failure_selector_robustness_frame,
+    forecast_candidate_forensics_frame,
+    afl_training_panel_frame,
     dfl_trajectory_value_selector_frame,
     dfl_trajectory_value_selector_strict_lp_benchmark_frame,
     offline_dfl_decision_target_panel_frame,
@@ -196,6 +199,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_strict_failure_feature_audit_frame",
         "dfl_feature_aware_strict_failure_selector_frame",
         "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame",
+        "forecast_candidate_forensics_frame",
+        "afl_training_panel_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -242,6 +247,8 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_strict_failure_feature_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["forecast_candidate_forensics_frame"] == "gold_dfl_training"
+    assert groups_by_key["afl_training_panel_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
     assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -282,6 +289,8 @@ def test_dfl_research_assets_are_registered() -> None:
         tags_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"]
         == "evaluation"
     )
+    assert tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["afl_training_panel_frame"]["ml_stage"] == "training_data"
     assert (
         tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
@@ -662,6 +671,12 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         ),
         schedule_library_v2,
     )
+    forecast_forensics = forecast_candidate_forensics_frame(None, benchmark)
+    afl_panel = afl_training_panel_frame(
+        None,
+        AflTrainingPanelAssetConfig(final_holdout_anchor_count_per_tenant=2),
+        benchmark,
+    )
 
     assert ensemble.height == 5
     assert strategy_store.evaluation_frame.height == 117
@@ -821,6 +836,12 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert strict_failure_selector_robustness.height == 1
     assert strict_failure_selector_robustness.select("claim_scope").to_series().unique().to_list() == [
         "dfl_strict_failure_selector_robustness_not_full_dfl"
+    ]
+    assert forecast_forensics.height == 3
+    assert "compact_silver_candidate" in forecast_forensics["candidate_kind"].unique().to_list()
+    assert afl_panel.height == benchmark.height
+    assert afl_panel.select("claim_scope").to_series().unique().to_list() == [
+        "arbitrage_focused_learning_panel_not_full_dfl"
     ]
 
 

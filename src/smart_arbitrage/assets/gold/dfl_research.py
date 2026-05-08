@@ -107,6 +107,10 @@ from smart_arbitrage.dfl.strict_failure_feature_selector import (
     build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
     evaluate_dfl_feature_aware_strict_failure_selector_gate,
 )
+from smart_arbitrage.forecasting.afl import (
+    build_afl_training_panel_frame,
+    build_forecast_candidate_forensics_frame,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -355,6 +359,12 @@ class DflFeatureAwareStrictFailureSelectorAssetConfig(dg.Config):
     min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
+class AflTrainingPanelAssetConfig(dg.Config):
+    """Arbitrage-focused forecast-learning panel scope."""
+
+    final_holdout_anchor_count_per_tenant: int = 18
+
+
 @dg.asset(
     group_name=taxonomy.GOLD_SELECTOR_DIAGNOSTICS,
     tags=taxonomy.asset_tags(
@@ -460,6 +470,87 @@ def dfl_training_example_frame(
         },
     )
     return training_example_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def forecast_candidate_forensics_frame(
+    context,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Classify forecast candidates before stronger AFL/DFL claims."""
+
+    forensics_frame = build_forecast_candidate_forensics_frame(
+        real_data_rolling_origin_benchmark_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": forensics_frame.height,
+            "candidate_kind_count": forensics_frame.select("candidate_kind").n_unique()
+            if forensics_frame.height
+            else 0,
+            "compact_candidate_count": forensics_frame.filter(
+                pl.col("candidate_kind") == "compact_silver_candidate"
+            ).height
+            if forensics_frame.height
+            else 0,
+            "scope": "forecast_candidate_forensics_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return forensics_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def afl_training_panel_frame(
+    context,
+    config: AflTrainingPanelAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """AFL sidecar panel with prior-only features and decision-value labels."""
+
+    panel_frame = build_afl_training_panel_frame(
+        real_data_rolling_origin_benchmark_frame,
+        final_holdout_anchor_count_per_tenant=config.final_holdout_anchor_count_per_tenant,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": panel_frame.height,
+            "tenant_count": panel_frame.select("tenant_id").n_unique()
+            if panel_frame.height
+            else 0,
+            "model_count": panel_frame.select("forecast_model_name").n_unique()
+            if panel_frame.height
+            else 0,
+            "final_holdout_rows": panel_frame.filter(pl.col("split") == "final_holdout").height
+            if panel_frame.height
+            else 0,
+            "scope": "arbitrage_focused_learning_panel_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return panel_frame
 
 
 @dg.asset(
@@ -2343,6 +2434,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
     dfl_training_example_frame,
+    forecast_candidate_forensics_frame,
+    afl_training_panel_frame,
     dfl_data_coverage_audit_frame,
     dfl_action_label_panel_frame,
     dfl_action_classifier_baseline_frame,
