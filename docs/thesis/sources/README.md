@@ -49,6 +49,33 @@ These sources are not downloaded PDFs in this slice. They are tracked as paper-p
 
 ---
 
+## May 7-8 conversation source capture
+
+The conversation source capture is tracked in
+[conversation-source-capture-2026-05-08.md](./conversation-source-capture-2026-05-08.md).
+It records additional academic, dataset, and policy sources raised while
+planning the AFE/AFL/DFL path.
+
+New local artifacts from this capture:
+
+| File | Source | Status |
+|---|---|---|
+| `2410.10393-gift-eval-time-series-forecasting-benchmark.pdf` | GIFT-Eval, arXiv `2410.10393` | include/watch |
+| `2410.09487-tsfm-household-electricity-load-forecasting.pdf` | TSFM household electricity load forecasting benchmark, arXiv `2410.09487` | watch |
+| `2509.26468-fev-bench-realistic-time-series-forecasting.pdf` | fev-bench, arXiv `2509.26468` | include/watch |
+| `2604.05364-tfrbench-forecasting-reasoning-benchmark.pdf` | TFRBench, arXiv `2604.05364` | watch |
+| `2512.01046-shielded-controller-units-rl-microgrids.pdf` | Shielded Controller Units for RL with operational constraints, arXiv `2512.01046` | watch |
+| `dfki-2025-bess-dispatch-forecast-impact.md` | DFKI/NEIS 2025 BESS dispatch forecast-impact publication page | include |
+| `eu-ukraine-market-coupling-policy-notes-2026-05-08.md` | Energy Community, European Commission, Moldova LIP, and ENTSO-E SDAC policy/market-coupling sources | include/watch |
+| `iea-2024-ukraines-energy-security-and-coming-winter.pdf` | IEA, *Ukraine's Energy Security and the Coming Winter* | include |
+| `iea-2024-ukraines-energy-security-source-note.md` | Source note for the IEA Ukraine energy-security report and thesis mapping | include |
+
+Copyright/redistribution note: public arXiv PDFs were saved locally. Official
+policy and publication pages were captured as citation/source notes rather than
+full copied web pages.
+
+---
+
 ## 🔎 Source Map: Baseline LP and Current Data Pipeline
 
 These sources support [technical/BASELINE_LP_AND_DATA_PIPELINE.md](../../technical/BASELINE_LP_AND_DATA_PIPELINE.md). Each entry below records why the source is used in this project rather than only listing the citation.
