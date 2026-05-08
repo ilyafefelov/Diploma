@@ -52,23 +52,25 @@ week3_dfl_data_expansion_ua_panel
 
 ## Current Evidence
 
-Verified on 2026-05-07.
+Latest checked state verified on 2026-05-08.
 
 | Evidence item | Result |
 |---|---:|
-| Dagster materialization run | `79a36ccc-f1e8-4bb0-aee4-0e66e9026205` |
+| Dagster materialization/check run | `3743f42c-8cc6-4822-a3f0-7730af6af458` |
+| Dagster readiness check | `dfl_action_label_panel_readiness_evidence=passed` |
 | Coverage-audit tenants | 5 |
 | Eligible daily anchors per tenant in feature frame | 104 |
 | Target anchors per tenant | 90 |
 | Tenants meeting target | 5 |
 | Feature-frame source gaps | 1 price hour and 1 weather hour per tenant |
-| Latest benchmark anchors per tenant/model batch | 90 |
+| Latest benchmark anchors per tenant/model batch | 104 |
 | Latest benchmark model count | 3 |
-| Persisted `dfl_action_label_vectors` rows | 900 |
-| Train-selection action-label rows | 720 |
+| Persisted `dfl_action_label_vectors` rows | 1,040 |
+| Train-selection action-label rows | 860 |
 | Final-holdout action-label rows | 180 |
 | Final-holdout window | `2026-04-12 23:00` to `2026-04-29 23:00` |
 | Vector-length validation failures | 0 |
+| Safety violations | 0 |
 
 Coverage audit detail:
 
@@ -81,10 +83,9 @@ Coverage audit detail:
 | `client_005_odesa_hotel` | 104 | target met; feature frame has 1 price/weather gap |
 
 The action-label panel is intentionally built from the latest thesis-grade
-90-anchor benchmark batch, not from every theoretically eligible feature-frame
-anchor. Each tenant/model has 72 `train_selection` rows and 18 `final_holdout`
-rows. All persisted action-label rows are observed coverage, `thesis_grade`,
-`not_full_dfl=true`, and `not_market_execution=true`.
+104-anchor benchmark panel. Each tenant/model has 86 `train_selection` rows and
+18 `final_holdout` rows. All persisted action-label rows are observed coverage,
+`thesis_grade`, `not_full_dfl=true`, and `not_market_execution=true`.
 
 The local research-layer export exists at:
 
@@ -101,10 +102,12 @@ API spot checks remained aligned with the existing read models:
 
 | Endpoint | Dnipro result |
 |---|---|
-| `/dashboard/real-data-benchmark` | `data_quality_tier=thesis_grade`, `anchor_count=90`, `model_count=3`, `rows=270` |
+| `/dashboard/real-data-benchmark` | `data_quality_tier=thesis_grade`, `anchor_count=104`, `model_count=3`, `rows=312` |
 | `/dashboard/calibrated-ensemble-benchmark` | `rows=90`, `selector_rows=90` |
 | `/dashboard/risk-adjusted-value-gate` | `rows=90` |
 | `/dashboard/forecast-dispatch-sensitivity` | `rows=450` |
+
+Dataset-card summary: [DFL_ACTION_LABEL_DATASET_CARD.md](DFL_ACTION_LABEL_DATASET_CARD.md).
 
 ## European Dataset Bridge
 
