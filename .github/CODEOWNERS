@@ -1,0 +1,21 @@
+# Default repository ownership for triage and review routing.
+* @ilyafefelov
+
+# Backend API and control plane.
+/api/ @ilyafefelov
+
+# Python domain, Dagster, ML, and MLOps assets.
+/src/ @ilyafefelov
+/tests/ @ilyafefelov
+/configs/ @ilyafefelov
+/scripts/ @ilyafefelov
+/docker-compose.yaml @ilyafefelov
+
+# Nuxt operator dashboard.
+/dashboard/ @ilyafefelov
+
+# Thesis, syllabus, and technical documentation.
+/docs/ @ilyafefelov
+/README.md @ilyafefelov
+/CONTEXT.md @ilyafefelov
+/AGENTS.md @ilyafefelov
