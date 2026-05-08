@@ -656,6 +656,56 @@ per-hour action classification toward trajectory/value learning.
 Tracked note:
 [DFL_ACTION_CLASSIFIER_BASELINE.md](DFL_ACTION_CLASSIFIER_BASELINE.md).
 
+## DFL Classifier Failure Analysis And Data Recovery
+
+The next diagnostics slice formalizes the negative classifier result as useful
+evidence. Both the plain and value-aware action classifiers are feasible and
+no-leakage, but they lose decisively to the frozen `strict_similar_day` control
+under strict LP/oracle regret.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.failure_analysis`.
+- New asset: `dfl_action_classifier_failure_analysis_frame`.
+- New asset check: `dfl_action_classifier_failure_analysis_evidence`.
+- Dagster group: `gold_dfl_training`.
+- Claim scope: `dfl_action_classifier_failure_analysis_not_full_dfl`.
+- Latest run: Dagster run id `9a3eb772-dbd5-4023-beff-ed8f5a69e326`
+  on 2026-05-08; the failure-analysis asset check passed.
+
+The asset summarizes regret-weighted confusion, active-hour precision/recall,
+missed high-value charge/discharge hours, false active actions, top/bottom
+price-rank misses, SOC-path value loss, and plain-versus-value-aware regret
+comparison. The check requires all five tenants, both source models, 90
+final-holdout tenant-anchors per source model, thesis-grade observed coverage,
+no split leakage, and conservative claim flags.
+
+Research interpretation:
+
+- DFL and SPO sources support optimizing downstream decision loss rather than
+  classification or forecast-only proxies.
+- Multistage energy-storage DFL sources explain why SOC path dependence makes
+  independent hourly labels weak.
+- Imitation-learning literature explains why behavior cloning can compound
+  action errors in sequential settings.
+- BESS forecast-economics sources support price extrema, spread, and realized
+  dispatch value metrics.
+
+Data recovery:
+
+- Ukrainian OREE/Open-Meteo remains the training source of truth.
+- `RunyaoYu/PriceFM` is include/watch for future European external validation:
+  Hugging Face Dataset Viewer currently reports 140,257 rows, 15-minute
+  timestamps, and European price/load/generation columns.
+- `lipiecki/thief` remains watch: the THieF paper is relevant, but Dataset
+  Viewer is currently unavailable.
+- ENTSO-E, OPSD, Ember, and Nord Pool remain research-only bridge sources with
+  `training_use_allowed=false`.
+
+Tracked notes:
+[DFL_CLASSIFIER_FAILURE_ANALYSIS.md](DFL_CLASSIFIER_FAILURE_ANALYSIS.md) and
+[DFL_DATA_RECOVERY_ROADMAP.md](DFL_DATA_RECOVERY_ROADMAP.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under
