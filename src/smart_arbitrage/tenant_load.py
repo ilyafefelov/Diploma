@@ -9,11 +9,6 @@ from zoneinfo import ZoneInfo
 
 import polars as pl
 
-from smart_arbitrage.assets.bronze.market_weather import (
-    list_available_weather_tenants,
-    resolve_tenant_registry_entry,
-)
-
 DAY_INDEX_BY_NAME: Final[dict[str, int]] = {
     "mon": 0,
     "tue": 1,
@@ -56,6 +51,22 @@ TENANT_NET_LOAD_HOURLY_COLUMNS: Final[tuple[str, ...]] = (
     "weather_source_kind",
     "reason_code",
 )
+TENANT_HISTORICAL_NET_LOAD_COLUMNS: Final[tuple[str, ...]] = (
+    "tenant_id",
+    "timestamp",
+    "timezone",
+    "profile_label",
+    "load_mw",
+    "pv_estimate_mw",
+    "net_load_mw",
+    "btm_battery_power_mw",
+    "source_kind",
+    "weather_source_kind",
+    "reason_code",
+    "claim_scope",
+    "not_full_dfl",
+    "not_market_execution",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +85,11 @@ class TenantScheduleState:
 
 
 def build_tenant_consumption_schedule_frame(*, location_config_path: str | None = None) -> pl.DataFrame:
+    from smart_arbitrage.assets.bronze.market_weather import (
+        list_available_weather_tenants,
+        resolve_tenant_registry_entry,
+    )
+
     rows: list[dict[str, Any]] = []
     for tenant_summary in list_available_weather_tenants(location_config_path=location_config_path):
         tenant_id = tenant_summary.get("tenant_id")
@@ -189,6 +205,68 @@ def build_tenant_net_load_hourly_frame(
     if not rows:
         return pl.DataFrame(schema={column_name: pl.Null for column_name in TENANT_NET_LOAD_HOURLY_COLUMNS})
     return pl.DataFrame(rows).select(TENANT_NET_LOAD_HOURLY_COLUMNS).sort(["tenant_id", "timestamp"])
+
+
+def build_tenant_historical_net_load_frame(
+    schedule_frame: pl.DataFrame,
+    benchmark_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build configured tenant-load proxies aligned to benchmark history timestamps."""
+
+    _require_columns(
+        schedule_frame,
+        required_columns=frozenset(TENANT_CONSUMPTION_SCHEDULE_COLUMNS),
+        frame_name="tenant_consumption_schedule_bronze",
+    )
+    _require_columns(
+        benchmark_feature_frame,
+        required_columns=frozenset({"tenant_id", "timestamp"}),
+        frame_name="real_data_benchmark_silver_feature_frame",
+    )
+    if benchmark_feature_frame.height == 0:
+        return pl.DataFrame(schema={column_name: pl.Null for column_name in TENANT_HISTORICAL_NET_LOAD_COLUMNS})
+
+    benchmark_rows = _benchmark_weather_rows_by_tenant_timestamp(benchmark_feature_frame)
+    rows: list[dict[str, Any]] = []
+    for tenant_id, timestamp in sorted(key for key in benchmark_rows if key[0] is not None):
+        resolved_tenant_id = str(tenant_id)
+        schedule_state = resolve_tenant_schedule_state(
+            schedule_frame,
+            tenant_id=resolved_tenant_id,
+            timestamp=timestamp,
+        )
+        load_mw = _scheduled_load_mw(schedule_state)
+        pv_estimate_mw, weather_source_kind = _pv_estimate_mw(
+            schedule_state,
+            timestamp=timestamp,
+            weather_rows=benchmark_rows,
+        )
+        net_load_mw = load_mw - pv_estimate_mw
+        rows.append(
+            {
+                "tenant_id": resolved_tenant_id,
+                "timestamp": timestamp,
+                "timezone": schedule_state.timezone,
+                "profile_label": schedule_state.profile_label,
+                "load_mw": round(load_mw, 6),
+                "pv_estimate_mw": round(pv_estimate_mw, 6),
+                "net_load_mw": round(net_load_mw, 6),
+                "btm_battery_power_mw": round(
+                    net_load_mw * schedule_state.battery_support_fraction,
+                    6,
+                ),
+                "source_kind": "configured_proxy",
+                "weather_source_kind": weather_source_kind,
+                "reason_code": schedule_state.reason_code,
+                "claim_scope": "tenant_historical_net_load_configured_proxy",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        )
+
+    if not rows:
+        return pl.DataFrame(schema={column_name: pl.Null for column_name in TENANT_HISTORICAL_NET_LOAD_COLUMNS})
+    return pl.DataFrame(rows).select(TENANT_HISTORICAL_NET_LOAD_COLUMNS).sort(["tenant_id", "timestamp"])
 
 
 def _schedule_rows_from_tenant_entry(tenant_entry: dict[str, Any]) -> list[dict[str, Any]]:
@@ -369,6 +447,27 @@ def _weather_rows_by_tenant_timestamp(weather_frame: pl.DataFrame | None) -> dic
     return rows
 
 
+def _benchmark_weather_rows_by_tenant_timestamp(
+    benchmark_feature_frame: pl.DataFrame,
+) -> dict[tuple[str | None, datetime], dict[str, Any]]:
+    rows: dict[tuple[str | None, datetime], dict[str, Any]] = {}
+    for row in benchmark_feature_frame.iter_rows(named=True):
+        timestamp = row["timestamp"]
+        if not isinstance(timestamp, datetime):
+            continue
+        tenant_id = str(row["tenant_id"])
+        rows[(tenant_id, _truncate_to_hour(timestamp))] = {
+            "tenant_id": tenant_id,
+            "timestamp": _truncate_to_hour(timestamp),
+            "effective_solar": _float_value(row.get("weather_effective_solar"), default=0.0),
+            "source_kind": _text_value(
+                row.get("weather_source_kind"),
+                default=_text_value(row.get("source_kind"), default="observed"),
+            ),
+        }
+    return rows
+
+
 def _daylight_solar_factor(timestamp: datetime, timezone: str) -> float:
     local_timestamp = _to_local_datetime(timestamp, timezone)
     hour = local_timestamp.hour + local_timestamp.minute / 60.0
@@ -410,3 +509,14 @@ def _float_value(value: Any, *, default: float) -> float:
     if isinstance(value, bool):
         raise ValueError("Boolean values are not valid numeric schedule values.")
     return float(value)
+
+
+def _missing_column_failures(frame: pl.DataFrame, required_columns: frozenset[str]) -> list[str]:
+    missing = sorted(required_columns.difference(frame.columns))
+    return [f"missing required columns: {missing}"] if missing else []
+
+
+def _require_columns(frame: pl.DataFrame, *, required_columns: frozenset[str], frame_name: str) -> None:
+    failures = _missing_column_failures(frame, required_columns)
+    if failures:
+        raise ValueError(f"{frame_name} " + "; ".join(failures))

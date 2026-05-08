@@ -192,6 +192,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_strict_failure_selector_frame",
         "dfl_strict_failure_selector_strict_lp_benchmark_frame",
         "dfl_strict_failure_selector_robustness_frame",
+        "dfl_strict_failure_prior_feature_panel_frame",
+        "dfl_strict_failure_feature_audit_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -234,6 +236,8 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_strict_failure_selector_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_strict_failure_selector_robustness_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_strict_failure_prior_feature_panel_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_strict_failure_feature_audit_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
     assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -267,12 +271,22 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_strict_failure_selector_frame"]["ml_stage"] == "selection"
     assert tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_strict_failure_selector_robustness_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_strict_failure_prior_feature_panel_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["dfl_strict_failure_feature_audit_frame"]["ml_stage"] == "diagnostics"
     assert (
         tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
         tags_by_key["dfl_strict_failure_selector_robustness_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_strict_failure_prior_feature_panel_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_strict_failure_feature_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"

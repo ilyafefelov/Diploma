@@ -214,6 +214,27 @@ Strict-failure robustness gate:
 - Tracked note:
   [DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md](DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md).
 
+Strict-failure prior feature audit:
+
+- New historical context asset: `tenant_historical_net_load_silver`.
+- New audit assets: `dfl_strict_failure_prior_feature_panel_frame` and
+  `dfl_strict_failure_feature_audit_frame`.
+- New asset check: `dfl_strict_failure_feature_audit_evidence`.
+- Config:
+  [real_data_dfl_strict_failure_feature_audit_week3.yaml](../../configs/real_data_dfl_strict_failure_feature_audit_week3.yaml).
+- Latest run id: `b9a48061-079f-4a92-9daf-699398f67906`.
+- Historical load proxy: 14,395 rows, five tenants, `2026-01-01 00:00` through
+  `2026-04-30 23:00` UTC.
+- Feature panel: 720 prior-window rows.
+- Audit panel: 40 tenant/source/window rows.
+- Cluster result: 30 `strict_stable_region`, 6 `high_spread_volatility`, and
+  4 `strict_failure_captured` rows.
+- Interpretation: the current selector can rescue raw neural schedules, but it
+  needs feature-aware regime gating before it can robustly challenge
+  `strict_similar_day`.
+- Tracked note:
+  [DFL_STRICT_FAILURE_FEATURE_AUDIT.md](DFL_STRICT_FAILURE_FEATURE_AUDIT.md).
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:

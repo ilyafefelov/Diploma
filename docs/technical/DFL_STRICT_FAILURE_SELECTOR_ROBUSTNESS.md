@@ -100,3 +100,31 @@ Interpretation:
   window only, not three of four windows.
 - No source receives the `robust_research_challenger` label in this run.
 - Production promotion remains blocked.
+
+## Feature-Audit Follow-Up
+
+Follow-up run:
+
+- Dagster run id: `b9a48061-079f-4a92-9daf-699398f67906`.
+- New assets: `tenant_historical_net_load_silver`,
+  `dfl_strict_failure_prior_feature_panel_frame`, and
+  `dfl_strict_failure_feature_audit_frame`.
+- Asset check: `dfl_strict_failure_feature_audit_evidence` passed.
+- Historical load proxy: 14,395 configured rows across five tenants from
+  `2026-01-01 00:00:00+00:00` to `2026-04-30 23:00:00+00:00`.
+- Prior-feature panel: 720 rows.
+- Feature audit: 40 rows.
+
+The audit confirms the robustness finding. The latest window has real
+strict-failure pockets, but earlier windows are mostly strict-stable or
+high-spread-volatility regimes. Average selected-regret improvement over raw
+neural schedules remains strong, but average improvement versus
+`strict_similar_day` is not robust:
+
+| Source model | Mean selected regret | Mean strict regret | Mean raw regret | Mean improvement vs strict | Mean improvement vs raw |
+|---|---:|---:|---:|---:|---:|
+| `nbeatsx_silver_v0` | 705.10 | 710.45 | 1158.21 | 1.54% | 40.02% |
+| `tft_silver_v0` | 744.76 | 710.45 | 1363.44 | -1.60% | 43.07% |
+
+Tracked note:
+[DFL_STRICT_FAILURE_FEATURE_AUDIT.md](DFL_STRICT_FAILURE_FEATURE_AUDIT.md).

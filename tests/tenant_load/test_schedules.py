@@ -5,6 +5,7 @@ import pytest
 
 from smart_arbitrage.tenant_load import (
     build_tenant_consumption_schedule_frame,
+    build_tenant_historical_net_load_frame,
     build_tenant_net_load_hourly_frame,
     resolve_tenant_schedule_state,
 )
@@ -77,3 +78,40 @@ def test_net_load_hourly_frame_uses_config_schedule_and_known_weather_without_fu
     assert row["source_kind"] == "configured"
     assert row["weather_source_kind"] == "observed"
     assert row["forecast_anchor"] == datetime(2026, 5, 4, 9, tzinfo=UTC)
+
+
+def test_historical_net_load_frame_aligns_to_benchmark_timestamps_without_wall_clock() -> None:
+    schedule_frame = build_tenant_consumption_schedule_frame()
+    benchmark_frame = pl.DataFrame(
+        {
+            "tenant_id": [
+                "client_002_lviv_office",
+                "client_002_lviv_office",
+                "client_003_dnipro_factory",
+            ],
+            "timestamp": [
+                datetime(2026, 1, 5, 9, tzinfo=UTC),
+                datetime(2026, 1, 5, 10, tzinfo=UTC),
+                datetime(2026, 1, 5, 7, tzinfo=UTC),
+            ],
+            "weather_effective_solar": [600.0, 200.0, 0.0],
+            "weather_source_kind": ["historical_open_meteo", "historical_open_meteo", "historical_open_meteo"],
+        }
+    )
+
+    net_load = build_tenant_historical_net_load_frame(schedule_frame, benchmark_frame)
+
+    assert net_load.height == 3
+    assert "forecast_anchor" not in net_load.columns
+    office_row = net_load.filter(
+        (pl.col("tenant_id") == "client_002_lviv_office")
+        & (pl.col("timestamp") == datetime(2026, 1, 5, 9, tzinfo=UTC))
+    ).row(0, named=True)
+    assert office_row["load_mw"] == pytest.approx(0.12)
+    assert office_row["pv_estimate_mw"] == pytest.approx(0.048)
+    assert office_row["net_load_mw"] == pytest.approx(0.072)
+    assert office_row["source_kind"] == "configured_proxy"
+    assert office_row["weather_source_kind"] == "historical_open_meteo"
+    assert office_row["claim_scope"] == "tenant_historical_net_load_configured_proxy"
+    assert office_row["not_full_dfl"] is True
+    assert office_row["not_market_execution"] is True

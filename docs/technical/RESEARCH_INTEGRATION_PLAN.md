@@ -975,6 +975,52 @@ Latest run:
 Tracked note:
 [DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md](DFL_STRICT_FAILURE_SELECTOR_ROBUSTNESS.md).
 
+## Strict-Failure Prior Feature Audit
+
+The robustness gate showed that the selector is useful but not robust versus
+`strict_similar_day`. The feature-audit slice adds explanatory context before
+changing selector behavior.
+
+Implementation:
+
+- New historical context asset: `tenant_historical_net_load_silver`.
+- New helper: `smart_arbitrage.dfl.strict_failure_features`.
+- New assets: `dfl_strict_failure_prior_feature_panel_frame` and
+  `dfl_strict_failure_feature_audit_frame`.
+- New asset check: `dfl_strict_failure_feature_audit_evidence`.
+- Dagster group: `gold_dfl_training`.
+- Run config:
+  [../../configs/real_data_dfl_strict_failure_feature_audit_week3.yaml](../../configs/real_data_dfl_strict_failure_feature_audit_week3.yaml).
+
+Feature protocol:
+
+- `selector_feature_*` columns use only anchors strictly before the validation
+  window start.
+- `analysis_only_*` columns hold validation outcomes and may not be used for
+  selector decisions.
+- Historical tenant load is a configured proxy, not measured telemetry.
+
+Latest run:
+
+- Dagster run id: `b9a48061-079f-4a92-9daf-699398f67906`.
+- Asset check: `dfl_strict_failure_feature_audit_evidence` passed.
+- Historical load proxy: 14,395 rows across five tenants from `2026-01-01` to
+  `2026-04-30`.
+- Feature panel: 720 rows.
+- Audit panel: 40 rows.
+- Cluster result: 30 `strict_stable_region`, 6 `high_spread_volatility`, and
+  4 `strict_failure_captured` rows.
+- Source summary: NBEATSx improves 40.02% versus raw schedules but only 1.54%
+  versus strict control on average; TFT improves 43.07% versus raw schedules
+  but is 1.60% worse than strict control on average.
+- Decision: production promotion remains blocked. The next selector experiment
+  should enrich prior-only switching rules with price regime, spread
+  volatility, rank stability, calendar/weather/load context, and tenant
+  failure clusters.
+
+Tracked note:
+[DFL_STRICT_FAILURE_FEATURE_AUDIT.md](DFL_STRICT_FAILURE_FEATURE_AUDIT.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

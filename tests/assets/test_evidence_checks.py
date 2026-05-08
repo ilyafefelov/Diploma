@@ -48,6 +48,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_strict_failure_selector_robustness_frame",
             "dfl_strict_failure_selector_robustness_evidence",
         ),
+        (
+            "dfl_strict_failure_feature_audit_frame",
+            "dfl_strict_failure_feature_audit_evidence",
+        ),
     }
 
     check_keys = {

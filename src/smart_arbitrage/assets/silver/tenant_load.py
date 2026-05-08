@@ -9,7 +9,10 @@ import dagster as dg
 import polars as pl
 
 from smart_arbitrage.assets import taxonomy
-from smart_arbitrage.tenant_load import build_tenant_net_load_hourly_frame
+from smart_arbitrage.tenant_load import (
+    build_tenant_historical_net_load_frame,
+    build_tenant_net_load_hourly_frame,
+)
 
 
 @dg.asset(
@@ -47,7 +50,43 @@ def tenant_net_load_hourly_silver(
     return net_load_frame
 
 
-TENANT_LOAD_SILVER_ASSETS = [tenant_net_load_hourly_silver]
+@dg.asset(
+    group_name=taxonomy.SILVER_TENANT_LOAD,
+    tags=taxonomy.asset_tags(
+        medallion="silver",
+        domain="tenant_load",
+        elt_stage="transform",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+    ),
+)
+def tenant_historical_net_load_silver(
+    context,
+    tenant_consumption_schedule_bronze: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Configured historical tenant net-load proxy aligned to real-data benchmark timestamps."""
+
+    net_load_frame = build_tenant_historical_net_load_frame(
+        tenant_consumption_schedule_bronze,
+        real_data_benchmark_silver_feature_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": net_load_frame.height,
+            "tenant_count": net_load_frame.select("tenant_id").n_unique()
+            if net_load_frame.height
+            else 0,
+            "source_kind": "configured_proxy",
+            "weather_mode": "historical_open_meteo_or_schedule_estimate",
+            "scope": "research_only_not_measured_telemetry",
+        },
+    )
+    return net_load_frame
+
+
+TENANT_LOAD_SILVER_ASSETS = [tenant_net_load_hourly_silver, tenant_historical_net_load_silver]
 
 
 def _add_metadata(context: dg.AssetExecutionContext | None, metadata: dict[str, Any]) -> None:

@@ -97,6 +97,10 @@ from smart_arbitrage.dfl.strict_failure_robustness import (
     build_dfl_strict_failure_selector_robustness_frame,
     evaluate_dfl_strict_failure_selector_robustness_gate,
 )
+from smart_arbitrage.dfl.strict_failure_features import (
+    build_dfl_strict_failure_feature_audit_frame,
+    build_dfl_strict_failure_prior_feature_panel_frame,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -312,6 +316,20 @@ class DflStrictFailureSelectorRobustnessAssetConfig(dg.Config):
     switch_threshold_grid_uah_csv: str = "0.0,50.0,100.0,200.0,400.0"
     min_robust_passing_windows: int = 3
     min_validation_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflStrictFailureFeatureAuditAssetConfig(dg.Config):
+    """Prior-window feature audit scope for strict-failure selector behavior."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    validation_window_count: int = 4
+    validation_anchor_count: int = 18
+    min_prior_anchors_before_window: int = 30
+    min_prior_anchor_count: int = 3
 
 
 @dg.asset(
@@ -1797,6 +1815,101 @@ def dfl_strict_failure_selector_robustness_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_strict_failure_prior_feature_panel_frame(
+    context,
+    config: DflStrictFailureFeatureAuditAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_strict_failure_selector_robustness_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    tenant_historical_net_load_silver: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only feature panel explaining strict-failure selector behavior."""
+
+    tenant_ids = _csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv")
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    feature_panel = build_dfl_strict_failure_prior_feature_panel_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_strict_failure_selector_robustness_frame,
+        real_data_benchmark_silver_feature_frame,
+        tenant_historical_net_load_silver,
+        tenant_ids=tenant_ids,
+        forecast_model_names=source_model_names,
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        min_prior_anchor_count=config.min_prior_anchor_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": feature_panel.height,
+            "tenant_count": feature_panel.select("tenant_id").n_unique()
+            if feature_panel.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "validation_window_count": config.validation_window_count,
+            "validation_anchor_count": config.validation_anchor_count,
+            "scope": "strict_failure_prior_feature_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return feature_panel
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_strict_failure_feature_audit_frame(
+    context,
+    dfl_strict_failure_prior_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Deterministic feature-cluster audit for strict-failure selector outcomes."""
+
+    audit_frame = build_dfl_strict_failure_feature_audit_frame(
+        dfl_strict_failure_prior_feature_panel_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "tenant_count": audit_frame.select("tenant_id").n_unique()
+            if audit_frame.height
+            else 0,
+            "source_model_count": audit_frame.select("source_model_name").n_unique()
+            if audit_frame.height
+            else 0,
+            "window_count": audit_frame.select("window_index").n_unique()
+            if audit_frame.height
+            else 0,
+            "failure_clusters": sorted(audit_frame["failure_cluster"].unique().to_list())
+            if audit_frame.height
+            else [],
+            "scope": "strict_failure_feature_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -2114,6 +2227,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_strict_failure_selector_frame,
     dfl_strict_failure_selector_strict_lp_benchmark_frame,
     dfl_strict_failure_selector_robustness_frame,
+    dfl_strict_failure_prior_feature_panel_frame,
+    dfl_strict_failure_feature_audit_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
