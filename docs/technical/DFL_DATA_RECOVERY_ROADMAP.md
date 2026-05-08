@@ -286,6 +286,27 @@ Semantic AFE event context:
   The asset check passed, so the path is valid, but the current event coverage
   is not enough to explain or improve selector behavior.
 
+AFL forecast error audit:
+
+- New helper: `smart_arbitrage.forecasting.afl_error_audit`.
+- New asset: `afl_forecast_error_audit_frame`.
+- New asset check: `afl_forecast_error_audit_evidence`.
+- Config:
+  [real_data_afl_forecast_error_audit_week3.yaml](../../configs/real_data_afl_forecast_error_audit_week3.yaml).
+- Purpose: classify compact NBEATSx/TFT errors into spread-shape,
+  rank/extrema, LP-value, and weather/load context gaps before serious official
+  training or DFL loss work.
+- Tracked note:
+  [DFL_AFL_FORECAST_ERROR_AUDIT.md](DFL_AFL_FORECAST_ERROR_AUDIT.md).
+- Boundary: no new neural training, no Decision Transformer expansion, and no
+  market-execution claim.
+- Materialized result, 2026-05-09: 20 audit rows over 1,040 AFL panel rows.
+  Mean LP-value failure is 70.22%, mean rank/extrema failure is 50.65%, and
+  mean spread-shape failure is 36.67%. Weather/load regime context is still
+  unavailable in the AFL panel, so the next feature slice should expose
+  tenant/weather/load context as prior-only `feature_*` columns before serious
+  DFL loss work.
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:

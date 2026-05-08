@@ -1140,6 +1140,46 @@ Tracked notes:
 [AFE_TO_AFL_TO_DFL_ROADMAP.md](AFE_TO_AFL_TO_DFL_ROADMAP.md) and
 [AFE_SEMANTIC_EVENT_CONTEXT.md](AFE_SEMANTIC_EVENT_CONTEXT.md).
 
+## AFL Forecast Error Audit
+
+The next AFL slice classifies compact NBEATSx/TFT forecast failures before
+official training or DFL loss work.
+
+Implementation:
+
+- New helper: `smart_arbitrage.forecasting.afl_error_audit`.
+- New asset: `afl_forecast_error_audit_frame`.
+- New asset check: `afl_forecast_error_audit_evidence`.
+- Run config:
+  [../../configs/real_data_afl_forecast_error_audit_week3.yaml](../../configs/real_data_afl_forecast_error_audit_week3.yaml).
+- Official training readiness config:
+  [../../configs/real_data_official_forecast_training_readiness_week3.yaml](../../configs/real_data_official_forecast_training_readiness_week3.yaml).
+
+Protocol:
+
+- Use `forecast_candidate_forensics_frame` and `afl_training_panel_frame`.
+- Diagnose spread-shape, rank/extrema, LP-value, and weather/load context gaps.
+- Keep `selector_feature_columns_csv` free of realized `label_*` columns.
+- Do not train full DFL, expand Decision Transformer control, or promote any
+  candidate without strict LP/oracle evidence.
+
+Tracked note:
+[DFL_AFL_FORECAST_ERROR_AUDIT.md](DFL_AFL_FORECAST_ERROR_AUDIT.md).
+
+Materialized result, 2026-05-09:
+
+- Downstream AFL audit materialized from the latest stored benchmark frame, and
+  `afl_forecast_error_audit_evidence` passed.
+- The audit covered 20 rows, 5 tenants, 2 compact source models, and 1,040 AFL
+  panel rows.
+- Mean LP-value failure is 70.22%, mean rank/extrema failure is 50.65%, and
+  mean spread-shape failure is 36.67%.
+- Weather/load context is not yet available as prior-only AFL features, so it
+  cannot explain forecast failures yet.
+- Next research step: add weather/load context to the AFL feature panel, then
+  run serious official NBEATSx/TFT forecasts through the same audit and strict
+  LP/oracle gate before DFL loss v1.
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

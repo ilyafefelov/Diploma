@@ -38,6 +38,7 @@ Two hardening decisions are now explicit:
 |---|---|
 | `forecast_candidate_forensics_frame` | Labels forecast candidates as frozen control, compact Silver candidate, official backend readiness, or unclassified research candidate. |
 | `afl_training_panel_frame` | Builds a sidecar AFL panel with prior-only `feature_*` columns and realized `label_*` decision-value columns. |
+| `afl_forecast_error_audit_frame` | Classifies compact NBEATSx/TFT failures before official training or DFL loss work. |
 
 Config:
 [real_data_afl_hardening_week3.yaml](../../configs/real_data_afl_hardening_week3.yaml).
@@ -83,3 +84,15 @@ Use this panel before full DFL to answer:
 
 Promotion still belongs to the strict LP/oracle gate against
 `strict_similar_day`.
+
+## Forecast Error Audit Slice
+
+The follow-up audit is tracked in
+[DFL_AFL_FORECAST_ERROR_AUDIT.md](DFL_AFL_FORECAST_ERROR_AUDIT.md).
+
+It adds `afl_forecast_error_audit_frame` and
+`afl_forecast_error_audit_evidence`. The check keeps claim flags conservative
+and verifies that selector feature columns do not include realized `label_*`
+columns. The output decides whether the next technical step should be official
+NBEATSx/TFT training, richer AFE/AFL features, or a relaxed decision-regret DFL
+loss.

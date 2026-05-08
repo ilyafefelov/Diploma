@@ -60,6 +60,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_semantic_event_strict_failure_audit_frame",
             "dfl_semantic_event_strict_failure_audit_evidence",
         ),
+        (
+            "afl_forecast_error_audit_frame",
+            "afl_forecast_error_audit_evidence",
+        ),
     }
 
     check_keys = {

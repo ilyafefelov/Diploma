@@ -1,0 +1,23 @@
+# Readiness config for a future serious CPU-safe official NBEATSx/TFT run.
+#
+# This file intentionally does not change the official adapter defaults yet.
+# The current slice first materializes AFL failure evidence. The next code slice
+# can add Dagster config plumbing for these intended settings if the audit shows
+# official forecast quality is the bottleneck.
+#
+# Intended official settings:
+# - nbeatsx_official_v0: deterministic seed, max_steps above smoke default,
+#   early stopping when supported by the NeuralForecast backend.
+# - tft_official_v0: deterministic seed, small hidden size, 10-30 CPU epochs,
+#   no production promotion without strict LP/oracle scoring.
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"

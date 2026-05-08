@@ -111,6 +111,9 @@ from smart_arbitrage.forecasting.afl import (
     build_afl_training_panel_frame,
     build_forecast_candidate_forensics_frame,
 )
+from smart_arbitrage.forecasting.afl_error_audit import (
+    build_afl_forecast_error_audit_frame,
+)
 from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
 from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
 from smart_arbitrage.dfl.semantic_event_failure_audit import (
@@ -368,6 +371,14 @@ class AflTrainingPanelAssetConfig(dg.Config):
     """Arbitrage-focused forecast-learning panel scope."""
 
     final_holdout_anchor_count_per_tenant: int = 18
+
+
+class AflForecastErrorAuditAssetConfig(dg.Config):
+    """AFL forecast failure classification thresholds."""
+
+    spread_shape_failure_threshold_ratio: float = 0.25
+    rank_extrema_failure_threshold: float = 0.5
+    lp_value_failure_margin_uah: float = 0.0
 
 
 @dg.asset(
@@ -650,6 +661,64 @@ def afl_training_panel_frame(
         },
     )
     return panel_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def afl_forecast_error_audit_frame(
+    context,
+    config: AflForecastErrorAuditAssetConfig,
+    forecast_candidate_forensics_frame: pl.DataFrame,
+    afl_training_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """AFL forecast-error audit before official training or DFL loss work."""
+
+    audit_frame = build_afl_forecast_error_audit_frame(
+        forecast_candidate_forensics_frame,
+        afl_training_panel_frame,
+        spread_shape_failure_threshold_ratio=config.spread_shape_failure_threshold_ratio,
+        rank_extrema_failure_threshold=config.rank_extrema_failure_threshold,
+        lp_value_failure_margin_uah=config.lp_value_failure_margin_uah,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "tenant_count": audit_frame.select("tenant_id").n_unique()
+            if audit_frame.height
+            else 0,
+            "model_count": audit_frame.select("forecast_model_name").n_unique()
+            if audit_frame.height
+            else 0,
+            "mean_lp_value_failure_rate": audit_frame.select(
+                "lp_value_failure_rate"
+            ).mean().item()
+            if audit_frame.height
+            else 0.0,
+            "mean_spread_shape_failure_rate": audit_frame.select(
+                "spread_shape_failure_rate"
+            ).mean().item()
+            if audit_frame.height
+            else 0.0,
+            "mean_rank_extrema_failure_rate": audit_frame.select(
+                "rank_extrema_failure_rate"
+            ).mean().item()
+            if audit_frame.height
+            else 0.0,
+            "scope": "afl_forecast_error_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
 
 
 @dg.asset(
@@ -2537,6 +2606,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_semantic_event_strict_failure_audit_frame,
     forecast_candidate_forensics_frame,
     afl_training_panel_frame,
+    afl_forecast_error_audit_frame,
     dfl_data_coverage_audit_frame,
     dfl_action_label_panel_frame,
     dfl_action_classifier_baseline_frame,

@@ -201,6 +201,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame",
         "forecast_afe_feature_catalog_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
+        "afl_forecast_error_audit_frame",
         "forecast_candidate_forensics_frame",
         "afl_training_panel_frame",
     }.issubset(asset_keys)
@@ -257,6 +258,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_afe_feature_catalog_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_semantic_event_strict_failure_audit_frame"] == "gold_dfl_training"
+    assert groups_by_key["afl_forecast_error_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_candidate_forensics_frame"] == "gold_dfl_training"
     assert groups_by_key["afl_training_panel_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -301,6 +303,7 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"] == "feature_engineering"
     assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["afl_forecast_error_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["afl_training_panel_frame"]["ml_stage"] == "training_data"
     assert (
@@ -321,6 +324,10 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["afl_forecast_error_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert "real_data_benchmark_silver_feature_frame" in deps_by_key[

@@ -34,6 +34,9 @@ from smart_arbitrage.dfl.strict_failure_feature_selector import (
 from smart_arbitrage.dfl.semantic_event_failure_audit import (
     validate_dfl_semantic_event_strict_failure_audit_evidence,
 )
+from smart_arbitrage.forecasting.afl_error_audit import (
+    validate_afl_forecast_error_audit_evidence,
+)
 
 
 @dg.asset_check(
@@ -188,6 +191,20 @@ def dfl_semantic_event_strict_failure_audit_evidence(
 
 
 @dg.asset_check(
+    asset="afl_forecast_error_audit_frame",
+    name="afl_forecast_error_audit_evidence",
+    description="Checks AFL forecast-error audit claim boundaries and selector-safe features.",
+)
+def afl_forecast_error_audit_evidence(
+    afl_forecast_error_audit_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_afl_forecast_error_audit_evidence(afl_forecast_error_audit_frame),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="horizon_regret_weighted_forecast_strategy_benchmark_frame",
     name="horizon_calibration_no_leakage_evidence",
     description="Checks horizon-aware calibration anchor coverage and prior-anchor metadata.",
@@ -247,6 +264,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_strict_failure_feature_audit_evidence,
     dfl_feature_aware_strict_failure_selector_evidence,
     dfl_semantic_event_strict_failure_audit_evidence,
+    afl_forecast_error_audit_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,
