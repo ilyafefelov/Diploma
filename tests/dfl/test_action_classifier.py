@@ -7,9 +7,12 @@ import pytest
 
 from smart_arbitrage.dfl.action_classifier import (
     DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+    DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
     action_classifier_model_name,
     build_dfl_action_classifier_baseline_frame,
     build_dfl_action_classifier_strict_lp_benchmark_frame,
+    build_dfl_value_aware_action_classifier_strict_lp_benchmark_frame,
+    value_aware_action_classifier_model_name,
 )
 
 
@@ -171,6 +174,78 @@ def test_action_classifier_strict_lp_projection_rejects_missing_benchmark_rows()
         build_dfl_action_classifier_strict_lp_benchmark_frame(frame, benchmark)
 
 
+def test_value_aware_action_classifier_weights_high_value_training_labels() -> None:
+    frame = _value_weighted_action_label_frame()
+    benchmark = _benchmark_frame_for_action_labels(frame)
+
+    plain = build_dfl_action_classifier_strict_lp_benchmark_frame(
+        frame,
+        benchmark,
+        generated_at=GENERATED_AT,
+    )
+    value_aware = build_dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+        frame,
+        benchmark,
+        value_weight_scale_uah=100.0,
+        generated_at=GENERATED_AT,
+    )
+
+    final_anchor = FIRST_ANCHOR + timedelta(days=4)
+    plain_candidate = _projection_row(
+        plain,
+        forecast_model_name=action_classifier_model_name(MODELS[0]),
+        anchor_timestamp=final_anchor,
+    )
+    value_candidate = _projection_row(
+        value_aware,
+        forecast_model_name=value_aware_action_classifier_model_name(MODELS[0]),
+        anchor_timestamp=final_anchor,
+    )
+
+    assert plain_candidate["evaluation_payload"]["predicted_action_labels"][0] == "hold"
+    assert value_candidate["evaluation_payload"]["predicted_action_labels"][0] == "charge"
+    assert value_candidate["strategy_kind"] == DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND
+    assert value_candidate["evaluation_payload"]["value_weight_scale_uah"] == 100.0
+    assert value_candidate["evaluation_payload"]["uses_final_holdout_for_training"] is False
+
+
+def test_value_aware_action_classifier_does_not_train_on_final_holdout_actuals() -> None:
+    frame = _value_weighted_action_label_frame()
+    mutated = _replace_final_holdout_actuals(
+        frame,
+        actual_price_vector_uah_mwh=[5000.0, 1500.0, 500.0],
+        oracle_net_value_uah=2500.0,
+    )
+    benchmark = _benchmark_frame_for_action_labels(frame)
+
+    base = build_dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+        frame,
+        benchmark,
+        value_weight_scale_uah=100.0,
+        generated_at=GENERATED_AT,
+    )
+    changed = build_dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+        mutated,
+        benchmark,
+        value_weight_scale_uah=100.0,
+        generated_at=GENERATED_AT,
+    )
+
+    candidate_name = value_aware_action_classifier_model_name(MODELS[0])
+    base_row = base.filter(pl.col("forecast_model_name") == candidate_name).row(0, named=True)
+    changed_row = changed.filter(pl.col("forecast_model_name") == candidate_name).row(0, named=True)
+
+    assert (
+        base_row["evaluation_payload"]["predicted_action_labels"]
+        == changed_row["evaluation_payload"]["predicted_action_labels"]
+    )
+    assert (
+        base_row["evaluation_payload"]["projected_signed_dispatch_vector_mw"]
+        == changed_row["evaluation_payload"]["projected_signed_dispatch_vector_mw"]
+    )
+    assert base_row["decision_value_uah"] != changed_row["decision_value_uah"]
+
+
 def _summary_row(result: pl.DataFrame, *, split_name: str, forecast_model_name: str) -> dict[str, object]:
     return result.filter(
         (pl.col("split_name") == split_name)
@@ -267,6 +342,40 @@ def _replace_final_holdout_actuals(frame: pl.DataFrame, **updates: object) -> pl
     for row in frame.iter_rows(named=True):
         updated_rows.append({**row, **updates} if row["split_name"] == "final_holdout" else row)
     return pl.DataFrame(updated_rows)
+
+
+def _value_weighted_action_label_frame() -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for row in _action_label_frame(anchor_count=6).iter_rows(named=True):
+        anchor = row["anchor_timestamp"]
+        if not isinstance(anchor, datetime):
+            raise TypeError("anchor_timestamp must be a datetime in test data")
+        anchor_index = (anchor - FIRST_ANCHOR).days
+        if row["split_name"] == "train_selection" and anchor_index % 2 == 0:
+            rows.append(
+                {
+                    **row,
+                    "candidate_regret_uah": 900.0,
+                    "strict_baseline_regret_uah": 100.0,
+                    "strict_baseline_net_value_uah": 100.0,
+                    "oracle_net_value_uah": 2000.0,
+                }
+            )
+        else:
+            rows.append(row)
+    return pl.DataFrame(rows)
+
+
+def _projection_row(
+    result: pl.DataFrame,
+    *,
+    forecast_model_name: str,
+    anchor_timestamp: datetime,
+) -> dict[str, object]:
+    return result.filter(
+        (pl.col("forecast_model_name") == forecast_model_name)
+        & (pl.col("anchor_timestamp") == anchor_timestamp)
+    ).row(0, named=True)
 
 
 def _benchmark_frame_for_action_labels(action_label_frame: pl.DataFrame) -> pl.DataFrame:

@@ -54,8 +54,10 @@ from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 from smart_arbitrage.dfl.training_examples import build_dfl_training_example_frame
 from smart_arbitrage.dfl.action_classifier import (
     DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+    DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
     build_dfl_action_classifier_baseline_frame,
     build_dfl_action_classifier_strict_lp_benchmark_frame,
+    build_dfl_value_aware_action_classifier_strict_lp_benchmark_frame,
 )
 from smart_arbitrage.dfl.data_expansion import (
     build_dfl_action_label_panel_frame,
@@ -102,6 +104,13 @@ class DflActionClassifierStrictLpProjectionAssetConfig(dg.Config):
     """Strict LP projection scope for the supervised action classifier baseline."""
 
     baseline_name: str = "dfl_action_classifier_v0"
+
+
+class DflValueAwareActionClassifierStrictLpProjectionAssetConfig(dg.Config):
+    """Strict LP projection scope for the value-aware action classifier baseline."""
+
+    baseline_name: str = "dfl_value_aware_action_classifier_v1"
+    value_weight_scale_uah: float = 500.0
 
 
 class RegretWeightedDflPilotAssetConfig(dg.Config):
@@ -499,6 +508,58 @@ def dfl_action_classifier_strict_lp_benchmark_frame(
             else None,
             "strategy_kind": DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
             "scope": "dfl_action_classifier_strict_lp_projection_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+    context,
+    config: DflValueAwareActionClassifierStrictLpProjectionAssetConfig,
+    dfl_action_label_panel_frame: pl.DataFrame,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle value check for value-weighted supervised action labels."""
+
+    strict_frame = build_dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+        dfl_action_label_panel_frame,
+        real_data_rolling_origin_benchmark_frame,
+        baseline_name=config.baseline_name,
+        value_weight_scale_uah=config.value_weight_scale_uah,
+        generated_at=_latest_generated_at(dfl_action_label_panel_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    candidate_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with(f"{config.baseline_name}_")
+    )
+    strict_rows = strict_frame.filter(pl.col("forecast_model_name") == "strict_similar_day")
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "candidate_rows": candidate_rows.height,
+            "strict_control_rows": strict_rows.height,
+            "value_weight_scale_uah": config.value_weight_scale_uah,
+            "mean_candidate_regret_uah": candidate_rows.select("regret_uah").mean().item()
+            if candidate_rows.height
+            else None,
+            "mean_strict_regret_uah": strict_rows.select("regret_uah").mean().item()
+            if strict_rows.height
+            else None,
+            "strategy_kind": DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+            "scope": "dfl_value_aware_action_classifier_strict_lp_projection_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -1242,6 +1303,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_action_label_panel_frame,
     dfl_action_classifier_baseline_frame,
     dfl_action_classifier_strict_lp_benchmark_frame,
+    dfl_value_aware_action_classifier_strict_lp_benchmark_frame,
     regret_weighted_dfl_pilot_frame,
     dfl_relaxed_lp_pilot_frame,
     offline_dfl_experiment_frame,

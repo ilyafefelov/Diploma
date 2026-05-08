@@ -6,6 +6,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DFL_RESEARCH_GOLD_ASSETS,
     DflActionClassifierBaselineAssetConfig,
     DflActionClassifierStrictLpProjectionAssetConfig,
+    DflValueAwareActionClassifierStrictLpProjectionAssetConfig,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
@@ -21,6 +22,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     calibrated_value_aware_ensemble_frame,
     dfl_action_classifier_baseline_frame,
     dfl_action_classifier_strict_lp_benchmark_frame,
+    dfl_value_aware_action_classifier_strict_lp_benchmark_frame,
     dfl_training_frame,
     dfl_action_label_panel_frame,
     dfl_data_coverage_audit_frame,
@@ -139,6 +141,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_action_label_panel_frame",
         "dfl_action_classifier_baseline_frame",
         "dfl_action_classifier_strict_lp_benchmark_frame",
+        "dfl_value_aware_action_classifier_strict_lp_benchmark_frame",
         "regret_weighted_dfl_pilot_frame",
         "regret_weighted_forecast_calibration_frame",
         "regret_weighted_forecast_strategy_benchmark_frame",
@@ -175,6 +178,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_action_label_panel_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_classifier_baseline_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_classifier_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_strict_lp_benchmark_frame"] == "gold_dfl_training"
@@ -204,6 +208,11 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_action_classifier_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
         tags_by_key["dfl_action_classifier_strict_lp_benchmark_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
@@ -267,6 +276,12 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         DflActionClassifierStrictLpProjectionAssetConfig(),
         action_labels,
         action_classifier,
+        benchmark,
+    )
+    value_aware_action_classifier_strict = dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+        None,
+        DflValueAwareActionClassifierStrictLpProjectionAssetConfig(value_weight_scale_uah=100.0),
+        action_labels,
         benchmark,
     )
     pilot = regret_weighted_dfl_pilot_frame(
@@ -419,7 +434,7 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     )
 
     assert ensemble.height == 5
-    assert strategy_store.evaluation_frame.height == 93
+    assert strategy_store.evaluation_frame.height == 97
     assert training.height == 20
     assert dfl_store.training_frame.height == 20
     assert training_examples.height == 15
@@ -439,6 +454,13 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "dfl_action_classifier_strict_lp_projection"
     ]
     assert "dfl_action_classifier_v0_tft_silver_v0" in action_classifier_strict[
+        "forecast_model_name"
+    ].unique().to_list()
+    assert value_aware_action_classifier_strict.height == 4
+    assert value_aware_action_classifier_strict.select("strategy_kind").to_series().unique().to_list() == [
+        "dfl_value_aware_action_classifier_strict_lp_projection"
+    ]
+    assert "dfl_value_aware_action_classifier_v1_tft_silver_v0" in value_aware_action_classifier_strict[
         "forecast_model_name"
     ].unique().to_list()
     assert pilot.height == 1

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable, Mapping
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -17,6 +17,7 @@ from smart_arbitrage.strategy.forecast_strategy_evaluation import tenant_battery
 
 ALL_SOURCE_MODELS: Final = "all_source_models"
 DEFAULT_BASELINE_NAME: Final = "dfl_action_classifier_v0"
+DEFAULT_VALUE_AWARE_BASELINE_NAME: Final = "dfl_value_aware_action_classifier_v1"
 CLAIM_SCOPE: Final = "dfl_action_classifier_baseline_not_full_dfl"
 PROMOTION_STATUS: Final = "blocked_classification_only_no_strict_lp_value"
 DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND: Final = (
@@ -24,6 +25,12 @@ DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND: Final = (
 )
 DFL_ACTION_CLASSIFIER_STRICT_CLAIM_SCOPE: Final = (
     "dfl_action_classifier_strict_lp_projection_not_full_dfl"
+)
+DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND: Final = (
+    "dfl_value_aware_action_classifier_strict_lp_projection"
+)
+DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_CLAIM_SCOPE: Final = (
+    "dfl_value_aware_action_classifier_strict_lp_projection_not_full_dfl"
 )
 
 ACTION_LABELS: Final[tuple[str, ...]] = ("hold", "charge", "discharge")
@@ -74,6 +81,7 @@ class ActionExample:
     horizon_step_index: int
     rank_bin: str
     true_label: str
+    sample_weight: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -111,6 +119,16 @@ class ActionProjectionResult:
 
 def action_classifier_model_name(source_model_name: str, *, baseline_name: str = DEFAULT_BASELINE_NAME) -> str:
     """Return the strict projection candidate name for a source forecast model."""
+
+    return f"{baseline_name}_{source_model_name}"
+
+
+def value_aware_action_classifier_model_name(
+    source_model_name: str,
+    *,
+    baseline_name: str = DEFAULT_VALUE_AWARE_BASELINE_NAME,
+) -> str:
+    """Return the value-aware strict projection candidate name for a source model."""
 
     return f"{baseline_name}_{source_model_name}"
 
@@ -181,15 +199,83 @@ def build_dfl_action_classifier_strict_lp_benchmark_frame(
     scoring the projected dispatch value.
     """
 
+    return _build_action_classifier_strict_lp_benchmark_frame(
+        action_label_frame,
+        benchmark_frame,
+        baseline_name=baseline_name,
+        generated_at=generated_at,
+        value_weight_scale_uah=None,
+        model_name_factory=lambda source_model_name: action_classifier_model_name(
+            source_model_name,
+            baseline_name=baseline_name,
+        ),
+        strategy_kind=DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+        claim_scope=DFL_ACTION_CLASSIFIER_STRICT_CLAIM_SCOPE,
+        evaluation_id_namespace="dfl-action-classifier-strict",
+        projection_reason="dfl_action_classifier_strict_projection",
+        classifier_variant="plain_majority",
+    )
+
+
+def build_dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+    action_label_frame: pl.DataFrame,
+    benchmark_frame: pl.DataFrame,
+    *,
+    baseline_name: str = DEFAULT_VALUE_AWARE_BASELINE_NAME,
+    value_weight_scale_uah: float = 500.0,
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Project a value-weighted action learner to feasible dispatch and score holdout.
+
+    The fitted rules use only train-selection labels. Higher-opportunity rows
+    receive larger votes, but final-holdout rows remain scoring-only evidence.
+    """
+
+    return _build_action_classifier_strict_lp_benchmark_frame(
+        action_label_frame,
+        benchmark_frame,
+        baseline_name=baseline_name,
+        generated_at=generated_at,
+        value_weight_scale_uah=value_weight_scale_uah,
+        model_name_factory=lambda source_model_name: value_aware_action_classifier_model_name(
+            source_model_name,
+            baseline_name=baseline_name,
+        ),
+        strategy_kind=DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+        claim_scope=DFL_VALUE_AWARE_ACTION_CLASSIFIER_STRICT_CLAIM_SCOPE,
+        evaluation_id_namespace="dfl-value-aware-action-classifier-strict",
+        projection_reason="dfl_value_aware_action_classifier_strict_projection",
+        classifier_variant="value_aware_weighted_majority",
+    )
+
+
+def _build_action_classifier_strict_lp_benchmark_frame(
+    action_label_frame: pl.DataFrame,
+    benchmark_frame: pl.DataFrame,
+    *,
+    baseline_name: str,
+    generated_at: datetime | None,
+    value_weight_scale_uah: float | None,
+    model_name_factory: Callable[[str], str],
+    strategy_kind: str,
+    claim_scope: str,
+    evaluation_id_namespace: str,
+    projection_reason: str,
+    classifier_variant: str,
+) -> pl.DataFrame:
     _validate_action_label_frame(action_label_frame)
+    _validate_value_weight_scale(value_weight_scale_uah)
     _require_benchmark_columns(benchmark_frame)
     training_examples = [
         example
-        for example in _expand_action_examples(action_label_frame)
+        for example in _expand_action_examples(
+            action_label_frame,
+            value_weight_scale_uah=value_weight_scale_uah,
+        )
         if example.split_name == "train_selection"
     ]
     if not training_examples:
-        raise ValueError("dfl_action_classifier_v0 strict projection requires train_selection rows")
+        raise ValueError(f"{baseline_name} strict projection requires train_selection rows")
     fitted = _fit_majority_classifier(training_examples)
     benchmark_rows = _benchmark_rows_by_key(benchmark_frame)
     resolved_generated_at = generated_at or _latest_generated_at(benchmark_frame) or datetime.now(UTC)
@@ -217,14 +303,23 @@ def build_dfl_action_classifier_strict_lp_benchmark_frame(
             action_row=action_row,
             source_benchmark_row=source_benchmark_row,
             fitted=fitted,
-            baseline_name=baseline_name,
+            classifier_model_name=model_name_factory(source_model_name),
             generated_at=resolved_generated_at,
             battery_metrics=tenant_defaults.metrics,
+            strategy_kind=strategy_kind,
+            claim_scope=claim_scope,
+            evaluation_id_namespace=evaluation_id_namespace,
+            projection_reason=projection_reason,
+            classifier_variant=classifier_variant,
+            value_weight_scale_uah=value_weight_scale_uah,
         )
         strict_row = _strict_control_row(
             action_row=action_row,
             source_benchmark_row=source_benchmark_row,
             generated_at=resolved_generated_at,
+            strategy_kind=strategy_kind,
+            claim_scope=claim_scope,
+            evaluation_id_namespace=evaluation_id_namespace,
         )
         ranked_rows = sorted(
             [candidate_row, strict_row],
@@ -279,9 +374,33 @@ def _require_benchmark_columns(frame: pl.DataFrame) -> None:
         raise ValueError("benchmark_frame is missing required columns: " + ", ".join(missing_columns))
 
 
-def _expand_action_examples(frame: pl.DataFrame) -> list[ActionExample]:
+def _validate_value_weight_scale(value_weight_scale_uah: float | None) -> None:
+    if value_weight_scale_uah is not None and value_weight_scale_uah <= 0.0:
+        raise ValueError("value_weight_scale_uah must be positive")
+
+
+def _value_aware_row_weight(row: dict[str, Any], value_weight_scale_uah: float | None) -> float:
+    if value_weight_scale_uah is None:
+        return 1.0
+    candidate_gap_uah = max(
+        0.0,
+        float(row["candidate_regret_uah"]) - float(row["strict_baseline_regret_uah"]),
+    )
+    strict_opportunity_uah = max(
+        0.0,
+        float(row["oracle_net_value_uah"]) - float(row["strict_baseline_net_value_uah"]),
+    )
+    return 1.0 + ((candidate_gap_uah + strict_opportunity_uah) / value_weight_scale_uah)
+
+
+def _expand_action_examples(
+    frame: pl.DataFrame,
+    *,
+    value_weight_scale_uah: float | None = None,
+) -> list[ActionExample]:
     examples: list[ActionExample] = []
     for row in frame.iter_rows(named=True):
+        sample_weight = _value_aware_row_weight(row, value_weight_scale_uah)
         horizon_hours = _positive_int(row["horizon_hours"], field_name="horizon_hours")
         forecast_prices = _float_vector(
             row["forecast_price_vector_uah_mwh"],
@@ -319,9 +438,14 @@ def _expand_action_examples(frame: pl.DataFrame) -> list[ActionExample]:
                     horizon_step_index=step_index,
                     rank_bin=rank_bin,
                     true_label=true_label,
+                    sample_weight=sample_weight,
                 )
             )
     return examples
+
+
+def _empty_label_weights() -> dict[str, float]:
+    return {label: 0.0 for label in ACTION_LABELS}
 
 
 def _action_examples_from_row(row: dict[str, Any]) -> list[ActionExample]:
@@ -347,18 +471,18 @@ def _action_examples_from_row(row: dict[str, Any]) -> list[ActionExample]:
 
 
 def _fit_majority_classifier(examples: list[ActionExample]) -> FittedActionClassifier:
-    rule_counts: dict[tuple[str, int, str], Counter[str]] = defaultdict(Counter)
-    model_counts: dict[str, Counter[str]] = defaultdict(Counter)
-    global_counts: Counter[str] = Counter()
+    rule_counts: dict[tuple[str, int, str], dict[str, float]] = defaultdict(_empty_label_weights)
+    model_counts: dict[str, dict[str, float]] = defaultdict(_empty_label_weights)
+    global_counts = _empty_label_weights()
     for example in examples:
         key = (
             example.forecast_model_name,
             example.horizon_step_index,
             example.rank_bin,
         )
-        rule_counts[key][example.true_label] += 1
-        model_counts[example.forecast_model_name][example.true_label] += 1
-        global_counts[example.true_label] += 1
+        rule_counts[key][example.true_label] += example.sample_weight
+        model_counts[example.forecast_model_name][example.true_label] += example.sample_weight
+        global_counts[example.true_label] += example.sample_weight
     rules = {key: _majority_label(counts) for key, counts in rule_counts.items()}
     model_fallbacks = {model: _majority_label(counts) for model, counts in model_counts.items()}
     return FittedActionClassifier(
@@ -373,9 +497,15 @@ def _candidate_projection_row(
     action_row: dict[str, Any],
     source_benchmark_row: dict[str, Any],
     fitted: FittedActionClassifier,
-    baseline_name: str,
+    classifier_model_name: str,
     generated_at: datetime,
     battery_metrics: BatteryPhysicalMetrics,
+    strategy_kind: str,
+    claim_scope: str,
+    evaluation_id_namespace: str,
+    projection_reason: str,
+    classifier_variant: str,
+    value_weight_scale_uah: float | None,
 ) -> dict[str, object]:
     tenant_id = str(action_row["tenant_id"])
     source_model_name = str(action_row["forecast_model_name"])
@@ -395,22 +525,20 @@ def _candidate_projection_row(
         battery_metrics=battery_metrics,
         starting_soc_fraction=float(source_benchmark_row["starting_soc_fraction"]),
         anchor_timestamp=anchor_timestamp,
+        projection_reason=projection_reason,
     )
     oracle_value = float(action_row["oracle_net_value_uah"])
     regret_uah = max(0.0, oracle_value - projection.net_value_uah)
-    classifier_model_name = action_classifier_model_name(
-        source_model_name,
-        baseline_name=baseline_name,
-    )
     return {
         "evaluation_id": _projection_evaluation_id(
             tenant_id=tenant_id,
             source_model_name=source_model_name,
             anchor_timestamp=anchor_timestamp,
+            namespace=evaluation_id_namespace,
         ),
         "tenant_id": tenant_id,
         "forecast_model_name": classifier_model_name,
-        "strategy_kind": DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+        "strategy_kind": strategy_kind,
         "market_venue": LEVEL1_MARKET_VENUE,
         "anchor_timestamp": anchor_timestamp,
         "generated_at": generated_at,
@@ -433,6 +561,9 @@ def _candidate_projection_row(
             classifier_model_name=classifier_model_name,
             actual_prices=actual_prices,
             projection=projection,
+            claim_scope=claim_scope,
+            classifier_variant=classifier_variant,
+            value_weight_scale_uah=value_weight_scale_uah,
         ),
     }
 
@@ -442,6 +573,9 @@ def _strict_control_row(
     action_row: dict[str, Any],
     source_benchmark_row: dict[str, Any],
     generated_at: datetime,
+    strategy_kind: str,
+    claim_scope: str,
+    evaluation_id_namespace: str,
 ) -> dict[str, object]:
     tenant_id = str(action_row["tenant_id"])
     source_model_name = str(action_row["forecast_model_name"])
@@ -464,10 +598,11 @@ def _strict_control_row(
             tenant_id=tenant_id,
             source_model_name=source_model_name,
             anchor_timestamp=anchor_timestamp,
+            namespace=evaluation_id_namespace,
         ),
         "tenant_id": tenant_id,
         "forecast_model_name": "strict_similar_day",
-        "strategy_kind": DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+        "strategy_kind": strategy_kind,
         "market_venue": LEVEL1_MARKET_VENUE,
         "anchor_timestamp": anchor_timestamp,
         "generated_at": generated_at,
@@ -496,6 +631,7 @@ def _strict_control_row(
             action_row=action_row,
             source_model_name=source_model_name,
             signed_dispatch=signed_dispatch,
+            claim_scope=claim_scope,
         ),
     }
 
@@ -507,6 +643,7 @@ def _project_action_labels_to_dispatch(
     battery_metrics: BatteryPhysicalMetrics,
     starting_soc_fraction: float,
     anchor_timestamp: datetime,
+    projection_reason: str = "dfl_action_classifier_strict_projection",
 ) -> ActionProjectionResult:
     if len(predicted_action_labels) != len(actual_prices):
         raise ValueError("predicted action labels and actual prices must have the same length")
@@ -573,7 +710,7 @@ def _project_action_labels_to_dispatch(
     committed_dispatch = _dispatch_command_from_net_power(
         interval_start=anchor_timestamp + timedelta(hours=1),
         net_power_mw=signed_dispatch[0],
-        reason="dfl_action_classifier_strict_projection",
+        reason=projection_reason,
     )
     return ActionProjectionResult(
         predicted_action_labels=list(predicted_action_labels),
@@ -598,19 +735,23 @@ def _candidate_projection_payload(
     classifier_model_name: str,
     actual_prices: list[float],
     projection: ActionProjectionResult,
+    claim_scope: str,
+    classifier_variant: str,
+    value_weight_scale_uah: float | None,
 ) -> dict[str, object]:
     anchor_timestamp = _datetime_value(action_row["anchor_timestamp"])
-    return {
+    payload: dict[str, object] = {
         "data_quality_tier": str(action_row["data_quality_tier"]),
         "observed_coverage_ratio": float(action_row["observed_coverage_ratio"]),
         "source_forecast_model_name": source_model_name,
         "action_classifier_model_name": classifier_model_name,
+        "action_classifier_variant": classifier_variant,
         "projection_method": "action_mask_lp_projection",
         "predicted_action_labels": projection.predicted_action_labels,
         "projected_signed_dispatch_vector_mw": projection.signed_dispatch_vector_mw,
         "uses_final_holdout_for_training": False,
         "split_name": "final_holdout",
-        "claim_scope": DFL_ACTION_CLASSIFIER_STRICT_CLAIM_SCOPE,
+        "claim_scope": claim_scope,
         "not_full_dfl": True,
         "not_market_execution": True,
         "horizon": [
@@ -629,6 +770,10 @@ def _candidate_projection_payload(
             for step_index, actual_price in enumerate(actual_prices)
         ],
     }
+    if value_weight_scale_uah is not None:
+        payload["value_weight_scale_uah"] = value_weight_scale_uah
+        payload["weighting_method"] = "1_plus_candidate_gap_and_strict_opportunity_over_scale"
+    return payload
 
 
 def _strict_control_payload(
@@ -636,6 +781,7 @@ def _strict_control_payload(
     action_row: dict[str, Any],
     source_model_name: str,
     signed_dispatch: list[float],
+    claim_scope: str,
 ) -> dict[str, object]:
     actual_prices = _float_vector(
         action_row["actual_price_vector_uah_mwh"],
@@ -649,7 +795,7 @@ def _strict_control_payload(
         "source_forecast_model_name": source_model_name,
         "projection_method": "strict_similar_day_lp_from_benchmark",
         "split_name": "final_holdout",
-        "claim_scope": DFL_ACTION_CLASSIFIER_STRICT_CLAIM_SCOPE,
+        "claim_scope": claim_scope,
         "not_full_dfl": True,
         "not_market_execution": True,
         "horizon": [
@@ -757,10 +903,13 @@ def _classification_metrics(true_labels: list[str], predictions: list[str]) -> d
     }
 
 
-def _majority_label(counts: Counter[str]) -> str:
+def _majority_label(counts: Mapping[str, float]) -> str:
     if not counts:
         return "hold"
-    return max(ACTION_LABELS, key=lambda label: (counts[label], -ACTION_LABELS.index(label)))
+    return max(
+        ACTION_LABELS,
+        key=lambda label: (counts.get(label, 0.0), -ACTION_LABELS.index(label)),
+    )
 
 
 def _rank_bins(values: list[float]) -> list[str]:
@@ -865,9 +1014,10 @@ def _projection_evaluation_id(
     tenant_id: str,
     source_model_name: str,
     anchor_timestamp: datetime,
+    namespace: str = "dfl-action-classifier-strict",
 ) -> str:
     return (
-        f"{tenant_id}:dfl-action-classifier-strict:{source_model_name}:"
+        f"{tenant_id}:{namespace}:{source_model_name}:"
         f"{anchor_timestamp.strftime('%Y%m%dT%H%M')}"
     )
 
