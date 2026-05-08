@@ -1,0 +1,173 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+import polars as pl
+import pytest
+
+from smart_arbitrage.dfl.action_classifier import build_dfl_action_classifier_baseline_frame
+
+
+TENANTS: tuple[str, ...] = ("client_003_dnipro_factory", "client_004_kharkiv_hospital")
+MODELS: tuple[str, ...] = ("tft_silver_v0", "nbeatsx_silver_v0")
+FIRST_ANCHOR = datetime(2026, 1, 8, 23)
+GENERATED_AT = datetime(2026, 5, 8, 8)
+
+
+def test_action_classifier_trains_on_train_selection_and_scores_holdout() -> None:
+    frame = _action_label_frame(anchor_count=6)
+
+    result = build_dfl_action_classifier_baseline_frame(frame)
+
+    holdout = _summary_row(result, split_name="final_holdout", forecast_model_name="all_source_models")
+    train = _summary_row(result, split_name="train_selection", forecast_model_name="all_source_models")
+
+    assert result.height == 6
+    assert train["action_label_row_count"] == 16
+    assert train["label_hour_count"] == 48
+    assert holdout["action_label_row_count"] == 8
+    assert holdout["label_hour_count"] == 24
+    assert holdout["uses_final_holdout_for_training"] is False
+    assert holdout["training_action_label_rows"] == 16
+    assert holdout["trained_rule_count"] > 0
+    assert 0.0 <= holdout["accuracy"] <= 1.0
+    assert 0.0 <= holdout["macro_f1"] <= 1.0
+    assert holdout["promotion_status"] == "blocked_classification_only_no_strict_lp_value"
+    assert holdout["not_full_dfl"] is True
+    assert holdout["not_market_execution"] is True
+
+
+def test_action_classifier_final_holdout_mutation_does_not_change_training_summary() -> None:
+    frame = _action_label_frame(anchor_count=6)
+    mutated_holdout = frame.with_columns(
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit([1, 0, 0]))
+        .otherwise(pl.col("target_charge_mask"))
+        .alias("target_charge_mask"),
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit([0, 0, 0]))
+        .otherwise(pl.col("target_discharge_mask"))
+        .alias("target_discharge_mask"),
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit([0, 1, 1]))
+        .otherwise(pl.col("target_hold_mask"))
+        .alias("target_hold_mask"),
+    )
+
+    original = build_dfl_action_classifier_baseline_frame(frame)
+    mutated = build_dfl_action_classifier_baseline_frame(mutated_holdout)
+
+    original_train = _summary_row(original, split_name="train_selection", forecast_model_name="all_source_models")
+    mutated_train = _summary_row(mutated, split_name="train_selection", forecast_model_name="all_source_models")
+    original_holdout = _summary_row(original, split_name="final_holdout", forecast_model_name="all_source_models")
+    mutated_holdout_row = _summary_row(mutated, split_name="final_holdout", forecast_model_name="all_source_models")
+
+    assert mutated_train["accuracy"] == original_train["accuracy"]
+    assert mutated_train["trained_rule_count"] == original_train["trained_rule_count"]
+    assert mutated_train["training_action_label_rows"] == original_train["training_action_label_rows"]
+    assert mutated_holdout_row["accuracy"] != original_holdout["accuracy"]
+
+
+def test_action_classifier_rejects_invalid_training_inputs() -> None:
+    frame = _action_label_frame(anchor_count=6)
+    no_train = frame.filter(pl.col("split_name") == "final_holdout")
+    non_thesis = _replace_first_row(frame, data_quality_tier="demo_grade")
+    false_claim = _replace_first_row(frame, not_market_execution=False)
+
+    with pytest.raises(ValueError, match="train_selection"):
+        build_dfl_action_classifier_baseline_frame(no_train)
+    with pytest.raises(ValueError, match="thesis_grade"):
+        build_dfl_action_classifier_baseline_frame(non_thesis)
+    with pytest.raises(ValueError, match="not_market_execution"):
+        build_dfl_action_classifier_baseline_frame(false_claim)
+
+
+def _summary_row(result: pl.DataFrame, *, split_name: str, forecast_model_name: str) -> dict[str, object]:
+    return result.filter(
+        (pl.col("split_name") == split_name)
+        & (pl.col("forecast_model_name") == forecast_model_name)
+    ).row(0, named=True)
+
+
+def _action_label_frame(*, anchor_count: int) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for tenant_id in TENANTS:
+        for model_name in MODELS:
+            for anchor_index in range(anchor_count):
+                anchor = FIRST_ANCHOR + timedelta(days=anchor_index)
+                is_final_holdout = anchor_index >= anchor_count - 2
+                masks = _masks_for_anchor(anchor_index)
+                rows.append(
+                    {
+                        "action_label_id": f"{tenant_id}:{model_name}:{anchor:%Y%m%dT%H%M}",
+                        "tenant_id": tenant_id,
+                        "forecast_model_name": model_name,
+                        "anchor_timestamp": anchor,
+                        "split_name": "final_holdout" if is_final_holdout else "train_selection",
+                        "is_final_holdout": is_final_holdout,
+                        "horizon_hours": 3,
+                        "forecast_price_vector_uah_mwh": [
+                            900.0 + anchor_index,
+                            1200.0 + anchor_index,
+                            1500.0 + anchor_index,
+                        ],
+                        "actual_price_vector_uah_mwh": [
+                            950.0 + anchor_index,
+                            1250.0 + anchor_index,
+                            1550.0 + anchor_index,
+                        ],
+                        "candidate_signed_dispatch_vector_mw": [0.0, 0.0, 0.0],
+                        "strict_baseline_signed_dispatch_vector_mw": [0.0, 0.0, 0.0],
+                        "oracle_signed_dispatch_vector_mw": _oracle_dispatch_for_masks(masks),
+                        "target_charge_mask": masks["charge"],
+                        "target_discharge_mask": masks["discharge"],
+                        "target_hold_mask": masks["hold"],
+                        "candidate_regret_uah": 120.0 + anchor_index,
+                        "strict_baseline_regret_uah": 80.0,
+                        "candidate_net_value_uah": 900.0,
+                        "strict_baseline_net_value_uah": 950.0,
+                        "oracle_net_value_uah": 1000.0,
+                        "candidate_safety_violation_count": 0,
+                        "strict_baseline_safety_violation_count": 0,
+                        "data_quality_tier": "thesis_grade",
+                        "observed_coverage_ratio": 1.0,
+                        "not_full_dfl": True,
+                        "not_market_execution": True,
+                        "generated_at": GENERATED_AT,
+                    }
+                )
+    return pl.DataFrame(rows)
+
+
+def _masks_for_anchor(anchor_index: int) -> dict[str, list[int]]:
+    if anchor_index % 2 == 0:
+        return {
+            "charge": [1, 0, 0],
+            "discharge": [0, 0, 1],
+            "hold": [0, 1, 0],
+        }
+    return {
+        "charge": [0, 0, 0],
+        "discharge": [0, 1, 1],
+        "hold": [1, 0, 0],
+    }
+
+
+def _oracle_dispatch_for_masks(masks: dict[str, list[int]]) -> list[float]:
+    dispatch: list[float] = []
+    for charge, discharge in zip(masks["charge"], masks["discharge"], strict=True):
+        if charge:
+            dispatch.append(-0.25)
+        elif discharge:
+            dispatch.append(0.25)
+        else:
+            dispatch.append(0.0)
+    return dispatch
+
+
+def _replace_first_row(frame: pl.DataFrame, **updates: object) -> pl.DataFrame:
+    rows = frame.iter_rows(named=True)
+    updated_rows: list[dict[str, object]] = []
+    for row_index, row in enumerate(rows):
+        updated_rows.append({**row, **updates} if row_index == 0 else row)
+    return pl.DataFrame(updated_rows)

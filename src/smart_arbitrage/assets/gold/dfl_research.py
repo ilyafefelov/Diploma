@@ -52,6 +52,7 @@ from smart_arbitrage.strategy.ensemble_gate import (
 from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 from smart_arbitrage.dfl.training_examples import build_dfl_training_example_frame
+from smart_arbitrage.dfl.action_classifier import build_dfl_action_classifier_baseline_frame
 from smart_arbitrage.dfl.data_expansion import (
     build_dfl_action_label_panel_frame,
     build_dfl_data_coverage_audit_frame,
@@ -85,6 +86,12 @@ class DflActionLabelPanelAssetConfig(dg.Config):
     )
     forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
     final_holdout_anchor_count_per_tenant: int = 18
+
+
+class DflActionClassifierBaselineAssetConfig(dg.Config):
+    """Transparent supervised action classifier baseline over DFL action labels."""
+
+    baseline_name: str = "dfl_action_classifier_v0"
 
 
 class RegretWeightedDflPilotAssetConfig(dg.Config):
@@ -387,6 +394,53 @@ def dfl_action_label_panel_frame(
         },
     )
     return action_label_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_action_classifier_baseline_frame(
+    context,
+    config: DflActionClassifierBaselineAssetConfig,
+    dfl_action_label_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Transparent supervised baseline for future DFL action-label training."""
+
+    classifier_frame = build_dfl_action_classifier_baseline_frame(
+        dfl_action_label_panel_frame,
+        baseline_name=config.baseline_name,
+    )
+    final_holdout_summary = classifier_frame.filter(
+        (pl.col("split_name") == "final_holdout")
+        & (pl.col("forecast_model_name") == "all_source_models")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": classifier_frame.height,
+            "baseline_name": config.baseline_name,
+            "final_holdout_accuracy": final_holdout_summary.select("accuracy").item()
+            if final_holdout_summary.height
+            else None,
+            "final_holdout_macro_f1": final_holdout_summary.select("macro_f1").item()
+            if final_holdout_summary.height
+            else None,
+            "promotion_status": final_holdout_summary.select("promotion_status").item()
+            if final_holdout_summary.height
+            else "blocked_classification_only_no_strict_lp_value",
+            "scope": "dfl_action_classifier_baseline_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return classifier_frame
 
 
 @dg.asset(
@@ -1124,6 +1178,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_training_example_frame,
     dfl_data_coverage_audit_frame,
     dfl_action_label_panel_frame,
+    dfl_action_classifier_baseline_frame,
     regret_weighted_dfl_pilot_frame,
     dfl_relaxed_lp_pilot_frame,
     offline_dfl_experiment_frame,

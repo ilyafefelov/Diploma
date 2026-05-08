@@ -4,6 +4,7 @@ import polars as pl
 
 from smart_arbitrage.assets.gold.dfl_research import (
     DFL_RESEARCH_GOLD_ASSETS,
+    DflActionClassifierBaselineAssetConfig,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
@@ -17,6 +18,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     RegretWeightedForecastCalibrationAssetConfig,
     RegretWeightedDflPilotAssetConfig,
     calibrated_value_aware_ensemble_frame,
+    dfl_action_classifier_baseline_frame,
     dfl_training_frame,
     dfl_action_label_panel_frame,
     dfl_data_coverage_audit_frame,
@@ -133,6 +135,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_training_example_frame",
         "dfl_data_coverage_audit_frame",
         "dfl_action_label_panel_frame",
+        "dfl_action_classifier_baseline_frame",
         "regret_weighted_dfl_pilot_frame",
         "regret_weighted_forecast_calibration_frame",
         "regret_weighted_forecast_strategy_benchmark_frame",
@@ -167,6 +170,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_training_example_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_data_coverage_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_label_panel_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_action_classifier_baseline_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_strict_lp_benchmark_frame"] == "gold_dfl_training"
@@ -188,6 +192,11 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_action_label_panel_frame"]["ml_stage"] == "training_data"
+    assert tags_by_key["dfl_action_classifier_baseline_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["dfl_action_classifier_baseline_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
     assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["horizon_regret_weighted_forecast_calibration_frame"] == "gold_calibration"
     assert groups_by_key["regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
@@ -238,6 +247,11 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         ),
         benchmark,
         coverage_audit,
+    )
+    action_classifier = dfl_action_classifier_baseline_frame(
+        None,
+        DflActionClassifierBaselineAssetConfig(),
+        action_labels,
     )
     pilot = regret_weighted_dfl_pilot_frame(
         None,
@@ -397,6 +411,13 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert coverage_audit.height == 1
     assert action_labels.height == 5
     assert dfl_store.action_label_frame.height == 5
+    assert action_classifier.height == 4
+    assert action_classifier.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_action_classifier_baseline_not_full_dfl"
+    ]
+    assert action_classifier.select("promotion_status").to_series().unique().to_list() == [
+        "blocked_classification_only_no_strict_lp_value"
+    ]
     assert pilot.height == 1
     assert dfl_store.pilot_frame.height == 1
     assert calibration.height == 10
