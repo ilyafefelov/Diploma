@@ -5,7 +5,12 @@ from datetime import datetime, timedelta
 import polars as pl
 import pytest
 
-from smart_arbitrage.dfl.action_classifier import build_dfl_action_classifier_baseline_frame
+from smart_arbitrage.dfl.action_classifier import (
+    DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND,
+    action_classifier_model_name,
+    build_dfl_action_classifier_baseline_frame,
+    build_dfl_action_classifier_strict_lp_benchmark_frame,
+)
 
 
 TENANTS: tuple[str, ...] = ("client_003_dnipro_factory", "client_004_kharkiv_hospital")
@@ -80,6 +85,90 @@ def test_action_classifier_rejects_invalid_training_inputs() -> None:
         build_dfl_action_classifier_baseline_frame(non_thesis)
     with pytest.raises(ValueError, match="not_market_execution"):
         build_dfl_action_classifier_baseline_frame(false_claim)
+
+
+def test_action_classifier_strict_lp_projection_scores_final_holdout_only() -> None:
+    frame = _action_label_frame(anchor_count=6)
+    benchmark = _benchmark_frame_for_action_labels(frame)
+
+    result = build_dfl_action_classifier_strict_lp_benchmark_frame(
+        frame,
+        benchmark,
+        generated_at=GENERATED_AT,
+    )
+
+    model_names = set(result.select("forecast_model_name").to_series().to_list())
+    candidate_name = action_classifier_model_name(MODELS[0])
+    candidate_row = result.filter(pl.col("forecast_model_name") == candidate_name).row(0, named=True)
+    payload = candidate_row["evaluation_payload"]
+
+    assert result.height == 16
+    assert result.filter(pl.col("forecast_model_name") == "strict_similar_day").height == 8
+    assert result.filter(pl.col("forecast_model_name").str.starts_with("dfl_action_classifier_v0_")).height == 8
+    assert model_names == {
+        "strict_similar_day",
+        action_classifier_model_name(MODELS[0]),
+        action_classifier_model_name(MODELS[1]),
+    }
+    assert result.select("strategy_kind").to_series().unique().to_list() == [
+        DFL_ACTION_CLASSIFIER_STRICT_LP_STRATEGY_KIND
+    ]
+    assert payload["source_forecast_model_name"] == MODELS[0]
+    assert payload["projection_method"] == "action_mask_lp_projection"
+    assert payload["uses_final_holdout_for_training"] is False
+    assert len(payload["predicted_action_labels"]) == candidate_row["horizon_hours"]
+    assert len(payload["projected_signed_dispatch_vector_mw"]) == candidate_row["horizon_hours"]
+    assert candidate_row["regret_uah"] == max(
+        0.0,
+        candidate_row["oracle_value_uah"] - candidate_row["decision_value_uah"],
+    )
+    assert candidate_row["evaluation_payload"]["not_full_dfl"] is True
+    assert candidate_row["evaluation_payload"]["not_market_execution"] is True
+
+
+def test_action_classifier_strict_lp_projection_does_not_train_on_final_holdout_actuals() -> None:
+    frame = _action_label_frame(anchor_count=6)
+    mutated = _replace_final_holdout_actuals(
+        frame,
+        actual_price_vector_uah_mwh=[5000.0, 1500.0, 500.0],
+        oracle_net_value_uah=2500.0,
+    )
+    benchmark = _benchmark_frame_for_action_labels(frame)
+
+    base = build_dfl_action_classifier_strict_lp_benchmark_frame(
+        frame,
+        benchmark,
+        generated_at=GENERATED_AT,
+    )
+    changed = build_dfl_action_classifier_strict_lp_benchmark_frame(
+        mutated,
+        benchmark,
+        generated_at=GENERATED_AT,
+    )
+
+    candidate_name = action_classifier_model_name(MODELS[0])
+    base_row = base.filter(pl.col("forecast_model_name") == candidate_name).row(0, named=True)
+    changed_row = changed.filter(pl.col("forecast_model_name") == candidate_name).row(0, named=True)
+
+    assert (
+        base_row["evaluation_payload"]["predicted_action_labels"]
+        == changed_row["evaluation_payload"]["predicted_action_labels"]
+    )
+    assert (
+        base_row["evaluation_payload"]["projected_signed_dispatch_vector_mw"]
+        == changed_row["evaluation_payload"]["projected_signed_dispatch_vector_mw"]
+    )
+    assert base_row["decision_value_uah"] != changed_row["decision_value_uah"]
+
+
+def test_action_classifier_strict_lp_projection_rejects_missing_benchmark_rows() -> None:
+    frame = _action_label_frame(anchor_count=6)
+    benchmark = _benchmark_frame_for_action_labels(frame).filter(
+        pl.col("forecast_model_name") != MODELS[0]
+    )
+
+    with pytest.raises(ValueError, match="missing benchmark row"):
+        build_dfl_action_classifier_strict_lp_benchmark_frame(frame, benchmark)
 
 
 def _summary_row(result: pl.DataFrame, *, split_name: str, forecast_model_name: str) -> dict[str, object]:
@@ -171,3 +260,83 @@ def _replace_first_row(frame: pl.DataFrame, **updates: object) -> pl.DataFrame:
     for row_index, row in enumerate(rows):
         updated_rows.append({**row, **updates} if row_index == 0 else row)
     return pl.DataFrame(updated_rows)
+
+
+def _replace_final_holdout_actuals(frame: pl.DataFrame, **updates: object) -> pl.DataFrame:
+    updated_rows: list[dict[str, object]] = []
+    for row in frame.iter_rows(named=True):
+        updated_rows.append({**row, **updates} if row["split_name"] == "final_holdout" else row)
+    return pl.DataFrame(updated_rows)
+
+
+def _benchmark_frame_for_action_labels(action_label_frame: pl.DataFrame) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    strict_seen: set[tuple[str, datetime]] = set()
+    for row in action_label_frame.iter_rows(named=True):
+        tenant_id = str(row["tenant_id"])
+        model_name = str(row["forecast_model_name"])
+        anchor = row["anchor_timestamp"]
+        if not isinstance(anchor, datetime):
+            raise TypeError("anchor_timestamp must be a datetime in test data")
+        strict_key = (tenant_id, anchor)
+        if strict_key not in strict_seen:
+            strict_seen.add(strict_key)
+            rows.append(
+                _benchmark_row(
+                    tenant_id=tenant_id,
+                    forecast_model_name="strict_similar_day",
+                    anchor_timestamp=anchor,
+                    decision_value_uah=float(row["strict_baseline_net_value_uah"]),
+                    oracle_value_uah=float(row["oracle_net_value_uah"]),
+                    regret_uah=float(row["strict_baseline_regret_uah"]),
+                )
+            )
+        rows.append(
+            _benchmark_row(
+                tenant_id=tenant_id,
+                forecast_model_name=model_name,
+                anchor_timestamp=anchor,
+                decision_value_uah=float(row["candidate_net_value_uah"]),
+                oracle_value_uah=float(row["oracle_net_value_uah"]),
+                regret_uah=float(row["candidate_regret_uah"]),
+            )
+        )
+    return pl.DataFrame(rows)
+
+
+def _benchmark_row(
+    *,
+    tenant_id: str,
+    forecast_model_name: str,
+    anchor_timestamp: datetime,
+    decision_value_uah: float,
+    oracle_value_uah: float,
+    regret_uah: float,
+) -> dict[str, object]:
+    return {
+        "evaluation_id": f"{tenant_id}:{forecast_model_name}:{anchor_timestamp:%Y%m%dT%H%M}",
+        "tenant_id": tenant_id,
+        "forecast_model_name": forecast_model_name,
+        "strategy_kind": "real_data_rolling_origin_benchmark",
+        "market_venue": "DAM",
+        "anchor_timestamp": anchor_timestamp,
+        "generated_at": GENERATED_AT,
+        "horizon_hours": 3,
+        "starting_soc_fraction": 0.5,
+        "starting_soc_source": "test_fixture",
+        "decision_value_uah": decision_value_uah,
+        "forecast_objective_value_uah": decision_value_uah,
+        "oracle_value_uah": oracle_value_uah,
+        "regret_uah": regret_uah,
+        "regret_ratio": regret_uah / abs(oracle_value_uah),
+        "total_degradation_penalty_uah": 0.0,
+        "total_throughput_mwh": 0.0,
+        "committed_action": "HOLD",
+        "committed_power_mw": 0.0,
+        "rank_by_regret": 1,
+        "evaluation_payload": {
+            "data_quality_tier": "thesis_grade",
+            "observed_coverage_ratio": 1.0,
+            "horizon": [],
+        },
+    }
