@@ -251,14 +251,27 @@ class PostgresStrategyEvaluationStore:
 def _append_or_replace(
     base_frame: pl.DataFrame, incoming_frame: pl.DataFrame, *, subset: list[str]
 ) -> pl.DataFrame:
+    normalized_incoming_frame = _normalize_in_memory_datetime_columns(incoming_frame)
     if incoming_frame.height == 0:
-        return base_frame
+        return _normalize_in_memory_datetime_columns(base_frame)
     if base_frame.height == 0:
-        return incoming_frame.clone()
-    return pl.concat([base_frame, incoming_frame], how="diagonal_relaxed").unique(
-        subset=subset,
-        keep="last",
-    )
+        return normalized_incoming_frame.clone()
+    normalized_base_frame = _normalize_in_memory_datetime_columns(base_frame)
+    return pl.concat(
+        [normalized_base_frame, normalized_incoming_frame],
+        how="diagonal_relaxed",
+    ).unique(subset=subset, keep="last")
+
+
+def _normalize_in_memory_datetime_columns(frame: pl.DataFrame) -> pl.DataFrame:
+    expressions = [
+        pl.col(column).dt.convert_time_zone("UTC").dt.replace_time_zone(None).alias(column)
+        for column, dtype in frame.schema.items()
+        if column in {"anchor_timestamp", "generated_at"} and isinstance(dtype, pl.Datetime)
+    ]
+    if not expressions:
+        return frame.clone()
+    return frame.with_columns(expressions)
 
 
 def _latest_tenant_frame(
