@@ -11,6 +11,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
     DflTrajectoryFeatureRankerAssetConfig,
+    DflStrictChallengerAssetConfig,
     OfflineDflTrajectoryValueSelectorAssetConfig,
     DflActionLabelPanelAssetConfig,
     DflDataCoverageAuditAssetConfig,
@@ -40,6 +41,10 @@ from smart_arbitrage.assets.gold.dfl_research import (
     dfl_schedule_candidate_library_frame,
     dfl_trajectory_feature_ranker_frame,
     dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
+    dfl_pipeline_integrity_audit_frame,
+    dfl_schedule_candidate_library_v2_frame,
+    dfl_non_strict_oracle_upper_bound_frame,
+    dfl_strict_baseline_autopsy_frame,
     dfl_trajectory_value_selector_frame,
     dfl_trajectory_value_selector_strict_lp_benchmark_frame,
     offline_dfl_decision_target_panel_frame,
@@ -175,6 +180,10 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_schedule_candidate_library_frame",
         "dfl_trajectory_feature_ranker_frame",
         "dfl_trajectory_feature_ranker_strict_lp_benchmark_frame",
+        "dfl_pipeline_integrity_audit_frame",
+        "dfl_schedule_candidate_library_v2_frame",
+        "dfl_non_strict_oracle_upper_bound_frame",
+        "dfl_strict_baseline_autopsy_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     tags_by_key = {
@@ -210,6 +219,10 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_schedule_candidate_library_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_trajectory_feature_ranker_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_pipeline_integrity_audit_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_schedule_candidate_library_v2_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_non_strict_oracle_upper_bound_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_strict_baseline_autopsy_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
     assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -236,6 +249,10 @@ def test_dfl_research_assets_are_registered() -> None:
         tags_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
+    assert tags_by_key["dfl_pipeline_integrity_audit_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["dfl_schedule_candidate_library_v2_frame"]["ml_stage"] == "training_data"
+    assert tags_by_key["dfl_non_strict_oracle_upper_bound_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_strict_baseline_autopsy_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_action_label_panel_frame"]["ml_stage"] == "training_data"
     assert tags_by_key["dfl_action_classifier_baseline_frame"]["ml_stage"] == "evaluation"
@@ -545,6 +562,27 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         schedule_library,
         trajectory_ranker,
     )
+    strict_challenger_config = DflStrictChallengerAssetConfig(
+        blend_weights_csv="0.5",
+        residual_min_prior_anchors=1,
+        min_final_holdout_tenant_anchor_count_per_source_model=1,
+    )
+    pipeline_audit = dfl_pipeline_integrity_audit_frame(None, benchmark, schedule_library)
+    schedule_library_v2 = dfl_schedule_candidate_library_v2_frame(
+        None,
+        strict_challenger_config,
+        schedule_library,
+    )
+    non_strict_upper_bound = dfl_non_strict_oracle_upper_bound_frame(
+        None,
+        strict_challenger_config,
+        schedule_library_v2,
+    )
+    strict_autopsy = dfl_strict_baseline_autopsy_frame(
+        None,
+        schedule_library_v2,
+        non_strict_upper_bound,
+    )
 
     assert ensemble.height == 5
     assert strategy_store.evaluation_frame.height == 109
@@ -676,6 +714,20 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert "dfl_trajectory_feature_ranker_v1_tft_silver_v0" in trajectory_ranker_strict[
         "forecast_model_name"
     ].unique().to_list()
+    assert pipeline_audit.height == 1
+    assert pipeline_audit.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_pipeline_integrity_audit_not_full_dfl"
+    ]
+    assert schedule_library_v2.height > schedule_library.height
+    assert "strict_raw_blend_v2" in schedule_library_v2["candidate_family"].unique().to_list()
+    assert non_strict_upper_bound.height >= 2
+    assert non_strict_upper_bound.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_non_strict_oracle_upper_bound_not_full_dfl"
+    ]
+    assert strict_autopsy.height == non_strict_upper_bound.height
+    assert strict_autopsy.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_strict_baseline_autopsy_not_full_dfl"
+    ]
 
 
 def test_trajectory_value_strict_asset_uses_fresh_generated_at(monkeypatch) -> None:

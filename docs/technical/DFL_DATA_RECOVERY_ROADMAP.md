@@ -130,6 +130,33 @@ Latest trajectory feature-ranker result:
 - Tracked note:
   [DFL_TRAJECTORY_FEATURE_RANKER.md](DFL_TRAJECTORY_FEATURE_RANKER.md).
 
+Latest strict-challenger diagnostic implementation:
+
+- New helper: `smart_arbitrage.dfl.strict_challenger`.
+- New assets: `dfl_pipeline_integrity_audit_frame`,
+  `dfl_schedule_candidate_library_v2_frame`,
+  `dfl_non_strict_oracle_upper_bound_frame`, and
+  `dfl_strict_baseline_autopsy_frame`.
+- New asset check: `dfl_non_strict_oracle_upper_bound_evidence`.
+- Config:
+  [real_data_dfl_strict_challenger_week3.yaml](../../configs/real_data_dfl_strict_challenger_week3.yaml).
+- Purpose: separate candidate-set adequacy from selector learnability. The
+  non-strict oracle upper bound answers whether any available non-strict
+  feasible schedule can beat `strict_similar_day` on final holdout.
+- Claim boundary: research-only, not full DFL, not Decision Transformer control,
+  and not market execution.
+- Latest run id: `48b9c0b4-9d12-4237-a436-549424956ac1`.
+- Result: the non-strict upper bound produced 180 final-holdout tenant/source
+  anchors and beat strict control on 146 rows. Best non-strict mean regret was
+  185.74 UAH versus 314.81 UAH for `strict_similar_day`.
+- Autopsy: 46 strict high-regret rows and 146 rows recommending a prior-only
+  strict-failure selector; zero rows recommended data/candidate expansion first.
+- Decision rule: if the non-strict upper bound loses, expand UA data coverage or
+  candidate generation before training another selector. If it wins on meaningful
+  slices, train a prior-only strict-failure selector.
+- Tracked note:
+  [DFL_STRICT_CHALLENGER_DIAGNOSTICS.md](DFL_STRICT_CHALLENGER_DIAGNOSTICS.md).
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:

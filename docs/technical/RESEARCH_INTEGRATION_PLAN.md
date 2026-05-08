@@ -813,6 +813,61 @@ Hugging Face source refresh:
 Tracked note:
 [DFL_TRAJECTORY_FEATURE_RANKER.md](DFL_TRAJECTORY_FEATURE_RANKER.md).
 
+## Strict Challenger Diagnostics
+
+The next slice turns the trajectory feature-ranker result into a falsifiable
+diagnostic: before training another selector, prove whether the candidate
+library contains any non-strict schedule that could beat the frozen
+`strict_similar_day` control.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.strict_challenger`.
+- New assets: `dfl_pipeline_integrity_audit_frame`,
+  `dfl_schedule_candidate_library_v2_frame`,
+  `dfl_non_strict_oracle_upper_bound_frame`, and
+  `dfl_strict_baseline_autopsy_frame`.
+- New asset check: `dfl_non_strict_oracle_upper_bound_evidence`.
+- Dagster group: `gold_dfl_training`.
+- Run config:
+  [../../configs/real_data_dfl_strict_challenger_week3.yaml](../../configs/real_data_dfl_strict_challenger_week3.yaml).
+
+The diagnostic separates candidate-set adequacy from selector learnability.
+`dfl_non_strict_oracle_upper_bound_frame` selects the best final-holdout
+non-strict candidate per tenant/source/anchor. If that upper bound still loses
+to `strict_similar_day`, the next work is UA data recovery or richer candidate
+generation, not another learner. If it wins on meaningful slices, the next model
+should be a prior-only strict-failure selector.
+
+Latest run:
+
+- Dagster run id: `48b9c0b4-9d12-4237-a436-549424956ac1`.
+- Scope: downstream-only materialization from the existing checked 104-anchor
+  upstream benchmark and schedule library.
+- Asset check: `dfl_non_strict_oracle_upper_bound_evidence` passed.
+- Pipeline audit: 1,560 benchmark rows, 6,780 existing candidate rows, 104
+  market anchors, 520 tenant anchors, zero leaky horizon rows, and zero ranker
+  feature overlap with actual-derived diagnostics.
+- Candidate library v2: 10,910 rows after adding strict/raw blends and
+  prior-only strict residual candidates.
+- Non-strict upper bound: 180 final-holdout tenant/source/anchor rows; 185.74
+  UAH best non-strict mean regret versus 314.81 UAH strict-control mean regret;
+  non-strict schedules beat strict on 146 of 180 rows.
+- Autopsy: 46 strict high-regret rows; 146 rows recommend training a prior-only
+  strict-failure selector; zero rows recommend data/candidate expansion first.
+
+Interpretation: the candidate set is no longer the immediate blocker. The next
+modeling slice should learn when to distrust the frozen strict control using
+prior-only evidence, then re-score the selected strategy under the same strict
+LP/oracle gate.
+
+This remains research evidence only: not full DFL, not Decision Transformer
+control, and not market execution. Production promotion still requires beating
+`strict_similar_day` under the conservative strict LP/oracle gate.
+
+Tracked note:
+[DFL_STRICT_CHALLENGER_DIAGNOSTICS.md](DFL_STRICT_CHALLENGER_DIAGNOSTICS.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

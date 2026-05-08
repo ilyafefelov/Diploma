@@ -16,6 +16,9 @@ from smart_arbitrage.evidence.quality_checks import (
 from smart_arbitrage.dfl.failure_analysis import (
     validate_dfl_action_classifier_failure_analysis_evidence,
 )
+from smart_arbitrage.dfl.strict_challenger import (
+    validate_dfl_non_strict_upper_bound_evidence,
+)
 
 
 @dg.asset_check(
@@ -74,6 +77,22 @@ def dfl_action_classifier_failure_analysis_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_non_strict_oracle_upper_bound_frame",
+    name="dfl_non_strict_oracle_upper_bound_evidence",
+    description="Checks whether non-strict schedule candidates can theoretically challenge strict control.",
+)
+def dfl_non_strict_oracle_upper_bound_evidence(
+    dfl_non_strict_oracle_upper_bound_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_non_strict_upper_bound_evidence(
+            dfl_non_strict_oracle_upper_bound_frame
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="horizon_regret_weighted_forecast_strategy_benchmark_frame",
     name="horizon_calibration_no_leakage_evidence",
     description="Checks horizon-aware calibration anchor coverage and prior-anchor metadata.",
@@ -127,6 +146,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_training_readiness_evidence,
     dfl_action_label_panel_readiness_evidence,
     dfl_action_classifier_failure_analysis_evidence,
+    dfl_non_strict_oracle_upper_bound_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,

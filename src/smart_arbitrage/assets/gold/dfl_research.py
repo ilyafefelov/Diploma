@@ -80,6 +80,13 @@ from smart_arbitrage.dfl.trajectory_ranker import (
     build_dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
     evaluate_dfl_trajectory_feature_ranker_gate,
 )
+from smart_arbitrage.dfl.strict_challenger import (
+    build_dfl_non_strict_oracle_upper_bound_frame as build_non_strict_oracle_upper_bound_frame,
+    build_dfl_pipeline_integrity_audit_frame as build_pipeline_integrity_audit_frame,
+    build_dfl_schedule_candidate_library_v2_frame as build_schedule_candidate_library_v2_frame,
+    build_dfl_strict_baseline_autopsy_frame as build_strict_baseline_autopsy_frame,
+    validate_dfl_non_strict_upper_bound_evidence,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -256,6 +263,14 @@ class DflTrajectoryFeatureRankerAssetConfig(dg.Config):
     final_validation_anchor_count_per_tenant: int = 18
     perturb_spread_scale_grid_csv: str = "0.9,1.1"
     perturb_mean_shift_grid_uah_mwh_csv: str = "-250.0,250.0"
+    min_final_holdout_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflStrictChallengerAssetConfig(dg.Config):
+    """Strict-control challenger diagnostics and candidate library scope."""
+
+    blend_weights_csv: str = "0.25,0.5,0.75"
+    residual_min_prior_anchors: int = 3
     min_final_holdout_tenant_anchor_count_per_source_model: int = 90
 
 
@@ -1397,6 +1412,176 @@ def dfl_trajectory_feature_ranker_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_pipeline_integrity_audit_frame(
+    context,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+    dfl_schedule_candidate_library_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Point-in-time and feature-boundary audit for strict-challenger DFL evidence."""
+
+    audit_frame = build_pipeline_integrity_audit_frame(
+        real_data_rolling_origin_benchmark_frame,
+        dfl_schedule_candidate_library_frame,
+    )
+    row = audit_frame.row(0, named=True) if audit_frame.height else {}
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "passed": bool(row.get("passed", False)),
+            "market_anchor_count": row.get("market_anchor_count", 0),
+            "tenant_anchor_count": row.get("tenant_anchor_count", 0),
+            "forbidden_ranker_feature_overlap_count": row.get(
+                "forbidden_ranker_feature_overlap_count",
+                0,
+            ),
+            "leaky_horizon_rows": row.get("leaky_horizon_rows", 0),
+            "scope": "dfl_pipeline_integrity_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_schedule_candidate_library_v2_frame(
+    context,
+    config: DflStrictChallengerAssetConfig,
+    dfl_schedule_candidate_library_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-control challenger schedule library with blend and prior-residual candidates."""
+
+    library_frame = build_schedule_candidate_library_v2_frame(
+        dfl_schedule_candidate_library_frame,
+        blend_weights=_float_csv_values(config.blend_weights_csv, field_name="blend_weights_csv"),
+        residual_min_prior_anchors=config.residual_min_prior_anchors,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "tenant_count": library_frame.select("tenant_id").n_unique() if library_frame.height else 0,
+            "source_model_count": library_frame.select("source_model_name").n_unique()
+            if library_frame.height
+            else 0,
+            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            if library_frame.height
+            else 0,
+            "residual_min_prior_anchors": config.residual_min_prior_anchors,
+            "scope": "dfl_schedule_candidate_library_v2_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_non_strict_oracle_upper_bound_frame(
+    context,
+    config: DflStrictChallengerAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Best possible non-strict candidate diagnostic on the final holdout."""
+
+    upper_bound_frame = build_non_strict_oracle_upper_bound_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        min_final_holdout_tenant_anchor_count_per_source_model=(
+            config.min_final_holdout_tenant_anchor_count_per_source_model
+        ),
+    )
+    outcome = validate_dfl_non_strict_upper_bound_evidence(
+        upper_bound_frame,
+        minimum_validation_tenant_anchor_count_per_source_model=(
+            config.min_final_holdout_tenant_anchor_count_per_source_model
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": upper_bound_frame.height,
+            "passed": outcome.passed,
+            "description": outcome.description,
+            **outcome.metadata,
+            "scope": "dfl_non_strict_oracle_upper_bound_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return upper_bound_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_strict_baseline_autopsy_frame(
+    context,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_non_strict_oracle_upper_bound_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-similar-day high-regret autopsy and non-strict opportunity map."""
+
+    autopsy_frame = build_strict_baseline_autopsy_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_non_strict_oracle_upper_bound_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": autopsy_frame.height,
+            "tenant_count": autopsy_frame.select("tenant_id").n_unique() if autopsy_frame.height else 0,
+            "source_model_count": autopsy_frame.select("source_model_name").n_unique()
+            if autopsy_frame.height
+            else 0,
+            "strict_failure_opportunity_rows": autopsy_frame.filter(
+                pl.col("recommended_next_action") == "train_selector_to_detect_strict_failure"
+            ).height
+            if autopsy_frame.height
+            else 0,
+            "scope": "dfl_strict_baseline_autopsy_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return autopsy_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -1707,6 +1892,10 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_schedule_candidate_library_frame,
     dfl_trajectory_feature_ranker_frame,
     dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
+    dfl_pipeline_integrity_audit_frame,
+    dfl_schedule_candidate_library_v2_frame,
+    dfl_non_strict_oracle_upper_bound_frame,
+    dfl_strict_baseline_autopsy_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,
