@@ -217,6 +217,89 @@ def build_dfl_action_label_panel_frame(
     return pl.DataFrame(rows).sort(["tenant_id", "forecast_model_name", "anchor_timestamp"])
 
 
+def build_dfl_action_label_dataset_card_frame(
+    action_label_frame: pl.DataFrame,
+    coverage_audit_frame: pl.DataFrame | None = None,
+) -> pl.DataFrame:
+    """Summarize DFL action-label readiness without exposing row-level vectors."""
+
+    if action_label_frame.height == 0:
+        raise ValueError("action_label_frame must contain rows before building a dataset card.")
+    _require_columns(
+        action_label_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "forecast_model_name",
+                "split_name",
+                "anchor_timestamp",
+                "horizon_hours",
+                "candidate_regret_uah",
+                "strict_baseline_regret_uah",
+                "candidate_net_value_uah",
+                "strict_baseline_net_value_uah",
+                "oracle_net_value_uah",
+                "target_charge_mask",
+                "target_discharge_mask",
+                "target_hold_mask",
+                "not_full_dfl",
+                "not_market_execution",
+            }
+        ),
+        frame_name="action_label_frame",
+    )
+
+    train_selection_rows = action_label_frame.filter(pl.col("split_name") == "train_selection").height
+    final_holdout_rows = action_label_frame.filter(pl.col("split_name") == "final_holdout").height
+    charge_labels = _sum_mask_column(action_label_frame, "target_charge_mask")
+    discharge_labels = _sum_mask_column(action_label_frame, "target_discharge_mask")
+    hold_labels = _sum_mask_column(action_label_frame, "target_hold_mask")
+    total_label_hours = charge_labels + discharge_labels + hold_labels
+    coverage_gap_tenants = _coverage_gap_tenants(coverage_audit_frame)
+    row_template: dict[str, Any] = {
+        "row_count": action_label_frame.height,
+        "tenant_count": action_label_frame.select("tenant_id").n_unique(),
+        "source_model_count": action_label_frame.select("forecast_model_name").n_unique(),
+        "train_selection_rows": train_selection_rows,
+        "final_holdout_rows": final_holdout_rows,
+        "first_anchor_timestamp": action_label_frame.select("anchor_timestamp").min().item(),
+        "last_anchor_timestamp": action_label_frame.select("anchor_timestamp").max().item(),
+        "charge_labels": charge_labels,
+        "discharge_labels": discharge_labels,
+        "hold_labels": hold_labels,
+        "total_label_hours": total_label_hours,
+        "mean_candidate_regret_uah": action_label_frame.select("candidate_regret_uah").mean().item(),
+        "median_candidate_regret_uah": action_label_frame.select("candidate_regret_uah").median().item(),
+        "mean_strict_baseline_regret_uah": action_label_frame.select("strict_baseline_regret_uah").mean().item(),
+        "mean_regret_delta_vs_strict_baseline_uah": action_label_frame.select(
+            "regret_delta_vs_strict_baseline_uah"
+        ).mean().item()
+        if "regret_delta_vs_strict_baseline_uah" in action_label_frame.columns
+        else None,
+        "mean_candidate_net_value_uah": action_label_frame.select("candidate_net_value_uah").mean().item(),
+        "mean_strict_baseline_net_value_uah": action_label_frame.select(
+            "strict_baseline_net_value_uah"
+        ).mean().item(),
+        "mean_oracle_net_value_uah": action_label_frame.select("oracle_net_value_uah").mean().item(),
+        "coverage_gap_tenants": coverage_gap_tenants,
+        "action_balance_by_split_model_tenant": _action_balance_by_split_model_tenant(action_label_frame),
+        "limitations": [
+            "Action labels are oracle LP labels for future DFL only.",
+            "Rows remain Ukrainian DAM/UAH and should not be mixed with European data.",
+            "This is not full DFL, not Decision Transformer control, and not market execution.",
+        ],
+        "claim_scope": "dfl_action_label_dataset_card_not_full_dfl",
+        "not_full_dfl": True,
+        "not_market_execution": True,
+    }
+    return pl.DataFrame(
+        [
+            {"summary_kind": "dataset_overview", **row_template},
+            {"summary_kind": "action_balance", **row_template},
+        ]
+    )
+
+
 def european_dataset_bridge_registry_frame() -> pl.DataFrame:
     """Return research-only external dataset candidates without allowing training use."""
 
@@ -549,3 +632,62 @@ def _target_masks(signed_dispatch_vector_mw: list[float]) -> dict[str, list[int]
 def _action_label_id(row: dict[str, Any]) -> str:
     anchor_timestamp = _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp")
     return f"{row['tenant_id']}:{row['forecast_model_name']}:{anchor_timestamp.strftime('%Y%m%dT%H%M')}:action-label-v1"
+
+
+def _sum_mask_column(frame: pl.DataFrame, column_name: str) -> int:
+    total = 0
+    for values in frame[column_name].to_list():
+        if isinstance(values, list):
+            total += sum(int(value) for value in values)
+    return total
+
+
+def _coverage_gap_tenants(coverage_audit_frame: pl.DataFrame | None) -> list[str]:
+    if coverage_audit_frame is None or coverage_audit_frame.height == 0:
+        return []
+    if "tenant_id" not in coverage_audit_frame.columns:
+        return []
+    gap_filter = pl.lit(False)
+    if "data_quality_tier" in coverage_audit_frame.columns:
+        gap_filter = gap_filter | (pl.col("data_quality_tier") != "thesis_grade")
+    if "missing_price_hours" in coverage_audit_frame.columns:
+        gap_filter = gap_filter | (pl.col("missing_price_hours") > 0)
+    if "missing_weather_hours" in coverage_audit_frame.columns:
+        gap_filter = gap_filter | (pl.col("missing_weather_hours") > 0)
+    return sorted(
+        str(value)
+        for value in coverage_audit_frame.filter(gap_filter)["tenant_id"].unique().to_list()
+    )
+
+
+def _action_balance_by_split_model_tenant(frame: pl.DataFrame) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for group in frame.partition_by(
+        ["tenant_id", "forecast_model_name", "split_name"],
+        as_dict=True,
+    ).values():
+        sample = group.row(0, named=True)
+        charge_labels = _sum_mask_column(group, "target_charge_mask")
+        discharge_labels = _sum_mask_column(group, "target_discharge_mask")
+        hold_labels = _sum_mask_column(group, "target_hold_mask")
+        rows.append(
+            {
+                "tenant_id": str(sample["tenant_id"]),
+                "forecast_model_name": str(sample["forecast_model_name"]),
+                "split_name": str(sample["split_name"]),
+                "row_count": group.height,
+                "anchor_count": group.select("anchor_timestamp").n_unique(),
+                "charge_labels": charge_labels,
+                "discharge_labels": discharge_labels,
+                "hold_labels": hold_labels,
+                "total_label_hours": charge_labels + discharge_labels + hold_labels,
+            }
+        )
+    return sorted(
+        rows,
+        key=lambda row: (
+            str(row["tenant_id"]),
+            str(row["forecast_model_name"]),
+            str(row["split_name"]),
+        ),
+    )

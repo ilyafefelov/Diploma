@@ -7,6 +7,7 @@ import pytest
 
 from smart_arbitrage.dfl.data_expansion import (
     build_dfl_action_label_panel_frame,
+    build_dfl_action_label_dataset_card_frame,
     build_dfl_data_coverage_audit_frame,
     european_dataset_bridge_registry_frame,
 )
@@ -108,6 +109,43 @@ def test_action_label_panel_uses_latest_final_holdout_and_oracle_targets() -> No
     assert row["data_quality_tier"] == "thesis_grade"
     assert row["not_full_dfl"] is True
     assert row["not_market_execution"] is True
+
+
+def test_action_label_dataset_card_reports_split_counts_and_action_balance() -> None:
+    action_labels = build_dfl_action_label_panel_frame(
+        _benchmark_frame(tenant_ids=TENANTS, anchor_count=5),
+        tenant_ids=TENANTS,
+        forecast_model_names=(SOURCE_MODEL,),
+        final_holdout_anchor_count_per_tenant=2,
+    )
+    action_labels = _with_one_charge_label(action_labels)
+    coverage_audit = build_dfl_data_coverage_audit_frame(
+        _feature_frame(tenant_ids=TENANTS, hour_count=217),
+        tenant_ids=TENANTS,
+        target_anchor_count_per_tenant=2,
+        required_past_hours=168,
+        horizon_hours=24,
+    )
+
+    card = build_dfl_action_label_dataset_card_frame(action_labels, coverage_audit)
+
+    assert card.height == 2
+    assert set(card["summary_kind"].to_list()) == {"dataset_overview", "action_balance"}
+    overview = card.filter(pl.col("summary_kind") == "dataset_overview").row(0, named=True)
+    action_balance = card.filter(pl.col("summary_kind") == "action_balance").row(0, named=True)
+
+    assert overview["row_count"] == 10
+    assert overview["tenant_count"] == 2
+    assert overview["source_model_count"] == 1
+    assert overview["train_selection_rows"] == 6
+    assert overview["final_holdout_rows"] == 4
+    assert overview["coverage_gap_tenants"] == []
+    assert overview["claim_scope"] == "dfl_action_label_dataset_card_not_full_dfl"
+    assert overview["not_market_execution"] is True
+    assert action_balance["charge_labels"] > 0
+    assert action_balance["discharge_labels"] > 0
+    assert action_balance["hold_labels"] > 0
+    assert action_balance["total_label_hours"] == 20
 
 
 def test_action_label_panel_rejects_non_thesis_missing_baseline_and_bad_vectors() -> None:
@@ -257,3 +295,21 @@ def _benchmark_row(
             "horizon": horizon,
         },
     }
+
+
+def _with_one_charge_label(frame: pl.DataFrame) -> pl.DataFrame:
+    rows = frame.iter_rows(named=True)
+    updated_rows: list[dict[str, object]] = []
+    for row_index, row in enumerate(rows):
+        if row_index == 0:
+            updated_rows.append(
+                {
+                    **row,
+                    "target_charge_mask": [1, 0],
+                    "target_discharge_mask": [0, 0],
+                    "target_hold_mask": [0, 1],
+                }
+            )
+        else:
+            updated_rows.append(row)
+    return pl.DataFrame(updated_rows)

@@ -7,6 +7,7 @@ import polars as pl
 
 from smart_arbitrage.evidence.quality_checks import (
     EvidenceCheckOutcome,
+    validate_dfl_action_label_panel_evidence,
     validate_dfl_training_evidence,
     validate_horizon_calibration_evidence,
     validate_real_data_benchmark_evidence,
@@ -38,6 +39,19 @@ def dfl_training_readiness_evidence(
     return _asset_check_result(
         validate_dfl_training_evidence(dfl_training_frame),
         failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_action_label_panel_frame",
+    name="dfl_action_label_panel_readiness_evidence",
+    description="Checks all-tenant DFL action-label vectors are ready as research data.",
+)
+def dfl_action_label_panel_readiness_evidence(
+    dfl_action_label_panel_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_action_label_panel_evidence(dfl_action_label_panel_frame)
     )
 
 
@@ -93,6 +107,7 @@ def risk_adjusted_selector_cardinality_evidence(
 DFL_EVIDENCE_ASSET_CHECKS = [
     dnipro_thesis_grade_90_anchor_evidence,
     dfl_training_readiness_evidence,
+    dfl_action_label_panel_readiness_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,

@@ -25,6 +25,27 @@ HORIZON_CALIBRATED_MODEL_NAMES: Final[tuple[str, ...]] = (
     "tft_horizon_regret_weighted_calibrated_v0",
     "nbeatsx_horizon_regret_weighted_calibrated_v0",
 )
+DFL_ACTION_LABEL_TENANT_IDS: Final[tuple[str, ...]] = (
+    "client_001_kyiv_mall",
+    "client_002_lviv_office",
+    "client_003_dnipro_factory",
+    "client_004_kharkiv_hospital",
+    "client_005_odesa_hotel",
+)
+DFL_ACTION_LABEL_MODEL_NAMES: Final[tuple[str, ...]] = (
+    "nbeatsx_silver_v0",
+    "tft_silver_v0",
+)
+DFL_ACTION_LABEL_VECTOR_COLUMNS: Final[tuple[str, ...]] = (
+    "forecast_price_vector_uah_mwh",
+    "actual_price_vector_uah_mwh",
+    "candidate_signed_dispatch_vector_mw",
+    "strict_baseline_signed_dispatch_vector_mw",
+    "oracle_signed_dispatch_vector_mw",
+    "target_charge_mask",
+    "target_discharge_mask",
+    "target_hold_mask",
+)
 
 
 @dataclass(frozen=True)
@@ -301,6 +322,152 @@ def validate_selector_evidence(
     )
 
 
+def validate_dfl_action_label_panel_evidence(
+    frame: pl.DataFrame,
+    *,
+    expected_tenant_ids: tuple[str, ...] = DFL_ACTION_LABEL_TENANT_IDS,
+    expected_model_names: tuple[str, ...] = DFL_ACTION_LABEL_MODEL_NAMES,
+    minimum_anchor_count_per_tenant_model: int = 90,
+    expected_final_holdout_anchors: int = 18,
+) -> EvidenceCheckOutcome:
+    required_columns = {
+        "tenant_id",
+        "forecast_model_name",
+        "anchor_timestamp",
+        "split_name",
+        "is_final_holdout",
+        "horizon_hours",
+        "candidate_safety_violation_count",
+        "strict_baseline_safety_violation_count",
+        "data_quality_tier",
+        "observed_coverage_ratio",
+        "not_full_dfl",
+        "not_market_execution",
+        "candidate_regret_uah",
+        "strict_baseline_regret_uah",
+        "candidate_net_value_uah",
+        "strict_baseline_net_value_uah",
+        "oracle_net_value_uah",
+        *DFL_ACTION_LABEL_VECTOR_COLUMNS,
+    }
+    failures = _missing_column_failures(frame, required_columns)
+    tenant_ids = _unique_strings(frame, "tenant_id") if not failures else []
+    model_names = _unique_strings(frame, "forecast_model_name") if not failures else []
+    missing_tenants = _missing_values(tenant_ids, expected_tenant_ids)
+    missing_models = _missing_values(model_names, expected_model_names)
+    group_stats = (
+        _action_label_group_stats(
+            frame,
+            expected_tenant_ids=expected_tenant_ids,
+            expected_model_names=expected_model_names,
+            expected_final_holdout_anchors=expected_final_holdout_anchors,
+        )
+        if not failures
+        else {}
+    )
+    anchor_counts = [stats["anchor_count"] for stats in group_stats.values()]
+    final_holdout_counts = [stats["final_holdout_anchor_count"] for stats in group_stats.values()]
+    min_anchor_count = min(anchor_counts) if anchor_counts else 0
+    final_holdout_anchor_count = min(final_holdout_counts) if final_holdout_counts else 0
+    final_holdout_count_mismatch_groups = sum(
+        1
+        for stats in group_stats.values()
+        if stats["final_holdout_anchor_count"] != expected_final_holdout_anchors
+    )
+    under_coverage_groups = sum(
+        1
+        for stats in group_stats.values()
+        if stats["anchor_count"] < minimum_anchor_count_per_tenant_model
+    )
+    non_latest_holdout_groups = sum(
+        1
+        for stats in group_stats.values()
+        if stats["final_holdout_anchor_count"] > 0 and not stats["final_holdout_is_latest"]
+    )
+    train_final_overlap_count = _action_label_train_final_overlap_count(frame) if not failures else 0
+    vector_length_failures = _action_label_vector_length_failure_count(frame) if not failures else 0
+    one_hot_mask_failures = _action_label_one_hot_failure_count(frame) if not failures else 0
+    data_quality_tiers = _unique_strings(frame, "data_quality_tier") if not failures else []
+    observed_coverage_min = _observed_coverage_min(frame) if not failures else 0.0
+    claim_flag_failure_rows = _action_label_claim_flag_failure_count(frame) if not failures else 0
+    safety_violation_rows = _action_label_safety_violation_row_count(frame) if not failures else 0
+    final_holdout_rows = _split_row_count(frame, split_name="final_holdout") if not failures else 0
+    train_selection_rows = _split_row_count(frame, split_name="train_selection") if not failures else 0
+    split_flag_mismatch_rows = _split_flag_mismatch_count(frame) if not failures else 0
+    duplicate_tenant_model_anchor_rows = _duplicate_tenant_model_anchor_count(frame) if not failures else 0
+    first_anchor = _first_datetime_iso(frame, "anchor_timestamp") if not failures else None
+    last_anchor = _last_datetime_iso(frame, "anchor_timestamp") if not failures else None
+
+    if frame.height == 0:
+        failures.append("DFL action-label panel has no rows")
+    if missing_tenants:
+        failures.append(f"missing action-label tenants: {missing_tenants}")
+    if missing_models:
+        failures.append(f"missing action-label source models: {missing_models}")
+    if under_coverage_groups:
+        failures.append(
+            "each tenant/model must have at least "
+            f"{minimum_anchor_count_per_tenant_model} anchors; "
+            f"{under_coverage_groups} groups are short"
+        )
+    if final_holdout_count_mismatch_groups:
+        failures.append(
+            f"each tenant/model must have exactly {expected_final_holdout_anchors} final-holdout anchors"
+        )
+    if non_latest_holdout_groups:
+        failures.append("final-holdout rows must be the latest anchors per tenant/model")
+    if train_final_overlap_count:
+        failures.append("train_selection and final_holdout splits overlap")
+    if duplicate_tenant_model_anchor_rows:
+        failures.append("tenant/model/anchor rows must be unique")
+    if split_flag_mismatch_rows:
+        failures.append("split_name and is_final_holdout disagree")
+    if data_quality_tiers != ["thesis_grade"]:
+        failures.append("DFL action labels must contain only thesis_grade rows")
+    if observed_coverage_min < 1.0:
+        failures.append("DFL action labels require observed coverage ratio of 1.0")
+    if claim_flag_failure_rows:
+        failures.append("DFL action labels must remain not_full_dfl and not_market_execution")
+    if safety_violation_rows:
+        failures.append("DFL action labels must have zero safety violations")
+    if vector_length_failures:
+        failures.append("DFL action-label vectors must match horizon_hours")
+    if one_hot_mask_failures:
+        failures.append("DFL action-label action masks must be one-hot per horizon step")
+
+    return _outcome(
+        failures=failures,
+        passed_description="DFL action-label panel is ready as no-leakage research data.",
+        metadata={
+            "row_count": frame.height,
+            "tenant_count": len(tenant_ids),
+            "model_count": len(model_names),
+            "tenant_ids": tenant_ids,
+            "model_names": model_names,
+            "missing_tenants": missing_tenants,
+            "missing_models": missing_models,
+            "train_selection_rows": train_selection_rows,
+            "final_holdout_rows": final_holdout_rows,
+            "first_anchor": first_anchor,
+            "last_anchor": last_anchor,
+            "min_anchor_count_per_tenant_model": min_anchor_count,
+            "final_holdout_anchor_count_per_tenant_model": final_holdout_anchor_count,
+            "under_coverage_groups": under_coverage_groups,
+            "final_holdout_count_mismatch_groups": final_holdout_count_mismatch_groups,
+            "non_latest_holdout_groups": non_latest_holdout_groups,
+            "train_final_overlap_count": train_final_overlap_count,
+            "duplicate_tenant_model_anchor_rows": duplicate_tenant_model_anchor_rows,
+            "split_flag_mismatch_rows": split_flag_mismatch_rows,
+            "data_quality_tiers": data_quality_tiers,
+            "observed_coverage_min": observed_coverage_min,
+            "claim_flag_failure_rows": claim_flag_failure_rows,
+            "safety_violation_rows": safety_violation_rows,
+            "vector_length_failures": vector_length_failures,
+            "one_hot_mask_failures": one_hot_mask_failures,
+        },
+    )
+
+
 def _outcome(
     *,
     failures: list[str],
@@ -521,3 +688,151 @@ def _keyword_row_count(
         if any(keyword in str(row.get(column, "")).lower() for column in columns):
             count += 1
     return count
+
+
+def _action_label_group_stats(
+    frame: pl.DataFrame,
+    *,
+    expected_tenant_ids: tuple[str, ...],
+    expected_model_names: tuple[str, ...],
+    expected_final_holdout_anchors: int,
+) -> dict[tuple[str, str], dict[str, Any]]:
+    stats: dict[tuple[str, str], dict[str, Any]] = {}
+    for tenant_id in expected_tenant_ids:
+        for model_name in expected_model_names:
+            group = frame.filter(
+                (pl.col("tenant_id") == tenant_id)
+                & (pl.col("forecast_model_name") == model_name)
+            )
+            anchors = _datetime_values_from_frame(group, "anchor_timestamp")
+            final_holdout_anchors = _datetime_values_from_frame(
+                group.filter(pl.col("split_name") == "final_holdout"),
+                "anchor_timestamp",
+            )
+            expected_final_anchors = set(anchors[-expected_final_holdout_anchors:])
+            stats[(tenant_id, model_name)] = {
+                "anchor_count": len(set(anchors)),
+                "final_holdout_anchor_count": len(set(final_holdout_anchors)),
+                "final_holdout_is_latest": set(final_holdout_anchors) == expected_final_anchors,
+            }
+    return stats
+
+
+def _datetime_values_from_frame(frame: pl.DataFrame, column_name: str) -> list[datetime]:
+    if frame.height == 0 or column_name not in frame.columns:
+        return []
+    values = [
+        parsed
+        for parsed in (_datetime_value(value) for value in frame[column_name].to_list())
+        if parsed is not None
+    ]
+    return sorted(values)
+
+
+def _action_label_train_final_overlap_count(frame: pl.DataFrame) -> int:
+    if frame.height == 0:
+        return 0
+    split_by_key: dict[tuple[str, str, datetime], set[str]] = {}
+    for row in frame.iter_rows(named=True):
+        anchor_timestamp = _datetime_value(row.get("anchor_timestamp"))
+        if anchor_timestamp is None:
+            continue
+        key = (str(row["tenant_id"]), str(row["forecast_model_name"]), anchor_timestamp)
+        split_by_key.setdefault(key, set()).add(str(row["split_name"]))
+    return sum(
+        1
+        for splits in split_by_key.values()
+        if {"train_selection", "final_holdout"}.issubset(splits)
+    )
+
+
+def _action_label_vector_length_failure_count(frame: pl.DataFrame) -> int:
+    failures = 0
+    for row in frame.iter_rows(named=True):
+        horizon_hours = _int_or_none(row.get("horizon_hours"))
+        if horizon_hours is None:
+            failures += 1
+            continue
+        if any(len(_list_value(row.get(column_name))) != horizon_hours for column_name in DFL_ACTION_LABEL_VECTOR_COLUMNS):
+            failures += 1
+    return failures
+
+
+def _action_label_one_hot_failure_count(frame: pl.DataFrame) -> int:
+    failures = 0
+    for row in frame.iter_rows(named=True):
+        charge = _list_value(row.get("target_charge_mask"))
+        discharge = _list_value(row.get("target_discharge_mask"))
+        hold = _list_value(row.get("target_hold_mask"))
+        horizon_hours = _int_or_none(row.get("horizon_hours"))
+        if horizon_hours is None or {len(charge), len(discharge), len(hold)} != {horizon_hours}:
+            failures += 1
+            continue
+        if any(
+            int(charge[index]) + int(discharge[index]) + int(hold[index]) != 1
+            for index in range(horizon_hours)
+        ):
+            failures += 1
+    return failures
+
+
+def _action_label_claim_flag_failure_count(frame: pl.DataFrame) -> int:
+    if frame.height == 0:
+        return 0
+    return sum(
+        1
+        for row in frame.iter_rows(named=True)
+        if row.get("not_full_dfl") is not True or row.get("not_market_execution") is not True
+    )
+
+
+def _action_label_safety_violation_row_count(frame: pl.DataFrame) -> int:
+    if frame.height == 0:
+        return 0
+    return sum(
+        1
+        for row in frame.iter_rows(named=True)
+        if int(row.get("candidate_safety_violation_count", 0))
+        or int(row.get("strict_baseline_safety_violation_count", 0))
+    )
+
+
+def _split_row_count(frame: pl.DataFrame, *, split_name: str) -> int:
+    if frame.height == 0:
+        return 0
+    return frame.filter(pl.col("split_name") == split_name).height
+
+
+def _split_flag_mismatch_count(frame: pl.DataFrame) -> int:
+    if frame.height == 0:
+        return 0
+    return sum(
+        1
+        for row in frame.iter_rows(named=True)
+        if (row.get("split_name") == "final_holdout") != bool(row.get("is_final_holdout"))
+    )
+
+
+def _duplicate_tenant_model_anchor_count(frame: pl.DataFrame) -> int:
+    if frame.height == 0:
+        return 0
+    duplicates = (
+        frame.group_by(["tenant_id", "forecast_model_name", "anchor_timestamp"])
+        .agg(pl.len().alias("rows"))
+        .filter(pl.col("rows") > 1)
+    )
+    return duplicates.height
+
+
+def _first_datetime_iso(frame: pl.DataFrame, column_name: str) -> str | None:
+    values = _datetime_values_from_frame(frame, column_name)
+    return values[0].isoformat() if values else None
+
+
+def _last_datetime_iso(frame: pl.DataFrame, column_name: str) -> str | None:
+    values = _datetime_values_from_frame(frame, column_name)
+    return values[-1].isoformat() if values else None
+
+
+def _list_value(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
