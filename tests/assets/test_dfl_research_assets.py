@@ -199,6 +199,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_strict_failure_feature_audit_frame",
         "dfl_feature_aware_strict_failure_selector_frame",
         "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame",
+        "forecast_afe_feature_catalog_frame",
+        "dfl_semantic_event_strict_failure_audit_frame",
         "forecast_candidate_forensics_frame",
         "afl_training_panel_frame",
     }.issubset(asset_keys)
@@ -212,6 +214,12 @@ def test_dfl_research_assets_are_registered() -> None:
         asset_key.to_user_string(): group
         for asset in DFL_RESEARCH_GOLD_ASSETS
         for asset_key, group in asset.group_names_by_key.items()
+    }
+    deps_by_key = {
+        asset.key.to_user_string(): {
+            dependency.to_user_string() for dependency in asset.dependency_keys
+        }
+        for asset in DFL_RESEARCH_GOLD_ASSETS
     }
     assert tags_by_key["dfl_relaxed_lp_pilot_frame"]["medallion"] == "gold"
     assert tags_by_key["offline_dfl_experiment_frame"]["evidence_scope"] == "not_market_execution"
@@ -247,6 +255,8 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_strict_failure_feature_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["forecast_afe_feature_catalog_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_semantic_event_strict_failure_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_candidate_forensics_frame"] == "gold_dfl_training"
     assert groups_by_key["afl_training_panel_frame"] == "gold_dfl_training"
     assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -289,6 +299,8 @@ def test_dfl_research_assets_are_registered() -> None:
         tags_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"]
         == "evaluation"
     )
+    assert tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"] == "feature_engineering"
+    assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["afl_training_panel_frame"]["ml_stage"] == "training_data"
     assert (
@@ -307,6 +319,19 @@ def test_dfl_research_assets_are_registered() -> None:
         tags_by_key["dfl_strict_failure_feature_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
+    assert (
+        tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert "real_data_benchmark_silver_feature_frame" in deps_by_key[
+        "dfl_semantic_event_strict_failure_audit_frame"
+    ]
+    assert "ukrenergo_grid_events_bronze" in deps_by_key[
+        "dfl_semantic_event_strict_failure_audit_frame"
+    ]
+    assert "grid_event_signal_silver" not in deps_by_key[
+        "dfl_semantic_event_strict_failure_audit_frame"
+    ]
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_action_label_panel_frame"]["ml_stage"] == "training_data"
     assert tags_by_key["dfl_action_classifier_baseline_frame"]["ml_stage"] == "evaluation"

@@ -111,6 +111,11 @@ from smart_arbitrage.forecasting.afl import (
     build_afl_training_panel_frame,
     build_forecast_candidate_forensics_frame,
 )
+from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
+from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
+from smart_arbitrage.dfl.semantic_event_failure_audit import (
+    build_dfl_semantic_event_strict_failure_audit_frame,
+)
 
 
 class DflTrainingAssetConfig(dg.Config):
@@ -470,6 +475,100 @@ def dfl_training_example_frame(
         },
     )
     return training_example_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def forecast_afe_feature_catalog_frame(context) -> pl.DataFrame:
+    """Sidecar AFE catalog separating usable UA signals from future bridges."""
+
+    catalog_frame = build_forecast_afe_feature_catalog_frame()
+    _add_metadata(
+        context,
+        {
+            "rows": catalog_frame.height,
+            "feature_group_count": catalog_frame.select("feature_group").n_unique()
+            if catalog_frame.height
+            else 0,
+            "implemented_feature_count": catalog_frame.filter(
+                pl.col("feature_status") == "implemented"
+            ).height
+            if catalog_frame.height
+            else 0,
+            "external_bridge_training_allowed_rows": catalog_frame.filter(
+                (pl.col("feature_group") == "external_market_context")
+                & (pl.col("training_use_allowed"))
+            ).height
+            if catalog_frame.height
+            else 0,
+            "scope": "forecast_afe_feature_catalog_research_sidecar",
+            "not_market_execution": True,
+        },
+    )
+    return catalog_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_semantic_event_strict_failure_audit_frame(
+    context,
+    dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    ukrenergo_grid_events_bronze: pl.DataFrame,
+    forecast_afe_feature_catalog_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit whether official grid-event semantics explain strict-control failures."""
+
+    grid_event_signal_frame = build_grid_event_signal_frame(
+        price_history=real_data_benchmark_silver_feature_frame,
+        grid_events=ukrenergo_grid_events_bronze,
+    )
+    audit_frame = build_dfl_semantic_event_strict_failure_audit_frame(
+        dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
+        grid_event_signal_frame,
+        forecast_afe_feature_catalog_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "tenant_count": audit_frame.select("tenant_id").n_unique()
+            if audit_frame.height
+            else 0,
+            "source_model_count": audit_frame.select("source_model_name").n_unique()
+            if audit_frame.height
+            else 0,
+            "event_anchor_count": audit_frame.select("event_anchor_count").sum().item()
+            if audit_frame.height
+            else 0,
+            "strict_failure_with_event_count": audit_frame.select(
+                "strict_failure_with_event_count"
+            ).sum().item()
+            if audit_frame.height
+            else 0,
+            "scope": "dfl_semantic_event_strict_failure_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
 
 
 @dg.asset(
@@ -2434,6 +2533,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
     dfl_training_example_frame,
+    forecast_afe_feature_catalog_frame,
+    dfl_semantic_event_strict_failure_audit_frame,
     forecast_candidate_forensics_frame,
     afl_training_panel_frame,
     dfl_data_coverage_audit_frame,

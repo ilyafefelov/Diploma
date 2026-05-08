@@ -262,6 +262,30 @@ Feature-aware strict-failure selector:
 - Tracked note:
   [DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md](DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md).
 
+Semantic AFE event context:
+
+- Existing source path: `ukrenergo_grid_events_bronze` parses public Ukrenergo
+  Telegram posts with deterministic rules.
+- Existing Silver path: `grid_event_signal_silver` uses the same feature
+  builder for demo/forecast timestamps; the semantic audit reuses that builder
+  against `real_data_benchmark_silver_feature_frame` timestamps.
+- New catalog asset: `forecast_afe_feature_catalog_frame` separates implemented
+  Ukrainian features from blocked European bridge rows.
+- New audit asset: `dfl_semantic_event_strict_failure_audit_frame` tests whether
+  official grid-event features explain strict-control failure windows.
+- New asset check: `dfl_semantic_event_strict_failure_audit_evidence`.
+- Config:
+  [real_data_afe_semantic_event_context_week3.yaml](../../configs/real_data_afe_semantic_event_context_week3.yaml).
+- Tracked notes:
+  [AFE_TO_AFL_TO_DFL_ROADMAP.md](AFE_TO_AFL_TO_DFL_ROADMAP.md) and
+  [AFE_SEMANTIC_EVENT_CONTEXT.md](AFE_SEMANTIC_EVENT_CONTEXT.md).
+- Boundary: no broad scraped news, no LLM extraction, no European training rows.
+- Materialized result, 2026-05-08: 10 audit rows, 5 tenants, 2 source models,
+  180 validation tenant-anchors, 44 strict-control failure anchors, and 0
+  semantic event anchors matched to the January-April 2026 benchmark window.
+  The asset check passed, so the path is valid, but the current event coverage
+  is not enough to explain or improve selector behavior.
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:

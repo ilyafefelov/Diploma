@@ -1093,6 +1093,53 @@ Config:
 Tracked note:
 [DFL_FORECAST_AFL_HARDENING.md](DFL_FORECAST_AFL_HARDENING.md).
 
+## AFE Semantic Event Context
+
+The next feature-governance slice separates **AFE** from **AFL**:
+
+- AFE is feature cataloging, temporal availability, and leakage policy.
+- AFL is the arbitrage-focused forecast-learning panel with prior-only features
+  and realized decision-value labels.
+- DFL remains the strict LP/oracle promotion path.
+
+Implementation:
+
+- New helper: `smart_arbitrage.forecasting.afe`.
+- New helper: `smart_arbitrage.dfl.semantic_event_failure_audit`.
+- New assets: `forecast_afe_feature_catalog_frame` and
+  `dfl_semantic_event_strict_failure_audit_frame`.
+- New asset check: `dfl_semantic_event_strict_failure_audit_evidence`.
+- Run config:
+  [../../configs/real_data_afe_semantic_event_context_week3.yaml](../../configs/real_data_afe_semantic_event_context_week3.yaml).
+
+Protocol:
+
+- `ukrenergo_grid_events_bronze` remains the only semantic source in this slice.
+- The semantic audit reuses the `grid_event_signal_silver` feature builder
+  against real-data benchmark timestamps and keeps the same
+  `published_at <= timestamp` rule.
+- The semantic audit explains strict-control failure windows; it does not change
+  selector decisions yet.
+- European bridge rows remain `training_use_allowed=false`.
+- No broad scraped-news ingestion and no LLM event extraction are introduced.
+
+Materialized result, 2026-05-08:
+
+- Dagster materialized the AFE catalog and semantic strict-failure audit with
+  the Week 3 config.
+- `dfl_semantic_event_strict_failure_audit_evidence` passed.
+- The audit produced 10 rows across 5 tenants, 2 source models, and 180
+  validation tenant-anchors.
+- The current public Ukrenergo Telegram scrape matched 0 semantic event anchors
+  in the January-April 2026 benchmark window, while the strict-control failure
+  count was 44 anchors. This makes semantic event context a governed future
+  feature path, not an active explanation for the current strict selector
+  pattern.
+
+Tracked notes:
+[AFE_TO_AFL_TO_DFL_ROADMAP.md](AFE_TO_AFL_TO_DFL_ROADMAP.md) and
+[AFE_SEMANTIC_EVENT_CONTEXT.md](AFE_SEMANTIC_EVENT_CONTEXT.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under
