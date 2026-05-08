@@ -706,6 +706,51 @@ Tracked notes:
 [DFL_CLASSIFIER_FAILURE_ANALYSIS.md](DFL_CLASSIFIER_FAILURE_ANALYSIS.md) and
 [DFL_DATA_RECOVERY_ROADMAP.md](DFL_DATA_RECOVERY_ROADMAP.md).
 
+## Trajectory/Value Selector v1
+
+The follow-up slice moved from hourly classification to selection among
+feasible strict-LP-scored schedules. This is closer to decision-focused
+learning because it ranks complete dispatch trajectories by prior regret, but
+it is still a selector diagnostic, not full DFL and not market execution.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.trajectory_value`.
+- New assets: `dfl_trajectory_value_candidate_panel_frame`,
+  `dfl_trajectory_value_selector_frame`, and
+  `dfl_trajectory_value_selector_strict_lp_benchmark_frame`.
+- Dagster group: `gold_dfl_training`.
+- Strategy kind: `dfl_trajectory_value_selector_strict_lp_benchmark`.
+- Run config:
+  [../../configs/real_data_dfl_trajectory_value_week3.yaml](../../configs/real_data_dfl_trajectory_value_week3.yaml).
+- Selector rule: choose the schedule family with the lowest prior/train-selection
+  regret per tenant/source model; final-holdout rows are not used for
+  selection.
+
+Coverage finding:
+
+- The refreshed audit targeted 120 anchors per tenant.
+- Current observed OREE/Open-Meteo materialized evidence still ceilings at 104
+  eligible anchors per tenant.
+- Eligible anchor window: `2026-01-08 23:00` through `2026-04-29 23:00`.
+- One price gap and one weather gap remain visible per tenant in the wider
+  feature frame.
+
+Latest strict selector result:
+
+| Source model | Raw mean regret | Selector mean regret | Strict control mean regret | Selector improvement vs raw | Decision |
+|---|---:|---:|---:|---:|---|
+| `nbeatsx_silver_v0` | 813.40 | 603.29 | 314.81 | 25.83% | development diagnostic, production blocked |
+| `tft_silver_v0` | 1003.54 | 619.78 | 314.81 | 38.24% | development diagnostic, production blocked |
+
+This is the strongest DFL-adjacent evidence so far because it improves over raw
+neural schedules without using final-holdout selection. It still does not beat
+the frozen `strict_similar_day` control, and median regret remains worse than
+strict control, so the promotion gate stays blocked.
+
+Tracked note:
+[DFL_TRAJECTORY_VALUE_SELECTOR.md](DFL_TRAJECTORY_VALUE_SELECTOR.md).
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

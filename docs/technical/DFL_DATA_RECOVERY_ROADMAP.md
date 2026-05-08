@@ -30,6 +30,16 @@ Next audit target:
 - if no, document the true ceiling and move to richer features plus
   trajectory/value learning.
 
+Latest ceiling check:
+
+- Config: [real_data_dfl_trajectory_value_week3.yaml](../../configs/real_data_dfl_trajectory_value_week3.yaml).
+- Target: 120 eligible anchors per tenant.
+- Current result: 104 eligible anchors per tenant for all five canonical tenants.
+- Eligible window: `2026-01-08 23:00` through `2026-04-29 23:00`.
+- Current result does not meet the 120-anchor target.
+- One price gap and one weather gap remain visible per tenant in the current
+  feature frame.
+
 The audit must keep tenant-specific anchor eligibility, price/weather gap
 counts, latest-batch freshness, and observed/thesis-grade coverage visible in
 Dagster metadata.
@@ -81,6 +91,23 @@ Training target:
 
 Promotion remains blocked unless the candidate beats `strict_similar_day` under
 the conservative strict LP/oracle gate.
+
+Latest trajectory/value selector result:
+
+- New assets: `dfl_trajectory_value_candidate_panel_frame`,
+  `dfl_trajectory_value_selector_frame`, and
+  `dfl_trajectory_value_selector_strict_lp_benchmark_frame`.
+- Candidate panel: 900 final-holdout rows across 5 tenants, 2 source models,
+  18 anchors, and 5 schedule families.
+- Selector evidence: 90 tenant-anchor rows per source model.
+- NBEATSx selector mean regret: 603.29 UAH, improving 25.83% versus raw
+  NBEATSx but still losing to 314.81 UAH strict-control regret.
+- TFT selector mean regret: 619.78 UAH, improving 38.24% versus raw TFT but
+  still losing to 314.81 UAH strict-control regret.
+- Decision: development diagnostic is useful; production promotion remains
+  blocked.
+- Tracked note:
+  [DFL_TRAJECTORY_VALUE_SELECTOR.md](DFL_TRAJECTORY_VALUE_SELECTOR.md).
 
 ## Acceptance For Next Slice
 
