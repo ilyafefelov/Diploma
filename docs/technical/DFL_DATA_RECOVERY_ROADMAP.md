@@ -157,6 +157,37 @@ Latest strict-challenger diagnostic implementation:
 - Tracked note:
   [DFL_STRICT_CHALLENGER_DIAGNOSTICS.md](DFL_STRICT_CHALLENGER_DIAGNOSTICS.md).
 
+Latest strict-failure selector implementation:
+
+- New helper: `smart_arbitrage.dfl.strict_failure_selector`.
+- New assets: `dfl_strict_failure_selector_frame` and
+  `dfl_strict_failure_selector_strict_lp_benchmark_frame`.
+- New asset check: `dfl_strict_failure_selector_evidence`.
+- Config:
+  [real_data_dfl_strict_failure_selector_week3.yaml](../../configs/real_data_dfl_strict_failure_selector_week3.yaml).
+- Purpose: test whether prior-only regret evidence can identify when to replace
+  `strict_similar_day` with the best prior non-strict schedule family.
+- Selection rule: choose a switch threshold on train-selection anchors only;
+  final-holdout actuals affect strict scoring only.
+- Claim boundary: research-only, not full DFL, not Decision Transformer
+  control, and not market execution.
+- Latest run id: `568a8a8d-c210-44d0-9842-08300dfe0781`.
+- Asset check: `dfl_strict_failure_selector_evidence` passed.
+- Strict benchmark: 720 rows, with 90 selector final-holdout tenant-anchors per
+  source model.
+- Result: `dfl_strict_failure_selector_v1_tft_silver_v0` reached 267.79 UAH
+  mean regret and 149.01 UAH median regret, improving 73.32% versus raw TFT and
+  14.94% versus `strict_similar_day`.
+- Result: `dfl_strict_failure_selector_v1_nbeatsx_silver_v0` reached 299.73
+  UAH mean regret and 182.76 UAH median regret, improving 63.15% versus raw
+  NBEATSx and 4.79% versus `strict_similar_day`.
+- Decision: development evidence passes. TFT-source selector passes the
+  per-source strict threshold, while the overall multi-source gate remains
+  conservatively labeled `diagnostic_pass_production_blocked` because NBEATSx is
+  just below the 5% strict-improvement threshold.
+- Tracked note:
+  [DFL_STRICT_FAILURE_SELECTOR.md](DFL_STRICT_FAILURE_SELECTOR.md).
+
 ## Acceptance For Next Slice
 
 The next slice is ready when:

@@ -868,6 +868,64 @@ control, and not market execution. Production promotion still requires beating
 Tracked note:
 [DFL_STRICT_CHALLENGER_DIAGNOSTICS.md](DFL_STRICT_CHALLENGER_DIAGNOSTICS.md).
 
+## Strict-Failure Selector v1
+
+The strict-challenger diagnostic showed that the candidate library is not the
+immediate blocker: the best non-strict feasible schedules can beat
+`strict_similar_day` on many final-holdout anchors. This slice therefore adds a
+prior-only selector that tries to learn when strict control is likely to fail.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.strict_failure_selector`.
+- New assets: `dfl_strict_failure_selector_frame` and
+  `dfl_strict_failure_selector_strict_lp_benchmark_frame`.
+- New asset check: `dfl_strict_failure_selector_evidence`.
+- Dagster group: `gold_dfl_training`.
+- Strategy kind: `dfl_strict_failure_selector_strict_lp_benchmark`.
+- Run config:
+  [../../configs/real_data_dfl_strict_failure_selector_week3.yaml](../../configs/real_data_dfl_strict_failure_selector_week3.yaml).
+
+Selector rule:
+
+- For each tenant/source model, compute prior mean regret for strict control and
+  non-strict candidate families using train-selection anchors only.
+- Choose a switch threshold from `0, 50, 100, 200, 400` UAH on train-selection
+  anchors only.
+- On final holdout, switch from `strict_similar_day` to the best prior
+  non-strict candidate only when the prior advantage crosses that threshold.
+- Final-holdout actuals affect strict scoring only; they cannot change the
+  selected threshold or candidate metadata.
+
+The gate remains conservative. Development evidence can pass if the selector
+improves over raw neural schedules, but production promotion remains blocked
+unless it improves mean regret by at least 5% versus `strict_similar_day` and
+does not worsen median regret.
+
+Current status:
+
+- Helper tests cover prior-only threshold selection, final-holdout mutation
+  safety, strict/raw/selector coverage, and promotion-gate block/pass cases.
+- Dagster asset registration and asset-check registration are covered.
+- Latest run: Dagster run id `568a8a8d-c210-44d0-9842-08300dfe0781`; the
+  `dfl_strict_failure_selector_evidence` asset check passed.
+- Strict benchmark frame: 720 rows, with 90 final-holdout selector rows per
+  source model.
+- `dfl_strict_failure_selector_v1_tft_silver_v0`: 267.79 UAH mean regret and
+  149.01 UAH median regret, improving 73.32% versus raw TFT and 14.94% versus
+  `strict_similar_day`.
+- `dfl_strict_failure_selector_v1_nbeatsx_silver_v0`: 299.73 UAH mean regret
+  and 182.76 UAH median regret, improving 63.15% versus raw NBEATSx and 4.79%
+  versus `strict_similar_day`.
+- Decision: development evidence passes. The TFT-source selector passes the
+  per-source strict threshold, but the overall multi-source gate remains
+  conservatively labeled `diagnostic_pass_production_blocked` because NBEATSx is
+  just below the 5% strict-improvement threshold.
+- Full evidence table: [DFL_STRICT_FAILURE_SELECTOR.md](DFL_STRICT_FAILURE_SELECTOR.md).
+
+This remains research evidence only: not full DFL, not Decision Transformer
+control, and not market execution.
+
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
 The Week 3 deep-research intake is now indexed under

@@ -40,6 +40,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_non_strict_oracle_upper_bound_frame",
             "dfl_non_strict_oracle_upper_bound_evidence",
         ),
+        (
+            "dfl_strict_failure_selector_strict_lp_benchmark_frame",
+            "dfl_strict_failure_selector_evidence",
+        ),
     }
 
     check_keys = {
