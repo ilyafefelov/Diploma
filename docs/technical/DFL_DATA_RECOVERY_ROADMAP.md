@@ -300,12 +300,45 @@ AFL forecast error audit:
   [DFL_AFL_FORECAST_ERROR_AUDIT.md](DFL_AFL_FORECAST_ERROR_AUDIT.md).
 - Boundary: no new neural training, no Decision Transformer expansion, and no
   market-execution claim.
-- Materialized result, 2026-05-09: 20 audit rows over 1,040 AFL panel rows.
-  Mean LP-value failure is 70.22%, mean rank/extrema failure is 50.65%, and
-  mean spread-shape failure is 36.67%. Weather/load regime context is still
-  unavailable in the AFL panel, so the next feature slice should expose
-  tenant/weather/load context as prior-only `feature_*` columns before serious
-  DFL loss work.
+- Materialized result, 2026-05-09: 20 audit rows over 1,560 AFL panel rows.
+  Mean LP-value failure is 80.23%, mean rank/extrema failure is 64.83%, and
+  mean spread-shape failure is 55.19%. Prior-only weather and configured
+  net-load context are now present in the AFL panel, with minimum 25 context
+  rows per anchor for both weather and net-load features.
+- Feature contract update: actual-dependent top/bottom rank overlap moved out
+  of selector features and into
+  `diagnostic_forecast_top3_bottom3_rank_overlap`.
+
+Official forecast strict scoring:
+
+- Config:
+  [real_data_official_forecast_training_readiness_week3.yaml](../../configs/real_data_official_forecast_training_readiness_week3.yaml).
+- Official adapter run produced trained `nbeatsx_official_v0` and
+  `tft_official_v0` forecasts with 24 horizon rows.
+- Strict scoring run id: `68d74ecb-2d5c-49d5-b25e-99b06ec4b3ba`.
+- Result: single current-horizon readiness score across five tenants. Strict
+  control mean regret was 1,903.90 UAH, official TFT was 2,540.37 UAH, and
+  official NBEATSx was 6,008.01 UAH. This proves the official adapters can be
+  scored through the strict gate, but it does not support promotion.
+
+DFL forecast decision-loss v1:
+
+- New assets: `dfl_forecast_dfl_v1_panel_frame` and
+  `dfl_forecast_dfl_v1_strict_lp_benchmark_frame`.
+- Config:
+  [real_data_dfl_forecast_v1_week3.yaml](../../configs/real_data_dfl_forecast_v1_week3.yaml).
+- Latest run id: `5562b5f0-9f12-44de-a74c-0cb47c7d447a`.
+- Panel: 10 rows, five tenants x two compact source models, 18 final-holdout
+  anchors per tenant/source.
+- Result: relaxed solver fallback status was
+  `fallback:score:SolverError;fallback:training_epoch:SolverError`, so all
+  checkpoints stayed at epoch 0 and strict scoring matched raw forecasts:
+  NBEATSx/DFL-v1 mean regret 1,121.04 UAH, TFT/DFL-v1 mean regret 1,665.41 UAH,
+  strict control mean regret 314.81 UAH.
+- Decision: DFL v1 is tested and blocked. The next technical blocker is relaxed
+  storage-layer stability and scaling, not Decision Transformer expansion.
+- Tracked note:
+  [DFL_FORECAST_DECISION_LOSS_V1.md](DFL_FORECAST_DECISION_LOSS_V1.md).
 
 ## Acceptance For Next Slice
 

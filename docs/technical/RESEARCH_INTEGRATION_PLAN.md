@@ -1170,15 +1170,53 @@ Materialized result, 2026-05-09:
 
 - Downstream AFL audit materialized from the latest stored benchmark frame, and
   `afl_forecast_error_audit_evidence` passed.
-- The audit covered 20 rows, 5 tenants, 2 compact source models, and 1,040 AFL
+- The audit covered 20 rows, 5 tenants, 2 compact source models, and 1,560 AFL
   panel rows.
-- Mean LP-value failure is 70.22%, mean rank/extrema failure is 50.65%, and
-  mean spread-shape failure is 36.67%.
-- Weather/load context is not yet available as prior-only AFL features, so it
-  cannot explain forecast failures yet.
-- Next research step: add weather/load context to the AFL feature panel, then
-  run serious official NBEATSx/TFT forecasts through the same audit and strict
-  LP/oracle gate before DFL loss v1.
+- Mean LP-value failure is 80.23%, mean rank/extrema failure is 64.83%, and
+  mean spread-shape failure is 55.19%.
+- Weather/load context is now present as prior-only AFL features. The audit no
+  longer reports missing context as the blocker; the blocker is decision-value
+  and rank/spread quality.
+- Actual-dependent top/bottom rank overlap has been moved out of selector
+  features into `diagnostic_forecast_top3_bottom3_rank_overlap`.
+
+## Official Forecast Strict Scoring And DFL v1
+
+The path from AFL audit to real DFL v1 is now implemented as a controlled,
+research-only sequence:
+
+- Official training readiness config:
+  [../../configs/real_data_official_forecast_training_readiness_week3.yaml](../../configs/real_data_official_forecast_training_readiness_week3.yaml).
+- Official NBEATSx/TFT adapters keep smoke defaults in code, while the tracked
+  config runs CPU-safe serious settings: NBEATSx `max_steps=100` and TFT
+  `max_epochs=15`.
+- `official_forecast_strict_lp_benchmark_frame` materialized in run
+  `68d74ecb-2d5c-49d5-b25e-99b06ec4b3ba`.
+- Single-horizon readiness result: strict control mean regret 1,903.90 UAH,
+  official TFT 2,540.37 UAH, official NBEATSx 6,008.01 UAH. This proves the
+  official adapters can be strict-scored, but it does not support promotion.
+
+DFL v1 implementation:
+
+- New decision-loss helper:
+  `smart_arbitrage.dfl.decision_loss.compute_decision_loss_v1`.
+- New assets: `dfl_forecast_dfl_v1_panel_frame` and
+  `dfl_forecast_dfl_v1_strict_lp_benchmark_frame`.
+- Config:
+  [../../configs/real_data_dfl_forecast_v1_week3.yaml](../../configs/real_data_dfl_forecast_v1_week3.yaml).
+- Latest run id: `5562b5f0-9f12-44de-a74c-0cb47c7d447a`.
+- Result: the relaxed scorer fell back with
+  `fallback:score:SolverError;fallback:training_epoch:SolverError`, so
+  checkpoint epoch stayed `0` and DFL v1 strict results matched raw forecasts:
+  NBEATSx 1,121.04 UAH mean regret, TFT 1,665.41 UAH mean regret, strict
+  control 314.81 UAH.
+- Tracked note:
+  [DFL_FORECAST_DECISION_LOSS_V1.md](DFL_FORECAST_DECISION_LOSS_V1.md).
+
+Decision: the project has reached the correct DFL foundation boundary. The next
+engineering task is not a Decision Transformer; it is stabilizing the relaxed
+storage layer with scaling, bounded surrogate fallback, and strict-vs-relaxed
+fixture checks before retraining DFL v1.
 
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
