@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from math import isfinite
 from typing import Any
 from uuid import uuid4
 
@@ -609,9 +610,16 @@ def _pinball_losses(
             forecast_timestamp = row["forecast_timestamp"]
             if not isinstance(forecast_timestamp, datetime):
                 raise TypeError("forecast_timestamp column must contain datetime values.")
-            error = actual_prices[forecast_timestamp] - float(row[column_name])
+            raw_quantile_value = row[column_name]
+            if raw_quantile_value is None:
+                continue
+            quantile_value = float(raw_quantile_value)
+            if not isfinite(quantile_value):
+                continue
+            error = actual_prices[forecast_timestamp] - quantile_value
             quantile_losses.append(max(quantile * error, (quantile - 1.0) * error))
-        losses[metric_name] = _mean(quantile_losses)
+        if quantile_losses:
+            losses[metric_name] = _mean(quantile_losses)
     return losses
 
 
