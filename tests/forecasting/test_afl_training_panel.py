@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import polars as pl
 import pytest
@@ -159,10 +159,14 @@ def test_afl_training_panel_adds_prior_weather_load_context_without_future_leaka
     benchmark = _benchmark_frame(anchor_count=4)
     latest_anchor = benchmark.select("anchor_timestamp").to_series().max()
     assert isinstance(latest_anchor, datetime)
+
+    def utc_timestamp(offset_hours: int) -> datetime:
+        return (latest_anchor + timedelta(hours=offset_hours)).replace(tzinfo=UTC)
+
     context_rows = [
         {
             "tenant_id": "client_000",
-            "timestamp": latest_anchor - timedelta(hours=2),
+            "timestamp": utc_timestamp(-2),
             "weather_temperature": 10.0,
             "weather_wind_speed": 4.0,
             "weather_cloudcover": 30.0,
@@ -170,7 +174,7 @@ def test_afl_training_panel_adds_prior_weather_load_context_without_future_leaka
         },
         {
             "tenant_id": "client_000",
-            "timestamp": latest_anchor - timedelta(hours=1),
+            "timestamp": utc_timestamp(-1),
             "weather_temperature": 14.0,
             "weather_wind_speed": 6.0,
             "weather_cloudcover": 50.0,
@@ -178,7 +182,7 @@ def test_afl_training_panel_adds_prior_weather_load_context_without_future_leaka
         },
         {
             "tenant_id": "client_000",
-            "timestamp": latest_anchor + timedelta(hours=1),
+            "timestamp": utc_timestamp(1),
             "weather_temperature": 1000.0,
             "weather_wind_speed": 1000.0,
             "weather_cloudcover": 1000.0,
@@ -190,7 +194,7 @@ def test_afl_training_panel_adds_prior_weather_load_context_without_future_leaka
         [
             {
                 "tenant_id": "client_000",
-                "timestamp": latest_anchor - timedelta(hours=2),
+                "timestamp": utc_timestamp(-2),
                 "load_mw": 0.5,
                 "pv_estimate_mw": 0.1,
                 "net_load_mw": 0.4,
@@ -201,7 +205,7 @@ def test_afl_training_panel_adds_prior_weather_load_context_without_future_leaka
             },
             {
                 "tenant_id": "client_000",
-                "timestamp": latest_anchor - timedelta(hours=1),
+                "timestamp": utc_timestamp(-1),
                 "load_mw": 0.7,
                 "pv_estimate_mw": 0.2,
                 "net_load_mw": 0.5,
@@ -212,7 +216,7 @@ def test_afl_training_panel_adds_prior_weather_load_context_without_future_leaka
             },
             {
                 "tenant_id": "client_000",
-                "timestamp": latest_anchor + timedelta(hours=1),
+                "timestamp": utc_timestamp(1),
                 "load_mw": 50.0,
                 "pv_estimate_mw": 50.0,
                 "net_load_mw": 50.0,

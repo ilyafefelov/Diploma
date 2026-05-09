@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 from typing import Any, Final
 
 import polars as pl
@@ -325,7 +325,7 @@ def _context_rows_by_tenant_timestamp(
         timestamp = row["timestamp"]
         if not isinstance(timestamp, datetime):
             raise TypeError(f"{frame_name}.timestamp must contain datetime values.")
-        rows[(str(row["tenant_id"]), timestamp)] = row
+        rows[(str(row["tenant_id"]), _naive_utc_datetime(timestamp))] = row
     return rows
 
 
@@ -395,11 +395,12 @@ def _prior_context_rows(
     anchor_timestamp: datetime,
     lookback_hours: int = 24,
 ) -> list[dict[str, Any]]:
-    window_start = anchor_timestamp - timedelta(hours=lookback_hours)
+    normalized_anchor = _naive_utc_datetime(anchor_timestamp)
+    window_start = normalized_anchor - timedelta(hours=lookback_hours)
     return [
         row
         for (row_tenant_id, row_timestamp), row in rows.items()
-        if row_tenant_id == tenant_id and window_start <= row_timestamp <= anchor_timestamp
+        if row_tenant_id == tenant_id and window_start <= row_timestamp <= normalized_anchor
     ]
 
 
@@ -421,6 +422,12 @@ def _datetime(value: Any) -> datetime:
     if not isinstance(value, datetime):
         raise TypeError("anchor_timestamp must contain datetime values.")
     return value
+
+
+def _naive_utc_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 def _column_mean(frame: pl.DataFrame, column_name: str) -> float:
