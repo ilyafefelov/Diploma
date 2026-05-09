@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from math import ceil
+from math import ceil, isfinite
 from typing import Any, Final
 
 import polars as pl
@@ -23,6 +23,7 @@ from smart_arbitrage.dfl.decision_targeting import (
 )
 from smart_arbitrage.dfl.offline_experiment import (
     _ExperimentExample,
+    _Score,
     _examples_from_frame,
     _price_tensor,
     _realized_values,
@@ -45,6 +46,7 @@ DFL_FORECAST_DFL_V1_ACADEMIC_SCOPE: Final[str] = (
     "Tiny prior-only horizon-bias correction trained with a relaxed decision loss. "
     "It is not full DFL, not Decision Transformer control, and not market execution."
 )
+RELAXED_SOLVER_FALLBACK_REGRET_UAH: Final[float] = 1_000_000_000_000.0
 REQUIRED_BENCHMARK_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "tenant_id",
@@ -149,7 +151,14 @@ def build_dfl_forecast_dfl_v1_panel_frame(
             ):
                 raise ValueError("DFL v1 requires consistent horizon lengths.")
 
-            final_biases, final_loss, checkpoint_biases, checkpoint_epoch, checkpoint_inner_score = (
+            (
+                final_biases,
+                final_loss,
+                checkpoint_biases,
+                checkpoint_epoch,
+                checkpoint_inner_score,
+                training_solver_status,
+            ) = (
                 _train_decision_loss_horizon_biases_with_checkpoints(
                     training_examples=fit_examples,
                     inner_selection_examples=inner_examples,
@@ -164,7 +173,7 @@ def build_dfl_forecast_dfl_v1_panel_frame(
                     decision_loss_weights=decision_loss_weights,
                 )
             )
-            raw_final = _score_examples(
+            raw_final, raw_final_solver_status = _safe_score_examples(
                 examples=final_examples,
                 horizon_biases=[0.0] * horizon_hours,
                 capacity_mwh=capacity_mwh,
@@ -173,7 +182,7 @@ def build_dfl_forecast_dfl_v1_panel_frame(
                 soc_max_fraction=soc_max_fraction,
                 degradation_cost_per_mwh=degradation_cost_per_mwh,
             )
-            dfl_final = _score_examples(
+            dfl_final, dfl_final_solver_status = _safe_score_examples(
                 examples=final_examples,
                 horizon_biases=checkpoint_biases,
                 capacity_mwh=capacity_mwh,
@@ -181,6 +190,11 @@ def build_dfl_forecast_dfl_v1_panel_frame(
                 soc_min_fraction=soc_min_fraction,
                 soc_max_fraction=soc_max_fraction,
                 degradation_cost_per_mwh=degradation_cost_per_mwh,
+            )
+            solver_status = _merge_solver_statuses(
+                training_solver_status,
+                raw_final_solver_status,
+                dfl_final_solver_status,
             )
             rows.append(
                 {
@@ -207,6 +221,7 @@ def build_dfl_forecast_dfl_v1_panel_frame(
                     "raw_final_holdout_relaxed_regret_uah": raw_final.mean_regret_uah,
                     "dfl_v1_final_holdout_relaxed_regret_uah": dfl_final.mean_regret_uah,
                     "relaxed_regret_delta_uah": raw_final.mean_regret_uah - dfl_final.mean_regret_uah,
+                    "relaxed_solver_status": solver_status,
                     "data_quality_tier": "thesis_grade",
                     "observed_coverage_ratio": 1.0,
                     "claim_scope": DFL_FORECAST_DFL_V1_CLAIM_SCOPE,
@@ -348,39 +363,54 @@ def _train_decision_loss_horizon_biases_with_checkpoints(
     soc_max_fraction: float,
     degradation_cost_per_mwh: float,
     decision_loss_weights: DecisionLossWeights | None,
-) -> tuple[list[float], float, list[float], int, Any]:
+) -> tuple[list[float], float, list[float], int, Any, str]:
     starting_soc_fraction = _single_starting_soc([*training_examples, *inner_selection_examples])
-    layer = _relaxed_dispatch_layer(
-        horizon_hours,
-        starting_soc_fraction,
-        capacity_mwh,
-        max_power_mw,
-        soc_min_fraction,
-        soc_max_fraction,
-        1.0,
-        degradation_cost_per_mwh,
-    )
-    forecast_prices = _price_tensor([example.forecast_prices for example in training_examples])
-    actual_prices = _price_tensor([example.actual_prices for example in training_examples])
-    horizon_biases = torch.zeros(horizon_hours, dtype=torch.float64, requires_grad=True)
-    optimizer = torch.optim.Adam([horizon_biases], lr=learning_rate)
-    best_biases = [0.0] * horizon_hours
-    best_epoch = 0
-    best_inner_score = _score_examples(
+    best_inner_score, best_inner_status = _safe_score_examples(
         examples=inner_selection_examples,
-        horizon_biases=best_biases,
+        horizon_biases=[0.0] * horizon_hours,
         capacity_mwh=capacity_mwh,
         max_power_mw=max_power_mw,
         soc_min_fraction=soc_min_fraction,
         soc_max_fraction=soc_max_fraction,
         degradation_cost_per_mwh=degradation_cost_per_mwh,
     )
+    solver_statuses = [best_inner_status]
+    try:
+        layer = _relaxed_dispatch_layer(
+            horizon_hours,
+            starting_soc_fraction,
+            capacity_mwh,
+            max_power_mw,
+            soc_min_fraction,
+            soc_max_fraction,
+            1.0,
+            degradation_cost_per_mwh,
+        )
+    except Exception as exc:
+        return (
+            [0.0] * horizon_hours,
+            RELAXED_SOLVER_FALLBACK_REGRET_UAH,
+            [0.0] * horizon_hours,
+            0,
+            best_inner_score,
+            _merge_solver_statuses(*solver_statuses, _fallback_status("layer_init", exc)),
+        )
+    forecast_prices = _price_tensor([example.forecast_prices for example in training_examples])
+    actual_prices = _price_tensor([example.actual_prices for example in training_examples])
+    horizon_biases = torch.zeros(horizon_hours, dtype=torch.float64, requires_grad=True)
+    optimizer = torch.optim.Adam([horizon_biases], lr=learning_rate)
+    best_biases = [0.0] * horizon_hours
+    best_epoch = 0
     final_loss = 0.0
     for epoch_index in range(1, epoch_count + 1):
         optimizer.zero_grad()
         corrected_prices = forecast_prices + horizon_biases
-        charge, discharge, _ = layer(corrected_prices, solver_args={"eps": 1e-6, "max_iters": 5000})
-        oracle_charge, oracle_discharge, _ = layer(actual_prices, solver_args={"eps": 1e-6, "max_iters": 5000})
+        try:
+            charge, discharge, _ = layer(corrected_prices, solver_args={"eps": 1e-6, "max_iters": 5000})
+            oracle_charge, oracle_discharge, _ = layer(actual_prices, solver_args={"eps": 1e-6, "max_iters": 5000})
+        except Exception as exc:
+            solver_statuses.append(_fallback_status("training_epoch", exc))
+            break
         oracle_values = _realized_values(
             actual_prices=actual_prices,
             charge=oracle_charge,
@@ -404,7 +434,7 @@ def _train_decision_loss_horizon_biases_with_checkpoints(
             horizon_biases.clamp_(min=-5000.0, max=5000.0)
         final_loss = float(loss.detach().cpu())
         candidate_biases = [round(float(value), 6) for value in horizon_biases.detach().cpu().tolist()]
-        candidate_inner_score = _score_examples(
+        candidate_inner_score, candidate_inner_status = _safe_score_examples(
             examples=inner_selection_examples,
             horizon_biases=candidate_biases,
             capacity_mwh=capacity_mwh,
@@ -413,12 +443,69 @@ def _train_decision_loss_horizon_biases_with_checkpoints(
             soc_max_fraction=soc_max_fraction,
             degradation_cost_per_mwh=degradation_cost_per_mwh,
         )
-        if candidate_inner_score.mean_regret_uah <= best_inner_score.mean_regret_uah:
+        solver_statuses.append(candidate_inner_status)
+        if (
+            candidate_inner_status == "ok"
+            and candidate_inner_score.mean_regret_uah <= best_inner_score.mean_regret_uah
+        ):
             best_biases = candidate_biases
             best_epoch = epoch_index
             best_inner_score = candidate_inner_score
     final_biases = [round(float(value), 6) for value in horizon_biases.detach().cpu().tolist()]
-    return final_biases, final_loss, best_biases, best_epoch, best_inner_score
+    return final_biases, final_loss, best_biases, best_epoch, best_inner_score, _merge_solver_statuses(*solver_statuses)
+
+
+def _safe_score_examples(
+    *,
+    examples: list[_ExperimentExample],
+    horizon_biases: list[float],
+    capacity_mwh: float,
+    max_power_mw: float,
+    soc_min_fraction: float,
+    soc_max_fraction: float,
+    degradation_cost_per_mwh: float,
+) -> tuple[_Score, str]:
+    try:
+        score = _score_examples(
+            examples=examples,
+            horizon_biases=horizon_biases,
+            capacity_mwh=capacity_mwh,
+            max_power_mw=max_power_mw,
+            soc_min_fraction=soc_min_fraction,
+            soc_max_fraction=soc_max_fraction,
+            degradation_cost_per_mwh=degradation_cost_per_mwh,
+        )
+    except Exception as exc:
+        return _fallback_score(), _fallback_status("score", exc)
+    if not all(
+        isfinite(value)
+        for value in (
+            score.mean_realized_value_uah,
+            score.mean_oracle_value_uah,
+            score.mean_regret_uah,
+        )
+    ):
+        return _fallback_score(), "fallback:score:non_finite"
+    return score, "ok"
+
+
+def _fallback_score() -> _Score:
+    return _Score(
+        mean_realized_value_uah=0.0,
+        mean_oracle_value_uah=0.0,
+        mean_regret_uah=RELAXED_SOLVER_FALLBACK_REGRET_UAH,
+    )
+
+
+def _fallback_status(stage: str, exc: Exception) -> str:
+    return f"fallback:{stage}:{exc.__class__.__name__}"
+
+
+def _merge_solver_statuses(*statuses: str) -> str:
+    fallback_statuses = [status for status in statuses if status and status != "ok"]
+    if not fallback_statuses:
+        return "ok"
+    return ";".join(dict.fromkeys(fallback_statuses))
 
 
 def _source_rows(
@@ -516,6 +603,7 @@ def _with_dfl_v1_metadata(
                 "dfl_v1_inner_selection_relaxed_regret_uah": float(
                     panel_row["dfl_v1_inner_selection_relaxed_regret_uah"]
                 ),
+                "dfl_v1_relaxed_solver_status": str(panel_row.get("relaxed_solver_status", "ok")),
                 "final_validation_anchor_count": int(panel_row["final_validation_anchor_count"]),
                 "claim_scope": DFL_FORECAST_DFL_V1_STRICT_CLAIM_SCOPE,
                 "academic_scope": DFL_FORECAST_DFL_V1_ACADEMIC_SCOPE,
