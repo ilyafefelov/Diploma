@@ -1301,3 +1301,39 @@ Materialized result:
   `314.81` UAH for `strict_similar_day`).
 - Therefore the aggregate claim stays conservative: residual DFL/offline DT was
   tested as research evidence, but production promotion remains blocked.
+
+## Source-Specific Robust TFT Challenger Gate
+
+The residual/DT result is now split by source model so a useful TFT signal does
+not get hidden by the weaker NBEATSx path.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.source_specific_challenger`.
+- New asset: `dfl_source_specific_research_challenger_frame`.
+- New asset check: `dfl_source_specific_research_challenger_evidence`.
+- Config:
+  [../../configs/real_data_dfl_source_specific_challenger_week3.yaml](../../configs/real_data_dfl_source_specific_challenger_week3.yaml).
+- Tracked note:
+  [DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md](DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md).
+
+Materialized result:
+
+- Run `be22b25b-a1c5-40d9-9049-a01efb8e7e5f` finished successfully.
+- The new source-specific asset check passed.
+- TFT latest-holdout fallback: 258.12 UAH mean regret versus 314.81 UAH for
+  `strict_similar_day`, an 18.01% improvement with better median regret.
+- NBEATSx latest-holdout fallback: 318.37 UAH mean regret versus 314.81 UAH for
+  `strict_similar_day`, so it remains blocked.
+- Rolling strict-control passes are currently 0 of 4 for both sources in the
+  combined gate. The correct label for TFT is therefore
+  `latest_signal_not_robust`, not production promotion.
+- Existing check-scope note: `dnipro_thesis_grade_90_anchor_evidence` was built
+  for an older Dnipro 90-anchor preview and reports `observed 104` on the
+  current all-tenant panel. The source-specific evidence check is the relevant
+  check for this run.
+
+Decision: TFT can be called a source-specific research challenger on the latest
+holdout, but not a robust controller. The next technical blocker is robustness
+across earlier windows or more Ukrainian historical coverage, not another
+Decision Transformer variant.

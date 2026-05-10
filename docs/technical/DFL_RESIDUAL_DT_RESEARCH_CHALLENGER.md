@@ -126,3 +126,22 @@ trajectory dataset, a residual schedule/value selector, an offline DT-shaped
 candidate, behavior cloning, and a strict fallback wrapper. A failed promotion
 is still useful evidence: it means full DFL/DT was tested under the same frozen
 control protocol and the strict comparator remains stronger.
+
+## Source-Specific Follow-Up
+
+The follow-up source-specific gate is tracked in
+[DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md](DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md).
+It separates the TFT and NBEATSx fallback evidence instead of collapsing both
+sources into one aggregate promotion decision.
+
+Latest result:
+
+- Run `be22b25b-a1c5-40d9-9049-a01efb8e7e5f` materialized
+  `dfl_source_specific_research_challenger_frame`.
+- `dfl_source_specific_research_challenger_evidence` passed.
+- TFT has a latest-holdout source signal: 258.12 UAH mean regret versus
+  314.81 UAH for `strict_similar_day`, with better median regret.
+- NBEATSx remains blocked: 318.37 UAH mean regret versus 314.81 UAH for
+  `strict_similar_day`.
+- Neither source is robust across rolling strict-control windows in this
+  combined gate, so production promotion remains blocked.
