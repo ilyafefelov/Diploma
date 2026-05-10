@@ -112,7 +112,8 @@ def build_official_nbeatsx_forecast(
         training_frame
         .filter(pl.col("is_train") & pl.col("y").is_not_null())
         .select(["unique_id", "ds", "y", *feature_columns])
-        .drop_nulls(subset=["y", *feature_columns])
+        .pipe(_fill_numeric_feature_nulls, feature_columns=feature_columns)
+        .drop_nulls(subset=["y"])
     )
     future_frame = (
         training_frame

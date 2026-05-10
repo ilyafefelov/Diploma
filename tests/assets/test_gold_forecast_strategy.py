@@ -16,6 +16,7 @@ from smart_arbitrage.assets.gold.forecast_strategy import (
     RealDataRollingOriginBenchmarkAssetConfig,
     _daily_benchmark_anchors,
     forecast_strategy_comparison_frame,
+    official_forecast_rolling_origin_benchmark_frame,
     official_forecast_strict_lp_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,
 )
@@ -209,16 +210,22 @@ def test_forecast_strategy_gold_asset_is_registered() -> None:
         asset_key.to_user_string()
         for asset_key in real_data_rolling_origin_benchmark_frame.dependency_keys
     }
+    official_deps = {
+        asset_key.to_user_string()
+        for asset_key in official_forecast_rolling_origin_benchmark_frame.dependency_keys
+    }
 
     assert {
         "forecast_strategy_comparison_frame",
         "official_forecast_strict_lp_benchmark_frame",
+        "official_forecast_rolling_origin_benchmark_frame",
         "real_data_rolling_origin_benchmark_frame",
     }.issubset(asset_keys)
     assert {"real_data_benchmark_silver_feature_frame"}.issubset(silver_asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
     assert silver_asset_keys.issubset(registered_asset_keys)
     assert "real_data_benchmark_silver_feature_frame" in benchmark_deps
+    assert "real_data_benchmark_silver_feature_frame" in official_deps
     assert "tenant_historical_weather_bronze" not in benchmark_deps
 
 

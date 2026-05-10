@@ -11,6 +11,11 @@ from smart_arbitrage.assets.bronze.market_weather import list_available_weather_
 from smart_arbitrage.resources.strategy_evaluation_store import (
     get_strategy_evaluation_store,
 )
+from smart_arbitrage.strategy.official_forecast_rolling import (
+    OFFICIAL_FORECAST_ROLLING_ORIGIN_STRATEGY_KIND,
+    build_official_forecast_rolling_origin_benchmark_frame,
+    validate_official_forecast_rolling_origin_evidence,
+)
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
     ForecastCandidate,
     REAL_DATA_ROLLING_ORIGIN_STRATEGY_KIND,
@@ -33,6 +38,21 @@ class RealDataRollingOriginBenchmarkAssetConfig(dg.Config):
 
     tenant_ids_csv: str = ""
     max_anchors: int = 90
+
+
+class OfficialForecastRollingOriginAssetConfig(dg.Config):
+    """CPU-safe official adapter settings for rolling-origin strict LP evidence."""
+
+    tenant_ids_csv: str = ""
+    max_eval_anchors_per_tenant: int = 2
+    horizon_hours: int = 24
+    nbeatsx_max_steps: int = 100
+    nbeatsx_random_seed: int = 20260511
+    tft_max_epochs: int = 15
+    tft_batch_size: int = 32
+    tft_learning_rate: float = 0.005
+    tft_hidden_size: int = 12
+    tft_hidden_continuous_size: int = 6
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,6 +237,64 @@ def official_forecast_strict_lp_benchmark_frame(
         domain="forecast_strategy",
         elt_stage="publish",
         ml_stage="evaluation",
+        evidence_scope="research_only",
+        backend="official_forecast_adapters",
+        market_venue="DAM",
+    ),
+)
+def official_forecast_rolling_origin_benchmark_frame(
+    context,
+    config: OfficialForecastRollingOriginAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling-origin strict LP evidence for official NBEATSx/TFT adapters."""
+
+    tenant_ids = tuple(_tenant_ids_from_csv(config.tenant_ids_csv))
+    frame = build_official_forecast_rolling_origin_benchmark_frame(
+        real_data_benchmark_silver_feature_frame,
+        tenant_ids=tenant_ids,
+        max_eval_anchors_per_tenant=config.max_eval_anchors_per_tenant,
+        horizon_hours=config.horizon_hours,
+        nbeatsx_max_steps=config.nbeatsx_max_steps,
+        nbeatsx_random_seed=config.nbeatsx_random_seed,
+        tft_max_epochs=config.tft_max_epochs,
+        tft_batch_size=config.tft_batch_size,
+        tft_learning_rate=config.tft_learning_rate,
+        tft_hidden_size=config.tft_hidden_size,
+        tft_hidden_continuous_size=config.tft_hidden_continuous_size,
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(frame)
+    outcome = validate_official_forecast_rolling_origin_evidence(
+        frame,
+        min_tenant_count=len(tenant_ids),
+        min_anchor_count_per_tenant=config.max_eval_anchors_per_tenant,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "anchor_count_per_tenant_target": config.max_eval_anchors_per_tenant,
+            "forecast_candidate_count": frame.select("forecast_model_name").n_unique()
+            if frame.height
+            else 0,
+            "market_venue": "DAM",
+            "strategy_kind": OFFICIAL_FORECAST_ROLLING_ORIGIN_STRATEGY_KIND,
+            "evidence_passed": outcome.passed,
+            "evidence_description": outcome.description,
+            **outcome.metadata,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_REAL_DATA_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="evaluation",
         evidence_scope="thesis_grade",
         market_venue="DAM",
     ),
@@ -296,6 +374,7 @@ real_data_benchmark_daily_schedule = dg.ScheduleDefinition(
 FORECAST_STRATEGY_GOLD_ASSETS = [
     forecast_strategy_comparison_frame,
     official_forecast_strict_lp_benchmark_frame,
+    official_forecast_rolling_origin_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,
 ]
 

@@ -52,8 +52,8 @@ def test_official_nbeatsx_adapter_keeps_input_window_trainable_after_lag_drop() 
             assert isinstance(input_size, int)
             captured["horizon_rows"] = horizon_rows
             captured["input_size"] = input_size
-            captured["max_steps"] = kwargs["max_steps"]
-            captured["random_seed"] = kwargs["random_seed"]
+            captured["max_steps"] = cast(int, kwargs["max_steps"])
+            captured["random_seed"] = cast(int, kwargs["random_seed"])
             assert kwargs["logger"] is False
             assert kwargs["enable_progress_bar"] is False
             assert kwargs["enable_model_summary"] is False
@@ -98,6 +98,66 @@ def test_official_nbeatsx_adapter_keeps_input_window_trainable_after_lag_drop() 
     assert captured["input_size"] <= captured["training_rows"] - captured["horizon_rows"] - 1
     assert captured["max_steps"] == 100
     assert captured["random_seed"] == 20260509
+
+
+def test_official_nbeatsx_adapter_fills_feature_nulls_before_training() -> None:
+    captured: dict[str, int] = {}
+
+    class FakeNBEATSx:
+        def __init__(self, **kwargs: object) -> None:
+            captured["input_size"] = cast(int, kwargs["input_size"])
+            captured["horizon_rows"] = cast(int, kwargs["h"])
+
+    class FakeNeuralForecast:
+        def __init__(self, *, models: list[object], freq: str) -> None:
+            assert isinstance(models[0], FakeNBEATSx)
+            assert freq == "h"
+
+        def fit(self, df: object) -> None:
+            captured["training_rows"] = len(df)  # type: ignore[arg-type]
+            assert captured["training_rows"] > 0
+            assert int(df.isna().sum().sum()) == 0  # type: ignore[attr-defined]
+
+        def predict(self, *, futr_df: object) -> object:
+            frame = futr_df[["unique_id", "ds"]].copy()  # type: ignore[index]
+            frame["NBEATSx"] = [4100.0 + index for index in range(len(frame))]
+            return frame
+
+    class FakeNeuralForecastModule:
+        NeuralForecast = FakeNeuralForecast
+
+    class FakeNeuralForecastModels:
+        NBEATSx = FakeNBEATSx
+
+    def fake_importer(name: str) -> object:
+        if name == "neuralforecast":
+            return FakeNeuralForecastModule()
+        if name == "neuralforecast.models":
+            return FakeNeuralForecastModels()
+        raise ModuleNotFoundError(name)
+
+    frame_with_minimum_history = (
+        _training_frame()
+        .filter(
+            ((pl.col("split") == "train") & (pl.int_range(pl.len()) < 168))
+            | (pl.col("split") == "forecast")
+        )
+        .with_columns(
+            pl.when(pl.col("split") == "train")
+            .then(None)
+            .otherwise(pl.col("lag_168_price_uah_mwh"))
+            .alias("lag_168_price_uah_mwh")
+        )
+    )
+
+    forecast = build_official_nbeatsx_forecast(
+        frame_with_minimum_history,
+        max_steps=1,
+        importer=fake_importer,
+    )
+
+    assert forecast.height == 24
+    assert captured["training_rows"] == 168
 
 
 def test_official_tft_adapter_returns_empty_readiness_frame_when_backend_missing() -> None:

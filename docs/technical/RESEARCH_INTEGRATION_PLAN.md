@@ -1469,3 +1469,56 @@ Decision update: the forecast/scoring path is clear enough to proceed to the
 official NBEATSx/TFT rolling benchmark slice. If official forecasts still lose,
 the next blocker is model/training signal or data coverage, not a basic vector
 serialization or horizon leakage defect.
+
+## Official Forecast Rolling-Origin Benchmark
+
+The next step operationalizes the source-check implied by the truth audit:
+official NBEATSx/TFT adapters are trained per rolling-origin anchor with future
+targets masked and then scored through the same strict LP/oracle evaluator as
+`strict_similar_day`.
+
+Implementation:
+
+- New helper: `smart_arbitrage.strategy.official_forecast_rolling`.
+- New asset: `official_forecast_rolling_origin_benchmark_frame`.
+- Config:
+  [../../configs/real_data_official_forecast_rolling_week3.yaml](../../configs/real_data_official_forecast_rolling_week3.yaml).
+- Tracked note:
+  [OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md](OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md).
+
+Decision rule:
+
+- If official forecasts still lose to `strict_similar_day`, this is evidence
+  for data coverage, feature context, or decision-loss work before DFL.
+- If official forecasts beat compact candidates but not strict, they can feed
+  DFL v2 as better source forecasts.
+- If a source beats strict in the latest holdout, it must still survive rolling
+  robustness before any offline promotion claim.
+
+Claim boundary: the asset is official forecast evidence only. It is not full
+DFL, not Decision Transformer control, and not market execution.
+
+Materialized result:
+
+- Run `768c9796-422d-40b7-8f8d-083a861cc0e7` completed the first official
+  rolling proof.
+- Scope: five canonical tenants, two anchors per tenant, 24-hour horizon.
+- Rows: 30 strict LP/oracle rows.
+- `strict_similar_day` remained strongest on mean regret at `1,587.505` UAH.
+- `nbeatsx_official_v0` had worse mean regret at `1,782.829` UAH but better
+  median regret at `1,398.064` UAH on this tiny sample.
+- `tft_official_v0` was worse on both mean and median regret.
+
+Pipeline fix:
+
+- The run exposed a real official NBEATSx adapter issue. Minimum-history rolling
+  windows have null `lag_168_price_uah_mwh` values, and NBEATSx was dropping all
+  train rows before model fitting.
+- The adapter now fills numeric feature nulls before training, matching the TFT
+  path and preventing silent empty rolling-origin evidence.
+
+Decision update: official adapters are now materializable in rolling-origin
+strict scoring, but they are not yet promotion candidates. The next iteration
+should either scale official runs to more anchors after runtime review or move to
+market-coupling/exogenous features and decision-loss training using this fixed
+source path.

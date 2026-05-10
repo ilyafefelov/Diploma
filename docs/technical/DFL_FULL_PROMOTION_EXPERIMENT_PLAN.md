@@ -363,20 +363,38 @@ selected for tracking.
 
 ## 13. Immediate Next Slice
 
-The next implementation slice is Phase A:
+Phase A is complete and the next implementation slice is Phase C, with Phase B
+remaining available if coverage limits block promotion:
 
-> Forecast Pipeline Truth Audit.
+> Official Forecast Rolling-Origin Benchmark.
 
-It is the fastest way to determine whether the current neural/DFL failures are
-real or caused by alignment, DST, IO, unit, or scoring defects. No new model is
-introduced in this slice. The result will decide whether to prioritize data
-backfill, official model training, market-coupling features, or DFL v2.
+This is the fastest way to determine whether compact NBEATSx/TFT failures are
+caused by the lightweight in-repo candidates or persist when official adapters
+are trained per anchor with prior-only inputs.
 
 Acceptance criteria for the next slice:
 
-- `forecast_pipeline_truth_audit_frame` materializes;
-- tests cover perfect forecast, horizon shift, vector round-trip, unit sanity,
-  and source-kind provenance;
+- `official_forecast_rolling_origin_benchmark_frame` materializes;
+- tests prove future targets are masked in official adapter inputs;
+- strict LP/oracle rows include `strict_similar_day`, `nbeatsx_official_v0`,
+  and `tft_official_v0`;
 - Dagster definitions validate;
-- docs record whether the pipeline is cleared for official rolling forecasts;
+- docs record whether official adapters improve strict LP/oracle evidence;
 - commit is created before moving to the next slice.
+
+Phase C status:
+
+- First official rolling run completed under
+  `768c9796-422d-40b7-8f8d-083a861cc0e7`.
+- It produced 30 rows for five tenants, two anchors per tenant, and three
+  forecast candidates.
+- It also exposed and fixed a real NBEATSx rolling-window null-feature bug.
+- Current evidence does not promote official NBEATSx/TFT: strict remains better
+  on mean regret in the first CPU-safe sample.
+
+Next iteration after the official rolling commit:
+
+- scale official rolling anchors only if runtime remains acceptable;
+- otherwise move to Phase D market-coupling/exogenous context and Phase E
+  decision-loss learning on the now-fixed source path;
+- keep strict as fallback until rolling robustness passes.
