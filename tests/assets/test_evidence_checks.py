@@ -68,6 +68,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_residual_dt_fallback_strict_lp_benchmark_frame",
             "dfl_residual_dt_fallback_evidence",
         ),
+        (
+            "dfl_source_specific_research_challenger_frame",
+            "dfl_source_specific_research_challenger_evidence",
+        ),
     }
 
     check_keys = {

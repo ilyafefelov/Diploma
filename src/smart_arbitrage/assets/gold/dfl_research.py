@@ -128,6 +128,10 @@ from smart_arbitrage.dfl.residual_schedule_value import (
 from smart_arbitrage.dfl.trajectory_dataset import (
     build_dfl_real_data_trajectory_dataset_frame,
 )
+from smart_arbitrage.dfl.source_specific_challenger import (
+    build_dfl_source_specific_research_challenger_frame,
+    evaluate_dfl_source_specific_research_challenger_gate,
+)
 from smart_arbitrage.forecasting.afl import (
     build_afl_training_panel_frame,
     build_forecast_candidate_forensics_frame,
@@ -450,6 +454,17 @@ class DflResidualDtFallbackAssetConfig(dg.Config):
     final_validation_anchor_count_per_tenant: int = 18
     min_confidence_improvement_ratio: float = 0.05
     min_validation_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflSourceSpecificResearchChallengerAssetConfig(dg.Config):
+    """Source-specific TFT/NBEATSx research challenger gate scope."""
+
+    source_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    min_tenant_count: int = 5
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    min_mean_regret_improvement_ratio: float = 0.05
+    min_rolling_strict_pass_windows: int = 3
+    min_rolling_window_count: int = 4
 
 
 class AflTrainingPanelAssetConfig(dg.Config):
@@ -2787,6 +2802,66 @@ def dfl_residual_dt_fallback_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_source_specific_research_challenger_frame(
+    context,
+    config: DflSourceSpecificResearchChallengerAssetConfig,
+    dfl_residual_dt_fallback_strict_lp_benchmark_frame: pl.DataFrame,
+    dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame: pl.DataFrame,
+    dfl_strict_failure_selector_robustness_frame: pl.DataFrame,
+    dfl_strict_failure_feature_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Combine source-specific strict evidence into a research-challenger gate."""
+
+    source_model_names = _forecast_model_names(config.source_model_names_csv)
+    challenger_frame = build_dfl_source_specific_research_challenger_frame(
+        dfl_residual_dt_fallback_strict_lp_benchmark_frame,
+        dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
+        dfl_strict_failure_selector_robustness_frame,
+        dfl_strict_failure_feature_audit_frame,
+        source_model_names=source_model_names,
+        min_tenant_count=config.min_tenant_count,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_mean_regret_improvement_ratio=config.min_mean_regret_improvement_ratio,
+        min_rolling_strict_pass_windows=config.min_rolling_strict_pass_windows,
+        min_rolling_window_count=config.min_rolling_window_count,
+    )
+    gate = evaluate_dfl_source_specific_research_challenger_gate(
+        challenger_frame,
+        source_model_names=source_model_names,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": challenger_frame.height,
+            "source_model_count": len(source_model_names),
+            "latest_signal_source_model_names": gate.metrics.get(
+                "latest_signal_source_model_names",
+                [],
+            ),
+            "robust_source_model_names": gate.metrics.get("robust_source_model_names", []),
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "production_promote": False,
+            "scope": "dfl_source_specific_research_challenger_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return challenger_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -3121,6 +3196,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_offline_dt_candidate_frame,
     dfl_offline_dt_candidate_strict_lp_benchmark_frame,
     dfl_residual_dt_fallback_strict_lp_benchmark_frame,
+    dfl_source_specific_research_challenger_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,

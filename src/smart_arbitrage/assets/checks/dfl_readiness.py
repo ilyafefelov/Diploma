@@ -37,6 +37,9 @@ from smart_arbitrage.dfl.semantic_event_failure_audit import (
 from smart_arbitrage.dfl.residual_schedule_value import (
     validate_dfl_residual_dt_fallback_evidence,
 )
+from smart_arbitrage.dfl.source_specific_challenger import (
+    validate_dfl_source_specific_research_challenger_evidence,
+)
 from smart_arbitrage.forecasting.afl_error_audit import (
     validate_afl_forecast_error_audit_evidence,
 )
@@ -224,6 +227,21 @@ def dfl_residual_dt_fallback_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_source_specific_research_challenger_frame",
+    name="dfl_source_specific_research_challenger_evidence",
+    description="Checks source-specific TFT/NBEATSx research challenger evidence boundaries.",
+)
+def dfl_source_specific_research_challenger_evidence(
+    dfl_source_specific_research_challenger_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_source_specific_research_challenger_evidence(
+            dfl_source_specific_research_challenger_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="horizon_regret_weighted_forecast_strategy_benchmark_frame",
     name="horizon_calibration_no_leakage_evidence",
     description="Checks horizon-aware calibration anchor coverage and prior-anchor metadata.",
@@ -285,6 +303,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_semantic_event_strict_failure_audit_evidence,
     afl_forecast_error_audit_evidence,
     dfl_residual_dt_fallback_evidence,
+    dfl_source_specific_research_challenger_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,
