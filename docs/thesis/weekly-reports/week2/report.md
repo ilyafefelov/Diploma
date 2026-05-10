@@ -1,22 +1,5 @@
 # Щотижневий звіт 2
 
-## 0. Формат і межі звіту
-
-Цей документ є повною submission-версією другого щотижневого звіту. Він описує прогрес за останні 7 днів і окремо враховує demo-day у середу, `06.05.2026`. Демо-матеріали вже є в репозиторії, але цей документ не є сценарієм демо; це саме Week 2 progress report.
-
-За вимогами syllabus звіт містить:
-
-- опис реалізованих або вдосконалених компонентів;
-- висновки після першого демо;
-- аналіз проблем і шляхів їх розв'язання;
-- оновлений план на наступний тиждень;
-- посилання на код, документацію, презентацію, скриншоти/візуальні артефакти.
-
-Як і в Week 1, підготовлено дві версії:
-
-- повна версія: цей файл;
-- коротка supervisor-facing версія: [supervisor-summary.md](./supervisor-summary.md).
-
 ## 1. Короткий результат тижня
 
 За Week 2 проєкт був просунутий від базового MVP до зрозумілого supervisor-demo package. Основний результат тижня — стабільний operator-facing контур, який можна пояснити керівнику як повний шлях від даних до безпечного preview-рішення:
@@ -97,28 +80,28 @@ Data -> Forecast -> Optimize -> Validate -> Preview -> Learn
 
 Поточна архітектура узгоджується з літературою з time-series forecasting, predict-then-optimize і energy storage arbitrage. Найважливіший принцип: для BESS arbitrage не достатньо довести, що forecast має нижчу помилку. Треба довести, що forecast або learned strategy дає кращу decision quality після оптимізації.
 
-| Джерело | DOI / ідентифікатор | Як використано в проєкті |
-|---|---|---|
-| Olivares et al., "Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx" | `10.1016/j.ijforecast.2022.03.001` | Обґрунтовує NBEATSx як майбутній forecast candidate для electricity price forecasting з exogenous variables. |
-| Lim et al., "Temporal Fusion Transformers for interpretable multi-horizon time series forecasting" | `10.1016/j.ijforecast.2021.03.012` | Обґрунтовує TFT як інтерпретований multi-horizon forecasting candidate із covariates та attention/feature-selection логікою. |
-| Elmachtoub and Grigas, "Smart Predict, then Optimize" | `10.1287/mnsc.2020.3922` | Дає теоретичну основу для оцінювання моделей через downstream optimization loss, а не лише forecast error. |
-| Sang et al., "Electricity Price Prediction for Energy Storage System Arbitrage: A Decision-focused Approach" | `10.48550/arXiv.2305.00362` | Підтримує storage-specific DFL framing: regret і arbitrage value важливіші за саму точність прогнозу. |
-| Yi et al., "A Decision-Focused Predict-then-Bid Framework for Strategic Energy Storage" | `10.48550/arXiv.2505.01551` | Пояснює майбутній напрям predict-then-bid, де storage optimization і market-clearing logic входять у decision-focused training. |
-| Hesse et al., "Ageing and Efficiency Aware Battery Dispatch for Arbitrage Markets Using MILP" | `10.3390/en12060999` | Підтримує ідею, що degradation/efficiency мають бути частиною dispatch economics; у Week 2 це реалізовано поки як proxy. |
-| Maheshwari et al., "Optimizing the operation of energy storage using a non-linear lithium-ion battery degradation model" | `10.1016/j.apenergy.2019.114360` | Показує, що глибша degradation model є окремим наступним кроком, а не поточним MVP claim. |
+| Джерело                                                                                                           | DOI / ідентифікатор     | Як використано в проєкті                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Olivares et al., "Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx" | `10.1016/j.ijforecast.2022.03.001` | Обґрунтовує NBEATSx як майбутній forecast candidate для electricity price forecasting з exogenous variables.                                       |
+| Lim et al., "Temporal Fusion Transformers for interpretable multi-horizon time series forecasting"                       | `10.1016/j.ijforecast.2021.03.012` | Обґрунтовує TFT як інтерпретований multi-horizon forecasting candidate із covariates та attention/feature-selection логікою.          |
+| Elmachtoub and Grigas, "Smart Predict, then Optimize"                                                                    | `10.1287/mnsc.2020.3922`           | Дає теоретичну основу для оцінювання моделей через downstream optimization loss, а не лише forecast error.                |
+| Sang et al., "Electricity Price Prediction for Energy Storage System Arbitrage: A Decision-focused Approach"             | `10.48550/arXiv.2305.00362`        | Підтримує storage-specific DFL framing: regret і arbitrage value важливіші за саму точність прогнозу.                               |
+| Yi et al., "A Decision-Focused Predict-then-Bid Framework for Strategic Energy Storage"                                  | `10.48550/arXiv.2505.01551`        | Пояснює майбутній напрям predict-then-bid, де storage optimization і market-clearing logic входять у decision-focused training.             |
+| Hesse et al., "Ageing and Efficiency Aware Battery Dispatch for Arbitrage Markets Using MILP"                            | `10.3390/en12060999`               | Підтримує ідею, що degradation/efficiency мають бути частиною dispatch economics; у Week 2 це реалізовано поки як proxy. |
+| Maheshwari et al., "Optimizing the operation of energy storage using a non-linear lithium-ion battery degradation model" | `10.1016/j.apenergy.2019.114360`   | Показує, що глибша degradation model є окремим наступним кроком, а не поточним MVP claim.                                   |
 
 ### 5.1. Нові джерела, які пояснюють поточну проблему і план
 
 Окремий блок літератури, зібраний у [docs/thesis/sources](../../sources), прямо пояснює, чому поточний стан проєкту не варто трактувати як "нейромережі вже мають перемогти baseline". Навпаки, ці джерела підтримують обережну траєкторію: спочатку стабільний контрольний baseline і no-leakage benchmark, потім forecast candidates, потім DFL/DT only if decision-value evidence passes.
 
-| Група джерел | Приклади з локального архіву | Що це означає для поточного продукту |
-|---|---|---|
-| DFL як навчання на downstream decision quality | Mandi et al., `Decision-Focused Learning` survey, DOI `10.1613/jair.1.15320`; Sang et al., ESS arbitrage DFL, arXiv `2305.00362`; Elmachtoub and Grigas, SPO+, DOI `10.1287/mnsc.2020.3922` | Forecast accuracy сама по собі не є достатнім критерієм. Тому наступний benchmark має рахувати LP/oracle regret, net value і feasibility. |
-| Storage arbitrage як multistage/SOC-path задача | Persak and Anjos, arXiv `2405.14719`; Yi et al., perturbed DFL for storage, arXiv `2406.17085` | Hourly action labels або незалежна класифікація BUY/SELL/HOLD можуть програвати, бо батарея має intertemporal SOC state. Це підтримує план переходу до trajectory/value evidence. |
-| Offline Decision Transformer як research primitive | Chen et al., Decision Transformer, arXiv `2106.01345`; Bhargava et al., offline RL comparison, arXiv `2305.14550`; Hugging Face Decision Transformer docs | DT є доречним майбутнім offline sequence-modeling напрямом, але тільки після накопичення якісних trajectory/value rows. У Week 2 це не production claim. |
-| Forecasting foundation/benchmark guardrails | PriceFM, arXiv `2508.04875`; THieF, arXiv `2508.11372`; TSFM leakage evaluation, arXiv `2510.13654`; GIFT-Eval, arXiv `2410.10393`; fev-bench, arXiv `2509.26468` | Нові time-series джерела підтримують майбутній forecast layer і вимогу no-leakage temporal evaluation. Вони не замінюють український OREE/Open-Meteo benchmark. |
-| BESS dispatch value and forecast impact | DFKI/NEIS 2025 BESS dispatch forecast-impact source note; Lago et al., EPF benchmark, DOI `10.1016/j.apenergy.2021.116983` | Треба перевіряти, як forecast впливає на dispatch profit, а не лише на statistical error. Це прямо описує нашу поточну проблему з NBEATSx/TFT candidates. |
-| Український та європейський market context | IEA Ukraine energy security 2024; EU-Ukraine market-coupling policy notes; ENTSO-E, OPSD, Ember, Nord Pool registry entries | Європейські джерела корисні для context/future validation, але не мають змішуватися в українське training evidence без timezone, currency, licensing і market-rule normalization. |
+| Група джерел                                             | Приклади з локального архіву                                                                                                                                              | Що це означає для поточного продукту                                                                                                                                                                                            |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DFL як навчання на downstream decision quality          | Mandi et al.,`Decision-Focused Learning` survey, DOI `10.1613/jair.1.15320`; Sang et al., ESS arbitrage DFL, arXiv `2305.00362`; Elmachtoub and Grigas, SPO+, DOI `10.1287/mnsc.2020.3922` | Forecast accuracy сама по собі не є достатнім критерієм. Тому наступний benchmark має рахувати LP/oracle regret, net value і feasibility.                                                              |
+| Storage arbitrage як multistage/SOC-path задача             | Persak and Anjos, arXiv `2405.14719`; Yi et al., perturbed DFL for storage, arXiv `2406.17085`                                                                                                 | Hourly action labels або незалежна класифікація BUY/SELL/HOLD можуть програвати, бо батарея має intertemporal SOC state. Це підтримує план переходу до trajectory/value evidence. |
+| Offline Decision Transformer як research primitive                | Chen et al., Decision Transformer, arXiv `2106.01345`; Bhargava et al., offline RL comparison, arXiv `2305.14550`; Hugging Face Decision Transformer docs                                      | DT є доречним майбутнім offline sequence-modeling напрямом, але тільки після накопичення якісних trajectory/value rows. У Week 2 це не production claim.                                        |
+| Forecasting foundation/benchmark guardrails                         | PriceFM, arXiv `2508.04875`; THieF, arXiv `2508.11372`; TSFM leakage evaluation, arXiv `2510.13654`; GIFT-Eval, arXiv `2410.10393`; fev-bench, arXiv `2509.26468`                        | Нові time-series джерела підтримують майбутній forecast layer і вимогу no-leakage temporal evaluation. Вони не замінюють український OREE/Open-Meteo benchmark.                                |
+| BESS dispatch value and forecast impact                             | DFKI/NEIS 2025 BESS dispatch forecast-impact source note; Lago et al., EPF benchmark, DOI `10.1016/j.apenergy.2021.116983`                                                                       | Треба перевіряти, як forecast впливає на dispatch profit, а не лише на statistical error. Це прямо описує нашу поточну проблему з NBEATSx/TFT candidates.                                  |
+| Український та європейський market context | IEA Ukraine energy security 2024; EU-Ukraine market-coupling policy notes; ENTSO-E, OPSD, Ember, Nord Pool registry entries                                                                        | Європейські джерела корисні для context/future validation, але не мають змішуватися в українське training evidence без timezone, currency, licensing і market-rule normalization.              |
 
 Цей блок джерел уточнює, чому поточний продукт після Week 2 має рухатися не шляхом "додати складнішу модель і назвати це DFL", а шляхом evidence discipline. Якщо NBEATSx/TFT або DT-кандидат не проходить strict LP/oracle gate, це не є провалом архітектури. Це корисний дослідницький результат: модель може бути цікавою, але ще не давати стабільно кращого arbitrage-рішення за простий frozen control.
 
@@ -138,14 +121,14 @@ Data -> Forecast -> Optimize -> Validate -> Preview -> Learn
 
 ## 6. Проблеми, ризики та шляхи розв'язання
 
-| Проблема / ризик | Чому це важливо | Запланована відповідь |
-|---|---|---|
-| Ризик переплутати recommendation preview з live execution | Для диплома небезпечно заявити більше, ніж реально реалізовано | У звіті й демо явно вказано: not live trading, not cleared trade, not physical dispatch |
-| DFL/DT ще не production-ready | Це цільова research novelty, але не результат Week 2 | Тримати DFL/DT як planned research lane до проходження strict evidence gates |
-| Forecast accuracy може не означати кращий arbitrage result | Для BESS важливий прибуток і regret, а не тільки MAE/RMSE | Наступний benchmark має оцінювати LP/oracle regret, net value і SOC feasibility |
-| Battery model поки спрощений | Повний SOH/path-dependent degradation model не реалізовано | Називати його feasibility-and-economics preview model; deeper digital twin винести в future work |
-| Live/source data можуть мати gaps | Для thesis-grade evidence потрібна відтворювана data quality | Наступний тиждень: rolling-origin benchmark, coverage audit, no-leakage checks |
-| Dashboard може стати занадто важким місцем логіки | Це погіршить тестованість і contract boundary | Лишити strategy logic у backend/Dagster/optimization layer; UI тільки читає read models |
+| Проблема / ризик                                                       | Чому це важливо                                                                                         | Запланована відповідь                                                                            |
+| ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Ризик переплутати recommendation preview з live execution          | Для диплома небезпечно заявити більше, ніж реально реалізовано | У звіті й демо явно вказано: not live trading, not cleared trade, not physical dispatch        |
+| DFL/DT ще не production-ready                                                   | Це цільова research novelty, але не результат Week 2                                          | Тримати DFL/DT як planned research lane до проходження strict evidence gates                   |
+| Forecast accuracy може не означати кращий arbitrage result      | Для BESS важливий прибуток і regret, а не тільки MAE/RMSE                               | Наступний benchmark має оцінювати LP/oracle regret, net value і SOC feasibility                |
+| Battery model поки спрощений                                           | Повний SOH/path-dependent degradation model не реалізовано                                        | Називати його feasibility-and-economics preview model; deeper digital twin винести в future work |
+| Live/source data можуть мати gaps                                         | Для thesis-grade evidence потрібна відтворювана data quality                                  | Наступний тиждень: rolling-origin benchmark, coverage audit, no-leakage checks                       |
+| Dashboard може стати занадто важким місцем логіки | Це погіршить тестованість і contract boundary                                                | Лишити strategy logic у backend/Dagster/optimization layer; UI тільки читає read models            |
 
 ## 7. План роботи на наступний тиждень
 
