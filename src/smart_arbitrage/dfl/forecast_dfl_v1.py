@@ -46,6 +46,7 @@ DFL_FORECAST_DFL_V1_ACADEMIC_SCOPE: Final[str] = (
     "It is not full DFL, not Decision Transformer control, and not market execution."
 )
 RELAXED_SOLVER_FALLBACK_REGRET_UAH: Final[float] = 1_000_000_000_000.0
+MAX_HORIZON_BIAS_GRAD_NORM: Final[float] = 100.0
 REQUIRED_BENCHMARK_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "tenant_id",
@@ -431,9 +432,28 @@ def _train_decision_loss_horizon_biases_with_checkpoints(
         )
         bias_regularization = torch.mean(torch.square(horizon_biases / 1000.0))
         loss = loss_result.total_loss + bias_regularization
+        if not torch.isfinite(loss).item():
+            solver_statuses.append("training_guard:non_finite_loss")
+            break
         loss.backward()
+        if horizon_biases.grad is None:
+            solver_statuses.append("training_guard:missing_gradient")
+            break
+        if not torch.isfinite(horizon_biases.grad).all().item():
+            solver_statuses.append("training_guard:non_finite_gradient")
+            with torch.no_grad():
+                horizon_biases.grad = torch.nan_to_num(
+                    horizon_biases.grad,
+                    nan=0.0,
+                    posinf=MAX_HORIZON_BIAS_GRAD_NORM,
+                    neginf=-MAX_HORIZON_BIAS_GRAD_NORM,
+                )
+        torch.nn.utils.clip_grad_norm_([horizon_biases], max_norm=MAX_HORIZON_BIAS_GRAD_NORM)
         optimizer.step()
         with torch.no_grad():
+            if not torch.isfinite(horizon_biases).all().item():
+                solver_statuses.append("training_guard:non_finite_bias")
+            horizon_biases.nan_to_num_(nan=0.0, posinf=5000.0, neginf=-5000.0)
             horizon_biases.clamp_(min=-5000.0, max=5000.0)
         final_loss = float(loss.detach().cpu())
         candidate_biases = [round(float(value), 6) for value in horizon_biases.detach().cpu().tolist()]
