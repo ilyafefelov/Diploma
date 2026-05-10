@@ -40,6 +40,24 @@ Latest ceiling check:
 - One price gap and one weather gap remain visible per tenant in the current
   feature frame.
 
+Latest 180-anchor repair audit:
+
+- Config:
+  [real_data_dfl_regime_gated_tft_selector_v2_week3.yaml](../../configs/real_data_dfl_regime_gated_tft_selector_v2_week3.yaml).
+- New repair asset: `dfl_ua_coverage_repair_audit_frame`.
+- Dagster run id: `1b901874-b713-4762-9154-2e822f91be8d`.
+- Target: 180 eligible anchors per tenant.
+- Current result: 104 eligible anchors per tenant for all five canonical
+  tenants.
+- Exact missing timestamp: `2026-03-29 23:00`.
+- Gap kind: `price_and_weather_gap`.
+- Repair status: `not_recoverable_from_current_feature_frame`.
+- Observed price/weather coverage ratio: `0.999653`.
+- Data quality tier: `coverage_gap`.
+- Decision: do not synthesize this hour for thesis-grade promotion. Either add
+  a source-backed Ukrainian OREE/Open-Meteo backfill or lock 104 anchors as the
+  current ceiling for research-only selector work.
+
 The audit must keep tenant-specific anchor eligibility, price/weather gap
 counts, latest-batch freshness, and observed/thesis-grade coverage visible in
 Dagster metadata.

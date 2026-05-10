@@ -20,6 +20,7 @@ passes.
 | `dfl_production_promotion_gate_frame` | One row per source/regime with the promotion decision, blocker, fallback strategy, coverage summary, and claim flags. |
 | `dfl_production_promotion_gate_evidence` | Dagster asset check for claim flags, coverage validity, promotion consistency, and market-execution boundary. |
 | [real_data_dfl_production_promotion_gate_week3.yaml](../../configs/real_data_dfl_production_promotion_gate_week3.yaml) | Tracked Week 3 config for the source/regime promotion gate. |
+| [DFL_REGIME_GATED_TFT_SELECTOR_V2.md](DFL_REGIME_GATED_TFT_SELECTOR_V2.md) | Follow-up v2 evidence that feeds this gate when available. |
 
 ## Promotion Semantics
 
@@ -105,3 +106,32 @@ evidence blocks promotion. The next technical step is not another DT variant; it
 is either recovering more observed Ukrainian history or tightening prior-only
 regime gates until rolling windows pass without weakening the strict LP/oracle
 promotion rule.
+
+## Regime-Gated TFT V2 Update
+
+The v2 selector was materialized on 2026-05-10 with Dagster run id
+`1b901874-b713-4762-9154-2e822f91be8d`, then this production gate was rerun with
+Dagster run id `e683a4b4-ce32-470b-8c61-71342ff23fa3` so it consumed the new v2
+strict evidence.
+
+V2 did not promote anything. It selected `strict_similar_day` for all evaluated
+selector rows, so both source-specific v2 selectors matched strict-control mean
+regret: `710.445` UAH, median regret `442.848` UAH. Raw neural schedules still
+lost badly in the same strict frame: NBEATSx mean regret `1,525.526` UAH and TFT
+mean regret `1,800.934` UAH.
+
+The key blockers are now explicit:
+
+| Source/regime | Validation tenant-anchors | Rolling windows | V2 evidence used | Promotion result |
+|---|---:|---:|---|---|
+| `tft_silver_v0` / `strict_stable_region` | 90 | 4 | true | blocked, strict-stable region |
+| `tft_silver_v0` / `high_spread_volatility` | 54 | 1 | true | blocked, prior-regime undercoverage |
+| `nbeatsx_silver_v0` / `strict_stable_region` | 90 | 4 | true | blocked, source not TFT |
+| `nbeatsx_silver_v0` / `strict_failure_captured` | 18 | 1 | true | blocked, source not TFT |
+| `nbeatsx_silver_v0` / `high_spread_volatility` | 18 | 1 | true | blocked, source not TFT |
+
+The production gate check still fails, which is the intended conservative
+state. The coverage audit remains `coverage_gap` for the configured 180-anchor
+target: five tenants have 104 eligible anchors each, and `2026-03-29 23:00`
+remains an unrecoverable price-and-weather gap in the current observed feature
+frame.

@@ -1373,3 +1373,48 @@ current evidence blocks promotion. `strict_similar_day` remains the offline
 default fallback. The next route to promotion is either real Ukrainian history
 recovery beyond 104 anchors or a prior-only regime gate that survives at least
 3 of 4 rolling strict-control windows.
+
+## UA Coverage Repair And Regime-Gated TFT Selector V2
+
+The v2 slice tightened the route to production promotion: first prove or repair
+the Ukrainian coverage ceiling, then allow TFT only in prior-evidenced
+strict-failure regimes. It does not add another DT/model variant.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.coverage_repair`.
+- New helper: `smart_arbitrage.dfl.regime_gated_tft_selector`.
+- New assets: `dfl_ua_coverage_repair_audit_frame`,
+  `dfl_regime_gated_tft_selector_v2_frame`, and
+  `dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame`.
+- New asset check: `dfl_regime_gated_tft_selector_v2_evidence`.
+- Config:
+  [../../configs/real_data_dfl_regime_gated_tft_selector_v2_week3.yaml](../../configs/real_data_dfl_regime_gated_tft_selector_v2_week3.yaml).
+- Tracked note:
+  [DFL_REGIME_GATED_TFT_SELECTOR_V2.md](DFL_REGIME_GATED_TFT_SELECTOR_V2.md).
+
+Materialized result:
+
+- Run `1b901874-b713-4762-9154-2e822f91be8d` finished successfully and
+  materialized the coverage repair audit plus v2 selector/strict benchmark.
+- The exact unrecovered gap is `2026-03-29 23:00` for all five tenants, with
+  `gap_kind=price_and_weather_gap` and
+  `repair_status=not_recoverable_from_current_feature_frame`.
+- The 180-anchor target remains unavailable: all five tenants have 104 eligible
+  anchors and `data_quality_tier=coverage_gap`.
+- V2 emitted 11 selector-rule rows and 2,880 strict LP/oracle rows.
+- V2 selected `strict_similar_day` everywhere. Selector mean regret therefore
+  matched strict at `710.445` UAH with median `442.848` UAH for both source
+  models.
+- The best prior non-strict references remain diagnostic only: NBEATSx source
+  best reference mean regret was `696.899` UAH, while TFT source best reference
+  mean regret was `736.743` UAH. The v2 gate did not allow these references to
+  override strict because prior-regime evidence was insufficient or the regime
+  was strict-stable.
+- Production gate rerun `e683a4b4-ce32-470b-8c61-71342ff23fa3` consumed v2
+  evidence and still set `production_promote=false` for every row.
+
+Decision: v2 made the blocker sharper. The current system should not be
+promoted; the next improvement must either add source-backed Ukrainian coverage
+or improve prior-only regime features enough to pass rolling strict-control
+windows without using validation actuals for selection.

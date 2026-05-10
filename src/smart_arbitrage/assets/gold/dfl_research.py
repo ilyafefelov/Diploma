@@ -63,6 +63,9 @@ from smart_arbitrage.dfl.data_expansion import (
     build_dfl_action_label_panel_frame,
     build_dfl_data_coverage_audit_frame,
 )
+from smart_arbitrage.dfl.coverage_repair import (
+    build_dfl_ua_coverage_repair_audit_frame,
+)
 from smart_arbitrage.dfl.failure_analysis import (
     build_dfl_action_classifier_failure_analysis_frame,
 )
@@ -106,6 +109,12 @@ from smart_arbitrage.dfl.strict_failure_feature_selector import (
     build_dfl_feature_aware_strict_failure_selector_frame,
     build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
     evaluate_dfl_feature_aware_strict_failure_selector_gate,
+)
+from smart_arbitrage.dfl.regime_gated_tft_selector import (
+    DFL_REGIME_GATED_TFT_SELECTOR_V2_STRATEGY_KIND,
+    build_dfl_regime_gated_tft_selector_v2_frame,
+    build_dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame,
+    evaluate_dfl_regime_gated_tft_selector_v2_gate,
 )
 from smart_arbitrage.dfl.forecast_dfl_v1 import (
     DFL_FORECAST_DFL_V1_STRICT_LP_STRATEGY_KIND,
@@ -166,6 +175,16 @@ class DflDataCoverageAuditAssetConfig(dg.Config):
     target_anchor_count_per_tenant: int = 90
     required_past_hours: int = 168
     horizon_hours: int = 24
+
+
+class DflUaCoverageRepairAuditAssetConfig(dg.Config):
+    """Exact UA OREE/Open-Meteo gap repair audit scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    target_anchor_count_per_tenant: int = 180
 
 
 class DflActionLabelPanelAssetConfig(dg.Config):
@@ -393,6 +412,20 @@ class DflFeatureAwareStrictFailureSelectorAssetConfig(dg.Config):
     rank_overlap_floor_grid_csv: str = "0.0,0.5,0.75"
     price_regime_policies_csv: str = "all,low_medium,high_only"
     volatility_policies_csv: str = "all,non_volatile"
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflRegimeGatedTftSelectorV2AssetConfig(dg.Config):
+    """Regime-gated prior-only TFT selector v2 scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    tft_source_model_name: str = "tft_silver_v0"
+    min_training_window_count: int = 3
+    min_mean_regret_improvement_ratio: float = 0.05
     min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
@@ -882,6 +915,51 @@ def dfl_data_coverage_audit_frame(
         },
     )
     return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_coverage_repair_audit_frame(
+    context,
+    config: DflUaCoverageRepairAuditAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    dfl_data_coverage_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Exact OREE/Open-Meteo timestamp gap audit before DFL coverage promotion."""
+
+    repair_frame = build_dfl_ua_coverage_repair_audit_frame(
+        real_data_benchmark_silver_feature_frame,
+        dfl_data_coverage_audit_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        target_anchor_count_per_tenant=config.target_anchor_count_per_tenant,
+    )
+    gap_rows = repair_frame.filter(pl.col("gap_kind") != "none") if repair_frame.height else pl.DataFrame()
+    _add_metadata(
+        context,
+        {
+            "rows": repair_frame.height,
+            "gap_rows": gap_rows.height,
+            "tenant_count": repair_frame.select("tenant_id").n_unique()
+            if repair_frame.height
+            else 0,
+            "target_anchor_count_per_tenant": config.target_anchor_count_per_tenant,
+            "repair_statuses": sorted(repair_frame["repair_status"].unique().to_list())
+            if repair_frame.height
+            else [],
+            "scope": "ua_coverage_repair_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return repair_frame
 
 
 @dg.asset(
@@ -2438,6 +2516,110 @@ def dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
         medallion="gold",
         domain="dfl_research",
         elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_regime_gated_tft_selector_v2_frame(
+    context,
+    config: DflRegimeGatedTftSelectorV2AssetConfig,
+    dfl_strict_failure_prior_feature_panel_frame: pl.DataFrame,
+    dfl_strict_failure_feature_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Select source/regime rules for a prior-only TFT challenger switch."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    selector_frame = build_dfl_regime_gated_tft_selector_v2_frame(
+        dfl_strict_failure_prior_feature_panel_frame,
+        dfl_strict_failure_feature_audit_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=source_model_names,
+        tft_source_model_name=config.tft_source_model_name,
+        min_training_window_count=config.min_training_window_count,
+        min_mean_regret_improvement_ratio=config.min_mean_regret_improvement_ratio,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": selector_frame.height,
+            "source_model_count": len(source_model_names),
+            "allow_challenger_rows": selector_frame.filter(pl.col("allow_challenger")).height
+            if selector_frame.height
+            else 0,
+            "strict_default_rows": selector_frame.filter(~pl.col("allow_challenger")).height
+            if selector_frame.height
+            else 0,
+            "scope": "dfl_regime_gated_tft_selector_v2_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return selector_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame(
+    context,
+    config: DflRegimeGatedTftSelectorV2AssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_regime_gated_tft_selector_v2_frame: pl.DataFrame,
+    dfl_strict_failure_prior_feature_panel_frame: pl.DataFrame,
+    dfl_strict_failure_feature_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle rows for the regime-gated TFT selector v2."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_regime_gated_tft_selector_v2_frame,
+        dfl_strict_failure_prior_feature_panel_frame,
+        dfl_strict_failure_feature_audit_frame,
+        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_regime_gated_tft_selector_v2_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+    )
+    selector_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_regime_gated_tft_selector_v2_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "selector_validation_tenant_anchor_count": selector_rows.height,
+            "strategy_kind": DFL_REGIME_GATED_TFT_SELECTOR_V2_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "production_gate_passed": gate.metrics.get("production_gate_passed", False),
+            "scope": "dfl_regime_gated_tft_selector_v2_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
         ml_stage="training_data",
         evidence_scope="not_market_execution",
         market_venue="DAM",
@@ -2895,6 +3077,7 @@ def dfl_production_promotion_gate_frame(
     dfl_strict_failure_selector_robustness_frame: pl.DataFrame,
     dfl_strict_failure_feature_audit_frame: pl.DataFrame,
     dfl_data_coverage_audit_frame: pl.DataFrame,
+    dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame: pl.DataFrame,
 ) -> pl.DataFrame:
     """Offline production-promotion gate for source/regime-specific DFL evidence."""
 
@@ -2904,6 +3087,7 @@ def dfl_production_promotion_gate_frame(
         dfl_strict_failure_selector_robustness_frame,
         dfl_strict_failure_feature_audit_frame,
         dfl_data_coverage_audit_frame,
+        dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame,
         source_model_names=source_model_names,
         min_tenant_count=config.min_tenant_count,
         min_validation_tenant_anchor_count=(
@@ -3236,6 +3420,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     afl_training_panel_frame,
     afl_forecast_error_audit_frame,
     dfl_data_coverage_audit_frame,
+    dfl_ua_coverage_repair_audit_frame,
     dfl_action_label_panel_frame,
     dfl_action_classifier_baseline_frame,
     dfl_action_classifier_strict_lp_benchmark_frame,
@@ -3267,6 +3452,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_strict_failure_feature_audit_frame,
     dfl_feature_aware_strict_failure_selector_frame,
     dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
+    dfl_regime_gated_tft_selector_v2_frame,
+    dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame,
     dfl_forecast_dfl_v1_panel_frame,
     dfl_forecast_dfl_v1_strict_lp_benchmark_frame,
     dfl_real_data_trajectory_dataset_frame,

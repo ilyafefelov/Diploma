@@ -31,6 +31,9 @@ from smart_arbitrage.dfl.strict_failure_features import (
 from smart_arbitrage.dfl.strict_failure_feature_selector import (
     validate_dfl_feature_aware_strict_failure_selector_evidence,
 )
+from smart_arbitrage.dfl.regime_gated_tft_selector import (
+    validate_dfl_regime_gated_tft_selector_v2_evidence,
+)
 from smart_arbitrage.dfl.semantic_event_failure_audit import (
     validate_dfl_semantic_event_strict_failure_audit_evidence,
 )
@@ -184,6 +187,22 @@ def dfl_feature_aware_strict_failure_selector_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame",
+    name="dfl_regime_gated_tft_selector_v2_evidence",
+    description="Checks regime-gated TFT selector v2 strict LP coverage and claim boundaries.",
+)
+def dfl_regime_gated_tft_selector_v2_evidence(
+    dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_regime_gated_tft_selector_v2_evidence(
+            dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_semantic_event_strict_failure_audit_frame",
     name="dfl_semantic_event_strict_failure_audit_evidence",
     description="Checks official grid-event semantic strict-failure audit boundaries.",
@@ -318,6 +337,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_strict_failure_selector_robustness_evidence,
     dfl_strict_failure_feature_audit_evidence,
     dfl_feature_aware_strict_failure_selector_evidence,
+    dfl_regime_gated_tft_selector_v2_evidence,
     dfl_semantic_event_strict_failure_audit_evidence,
     afl_forecast_error_audit_evidence,
     dfl_residual_dt_fallback_evidence,

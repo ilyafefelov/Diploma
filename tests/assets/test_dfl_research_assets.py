@@ -164,6 +164,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_training_frame",
         "dfl_training_example_frame",
         "dfl_data_coverage_audit_frame",
+        "dfl_ua_coverage_repair_audit_frame",
         "dfl_action_label_panel_frame",
         "dfl_action_classifier_baseline_frame",
         "dfl_action_classifier_strict_lp_benchmark_frame",
@@ -202,6 +203,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_strict_failure_feature_audit_frame",
         "dfl_feature_aware_strict_failure_selector_frame",
         "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame",
+        "dfl_regime_gated_tft_selector_v2_frame",
+        "dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame",
         "dfl_forecast_dfl_v1_panel_frame",
         "dfl_forecast_dfl_v1_strict_lp_benchmark_frame",
         "dfl_real_data_trajectory_dataset_frame",
@@ -240,6 +243,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_training_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_training_example_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_data_coverage_audit_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_ua_coverage_repair_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_label_panel_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_classifier_baseline_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_classifier_strict_lp_benchmark_frame"] == "gold_dfl_training"
@@ -269,6 +273,8 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_strict_failure_feature_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_regime_gated_tft_selector_v2_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_forecast_dfl_v1_panel_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_forecast_dfl_v1_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_real_data_trajectory_dataset_frame"] == "gold_dfl_training"
@@ -322,6 +328,11 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_feature_aware_strict_failure_selector_frame"]["ml_stage"] == "selection"
     assert (
         tags_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert tags_by_key["dfl_regime_gated_tft_selector_v2_frame"]["ml_stage"] == "selection"
+    assert (
+        tags_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"]["ml_stage"]
         == "evaluation"
     )
     assert tags_by_key["dfl_forecast_dfl_v1_panel_frame"]["ml_stage"] == "training_data"
@@ -413,13 +424,29 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_strict_failure_selector_robustness_frame",
         "dfl_strict_failure_feature_audit_frame",
     }
+    assert deps_by_key["dfl_ua_coverage_repair_audit_frame"] == {
+        "real_data_benchmark_silver_feature_frame",
+        "dfl_data_coverage_audit_frame",
+    }
+    assert deps_by_key["dfl_regime_gated_tft_selector_v2_frame"] == {
+        "dfl_strict_failure_prior_feature_panel_frame",
+        "dfl_strict_failure_feature_audit_frame",
+    }
+    assert deps_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"] == {
+        "dfl_schedule_candidate_library_v2_frame",
+        "dfl_regime_gated_tft_selector_v2_frame",
+        "dfl_strict_failure_prior_feature_panel_frame",
+        "dfl_strict_failure_feature_audit_frame",
+    }
     assert deps_by_key["dfl_production_promotion_gate_frame"] == {
         "dfl_source_specific_research_challenger_frame",
         "dfl_strict_failure_selector_robustness_frame",
         "dfl_strict_failure_feature_audit_frame",
         "dfl_data_coverage_audit_frame",
+        "dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame",
     }
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["dfl_ua_coverage_repair_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_action_label_panel_frame"]["ml_stage"] == "training_data"
     assert tags_by_key["dfl_action_classifier_baseline_frame"]["ml_stage"] == "evaluation"
     assert (

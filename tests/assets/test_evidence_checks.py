@@ -57,6 +57,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_feature_aware_strict_failure_selector_evidence",
         ),
         (
+            "dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame",
+            "dfl_regime_gated_tft_selector_v2_evidence",
+        ),
+        (
             "dfl_semantic_event_strict_failure_audit_frame",
             "dfl_semantic_event_strict_failure_audit_evidence",
         ),

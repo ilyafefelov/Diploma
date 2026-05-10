@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from statistics import mean
+from statistics import mean, median
 from typing import Any, Final
 
 import polars as pl
@@ -73,6 +73,16 @@ REQUIRED_PRODUCTION_PROMOTION_COLUMNS: Final[frozenset[str]] = frozenset(
         "not_market_execution",
     }
 )
+REQUIRED_REGIME_GATED_V2_STRICT_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "source_model_name",
+        "forecast_model_name",
+        "anchor_timestamp",
+        "regret_uah",
+        "evaluation_payload",
+    }
+)
 
 
 def build_dfl_production_promotion_gate_frame(
@@ -80,6 +90,7 @@ def build_dfl_production_promotion_gate_frame(
     strict_failure_selector_robustness_frame: pl.DataFrame,
     strict_failure_feature_audit_frame: pl.DataFrame,
     dfl_data_coverage_audit_frame: pl.DataFrame,
+    regime_gated_tft_selector_v2_strict_frame: pl.DataFrame | None = None,
     *,
     source_model_names: tuple[str, ...] = ("tft_silver_v0", "nbeatsx_silver_v0"),
     min_tenant_count: int = 5,
@@ -132,6 +143,10 @@ def build_dfl_production_promotion_gate_frame(
         min_tenant_count=min_tenant_count,
         backfill_target_anchor_count_per_tenant=backfill_target_anchor_count_per_tenant,
     )
+    v2_regime_summaries = _v2_regime_summaries(
+        regime_gated_tft_selector_v2_strict_frame,
+        min_mean_regret_improvement_ratio=min_mean_regret_improvement_ratio,
+    )
 
     rows: list[dict[str, Any]] = []
     for source_model_name in source_model_names:
@@ -161,6 +176,9 @@ def build_dfl_production_promotion_gate_frame(
                 source_row,
                 source_robustness_rows=source_robustness_rows,
                 regime_summary=regime_summary,
+                v2_regime_summary=v2_regime_summaries.get(
+                    (source_model_name, str(regime_summary["regime_label"]))
+                ),
                 coverage_summary=coverage_summary,
                 min_tenant_count=min_tenant_count,
                 min_validation_tenant_anchor_count=min_validation_tenant_anchor_count,
@@ -274,11 +292,128 @@ def evaluate_dfl_production_promotion_gate(
     )
 
 
+def _v2_regime_summaries(
+    strict_frame: pl.DataFrame | None,
+    *,
+    min_mean_regret_improvement_ratio: float,
+) -> dict[tuple[str, str], dict[str, Any]]:
+    if strict_frame is None or strict_frame.height == 0:
+        return {}
+    _require_columns(
+        strict_frame,
+        REQUIRED_REGIME_GATED_V2_STRICT_COLUMNS,
+        frame_name="regime_gated_tft_selector_v2_strict_frame",
+    )
+    rows = list(strict_frame.iter_rows(named=True))
+    source_regimes: list[tuple[str, str]] = sorted(
+        {
+            (_source_model_name(row), str(_payload_value(row, "regime_label", default="unknown")))
+            for row in rows
+        }
+    )
+    summaries: dict[tuple[str, str], dict[str, Any]] = {}
+    for source_model_name, regime_label in source_regimes:
+        scoped_rows = [
+            row
+            for row in rows
+            if _source_model_name(row) == source_model_name
+            and _payload_value(row, "regime_label", default="unknown") == regime_label
+        ]
+        window_summaries = _v2_window_summaries(
+            scoped_rows,
+            min_mean_regret_improvement_ratio=min_mean_regret_improvement_ratio,
+        )
+        if not window_summaries:
+            continue
+        latest = min(window_summaries, key=lambda row: int(row["window_index"]))
+        summaries[(source_model_name, regime_label)] = {
+            "tenant_count": latest["tenant_count"],
+            "latest_validation_tenant_anchor_count": latest["validation_tenant_anchor_count"],
+            "latest_source_signal": latest["strict_pass"],
+            "latest_mean_regret_improvement_ratio_vs_strict": latest[
+                "mean_regret_improvement_ratio_vs_strict"
+            ],
+            "latest_median_not_worse": latest["median_not_worse"],
+            "latest_strict_mean_regret_uah": latest["strict_mean_regret_uah"],
+            "latest_fallback_mean_regret_uah": latest["selector_mean_regret_uah"],
+            "latest_strict_median_regret_uah": latest["strict_median_regret_uah"],
+            "latest_fallback_median_regret_uah": latest["selector_median_regret_uah"],
+            "rolling_window_count": len(window_summaries),
+            "rolling_strict_pass_window_count": sum(
+                1 for row in window_summaries if bool(row["strict_pass"])
+            ),
+            "rolling_development_pass_window_count": sum(
+                1 for row in window_summaries if bool(row["development_pass"])
+            ),
+            "robust_research_challenger": bool(latest["strict_pass"])
+            and sum(1 for row in window_summaries if bool(row["strict_pass"])) >= 3,
+            "regime_window_count": len(window_summaries),
+            "regime_validation_anchor_count": sum(
+                int(row["validation_tenant_anchor_count"]) for row in window_summaries
+            ),
+            "regime_mean_improvement_ratio_vs_strict": _mean_float(
+                row["mean_regret_improvement_ratio_vs_strict"] for row in window_summaries
+            ),
+            "regime_mean_improvement_ratio_vs_raw": _mean_float(
+                row["mean_regret_improvement_ratio_vs_raw"] for row in window_summaries
+            ),
+        }
+    return summaries
+
+
+def _v2_window_summaries(
+    rows: list[dict[str, Any]],
+    *,
+    min_mean_regret_improvement_ratio: float,
+) -> list[dict[str, Any]]:
+    window_indices = sorted(
+        {int(str(_payload_value(row, "window_index", default=0))) for row in rows}
+    )
+    summaries: list[dict[str, Any]] = []
+    for window_index in window_indices:
+        window_rows = [
+            row
+            for row in rows
+            if int(str(_payload_value(row, "window_index", default=0))) == window_index
+        ]
+        strict_rows = [row for row in window_rows if _payload_value(row, "selector_row_role") == "strict_reference"]
+        raw_rows = [row for row in window_rows if _payload_value(row, "selector_row_role") == "raw_reference"]
+        selector_rows = [row for row in window_rows if _payload_value(row, "selector_row_role") == "selector"]
+        if not strict_rows or not selector_rows:
+            continue
+        strict_mean = _mean_regret(strict_rows)
+        raw_mean = _mean_regret(raw_rows)
+        selector_mean = _mean_regret(selector_rows)
+        strict_median = _median_regret(strict_rows)
+        selector_median = _median_regret(selector_rows)
+        improvement_vs_strict = _improvement_ratio(strict_mean, selector_mean)
+        improvement_vs_raw = _improvement_ratio(raw_mean, selector_mean)
+        summaries.append(
+            {
+                "window_index": window_index,
+                "tenant_count": len({str(row["tenant_id"]) for row in selector_rows}),
+                "validation_tenant_anchor_count": len(_tenant_anchor_set(selector_rows)),
+                "strict_mean_regret_uah": strict_mean,
+                "selector_mean_regret_uah": selector_mean,
+                "strict_median_regret_uah": strict_median,
+                "selector_median_regret_uah": selector_median,
+                "median_not_worse": selector_median <= strict_median,
+                "mean_regret_improvement_ratio_vs_strict": improvement_vs_strict,
+                "mean_regret_improvement_ratio_vs_raw": improvement_vs_raw,
+                "strict_pass": improvement_vs_strict >= min_mean_regret_improvement_ratio
+                and selector_median <= strict_median,
+                "development_pass": improvement_vs_raw > 0.0,
+            }
+        )
+    return summaries
+
+
 def _promotion_row(
     source_row: dict[str, Any],
     *,
     source_robustness_rows: list[dict[str, Any]],
     regime_summary: dict[str, Any],
+    v2_regime_summary: dict[str, Any] | None,
     coverage_summary: dict[str, Any],
     min_tenant_count: int,
     min_validation_tenant_anchor_count: int,
@@ -297,8 +432,39 @@ def _promotion_row(
     latest_improvement = float(source_row["latest_mean_regret_improvement_ratio_vs_strict"])
     median_not_worse = bool(source_row["latest_median_not_worse"])
     validation_count = int(source_row["latest_validation_tenant_anchor_count"])
+    tenant_count = int(source_row["tenant_count"])
+    latest_strict_mean = float(source_row["latest_strict_mean_regret_uah"])
+    latest_fallback_mean = float(source_row["latest_fallback_mean_regret_uah"])
+    latest_strict_median = float(source_row["latest_strict_median_regret_uah"])
+    latest_fallback_median = float(source_row["latest_fallback_median_regret_uah"])
     rolling_window_count = int(source_row["rolling_window_count"])
     rolling_strict_count = int(source_row["rolling_strict_pass_window_count"])
+    rolling_development_count = int(source_row["rolling_development_pass_window_count"])
+    robust_research_challenger = bool(source_row["robust_research_challenger"])
+    regime_window_count = int(regime_summary["regime_window_count"])
+    regime_validation_count = int(regime_summary["regime_validation_anchor_count"])
+    regime_improvement_vs_strict = float(regime_summary["regime_mean_improvement_ratio_vs_strict"])
+    regime_improvement_vs_raw = float(regime_summary["regime_mean_improvement_ratio_vs_raw"])
+    if v2_regime_summary is not None:
+        source_latest_signal = bool(v2_regime_summary["latest_source_signal"])
+        latest_improvement = float(v2_regime_summary["latest_mean_regret_improvement_ratio_vs_strict"])
+        median_not_worse = bool(v2_regime_summary["latest_median_not_worse"])
+        validation_count = int(v2_regime_summary["latest_validation_tenant_anchor_count"])
+        tenant_count = int(v2_regime_summary["tenant_count"])
+        latest_strict_mean = float(v2_regime_summary["latest_strict_mean_regret_uah"])
+        latest_fallback_mean = float(v2_regime_summary["latest_fallback_mean_regret_uah"])
+        latest_strict_median = float(v2_regime_summary["latest_strict_median_regret_uah"])
+        latest_fallback_median = float(v2_regime_summary["latest_fallback_median_regret_uah"])
+        rolling_window_count = int(v2_regime_summary["rolling_window_count"])
+        rolling_strict_count = int(v2_regime_summary["rolling_strict_pass_window_count"])
+        rolling_development_count = int(v2_regime_summary["rolling_development_pass_window_count"])
+        robust_research_challenger = bool(v2_regime_summary["robust_research_challenger"])
+        regime_window_count = int(v2_regime_summary["regime_window_count"])
+        regime_validation_count = int(v2_regime_summary["regime_validation_anchor_count"])
+        regime_improvement_vs_strict = float(
+            v2_regime_summary["regime_mean_improvement_ratio_vs_strict"]
+        )
+        regime_improvement_vs_raw = float(v2_regime_summary["regime_mean_improvement_ratio_vs_raw"])
     blocker = _promotion_blocker(
         source_latest_signal=source_latest_signal,
         latest_improvement=latest_improvement,
@@ -308,7 +474,7 @@ def _promotion_row(
         rolling_strict_count=rolling_strict_count,
         regime_label=str(regime_summary["regime_label"]),
         evidence_failures=evidence_failures,
-        tenant_count=int(source_row["tenant_count"]),
+        tenant_count=tenant_count,
         min_tenant_count=min_tenant_count,
         min_validation_tenant_anchor_count=min_validation_tenant_anchor_count,
         min_mean_regret_improvement_ratio=min_mean_regret_improvement_ratio,
@@ -319,27 +485,24 @@ def _promotion_row(
     return {
         "source_model_name": source_model_name,
         "regime_label": str(regime_summary["regime_label"]),
-        "tenant_count": int(source_row["tenant_count"]),
+        "tenant_count": tenant_count,
         "latest_validation_tenant_anchor_count": validation_count,
-        "latest_strict_mean_regret_uah": float(source_row["latest_strict_mean_regret_uah"]),
-        "latest_fallback_mean_regret_uah": float(source_row["latest_fallback_mean_regret_uah"]),
-        "latest_strict_median_regret_uah": float(source_row["latest_strict_median_regret_uah"]),
-        "latest_fallback_median_regret_uah": float(source_row["latest_fallback_median_regret_uah"]),
+        "latest_strict_mean_regret_uah": latest_strict_mean,
+        "latest_fallback_mean_regret_uah": latest_fallback_mean,
+        "latest_strict_median_regret_uah": latest_strict_median,
+        "latest_fallback_median_regret_uah": latest_fallback_median,
         "latest_mean_regret_improvement_ratio_vs_strict": latest_improvement,
         "latest_median_not_worse": median_not_worse,
         "latest_source_signal": source_latest_signal,
         "rolling_window_count": rolling_window_count,
         "rolling_strict_pass_window_count": rolling_strict_count,
-        "rolling_development_pass_window_count": int(source_row["rolling_development_pass_window_count"]),
-        "robust_research_challenger": bool(source_row["robust_research_challenger"]),
-        "regime_window_count": int(regime_summary["regime_window_count"]),
-        "regime_validation_anchor_count": int(regime_summary["regime_validation_anchor_count"]),
-        "regime_mean_improvement_ratio_vs_strict": float(
-            regime_summary["regime_mean_improvement_ratio_vs_strict"]
-        ),
-        "regime_mean_improvement_ratio_vs_raw": float(
-            regime_summary["regime_mean_improvement_ratio_vs_raw"]
-        ),
+        "rolling_development_pass_window_count": rolling_development_count,
+        "robust_research_challenger": robust_research_challenger,
+        "regime_window_count": regime_window_count,
+        "regime_validation_anchor_count": regime_validation_count,
+        "regime_mean_improvement_ratio_vs_strict": regime_improvement_vs_strict,
+        "regime_mean_improvement_ratio_vs_raw": regime_improvement_vs_raw,
+        "regime_gated_tft_v2_evidence_used": v2_regime_summary is not None,
         "coverage_min_eligible_anchor_count": int(coverage_summary["min_eligible_anchor_count"]),
         "coverage_max_eligible_anchor_count": int(coverage_summary["max_eligible_anchor_count"]),
         "coverage_target_anchor_count_per_tenant": int(
@@ -641,6 +804,37 @@ def _missing_column_failures(frame: pl.DataFrame, required_columns: frozenset[st
 def _mean_float(values: Any) -> float:
     items = [float(value) for value in values]
     return mean(items) if items else 0.0
+
+
+def _mean_regret(rows: list[dict[str, Any]]) -> float:
+    regrets = [float(row["regret_uah"]) for row in rows]
+    return mean(regrets) if regrets else 0.0
+
+
+def _median_regret(rows: list[dict[str, Any]]) -> float:
+    regrets = [float(row["regret_uah"]) for row in rows]
+    return median(regrets) if regrets else 0.0
+
+
+def _improvement_ratio(baseline: float, candidate: float) -> float:
+    return (baseline - candidate) / abs(baseline) if abs(baseline) > 1e-9 else 0.0
+
+
+def _tenant_anchor_set(rows: list[dict[str, Any]]) -> set[tuple[str, object]]:
+    return {(str(row["tenant_id"]), row["anchor_timestamp"]) for row in rows}
+
+
+def _source_model_name(row: dict[str, Any]) -> str:
+    if "source_model_name" in row and row["source_model_name"]:
+        return str(row["source_model_name"])
+    return str(_payload_value(row, "source_forecast_model_name", default=""))
+
+
+def _payload_value(row: dict[str, Any], key: str, *, default: object = None) -> object:
+    payload = row.get("evaluation_payload", {})
+    if isinstance(payload, dict):
+        return payload.get(key, default)
+    return default
 
 
 def _string_list(value: object) -> list[str]:
