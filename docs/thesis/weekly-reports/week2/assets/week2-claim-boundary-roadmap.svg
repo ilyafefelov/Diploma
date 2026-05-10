@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Week 2 claim boundary and roadmap</title>
+  <desc id="desc">Infographic separating implemented Week 2 MVP, demo feedback, and planned DFL research steps.</desc>
+  <defs>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#0f172a" flood-opacity="0.16"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#1d4ed8"/>
+    </marker>
+    <style>
+      .bg { fill: #fbfdff; }
+      .title { font: 800 26px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 600 18px Arial, sans-serif; fill: #334155; }
+      .lane { font: 800 20px Arial, sans-serif; fill: #ffffff; }
+      .h { font: 800 18px Arial, sans-serif; fill: #0f172a; }
+      .t { font: 500 14px Arial, sans-serif; fill: #334155; }
+      .strong { font: 800 14px Arial, sans-serif; fill: #0f172a; }
+      .tiny { font: 600 10px Arial, sans-serif; fill: #64748b; }
+      .arrow { stroke: #1d4ed8; stroke-width: 5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1280" height="720"/>
+  <text x="640" y="54" text-anchor="middle" class="title">Week 2 claim boundary: що вже реалізовано, а що є research target</text>
+  <text x="640" y="86" text-anchor="middle" class="subtitle">Цей звіт не продає “повний AI”; він показує чесний шлях від MVP до DFL.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="70" y="136" width="330" height="430" rx="18" fill="#ffffff" stroke="#1d4ed8" stroke-width="2"/>
+    <rect x="70" y="136" width="330" height="58" rx="18" fill="#1d4ed8"/>
+    <text x="235" y="172" text-anchor="middle" class="lane">Implemented Week 2</text>
+    <text x="100" y="232" class="h">MVP / demo-ready</text>
+    <text x="100" y="264" class="t">• tenant-aware weather control</text>
+    <text x="100" y="288" class="t">• baseline LP preview</text>
+    <text x="100" y="312" class="t">• projected SOC and UAH economics</text>
+    <text x="100" y="336" class="t">• FastAPI read models</text>
+    <text x="100" y="360" class="t">• Nuxt operator dashboard</text>
+    <text x="100" y="402" class="strong">Academic status</text>
+    <text x="100" y="430" class="t">Methodology and MVP expanded.</text>
+    <text x="100" y="454" class="t">Suitable for first supervisor demo.</text>
+    <text x="100" y="496" class="strong">Not claimed</text>
+    <text x="100" y="524" class="t">No live trading, no cleared trade,</text>
+    <text x="100" y="548" class="t">no deployed DFL/DT controller.</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="476" y="136" width="330" height="430" rx="18" fill="#ffffff" stroke="#7c3aed" stroke-width="2"/>
+    <rect x="476" y="136" width="330" height="58" rx="18" fill="#7c3aed"/>
+    <text x="641" y="172" text-anchor="middle" class="lane">Wednesday Demo</text>
+    <text x="506" y="232" class="h">06.05.2026 focus</text>
+    <text x="506" y="264" class="t">• explain repository map</text>
+    <text x="506" y="288" class="t">• show current operator-preview loop</text>
+    <text x="506" y="312" class="t">• separate demo from execution</text>
+    <text x="506" y="336" class="t">• prepare newcomer overview PPTX</text>
+    <text x="506" y="378" class="strong">Conclusion after demo</text>
+    <text x="506" y="406" class="t">The system is understandable when</text>
+    <text x="506" y="430" class="t">shown as Data → Forecast → LP →</text>
+    <text x="506" y="454" class="t">SOC/Economics → Dashboard.</text>
+    <text x="506" y="496" class="strong">Feedback implication</text>
+    <text x="506" y="524" class="t">Next work should strengthen evidence,</text>
+    <text x="506" y="548" class="t">not just add UI polish.</text>
+  </g>
+
+  <g filter="url(#shadow)">
+    <rect x="882" y="136" width="330" height="430" rx="18" fill="#ffffff" stroke="#16a34a" stroke-width="2"/>
+    <rect x="882" y="136" width="330" height="58" rx="18" fill="#16a34a"/>
+    <text x="1047" y="172" text-anchor="middle" class="lane">Next Research Path</text>
+    <text x="912" y="232" class="h">Week 3 direction</text>
+    <text x="912" y="264" class="t">• freeze strict_similar_day control</text>
+    <text x="912" y="288" class="t">• run real-data rolling-origin benchmark</text>
+    <text x="912" y="312" class="t">• evaluate by LP/oracle regret</text>
+    <text x="912" y="336" class="t">• add DFL readiness only after evidence</text>
+    <text x="912" y="378" class="strong">Academic rule</text>
+    <text x="912" y="406" class="t">Forecast accuracy is not enough;</text>
+    <text x="912" y="430" class="t">BESS value depends on decision quality,</text>
+    <text x="912" y="454" class="t">SOC feasibility and net value.</text>
+    <text x="912" y="496" class="strong">Claim boundary</text>
+    <text x="912" y="524" class="t">DFL and DT remain research lanes until</text>
+    <text x="912" y="548" class="t">they beat the frozen control gate.</text>
+  </g>
+
+  <path class="arrow" d="M400 350H476"/>
+  <path class="arrow" d="M806 350H882"/>
+  <rect x="226" y="604" width="828" height="54" rx="14" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="640" y="638" text-anchor="middle" class="tiny">Submission framing: Week 2 = MVP extended + first demo + methodology clarified. Later DFL files are supporting research context, not the Week 2 headline.</text>
+</svg>

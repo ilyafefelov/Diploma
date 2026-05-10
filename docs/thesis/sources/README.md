@@ -26,11 +26,38 @@
 | 15 | `nrel-atb-2023-pv-plus-battery.md` | NREL ATB, 2023 | **PV-plus-battery guide** — battery RTE, replacement, and cycle-degradation assumptions | NREL ATB web guide |
 | 16 | `2402.19072v2-timexer-exogenous-transformer-forecasting.pdf` | Wang et al., 2024 | **TimeXer** — Transformer architecture for time-series forecasting with exogenous variables; future-work reference | arXiv:2402.19072 |
 | 17 | `energies-10-00207-linear-formulation-short-term-ess-scheduling.pdf` | Park et al., 2017 | **LP formulation for ESS scheduling** — primary support for SOC, efficiency, power-limit, and energy-limit constraints in the baseline LP | 10.3390/en10020207 |
-| 18 | `2307.13565v1-decision-focused-learning-survey.pdf` | Mandi et al., 2024 | **Decision-Focused Learning survey** — methodological framing for optimizing downstream decision quality, not forecast error alone | 10.1613/jair.1.15320 / arXiv:2307.13565 |
+| 18 | `2307.13565v4-decision-focused-learning-survey.pdf` | Mandi et al., 2024 | **Decision-Focused Learning survey** — methodological framing for optimizing downstream decision quality, not forecast error alone | 10.1613/jair.1.15320 / arXiv:2307.13565 |
 | 19 | `amos17a-optnet-differentiable-optimization-layer.pdf` | Amos & Kolter, 2017 | **Optimization layers in neural networks** — foundational reference for differentiating through constrained optimization layers | PMLR 70:136-145 |
 | 20 | `2008.08004v2-electricity-price-forecasting-review-benchmark.pdf` | Lago et al., 2021 | **EPF benchmarking best practices** — support for validating weather-aware price forecasts against simple baselines before dispatch use | 10.1016/j.apenergy.2021.116983 / arXiv:2008.08004 |
+| 21 | `2305.00362v1-electricity-price-prediction-ess-arbitrage-dfl.pdf` | Sang et al., 2023 | **ESS arbitrage DFL** — storage-specific decision-focused price prediction using regret and surrogate decision loss rather than MAE/RMSE alone | arXiv:2305.00362 |
+| 22 | `2405.14719v2.pdf` | Persak & Anjos, 2024 | **Multistage DFL for storage arbitrage** — shows why intertemporal SOC-path effects matter for decision-focused forecasting | arXiv:2405.14719 |
+| 23 | `2406.17085v2-perturbed-decision-focused-learning-energy-storage.pdf` | Yi, Alghumayjan & Xu, 2024 | **Perturbed DFL for strategic storage** — supports differentiable/perturbed storage losses and hybrid objectives for storage behavior and arbitrage | arXiv:2406.17085 |
+| 24 | `2305.14550v1-sequence-modeling-offline-rl.pdf` | Bhargava et al., 2023 | **Offline RL sequence modeling comparison** — helps frame when Decision Transformer is appropriate and why data volume/trajectory quality matter | arXiv:2305.14550 |
+| 25 | `huggingface-decision-transformer-docs.md` | Hugging Face, accessed 2026 | **Decision Transformer implementation reference** — official Transformers model documentation for future offline DT experiments | HF docs |
 
 ---
+
+## DFL and Offline Decision Transformer Source Refresh
+
+This refresh indexes the current DFL/DT source bundle for the next thesis
+iteration. The bundle is used to explain the path from strict LP baselines to
+decision-focused learning and later offline Decision Transformer experiments.
+
+| Local artifact | Source URL | Short summary | Thesis use |
+|---|---|---|---|
+| `2307.13565v4-decision-focused-learning-survey.pdf` | <https://huggingface.co/papers/2307.13565> | Surveys gradient-based and gradient-free DFL methods that train ML models for downstream constrained-decision quality. | Methodological frame for optimizing regret/value, not forecast error alone. |
+| `2305.00362v1-electricity-price-prediction-ess-arbitrage-dfl.pdf` | <https://arxiv.org/abs/2305.00362> | Applies decision-focused electricity-price prediction to ESS arbitrage, using regret/surrogate regret to connect forecasts to storage profit. | Closest direct support for DFL over price forecasts in BESS arbitrage. |
+| `2405.14719v2.pdf` | <https://arxiv.org/abs/2405.14719> | Extends DFL to multistage optimization, including intertemporal storage-arbitrage effects. | Justifies trajectory/value learning over independent hourly action labels. |
+| `2406.17085v2-perturbed-decision-focused-learning-energy-storage.pdf` | <https://arxiv.org/abs/2406.17085> | Uses perturbed decision-focused losses for strategic energy storage and supports hybrid differentiable objectives. | Supports the stabilized relaxed-storage/DFL-loss direction. |
+| `1710.08005v5-Smart “Predict, then Optimize” Adam N. Elmachtoub.pdf` | <https://arxiv.org/abs/1710.08005> | Introduces SPO/SPO+ as decision-aware loss for predict-then-optimize pipelines. | Theoretical support for evaluating forecasts through downstream optimization. |
+| `huggingface-decision-transformer-docs.md` | <https://huggingface.co/docs/transformers/model_doc/decision_transformer> | Official Hugging Face implementation reference for Decision Transformer model usage. | Practical planning source for a future offline DT candidate. |
+| `2106.01345v2.pdf` | <https://arxiv.org/abs/2106.01345> | Defines Decision Transformer as return-conditioned sequence modeling for offline RL. | Strategy-layer research primitive, not current live control. |
+| `2305.14550v1-sequence-modeling-offline-rl.pdf` | <https://huggingface.co/papers/2305.14550> | Compares DT, CQL, and behavior cloning; reports that DT can need more data but is robust in some sparse/low-quality settings. | Guardrail against overclaiming DT before enough high-quality trajectories exist. |
+
+Claim boundary: these sources support the roadmap toward DFL and offline DT
+research. They do not prove that the current system has a promoted DFL/DT
+controller, and they do not replace the frozen `strict_similar_day` LP/oracle
+promotion gate.
 
 ## Week 4 source refresh
 
@@ -116,13 +143,13 @@ These sources support [technical/BASELINE_LP_AND_DATA_PIPELINE.md](../../technic
 ## 🗂️ Тематичний розподіл
 
 ### Decision-Focused Learning та Оптимізація
-- Yi et al. 2025 · Elmachtoub & Grigas 2022 · Agrawal et al. 2019 · Amos & Kolter 2017 · Mandi et al. 2024
+- Yi et al. 2025 · Sang et al. 2023 · Persak & Anjos 2024 · Yi, Alghumayjan & Xu 2024 · Elmachtoub & Grigas 2022 · Agrawal et al. 2019 · Amos & Kolter 2017 · Mandi et al. 2024
 
 ### Прогнозування цін на електроенергію
 - Lago et al. 2021 (EPF benchmark) · Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Wang et al. 2024 (TimeXer) · Yu et al. 2026 (deep-learning EPF review) · Jin et al. 2025 · PriceFM 2025 · THieF 2025
 
 ### Стратегія батарейного накопичувача / Арбітраж
-- Park et al. 2017 · Grimaldi et al. 2024 · Hesse et al. 2019 · Chen et al. 2021 (Decision Transformer) · Madahi et al. 2023 (risk-sensitive distributional RL, watch)
+- Park et al. 2017 · Grimaldi et al. 2024 · Hesse et al. 2019 · Chen et al. 2021 (Decision Transformer) · Bhargava et al. 2023 (DT/offline RL comparison) · Hugging Face Decision Transformer docs · Madahi et al. 2023 (risk-sensitive distributional RL, watch)
 
 ### Фізичне моделювання та деградація батарей
 - Maheshwari et al. 2020 · Hesse et al. 2019 · Kumtepeli et al. 2024 · NREL Storage Futures · NREL ATB · `batteries-11-00392-v2` · `Exploring Lithium-Ion Battery Degradation.pdf`
