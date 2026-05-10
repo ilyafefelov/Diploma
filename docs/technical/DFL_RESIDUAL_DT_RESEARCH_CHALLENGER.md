@@ -77,6 +77,48 @@ Local export slug after materialization:
 
 `week3_dfl_residual_dt_research_challenger`
 
+## Materialized Evidence
+
+Latest checked run:
+
+| Field | Value |
+|---|---|
+| Dagster run id | `54891d01-d57e-49a6-8191-9f3ea0afc425` |
+| Materialized assets | trajectory dataset, residual model, residual strict benchmark, offline DT candidate, offline DT strict benchmark, fallback strict benchmark |
+| Asset check | `dfl_residual_dt_fallback_evidence` passed structurally |
+| Postgres cleanup | Removed 1,710 stale malformed rows from the first pre-fix persistence attempt; malformed residual/DT evaluation IDs now count `0` |
+
+Latest Postgres evidence rows:
+
+| Strategy kind | Rows | Tenants | Models | Anchors |
+|---|---:|---:|---:|---:|
+| `dfl_residual_schedule_value_strict_lp_benchmark` | 540 | 5 | 5 | 18 |
+| `dfl_offline_dt_candidate_strict_lp_benchmark` | 540 | 5 | 5 | 18 |
+| `dfl_residual_dt_fallback_strict_lp_benchmark` | 900 | 5 | 9 | 18 |
+
+Fallback strict-LP/oracle result by source model:
+
+| Source model | Role | Rows | Mean regret UAH | Median regret UAH |
+|---|---|---:|---:|---:|
+| `nbeatsx_silver_v0` | `strict_reference` | 90 | 314.81 | 202.61 |
+| `nbeatsx_silver_v0` | `fallback_strategy` | 90 | 318.37 | 172.49 |
+| `tft_silver_v0` | `strict_reference` | 90 | 314.81 | 202.61 |
+| `tft_silver_v0` | `fallback_strategy` | 90 | 258.12 | 136.05 |
+
+Interpretation:
+
+- TFT-source fallback is a useful research-challenger signal: it improves mean
+  regret versus `strict_similar_day` on this final holdout while also improving
+  median regret.
+- NBEATSx-source fallback remains blocked: mean regret is worse than
+  `strict_similar_day`, even though median regret improves.
+- The aggregate promotion decision remains blocked. This is intentionally
+  conservative because the configured challenger path must not silently promote
+  one source while another fails the strict control gate.
+- The old full-upstream materialization attempt timed out; the successful run
+  used existing upstream candidate-library artifacts and rematerialized only the
+  residual/DT assets listed above.
+
 ## Interpretation
 
 This path is the first full-stack research challenger that includes a real-data

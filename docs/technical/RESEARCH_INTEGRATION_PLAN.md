@@ -1287,3 +1287,17 @@ Protocol:
 
 Tracked note:
 [DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md](DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md).
+
+Materialized result:
+
+- Run `54891d01-d57e-49a6-8191-9f3ea0afc425` materialized the residual/DT
+  challenger assets and passed the structural fallback evidence check.
+- Postgres now contains source-specific strict evidence rows: 540 residual
+  strict rows, 540 offline-DT strict rows, and 900 fallback rows.
+- TFT-source fallback is a research-challenger signal on the latest holdout
+  (`258.12` UAH mean regret versus `314.81` UAH for `strict_similar_day`, with
+  better median regret).
+- NBEATSx-source fallback is still blocked (`318.37` UAH mean regret versus
+  `314.81` UAH for `strict_similar_day`).
+- Therefore the aggregate claim stays conservative: residual DFL/offline DT was
+  tested as research evidence, but production promotion remains blocked.
