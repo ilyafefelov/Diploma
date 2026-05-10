@@ -112,6 +112,22 @@ from smart_arbitrage.dfl.forecast_dfl_v1 import (
     build_dfl_forecast_dfl_v1_panel_frame,
     build_dfl_forecast_dfl_v1_strict_lp_benchmark_frame,
 )
+from smart_arbitrage.dfl.offline_dt_candidate import (
+    DFL_OFFLINE_DT_STRICT_LP_STRATEGY_KIND,
+    build_dfl_offline_dt_candidate_frame,
+    build_dfl_offline_dt_candidate_strict_lp_benchmark_frame,
+)
+from smart_arbitrage.dfl.residual_schedule_value import (
+    DFL_RESIDUAL_DT_FALLBACK_STRICT_LP_STRATEGY_KIND,
+    DFL_RESIDUAL_SCHEDULE_VALUE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_residual_dt_fallback_strict_lp_benchmark_frame,
+    build_dfl_residual_schedule_value_model_frame,
+    build_dfl_residual_schedule_value_strict_lp_benchmark_frame,
+    evaluate_dfl_residual_dt_fallback_gate,
+)
+from smart_arbitrage.dfl.trajectory_dataset import (
+    build_dfl_real_data_trajectory_dataset_frame,
+)
 from smart_arbitrage.forecasting.afl import (
     build_afl_training_panel_frame,
     build_forecast_candidate_forensics_frame,
@@ -385,6 +401,55 @@ class DflForecastDflV1AssetConfig(dg.Config):
     inner_validation_fraction: float = 0.2
     epoch_count: int = 8
     learning_rate: float = 10.0
+
+
+class DflRealDataTrajectoryDatasetAssetConfig(dg.Config):
+    """Real-data trajectory dataset scope for residual DFL and offline DT."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+
+
+class DflResidualScheduleValueAssetConfig(dg.Config):
+    """Prior-only residual schedule/value selector scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    switch_margin_grid_uah_csv: str = "0.0,50.0,100.0,200.0,400.0"
+
+
+class DflOfflineDtCandidateAssetConfig(dg.Config):
+    """Tiny offline DT candidate scope over high-value train trajectories."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    high_value_quantile: float = 0.75
+    context_length: int = 24
+    hidden_dim: int = 32
+    num_layers: int = 1
+    num_heads: int = 2
+    max_epochs: int = 5
+    random_seed: int = 2026
+
+
+class DflResidualDtFallbackAssetConfig(dg.Config):
+    """Strict fallback wrapper for residual DFL and offline DT challengers."""
+
+    final_validation_anchor_count_per_tenant: int = 18
+    min_confidence_improvement_ratio: float = 0.05
+    min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
 class AflTrainingPanelAssetConfig(dg.Config):
@@ -2433,6 +2498,295 @@ def dfl_forecast_dfl_v1_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_real_data_trajectory_dataset_frame(
+    context,
+    config: DflRealDataTrajectoryDatasetAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_strict_failure_prior_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Step-level real-data trajectories for residual DFL and offline DT research."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    trajectory_frame = build_dfl_real_data_trajectory_dataset_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_strict_failure_prior_feature_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": trajectory_frame.height,
+            "episode_count": trajectory_frame.select("episode_id").n_unique()
+            if trajectory_frame.height
+            else 0,
+            "tenant_count": trajectory_frame.select("tenant_id").n_unique()
+            if trajectory_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "final_validation_anchor_count_per_tenant": config.final_validation_anchor_count_per_tenant,
+            "scope": "dfl_real_data_trajectory_dataset_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return trajectory_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_residual_schedule_value_model_frame(
+    context,
+    config: DflResidualScheduleValueAssetConfig,
+    dfl_real_data_trajectory_dataset_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only residual schedule/value selector model card."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    model_frame = build_dfl_residual_schedule_value_model_frame(
+        dfl_real_data_trajectory_dataset_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        switch_margin_grid_uah=_float_csv_values(
+            config.switch_margin_grid_uah_csv,
+            field_name="switch_margin_grid_uah_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": model_frame.height,
+            "tenant_count": model_frame.select("tenant_id").n_unique()
+            if model_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "best_train_improvement_ratio": model_frame.select(
+                pl.max("train_mean_regret_improvement_ratio_vs_strict")
+            ).item()
+            if model_frame.height
+            else 0.0,
+            "scope": "dfl_residual_schedule_value_v1_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return model_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_residual_schedule_value_strict_lp_benchmark_frame(
+    context,
+    config: DflResidualScheduleValueAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_residual_schedule_value_model_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle evidence rows for residual schedule/value candidates."""
+
+    strict_frame = build_dfl_residual_schedule_value_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_residual_schedule_value_model_frame,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    residual_rows = strict_frame.filter(pl.col("selection_role") == "residual_selector")
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "residual_validation_tenant_anchor_count": residual_rows.height,
+            "strategy_kind": DFL_RESIDUAL_SCHEDULE_VALUE_STRICT_LP_STRATEGY_KIND,
+            "scope": "dfl_residual_schedule_value_v1_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_offline_dt_candidate_frame(
+    context,
+    config: DflOfflineDtCandidateAssetConfig,
+    dfl_real_data_trajectory_dataset_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Tiny offline DT candidate selected from high-value train trajectories only."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    candidate_frame = build_dfl_offline_dt_candidate_frame(
+        dfl_real_data_trajectory_dataset_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        high_value_quantile=config.high_value_quantile,
+        context_length=config.context_length,
+        hidden_dim=config.hidden_dim,
+        num_layers=config.num_layers,
+        num_heads=config.num_heads,
+        max_epochs=config.max_epochs,
+        random_seed=config.random_seed,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": candidate_frame.height,
+            "tenant_count": candidate_frame.select("tenant_id").n_unique()
+            if candidate_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "dt_context_length": config.context_length,
+            "dt_hidden_dim": config.hidden_dim,
+            "max_epochs": config.max_epochs,
+            "scope": "dfl_offline_dt_candidate_v1_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return candidate_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_offline_dt_candidate_strict_lp_benchmark_frame(
+    context,
+    config: DflOfflineDtCandidateAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_offline_dt_candidate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle evidence for offline DT and filtered behavior cloning."""
+
+    strict_frame = build_dfl_offline_dt_candidate_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_offline_dt_candidate_frame,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    dt_rows = strict_frame.filter(pl.col("selection_role") == "offline_dt")
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "offline_dt_validation_tenant_anchor_count": dt_rows.height,
+            "strategy_kind": DFL_OFFLINE_DT_STRICT_LP_STRATEGY_KIND,
+            "scope": "dfl_offline_dt_candidate_v1_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_residual_dt_fallback_strict_lp_benchmark_frame(
+    context,
+    config: DflResidualDtFallbackAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_residual_schedule_value_model_frame: pl.DataFrame,
+    dfl_offline_dt_candidate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle evidence for the strict-default residual/DT fallback wrapper."""
+
+    strict_frame = build_dfl_residual_dt_fallback_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_residual_schedule_value_model_frame,
+        dfl_offline_dt_candidate_frame,
+        final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
+        min_confidence_improvement_ratio=config.min_confidence_improvement_ratio,
+        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    source_model_names = tuple(sorted(strict_frame["source_model_name"].unique().to_list()))
+    promotion_gate = evaluate_dfl_residual_dt_fallback_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    fallback_rows = strict_frame.filter(pl.col("selection_role") == "fallback_strategy")
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "fallback_validation_tenant_anchor_count": fallback_rows.height,
+            "strategy_kind": DFL_RESIDUAL_DT_FALLBACK_STRICT_LP_STRATEGY_KIND,
+            "promotion_gate_decision": promotion_gate.decision,
+            "promotion_gate_description": promotion_gate.description,
+            "production_promote": promotion_gate.metrics.get("production_promote", False),
+            "scope": "dfl_residual_dt_fallback_v1_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -2761,6 +3115,12 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame,
     dfl_forecast_dfl_v1_panel_frame,
     dfl_forecast_dfl_v1_strict_lp_benchmark_frame,
+    dfl_real_data_trajectory_dataset_frame,
+    dfl_residual_schedule_value_model_frame,
+    dfl_residual_schedule_value_strict_lp_benchmark_frame,
+    dfl_offline_dt_candidate_frame,
+    dfl_offline_dt_candidate_strict_lp_benchmark_frame,
+    dfl_residual_dt_fallback_strict_lp_benchmark_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,

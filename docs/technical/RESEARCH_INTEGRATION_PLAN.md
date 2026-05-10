@@ -1253,3 +1253,37 @@ Freeze summary:
   promoted.
 - PriceFM and THieF support future forecast-layer direction; TSFM leakage and
   the DFL survey support the current no-leakage, decision-value-first protocol.
+
+## Residual DFL + Offline DT Research Challenger
+
+The next clean DFL step is now a strict-default research challenger instead of a
+forced model promotion. It reuses the verified Ukrainian observed panel and adds
+a real-data trajectory dataset, a residual schedule/value selector, a tiny
+offline Decision Transformer candidate, filtered behavior cloning, and a
+fallback wrapper.
+
+Implementation:
+
+- New asset: `dfl_real_data_trajectory_dataset_frame`.
+- New assets: `dfl_residual_schedule_value_model_frame` and
+  `dfl_residual_schedule_value_strict_lp_benchmark_frame`.
+- New assets: `dfl_offline_dt_candidate_frame` and
+  `dfl_offline_dt_candidate_strict_lp_benchmark_frame`.
+- New asset: `dfl_residual_dt_fallback_strict_lp_benchmark_frame`.
+- New check:
+  `dfl_residual_dt_fallback_strict_lp_benchmark_frame:dfl_residual_dt_fallback_evidence`.
+- Run config:
+  [../../configs/real_data_dfl_residual_dt_challenger_week3.yaml](../../configs/real_data_dfl_residual_dt_challenger_week3.yaml).
+
+Protocol:
+
+- Source data remains OREE DAM plus Open-Meteo/load context for the five
+  canonical Ukrainian tenants.
+- Teacher labels are train/inner only; final-holdout labels are scoring-only.
+- The fallback defaults to `strict_similar_day` unless prior-only confidence
+  says residual DFL or offline DT should be allowed.
+- Promotion remains blocked unless strict LP/oracle scoring beats
+  `strict_similar_day` by at least 5% mean regret with no median degradation.
+
+Tracked note:
+[DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md](DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md).

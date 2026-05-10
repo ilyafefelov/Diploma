@@ -161,6 +161,7 @@ Latest full verification: `151 passed`.
 
 - Architecture and evidence registry: `docs/technical/ARCHITECTURE_AND_DATA_FLOW.md`
 - Baseline LP and pipeline note: `docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md`
+- Residual DFL + offline DT research challenger: `docs/technical/DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md`
 - Week 3 accepted evidence: `data/research_runs/week3_real_data_benchmark/` for the Dnipro 30-anchor thesis-grade benchmark.
 - Week 3 calibration preview: `data/research_runs/week3_calibration_preview_dnipro_90/` for prepared-ahead 90-anchor calibration/selector diagnostics.
 - Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`

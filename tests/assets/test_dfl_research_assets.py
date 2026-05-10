@@ -204,6 +204,12 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame",
         "dfl_forecast_dfl_v1_panel_frame",
         "dfl_forecast_dfl_v1_strict_lp_benchmark_frame",
+        "dfl_real_data_trajectory_dataset_frame",
+        "dfl_residual_schedule_value_model_frame",
+        "dfl_residual_schedule_value_strict_lp_benchmark_frame",
+        "dfl_offline_dt_candidate_frame",
+        "dfl_offline_dt_candidate_strict_lp_benchmark_frame",
+        "dfl_residual_dt_fallback_strict_lp_benchmark_frame",
         "forecast_afe_feature_catalog_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
         "afl_forecast_error_audit_frame",
@@ -263,6 +269,12 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_forecast_dfl_v1_panel_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_forecast_dfl_v1_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_real_data_trajectory_dataset_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_residual_schedule_value_model_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_residual_schedule_value_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_offline_dt_candidate_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_afe_feature_catalog_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_semantic_event_strict_failure_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["afl_forecast_error_audit_frame"] == "gold_dfl_training"
@@ -310,6 +322,12 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert tags_by_key["dfl_forecast_dfl_v1_panel_frame"]["ml_stage"] == "training_data"
     assert tags_by_key["dfl_forecast_dfl_v1_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_real_data_trajectory_dataset_frame"]["ml_stage"] == "training_data"
+    assert tags_by_key["dfl_residual_schedule_value_model_frame"]["ml_stage"] == "selection"
+    assert tags_by_key["dfl_residual_schedule_value_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_offline_dt_candidate_frame"]["ml_stage"] == "selection"
+    assert tags_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"] == "feature_engineering"
     assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["afl_forecast_error_audit_frame"]["ml_stage"] == "diagnostics"
@@ -352,6 +370,29 @@ def test_dfl_research_assets_are_registered() -> None:
     assert "grid_event_signal_silver" not in deps_by_key[
         "dfl_semantic_event_strict_failure_audit_frame"
     ]
+    assert deps_by_key["dfl_real_data_trajectory_dataset_frame"] == {
+        "dfl_schedule_candidate_library_v2_frame",
+        "dfl_strict_failure_prior_feature_panel_frame",
+    }
+    assert deps_by_key["dfl_residual_schedule_value_model_frame"] == {
+        "dfl_real_data_trajectory_dataset_frame"
+    }
+    assert deps_by_key["dfl_residual_schedule_value_strict_lp_benchmark_frame"] == {
+        "dfl_schedule_candidate_library_v2_frame",
+        "dfl_residual_schedule_value_model_frame",
+    }
+    assert deps_by_key["dfl_offline_dt_candidate_frame"] == {
+        "dfl_real_data_trajectory_dataset_frame"
+    }
+    assert deps_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"] == {
+        "dfl_schedule_candidate_library_v2_frame",
+        "dfl_offline_dt_candidate_frame",
+    }
+    assert deps_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"] == {
+        "dfl_schedule_candidate_library_v2_frame",
+        "dfl_residual_schedule_value_model_frame",
+        "dfl_offline_dt_candidate_frame",
+    }
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_action_label_panel_frame"]["ml_stage"] == "training_data"
     assert tags_by_key["dfl_action_classifier_baseline_frame"]["ml_stage"] == "evaluation"
