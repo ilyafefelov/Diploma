@@ -2,6 +2,7 @@
 .operator-shell {
   min-height: 100vh;
   padding: 0.55rem;
+  padding-bottom: 6.8rem;
 }
 
 .operator-frame {
@@ -23,7 +24,7 @@
   box-shadow:
     0 28px 70px rgba(0, 96, 154, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  overflow: hidden;
+  overflow: visible;
 }
 
 .operator-frame::before {
@@ -402,7 +403,7 @@
 .operator-main-stage {
   position: relative;
   z-index: 1;
-  overflow: clip;
+  overflow: visible;
   border-radius: 1rem;
 }
 
@@ -425,7 +426,7 @@
   align-items: flex-start;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  overflow: hidden;
+  overflow: visible;
   padding: 0.72rem;
 }
 
@@ -733,7 +734,7 @@
 
 .operator-frame .surface-panel {
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .operator-frame .gatekeeper-panel {
@@ -745,6 +746,8 @@
 .operator-frame .battery-panel,
 .operator-frame .gatekeeper-panel,
 .operator-frame .control-actions-panel,
+.operator-frame .operator-decision-panel,
+.operator-frame .operator-research-panel,
 .operator-frame .notes-panel {
   border-color: rgba(255, 255, 255, 0.78);
   background:
@@ -850,7 +853,7 @@
 
 .market-signal-panel {
   min-height: 26rem;
-  overflow: hidden;
+  overflow: visible;
   background:
     radial-gradient(circle at 74% 38%, rgba(126, 211, 33, 0.16), transparent 28%),
     linear-gradient(180deg, rgba(0, 67, 133, 0.9), rgba(0, 42, 94, 0.92));
@@ -1242,6 +1245,29 @@
 
 .battery-stat-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.battery-ingest-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.32rem;
+  margin: 0.34rem 0 0.42rem;
+  border: 1px solid rgba(124, 227, 255, 0.38);
+  border-radius: 999px;
+  background: rgba(0, 75, 130, 0.45);
+  padding: 0.26rem 0.52rem;
+  color: rgba(229, 249, 255, 0.86);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.battery-ingest-pill svg {
+  width: 0.82rem;
+  height: 0.82rem;
+  color: #b8ff32;
 }
 
 .battery-stat-grid article {
@@ -1749,11 +1775,18 @@
 }
 
 .schedule-dock {
+  position: fixed;
+  right: auto;
+  bottom: 0.75rem;
+  left: 50%;
+  z-index: 250;
   display: grid;
   grid-template-columns:
     var(--operator-left-rail-width)
     minmax(0, 1fr)
     minmax(var(--operator-right-rail-min), var(--operator-right-rail-max));
+  width: min(calc(100vw - 1.1rem), 118rem);
+  transform: translateX(-50%);
   gap: 0.75rem;
   align-items: stretch;
   overflow: visible;
@@ -1788,13 +1821,24 @@
   color: rgba(229, 249, 255, 0.72);
 }
 
+.schedule-dock__heading small {
+  display: block;
+  margin-top: 0.18rem;
+  color: rgba(215, 255, 79, 0.84);
+  font-size: 0.62rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
 .schedule-track {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(7.5rem, 1fr));
+  display: flex;
+  flex-wrap: nowrap;
   gap: 0.28rem;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 0.08rem 0 0.12rem;
+  padding: 2.85rem 0 0.12rem;
+  margin-top: -2.75rem;
 }
 
 .schedule-segment {
@@ -1803,7 +1847,8 @@
   justify-items: center;
   gap: 0.2rem;
   min-height: 3.2rem;
-  min-width: 0;
+  flex: 0 0 min(12rem, 32vw);
+  min-width: 8.2rem;
   overflow: visible;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 0.55rem;
@@ -1841,16 +1886,13 @@
   font-size: 0.9rem;
 }
 
-.schedule-tooltip {
-  position: absolute;
-  inset: 0.28rem;
-  z-index: 90;
+.schedule-dock__floating-tooltip {
+  position: fixed;
+  z-index: 420;
   display: grid;
-  align-content: center;
-  width: auto;
-  max-width: none;
+  width: min(18.75rem, calc(100vw - 1.5rem));
   gap: 0.22rem;
-  padding: 0.45rem 0.52rem;
+  padding: 0.55rem 0.65rem;
   border: 1px solid rgba(202, 249, 255, 0.82);
   border-radius: 0.68rem;
   background:
@@ -1859,16 +1901,8 @@
   color: rgba(237, 250, 255, 0.9);
   text-align: left;
   box-shadow: 0 16px 28px rgba(0, 39, 82, 0.3);
-  opacity: 0;
   pointer-events: none;
-  transform: translateY(0.22rem) scale(0.94);
-  transition: opacity 150ms ease, transform 150ms ease;
-}
-
-.schedule-segment:hover .schedule-tooltip,
-.schedule-segment:focus-visible .schedule-tooltip {
-  opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(-0.12rem);
 }
 
 .schedule-tooltip__title,
@@ -1958,6 +1992,10 @@
     0 16px 34px rgba(0, 35, 78, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.18),
     inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+}
+
+.operator-frame .surface-panel {
+  overflow: visible;
 }
 
 @keyframes tenant-skyline-drift {

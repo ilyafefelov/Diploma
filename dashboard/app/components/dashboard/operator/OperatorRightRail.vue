@@ -18,7 +18,13 @@ defineProps<{
   moodChips: OperatorMoodChip[]
   batteryStatusLabel: string
   batterySocPercent: number
+  batterySocSourceLabel: string
+  batterySocFormula: string
   batterySohProxyPercent: number
+  batterySohSourceLabel: string
+  batterySohFormula: string
+  batteryTelemetryIngestLabel: string
+  batteryTelemetryIngestTooltip: string
   latestRecommendedPowerLabel: string
   gatekeeperActions: OperatorGatekeeperAction[]
   activeAlertCount: number
@@ -47,7 +53,13 @@ const emit = defineEmits<{
     <OperatorBatteryPanel
       :status-label="batteryStatusLabel"
       :soc-percent="batterySocPercent"
+      :soc-source-label="batterySocSourceLabel"
+      :soc-formula="batterySocFormula"
       :soh-percent="batterySohProxyPercent"
+      :soh-source-label="batterySohSourceLabel"
+      :soh-formula="batterySohFormula"
+      :telemetry-ingest-label="batteryTelemetryIngestLabel"
+      :telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
       :power-label="latestRecommendedPowerLabel"
     />
 

@@ -22,6 +22,8 @@ const props = defineProps<{
 
 const forecastOption = computed(() => buildBaselineForecastChartOption(props.baselinePreview))
 const scheduleOption = computed(() => buildBaselineScheduleChartOption(props.baselinePreview))
+const startingSocSourceLabel = computed(() => props.baselinePreview?.starting_soc_source || 'not reported')
+const telemetryFreshnessLabel = computed(() => formatTelemetryFreshness(props.baselinePreview?.telemetry_freshness))
 
 const economicsItems = computed(() => {
   if (!props.baselinePreview) {
@@ -150,6 +152,18 @@ const feasiblePlanItems = computed(() => {
     }
   ]
 })
+
+const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | undefined): string => {
+  if (!freshness) {
+    return 'not reported'
+  }
+
+  const freshnessLabel = freshness.telemetry_freshness
+    ?? freshness.freshness
+    ?? freshness.status
+
+  return typeof freshnessLabel === 'string' ? freshnessLabel : 'metadata available'
+}
 </script>
 
 <template>
@@ -319,14 +333,16 @@ const feasiblePlanItems = computed(() => {
           <p class="baseline-explainer-card__copy">
             The baseline forecast line comes from <strong>HourlyDamBaselineSolver.solve_next_dispatch</strong> in the API.
             The solver receives tenant-aware DAM price history, current SOC, and battery limits, then returns hourly
-            points from the <strong>forecast</strong> field.
+            points from the <strong>forecast</strong> field. When the real-data stack is materialized, that history is
+            observed OREE DAM data; any synthetic fallback is demo-grade only.
           </p>
           <p class="baseline-explainer-card__formula">
             Displayed series: <strong>forecast[i] = solve_result.forecast[i].predicted_price_uah_mwh</strong>
           </p>
           <p class="baseline-explainer-card__copy">
-            In the current MVP, the underlying history is still synthetic DAM history with tenant-specific bias and simple
-            time-of-day shaping.
+            This panel is still the baseline LP preview, not an NBEATSx/TFT forecast and not bid intent. Starting SOC source:
+            <strong>{{ startingSocSourceLabel }}</strong>; telemetry freshness:
+            <strong>{{ telemetryFreshnessLabel }}</strong>.
           </p>
         </template>
         <template v-else>
@@ -429,16 +445,6 @@ const feasiblePlanItems = computed(() => {
     0 18px 38px rgba(0, 53, 103, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.34);
   overflow: visible;
-}
-
-.baseline-slab::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0) 24%, rgba(255, 255, 255, 0.22) 34%, rgba(255, 255, 255, 0) 44%);
-  transform: translateX(-120%);
-  animation: slab-sheen 16s ease-in-out infinite;
 }
 
 .baseline-slab__header,
@@ -615,6 +621,19 @@ const feasiblePlanItems = computed(() => {
   animation: sims-tooltip-sheen 1.2s ease-out forwards;
 }
 
+.baseline-slab__economics .economics-pill-interactive:nth-child(n + 3) .sims-tooltip,
+.baseline-feasible-strip .feasible-pill-interactive:nth-child(3) .sims-tooltip {
+  right: 0;
+  left: auto;
+  transform-origin: top right;
+}
+
+.baseline-slab__economics .economics-pill-interactive:nth-child(n + 3) .sims-tooltip::after,
+.baseline-feasible-strip .feasible-pill-interactive:nth-child(3) .sims-tooltip::after {
+  right: 1.2rem;
+  left: auto;
+}
+
 .economics-pill-interactive:focus-visible {
   outline: none;
   border-color: rgba(0, 121, 193, 0.24);
@@ -759,22 +778,13 @@ const feasiblePlanItems = computed(() => {
 
 .baseline-boundary__copy {
   line-height: 1.65;
-  color: rgba(229, 249, 255, 0.82);
+  color: #17334d;
+  font-weight: 650;
 }
 
 .baseline-boundary__copy-strong {
-  color: white;
-  font-weight: 600;
-}
-
-@keyframes slab-sheen {
-  0%, 100% {
-    transform: translateX(-120%);
-  }
-
-  45%, 55% {
-    transform: translateX(120%);
-  }
+  color: #071f38;
+  font-weight: 850;
 }
 
 @media (min-width: 860px) {

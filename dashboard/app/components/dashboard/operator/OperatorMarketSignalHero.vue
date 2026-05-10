@@ -25,6 +25,40 @@ const hasSignalData = computed(() => {
 
 const formatNumber = (value: number): string => `${value.toFixed(2)}`
 const formatPowerLabel = (value: number): string => `${value >= 0 ? '+' : ''}${value.toFixed(1)} UAH/MWh`
+const formatPeriodDateTime = (value: string | null | undefined): string => {
+  if (!value) {
+    return 'date pending'
+  }
+
+  const parsedDate = new Date(value)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'date pending'
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: props.signalPreview?.timezone || props.signalPreview?.resolved_location.timezone || 'Europe/Kyiv'
+  }).format(parsedDate)
+}
+
+const latestPricePeriodLabel = computed(() => {
+  return `Hour: ${formatPeriodDateTime(props.signalPreview?.latest_price_timestamp || props.signalPreview?.forecast_window_end)}`
+})
+
+const forecastWindowPeriodLabel = computed(() => {
+  const startLabel = formatPeriodDateTime(props.signalPreview?.forecast_window_start)
+  const endLabel = formatPeriodDateTime(props.signalPreview?.forecast_window_end)
+
+  if (startLabel === 'date pending' || endLabel === 'date pending') {
+    return 'Forecast window pending'
+  }
+
+  return `${startLabel} → ${endLabel}`
+})
 
 const latestMarketPrice = computed(() => {
   if (!props.signalPreview?.market_price.length) {
@@ -48,14 +82,6 @@ const minMarketPrice = computed(() => {
   }
 
   return Math.min(...props.signalPreview.market_price)
-})
-
-const latestBias = computed(() => {
-  if (!props.signalPreview?.weather_bias.length) {
-    return null
-  }
-
-  return props.signalPreview.weather_bias.at(-1) ?? null
 })
 
 const avgBias = computed(() => {
@@ -118,11 +144,16 @@ const forecastSpread = computed(() => {
       v-if="!isLoading"
       class="market-signal-hero__metrics"
     >
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">DAM spot</p>
+      <article
+        class="hud-mini-stat"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          DAM spot
+        </p>
         <strong>{{ latestMarketPrice == null ? '—' : formatPowerLabel(latestMarketPrice) }}</strong>
         <p class="hud-mini-stat__meta">
-          Latest visible hour
+          {{ latestPricePeriodLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
@@ -130,14 +161,20 @@ const forecastSpread = computed(() => {
         >
           <span class="hud-mini-stat__tooltip-title">Latest DAM price</span>
           <span>Formula: P_t = market_price[t]</span>
+          <span>Period: {{ latestPricePeriodLabel }}.</span>
           <span>Definition: expected settlement level used in the current MVP preview.</span>
         </span>
       </article>
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">Window spread</p>
+      <article
+        class="hud-mini-stat"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          Window spread
+        </p>
         <strong>{{ forecastSpread == null ? '—' : `${formatNumber(forecastSpread)} UAH/MWh` }}</strong>
         <p class="hud-mini-stat__meta">
-          Max-min in visible horizon
+          {{ forecastWindowPeriodLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
@@ -145,14 +182,20 @@ const forecastSpread = computed(() => {
         >
           <span class="hud-mini-stat__tooltip-title">Forecast band</span>
           <span>Formula: spread = max(price_i) − min(price_i)</span>
+          <span>Period: {{ forecastWindowPeriodLabel }}.</span>
           <span>Interpretation: higher spread usually gives higher arbitrage opportunity.</span>
         </span>
       </article>
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">Weather uplift</p>
+      <article
+        class="hud-mini-stat"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          Weather uplift
+        </p>
         <strong>{{ avgBias == null ? '—' : `${avgBias >= 0 ? '+' : ''}${formatNumber(avgBias)} UAH/MWh` }}</strong>
         <p class="hud-mini-stat__meta">
-          Average across horizon
+          {{ forecastWindowPeriodLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
@@ -160,14 +203,20 @@ const forecastSpread = computed(() => {
         >
           <span class="hud-mini-stat__tooltip-title">Weather term</span>
           <span>Formula: price_adj = market_price + weather_bias</span>
+          <span>Period: {{ forecastWindowPeriodLabel }}.</span>
           <span>Source: calibrated uplift from cloud, precipitation, humidity, solar, and wind.</span>
         </span>
       </article>
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">Signal count</p>
+      <article
+        class="hud-mini-stat"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          Signal count
+        </p>
         <strong>{{ hasSignalData ? props.signalPreview?.labels.length : '—' }}</strong>
         <p class="hud-mini-stat__meta">
-          Forecast horizon points
+          {{ forecastWindowPeriodLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
@@ -175,6 +224,7 @@ const forecastSpread = computed(() => {
         >
           <span class="hud-mini-stat__tooltip-title">Signal density</span>
           <span>Formula: point_count = len(labels)</span>
+          <span>Period: {{ forecastWindowPeriodLabel }}.</span>
           <span>Interpretation: longer horizon gives smoother visual trend and confidence for dispatch alignment.</span>
         </span>
       </article>

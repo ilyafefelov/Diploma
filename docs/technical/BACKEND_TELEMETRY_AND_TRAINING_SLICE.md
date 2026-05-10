@@ -9,6 +9,7 @@ Deep-research update: this backend slice is a valid engineering foundation, but 
 - Docker Compose runs Postgres, Mosquitto MQTT, FastAPI, Dagster webserver/daemon, MLflow, a simulated telemetry publisher, and a telemetry ingestor.
 - Host ports are configurable through environment variables. The API container still listens on `8000`; if the host already uses `8000`, run Compose with `SMART_ARBITRAGE_API_PORT=8001` instead of changing API code.
 - Simulated MQTT topic format: `smart-arbitrage/{tenant_id}/battery/telemetry`.
+- `/dashboard/battery-state.telemetry_ingest_source` exposes the configured MQTT host, port, and tenant topic for operator diagnostics. This is not a live broker health probe.
 - Raw telemetry is ingested every 5 simulated minutes into `battery_telemetry_observations`.
 - Dagster asset `battery_state_hourly_silver` aggregates raw telemetry into `battery_state_hourly_snapshots`.
 - Baseline LP uses the latest fresh hourly SOC snapshot when available; otherwise it falls back to the tenant registry initial SOC.
@@ -53,7 +54,7 @@ Expected evidence:
 
 ## Dashboard Plan For Later
 
-- Show physical truth now from `/dashboard/battery-state.latest_telemetry`.
+- Show physical truth now from `/dashboard/battery-state.latest_telemetry` and the configured ingest path from `/dashboard/battery-state.telemetry_ingest_source`.
 - Show planning truth from baseline/projected-state traces.
 - Add stale telemetry warnings when baseline falls back to tenant defaults.
 - Add model comparison cards for strict similar-day, NBEATSx, and TFT.

@@ -4,8 +4,14 @@ import { computed } from 'vue'
 const props = defineProps<{
   statusLabel: string
   socPercent: number
+  socSourceLabel: string
+  socFormula: string
   sohPercent: number
+  sohSourceLabel: string
+  sohFormula: string
   powerLabel: string
+  telemetryIngestLabel: string
+  telemetryIngestTooltip: string
 }>()
 
 const socBandLabel = computed(() => {
@@ -54,6 +60,14 @@ const safePowerMode = computed(() => {
       />
     </div>
 
+    <div
+      class="battery-ingest-pill"
+      :title="telemetryIngestTooltip"
+    >
+      <UIcon name="i-lucide-radio-tower" />
+      <span>{{ telemetryIngestLabel }}</span>
+    </div>
+
     <div class="battery-stat-grid">
       <article class="metric-lens-card">
         <div class="metric-lens-card__label-row">
@@ -65,6 +79,7 @@ const safePowerMode = computed(() => {
         </div>
         <strong>{{ socPercent }}%</strong>
         <small class="metric-lens-card__kicker">{{ socBandLabel }}</small>
+        <span class="battery-stat-grid__meta">{{ socSourceLabel }}</span>
         <div class="mini-meter">
           <span :style="{ width: `${socPercent}%` }" />
         </div>
@@ -73,8 +88,8 @@ const safePowerMode = computed(() => {
           role="tooltip"
         >
           <span class="metric-lens-card__tooltip-title">State of charge</span>
-          <span>Formula: SOC = projected_soc_after_fraction × 100%</span>
-          <span>Interpretation: current battery charge readiness for the next dispatch slice.</span>
+          <span>Formula: {{ socFormula }}</span>
+          <span>Source priority: latest 5-minute telemetry, then hourly Silver snapshot, then baseline LP starting SOC.</span>
         </span>
       </article>
       <article class="metric-lens-card">
@@ -87,6 +102,7 @@ const safePowerMode = computed(() => {
         </div>
         <strong>{{ sohPercent }}%</strong>
         <small class="metric-lens-card__kicker">Health estimate</small>
+        <span class="battery-stat-grid__meta">{{ sohSourceLabel }}</span>
         <div class="mini-meter mini-meter-green">
           <span :style="{ width: `${sohPercent}%` }" />
         </div>
@@ -95,8 +111,8 @@ const safePowerMode = computed(() => {
           role="tooltip"
         >
           <span class="metric-lens-card__tooltip-title">Degradation proxy</span>
-          <span>Formula: SOH_proxy = 96.2 - throughput × 0.12</span>
-          <span>Interpretation: estimated remaining battery health as a soft constraint signal.</span>
+          <span>Formula: {{ sohFormula }}</span>
+          <span>Interpretation: physical telemetry when present; otherwise Level 1 throughput proxy for operator context.</span>
         </span>
       </article>
       <article class="metric-lens-card">

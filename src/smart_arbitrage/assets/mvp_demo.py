@@ -11,6 +11,7 @@ import dagster as dg
 import polars as pl
 from pydantic import ValidationError
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.assets.bronze.market_weather import (
     build_demo_market_price_history,
     build_synthetic_market_price_history,
@@ -60,7 +61,17 @@ DEMO_DEGRADATION_COST_PER_CYCLE_UAH: Final[float] = _derive_demo_degradation_cos
 )
 
 
-@dg.asset(group_name="bronze")
+@dg.asset(
+    group_name=taxonomy.BRONZE_MARKET_DATA,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="mvp_demo_market",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="demo",
+        market_venue="DAM",
+    ),
+)
 def dam_price_history(
     context,
     weather_forecast_bronze: pl.DataFrame,
@@ -97,7 +108,16 @@ def dam_price_history(
     return price_history
 
 
-@dg.asset(group_name="gold")
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_BATTERY,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="mvp_demo_battery",
+        elt_stage="publish",
+        ml_stage="source_data",
+        evidence_scope="demo",
+    ),
+)
 def demo_battery_physical_metrics(context) -> BatteryPhysicalMetrics:
     """Canonical battery parameters for the week 2 MVP demo."""
 
@@ -126,7 +146,16 @@ def demo_battery_physical_metrics(context) -> BatteryPhysicalMetrics:
     return metrics
 
 
-@dg.asset(group_name="gold")
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_BATTERY,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="mvp_demo_battery",
+        elt_stage="publish",
+        ml_stage="source_data",
+        evidence_scope="demo",
+    ),
+)
 def demo_battery_telemetry(
     context,
     dam_price_history: pl.DataFrame,
@@ -148,7 +177,17 @@ def demo_battery_telemetry(
     return telemetry
 
 
-@dg.asset(group_name="silver")
+@dg.asset(
+    group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+    tags=taxonomy.asset_tags(
+        medallion="silver",
+        domain="mvp_demo_forecast",
+        elt_stage="transform",
+        ml_stage="forecasting",
+        evidence_scope="demo",
+        market_venue="DAM",
+    ),
+)
 def strict_similar_day_forecast(
     context,
     dam_price_history: pl.DataFrame,
@@ -177,7 +216,17 @@ def strict_similar_day_forecast(
     return forecast_frame
 
 
-@dg.asset(group_name="gold")
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_DISPATCH,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="mvp_demo_dispatch",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="demo",
+        market_venue="DAM",
+    ),
+)
 def baseline_dispatch_plan(
     context,
     strict_similar_day_forecast: pl.DataFrame,
@@ -207,7 +256,17 @@ def baseline_dispatch_plan(
     return result
 
 
-@dg.asset(group_name="gold")
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_GATEKEEPER,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="mvp_demo_gatekeeper",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="demo",
+        market_venue="DAM",
+    ),
+)
 def validated_dispatch_command(
     context,
     baseline_dispatch_plan: BaselineSolveResult,
@@ -232,7 +291,17 @@ def validated_dispatch_command(
     return validated_command
 
 
-@dg.asset(group_name="gold")
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_GATEKEEPER,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="mvp_demo_gatekeeper",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="demo",
+        market_venue="DAM",
+    ),
+)
 def blocked_dispatch_command_demo(
     context,
     baseline_dispatch_plan: BaselineSolveResult,
@@ -269,7 +338,17 @@ def blocked_dispatch_command_demo(
     return safe_command
 
 
-@dg.asset(group_name="gold")
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="mvp_demo_benchmark",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="demo",
+        market_venue="DAM",
+    ),
+)
 def oracle_benchmark_metrics(
     context,
     dam_price_history: pl.DataFrame,
@@ -319,7 +398,17 @@ def oracle_benchmark_metrics(
     return metrics
 
 
-@dg.asset(group_name="gold")
+@dg.asset(
+    group_name=taxonomy.GOLD_MVP_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="mvp_demo_benchmark",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="demo",
+        market_venue="DAM",
+    ),
+)
 def baseline_regret_tracking(
     context,
     oracle_benchmark_metrics: dict,

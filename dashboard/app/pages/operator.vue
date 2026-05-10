@@ -4,8 +4,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   OperatorAlertBanner,
   OperatorBaselineConsole,
+  OperatorDecisionEvidencePanel,
+  OperatorFutureStackPanel,
   OperatorMarketConsole,
   OperatorMetricRibbon,
+  OperatorResearchPanel,
   OperatorRightRail,
   OperatorScheduleDock,
   OperatorSidebar,
@@ -14,8 +17,10 @@ import {
 import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
+import { useOperatorRecommendation } from '~/composables/useOperatorRecommendation'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
+import { buildOperatorResearchMetrics } from '~/utils/operatorResearchMetrics'
 
 const {
   tenants,
@@ -48,6 +53,8 @@ const {
   loadBaselinePreview
 } = useBaselinePreview(selectedTenantId)
 
+const defense = useDefenseDashboard(selectedTenantId)
+
 const {
   runConfig,
   materializeResult,
@@ -65,15 +72,30 @@ const {
 
 const includePriceHistory = ref(true)
 const explanationMode = ref<'mvp' | 'future'>('mvp')
+const selectedOperatorStrategyId = ref('strict_similar_day')
+
+const {
+  operatorRecommendation,
+  isLoading: isOperatorRecommendationLoading,
+  error: operatorRecommendationError,
+  clearError: clearOperatorRecommendationError,
+  loadOperatorRecommendation
+} = useOperatorRecommendation(selectedTenantId, selectedOperatorStrategyId)
 
 const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Current MVP logic' : 'Future production logic')
 
 const {
   activeAlertCount,
   activeRegistrySummary,
+  batterySocFormula,
   batterySocPercent,
+  batterySocSourceLabel,
+  batterySohFormula,
   batterySohProxyPercent,
+  batterySohSourceLabel,
   batteryStatusLabel,
+  batteryTelemetryIngestLabel,
+  batteryTelemetryIngestTooltip,
   dispatchModeLabel,
   gatekeeperActions,
   headlineMetrics,
@@ -94,6 +116,7 @@ const {
   selectedTenant,
   signalPreview,
   baselinePreview,
+  batteryState: defense.batteryState,
   runConfig,
   materializeResult,
   operatorStatus,
@@ -124,6 +147,22 @@ const nextStepsItems = computed(() => explanationMode.value === 'mvp'
     ]
 )
 
+const schedulePredictionHeadLabel = computed(() => {
+  if (operatorRecommendation.value) {
+    return `Prediction head: ${operatorRecommendation.value.forecast_source}`
+  }
+  return explanationMode.value === 'mvp'
+    ? 'Prediction head: HourlyDamBaselineSolver -> baseline LP'
+    : 'Target head: NBEATSx/TFT -> policy review'
+})
+
+const operatorResearchMetrics = computed(() => buildOperatorResearchMetrics({
+  modelRows: defense.modelRows.value,
+  readinessRows: defense.researchReadinessRows.value,
+  exogenousSignals: defense.exogenousSignals.value,
+  batteryState: defense.batteryState.value
+}))
+
 const refreshRegistry = async (): Promise<void> => {
   await loadTenants()
 }
@@ -149,6 +188,7 @@ const dismissSurfaceErrors = (): void => {
   clearWeatherError()
   clearSignalPreviewError()
   clearBaselinePreviewError()
+  clearOperatorRecommendationError()
 }
 
 const setSelectedTenantId = (tenantId: string): void => {
@@ -167,6 +207,8 @@ onMounted(async () => {
 
   await loadSignalPreview()
   await loadBaselinePreview()
+  await loadOperatorRecommendation()
+  await defense.loadDefenseDashboard()
   await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
 })
@@ -189,8 +231,8 @@ onBeforeUnmount(() => {
       <OperatorMetricRibbon :metrics="headlineMetrics" />
 
       <OperatorAlertBanner
-        v-if="error || weatherError || signalPreviewError || baselinePreviewError"
-        :message="error || weatherError || signalPreviewError || baselinePreviewError"
+        v-if="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError"
+        :message="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError"
         @dismiss="dismissSurfaceErrors"
       />
 
@@ -226,6 +268,34 @@ onBeforeUnmount(() => {
             :last-loaded-label="baselinePreviewLastLoadedLabel"
             :explanation-mode="explanationMode"
           />
+
+          <OperatorDecisionEvidencePanel
+            :benchmark="defense.benchmark.value"
+            :model-rows="defense.modelRows.value"
+            :sensitivity="defense.sensitivity.value"
+            :battery-state="defense.batteryState.value"
+            :baseline-preview="baselinePreview"
+            :operator-recommendation="operatorRecommendation"
+            :exogenous-signals="defense.exogenousSignals.value"
+            :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+          />
+
+          <OperatorFutureStackPanel
+            :future-stack="defense.futureStack.value"
+            :decision-policy="defense.dtPolicyPreview.value"
+            :operator-recommendation="operatorRecommendation"
+            :selected-strategy-id="selectedOperatorStrategyId"
+            :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+            @update:selected-strategy-id="value => selectedOperatorStrategyId = value"
+          />
+
+          <OperatorResearchPanel
+            :metrics="operatorResearchMetrics"
+            :sensitivity="defense.sensitivity.value"
+            :is-loading="defense.isLoading.value"
+            :last-loaded-label="defense.lastLoadedLabel.value"
+            :active-error-count="defense.activeErrorCount.value"
+          />
         </section>
 
         <OperatorRightRail
@@ -233,7 +303,13 @@ onBeforeUnmount(() => {
           :mood-chips="moodChips"
           :battery-status-label="batteryStatusLabel"
           :battery-soc-percent="batterySocPercent"
+          :battery-soc-source-label="batterySocSourceLabel"
+          :battery-soc-formula="batterySocFormula"
           :battery-soh-proxy-percent="batterySohProxyPercent"
+          :battery-soh-source-label="batterySohSourceLabel"
+          :battery-soh-formula="batterySohFormula"
+          :battery-telemetry-ingest-label="batteryTelemetryIngestLabel"
+          :battery-telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
           :latest-recommended-power-label="latestRecommendedPowerLabel"
           :gatekeeper-actions="gatekeeperActions"
           :active-alert-count="activeAlertCount"
@@ -257,6 +333,7 @@ onBeforeUnmount(() => {
         :selected-tenant-badge="selectedTenantBadge"
         :timeline-segments="timelineSegments"
         :dispatch-mode-label="dispatchModeLabel"
+        :prediction-head-label="schedulePredictionHeadLabel"
       />
     </div>
   </main>

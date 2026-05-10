@@ -1,7 +1,5 @@
 """NBEATSx and TFT Silver forecast assets."""
 
-from __future__ import annotations
-
 import os
 from datetime import date, datetime
 from typing import Any
@@ -9,8 +7,15 @@ from typing import Any
 import dagster as dg
 import polars as pl
 
+from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
+from smart_arbitrage.forecasting.official_adapters import (
+	build_official_nbeatsx_forecast,
+	build_official_tft_forecast,
+	inspect_official_forecast_backends,
+)
+from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
 from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.resources.forecast_store import get_forecast_store
 
@@ -18,20 +23,55 @@ MLFLOW_FORECAST_EXPERIMENT_NAME = "smart-arbitrage-forecast-research"
 MLFLOW_FORECAST_MODEL_REGISTRY_NAMES = {
 	"nbeatsx_silver_v0": "smart-arbitrage-nbeatsx-silver",
 	"tft_silver_v0": "smart-arbitrage-tft-silver",
+	"nbeatsx_official_v0": "smart-arbitrage-nbeatsx-official",
+	"tft_official_v0": "smart-arbitrage-tft-official",
 }
 
 
-@dg.asset(group_name="silver")
+class NbeatsxOfficialForecastAssetConfig(dg.Config):
+	"""CPU-safe official NBEATSx adapter controls."""
+
+	horizon_hours: int = 24
+	max_steps: int = 10
+	random_seed: int = 20260506
+
+
+class TftOfficialForecastAssetConfig(dg.Config):
+	"""CPU-safe official TFT adapter controls."""
+
+	horizon_hours: int = 24
+	max_epochs: int = 1
+	batch_size: int = 64
+	learning_rate: float = 0.01
+	hidden_size: int = 8
+	hidden_continuous_size: int = 4
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
 def neural_forecast_feature_frame(
 	context,
 	dam_price_history: pl.DataFrame,
 	battery_state_hourly_silver=None,
+	grid_event_signal_silver=None,
+	tenant_net_load_hourly_silver=None,
 ) -> pl.DataFrame:
 	"""Model-ready Silver feature frame for NBEATSx and TFT research forecasts."""
 
 	feature_frame = build_neural_forecast_feature_frame(
 		dam_price_history,
 		battery_state_hourly_snapshots=battery_state_hourly_silver,
+		future_weather_mode="forecast_only",
+		grid_event_signal_frame=grid_event_signal_silver,
 	)
 	_add_metadata(
 		context,
@@ -45,7 +85,51 @@ def neural_forecast_feature_frame(
 	return feature_frame
 
 
-@dg.asset(group_name="silver")
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
+def sota_forecast_training_frame(
+	context,
+	neural_forecast_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Backend-neutral Silver frame for full NeuralForecast/PyTorch-Forecasting experiments."""
+
+	frame = build_sota_forecast_training_frame(
+		neural_forecast_feature_frame,
+		tenant_id="global_research_tenant",
+	)
+	_add_metadata(
+		context,
+		{
+			"rows": frame.height,
+			"train_rows": frame.filter(pl.col("split") == "train").height,
+			"forecast_rows": frame.filter(pl.col("split") == "forecast").height,
+			"schema_version": frame.select("sota_schema_version").to_series().item(0) if frame.height else "empty",
+			"scope": "sota_backend_contract_not_trained_model",
+		},
+	)
+	return frame
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
 def nbeatsx_price_forecast(
 	context,
 	neural_forecast_feature_frame: pl.DataFrame,
@@ -71,7 +155,17 @@ def nbeatsx_price_forecast(
 	return forecast
 
 
-@dg.asset(group_name="silver")
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		market_venue="DAM",
+	),
+)
 def tft_price_forecast(
 	context,
 	neural_forecast_feature_frame: pl.DataFrame,
@@ -101,10 +195,125 @@ def tft_price_forecast(
 	return forecast
 
 
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		backend="neuralforecast",
+		market_venue="DAM",
+	),
+)
+def nbeatsx_official_price_forecast(
+	context,
+	config: NbeatsxOfficialForecastAssetConfig,
+	sota_forecast_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Official NeuralForecast NBEATSx candidate when optional SOTA dependencies exist."""
+
+	forecast = build_official_nbeatsx_forecast(
+		sota_forecast_training_frame,
+		horizon_hours=config.horizon_hours,
+		max_steps=config.max_steps,
+		random_seed=config.random_seed,
+	)
+	forecast_run_id = (
+		_persist_forecast_run(
+			model_name="nbeatsx_official_v0",
+			forecast=forecast,
+			point_prediction_column="predicted_price_uah_mwh",
+		)
+		if forecast.height
+		else "not_materialized"
+	)
+	backend_status = inspect_official_forecast_backends()["neuralforecast"]
+	_add_metadata(
+		context,
+		{
+			"model_name": "nbeatsx_official_v0",
+			"forecast_run_id": forecast_run_id,
+			"forecast_rows": forecast.height,
+			"horizon_hours": config.horizon_hours,
+			"max_steps": config.max_steps,
+			"random_seed": config.random_seed,
+			"backend_available": backend_status.available,
+			"backend_status": backend_status.reason,
+			"scope": "official_neuralforecast_adapter_not_live_strategy",
+		},
+	)
+	return forecast
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		backend="pytorch_forecasting",
+		market_venue="DAM",
+	),
+)
+def tft_official_price_forecast(
+	context,
+	config: TftOfficialForecastAssetConfig,
+	sota_forecast_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Official PyTorch-Forecasting TFT candidate readiness asset."""
+
+	forecast = build_official_tft_forecast(
+		sota_forecast_training_frame,
+		horizon_hours=config.horizon_hours,
+		max_epochs=config.max_epochs,
+		batch_size=config.batch_size,
+		learning_rate=config.learning_rate,
+		hidden_size=config.hidden_size,
+		hidden_continuous_size=config.hidden_continuous_size,
+	)
+	forecast_run_id = (
+		_persist_forecast_run(
+			model_name="tft_official_v0",
+			forecast=forecast,
+			point_prediction_column="predicted_price_uah_mwh",
+		)
+		if forecast.height
+		else "not_materialized"
+	)
+	backend_status = inspect_official_forecast_backends()
+	_add_metadata(
+		context,
+		{
+			"model_name": "tft_official_v0",
+			"forecast_run_id": forecast_run_id,
+			"forecast_rows": forecast.height,
+			"horizon_hours": config.horizon_hours,
+			"max_epochs": config.max_epochs,
+			"batch_size": config.batch_size,
+			"learning_rate": config.learning_rate,
+			"hidden_size": config.hidden_size,
+			"hidden_continuous_size": config.hidden_continuous_size,
+			"pytorch_forecasting_available": backend_status["pytorch_forecasting"].available,
+			"lightning_available": backend_status["lightning"].available,
+			"pytorch_forecasting_status": backend_status["pytorch_forecasting"].reason,
+			"lightning_status": backend_status["lightning"].reason,
+			"scope": "official_pytorch_forecasting_adapter_not_live_strategy",
+		},
+	)
+	return forecast
+
+
 NEURAL_FORECAST_SILVER_ASSETS = [
 	neural_forecast_feature_frame,
+	sota_forecast_training_frame,
 	nbeatsx_price_forecast,
 	tft_price_forecast,
+	nbeatsx_official_price_forecast,
+	tft_official_price_forecast,
 ]
 
 
@@ -190,7 +399,8 @@ def _forecast_metrics(forecast: pl.DataFrame, *, point_prediction_column: str) -
 			forecast.select("predicted_price_p90_uah_mwh").to_series()
 			- forecast.select("predicted_price_p10_uah_mwh").to_series()
 		)
-		metrics["mean_prediction_interval_width_uah_mwh"] = _series_mean_float(interval_width)
+		if not interval_width.drop_nulls().is_empty():
+			metrics["mean_prediction_interval_width_uah_mwh"] = _series_mean_float(interval_width)
 	if "top_feature_weight" in forecast.columns:
 		metrics["max_top_feature_weight"] = _series_max_float(forecast.select("top_feature_weight").to_series())
 	return metrics

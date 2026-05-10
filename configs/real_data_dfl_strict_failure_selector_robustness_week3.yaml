@@ -1,0 +1,17 @@
+ops:
+  dfl_schedule_candidate_library_v2_frame:
+    config:
+      blend_weights_csv: "0.25,0.5,0.75"
+      residual_min_prior_anchors: 3
+      min_final_holdout_tenant_anchor_count_per_source_model: 90
+  dfl_strict_failure_selector_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "tft_silver_v0,nbeatsx_silver_v0"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      min_prior_anchor_count: 3
+      switch_threshold_grid_uah_csv: "0.0,50.0,100.0,200.0,400.0"
+      min_robust_passing_windows: 3
+      min_validation_tenant_anchor_count_per_source_model: 90

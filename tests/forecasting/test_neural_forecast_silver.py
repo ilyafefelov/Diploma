@@ -5,8 +5,14 @@ import polars as pl
 from smart_arbitrage.assets.bronze.market_weather import build_synthetic_market_price_history
 from smart_arbitrage.assets.silver.neural_forecasts import (
 	NEURAL_FORECAST_SILVER_ASSETS,
+	NbeatsxOfficialForecastAssetConfig,
+	TftOfficialForecastAssetConfig,
+	_forecast_metrics,
+	nbeatsx_official_price_forecast,
 	nbeatsx_price_forecast,
 	neural_forecast_feature_frame,
+	sota_forecast_training_frame,
+	tft_official_price_forecast,
 	tft_price_forecast,
 )
 from smart_arbitrage.forecasting.neural_features import (
@@ -41,6 +47,46 @@ def test_neural_forecast_feature_frame_marks_train_and_horizon_rows() -> None:
 	assert feature_frame.select("lag_168_price_uah_mwh").drop_nulls().height > 0
 
 
+def test_neural_forecast_feature_frame_does_not_leak_future_realized_prices() -> None:
+	price_history = _synthetic_price_history()
+	control_features = build_neural_forecast_feature_frame(price_history)
+	anchor_timestamp = (
+		control_features
+		.filter(pl.col("split") == "train")
+		.select("timestamp")
+		.to_series()
+		.item(-1)
+	)
+	mutated_price_history = price_history.with_columns(
+		pl.when(pl.col("timestamp") > anchor_timestamp)
+		.then(pl.col("price_uah_mwh") + 50000.0)
+		.otherwise(pl.col("price_uah_mwh"))
+		.alias("price_uah_mwh")
+	)
+
+	mutated_features = build_neural_forecast_feature_frame(mutated_price_history)
+
+	forecast_columns = ["timestamp", *NEURAL_FORECAST_FEATURE_COLUMNS]
+	assert (
+		control_features
+		.filter(pl.col("split") == "forecast")
+		.select(forecast_columns)
+		.equals(
+			mutated_features
+			.filter(pl.col("split") == "forecast")
+			.select(forecast_columns)
+		)
+	)
+	assert (
+		mutated_features
+		.filter(pl.col("split") == "forecast")
+		.select("target_price_uah_mwh")
+		.null_count()
+		.item()
+		== DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
+	)
+
+
 def test_neural_forecast_feature_frame_can_include_hourly_battery_state_features() -> None:
 	price_history = _synthetic_price_history()
 	timestamp = price_history.select("timestamp").to_series().item(-3)
@@ -70,6 +116,59 @@ def test_neural_forecast_feature_frame_can_include_hourly_battery_state_features
 	assert matched_row["battery_throughput_mwh"] == 0.08
 	assert matched_row["battery_efc_delta"] == 0.08
 	assert matched_row["telemetry_is_fresh"] == 1.0
+
+
+def test_neural_forecast_feature_frame_adds_market_regime_features() -> None:
+	price_history = _synthetic_price_history()
+
+	feature_frame = build_neural_forecast_feature_frame(price_history)
+
+	assert {
+		"market_price_cap_max",
+		"market_price_cap_min",
+		"days_since_regime_change",
+		"is_price_cap_changed_recently",
+	}.issubset(set(NEURAL_FORECAST_FEATURE_COLUMNS))
+	latest_row = feature_frame.sort("timestamp").row(-1, named=True)
+	assert latest_row["market_price_cap_max"] == 15000.0
+	assert latest_row["market_price_cap_min"] == 10.0
+	assert latest_row["days_since_regime_change"] >= 0.0
+
+
+def test_forecast_only_weather_mode_masks_future_historical_weather() -> None:
+	price_history = _synthetic_price_history().with_columns(
+		[
+			pl.lit(77.0).alias("weather_temperature"),
+			pl.lit("observed").alias("weather_source_kind"),
+		]
+	)
+
+	feature_frame = build_neural_forecast_feature_frame(
+		price_history,
+		future_weather_mode="forecast_only",
+	)
+
+	forecast_rows = feature_frame.filter(pl.col("split") == "forecast")
+	assert forecast_rows.select("weather_temperature").to_series().unique().to_list() == [18.0]
+	assert forecast_rows.select("weather_known_future_available").to_series().unique().to_list() == [0.0]
+
+
+def test_forecast_only_weather_mode_keeps_future_forecast_weather() -> None:
+	price_history = _synthetic_price_history().with_columns(
+		[
+			pl.lit(11.0).alias("weather_temperature"),
+			pl.lit("forecast").alias("weather_source_kind"),
+		]
+	)
+
+	feature_frame = build_neural_forecast_feature_frame(
+		price_history,
+		future_weather_mode="forecast_only",
+	)
+
+	forecast_rows = feature_frame.filter(pl.col("split") == "forecast")
+	assert forecast_rows.select("weather_temperature").to_series().unique().to_list() == [11.0]
+	assert forecast_rows.select("weather_known_future_available").to_series().unique().to_list() == [1.0]
 
 
 def test_neural_forecast_feature_frame_normalizes_utc_battery_snapshot_timestamps() -> None:
@@ -132,22 +231,114 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 
 	assert {
 		"neural_forecast_feature_frame",
+		"sota_forecast_training_frame",
 		"nbeatsx_price_forecast",
 		"tft_price_forecast",
+		"nbeatsx_official_price_forecast",
+		"tft_official_price_forecast",
 	}.issubset(asset_keys)
 	assert asset_keys.issubset(registered_asset_keys)
+	tags_by_key = {
+		asset_key.to_user_string(): tags
+		for asset in NEURAL_FORECAST_SILVER_ASSETS
+		for asset_key, tags in asset.tags_by_key.items()
+	}
+	groups_by_key = {
+		asset_key.to_user_string(): group
+		for asset in NEURAL_FORECAST_SILVER_ASSETS
+		for asset_key, group in asset.group_names_by_key.items()
+	}
+	assert tags_by_key["sota_forecast_training_frame"]["medallion"] == "silver"
+	assert groups_by_key["neural_forecast_feature_frame"] == "silver_forecast_features"
+	assert groups_by_key["sota_forecast_training_frame"] == "silver_forecast_features"
+	assert groups_by_key["nbeatsx_price_forecast"] == "silver_forecast_candidates"
+	assert groups_by_key["tft_price_forecast"] == "silver_forecast_candidates"
 
 
-def test_neural_forecast_assets_materialize_dataframes() -> None:
+def test_neural_forecast_assets_materialize_dataframes(monkeypatch) -> None:
 	price_history = _synthetic_price_history()
+	captured: dict[str, object] = {}
+
+	def fake_official_forecast(
+		training_frame: pl.DataFrame,
+		**kwargs: object,
+	) -> pl.DataFrame:
+		captured.update(kwargs)
+		forecast_timestamps = (
+			training_frame
+			.filter(pl.col("split") == "forecast")
+			.select("ds")
+			.to_series()
+			.to_list()
+		)
+		return pl.DataFrame(
+			{
+				"model_name": ["official_fake_v0"] * len(forecast_timestamps),
+				"model_family": ["official_fake"] * len(forecast_timestamps),
+				"backend_name": ["fake"] * len(forecast_timestamps),
+				"backend_status": ["trained"] * len(forecast_timestamps),
+				"unique_id": ["global_research_tenant"] * len(forecast_timestamps),
+				"forecast_timestamp": forecast_timestamps,
+				"predicted_price_uah_mwh": [4100.0] * len(forecast_timestamps),
+				"predicted_price_p10_uah_mwh": [4000.0] * len(forecast_timestamps),
+				"predicted_price_p50_uah_mwh": [4100.0] * len(forecast_timestamps),
+				"predicted_price_p90_uah_mwh": [4200.0] * len(forecast_timestamps),
+				"prediction_interval_kind": ["fake"] * len(forecast_timestamps),
+				"training_rows": [training_frame.filter(pl.col("split") == "train").height] * len(forecast_timestamps),
+				"horizon_rows": [len(forecast_timestamps)] * len(forecast_timestamps),
+				"adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * len(forecast_timestamps),
+			}
+		)
+
+	def fake_backend_status() -> dict[str, object]:
+		class Status:
+			available = True
+			reason = "fake_backend"
+
+		return {
+			"neuralforecast": Status(),
+			"pytorch_forecasting": Status(),
+			"lightning": Status(),
+		}
+
+	monkeypatch.setattr("smart_arbitrage.assets.silver.neural_forecasts.build_official_nbeatsx_forecast", fake_official_forecast)
+	monkeypatch.setattr("smart_arbitrage.assets.silver.neural_forecasts.build_official_tft_forecast", fake_official_forecast)
+	monkeypatch.setattr("smart_arbitrage.assets.silver.neural_forecasts.inspect_official_forecast_backends", fake_backend_status)
 
 	feature_asset_output = neural_forecast_feature_frame(None, price_history)
+	sota_asset_output = sota_forecast_training_frame(None, feature_asset_output)
 	nbeatsx_asset_output = nbeatsx_price_forecast(None, feature_asset_output)
 	tft_asset_output = tft_price_forecast(None, feature_asset_output)
+	official_nbeatsx_output = nbeatsx_official_price_forecast(
+		None,
+		NbeatsxOfficialForecastAssetConfig(max_steps=100, random_seed=20260509),
+		sota_asset_output,
+	)
+	official_tft_output = tft_official_price_forecast(
+		None,
+		TftOfficialForecastAssetConfig(
+			max_epochs=15,
+			batch_size=32,
+			learning_rate=0.005,
+			hidden_size=12,
+			hidden_continuous_size=6,
+		),
+		sota_asset_output,
+	)
 
 	assert feature_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
+	assert sota_asset_output.filter(pl.col("split") == "forecast").height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert nbeatsx_asset_output.height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
 	assert tft_asset_output.height == DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
+	assert {"model_name", "backend_status", "forecast_timestamp", "predicted_price_uah_mwh"}.issubset(official_nbeatsx_output.columns)
+	assert {"model_name", "backend_status", "forecast_timestamp", "predicted_price_uah_mwh"}.issubset(official_tft_output.columns)
+	assert captured["max_steps"] == 100
+	assert captured["random_seed"] == 20260509
+	assert captured["max_epochs"] == 15
+	assert captured["batch_size"] == 32
+	assert captured["learning_rate"] == 0.005
+	assert captured["hidden_size"] == 12
+	assert captured["hidden_continuous_size"] == 6
 
 
 def test_neural_forecast_assets_persist_model_runs(monkeypatch) -> None:
@@ -164,6 +355,23 @@ def test_neural_forecast_assets_persist_model_runs(monkeypatch) -> None:
 		"nbeatsx_silver_v0",
 		"tft_silver_v0",
 	}
+
+
+def test_forecast_metrics_skip_empty_prediction_interval_width_for_point_forecasts() -> None:
+	forecast = pl.DataFrame(
+		{
+			"forecast_timestamp": [datetime(2026, 5, 6, 14), datetime(2026, 5, 6, 15)],
+			"predicted_price_uah_mwh": [4200.0, 4300.0],
+			"predicted_price_p10_uah_mwh": [None, None],
+			"predicted_price_p90_uah_mwh": [None, None],
+		}
+	)
+
+	metrics = _forecast_metrics(forecast, point_prediction_column="predicted_price_uah_mwh")
+
+	assert metrics["horizon_rows"] == 2.0
+	assert metrics["mean_prediction_uah_mwh"] == 4250.0
+	assert "mean_prediction_interval_width_uah_mwh" not in metrics
 
 
 def test_neural_forecast_asset_registers_frozen_candidate_when_tracking_uri_is_set(monkeypatch) -> None:

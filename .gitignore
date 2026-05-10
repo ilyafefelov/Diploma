@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
-.pytest_cache/_legacy_smart-energy-ai
+*.egg-info/
+.pytest_cache/
 data/
 AGENTS.md
 *\agents.md
@@ -10,4 +11,9 @@ master_execution_prompt.md
 .git
 _legacy_smart-energy-ai
 mlruns
+lightning_logs/
+checkpoints/
 .tmp_dagster_home*/
+.tmp_runtime/
+.demo-api.err.log
+.demo-api.out.log

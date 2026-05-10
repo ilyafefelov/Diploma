@@ -5,8 +5,8 @@ This document describes the current control-plane API exposed by [api/main.py](d
 ## Purpose
 
 - The API is a control surface for selecting a tenant from the canonical Tenant Registry in [simulations/tenants.yml](d:/School/GoIT/Courses/Diploma/simulations/tenants.yml).
-- The API builds or executes Dagster config for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76), which then feeds weather and solar context into [dam_price_history](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/mvp_demo.py#L35).
-- The downstream caller chain remains: Weather Forecast Bronze asset -> Market Price History enrichment -> Baseline Forecast -> Baseline Strategy -> Oracle Benchmark / Dispatch Command validation.
+- The API builds or executes Dagster config for [weather_forecast_bronze](d:/School/GoIT/Courses/Diploma/src/smart_arbitrage/assets/bronze/market_weather.py#L76), which feeds weather and solar context into dashboard read models and future forecast features.
+- The baseline LP caller chain remains price-driven: Market Price History -> Baseline Forecast -> Baseline Strategy -> Oracle Benchmark / Dispatch Command validation. Weather is not a baseline LP control input until it is part of a validated weather-aware price forecast.
 
 ## Base Service
 
@@ -216,12 +216,44 @@ Response shape:
 - `latest_telemetry`: latest 5-minute raw telemetry row, or `null` if no MQTT/API telemetry has been ingested.
 - `hourly_snapshot`: latest hourly Silver snapshot with SOC open/close/mean, SOH, throughput, EFC delta, and freshness.
 - `fallback_reason`: `telemetry_unavailable`, `hourly_snapshot_unavailable`, `hourly_snapshot_stale`, or `null` when data is fresh.
+- `telemetry_ingest_source`: configured MQTT ingest path for this tenant. It includes `protocol`, `broker_host`, `broker_port`, and the tenant-specific topic `smart-arbitrage/{tenant_id}/battery/telemetry`.
 
 Operational notes:
 
 - This endpoint separates physical truth now from planning/projected state.
 - It is safe for the dashboard to show `latest_telemetry` and `hourly_snapshot` as separate panels.
 - If telemetry is missing or stale, optimization read models continue to fall back to tenant defaults.
+- `telemetry_ingest_source` is configuration metadata, not a broker connectivity probe. Broker health still requires the Docker/MQTT smoke test.
+
+### `GET /dashboard/exogenous-signals`
+
+Returns the latest tenant weather metadata plus public Ukrenergo grid-event context for dashboard and model diagnostics.
+
+Request query example:
+
+```text
+/dashboard/exogenous-signals?tenant_id=client_004_kharkiv_hospital
+```
+
+Response shape:
+
+```json
+{
+  "tenant_id": "client_004_kharkiv_hospital",
+  "latest_weather": {},
+  "latest_grid_event": {},
+  "grid_event_count_24h": 1.0,
+  "tenant_region_affected": true,
+  "national_grid_risk_score": 0.85,
+  "source_urls": ["https://t.me/s/Ukrenergo"]
+}
+```
+
+Operational notes:
+
+- This is a read model for exogenous context only.
+- Ukrenergo Telegram features are transparent rule-based covariates, not proven causal price predictors.
+- If no weather or grid-event rows exist yet, the endpoint still returns safe fallback metadata.
 
 ### `GET /dashboard/baseline-lp-preview`
 
@@ -278,6 +310,107 @@ Operational notes:
 - It does not return `Proposed Bid`, `Cleared Trade`, settlement, or `Dispatch Command` semantics.
 - The comparison is only available after Dagster materializes `forecast_strategy_comparison_frame`.
 - If no rows exist for the tenant, the endpoint returns `404`.
+
+### `GET /dashboard/real-data-benchmark`
+
+Returns the latest persisted real-data rolling-origin benchmark for a tenant.
+
+Request query example:
+
+```text
+/dashboard/real-data-benchmark?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `tenant_id`: selected tenant from the Tenant Registry.
+- `market_venue`: currently `DAM`.
+- `generated_at`: timestamp of the latest benchmark batch.
+- `data_quality_tier`: `thesis_grade` only when benchmark rows are observed-only; otherwise `demo_grade`.
+- `anchor_count`: number of rolling-origin anchors in the latest batch.
+- `model_count`: number of forecast candidates compared.
+- `best_model_name`: model with the most rank-1 anchor wins, tie-broken by lower mean regret.
+- `mean_regret_uah` and `median_regret_uah`: batch-level regret summaries.
+- `rows`: one row per anchor/model with decision value, oracle value, regret, degradation penalty, throughput, committed action preview, rank, and provenance payload.
+
+Operational notes:
+
+- This endpoint is a benchmark read model only. It does not emit `Proposed Bid`, `Cleared Trade`, settlement, or `Dispatch Command` contracts.
+- It is populated by the Dagster asset `real_data_rolling_origin_benchmark_frame`.
+- The benchmark trains/fits forecasts using rows available at or before each anchor and keeps realized future prices only for scoring and oracle comparison.
+- Freshness is represented by `generated_at`; the backing Postgres store returns the latest batch for the requested `tenant_id` and `strategy_kind`.
+- If no benchmark rows exist for the tenant, the endpoint returns `404`.
+
+### `GET /dashboard/calibrated-ensemble-benchmark`
+
+Returns the latest persisted calibrated value-aware ensemble gate rows for a tenant. The selector chooses only from `strict_similar_day`, `tft_horizon_regret_weighted_calibrated_v0`, and `nbeatsx_horizon_regret_weighted_calibrated_v0` using prior-anchor validation regret.
+
+Request query example:
+
+```text
+/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory
+```
+
+Response shape is the same as `GET /dashboard/real-data-benchmark`, but `model_count` is `1` and each row payload includes `selected_model_name`, `selection_policy`, and `prior_validation_anchor_count`.
+
+Operational notes:
+
+- This endpoint is a dashboard read model for research evidence, not an operational trading selector.
+- Current 90-anchor result is negative: the calibrated gate improves over raw compact neural candidates but is worse than both `strict_similar_day` and horizon-aware TFT on mean regret.
+- Freshness is represented by `generated_at`; older materialization batches may remain in Postgres but are not returned by this endpoint.
+- If no calibrated ensemble rows exist for the tenant, the endpoint returns `404`.
+
+### `GET /dashboard/risk-adjusted-value-gate`
+
+Returns the latest persisted risk-adjusted value-gate rows for a tenant. The selector chooses only from `strict_similar_day`, `tft_horizon_regret_weighted_calibrated_v0`, and `nbeatsx_horizon_regret_weighted_calibrated_v0` using prior-anchor median regret, tail regret, and win rate.
+
+Request query example:
+
+```text
+/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory
+```
+
+Response shape is the same as `GET /dashboard/real-data-benchmark`, but `model_count` is `1` and each row payload includes `selected_model_name`, `selection_policy`, `prior_validation_anchor_count`, `risk_adjusted_score`, and candidate score diagnostics.
+
+Operational notes:
+
+- This endpoint is a dashboard read model for research evidence, not an operational trading selector.
+- Current Dnipro 90-anchor preview result is conservative: the risk-adjusted gate mean regret is `1428.59` UAH, narrower than the calibrated ensemble at `1479.65` UAH but still worse than `strict_similar_day` at `1384.70` UAH.
+- Freshness is represented by `generated_at`; older materialization batches may remain in Postgres but are not returned by this endpoint.
+- If no risk-adjusted gate rows exist for the tenant, the endpoint returns `404`.
+
+### `GET /dashboard/forecast-dispatch-sensitivity`
+
+Returns diagnostic rows derived from the latest persisted horizon-aware regret-weighted benchmark rows for a tenant. The endpoint does not persist new data and does not run a trading selector; it rebuilds the sensitivity read model from benchmark payloads already in Postgres.
+
+Request query example:
+
+```text
+/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `tenant_id`, `market_venue`, `generated_at`: source batch identity.
+- `source_strategy_kind`: currently `horizon_regret_weighted_forecast_calibration_benchmark`.
+- `anchor_count`, `model_count`, `row_count`: diagnostic coverage.
+- `bucket_summary`: count and mean diagnostics per `diagnostic_bucket`.
+- `rows`: per-anchor/model diagnostics including forecast MAE/RMSE, forecast-vs-realized dispatch spread error, regret, degradation, throughput, and committed action.
+
+Operational notes:
+
+- Buckets are `low_regret`, `forecast_error`, `spread_objective_mismatch`, and `lp_dispatch_sensitivity`.
+- This is the API read model the dashboard can use to explain why a strategy lost value; it is not a bid, dispatch command, or promoted model.
+- Freshness is represented by `generated_at`; this endpoint rebuilds diagnostics from the latest horizon-aware calibration batch for the requested tenant.
+- If no horizon-aware benchmark rows exist for the tenant, the endpoint returns `404`.
+
+### Read-model freshness and performance
+
+The Postgres-backed research read models use
+`forecast_strategy_evaluations_latest_read_idx` to retrieve the latest
+`tenant_id + strategy_kind + generated_at` batch. The measured local Compose
+result is documented in
+[API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md](API_READ_MODEL_FRESHNESS_AND_PERFORMANCE.md).
 
 ### `POST /weather/run-config`
 
@@ -376,10 +509,109 @@ Operational notes:
 
 Builds the current tenant-aware signal preview for the operator dashboard.
 
+Response shape:
+
+- `market_price`: visible strict-similar-day price preview in `UAH/MWh`.
+- `weather_bias`: calibrated non-negative weather uplift in `UAH/MWh`.
+- `weather_sources`: source label per visible point, usually `OPEN_METEO` or `SYNTHETIC`.
+- `charge_intent`: simplified signed-MW visual preview derived from the weather-adjusted curve.
+- `regret`: MVP opportunity-score read model for the chart, not oracle regret.
+
 Operational notes:
 
 - On success, the API updates the persisted `signal_preview` flow state to `completed`.
 - This remains a preview/read-model endpoint and does not create `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` semantics.
+- The weather line is computed as `price_after_weather = market_price + weather_bias`.
+- `weather_bias` is estimated from cloud cover, precipitation, humidity excess, temperature gap, effective solar, and wind speed. `effective_solar = solar_radiation * (100 - cloudcover) / 100`.
+- This is an operator-facing weather-sensitivity explanation only. The baseline LP endpoint does not consume `weather_bias`; it still consumes the strict similar-day price forecast. Weather should enter dispatch only after it is part of a validated weather-aware forecast model and has been evaluated through rolling-origin realized-value/oracle-regret benchmarks.
+
+### `GET /dashboard/operator-recommendation`
+
+Returns the operator-facing recommendation read model for the selected tenant and optional strategy.
+
+Request query example:
+
+```text
+/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory&strategy_id=risk_adjusted_value_gate_v0
+```
+
+Response shape:
+
+- `available_strategies`: materialized strategies the operator may inspect; unavailable future policies stay disabled.
+- `selected_strategy_id`, `selected_policy_id`, `policy_mode`, `policy_readiness`: current selection and its safety/readiness boundary.
+- `policy_forecast_context_source`, `policy_forecast_context_row_count`, `policy_forecast_context_coverage_ratio`, `policy_forecast_context_warning`: DT forecast-state coverage copied into the operator read model; non-DT strategies return `not_applicable`.
+- `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when available, including per-series `out_of_dam_cap_rows` and `quality_boundary` so the operator can see whether an official forecast row is smoke-ready or needs calibration before value claims.
+- `value_gap_series`: per-hour counterfactual value-gap preview for the selected schedule.
+- `load_forecast`, `pv_forecast`, `projected_soc`: tenant schedule, PV, and SOC context.
+- `daily_value_uah`, `hold_value_uah`, `value_vs_hold_uah`: operator economics against a no-arbitrage hold baseline.
+
+Operational notes:
+
+- This endpoint is the main `/operator` read model. It does not submit bids.
+- When `strategy_id` is `nbeatsx_official_v0` or `tft_official_v0` and forecast-store rows exist with all visible forecast prices inside the configured DAM caps, the endpoint routes those forecast prices through the deterministic Level 1 LP preview. Out-of-cap official rows remain visible in the forecast graph with `quality_boundary=needs_calibration_before_value_claim`, but the requested official strategy is disabled and the operator response falls back to `strict_similar_day`. The resulting schedule is still a preview, not market execution.
+- DT is exposed only when a policy-preview table has materialized safe rows. Even then, `market_execution_enabled` remains false until a full evaluation promotes it.
+- `strict_similar_day` remains the control comparator and safe fallback.
+
+### `GET /dashboard/future-stack-preview`
+
+Returns target-architecture forecast evidence for the dashboard and defense route.
+
+Request query example:
+
+```text
+/dashboard/future-stack-preview?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `backend_status`: optional package availability for NeuralForecast, PyTorch Forecasting, and Lightning.
+- `runtime_acceleration`: Torch backend, device type (`cpu`, `cuda`, or `mps`), device name, CUDA version when available, and recommended experiment scope.
+- `selected_forecast_model`: lowest-regret forecast row available in the read model.
+- `forecast_window_start`, `forecast_window_end`: exact UTC timestamps covered by the returned forecast series.
+- `forecast_series`: NBEATSx/TFT paths with point forecasts, TFT-style p10/p50/p90 fields when available, per-point `price_cap_status`, and per-series `out_of_dam_cap_rows` plus `quality_boundary`.
+- `claim_boundary`: text boundary that the series is evidence, not a bid.
+
+Operational notes:
+
+- This endpoint supports the operator forecast graph and the defense future-stack section.
+- Current compact/calibrated NBEATSx/TFT rows may be displayed, but full SOTA claims require the optional official adapters and a materialized rolling-origin benchmark run.
+- Official rows are prioritized in the operator graph when present. The dashboard should display the forecast window in Europe/Kyiv local time for operator readability while preserving UTC timestamps in the API payload.
+- Official forecast smoke rows can be shown in the operator graph, but `quality_boundary=needs_calibration_before_value_claim` means the row must not drive a thesis value claim or a promoted live strategy until the forecast is calibrated and benchmarked through the strict LP/oracle path.
+- The local smoke command `.\.venv\Scripts\python.exe scripts\run_official_forecast_smoke.py --horizon-hours 6 --nbeatsx-max-steps 1 --tft-max-epochs 1` writes report artifacts under `reports/official_forecast_smoke/`. These artifacts verify backend execution and forecast quality flags, but they are not API payloads and are not thesis-grade value results.
+- Add `--persist-forecast-store` to the smoke command when Postgres and `SMART_ARBITRAGE_FORECAST_DSN` or `SMART_ARBITRAGE_MARKET_DATA_DSN` are available. That writes official smoke rows into the forecast store so `/dashboard/future-stack-preview` and `/dashboard/operator-recommendation` can show them in the NBEATSx/TFT graphs.
+- If no forecast rows exist for the tenant, the endpoint returns an empty series rather than synthetic data.
+
+### `GET /dashboard/decision-policy-preview`
+
+Returns projected offline Decision Transformer policy-preview rows.
+
+Response adds response-level explanation fields:
+
+- `policy_state_features`: human-readable inputs represented in the preview state. Current DT preview includes SOC, SOH, market price, NBEATSx forecast, TFT forecast, forecast uncertainty/spread, time-of-day, degradation penalty, return target, and previous action context. The forecast fields are materialized through the Silver `decision_transformer_forecast_context_silver` bridge when NBEATSx/TFT forecast assets are available. Older rows without forecast fields remain valid and use market-price fallback context.
+- `policy_value_interpretation`: how the displayed value gap is calculated.
+- `operator_boundary`: explicit reminder that this is preview-only and still requires deterministic gatekeeper plus operator review.
+
+Request query example:
+
+```text
+/dashboard/decision-policy-preview?tenant_id=client_003_dnipro_factory&limit=120
+```
+
+Response shape:
+
+- `policy_run_id`, `created_at`, `policy_readiness`, `academic_scope`: preview batch identity and thesis boundary.
+- `live_policy_claim`: always false for this slice.
+- `market_execution_enabled`: false until the policy passes full offline evaluation and gatekeeper promotion.
+- `constraint_violation_count`, `mean_value_gap_uah`, `total_value_vs_hold_uah`: safety and value diagnostics.
+- `forecast_context_source`, `forecast_context_row_count`, `forecast_context_coverage_ratio`, `forecast_context_warning`: whether the DT preview rows are actually conditioned on both NBEATSx/TFT forecast state or using fallback market-price context.
+- `rows`: interval-level DT raw action, projected feasible action, `projected_action_label`, `projection_status`, `projection_adjustment_mw`, SOC before/after, `state_nbeatsx_forecast_uah_mwh`, `state_tft_forecast_uah_mwh`, `state_forecast_uncertainty_uah_mwh`, `state_forecast_spread_uah_mwh`, expected policy value, oracle value, value gap, `value_gap_ratio`, gatekeeper status, and inference latency.
+
+Operational notes:
+
+- The raw DT action is never trusted directly. It is projected through the deterministic battery feasibility layer before display.
+- The DT forecast context is state evidence for offline policy preview. It does not promote DT to a live policy and does not submit bids.
+- This endpoint is suitable for dashboards and defense explanation, not for dispatch command execution.
+- If no policy-preview rows exist, the endpoint returns `404`; the dashboard should show the DT surface as not materialized.
 
 ## CLI Preset
 
@@ -399,7 +631,15 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - When the operator starts an experiment, the dashboard should call `POST /weather/materialize`.
 - For Slice 2 preview work, the dashboard can call `POST /dashboard/projected-battery-state` to render feasible hourly SOC and degradation-aware economics from a signed recommendation schedule.
 - For baseline recommendation preview, the dashboard can call `GET /dashboard/baseline-lp-preview` to render forecast, feasible hourly signed MW schedule, projected SOC trace, and UAH economics for the selected tenant.
+- For live exogenous context, the dashboard can call `GET /dashboard/exogenous-signals` to show weather freshness and Ukrenergo grid-event risk without making a trading claim.
 - For Gold strategy evidence, the dashboard can call `GET /dashboard/forecast-strategy-comparison` to compare strict similar-day, NBEATSx, and TFT by LP decision value, oracle regret, degradation penalty, throughput, and starting SOC source.
+- For thesis benchmark evidence, the dashboard can call `GET /dashboard/real-data-benchmark` to compare the same forecast candidates across observed-only rolling-origin anchors and show whether the result is thesis-grade or demo-grade.
+- For calibrated selector evidence, the dashboard can call `GET /dashboard/calibrated-ensemble-benchmark` to show which prior-regret gate source was selected per anchor and why this selector is not yet a dashboard default.
+- For risk-adjusted selector evidence, the dashboard can call `GET /dashboard/risk-adjusted-value-gate` to show median/tail/win-rate gate decisions. Current results are diagnostic only and do not replace the strict control.
+- For forecast-to-dispatch explainability, the dashboard can call `GET /dashboard/forecast-dispatch-sensitivity` to show whether high regret is mostly forecast error, spread mismatch, or LP dispatch sensitivity.
+- For the live operator product surface, the dashboard should call `GET /dashboard/operator-recommendation` to render selected strategy, SOC/load/PV context, daily value against hold, forecast model series, and value-gap series.
+- For NBEATSx/TFT forecast graphs, the dashboard can call `GET /dashboard/future-stack-preview`; this keeps forecast evidence separate from dispatch commands.
+- For DT policy preview graphs, the dashboard can call `GET /dashboard/decision-policy-preview`; this remains preview-only unless the backend explicitly enables market execution after full evaluation.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
 
 ## Current Scope Boundary
@@ -409,4 +649,10 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The projected battery state endpoint is a simulator/read model only; it does not claim market-order or dispatch semantics.
 - The baseline LP preview endpoint is also a read model only; it exposes recommendation semantics, not market-order, clearing, or dispatch semantics.
 - The forecast strategy comparison endpoint is Gold-layer evidence only; it compares forecast-driven LP decisions and does not generate market contracts.
-- The next natural extension is a tenant-aware endpoint that materializes or returns the broader MVP slice beyond Bronze weather and price-history assets.
+- The real-data benchmark endpoint is also evidence only; it reports rolling-origin regret and data quality, not trading instructions.
+- The calibrated and risk-adjusted selector endpoints are research read models only; neither is a promoted live selector.
+- The forecast-dispatch sensitivity endpoint is explainability evidence only; it does not create or validate physical dispatch actions.
+- The exogenous-signal endpoint is context only; it should be described as state awareness until benchmark evidence shows decision value.
+- The operator recommendation endpoint is a product read model; it may show selected strategy and value previews, but it still does not emit market contracts.
+- The future-stack endpoint is forecast evidence only. Full NeuralForecast NBEATSx / PyTorch-Forecasting TFT claims require official-adapter materialization and benchmark results.
+- The DT policy-preview endpoint is an offline policy surface. It is not a live policy while `live_policy_claim=false` and `market_execution_enabled=false`.

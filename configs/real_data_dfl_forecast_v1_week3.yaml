@@ -1,0 +1,37 @@
+# CPU-safe tiny DFL v1 correction run over the verified Ukrainian observed panel.
+#
+# Claim boundary: research-only DFL loss/correction evidence, not full DFL,
+# not Decision Transformer control, and not market execution.
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  real_data_rolling_origin_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      max_anchors: 104
+  dfl_forecast_dfl_v1_panel_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "tft_silver_v0,nbeatsx_silver_v0"
+      final_validation_anchor_count_per_tenant: 18
+      max_train_anchors_per_tenant: 86
+      inner_validation_fraction: 0.2
+      epoch_count: 4
+      learning_rate: 5.0
+  dfl_forecast_dfl_v1_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "tft_silver_v0,nbeatsx_silver_v0"
+      final_validation_anchor_count_per_tenant: 18
+      max_train_anchors_per_tenant: 86
+      inner_validation_fraction: 0.2
+      epoch_count: 4
+      learning_rate: 5.0

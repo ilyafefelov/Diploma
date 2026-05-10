@@ -93,7 +93,7 @@ const tenantMarkers = computed<TenantMapMarker[]>(() => {
   const xOffset = (ukraineMapViewport.width - mapWidth) / 2
   const yOffset = (ukraineMapViewport.height - mapHeight) / 2
 
-  return props.tenants.map(tenant => {
+  return props.tenants.map((tenant) => {
     const longitude = clamp(tenant.longitude, ukraineMapBounds.minLon, ukraineMapBounds.maxLon)
     const latitude = clamp(tenant.latitude, ukraineMapBounds.minLat, ukraineMapBounds.maxLat)
     const x = xOffset + (degToRad(longitude) - minX) * rawScale
@@ -268,7 +268,10 @@ const weatherSourceLabel = computed(() => {
         aria-label="Active tenant and sites on Ukraine map"
       >
         <div class="tenant-card__location-weather">
-          <div class="tenant-card__weather-icon" aria-hidden="true">
+          <div
+            class="tenant-card__weather-icon"
+            aria-hidden="true"
+          >
             {{ currentWeatherEmoji }}
           </div>
           <div class="tenant-card__weather-copy">
@@ -321,7 +324,7 @@ const weatherSourceLabel = computed(() => {
             class="tenant-card__ukraine-outline"
             src="/design/ukraine-outline.svg"
             alt="Outline of Ukraine"
-          />
+          >
           <div
             class="tenant-card__tenant-markers"
           >
@@ -344,7 +347,10 @@ const weatherSourceLabel = computed(() => {
             </button>
           </div>
         </div>
-        <ul class="tenant-card__ukraine-map-meta" role="list">
+        <ul
+          class="tenant-card__ukraine-map-meta"
+          role="list"
+        >
           <li>
             <UBadge
               label="Active"
@@ -407,7 +413,10 @@ const weatherSourceLabel = computed(() => {
         </span>
       </div>
       <div class="sidebar-status-card__mini-grid">
-        <article class="tenant-count-card" tabindex="0">
+        <article
+          class="tenant-count-card"
+          tabindex="0"
+        >
           <span>Total</span>
           <strong>{{ tenantCount }}</strong>
           <small>mapped lots</small>
@@ -419,7 +428,10 @@ const weatherSourceLabel = computed(() => {
             <span>{{ tenantCount }} tenants are currently loaded in the current registry snapshot.</span>
           </span>
         </article>
-        <article class="tenant-count-card" tabindex="0">
+        <article
+          class="tenant-count-card"
+          tabindex="0"
+        >
           <span>Critical</span>
           <strong>{{ criticalTenantCount }}</strong>
           <small>alert level</small>

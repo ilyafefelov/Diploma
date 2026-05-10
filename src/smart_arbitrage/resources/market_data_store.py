@@ -13,7 +13,7 @@ from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DE
 
 
 DEFAULT_TENANT_ID = "__default__"
-SourceKind = Literal["observed", "synthetic"]
+SourceKind = Literal["observed", "synthetic", "derived"]
 
 
 class MarketPriceObservation(BaseModel):
@@ -60,6 +60,24 @@ class MarketDataStore(Protocol):
 
     def upsert_weather_observations(self, observations: Sequence[WeatherObservation]) -> None: ...
 
+    def list_market_price_frame(
+        self,
+        *,
+        market_venue: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame: ...
+
+    def list_weather_observation_frame(
+        self,
+        *,
+        tenant_id: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame: ...
+
 
 class NullMarketDataStore:
     def upsert_market_prices(self, observations: Sequence[MarketPriceObservation]) -> None:
@@ -67,6 +85,121 @@ class NullMarketDataStore:
 
     def upsert_weather_observations(self, observations: Sequence[WeatherObservation]) -> None:
         return None
+
+    def list_market_price_frame(
+        self,
+        *,
+        market_venue: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame:
+        return pl.DataFrame()
+
+    def list_weather_observation_frame(
+        self,
+        *,
+        tenant_id: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame:
+        return pl.DataFrame()
+
+
+class InMemoryMarketDataStore:
+    def __init__(self) -> None:
+        self.market_observations: list[MarketPriceObservation] = []
+        self.weather_observations: list[WeatherObservation] = []
+
+    def upsert_market_prices(self, observations: Sequence[MarketPriceObservation]) -> None:
+        existing = {
+            (
+                observation.timestamp,
+                observation.market_venue,
+                observation.market_zone,
+                observation.source,
+            ): observation
+            for observation in self.market_observations
+        }
+        for observation in observations:
+            existing[
+                (
+                    observation.timestamp,
+                    observation.market_venue,
+                    observation.market_zone,
+                    observation.source,
+                )
+            ] = observation
+        self.market_observations = sorted(existing.values(), key=lambda item: item.timestamp)
+
+    def upsert_weather_observations(self, observations: Sequence[WeatherObservation]) -> None:
+        existing = {
+            (
+                observation.tenant_id,
+                observation.timestamp,
+                observation.location_latitude,
+                observation.location_longitude,
+                observation.source,
+            ): observation
+            for observation in self.weather_observations
+        }
+        for observation in observations:
+            existing[
+                (
+                    observation.tenant_id,
+                    observation.timestamp,
+                    observation.location_latitude,
+                    observation.location_longitude,
+                    observation.source,
+                )
+            ] = observation
+        self.weather_observations = sorted(
+            existing.values(),
+            key=lambda item: (item.tenant_id, item.timestamp),
+        )
+
+    def list_market_price_frame(
+        self,
+        *,
+        market_venue: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame:
+        observations = [
+            observation
+            for observation in self.market_observations
+            if _matches_market_observation(
+                observation,
+                market_venue=market_venue,
+                source_kind=source_kind,
+                start_timestamp=start_timestamp,
+                end_timestamp=end_timestamp,
+            )
+        ]
+        return market_price_observations_to_frame(observations)
+
+    def list_weather_observation_frame(
+        self,
+        *,
+        tenant_id: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame:
+        observations = [
+            observation
+            for observation in self.weather_observations
+            if _matches_weather_observation(
+                observation,
+                tenant_id=tenant_id,
+                source_kind=source_kind,
+                start_timestamp=start_timestamp,
+                end_timestamp=end_timestamp,
+            )
+        ]
+        return weather_observations_to_frame(observations)
 
 
 class PostgresMarketDataStore:
@@ -76,8 +209,9 @@ class PostgresMarketDataStore:
 
     def _connect(self) -> Any:
         from psycopg import connect
+        from psycopg.rows import dict_row
 
-        return connect(self._dsn)
+        return connect(self._dsn, row_factory=dict_row)
 
     def _ensure_schema(self) -> None:
         with self._connect() as connection:
@@ -224,6 +358,91 @@ class PostgresMarketDataStore:
                 )
             connection.commit()
 
+    def list_market_price_frame(
+        self,
+        *,
+        market_venue: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame:
+        where_clauses, params = _market_where_clauses(
+            market_venue=market_venue,
+            source_kind=source_kind,
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+        )
+        query = (
+            """
+            SELECT
+                timestamp,
+                price_uah_mwh,
+                price_eur_mwh,
+                volume_mwh,
+                source,
+                source_kind,
+                source_url,
+                market_venue,
+                market_zone,
+                market_timezone,
+                fetched_at,
+                price_spike,
+                low_volume
+            FROM market_price_observations
+            """
+            + _where_sql(where_clauses)
+            + " ORDER BY timestamp"
+        )
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        return pl.DataFrame([dict(row) for row in rows])
+
+    def list_weather_observation_frame(
+        self,
+        *,
+        tenant_id: str | None = None,
+        source_kind: SourceKind | None = None,
+        start_timestamp: datetime | None = None,
+        end_timestamp: datetime | None = None,
+    ) -> pl.DataFrame:
+        where_clauses, params = _weather_where_clauses(
+            tenant_id=tenant_id,
+            source_kind=source_kind,
+            start_timestamp=start_timestamp,
+            end_timestamp=end_timestamp,
+        )
+        query = (
+            """
+            SELECT
+                tenant_id,
+                timestamp,
+                location_latitude,
+                location_longitude,
+                location_timezone,
+                temperature,
+                solar_radiation,
+                wind_speed,
+                cloudcover,
+                precipitation,
+                pressure,
+                humidity,
+                source,
+                source_kind,
+                source_url,
+                fetched_at
+            FROM weather_observations
+            """
+            + _where_sql(where_clauses)
+            + " ORDER BY tenant_id, timestamp"
+        )
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+        return pl.DataFrame([dict(row) for row in rows])
+
 
 def market_price_observations_from_frame(price_history: pl.DataFrame) -> list[MarketPriceObservation]:
     return [
@@ -246,6 +465,29 @@ def market_price_observations_from_frame(price_history: pl.DataFrame) -> list[Ma
     ]
 
 
+def market_price_observations_to_frame(observations: Sequence[MarketPriceObservation]) -> pl.DataFrame:
+    return pl.DataFrame(
+        [
+            {
+                DEFAULT_TIMESTAMP_COLUMN: observation.timestamp,
+                "price_uah_mwh": observation.price_uah_mwh,
+                "price_eur_mwh": observation.price_eur_mwh,
+                "volume_mwh": observation.volume_mwh,
+                "source": observation.source,
+                "source_kind": observation.source_kind,
+                "source_url": observation.source_url,
+                "market_venue": observation.market_venue,
+                "market_zone": observation.market_zone,
+                "market_timezone": observation.market_timezone,
+                "fetched_at": observation.fetched_at,
+                "price_spike": observation.price_spike,
+                "low_volume": observation.low_volume,
+            }
+            for observation in observations
+        ]
+    )
+
+
 def weather_observations_from_frame(
     weather_frame: pl.DataFrame,
     *,
@@ -254,7 +496,7 @@ def weather_observations_from_frame(
     resolved_tenant_id = tenant_id if tenant_id is not None and tenant_id.strip() else DEFAULT_TENANT_ID
     return [
         WeatherObservation(
-            tenant_id=resolved_tenant_id,
+            tenant_id=_weather_observation_tenant_id(row, resolved_tenant_id),
             timestamp=_required_datetime(row, DEFAULT_TIMESTAMP_COLUMN),
             location_latitude=_required_float(row, "location_latitude"),
             location_longitude=_required_float(row, "location_longitude"),
@@ -273,6 +515,32 @@ def weather_observations_from_frame(
         )
         for row in weather_frame.iter_rows(named=True)
     ]
+
+
+def weather_observations_to_frame(observations: Sequence[WeatherObservation]) -> pl.DataFrame:
+    return pl.DataFrame(
+        [
+            {
+                "tenant_id": observation.tenant_id,
+                DEFAULT_TIMESTAMP_COLUMN: observation.timestamp,
+                "location_latitude": observation.location_latitude,
+                "location_longitude": observation.location_longitude,
+                "location_timezone": observation.location_timezone,
+                "temperature": observation.temperature,
+                "solar_radiation": observation.solar_radiation,
+                "wind_speed": observation.wind_speed,
+                "cloudcover": observation.cloudcover,
+                "precipitation": observation.precipitation,
+                "pressure": observation.pressure,
+                "humidity": observation.humidity,
+                "source": observation.source,
+                "source_kind": observation.source_kind,
+                "source_url": observation.source_url,
+                "fetched_at": observation.fetched_at,
+            }
+            for observation in observations
+        ]
+    )
 
 
 @cache
@@ -356,12 +624,139 @@ def _required_text(row: dict[str, object], key: str) -> str:
 
 def _required_source_kind(row: dict[str, object]) -> SourceKind:
     source_kind = _required_text(row, "source_kind")
-    if source_kind not in {"observed", "synthetic"}:
-        raise ValueError("source_kind must be observed or synthetic.")
+    if source_kind not in {"observed", "synthetic", "derived"}:
+        raise ValueError("source_kind must be observed, synthetic, or derived.")
     return cast(SourceKind, source_kind)
+
+
+def _weather_observation_tenant_id(row: dict[str, object], fallback_tenant_id: str) -> str:
+    raw_tenant_id = row.get("tenant_id")
+    if isinstance(raw_tenant_id, str) and raw_tenant_id.strip():
+        return raw_tenant_id.strip()
+    return fallback_tenant_id
 
 
 def _required_value(row: dict[str, object], key: str) -> object:
     if key not in row or row[key] is None:
         raise ValueError(f"{key} is required.")
     return row[key]
+
+
+def _matches_market_observation(
+    observation: MarketPriceObservation,
+    *,
+    market_venue: str | None,
+    source_kind: SourceKind | None,
+    start_timestamp: datetime | None,
+    end_timestamp: datetime | None,
+) -> bool:
+    if market_venue is not None and observation.market_venue != market_venue:
+        return False
+    if source_kind is not None and observation.source_kind != source_kind:
+        return False
+    return _timestamp_in_window(
+        observation.timestamp,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+    )
+
+
+def _matches_weather_observation(
+    observation: WeatherObservation,
+    *,
+    tenant_id: str | None,
+    source_kind: SourceKind | None,
+    start_timestamp: datetime | None,
+    end_timestamp: datetime | None,
+) -> bool:
+    if tenant_id is not None and observation.tenant_id != tenant_id:
+        return False
+    if source_kind is not None and observation.source_kind != source_kind:
+        return False
+    return _timestamp_in_window(
+        observation.timestamp,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+    )
+
+
+def _timestamp_in_window(
+    timestamp: datetime,
+    *,
+    start_timestamp: datetime | None,
+    end_timestamp: datetime | None,
+) -> bool:
+    if start_timestamp is not None and timestamp < start_timestamp:
+        return False
+    if end_timestamp is not None and timestamp > end_timestamp:
+        return False
+    return True
+
+
+def _market_where_clauses(
+    *,
+    market_venue: str | None,
+    source_kind: SourceKind | None,
+    start_timestamp: datetime | None,
+    end_timestamp: datetime | None,
+) -> tuple[list[str], list[object]]:
+    where_clauses: list[str] = []
+    params: list[object] = []
+    if market_venue is not None:
+        where_clauses.append("market_venue = %s")
+        params.append(market_venue)
+    if source_kind is not None:
+        where_clauses.append("source_kind = %s")
+        params.append(source_kind)
+    _append_timestamp_clauses(
+        where_clauses,
+        params,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+    )
+    return where_clauses, params
+
+
+def _weather_where_clauses(
+    *,
+    tenant_id: str | None,
+    source_kind: SourceKind | None,
+    start_timestamp: datetime | None,
+    end_timestamp: datetime | None,
+) -> tuple[list[str], list[object]]:
+    where_clauses: list[str] = []
+    params: list[object] = []
+    if tenant_id is not None:
+        where_clauses.append("tenant_id = %s")
+        params.append(tenant_id)
+    if source_kind is not None:
+        where_clauses.append("source_kind = %s")
+        params.append(source_kind)
+    _append_timestamp_clauses(
+        where_clauses,
+        params,
+        start_timestamp=start_timestamp,
+        end_timestamp=end_timestamp,
+    )
+    return where_clauses, params
+
+
+def _append_timestamp_clauses(
+    where_clauses: list[str],
+    params: list[object],
+    *,
+    start_timestamp: datetime | None,
+    end_timestamp: datetime | None,
+) -> None:
+    if start_timestamp is not None:
+        where_clauses.append("timestamp >= %s")
+        params.append(start_timestamp)
+    if end_timestamp is not None:
+        where_clauses.append("timestamp <= %s")
+        params.append(end_timestamp)
+
+
+def _where_sql(where_clauses: Sequence[str]) -> str:
+    if not where_clauses:
+        return ""
+    return " WHERE " + " AND ".join(where_clauses)

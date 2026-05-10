@@ -16,6 +16,7 @@ from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
     ForecastCandidate,
     evaluate_forecast_candidates_against_oracle,
+    evaluate_rolling_origin_forecast_benchmark,
 )
 
 
@@ -149,6 +150,121 @@ def test_forecast_strategy_evaluation_compares_silver_forecasts_against_oracle()
     assert evaluation.select("rank_by_regret").min().item() == 1
     assert evaluation.select("total_degradation_penalty_uah").min().item() >= 0.0
     assert "evaluation_payload" in evaluation.columns
+
+
+def test_rolling_origin_forecast_benchmark_scores_multiple_anchors_without_synthetic_data() -> None:
+    price_history = build_synthetic_market_price_history(
+        history_hours=15 * 24 + 48,
+        forecast_hours=0,
+        now=datetime(2026, 5, 4, 12, 0),
+    ).with_columns(
+        [
+            pl.lit("observed").alias("source_kind"),
+            pl.lit("OREE_DATA_VIEW").alias("source"),
+        ]
+    )
+    latest_timestamp = price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1)
+    anchors = [latest_timestamp - timedelta(hours=48), latest_timestamp - timedelta(hours=24)]
+    metrics = BatteryPhysicalMetrics(
+        capacity_mwh=0.5,
+        max_power_mw=0.25,
+        round_trip_efficiency=0.92,
+        degradation_cost_per_cycle_uah=120.0,
+    )
+
+    evaluation = evaluate_rolling_origin_forecast_benchmark(
+        price_history=price_history,
+        tenant_id="client_003_dnipro_factory",
+        battery_metrics=metrics,
+        starting_soc_fraction=0.5,
+        starting_soc_source="tenant_default",
+        anchor_timestamps=anchors,
+        max_anchors=2,
+    )
+
+    assert evaluation.height == 6
+    assert set(evaluation.select("strategy_kind").to_series().to_list()) == {
+        "real_data_rolling_origin_benchmark"
+    }
+    assert evaluation.select("anchor_timestamp").n_unique() == 2
+    assert set(evaluation.select("forecast_model_name").to_series().to_list()) == {
+        "strict_similar_day",
+        "nbeatsx_silver_v0",
+        "tft_silver_v0",
+    }
+    assert evaluation.select("regret_uah").min().item() >= -1e-9
+    assert evaluation.select("evaluation_payload").to_series().to_list()[0]["data_quality_tier"] == "thesis_grade"
+
+
+def test_rolling_origin_forecast_benchmark_uses_forecast_available_weather(monkeypatch) -> None:
+    price_history = build_synthetic_market_price_history(
+        history_hours=15 * 24 + 24,
+        forecast_hours=0,
+        now=datetime(2026, 5, 4, 12, 0),
+    ).with_columns(
+        [
+            pl.lit("observed").alias("source_kind"),
+            pl.lit("OREE_DATA_VIEW").alias("source"),
+            pl.lit("observed").alias("weather_source_kind"),
+            pl.lit(99.0).alias("weather_temperature"),
+        ]
+    )
+    latest_timestamp = price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1)
+    metrics = BatteryPhysicalMetrics(
+        capacity_mwh=0.5,
+        max_power_mw=0.25,
+        round_trip_efficiency=0.92,
+        degradation_cost_per_cycle_uah=120.0,
+    )
+    captured_modes: list[str] = []
+
+    def fake_feature_builder(frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        captured_modes.append(str(kwargs.get("future_weather_mode")))
+        from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
+
+        return build_neural_forecast_feature_frame(frame, **kwargs)
+
+    monkeypatch.setattr(
+        "smart_arbitrage.strategy.forecast_strategy_evaluation.build_neural_forecast_feature_frame",
+        fake_feature_builder,
+    )
+
+    evaluate_rolling_origin_forecast_benchmark(
+        price_history=price_history,
+        tenant_id="client_003_dnipro_factory",
+        battery_metrics=metrics,
+        starting_soc_fraction=0.5,
+        starting_soc_source="tenant_default",
+        anchor_timestamps=[latest_timestamp - timedelta(hours=24)],
+        max_anchors=1,
+    )
+
+    assert captured_modes == ["forecast_only"]
+
+
+def test_rolling_origin_forecast_benchmark_rejects_synthetic_rows_by_default() -> None:
+    price_history = build_synthetic_market_price_history(
+        history_hours=15 * 24 + 24,
+        forecast_hours=0,
+        now=datetime(2026, 5, 4, 12, 0),
+    )
+    latest_timestamp = price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1)
+    metrics = BatteryPhysicalMetrics(
+        capacity_mwh=0.5,
+        max_power_mw=0.25,
+        round_trip_efficiency=0.92,
+        degradation_cost_per_cycle_uah=120.0,
+    )
+
+    with pytest.raises(ValueError, match="observed source rows"):
+        evaluate_rolling_origin_forecast_benchmark(
+            price_history=price_history,
+            tenant_id="client_003_dnipro_factory",
+            battery_metrics=metrics,
+            starting_soc_fraction=0.5,
+            starting_soc_source="tenant_default",
+            anchor_timestamps=[latest_timestamp - timedelta(hours=24)],
+        )
 
 
 def _forecast_frame(

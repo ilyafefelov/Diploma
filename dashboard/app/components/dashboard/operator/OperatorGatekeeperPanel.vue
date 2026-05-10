@@ -24,6 +24,11 @@ defineProps<{
       />
     </div>
 
+    <p class="gatekeeper-copy">
+      Scores explain the current preview preference. They are not market bids: future Bid Gatekeeper checks Proposed
+      Bids before submission, then dispatch safety checks use live Battery Telemetry.
+    </p>
+
     <div class="gatekeeper-grid">
       <UButton
         v-for="action in actions"
@@ -59,9 +64,20 @@ defineProps<{
         class="regret-tooltip"
         role="tooltip"
       >
-        <strong>{{ activeAlertCount === 0 ? '3,588 UAH' : '8,371 UAH' }}</strong>
-        <span>{{ activeAlertCount === 0 ? 'Estimated opportunity gap on the visible gross arbitrage value.' : 'Estimated review cost while alerts are active.' }}</span>
+        <strong>{{ activeAlertCount === 0 ? 'Low review risk' : 'Needs review' }}</strong>
+        <span>Regret means lost value versus oracle in research scoring. This ring is a compact operator cue; the full regret graph sits in Decision Evidence.</span>
       </span>
     </div>
   </section>
 </template>
+
+<style scoped>
+.gatekeeper-copy {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgba(229, 249, 255, 0.78);
+  font-size: 0.74rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+</style>

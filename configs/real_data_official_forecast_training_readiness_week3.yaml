@@ -1,0 +1,31 @@
+# Readiness config for a future serious CPU-safe official NBEATSx/TFT run.
+#
+# Smoke defaults remain in code. This tracked config is the CPU-safe serious
+# local run path for official adapter evidence before DFL v1 training.
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  nbeatsx_official_price_forecast:
+    config:
+      horizon_hours: 24
+      max_steps: 100
+      random_seed: 20260509
+  tft_official_price_forecast:
+    config:
+      horizon_hours: 24
+      max_epochs: 15
+      batch_size: 32
+      learning_rate: 0.005
+      hidden_size: 12
+      hidden_continuous_size: 6
+  official_forecast_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"

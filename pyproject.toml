@@ -2,6 +2,7 @@
 name = "smart-energy-arbitrage-2026"
 version = "0.1.0"
 description = "Decision-Focused Framework для енергоарбітражу BESS на ринку України"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # Оркестрація та MLOps
@@ -31,6 +32,13 @@ dependencies = [
     "httpx",                   # Асинхронні запити до API Укренерго [20]
 ]
 
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [project.optional-dependencies]
 dev = [
     "dagster-dg-cli",          # Provides dg check/launch CLI used by project verification
@@ -38,6 +46,11 @@ dev = [
     "pytest",                 # Focused API and asset behavior tests
     "ruff",                   # Fast linting for active backend Python code
     "types-PyYAML",            # Type stubs for tenant/location YAML loading
+]
+sota = [
+    "neuralforecast",          # Official Nixtla NBEATSx adapter path for thesis SOTA smoke runs
+    "pytorch-forecasting",     # Official Temporal Fusion Transformer adapter path
+    "lightning",               # PyTorch Forecasting trainer runtime
 ]
 
 [tool.ruff]

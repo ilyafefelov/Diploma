@@ -25,6 +25,10 @@ type TooltipPoint = {
   data: unknown
 }
 
+type SignalTimelineInput
+  = Pick<SignalPreview, 'labels'>
+    & Partial<Pick<SignalPreview, 'label_timestamps' | 'resolved_location' | 'timezone'>>
+
 export const dashboardChartTokens = {
   grid: 'rgba(0, 91, 149, 0.14)',
   axis: '#315c83',
@@ -43,6 +47,44 @@ const formatSignedMw = (value: number): string => `${value > 0 ? '+' : ''}${valu
 const formatCurrency = (value: number): string => `${Math.round(value).toLocaleString('en-GB')} UAH`
 
 const formatSignedCurrencyPerMwh = (value: number): string => `${value > 0 ? '+' : ''}${Math.round(value).toLocaleString('en-GB')} UAH/MWh`
+
+const formatSignalTimestampLabel = (
+  timestamp: string | undefined,
+  fallbackLabel: string,
+  timeZone: string | null | undefined
+): string => {
+  if (!timestamp) {
+    return fallbackLabel
+  }
+
+  const parsedTimestamp = new Date(timestamp)
+  if (Number.isNaN(parsedTimestamp.getTime())) {
+    return fallbackLabel
+  }
+
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: timeZone || 'Europe/Kyiv'
+    }).format(parsedTimestamp).replace(', ', '\n')
+  } catch {
+    return fallbackLabel
+  }
+}
+
+const buildSignalTimelineLabels = (signal: SignalTimelineInput): string[] => {
+  const timeZone = signal.timezone || signal.resolved_location?.timezone
+
+  return signal.labels.map((label, index) =>
+    formatSignalTimestampLabel(signal.label_timestamps?.[index], label, timeZone)
+  )
+}
+
+const formatTooltipAxisPeriod = (axisValueLabel: string): string => axisValueLabel.replace('\n', ' ')
 
 const asRecord = (value: unknown): Record<string, unknown> | null => {
   if (typeof value !== 'object' || value === null) {
@@ -250,6 +292,7 @@ export const buildMarketPulseChartOption = (
     weather_sources: ['SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC']
   }
   const adjustedMarketPrice = signal.market_price.map((price, index) => Number((price + (signal.weather_bias[index] || 0)).toFixed(2)))
+  const timelineLabels = buildSignalTimelineLabels(signal)
 
   return {
     animationDuration: 850,
@@ -280,7 +323,7 @@ export const buildMarketPulseChartOption = (
         const weatherSource = formatWeatherSourceLabel(signal.weather_sources[dataIndex] || 'SYNTHETIC')
 
         return [
-          tooltipItems[0]?.axisValueLabel || '',
+          formatTooltipAxisPeriod(tooltipItems[0]?.axisValueLabel || ''),
           `Expected market price: ${Math.round(price)} UAH/MWh`,
           `Calibrated weather effect: ${formatSignedCurrencyPerMwh(uplift)}`,
           `Price after weather: ${Math.round(adjusted)} UAH/MWh`,
@@ -300,7 +343,7 @@ export const buildMarketPulseChartOption = (
     },
     xAxis: {
       type: 'category',
-      data: signal.labels,
+      data: timelineLabels,
       axisLabel: {
         color: dashboardChartTokens.axis,
         fontWeight: 700
@@ -388,6 +431,7 @@ export const buildDispatchBalanceChartOption = (
     charge_intent: [0, 0, 0, 0, 0, 0],
     regret: [0, 0, 0, 0, 0, 0]
   }
+  const timelineLabels = buildSignalTimelineLabels(signal)
 
   return {
     animationDuration: 850,
@@ -415,7 +459,7 @@ export const buildDispatchBalanceChartOption = (
         const missedValue = tooltipItems.find(item => item.seriesName === 'Missed value')?.value ?? 0
 
         return [
-          tooltipItems[0]?.axisValueLabel || '',
+          formatTooltipAxisPeriod(tooltipItems[0]?.axisValueLabel || ''),
           `Battery action: ${formatSignedMw(batteryAction)}`,
           `Missed value: ${formatCurrency(missedValue)}`,
           'Battery action formula: clamp(((adjusted_price - avg_adjusted_price) / max_deviation) * max_power_mw)',
@@ -434,7 +478,7 @@ export const buildDispatchBalanceChartOption = (
     },
     xAxis: {
       type: 'category',
-      data: signal.labels,
+      data: timelineLabels,
       axisLabel: {
         color: dashboardChartTokens.axis,
         fontWeight: 700
@@ -764,6 +808,7 @@ export const buildMarketSignalHeroChartOption = (
     weather_sources: ['SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC']
   }
   const adjustedMarketPrice = signal.market_price.map((price, index) => Number((price + (signal.weather_bias[index] || 0)).toFixed(2)))
+  const timelineLabels = buildSignalTimelineLabels(signal)
   const splitIndex = Math.max(1, Math.floor(signal.labels.length / 2))
   const damForecast = signal.market_price.map((price, index) => index < splitIndex ? null : Number((price * 0.94 + 210 + index * 24).toFixed(2)))
   const idmForecast = adjustedMarketPrice.map((price, index) => index < splitIndex ? null : Number((price * 0.95 + 165 + index * 18).toFixed(2)))
@@ -797,7 +842,7 @@ export const buildMarketSignalHeroChartOption = (
         const weatherSource = formatWeatherSourceLabel(signal.weather_sources[dataIndex] || 'SYNTHETIC')
 
         return [
-          `<strong>${tooltipItems[0]?.axisValueLabel || ''}</strong>`,
+          `<strong>${formatTooltipAxisPeriod(tooltipItems[0]?.axisValueLabel || '')}</strong>`,
           `DAM LMP: ${Math.round(tooltipItems.find(item => item.seriesName === 'DAM LMP')?.value ?? 0)} UAH/MWh`,
           `IDM price: ${Math.round(tooltipItems.find(item => item.seriesName === 'IDM Price')?.value ?? 0)} UAH/MWh`,
           `Forecast DAM: ${Math.round(tooltipItems.find(item => item.seriesName === 'Forecast (DAM)')?.value ?? 0)} UAH/MWh`,
@@ -817,7 +862,7 @@ export const buildMarketSignalHeroChartOption = (
     xAxis: {
       type: 'category',
       boundaryGap: false,
-      data: signal.labels,
+      data: timelineLabels,
       axisLabel: {
         color: 'rgba(219, 245, 255, 0.9)',
         fontWeight: 800
