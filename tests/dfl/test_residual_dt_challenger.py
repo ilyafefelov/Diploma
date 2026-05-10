@@ -162,6 +162,7 @@ def test_residual_model_uses_train_anchors_and_final_mutation_does_not_change_we
 
     assert strict_frame.filter(pl.col("selection_role") == "residual_selector")["regret_uah"].mean() == 70.0
     assert mutated_strict_frame.filter(pl.col("selection_role") == "residual_selector")["regret_uah"].mean() == 40.0
+    assert _strategy_store_columns().issubset(set(strict_frame.columns))
 
 
 def test_offline_dt_candidate_filters_train_trajectories_and_compares_behavior_cloning() -> None:
@@ -202,6 +203,7 @@ def test_offline_dt_candidate_filters_train_trajectories_and_compares_behavior_c
         set(strict_frame["selection_role"].unique().to_list())
     )
     assert strict_frame.filter(pl.col("selection_role") == "offline_dt").height == 20
+    assert _strategy_store_columns().issubset(set(strict_frame.columns))
 
 
 def test_residual_dt_fallback_defaults_to_strict_without_confidence_and_gate_passes_only_when_it_beats_strict() -> None:
@@ -292,6 +294,7 @@ def test_residual_dt_fallback_defaults_to_strict_without_confidence_and_gate_pas
     assert strong_gate.passed is True
     assert strong_gate.metrics["best_source_model_name"] in SOURCE_MODELS
     assert strong_gate.metrics["validation_tenant_anchor_count"] == 10
+    assert _strategy_store_columns().issubset(set(strong_fallback.columns))
 
 
 def _candidate_library(
@@ -362,6 +365,16 @@ def _candidate_library(
                     ]
                 )
     return pl.DataFrame(rows)
+
+
+def _strategy_store_columns() -> set[str]:
+    return {
+        "starting_soc_fraction",
+        "starting_soc_source",
+        "committed_action",
+        "committed_power_mw",
+        "rank_by_regret",
+    }
 
 
 def _candidate_row(

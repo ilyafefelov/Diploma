@@ -17,6 +17,7 @@ from smart_arbitrage.dfl.promotion_gate import (
 from smart_arbitrage.dfl.strict_challenger import (
     CANDIDATE_FAMILY_STRICT,
     _datetime_value,
+    _float_list,
     _payload,
     _require_columns,
     _validate_library_frame,
@@ -701,6 +702,8 @@ def _benchmark_row(
         "anchor_timestamp": anchor_timestamp,
         "generated_at": generated_at,
         "horizon_hours": int(row["horizon_hours"]),
+        "starting_soc_fraction": _starting_soc_fraction(row),
+        "starting_soc_source": "schedule_candidate_library_v2",
         "decision_value_uah": float(row["decision_value_uah"]),
         "forecast_objective_value_uah": float(row["forecast_objective_value_uah"]),
         "oracle_value_uah": float(row["oracle_value_uah"]),
@@ -708,6 +711,9 @@ def _benchmark_row(
         "regret_ratio": float(row["regret_ratio"]),
         "total_degradation_penalty_uah": float(row["total_degradation_penalty_uah"]),
         "total_throughput_mwh": float(row["total_throughput_mwh"]),
+        "committed_action": _committed_action(row),
+        "committed_power_mw": abs(_first_or_default(row["dispatch_mw_vector"], default=0.0)),
+        "rank_by_regret": 1,
         "data_quality_tier": str(row["data_quality_tier"]),
         "observed_coverage_ratio": float(row["observed_coverage_ratio"]),
         "safety_violation_count": int(row["safety_violation_count"]),
@@ -718,6 +724,27 @@ def _benchmark_row(
         "not_market_execution": True,
         "evaluation_payload": payload,
     }
+
+
+def _starting_soc_fraction(row: dict[str, Any]) -> float:
+    return min(
+        1.0,
+        max(0.0, _first_or_default(row["soc_fraction_vector"], default=0.5)),
+    )
+
+
+def _committed_action(row: dict[str, Any]) -> str:
+    committed_power = _first_or_default(row["dispatch_mw_vector"], default=0.0)
+    if committed_power > 0.0:
+        return "DISCHARGE"
+    if committed_power < 0.0:
+        return "CHARGE"
+    return "HOLD"
+
+
+def _first_or_default(value: object, *, default: float) -> float:
+    values = _float_list(value, field_name="vector")
+    return values[0] if values else default
 
 
 def _json_safe_model_metadata(model_metadata: dict[str, Any]) -> dict[str, Any]:
