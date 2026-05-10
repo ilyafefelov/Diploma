@@ -100,3 +100,21 @@ robustness: either recover more Ukrainian history, strengthen prior-only regime
 features, or make the source-specific TFT switch rule survive earlier rolling
 windows. Production promotion remains blocked until the same source beats
 `strict_similar_day` by the strict gate across rolling evidence.
+
+## Production Promotion Follow-Up
+
+The follow-up gate is tracked in
+[DFL_PRODUCTION_PROMOTION_GATE.md](DFL_PRODUCTION_PROMOTION_GATE.md). It adds a
+Dagster-visible `production_promote` state, but the latest run did not promote
+any source/regime:
+
+- Run `0cd165b5-1105-4cc1-a279-0e1144dd171b` materialized
+  `dfl_production_promotion_gate_frame`.
+- `dfl_production_promotion_gate_evidence` did not pass because the current
+  all-tenant panel has 104 eligible anchors per tenant, one missing observed
+  price hour, and one missing observed weather hour against the 180-anchor
+  backfill target.
+- TFT still has the latest-holdout signal, but rolling strict-control passes
+  remain 0 of 4 and `production_promote=false`.
+- The offline/read-model default remains `strict_similar_day`; market execution
+  remains disabled.

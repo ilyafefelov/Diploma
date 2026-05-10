@@ -1337,3 +1337,39 @@ Decision: TFT can be called a source-specific research challenger on the latest
 holdout, but not a robust controller. The next technical blocker is robustness
 across earlier windows or more Ukrainian historical coverage, not another
 Decision Transformer variant.
+
+## Production Promotion Gate
+
+The production-promotion slice turns the previous "always false" promotion
+field into a real Dagster-visible decision state for offline/read-model
+strategy evidence. It still does not enable market execution.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.production_promotion_gate`.
+- New asset: `dfl_production_promotion_gate_frame`.
+- New asset check: `dfl_production_promotion_gate_evidence`.
+- Config:
+  [../../configs/real_data_dfl_production_promotion_gate_week3.yaml](../../configs/real_data_dfl_production_promotion_gate_week3.yaml).
+- Tracked note:
+  [DFL_PRODUCTION_PROMOTION_GATE.md](DFL_PRODUCTION_PROMOTION_GATE.md).
+
+Materialized result:
+
+- Run `0cd165b5-1105-4cc1-a279-0e1144dd171b` finished successfully and
+  materialized `dfl_production_promotion_gate_frame`.
+- The new asset check did not pass, by design, because the backfill/coverage
+  audit is not thesis-grade for the configured 180-anchor promotion target.
+- Current observed ceiling: 104 eligible anchors per tenant, one missing price
+  hour, one missing weather hour, observed coverage ratios of `0.9996527778`,
+  and `data_quality_tier=coverage_gap`.
+- TFT latest-holdout improvement remains visible at 18.01%, but rolling
+  strict-control passes remain 0 of 4 and coverage expansion is unavailable.
+- `production_promote=false` for every source/regime row and
+  `market_execution_enabled=false` for every row.
+
+Decision: the gate exists and can promote a future source/regime, but the
+current evidence blocks promotion. `strict_similar_day` remains the offline
+default fallback. The next route to promotion is either real Ukrainian history
+recovery beyond 104 anchors or a prior-only regime gate that survives at least
+3 of 4 rolling strict-control windows.
