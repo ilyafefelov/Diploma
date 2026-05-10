@@ -27,10 +27,9 @@ from smart_arbitrage.dfl.offline_experiment import (
     _examples_from_frame,
     _price_tensor,
     _realized_values,
-    _score_examples,
     _single_starting_soc,
 )
-from smart_arbitrage.dfl.relaxed_dispatch import _relaxed_dispatch_layer
+from smart_arbitrage.dfl.relaxed_dispatch import solve_relaxed_dispatch_tensor
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
     ForecastCandidate,
     evaluate_forecast_candidates_against_oracle,
@@ -375,26 +374,6 @@ def _train_decision_loss_horizon_biases_with_checkpoints(
         degradation_cost_per_mwh=degradation_cost_per_mwh,
     )
     solver_statuses = [best_inner_status]
-    try:
-        layer = _relaxed_dispatch_layer(
-            horizon_hours,
-            starting_soc_fraction,
-            capacity_mwh,
-            max_power_mw,
-            soc_min_fraction,
-            soc_max_fraction,
-            1.0,
-            degradation_cost_per_mwh,
-        )
-    except Exception as exc:
-        return (
-            [0.0] * horizon_hours,
-            RELAXED_SOLVER_FALLBACK_REGRET_UAH,
-            [0.0] * horizon_hours,
-            0,
-            best_inner_score,
-            _merge_solver_statuses(*solver_statuses, _fallback_status("layer_init", exc)),
-        )
     forecast_prices = _price_tensor([example.forecast_prices for example in training_examples])
     actual_prices = _price_tensor([example.actual_prices for example in training_examples])
     horizon_biases = torch.zeros(horizon_hours, dtype=torch.float64, requires_grad=True)
@@ -406,22 +385,46 @@ def _train_decision_loss_horizon_biases_with_checkpoints(
         optimizer.zero_grad()
         corrected_prices = forecast_prices + horizon_biases
         try:
-            charge, discharge, _ = layer(corrected_prices, solver_args={"eps": 1e-6, "max_iters": 5000})
-            oracle_charge, oracle_discharge, _ = layer(actual_prices, solver_args={"eps": 1e-6, "max_iters": 5000})
+            corrected_dispatch = solve_relaxed_dispatch_tensor(
+                prices_uah_mwh=corrected_prices,
+                starting_soc_fraction=starting_soc_fraction,
+                capacity_mwh=capacity_mwh,
+                max_power_mw=max_power_mw,
+                soc_min_fraction=soc_min_fraction,
+                soc_max_fraction=soc_max_fraction,
+                degradation_cost_per_mwh=degradation_cost_per_mwh,
+                solver_args={"eps": 1e-6, "max_iters": 5000},
+            )
+            oracle_dispatch = solve_relaxed_dispatch_tensor(
+                prices_uah_mwh=actual_prices,
+                starting_soc_fraction=starting_soc_fraction,
+                capacity_mwh=capacity_mwh,
+                max_power_mw=max_power_mw,
+                soc_min_fraction=soc_min_fraction,
+                soc_max_fraction=soc_max_fraction,
+                degradation_cost_per_mwh=degradation_cost_per_mwh,
+                solver_args={"eps": 1e-6, "max_iters": 5000},
+            )
         except Exception as exc:
             solver_statuses.append(_fallback_status("training_epoch", exc))
             break
+        solver_statuses.append(
+            _merge_solver_statuses(
+                corrected_dispatch.solver_status,
+                oracle_dispatch.solver_status,
+            )
+        )
         oracle_values = _realized_values(
             actual_prices=actual_prices,
-            charge=oracle_charge,
-            discharge=oracle_discharge,
+            charge=oracle_dispatch.charge_mw,
+            discharge=oracle_dispatch.discharge_mw,
             degradation_cost_per_mwh=degradation_cost_per_mwh,
         )
         loss_result = compute_decision_loss_v1(
             predicted_prices=corrected_prices,
             actual_prices=actual_prices,
-            charge_mw=charge,
-            discharge_mw=discharge,
+            charge_mw=corrected_dispatch.charge_mw,
+            discharge_mw=corrected_dispatch.discharge_mw,
             oracle_value_uah=oracle_values.detach(),
             degradation_cost_per_mwh=degradation_cost_per_mwh,
             weights=decision_loss_weights,
@@ -445,7 +448,7 @@ def _train_decision_loss_horizon_biases_with_checkpoints(
         )
         solver_statuses.append(candidate_inner_status)
         if (
-            candidate_inner_status == "ok"
+            _is_relaxed_score_usable(candidate_inner_status)
             and candidate_inner_score.mean_regret_uah <= best_inner_score.mean_regret_uah
         ):
             best_biases = candidate_biases
@@ -466,7 +469,7 @@ def _safe_score_examples(
     degradation_cost_per_mwh: float,
 ) -> tuple[_Score, str]:
     try:
-        score = _score_examples(
+        score, solver_status = _score_examples(
             examples=examples,
             horizon_biases=horizon_biases,
             capacity_mwh=capacity_mwh,
@@ -486,7 +489,68 @@ def _safe_score_examples(
         )
     ):
         return _fallback_score(), "fallback:score:non_finite"
-    return score, "ok"
+    return score, solver_status
+
+
+def _score_examples(
+    *,
+    examples: list[_ExperimentExample],
+    horizon_biases: list[float],
+    capacity_mwh: float,
+    max_power_mw: float,
+    soc_min_fraction: float,
+    soc_max_fraction: float,
+    degradation_cost_per_mwh: float,
+) -> tuple[_Score, str]:
+    starting_soc_fraction = _single_starting_soc(examples)
+    forecast_prices = _price_tensor([example.forecast_prices for example in examples])
+    actual_prices = _price_tensor([example.actual_prices for example in examples])
+    bias_tensor = torch.tensor(horizon_biases, dtype=torch.float64)
+    with torch.no_grad():
+        corrected_dispatch = solve_relaxed_dispatch_tensor(
+            prices_uah_mwh=forecast_prices + bias_tensor,
+            starting_soc_fraction=starting_soc_fraction,
+            capacity_mwh=capacity_mwh,
+            max_power_mw=max_power_mw,
+            soc_min_fraction=soc_min_fraction,
+            soc_max_fraction=soc_max_fraction,
+            degradation_cost_per_mwh=degradation_cost_per_mwh,
+            solver_args={"eps": 1e-6, "max_iters": 5000},
+        )
+        oracle_dispatch = solve_relaxed_dispatch_tensor(
+            prices_uah_mwh=actual_prices,
+            starting_soc_fraction=starting_soc_fraction,
+            capacity_mwh=capacity_mwh,
+            max_power_mw=max_power_mw,
+            soc_min_fraction=soc_min_fraction,
+            soc_max_fraction=soc_max_fraction,
+            degradation_cost_per_mwh=degradation_cost_per_mwh,
+            solver_args={"eps": 1e-6, "max_iters": 5000},
+        )
+        realized_values = _realized_values(
+            actual_prices=actual_prices,
+            charge=corrected_dispatch.charge_mw,
+            discharge=corrected_dispatch.discharge_mw,
+            degradation_cost_per_mwh=degradation_cost_per_mwh,
+        )
+        oracle_values = _realized_values(
+            actual_prices=actual_prices,
+            charge=oracle_dispatch.charge_mw,
+            discharge=oracle_dispatch.discharge_mw,
+            degradation_cost_per_mwh=degradation_cost_per_mwh,
+        )
+        regrets = torch.clamp(oracle_values - realized_values, min=0.0)
+    return (
+        _Score(
+            mean_realized_value_uah=float(torch.mean(realized_values).cpu()),
+            mean_oracle_value_uah=float(torch.mean(oracle_values).cpu()),
+            mean_regret_uah=float(torch.mean(regrets).cpu()),
+        ),
+        _merge_solver_statuses(
+            corrected_dispatch.solver_status,
+            oracle_dispatch.solver_status,
+        ),
+    )
 
 
 def _fallback_score() -> _Score:
@@ -501,11 +565,15 @@ def _fallback_status(stage: str, exc: Exception) -> str:
     return f"fallback:{stage}:{exc.__class__.__name__}"
 
 
+def _is_relaxed_score_usable(status: str) -> bool:
+    return bool(status) and not status.startswith("fallback")
+
+
 def _merge_solver_statuses(*statuses: str) -> str:
-    fallback_statuses = [status for status in statuses if status and status != "ok"]
-    if not fallback_statuses:
+    non_ok_statuses = [status for status in statuses if status and status != "ok"]
+    if not non_ok_statuses:
         return "ok"
-    return ";".join(dict.fromkeys(fallback_statuses))
+    return ";".join(dict.fromkeys(non_ok_statuses))
 
 
 def _source_rows(

@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import polars as pl
 
 import smart_arbitrage.dfl.forecast_dfl_v1 as forecast_dfl_v1
+import smart_arbitrage.dfl.relaxed_dispatch as relaxed_dispatch
 from smart_arbitrage.dfl.forecast_dfl_v1 import (
     DFL_FORECAST_DFL_V1_STRICT_LP_STRATEGY_KIND,
     build_dfl_forecast_dfl_v1_panel_frame,
@@ -131,6 +132,29 @@ def test_dfl_forecast_v1_panel_marks_relaxed_solver_fallback(monkeypatch) -> Non
     assert row["relaxed_solver_status"].startswith("fallback")
     assert row["dfl_v1_checkpoint_epoch"] == 0
     assert row["dfl_v1_inner_selection_relaxed_regret_uah"] >= 1_000_000_000.0
+
+
+def test_dfl_forecast_v1_panel_uses_bounded_surrogate_without_catastrophic_fallback(monkeypatch) -> None:
+    def failing_layer(*args: object, **kwargs: object) -> object:
+        raise RuntimeError("synthetic cvxpylayer failure")
+
+    monkeypatch.setattr(relaxed_dispatch, "_relaxed_dispatch_layer", failing_layer)
+
+    result = build_dfl_forecast_dfl_v1_panel_frame(
+        _benchmark_frame(anchor_count=8),
+        tenant_ids=(TENANT_ID,),
+        forecast_model_names=(SOURCE_MODEL,),
+        final_validation_anchor_count_per_tenant=2,
+        max_train_anchors_per_tenant=6,
+        inner_validation_fraction=0.33,
+        epoch_count=1,
+        learning_rate=10.0,
+    )
+
+    row = result.row(0, named=True)
+    assert "surrogate_bounded" in row["relaxed_solver_status"]
+    assert "fallback" not in row["relaxed_solver_status"]
+    assert row["dfl_v1_inner_selection_relaxed_regret_uah"] < 1_000_000_000.0
 
 
 def _benchmark_frame(
