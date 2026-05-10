@@ -1,6 +1,6 @@
 # DFL Forecast Decision Loss v1
 
-Date: 2026-05-09
+Date: 2026-05-10
 
 This slice is the first real DFL-shaped forecast correction path after AFL
 contract hardening. It is deliberately small: a prior-only horizon-bias
@@ -28,7 +28,7 @@ Materialization:
 docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_forecast_dfl_v1_panel_frame,dfl_forecast_dfl_v1_strict_lp_benchmark_frame -c configs/real_data_dfl_forecast_v1_week3.yaml
 ```
 
-Latest run: `5562b5f0-9f12-44de-a74c-0cb47c7d447a`.
+Latest run: `1fc1cc96-92b9-470c-b29a-f416a3ee3b08`.
 
 ## Loss Contract
 
@@ -57,34 +57,46 @@ Panel evidence:
 | Selector/candidate final-holdout rows per source | 90 |
 | `not_full_dfl` / `not_market_execution` | true / true |
 
-The real-data relaxed scorer still falls back on SCS solver errors:
-`fallback:score:SolverError;fallback:training_epoch:SolverError`.
-Therefore all checkpoint epochs stayed at `0`, the selected correction bias was
-effectively the zero correction, and strict LP scoring made DFL v1 identical to
-the raw compact source forecasts.
+The relaxed storage layer is now stabilized for this DFL v1 run:
+
+- UAH price coefficients are scaled before the differentiable LP solve;
+- bounded differentiable surrogate dispatch exists for cvxpylayer failures;
+- strict-vs-relaxed fixture checks prevent treating the relaxed primitive as
+  the final strict LP evaluator;
+- non-finite optimizer gradients are guarded before checkpoint scoring.
+
+Final panel status was
+`cvxpylayer_scaled;training_guard:non_finite_gradient;cvxpylayer_scaled` for
+all 10 tenant/source rows. Checkpoint epoch reached `4`, and there was no
+catastrophic fallback score. The selected correction still produced `0.00 UAH`
+mean relaxed-regret improvement versus the raw compact source forecasts.
 
 | Model | Rows | Mean regret | Median regret | Finding |
 |---|---:|---:|---:|---|
 | `strict_similar_day` | 180 reference rows | 314.81 UAH | 202.61 UAH | Frozen control still wins. |
 | `nbeatsx_silver_v0` | 90 | 1,121.04 UAH | 555.43 UAH | Raw compact source. |
-| `dfl_forecast_dfl_v1_nbeatsx_silver_v0` | 90 | 1,121.04 UAH | 555.43 UAH | No learned improvement; zero-bias fallback. |
+| `dfl_forecast_dfl_v1_nbeatsx_silver_v0` | 90 | 1,121.04 UAH | 555.43 UAH | Stable run; no strict improvement over raw. |
 | `tft_silver_v0` | 90 | 1,665.41 UAH | 1,399.49 UAH | Raw compact source. |
-| `dfl_forecast_dfl_v1_tft_silver_v0` | 90 | 1,665.41 UAH | 1,399.49 UAH | No learned improvement; zero-bias fallback. |
+| `dfl_forecast_dfl_v1_tft_silver_v0` | 90 | 1,665.41 UAH | 1,399.49 UAH | Stable run; no strict improvement over raw. |
 
 ## Interpretation
 
 This is useful negative evidence. The AFL feature contract is now cleaner and
-the tiny DFL path executes end to end, but the differentiable relaxed storage
-layer is not stable enough on real all-tenant batches to produce a usable DFL
-forecast correction. The strict LP/oracle evaluator correctly blocks the result.
+the tiny DFL path now executes end to end with bounded relaxed-layer behavior.
+That fixes the stability blocker, but not the modeling result: the current
+horizon-bias correction does not improve relaxed final-holdout regret or strict
+LP/oracle regret. The strict LP/oracle evaluator correctly blocks promotion.
 
-The next DFL work should harden the relaxed optimization layer before trying a
-larger neural policy:
+The next DFL work should improve the learning target rather than add a larger
+policy immediately:
 
-- scale/normalize price inputs for the relaxed solver;
-- add bounded fallback/surrogate relaxed dispatch that remains differentiable;
-- compare relaxed objective values against strict LP values on a small fixture;
-- rerun DFL v1 only after relaxed solver stability is proven.
+- reduce reliance on horizon-only bias and train on richer schedule/value
+  features;
+- test smaller learning rates or closed-form/grid correction candidates against
+  the same guarded relaxed layer;
+- keep final promotion under strict LP/oracle scoring against
+  `strict_similar_day`;
+- use Decision Transformer only later as an offline research primitive.
 
 Decision Transformer remains a later offline research primitive, not the next
 implementation step.

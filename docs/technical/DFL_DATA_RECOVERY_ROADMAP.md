@@ -327,16 +327,18 @@ DFL forecast decision-loss v1:
   `dfl_forecast_dfl_v1_strict_lp_benchmark_frame`.
 - Config:
   [real_data_dfl_forecast_v1_week3.yaml](../../configs/real_data_dfl_forecast_v1_week3.yaml).
-- Latest run id: `5562b5f0-9f12-44de-a74c-0cb47c7d447a`.
+- Latest run id: `1fc1cc96-92b9-470c-b29a-f416a3ee3b08`.
 - Panel: 10 rows, five tenants x two compact source models, 18 final-holdout
   anchors per tenant/source.
-- Result: relaxed solver fallback status was
-  `fallback:score:SolverError;fallback:training_epoch:SolverError`, so all
-  checkpoints stayed at epoch 0 and strict scoring matched raw forecasts:
-  NBEATSx/DFL-v1 mean regret 1,121.04 UAH, TFT/DFL-v1 mean regret 1,665.41 UAH,
-  strict control mean regret 314.81 UAH.
-- Decision: DFL v1 is tested and blocked. The next technical blocker is relaxed
-  storage-layer stability and scaling, not Decision Transformer expansion.
+- Result: the stabilized relaxed layer ran with scaled cvxpylayer solves and
+  `training_guard:non_finite_gradient`; no catastrophic fallback score was used.
+  Checkpoints reached epoch 4, but relaxed final-holdout improvement was 0.00
+  UAH. Strict scoring still matched raw forecasts: NBEATSx/DFL-v1 mean regret
+  1,121.04 UAH, TFT/DFL-v1 mean regret 1,665.41 UAH, strict control mean regret
+  314.81 UAH.
+- Decision: DFL v1 is tested and blocked on decision quality, not on relaxed
+  solver stability. The next technical blocker is a richer schedule/value
+  learning target, not Decision Transformer expansion.
 - Tracked note:
   [DFL_FORECAST_DECISION_LOSS_V1.md](DFL_FORECAST_DECISION_LOSS_V1.md).
 

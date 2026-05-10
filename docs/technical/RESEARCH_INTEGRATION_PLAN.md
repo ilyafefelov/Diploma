@@ -1204,19 +1204,22 @@ DFL v1 implementation:
   `dfl_forecast_dfl_v1_strict_lp_benchmark_frame`.
 - Config:
   [../../configs/real_data_dfl_forecast_v1_week3.yaml](../../configs/real_data_dfl_forecast_v1_week3.yaml).
-- Latest run id: `5562b5f0-9f12-44de-a74c-0cb47c7d447a`.
-- Result: the relaxed scorer fell back with
-  `fallback:score:SolverError;fallback:training_epoch:SolverError`, so
-  checkpoint epoch stayed `0` and DFL v1 strict results matched raw forecasts:
-  NBEATSx 1,121.04 UAH mean regret, TFT 1,665.41 UAH mean regret, strict
-  control 314.81 UAH.
+- Latest run id: `1fc1cc96-92b9-470c-b29a-f416a3ee3b08`.
+- Result: the relaxed storage layer now uses scaled cvxpylayer solves, a
+  bounded surrogate fallback, strict-vs-relaxed fixture checks, and optimizer
+  guards. The final panel status was
+  `cvxpylayer_scaled;training_guard:non_finite_gradient;cvxpylayer_scaled`.
+  Checkpoint epoch reached `4`, but DFL v1 strict results still matched raw
+  forecasts: NBEATSx 1,121.04 UAH mean regret, TFT 1,665.41 UAH mean regret,
+  strict control 314.81 UAH.
 - Tracked note:
   [DFL_FORECAST_DECISION_LOSS_V1.md](DFL_FORECAST_DECISION_LOSS_V1.md).
 
-Decision: the project has reached the correct DFL foundation boundary. The next
-engineering task is not a Decision Transformer; it is stabilizing the relaxed
-storage layer with scaling, bounded surrogate fallback, and strict-vs-relaxed
-fixture checks before retraining DFL v1.
+Decision: the project has reached the next DFL foundation boundary. The relaxed
+storage layer is stable enough to run DFL v1, but the horizon-bias learning
+target does not improve strict decision value. The next engineering task is not
+a Decision Transformer; it is a richer schedule/value learning target evaluated
+through the same strict LP/oracle gate.
 
 ## Week 3 Deep Research Source Map And Baseline Freeze
 
