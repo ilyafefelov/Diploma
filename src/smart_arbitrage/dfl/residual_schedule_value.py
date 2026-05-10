@@ -691,7 +691,7 @@ def _benchmark_row(
     anchor_timestamp = _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp")
     return {
         "evaluation_id": (
-            f"{strategy_kind}:{row['tenant_id']}:{forecast_model_name}:"
+            f"{strategy_kind}:{row['tenant_id']}:{source_model_name}:{forecast_model_name}:"
             f"{anchor_timestamp:%Y%m%dT%H%M}"
         ),
         "tenant_id": str(row["tenant_id"]),

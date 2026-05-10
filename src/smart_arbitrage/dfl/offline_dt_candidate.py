@@ -475,7 +475,7 @@ def _benchmark_row(
     return {
         "evaluation_id": (
             f"{DFL_OFFLINE_DT_STRICT_LP_STRATEGY_KIND}:{row['tenant_id']}:"
-            f"{forecast_model_name}:{anchor_timestamp:%Y%m%dT%H%M}"
+            f"{source_model_name}:{forecast_model_name}:{anchor_timestamp:%Y%m%dT%H%M}"
         ),
         "tenant_id": str(row["tenant_id"]),
         "source_model_name": source_model_name,
