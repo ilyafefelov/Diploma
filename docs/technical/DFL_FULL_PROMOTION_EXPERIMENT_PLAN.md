@@ -154,6 +154,17 @@ Exit decision:
 - If IO round-trip changes vectors, fix persistence before training.
 - If all checks pass, proceed to official forecast rolling benchmark.
 
+Implementation status:
+
+- Added `forecast_pipeline_truth_audit_frame` and asset check
+  `forecast_pipeline_truth_audit_evidence`.
+- Materialization run `b78b16aa-1da8-4f58-8ce1-89c5d508a9e2` passed the new
+  truth-audit check over the five-tenant 104-anchor panel.
+- No blocking failures were found for source provenance, UAH/MWh unit sanity,
+  vector round-trip, leaky horizon rows, or non-hourly horizon gaps.
+- Shift warnings remain high for compact NBEATSx/TFT and must be carried into
+  the official rolling forecast experiment.
+
 ## 6. Phase B: UA Coverage Repair And Backfill
 
 Purpose: determine whether the current 104-anchor ceiling is real.

@@ -80,6 +80,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_production_promotion_gate_frame",
             "dfl_production_promotion_gate_evidence",
         ),
+        (
+            "forecast_pipeline_truth_audit_frame",
+            "forecast_pipeline_truth_audit_evidence",
+        ),
     }
 
     check_keys = {

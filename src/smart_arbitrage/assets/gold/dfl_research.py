@@ -145,6 +145,10 @@ from smart_arbitrage.dfl.production_promotion_gate import (
     build_dfl_production_promotion_gate_frame,
     evaluate_dfl_production_promotion_gate,
 )
+from smart_arbitrage.dfl.forecast_pipeline_truth import (
+    build_forecast_pipeline_truth_audit_frame as build_forecast_pipeline_truth_audit,
+    validate_forecast_pipeline_truth_audit_evidence,
+)
 from smart_arbitrage.forecasting.afl import (
     build_afl_training_panel_frame,
     build_forecast_candidate_forensics_frame,
@@ -514,6 +518,14 @@ class DflProductionPromotionGateAssetConfig(dg.Config):
     min_rolling_strict_pass_windows: int = 3
     min_rolling_window_count: int = 4
     backfill_target_anchor_count_per_tenant: int = 180
+
+
+class DflForecastPipelineTruthAuditAssetConfig(dg.Config):
+    """Forecast-vector truth-audit scope before serious DFL reruns."""
+
+    price_floor_uah_mwh: float = 0.0
+    price_cap_uah_mwh: float = 16_000.0
+    horizon_shift_offsets_csv: str = "-2,-1,0,1,2"
 
 
 class AflTrainingPanelAssetConfig(dg.Config):
@@ -1997,6 +2009,48 @@ def dfl_pipeline_integrity_audit_frame(
         medallion="gold",
         domain="dfl_research",
         elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def forecast_pipeline_truth_audit_frame(
+    context,
+    config: DflForecastPipelineTruthAuditAssetConfig,
+    real_data_rolling_origin_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Forecast-vector truth audit before serious official/DFL reruns."""
+
+    audit_frame = build_forecast_pipeline_truth_audit(
+        real_data_rolling_origin_benchmark_frame,
+        price_floor_uah_mwh=config.price_floor_uah_mwh,
+        price_cap_uah_mwh=config.price_cap_uah_mwh,
+        horizon_shift_offsets=_int_csv_values(
+            config.horizon_shift_offsets_csv,
+            field_name="horizon_shift_offsets_csv",
+        ),
+    )
+    outcome = validate_forecast_pipeline_truth_audit_evidence(audit_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "passed": outcome.passed,
+            "description": outcome.description,
+            **outcome.metadata,
+            "scope": "dfl_forecast_pipeline_truth_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
         ml_stage="training_data",
         evidence_scope="not_market_execution",
         market_venue="DAM",
@@ -3442,6 +3496,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_trajectory_feature_ranker_frame,
     dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
     dfl_pipeline_integrity_audit_frame,
+    forecast_pipeline_truth_audit_frame,
     dfl_schedule_candidate_library_v2_frame,
     dfl_non_strict_oracle_upper_bound_frame,
     dfl_strict_baseline_autopsy_frame,

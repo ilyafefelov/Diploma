@@ -8,6 +8,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflActionClassifierStrictLpProjectionAssetConfig,
     DflValueAwareActionClassifierStrictLpProjectionAssetConfig,
     DflForecastDflV1AssetConfig,
+    DflForecastPipelineTruthAuditAssetConfig,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
@@ -48,6 +49,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     dfl_trajectory_feature_ranker_frame,
     dfl_trajectory_feature_ranker_strict_lp_benchmark_frame,
     dfl_pipeline_integrity_audit_frame,
+    forecast_pipeline_truth_audit_frame,
     dfl_schedule_candidate_library_v2_frame,
     dfl_non_strict_oracle_upper_bound_frame,
     dfl_strict_baseline_autopsy_frame,
@@ -193,6 +195,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_trajectory_feature_ranker_frame",
         "dfl_trajectory_feature_ranker_strict_lp_benchmark_frame",
         "dfl_pipeline_integrity_audit_frame",
+        "forecast_pipeline_truth_audit_frame",
         "dfl_schedule_candidate_library_v2_frame",
         "dfl_non_strict_oracle_upper_bound_frame",
         "dfl_strict_baseline_autopsy_frame",
@@ -263,6 +266,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_trajectory_feature_ranker_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_pipeline_integrity_audit_frame"] == "gold_dfl_training"
+    assert groups_by_key["forecast_pipeline_truth_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_schedule_candidate_library_v2_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_non_strict_oracle_upper_bound_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_strict_baseline_autopsy_frame"] == "gold_dfl_training"
@@ -317,6 +321,8 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert tags_by_key["dfl_pipeline_integrity_audit_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["forecast_pipeline_truth_audit_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["forecast_pipeline_truth_audit_frame"]["evidence_scope"] == "research_only"
     assert tags_by_key["dfl_schedule_candidate_library_v2_frame"]["ml_stage"] == "training_data"
     assert tags_by_key["dfl_non_strict_oracle_upper_bound_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_strict_baseline_autopsy_frame"]["ml_stage"] == "diagnostics"
@@ -398,6 +404,9 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_real_data_trajectory_dataset_frame"] == {
         "dfl_schedule_candidate_library_v2_frame",
         "dfl_strict_failure_prior_feature_panel_frame",
+    }
+    assert deps_by_key["forecast_pipeline_truth_audit_frame"] == {
+        "real_data_rolling_origin_benchmark_frame"
     }
     assert deps_by_key["dfl_residual_schedule_value_model_frame"] == {
         "dfl_real_data_trajectory_dataset_frame"
@@ -761,6 +770,11 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         min_final_holdout_tenant_anchor_count_per_source_model=1,
     )
     pipeline_audit = dfl_pipeline_integrity_audit_frame(None, benchmark, schedule_library)
+    truth_audit = forecast_pipeline_truth_audit_frame(
+        None,
+        DflForecastPipelineTruthAuditAssetConfig(price_cap_uah_mwh=16_000.0),
+        benchmark,
+    )
     schedule_library_v2 = dfl_schedule_candidate_library_v2_frame(
         None,
         strict_challenger_config,
@@ -952,6 +966,10 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert pipeline_audit.height == 1
     assert pipeline_audit.select("claim_scope").to_series().unique().to_list() == [
         "dfl_pipeline_integrity_audit_not_full_dfl"
+    ]
+    assert truth_audit.height == 3
+    assert truth_audit.select("claim_scope").to_series().unique().to_list() == [
+        "dfl_forecast_pipeline_truth_audit_not_full_dfl"
     ]
     assert schedule_library_v2.height > schedule_library.height
     assert "strict_raw_blend_v2" in schedule_library_v2["candidate_family"].unique().to_list()

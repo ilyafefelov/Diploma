@@ -46,6 +46,9 @@ from smart_arbitrage.dfl.source_specific_challenger import (
 from smart_arbitrage.dfl.production_promotion_gate import (
     validate_dfl_production_promotion_gate_evidence,
 )
+from smart_arbitrage.dfl.forecast_pipeline_truth import (
+    validate_forecast_pipeline_truth_audit_evidence,
+)
 from smart_arbitrage.forecasting.afl_error_audit import (
     validate_afl_forecast_error_audit_evidence,
 )
@@ -279,6 +282,21 @@ def dfl_production_promotion_gate_evidence(
 
 
 @dg.asset_check(
+    asset="forecast_pipeline_truth_audit_frame",
+    name="forecast_pipeline_truth_audit_evidence",
+    description="Checks forecast-vector truth audit source, unit, timestamp, and round-trip evidence.",
+)
+def forecast_pipeline_truth_audit_evidence(
+    forecast_pipeline_truth_audit_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_forecast_pipeline_truth_audit_evidence(
+            forecast_pipeline_truth_audit_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="horizon_regret_weighted_forecast_strategy_benchmark_frame",
     name="horizon_calibration_no_leakage_evidence",
     description="Checks horizon-aware calibration anchor coverage and prior-anchor metadata.",
@@ -343,6 +361,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_residual_dt_fallback_evidence,
     dfl_source_specific_research_challenger_evidence,
     dfl_production_promotion_gate_evidence,
+    forecast_pipeline_truth_audit_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,

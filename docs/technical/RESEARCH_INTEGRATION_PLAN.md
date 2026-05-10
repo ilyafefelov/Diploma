@@ -1418,3 +1418,54 @@ Decision: v2 made the blocker sharper. The current system should not be
 promoted; the next improvement must either add source-backed Ukrainian coverage
 or improve prior-only regime features enough to pass rolling strict-control
 windows without using validation actuals for selection.
+
+## Forecast Pipeline Truth Audit
+
+The long-running DFL experiment loop starts with a truth audit rather than a new
+model. The purpose is to prove whether compact NBEATSx/TFT and DFL failures are
+real model failures or a lower-level forecast/scoring alignment problem.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.forecast_pipeline_truth`.
+- New asset: `forecast_pipeline_truth_audit_frame`.
+- New asset check: `forecast_pipeline_truth_audit_evidence`.
+- Config:
+  [../../configs/real_data_dfl_forecast_pipeline_truth_audit_week3.yaml](../../configs/real_data_dfl_forecast_pipeline_truth_audit_week3.yaml).
+- Tracked note:
+  [DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md](DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md).
+
+The audit checks:
+
+- vector round-trip integrity for forecast and actual price vectors;
+- UAH/MWh unit sanity and configured price cap bounds;
+- strictly future horizon timestamps after each anchor;
+- non-hourly gaps that could reveal DST or serialization issues;
+- `thesis_grade` / observed coverage provenance;
+- off-by-one horizon-shift diagnostics;
+- perfect-forecast sanity where a fixture or candidate forecast equals the
+  realized vector.
+
+Decision: serious official NBEATSx/TFT rolling forecasts and DFL v2 reruns
+should wait until this audit has no blocking failures. Shift warnings are
+investigation signals, not automatic promotion blockers, because weak models can
+align better at a shifted horizon by chance.
+
+Materialized result:
+
+- Run `b78b16aa-1da8-4f58-8ce1-89c5d508a9e2` finished successfully and
+  materialized `forecast_pipeline_truth_audit_frame`.
+- The new `forecast_pipeline_truth_audit_evidence` check passed.
+- All three benchmark models had 5 tenants, 104 anchors, 520 rows, 24-hour
+  horizons, `thesis_grade` provenance, observed coverage `1.0`, and zero
+  blocking failures.
+- Blocking failure counts were zero for UAH/MWh unit sanity, vector round-trip,
+  leaky horizon rows, non-hourly horizon gaps, and observed-data provenance.
+- Shift diagnostics remain active: `strict_similar_day` had 165 shifted-best
+  anchors, `nbeatsx_silver_v0` had 377, and `tft_silver_v0` had 328. These are
+  warning signals for the official forecast experiment, not proof of leakage.
+
+Decision update: the forecast/scoring path is clear enough to proceed to the
+official NBEATSx/TFT rolling benchmark slice. If official forecasts still lose,
+the next blocker is model/training signal or data coverage, not a basic vector
+serialization or horizon leakage defect.

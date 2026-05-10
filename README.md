@@ -166,6 +166,7 @@ Latest full verification: `151 passed`.
 - Production promotion gate: `docs/technical/DFL_PRODUCTION_PROMOTION_GATE.md`
 - Regime-gated TFT selector v2: `docs/technical/DFL_REGIME_GATED_TFT_SELECTOR_V2.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
+- Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
 - Week 3 accepted evidence: `data/research_runs/week3_real_data_benchmark/` for the Dnipro 30-anchor thesis-grade benchmark.
 - Week 3 calibration preview: `data/research_runs/week3_calibration_preview_dnipro_90/` for prepared-ahead 90-anchor calibration/selector diagnostics.
 - Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`
