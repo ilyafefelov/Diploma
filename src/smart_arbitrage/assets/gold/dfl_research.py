@@ -132,6 +132,10 @@ from smart_arbitrage.dfl.source_specific_challenger import (
     build_dfl_source_specific_research_challenger_frame,
     evaluate_dfl_source_specific_research_challenger_gate,
 )
+from smart_arbitrage.dfl.production_promotion_gate import (
+    build_dfl_production_promotion_gate_frame,
+    evaluate_dfl_production_promotion_gate,
+)
 from smart_arbitrage.forecasting.afl import (
     build_afl_training_panel_frame,
     build_forecast_candidate_forensics_frame,
@@ -465,6 +469,18 @@ class DflSourceSpecificResearchChallengerAssetConfig(dg.Config):
     min_mean_regret_improvement_ratio: float = 0.05
     min_rolling_strict_pass_windows: int = 3
     min_rolling_window_count: int = 4
+
+
+class DflProductionPromotionGateAssetConfig(dg.Config):
+    """Offline/read-model production-promotion gate scope."""
+
+    source_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    min_tenant_count: int = 5
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    min_mean_regret_improvement_ratio: float = 0.05
+    min_rolling_strict_pass_windows: int = 3
+    min_rolling_window_count: int = 4
+    backfill_target_anchor_count_per_tenant: int = 180
 
 
 class AflTrainingPanelAssetConfig(dg.Config):
@@ -2862,6 +2878,69 @@ def dfl_source_specific_research_challenger_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_production_promotion_gate_frame(
+    context,
+    config: DflProductionPromotionGateAssetConfig,
+    dfl_source_specific_research_challenger_frame: pl.DataFrame,
+    dfl_strict_failure_selector_robustness_frame: pl.DataFrame,
+    dfl_strict_failure_feature_audit_frame: pl.DataFrame,
+    dfl_data_coverage_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Offline production-promotion gate for source/regime-specific DFL evidence."""
+
+    source_model_names = _forecast_model_names(config.source_model_names_csv)
+    gate_frame = build_dfl_production_promotion_gate_frame(
+        dfl_source_specific_research_challenger_frame,
+        dfl_strict_failure_selector_robustness_frame,
+        dfl_strict_failure_feature_audit_frame,
+        dfl_data_coverage_audit_frame,
+        source_model_names=source_model_names,
+        min_tenant_count=config.min_tenant_count,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_mean_regret_improvement_ratio=config.min_mean_regret_improvement_ratio,
+        min_rolling_strict_pass_windows=config.min_rolling_strict_pass_windows,
+        min_rolling_window_count=config.min_rolling_window_count,
+        backfill_target_anchor_count_per_tenant=(
+            config.backfill_target_anchor_count_per_tenant
+        ),
+    )
+    gate = evaluate_dfl_production_promotion_gate(
+        gate_frame,
+        source_model_names=source_model_names,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": gate_frame.height,
+            "source_model_count": len(source_model_names),
+            "promoted_source_model_names": gate.metrics.get(
+                "promoted_source_model_names",
+                [],
+            ),
+            "production_promote_count": gate.metrics.get("production_promote_count", 0),
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "market_execution_enabled": False,
+            "scope": "dfl_production_promotion_gate_offline_strategy_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return gate_frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -3197,6 +3276,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_offline_dt_candidate_strict_lp_benchmark_frame,
     dfl_residual_dt_fallback_strict_lp_benchmark_frame,
     dfl_source_specific_research_challenger_frame,
+    dfl_production_promotion_gate_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,
     horizon_regret_weighted_forecast_calibration_frame,

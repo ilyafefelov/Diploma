@@ -72,6 +72,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_source_specific_research_challenger_frame",
             "dfl_source_specific_research_challenger_evidence",
         ),
+        (
+            "dfl_production_promotion_gate_frame",
+            "dfl_production_promotion_gate_evidence",
+        ),
     }
 
     check_keys = {

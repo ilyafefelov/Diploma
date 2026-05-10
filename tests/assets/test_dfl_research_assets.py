@@ -211,6 +211,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_offline_dt_candidate_strict_lp_benchmark_frame",
         "dfl_residual_dt_fallback_strict_lp_benchmark_frame",
         "dfl_source_specific_research_challenger_frame",
+        "dfl_production_promotion_gate_frame",
         "forecast_afe_feature_catalog_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
         "afl_forecast_error_audit_frame",
@@ -277,6 +278,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_source_specific_research_challenger_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_production_promotion_gate_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_afe_feature_catalog_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_semantic_event_strict_failure_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["afl_forecast_error_audit_frame"] == "gold_dfl_training"
@@ -331,6 +333,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_source_specific_research_challenger_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_production_promotion_gate_frame"]["ml_stage"] == "selection"
     assert tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"] == "feature_engineering"
     assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["afl_forecast_error_audit_frame"]["ml_stage"] == "diagnostics"
@@ -362,6 +365,10 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         tags_by_key["dfl_source_specific_research_challenger_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_production_promotion_gate_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -405,6 +412,12 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame",
         "dfl_strict_failure_selector_robustness_frame",
         "dfl_strict_failure_feature_audit_frame",
+    }
+    assert deps_by_key["dfl_production_promotion_gate_frame"] == {
+        "dfl_source_specific_research_challenger_frame",
+        "dfl_strict_failure_selector_robustness_frame",
+        "dfl_strict_failure_feature_audit_frame",
+        "dfl_data_coverage_audit_frame",
     }
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_action_label_panel_frame"]["ml_stage"] == "training_data"
