@@ -121,3 +121,26 @@ not finish enough official rolling-origin anchors to create promotion-grade
 metrics. Until a longer unattended/GPU-backed run completes, the official
 NBEATSx/TFT models remain adapter-ready research candidates, not promoted
 controllers.
+
+Downstream smoke validation:
+
+| Field | Value |
+|---|---|
+| Smoke run id | `bea10f88-ed52-4f7d-b85b-93b149262c51` |
+| Input official benchmark | existing 4-anchor official rolling-origin artifact |
+| Scope | official schedule library, library v2, learner v2, strict LP benchmark, robustness, production gate |
+| Result | run succeeded |
+| Promotion-grade? | no; only 10 latest validation tenant-anchors per source and 2 rolling windows |
+
+Smoke gate summary:
+
+| Source | Latest validation tenant-anchors | Mean-regret improvement vs strict | Median not worse | Rolling strict-pass windows | Production promote | Market execution enabled | Blocker |
+|---|---:|---:|---|---:|---|---|---|
+| `nbeatsx_official_v0` | 10 | 0.0% | yes | 0 / 2 | false | false | `mean_improvement_below_threshold` |
+| `tft_official_v0` | 10 | 0.0% | yes | 0 / 2 | false | false | `mean_improvement_below_threshold` |
+
+The smoke result proves the official rows can now flow through the same
+schedule/value candidate library and gate. It does not change the thesis claim:
+the official models still need a completed 104-anchor or larger rolling-origin
+run before they can be compared fairly with the compact schedule/value
+promotion evidence.
