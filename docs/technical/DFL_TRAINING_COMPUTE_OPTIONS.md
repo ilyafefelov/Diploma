@@ -86,6 +86,41 @@ The same command should later be wrapped for HF Jobs, Modal, or a GPU VM. The
 training output should be artifact-first: write compact Parquet/JSON summaries
 and only merge back into Postgres after the evidence run is validated.
 
+## Hugging Face Jobs Payload
+
+The repo now has a non-submitting payload builder for Hugging Face Jobs. It is
+designed for a cheap GPU screen of the same official schedule/value evidence
+path, without storing any token in the generated payload:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_hf_official_schedule_value_job.py `
+  --git-ref codex/plan-next-slice-sunday-night-run `
+  --total-anchors-per-tenant 18 `
+  --batch-size 4 `
+  --anchor-batch-order latest_first `
+  --enabled-official-models-csv tft_official_v0 `
+  --nbeatsx-max-steps 25 `
+  --tft-max-epochs 5 `
+  --artifact-repo-id ilyafefelov/smart-arbitrage-official-evidence `
+  --output .tmp_runtime\hf_jobs\official_latest_tft_screen.json
+```
+
+The generated JSON contains:
+
+- a UV script that clones the requested git ref;
+- `uv sync --extra dev --extra sota`;
+- the official schedule/value Dagster materialization selection;
+- a generated Dagster config with latest-first batching;
+- artifact upload metadata for a Hugging Face dataset repo, guarded by the
+  runtime `HF_TOKEN` secret;
+- the same claim boundary: research/offline evidence only, not market
+  execution.
+
+The builder does not submit the job. Submission should happen only after the
+branch is pushed and the Hugging Face account or organization is ready for Jobs
+compute. Treat this as a cloud execution wrapper for screening, not as a
+replacement for the strict LP/oracle promotion gate.
+
 ## Claim Boundary
 
 Cloud training does not change the academic claim by itself. Any official

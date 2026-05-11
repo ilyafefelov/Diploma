@@ -230,7 +230,9 @@ thresholds must not be reused as production-promotion thresholds.
 Not implemented yet:
 
 - source/regime production promotion;
-- Hugging Face Jobs execution wrapper.
+- Hugging Face Jobs execution. A payload builder now exists, but it only writes
+  a redacted JSON/script for a future remote run and does not submit paid
+  compute.
 - broader UA backfill or market-coupling exogenous training features.
 
 ## Next Required Work
@@ -239,8 +241,8 @@ Not implemented yet:
    after UA backfill or resumable batching can provide enough anchors.
 2. Add UA backfill and market-coupling exogenous governance before increasing
    official model capacity.
-3. Package the same command for cloud offload only after latest-window screening
-   shows the official source is close to `strict_similar_day`.
+3. Use the Hugging Face Jobs payload builder for a latest-first GPU screen only
+   after the branch is pushed and artifact upload credentials are available.
 
 The frozen `strict_similar_day` baseline remains the default fallback until the
 strict LP/oracle gate passes.
