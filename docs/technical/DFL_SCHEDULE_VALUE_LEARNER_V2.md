@@ -101,10 +101,20 @@ Rolling robustness update:
 - both source learners now qualify as robust research challengers under the
   current offline evidence gate.
 
-The remaining boundary is promotion semantics, not the latest/rolling evidence
-itself. The next slice must connect this robustness result to an offline
-production-promotion/default-fallback gate while keeping live market execution
-disabled.
+Promotion update:
+
+- production gate run id: `93d0f01c-5140-4958-a64f-74067144df4f`;
+- asset check: `dfl_schedule_value_production_gate_evidence` passed;
+- NBEATSx-source learner: `production_promote=true` for offline/read-model
+  evidence, with `market_execution_enabled=false`;
+- TFT-source learner: `production_promote=true` for offline/read-model evidence,
+  with `market_execution_enabled=false`;
+- tracked note:
+  [DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md](DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md).
+
+The remaining boundary is now market-execution and product-surface semantics,
+not the offline DFL evidence itself. This result still does not change
+dashboard/API defaults and does not authorize live execution.
 
 ## Gate
 
@@ -119,10 +129,10 @@ schedules. The promotion gate is stricter:
 - mean regret improves by at least 5% versus `strict_similar_day`;
 - median regret is not worse than `strict_similar_day`.
 
-Even if the latest holdout passes, production/default promotion still requires
-the existing rolling robustness and production-promotion gates. The rolling
-robustness gate now passes for NBEATSx-source and TFT-source learner variants,
-so the next gate is the explicit offline promotion/fallback decision.
+The rolling robustness gate and the explicit offline promotion/fallback gate now
+pass for NBEATSx-source and TFT-source learner variants. The promotion is still
+limited to offline/read-model strategy evidence; live execution and dashboard/API
+default changes remain out of scope.
 
 ## Expected Interpretation
 
@@ -133,6 +143,7 @@ both source models. The follow-up robustness gate also passes:
    windows.
 2. TFT-source Schedule/Value Learner V2 passes 3 of 4 rolling strict-control
    windows.
-3. `strict_similar_day` remains the default fallback until an explicit offline
-   promotion gate consumes this result and records a `production_promote`
-   decision.
+3. The explicit offline promotion gate records `production_promote=true` for
+   both source learners while keeping `market_execution_enabled=false`.
+4. `strict_similar_day` remains the fallback for undercovered,
+   out-of-distribution, failed-source, and live-execution contexts.

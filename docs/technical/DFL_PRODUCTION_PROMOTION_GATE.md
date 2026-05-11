@@ -135,3 +135,31 @@ state. The coverage audit remains `coverage_gap` for the configured 180-anchor
 target: five tenants have 104 eligible anchors each, and `2026-03-29 23:00`
 remains an unrecoverable price-and-weather gap in the current observed feature
 frame.
+
+## Schedule/Value Sidecar Promotion Update
+
+The broader source/regime production gate above remains blocked for the
+180-anchor coverage target. A narrower sidecar gate now exists for the
+Schedule/Value Learner V2 evidence:
+[DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md](DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md).
+
+This gate does not reuse the blocked 180-anchor source/regime claim. It accepts
+the current 104-anchor Ukrainian panel as the explicitly documented scope,
+requires 90 latest validation tenant-anchors per source model, and consumes the
+new rolling robustness evidence where NBEATSx-source passes 4 of 4 strict
+windows and TFT-source passes 3 of 4.
+
+Materialized result:
+
+- Dagster run id: `93d0f01c-5140-4958-a64f-74067144df4f`;
+- asset check: `dfl_schedule_value_production_gate_evidence` passed;
+- `nbeatsx_silver_v0`: `production_promote=true` for offline/read-model
+  evidence, 17.97% latest mean-regret improvement, 4 of 4 rolling strict passes;
+- `tft_silver_v0`: `production_promote=true` for offline/read-model evidence,
+  21.07% latest mean-regret improvement, 3 of 4 rolling strict passes;
+- `market_execution_enabled=false` for every row.
+
+Interpretation: the project now has its first offline promotion pass, but it is
+not live market execution and not a dashboard/API default controller change.
+`strict_similar_day` remains the fallback outside this narrow accepted evidence
+scope.

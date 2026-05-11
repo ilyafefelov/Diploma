@@ -1701,3 +1701,42 @@ dashboard/API default controller. The next required slice is an offline
 production-promotion/default-fallback gate that consumes this robustness result
 and records whether `production_promote=true` is justified for offline
 read-model strategy evidence while keeping `market_execution=false`.
+
+## DFL Schedule/Value Production Gate
+
+The offline promotion/fallback gate for Schedule/Value Learner V2 now consumes
+both latest-holdout strict LP/oracle evidence and rolling robustness evidence.
+This is a narrower sidecar gate than the earlier 180-anchor source/regime
+production gate: it accepts the current documented 104-anchor Ukrainian panel
+scope, requires 90 latest validation tenant-anchors per source model, and keeps
+market execution disabled.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.schedule_value_promotion_gate`.
+- New asset: `dfl_schedule_value_production_gate_frame`.
+- New asset check: `dfl_schedule_value_production_gate_evidence`.
+- Config:
+  [../../configs/real_data_dfl_schedule_value_production_gate_week3.yaml](../../configs/real_data_dfl_schedule_value_production_gate_week3.yaml).
+- Tracked note:
+  [DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md](DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md).
+
+Materialized result on 2026-05-11:
+
+- Dagster run: `93d0f01c-5140-4958-a64f-74067144df4f`.
+- Asset check `dfl_schedule_value_production_gate_evidence` passed.
+- NBEATSx-source learner: `production_promote=true` for offline/read-model
+  evidence, 90 latest validation tenant-anchors, 17.97% latest mean-regret
+  improvement versus `strict_similar_day`, 4 of 4 rolling strict passes.
+- TFT-source learner: `production_promote=true` for offline/read-model
+  evidence, 90 latest validation tenant-anchors, 21.07% latest mean-regret
+  improvement versus `strict_similar_day`, 3 of 4 rolling strict passes.
+- `market_execution_enabled=false` for every row.
+
+Decision update: this is the first offline promotion pass in the DFL evidence
+stack. The allowed claim is still narrow: source-specific schedule/value
+learner promoted for offline/read-model strategy evidence only. It is not live
+market execution, not a deployed Decision Transformer controller, not a full
+end-to-end differentiable DFL claim, and not an automatic dashboard/API default
+change. `strict_similar_day` remains the fallback for undercovered,
+out-of-distribution, failed-source, and future live-execution contexts.

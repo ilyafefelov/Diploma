@@ -54,9 +54,10 @@ Robust research challenger:
 - thesis-grade observed coverage, zero safety violations, no leakage, and
   `not_market_execution=true` hold for every row.
 
-Production/default promotion remains blocked in this slice. If robustness
-passes, the next slice must feed this evidence into
-`dfl_production_promotion_gate_frame` and keep market execution disabled.
+Production/default promotion remains blocked in this robustness slice itself.
+The follow-up gate is
+[`dfl_schedule_value_production_gate_frame`](DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md),
+which consumes this robustness evidence and keeps market execution disabled.
 
 ## Materialization
 
@@ -104,10 +105,18 @@ Interpretation:
   but it is still not full DFL, not Decision Transformer control, not live
   market execution, and not a dashboard/API default controller.
 
-## Next Slice
+## Promotion Follow-Up
 
-The next executable slice should feed this robustness evidence into an offline
-production-promotion/default-fallback gate. That gate may set
-`production_promote=true` only for offline/read-model strategy evidence while
-keeping `market_execution=false`, preserving `strict_similar_day` as fallback in
-undercovered or out-of-distribution regimes.
+The follow-up promotion materialization succeeded under Dagster run
+`93d0f01c-5140-4958-a64f-74067144df4f`. Asset check
+`dfl_schedule_value_production_gate_evidence` passed.
+
+| Source model | Latest mean improvement vs strict | Rolling strict passes | Production promote | Market execution |
+|---|---:|---:|---|---|
+| `nbeatsx_silver_v0` | 17.97% | 4 / 4 | true | false |
+| `tft_silver_v0` | 21.07% | 3 / 4 | true | false |
+
+This promotion is intentionally scoped to offline/read-model strategy evidence.
+It does not change dashboard/API defaults and does not enable live market
+execution. `strict_similar_day` remains the fallback for undercovered,
+out-of-distribution, or failed-source regimes.

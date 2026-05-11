@@ -151,6 +151,10 @@ from smart_arbitrage.dfl.schedule_value_learner_robustness import (
     build_dfl_schedule_value_learner_v2_robustness_frame,
     evaluate_dfl_schedule_value_learner_v2_robustness_gate,
 )
+from smart_arbitrage.dfl.schedule_value_promotion_gate import (
+    build_dfl_schedule_value_production_gate_frame,
+    evaluate_dfl_schedule_value_production_gate,
+)
 from smart_arbitrage.dfl.production_promotion_gate import (
     build_dfl_production_promotion_gate_frame,
     evaluate_dfl_production_promotion_gate,
@@ -549,6 +553,17 @@ class DflScheduleValueLearnerV2RobustnessAssetConfig(dg.Config):
     min_prior_anchors_before_window: int = 30
     min_robust_passing_windows: int = 3
     min_validation_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflScheduleValueProductionGateAssetConfig(dg.Config):
+    """Offline/read-model promotion gate for schedule/value learner v2 evidence."""
+
+    source_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    min_tenant_count: int = 5
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    min_mean_regret_improvement_ratio: float = 0.05
+    min_rolling_window_count: int = 4
+    min_rolling_strict_pass_windows: int = 3
 
 
 class DflProductionPromotionGateAssetConfig(dg.Config):
@@ -1312,6 +1327,62 @@ def dfl_schedule_value_learner_v2_robustness_frame(
         },
     )
     return robustness_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_schedule_value_production_gate_frame(
+    context,
+    config: DflScheduleValueProductionGateAssetConfig,
+    dfl_schedule_value_learner_v2_strict_lp_benchmark_frame: pl.DataFrame,
+    dfl_schedule_value_learner_v2_robustness_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Offline promotion/fallback decision for robust schedule/value evidence."""
+
+    source_model_names = _forecast_model_names(config.source_model_names_csv)
+    gate_frame = build_dfl_schedule_value_production_gate_frame(
+        dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
+        dfl_schedule_value_learner_v2_robustness_frame,
+        source_model_names=source_model_names,
+        min_tenant_count=config.min_tenant_count,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_mean_regret_improvement_ratio=config.min_mean_regret_improvement_ratio,
+        min_rolling_window_count=config.min_rolling_window_count,
+        min_rolling_strict_pass_windows=config.min_rolling_strict_pass_windows,
+    )
+    gate = evaluate_dfl_schedule_value_production_gate(
+        gate_frame,
+        source_model_names=source_model_names,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": gate_frame.height,
+            "source_model_count": len(source_model_names),
+            "promoted_source_model_names": gate.metrics.get(
+                "promoted_source_model_names",
+                [],
+            ),
+            "production_promote_count": gate.metrics.get("production_promote_count", 0),
+            "promotion_gate_decision": gate.decision,
+            "promotion_gate_description": gate.description,
+            "market_execution_enabled": False,
+            "scope": "dfl_schedule_value_production_gate_offline_strategy_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return gate_frame
 
 
 @dg.asset(
@@ -3817,6 +3888,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_schedule_value_learner_v2_frame,
     dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
     dfl_schedule_value_learner_v2_robustness_frame,
+    dfl_schedule_value_production_gate_frame,
     dfl_production_promotion_gate_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,

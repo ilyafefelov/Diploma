@@ -488,34 +488,52 @@ Phase G robustness status:
 - Both source learners now meet the `robust_research_challenger` label, while
   `production_promote=false` remains enforced by this slice.
 
-## 15. Immediate Next Slice: Offline Promotion/Fallback Gate
+## 15. Phase G Materialized Status: Offline Promotion/Fallback Gate
 
-The next slice should convert the robust research challenger evidence into an
-explicit offline promotion decision. The term "production promotion" remains
-restricted to offline/read-model strategy evidence; live market execution stays
-disabled.
+The Schedule/Value Learner V2 promotion gate is now materialized. The term
+"production promotion" remains restricted to offline/read-model strategy
+evidence; live market execution stays disabled.
 
-Planned gate:
+Implementation:
 
-- consume `dfl_schedule_value_learner_v2_robustness_frame`;
-- consume the latest `dfl_schedule_value_learner_v2_strict_lp_benchmark_frame`;
-- emit one row per source model with `production_promote`,
-  `promotion_blocker`, `fallback_strategy`, `allowed_challenger`, and
-  `market_execution=false`;
-- set `production_promote=true` only when the source passes latest strict
-  improvement, at least 3 of 4 rolling strict-control windows, thesis-grade
-  observed coverage, zero safety violations, no train/final leakage, and
-  claim-boundary flags;
-- preserve `strict_similar_day` as fallback for undercovered,
-  out-of-distribution, or failed-source regimes.
+- New helper: `smart_arbitrage.dfl.schedule_value_promotion_gate`.
+- New asset: `dfl_schedule_value_production_gate_frame`.
+- New asset check: `dfl_schedule_value_production_gate_evidence`.
+- Config:
+  `configs/real_data_dfl_schedule_value_production_gate_week3.yaml`.
+- Evidence note:
+  [DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md](DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md).
 
-Acceptance criteria for the next slice:
+Materialized result:
 
-- add a Dagster-visible gate asset and asset check without changing public API
-  or dashboard contracts;
-- unit tests cover pass, undercoverage, median degradation, rolling failure,
-  false claim flags, and market-execution blocking;
-- materialize the gate against the current robustness result;
-- update the production-promotion and schedule/value learner docs with the
-  exact decision;
-- commit the gate and documentation before starting another model variant.
+- Dagster run: `93d0f01c-5140-4958-a64f-74067144df4f`;
+- asset check: `dfl_schedule_value_production_gate_evidence` passed;
+- NBEATSx-source learner: `production_promote=true` for offline/read-model
+  evidence, 17.97% latest mean-regret improvement versus strict, 4 of 4 rolling
+  strict-control windows passed;
+- TFT-source learner: `production_promote=true` for offline/read-model
+  evidence, 21.07% latest mean-regret improvement versus strict, 3 of 4 rolling
+  strict-control windows passed;
+- `market_execution_enabled=false` for every row;
+- `strict_similar_day_default_fallback` remains the fallback strategy.
+
+This is the first offline promotion pass in the long-running DFL experiment
+loop. It does not promote live execution and does not change dashboard/API
+defaults.
+
+## 16. Immediate Next Slice: Promotion Registry And Read-Model Boundary
+
+The next slice should package the new offline promotion pass without weakening
+the thesis claim.
+
+Acceptance criteria:
+
+- export a concise ignored registry for `dfl_schedule_value_production_gate_frame`;
+- add a tracked supervisor-readable summary that separates offline promotion
+  from live market execution;
+- decide whether FastAPI read models should expose `production_promote` as an
+  opt-in research field, without changing dashboard defaults;
+- keep `strict_similar_day` as fallback in all undercovered,
+  out-of-distribution, failed-source, and live-execution contexts;
+- update the literature review only if the claim text changes, not for every
+  internal rerun.

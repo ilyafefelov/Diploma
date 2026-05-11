@@ -52,6 +52,9 @@ from smart_arbitrage.dfl.schedule_value_learner import (
 from smart_arbitrage.dfl.schedule_value_learner_robustness import (
     validate_dfl_schedule_value_learner_v2_robustness_evidence,
 )
+from smart_arbitrage.dfl.schedule_value_promotion_gate import (
+    validate_dfl_schedule_value_production_gate_evidence,
+)
 from smart_arbitrage.dfl.forecast_pipeline_truth import (
     validate_forecast_pipeline_truth_audit_evidence,
 )
@@ -326,6 +329,21 @@ def dfl_schedule_value_learner_v2_robustness_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_schedule_value_production_gate_frame",
+    name="dfl_schedule_value_production_gate_evidence",
+    description="Checks offline schedule/value promotion decisions while market execution remains disabled.",
+)
+def dfl_schedule_value_production_gate_evidence(
+    dfl_schedule_value_production_gate_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_schedule_value_production_gate_evidence(
+            dfl_schedule_value_production_gate_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="forecast_pipeline_truth_audit_frame",
     name="forecast_pipeline_truth_audit_evidence",
     description="Checks forecast-vector truth audit source, unit, timestamp, and round-trip evidence.",
@@ -437,6 +455,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_production_promotion_gate_evidence,
     dfl_schedule_value_learner_v2_evidence,
     dfl_schedule_value_learner_v2_robustness_evidence,
+    dfl_schedule_value_production_gate_evidence,
     forecast_pipeline_truth_audit_evidence,
     market_coupling_temporal_availability_evidence,
     entsoe_neighbor_market_access_evidence,
