@@ -60,9 +60,12 @@ function Invoke-DockerProcess {
     } else {
         $process.WaitForExit()
     }
-    if ($process.ExitCode -ne 0) {
-        Write-RunLog "FAILED $Name exit=$($process.ExitCode)"
-        throw "$Name failed with exit code $($process.ExitCode). See $stdoutPath and $stderrPath"
+    $process.WaitForExit()
+    $process.Refresh()
+    $exitCode = $process.ExitCode
+    if ($exitCode -ne 0) {
+        Write-RunLog "FAILED $Name exit=$exitCode"
+        throw "$Name failed with exit code $exitCode. See $stdoutPath and $stderrPath"
     }
     Write-RunLog "DONE $Name"
 }

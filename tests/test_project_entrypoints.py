@@ -46,6 +46,16 @@ def test_verify_wrapper_uses_project_mypy_file_set() -> None:
     ) in verify_script
 
 
+def test_official_batch_runner_refreshes_exit_code_after_wait_process() -> None:
+    runner_script = (
+        PROJECT_ROOT / "scripts" / "run-official-schedule-value-batches.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "$process.WaitForExit()" in runner_script
+    assert "$exitCode = $process.ExitCode" in runner_script
+    assert "if ($exitCode -ne 0)" in runner_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
