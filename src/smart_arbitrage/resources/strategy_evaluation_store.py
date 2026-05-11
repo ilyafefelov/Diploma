@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from functools import cache
 import json
 import os
@@ -17,6 +18,13 @@ class StrategyEvaluationStore(Protocol):
 
     def latest_strategy_kind_frame(self, *, tenant_id: str, strategy_kind: str) -> pl.DataFrame: ...
 
+    def strategy_kind_frame_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> pl.DataFrame: ...
+
 
 class NullStrategyEvaluationStore:
     def upsert_evaluation_frame(self, evaluation_frame: pl.DataFrame) -> None:
@@ -29,6 +37,14 @@ class NullStrategyEvaluationStore:
         return pl.DataFrame()
 
     def latest_strategy_kind_frame(self, *, tenant_id: str, strategy_kind: str) -> pl.DataFrame:
+        return pl.DataFrame()
+
+    def strategy_kind_frame_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> pl.DataFrame:
         return pl.DataFrame()
 
 
@@ -62,6 +78,24 @@ class InMemoryStrategyEvaluationStore:
             self.evaluation_frame,
             tenant_id=tenant_id,
             strategy_kind=strategy_kind,
+        )
+
+    def strategy_kind_frame_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> pl.DataFrame:
+        frame = _normalize_in_memory_datetime_columns(self.evaluation_frame)
+        if frame.height == 0:
+            return pl.DataFrame()
+        normalized_generated_at = _normalize_datetime_value(generated_at)
+        return (
+            frame.filter(
+                (pl.col("strategy_kind") == strategy_kind)
+                & (pl.col("generated_at") == normalized_generated_at)
+            )
+            .sort(["tenant_id", "anchor_timestamp", "rank_by_regret", "forecast_model_name"])
         )
 
 
@@ -247,6 +281,27 @@ class PostgresStrategyEvaluationStore:
                 rows = cursor.fetchall()
         return pl.DataFrame([_normalize_row(dict(row)) for row in rows])
 
+    def strategy_kind_frame_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> pl.DataFrame:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+					SELECT *
+					FROM forecast_strategy_evaluations
+					WHERE strategy_kind = %s
+					  AND generated_at = %s
+					ORDER BY tenant_id, anchor_timestamp, rank_by_regret, forecast_model_name
+					""",
+                    (strategy_kind, generated_at),
+                )
+                rows = cursor.fetchall()
+        return pl.DataFrame([_normalize_row(dict(row)) for row in rows])
+
 
 def _append_or_replace(
     base_frame: pl.DataFrame, incoming_frame: pl.DataFrame, *, subset: list[str]
@@ -272,6 +327,14 @@ def _normalize_in_memory_datetime_columns(frame: pl.DataFrame) -> pl.DataFrame:
     if not expressions:
         return frame.clone()
     return frame.with_columns(expressions)
+
+
+def _normalize_datetime_value(value: Any) -> Any:
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value
+        return value.astimezone(UTC).replace(tzinfo=None)
+    return value
 
 
 def _latest_tenant_frame(

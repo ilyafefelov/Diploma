@@ -13,6 +13,7 @@ from smart_arbitrage.assets.gold.baseline_solver import (
 from smart_arbitrage.assets.gold.forecast_strategy import (
     FORECAST_STRATEGY_GOLD_ASSETS,
     ForecastStrategyComparisonAssetConfig,
+    OfficialForecastRollingOriginAssetConfig,
     RealDataRollingOriginBenchmarkAssetConfig,
     _daily_benchmark_anchors,
     forecast_strategy_comparison_frame,
@@ -229,6 +230,68 @@ def test_forecast_strategy_gold_asset_is_registered() -> None:
     assert "tenant_historical_weather_bronze" not in benchmark_deps
 
 
+def test_official_forecast_rolling_asset_returns_persisted_resume_batch(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 12)
+    store.upsert_evaluation_frame(
+        pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="batch-0",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_v0",
+                    anchor_timestamp=datetime(2026, 4, 1, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+    )
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert kwargs["anchor_batch_start_index"] == 1
+        assert kwargs["anchor_batch_size"] == 1
+        assert kwargs["generated_at"] == generated_at
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="batch-1",
+                    tenant_id="client_004_kharkiv_hospital",
+                    model_name="tft_official_v0",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_forecast_rolling_origin_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = official_forecast_rolling_origin_benchmark_frame(
+        None,
+        OfficialForecastRollingOriginAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory,client_004_kharkiv_hospital",
+            max_eval_anchors_per_tenant=2,
+            anchor_batch_start_index=1,
+            anchor_batch_size=1,
+            resume_generated_at_iso="2026-05-11T12:00:00",
+            merge_persisted_batches=True,
+        ),
+        pl.DataFrame(),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["batch-0", "batch-1"]
+
+
 def test_real_data_rolling_origin_benchmark_asset_persists_rows(monkeypatch) -> None:
     store = InMemoryStrategyEvaluationStore()
     price_history = build_synthetic_market_price_history(
@@ -295,3 +358,42 @@ def test_daily_benchmark_anchors_skip_incomplete_realized_horizons() -> None:
             for step_index in range(192)
         ]
         assert all(timestamp in available_timestamps for timestamp in required_window)
+
+
+def _official_rolling_row(
+    *,
+    evaluation_id: str,
+    tenant_id: str,
+    model_name: str,
+    anchor_timestamp: datetime,
+    generated_at: datetime,
+) -> dict[str, object]:
+    return {
+        "evaluation_id": evaluation_id,
+        "tenant_id": tenant_id,
+        "forecast_model_name": model_name,
+        "strategy_kind": "official_forecast_rolling_origin_benchmark",
+        "market_venue": "DAM",
+        "anchor_timestamp": anchor_timestamp,
+        "generated_at": generated_at,
+        "horizon_hours": 24,
+        "starting_soc_fraction": 0.5,
+        "starting_soc_source": "tenant_default",
+        "decision_value_uah": 100.0,
+        "forecast_objective_value_uah": 100.0,
+        "oracle_value_uah": 125.0,
+        "regret_uah": 25.0,
+        "regret_ratio": 0.2,
+        "total_degradation_penalty_uah": 1.0,
+        "total_throughput_mwh": 1.0,
+        "committed_action": "hold",
+        "committed_power_mw": 0.0,
+        "rank_by_regret": 1,
+        "evaluation_payload": {
+            "claim_scope": "official_forecast_rolling_origin_benchmark_not_full_dfl",
+            "data_quality_tier": "thesis_grade",
+            "observed_coverage_ratio": 1.0,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+        },
+    }

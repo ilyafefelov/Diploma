@@ -59,6 +59,63 @@ def test_official_forecast_rolling_origin_scores_prior_only_builders() -> None:
     assert captures[1]["kwargs"]["max_epochs"] == 15
 
 
+def test_official_forecast_rolling_origin_can_slice_resume_batches() -> None:
+    full_benchmark = build_official_forecast_rolling_origin_benchmark_frame(
+        _silver_frame(history_hours=312),
+        tenant_ids=(TENANT_ID,),
+        max_eval_anchors_per_tenant=4,
+        nbeatsx_builder=lambda training_frame, **kwargs: _official_forecast(
+            training_frame,
+            model_name="nbeatsx_official_v0",
+            adjustment=25.0,
+        ),
+        tft_builder=lambda training_frame, **kwargs: _official_forecast(
+            training_frame,
+            model_name="tft_official_v0",
+            adjustment=50.0,
+        ),
+        generated_at=datetime(2026, 5, 11, 12),
+    )
+
+    batch_benchmark = build_official_forecast_rolling_origin_benchmark_frame(
+        _silver_frame(history_hours=312),
+        tenant_ids=(TENANT_ID,),
+        max_eval_anchors_per_tenant=4,
+        anchor_batch_start_index=1,
+        anchor_batch_size=2,
+        nbeatsx_builder=lambda training_frame, **kwargs: _official_forecast(
+            training_frame,
+            model_name="nbeatsx_official_v0",
+            adjustment=25.0,
+        ),
+        tft_builder=lambda training_frame, **kwargs: _official_forecast(
+            training_frame,
+            model_name="tft_official_v0",
+            adjustment=50.0,
+        ),
+        generated_at=datetime(2026, 5, 11, 12),
+    )
+
+    full_anchors = (
+        full_benchmark.select("anchor_timestamp")
+        .unique()
+        .sort("anchor_timestamp")["anchor_timestamp"]
+        .to_list()
+    )
+    batch_anchors = (
+        batch_benchmark.select("anchor_timestamp")
+        .unique()
+        .sort("anchor_timestamp")["anchor_timestamp"]
+        .to_list()
+    )
+
+    assert batch_anchors == full_anchors[1:3]
+    assert batch_benchmark.height == 6
+    assert batch_benchmark.select("generated_at").to_series().unique().to_list() == [
+        datetime(2026, 5, 11, 12)
+    ]
+
+
 def test_official_forecast_rolling_origin_blocks_non_observed_rows() -> None:
     bad_frame = _silver_frame().with_columns(pl.lit("synthetic").alias("source_kind"))
 
@@ -88,10 +145,10 @@ def test_official_forecast_rolling_origin_blocks_non_observed_rows() -> None:
     assert "thesis_grade" in outcome.description
 
 
-def _silver_frame() -> pl.DataFrame:
+def _silver_frame(*, history_hours: int = 240) -> pl.DataFrame:
     start = datetime(2026, 1, 1)
     rows: list[dict[str, object]] = []
-    for index in range(240):
+    for index in range(history_hours):
         timestamp = start + timedelta(hours=index)
         rows.append(
             {

@@ -45,6 +45,10 @@ class OfficialForecastRollingOriginAssetConfig(dg.Config):
 
     tenant_ids_csv: str = ""
     max_eval_anchors_per_tenant: int = 2
+    anchor_batch_start_index: int = 0
+    anchor_batch_size: int = 0
+    resume_generated_at_iso: str = ""
+    merge_persisted_batches: bool = False
     horizon_hours: int = 24
     nbeatsx_max_steps: int = 100
     nbeatsx_random_seed: int = 20260511
@@ -250,10 +254,13 @@ def official_forecast_rolling_origin_benchmark_frame(
     """Rolling-origin strict LP evidence for official NBEATSx/TFT adapters."""
 
     tenant_ids = tuple(_tenant_ids_from_csv(config.tenant_ids_csv))
+    generated_at = _optional_datetime(config.resume_generated_at_iso)
     frame = build_official_forecast_rolling_origin_benchmark_frame(
         real_data_benchmark_silver_feature_frame,
         tenant_ids=tenant_ids,
         max_eval_anchors_per_tenant=config.max_eval_anchors_per_tenant,
+        anchor_batch_start_index=config.anchor_batch_start_index,
+        anchor_batch_size=config.anchor_batch_size,
         horizon_hours=config.horizon_hours,
         nbeatsx_max_steps=config.nbeatsx_max_steps,
         nbeatsx_random_seed=config.nbeatsx_random_seed,
@@ -262,8 +269,17 @@ def official_forecast_rolling_origin_benchmark_frame(
         tft_learning_rate=config.tft_learning_rate,
         tft_hidden_size=config.tft_hidden_size,
         tft_hidden_continuous_size=config.tft_hidden_continuous_size,
+        generated_at=generated_at,
     )
-    get_strategy_evaluation_store().upsert_evaluation_frame(frame)
+    store = get_strategy_evaluation_store()
+    store.upsert_evaluation_frame(frame)
+    if config.merge_persisted_batches and generated_at is not None:
+        persisted_frame = store.strategy_kind_frame_for_generated_at(
+            strategy_kind=OFFICIAL_FORECAST_ROLLING_ORIGIN_STRATEGY_KIND,
+            generated_at=generated_at,
+        )
+        if persisted_frame.height:
+            frame = persisted_frame
     outcome = validate_official_forecast_rolling_origin_evidence(
         frame,
         min_tenant_count=len(tenant_ids),
@@ -549,6 +565,13 @@ def _add_metadata(
 ) -> None:
     if context is not None:
         context.add_output_metadata(metadata)
+
+
+def _optional_datetime(value: str) -> datetime | None:
+    stripped = value.strip()
+    if not stripped:
+        return None
+    return datetime.fromisoformat(stripped.replace("Z", "+00:00")).replace(tzinfo=None)
 
 
 def _log_real_data_benchmark_to_mlflow(frame: pl.DataFrame) -> None:

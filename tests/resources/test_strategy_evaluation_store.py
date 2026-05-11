@@ -102,3 +102,46 @@ def test_in_memory_strategy_store_normalizes_mixed_generated_at_timezones() -> N
     assert latest_frame.height == 1
     assert latest_frame["evaluation_id"].to_list() == ["new"]
     assert latest_frame.schema["generated_at"] == pl.Datetime("us")
+
+
+def test_in_memory_strategy_store_reads_resumable_batch_by_generated_at() -> None:
+    store = InMemoryStrategyEvaluationStore()
+    batch_generated_at = datetime(2026, 5, 11, 12, tzinfo=UTC)
+    other_generated_at = datetime(2026, 5, 11, 13, tzinfo=UTC)
+    store.upsert_evaluation_frame(
+        pl.DataFrame(
+            {
+                "evaluation_id": ["batch-a", "batch-b", "other"],
+                "tenant_id": [
+                    "client_003_dnipro_factory",
+                    "client_004_kharkiv_hospital",
+                    "client_003_dnipro_factory",
+                ],
+                "forecast_model_name": [
+                    "nbeatsx_official_v0",
+                    "tft_official_v0",
+                    "nbeatsx_official_v0",
+                ],
+                "strategy_kind": [
+                    "official_forecast_rolling_origin_benchmark",
+                    "official_forecast_rolling_origin_benchmark",
+                    "official_forecast_rolling_origin_benchmark",
+                ],
+                "anchor_timestamp": [
+                    datetime(2026, 4, 1, 23),
+                    datetime(2026, 4, 2, 23),
+                    datetime(2026, 4, 3, 23),
+                ],
+                "generated_at": [batch_generated_at, batch_generated_at, other_generated_at],
+                "rank_by_regret": [2, 3, 2],
+            }
+        )
+    )
+
+    batch_frame = store.strategy_kind_frame_for_generated_at(
+        strategy_kind="official_forecast_rolling_origin_benchmark",
+        generated_at=batch_generated_at,
+    )
+
+    assert batch_frame["evaluation_id"].to_list() == ["batch-a", "batch-b"]
+    assert batch_frame.schema["generated_at"] == pl.Datetime("us")

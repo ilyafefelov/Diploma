@@ -49,6 +49,8 @@ def build_official_forecast_rolling_origin_benchmark_frame(
     *,
     tenant_ids: tuple[str, ...],
     max_eval_anchors_per_tenant: int = 2,
+    anchor_batch_start_index: int = 0,
+    anchor_batch_size: int = 0,
     horizon_hours: int = DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
     nbeatsx_max_steps: int = 100,
     nbeatsx_random_seed: int = 20260511,
@@ -67,6 +69,8 @@ def build_official_forecast_rolling_origin_benchmark_frame(
     _validate_config(
         tenant_ids=tenant_ids,
         max_eval_anchors_per_tenant=max_eval_anchors_per_tenant,
+        anchor_batch_start_index=anchor_batch_start_index,
+        anchor_batch_size=anchor_batch_size,
         horizon_hours=horizon_hours,
     )
     resolved_generated_at = generated_at or datetime.now(UTC)
@@ -81,6 +85,11 @@ def build_official_forecast_rolling_origin_benchmark_frame(
             tenant_price_history,
             max_anchors=max_eval_anchors_per_tenant,
             horizon_hours=horizon_hours,
+        )
+        anchors = _slice_anchor_batch(
+            anchors,
+            start_index=anchor_batch_start_index,
+            batch_size=anchor_batch_size,
         )
         defaults = tenant_battery_defaults_from_registry(tenant_id)
         for anchor_timestamp in anchors:
@@ -242,12 +251,18 @@ def _validate_config(
     *,
     tenant_ids: tuple[str, ...],
     max_eval_anchors_per_tenant: int,
+    anchor_batch_start_index: int,
+    anchor_batch_size: int,
     horizon_hours: int,
 ) -> None:
     if not tenant_ids:
         raise ValueError("tenant_ids must contain at least one tenant.")
     if max_eval_anchors_per_tenant <= 0:
         raise ValueError("max_eval_anchors_per_tenant must be positive.")
+    if anchor_batch_start_index < 0:
+        raise ValueError("anchor_batch_start_index must be non-negative.")
+    if anchor_batch_size < 0:
+        raise ValueError("anchor_batch_size must be non-negative.")
     if horizon_hours <= 0:
         raise ValueError("horizon_hours must be positive.")
 
@@ -311,6 +326,17 @@ def _daily_anchors(
     if not anchors:
         raise ValueError("Not enough observed rows for official rolling-origin forecast training.")
     return sorted(anchors)
+
+
+def _slice_anchor_batch(
+    anchors: list[datetime],
+    *,
+    start_index: int,
+    batch_size: int,
+) -> list[datetime]:
+    if batch_size == 0:
+        return anchors
+    return anchors[start_index : start_index + batch_size]
 
 
 def _window_for_anchor(
