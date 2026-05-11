@@ -6,17 +6,41 @@ from smart_arbitrage.assets.bronze.market_weather import build_synthetic_market_
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
 from smart_arbitrage.forecasting.official_adapters import (
     OFFICIAL_FORECAST_COLUMNS,
+    build_official_global_panel_nbeatsx_forecast,
     build_official_nbeatsx_forecast,
     build_official_tft_forecast,
     inspect_official_forecast_backends,
 )
-from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
+from smart_arbitrage.forecasting.sota_training import (
+    build_official_global_panel_training_frame,
+    build_sota_forecast_training_frame,
+)
 
 
 def _training_frame() -> pl.DataFrame:
     price_history = build_synthetic_market_price_history(history_hours=240, forecast_hours=24)
     feature_frame = build_neural_forecast_feature_frame(price_history)
     return build_sota_forecast_training_frame(feature_frame, tenant_id="client_003_dnipro_factory")
+
+
+def _global_panel_training_frame() -> pl.DataFrame:
+    price_history = build_synthetic_market_price_history(history_hours=240, forecast_hours=24)
+    rows: list[pl.DataFrame] = []
+    for offset, tenant_id in enumerate(("client_001_kyiv_mall", "client_003_dnipro_factory")):
+        rows.append(
+            price_history.with_columns(
+                [
+                    pl.lit(tenant_id).alias("tenant_id"),
+                    (pl.col("price_uah_mwh") + float(offset) * 100.0).alias("price_uah_mwh"),
+                    pl.lit("observed").alias("source_kind"),
+                    pl.lit("forecast").alias("weather_source_kind"),
+                ]
+            )
+        )
+    return build_official_global_panel_training_frame(
+        pl.concat(rows, how="diagonal_relaxed"),
+        tenant_ids=("client_001_kyiv_mall", "client_003_dnipro_factory"),
+    )
 
 
 def test_official_backend_probe_reports_unavailable_packages() -> None:
@@ -158,6 +182,66 @@ def test_official_nbeatsx_adapter_fills_feature_nulls_before_training() -> None:
 
     assert forecast.height == 24
     assert captured["training_rows"] == 168
+
+
+def test_official_global_panel_nbeatsx_trains_once_for_all_unique_ids() -> None:
+    captured: dict[str, object] = {}
+
+    class FakeNBEATSx:
+        def __init__(self, **kwargs: object) -> None:
+            captured["horizon_rows"] = kwargs["h"]
+            captured["input_size"] = kwargs["input_size"]
+            captured["futr_exog_list"] = kwargs["futr_exog_list"]
+            captured["hist_exog_list"] = kwargs["hist_exog_list"]
+            captured["max_steps"] = kwargs["max_steps"]
+
+    class FakeNeuralForecast:
+        def __init__(self, *, models: list[object], freq: str) -> None:
+            assert isinstance(models[0], FakeNBEATSx)
+            assert freq == "h"
+
+        def fit(self, df: object) -> None:
+            captured["fit_rows"] = len(df)  # type: ignore[arg-type]
+            captured["fit_unique_ids"] = sorted(df["unique_id"].unique().tolist())  # type: ignore[index]
+
+        def predict(self, *, futr_df: object) -> object:
+            captured["future_rows"] = len(futr_df)  # type: ignore[arg-type]
+            frame = futr_df[["unique_id", "ds"]].copy()  # type: ignore[index]
+            frame["NBEATSx"] = [4100.0 + index for index in range(len(frame))]
+            return frame
+
+    class FakeNeuralForecastModule:
+        NeuralForecast = FakeNeuralForecast
+
+    class FakeNeuralForecastModels:
+        NBEATSx = FakeNBEATSx
+
+    def fake_importer(name: str) -> object:
+        if name == "neuralforecast":
+            return FakeNeuralForecastModule()
+        if name == "neuralforecast.models":
+            return FakeNeuralForecastModels()
+        raise ModuleNotFoundError(name)
+
+    forecast = build_official_global_panel_nbeatsx_forecast(
+        _global_panel_training_frame(),
+        max_steps=25,
+        importer=fake_importer,
+    )
+
+    assert forecast.height == 48
+    assert sorted(forecast["unique_id"].unique().to_list()) == [
+        "client_001_kyiv_mall:DAM",
+        "client_003_dnipro_factory:DAM",
+    ]
+    assert captured["fit_unique_ids"] == [
+        "client_001_kyiv_mall:DAM",
+        "client_003_dnipro_factory:DAM",
+    ]
+    assert captured["future_rows"] == 48
+    assert captured["max_steps"] == 25
+    assert "weather_temperature" in captured["futr_exog_list"]
+    assert "lag_24_price_uah_mwh" in captured["hist_exog_list"]
 
 
 def test_official_tft_adapter_returns_empty_readiness_frame_when_backend_missing() -> None:

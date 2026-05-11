@@ -6,9 +6,16 @@ from typing import Final
 
 import polars as pl
 
+from smart_arbitrage.assets.gold.baseline_solver import DEFAULT_PRICE_COLUMN, DEFAULT_TIMESTAMP_COLUMN
+from smart_arbitrage.forecasting.neural_features import (
+    DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    FutureWeatherMode,
+    build_neural_forecast_feature_frame,
+)
 from smart_arbitrage.forecasting.neural_features import NEURAL_FORECAST_FEATURE_COLUMNS
 
 SOTA_SCHEMA_VERSION: Final[str] = "sota_forecast_training_v1"
+OFFICIAL_GLOBAL_PANEL_SOTA_SCHEMA_VERSION: Final[str] = "official_global_panel_sota_v1"
 SOTA_UNIQUE_ID_SUFFIX: Final[str] = "DAM"
 
 KNOWN_FUTURE_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
@@ -103,8 +110,94 @@ def build_sota_forecast_training_frame(
     )
 
 
+def build_official_global_panel_training_frame(
+    silver_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    horizon_hours: int = DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    market_venue: str = SOTA_UNIQUE_ID_SUFFIX,
+    future_weather_mode: FutureWeatherMode = "forecast_only",
+    temporal_scaler_type: str = "robust",
+) -> pl.DataFrame:
+    """Build one Nixtla/PyTorch-ready panel across tenants.
+
+    This is the official-model training contract for serious evidence. It keeps
+    the compact single-tenant SOTA frame available for smoke tests while giving
+    Nixtla NBEATSx a global ``unique_id`` panel with explicit point-in-time
+    feature/scaler metadata.
+    """
+
+    _validate_global_panel_inputs(
+        silver_frame,
+        tenant_ids=tenant_ids,
+        horizon_hours=horizon_hours,
+        temporal_scaler_type=temporal_scaler_type,
+    )
+    tenant_frames: list[pl.DataFrame] = []
+    for tenant_id in tenant_ids:
+        tenant_history = _tenant_history_from_silver(silver_frame, tenant_id=tenant_id)
+        feature_frame = build_neural_forecast_feature_frame(
+            tenant_history,
+            horizon_hours=horizon_hours,
+            future_weather_mode=future_weather_mode,
+        )
+        tenant_training_frame = build_sota_forecast_training_frame(
+            feature_frame,
+            tenant_id=tenant_id,
+            market_venue=market_venue,
+        ).with_columns(
+            [
+                pl.lit(OFFICIAL_GLOBAL_PANEL_SOTA_SCHEMA_VERSION).alias("sota_schema_version"),
+                pl.lit("official_global_panel").alias("training_panel_kind"),
+                pl.lit("train_rows_only_per_unique_id").alias("target_scaler_fit_scope"),
+                pl.lit("train_rows_only_per_unique_id").alias("feature_scaler_fit_scope"),
+                pl.lit(temporal_scaler_type).alias("temporal_scaler_type"),
+                pl.lit("not_full_dfl").alias("claim_boundary"),
+                pl.lit(True).alias("not_full_dfl"),
+                pl.lit(True).alias("not_market_execution"),
+            ]
+        )
+        tenant_frames.append(tenant_training_frame)
+    return pl.concat(tenant_frames, how="diagonal_relaxed").sort(["unique_id", "ds"])
+
+
 def _validate_feature_frame(feature_frame: pl.DataFrame) -> None:
     required_columns = {"timestamp", "target_price_uah_mwh", "split", *NEURAL_FORECAST_FEATURE_COLUMNS}
     missing_columns = required_columns.difference(feature_frame.columns)
     if missing_columns:
         raise ValueError(f"feature_frame is missing required columns: {sorted(missing_columns)}")
+
+
+def _validate_global_panel_inputs(
+    silver_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    horizon_hours: int,
+    temporal_scaler_type: str,
+) -> None:
+    if not tenant_ids:
+        raise ValueError("tenant_ids must contain at least one tenant.")
+    if horizon_hours <= 0:
+        raise ValueError("horizon_hours must be positive.")
+    if not temporal_scaler_type.strip():
+        raise ValueError("temporal_scaler_type must be non-empty.")
+    required_columns = {"tenant_id", DEFAULT_TIMESTAMP_COLUMN, DEFAULT_PRICE_COLUMN}
+    missing_columns = required_columns.difference(silver_frame.columns)
+    if missing_columns:
+        raise ValueError(f"silver_frame is missing required columns: {sorted(missing_columns)}")
+
+
+def _tenant_history_from_silver(silver_frame: pl.DataFrame, *, tenant_id: str) -> pl.DataFrame:
+    tenant_frame = (
+        silver_frame
+        .filter(pl.col("tenant_id") == tenant_id)
+        .drop("tenant_id")
+        .drop_nulls(subset=[DEFAULT_TIMESTAMP_COLUMN, DEFAULT_PRICE_COLUMN])
+        .unique(subset=[DEFAULT_TIMESTAMP_COLUMN], keep="last")
+        .sort(DEFAULT_TIMESTAMP_COLUMN)
+    )
+    if tenant_frame.is_empty():
+        raise ValueError(f"Missing Silver benchmark rows for tenant_id={tenant_id}.")
+    if "source_kind" in tenant_frame.columns and tenant_frame.filter(pl.col("source_kind") != "observed").height:
+        raise ValueError("official global panel training requires observed source rows.")
+    return tenant_frame

@@ -16,6 +16,10 @@ from smart_arbitrage.strategy.official_forecast_rolling import (
     build_official_forecast_rolling_origin_benchmark_frame,
     validate_official_forecast_rolling_origin_evidence,
 )
+from smart_arbitrage.strategy.official_global_panel import (
+    OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND,
+    build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
+)
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
     ForecastCandidate,
     REAL_DATA_ROLLING_ORIGIN_STRATEGY_KIND,
@@ -317,6 +321,49 @@ def official_forecast_rolling_origin_benchmark_frame(
         domain="forecast_strategy",
         elt_stage="publish",
         ml_stage="evaluation",
+        evidence_scope="research_only",
+        backend="official_forecast_adapters",
+        market_venue="DAM",
+    ),
+)
+def nbeatsx_official_global_panel_strict_lp_benchmark_frame(
+    context,
+    config: RealDataRollingOriginBenchmarkAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    nbeatsx_official_global_panel_price_forecast: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle benchmark for official global-panel Nixtla NBEATSx."""
+
+    tenant_ids = tuple(_tenant_ids_from_csv(config.tenant_ids_csv))
+    frame = build_official_global_panel_nbeatsx_strict_lp_benchmark_frame(
+        real_data_benchmark_silver_feature_frame,
+        nbeatsx_official_global_panel_price_forecast,
+        tenant_ids=tenant_ids,
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(frame)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "forecast_candidate_count": frame.select("forecast_model_name").n_unique()
+            if frame.height
+            else 0,
+            "market_venue": "DAM",
+            "strategy_kind": OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND,
+            "scope": "official_global_panel_nbeatsx_strict_lp_evidence_not_live_strategy",
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_REAL_DATA_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="evaluation",
         evidence_scope="thesis_grade",
         market_venue="DAM",
     ),
@@ -397,6 +444,7 @@ FORECAST_STRATEGY_GOLD_ASSETS = [
     forecast_strategy_comparison_frame,
     official_forecast_strict_lp_benchmark_frame,
     official_forecast_rolling_origin_benchmark_frame,
+    nbeatsx_official_global_panel_strict_lp_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,
 ]
 

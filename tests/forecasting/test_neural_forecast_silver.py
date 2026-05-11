@@ -6,8 +6,11 @@ from smart_arbitrage.assets.bronze.market_weather import build_synthetic_market_
 from smart_arbitrage.assets.silver.neural_forecasts import (
 	NEURAL_FORECAST_SILVER_ASSETS,
 	NbeatsxOfficialForecastAssetConfig,
+	OfficialGlobalPanelTrainingAssetConfig,
 	TftOfficialForecastAssetConfig,
 	_forecast_metrics,
+	official_global_panel_training_frame,
+	nbeatsx_official_global_panel_price_forecast,
 	nbeatsx_official_price_forecast,
 	nbeatsx_price_forecast,
 	neural_forecast_feature_frame,
@@ -232,6 +235,8 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 	assert {
 		"neural_forecast_feature_frame",
 		"sota_forecast_training_frame",
+		"official_global_panel_training_frame",
+		"nbeatsx_official_global_panel_price_forecast",
 		"nbeatsx_price_forecast",
 		"tft_price_forecast",
 		"nbeatsx_official_price_forecast",
@@ -251,8 +256,114 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 	assert tags_by_key["sota_forecast_training_frame"]["medallion"] == "silver"
 	assert groups_by_key["neural_forecast_feature_frame"] == "silver_forecast_features"
 	assert groups_by_key["sota_forecast_training_frame"] == "silver_forecast_features"
+	assert groups_by_key["official_global_panel_training_frame"] == "silver_forecast_features"
+	assert groups_by_key["nbeatsx_official_global_panel_price_forecast"] == "silver_forecast_candidates"
 	assert groups_by_key["nbeatsx_price_forecast"] == "silver_forecast_candidates"
 	assert groups_by_key["tft_price_forecast"] == "silver_forecast_candidates"
+
+
+def test_official_global_panel_training_asset_materializes_multi_tenant_contract() -> None:
+	price_history = _synthetic_price_history().with_columns(
+		[
+			pl.lit("client_003_dnipro_factory").alias("tenant_id"),
+			pl.lit("observed").alias("source_kind"),
+			pl.lit("forecast").alias("weather_source_kind"),
+		]
+	)
+
+	frame = official_global_panel_training_frame(
+		None,
+		OfficialGlobalPanelTrainingAssetConfig(),
+		price_history,
+	)
+
+	assert frame.select("unique_id").to_series().unique().to_list() == [
+		"client_003_dnipro_factory:DAM"
+	]
+	assert frame.select("sota_schema_version").to_series().unique().to_list() == [
+		"official_global_panel_sota_v1"
+	]
+	assert frame.filter(pl.col("split") == "forecast").select("y").null_count().item() == (
+		DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
+	)
+	assert frame.select("target_scaler_fit_scope").to_series().unique().to_list() == [
+		"train_rows_only_per_unique_id"
+	]
+
+
+def test_official_global_panel_nbeatsx_asset_uses_global_panel_contract(monkeypatch) -> None:
+	training_frame = pl.DataFrame(
+		{
+			"unique_id": ["client_001_kyiv_mall:DAM", "client_001_kyiv_mall:DAM"],
+			"ds": [datetime(2026, 5, 1, 1), datetime(2026, 5, 1, 2)],
+			"y": [None, None],
+			"split": ["forecast", "forecast"],
+			"tenant_id": ["client_001_kyiv_mall", "client_001_kyiv_mall"],
+			"market_venue": ["DAM", "DAM"],
+			"is_train": [False, False],
+			"is_forecast": [True, True],
+			"sota_schema_version": ["official_global_panel_sota_v1", "official_global_panel_sota_v1"],
+			"supported_backends_csv": ["neuralforecast_nbeatsx", "neuralforecast_nbeatsx"],
+			"known_future_feature_columns_csv": ["weather_temperature", "weather_temperature"],
+			"historical_observed_feature_columns_csv": ["lag_24_price_uah_mwh", "lag_24_price_uah_mwh"],
+			"static_feature_columns_csv": ["tenant_id,market_venue", "tenant_id,market_venue"],
+			"target_scaler_fit_scope": ["train_rows_only_per_unique_id", "train_rows_only_per_unique_id"],
+			"temporal_scaler_type": ["robust", "robust"],
+		}
+	)
+	captured: dict[str, object] = {}
+
+	def fake_global_nbeatsx(frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+		captured["schema_version"] = frame.select("sota_schema_version").to_series().item(0)
+		captured.update(kwargs)
+		return pl.DataFrame(
+			{
+				"model_name": ["nbeatsx_official_global_panel_v1", "nbeatsx_official_global_panel_v1"],
+				"model_family": ["NBEATSx", "NBEATSx"],
+				"backend_name": ["neuralforecast", "neuralforecast"],
+				"backend_status": ["trained", "trained"],
+				"unique_id": ["client_001_kyiv_mall:DAM", "client_001_kyiv_mall:DAM"],
+				"forecast_timestamp": [datetime(2026, 5, 1, 1), datetime(2026, 5, 1, 2)],
+				"predicted_price_uah_mwh": [4100.0, 4200.0],
+				"predicted_price_p10_uah_mwh": [None, None],
+				"predicted_price_p50_uah_mwh": [4100.0, 4200.0],
+				"predicted_price_p90_uah_mwh": [None, None],
+				"prediction_interval_kind": ["point", "point"],
+				"training_rows": [100, 100],
+				"horizon_rows": [2, 2],
+				"adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * 2,
+			}
+		)
+
+	def fake_backend_status() -> dict[str, object]:
+		class Status:
+			available = True
+			reason = "fake_backend"
+
+		return {
+			"neuralforecast": Status(),
+			"pytorch_forecasting": Status(),
+			"lightning": Status(),
+		}
+
+	monkeypatch.setattr(
+		"smart_arbitrage.assets.silver.neural_forecasts.build_official_global_panel_nbeatsx_forecast",
+		fake_global_nbeatsx,
+	)
+	monkeypatch.setattr("smart_arbitrage.assets.silver.neural_forecasts.inspect_official_forecast_backends", fake_backend_status)
+
+	forecast = nbeatsx_official_global_panel_price_forecast(
+		None,
+		NbeatsxOfficialForecastAssetConfig(max_steps=25, random_seed=20260511),
+		training_frame,
+	)
+
+	assert forecast.select("model_name").to_series().unique().to_list() == [
+		"nbeatsx_official_global_panel_v1"
+	]
+	assert captured["schema_version"] == "official_global_panel_sota_v1"
+	assert captured["max_steps"] == 25
+	assert captured["random_seed"] == 20260511
 
 
 def test_neural_forecast_assets_materialize_dataframes(monkeypatch) -> None:

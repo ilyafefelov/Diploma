@@ -11,11 +11,13 @@ from smart_arbitrage.assets import taxonomy
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
 from smart_arbitrage.forecasting.official_adapters import (
+	build_official_global_panel_nbeatsx_forecast,
 	build_official_nbeatsx_forecast,
 	build_official_tft_forecast,
 	inspect_official_forecast_backends,
 )
 from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
+from smart_arbitrage.forecasting.sota_training import build_official_global_panel_training_frame
 from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.resources.forecast_store import get_forecast_store
 
@@ -45,6 +47,14 @@ class TftOfficialForecastAssetConfig(dg.Config):
 	learning_rate: float = 0.01
 	hidden_size: int = 8
 	hidden_continuous_size: int = 4
+
+
+class OfficialGlobalPanelTrainingAssetConfig(dg.Config):
+	"""Point-in-time global-panel official forecast training contract."""
+
+	tenant_ids_csv: str = ""
+	horizon_hours: int = 24
+	temporal_scaler_type: str = "robust"
 
 
 @dg.asset(
@@ -114,6 +124,48 @@ def sota_forecast_training_frame(
 			"forecast_rows": frame.filter(pl.col("split") == "forecast").height,
 			"schema_version": frame.select("sota_schema_version").to_series().item(0) if frame.height else "empty",
 			"scope": "sota_backend_contract_not_trained_model",
+		},
+	)
+	return frame
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		backend="official_forecast_adapters",
+		market_venue="DAM",
+	),
+)
+def official_global_panel_training_frame(
+	context,
+	config: OfficialGlobalPanelTrainingAssetConfig,
+	real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Point-in-time global panel for serious official NBEATSx/TFT evidence."""
+
+	tenant_ids = _tenant_ids_from_csv(config.tenant_ids_csv, real_data_benchmark_silver_feature_frame)
+	frame = build_official_global_panel_training_frame(
+		real_data_benchmark_silver_feature_frame,
+		tenant_ids=tenant_ids,
+		horizon_hours=config.horizon_hours,
+		temporal_scaler_type=config.temporal_scaler_type,
+	)
+	_add_metadata(
+		context,
+		{
+			"rows": frame.height,
+			"tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+			"unique_id_count": frame.select("unique_id").n_unique() if frame.height else 0,
+			"train_rows": frame.filter(pl.col("split") == "train").height,
+			"forecast_rows": frame.filter(pl.col("split") == "forecast").height,
+			"schema_version": frame.select("sota_schema_version").to_series().item(0) if frame.height else "empty",
+			"temporal_scaler_type": config.temporal_scaler_type,
+			"scope": "official_global_panel_feature_scaling_contract_not_trained_model",
 		},
 	)
 	return frame
@@ -255,6 +307,59 @@ def nbeatsx_official_price_forecast(
 		elt_stage="transform",
 		ml_stage="forecasting",
 		evidence_scope="research_only",
+		backend="neuralforecast",
+		market_venue="DAM",
+	),
+)
+def nbeatsx_official_global_panel_price_forecast(
+	context,
+	config: NbeatsxOfficialForecastAssetConfig,
+	official_global_panel_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Official Nixtla NBEATSx global-panel candidate for serious evidence."""
+
+	forecast = build_official_global_panel_nbeatsx_forecast(
+		official_global_panel_training_frame,
+		horizon_hours=config.horizon_hours,
+		max_steps=config.max_steps,
+		random_seed=config.random_seed,
+	)
+	forecast_run_id = (
+		_persist_forecast_run(
+			model_name="nbeatsx_official_global_panel_v1",
+			forecast=forecast,
+			point_prediction_column="predicted_price_uah_mwh",
+		)
+		if forecast.height
+		else "not_materialized"
+	)
+	backend_status = inspect_official_forecast_backends()["neuralforecast"]
+	_add_metadata(
+		context,
+		{
+			"model_name": "nbeatsx_official_global_panel_v1",
+			"forecast_run_id": forecast_run_id,
+			"forecast_rows": forecast.height,
+			"unique_id_count": forecast.select("unique_id").n_unique() if forecast.height else 0,
+			"horizon_hours": config.horizon_hours,
+			"max_steps": config.max_steps,
+			"random_seed": config.random_seed,
+			"backend_available": backend_status.available,
+			"backend_status": backend_status.reason,
+			"scope": "official_global_panel_neuralforecast_adapter_not_live_strategy",
+		},
+	)
+	return forecast
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
 		backend="pytorch_forecasting",
 		market_venue="DAM",
 	),
@@ -310,9 +415,11 @@ def tft_official_price_forecast(
 NEURAL_FORECAST_SILVER_ASSETS = [
 	neural_forecast_feature_frame,
 	sota_forecast_training_frame,
+	official_global_panel_training_frame,
 	nbeatsx_price_forecast,
 	tft_price_forecast,
 	nbeatsx_official_price_forecast,
+	nbeatsx_official_global_panel_price_forecast,
 	tft_official_price_forecast,
 ]
 
@@ -320,6 +427,18 @@ NEURAL_FORECAST_SILVER_ASSETS = [
 def _add_metadata(context: dg.AssetExecutionContext | None, metadata: dict[str, Any]) -> None:
 	if context is not None:
 		context.add_output_metadata(metadata)
+
+
+def _tenant_ids_from_csv(value: str, frame: pl.DataFrame) -> tuple[str, ...]:
+	tenant_ids = tuple(item.strip() for item in value.split(",") if item.strip())
+	if tenant_ids:
+		return tenant_ids
+	if "tenant_id" not in frame.columns:
+		raise ValueError("tenant_ids_csv is required when the input frame has no tenant_id column.")
+	discovered = tuple(str(value) for value in frame.select("tenant_id").drop_nulls().unique().sort("tenant_id")["tenant_id"].to_list())
+	if not discovered:
+		raise ValueError("official global panel requires at least one tenant_id.")
+	return discovered
 
 
 def _persist_forecast_run(*, model_name: str, forecast: pl.DataFrame, point_prediction_column: str) -> str:

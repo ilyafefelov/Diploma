@@ -172,6 +172,100 @@ def build_official_nbeatsx_forecast(
     )
 
 
+def build_official_global_panel_nbeatsx_forecast(
+    training_frame: pl.DataFrame,
+    *,
+    horizon_hours: int = 24,
+    max_steps: int = 25,
+    random_seed: int = 20260511,
+    importer: _Importer = import_module,
+) -> pl.DataFrame:
+    """Train one Nixtla NBEATSx model over all unique_id series in the panel."""
+
+    _validate_training_frame(training_frame)
+    backend_status = inspect_official_forecast_backends(importer=importer)["neuralforecast"]
+    if not backend_status.available:
+        return _empty_forecast_frame()
+
+    try:
+        neuralforecast_module = importer("neuralforecast")
+        neuralforecast_models = importer("neuralforecast.models")
+        neural_forecast_cls = getattr(neuralforecast_module, "NeuralForecast")
+        nbeatsx_cls = getattr(neuralforecast_models, "NBEATSx")
+    except Exception as exc:  # pragma: no cover - depends on optional backend internals
+        raise OfficialForecastAdapterError(
+            f"unable to import official global-panel NBEATSx backend: {exc}"
+        ) from exc
+
+    feature_columns = _existing_feature_columns(training_frame)
+    train_frame = (
+        training_frame
+        .filter(pl.col("is_train") & pl.col("y").is_not_null())
+        .select(["unique_id", "ds", "y", *feature_columns])
+        .pipe(_fill_numeric_feature_nulls, feature_columns=feature_columns)
+        .drop_nulls(subset=["y"])
+    )
+    future_frame = _global_panel_future_frame(
+        training_frame,
+        horizon_hours=horizon_hours,
+        feature_columns=feature_columns,
+    )
+    if train_frame.is_empty() or future_frame.is_empty():
+        return _empty_forecast_frame()
+
+    hist_exog = _csv_columns(training_frame, "historical_observed_feature_columns_csv")
+    futr_exog = _csv_columns(training_frame, "known_future_feature_columns_csv")
+    min_training_rows_per_id = (
+        train_frame
+        .group_by("unique_id")
+        .len()
+        .select("len")
+        .min()
+        .item()
+    )
+    if not isinstance(min_training_rows_per_id, int):
+        return _empty_forecast_frame()
+    input_size = _nbeatsx_input_size(
+        training_rows=min_training_rows_per_id,
+        horizon_rows=horizon_hours,
+    )
+    if input_size is None:
+        return _empty_forecast_frame()
+
+    try:
+        model = nbeatsx_cls(
+            h=horizon_hours,
+            input_size=input_size,
+            futr_exog_list=[column for column in futr_exog if column in feature_columns],
+            hist_exog_list=[column for column in hist_exog if column in feature_columns],
+            max_steps=max_steps,
+            random_seed=random_seed,
+            scaler_type=str(_panel_scaler_type(training_frame)),
+            logger=False,
+            enable_progress_bar=False,
+            enable_model_summary=False,
+        )
+        neural_forecast = neural_forecast_cls(models=[model], freq="h")
+        neural_forecast.fit(df=train_frame.to_pandas())
+        prediction_frame = neural_forecast.predict(futr_df=future_frame.to_pandas())
+    except Exception as exc:  # pragma: no cover - requires optional backend training
+        raise OfficialForecastAdapterError(
+            f"official global-panel NBEATSx training failed: {exc}"
+        ) from exc
+
+    predictions = pl.from_pandas(prediction_frame)
+    prediction_column = _prediction_column(predictions)
+    return _official_forecast_frame_from_predictions(
+        model_name="nbeatsx_official_global_panel_v1",
+        model_family="NBEATSx",
+        backend_name="neuralforecast",
+        prediction_frame=predictions,
+        prediction_column=prediction_column,
+        training_rows=train_frame.height,
+        interval_kind="point",
+    )
+
+
 def build_official_tft_forecast(
     training_frame: pl.DataFrame,
     *,
@@ -465,6 +559,38 @@ def _csv_columns(training_frame: pl.DataFrame, column_name: str) -> list[str]:
     return [column.strip() for column in value.split(",") if column.strip()]
 
 
+def _global_panel_future_frame(
+    training_frame: pl.DataFrame,
+    *,
+    horizon_hours: int,
+    feature_columns: list[str],
+) -> pl.DataFrame:
+    selected_columns = ["unique_id", "ds", *feature_columns]
+    future_frames: list[pl.DataFrame] = []
+    for unique_id in sorted(str(value) for value in training_frame["unique_id"].unique().to_list()):
+        future_frames.append(
+            training_frame
+            .filter((pl.col("unique_id") == unique_id) & pl.col("is_forecast"))
+            .sort("ds")
+            .head(horizon_hours)
+            .select(selected_columns)
+        )
+    if not future_frames:
+        return pl.DataFrame()
+    return (
+        pl.concat(future_frames, how="diagonal_relaxed")
+        .pipe(_fill_numeric_feature_nulls, feature_columns=feature_columns)
+        .sort(["unique_id", "ds"])
+    )
+
+
+def _panel_scaler_type(training_frame: pl.DataFrame) -> str:
+    if "temporal_scaler_type" not in training_frame.columns:
+        return "robust"
+    value = training_frame.select("temporal_scaler_type").to_series().item(0)
+    return str(value) if value is not None else "robust"
+
+
 def _prediction_column(prediction_frame: pl.DataFrame) -> str:
     for column_name in prediction_frame.columns:
         if column_name not in {"unique_id", "ds"} and prediction_frame.schema[column_name].is_numeric():
@@ -505,6 +631,48 @@ def _official_forecast_frame(
             "backend_status": ["trained"] * horizon_rows,
             "unique_id": [unique_id] * horizon_rows,
             "forecast_timestamp": timestamps[:horizon_rows],
+            "predicted_price_uah_mwh": values,
+            "predicted_price_p10_uah_mwh": [None] * horizon_rows,
+            "predicted_price_p50_uah_mwh": values,
+            "predicted_price_p90_uah_mwh": [None] * horizon_rows,
+            "prediction_interval_kind": [interval_kind] * horizon_rows,
+            "training_rows": [training_rows] * horizon_rows,
+            "horizon_rows": [horizon_rows] * horizon_rows,
+            "adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * horizon_rows,
+        },
+        schema=_OFFICIAL_FORECAST_SCHEMA,
+    )
+
+
+def _official_forecast_frame_from_predictions(
+    *,
+    model_name: str,
+    model_family: str,
+    backend_name: str,
+    prediction_frame: pl.DataFrame,
+    prediction_column: str,
+    training_rows: int,
+    interval_kind: str,
+) -> pl.DataFrame:
+    required_columns = {"unique_id", "ds", prediction_column}
+    missing_columns = required_columns.difference(prediction_frame.columns)
+    if missing_columns:
+        raise OfficialForecastAdapterError(
+            f"official backend prediction frame is missing columns: {sorted(missing_columns)}"
+        )
+    rows = prediction_frame.sort(["unique_id", "ds"])
+    horizon_rows = rows.height
+    if horizon_rows == 0:
+        return _empty_forecast_frame()
+    values = [float(value) for value in rows.select(prediction_column).to_series().to_list()]
+    return pl.DataFrame(
+        {
+            "model_name": [model_name] * horizon_rows,
+            "model_family": [model_family] * horizon_rows,
+            "backend_name": [backend_name] * horizon_rows,
+            "backend_status": ["trained"] * horizon_rows,
+            "unique_id": rows.select("unique_id").to_series().to_list(),
+            "forecast_timestamp": rows.select("ds").to_series().to_list(),
             "predicted_price_uah_mwh": values,
             "predicted_price_p10_uah_mwh": [None] * horizon_rows,
             "predicted_price_p50_uah_mwh": values,

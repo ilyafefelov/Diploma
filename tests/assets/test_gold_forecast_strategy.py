@@ -17,6 +17,7 @@ from smart_arbitrage.assets.gold.forecast_strategy import (
     RealDataRollingOriginBenchmarkAssetConfig,
     _daily_benchmark_anchors,
     forecast_strategy_comparison_frame,
+    nbeatsx_official_global_panel_strict_lp_benchmark_frame,
     official_forecast_rolling_origin_benchmark_frame,
     official_forecast_strict_lp_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,
@@ -220,6 +221,7 @@ def test_forecast_strategy_gold_asset_is_registered() -> None:
         "forecast_strategy_comparison_frame",
         "official_forecast_strict_lp_benchmark_frame",
         "official_forecast_rolling_origin_benchmark_frame",
+        "nbeatsx_official_global_panel_strict_lp_benchmark_frame",
         "real_data_rolling_origin_benchmark_frame",
     }.issubset(asset_keys)
     assert {"real_data_benchmark_silver_feature_frame"}.issubset(silver_asset_keys)
@@ -294,6 +296,54 @@ def test_official_forecast_rolling_asset_returns_persisted_resume_batch(monkeypa
     )
 
     assert frame["evaluation_id"].to_list() == ["batch-0", "batch-1"]
+
+
+def test_global_panel_nbeatsx_strict_lp_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 18)
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        nbeatsx_official_global_panel_price_forecast: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert kwargs["tenant_ids"] == ("client_003_dnipro_factory",)
+        assert real_data_benchmark_silver_feature_frame.height == 1
+        assert nbeatsx_official_global_panel_price_forecast.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_global_panel_v1",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_strict_lp_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = nbeatsx_official_global_panel_strict_lp_benchmark_frame(
+        None,
+        RealDataRollingOriginBenchmarkAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_anchors=1,
+        ),
+        pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
+        pl.DataFrame({"unique_id": ["client_003_dnipro_factory:DAM"]}),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["global-panel"]
+    assert store.evaluation_frame.height == 1
 
 
 def test_real_data_rolling_origin_benchmark_asset_persists_rows(monkeypatch) -> None:

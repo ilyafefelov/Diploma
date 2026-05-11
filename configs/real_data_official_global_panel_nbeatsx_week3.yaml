@@ -1,0 +1,15 @@
+ops:
+  official_global_panel_training_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      horizon_hours: 24
+      temporal_scaler_type: "robust"
+  nbeatsx_official_global_panel_price_forecast:
+    config:
+      horizon_hours: 24
+      max_steps: 25
+      random_seed: 20260511
+  nbeatsx_official_global_panel_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      max_anchors: 1
