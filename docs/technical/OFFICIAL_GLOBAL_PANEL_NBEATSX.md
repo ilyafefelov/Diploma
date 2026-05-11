@@ -37,6 +37,9 @@ of related time series.
 | `nbeatsx_official_global_panel_strict_lp_benchmark_frame` | Gold | Strict-scores the global-panel NBEATSx schedule beside frozen `strict_similar_day`. |
 | `nbeatsx_official_global_panel_horizon_calibration_frame` | Gold | Builds prior-only horizon-bias calibration rows from strict-scored global-panel evidence. |
 | `nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame` | Gold | Strict-scores raw and calibrated global-panel NBEATSx beside `strict_similar_day`. |
+| `nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame` | Gold | Runs several point-in-time global-panel fits and strict-scores the rolling anchors. |
+| `nbeatsx_official_global_panel_rolling_horizon_calibration_frame` | Gold | Builds prior-only horizon-bias calibration from the rolling strict evidence. |
+| `nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame` | Gold | Strict-scores raw and calibrated rolling global-panel NBEATSx beside `strict_similar_day`. |
 
 Tracked config:
 [configs/real_data_official_global_panel_nbeatsx_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_week3.yaml).
@@ -64,6 +67,7 @@ Implemented now:
 - additive official global-panel NBEATSx adapter surface;
 - additive strict LP/oracle scoring asset for the global-panel NBEATSx output.
 - additive prior-only horizon calibration and calibrated strict LP gate.
+- additive rolling-window global-panel NBEATSx screening path.
 
 Materialized evidence on 2026-05-11:
 
@@ -131,17 +135,58 @@ The useful signal is regime-specific: NBEATSx can win some stressed
 tenant-anchor rows, but it is not yet a default or production-promotion
 candidate.
 
+Rolling calibration evidence on 2026-05-11:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
+  --select nbeatsx_official_global_panel_rolling_horizon_calibration_frame,nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame `
+  -c configs/real_data_official_global_panel_nbeatsx_week3.yaml
+```
+
+Result:
+
+| Evidence item | Value |
+|---|---:|
+| Run status | `RUN_SUCCESS` |
+| Strategy rows | 60 |
+| Tenants | 5 |
+| Rolling windows | 4 |
+| Anchor range | `2026-01-27 23:00` to `2026-01-30 23:00` |
+| `strict_similar_day` mean regret | 1020.82 UAH |
+| `strict_similar_day` median regret | 771.87 UAH |
+| Raw NBEATSx mean regret | 1378.50 UAH |
+| Raw NBEATSx median regret | 906.49 UAH |
+| Calibrated NBEATSx mean regret | 1224.32 UAH |
+| Calibrated NBEATSx median regret | 799.16 UAH |
+
+Window detail:
+
+| Anchor | Strict mean regret | Raw NBEATSx mean regret | Calibrated NBEATSx mean regret |
+|---|---:|---:|---:|
+| `2026-01-27 23:00` | 583.61 | 1184.94 | 1184.94 |
+| `2026-01-28 23:00` | 324.66 | 629.01 | 629.01 |
+| `2026-01-29 23:00` | 1679.30 | 2140.39 | 2289.45 |
+| `2026-01-30 23:00` | 1495.71 | 1559.66 | 793.87 |
+
+Interpretation: prior-only horizon calibration improves the rolling mean regret
+versus raw NBEATSx, but it still loses to `strict_similar_day` on both mean and
+median regret. The improvement is concentrated in the latest window, while the
+earlier calibrated windows remain weak. This supports the next direction:
+regime-gated use of official NBEATSx plus UA backfill and market-coupling
+exogenous features, not a default controller switch.
+
 Not implemented yet:
 
 - source/regime production promotion;
 - Hugging Face Jobs execution wrapper.
+- broader UA backfill or market-coupling exogenous training features.
 
 ## Next Required Work
 
-1. Build rolling prior-only calibration from the new multi-anchor global-panel
-   evidence, then strict-score the calibrated candidate.
-2. Feed calibrated rows into the existing schedule/value candidate library and
+1. Feed calibrated rows into the existing schedule/value candidate library and
    strict promotion gate.
+2. Add UA backfill and market-coupling exogenous governance before increasing
+   official model capacity.
 3. Package the same command for cloud offload only after latest-window screening
    shows the official source is close to `strict_similar_day`.
 
