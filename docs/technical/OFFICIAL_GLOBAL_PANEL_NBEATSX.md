@@ -93,16 +93,53 @@ not promotion evidence. The calibrated candidate is currently identical to raw
 NBEATSx because the prior-only calibration gate has insufficient prior
 global-panel anchors.
 
+Windowed rolling evidence on 2026-05-11:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
+  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame `
+  -c configs/real_data_official_global_panel_nbeatsx_week3.yaml
+```
+
+Result:
+
+| Evidence item | Value |
+|---|---:|
+| Run status | `RUN_SUCCESS` |
+| Rolling windows | 4 |
+| Tenants | 5 |
+| Strategy rows | 40 |
+| Anchor range | `2026-01-27 23:00` to `2026-01-30 23:00` |
+| `strict_similar_day` mean regret | 1020.82 UAH |
+| `strict_similar_day` median regret | 771.87 UAH |
+| `nbeatsx_official_global_panel_v1` mean regret | 1378.50 UAH |
+| `nbeatsx_official_global_panel_v1` median regret | 906.49 UAH |
+| NBEATSx rank-1 tenant-anchor rows | 5 / 20 |
+
+Window detail:
+
+| Anchor | Strict mean regret | NBEATSx mean regret | NBEATSx rank-1 rows |
+|---|---:|---:|---:|
+| `2026-01-27 23:00` | 583.61 | 1184.94 | 0 / 5 |
+| `2026-01-28 23:00` | 324.66 | 629.01 | 0 / 5 |
+| `2026-01-29 23:00` | 1679.30 | 2140.39 | 4 / 5 |
+| `2026-01-30 23:00` | 1495.71 | 1559.66 | 1 / 5 |
+
+Interpretation: the official global-panel path is operationally viable, but
+raw NBEATSx still loses the strict LP/oracle gate on both mean and median regret.
+The useful signal is regime-specific: NBEATSx can win some stressed
+tenant-anchor rows, but it is not yet a default or production-promotion
+candidate.
+
 Not implemented yet:
 
-- rolling-origin global-panel cross-validation;
 - source/regime production promotion;
 - Hugging Face Jobs execution wrapper.
 
 ## Next Required Work
 
-1. Add rolling global-panel cross-validation so one NBEATSx fit can serve a
-   panel/window instead of retraining tenant-by-anchor.
+1. Build rolling prior-only calibration from the new multi-anchor global-panel
+   evidence, then strict-score the calibrated candidate.
 2. Feed calibrated rows into the existing schedule/value candidate library and
    strict promotion gate.
 3. Package the same command for cloud offload only after latest-window screening
