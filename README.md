@@ -165,6 +165,7 @@ Latest full verification: `151 passed`.
 - Source-specific research challenger gate: `docs/technical/DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md`
 - Production promotion gate: `docs/technical/DFL_PRODUCTION_PROMOTION_GATE.md`
 - Regime-gated TFT selector v2: `docs/technical/DFL_REGIME_GATED_TFT_SELECTOR_V2.md`
+- DFL schedule/value learner v2: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
 - Official forecast rolling-origin benchmark: `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md`

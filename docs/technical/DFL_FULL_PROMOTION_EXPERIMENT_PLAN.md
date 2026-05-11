@@ -309,6 +309,21 @@ Exit decision:
 - If DFL v2 beats strict in latest but not rolling, feed Phase G robustness.
 - If DFL v2 passes rolling and median gates, it becomes a promotion candidate.
 
+Implementation status:
+
+- Added `dfl_schedule_value_learner_v2_frame` as a prior-only schedule/value
+  learner over `dfl_schedule_candidate_library_v2_frame`.
+- Added `dfl_schedule_value_learner_v2_strict_lp_benchmark_frame` and
+  `dfl_schedule_value_learner_v2_evidence`.
+- The learner scores feasible schedule candidates using prior family regret,
+  forecast spread, forecast objective value, throughput, degradation proxy, and
+  SOC slack. Actual values remain labels; final-holdout actuals may affect
+  scoring only.
+- The tracked run config is
+  `configs/real_data_dfl_schedule_value_learner_v2_week3.yaml`.
+- Evidence and materialization protocol are documented in
+  [DFL_SCHEDULE_VALUE_LEARNER_V2.md](DFL_SCHEDULE_VALUE_LEARNER_V2.md).
+
 ## 10. Phase F: Offline DT Candidate
 
 Purpose: test Decision Transformer only after trajectory/value labels are clean.
@@ -425,3 +440,37 @@ Next iteration after the official rolling commit:
   objective exist, because CPU runtime is already about 30 minutes for four
   anchors per tenant;
 - keep strict as fallback until rolling robustness passes.
+
+## 14. Phase E Materialized Status: Schedule/Value Learner V2
+
+Phase D source governance is complete enough to keep European/ENTSO-E data out
+of Ukrainian training until access, publication-time, timezone, currency, and
+market-rule gates pass. The Ukrainian-only Phase E learner has now been
+materialized:
+
+- asset path:
+  `dfl_schedule_candidate_library_v2_frame,dfl_schedule_value_learner_v2_frame,dfl_schedule_value_learner_v2_strict_lp_benchmark_frame`;
+- Dagster run: `cb23badd-5393-438e-9935-d0d31fd6e0e3`;
+- asset check: `dfl_schedule_value_learner_v2_evidence` passed;
+- coverage: five tenants and 90 final-holdout tenant-anchors per source model;
+- NBEATSx-source learner: mean/median regret `258.227` / `132.616` UAH;
+- TFT-source learner: mean/median regret `248.488` / `89.891` UAH;
+- strict reference on the same holdout: mean/median regret `314.813` /
+  `202.606` UAH.
+
+This is a genuine latest-holdout breakthrough, but the claim remains narrow:
+DFL-style schedule/value learner, offline research evidence, no market
+execution, and no default controller promotion yet.
+
+Immediate next slice:
+
+> Schedule/Value Learner V2 Rolling Robustness Gate.
+
+Acceptance criteria:
+
+- replay the same learner over four rolling 18-anchor validation windows;
+- select weight profiles using only anchors before each validation window;
+- prove validation actual mutation changes scoring only, not selected profiles;
+- require at least three of four strict-control window passes before the source
+  becomes a robust research challenger;
+- update the production-promotion gate only after robustness evidence exists.

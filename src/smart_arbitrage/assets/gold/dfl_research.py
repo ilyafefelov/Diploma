@@ -141,6 +141,12 @@ from smart_arbitrage.dfl.source_specific_challenger import (
     build_dfl_source_specific_research_challenger_frame,
     evaluate_dfl_source_specific_research_challenger_gate,
 )
+from smart_arbitrage.dfl.schedule_value_learner import (
+    DFL_SCHEDULE_VALUE_LEARNER_V2_STRICT_LP_STRATEGY_KIND,
+    build_dfl_schedule_value_learner_v2_frame,
+    build_dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
+    evaluate_dfl_schedule_value_learner_v2_gate,
+)
 from smart_arbitrage.dfl.production_promotion_gate import (
     build_dfl_production_promotion_gate_frame,
     evaluate_dfl_production_promotion_gate,
@@ -512,6 +518,18 @@ class DflSourceSpecificResearchChallengerAssetConfig(dg.Config):
     min_mean_regret_improvement_ratio: float = 0.05
     min_rolling_strict_pass_windows: int = 3
     min_rolling_window_count: int = 4
+
+
+class DflScheduleValueLearnerV2AssetConfig(dg.Config):
+    """Prior-only schedule/value learner v2 scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
 class DflProductionPromotionGateAssetConfig(dg.Config):
@@ -3221,6 +3239,109 @@ def dfl_source_specific_research_challenger_frame(
         market_venue="DAM",
     ),
 )
+def dfl_schedule_value_learner_v2_frame(
+    context,
+    config: DflScheduleValueLearnerV2AssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only DFL v2 schedule/value learner over feasible candidate schedules."""
+
+    tenant_ids = _csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv")
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    learner_frame = build_dfl_schedule_value_learner_v2_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        tenant_ids=tenant_ids,
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": learner_frame.height,
+            "tenant_count": learner_frame.select("tenant_id").n_unique()
+            if learner_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            if learner_frame.height
+            else [],
+            "scope": "dfl_schedule_value_learner_v2_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return learner_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_schedule_value_learner_v2_strict_lp_benchmark_frame(
+    context,
+    config: DflScheduleValueLearnerV2AssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_schedule_value_learner_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle evidence for the schedule/value learner v2."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_schedule_value_learner_v2_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_schedule_value_learner_v2_frame,
+        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_schedule_value_learner_v2_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    learner_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_schedule_value_learner_v2_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "learner_validation_tenant_anchor_count": learner_rows.height,
+            "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V2_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "production_gate_passed": gate.metrics.get("production_gate_passed", False),
+            "scope": "dfl_schedule_value_learner_v2_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
 def dfl_production_promotion_gate_frame(
     context,
     config: DflProductionPromotionGateAssetConfig,
@@ -3617,6 +3738,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_offline_dt_candidate_strict_lp_benchmark_frame,
     dfl_residual_dt_fallback_strict_lp_benchmark_frame,
     dfl_source_specific_research_challenger_frame,
+    dfl_schedule_value_learner_v2_frame,
+    dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
     dfl_production_promotion_gate_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,

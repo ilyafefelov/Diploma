@@ -1626,3 +1626,45 @@ Interpretation:
 - It is still not data ingestion and not model evidence.
 - The next source-backed step requires an ENTSO-E security token, a tiny Poland
   sample, publication timestamp capture, and a no-leakage sample audit.
+
+## DFL Schedule/Value Learner V2
+
+Because ENTSO-E and European bridge data remain blocked for training, the next
+DFL implementation step uses only Ukrainian thesis-grade schedule evidence. The
+new `dfl_schedule_value_learner_v2_frame` learns a deterministic prior-only
+schedule-scoring profile over `dfl_schedule_candidate_library_v2_frame`, then
+`dfl_schedule_value_learner_v2_strict_lp_benchmark_frame` scores the selected
+schedules against the same strict LP/oracle gate.
+
+What it adds:
+
+- a sidecar DFL v2 schedule/value learner, not a new public API or dashboard
+  contract;
+- selector-safe inputs: prior family regret, forecast spread, forecast objective
+  value, throughput, degradation proxy, and SOC slack;
+- final-holdout scoring rows for `strict_similar_day`, raw source schedules, and
+  `dfl_schedule_value_learner_v2_<source_model>`;
+- a Dagster asset check, `dfl_schedule_value_learner_v2_evidence`, for coverage
+  and claim-boundary validation.
+
+Claim boundary: the learner is offline DFL research evidence only. It may pass a
+development gate against raw neural schedules, but production/default promotion
+still requires the existing strict LP/oracle improvement, median, rolling
+robustness, coverage, and no-market-execution gates.
+
+Materialized result on 2026-05-11:
+
+- Dagster run: `cb23badd-5393-438e-9935-d0d31fd6e0e3`.
+- Asset check `dfl_schedule_value_learner_v2_evidence` passed.
+- Coverage: five tenants, 18 latest holdout anchors per tenant, 90
+  tenant-anchors per source model.
+- NBEATSx-source learner: mean/median regret `258.227` / `132.616` UAH versus
+  strict reference `314.813` / `202.606` UAH.
+- TFT-source learner: mean/median regret `248.488` / `89.891` UAH versus strict
+  reference `314.813` / `202.606` UAH.
+
+This is the first latest-holdout DFL-style schedule/value evidence that beats
+the frozen `strict_similar_day` control under strict LP/oracle scoring. It is
+still a research challenger, not a promoted controller. The next required slice
+is rolling robustness for `dfl_schedule_value_learner_v2` across earlier
+temporal windows, using the same prior-only selection discipline.

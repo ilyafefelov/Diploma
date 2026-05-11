@@ -46,6 +46,9 @@ from smart_arbitrage.dfl.source_specific_challenger import (
 from smart_arbitrage.dfl.production_promotion_gate import (
     validate_dfl_production_promotion_gate_evidence,
 )
+from smart_arbitrage.dfl.schedule_value_learner import (
+    validate_dfl_schedule_value_learner_v2_evidence,
+)
 from smart_arbitrage.dfl.forecast_pipeline_truth import (
     validate_forecast_pipeline_truth_audit_evidence,
 )
@@ -288,6 +291,22 @@ def dfl_production_promotion_gate_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_schedule_value_learner_v2_strict_lp_benchmark_frame",
+    name="dfl_schedule_value_learner_v2_evidence",
+    description="Checks schedule/value learner v2 strict LP coverage and claim boundaries.",
+)
+def dfl_schedule_value_learner_v2_evidence(
+    dfl_schedule_value_learner_v2_strict_lp_benchmark_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_schedule_value_learner_v2_evidence(
+            dfl_schedule_value_learner_v2_strict_lp_benchmark_frame
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="forecast_pipeline_truth_audit_frame",
     name="forecast_pipeline_truth_audit_evidence",
     description="Checks forecast-vector truth audit source, unit, timestamp, and round-trip evidence.",
@@ -397,6 +416,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_residual_dt_fallback_evidence,
     dfl_source_specific_research_challenger_evidence,
     dfl_production_promotion_gate_evidence,
+    dfl_schedule_value_learner_v2_evidence,
     forecast_pipeline_truth_audit_evidence,
     market_coupling_temporal_availability_evidence,
     entsoe_neighbor_market_access_evidence,
