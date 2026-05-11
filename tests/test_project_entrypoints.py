@@ -67,7 +67,10 @@ def test_official_global_panel_batch_runner_writes_resumable_backfill_config() -
     ).read_text(encoding="utf-8")
 
     assert "real_data_official_global_panel_nbeatsx_backfill_week3.yaml" in runner_script
+    assert "[int]$EndAnchorIndex = 0" in runner_script
+    assert "$ResolvedEndAnchorIndex = $TotalAnchors" in runner_script
     assert "nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame" in runner_script
+    assert "max_eval_windows: $TotalAnchors" in runner_script
     assert "anchor_batch_start_index: $anchorIndex" in runner_script
     assert "anchor_batch_size: $BatchSize" in runner_script
     assert "resume_generated_at_iso: \"$GeneratedAtIso\"" in runner_script

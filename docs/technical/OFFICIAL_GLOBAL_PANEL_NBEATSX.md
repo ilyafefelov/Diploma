@@ -60,6 +60,8 @@ Resumable local runner:
 .\scripts\run-official-global-panel-batches.ps1 `
   -TotalAnchors 365 `
   -BatchSize 4 `
+  -StartAnchorIndex 0 `
+  -EndAnchorIndex 8 `
   -GeneratedAtIso 2026-05-11T20:00:00Z
 ```
 
@@ -257,22 +259,22 @@ Result:
 
 | Evidence item | Value |
 |---|---:|
-| Dagster run id | `b27b1bae-707c-4873-9148-a1d86a739dbd` |
-| Fixed generated_at | `2026-05-11 20:00:00+00` |
-| Batch anchors | 4 |
+| Runner directory | `.tmp_runtime/official_global_panel_batches/official-global-panel-2026-05-11T203000-0000` |
+| Fixed generated_at | `2026-05-11 20:30:00+00` |
+| Batch anchors | 8 |
 | Tenants | 5 |
-| Persisted rows | 40 |
-| Anchor range | `2025-04-22 23:00` to `2025-04-25 23:00` |
-| `strict_similar_day` mean regret | 505.49 UAH |
-| Raw global-panel NBEATSx mean regret | 910.82 UAH |
+| Persisted rows | 80 |
+| Anchor range | `2025-04-22 23:00` to `2025-04-29 23:00` |
+| `strict_similar_day` mean regret | 334.43 UAH |
+| Raw global-panel NBEATSx mean regret | 931.65 UAH |
 | Production promotion | `false` |
 | Promotion blocker | incomplete batch coverage |
 
 Interpretation: the source-backed 365-anchor UA panel can train and strict-score
-official global-panel NBEATSx in resumable batches. The first chronological
-batch does not beat `strict_similar_day`; this is expected because it is an
-early-window batch, not the latest 90-anchor promotion set. The next step is to
-continue batches with the same `generated_at`, then run calibration,
+official global-panel NBEATSx in resumable batches. The first two chronological
+batches do not beat `strict_similar_day`; this is expected because they are
+early-window batches, not the latest 90-anchor promotion set. The next step is
+to continue batches with the same `generated_at`, then run calibration,
 schedule/value, robustness, and production-gate assets only after enough
 persisted anchors exist.
 
@@ -280,7 +282,8 @@ Not implemented yet:
 
 - source/regime production promotion;
 - completed 365-anchor official global-panel backfill. Batch execution is now
-  resumable, but only the first 4-anchor batch has been materialized locally.
+  resumable, but only the first 8 anchors have been materialized locally under
+  the clean `2026-05-11 20:30:00+00` evidence timestamp.
 - Hugging Face Jobs execution. A payload builder now exists, but it only writes
   a redacted JSON/script for a future remote run and does not submit paid
   compute.

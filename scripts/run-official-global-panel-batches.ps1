@@ -2,6 +2,7 @@ param(
     [int]$TotalAnchors = 365,
     [int]$BatchSize = 4,
     [int]$StartAnchorIndex = 0,
+    [int]$EndAnchorIndex = 0,
     [ValidateSet("chronological", "latest_first")]
     [string]$AnchorBatchOrder = "chronological",
     [int]$NbeatsxMaxSteps = 25,
@@ -21,11 +22,24 @@ if ($BatchSize -le 0) {
 if ($StartAnchorIndex -lt 0) {
     throw "StartAnchorIndex must be non-negative."
 }
+if ($EndAnchorIndex -lt 0) {
+    throw "EndAnchorIndex must be non-negative."
+}
 if ($NbeatsxMaxSteps -le 0) {
     throw "NbeatsxMaxSteps must be positive."
 }
 if ([string]::IsNullOrWhiteSpace($GeneratedAtIso)) {
     $GeneratedAtIso = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss")
+}
+$ResolvedEndAnchorIndex = $TotalAnchors
+if ($EndAnchorIndex -gt 0) {
+    $ResolvedEndAnchorIndex = $EndAnchorIndex
+}
+if ($ResolvedEndAnchorIndex -le $StartAnchorIndex) {
+    throw "EndAnchorIndex must be greater than StartAnchorIndex when provided."
+}
+if ($ResolvedEndAnchorIndex -gt $TotalAnchors) {
+    throw "EndAnchorIndex cannot exceed TotalAnchors."
 }
 
 $root = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
@@ -88,9 +102,9 @@ $tenantIds = "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_fact
 $officialSelection = "observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_exogenous_governance_frame,nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame"
 $downstreamSelection = "nbeatsx_official_global_panel_rolling_horizon_calibration_frame,nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_candidate_library_frame,dfl_official_global_panel_schedule_candidate_library_v2_frame,dfl_official_global_panel_schedule_value_learner_v2_frame,dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_robustness_frame,dfl_official_global_panel_schedule_value_production_gate_frame"
 
-Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchors=$TotalAnchors BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex AnchorBatchOrder=$AnchorBatchOrder NbeatsxMaxSteps=$NbeatsxMaxSteps"
+Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchors=$TotalAnchors BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex EndAnchorIndex=$ResolvedEndAnchorIndex AnchorBatchOrder=$AnchorBatchOrder NbeatsxMaxSteps=$NbeatsxMaxSteps"
 
-for ($anchorIndex = $StartAnchorIndex; $anchorIndex -lt $TotalAnchors; $anchorIndex += $BatchSize) {
+for ($anchorIndex = $StartAnchorIndex; $anchorIndex -lt $ResolvedEndAnchorIndex; $anchorIndex += $BatchSize) {
     $batchConfigPath = Join-Path $runDir ("official-global-panel-batch-{0}.yaml" -f $anchorIndex)
     @"
 # Generated from configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml
