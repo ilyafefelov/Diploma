@@ -48,6 +48,8 @@ Latest 180-anchor repair audit:
 - Dagster run id: `1b901874-b713-4762-9154-2e822f91be8d`.
 - Revalidated run id on 2026-05-11:
   `c364a852-305d-48ed-88e4-f17ff59398bf`.
+- Revalidated run id after the official global-panel gate on 2026-05-11:
+  `144c5678-94b3-4922-b8b2-5304ea2e3471`.
 - Target: 180 eligible anchors per tenant.
 - Current result: 104 eligible anchors per tenant for all five canonical
   tenants.
