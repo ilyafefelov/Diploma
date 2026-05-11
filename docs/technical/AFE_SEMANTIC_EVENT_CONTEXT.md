@@ -17,6 +17,7 @@ trading signal.
 | `ukrenergo_grid_events_bronze` | Bronze rule-based parsing of public Ukrenergo Telegram posts. |
 | `grid_event_signal_silver` | Existing Silver/demo feature path; the audit reuses the same builder against real-data benchmark timestamps. |
 | `forecast_afe_feature_catalog_frame` | AFE registry with implemented Ukrainian features and blocked future EU bridge rows. |
+| `market_coupling_temporal_availability_frame` | Source-specific readiness gate for ENTSO-E/PriceFM/OPSD/Ember/Nord Pool/THieF before external training use. |
 | `dfl_semantic_event_strict_failure_audit_frame` | Explains whether grid-event features coincide with strict-control failure windows. |
 | `dfl_semantic_event_strict_failure_audit_evidence` | Dagster check for source, coverage, claim flags, and no future event freshness. |
 
@@ -98,6 +99,8 @@ Latest local validation:
 - External bridge rows: `6`.
 - External rows allowed for training: `0`.
 - External rows missing blocker metadata: `0`.
+- Follow-up gate:
+  [MARKET_COUPLING_TEMPORAL_AVAILABILITY.md](MARKET_COUPLING_TEMPORAL_AVAILABILITY.md).
 
 ## Semantic Event Features
 

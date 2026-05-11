@@ -1574,3 +1574,33 @@ forecasting, but they are still blocked from training until licensing, timezone,
 currency, market-rule, temporal-availability, and domain-shift mapping are
 implemented. The next executable slice should add a concrete UA/EU temporal
 availability mapper before any external market data affects NBEATSx/TFT or DFL.
+
+## Market-Coupling Temporal Availability Gate
+
+The concrete availability mapper has been added as
+`market_coupling_temporal_availability_frame`, with asset check
+`market_coupling_temporal_availability_evidence`.
+
+What changed:
+
+- The gate consumes `forecast_afe_feature_catalog_frame`.
+- It emits one readiness row per external bridge source.
+- It keeps every row blocked from training.
+- It records source-specific next actions, publication-time policy, and blocker
+  status.
+- It records PriceFM Dataset Viewer metadata checked on 2026-05-11:
+  `default/train`, `140,257` rows, `191` first-row columns.
+
+Interpretation:
+
+- ENTSO-E remains the best candidate for future Poland/neighbor market-coupling
+  covariates, but it needs document-type, bidding-zone, API terms, publication
+  timestamp, timezone/DST, currency, and market-rule mapping.
+- PriceFM is useful for European external validation and graph-market research,
+  not as Ukrainian training data.
+- OPSD, Ember, Nord Pool, and THieF remain blocked or watch-only sources.
+
+Decision: this closes the source-governance gap but does not yet improve model
+quality. The next experimental branch is either an ENTSO-E neighbor sample with
+verified temporal availability, or a DFL v2 schedule/value learner that uses
+only already-valid Ukrainian features.

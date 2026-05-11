@@ -78,6 +78,12 @@ but not for Ukrainian DFL training yet.
 | [Ember API](https://ember-energy.org/data/api/) | watch | Future generation, demand, emissions, and carbon-intensity context. |
 | [Nord Pool Data Portal](https://www.nordpoolgroup.com/en/services/power-market-data-services/dataportalregistration/) | watch/restricted | Commercial/API-gated source; reference only unless access is approved. |
 
+Executable gate:
+`market_coupling_temporal_availability_frame` records this bridge as
+machine-readable readiness evidence. On 2026-05-11 it keeps all six external
+sources blocked from training and records PriceFM Dataset Viewer metadata
+(`140,257` rows; `191` first-row columns) as external-validation context only.
+
 European rows remain `training_use_allowed=false` until these blockers are
 resolved:
 

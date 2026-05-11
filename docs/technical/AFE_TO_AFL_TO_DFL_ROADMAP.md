@@ -66,6 +66,15 @@ by the same six training blockers:
 This keeps the route open for market-coupling features while preserving the
 current no-leakage Ukrainian evidence boundary.
 
+Follow-up implementation:
+
+- `market_coupling_temporal_availability_frame` is now the executable readiness
+  gate for those bridge rows.
+- It records ENTSO-E as the first source to map for neighboring-market
+  covariates and PriceFM as external-validation context.
+- It keeps all external rows blocked until publication-time, licensing,
+  timezone/DST, currency, market-rule, and domain-shift checks are implemented.
+
 ## Claim Boundary
 
 Current semantic AFE is not broad news analysis. It is a deterministic, auditable

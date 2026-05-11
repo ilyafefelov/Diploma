@@ -84,6 +84,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "forecast_pipeline_truth_audit_frame",
             "forecast_pipeline_truth_audit_evidence",
         ),
+        (
+            "market_coupling_temporal_availability_frame",
+            "market_coupling_temporal_availability_evidence",
+        ),
     }
 
     check_keys = {

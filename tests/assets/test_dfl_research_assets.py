@@ -219,6 +219,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_source_specific_research_challenger_frame",
         "dfl_production_promotion_gate_frame",
         "forecast_afe_feature_catalog_frame",
+        "market_coupling_temporal_availability_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
         "afl_forecast_error_audit_frame",
         "forecast_candidate_forensics_frame",
@@ -290,6 +291,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_source_specific_research_challenger_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_production_promotion_gate_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_afe_feature_catalog_frame"] == "gold_dfl_training"
+    assert groups_by_key["market_coupling_temporal_availability_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_semantic_event_strict_failure_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["afl_forecast_error_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_candidate_forensics_frame"] == "gold_dfl_training"
@@ -352,6 +354,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_source_specific_research_challenger_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_production_promotion_gate_frame"]["ml_stage"] == "selection"
     assert tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"] == "feature_engineering"
+    assert tags_by_key["market_coupling_temporal_availability_frame"]["ml_stage"] == "feature_engineering"
     assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["afl_forecast_error_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"

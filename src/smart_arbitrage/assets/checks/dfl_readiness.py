@@ -52,6 +52,9 @@ from smart_arbitrage.dfl.forecast_pipeline_truth import (
 from smart_arbitrage.forecasting.afl_error_audit import (
     validate_afl_forecast_error_audit_evidence,
 )
+from smart_arbitrage.forecasting.market_coupling_availability import (
+    validate_market_coupling_temporal_availability_evidence,
+)
 
 
 @dg.asset_check(
@@ -297,6 +300,21 @@ def forecast_pipeline_truth_audit_evidence(
 
 
 @dg.asset_check(
+    asset="market_coupling_temporal_availability_frame",
+    name="market_coupling_temporal_availability_evidence",
+    description="Checks EU/neighbor-market sources remain blocked until availability mapping is complete.",
+)
+def market_coupling_temporal_availability_evidence(
+    market_coupling_temporal_availability_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_market_coupling_temporal_availability_evidence(
+            market_coupling_temporal_availability_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="horizon_regret_weighted_forecast_strategy_benchmark_frame",
     name="horizon_calibration_no_leakage_evidence",
     description="Checks horizon-aware calibration anchor coverage and prior-anchor metadata.",
@@ -362,6 +380,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_source_specific_research_challenger_evidence,
     dfl_production_promotion_gate_evidence,
     forecast_pipeline_truth_audit_evidence,
+    market_coupling_temporal_availability_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,

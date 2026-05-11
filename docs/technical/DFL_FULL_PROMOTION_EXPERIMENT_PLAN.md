@@ -251,6 +251,21 @@ Exit decision:
   include them in the DFL v2 dataset.
 - If not, keep them as analysis-only external-validation context.
 
+Implementation status:
+
+- Added `forecast_afe_feature_catalog_frame` source-governance fields for
+  ENTSO-E, PriceFM, OPSD, Ember, Nord Pool, and THieF.
+- Added `market_coupling_temporal_availability_frame` as the executable gate
+  before any European/neighbor-market source can become a training feature.
+- The gate records PriceFM Dataset Viewer metadata checked on 2026-05-11:
+  `140,257` rows, `191` first-row columns, `default/train` split.
+- All external sources remain `training_use_allowed=false`; the unresolved
+  blockers are licensing, timezone, currency, market rules, temporal
+  availability, and domain shift.
+- Next executable decision: either map an ENTSO-E Poland/neighbor sample with
+  publication timestamps and terms, or keep external sources as validation-only
+  while DFL v2 uses Ukrainian prior-only features.
+
 ## 9. Phase E: DFL v2 Schedule/Value Learner
 
 Purpose: move from horizon-bias correction to actual decision-value learning.

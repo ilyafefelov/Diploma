@@ -157,6 +157,9 @@ from smart_arbitrage.forecasting.afl_error_audit import (
     build_afl_forecast_error_audit_frame,
 )
 from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
+from smart_arbitrage.forecasting.market_coupling_availability import (
+    build_market_coupling_temporal_availability_frame,
+)
 from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
 from smart_arbitrage.dfl.semantic_event_failure_audit import (
     build_dfl_semantic_event_strict_failure_audit_frame,
@@ -687,6 +690,53 @@ def forecast_afe_feature_catalog_frame(context) -> pl.DataFrame:
         },
     )
     return catalog_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def market_coupling_temporal_availability_frame(
+    context,
+    forecast_afe_feature_catalog_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Research gate for EU/neighboring-market features before training use."""
+
+    availability_frame = build_market_coupling_temporal_availability_frame(
+        forecast_afe_feature_catalog_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": availability_frame.height,
+            "source_count": availability_frame.select("source_name").n_unique()
+            if availability_frame.height
+            else 0,
+            "training_allowed_rows": availability_frame.filter(
+                pl.col("training_use_allowed")
+            ).height
+            if availability_frame.height
+            else 0,
+            "pricefm_observation_count": availability_frame.filter(
+                pl.col("source_name") == "PRICEFM_HF"
+            )
+            .select("source_observation_count")
+            .to_series()
+            .item()
+            if availability_frame.filter(pl.col("source_name") == "PRICEFM_HF").height
+            else 0,
+            "scope": "market_coupling_temporal_availability_research_gate",
+            "not_market_execution": True,
+        },
+    )
+    return availability_frame
 
 
 @dg.asset(
@@ -3469,6 +3519,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_training_frame,
     dfl_training_example_frame,
     forecast_afe_feature_catalog_frame,
+    market_coupling_temporal_availability_frame,
     dfl_semantic_event_strict_failure_audit_frame,
     forecast_candidate_forensics_frame,
     afl_training_panel_frame,
