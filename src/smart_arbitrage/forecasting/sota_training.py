@@ -54,6 +54,8 @@ def build_sota_forecast_training_frame(
     *,
     tenant_id: str,
     market_venue: str = SOTA_UNIQUE_ID_SUFFIX,
+    extra_known_future_feature_columns: tuple[str, ...] = (),
+    extra_historical_observed_feature_columns: tuple[str, ...] = (),
 ) -> pl.DataFrame:
     """Convert the leakage-safe Silver feature frame into a backend-neutral schema.
 
@@ -65,11 +67,26 @@ def build_sota_forecast_training_frame(
 
     _validate_feature_frame(feature_frame)
     unique_id = f"{tenant_id}:{market_venue}"
-    known_future_csv = ",".join(KNOWN_FUTURE_FEATURE_COLUMNS)
-    historical_observed_csv = ",".join(HISTORICAL_OBSERVED_FEATURE_COLUMNS)
+    known_future_feature_columns = _unique_columns(
+        (*KNOWN_FUTURE_FEATURE_COLUMNS, *extra_known_future_feature_columns)
+    )
+    historical_observed_feature_columns = _unique_columns(
+        (
+            *HISTORICAL_OBSERVED_FEATURE_COLUMNS,
+            *extra_historical_observed_feature_columns,
+        )
+    )
+    known_future_csv = ",".join(known_future_feature_columns)
+    historical_observed_csv = ",".join(historical_observed_feature_columns)
     feature_columns = [
         column_name
-        for column_name in NEURAL_FORECAST_FEATURE_COLUMNS
+        for column_name in _unique_columns(
+            (
+                *NEURAL_FORECAST_FEATURE_COLUMNS,
+                *extra_known_future_feature_columns,
+                *extra_historical_observed_feature_columns,
+            )
+        )
         if column_name in feature_frame.columns
     ]
     return (
@@ -143,6 +160,13 @@ def build_official_global_panel_training_frame(
     market_coupling_metadata = _market_coupling_feature_route_metadata(
         market_coupling_availability_frame
     )
+    allowed_external_feature_columns = _csv_column_tuple(
+        market_coupling_metadata["allowed_external_feature_columns_csv"]
+    )
+    _validate_allowed_external_features_present(
+        silver_frame,
+        allowed_external_feature_columns=allowed_external_feature_columns,
+    )
     tenant_frames: list[pl.DataFrame] = []
     for tenant_id in tenant_ids:
         tenant_history = _tenant_history_from_silver(
@@ -156,10 +180,16 @@ def build_official_global_panel_training_frame(
             horizon_hours=horizon_hours,
             future_weather_mode=future_weather_mode,
         )
+        feature_frame = _attach_allowed_external_features(
+            feature_frame,
+            tenant_history,
+            allowed_external_feature_columns=allowed_external_feature_columns,
+        )
         tenant_training_frame = build_sota_forecast_training_frame(
             feature_frame,
             tenant_id=tenant_id,
             market_venue=market_venue,
+            extra_known_future_feature_columns=allowed_external_feature_columns,
         ).with_columns(
             [
                 pl.lit(OFFICIAL_GLOBAL_PANEL_SOTA_SCHEMA_VERSION).alias("sota_schema_version"),
@@ -286,7 +316,11 @@ def _market_coupling_feature_route_metadata(
         for row in rows
         if bool(row["training_use_allowed"]) and str(row["readiness_status"]) == "training_ready"
     )
-    blocked = sorted(str(row["feature_name"]) for row in rows if str(row["feature_name"]).strip())
+    blocked = sorted(
+        str(row["feature_name"])
+        for row in rows
+        if str(row["feature_name"]).strip() and str(row["feature_name"]) not in allowed
+    )
     status = "training_ready" if allowed else "blocked_by_governance"
     return {
         "external_feature_training_status": status,
@@ -309,3 +343,56 @@ def _all_market_coupling_statuses_ready(row: dict[str, object]) -> bool:
             "domain_shift_status",
         )
     )
+
+
+def _attach_allowed_external_features(
+    feature_frame: pl.DataFrame,
+    tenant_history: pl.DataFrame,
+    *,
+    allowed_external_feature_columns: tuple[str, ...],
+) -> pl.DataFrame:
+    if not allowed_external_feature_columns:
+        return feature_frame
+    external_frame = tenant_history.select(
+        [DEFAULT_TIMESTAMP_COLUMN, *allowed_external_feature_columns]
+    ).rename({DEFAULT_TIMESTAMP_COLUMN: "timestamp"})
+    joined = feature_frame.join(external_frame, on="timestamp", how="left")
+    null_columns = [
+        column_name
+        for column_name in allowed_external_feature_columns
+        if joined.select(pl.col(column_name).is_null().any()).item()
+    ]
+    if null_columns:
+        raise ValueError(
+            "approved market-coupling feature columns must be available for every "
+            f"official training timestamp: {null_columns}"
+        )
+    return joined.with_columns(
+        [
+            pl.col(column_name).cast(pl.Float64).alias(column_name)
+            for column_name in allowed_external_feature_columns
+        ]
+    )
+
+
+def _validate_allowed_external_features_present(
+    silver_frame: pl.DataFrame,
+    *,
+    allowed_external_feature_columns: tuple[str, ...],
+) -> None:
+    missing_columns = sorted(
+        set(allowed_external_feature_columns).difference(silver_frame.columns)
+    )
+    if missing_columns:
+        raise ValueError(
+            "approved market-coupling feature columns are missing from the Silver "
+            f"benchmark frame: {missing_columns}"
+        )
+
+
+def _csv_column_tuple(raw_value: str) -> tuple[str, ...]:
+    return tuple(value.strip() for value in raw_value.split(",") if value.strip())
+
+
+def _unique_columns(column_names: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(column_names))

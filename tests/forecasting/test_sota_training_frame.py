@@ -208,6 +208,62 @@ def test_official_global_panel_training_frame_rejects_unready_training_allowed_e
         raise AssertionError("unready external market-coupling rows should be blocked from training.")
 
 
+def test_official_global_panel_training_frame_routes_ready_market_coupling_feature() -> None:
+    feature_name = "entsoe_neighbor_day_ahead_price_context"
+    silver_frame = _tenant_silver_frame(
+        tenant_ids=("client_003_dnipro_factory",),
+        history_hours=20 * 24,
+        forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    ).with_columns((pl.col("price_uah_mwh") * 0.8).alias(feature_name))
+    market_coupling = build_market_coupling_temporal_availability_frame(
+        build_forecast_afe_feature_catalog_frame()
+    ).with_columns(
+        [
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit(True))
+            .otherwise(pl.col("training_use_allowed"))
+            .alias("training_use_allowed"),
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit("training_ready"))
+            .otherwise(pl.col("readiness_status"))
+            .alias("readiness_status"),
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit(""))
+            .otherwise(pl.col("training_blockers_csv"))
+            .alias("training_blockers_csv"),
+            *[
+                pl.when(pl.col("feature_name") == feature_name)
+                .then(pl.lit("ready"))
+                .otherwise(pl.col(column_name))
+                .alias(column_name)
+                for column_name in (
+                    "licensing_status",
+                    "timezone_status",
+                    "currency_status",
+                    "market_rules_status",
+                    "temporal_availability_status",
+                    "domain_shift_status",
+                )
+            ],
+        ]
+    )
+
+    panel = build_official_global_panel_training_frame(
+        silver_frame,
+        tenant_ids=("client_003_dnipro_factory",),
+        horizon_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+        market_coupling_availability_frame=market_coupling,
+    )
+
+    assert feature_name in panel.columns
+    assert panel.select("external_feature_training_status").to_series().unique().to_list() == [
+        "training_ready"
+    ]
+    assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == feature_name
+    assert feature_name in panel.select("known_future_feature_columns_csv").to_series().item(0)
+    assert feature_name not in panel.select("blocked_external_feature_columns_csv").to_series().item(0)
+
+
 def _tenant_silver_frame(
     *,
     tenant_ids: tuple[str, ...],
