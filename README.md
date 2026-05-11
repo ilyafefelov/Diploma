@@ -169,6 +169,7 @@ Latest full verification: `151 passed`.
 - DFL schedule/value learner v2: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md`
 - DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
 - DFL schedule/value production gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
+- Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
 - Official forecast rolling-origin benchmark: `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md`

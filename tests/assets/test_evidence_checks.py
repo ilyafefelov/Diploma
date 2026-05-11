@@ -93,6 +93,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_schedule_value_production_gate_evidence",
         ),
         (
+            "dfl_official_schedule_value_production_gate_frame",
+            "dfl_official_schedule_value_production_gate_evidence",
+        ),
+        (
             "forecast_pipeline_truth_audit_frame",
             "forecast_pipeline_truth_audit_evidence",
         ),

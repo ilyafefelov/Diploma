@@ -183,6 +183,97 @@ def trajectory_feature_ranker_model_name(source_model_name: str) -> str:
     return f"{DFL_TRAJECTORY_FEATURE_RANKER_PREFIX}{source_model_name}"
 
 
+def build_dfl_schedule_candidate_library_from_strict_benchmark_frame(
+    strict_benchmark_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    forecast_model_names: tuple[str, ...],
+    final_validation_anchor_count_per_tenant: int = 18,
+    perturb_spread_scale_grid: tuple[float, ...] = DEFAULT_PERTURB_SPREAD_SCALE_GRID,
+    perturb_mean_shift_grid_uah_mwh: tuple[float, ...] = DEFAULT_PERTURB_MEAN_SHIFT_GRID_UAH_MWH,
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Build schedule candidates from any strict LP/oracle forecast benchmark frame.
+
+    This sidecar path is intentionally narrower than
+    ``build_dfl_schedule_candidate_library_frame``: it only needs strict-control
+    rows, raw source rows, and deterministic perturbations. It lets official
+    forecast backends use the same schedule/value learner and promotion gates
+    without depending on compact-model-only v2/v3/v4 candidate panels.
+    """
+
+    _require_columns(
+        strict_benchmark_frame,
+        REQUIRED_EVALUATION_COLUMNS,
+        frame_name="strict_benchmark_frame",
+    )
+    _validate_common_config(
+        tenant_ids=tenant_ids,
+        forecast_model_names=forecast_model_names,
+        final_validation_anchor_count_per_tenant=final_validation_anchor_count_per_tenant,
+    )
+    if not perturb_spread_scale_grid:
+        raise ValueError("perturb_spread_scale_grid must contain at least one value.")
+    if not perturb_mean_shift_grid_uah_mwh:
+        raise ValueError("perturb_mean_shift_grid_uah_mwh must contain at least one value.")
+
+    resolved_generated_at = generated_at or datetime.now(UTC)
+    rows: list[dict[str, Any]] = []
+    for tenant_id in tenant_ids:
+        for source_model_name in forecast_model_names:
+            source_rows = _source_rows(
+                strict_benchmark_frame,
+                tenant_id=tenant_id,
+                forecast_model_name=source_model_name,
+            )
+            final_anchors = set(_latest_anchors(source_rows, count=final_validation_anchor_count_per_tenant))
+            control_by_anchor = _control_rows_by_anchor(
+                strict_benchmark_frame,
+                tenant_id=tenant_id,
+                source_model_name=source_model_name,
+            )
+            for source_row in source_rows:
+                anchor_timestamp = _datetime_value(source_row["anchor_timestamp"], field_name="anchor_timestamp")
+                split_name = "final_holdout" if anchor_timestamp in final_anchors else "train_selection"
+                control_row = control_by_anchor.get(anchor_timestamp)
+                if control_row is None:
+                    raise ValueError(
+                        "missing strict_similar_day row for schedule candidate library "
+                        f"{tenant_id}/{source_model_name}/{anchor_timestamp.isoformat()}"
+                    )
+                rows.append(
+                    _candidate_row_from_evaluation_row(
+                        control_row,
+                        source_model_name=source_model_name,
+                        candidate_family=CANDIDATE_FAMILY_STRICT,
+                        split_name=split_name,
+                        generated_at=resolved_generated_at,
+                    )
+                )
+                rows.append(
+                    _candidate_row_from_evaluation_row(
+                        source_row,
+                        source_model_name=source_model_name,
+                        candidate_family=CANDIDATE_FAMILY_RAW,
+                        split_name=split_name,
+                        generated_at=resolved_generated_at,
+                    )
+                )
+                rows.extend(
+                    _perturbation_rows(
+                        source_row,
+                        source_model_name=source_model_name,
+                        split_name=split_name,
+                        perturb_spread_scale_grid=perturb_spread_scale_grid,
+                        perturb_mean_shift_grid_uah_mwh=perturb_mean_shift_grid_uah_mwh,
+                        generated_at=resolved_generated_at,
+                    )
+                )
+    return _with_prior_family_scores(pl.DataFrame(rows)).sort(
+        ["tenant_id", "source_model_name", "anchor_timestamp", "candidate_family", "candidate_model_name"]
+    )
+
+
 def build_dfl_schedule_candidate_library_frame(
     real_data_rolling_origin_benchmark_frame: pl.DataFrame,
     dfl_trajectory_value_candidate_panel_frame: pl.DataFrame,

@@ -521,7 +521,36 @@ This is the first offline promotion pass in the long-running DFL experiment
 loop. It does not promote live execution and does not change dashboard/API
 defaults.
 
-## 16. Phase H Status: Promotion Registry
+## 16. Phase H-A: Official Forecast Schedule/Value Promotion
+
+The compact schedule/value promotion pass is not enough to close the thesis
+loop because the official NBEATSx/TFT adapters previously had only small
+rolling-origin evidence. The next phase routes serious official forecasts
+through the same schedule-candidate library and promotion gate.
+
+Implementation:
+
+- `official_forecast_rolling_origin_benchmark_frame` supplies official
+  NBEATSx/TFT strict LP/oracle rows.
+- `dfl_official_schedule_candidate_library_frame` converts those rows into
+  strict/raw/perturbation schedules.
+- `dfl_official_schedule_candidate_library_v2_frame` adds blend and
+  prior-residual schedule candidates.
+- `dfl_official_schedule_value_learner_v2_frame`,
+  `dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame`,
+  `dfl_official_schedule_value_learner_v2_robustness_frame`, and
+  `dfl_official_schedule_value_production_gate_frame` reuse the same promotion
+  semantics as the compact path.
+
+Tracked protocol:
+[DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md](DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md).
+
+The phase succeeds only if official sources can clear the same strict gate. If
+they fail or time out, the failure is recorded as runtime/source evidence and
+the next route remains feature context, data coverage, and decision loss rather
+than a dashboard/API default change.
+
+## 17. Phase H Status: Promotion Registry
 
 The offline promotion pass has a concise local registry export.
 

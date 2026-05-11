@@ -344,6 +344,23 @@ def dfl_schedule_value_production_gate_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_official_schedule_value_production_gate_frame",
+    name="dfl_official_schedule_value_production_gate_evidence",
+    description="Checks official NBEATSx/TFT schedule/value promotion decisions while market execution remains disabled.",
+)
+def dfl_official_schedule_value_production_gate_evidence(
+    dfl_official_schedule_value_production_gate_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_schedule_value_production_gate_evidence(
+            dfl_official_schedule_value_production_gate_frame,
+            source_model_names=("nbeatsx_official_v0", "tft_official_v0"),
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="forecast_pipeline_truth_audit_frame",
     name="forecast_pipeline_truth_audit_evidence",
     description="Checks forecast-vector truth audit source, unit, timestamp, and round-trip evidence.",
@@ -456,6 +473,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_schedule_value_learner_v2_evidence,
     dfl_schedule_value_learner_v2_robustness_evidence,
     dfl_schedule_value_production_gate_evidence,
+    dfl_official_schedule_value_production_gate_evidence,
     forecast_pipeline_truth_audit_evidence,
     market_coupling_temporal_availability_evidence,
     entsoe_neighbor_market_access_evidence,

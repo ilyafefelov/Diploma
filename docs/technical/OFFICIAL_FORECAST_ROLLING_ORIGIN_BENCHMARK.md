@@ -145,3 +145,14 @@ Scale-run decision:
 - The next useful slice should add market-coupling/exogenous feature governance
   and then route those features into official/DFL training, rather than only
   increasing official adapter epochs.
+
+## Schedule/Value Promotion Follow-Up
+
+The official rolling rows now feed an additive schedule/value promotion path:
+[DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md](DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md).
+
+That path keeps the same frozen LP/oracle evaluator and `strict_similar_day`
+control, but converts official rows into the richer schedule-candidate library,
+Schedule/Value Learner V2, rolling robustness, and offline promotion gate. It
+does not change the official forecast benchmark itself and does not enable live
+market execution.

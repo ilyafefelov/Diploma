@@ -1754,3 +1754,38 @@ Validation update: Compose-backed run
 `82bf8100-c5d2-4a6e-b6b2-d2a7da72bc46` persisted two latest gate rows. Postgres
 reports two promoted rows and `any_market_execution=false`; FastAPI reports
 `row_count=2`, `production_promote_count=2`, and the same narrow claim boundary.
+
+## Official Forecast Schedule/Value Promotion Path
+
+The next iteration extends the schedule/value promotion machinery to official
+NBEATSx/TFT forecasts. The purpose is to avoid comparing compact in-repo
+forecast probes against a stronger schedule/value learner while leaving the
+official adapters only in a small rolling-origin benchmark.
+
+Implementation:
+
+- Existing source asset: `official_forecast_rolling_origin_benchmark_frame`.
+- New candidate-library asset:
+  `dfl_official_schedule_candidate_library_frame`.
+- New v2 candidate-library asset:
+  `dfl_official_schedule_candidate_library_v2_frame`.
+- New learner and gate assets:
+  `dfl_official_schedule_value_learner_v2_frame`,
+  `dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame`,
+  `dfl_official_schedule_value_learner_v2_robustness_frame`, and
+  `dfl_official_schedule_value_production_gate_frame`.
+- Tracked config:
+  [../../configs/real_data_official_schedule_value_promotion_week3.yaml](../../configs/real_data_official_schedule_value_promotion_week3.yaml).
+- Tracked note:
+  [DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md](DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md).
+
+The gate uses the same promotion semantics as the compact Schedule/Value
+Learner V2 path: five tenants, 90 final validation tenant-anchors per source,
+three of four rolling strict-control passes, at least 5% mean-regret
+improvement versus `strict_similar_day`, median regret not worse, zero safety
+violations, thesis-grade observed provenance, and no market-execution claim.
+
+Decision boundary: this path can promote an official source only for
+offline/read-model strategy evidence. It does not enable live bids, does not
+replace the Pydantic Gatekeeper, and does not claim a deployed Decision
+Transformer controller.
