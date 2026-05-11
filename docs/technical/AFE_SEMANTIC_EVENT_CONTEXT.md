@@ -62,6 +62,8 @@ Implemented training-eligible features are Ukrainian and temporal:
 External market bridge rows are registered but blocked:
 
 - ENTSO-E;
+- Hugging Face PriceFM;
+- THieF;
 - OPSD;
 - Ember;
 - Nord Pool.
@@ -69,6 +71,33 @@ External market bridge rows are registered but blocked:
 Every external row remains `training_use_allowed=false` until timezone, DST,
 currency, market-rule, price-cap, API/licensing, and temporal-availability
 mapping are complete.
+
+## Market-Coupling Source Refresh
+
+The AFE catalog now records market-coupling research sources with explicit
+blockers instead of vague placeholders:
+
+| Source | Catalog status | Role | Training use |
+|---|---|---|---|
+| [ENTSO-E Transparency Platform](https://www.entsoe.eu/data/transparency-platform/) | `include_after_mapping` | future neighboring-zone DAM/load/generation covariate | blocked |
+| [PriceFM](https://huggingface.co/papers/2508.04875) / `RunyaoYu/PriceFM` | `include_watch` | future European external-validation and graph-market context | blocked |
+| [OPSD time series](https://data.open-power-system-data.org/time_series/) | `include_watch` | future open external-validation dataset | blocked |
+| [Ember API](https://ember-energy.org/data/api/) | `watch` | future generation-mix context | blocked |
+| [Nord Pool Data Portal](https://www.nordpoolgroup.com/en/services/power-market-data-services/dataportalregistration/) | `watch_restricted` | restricted Nordic/Baltic price context | blocked |
+| [THieF](https://huggingface.co/papers/2508.11372) | `watch` | future temporal-hierarchy research source | blocked |
+
+This follows the market-coupling literature: European day-ahead prices can carry
+cross-border information, but only if publication timing, gate closure, market
+rules, currency, timezone, and licensing are mapped before training. The current
+Ukrainian thesis panel therefore stays UA-first until those blockers are cleared.
+
+Latest local validation:
+
+- Dagster run: `4399f250-8ad4-4279-af39-a74b306d432d`.
+- Catalog rows: `18`.
+- External bridge rows: `6`.
+- External rows allowed for training: `0`.
+- External rows missing blocker metadata: `0`.
 
 ## Semantic Event Features
 

@@ -40,6 +40,30 @@ def test_forecast_afe_catalog_keeps_external_market_rows_research_only() -> None
     assert set(external_rows["source_name"].unique().to_list()).issuperset(
         {"ENTSO_E", "OPSD", "EMBER", "NORD_POOL"}
     )
+    assert set(external_rows["training_blockers_csv"].unique().to_list()) == {
+        "licensing,timezone,currency,market_rules,temporal_availability,domain_shift"
+    }
+
+
+def test_forecast_afe_catalog_records_market_coupling_research_sources() -> None:
+    catalog = build_forecast_afe_feature_catalog_frame()
+
+    external_rows = catalog.filter(catalog["feature_group"] == "external_market_context")
+    pricefm = external_rows.filter(external_rows["source_name"] == "PRICEFM_HF")
+    entsoe = external_rows.filter(external_rows["source_name"] == "ENTSO_E")
+
+    assert pricefm.height == 1
+    assert pricefm.select("feature_name").to_series().item() == "pricefm_european_price_context"
+    assert pricefm.select("source_status").to_series().item() == "include_watch"
+    assert pricefm.select("temporal_resolution").to_series().item() == "15min"
+    assert pricefm.select("regions").to_series().item() == "24_countries_38_regions"
+    assert pricefm.select("external_validation_role").to_series().item() == "future_external_validation"
+    assert pricefm.select("training_use_allowed").to_series().item() is False
+
+    assert entsoe.height == 1
+    assert entsoe.select("source_status").to_series().item() == "include_after_mapping"
+    assert entsoe.select("external_validation_role").to_series().item() == "future_market_coupling_covariate"
+    assert entsoe.select("training_use_allowed").to_series().item() is False
 
 
 def test_forecast_afe_catalog_evidence_rejects_missing_cutoff_policy() -> None:
@@ -57,4 +81,3 @@ def test_forecast_afe_catalog_evidence_rejects_missing_cutoff_policy() -> None:
 
     assert outcome.passed is False
     assert outcome.metadata["missing_cutoff_policy_rows"] == 1
-

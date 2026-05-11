@@ -42,6 +42,30 @@ The immediate research path is therefore:
 5. Use AFL rows to harden NBEATSx/TFT forecasts against decision-value labels.
 6. Only then attempt stronger DFL training or differentiable LP objectives.
 
+## Market-Coupling Bridge Decision
+
+The official rolling forecast runs confirmed that the adapter path works but
+does not yet beat `strict_similar_day`. The next feature-side improvement is
+therefore not to mix European rows into Ukrainian training immediately, but to
+make market-coupling sources auditable:
+
+- ENTSO-E is the most relevant future covariate source for neighboring DAM,
+  load, generation, and cross-border transparency data.
+- PriceFM is useful as a research benchmark because it explicitly models
+  European cross-region price dependencies and exposes a large European price
+  dataset, but it remains external-validation context for this thesis.
+- OPSD, Ember, Nord Pool, and THieF remain watch/bridge sources.
+
+The AFE catalog now carries `source_status`, `source_url`,
+`temporal_resolution`, `regions`, `external_validation_role`, and
+`training_blockers_csv` for external sources. Every bridge row remains blocked
+by the same six training blockers:
+
+`licensing, timezone, currency, market_rules, temporal_availability, domain_shift`.
+
+This keeps the route open for market-coupling features while preserving the
+current no-leakage Ukrainian evidence boundary.
+
 ## Claim Boundary
 
 Current semantic AFE is not broad news analysis. It is a deterministic, auditable
@@ -52,4 +76,3 @@ normalization, and leakage tests.
 The next eligible modeling slice after this audit is feature-aware forecast
 hardening or official NBEATSx/TFT training smoke-to-strict scoring, not a
 Decision Transformer policy.
-

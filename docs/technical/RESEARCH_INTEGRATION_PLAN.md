@@ -1541,3 +1541,36 @@ research blocker is feature/context and decision objective quality. The next
 slice should formalize market-coupling/exogenous feature governance and then use
 only temporally available, license-safe signals in official forecast/DFL
 training. Simply scaling the same feature set to more anchors is lower leverage.
+
+## Market-Coupling AFE Bridge Refresh
+
+The market-coupling bridge is now recorded in the AFE feature catalog as
+machine-readable source governance rather than an informal roadmap note.
+
+Implementation:
+
+- Updated helper: `smart_arbitrage.forecasting.afe`.
+- Updated tests: `tests/forecasting/test_afe_feature_catalog.py`.
+- External bridge rows now include `source_url`, `source_status`,
+  `temporal_resolution`, `regions`, `external_validation_role`, and
+  `training_blockers_csv`.
+
+Research grounding:
+
+- [PriceFM](https://huggingface.co/papers/2508.04875) supports European
+  cross-region price dependency modeling and external validation.
+- [TSFM leakage evaluation](https://huggingface.co/papers/2510.13654) keeps the
+  no-leakage guardrail explicit for any foundation-model or external-dataset
+  comparison.
+- [Cross-border asynchronous EPF](https://www.sciencedirect.com/science/article/abs/pii/S0306261925018070)
+  motivates neighboring-market price/context features, while warning that
+  timing and gate-closure availability matter.
+- [Market-coupling feature selection](https://arxiv.org/abs/2101.05249)
+  supports feature-selection rather than blind inclusion of all neighboring
+  markets.
+
+Decision: EU/neighbor-market signals may become useful for Ukrainian price
+forecasting, but they are still blocked from training until licensing, timezone,
+currency, market-rule, temporal-availability, and domain-shift mapping are
+implemented. The next executable slice should add a concrete UA/EU temporal
+availability mapper before any external market data affects NBEATSx/TFT or DFL.
