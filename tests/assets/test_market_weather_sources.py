@@ -92,6 +92,48 @@ def test_oree_data_view_parser_accepts_json_wrapped_in_html_content_type(
     assert rows[0]["market_zone"] == "IPS"
 
 
+def test_oree_data_view_month_fetch_retries_transient_empty_response(monkeypatch) -> None:
+    table_html = _build_oree_table_html(target_date="04.05.2026")
+    responses = iter(["", json.dumps({"content": table_html}).replace("</", "<\\/")])
+    requested_dates: list[str] = []
+
+    class FakeResponse:
+        headers = {"content-type": "text/html; charset=windows-1251"}
+
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, str]:
+            if not self.text:
+                return {}
+            return json.loads(self.text)
+
+    class FakeClient:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            return None
+
+        def __enter__(self) -> "FakeClient":
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            return None
+
+        def post(self, url: str, *, data: dict[str, str], headers: dict[str, str]) -> FakeResponse:
+            requested_dates.append(data["date"])
+            return FakeResponse(next(responses))
+
+    monkeypatch.setattr(market_weather.httpx, "Client", FakeClient)
+
+    rows = market_weather._fetch_oree_data_view_month_prices(date(2026, 5, 1))
+
+    assert rows is not None
+    assert len(rows) == 24
+    assert requested_dates == ["05.2026", "05.2026"]
+
+
 def test_weather_asset_tags_and_persists_tenant_specific_observations(
     monkeypatch,
 ) -> None:

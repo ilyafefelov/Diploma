@@ -57,6 +57,7 @@ DEFAULT_MARKET_HISTORY_HOURS: Final[int] = 15 * 24
 DEFAULT_MARKET_FORECAST_HOURS: Final[int] = 24
 DEFAULT_WEATHER_FORECAST_HOURS: Final[int] = 7 * 24
 OREE_DATA_VIEW_MONTH_REQUEST_PAUSE_SECONDS: Final[float] = 2.0
+OREE_DATA_VIEW_MONTH_REQUEST_ATTEMPTS: Final[int] = 3
 MARKET_WEATHER_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "temperature",
     "solar_radiation",
@@ -597,36 +598,51 @@ def _fetch_oree_data_view_prices(target_date: date) -> list[dict[str, Any]] | No
 
 
 def _fetch_oree_data_view_month_prices(month_date: date) -> list[dict[str, Any]] | None:
-    try:
-        with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-            response = client.post(
-                OREE_DATA_VIEW_URL,
-                data={
-                    "date": month_date.strftime("%m.%Y"),
-                    "market": LEVEL1_MARKET_VENUE,
-                    "zone": LEVEL1_MARKET_ZONE,
-                },
-                headers={
-                    "Referer": OREE_PRICES_URL,
-                    "X-Requested-With": "XMLHttpRequest",
-                },
-            )
-            response.raise_for_status()
+    last_error: Exception | None = None
+    for attempt_index in range(OREE_DATA_VIEW_MONTH_REQUEST_ATTEMPTS):
+        try:
+            with httpx.Client(timeout=30.0, follow_redirects=True) as client:
+                response = client.post(
+                    OREE_DATA_VIEW_URL,
+                    data={
+                        "date": month_date.strftime("%m.%Y"),
+                        "market": LEVEL1_MARKET_VENUE,
+                        "zone": LEVEL1_MARKET_ZONE,
+                    },
+                    headers={
+                        "Referer": OREE_PRICES_URL,
+                        "X-Requested-With": "XMLHttpRequest",
+                    },
+                )
+                response.raise_for_status()
 
-        content_html = _extract_oree_data_view_content(response)
-        if not content_html:
-            return None
-        parsed_rows = _extract_all_prices_from_data_view_content(content_html)
-        if parsed_rows:
-            logger.info(
-                "Parsed %s OREE rows from data_view endpoint for %s.",
-                len(parsed_rows),
+            content_html = _extract_oree_data_view_content(response)
+            if not content_html:
+                continue
+            parsed_rows = _extract_all_prices_from_data_view_content(content_html)
+            if parsed_rows:
+                logger.info(
+                    "Parsed %s OREE rows from data_view endpoint for %s.",
+                    len(parsed_rows),
+                    month_date.strftime("%m.%Y"),
+                )
+                return parsed_rows
+        except Exception as error:
+            last_error = error
+            logger.warning(
+                "OREE data_view fetch attempt %s/%s failed for %s: %s",
+                attempt_index + 1,
+                OREE_DATA_VIEW_MONTH_REQUEST_ATTEMPTS,
                 month_date.strftime("%m.%Y"),
+                error,
             )
-        return parsed_rows or None
-    except Exception as error:
-        logger.warning("OREE data_view fetch failed for %s: %s", month_date.strftime("%m.%Y"), error)
-        return None
+    if last_error is None:
+        logger.warning(
+            "OREE data_view returned no rows after %s attempts for %s.",
+            OREE_DATA_VIEW_MONTH_REQUEST_ATTEMPTS,
+            month_date.strftime("%m.%Y"),
+        )
+    return None
 
 
 def _extract_oree_data_view_content(response: httpx.Response) -> str | None:
