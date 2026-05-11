@@ -88,8 +88,23 @@ Interpretation:
 - Both source learners improve strongly versus their raw neural references.
 - This is the first latest-holdout DFL-style schedule/value evidence that beats
   the frozen strict control under strict LP/oracle scoring.
-- It is not enough for production/default promotion. The next required gate is
-  rolling-window robustness over earlier temporal windows.
+- It is not enough for production/default promotion by itself. Rolling-window
+  robustness over earlier temporal windows is required before the learner can
+  feed any offline default-fallback gate.
+
+Rolling robustness update:
+
+- robustness run id: `3a5ef479-14e9-4a2b-8d31-14882cf005c7`;
+- asset check: `dfl_schedule_value_learner_v2_robustness_evidence` passed;
+- NBEATSx-source learner passes 4 of 4 rolling strict-control windows;
+- TFT-source learner passes 3 of 4 rolling strict-control windows;
+- both source learners now qualify as robust research challengers under the
+  current offline evidence gate.
+
+The remaining boundary is promotion semantics, not the latest/rolling evidence
+itself. The next slice must connect this robustness result to an offline
+production-promotion/default-fallback gate while keeping live market execution
+disabled.
 
 ## Gate
 
@@ -105,16 +120,19 @@ schedules. The promotion gate is stricter:
 - median regret is not worse than `strict_similar_day`.
 
 Even if the latest holdout passes, production/default promotion still requires
-the existing rolling robustness and production-promotion gates.
+the existing rolling robustness and production-promotion gates. The rolling
+robustness gate now passes for NBEATSx-source and TFT-source learner variants,
+so the next gate is the explicit offline promotion/fallback decision.
 
 ## Expected Interpretation
 
 The latest materialization passes the latest-holdout strict-control signal for
-both source models. The correct next step is therefore not another candidate
-variant, but a robustness gate:
+both source models. The follow-up robustness gate also passes:
 
-1. replay the learner over four rolling 18-anchor validation windows;
-2. keep weight-profile selection strictly prior-only for each window;
-3. require at least three of four rolling strict-control passes before any
-   offline promotion claim;
-4. keep `strict_similar_day` as default fallback if robustness fails.
+1. NBEATSx-source Schedule/Value Learner V2 passes 4 of 4 rolling strict-control
+   windows.
+2. TFT-source Schedule/Value Learner V2 passes 3 of 4 rolling strict-control
+   windows.
+3. `strict_similar_day` remains the default fallback until an explicit offline
+   promotion gate consumes this result and records a `production_promote`
+   decision.

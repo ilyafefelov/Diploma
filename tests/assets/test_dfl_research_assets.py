@@ -219,6 +219,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_source_specific_research_challenger_frame",
         "dfl_schedule_value_learner_v2_frame",
         "dfl_schedule_value_learner_v2_strict_lp_benchmark_frame",
+        "dfl_schedule_value_learner_v2_robustness_frame",
         "dfl_production_promotion_gate_frame",
         "forecast_afe_feature_catalog_frame",
         "market_coupling_temporal_availability_frame",
@@ -294,6 +295,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_source_specific_research_challenger_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_schedule_value_learner_v2_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_schedule_value_learner_v2_robustness_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_production_promotion_gate_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_afe_feature_catalog_frame"] == "gold_dfl_training"
     assert groups_by_key["market_coupling_temporal_availability_frame"] == "gold_dfl_training"
@@ -360,6 +362,7 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["dfl_source_specific_research_challenger_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_schedule_value_learner_v2_frame"]["ml_stage"] == "selection"
     assert tags_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert tags_by_key["dfl_schedule_value_learner_v2_robustness_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_production_promotion_gate_frame"]["ml_stage"] == "selection"
     assert tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"] == "feature_engineering"
     assert tags_by_key["market_coupling_temporal_availability_frame"]["ml_stage"] == "feature_engineering"
@@ -402,6 +405,10 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         tags_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_schedule_value_learner_v2_robustness_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -455,6 +462,9 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"] == {
         "dfl_schedule_candidate_library_v2_frame",
         "dfl_schedule_value_learner_v2_frame",
+    }
+    assert deps_by_key["dfl_schedule_value_learner_v2_robustness_frame"] == {
+        "dfl_schedule_candidate_library_v2_frame"
     }
     assert deps_by_key["dfl_ua_coverage_repair_audit_frame"] == {
         "real_data_benchmark_silver_feature_frame",

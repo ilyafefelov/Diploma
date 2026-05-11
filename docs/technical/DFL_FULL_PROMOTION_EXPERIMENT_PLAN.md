@@ -474,3 +474,48 @@ Acceptance criteria:
 - require at least three of four strict-control window passes before the source
   becomes a robust research challenger;
 - update the production-promotion gate only after robustness evidence exists.
+
+Phase G robustness status:
+
+- Robustness run `3a5ef479-14e9-4a2b-8d31-14882cf005c7` completed
+  successfully.
+- Asset check `dfl_schedule_value_learner_v2_robustness_evidence` passed.
+- NBEATSx-source Schedule/Value Learner V2 passed 4 of 4 rolling strict-control
+  windows.
+- TFT-source Schedule/Value Learner V2 passed 3 of 4 rolling strict-control
+  windows. The oldest window failed strict-control promotion because mean
+  improvement was below 5% and median regret worsened.
+- Both source learners now meet the `robust_research_challenger` label, while
+  `production_promote=false` remains enforced by this slice.
+
+## 15. Immediate Next Slice: Offline Promotion/Fallback Gate
+
+The next slice should convert the robust research challenger evidence into an
+explicit offline promotion decision. The term "production promotion" remains
+restricted to offline/read-model strategy evidence; live market execution stays
+disabled.
+
+Planned gate:
+
+- consume `dfl_schedule_value_learner_v2_robustness_frame`;
+- consume the latest `dfl_schedule_value_learner_v2_strict_lp_benchmark_frame`;
+- emit one row per source model with `production_promote`,
+  `promotion_blocker`, `fallback_strategy`, `allowed_challenger`, and
+  `market_execution=false`;
+- set `production_promote=true` only when the source passes latest strict
+  improvement, at least 3 of 4 rolling strict-control windows, thesis-grade
+  observed coverage, zero safety violations, no train/final leakage, and
+  claim-boundary flags;
+- preserve `strict_similar_day` as fallback for undercovered,
+  out-of-distribution, or failed-source regimes.
+
+Acceptance criteria for the next slice:
+
+- add a Dagster-visible gate asset and asset check without changing public API
+  or dashboard contracts;
+- unit tests cover pass, undercoverage, median degradation, rolling failure,
+  false claim flags, and market-execution blocking;
+- materialize the gate against the current robustness result;
+- update the production-promotion and schedule/value learner docs with the
+  exact decision;
+- commit the gate and documentation before starting another model variant.

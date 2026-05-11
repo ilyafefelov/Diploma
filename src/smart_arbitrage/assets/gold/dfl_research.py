@@ -147,6 +147,10 @@ from smart_arbitrage.dfl.schedule_value_learner import (
     build_dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
     evaluate_dfl_schedule_value_learner_v2_gate,
 )
+from smart_arbitrage.dfl.schedule_value_learner_robustness import (
+    build_dfl_schedule_value_learner_v2_robustness_frame,
+    evaluate_dfl_schedule_value_learner_v2_robustness_gate,
+)
 from smart_arbitrage.dfl.production_promotion_gate import (
     build_dfl_production_promotion_gate_frame,
     evaluate_dfl_production_promotion_gate,
@@ -529,6 +533,21 @@ class DflScheduleValueLearnerV2AssetConfig(dg.Config):
     )
     forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
     final_validation_anchor_count_per_tenant: int = 18
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+
+
+class DflScheduleValueLearnerV2RobustnessAssetConfig(dg.Config):
+    """Rolling-window robustness evidence for schedule/value learner v2."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    validation_window_count: int = 4
+    validation_anchor_count: int = 18
+    min_prior_anchors_before_window: int = 30
+    min_robust_passing_windows: int = 3
     min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
@@ -1236,6 +1255,63 @@ def dfl_action_classifier_strict_lp_benchmark_frame(
         },
     )
     return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_schedule_value_learner_v2_robustness_frame(
+    context,
+    config: DflScheduleValueLearnerV2RobustnessAssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling-window robustness evidence for the schedule/value learner v2."""
+
+    tenant_ids = _csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv")
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    robustness_frame = build_dfl_schedule_value_learner_v2_robustness_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        tenant_ids=tenant_ids,
+        forecast_model_names=source_model_names,
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        min_robust_passing_windows=config.min_robust_passing_windows,
+        min_validation_tenant_anchor_count_per_source_model=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    gate = evaluate_dfl_schedule_value_learner_v2_robustness_gate(
+        robustness_frame,
+        source_model_names=source_model_names,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": robustness_frame.height,
+            "source_model_count": len(source_model_names),
+            "validation_window_count": config.validation_window_count,
+            "validation_anchor_count": config.validation_anchor_count,
+            "robust_source_model_names": gate.metrics.get(
+                "robust_source_model_names",
+                [],
+            ),
+            "promotion_gate_decision": gate.decision,
+            "promotion_gate_description": gate.description,
+            "production_gate_passed": gate.metrics.get("production_gate_passed", False),
+            "scope": "dfl_schedule_value_learner_v2_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return robustness_frame
 
 
 @dg.asset(
@@ -3740,6 +3816,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_source_specific_research_challenger_frame,
     dfl_schedule_value_learner_v2_frame,
     dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
+    dfl_schedule_value_learner_v2_robustness_frame,
     dfl_production_promotion_gate_frame,
     regret_weighted_forecast_calibration_frame,
     regret_weighted_forecast_strategy_benchmark_frame,

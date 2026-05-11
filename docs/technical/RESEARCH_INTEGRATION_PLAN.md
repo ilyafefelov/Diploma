@@ -1665,6 +1665,39 @@ Materialized result on 2026-05-11:
 
 This is the first latest-holdout DFL-style schedule/value evidence that beats
 the frozen `strict_similar_day` control under strict LP/oracle scoring. It is
-still a research challenger, not a promoted controller. The next required slice
-is rolling robustness for `dfl_schedule_value_learner_v2` across earlier
-temporal windows, using the same prior-only selection discipline.
+still a research challenger, not a promoted controller.
+
+## DFL Schedule/Value Learner V2 Rolling Robustness
+
+The rolling robustness slice replayed `dfl_schedule_value_learner_v2` over four
+latest-first 18-anchor validation windows, selecting weight profiles only from
+anchors strictly before each validation window.
+
+Implementation:
+
+- New helper: `smart_arbitrage.dfl.schedule_value_learner_robustness`.
+- New asset: `dfl_schedule_value_learner_v2_robustness_frame`.
+- New asset check: `dfl_schedule_value_learner_v2_robustness_evidence`.
+- Config:
+  [../../configs/real_data_dfl_schedule_value_learner_v2_robustness_week3.yaml](../../configs/real_data_dfl_schedule_value_learner_v2_robustness_week3.yaml).
+- Tracked note:
+  [DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md](DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md).
+
+Materialized result on 2026-05-11:
+
+- Dagster run: `3a5ef479-14e9-4a2b-8d31-14882cf005c7`.
+- Asset check `dfl_schedule_value_learner_v2_robustness_evidence` passed.
+- Coverage: five tenants, four rolling windows, 18 validation anchors per
+  tenant/window, 90 validation tenant-anchors per source/window.
+- NBEATSx-source learner passed 4 of 4 rolling strict-control windows.
+- TFT-source learner passed 3 of 4 rolling strict-control windows. Its oldest
+  window failed because mean improvement was only `3.85%` and median regret was
+  worse than `strict_similar_day`.
+
+Decision update: both source learners now qualify as robust research
+challengers under the current offline evidence gate. They are still not full
+DFL, not Decision Transformer control, not live market execution, and not a
+dashboard/API default controller. The next required slice is an offline
+production-promotion/default-fallback gate that consumes this robustness result
+and records whether `production_promote=true` is justified for offline
+read-model strategy evidence while keeping `market_execution=false`.

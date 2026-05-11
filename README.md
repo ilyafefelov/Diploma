@@ -9,6 +9,7 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Main control: `strict_similar_day`.
 - Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
+- Latest DFL research challenger: Schedule/Value Learner V2 now passes rolling strict-control robustness as offline evidence only: NBEATSx-source passes 4/4 windows, TFT-source passes 3/4 windows, and live market execution remains disabled.
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
@@ -166,6 +167,7 @@ Latest full verification: `151 passed`.
 - Production promotion gate: `docs/technical/DFL_PRODUCTION_PROMOTION_GATE.md`
 - Regime-gated TFT selector v2: `docs/technical/DFL_REGIME_GATED_TFT_SELECTOR_V2.md`
 - DFL schedule/value learner v2: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md`
+- DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
 - Official forecast rolling-origin benchmark: `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md`

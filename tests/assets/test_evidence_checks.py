@@ -85,6 +85,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_schedule_value_learner_v2_evidence",
         ),
         (
+            "dfl_schedule_value_learner_v2_robustness_frame",
+            "dfl_schedule_value_learner_v2_robustness_evidence",
+        ),
+        (
             "forecast_pipeline_truth_audit_frame",
             "forecast_pipeline_truth_audit_evidence",
         ),
