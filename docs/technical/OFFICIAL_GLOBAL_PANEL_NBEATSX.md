@@ -247,6 +247,107 @@ rolling strict-control passes; the current four-anchor global-panel run is only
 a screening result. This fixes an important governance detail: screening
 thresholds must not be reused as production-promotion thresholds.
 
+Clean 104-anchor latest-first promotion result on 2026-05-11:
+
+```powershell
+.\scripts\run-official-global-panel-batches.ps1 `
+  -TotalAnchors 90 `
+  -BatchSize 10 `
+  -StartAnchorIndex 0 `
+  -AnchorBatchOrder latest_first `
+  -GeneratedAtIso "2026-05-11T21:00:00+00:00" `
+  -BatchTimeoutSeconds 7200
+
+.\scripts\run-official-global-panel-batches.ps1 `
+  -TotalAnchors 104 `
+  -BatchSize 14 `
+  -StartAnchorIndex 90 `
+  -EndAnchorIndex 104 `
+  -AnchorBatchOrder latest_first `
+  -GeneratedAtIso "2026-05-11T21:00:00+00:00" `
+  -SkipDownstreamGate `
+  -BatchTimeoutSeconds 7200
+```
+
+The first 90-anchor attempt produced promotion-grade latest holdout coverage,
+but the downstream robustness asset correctly failed because four 18-anchor
+rolling windows plus prior history require at least 102 anchors. The run was
+resumed with the same fixed `generated_at` and extended to 104 anchors before
+rerunning the downstream schedule/value gate.
+
+Raw official rolling benchmark:
+
+| Evidence item | Value |
+|---|---:|
+| Fixed generated timestamp | `2026-05-11 21:00:00+00` |
+| Persisted raw strict rows | 1040 |
+| Tenants | 5 |
+| Anchors per tenant | 104 |
+| Anchor range | `2026-01-08 23:00` to `2026-04-29 23:00` |
+| `strict_similar_day` mean / median regret | 734.99 / 433.36 UAH |
+| Raw official NBEATSx mean / median regret | 956.36 / 543.51 UAH |
+| Horizon-calibrated official NBEATSx mean / median regret | 912.30 / 511.32 UAH |
+
+Interpretation: raw official global-panel NBEATSx still loses to
+`strict_similar_day` over the full 104-anchor panel. Prior-only horizon
+calibration improves the raw official forecast, but it also remains behind the
+strict control. The promotion signal therefore does not come from replacing the
+forecast directly; it comes from the schedule/value learner choosing feasible
+schedule families with `strict_similar_day` as the default fallback.
+
+Downstream schedule/value production gate:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
+  --select nbeatsx_official_global_panel_rolling_horizon_calibration_frame,nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_candidate_library_frame,dfl_official_global_panel_schedule_candidate_library_v2_frame,dfl_official_global_panel_schedule_value_learner_v2_frame,dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_robustness_frame,dfl_official_global_panel_schedule_value_production_gate_frame `
+  -c configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml
+```
+
+| Evidence item | Value |
+|---|---:|
+| Dagster run id | `985444e2-cf43-4e9f-ba82-da015a380727` |
+| Gate generated timestamp | `2026-05-11 22:20:54.834887+00` |
+| Candidate library rows | 6240 |
+| Candidate library v2 rows | 10260 |
+| Learner rows | 10 |
+| Strict final-holdout rows | 540 |
+| Robustness rows | 8 |
+| Production gate rows | 2 |
+| Market execution enabled | `false` |
+
+Latest final-holdout strict LP/oracle evidence:
+
+| Source | Reference | Rows | Tenants | Anchors | Mean regret | Median regret |
+|---|---|---:|---:|---:|---:|---:|
+| Raw official NBEATSx | raw source | 90 | 5 | 18 | 751.91 | 389.02 |
+| Raw official NBEATSx | strict reference | 90 | 5 | 18 | 310.58 | 198.39 |
+| Raw official NBEATSx | schedule/value learner | 90 | 5 | 18 | 203.27 | 82.88 |
+| Horizon-calibrated official NBEATSx | raw source | 90 | 5 | 18 | 663.24 | 373.91 |
+| Horizon-calibrated official NBEATSx | strict reference | 90 | 5 | 18 | 310.58 | 198.39 |
+| Horizon-calibrated official NBEATSx | schedule/value learner | 90 | 5 | 18 | 236.25 | 123.99 |
+
+Rolling robustness:
+
+| Source | Rolling windows | Strict-control pass windows | Development pass windows | Latest mean-regret improvement vs strict | Gate label |
+|---|---:|---:|---:|---:|---|
+| Raw official NBEATSx | 4 | 4 | 4 | 34.55% | `robust_research_challenger` |
+| Horizon-calibrated official NBEATSx | 4 | 3 | 4 | 23.93% | `robust_research_challenger` |
+
+Production gate:
+
+| Source | Latest validation tenant-anchors | Allowed challenger | Fallback | Production promote | Market execution | Blocker |
+|---|---:|---|---|---|---|---|
+| Raw official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
+| Horizon-calibrated official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
+
+Interpretation: this is the first promotion-grade official global-panel result
+that passes the offline/read-model production gate. The precise claim is narrow:
+the schedule/value learner built from official global-panel NBEATSx candidates
+may be used as an offline strategy-evidence challenger behind a
+`strict_similar_day` fallback. It is not live market execution, not a deployed
+Decision Transformer controller, and not proof that raw NBEATSx forecasts are
+better than the strict control.
+
 365-anchor UA backfill batch evidence on 2026-05-11:
 
 ```powershell
@@ -280,7 +381,7 @@ persisted anchors exist.
 
 Not implemented yet:
 
-- source/regime production promotion;
+- live market execution or dashboard/API default switching;
 - completed 365-anchor official global-panel backfill. Batch execution is now
   resumable, but only the first 8 anchors have been materialized locally under
   the clean `2026-05-11 20:30:00+00` evidence timestamp.

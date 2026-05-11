@@ -1921,3 +1921,66 @@ Decision update: this proves the 365-anchor backfill lane can run in resumable
 local batches. It is not promotion evidence yet; the gate still needs 90 latest
 validation tenant-anchors per source plus four rolling robustness windows before
 any offline/read-model promotion claim.
+
+## Official Global-Panel 104-Anchor Promotion Gate Result
+
+The first clean latest-first official global-panel run has now reached the
+current 104-anchor promotion scope. The first 90-anchor attempt correctly failed
+at the robustness step because four 18-anchor validation windows plus prior
+history require at least 102 anchors. The run was resumed with the same fixed
+`generated_at` and extended to 104 anchors before rerunning the downstream
+schedule/value gate.
+
+Implementation:
+
+- Config:
+  [../../configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml).
+- Runner:
+  [../../scripts/run-official-global-panel-batches.ps1](../../scripts/run-official-global-panel-batches.ps1).
+- Fixed raw-benchmark generated timestamp: `2026-05-11 21:00:00+00`.
+- Downstream gate run id: `985444e2-cf43-4e9f-ba82-da015a380727`.
+- Downstream gate generated timestamp:
+  `2026-05-11 22:20:54.834887+00`.
+- Tracked note:
+  [OFFICIAL_GLOBAL_PANEL_NBEATSX.md](OFFICIAL_GLOBAL_PANEL_NBEATSX.md).
+
+Raw official rolling benchmark over 104 anchors:
+
+| Strategy | Rows | Tenants | Anchors | Mean regret | Median regret |
+|---|---:|---:|---:|---:|---:|
+| `strict_similar_day` | 520 | 5 | 104 | 734.99 | 433.36 |
+| `nbeatsx_official_global_panel_v1` | 520 | 5 | 104 | 956.36 | 543.51 |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 520 | 5 | 104 | 912.30 | 511.32 |
+
+The raw and horizon-calibrated official NBEATSx forecasts therefore still lose
+to the frozen strict control over the full 104-anchor panel. This is not a
+forecast-model promotion.
+
+Schedule/value learner latest holdout:
+
+| Source | Strict mean / median | Raw source mean / median | Learner mean / median | Latest improvement vs strict |
+|---|---:|---:|---:|---:|
+| `nbeatsx_official_global_panel_v1` | 310.58 / 198.39 | 751.91 / 389.02 | 203.27 / 82.88 | 34.55% |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 310.58 / 198.39 | 663.24 / 373.91 | 236.25 / 123.99 | 23.93% |
+
+Rolling robustness:
+
+| Source | Rolling windows | Strict-control pass windows | Development pass windows | Gate label |
+|---|---:|---:|---:|---|
+| `nbeatsx_official_global_panel_v1` | 4 | 4 | 4 | `robust_research_challenger` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 4 | 3 | 4 | `robust_research_challenger` |
+
+Production gate:
+
+| Source | Latest validation tenant-anchors | Allowed challenger | Production promote | Market execution | Blocker |
+|---|---:|---|---|---|---|
+| `nbeatsx_official_global_panel_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `true` | `false` | `none` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `true` | `false` | `none` |
+
+Decision update: the first official global-panel promotion-grade result is a
+schedule/value learner result, not a raw NBEATSx forecast result. The thesis-safe
+claim is that official global-panel NBEATSx can now feed an offline/read-model
+default-fallback controller candidate that passes the strict LP/oracle promotion
+gate under the current 104-anchor Ukrainian panel. `market_execution_enabled`
+remains `false`, the Pydantic Gatekeeper remains mandatory, and live bidding is
+still out of scope.
