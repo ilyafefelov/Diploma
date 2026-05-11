@@ -90,7 +90,12 @@ sources blocked from training and records PriceFM Dataset Viewer metadata
 The ENTSO-E-specific follow-up,
 `entsoe_neighbor_market_query_spec_frame`, records the `A44/A01` day-ahead
 price query shape and neighbor candidates, but blocks fetch/training because no
-local ENTSO-E security token is configured.
+local ENTSO-E security token is configured. The query spec now also records the
+fetch-ready, token-redacted Transparency Platform contract:
+`https://web-api.tp.entsoe.eu/api` with
+`securityToken,documentType,processType,in_Domain,out_Domain,periodStart,periodEnd`.
+Mapped neighbor zones use the same bidding-zone EIC for `in_Domain` and
+`out_Domain`; Moldova remains blocked until its bidding-zone mapping is verified.
 
 European rows remain `training_use_allowed=false` until these blockers are
 resolved:

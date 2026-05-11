@@ -15,6 +15,16 @@ from smart_arbitrage.forecasting.market_coupling_availability import (
 ENTSOE_NEIGHBOR_MARKET_ACCESS_CLAIM_SCOPE: Final[str] = (
     "entsoe_neighbor_market_access_research_gate"
 )
+ENTSOE_API_BASE_URL: Final[str] = "https://web-api.tp.entsoe.eu/api"
+ENTSOE_DAY_AHEAD_PRICE_QUERY_PARAMETER_KEYS: Final[tuple[str, ...]] = (
+    "securityToken",
+    "documentType",
+    "processType",
+    "in_Domain",
+    "out_Domain",
+    "periodStart",
+    "periodEnd",
+)
 REQUIRED_ENTSOE_NEIGHBOR_ACCESS_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "country_code",
@@ -27,6 +37,9 @@ REQUIRED_ENTSOE_NEIGHBOR_ACCESS_COLUMNS: Final[frozenset[str]] = frozenset(
         "query_role",
         "time_zone_policy",
         "publication_time_policy",
+        "api_base_url",
+        "query_parameter_keys_csv",
+        "request_url_template",
         "security_token_required",
         "security_token_available",
         "fetch_allowed",
@@ -189,6 +202,11 @@ def _query_spec_row(row: dict[str, str], *, token_available: bool) -> dict[str, 
         "query_role": "future_market_coupling_covariate",
         "time_zone_policy": "request_utc_align_to_europe_kyiv_anchor",
         "publication_time_policy": "must_be_published_before_ua_anchor",
+        "api_base_url": ENTSOE_API_BASE_URL,
+        "query_parameter_keys_csv": ",".join(ENTSOE_DAY_AHEAD_PRICE_QUERY_PARAMETER_KEYS),
+        "request_url_template": _request_url_template(row["bidding_zone_eic"])
+        if eic_mapped
+        else "",
         "security_token_required": True,
         "security_token_available": token_available,
         "fetch_allowed": fetch_allowed,
@@ -208,6 +226,19 @@ def _next_action(country_code: str, *, token_available: bool) -> str:
     if not token_available:
         return "request_entsoe_security_token_before_fetching_source_backed_sample"
     return "fetch_manual_day_ahead_price_sample_and_record_publication_timestamp"
+
+
+def _request_url_template(bidding_zone_eic: str) -> str:
+    return (
+        f"{ENTSOE_API_BASE_URL}?"
+        "securityToken=<redacted>"
+        "&documentType=A44"
+        "&processType=A01"
+        f"&in_Domain={bidding_zone_eic}"
+        f"&out_Domain={bidding_zone_eic}"
+        "&periodStart={period_start_utc_yyyymmddHHMM}"
+        "&periodEnd={period_end_utc_yyyymmddHHMM}"
+    )
 
 
 def _missing_column_failures(frame: pl.DataFrame, required_columns: frozenset[str]) -> list[str]:

@@ -90,6 +90,10 @@ so the review packet can be audited against `docs/sources`.
   decision cut.
 - EU market-coupling sources justify future covariates and governance gates, not
   direct mixing of EU rows into Ukrainian DFL training.
+- ENTSO-E neighbor-market samples must use the token-redacted Transparency
+  Platform request contract captured by `entsoe_neighbor_market_query_spec_frame`:
+  `documentType=A44`, `processType=A01`, mapped bidding-zone EIC as both
+  `in_Domain` and `out_Domain`, and explicit UTC `periodStart` / `periodEnd`.
 - AI Act governance supports deterministic safety boundaries and logging. It
   does not imply the current MVP is a regulated live high-risk deployment.
 - Kumtepeli 2020 and Cao 2020 justify richer degradation-aware control as future

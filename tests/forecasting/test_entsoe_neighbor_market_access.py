@@ -38,6 +38,10 @@ def test_entsoe_neighbor_market_query_spec_records_day_ahead_price_request_shape
     assert frame["document_type"].unique().to_list() == ["A44"]
     assert frame["process_type"].unique().to_list() == ["A01"]
     assert frame["market_venue"].unique().to_list() == ["neighbor_DAM"]
+    assert frame["api_base_url"].unique().to_list() == ["https://web-api.tp.entsoe.eu/api"]
+    assert frame["query_parameter_keys_csv"].unique().to_list() == [
+        "securityToken,documentType,processType,in_Domain,out_Domain,periodStart,periodEnd"
+    ]
     assert set(frame["country_code"].to_list()) == {"PL", "SK", "HU", "RO", "MD"}
 
     pl_row = frame.filter(pl.col("country_code") == "PL")
@@ -46,10 +50,19 @@ def test_entsoe_neighbor_market_query_spec_records_day_ahead_price_request_shape
     assert pl_row.select("bidding_zone_eic").to_series().item() == "10YPL-AREA-----S"
     assert pl_row.select("eic_mapping_status").to_series().item() == "mapped"
     assert pl_row.select("fetch_allowed").to_series().item() is True
+    request_template = pl_row.select("request_url_template").to_series().item()
+    assert "securityToken=<redacted>" in request_template
+    assert "documentType=A44" in request_template
+    assert "processType=A01" in request_template
+    assert "in_Domain=10YPL-AREA-----S" in request_template
+    assert "out_Domain=10YPL-AREA-----S" in request_template
+    assert "periodStart={period_start_utc_yyyymmddHHMM}" in request_template
+    assert "periodEnd={period_end_utc_yyyymmddHHMM}" in request_template
 
     assert md_row.select("bidding_zone_eic").to_series().item() == ""
     assert md_row.select("eic_mapping_status").to_series().item() == "review_required"
     assert md_row.select("fetch_allowed").to_series().item() is False
+    assert md_row.select("request_url_template").to_series().item() == ""
 
 
 def test_entsoe_neighbor_market_access_evidence_rejects_training_rows() -> None:
