@@ -7,7 +7,9 @@ import polars as pl
 from smart_arbitrage.dfl.schedule_value_promotion_gate import (
     DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
     build_dfl_schedule_value_production_gate_frame,
+    build_dfl_schedule_value_production_gate_registry,
     validate_dfl_schedule_value_production_gate_evidence,
+    write_dfl_schedule_value_production_gate_registry,
 )
 from smart_arbitrage.dfl.schedule_value_learner import (
     DFL_SCHEDULE_VALUE_LEARNER_V2_STRICT_CLAIM_SCOPE,
@@ -136,6 +138,38 @@ def test_schedule_value_production_gate_evidence_fails_on_bad_flags_and_market_e
     assert evidence.passed is False
     assert "not_market_execution=true" in evidence.description
     assert "market_execution_enabled=false" in evidence.description
+
+
+def test_schedule_value_production_gate_registry_writes_concise_artifacts(tmp_path) -> None:
+    gate = build_dfl_schedule_value_production_gate_frame(
+        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
+        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        source_model_names=SOURCE_MODELS,
+    )
+
+    registry = build_dfl_schedule_value_production_gate_registry(
+        run_slug="unit_schedule_value_gate",
+        gate_frame=gate,
+        dagster_run_id="unit-run",
+    )
+    export_dir = write_dfl_schedule_value_production_gate_registry(
+        registry,
+        output_root=tmp_path,
+        run_slug="unit_schedule_value_gate",
+    )
+
+    assert registry["claim_boundary"]["not_market_execution"] is True
+    assert registry["summary"]["production_promote_count"] == 2
+    assert registry["summary"]["market_execution_enabled"] is False
+    assert registry["source_model_rows"][0]["fallback_strategy"] == (
+        "strict_similar_day_default_fallback"
+    )
+    assert (export_dir / "dfl_schedule_value_production_gate_registry.json").exists()
+    markdown = (export_dir / "dfl_schedule_value_production_gate_registry.md").read_text(
+        encoding="utf-8"
+    )
+    assert "NBEATSx" in markdown
+    assert "market execution remains disabled" in markdown
 
 
 def _row(frame: pl.DataFrame, source_model_name: str) -> dict[str, object]:

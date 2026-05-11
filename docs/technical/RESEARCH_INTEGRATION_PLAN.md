@@ -1732,6 +1732,8 @@ Materialized result on 2026-05-11:
   evidence, 90 latest validation tenant-anchors, 21.07% latest mean-regret
   improvement versus `strict_similar_day`, 3 of 4 rolling strict passes.
 - `market_execution_enabled=false` for every row.
+- Local ignored registry:
+  `data/research_runs/week3_dfl_schedule_value_production_gate/`.
 
 Decision update: this is the first offline promotion pass in the DFL evidence
 stack. The allowed claim is still narrow: source-specific schedule/value

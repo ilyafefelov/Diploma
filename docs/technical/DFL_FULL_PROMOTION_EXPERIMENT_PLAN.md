@@ -521,19 +521,40 @@ This is the first offline promotion pass in the long-running DFL experiment
 loop. It does not promote live execution and does not change dashboard/API
 defaults.
 
-## 16. Immediate Next Slice: Promotion Registry And Read-Model Boundary
+## 16. Phase H Status: Promotion Registry
 
-The next slice should package the new offline promotion pass without weakening
-the thesis claim.
+The offline promotion pass has a concise local registry export.
+
+Implementation:
+
+- New script:
+  `scripts/materialize_schedule_value_production_gate_registry.py`.
+- New helper functions:
+  `build_dfl_schedule_value_production_gate_registry` and
+  `write_dfl_schedule_value_production_gate_registry`.
+- Local ignored export:
+  `data/research_runs/week3_dfl_schedule_value_production_gate/`.
+
+Registry result:
+
+- production-promoted source models: `nbeatsx_silver_v0`, `tft_silver_v0`;
+- production-promote count: 2;
+- market execution enabled: false;
+- strict fallback:
+  `strict_similar_day_default_fallback`.
+
+## 17. Immediate Next Slice: Read-Model Boundary Decision
+
+The next slice should decide whether the offline promotion state belongs in a
+FastAPI read model, and if so expose it as an opt-in research/evidence field
+without changing dashboard defaults.
 
 Acceptance criteria:
 
-- export a concise ignored registry for `dfl_schedule_value_production_gate_frame`;
-- add a tracked supervisor-readable summary that separates offline promotion
-  from live market execution;
-- decide whether FastAPI read models should expose `production_promote` as an
-  opt-in research field, without changing dashboard defaults;
+- inspect existing API strategy/read-model endpoints for the narrowest additive
+  field or endpoint;
+- do not change dashboard behavior by default;
+- keep `market_execution_enabled=false` visible wherever promotion is exposed;
 - keep `strict_similar_day` as fallback in all undercovered,
   out-of-distribution, failed-source, and live-execution contexts;
-- update the literature review only if the claim text changes, not for every
-  internal rerun.
+- add API tests if any read-model contract is changed.

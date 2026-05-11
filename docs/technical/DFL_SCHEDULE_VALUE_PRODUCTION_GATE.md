@@ -62,6 +62,7 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 | Gate rows | 2 source-model rows |
 | Production promotions | 2 offline/read-model promotions |
 | Market execution | `false` for every row |
+| Local registry export | `data/research_runs/week3_dfl_schedule_value_production_gate/` |
 
 Gate result:
 
@@ -89,3 +90,25 @@ bounded:
 The next responsible step is to export a concise promotion registry and decide
 whether to expose this offline promotion state in read models. Any read-model or
 dashboard change should remain opt-in and continue showing the claim boundary.
+
+## Registry Export
+
+The local ignored registry was generated with:
+
+```powershell
+$slug='week3_dfl_schedule_value_production_gate'
+$exportDir=Join-Path 'data\research_runs' $slug
+New-Item -ItemType Directory -Force -Path $exportDir | Out-Null
+$cid=(docker compose ps -q dagster-webserver)
+docker cp "${cid}:/opt/dagster/dagster_home/storage/dfl_schedule_value_production_gate_frame" (Join-Path $exportDir 'dfl_schedule_value_production_gate_frame.pkl')
+.\.venv\Scripts\python.exe scripts\materialize_schedule_value_production_gate_registry.py --run-slug $slug --gate-frame-pickle (Join-Path $exportDir 'dfl_schedule_value_production_gate_frame.pkl') --dagster-run-id 93d0f01c-5140-4958-a64f-74067144df4f
+```
+
+Generated files:
+
+- `data/research_runs/week3_dfl_schedule_value_production_gate/dfl_schedule_value_production_gate_registry.json`;
+- `data/research_runs/week3_dfl_schedule_value_production_gate/dfl_schedule_value_production_gate_registry.md`;
+- `data/research_runs/week3_dfl_schedule_value_production_gate/dfl_schedule_value_production_gate_frame.pkl`.
+
+The generated `data/` artifacts remain local and ignored. This tracked document
+copies the concise report-ready values needed for supervisor review.

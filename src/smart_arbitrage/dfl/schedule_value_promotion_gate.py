@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
+import json
+from pathlib import Path
 from statistics import mean, median
 from typing import Any, Final
 
@@ -193,6 +195,66 @@ def evaluate_dfl_schedule_value_production_gate(
         "Schedule/value production gate evidence is valid but no source is promoted.",
         evidence.metadata,
     )
+
+
+def build_dfl_schedule_value_production_gate_registry(
+    *,
+    run_slug: str,
+    gate_frame: pl.DataFrame,
+    dagster_run_id: str | None = None,
+    materialization_command: str | None = None,
+) -> dict[str, Any]:
+    """Build a concise supervisor-facing registry from the promotion gate frame."""
+
+    evidence = validate_dfl_schedule_value_production_gate_evidence(gate_frame)
+    rows = [_registry_row(row) for row in gate_frame.sort("source_model_name").iter_rows(named=True)]
+    promoted = [row["source_model_name"] for row in rows if bool(row["production_promote"])]
+    market_execution_enabled = any(bool(row["market_execution_enabled"]) for row in rows)
+    return {
+        "run_slug": run_slug,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "dagster_run_id": dagster_run_id,
+        "materialization_command": materialization_command,
+        "claim_boundary": {
+            "claim_scope": DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "offline_read_model_strategy_evidence_only": True,
+            "market_execution_enabled": False,
+            "strict_fallback": STRICT_DEFAULT_FALLBACK,
+        },
+        "summary": {
+            "evidence_passed": evidence.passed,
+            "evidence_description": evidence.description,
+            "row_count": gate_frame.height,
+            "production_promote_count": len(promoted),
+            "promoted_source_model_names": promoted,
+            "market_execution_enabled": market_execution_enabled,
+            "fallback_strategy": STRICT_DEFAULT_FALLBACK,
+        },
+        "source_model_rows": rows,
+    }
+
+
+def write_dfl_schedule_value_production_gate_registry(
+    registry: dict[str, Any],
+    *,
+    output_root: Path,
+    run_slug: str,
+) -> Path:
+    """Write local JSON and Markdown registry artifacts."""
+
+    export_dir = output_root / run_slug
+    export_dir.mkdir(parents=True, exist_ok=True)
+    (export_dir / "dfl_schedule_value_production_gate_registry.json").write_text(
+        json.dumps(_jsonable(registry), indent=2, sort_keys=True),
+        encoding="utf-8",
+    )
+    (export_dir / "dfl_schedule_value_production_gate_registry.md").write_text(
+        _production_gate_registry_markdown(registry),
+        encoding="utf-8",
+    )
+    return export_dir
 
 
 def _promotion_row(
@@ -414,6 +476,104 @@ def _source_summary(row: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _registry_row(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source_model_name": str(row["source_model_name"]),
+        "latest_validation_tenant_anchor_count": int(
+            row["latest_validation_tenant_anchor_count"]
+        ),
+        "latest_strict_mean_regret_uah": float(row["latest_strict_mean_regret_uah"]),
+        "latest_selected_mean_regret_uah": float(row["latest_selected_mean_regret_uah"]),
+        "latest_mean_regret_improvement_ratio_vs_strict": float(
+            row["latest_mean_regret_improvement_ratio_vs_strict"]
+        ),
+        "latest_strict_median_regret_uah": float(row["latest_strict_median_regret_uah"]),
+        "latest_selected_median_regret_uah": float(row["latest_selected_median_regret_uah"]),
+        "rolling_window_count": int(row["rolling_window_count"]),
+        "rolling_strict_pass_window_count": int(row["rolling_strict_pass_window_count"]),
+        "robust_research_challenger": bool(row["robust_research_challenger"]),
+        "production_promote": bool(row["production_promote"]),
+        "promotion_blocker": str(row["promotion_blocker"]),
+        "fallback_strategy": str(row["fallback_strategy"]),
+        "allowed_challenger": str(row["allowed_challenger"]),
+        "market_execution_enabled": bool(row["market_execution_enabled"]),
+    }
+
+
+def _production_gate_registry_markdown(registry: dict[str, Any]) -> str:
+    lines = [
+        "# DFL Schedule/Value Production Gate Registry",
+        "",
+        f"Run slug: `{registry['run_slug']}`",
+        f"Dagster run id: `{registry.get('dagster_run_id') or 'not recorded'}`",
+        "",
+        "## Claim Boundary",
+        "",
+        "- Offline/read-model strategy evidence only.",
+        "- `not_full_dfl=true`",
+        "- `not_market_execution=true`",
+        "- `market_execution_enabled=false`; market execution remains disabled.",
+        f"- Fallback strategy: `{STRICT_DEFAULT_FALLBACK}`",
+        "",
+        "## Summary",
+        "",
+        f"- Evidence passed: `{registry['summary']['evidence_passed']}`",
+        f"- Production promote count: `{registry['summary']['production_promote_count']}`",
+        f"- Promoted source models: `{', '.join(registry['summary']['promoted_source_model_names']) or 'none'}`",
+        "",
+        "| Source model | Latest anchors | Strict mean | Selected mean | Improvement | Strict median | Selected median | Rolling strict passes | Production promote | Allowed challenger |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---|---|",
+    ]
+    for row in registry["source_model_rows"]:
+        lines.append(
+            "| {source} | {anchors} | {strict_mean:.3f} | {selected_mean:.3f} | "
+            "{improvement:.2%} | {strict_median:.3f} | {selected_median:.3f} | "
+            "{rolling_passes} / {rolling_windows} | {promote} | `{challenger}` |".format(
+                source=_display_source_model(str(row["source_model_name"])),
+                anchors=row["latest_validation_tenant_anchor_count"],
+                strict_mean=row["latest_strict_mean_regret_uah"],
+                selected_mean=row["latest_selected_mean_regret_uah"],
+                improvement=row["latest_mean_regret_improvement_ratio_vs_strict"],
+                strict_median=row["latest_strict_median_regret_uah"],
+                selected_median=row["latest_selected_median_regret_uah"],
+                rolling_passes=row["rolling_strict_pass_window_count"],
+                rolling_windows=row["rolling_window_count"],
+                promote=str(row["production_promote"]).lower(),
+                challenger=row["allowed_challenger"] or "none",
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "## Decision",
+            "",
+            "The promoted rows are valid only inside the offline evidence stack. "
+            "`strict_similar_day` remains the fallback for undercovered, "
+            "out-of-distribution, failed-source, and live-execution contexts.",
+            "",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _display_source_model(source_model_name: str) -> str:
+    if source_model_name.startswith("nbeatsx"):
+        return "NBEATSx (`nbeatsx_silver_v0`)"
+    if source_model_name.startswith("tft"):
+        return "TFT (`tft_silver_v0`)"
+    return f"`{source_model_name}`"
+
+
+def _jsonable(value: Any) -> Any:
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    if isinstance(value, list | tuple):
+        return [_jsonable(item) for item in value]
+    return value
+
+
 def _validate_config(
     *,
     source_model_names: tuple[str, ...],
@@ -497,6 +657,8 @@ def _datetime_value(value: object, *, field_name: str) -> datetime:
 __all__ = [
     "DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE",
     "build_dfl_schedule_value_production_gate_frame",
+    "build_dfl_schedule_value_production_gate_registry",
     "evaluate_dfl_schedule_value_production_gate",
     "validate_dfl_schedule_value_production_gate_evidence",
+    "write_dfl_schedule_value_production_gate_registry",
 ]
