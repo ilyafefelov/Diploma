@@ -46,6 +46,8 @@ Latest 180-anchor repair audit:
   [real_data_dfl_regime_gated_tft_selector_v2_week3.yaml](../../configs/real_data_dfl_regime_gated_tft_selector_v2_week3.yaml).
 - New repair asset: `dfl_ua_coverage_repair_audit_frame`.
 - Dagster run id: `1b901874-b713-4762-9154-2e822f91be8d`.
+- Revalidated run id on 2026-05-11:
+  `c364a852-305d-48ed-88e4-f17ff59398bf`.
 - Target: 180 eligible anchors per tenant.
 - Current result: 104 eligible anchors per tenant for all five canonical
   tenants.
