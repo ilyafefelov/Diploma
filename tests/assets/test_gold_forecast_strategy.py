@@ -14,12 +14,14 @@ from smart_arbitrage.assets.gold.forecast_strategy import (
     FORECAST_STRATEGY_GOLD_ASSETS,
     ForecastStrategyComparisonAssetConfig,
     OfficialGlobalPanelCalibrationAssetConfig,
+    OfficialGlobalPanelRollingAssetConfig,
     OfficialForecastRollingOriginAssetConfig,
     RealDataRollingOriginBenchmarkAssetConfig,
     _daily_benchmark_anchors,
     forecast_strategy_comparison_frame,
     nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame,
     nbeatsx_official_global_panel_horizon_calibration_frame,
+    nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,
     nbeatsx_official_global_panel_strict_lp_benchmark_frame,
     official_forecast_rolling_origin_benchmark_frame,
     official_forecast_strict_lp_benchmark_frame,
@@ -225,6 +227,7 @@ def test_forecast_strategy_gold_asset_is_registered() -> None:
         "official_forecast_strict_lp_benchmark_frame",
         "official_forecast_rolling_origin_benchmark_frame",
         "nbeatsx_official_global_panel_strict_lp_benchmark_frame",
+        "nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame",
         "nbeatsx_official_global_panel_horizon_calibration_frame",
         "nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame",
         "real_data_rolling_origin_benchmark_frame",
@@ -348,6 +351,58 @@ def test_global_panel_nbeatsx_strict_lp_asset_persists_rows(monkeypatch) -> None
     )
 
     assert frame["evaluation_id"].to_list() == ["global-panel"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_global_panel_nbeatsx_rolling_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 20)
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert kwargs["tenant_ids"] == ("client_003_dnipro_factory",)
+        assert kwargs["max_eval_windows"] == 2
+        assert kwargs["horizon_hours"] == 24
+        assert kwargs["nbeatsx_max_steps"] == 3
+        assert kwargs["anchor_batch_order"] == "chronological"
+        assert real_data_benchmark_silver_feature_frame.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel-rolling",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_global_panel_v1",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
+        None,
+        OfficialGlobalPanelRollingAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_eval_windows=2,
+            horizon_hours=24,
+            nbeatsx_max_steps=3,
+            anchor_batch_order="chronological",
+        ),
+        pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["global-panel-rolling"]
     assert store.evaluation_frame.height == 1
 
 

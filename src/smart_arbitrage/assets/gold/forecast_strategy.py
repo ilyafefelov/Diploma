@@ -18,9 +18,11 @@ from smart_arbitrage.strategy.official_forecast_rolling import (
 )
 from smart_arbitrage.strategy.official_global_panel import (
     OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
+    OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND,
     build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_horizon_calibration_frame,
+    build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
 )
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
@@ -73,6 +75,17 @@ class OfficialGlobalPanelCalibrationAssetConfig(dg.Config):
 
     min_prior_anchors: int = 14
     rolling_calibration_window_anchors: int = 28
+
+
+class OfficialGlobalPanelRollingAssetConfig(dg.Config):
+    """Windowed global-panel NBEATSx rolling strict LP evidence settings."""
+
+    tenant_ids_csv: str = ""
+    max_eval_windows: int = 4
+    horizon_hours: int = 24
+    nbeatsx_max_steps: int = 25
+    nbeatsx_random_seed: int = 20260511
+    anchor_batch_order: str = "latest_first"
 
 
 @dataclass(frozen=True, slots=True)
@@ -368,6 +381,53 @@ def nbeatsx_official_global_panel_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_REAL_DATA_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="research_only",
+        backend="official_forecast_adapters",
+        market_venue="DAM",
+    ),
+)
+def nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
+    context,
+    config: OfficialGlobalPanelRollingAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Windowed rolling strict LP benchmark for official global-panel NBEATSx."""
+
+    tenant_ids = tuple(_tenant_ids_from_csv(config.tenant_ids_csv))
+    frame = build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
+        real_data_benchmark_silver_feature_frame,
+        tenant_ids=tenant_ids,
+        max_eval_windows=config.max_eval_windows,
+        horizon_hours=config.horizon_hours,
+        nbeatsx_max_steps=config.nbeatsx_max_steps,
+        nbeatsx_random_seed=config.nbeatsx_random_seed,
+        anchor_batch_order=config.anchor_batch_order,
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(frame)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "anchor_count": frame.select("anchor_timestamp").n_unique() if frame.height else 0,
+            "forecast_candidate_count": frame.select("forecast_model_name").n_unique()
+            if frame.height
+            else 0,
+            "market_venue": "DAM",
+            "strategy_kind": OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND,
+            "scope": "official_global_panel_nbeatsx_rolling_strict_lp_not_full_dfl",
+        },
+    )
+    return frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -532,6 +592,7 @@ FORECAST_STRATEGY_GOLD_ASSETS = [
     official_forecast_strict_lp_benchmark_frame,
     official_forecast_rolling_origin_benchmark_frame,
     nbeatsx_official_global_panel_strict_lp_benchmark_frame,
+    nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,
     nbeatsx_official_global_panel_horizon_calibration_frame,
     nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,

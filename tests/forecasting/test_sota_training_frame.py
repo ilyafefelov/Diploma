@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import polars as pl
 
@@ -122,6 +122,29 @@ def test_official_global_panel_training_frame_features_ignore_mutated_final_actu
     assert mutated_panel.filter(pl.col("split") == "forecast").select("y").null_count().item() == (
         DEFAULT_NEURAL_FORECAST_HORIZON_HOURS
     )
+
+
+def test_official_global_panel_training_frame_can_pin_rolling_anchor() -> None:
+    silver_frame = _tenant_silver_frame(
+        tenant_ids=("client_003_dnipro_factory",),
+        history_hours=20 * 24,
+        forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    )
+    anchor_timestamp = datetime(2026, 4, 28, 23)
+
+    panel = build_official_global_panel_training_frame(
+        silver_frame,
+        tenant_ids=("client_003_dnipro_factory",),
+        horizon_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+        anchor_timestamp=anchor_timestamp,
+    )
+
+    train_max = panel.filter(pl.col("split") == "train").select("ds").to_series().max()
+    forecast_min = panel.filter(pl.col("split") == "forecast").select("ds").to_series().min()
+    forecast_max = panel.filter(pl.col("split") == "forecast").select("ds").to_series().max()
+    assert train_max == anchor_timestamp
+    assert forecast_min == anchor_timestamp + timedelta(hours=1)
+    assert forecast_max == anchor_timestamp + timedelta(hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS)
 
 
 def _tenant_silver_frame(

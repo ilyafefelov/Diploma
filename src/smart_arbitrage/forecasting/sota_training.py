@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Final
 
 import polars as pl
@@ -118,6 +119,7 @@ def build_official_global_panel_training_frame(
     market_venue: str = SOTA_UNIQUE_ID_SUFFIX,
     future_weather_mode: FutureWeatherMode = "forecast_only",
     temporal_scaler_type: str = "robust",
+    anchor_timestamp: datetime | None = None,
 ) -> pl.DataFrame:
     """Build one Nixtla/PyTorch-ready panel across tenants.
 
@@ -135,7 +137,12 @@ def build_official_global_panel_training_frame(
     )
     tenant_frames: list[pl.DataFrame] = []
     for tenant_id in tenant_ids:
-        tenant_history = _tenant_history_from_silver(silver_frame, tenant_id=tenant_id)
+        tenant_history = _tenant_history_from_silver(
+            silver_frame,
+            tenant_id=tenant_id,
+            anchor_timestamp=anchor_timestamp,
+            horizon_hours=horizon_hours,
+        )
         feature_frame = build_neural_forecast_feature_frame(
             tenant_history,
             horizon_hours=horizon_hours,
@@ -187,7 +194,13 @@ def _validate_global_panel_inputs(
         raise ValueError(f"silver_frame is missing required columns: {sorted(missing_columns)}")
 
 
-def _tenant_history_from_silver(silver_frame: pl.DataFrame, *, tenant_id: str) -> pl.DataFrame:
+def _tenant_history_from_silver(
+    silver_frame: pl.DataFrame,
+    *,
+    tenant_id: str,
+    anchor_timestamp: datetime | None,
+    horizon_hours: int,
+) -> pl.DataFrame:
     tenant_frame = (
         silver_frame
         .filter(pl.col("tenant_id") == tenant_id)
@@ -196,6 +209,12 @@ def _tenant_history_from_silver(silver_frame: pl.DataFrame, *, tenant_id: str) -
         .unique(subset=[DEFAULT_TIMESTAMP_COLUMN], keep="last")
         .sort(DEFAULT_TIMESTAMP_COLUMN)
     )
+    if anchor_timestamp is not None:
+        anchor = anchor_timestamp.replace(tzinfo=None)
+        latest_allowed_timestamp = anchor + timedelta(hours=horizon_hours)
+        tenant_frame = tenant_frame.filter(
+            pl.col(DEFAULT_TIMESTAMP_COLUMN) <= pl.lit(latest_allowed_timestamp)
+        )
     if tenant_frame.is_empty():
         raise ValueError(f"Missing Silver benchmark rows for tenant_id={tenant_id}.")
     if "source_kind" in tenant_frame.columns and tenant_frame.filter(pl.col("source_kind") != "observed").height:

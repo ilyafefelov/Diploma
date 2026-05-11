@@ -8,14 +8,17 @@ import pytest
 from smart_arbitrage.strategy.official_global_panel import (
     OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATED_MODEL_NAME,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
+    OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND,
     build_official_global_panel_nbeatsx_horizon_calibration_frame,
     build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame,
+    build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
 )
 
 
 TENANT_ID = "client_003_dnipro_factory"
+SECOND_TENANT_ID = "client_002_lviv_office"
 GENERATED_AT = datetime(2026, 5, 11, 18, tzinfo=UTC)
 
 
@@ -147,19 +150,82 @@ def test_global_panel_nbeatsx_horizon_calibrated_gate_routes_corrected_forecast_
     assert corrected_payload["not_market_execution"] is True
 
 
-def _silver_frame() -> pl.DataFrame:
-    start = datetime(2026, 1, 1)
-    rows: list[dict[str, object]] = []
-    for index in range(12 * 24):
-        timestamp = start + timedelta(hours=index)
-        rows.append(
+def test_global_panel_nbeatsx_rolling_benchmark_trains_once_per_anchor_across_tenants() -> None:
+    silver_frame = _silver_frame(tenant_ids=(TENANT_ID, SECOND_TENANT_ID), day_count=14)
+    builder_calls: list[pl.DataFrame] = []
+
+    def fake_nbeatsx_builder(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        builder_calls.append(training_frame)
+        assert kwargs["max_steps"] == 1
+        forecast_rows = (
+            training_frame
+            .filter(pl.col("is_forecast"))
+            .select(["unique_id", "ds"])
+            .sort(["unique_id", "ds"])
+        )
+        return pl.DataFrame(
             {
-                "tenant_id": TENANT_ID,
-                "timestamp": timestamp,
-                "price_uah_mwh": 1000.0 + 300.0 * (index % 24 in {8, 9, 18, 19}),
-                "source_kind": "observed",
+                "model_name": ["nbeatsx_official_global_panel_v1"] * forecast_rows.height,
+                "model_family": ["NBEATSx"] * forecast_rows.height,
+                "backend_name": ["neuralforecast"] * forecast_rows.height,
+                "backend_status": ["trained"] * forecast_rows.height,
+                "unique_id": forecast_rows["unique_id"].to_list(),
+                "forecast_timestamp": forecast_rows["ds"].to_list(),
+                "predicted_price_uah_mwh": [1100.0] * forecast_rows.height,
+                "predicted_price_p10_uah_mwh": [None] * forecast_rows.height,
+                "predicted_price_p50_uah_mwh": [1100.0] * forecast_rows.height,
+                "predicted_price_p90_uah_mwh": [None] * forecast_rows.height,
+                "prediction_interval_kind": ["point"] * forecast_rows.height,
+                "training_rows": [training_frame.filter(pl.col("is_train")).height] * forecast_rows.height,
+                "horizon_rows": [24] * forecast_rows.height,
+                "adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * forecast_rows.height,
             }
         )
+
+    result = build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
+        silver_frame,
+        tenant_ids=(TENANT_ID, SECOND_TENANT_ID),
+        max_eval_windows=2,
+        horizon_hours=24,
+        nbeatsx_max_steps=1,
+        generated_at=GENERATED_AT,
+        nbeatsx_builder=fake_nbeatsx_builder,
+    )
+
+    assert len(builder_calls) == 2
+    assert set(result["strategy_kind"].to_list()) == {
+        OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND
+    }
+    assert result.select("anchor_timestamp").n_unique() == 2
+    assert set(result["tenant_id"].to_list()) == {TENANT_ID, SECOND_TENANT_ID}
+    assert set(result["forecast_model_name"].to_list()) == {
+        "strict_similar_day",
+        "nbeatsx_official_global_panel_v1",
+    }
+
+
+def _silver_frame(
+    *,
+    tenant_ids: tuple[str, ...] = (TENANT_ID,),
+    day_count: int = 12,
+) -> pl.DataFrame:
+    start = datetime(2026, 1, 1)
+    rows: list[dict[str, object]] = []
+    for tenant_index, tenant_id in enumerate(tenant_ids):
+        for index in range(day_count * 24):
+            timestamp = start + timedelta(hours=index)
+            rows.append(
+                {
+                    "tenant_id": tenant_id,
+                    "timestamp": timestamp,
+                    "price_uah_mwh": (
+                        1000.0
+                        + 300.0 * (index % 24 in {8, 9, 18, 19})
+                        + 50.0 * tenant_index
+                    ),
+                    "source_kind": "observed",
+                }
+            )
     return pl.DataFrame(rows)
 
 
