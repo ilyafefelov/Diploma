@@ -35,6 +35,8 @@ of related time series.
 | `official_global_panel_training_frame` | Silver | Builds the multi-tenant point-in-time `unique_id/ds/y` panel and records scaler/exogenous metadata. |
 | `nbeatsx_official_global_panel_price_forecast` | Silver | Trains one Nixtla NBEATSx model over the panel and predicts all forecast rows. |
 | `nbeatsx_official_global_panel_strict_lp_benchmark_frame` | Gold | Strict-scores the global-panel NBEATSx schedule beside frozen `strict_similar_day`. |
+| `nbeatsx_official_global_panel_horizon_calibration_frame` | Gold | Builds prior-only horizon-bias calibration rows from strict-scored global-panel evidence. |
+| `nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame` | Gold | Strict-scores raw and calibrated global-panel NBEATSx beside `strict_similar_day`. |
 
 Tracked config:
 [configs/real_data_official_global_panel_nbeatsx_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_week3.yaml).
@@ -61,11 +63,11 @@ Implemented now:
 - additive global-panel SOTA training contract;
 - additive official global-panel NBEATSx adapter surface;
 - additive strict LP/oracle scoring asset for the global-panel NBEATSx output.
+- additive prior-only horizon calibration and calibrated strict LP gate.
 
 Not implemented yet:
 
 - rolling-origin global-panel cross-validation;
-- prior-only calibrated candidate such as `nbeatsx_official_calibrated_v1`;
 - source/regime production promotion;
 - Hugging Face Jobs execution wrapper.
 
@@ -73,11 +75,9 @@ Not implemented yet:
 
 1. Add rolling global-panel cross-validation so one NBEATSx fit can serve a
    panel/window instead of retraining tenant-by-anchor.
-2. Add prior-only calibration over strict-scored residuals:
-   `nbeatsx_official_calibrated_v1`.
-3. Feed calibrated rows into the existing schedule/value candidate library and
+2. Feed calibrated rows into the existing schedule/value candidate library and
    strict promotion gate.
-4. Package the same command for cloud offload only after latest-window screening
+3. Package the same command for cloud offload only after latest-window screening
    shows the official source is close to `strict_similar_day`.
 
 The frozen `strict_similar_day` baseline remains the default fallback until the
