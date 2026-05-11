@@ -404,6 +404,7 @@ def test_global_panel_nbeatsx_rolling_asset_persists_rows(monkeypatch) -> None:
             anchor_batch_order="chronological",
         ),
         pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
+        pl.DataFrame({"feature_name": ["entsoe_neighbor_day_ahead_price_context"]}),
     )
 
     assert frame["evaluation_id"].to_list() == ["global-panel-rolling"]

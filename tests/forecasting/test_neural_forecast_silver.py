@@ -14,6 +14,7 @@ from smart_arbitrage.assets.silver.neural_forecasts import (
 	nbeatsx_official_price_forecast,
 	nbeatsx_price_forecast,
 	neural_forecast_feature_frame,
+	official_forecast_exogenous_governance_frame,
 	sota_forecast_training_frame,
 	tft_official_price_forecast,
 	tft_price_forecast,
@@ -235,6 +236,7 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 	assert {
 		"neural_forecast_feature_frame",
 		"sota_forecast_training_frame",
+		"official_forecast_exogenous_governance_frame",
 		"official_global_panel_training_frame",
 		"nbeatsx_official_global_panel_price_forecast",
 		"nbeatsx_price_forecast",
@@ -256,6 +258,7 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 	assert tags_by_key["sota_forecast_training_frame"]["medallion"] == "silver"
 	assert groups_by_key["neural_forecast_feature_frame"] == "silver_forecast_features"
 	assert groups_by_key["sota_forecast_training_frame"] == "silver_forecast_features"
+	assert groups_by_key["official_forecast_exogenous_governance_frame"] == "silver_forecast_features"
 	assert groups_by_key["official_global_panel_training_frame"] == "silver_forecast_features"
 	assert groups_by_key["nbeatsx_official_global_panel_price_forecast"] == "silver_forecast_candidates"
 	assert groups_by_key["nbeatsx_price_forecast"] == "silver_forecast_candidates"
@@ -271,10 +274,13 @@ def test_official_global_panel_training_asset_materializes_multi_tenant_contract
 		]
 	)
 
+	governance = official_forecast_exogenous_governance_frame(None)
+
 	frame = official_global_panel_training_frame(
 		None,
 		OfficialGlobalPanelTrainingAssetConfig(),
 		price_history,
+		governance,
 	)
 
 	assert frame.select("unique_id").to_series().unique().to_list() == [
@@ -289,6 +295,12 @@ def test_official_global_panel_training_asset_materializes_multi_tenant_contract
 	assert frame.select("target_scaler_fit_scope").to_series().unique().to_list() == [
 		"train_rows_only_per_unique_id"
 	]
+	assert frame.select("external_feature_training_status").to_series().unique().to_list() == [
+		"blocked_by_governance"
+	]
+	assert "entsoe_neighbor_day_ahead_price_context" in frame.select(
+		"blocked_external_feature_columns_csv"
+	).to_series().item(0)
 
 
 def test_official_global_panel_nbeatsx_asset_uses_global_panel_contract(monkeypatch) -> None:

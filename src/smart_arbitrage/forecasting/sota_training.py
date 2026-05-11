@@ -14,6 +14,10 @@ from smart_arbitrage.forecasting.neural_features import (
     build_neural_forecast_feature_frame,
 )
 from smart_arbitrage.forecasting.neural_features import NEURAL_FORECAST_FEATURE_COLUMNS
+from smart_arbitrage.forecasting.market_coupling_availability import (
+    EXTERNAL_TRAINING_BLOCKERS,
+    REQUIRED_MARKET_COUPLING_AVAILABILITY_COLUMNS,
+)
 
 SOTA_SCHEMA_VERSION: Final[str] = "sota_forecast_training_v1"
 OFFICIAL_GLOBAL_PANEL_SOTA_SCHEMA_VERSION: Final[str] = "official_global_panel_sota_v1"
@@ -120,6 +124,7 @@ def build_official_global_panel_training_frame(
     future_weather_mode: FutureWeatherMode = "forecast_only",
     temporal_scaler_type: str = "robust",
     anchor_timestamp: datetime | None = None,
+    market_coupling_availability_frame: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Build one Nixtla/PyTorch-ready panel across tenants.
 
@@ -134,6 +139,9 @@ def build_official_global_panel_training_frame(
         tenant_ids=tenant_ids,
         horizon_hours=horizon_hours,
         temporal_scaler_type=temporal_scaler_type,
+    )
+    market_coupling_metadata = _market_coupling_feature_route_metadata(
+        market_coupling_availability_frame
     )
     tenant_frames: list[pl.DataFrame] = []
     for tenant_id in tenant_ids:
@@ -162,6 +170,21 @@ def build_official_global_panel_training_frame(
                 pl.lit("not_full_dfl").alias("claim_boundary"),
                 pl.lit(True).alias("not_full_dfl"),
                 pl.lit(True).alias("not_market_execution"),
+                pl.lit(market_coupling_metadata["external_feature_training_status"]).alias(
+                    "external_feature_training_status"
+                ),
+                pl.lit(market_coupling_metadata["allowed_external_feature_columns_csv"]).alias(
+                    "allowed_external_feature_columns_csv"
+                ),
+                pl.lit(market_coupling_metadata["blocked_external_feature_columns_csv"]).alias(
+                    "blocked_external_feature_columns_csv"
+                ),
+                pl.lit(market_coupling_metadata["external_training_blockers_csv"]).alias(
+                    "external_training_blockers_csv"
+                ),
+                pl.lit(market_coupling_metadata["external_feature_governance_scope"]).alias(
+                    "external_feature_governance_scope"
+                ),
             ]
         )
         tenant_frames.append(tenant_training_frame)
@@ -220,3 +243,69 @@ def _tenant_history_from_silver(
     if "source_kind" in tenant_frame.columns and tenant_frame.filter(pl.col("source_kind") != "observed").height:
         raise ValueError("official global panel training requires observed source rows.")
     return tenant_frame
+
+
+def _market_coupling_feature_route_metadata(
+    availability_frame: pl.DataFrame | None,
+) -> dict[str, str]:
+    if availability_frame is None:
+        return {
+            "external_feature_training_status": "not_configured",
+            "allowed_external_feature_columns_csv": "",
+            "blocked_external_feature_columns_csv": "",
+            "external_training_blockers_csv": "",
+            "external_feature_governance_scope": "market_coupling_not_attached",
+        }
+
+    missing_columns = sorted(
+        REQUIRED_MARKET_COUPLING_AVAILABILITY_COLUMNS.difference(availability_frame.columns)
+    )
+    if missing_columns:
+        raise ValueError(f"market_coupling_availability_frame missing columns: {missing_columns}")
+
+    rows = list(availability_frame.iter_rows(named=True))
+    unready_training_rows = [
+        row
+        for row in rows
+        if bool(row["training_use_allowed"])
+        and (
+            str(row["readiness_status"]) != "training_ready"
+            or str(row["training_blockers_csv"]) == EXTERNAL_TRAINING_BLOCKERS
+            or not _all_market_coupling_statuses_ready(row)
+        )
+    ]
+    if unready_training_rows:
+        names = sorted(str(row["feature_name"]) for row in unready_training_rows)
+        raise ValueError(
+            "external market-coupling features cannot be training_use_allowed "
+            f"before governance mapping is complete: {names}"
+        )
+
+    allowed = sorted(
+        str(row["feature_name"])
+        for row in rows
+        if bool(row["training_use_allowed"]) and str(row["readiness_status"]) == "training_ready"
+    )
+    blocked = sorted(str(row["feature_name"]) for row in rows if str(row["feature_name"]).strip())
+    status = "training_ready" if allowed else "blocked_by_governance"
+    return {
+        "external_feature_training_status": status,
+        "allowed_external_feature_columns_csv": ",".join(allowed),
+        "blocked_external_feature_columns_csv": ",".join(blocked),
+        "external_training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS,
+        "external_feature_governance_scope": "market_coupling_temporal_availability_frame",
+    }
+
+
+def _all_market_coupling_statuses_ready(row: dict[str, object]) -> bool:
+    return all(
+        str(row[column_name]) == "ready"
+        for column_name in (
+            "licensing_status",
+            "timezone_status",
+            "currency_status",
+            "market_rules_status",
+            "temporal_availability_status",
+            "domain_shift_status",
+        )
+    )

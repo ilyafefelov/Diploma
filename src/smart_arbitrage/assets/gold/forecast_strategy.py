@@ -396,6 +396,7 @@ def nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
     context,
     config: OfficialGlobalPanelRollingAssetConfig,
     real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    official_forecast_exogenous_governance_frame: pl.DataFrame,
 ) -> pl.DataFrame:
     """Windowed rolling strict LP benchmark for official global-panel NBEATSx."""
 
@@ -408,6 +409,7 @@ def nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
         nbeatsx_max_steps=config.nbeatsx_max_steps,
         nbeatsx_random_seed=config.nbeatsx_random_seed,
         anchor_batch_order=config.anchor_batch_order,
+        market_coupling_availability_frame=official_forecast_exogenous_governance_frame,
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(frame)
     _add_metadata(

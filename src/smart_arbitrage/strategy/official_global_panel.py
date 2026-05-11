@@ -120,6 +120,7 @@ def build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
     nbeatsx_random_seed: int = 20260511,
     anchor_batch_order: str = "latest_first",
     generated_at: datetime | None = None,
+    market_coupling_availability_frame: pl.DataFrame | None = None,
     nbeatsx_builder: Callable[..., pl.DataFrame] = build_official_global_panel_nbeatsx_forecast,
 ) -> pl.DataFrame:
     """Run one global-panel NBEATSx fit per rolling anchor across all tenants."""
@@ -145,6 +146,7 @@ def build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
             tenant_ids=tenant_ids,
             horizon_hours=horizon_hours,
             anchor_timestamp=anchor_timestamp,
+            market_coupling_availability_frame=market_coupling_availability_frame,
         )
         forecast_frame = nbeatsx_builder(
             training_frame,

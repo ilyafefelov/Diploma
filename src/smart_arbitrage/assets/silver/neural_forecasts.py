@@ -8,6 +8,10 @@ import dagster as dg
 import polars as pl
 
 from smart_arbitrage.assets import taxonomy
+from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
+from smart_arbitrage.forecasting.market_coupling_availability import (
+	build_market_coupling_temporal_availability_frame,
+)
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
 from smart_arbitrage.forecasting.official_adapters import (
@@ -55,6 +59,42 @@ class OfficialGlobalPanelTrainingAssetConfig(dg.Config):
 	tenant_ids_csv: str = ""
 	horizon_hours: int = 24
 	temporal_scaler_type: str = "robust"
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		backend="official_forecast_adapters",
+		market_venue="DAM",
+	),
+)
+def official_forecast_exogenous_governance_frame(context) -> pl.DataFrame:
+	"""Feature-governance sidecar for official forecast training.
+
+	The frame is intentionally metadata-only in this slice. External European
+	market-coupling sources are visible in lineage, but remain blocked from
+	training until licensing, timezone, currency, market-rule, temporal
+	availability, and domain-shift controls are mapped.
+	"""
+
+	frame = build_market_coupling_temporal_availability_frame(
+		build_forecast_afe_feature_catalog_frame()
+	)
+	_add_metadata(
+		context,
+		{
+			"rows": frame.height,
+			"source_count": frame.select("source_name").n_unique() if frame.height else 0,
+			"training_allowed_rows": frame.filter(pl.col("training_use_allowed")).height,
+			"scope": "official_forecast_exogenous_governance_not_training_data",
+		},
+	)
+	return frame
 
 
 @dg.asset(
@@ -145,6 +185,7 @@ def official_global_panel_training_frame(
 	context,
 	config: OfficialGlobalPanelTrainingAssetConfig,
 	real_data_benchmark_silver_feature_frame: pl.DataFrame,
+	official_forecast_exogenous_governance_frame: pl.DataFrame,
 ) -> pl.DataFrame:
 	"""Point-in-time global panel for serious official NBEATSx/TFT evidence."""
 
@@ -154,6 +195,7 @@ def official_global_panel_training_frame(
 		tenant_ids=tenant_ids,
 		horizon_hours=config.horizon_hours,
 		temporal_scaler_type=config.temporal_scaler_type,
+		market_coupling_availability_frame=official_forecast_exogenous_governance_frame,
 	)
 	_add_metadata(
 		context,
@@ -165,6 +207,8 @@ def official_global_panel_training_frame(
 			"forecast_rows": frame.filter(pl.col("split") == "forecast").height,
 			"schema_version": frame.select("sota_schema_version").to_series().item(0) if frame.height else "empty",
 			"temporal_scaler_type": config.temporal_scaler_type,
+			"external_feature_training_status": frame.select("external_feature_training_status").to_series().item(0) if frame.height else "empty",
+			"blocked_external_feature_columns_csv": frame.select("blocked_external_feature_columns_csv").to_series().item(0) if frame.height else "",
 			"scope": "official_global_panel_feature_scaling_contract_not_trained_model",
 		},
 	)
@@ -415,6 +459,7 @@ def tft_official_price_forecast(
 NEURAL_FORECAST_SILVER_ASSETS = [
 	neural_forecast_feature_frame,
 	sota_forecast_training_frame,
+	official_forecast_exogenous_governance_frame,
 	official_global_panel_training_frame,
 	nbeatsx_price_forecast,
 	tft_price_forecast,

@@ -7,6 +7,10 @@ from smart_arbitrage.forecasting.neural_features import (
     DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
     build_neural_forecast_feature_frame,
 )
+from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
+from smart_arbitrage.forecasting.market_coupling_availability import (
+    build_market_coupling_temporal_availability_frame,
+)
 from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
 from smart_arbitrage.forecasting.sota_training import (
     build_official_global_panel_training_frame,
@@ -145,6 +149,63 @@ def test_official_global_panel_training_frame_can_pin_rolling_anchor() -> None:
     assert train_max == anchor_timestamp
     assert forecast_min == anchor_timestamp + timedelta(hours=1)
     assert forecast_max == anchor_timestamp + timedelta(hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS)
+
+
+def test_official_global_panel_training_frame_records_blocked_market_coupling_governance() -> None:
+    silver_frame = _tenant_silver_frame(
+        tenant_ids=("client_003_dnipro_factory",),
+        history_hours=20 * 24,
+        forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    )
+    market_coupling = build_market_coupling_temporal_availability_frame(
+        build_forecast_afe_feature_catalog_frame()
+    )
+
+    panel = build_official_global_panel_training_frame(
+        silver_frame,
+        tenant_ids=("client_003_dnipro_factory",),
+        horizon_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+        market_coupling_availability_frame=market_coupling,
+    )
+
+    assert panel.select("external_feature_training_status").to_series().unique().to_list() == [
+        "blocked_by_governance"
+    ]
+    blocked_features = panel.select("blocked_external_feature_columns_csv").to_series().item(0)
+    assert "entsoe_neighbor_day_ahead_price_context" in blocked_features
+    assert "pricefm_european_price_context" in blocked_features
+    assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == ""
+    assert "entsoe_neighbor_day_ahead_price_context" not in panel.select(
+        "known_future_feature_columns_csv"
+    ).to_series().item(0)
+
+
+def test_official_global_panel_training_frame_rejects_unready_training_allowed_external_feature() -> None:
+    silver_frame = _tenant_silver_frame(
+        tenant_ids=("client_003_dnipro_factory",),
+        history_hours=20 * 24,
+        forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    )
+    market_coupling = build_market_coupling_temporal_availability_frame(
+        build_forecast_afe_feature_catalog_frame()
+    ).with_columns(
+        pl.when(pl.col("source_name") == "ENTSO_E")
+        .then(pl.lit(True))
+        .otherwise(pl.col("training_use_allowed"))
+        .alias("training_use_allowed")
+    )
+
+    try:
+        build_official_global_panel_training_frame(
+            silver_frame,
+            tenant_ids=("client_003_dnipro_factory",),
+            horizon_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+            market_coupling_availability_frame=market_coupling,
+        )
+    except ValueError as error:
+        assert "external market-coupling features cannot be training_use_allowed" in str(error)
+    else:
+        raise AssertionError("unready external market-coupling rows should be blocked from training.")
 
 
 def _tenant_silver_frame(

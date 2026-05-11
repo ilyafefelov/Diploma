@@ -32,6 +32,7 @@ of related time series.
 
 | Asset | Layer | Purpose |
 |---|---|---|
+| `official_forecast_exogenous_governance_frame` | Silver | Records market-coupling source governance for official forecast training without allowing external rows into Ukrainian training. |
 | `official_global_panel_training_frame` | Silver | Builds the multi-tenant point-in-time `unique_id/ds/y` panel and records scaler/exogenous metadata. |
 | `nbeatsx_official_global_panel_price_forecast` | Silver | Trains one Nixtla NBEATSx model over the panel and predicts all forecast rows. |
 | `nbeatsx_official_global_panel_strict_lp_benchmark_frame` | Gold | Strict-scores the global-panel NBEATSx schedule beside frozen `strict_similar_day`. |
@@ -53,6 +54,12 @@ The global-panel training frame must satisfy:
 - `weather_temperature` and other known future fields appear only in the
   known-future feature list;
 - lagged/rolling price features appear in historical-observed feature lists;
+- external market-coupling sources appear only in governance metadata until
+  licensing, timezone, currency normalization, market-rule mapping, temporal
+  availability, and domain-shift controls are completed;
+- if an external source is marked `training_use_allowed=true` before those
+  controls are ready, the official panel builder fails instead of silently
+  adding the feature;
 - `not_full_dfl=true` and `not_market_execution=true` remain claim boundaries.
 
 Mutating final-holdout actual prices may change final LP/oracle scoring later,
@@ -73,7 +80,7 @@ Materialized evidence on 2026-05-11:
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
-  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_global_panel_training_frame,nbeatsx_official_global_panel_price_forecast,nbeatsx_official_global_panel_strict_lp_benchmark_frame,nbeatsx_official_global_panel_horizon_calibration_frame,nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame `
+  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_exogenous_governance_frame,official_global_panel_training_frame,nbeatsx_official_global_panel_price_forecast,nbeatsx_official_global_panel_strict_lp_benchmark_frame,nbeatsx_official_global_panel_horizon_calibration_frame,nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame `
   -c configs/real_data_official_global_panel_nbeatsx_week3.yaml
 ```
 
@@ -101,7 +108,7 @@ Windowed rolling evidence on 2026-05-11:
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
-  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame `
+  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_exogenous_governance_frame,nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame `
   -c configs/real_data_official_global_panel_nbeatsx_week3.yaml
 ```
 
