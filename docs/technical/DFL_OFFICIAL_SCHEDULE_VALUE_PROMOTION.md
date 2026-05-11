@@ -95,4 +95,29 @@ Implementation is additive:
 - official promotion evidence is not persisted into the existing compact
   schedule/value read model.
 
-Materialized metrics will be recorded here after the Compose-backed run.
+Verification completed before runtime execution:
+
+- `.\.venv\Scripts\python.exe -m pytest -p no:cacheprovider tests\dfl\test_official_schedule_value.py tests\dfl\test_schedule_value_learner.py tests\dfl\test_schedule_value_learner_robustness.py tests\dfl\test_schedule_value_promotion_gate.py tests\strategy\test_official_forecast_rolling.py`
+- `.\.venv\Scripts\Activate.ps1; .\scripts\verify.ps1`
+- `uv run dg list defs --json`
+- `uv run dg check defs`
+- `docker compose config --quiet`
+- `git diff --check`
+
+Runtime execution attempt:
+
+| Field | Value |
+|---|---|
+| Attempted run id | `2d85501d-3024-4c10-b983-3aca40bfa288` |
+| Command scope | full 104-anchor official NBEATSx/TFT path plus schedule/value gate |
+| Result | failed after Codex shell timeout at 3600 seconds |
+| Last active step | `official_forecast_rolling_origin_benchmark_frame` |
+| Completed in that run | observed market bronze, tenant weather bronze, real-data benchmark silver |
+| Not completed in that run | official rolling forecast benchmark, official schedule library, official schedule/value learner, robustness frame, production gate |
+
+The timeout is a runtime capacity finding, not a promotion result. The serious
+official path is now wired and verified, but the local CPU-backed Compose run did
+not finish enough official rolling-origin anchors to create promotion-grade
+metrics. Until a longer unattended/GPU-backed run completes, the official
+NBEATSx/TFT models remain adapter-ready research candidates, not promoted
+controllers.
