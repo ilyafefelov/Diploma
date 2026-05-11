@@ -677,10 +677,10 @@ class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
         "nbeatsx_official_global_panel_horizon_calibrated_v1"
     )
     min_tenant_count: int = 5
-    min_validation_tenant_anchor_count_per_source_model: int = 5
+    min_validation_tenant_anchor_count_per_source_model: int = 90
     min_mean_regret_improvement_ratio: float = 0.05
-    min_rolling_window_count: int = 2
-    min_rolling_strict_pass_windows: int = 1
+    min_rolling_window_count: int = 4
+    min_rolling_strict_pass_windows: int = 3
 
 
 class DflProductionPromotionGateAssetConfig(dg.Config):

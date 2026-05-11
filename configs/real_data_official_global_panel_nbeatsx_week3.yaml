@@ -66,7 +66,7 @@ ops:
     config:
       source_model_names_csv: "nbeatsx_official_global_panel_v1,nbeatsx_official_global_panel_horizon_calibrated_v1"
       min_tenant_count: 5
-      min_validation_tenant_anchor_count_per_source_model: 5
+      min_validation_tenant_anchor_count_per_source_model: 90
       min_mean_regret_improvement_ratio: 0.05
-      min_rolling_window_count: 2
-      min_rolling_strict_pass_windows: 1
+      min_rolling_window_count: 4
+      min_rolling_strict_pass_windows: 3

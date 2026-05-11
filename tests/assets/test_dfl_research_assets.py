@@ -9,6 +9,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflValueAwareActionClassifierStrictLpProjectionAssetConfig,
     DflForecastDflV1AssetConfig,
     DflForecastPipelineTruthAuditAssetConfig,
+    DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
@@ -155,6 +156,14 @@ def _silver_feature_frame() -> pl.DataFrame:
             }
         )
     return pl.DataFrame(rows)
+
+
+def test_global_panel_schedule_value_production_gate_uses_full_promotion_thresholds() -> None:
+    config = DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig()
+
+    assert config.min_validation_tenant_anchor_count_per_source_model == 90
+    assert config.min_rolling_window_count == 4
+    assert config.min_rolling_strict_pass_windows == 3
 
 
 def test_dfl_research_assets_are_registered() -> None:
