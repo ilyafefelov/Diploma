@@ -117,23 +117,24 @@ Result:
 | Evidence item | Value |
 |---|---:|
 | Run status | `RUN_SUCCESS` |
+| Latest governed run id | `179771f8-5821-4e69-9642-c64c23e2fc3a` |
 | Rolling windows | 4 |
 | Tenants | 5 |
 | Strategy rows | 40 |
 | Anchor range | `2026-01-27 23:00` to `2026-01-30 23:00` |
 | `strict_similar_day` mean regret | 1020.82 UAH |
 | `strict_similar_day` median regret | 771.87 UAH |
-| `nbeatsx_official_global_panel_v1` mean regret | 1378.50 UAH |
-| `nbeatsx_official_global_panel_v1` median regret | 906.49 UAH |
+| `nbeatsx_official_global_panel_v1` mean regret | 1387.85 UAH |
+| `nbeatsx_official_global_panel_v1` median regret | 870.10 UAH |
 | NBEATSx rank-1 tenant-anchor rows | 5 / 20 |
 
 Window detail:
 
 | Anchor | Strict mean regret | NBEATSx mean regret | NBEATSx rank-1 rows |
 |---|---:|---:|---:|
-| `2026-01-27 23:00` | 583.61 | 1184.94 | 0 / 5 |
-| `2026-01-28 23:00` | 324.66 | 629.01 | 0 / 5 |
-| `2026-01-29 23:00` | 1679.30 | 2140.39 | 4 / 5 |
+| `2026-01-27 23:00` | 583.61 | 1226.48 | 0 / 5 |
+| `2026-01-28 23:00` | 324.66 | 779.13 | 0 / 5 |
+| `2026-01-29 23:00` | 1679.30 | 1986.14 | 4 / 5 |
 | `2026-01-30 23:00` | 1495.71 | 1559.66 | 1 / 5 |
 
 Interpretation: the official global-panel path is operationally viable, but
@@ -155,25 +156,27 @@ Result:
 | Evidence item | Value |
 |---|---:|
 | Run status | `RUN_SUCCESS` |
+| Latest governed run id | `179771f8-5821-4e69-9642-c64c23e2fc3a` |
 | Strategy rows | 60 |
 | Tenants | 5 |
 | Rolling windows | 4 |
 | Anchor range | `2026-01-27 23:00` to `2026-01-30 23:00` |
 | `strict_similar_day` mean regret | 1020.82 UAH |
 | `strict_similar_day` median regret | 771.87 UAH |
-| Raw NBEATSx mean regret | 1378.50 UAH |
-| Raw NBEATSx median regret | 906.49 UAH |
-| Calibrated NBEATSx mean regret | 1224.32 UAH |
-| Calibrated NBEATSx median regret | 799.16 UAH |
+| Raw NBEATSx mean regret | 1387.85 UAH |
+| Raw NBEATSx median regret | 870.10 UAH |
+| Calibrated NBEATSx mean regret | 1234.84 UAH |
+| Calibrated NBEATSx median regret | 793.88 UAH |
+| External feature training status | `blocked_by_governance` |
 
 Window detail:
 
 | Anchor | Strict mean regret | Raw NBEATSx mean regret | Calibrated NBEATSx mean regret |
 |---|---:|---:|---:|
-| `2026-01-27 23:00` | 583.61 | 1184.94 | 1184.94 |
-| `2026-01-28 23:00` | 324.66 | 629.01 | 629.01 |
-| `2026-01-29 23:00` | 1679.30 | 2140.39 | 2289.45 |
-| `2026-01-30 23:00` | 1495.71 | 1559.66 | 793.87 |
+| `2026-01-27 23:00` | 583.61 | 1226.48 | 1226.48 |
+| `2026-01-28 23:00` | 324.66 | 779.13 | 779.13 |
+| `2026-01-29 23:00` | 1679.30 | 1986.14 | 2168.55 |
+| `2026-01-30 23:00` | 1495.71 | 1559.66 | 765.20 |
 
 Interpretation: prior-only horizon calibration improves the rolling mean regret
 versus raw NBEATSx, but it still loses to `strict_similar_day` on both mean and
