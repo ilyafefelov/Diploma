@@ -160,6 +160,7 @@ Latest full verification: `151 passed`.
 
 ## Research Artifacts
 
+- 2026-05-11 strategic architecture review packet: `docs/technical/deep-research-reports/2026-05-11-architecture-review/README.md`
 - Architecture and evidence registry: `docs/technical/ARCHITECTURE_AND_DATA_FLOW.md`
 - Baseline LP and pipeline note: `docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md`
 - Residual DFL + offline DT research challenger: `docs/technical/DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md`
@@ -170,6 +171,7 @@ Latest full verification: `151 passed`.
 - DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
 - DFL schedule/value production gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
+- DFL/official training compute options: `docs/technical/DFL_TRAINING_COMPUTE_OPTIONS.md`
 - Resumable official forecast and exogenous-governance PRD: `docs/technical/PRD_OFFICIAL_FORECAST_RESUME_AND_EXOGENOUS_GOVERNANCE.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
