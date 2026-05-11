@@ -1890,3 +1890,30 @@ Decision update: the next official global-panel NBEATSx/TFT and DFL promotion
 experiments should move from the 104-anchor 2026-only panel to the 365-anchor
 UA backfill panel. The strict LP/oracle gate remains unchanged, and the
 calendar-gap hours stay excluded rather than imputed for thesis-grade claims.
+
+## Official Global-Panel Backfill Batch Runner
+
+The official global-panel NBEATSx path now has the same resumability discipline
+as the earlier tenant/anchor official runner. The rolling strict LP asset accepts
+`anchor_batch_start_index`, `anchor_batch_size`, `resume_generated_at_iso`, and
+`merge_persisted_batches`, and the helper script
+[run-official-global-panel-batches.ps1](../../scripts/run-official-global-panel-batches.ps1)
+generates per-batch configs from the 365-anchor backfill template.
+
+Materialized result on 2026-05-11:
+
+- Config:
+  [../../configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml).
+- Dagster run id: `b27b1bae-707c-4873-9148-a1d86a739dbd`.
+- Fixed generated timestamp: `2026-05-11 20:00:00+00`.
+- Persisted rows: 40, covering 4 chronological anchors, five tenants, and two
+  forecast models (`strict_similar_day` plus
+  `nbeatsx_official_global_panel_v1`).
+- Anchor range: `2025-04-22 23:00` through `2025-04-25 23:00`.
+- Mean regret: `strict_similar_day=505.49` UAH versus raw official global-panel
+  NBEATSx `910.82` UAH.
+
+Decision update: this proves the 365-anchor backfill lane can run in resumable
+local batches. It is not promotion evidence yet; the gate still needs 90 latest
+validation tenant-anchors per source plus four rolling robustness windows before
+any offline/read-model promotion claim.

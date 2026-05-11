@@ -51,6 +51,24 @@ of related time series.
 Tracked config:
 [configs/real_data_official_global_panel_nbeatsx_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_week3.yaml).
 
+Backfill config:
+[configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml).
+
+Resumable local runner:
+
+```powershell
+.\scripts\run-official-global-panel-batches.ps1 `
+  -TotalAnchors 365 `
+  -BatchSize 4 `
+  -GeneratedAtIso 2026-05-11T20:00:00Z
+```
+
+The runner writes per-batch configs under
+`.tmp_runtime/official_global_panel_batches/`, materializes
+`nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame` in anchor
+batches, and keeps one fixed `generated_at` so Postgres rows can be merged by
+batch without losing previous work.
+
 ## Contract
 
 The global-panel training frame must satisfy:
@@ -227,9 +245,42 @@ rolling strict-control passes; the current four-anchor global-panel run is only
 a screening result. This fixes an important governance detail: screening
 thresholds must not be reused as production-promotion thresholds.
 
+365-anchor UA backfill batch evidence on 2026-05-11:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
+  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_exogenous_governance_frame,nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame `
+  -c configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml
+```
+
+Result:
+
+| Evidence item | Value |
+|---|---:|
+| Dagster run id | `b27b1bae-707c-4873-9148-a1d86a739dbd` |
+| Fixed generated_at | `2026-05-11 20:00:00+00` |
+| Batch anchors | 4 |
+| Tenants | 5 |
+| Persisted rows | 40 |
+| Anchor range | `2025-04-22 23:00` to `2025-04-25 23:00` |
+| `strict_similar_day` mean regret | 505.49 UAH |
+| Raw global-panel NBEATSx mean regret | 910.82 UAH |
+| Production promotion | `false` |
+| Promotion blocker | incomplete batch coverage |
+
+Interpretation: the source-backed 365-anchor UA panel can train and strict-score
+official global-panel NBEATSx in resumable batches. The first chronological
+batch does not beat `strict_similar_day`; this is expected because it is an
+early-window batch, not the latest 90-anchor promotion set. The next step is to
+continue batches with the same `generated_at`, then run calibration,
+schedule/value, robustness, and production-gate assets only after enough
+persisted anchors exist.
+
 Not implemented yet:
 
 - source/regime production promotion;
+- completed 365-anchor official global-panel backfill. Batch execution is now
+  resumable, but only the first 4-anchor batch has been materialized locally.
 - Hugging Face Jobs execution. A payload builder now exists, but it only writes
   a redacted JSON/script for a future remote run and does not submit paid
   compute.

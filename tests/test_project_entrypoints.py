@@ -61,6 +61,21 @@ def test_official_batch_runner_refreshes_exit_code_after_wait_process() -> None:
     assert "tft_max_epochs: $TftMaxEpochs" in runner_script
 
 
+def test_official_global_panel_batch_runner_writes_resumable_backfill_config() -> None:
+    runner_script = (
+        PROJECT_ROOT / "scripts" / "run-official-global-panel-batches.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "real_data_official_global_panel_nbeatsx_backfill_week3.yaml" in runner_script
+    assert "nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame" in runner_script
+    assert "anchor_batch_start_index: $anchorIndex" in runner_script
+    assert "anchor_batch_size: $BatchSize" in runner_script
+    assert "resume_generated_at_iso: \"$GeneratedAtIso\"" in runner_script
+    assert "merge_persisted_batches: true" in runner_script
+    assert "nbeatsx_official_global_panel_rolling_horizon_calibration_frame" in runner_script
+    assert "dfl_official_global_panel_schedule_value_production_gate_frame" in runner_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
