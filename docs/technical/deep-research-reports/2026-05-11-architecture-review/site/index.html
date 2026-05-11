@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Smart Energy Arbitrage Architecture Review</title>
+  <style>
+    :root {
+      --bg: #f7f8f5;
+      --panel: #ffffff;
+      --ink: #172026;
+      --muted: #5a6670;
+      --line: #d9dfd8;
+      --blue: #246b8f;
+      --green: #2f7d57;
+      --amber: #b47618;
+      --red: #b23b3b;
+      --violet: #62508f;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.45;
+    }
+    header {
+      padding: 44px 28px 28px;
+      background: #18313d;
+      color: #fff;
+    }
+    .wrap { max-width: 1180px; margin: 0 auto; }
+    .eyebrow { color: #b9d3df; font-size: 14px; text-transform: uppercase; letter-spacing: .08em; }
+    h1 { margin: 10px 0 12px; font-size: 42px; line-height: 1.06; letter-spacing: 0; max-width: 900px; }
+    .lead { max-width: 880px; color: #dbe8ed; font-size: 18px; }
+    nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+    }
+    nav a {
+      color: #fff;
+      border: 1px solid rgba(255,255,255,.3);
+      padding: 8px 12px;
+      text-decoration: none;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    main { padding: 28px; }
+    section { max-width: 1180px; margin: 0 auto 28px; }
+    h2 { margin: 0 0 16px; font-size: 26px; letter-spacing: 0; }
+    h3 { margin: 0 0 8px; font-size: 18px; letter-spacing: 0; }
+    .grid { display: grid; gap: 14px; }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      min-width: 0;
+    }
+    .metric { font-size: 32px; font-weight: 760; line-height: 1; }
+    .label { color: var(--muted); font-size: 14px; margin-top: 6px; }
+    .ok { color: var(--green); }
+    .warn { color: var(--amber); }
+    .bad { color: var(--red); }
+    .info { color: var(--blue); }
+    .tag {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 5px;
+      background: #edf2f0;
+      color: #29424c;
+      font-size: 12px;
+      margin: 0 4px 6px 0;
+    }
+    .infographic {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      display: block;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      vertical-align: top;
+      font-size: 14px;
+    }
+    th { background: #eef3f1; color: #23343d; }
+    tr:last-child td { border-bottom: 0; }
+    .bar {
+      height: 10px;
+      background: #e4e9e4;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 8px;
+    }
+    .bar span { display: block; height: 100%; border-radius: inherit; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+    .step {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--blue);
+      border-radius: 8px;
+      padding: 14px;
+      min-height: 110px;
+    }
+    .step:nth-child(2) { border-left-color: var(--green); }
+    .step:nth-child(3) { border-left-color: var(--amber); }
+    .step:nth-child(4) { border-left-color: var(--violet); }
+    .step:nth-child(5) { border-left-color: var(--red); }
+    .step:nth-child(6) { border-left-color: var(--blue); }
+    a { color: #1f6388; }
+    footer { padding: 22px 28px 42px; color: var(--muted); }
+    @media (max-width: 900px) {
+      h1 { font-size: 32px; }
+      .grid.cols-4, .grid.cols-3, .grid.cols-2, .flow { grid-template-columns: 1fr; }
+      main, header { padding-left: 18px; padding-right: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <div class="eyebrow">2026-05-11 review packet</div>
+      <h1>Smart Energy Arbitrage Architecture Review</h1>
+      <p class="lead">A renewed strategic review of the Dagster ML architecture, Docker runtime, data loaders, forecast and bidding strategy evidence, scientific grounding, and thesis-safe roadmap.</p>
+      <nav>
+        <a href="#verdict">Verdict</a>
+        <a href="#runtime">Runtime</a>
+        <a href="#data">Data</a>
+        <a href="#strategy">Strategy</a>
+        <a href="#sources">Sources</a>
+        <a href="../review.md">Full report</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section id="verdict">
+      <h2>Executive Verdict</h2>
+      <div class="grid cols-3">
+        <article class="card">
+          <h3 class="ok">Direction is sound</h3>
+          <p>The project is a coherent thesis-grade predict-then-optimize evidence platform for Ukrainian BESS arbitrage.</p>
+          <span class="tag">Dagster</span><span class="tag">LP baseline</span><span class="tag">read models</span>
+        </article>
+        <article class="card">
+          <h3 class="warn">Claims must stay bounded</h3>
+          <p>DFL and Decision Transformer lanes are offline research evidence, not deployed market execution.</p>
+          <span class="tag">offline DFL</span><span class="tag">DT preview</span><span class="tag">market execution false</span>
+        </article>
+        <article class="card">
+          <h3 class="bad">Data gates are urgent</h3>
+          <p>Future synthetic telemetry and out-of-cap official NBEATSx rows are the two most important integrity issues.</p>
+          <span class="tag">future timestamps</span><span class="tag">forecast caps</span>
+        </article>
+      </div>
+    </section>
+
+    <section>
+      <img class="infographic" src="../assets/ml-architecture-review-infographic.png" alt="ML architecture review infographic">
+    </section>
+
+    <section id="runtime">
+      <h2>Dagster and Docker Runtime</h2>
+      <div class="grid cols-4">
+        <div class="card"><div class="metric">109</div><div class="label">Dagster assets</div></div>
+        <div class="card"><div class="metric">25</div><div class="label">asset checks</div></div>
+        <div class="card"><div class="metric">2</div><div class="label">schedules</div></div>
+        <div class="card"><div class="metric bad">0</div><div class="label">sensors registered</div></div>
+      </div>
+      <div class="grid cols-2" style="margin-top:14px">
+        <div class="card">
+          <h3>Healthy pieces</h3>
+          <p>API health is OK, Postgres is healthy, Dagster definitions load, and Docker Compose config validates.</p>
+        </div>
+        <div class="card">
+          <h3 class="warn">Runtime hardening</h3>
+          <p>Dagster daemon logs repeated heartbeat shutdown warnings. This should be investigated before relying on schedules in a demo loop.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Architecture Flow</h2>
+      <div class="flow">
+        <div class="step"><h3>Sources</h3><p>OREE DAM, Open-Meteo, MQTT telemetry, grid events.</p></div>
+        <div class="step"><h3>Bronze</h3><p>Raw source capture with observed/synthetic provenance.</p></div>
+        <div class="step"><h3>Silver</h3><p>Feature frames, battery state, forecast context.</p></div>
+        <div class="step"><h3>Gold</h3><p>LP regret, forecast candidates, offline DFL/DT evidence.</p></div>
+        <div class="step"><h3>Gatekeeper</h3><p>Pydantic contracts and deterministic safety boundary.</p></div>
+        <div class="step"><h3>Surfaces</h3><p>Postgres, MLflow, FastAPI, Nuxt dashboard.</p></div>
+      </div>
+    </section>
+
+    <section id="data">
+      <h2>Data Audit</h2>
+      <table>
+        <thead>
+          <tr><th>Data source</th><th>Evidence</th><th>Status</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>OREE DAM</td><td>3,061 observed rows; 0 cap violations</td><td class="ok">usable</td><td>Keep cap/provenance checks.</td></tr>
+          <tr><td>Open-Meteo</td><td>Observed rows exist, but tenant coverage differs</td><td class="warn">partial</td><td>Add latest-common-panel gate.</td></tr>
+          <tr><td>Battery telemetry</td><td>All synthetic; future raw timestamps to 2026-11-21</td><td class="bad">unsafe for live SOC claims</td><td>Filter future rows and label accelerated simulation.</td></tr>
+          <tr><td>Grid events</td><td>15 observed rows; no future rows</td><td class="info">context only</td><td>Use as AFE context, not causal proof.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="strategy">
+      <h2>Strategy Maturity</h2>
+      <div class="grid cols-3">
+        <div class="card">
+          <h3 class="ok">Baseline</h3>
+          <p><strong>strict similar-day + LP</strong> is still the current fallback and best control comparator.</p>
+          <div class="bar"><span style="width:88%; background:var(--green)"></span></div>
+        </div>
+        <div class="card">
+          <h3 class="warn">Forecast candidates</h3>
+          <p>TFT is cleaner in current persisted rows; official NBEATSx is blocked due to out-of-cap outputs.</p>
+          <div class="bar"><span style="width:45%; background:var(--amber)"></span></div>
+        </div>
+        <div class="card">
+          <h3 class="warn">DFL / DT</h3>
+          <p>Schedule/Value Learner V2 has offline read-model promotion; DT is preview-only; full DFL is blocked.</p>
+          <div class="bar"><span style="width:35%; background:var(--violet)"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Priority Risks</h2>
+      <table>
+        <thead>
+          <tr><th>Risk</th><th>Severity</th><th>Why it matters</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Future synthetic telemetry</td><td class="bad">High</td><td>Can contaminate operator SOC and live-demo language.</td></tr>
+          <tr><td>Out-of-cap official NBEATSx</td><td class="bad">High</td><td>Invalid forecast rows must not be treated as value-ready predictions.</td></tr>
+          <tr><td>Dagster daemon heartbeat</td><td class="warn">High</td><td>Definitions load, but schedule reliability needs investigation.</td></tr>
+          <tr><td>Uneven weather panel</td><td class="warn">Medium</td><td>All-tenant comparisons need common availability windows.</td></tr>
+          <tr><td>Forecast-store key</td><td class="warn">Medium</td><td>Potential conflict if multiple models share run/timestamp.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="sources">
+      <h2>Source Grounding</h2>
+      <div class="grid cols-2">
+        <div class="card">
+          <h3>Regulation and market context</h3>
+          <p><a href="https://www.nerc.gov.ua/acts/pro-hranychni-tsiny-na-rynku-na-dobu-napered-vnutrishnodobovomu-rynku-ta-balansuiuchomu-rynku">NEURC Resolution No. 621</a>, <a href="https://www.oree.com.ua/index.php/newsctr/n/30795?lang=english">OREE 2026 tariff</a>, <a href="https://energy.ec.europa.eu/topics/markets-and-consumers/electricity-market-design_en">EU electricity market design</a>, <a href="https://me.gov.ua/News/Detail?id=2642aff1-2328-4bad-b03f-6f0f7dc292c8&amp;lang=uk-UA">Ukraine NECP</a>, and <a href="https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai">EU AI Act</a>.</p>
+        </div>
+        <div class="card">
+          <h3>Scientific basis</h3>
+          <p><a href="https://arxiv.org/abs/2505.01551">Predict-then-bid DFL</a>, <a href="https://doi.org/10.1109/TSG.2022.3166791">decision-focused ESS arbitrage</a>, <a href="https://arxiv.org/abs/2201.12886">NBEATSx</a>, <a href="https://arxiv.org/abs/1912.09363">TFT</a>, <a href="https://arxiv.org/abs/1910.12430">cvxpylayers</a>, and degradation-aware BESS optimization.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      Documentation-only artifact. Full report: <a href="../review.md">review.md</a>. Source matrix: <a href="../source-matrix.md">source-matrix.md</a>.
+    </div>
+  </footer>
+</body>
+</html>

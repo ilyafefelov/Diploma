@@ -16,6 +16,8 @@
 
 Європейські джерела про BESS revenue stacking, участь у кількох ринках і ancillary services залишаються важливими для майбутнього розвитку. Однак у поточному scope вони не мають підміняти український evidence layer. Multi-venue DAM/IDM/balancing optimization є логічним наступним етапом, але поточна дипломна аргументація має спиратися на відтворюваний DAM benchmark, а не на ширшу roadmap-архітектуру.
 
+Після стратегічного рев'ю архітектури цей ринковий контекст також прив'язано до первинних регуляторних і політичних джерел. NEURC Resolution No. 621 від 23 квітня 2026 року задає ефективно датовані price caps для українських DAM/IDM і balancing-market контурів, тому forecast sanity gate має бути venue-specific, а не універсальним кліпінгом. OREE 2026 tariff notice додає окремий економічний шар: якщо диплом переходить від gross LP schedule value до net market profit, потрібно враховувати transaction tariff і fixed software fee. European Commission electricity-market-design матеріали, Ukraine NECP to 2030 та Energy Strategy to 2050 використовуються як policy context для flexibility, reconstruction, EU integration і майбутньої market-coupling логіки, але не як доказ поточного live market execution.
+
 ## 2.3. Енергоарбітраж BESS як задача оптимізації
 
 Енергоарбітраж батарейного накопичувача зазвичай формулюється як задача вибору моментів заряду та розряду з метою максимізації економічного результату за наявності обмежень на потужність, ємність, початковий і кінцевий state of charge, round-trip efficiency та допустимий діапазон SOC. У базовій постановці така задача добре описується лінійним програмуванням або змішаними цілочисельними моделями. Її перевагою є прозорість: вхідна цінова траєкторія, фізичні обмеження та фінальний schedule пов'язані формально й відтворювано.
@@ -62,9 +64,13 @@ Decision Transformer є окремим, пізнішим напрямом. Chen 
 
 Отже, література підтримує обережну позицію: диплом може стверджувати наявність degradation-aware economics proxy, але не повного digital twin. Розширення до cycle-depth-aware, temperature-aware або telemetry-calibrated ageing model є перспективним напрямом, однак воно має виконуватися після стабілізації real-data benchmark і decision-value evaluation.
 
+Додатково Kumtepeli et al. 2020 та Cao et al. 2020 показують дві сильніші майбутні траєкторії: degradation-aware optimization з electro-thermal і semi-empirical ageing models та learning-based arbitrage з точнішою lithium-ion degradation model. Для цього репозиторію ці джерела є аргументом на користь roadmap до глибшого battery model, але не підставою описувати поточний throughput/EFC penalty як повний digital twin.
+
 ## 2.8. Відтворювана MLOps-архітектура та evidence pipeline
 
 Для інженерної дипломної роботи важливо не лише запропонувати модель, а й довести, що експериментальний результат відтворюється. Саме тому MLOps-шар є частиною архітектурної аргументації. Dagster software-defined assets забезпечують lineage і materialization protocol, MLflow фіксує run-level метрики, Postgres зберігає read-model evidence, FastAPI надає dashboard-facing endpoints, а Nuxt dashboard показує operator-facing summaries без змішування їх із market execution.
+
+AI governance також стає частиною архітектурного обґрунтування. EU AI Act описує risk-based підхід до AI systems, а для safety-relevant інфраструктурних контурів підкреслює data quality, logging, documentation, human oversight, robustness, cybersecurity і accuracy. Для диплома це підтримує не "автономність будь-якою ціною", а протилежну інженерну позицію: deterministic Pydantic Gatekeeper, explicit validation failures, human/operator review, provenance metadata і `market_execution_enabled=false` мають бути центральними елементами системи.
 
 Medallion architecture у проєкті виконує методологічну функцію. Bronze assets відповідають за ingestion і provenance, Silver assets формують tenant-aligned features, Gold assets публікують forecast, benchmark, calibration, selector, DFL-readiness і diagnostics. Така структура дозволяє відділити observed OREE/Open-Meteo evidence від synthetic/demo fallback і явно позначати data quality tier.
 
@@ -81,6 +87,8 @@ Medallion architecture у проєкті виконує методологічн
 ## 2.10. Європейські джерела, market coupling і зовнішня валідація
 
 Європейські dataset sources є важливими для майбутнього розвитку диплома, але їхня роль має бути чітко обмежена. ENTSO-E Transparency Platform, Open Power System Data, OPSD time series, Nord Pool Data Portal, Ember API, PriceFM і THieF задають напрям external validation, market-coupling context, cross-region electricity-price forecasting і temporal hierarchy forecasting. Вони можуть стати джерелом польських, словацьких, угорських, румунських або ширших європейських exogenous features.
+
+Окремо потрібно розрізняти grid synchronization, policy integration і фактичну market coupling implementation. ENTSO-E synchronization notes підтверджують синхронізацію України та Молдови з Continental Europe, але це саме по собі не означає, що український DAM для всіх delivery dates повністю працює як SDAC/SIDC-coupled market. ACER Energy Community MCO integration-plan матеріали і European Commission market-coupling sources корисні для roadmap і external-market feature governance, однак вони вимагають окремих coupling-status flags, publication-time checks і source licensing перед використанням у training panel.
 
 Проте європейські rows не мають змішуватися з українським training/evaluation panel без окремої підготовки. Потрібні licensing checks, timezone та DST alignment, currency normalization, market-rule mapping, price-cap semantics, publication-time availability і domain-shift validation. До виконання цих умов європейські дані можуть використовуватися як roadmap context або future external-validation source, але не як прямий training target для українського DAM arbitrage.
 
@@ -104,14 +112,14 @@ Medallion architecture у проєкті виконує методологічн
 
 ## 2.13. Джерела, використані в поточній версії розділу
 
-1. Yi et al. A Decision-Focused Predict-then-Bid Framework for Energy Storage Arbitrage. DOI: 10.48550/arXiv.2505.01551.
-2. Olivares et al. Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx. DOI: 10.1016/j.ijforecast.2022.03.001.
+1. Yi et al. A Decision-Focused Predict-then-Bid Framework for Energy Storage Arbitrage. DOI: 10.48550/arXiv.2505.01551. https://arxiv.org/abs/2505.01551.
+2. Olivares et al. Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx. DOI: 10.1016/j.ijforecast.2022.03.001. https://arxiv.org/abs/2201.12886.
 3. Jiang et al. Probabilistic electricity price forecasting based on penalized temporal fusion transformer. DOI: 10.1002/for.3084.
 4. Elmachtoub and Grigas. Smart "Predict, then Optimize". DOI: 10.1287/mnsc.2020.3922.
 5. Grimaldi et al. Profitability of energy arbitrage net profit for grid-scale battery energy storage considering dynamic efficiency and degradation using a linear, mixed-integer linear, and mixed-integer non-linear optimization approach. DOI: 10.1016/j.est.2024.112380.
-6. Lim et al. Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting. DOI: 10.48550/arXiv.1912.09363.
+6. Lim et al. Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting. DOI: 10.48550/arXiv.1912.09363. https://arxiv.org/abs/1912.09363.
 7. Chen et al. Decision Transformer: Reinforcement Learning via Sequence Modeling. DOI: 10.48550/arXiv.2106.01345.
-8. Agrawal et al. Differentiable Convex Optimization Layers. DOI: 10.48550/arXiv.1910.12430.
+8. Agrawal et al. Differentiable Convex Optimization Layers. DOI: 10.48550/arXiv.1910.12430. https://arxiv.org/abs/1910.12430.
 9. Vykhodtsev et al. A review of modelling approaches to characterize lithium-ion battery energy storage systems in techno-economic analyses of power systems. DOI: 10.1016/j.rser.2022.112584.
 10. Hesse et al. Ageing and efficiency aware battery dispatch for arbitrage markets using mixed integer linear programming. DOI: 10.3390/en12060999.
 11. Maheshwari et al. Optimizing the operation of energy storage using a non-linear lithium-ion battery degradation model. DOI: 10.1016/j.apenergy.2019.114360.
@@ -131,11 +139,24 @@ Medallion architecture у проєкті виконує методологічн
 25. Open Power System Data. Time series data package. https://data.open-power-system-data.org/time_series/.
 26. Nord Pool. Data Portal and market-data services. https://www.nordpoolgroup.com/en/services/power-market-data-services/dataportalregistration/.
 27. Ember. API for open electricity data. https://ember-energy.org/data/api.
-28. Mandi et al. Decision-Focused Learning: Foundations, State of the Art, Benchmark and Future Opportunities. DOI: 10.1613/jair.1.15320 / arXiv:2307.13565.
-29. Sang et al. Electricity Price Prediction for Energy Storage System Arbitrage: A Decision-Focused Approach. arXiv:2305.00362.
+28. Mandi et al. Decision-Focused Learning: Foundations, State of the Art, Benchmark and Future Opportunities. DOI: 10.1613/jair.1.15320 / arXiv:2307.13565. https://arxiv.org/abs/2307.13565.
+29. Sang et al. Electricity Price Prediction for Energy Storage System Arbitrage: A Decision-Focused Approach. DOI: 10.1109/TSG.2022.3166791 / arXiv:2305.00362. https://doi.org/10.1109/TSG.2022.3166791.
 30. Persak and Anjos. Decision-Focused Forecasting: Decision Losses for Multistage Optimisation. arXiv:2405.14719.
-31. Yi, Alghumayjan, and Xu. Perturbed Decision-Focused Learning for Modeling Strategic Energy Storage. arXiv:2406.17085.
+31. Yi, Alghumayjan, and Xu. Perturbed Decision-Focused Learning for Modeling Strategic Energy Storage. arXiv:2406.17085. https://arxiv.org/abs/2406.17085.
 32. Bhargava et al. When should we prefer Decision Transformers for Offline Reinforcement Learning? arXiv:2305.14550.
 33. Hugging Face. Decision Transformer model documentation. https://huggingface.co/docs/transformers/model_doc/decision_transformer.
+34. European Commission. Electricity market design. https://energy.ec.europa.eu/topics/markets-and-consumers/electricity-market-design_en.
+35. European Commission. EU electricity trading in the day-ahead markets becomes more dynamic. https://energy.ec.europa.eu/news/eu-electricity-trading-day-ahead-markets-becomes-more-dynamic-2025-10-01_en.
+36. NEURC. Resolution No. 621 of 23 April 2026 on price caps for the day-ahead, intraday, and balancing markets. https://www.nerc.gov.ua/acts/pro-hranychni-tsiny-na-rynku-na-dobu-napered-vnutrishnodobovomu-rynku-ta-balansuiuchomu-rynku.
+37. JSC Market Operator. The Market Operator tariff for 2026 amounts to UAH 6.88 per MWh. https://www.oree.com.ua/index.php/newsctr/n/30795?lang=english.
+38. Open-Meteo. Forecast API documentation. https://open-meteo.com/en/docs.
+39. Open-Meteo. Historical Weather API documentation. https://open-meteo.com/en/docs/historical-weather-api.
+40. Ministry of Economy of Ukraine. The Government approved the National Energy and Climate Plan until 2030. https://me.gov.ua/News/Detail?id=2642aff1-2328-4bad-b03f-6f0f7dc292c8&lang=uk-UA.
+41. Ukraine National Energy and Climate Plan to 2030. https://me.gov.ua/download/2cad4803-661e-4ae9-9748-3006d6eb3e1c/file.pdf.
+42. ENTSO-E. Continental Europe successful synchronization with Ukraine and Moldova power systems. https://www.entsoe.eu/news/2022/03/16/continental-europe-successful-synchronisation-with-ukraine-and-moldova-power-systems/.
+43. ACER. ACER will decide on the electricity market coupling integration plan for the Energy Community. https://www.acer.europa.eu/news/acer-will-decide-electricity-market-coupling-integration-plan-energy-community.
+44. European Commission. AI Act regulatory framework. https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai.
+45. Kumtepeli et al. Energy Arbitrage Optimization With Battery Storage: 3D-MILP for Electro-Thermal Performance and Semi-Empirical Aging Models. DOI: 10.1109/ACCESS.2020.3035504. https://doi.org/10.1109/ACCESS.2020.3035504.
+46. Cao et al. Deep Reinforcement Learning-Based Energy Storage Arbitrage With Accurate Lithium-Ion Battery Degradation Model. DOI: 10.1109/TSG.2020.2986333. https://doi.org/10.1109/TSG.2020.2986333.
 
 Локальна бібліографічна база, source map і PDF-архіви зібрані в [docs/thesis/sources/README.md](../sources/README.md) та [docs/technical/papers/README.md](../../technical/papers/README.md). Metadata-first intake для нових Week 4 джерел зафіксовано в [docs/thesis/sources/week4-research-ingestion.md](../sources/week4-research-ingestion.md).

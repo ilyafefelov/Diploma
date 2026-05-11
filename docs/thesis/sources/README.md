@@ -34,6 +34,8 @@
 | 23 | `2406.17085v2-perturbed-decision-focused-learning-energy-storage.pdf` | Yi, Alghumayjan & Xu, 2024 | **Perturbed DFL for strategic storage** — supports differentiable/perturbed storage losses and hybrid objectives for storage behavior and arbitrage | arXiv:2406.17085 |
 | 24 | `2305.14550v1-sequence-modeling-offline-rl.pdf` | Bhargava et al., 2023 | **Offline RL sequence modeling comparison** — helps frame when Decision Transformer is appropriate and why data volume/trajectory quality matter | arXiv:2305.14550 |
 | 25 | `huggingface-decision-transformer-docs.md` | Hugging Face, accessed 2026 | **Decision Transformer implementation reference** — official Transformers model documentation for future offline DT experiments | HF docs |
+| 26 | source-capture only | Kumtepeli et al., 2020 | **Degradation-aware arbitrage 3D-MILP** — electro-thermal and semi-empirical ageing reference for the future digital-twin roadmap | 10.1109/ACCESS.2020.3035504 |
+| 27 | source-capture only | Cao et al., 2020 | **DRL BESS arbitrage with accurate degradation model** — future comparison point for learning-based control under battery ageing | 10.1109/TSG.2020.2986333 |
 
 ---
 
@@ -122,6 +124,34 @@ availability, and domain-shift checks pass.
 
 ---
 
+## May 11 architecture review source capture
+
+The architecture-review source capture is tracked in
+[../../sources/architecture-review-source-capture-2026-05-11.md](../../sources/architecture-review-source-capture-2026-05-11.md).
+
+It indexes sources from the 2026-05-11 architecture review matrix that were not
+previously represented in the thesis source index or Chapter 2:
+
+- European Commission electricity-market design and day-ahead/intraday market
+  coupling context;
+- NEURC Resolution No. 621 price caps and OREE 2026 Market Operator tariff;
+- Open-Meteo forecast and historical weather API docs as explicit source
+  contracts;
+- Ukraine NECP to 2030 and Energy Strategy to 2050 context;
+- ENTSO-E synchronization and ACER Energy Community MCO integration-plan
+  context;
+- EU AI Act governance framing for safety, logging, human oversight, and data
+  quality;
+- Kumtepeli et al. 2020 and Cao et al. 2020 as missing degradation-aware
+  arbitrage/control references.
+
+Claim boundary: these sources strengthen regulatory/data-governance and
+digital-twin roadmap framing. They do not change the current project state:
+no market execution, no full DFL controller, no deployed Decision Transformer,
+and no full electrochemical digital twin.
+
+---
+
 ## 🔎 Source Map: Baseline LP and Current Data Pipeline
 
 These sources support [technical/BASELINE_LP_AND_DATA_PIPELINE.md](../../technical/BASELINE_LP_AND_DATA_PIPELINE.md). Each entry below records why the source is used in this project rather than only listing the citation.
@@ -168,10 +198,10 @@ These sources support [technical/BASELINE_LP_AND_DATA_PIPELINE.md](../../technic
 - Lago et al. 2021 (EPF benchmark) · Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Wang et al. 2024 (TimeXer) · Yu et al. 2026 (deep-learning EPF review) · Jin et al. 2025 · PriceFM 2025 · THieF 2025
 
 ### Стратегія батарейного накопичувача / Арбітраж
-- Park et al. 2017 · Grimaldi et al. 2024 · Hesse et al. 2019 · Chen et al. 2021 (Decision Transformer) · Bhargava et al. 2023 (DT/offline RL comparison) · Hugging Face Decision Transformer docs · Madahi et al. 2023 (risk-sensitive distributional RL, watch)
+- Park et al. 2017 · Grimaldi et al. 2024 · Hesse et al. 2019 · Kumtepeli et al. 2020 (degradation-aware 3D-MILP) · Cao et al. 2020 (DRL with degradation model) · Chen et al. 2021 (Decision Transformer) · Bhargava et al. 2023 (DT/offline RL comparison) · Hugging Face Decision Transformer docs · Madahi et al. 2023 (risk-sensitive distributional RL, watch)
 
 ### Фізичне моделювання та деградація батарей
-- Maheshwari et al. 2020 · Hesse et al. 2019 · Kumtepeli et al. 2024 · NREL Storage Futures · NREL ATB · `batteries-11-00392-v2` · `Exploring Lithium-Ion Battery Degradation.pdf`
+- Maheshwari et al. 2020 · Hesse et al. 2019 · Kumtepeli et al. 2020 · Kumtepeli et al. 2024 · Cao et al. 2020 · NREL Storage Futures · NREL ATB · `batteries-11-00392-v2` · `Exploring Lithium-Ion Battery Degradation.pdf`
 
 ---
 
