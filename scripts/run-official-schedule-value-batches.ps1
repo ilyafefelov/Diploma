@@ -63,6 +63,14 @@ function Invoke-DockerProcess {
     $process.WaitForExit()
     $process.Refresh()
     $exitCode = $process.ExitCode
+    if ($null -eq $exitCode) {
+        if (Select-String -LiteralPath $stderrPath -Pattern "RUN_SUCCESS" -Quiet) {
+            Write-RunLog "DONE $Name via Dagster RUN_SUCCESS marker"
+            return
+        }
+        Write-RunLog "FAILED $Name exit=<missing>"
+        throw "$Name finished without an exit code and no Dagster RUN_SUCCESS marker. See $stdoutPath and $stderrPath"
+    }
     if ($exitCode -ne 0) {
         Write-RunLog "FAILED $Name exit=$exitCode"
         throw "$Name failed with exit code $exitCode. See $stdoutPath and $stderrPath"

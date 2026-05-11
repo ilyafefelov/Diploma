@@ -53,6 +53,7 @@ def test_official_batch_runner_refreshes_exit_code_after_wait_process() -> None:
 
     assert "$process.WaitForExit()" in runner_script
     assert "$exitCode = $process.ExitCode" in runner_script
+    assert 'Select-String -LiteralPath $stderrPath -Pattern "RUN_SUCCESS" -Quiet' in runner_script
     assert "if ($exitCode -ne 0)" in runner_script
 
 
