@@ -1789,3 +1789,17 @@ Decision boundary: this path can promote an official source only for
 offline/read-model strategy evidence. It does not enable live bids, does not
 replace the Pydantic Gatekeeper, and does not claim a deployed Decision
 Transformer controller.
+
+Runtime update on 2026-05-11: the first full 104-anchor official attempt hit the
+outer one-hour process timeout before producing promotion-grade official rows.
+The follow-up keeps the same strict LP/oracle rule but changes the execution
+protocol: official rolling-origin generation is split into persisted anchor
+batches with one fixed generated timestamp, and the downstream official
+schedule/value gate runs only after the full batch set is available.
+
+The same planning slice records the next feature track: add
+market-coupling/exogenous feature governance, then route only approved
+temporally available signals into official NBEATSx/TFT and DFL training.
+European and neighbor-market sources remain `training_use_allowed=false` until
+licensing, timezone, currency, market-rule, temporal-availability, and
+domain-shift checks pass.

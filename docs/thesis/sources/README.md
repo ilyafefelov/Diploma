@@ -101,6 +101,25 @@ Copyright/redistribution note: public arXiv PDFs were saved locally. Official
 policy and publication pages were captured as citation/source notes rather than
 full copied web pages.
 
+## May 11 official forecast and exogenous governance capture
+
+The official forecast/source-governance capture is tracked in
+[../../sources/official-forecast-exogenous-governance-source-capture-2026-05-11.md](../../sources/official-forecast-exogenous-governance-source-capture-2026-05-11.md).
+
+It records the sources used for the resumable official NBEATSx/TFT 104-anchor
+run and the next market-coupling/exogenous feature governance slice:
+
+- Nixtla NeuralForecast end-to-end, NBEATSx, and exogenous-variable
+  documentation;
+- TFT arXiv paper;
+- Open-Meteo historical weather documentation;
+- ENTSO-E, OPSD, Ember, and Nord Pool bridge-source status.
+
+Claim boundary: these sources support official forecast training and future
+feature governance. They do not permit European rows to enter Ukrainian DFL
+training until licensing, timezone, currency, market-rule, temporal
+availability, and domain-shift checks pass.
+
 ---
 
 ## 🔎 Source Map: Baseline LP and Current Data Pipeline

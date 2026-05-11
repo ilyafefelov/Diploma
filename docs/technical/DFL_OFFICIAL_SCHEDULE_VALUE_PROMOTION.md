@@ -85,6 +85,28 @@ expected to be a long CPU run. If the optional official backends or local runtim
 cannot complete it, the result should be documented as adapter/runtime evidence,
 not silently replaced by compact-model rows.
 
+### Resumable 104-anchor runner
+
+For unattended local CPU execution, prefer the resumable batch runner:
+
+```powershell
+.\scripts\run-official-schedule-value-batches.ps1 `
+  -TotalAnchorsPerTenant 104 `
+  -BatchSize 4 `
+  -BatchTimeoutSeconds 10800
+```
+
+The runner assigns one fixed `GeneratedAtIso` to the whole evidence attempt,
+materializes the official rolling-origin asset in anchor batches, persists each
+batch through `forecast_strategy_evaluations`, and then materializes the
+downstream official schedule/value gate. Logs are written under
+`.tmp_runtime/official_schedule_value_batches/`.
+
+If a batch fails, rerun with the same `-GeneratedAtIso` and the failed
+`-StartAnchorIndex`. Already persisted batches are merged back into the asset
+output when `merge_persisted_batches=true`, so the next successful batch resumes
+the same evidence run instead of starting over.
+
 ## Current Status
 
 Implementation is additive:
@@ -144,3 +166,10 @@ schedule/value candidate library and gate. It does not change the thesis claim:
 the official models still need a completed 104-anchor or larger rolling-origin
 run before they can be compared fairly with the compact schedule/value
 promotion evidence.
+
+Follow-up execution protocol:
+
+- use the resumable batch runner for the next 104-anchor attempt;
+- keep the outer per-batch timeout at least three hours on local CPU;
+- record the generated timestamp and failed anchor index if a resume is needed;
+- do not treat partial official rows as promotion-grade evidence.

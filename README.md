@@ -170,9 +170,11 @@ Latest full verification: `151 passed`.
 - DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
 - DFL schedule/value production gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
+- Resumable official forecast and exogenous-governance PRD: `docs/technical/PRD_OFFICIAL_FORECAST_RESUME_AND_EXOGENOUS_GOVERNANCE.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
 - Official forecast rolling-origin benchmark: `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md`
+- Current source-capture packages: `docs/sources/README.md`
 - Market-coupling temporal availability gate: `docs/technical/MARKET_COUPLING_TEMPORAL_AVAILABILITY.md`
 - ENTSO-E neighbor-market access gate: `docs/technical/ENTSOE_NEIGHBOR_MARKET_ACCESS_GATE.md`
 - Week 3 accepted evidence: `data/research_runs/week3_real_data_benchmark/` for the Dnipro 30-anchor thesis-grade benchmark.

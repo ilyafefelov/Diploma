@@ -61,6 +61,18 @@ After this path materializes cleanly, the same asset can be rerun with more
 anchors. The promotion authority remains the strict LP/oracle gate, not adapter
 loss curves.
 
+The asset also supports resumable anchor batches for long CPU runs:
+
+- `anchor_batch_start_index`: zero-based index into the tenant-specific eligible
+  anchor list;
+- `anchor_batch_size`: number of anchors to materialize in this batch, with
+  `0` preserving the original all-anchor behavior;
+- `resume_generated_at_iso`: fixed timestamp that identifies all batches from
+  one evidence attempt;
+- `merge_persisted_batches`: when enabled, the asset returns all persisted rows
+  for the same strategy kind and generated timestamp after the current batch is
+  written.
+
 ## Claim Boundary
 
 This benchmark can support one of three conservative claims:
@@ -156,3 +168,7 @@ control, but converts official rows into the richer schedule-candidate library,
 Schedule/Value Learner V2, rolling robustness, and offline promotion gate. It
 does not change the official forecast benchmark itself and does not enable live
 market execution.
+
+For the full 104-anchor official run, use the resumable batch runner documented
+in [DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md](DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md#resumable-104-anchor-runner)
+instead of a single one-hour shell-bound materialization.
