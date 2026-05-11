@@ -65,6 +65,34 @@ Implemented now:
 - additive strict LP/oracle scoring asset for the global-panel NBEATSx output.
 - additive prior-only horizon calibration and calibrated strict LP gate.
 
+Materialized evidence on 2026-05-11:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
+  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_global_panel_training_frame,nbeatsx_official_global_panel_price_forecast,nbeatsx_official_global_panel_strict_lp_benchmark_frame,nbeatsx_official_global_panel_horizon_calibration_frame,nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame `
+  -c configs/real_data_official_global_panel_nbeatsx_week3.yaml
+```
+
+Result:
+
+| Evidence item | Value |
+|---|---:|
+| Run status | `RUN_SUCCESS` |
+| CPU NBEATSx fit time | ~37 seconds |
+| Tenants | 5 |
+| Strict-score anchors per tenant | 1 |
+| Anchor | `2026-01-30 23:00` |
+| `strict_similar_day` mean regret | 1495.71 UAH |
+| `nbeatsx_official_global_panel_v1` mean regret | 1559.66 UAH |
+| Calibrated NBEATSx mean regret | 1559.66 UAH |
+| Tenant wins vs strict | Kyiv only |
+
+Interpretation: the official global-panel path is now runnable and far faster
+than the previous tenant/anchor retraining path, but a single-anchor result is
+not promotion evidence. The calibrated candidate is currently identical to raw
+NBEATSx because the prior-only calibration gate has insufficient prior
+global-panel anchors.
+
 Not implemented yet:
 
 - rolling-origin global-panel cross-validation;
