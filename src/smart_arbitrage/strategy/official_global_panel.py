@@ -119,6 +119,8 @@ def build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
     nbeatsx_max_steps: int = 25,
     nbeatsx_random_seed: int = 20260511,
     anchor_batch_order: str = "latest_first",
+    anchor_batch_start_index: int = 0,
+    anchor_batch_size: int = 0,
     generated_at: datetime | None = None,
     market_coupling_availability_frame: pl.DataFrame | None = None,
     nbeatsx_builder: Callable[..., pl.DataFrame] = build_official_global_panel_nbeatsx_forecast,
@@ -137,6 +139,11 @@ def build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
         horizon_hours=horizon_hours,
         max_eval_windows=max_eval_windows,
         anchor_batch_order=anchor_batch_order,
+    )
+    anchors = _slice_anchor_batch(
+        anchors,
+        anchor_batch_start_index=anchor_batch_start_index,
+        anchor_batch_size=anchor_batch_size,
     )
     resolved_generated_at = generated_at or datetime.now(UTC)
     frames: list[pl.DataFrame] = []
@@ -494,6 +501,21 @@ def _eligible_global_panel_anchors(
     if anchor_batch_order == "chronological":
         anchors = list(reversed(anchors))
     return anchors
+
+
+def _slice_anchor_batch(
+    anchors: list[datetime],
+    *,
+    anchor_batch_start_index: int,
+    anchor_batch_size: int,
+) -> list[datetime]:
+    if anchor_batch_start_index < 0:
+        raise ValueError("anchor_batch_start_index must be non-negative.")
+    if anchor_batch_size < 0:
+        raise ValueError("anchor_batch_size must be non-negative.")
+    if anchor_batch_size == 0:
+        return anchors[anchor_batch_start_index:]
+    return anchors[anchor_batch_start_index : anchor_batch_start_index + anchor_batch_size]
 
 
 def _with_rolling_metadata(

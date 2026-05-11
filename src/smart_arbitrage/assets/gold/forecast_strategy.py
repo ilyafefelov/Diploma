@@ -82,10 +82,14 @@ class OfficialGlobalPanelRollingAssetConfig(dg.Config):
 
     tenant_ids_csv: str = ""
     max_eval_windows: int = 4
+    anchor_batch_start_index: int = 0
+    anchor_batch_size: int = 0
     horizon_hours: int = 24
     nbeatsx_max_steps: int = 25
     nbeatsx_random_seed: int = 20260511
     anchor_batch_order: str = "latest_first"
+    resume_generated_at_iso: str = ""
+    merge_persisted_batches: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -401,6 +405,7 @@ def nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
     """Windowed rolling strict LP benchmark for official global-panel NBEATSx."""
 
     tenant_ids = tuple(_tenant_ids_from_csv(config.tenant_ids_csv))
+    generated_at = _optional_datetime(config.resume_generated_at_iso)
     frame = build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
         real_data_benchmark_silver_feature_frame,
         tenant_ids=tenant_ids,
@@ -409,15 +414,29 @@ def nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
         nbeatsx_max_steps=config.nbeatsx_max_steps,
         nbeatsx_random_seed=config.nbeatsx_random_seed,
         anchor_batch_order=config.anchor_batch_order,
+        anchor_batch_start_index=config.anchor_batch_start_index,
+        anchor_batch_size=config.anchor_batch_size,
+        generated_at=generated_at,
         market_coupling_availability_frame=official_forecast_exogenous_governance_frame,
     )
-    get_strategy_evaluation_store().upsert_evaluation_frame(frame)
+    store = get_strategy_evaluation_store()
+    store.upsert_evaluation_frame(frame)
+    if config.merge_persisted_batches and generated_at is not None:
+        persisted_frame = store.strategy_kind_frame_for_generated_at(
+            strategy_kind=OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND,
+            generated_at=generated_at,
+        )
+        if persisted_frame.height:
+            frame = persisted_frame
     _add_metadata(
         context,
         {
             "rows": frame.height,
             "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
             "anchor_count": frame.select("anchor_timestamp").n_unique() if frame.height else 0,
+            "anchor_batch_start_index": config.anchor_batch_start_index,
+            "anchor_batch_size": config.anchor_batch_size,
+            "merge_persisted_batches": config.merge_persisted_batches,
             "forecast_candidate_count": frame.select("forecast_model_name").n_unique()
             if frame.height
             else 0,

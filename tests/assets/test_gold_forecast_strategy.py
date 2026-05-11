@@ -371,6 +371,9 @@ def test_global_panel_nbeatsx_rolling_asset_persists_rows(monkeypatch) -> None:
         assert kwargs["horizon_hours"] == 24
         assert kwargs["nbeatsx_max_steps"] == 3
         assert kwargs["anchor_batch_order"] == "chronological"
+        assert kwargs["anchor_batch_start_index"] == 4
+        assert kwargs["anchor_batch_size"] == 8
+        assert kwargs["generated_at"] == generated_at
         assert real_data_benchmark_silver_feature_frame.height == 1
         return pl.DataFrame(
             [
@@ -402,6 +405,9 @@ def test_global_panel_nbeatsx_rolling_asset_persists_rows(monkeypatch) -> None:
             horizon_hours=24,
             nbeatsx_max_steps=3,
             anchor_batch_order="chronological",
+            anchor_batch_start_index=4,
+            anchor_batch_size=8,
+            resume_generated_at_iso=generated_at.isoformat(),
         ),
         pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
         pl.DataFrame({"feature_name": ["entsoe_neighbor_day_ahead_price_context"]}),

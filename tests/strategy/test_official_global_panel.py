@@ -204,6 +204,51 @@ def test_global_panel_nbeatsx_rolling_benchmark_trains_once_per_anchor_across_te
     }
 
 
+def test_global_panel_nbeatsx_rolling_benchmark_slices_resumable_anchor_batches() -> None:
+    silver_frame = _silver_frame(tenant_ids=(TENANT_ID, SECOND_TENANT_ID), day_count=14)
+    trained_anchors: list[datetime] = []
+
+    def fake_nbeatsx_builder(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        forecast_rows = training_frame.filter(pl.col("is_forecast")).select(["unique_id", "ds"])
+        first_forecast_timestamp = forecast_rows.select(pl.col("ds").min()).item()
+        assert isinstance(first_forecast_timestamp, datetime)
+        trained_anchors.append(first_forecast_timestamp - timedelta(hours=1))
+        return pl.DataFrame(
+            {
+                "model_name": ["nbeatsx_official_global_panel_v1"] * forecast_rows.height,
+                "model_family": ["NBEATSx"] * forecast_rows.height,
+                "backend_name": ["neuralforecast"] * forecast_rows.height,
+                "backend_status": ["trained"] * forecast_rows.height,
+                "unique_id": forecast_rows["unique_id"].to_list(),
+                "forecast_timestamp": forecast_rows["ds"].to_list(),
+                "predicted_price_uah_mwh": [1100.0] * forecast_rows.height,
+                "predicted_price_p10_uah_mwh": [None] * forecast_rows.height,
+                "predicted_price_p50_uah_mwh": [1100.0] * forecast_rows.height,
+                "predicted_price_p90_uah_mwh": [None] * forecast_rows.height,
+                "prediction_interval_kind": ["point"] * forecast_rows.height,
+                "training_rows": [training_frame.filter(pl.col("is_train")).height] * forecast_rows.height,
+                "horizon_rows": [24] * forecast_rows.height,
+                "adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * forecast_rows.height,
+            }
+        )
+
+    result = build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
+        silver_frame,
+        tenant_ids=(TENANT_ID, SECOND_TENANT_ID),
+        max_eval_windows=4,
+        horizon_hours=24,
+        nbeatsx_max_steps=1,
+        generated_at=GENERATED_AT,
+        anchor_batch_order="chronological",
+        anchor_batch_start_index=1,
+        anchor_batch_size=2,
+        nbeatsx_builder=fake_nbeatsx_builder,
+    )
+
+    assert trained_anchors == [datetime(2026, 1, 11, 23), datetime(2026, 1, 12, 23)]
+    assert result.select("anchor_timestamp").n_unique() == 2
+
+
 def _silver_frame(
     *,
     tenant_ids: tuple[str, ...] = (TENANT_ID,),
