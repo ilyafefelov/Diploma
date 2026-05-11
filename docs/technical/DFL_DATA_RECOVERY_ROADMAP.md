@@ -99,6 +99,16 @@ Mapped neighbor zones use the same bidding-zone EIC for `in_Domain` and
 Revalidated Dagster run id after rebuilding services:
 `a6768be3-15f3-4d64-9e3f-4916d718f13b`.
 
+The next executable gate is `entsoe_neighbor_market_sample_audit_frame`. It
+defaults to a fetch-disabled Poland sample audit for `202601010000` to
+`202601020000` UTC. If an ENTSO-E token is configured and `fetch_enabled=true`,
+the helper can parse source-backed day-ahead price XML, but the resulting rows
+still keep `training_use_allowed=false` and `feature_use_allowed=false`.
+The fetch-disabled audit materialized successfully in Dagster run
+`37c9bfa1-e5b8-44eb-bec2-3d3e3b6351b6`: one `PL` sample-audit row, zero
+source-backed rows, zero training rows, zero feature rows, and a passing
+`entsoe_neighbor_market_sample_audit_evidence` check.
+
 European rows remain `training_use_allowed=false` until these blockers are
 resolved:
 

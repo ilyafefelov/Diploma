@@ -1,7 +1,9 @@
 import polars as pl
 
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
+    validate_entsoe_neighbor_market_sample_audit_evidence,
     validate_entsoe_neighbor_market_access_evidence,
 )
 from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
@@ -101,3 +103,111 @@ def test_entsoe_neighbor_market_access_evidence_rejects_bad_document_type() -> N
     assert outcome.passed is False
     assert "ENTSO-E day-ahead price rows must use A44/A01" in outcome.description
     assert outcome.metadata["bad_request_shape_rows"] == 1
+
+
+def test_entsoe_neighbor_market_sample_audit_blocks_fetch_without_token() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token=None,
+    )
+
+    frame = build_entsoe_neighbor_market_sample_audit_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token=None,
+        fetch_enabled=True,
+    )
+
+    assert frame.height == 1
+    row = frame.to_dicts()[0]
+    assert row["country_code"] == "PL"
+    assert row["fetch_status"] == "blocked_missing_entsoe_security_token"
+    assert row["source_backed_row_count"] == 0
+    assert row["parsed_price_row_count"] == 0
+    assert row["training_use_allowed"] is False
+    assert row["feature_use_allowed"] is False
+
+    outcome = validate_entsoe_neighbor_market_sample_audit_evidence(frame)
+    assert outcome.passed is True
+    assert outcome.metadata["source_backed_rows"] == 0
+
+
+def test_entsoe_neighbor_market_sample_audit_parses_source_backed_sample_without_training_use() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    xml = """
+    <Publication_MarketDocument>
+      <TimeSeries>
+        <Period>
+          <timeInterval>
+            <start>2026-01-01T00:00Z</start>
+            <end>2026-01-01T03:00Z</end>
+          </timeInterval>
+          <resolution>PT60M</resolution>
+          <Point>
+            <position>1</position>
+            <price.amount>102.5</price.amount>
+          </Point>
+          <Point>
+            <position>2</position>
+            <price.amount>111.0</price.amount>
+          </Point>
+          <Point>
+            <position>3</position>
+            <price.amount>109.5</price.amount>
+          </Point>
+        </Period>
+      </TimeSeries>
+    </Publication_MarketDocument>
+    """
+
+    frame = build_entsoe_neighbor_market_sample_audit_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: xml,
+    )
+
+    assert frame.height == 1
+    row = frame.to_dicts()[0]
+    assert row["fetch_status"] == "source_backed_sample_fetched_not_training"
+    assert row["source_backed_row_count"] == 3
+    assert row["parsed_price_row_count"] == 3
+    assert row["first_delivery_timestamp_utc"] == "2026-01-01T00:00:00+00:00"
+    assert row["last_delivery_timestamp_utc"] == "2026-01-01T02:00:00+00:00"
+    assert row["training_use_allowed"] is False
+    assert row["feature_use_allowed"] is False
+
+    outcome = validate_entsoe_neighbor_market_sample_audit_evidence(frame)
+    assert outcome.passed is True
+    assert outcome.metadata["source_backed_rows"] == 3
+
+
+def test_entsoe_neighbor_market_sample_audit_rejects_feature_use_before_governance() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token=None,
+    )
+    frame = build_entsoe_neighbor_market_sample_audit_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token=None,
+        fetch_enabled=False,
+    )
+    broken = frame.with_columns(pl.lit(True).alias("feature_use_allowed"))
+
+    outcome = validate_entsoe_neighbor_market_sample_audit_evidence(broken)
+
+    assert outcome.passed is False
+    assert "ENTSO-E samples must not become feature rows before governance passes" in (
+        outcome.description
+    )

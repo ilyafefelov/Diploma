@@ -108,6 +108,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "entsoe_neighbor_market_query_spec_frame",
             "entsoe_neighbor_market_access_evidence",
         ),
+        (
+            "entsoe_neighbor_market_sample_audit_frame",
+            "entsoe_neighbor_market_sample_audit_evidence",
+        ),
     }
 
     check_keys = {

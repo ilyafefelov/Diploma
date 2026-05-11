@@ -1609,7 +1609,9 @@ only already-valid Ukrainian features.
 
 The ENTSO-E branch now has an executable query-spec/access gate:
 `entsoe_neighbor_market_query_spec_frame`, checked by
-`entsoe_neighbor_market_access_evidence`.
+`entsoe_neighbor_market_access_evidence`. It also has a sample-audit sidecar,
+`entsoe_neighbor_market_sample_audit_frame`, checked by
+`entsoe_neighbor_market_sample_audit_evidence`.
 
 What it records:
 
@@ -1619,13 +1621,18 @@ What it records:
   review-required placeholder.
 - Fetch/training remains blocked without a configured ENTSO-E security token.
 - `training_use_allowed=false` for every row.
+- The sample audit defaults to fetch-disabled Poland (`PL`) for a one-day UTC
+  window. With an explicit token and fetch config it can parse source-backed
+  ENTSO-E price XML, but still keeps both `training_use_allowed=false` and
+  `feature_use_allowed=false`.
 
 Interpretation:
 
 - This is the first concrete step toward Polish/neighboring-market covariates.
 - It is still not data ingestion and not model evidence.
-- The next source-backed step requires an ENTSO-E security token, a tiny Poland
-  sample, publication timestamp capture, and a no-leakage sample audit.
+- The next source-backed step requires an ENTSO-E security token and a tiny
+  Poland sample run, followed by publication timestamp capture, currency
+  normalization, and a no-leakage availability gate before training use.
 
 ## DFL Schedule/Value Learner V2
 
