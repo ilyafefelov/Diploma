@@ -96,6 +96,8 @@ fetch-ready, token-redacted Transparency Platform contract:
 `securityToken,documentType,processType,in_Domain,out_Domain,periodStart,periodEnd`.
 Mapped neighbor zones use the same bidding-zone EIC for `in_Domain` and
 `out_Domain`; Moldova remains blocked until its bidding-zone mapping is verified.
+Revalidated Dagster run id after rebuilding services:
+`a6768be3-15f3-4d64-9e3f-4916d718f13b`.
 
 European rows remain `training_use_allowed=false` until these blockers are
 resolved:
