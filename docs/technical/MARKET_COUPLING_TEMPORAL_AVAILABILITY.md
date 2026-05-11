@@ -22,6 +22,7 @@ Claim boundary:
 |---|---|
 | `forecast_afe_feature_catalog_frame` | Registers Ukrainian training features and blocked external bridge sources. |
 | `market_coupling_temporal_availability_frame` | Converts external bridge rows into source-specific availability/readiness evidence. |
+| `entsoe_neighbor_market_query_spec_frame` | Prepares ENTSO-E day-ahead price query specs for Poland/neighbor candidates while blocking fetch/training without a token. |
 
 Asset check:
 
@@ -96,7 +97,13 @@ availability rules are explicit.
 
 ## Next Slice
 
-The next executable slice should be one of:
+The next executable slice has started with
+[ENTSOE_NEIGHBOR_MARKET_ACCESS_GATE.md](ENTSOE_NEIGHBOR_MARKET_ACCESS_GATE.md):
+it records `A44/A01` day-ahead price query specs for Poland, Slovakia, Hungary,
+Romania, and a Moldova review placeholder. No fetch is allowed until an ENTSO-E
+security token is configured.
+
+After that, the next step should be one of:
 
 1. ENTSO-E API/manual sample mapping for Poland, Slovakia, Hungary, Romania, and
    Moldova-adjacent context, with publication timestamps and terms documented.

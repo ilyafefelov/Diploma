@@ -262,6 +262,12 @@ Implementation status:
 - All external sources remain `training_use_allowed=false`; the unresolved
   blockers are licensing, timezone, currency, market rules, temporal
   availability, and domain shift.
+- Added `entsoe_neighbor_market_query_spec_frame` to prepare the first concrete
+  ENTSO-E day-ahead price query shape: `A44` price document, `A01` day-ahead
+  process, Poland/Slovakia/Hungary/Romania mapped as neighbor candidates, and
+  Moldova left as `review_required`.
+- No ENTSO-E security token is available locally, so the access gate blocks all
+  fetches and records the blocker instead of silently inventing data.
 - Next executable decision: either map an ENTSO-E Poland/neighbor sample with
   publication timestamps and terms, or keep external sources as validation-only
   while DFL v2 uses Ukrainian prior-only features.

@@ -160,6 +160,9 @@ from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_f
 from smart_arbitrage.forecasting.market_coupling_availability import (
     build_market_coupling_temporal_availability_frame,
 )
+from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_neighbor_market_query_spec_frame,
+)
 from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
 from smart_arbitrage.dfl.semantic_event_failure_audit import (
     build_dfl_semantic_event_strict_failure_audit_frame,
@@ -737,6 +740,50 @@ def market_coupling_temporal_availability_frame(
         },
     )
     return availability_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def entsoe_neighbor_market_query_spec_frame(
+    context,
+    market_coupling_temporal_availability_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """ENTSO-E neighbor-market query spec and access blocker evidence."""
+
+    security_token = os.environ.get("ENTSOE_SECURITY_TOKEN") or os.environ.get(
+        "ENTSO_E_SECURITY_TOKEN"
+    )
+    query_spec_frame = build_entsoe_neighbor_market_query_spec_frame(
+        market_coupling_temporal_availability_frame,
+        security_token=security_token,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": query_spec_frame.height,
+            "mapped_eic_rows": query_spec_frame.filter(
+                pl.col("eic_mapping_status") == "mapped"
+            ).height
+            if query_spec_frame.height
+            else 0,
+            "fetch_allowed_rows": query_spec_frame.filter(pl.col("fetch_allowed")).height
+            if query_spec_frame.height
+            else 0,
+            "security_token_available": bool(security_token),
+            "scope": "entsoe_neighbor_market_access_research_gate",
+            "not_market_execution": True,
+        },
+    )
+    return query_spec_frame
 
 
 @dg.asset(
@@ -3520,6 +3567,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_training_example_frame,
     forecast_afe_feature_catalog_frame,
     market_coupling_temporal_availability_frame,
+    entsoe_neighbor_market_query_spec_frame,
     dfl_semantic_event_strict_failure_audit_frame,
     forecast_candidate_forensics_frame,
     afl_training_panel_frame,

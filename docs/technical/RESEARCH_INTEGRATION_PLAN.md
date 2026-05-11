@@ -1604,3 +1604,25 @@ Decision: this closes the source-governance gap but does not yet improve model
 quality. The next experimental branch is either an ENTSO-E neighbor sample with
 verified temporal availability, or a DFL v2 schedule/value learner that uses
 only already-valid Ukrainian features.
+
+## ENTSO-E Neighbor-Market Access Gate
+
+The ENTSO-E branch now has an executable query-spec/access gate:
+`entsoe_neighbor_market_query_spec_frame`, checked by
+`entsoe_neighbor_market_access_evidence`.
+
+What it records:
+
+- ENTSO-E day-ahead price request shape: `document_type=A44`,
+  `process_type=A01`.
+- Neighbor candidates: Poland, Slovakia, Hungary, Romania, and Moldova as a
+  review-required placeholder.
+- Fetch/training remains blocked without a configured ENTSO-E security token.
+- `training_use_allowed=false` for every row.
+
+Interpretation:
+
+- This is the first concrete step toward Polish/neighboring-market covariates.
+- It is still not data ingestion and not model evidence.
+- The next source-backed step requires an ENTSO-E security token, a tiny Poland
+  sample, publication timestamp capture, and a no-leakage sample audit.

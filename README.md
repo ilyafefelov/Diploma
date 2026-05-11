@@ -169,6 +169,7 @@ Latest full verification: `151 passed`.
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
 - Official forecast rolling-origin benchmark: `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md`
 - Market-coupling temporal availability gate: `docs/technical/MARKET_COUPLING_TEMPORAL_AVAILABILITY.md`
+- ENTSO-E neighbor-market access gate: `docs/technical/ENTSOE_NEIGHBOR_MARKET_ACCESS_GATE.md`
 - Week 3 accepted evidence: `data/research_runs/week3_real_data_benchmark/` for the Dnipro 30-anchor thesis-grade benchmark.
 - Week 3 calibration preview: `data/research_runs/week3_calibration_preview_dnipro_90/` for prepared-ahead 90-anchor calibration/selector diagnostics.
 - Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`
@@ -203,6 +204,7 @@ Latest read-model smoke:
 - `sota_forecast_training_frame` is a backend contract for full NeuralForecast NBEATSx and PyTorch-Forecasting TFT experiments. It is not itself a tuned SOTA model result.
 - `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are adapter/readiness assets. They must not be cited as SOTA results until they materialize forecast rows and pass the rolling-origin LP/oracle benchmark.
 - `market_coupling_temporal_availability_frame` blocks ENTSO-E, PriceFM, OPSD, Ember, Nord Pool, and THieF rows from training until licensing, timezone, currency, market-rule, temporal-availability, and domain-shift mapping pass.
+- `entsoe_neighbor_market_query_spec_frame` prepares ENTSO-E `A44/A01` neighbor day-ahead price query specs, but fetch/training remains blocked unless a security token and no-leakage publication-time audit are present.
 - `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
 - `decision_transformer_forecast_context_silver`, `decision_transformer_trajectory_frame`, `decision_transformer_policy_preview_frame`, and `DecisionTransformerPolicy` provide forecast-conditioned offline return-conditioned policy scaffolding plus deterministic action projection. They are not a market-execution strategy until full offline evaluation is materialized and safety/regret checks pass across tenants.
 - `simulated_live_trading_frame` is paper-trading replay only. It never carries real settlement IDs and must not be described as market execution.

@@ -55,6 +55,9 @@ from smart_arbitrage.forecasting.afl_error_audit import (
 from smart_arbitrage.forecasting.market_coupling_availability import (
     validate_market_coupling_temporal_availability_evidence,
 )
+from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    validate_entsoe_neighbor_market_access_evidence,
+)
 
 
 @dg.asset_check(
@@ -315,6 +318,21 @@ def market_coupling_temporal_availability_evidence(
 
 
 @dg.asset_check(
+    asset="entsoe_neighbor_market_query_spec_frame",
+    name="entsoe_neighbor_market_access_evidence",
+    description="Checks ENTSO-E neighbor-market query specs remain research-only before sample fetch.",
+)
+def entsoe_neighbor_market_access_evidence(
+    entsoe_neighbor_market_query_spec_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_entsoe_neighbor_market_access_evidence(
+            entsoe_neighbor_market_query_spec_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="horizon_regret_weighted_forecast_strategy_benchmark_frame",
     name="horizon_calibration_no_leakage_evidence",
     description="Checks horizon-aware calibration anchor coverage and prior-anchor metadata.",
@@ -381,6 +399,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_production_promotion_gate_evidence,
     forecast_pipeline_truth_audit_evidence,
     market_coupling_temporal_availability_evidence,
+    entsoe_neighbor_market_access_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,
     risk_adjusted_selector_cardinality_evidence,

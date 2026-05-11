@@ -83,6 +83,10 @@ Executable gate:
 machine-readable readiness evidence. On 2026-05-11 it keeps all six external
 sources blocked from training and records PriceFM Dataset Viewer metadata
 (`140,257` rows; `191` first-row columns) as external-validation context only.
+The ENTSO-E-specific follow-up,
+`entsoe_neighbor_market_query_spec_frame`, records the `A44/A01` day-ahead
+price query shape and neighbor candidates, but blocks fetch/training because no
+local ENTSO-E security token is configured.
 
 European rows remain `training_use_allowed=false` until these blockers are
 resolved:
