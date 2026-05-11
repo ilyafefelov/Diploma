@@ -505,6 +505,84 @@ def nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_CALIBRATION,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="calibration",
+        evidence_scope="research_only",
+        backend="official_forecast_adapters",
+        market_venue="DAM",
+    ),
+)
+def nbeatsx_official_global_panel_rolling_horizon_calibration_frame(
+    context,
+    config: OfficialGlobalPanelCalibrationAssetConfig,
+    nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only horizon calibration for rolling global-panel NBEATSx evidence."""
+
+    frame = build_official_global_panel_nbeatsx_horizon_calibration_frame(
+        nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,
+        min_prior_anchors=config.min_prior_anchors,
+        rolling_calibration_window_anchors=config.rolling_calibration_window_anchors,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "min_prior_anchors": config.min_prior_anchors,
+            "rolling_calibration_window_anchors": config.rolling_calibration_window_anchors,
+            "scope": "official_global_panel_rolling_nbeatsx_prior_only_horizon_calibration_not_full_dfl",
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_CALIBRATION,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="research_only",
+        backend="official_forecast_adapters",
+        market_venue="DAM",
+    ),
+)
+def nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame(
+    context,
+    nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame: pl.DataFrame,
+    nbeatsx_official_global_panel_rolling_horizon_calibration_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle gate for rolling calibrated official global-panel NBEATSx."""
+
+    frame = build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame(
+        nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,
+        nbeatsx_official_global_panel_rolling_horizon_calibration_frame,
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(frame)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "anchor_count": frame.select("anchor_timestamp").n_unique() if frame.height else 0,
+            "forecast_candidate_count": frame.select("forecast_model_name").n_unique()
+            if frame.height
+            else 0,
+            "market_venue": "DAM",
+            "strategy_kind": OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
+            "scope": "official_global_panel_rolling_nbeatsx_calibrated_strict_lp_not_live_strategy",
+        },
+    )
+    return frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_REAL_DATA_BENCHMARK,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -595,6 +673,8 @@ FORECAST_STRATEGY_GOLD_ASSETS = [
     nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,
     nbeatsx_official_global_panel_horizon_calibration_frame,
     nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame,
+    nbeatsx_official_global_panel_rolling_horizon_calibration_frame,
+    nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,
 ]
 

@@ -25,3 +25,7 @@ ops:
     config:
       min_prior_anchors: 14
       rolling_calibration_window_anchors: 28
+  nbeatsx_official_global_panel_rolling_horizon_calibration_frame:
+    config:
+      min_prior_anchors: 2
+      rolling_calibration_window_anchors: 3
