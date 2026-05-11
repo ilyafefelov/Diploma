@@ -39,6 +39,10 @@ from smart_arbitrage.assets.mvp_demo import (
 	DEMO_USD_TO_UAH_RATE,
 )
 from smart_arbitrage.dfl.regret_weighted import HORIZON_REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND
+from smart_arbitrage.dfl.schedule_value_promotion_gate import (
+	DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
+	STRICT_DEFAULT_FALLBACK,
+)
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 from smart_arbitrage.forecasting.grid_event_signals import (
 	build_grid_event_signal_frame,
@@ -469,6 +473,40 @@ class DflRelaxedPilotResponse(BaseModel):
 	mean_relaxed_regret_uah: float
 	academic_scope: str
 	rows: list[DflRelaxedPilotPointResponse]
+
+
+class DflScheduleValueProductionGatePointResponse(BaseModel):
+	source_model_name: str
+	tenant_count: int
+	latest_validation_tenant_anchor_count: int
+	latest_strict_mean_regret_uah: float
+	latest_selected_mean_regret_uah: float
+	latest_strict_median_regret_uah: float
+	latest_selected_median_regret_uah: float
+	latest_mean_regret_improvement_ratio_vs_strict: float
+	rolling_window_count: int
+	rolling_strict_pass_window_count: int
+	robust_research_challenger: bool
+	production_promote: bool
+	promotion_blocker: str
+	allowed_challenger: str
+	fallback_strategy: str
+	market_execution_enabled: bool
+	not_full_dfl: bool
+	not_market_execution: bool
+
+
+class DflScheduleValueProductionGateResponse(BaseModel):
+	generated_at: datetime
+	row_count: int
+	production_promote_count: int
+	promoted_source_model_names: list[str]
+	fallback_strategy: str
+	market_execution_enabled: bool
+	claim_scope: str
+	claim_boundary: str
+	academic_scope: str
+	rows: list[DflScheduleValueProductionGatePointResponse]
 
 
 class DecisionTransformerTrajectoryPointResponse(BaseModel):
@@ -2316,6 +2354,59 @@ def _to_dfl_relaxed_pilot_response(
 	)
 
 
+def _to_dfl_schedule_value_production_gate_response(
+	*,
+	gate_frame: pl.DataFrame,
+) -> DflScheduleValueProductionGateResponse:
+	if gate_frame.height == 0:
+		raise HTTPException(status_code=404, detail="DFL schedule/value production gate rows not found.")
+	rows = [
+		row
+		for row in gate_frame.sort("source_model_name").iter_rows(named=True)
+	]
+	promoted_source_model_names = [
+		str(row["source_model_name"]) for row in rows if bool(row["production_promote"])
+	]
+	market_execution_enabled = any(bool(row["market_execution_enabled"]) for row in rows)
+	first_row = rows[0]
+	return DflScheduleValueProductionGateResponse(
+		generated_at=_datetime_row_value(first_row["generated_at"], field_name="generated_at"),
+		row_count=gate_frame.height,
+		production_promote_count=len(promoted_source_model_names),
+		promoted_source_model_names=promoted_source_model_names,
+		fallback_strategy=STRICT_DEFAULT_FALLBACK,
+		market_execution_enabled=market_execution_enabled,
+		claim_scope=DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
+		claim_boundary="offline_read_model_strategy_evidence_only_not_market_execution",
+		academic_scope=str(first_row["academic_scope"]),
+		rows=[
+			DflScheduleValueProductionGatePointResponse(
+				source_model_name=str(row["source_model_name"]),
+				tenant_count=int(row["tenant_count"]),
+				latest_validation_tenant_anchor_count=int(row["latest_validation_tenant_anchor_count"]),
+				latest_strict_mean_regret_uah=float(row["latest_strict_mean_regret_uah"]),
+				latest_selected_mean_regret_uah=float(row["latest_selected_mean_regret_uah"]),
+				latest_strict_median_regret_uah=float(row["latest_strict_median_regret_uah"]),
+				latest_selected_median_regret_uah=float(row["latest_selected_median_regret_uah"]),
+				latest_mean_regret_improvement_ratio_vs_strict=float(
+					row["latest_mean_regret_improvement_ratio_vs_strict"]
+				),
+				rolling_window_count=int(row["rolling_window_count"]),
+				rolling_strict_pass_window_count=int(row["rolling_strict_pass_window_count"]),
+				robust_research_challenger=bool(row["robust_research_challenger"]),
+				production_promote=bool(row["production_promote"]),
+				promotion_blocker=str(row["promotion_blocker"]),
+				allowed_challenger=str(row["allowed_challenger"]),
+				fallback_strategy=str(row["fallback_strategy"]),
+				market_execution_enabled=bool(row["market_execution_enabled"]),
+				not_full_dfl=bool(row["not_full_dfl"]),
+				not_market_execution=bool(row["not_market_execution"]),
+			)
+			for row in rows
+		],
+	)
+
+
 def _to_decision_transformer_trajectory_response(
 	*,
 	tenant_id: str,
@@ -3749,6 +3840,21 @@ def dashboard_dfl_relaxed_pilot(
 		tenant_id=tenant_id,
 		relaxed_pilot_frame=relaxed_pilot_frame,
 	)
+
+
+@app.get(
+	"/dashboard/dfl-schedule-value-production-gate",
+	response_model=DflScheduleValueProductionGateResponse,
+	tags=["weather"],
+	summary="Get DFL schedule-value production gate",
+	description=(
+		"Returns the latest persisted source-specific Schedule/Value Learner V2 promotion gate. "
+		"Rows are offline/read-model strategy evidence only; market execution remains disabled."
+	),
+)
+def dashboard_dfl_schedule_value_production_gate() -> DflScheduleValueProductionGateResponse:
+	gate_frame = get_dfl_training_store().latest_schedule_value_production_gate_frame()
+	return _to_dfl_schedule_value_production_gate_response(gate_frame=gate_frame)
 
 
 @app.get(

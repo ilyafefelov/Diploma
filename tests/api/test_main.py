@@ -1510,6 +1510,74 @@ def test_dfl_relaxed_pilot_endpoint_returns_latest_rows(
 	]
 
 
+def test_dfl_schedule_value_production_gate_endpoint_returns_offline_boundary(
+	client: TestClient,
+	fake_dfl_training_store: InMemoryDflTrainingStore,
+) -> None:
+	generated_at = datetime(2026, 5, 10, 13, tzinfo=UTC)
+	fake_dfl_training_store.upsert_schedule_value_production_gate_frame(
+		pl.DataFrame(
+			{
+				"source_model_name": ["nbeatsx_silver_v0", "tft_silver_v0"],
+				"tenant_count": [5, 5],
+				"latest_validation_tenant_anchor_count": [90, 90],
+				"latest_strict_mean_regret_uah": [314.8126598731152, 314.8126598731152],
+				"latest_selected_mean_regret_uah": [258.2268805296927, 248.48758297808885],
+				"latest_strict_median_regret_uah": [202.60626109078976, 202.60626109078976],
+				"latest_selected_median_regret_uah": [132.6155094227787, 89.89137186765288],
+				"latest_mean_regret_improvement_ratio_vs_strict": [
+					0.17974429416602652,
+					0.21068109815456143,
+				],
+				"latest_median_not_worse": [True, True],
+				"latest_source_signal": [True, True],
+				"rolling_window_count": [4, 4],
+				"rolling_strict_pass_window_count": [4, 3],
+				"rolling_development_pass_window_count": [4, 4],
+				"robust_research_challenger": [True, True],
+				"allowed_challenger": [
+					"dfl_schedule_value_learner_v2_nbeatsx_silver_v0",
+					"dfl_schedule_value_learner_v2_tft_silver_v0",
+				],
+				"fallback_strategy": [
+					"strict_similar_day_default_fallback",
+					"strict_similar_day_default_fallback",
+				],
+				"promotion_blocker": ["none", "none"],
+				"production_promote": [True, True],
+				"market_execution_enabled": [False, False],
+				"claim_scope": [
+					"dfl_schedule_value_production_gate_offline_strategy_not_market_execution",
+					"dfl_schedule_value_production_gate_offline_strategy_not_market_execution",
+				],
+				"academic_scope": [
+					"Offline/read-model default-fallback gate for the Schedule/Value Learner V2.",
+					"Offline/read-model default-fallback gate for the Schedule/Value Learner V2.",
+				],
+				"not_full_dfl": [True, True],
+				"not_market_execution": [True, True],
+				"generated_at": [generated_at, generated_at],
+			}
+		)
+	)
+
+	response = client.get("/dashboard/dfl-schedule-value-production-gate")
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["row_count"] == 2
+	assert response_payload["production_promote_count"] == 2
+	assert response_payload["promoted_source_model_names"] == [
+		"nbeatsx_silver_v0",
+		"tft_silver_v0",
+	]
+	assert response_payload["fallback_strategy"] == "strict_similar_day_default_fallback"
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["claim_boundary"] == "offline_read_model_strategy_evidence_only_not_market_execution"
+	assert response_payload["rows"][0]["market_execution_enabled"] is False
+	assert response_payload["rows"][0]["production_promote"] is True
+
+
 def test_decision_transformer_trajectories_endpoint_returns_rows(
 	client: TestClient,
 	fake_simulated_trade_store: InMemorySimulatedTradeStore,

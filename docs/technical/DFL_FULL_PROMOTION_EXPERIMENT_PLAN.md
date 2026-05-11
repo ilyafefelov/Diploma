@@ -543,18 +543,51 @@ Registry result:
 - strict fallback:
   `strict_similar_day_default_fallback`.
 
-## 17. Immediate Next Slice: Read-Model Boundary Decision
+## 17. Phase I Status: Read-Model Boundary
 
-The next slice should decide whether the offline promotion state belongs in a
-FastAPI read model, and if so expose it as an opt-in research/evidence field
-without changing dashboard defaults.
+The offline promotion state now has a narrow backend read model. The Dagster
+asset persists `dfl_schedule_value_production_gate_frame` through
+`DflTrainingStore` into the internal
+`dfl_schedule_value_production_gate_rows` table, and FastAPI exposes the latest
+source-level rows at:
 
-Acceptance criteria:
+```text
+/dashboard/dfl-schedule-value-production-gate
+```
 
-- inspect existing API strategy/read-model endpoints for the narrowest additive
-  field or endpoint;
-- do not change dashboard behavior by default;
-- keep `market_execution_enabled=false` visible wherever promotion is exposed;
-- keep `strict_similar_day` as fallback in all undercovered,
-  out-of-distribution, failed-source, and live-execution contexts;
-- add API tests if any read-model contract is changed.
+This was deliberately implemented as an opt-in evidence endpoint instead of a
+dashboard/default-controller change.
+
+Read-model boundary:
+
+- response scope is source-level, not tenant dispatch;
+- `market_execution_enabled=false` remains explicit;
+- `claim_boundary=offline_read_model_strategy_evidence_only_not_market_execution`;
+- `strict_similar_day_default_fallback` remains the fallback strategy;
+- no `ProposedBid`, `ClearedTrade`, or inverter command contract is exposed.
+
+Implementation:
+
+- added `DflTrainingStore.upsert_schedule_value_production_gate_frame`;
+- added `DflTrainingStore.latest_schedule_value_production_gate_frame`;
+- added Postgres table `dfl_schedule_value_production_gate_rows`;
+- added API response models and
+  `/dashboard/dfl-schedule-value-production-gate`;
+- added focused store and API tests.
+
+Validation:
+
+- Compose-backed Dagster run `82bf8100-c5d2-4a6e-b6b2-d2a7da72bc46`
+  materialized the gate and passed
+  `dfl_schedule_value_production_gate_evidence`;
+- Postgres latest batch contains two rows, both promoted for offline/read-model
+  evidence, and `any_market_execution=false`;
+- FastAPI `/dashboard/dfl-schedule-value-production-gate` returned
+  `row_count=2`, `production_promote_count=2`, promoted source models
+  `nbeatsx_silver_v0` and `tft_silver_v0`, and
+  `claim_boundary=offline_read_model_strategy_evidence_only_not_market_execution`.
+
+Next acceptance criteria:
+
+- decide whether a later dashboard page should display this evidence as
+  supervisor-only status, still without changing operator defaults.

@@ -20,6 +20,8 @@ Decision Transformer controller.
 | `smart_arbitrage.dfl.schedule_value_promotion_gate` | Pure helper that combines latest strict LP/oracle evidence with rolling robustness evidence. |
 | `dfl_schedule_value_production_gate_frame` | One row per source model with promotion decision, blocker, fallback, allowed challenger, latest-holdout metrics, rolling pass counts, and claim flags. |
 | `dfl_schedule_value_production_gate_evidence` | Dagster asset check requiring valid claim boundaries, disabled market execution, and internally consistent promotion decisions. |
+| `dfl_schedule_value_production_gate_rows` | Internal Postgres read-model table populated through `DflTrainingStore`; latest rows are source-level evidence, not per-tenant dispatch commands. |
+| `/dashboard/dfl-schedule-value-production-gate` | Opt-in FastAPI evidence endpoint for the latest persisted gate rows. It exposes `market_execution_enabled=false` and does not change dashboard defaults. |
 | [real_data_dfl_schedule_value_production_gate_week3.yaml](../../configs/real_data_dfl_schedule_value_production_gate_week3.yaml) | Tracked config for the Schedule/Value Learner V2 offline promotion gate. |
 
 The gate consumes:
@@ -55,7 +57,7 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 
 | Field | Value |
 |---|---|
-| Dagster run id | `93d0f01c-5140-4958-a64f-74067144df4f` |
+| Dagster run id | `82bf8100-c5d2-4a6e-b6b2-d2a7da72bc46` |
 | Run status | `SUCCESS` |
 | New asset | `dfl_schedule_value_production_gate_frame` materialized |
 | New asset check | `dfl_schedule_value_production_gate_evidence` passed |
@@ -63,6 +65,8 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 | Production promotions | 2 offline/read-model promotions |
 | Market execution | `false` for every row |
 | Local registry export | `data/research_runs/week3_dfl_schedule_value_production_gate/` |
+| FastAPI read model | `/dashboard/dfl-schedule-value-production-gate` |
+| Latest persisted `generated_at` | `2026-05-11 02:54:50.06945 UTC` |
 
 Gate result:
 
@@ -112,3 +116,39 @@ Generated files:
 
 The generated `data/` artifacts remain local and ignored. This tracked document
 copies the concise report-ready values needed for supervisor review.
+
+## Read-Model Contract
+
+The promotion gate is now persisted by the Dagster asset through the internal
+`DflTrainingStore` and can be read from FastAPI:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/dashboard/dfl-schedule-value-production-gate"
+```
+
+The response is intentionally source-level rather than tenant-level. It returns
+the latest gate generation, promoted source model names, promotion blockers,
+rolling pass counts, allowed challengers, and the fixed claim boundary:
+
+- `claim_boundary=offline_read_model_strategy_evidence_only_not_market_execution`;
+- `market_execution_enabled=false`;
+- `fallback_strategy=strict_similar_day_default_fallback`;
+- `not_full_dfl=true`;
+- `not_market_execution=true`.
+
+This endpoint is not an execution API and does not produce `ProposedBid`,
+`ClearedTrade`, or inverter commands. It exists so the backend can show the
+promotion evidence without requiring a local `data/` export or a Dagster UI
+inspection.
+
+Validated persisted state:
+
+| Source model | Production promote | Blocker | Latest anchors | Rolling strict passes | Market execution |
+|---|---|---|---:|---:|---|
+| `nbeatsx_silver_v0` | true | `none` | 90 | 4 | false |
+| `tft_silver_v0` | true | `none` | 90 | 3 | false |
+
+FastAPI validation returned `row_count=2`,
+`production_promote_count=2`, promoted source models
+`nbeatsx_silver_v0` and `tft_silver_v0`, and
+`claim_boundary=offline_read_model_strategy_evidence_only_not_market_execution`.

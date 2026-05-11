@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 import os
 from typing import Any
 
@@ -1361,10 +1361,15 @@ def dfl_schedule_value_production_gate_frame(
         min_rolling_window_count=config.min_rolling_window_count,
         min_rolling_strict_pass_windows=config.min_rolling_strict_pass_windows,
     )
+    generated_at = _latest_generated_at(dfl_schedule_value_learner_v2_strict_lp_benchmark_frame)
+    if generated_at is None:
+        generated_at = datetime.now(UTC)
+    gate_frame = gate_frame.with_columns(pl.lit(generated_at).alias("generated_at"))
     gate = evaluate_dfl_schedule_value_production_gate(
         gate_frame,
         source_model_names=source_model_names,
     )
+    get_dfl_training_store().upsert_schedule_value_production_gate_frame(gate_frame)
     _add_metadata(
         context,
         {

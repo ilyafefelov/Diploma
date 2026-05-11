@@ -1742,3 +1742,15 @@ market execution, not a deployed Decision Transformer controller, not a full
 end-to-end differentiable DFL claim, and not an automatic dashboard/API default
 change. `strict_similar_day` remains the fallback for undercovered,
 out-of-distribution, failed-source, and future live-execution contexts.
+
+Read-model update: the promotion state is now persisted through
+`DflTrainingStore` into `dfl_schedule_value_production_gate_rows` and exposed by
+the opt-in endpoint
+`/dashboard/dfl-schedule-value-production-gate`. The endpoint is source-level
+evidence only; it repeats `market_execution_enabled=false` and does not return
+`ProposedBid`, `ClearedTrade`, or inverter commands.
+
+Validation update: Compose-backed run
+`82bf8100-c5d2-4a6e-b6b2-d2a7da72bc46` persisted two latest gate rows. Postgres
+reports two promoted rows and `any_market_execution=false`; FastAPI reports
+`row_count=2`, `production_promote_count=2`, and the same narrow claim boundary.

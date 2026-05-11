@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from functools import cache
 import json
 import os
@@ -21,6 +22,10 @@ class DflTrainingStore(Protocol):
 
     def latest_relaxed_pilot_frame(self, *, tenant_id: str) -> pl.DataFrame: ...
 
+    def upsert_schedule_value_production_gate_frame(self, gate_frame: pl.DataFrame) -> None: ...
+
+    def latest_schedule_value_production_gate_frame(self) -> pl.DataFrame: ...
+
 
 class NullDflTrainingStore:
     def upsert_training_frame(self, training_frame: pl.DataFrame) -> None:
@@ -41,6 +46,12 @@ class NullDflTrainingStore:
     def latest_relaxed_pilot_frame(self, *, tenant_id: str) -> pl.DataFrame:
         return pl.DataFrame()
 
+    def upsert_schedule_value_production_gate_frame(self, gate_frame: pl.DataFrame) -> None:
+        return None
+
+    def latest_schedule_value_production_gate_frame(self) -> pl.DataFrame:
+        return pl.DataFrame()
+
 
 class InMemoryDflTrainingStore:
     def __init__(self) -> None:
@@ -49,6 +60,7 @@ class InMemoryDflTrainingStore:
         self.action_label_frame = pl.DataFrame()
         self.pilot_frame = pl.DataFrame()
         self.relaxed_pilot_frame = pl.DataFrame()
+        self.schedule_value_production_gate_frame = pl.DataFrame()
 
     def upsert_training_frame(self, training_frame: pl.DataFrame) -> None:
         self.training_frame = training_frame.clone()
@@ -76,6 +88,22 @@ class InMemoryDflTrainingStore:
         if tenant_frame.height == 0:
             return pl.DataFrame()
         return tenant_frame.sort(["anchor_timestamp", "forecast_model_name"])
+
+    def upsert_schedule_value_production_gate_frame(self, gate_frame: pl.DataFrame) -> None:
+        stamped_frame = _ensure_generated_at(gate_frame)
+        self.schedule_value_production_gate_frame = _append_or_replace(
+            self.schedule_value_production_gate_frame,
+            stamped_frame,
+            subset=["source_model_name", "generated_at"],
+        )
+
+    def latest_schedule_value_production_gate_frame(self) -> pl.DataFrame:
+        if self.schedule_value_production_gate_frame.height == 0:
+            return pl.DataFrame()
+        latest_generated_at = self.schedule_value_production_gate_frame.select("generated_at").max().item()
+        return self.schedule_value_production_gate_frame.filter(
+            pl.col("generated_at") == latest_generated_at
+        ).sort("source_model_name")
 
 
 class PostgresDflTrainingStore:
@@ -268,6 +296,43 @@ class PostgresDflTrainingStore:
                         academic_scope TEXT NOT NULL,
                         PRIMARY KEY (pilot_name, evaluation_id)
                     )
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS dfl_schedule_value_production_gate_rows (
+                        source_model_name TEXT NOT NULL,
+                        generated_at TIMESTAMP NOT NULL,
+                        tenant_count INTEGER NOT NULL,
+                        latest_validation_tenant_anchor_count INTEGER NOT NULL,
+                        latest_strict_mean_regret_uah DOUBLE PRECISION NOT NULL,
+                        latest_selected_mean_regret_uah DOUBLE PRECISION NOT NULL,
+                        latest_strict_median_regret_uah DOUBLE PRECISION NOT NULL,
+                        latest_selected_median_regret_uah DOUBLE PRECISION NOT NULL,
+                        latest_mean_regret_improvement_ratio_vs_strict DOUBLE PRECISION NOT NULL,
+                        latest_median_not_worse BOOLEAN NOT NULL,
+                        latest_source_signal BOOLEAN NOT NULL,
+                        rolling_window_count INTEGER NOT NULL,
+                        rolling_strict_pass_window_count INTEGER NOT NULL,
+                        rolling_development_pass_window_count INTEGER NOT NULL,
+                        robust_research_challenger BOOLEAN NOT NULL,
+                        allowed_challenger TEXT NOT NULL,
+                        fallback_strategy TEXT NOT NULL,
+                        promotion_blocker TEXT NOT NULL,
+                        production_promote BOOLEAN NOT NULL,
+                        market_execution_enabled BOOLEAN NOT NULL,
+                        claim_scope TEXT NOT NULL,
+                        academic_scope TEXT NOT NULL,
+                        not_full_dfl BOOLEAN NOT NULL,
+                        not_market_execution BOOLEAN NOT NULL,
+                        PRIMARY KEY (source_model_name, generated_at)
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    CREATE INDEX IF NOT EXISTS dfl_schedule_value_production_gate_latest_idx
+                    ON dfl_schedule_value_production_gate_rows (generated_at DESC, source_model_name)
                     """
                 )
             connection.commit()
@@ -656,6 +721,87 @@ class PostgresDflTrainingStore:
                 rows = cursor.fetchall()
         return pl.DataFrame([dict(row) for row in rows])
 
+    def upsert_schedule_value_production_gate_frame(self, gate_frame: pl.DataFrame) -> None:
+        stamped_frame = _ensure_generated_at(gate_frame)
+        if stamped_frame.height == 0:
+            return None
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.executemany(
+                    """
+                    INSERT INTO dfl_schedule_value_production_gate_rows (
+                        source_model_name,
+                        generated_at,
+                        tenant_count,
+                        latest_validation_tenant_anchor_count,
+                        latest_strict_mean_regret_uah,
+                        latest_selected_mean_regret_uah,
+                        latest_strict_median_regret_uah,
+                        latest_selected_median_regret_uah,
+                        latest_mean_regret_improvement_ratio_vs_strict,
+                        latest_median_not_worse,
+                        latest_source_signal,
+                        rolling_window_count,
+                        rolling_strict_pass_window_count,
+                        rolling_development_pass_window_count,
+                        robust_research_challenger,
+                        allowed_challenger,
+                        fallback_strategy,
+                        promotion_blocker,
+                        production_promote,
+                        market_execution_enabled,
+                        claim_scope,
+                        academic_scope,
+                        not_full_dfl,
+                        not_market_execution
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (source_model_name, generated_at)
+                    DO UPDATE SET
+                        tenant_count = EXCLUDED.tenant_count,
+                        latest_validation_tenant_anchor_count = EXCLUDED.latest_validation_tenant_anchor_count,
+                        latest_strict_mean_regret_uah = EXCLUDED.latest_strict_mean_regret_uah,
+                        latest_selected_mean_regret_uah = EXCLUDED.latest_selected_mean_regret_uah,
+                        latest_strict_median_regret_uah = EXCLUDED.latest_strict_median_regret_uah,
+                        latest_selected_median_regret_uah = EXCLUDED.latest_selected_median_regret_uah,
+                        latest_mean_regret_improvement_ratio_vs_strict = EXCLUDED.latest_mean_regret_improvement_ratio_vs_strict,
+                        latest_median_not_worse = EXCLUDED.latest_median_not_worse,
+                        latest_source_signal = EXCLUDED.latest_source_signal,
+                        rolling_window_count = EXCLUDED.rolling_window_count,
+                        rolling_strict_pass_window_count = EXCLUDED.rolling_strict_pass_window_count,
+                        rolling_development_pass_window_count = EXCLUDED.rolling_development_pass_window_count,
+                        robust_research_challenger = EXCLUDED.robust_research_challenger,
+                        allowed_challenger = EXCLUDED.allowed_challenger,
+                        fallback_strategy = EXCLUDED.fallback_strategy,
+                        promotion_blocker = EXCLUDED.promotion_blocker,
+                        production_promote = EXCLUDED.production_promote,
+                        market_execution_enabled = EXCLUDED.market_execution_enabled,
+                        claim_scope = EXCLUDED.claim_scope,
+                        academic_scope = EXCLUDED.academic_scope,
+                        not_full_dfl = EXCLUDED.not_full_dfl,
+                        not_market_execution = EXCLUDED.not_market_execution
+                    """,
+                    [_schedule_value_production_gate_values(row) for row in stamped_frame.iter_rows(named=True)],
+                )
+            connection.commit()
+
+    def latest_schedule_value_production_gate_frame(self) -> pl.DataFrame:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT *
+                    FROM dfl_schedule_value_production_gate_rows
+                    WHERE generated_at = (
+                        SELECT MAX(generated_at)
+                        FROM dfl_schedule_value_production_gate_rows
+                    )
+                    ORDER BY source_model_name
+                    """
+                )
+                rows = cursor.fetchall()
+        return pl.DataFrame([dict(row) for row in rows])
+
 
 def _training_values(row: dict[str, Any]) -> tuple[Any, ...]:
     return (
@@ -826,6 +972,41 @@ def _relaxed_pilot_values(row: dict[str, Any]) -> tuple[Any, ...]:
         row["first_discharge_mw"],
         row["academic_scope"],
     )
+
+
+def _schedule_value_production_gate_values(row: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        row["source_model_name"],
+        row["generated_at"],
+        row["tenant_count"],
+        row["latest_validation_tenant_anchor_count"],
+        row["latest_strict_mean_regret_uah"],
+        row["latest_selected_mean_regret_uah"],
+        row["latest_strict_median_regret_uah"],
+        row["latest_selected_median_regret_uah"],
+        row["latest_mean_regret_improvement_ratio_vs_strict"],
+        row["latest_median_not_worse"],
+        row["latest_source_signal"],
+        row["rolling_window_count"],
+        row["rolling_strict_pass_window_count"],
+        row["rolling_development_pass_window_count"],
+        row["robust_research_challenger"],
+        row["allowed_challenger"],
+        row["fallback_strategy"],
+        row["promotion_blocker"],
+        row["production_promote"],
+        row["market_execution_enabled"],
+        row["claim_scope"],
+        row["academic_scope"],
+        row["not_full_dfl"],
+        row["not_market_execution"],
+    )
+
+
+def _ensure_generated_at(frame: pl.DataFrame) -> pl.DataFrame:
+    if frame.height == 0 or "generated_at" in frame.columns:
+        return frame.clone()
+    return frame.with_columns(pl.lit(datetime.now(UTC)).alias("generated_at"))
 
 
 def _append_or_replace(
