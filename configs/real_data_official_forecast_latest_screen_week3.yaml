@@ -1,0 +1,17 @@
+ops:
+  official_forecast_rolling_origin_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      max_eval_anchors_per_tenant: 18
+      anchor_batch_start_index: 0
+      anchor_batch_size: 4
+      anchor_batch_order: "latest_first"
+      enabled_official_model_names_csv: "nbeatsx_official_v0,tft_official_v0"
+      horizon_hours: 24
+      nbeatsx_max_steps: 25
+      nbeatsx_random_seed: 20260511
+      tft_max_epochs: 5
+      tft_batch_size: 32
+      tft_learning_rate: 0.005
+      tft_hidden_size: 12
+      tft_hidden_continuous_size: 6

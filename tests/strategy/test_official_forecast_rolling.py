@@ -116,6 +116,86 @@ def test_official_forecast_rolling_origin_can_slice_resume_batches() -> None:
     ]
 
 
+def test_official_forecast_rolling_origin_can_screen_latest_anchors_first() -> None:
+    captures: list[dict[str, Any]] = []
+
+    def fake_nbeatsx(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        captures.append(_capture("nbeatsx", training_frame, kwargs))
+        return _official_forecast(training_frame, model_name="nbeatsx_official_v0", adjustment=25.0)
+
+    def fake_tft(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        captures.append(_capture("tft", training_frame, kwargs))
+        return _official_forecast(training_frame, model_name="tft_official_v0", adjustment=50.0)
+
+    full_benchmark = build_official_forecast_rolling_origin_benchmark_frame(
+        _silver_frame(history_hours=360),
+        tenant_ids=(TENANT_ID,),
+        max_eval_anchors_per_tenant=4,
+        nbeatsx_builder=fake_nbeatsx,
+        tft_builder=fake_tft,
+        generated_at=datetime(2026, 5, 11, 12),
+    )
+    full_anchors = (
+        full_benchmark.select("anchor_timestamp")
+        .unique()
+        .sort("anchor_timestamp")["anchor_timestamp"]
+        .to_list()
+    )
+    captures.clear()
+
+    latest_batch = build_official_forecast_rolling_origin_benchmark_frame(
+        _silver_frame(history_hours=360),
+        tenant_ids=(TENANT_ID,),
+        max_eval_anchors_per_tenant=4,
+        anchor_batch_start_index=0,
+        anchor_batch_size=2,
+        anchor_batch_order="latest_first",
+        nbeatsx_builder=fake_nbeatsx,
+        tft_builder=fake_tft,
+        generated_at=datetime(2026, 5, 11, 12),
+    )
+
+    latest_batch_anchors = (
+        latest_batch.select("anchor_timestamp")
+        .unique()
+        .sort("anchor_timestamp")["anchor_timestamp"]
+        .to_list()
+    )
+
+    assert latest_batch_anchors == sorted(full_anchors[-2:])
+    assert captures[0]["anchor_timestamp"] == full_anchors[-1]
+
+
+def test_official_forecast_rolling_origin_can_screen_one_official_model() -> None:
+    def blocked_nbeatsx(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        raise AssertionError("NBEATSx should not train when it is filtered out.")
+
+    benchmark = build_official_forecast_rolling_origin_benchmark_frame(
+        _silver_frame(),
+        tenant_ids=(TENANT_ID,),
+        max_eval_anchors_per_tenant=1,
+        enabled_official_model_names=("tft_official_v0",),
+        nbeatsx_builder=blocked_nbeatsx,
+        tft_builder=lambda training_frame, **kwargs: _official_forecast(
+            training_frame,
+            model_name="tft_official_v0",
+            adjustment=50.0,
+        ),
+    )
+    outcome = validate_official_forecast_rolling_origin_evidence(
+        benchmark,
+        min_tenant_count=1,
+        min_anchor_count_per_tenant=1,
+        expected_model_names=("strict_similar_day", "tft_official_v0"),
+    )
+
+    assert set(benchmark["forecast_model_name"].to_list()) == {
+        "strict_similar_day",
+        "tft_official_v0",
+    }
+    assert outcome.passed is True
+
+
 def test_official_forecast_rolling_origin_blocks_non_observed_rows() -> None:
     bad_frame = _silver_frame().with_columns(pl.lit("synthetic").alias("source_kind"))
 

@@ -44,6 +44,9 @@ control.
 Tracked config:
 [configs/real_data_official_schedule_value_promotion_week3.yaml](../../configs/real_data_official_schedule_value_promotion_week3.yaml).
 
+Screening config:
+[configs/real_data_official_forecast_latest_screen_week3.yaml](../../configs/real_data_official_forecast_latest_screen_week3.yaml).
+
 ## Promotion Semantics
 
 The official source models are evaluated independently:
@@ -107,6 +110,43 @@ If a batch fails, rerun with the same `-GeneratedAtIso` and the failed
 output when `merge_persisted_batches=true`, so the next successful batch resumes
 the same evidence run instead of starting over.
 
+### Latest-window screening mode
+
+The full 104-anchor official run is required only for promotion-grade rolling
+robustness. It should not be the first diagnostic when local CPU runtime is the
+main bottleneck. The official rolling asset now supports three screening knobs:
+
+- `anchor_batch_order="latest_first"` starts from the most recent eligible
+  anchors instead of spending the first hours on the oldest selected anchors.
+- `enabled_official_model_names_csv` can run only `nbeatsx_official_v0` or only
+  `tft_official_v0`, while still strict-scoring the frozen `strict_similar_day`
+  control beside the selected source.
+- `nbeatsx_max_steps` and `tft_max_epochs` remain config-driven, so cheap
+  screens can use small budgets before a full serious attempt.
+
+Recommended local protocol:
+
+1. Run the latest 18-anchor screen with reduced budgets.
+2. If neither official source is close to `strict_similar_day`, stop and record
+   the result as official-adapter evidence, not a promotion attempt.
+3. If one source is close or better on the latest window, rerun that source only
+   with the serious budget.
+4. Spend the full 104-anchor run only after the latest-window screen is
+   promising.
+
+Example:
+
+```powershell
+.\scripts\run-official-schedule-value-batches.ps1 `
+  -TotalAnchorsPerTenant 18 `
+  -BatchSize 4 `
+  -AnchorBatchOrder latest_first `
+  -EnabledOfficialModelsCsv tft_official_v0 `
+  -NbeatsxMaxSteps 25 `
+  -TftMaxEpochs 5 `
+  -SkipDownstreamGate
+```
+
 ## Current Status
 
 Implementation is additive:
@@ -166,6 +206,25 @@ schedule/value candidate library and gate. It does not change the thesis claim:
 the official models still need a completed 104-anchor or larger rolling-origin
 run before they can be compared fairly with the compact schedule/value
 promotion evidence.
+
+Interrupted serious batch attempt:
+
+| Field | Value |
+|---|---|
+| Generated timestamp | `2026-05-11T09:53:24` |
+| Persisted anchors per source | `20` |
+| Persisted rows per source | `100` |
+| Anchor range | `2026-01-08 23:00` through `2026-01-27 23:00` |
+| `strict_similar_day` mean / median regret | `341.84` / `187.99` UAH |
+| `nbeatsx_official_v0` mean / median regret | `807.70` / `450.08` UAH |
+| `tft_official_v0` mean / median regret | `1354.23` / `987.03` UAH |
+| Decision | full CPU run stopped; switch to latest-window screening before any full 104-anchor retry |
+
+This is not promotion-grade because it covers only 20 chronological anchors and
+does not include the latest holdout or rolling robustness windows. It is still
+useful operational evidence: the serious official path is expensive enough that
+screening order and model filtering are required before running a full local CPU
+promotion attempt.
 
 Follow-up execution protocol:
 

@@ -47,6 +47,8 @@ class OfficialForecastRollingOriginAssetConfig(dg.Config):
     max_eval_anchors_per_tenant: int = 2
     anchor_batch_start_index: int = 0
     anchor_batch_size: int = 0
+    anchor_batch_order: str = "chronological"
+    enabled_official_model_names_csv: str = ""
     resume_generated_at_iso: str = ""
     merge_persisted_batches: bool = False
     horizon_hours: int = 24
@@ -254,6 +256,7 @@ def official_forecast_rolling_origin_benchmark_frame(
     """Rolling-origin strict LP evidence for official NBEATSx/TFT adapters."""
 
     tenant_ids = tuple(_tenant_ids_from_csv(config.tenant_ids_csv))
+    official_model_names = _official_model_names_from_csv(config.enabled_official_model_names_csv)
     generated_at = _optional_datetime(config.resume_generated_at_iso)
     frame = build_official_forecast_rolling_origin_benchmark_frame(
         real_data_benchmark_silver_feature_frame,
@@ -261,6 +264,8 @@ def official_forecast_rolling_origin_benchmark_frame(
         max_eval_anchors_per_tenant=config.max_eval_anchors_per_tenant,
         anchor_batch_start_index=config.anchor_batch_start_index,
         anchor_batch_size=config.anchor_batch_size,
+        anchor_batch_order=config.anchor_batch_order,
+        enabled_official_model_names=official_model_names,
         horizon_hours=config.horizon_hours,
         nbeatsx_max_steps=config.nbeatsx_max_steps,
         nbeatsx_random_seed=config.nbeatsx_random_seed,
@@ -284,6 +289,7 @@ def official_forecast_rolling_origin_benchmark_frame(
         frame,
         min_tenant_count=len(tenant_ids),
         min_anchor_count_per_tenant=config.max_eval_anchors_per_tenant,
+        expected_model_names=("strict_similar_day", *official_model_names),
     )
     _add_metadata(
         context,
@@ -408,6 +414,11 @@ def _tenant_ids_from_csv(value: str) -> list[str]:
         for tenant in list_available_weather_tenants()
         if tenant.get("tenant_id") is not None
     ]
+
+
+def _official_model_names_from_csv(value: str) -> tuple[str, ...]:
+    model_names = tuple(item.strip() for item in value.split(",") if item.strip())
+    return model_names or ("nbeatsx_official_v0", "tft_official_v0")
 
 
 def _anchor_from_forecast(forecast_frame: pl.DataFrame) -> datetime:

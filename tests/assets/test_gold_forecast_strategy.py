@@ -253,6 +253,8 @@ def test_official_forecast_rolling_asset_returns_persisted_resume_batch(monkeypa
     ) -> pl.DataFrame:
         assert kwargs["anchor_batch_start_index"] == 1
         assert kwargs["anchor_batch_size"] == 1
+        assert kwargs["anchor_batch_order"] == "latest_first"
+        assert kwargs["enabled_official_model_names"] == ("tft_official_v0",)
         assert kwargs["generated_at"] == generated_at
         return pl.DataFrame(
             [
@@ -283,6 +285,8 @@ def test_official_forecast_rolling_asset_returns_persisted_resume_batch(monkeypa
             max_eval_anchors_per_tenant=2,
             anchor_batch_start_index=1,
             anchor_batch_size=1,
+            anchor_batch_order="latest_first",
+            enabled_official_model_names_csv="tft_official_v0",
             resume_generated_at_iso="2026-05-11T12:00:00",
             merge_persisted_batches=True,
         ),

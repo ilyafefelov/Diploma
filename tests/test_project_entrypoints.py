@@ -55,6 +55,10 @@ def test_official_batch_runner_refreshes_exit_code_after_wait_process() -> None:
     assert "$exitCode = $process.ExitCode" in runner_script
     assert 'Select-String -LiteralPath $stderrPath -Pattern "RUN_SUCCESS" -Quiet' in runner_script
     assert "if ($exitCode -ne 0)" in runner_script
+    assert '[ValidateSet("chronological", "latest_first")]' in runner_script
+    assert "enabled_official_model_names_csv" in runner_script
+    assert "nbeatsx_max_steps: $NbeatsxMaxSteps" in runner_script
+    assert "tft_max_epochs: $TftMaxEpochs" in runner_script
 
 
 def _environment_without_pythonpath() -> dict[str, str]:

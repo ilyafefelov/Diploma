@@ -41,6 +41,10 @@ OFFICIAL_MODEL_NAMES: Final[tuple[str, ...]] = (
     "nbeatsx_official_v0",
     "tft_official_v0",
 )
+OFFICIAL_SOURCE_MODEL_NAMES: Final[tuple[str, ...]] = (
+    "nbeatsx_official_v0",
+    "tft_official_v0",
+)
 OfficialForecastBuilder = Callable[..., pl.DataFrame]
 
 
@@ -51,6 +55,8 @@ def build_official_forecast_rolling_origin_benchmark_frame(
     max_eval_anchors_per_tenant: int = 2,
     anchor_batch_start_index: int = 0,
     anchor_batch_size: int = 0,
+    anchor_batch_order: str = "chronological",
+    enabled_official_model_names: tuple[str, ...] = OFFICIAL_SOURCE_MODEL_NAMES,
     horizon_hours: int = DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
     nbeatsx_max_steps: int = 100,
     nbeatsx_random_seed: int = 20260511,
@@ -71,8 +77,11 @@ def build_official_forecast_rolling_origin_benchmark_frame(
         max_eval_anchors_per_tenant=max_eval_anchors_per_tenant,
         anchor_batch_start_index=anchor_batch_start_index,
         anchor_batch_size=anchor_batch_size,
+        anchor_batch_order=anchor_batch_order,
+        enabled_official_model_names=enabled_official_model_names,
         horizon_hours=horizon_hours,
     )
+    enabled_models = _enabled_official_model_names(enabled_official_model_names)
     resolved_generated_at = generated_at or datetime.now(UTC)
     rows: list[pl.DataFrame] = []
     for tenant_id in tenant_ids:
@@ -90,6 +99,7 @@ def build_official_forecast_rolling_origin_benchmark_frame(
             anchors,
             start_index=anchor_batch_start_index,
             batch_size=anchor_batch_size,
+            order=anchor_batch_order,
         )
         defaults = tenant_battery_defaults_from_registry(tenant_id)
         for anchor_timestamp in anchors:
@@ -107,23 +117,42 @@ def build_official_forecast_rolling_origin_benchmark_frame(
                 feature_frame,
                 tenant_id=tenant_id,
             )
-            nbeatsx_forecast = nbeatsx_builder(
-                training_frame,
-                horizon_hours=horizon_hours,
-                max_steps=nbeatsx_max_steps,
-                random_seed=nbeatsx_random_seed,
-            )
-            tft_forecast = tft_builder(
-                training_frame,
-                horizon_hours=horizon_hours,
-                max_epochs=tft_max_epochs,
-                batch_size=tft_batch_size,
-                learning_rate=tft_learning_rate,
-                hidden_size=tft_hidden_size,
-                hidden_continuous_size=tft_hidden_continuous_size,
-            )
-            if nbeatsx_forecast.is_empty() or tft_forecast.is_empty():
-                continue
+            official_candidates: list[ForecastCandidate] = []
+            if "nbeatsx_official_v0" in enabled_models:
+                nbeatsx_forecast = nbeatsx_builder(
+                    training_frame,
+                    horizon_hours=horizon_hours,
+                    max_steps=nbeatsx_max_steps,
+                    random_seed=nbeatsx_random_seed,
+                )
+                if nbeatsx_forecast.is_empty():
+                    continue
+                official_candidates.append(
+                    ForecastCandidate(
+                        model_name="nbeatsx_official_v0",
+                        forecast_frame=nbeatsx_forecast,
+                        point_prediction_column="predicted_price_uah_mwh",
+                    )
+                )
+            if "tft_official_v0" in enabled_models:
+                tft_forecast = tft_builder(
+                    training_frame,
+                    horizon_hours=horizon_hours,
+                    max_epochs=tft_max_epochs,
+                    batch_size=tft_batch_size,
+                    learning_rate=tft_learning_rate,
+                    hidden_size=tft_hidden_size,
+                    hidden_continuous_size=tft_hidden_continuous_size,
+                )
+                if tft_forecast.is_empty():
+                    continue
+                official_candidates.append(
+                    ForecastCandidate(
+                        model_name="tft_official_v0",
+                        forecast_frame=tft_forecast,
+                        point_prediction_column="predicted_price_uah_mwh",
+                    )
+                )
             strict_forecast = _strict_forecast_frame(window, anchor_timestamp=anchor_timestamp)
             evaluation = evaluate_forecast_candidates_against_oracle(
                 price_history=window,
@@ -138,16 +167,7 @@ def build_official_forecast_rolling_origin_benchmark_frame(
                         forecast_frame=strict_forecast,
                         point_prediction_column="predicted_price_uah_mwh",
                     ),
-                    ForecastCandidate(
-                        model_name="nbeatsx_official_v0",
-                        forecast_frame=nbeatsx_forecast,
-                        point_prediction_column="predicted_price_uah_mwh",
-                    ),
-                    ForecastCandidate(
-                        model_name="tft_official_v0",
-                        forecast_frame=tft_forecast,
-                        point_prediction_column="predicted_price_uah_mwh",
-                    ),
+                    *official_candidates,
                 ],
                 evaluation_id=(
                     f"{tenant_id}:official-rolling:{anchor_timestamp.strftime('%Y%m%dT%H%M')}"
@@ -176,6 +196,7 @@ def validate_official_forecast_rolling_origin_evidence(
     *,
     min_tenant_count: int = 1,
     min_anchor_count_per_tenant: int = 1,
+    expected_model_names: tuple[str, ...] = OFFICIAL_MODEL_NAMES,
 ) -> EvidenceCheckOutcome:
     """Validate official rolling evidence claim boundaries and coverage."""
 
@@ -221,8 +242,10 @@ def validate_official_forecast_rolling_origin_evidence(
             "anchor_count_per_tenant must be at least "
             f"{min_anchor_count_per_tenant}; observed {anchor_counts}"
         )
-    if sorted(OFFICIAL_MODEL_NAMES) != models:
-        failures.append(f"official rolling benchmark must include models {OFFICIAL_MODEL_NAMES}; observed {models}")
+    if sorted(expected_model_names) != models:
+        failures.append(
+            f"official rolling benchmark must include models {expected_model_names}; observed {models}"
+        )
     if data_quality_tiers != ["thesis_grade"]:
         failures.append("official rolling benchmark evidence must contain only thesis_grade rows")
     if observed_min < 1.0:
@@ -253,6 +276,8 @@ def _validate_config(
     max_eval_anchors_per_tenant: int,
     anchor_batch_start_index: int,
     anchor_batch_size: int,
+    anchor_batch_order: str,
+    enabled_official_model_names: tuple[str, ...],
     horizon_hours: int,
 ) -> None:
     if not tenant_ids:
@@ -263,8 +288,23 @@ def _validate_config(
         raise ValueError("anchor_batch_start_index must be non-negative.")
     if anchor_batch_size < 0:
         raise ValueError("anchor_batch_size must be non-negative.")
+    if anchor_batch_order not in {"chronological", "latest_first"}:
+        raise ValueError("anchor_batch_order must be either 'chronological' or 'latest_first'.")
+    _enabled_official_model_names(enabled_official_model_names)
     if horizon_hours <= 0:
         raise ValueError("horizon_hours must be positive.")
+
+
+def _enabled_official_model_names(model_names: tuple[str, ...]) -> tuple[str, ...]:
+    if not model_names:
+        raise ValueError("enabled_official_model_names must contain at least one official source model.")
+    deduplicated = tuple(dict.fromkeys(str(name).strip() for name in model_names if str(name).strip()))
+    unknown = sorted(set(deduplicated).difference(OFFICIAL_SOURCE_MODEL_NAMES))
+    if unknown:
+        raise ValueError(f"Unknown official source model names: {unknown}")
+    if not deduplicated:
+        raise ValueError("enabled_official_model_names must contain at least one official source model.")
+    return deduplicated
 
 
 def _tenant_price_history(
@@ -333,10 +373,12 @@ def _slice_anchor_batch(
     *,
     start_index: int,
     batch_size: int,
+    order: str,
 ) -> list[datetime]:
+    ordered_anchors = list(reversed(anchors)) if order == "latest_first" else anchors
     if batch_size == 0:
-        return anchors
-    return anchors[start_index : start_index + batch_size]
+        return ordered_anchors
+    return ordered_anchors[start_index : start_index + batch_size]
 
 
 def _window_for_anchor(

@@ -2,6 +2,11 @@ param(
     [int]$TotalAnchorsPerTenant = 104,
     [int]$BatchSize = 4,
     [int]$StartAnchorIndex = 0,
+    [ValidateSet("chronological", "latest_first")]
+    [string]$AnchorBatchOrder = "chronological",
+    [string]$EnabledOfficialModelsCsv = "nbeatsx_official_v0,tft_official_v0",
+    [int]$NbeatsxMaxSteps = 100,
+    [int]$TftMaxEpochs = 15,
     [string]$GeneratedAtIso = "",
     [int]$BatchTimeoutSeconds = 7200,
     [switch]$SkipDownstreamGate
@@ -17,6 +22,15 @@ if ($BatchSize -le 0) {
 }
 if ($StartAnchorIndex -lt 0) {
     throw "StartAnchorIndex must be non-negative."
+}
+if ([string]::IsNullOrWhiteSpace($EnabledOfficialModelsCsv)) {
+    throw "EnabledOfficialModelsCsv must contain at least one official model."
+}
+if ($NbeatsxMaxSteps -le 0) {
+    throw "NbeatsxMaxSteps must be positive."
+}
+if ($TftMaxEpochs -le 0) {
+    throw "TftMaxEpochs must be positive."
 }
 if ([string]::IsNullOrWhiteSpace($GeneratedAtIso)) {
     $GeneratedAtIso = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss")
@@ -82,7 +96,7 @@ $tenantIds = "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_fact
 $officialSelection = "observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_rolling_origin_benchmark_frame"
 $downstreamSelection = "dfl_official_schedule_candidate_library_frame,dfl_official_schedule_candidate_library_v2_frame,dfl_official_schedule_value_learner_v2_frame,dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame,dfl_official_schedule_value_learner_v2_robustness_frame,dfl_official_schedule_value_production_gate_frame"
 
-Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchorsPerTenant=$TotalAnchorsPerTenant BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex"
+Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchorsPerTenant=$TotalAnchorsPerTenant BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex AnchorBatchOrder=$AnchorBatchOrder EnabledOfficialModelsCsv=$EnabledOfficialModelsCsv NbeatsxMaxSteps=$NbeatsxMaxSteps TftMaxEpochs=$TftMaxEpochs"
 
 for ($anchorIndex = $StartAnchorIndex; $anchorIndex -lt $TotalAnchorsPerTenant; $anchorIndex += $BatchSize) {
     $batchConfigPath = Join-Path $runDir ("official-batch-{0}.yaml" -f $anchorIndex)
@@ -94,12 +108,14 @@ ops:
       max_eval_anchors_per_tenant: $TotalAnchorsPerTenant
       anchor_batch_start_index: $anchorIndex
       anchor_batch_size: $BatchSize
+      anchor_batch_order: "$AnchorBatchOrder"
+      enabled_official_model_names_csv: "$EnabledOfficialModelsCsv"
       resume_generated_at_iso: "$GeneratedAtIso"
       merge_persisted_batches: true
       horizon_hours: 24
-      nbeatsx_max_steps: 100
+      nbeatsx_max_steps: $NbeatsxMaxSteps
       nbeatsx_random_seed: 20260511
-      tft_max_epochs: 15
+      tft_max_epochs: $TftMaxEpochs
       tft_batch_size: 32
       tft_learning_rate: 0.005
       tft_hidden_size: 12
