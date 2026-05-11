@@ -47,6 +47,29 @@ def test_data_coverage_audit_counts_tenant_specific_eligible_anchors() -> None:
     assert kharkiv["data_quality_tier"] == "coverage_gap"
 
 
+def test_data_coverage_audit_keeps_thesis_grade_when_calendar_gap_does_not_block_target() -> None:
+    feature_frame = _feature_frame(
+        tenant_ids=TENANTS[:1],
+        hour_count=400,
+        missing_by_tenant={"client_003_dnipro_factory": {FIRST_TIMESTAMP + timedelta(hours=50)}},
+    )
+
+    result = build_dfl_data_coverage_audit_frame(
+        feature_frame,
+        tenant_ids=TENANTS[:1],
+        target_anchor_count_per_tenant=2,
+        required_past_hours=24,
+        horizon_hours=24,
+    )
+
+    row = result.row(0, named=True)
+    assert row["eligible_anchor_count"] >= 2
+    assert row["meets_target_anchor_count"] is True
+    assert row["missing_price_hours"] == 1
+    assert row["calendar_coverage_tier"] == "calendar_gap"
+    assert row["data_quality_tier"] == "thesis_grade"
+
+
 def test_data_coverage_audit_rejects_non_observed_price_or_weather_rows() -> None:
     synthetic_price = _feature_frame(tenant_ids=TENANTS[:1], hour_count=193).with_columns(
         pl.when(pl.col("timestamp") == FIRST_TIMESTAMP)

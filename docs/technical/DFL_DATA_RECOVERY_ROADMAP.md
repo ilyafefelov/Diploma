@@ -62,6 +62,27 @@ Latest 180-anchor repair audit:
   a source-backed Ukrainian OREE/Open-Meteo backfill or lock 104 anchors as the
   current ceiling for research-only selector work.
 
+Latest 365-anchor UA backfill probe:
+
+- Config:
+  [real_data_dfl_ua_backfill_probe_week3.yaml](../../configs/real_data_dfl_ua_backfill_probe_week3.yaml).
+- Dagster run id: `5c110f78-970c-4bb3-8437-8d047b05947e`.
+- Source window: `2025-01-01` through `2026-04-30`.
+- Target: 365 eligible anchors per tenant.
+- Current result: 461 eligible anchors per tenant for all five canonical
+  tenants.
+- Eligible anchor window: `2025-01-08 23:00` through `2026-04-29 23:00`.
+- Result: `meets_target_anchor_count=true` and `data_quality_tier=thesis_grade`
+  for every tenant.
+- Calendar coverage remains explicitly marked as `calendar_gap`, with
+  source-backed exclusions at `2025-03-30 23:00` and `2026-03-29 23:00`.
+- Gap kind: `price_and_weather_gap`; repair status:
+  `not_recoverable_from_current_feature_frame`.
+- Decision: the earlier 104-anchor limit was a 2026-only window ceiling, not the
+  true Ukrainian observed-data ceiling. The next official NBEATSx/TFT and DFL
+  promotion experiments should use the 365-anchor source-backed UA window while
+  continuing to exclude, not synthesize, the DST/calendar gap hours.
+
 The audit must keep tenant-specific anchor eligibility, price/weather gap
 counts, latest-batch freshness, and observed/thesis-grade coverage visible in
 Dagster metadata.

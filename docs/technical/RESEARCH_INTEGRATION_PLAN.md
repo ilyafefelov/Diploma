@@ -1856,3 +1856,37 @@ calibration. This is screening evidence only. Promotion still requires 90
 latest validation tenant-anchors per source and three of four rolling
 strict-control passes. The next real improvement path is still UA backfill and
 governed market-coupling/exogenous features, not loosening the LP/oracle gate.
+
+## UA Backfill Coverage Update
+
+The 2026-only DFL panel remains valid historical evidence, but it is no longer
+the true data ceiling. A source-backed Ukrainian backfill probe expanded the
+observed OREE/Open-Meteo window to `2025-01-01` through `2026-04-30`.
+
+Implementation:
+
+- Config:
+  [../../configs/real_data_dfl_ua_backfill_probe_week3.yaml](../../configs/real_data_dfl_ua_backfill_probe_week3.yaml).
+- Assets materialized:
+  `observed_market_price_history_bronze`,
+  `tenant_historical_weather_bronze`,
+  `real_data_benchmark_silver_feature_frame`,
+  `dfl_data_coverage_audit_frame`, and
+  `dfl_ua_coverage_repair_audit_frame`.
+
+Materialized result on 2026-05-11:
+
+- Dagster run id: `5c110f78-970c-4bb3-8437-8d047b05947e`.
+- Five canonical tenants each reached 461 eligible anchors against a
+  365-anchor target.
+- Eligible anchor window: `2025-01-08 23:00` through `2026-04-29 23:00`.
+- `data_quality_tier=thesis_grade` and `meets_target_anchor_count=true` for all
+  tenants.
+- Calendar coverage remains `calendar_gap` because `2025-03-30 23:00` and
+  `2026-03-29 23:00` are source-backed DST/calendar exclusions, not synthesized
+  rows.
+
+Decision update: the next official global-panel NBEATSx/TFT and DFL promotion
+experiments should move from the 104-anchor 2026-only panel to the 365-anchor
+UA backfill panel. The strict LP/oracle gate remains unchanged, and the
+calendar-gap hours stay excluded rather than imputed for thesis-grade claims.

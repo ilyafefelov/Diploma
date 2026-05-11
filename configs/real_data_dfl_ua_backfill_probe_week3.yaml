@@ -1,0 +1,21 @@
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2025-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2025-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  dfl_data_coverage_audit_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      target_anchor_count_per_tenant: 365
+      required_past_hours: 168
+      horizon_hours: 24
+  dfl_ua_coverage_repair_audit_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      target_anchor_count_per_tenant: 365

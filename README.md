@@ -172,6 +172,7 @@ Latest full verification: `151 passed`.
 - DFL schedule/value production gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
 - Official global-panel NBEATSx lane: `docs/technical/OFFICIAL_GLOBAL_PANEL_NBEATSX.md`
+- UA backfill coverage recovery: `docs/technical/DFL_DATA_RECOVERY_ROADMAP.md`
 - DFL/official training compute options: `docs/technical/DFL_TRAINING_COMPUTE_OPTIONS.md`
 - Resumable official forecast and exogenous-governance PRD: `docs/technical/PRD_OFFICIAL_FORECAST_RESUME_AND_EXOGENOUS_GOVERNANCE.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`

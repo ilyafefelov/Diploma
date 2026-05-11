@@ -114,6 +114,12 @@ def build_dfl_data_coverage_audit_frame(
         )
         missing_price_hours = max(expected_hour_count - len(available_price_timestamps), 0)
         missing_weather_hours = max(expected_hour_count - len(weather_timestamps), 0)
+        meets_target_anchor_count = len(eligible_anchors) >= target_anchor_count_per_tenant
+        calendar_coverage_tier = (
+            "complete_calendar"
+            if missing_price_hours == 0 and missing_weather_hours == 0
+            else "calendar_gap"
+        )
         latest_benchmark = _latest_benchmark_summary(benchmark_frame, tenant_id=tenant_id)
         rows.append(
             {
@@ -127,7 +133,7 @@ def build_dfl_data_coverage_audit_frame(
                 "missing_weather_hours": missing_weather_hours,
                 "eligible_anchor_count": len(eligible_anchors),
                 "target_anchor_count_per_tenant": target_anchor_count_per_tenant,
-                "meets_target_anchor_count": len(eligible_anchors) >= target_anchor_count_per_tenant,
+                "meets_target_anchor_count": meets_target_anchor_count,
                 "first_eligible_anchor_timestamp": eligible_anchors[0] if eligible_anchors else None,
                 "last_eligible_anchor_timestamp": eligible_anchors[-1] if eligible_anchors else None,
                 "latest_benchmark_generated_at": latest_benchmark["latest_generated_at"],
@@ -135,9 +141,8 @@ def build_dfl_data_coverage_audit_frame(
                 "latest_benchmark_model_count": latest_benchmark["model_count"],
                 "price_observed_coverage_ratio": _ratio(tenant_frame.height, expected_hour_count),
                 "weather_observed_coverage_ratio": _ratio(len(weather_timestamps), expected_hour_count),
-                "data_quality_tier": "thesis_grade"
-                if missing_price_hours == 0 and missing_weather_hours == 0
-                else "coverage_gap",
+                "calendar_coverage_tier": calendar_coverage_tier,
+                "data_quality_tier": "thesis_grade" if meets_target_anchor_count else "coverage_gap",
                 "claim_scope": "ua_observed_dfl_data_coverage_audit",
                 "not_full_dfl": True,
                 "not_market_execution": True,
@@ -537,6 +542,7 @@ def _empty_coverage_row(
         "latest_benchmark_model_count": 0,
         "price_observed_coverage_ratio": 0.0,
         "weather_observed_coverage_ratio": 0.0,
+        "calendar_coverage_tier": "calendar_gap",
         "data_quality_tier": "coverage_gap",
         "claim_scope": "ua_observed_dfl_data_coverage_audit",
         "not_full_dfl": True,
