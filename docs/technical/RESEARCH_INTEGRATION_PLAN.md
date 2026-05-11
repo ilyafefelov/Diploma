@@ -1803,3 +1803,49 @@ temporally available signals into official NBEATSx/TFT and DFL training.
 European and neighbor-market sources remain `training_use_allowed=false` until
 licensing, timezone, currency, market-rule, temporal-availability, and
 domain-shift checks pass.
+
+## Official Global-Panel Schedule/Value Screen
+
+The official global-panel NBEATSx path now feeds a schedule/value screening
+lane without weakening the full promotion gate. This is separate from the
+older tenant/anchor official path: it uses the governed rolling global-panel
+NBEATSx evidence and its prior-only horizon calibration, then builds feasible
+schedule candidates for the Schedule/Value Learner V2 machinery.
+
+Implementation:
+
+- Source asset:
+  `nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame`.
+- New candidate-library assets:
+  `dfl_official_global_panel_schedule_candidate_library_frame` and
+  `dfl_official_global_panel_schedule_candidate_library_v2_frame`.
+- New learner, robustness, and gate assets:
+  `dfl_official_global_panel_schedule_value_learner_v2_frame`,
+  `dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame`,
+  `dfl_official_global_panel_schedule_value_learner_v2_robustness_frame`, and
+  `dfl_official_global_panel_schedule_value_production_gate_frame`.
+- Tracked config:
+  [../../configs/real_data_official_global_panel_nbeatsx_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_week3.yaml).
+- Tracked note:
+  [OFFICIAL_GLOBAL_PANEL_NBEATSX.md](OFFICIAL_GLOBAL_PANEL_NBEATSX.md).
+
+Materialized result on 2026-05-11:
+
+- Full run: `e072d319-fc9a-4de6-b648-264d550e93ae`.
+- Gate rerun after threshold hardening:
+  `1bbf3da4-2678-4702-a7a2-a2f003264b88`.
+- Latest validation tenant-anchors per source: 5.
+- Rolling screening windows: 2.
+- Calibrated-source schedule/value candidate improved latest mean regret from
+  `1495.71` UAH for `strict_similar_day` to `598.09` UAH.
+- Raw-source schedule/value candidate improved latest mean regret to
+  `1347.36` UAH.
+- Production promotion remains blocked for both sources with
+  `promotion_blocker=validation_undercoverage`.
+
+Decision update: the schedule/value learner can extract a useful latest-window
+signal from official global-panel NBEATSx, especially after prior-only horizon
+calibration. This is screening evidence only. Promotion still requires 90
+latest validation tenant-anchors per source and three of four rolling
+strict-control passes. The next real improvement path is still UA backfill and
+governed market-coupling/exogenous features, not loosening the LP/oracle gate.

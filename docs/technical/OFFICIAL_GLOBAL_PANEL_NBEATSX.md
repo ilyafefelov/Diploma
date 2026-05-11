@@ -41,6 +41,12 @@ of related time series.
 | `nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame` | Gold | Runs several point-in-time global-panel fits and strict-scores the rolling anchors. |
 | `nbeatsx_official_global_panel_rolling_horizon_calibration_frame` | Gold | Builds prior-only horizon-bias calibration from the rolling strict evidence. |
 | `nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame` | Gold | Strict-scores raw and calibrated rolling global-panel NBEATSx beside `strict_similar_day`. |
+| `dfl_official_global_panel_schedule_candidate_library_frame` | Gold | Converts calibrated global-panel strict rows into feasible schedule candidates for schedule/value screening. |
+| `dfl_official_global_panel_schedule_candidate_library_v2_frame` | Gold | Adds deterministic blend/residual schedule families using prior anchors only. |
+| `dfl_official_global_panel_schedule_value_learner_v2_frame` | Gold | Selects schedule/value profiles from prior anchors, not final-holdout outcomes. |
+| `dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame` | Gold | Strict-scores the selected global-panel schedule/value candidates. |
+| `dfl_official_global_panel_schedule_value_learner_v2_robustness_frame` | Gold | Reports rolling-window screening evidence for the selected schedule/value candidates. |
+| `dfl_official_global_panel_schedule_value_production_gate_frame` | Gold | Applies the full promotion rule and keeps market execution disabled. |
 
 Tracked config:
 [configs/real_data_official_global_panel_nbeatsx_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_week3.yaml).
@@ -75,6 +81,7 @@ Implemented now:
 - additive strict LP/oracle scoring asset for the global-panel NBEATSx output.
 - additive prior-only horizon calibration and calibrated strict LP gate.
 - additive rolling-window global-panel NBEATSx screening path.
+- additive schedule/value screening path for official global-panel evidence.
 
 Materialized evidence on 2026-05-11:
 
@@ -185,6 +192,41 @@ earlier calibrated windows remain weak. This supports the next direction:
 regime-gated use of official NBEATSx plus UA backfill and market-coupling
 exogenous features, not a default controller switch.
 
+Official global-panel schedule/value screen on 2026-05-11:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
+  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_exogenous_governance_frame,nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,nbeatsx_official_global_panel_rolling_horizon_calibration_frame,nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_candidate_library_frame,dfl_official_global_panel_schedule_candidate_library_v2_frame,dfl_official_global_panel_schedule_value_learner_v2_frame,dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_robustness_frame,dfl_official_global_panel_schedule_value_production_gate_frame `
+  -c configs/real_data_official_global_panel_nbeatsx_week3.yaml
+```
+
+Result:
+
+| Evidence item | Value |
+|---|---:|
+| Full materialization run id | `e072d319-fc9a-4de6-b648-264d550e93ae` |
+| Gate rematerialization run id | `1bbf3da4-2678-4702-a7a2-a2f003264b88` |
+| Strict/schedule-value generated at | `2026-05-11 17:16:42.416299+00` |
+| Latest validation tenant-anchors per source | 5 |
+| Rolling screening windows | 2 |
+| `strict_similar_day` latest mean regret | 1495.71 UAH |
+| Calibrated-source schedule/value latest mean regret | 598.09 UAH |
+| Raw-source schedule/value latest mean regret | 1347.36 UAH |
+| Calibrated-source latest improvement vs strict | 60.01% |
+| Raw-source latest improvement vs strict | 9.92% |
+| Rolling strict-pass windows | 1 / 2 for both sources |
+| Production promotion | `false` |
+| Promotion blocker | `validation_undercoverage` |
+| Fallback strategy | `strict_similar_day_default_fallback` |
+
+Interpretation: the schedule/value layer can extract useful candidate schedules
+from the official global-panel evidence, especially from the calibrated source
+in the latest window. This is not enough for promotion. The full promotion
+threshold remains 90 latest validation tenant-anchors per source and 3 of 4
+rolling strict-control passes; the current four-anchor global-panel run is only
+a screening result. This fixes an important governance detail: screening
+thresholds must not be reused as production-promotion thresholds.
+
 Not implemented yet:
 
 - source/regime production promotion;
@@ -193,8 +235,8 @@ Not implemented yet:
 
 ## Next Required Work
 
-1. Feed calibrated rows into the existing schedule/value candidate library and
-   strict promotion gate.
+1. Expand official global-panel evaluation to promotion-grade coverage only
+   after UA backfill or resumable batching can provide enough anchors.
 2. Add UA backfill and market-coupling exogenous governance before increasing
    official model capacity.
 3. Package the same command for cloud offload only after latest-window screening
