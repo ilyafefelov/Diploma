@@ -391,10 +391,16 @@ Phase C status:
 - It also exposed and fixed a real NBEATSx rolling-window null-feature bug.
 - Current evidence does not promote official NBEATSx/TFT: strict remains better
   on mean regret in the first CPU-safe sample.
+- The four-anchor scale run `bbbd5828-2414-42ce-b0df-ad175cbac445` also kept
+  strict ahead: strict mean/median regret `1,020.821` / `771.866` UAH versus
+  NBEATSx official `1,508.667` / `1,277.428` UAH and TFT official `1,535.299` /
+  `1,065.955` UAH.
 
 Next iteration after the official rolling commit:
 
-- scale official rolling anchors only if runtime remains acceptable;
-- otherwise move to Phase D market-coupling/exogenous context and Phase E
-  decision-loss learning on the now-fixed source path;
+- move to Phase D market-coupling/exogenous context and Phase E decision-loss
+  learning on the now-fixed source path;
+- scale official rolling anchors further only when richer features or a stronger
+  objective exist, because CPU runtime is already about 30 minutes for four
+  anchors per tenant;
 - keep strict as fallback until rolling robustness passes.

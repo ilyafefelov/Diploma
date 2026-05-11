@@ -1522,3 +1522,22 @@ strict scoring, but they are not yet promotion candidates. The next iteration
 should either scale official runs to more anchors after runtime review or move to
 market-coupling/exogenous features and decision-loss training using this fixed
 source path.
+
+Scale update:
+
+- Run `bbbd5828-2414-42ce-b0df-ad175cbac445` completed the four-anchor official
+  scale proof.
+- Rows: 60 strict LP/oracle rows.
+- `strict_similar_day` remained best: mean regret `1,020.821` UAH, median regret
+  `771.866` UAH.
+- `nbeatsx_official_v0`: mean regret `1,508.667` UAH, median regret
+  `1,277.428` UAH.
+- `tft_official_v0`: mean regret `1,535.299` UAH, median regret `1,065.955`
+  UAH.
+- CPU runtime for the official asset was about 30 minutes.
+
+Decision update: the source adapter is no longer the blocker. The immediate
+research blocker is feature/context and decision objective quality. The next
+slice should formalize market-coupling/exogenous feature governance and then use
+only temporally available, license-safe signals in official forecast/DFL
+training. Simply scaling the same feature set to more anchors is lower leverage.

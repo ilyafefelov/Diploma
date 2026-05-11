@@ -25,6 +25,8 @@ The question is deliberately narrow:
 - Strategy kind: `official_forecast_rolling_origin_benchmark`
 - Config:
   [../../configs/real_data_official_forecast_rolling_week3.yaml](../../configs/real_data_official_forecast_rolling_week3.yaml)
+- Scale config:
+  [../../configs/real_data_official_forecast_rolling_scale_week3.yaml](../../configs/real_data_official_forecast_rolling_scale_week3.yaml)
 
 The asset consumes `real_data_benchmark_silver_feature_frame` and writes strategy
 evaluation rows for:
@@ -50,6 +52,10 @@ The tracked config is intentionally CPU-safe:
 - anchors per tenant: 2 for first official rolling proof;
 - NBEATSx: `max_steps=100`, fixed seed;
 - TFT: `max_epochs=15`, small hidden sizes.
+
+The scale config raises the first evidence run to four anchors per tenant while
+keeping the same model settings. It is meant for runtime/robustness probing, not
+as a production promotion run.
 
 After this path materializes cleanly, the same asset can be rerun with more
 anchors. The promotion authority remains the strict LP/oracle gate, not adapter
@@ -110,3 +116,32 @@ Decision:
   run. It is whether larger-anchor official training, better exogenous context,
   or a decision-loss layer can improve mean strict LP/oracle regret without
   worsening the strict baseline's stability.
+
+Scale run:
+
+- Run `bbbd5828-2414-42ce-b0df-ad175cbac445` finished successfully with the
+  four-anchor scale config.
+- Scope: five canonical tenants, four latest eligible anchors per tenant,
+  24-hour DAM horizon.
+- Rows: 60 strict LP/oracle evaluation rows.
+- Runtime: official asset step took about 30 minutes on CPU.
+
+| Model | Rows | Tenants | Anchors | Mean regret UAH | Median regret UAH | Mean decision value UAH |
+|---|---:|---:|---:|---:|---:|---:|
+| `strict_similar_day` | 20 | 5 | 4 | 1,020.821 | 771.866 | 1,851.909 |
+| `nbeatsx_official_v0` | 20 | 5 | 4 | 1,508.667 | 1,277.428 | 1,364.062 |
+| `tft_official_v0` | 20 | 5 | 4 | 1,535.299 | 1,065.955 | 1,337.430 |
+
+Scale-run decision:
+
+- Official NBEATSx/TFT are confirmed materializable, but they still lose to the
+  frozen `strict_similar_day` control on both mean and median strict LP/oracle
+  regret in the four-anchor sample.
+- Scaling to all 104 anchors on local CPU is technically possible but expensive
+  and unlikely to change the thesis direction without richer exogenous features
+  or decision-focused loss. At the observed runtime, 18 anchors per tenant would
+  likely take roughly two hours, and 104 anchors per tenant would be a much
+  larger overnight/GPU-style run.
+- The next useful slice should add market-coupling/exogenous feature governance
+  and then route those features into official/DFL training, rather than only
+  increasing official adapter epochs.

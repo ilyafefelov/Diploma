@@ -1,0 +1,13 @@
+ops:
+  official_forecast_rolling_origin_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      max_eval_anchors_per_tenant: 4
+      horizon_hours: 24
+      nbeatsx_max_steps: 100
+      nbeatsx_random_seed: 20260511
+      tft_max_epochs: 15
+      tft_batch_size: 32
+      tft_learning_rate: 0.005
+      tft_hidden_size: 12
+      tft_hidden_continuous_size: 6
