@@ -105,7 +105,11 @@ In both cases:
 
 - `training_use_allowed=false`;
 - `feature_use_allowed=false`;
+- `publication_time_status=blocked_missing_publication_timestamp`;
+- `is_prior_to_ua_decision_anchor=false`;
 - `currency_policy=blocked_until_eur_to_uah_prior_only_normalization`;
+- `currency_normalization_status=blocked_missing_prior_eur_uah_fx_rate`;
+- `neighbor_market_price_uah_mwh=null`;
 - `not_full_dfl=true`;
 - `not_market_execution=true`.
 
@@ -113,6 +117,27 @@ The candidate rows flow into
 [MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md),
 which is the only route that can later approve prior-only external features for
 official global-panel training.
+
+## Publication-Time And Currency Gates
+
+The feature-candidate adapter now records the two blockers that matter most
+before any neighboring-market price can become a model input:
+
+| Column | Current value | Meaning |
+|---|---|---|
+| `publication_timestamp_utc` | empty | ENTSO-E delivery prices have not yet been tied to a publication timestamp available before the Ukrainian decision anchor. |
+| `publication_time_status` | `blocked_missing_publication_timestamp` | The feature is not prior-only yet. |
+| `ua_decision_anchor_policy` | `publication_must_precede_ukrainian_dam_decision_anchor` | Any future approval must prove publication before the Ukrainian DAM decision time. |
+| `is_prior_to_ua_decision_anchor` | `false` | Current rows are blocked even when prices are parsed. |
+| `fx_rate_source` / `fx_rate_timestamp_utc` | empty | No prior-known EUR/UAH FX source is attached. |
+| `currency_normalization_status` | `blocked_missing_prior_eur_uah_fx_rate` | EUR prices cannot be compared to UAH OREE prices yet. |
+| `neighbor_market_price_uah_mwh` | `null` | No normalized UAH feature is emitted. |
+
+The asset check rejects inconsistent evidence, for example a row marked
+`publication_time_verified_prior_to_ua_anchor` without a publication timestamp,
+or a row marked `prior_eur_uah_normalized` without prior FX metadata and a UAH
+price. Source-backed ENTSO-E parsing is therefore useful evidence, but it is
+still not enough to enter NBEATSx/TFT/DFL training.
 
 ## Query Spec
 
@@ -161,6 +186,9 @@ Before that, the project must still prove:
 
 1. Request or configure an ENTSO-E security token outside git.
 2. Fetch a tiny source-backed sample for Poland first.
-3. Persist only source metadata and a no-training sample audit.
-4. Add a strict no-leakage availability check before any feature enters
-   NBEATSx/TFT/DFL training.
+3. Attach source-backed publication-time evidence for the parsed delivery
+   prices.
+4. Add a prior-known EUR/UAH FX source before emitting any UAH-normalized
+   neighbor-price feature.
+5. Rerun the feature route and official global-panel parity only after those
+   gates pass.

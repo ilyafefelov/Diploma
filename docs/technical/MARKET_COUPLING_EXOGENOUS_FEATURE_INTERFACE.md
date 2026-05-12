@@ -125,7 +125,7 @@ Observed frame summary:
 
 | Frame | Shape | Evidence |
 |---|---:|---|
-| `entsoe_neighbor_market_feature_candidate_frame` | `1 x 22` | Guard row for `entsoe_pl_day_ahead_price_eur_mwh`; `source_backed=false`, `training_use_allowed=false`, `feature_use_allowed=false`. |
+| `entsoe_neighbor_market_feature_candidate_frame` | Guard row | Guard row for `entsoe_pl_day_ahead_price_eur_mwh`; `source_backed=false`, `training_use_allowed=false`, `feature_use_allowed=false`, `publication_time_status=blocked_missing_publication_timestamp`, and `currency_normalization_status=blocked_missing_prior_eur_uah_fx_rate`. |
 | `official_forecast_exogenous_feature_route_frame` | `6 x 23` | Six external feature candidates; all `training_use_allowed=false` and `feature_use_allowed=false`. |
 | `official_global_panel_training_frame` | `58,190 x 60` | `external_feature_training_status=blocked_by_governance`, `allowed_external_feature_columns_csv=""`, and all six external candidates listed as blocked. |
 
@@ -140,8 +140,11 @@ It prepares feature-candidate rows such as:
 - `entsoe_ro_day_ahead_price_eur_mwh`.
 
 These rows remain blocked even when a source sample is parsed. They need
-currency, publication-time, licensing, and market-rule approval before they can
-be routed into official/DFL training.
+publication-time, licensing, market-rule, and currency approval before they can
+be routed into official/DFL training. The current candidate contract therefore
+keeps parsed EUR prices separate from model inputs: `neighbor_market_price_uah_mwh`
+stays null until the row has a prior-known publication timestamp and a prior-known
+EUR/UAH FX rate.
 
 ## Academic And Source Basis
 
@@ -164,7 +167,8 @@ Source capture:
 Focused tests added in this slice cover:
 
 - blocked route rows remain blocked;
-- source-backed ENTSO-E samples are still blocked until governance passes;
+- source-backed ENTSO-E samples are still blocked until publication-time,
+  currency, and broader governance checks pass;
 - official global-panel training records approved and blocked exogenous columns;
 - Dagster asset/check registration includes the route check and ENTSO-E feature
   candidate assets;

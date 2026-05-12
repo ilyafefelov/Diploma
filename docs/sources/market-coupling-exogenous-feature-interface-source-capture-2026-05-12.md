@@ -36,6 +36,8 @@ Current state:
 
 - source-backed ENTSO-E sample rows may be parsed;
 - all ENTSO-E feature candidates remain `training_use_allowed=false`;
+- parsed neighboring-market EUR prices remain blocked from model inputs until
+  publication-time evidence and prior-only EUR/UAH normalization are attached;
 - PriceFM, OPSD, Ember, Nord Pool, and THieF remain research/external-validation
   context only;
 - the 365-anchor official global-panel NBEATSx schedule/value Offline Strategy
@@ -49,9 +51,12 @@ Validated after rebuilding backend/Dagster services on 2026-05-12:
   `55c0b870-7d1d-464a-9553-6b4dc0a738d9`.
 - Official global-panel route parity run:
   `6a5bb3b2-ede6-4f38-819c-2f50bc9622f0`.
-- `entsoe_neighbor_market_feature_candidate_frame`: `1 x 22`, guarded Poland
-  candidate, `source_backed=false`, `training_use_allowed=false`,
-  `feature_use_allowed=false`.
+- `entsoe_neighbor_market_feature_candidate_frame`: guarded Poland candidate,
+  `source_backed=false`, `training_use_allowed=false`,
+  `feature_use_allowed=false`,
+  `publication_time_status=blocked_missing_publication_timestamp`,
+  `currency_normalization_status=blocked_missing_prior_eur_uah_fx_rate`, and
+  `neighbor_market_price_uah_mwh=null`.
 - `official_forecast_exogenous_feature_route_frame`: `6 x 23`, all external
   feature candidates blocked.
 - `official_forecast_exogenous_feature_route_evidence`: registered as the
@@ -66,6 +71,9 @@ Validated after rebuilding backend/Dagster services on 2026-05-12:
 - External feature rows must not enter training until licensing, timezone,
   currency, market-rule, temporal-availability, and domain-shift blockers are
   cleared.
+- Source-backed price parsing is not enough: publication timestamps must be
+  proven prior to the Ukrainian DAM decision anchor, and EUR prices must be
+  normalized with a prior-known EUR/UAH rate before any UAH feature is emitted.
 - Source-backed is not the same as training-approved.
 - Official training consumes the feature route, not raw source metadata.
 - The feature route is checked directly in Dagster, not only indirectly through

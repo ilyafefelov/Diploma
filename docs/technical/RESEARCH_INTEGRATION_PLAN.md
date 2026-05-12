@@ -2079,6 +2079,15 @@ fails if an external feature is marked usable before the full governance state
 is ready. This means ENTSO-E, OPSD, Ember, Nord Pool, PriceFM, and THieF are
 still research/external-validation context, not Ukrainian training inputs.
 
+ENTSO-E feature candidates now make two concrete blockers explicit. A parsed
+neighboring-market price row still carries
+`publication_time_status=blocked_missing_publication_timestamp` until the source
+proves the price was published before the Ukrainian DAM decision anchor. It also
+carries `currency_normalization_status=blocked_missing_prior_eur_uah_fx_rate`
+and leaves `neighbor_market_price_uah_mwh=null` until a prior-known EUR/UAH FX
+source is attached. This prevents source-backed EUR sample rows from silently
+becoming Ukrainian training features.
+
 Academic rationale: market-coupling and neighboring-zone EPF studies support
 the idea that coupled-market features can improve day-ahead price forecasts,
 while decision-focused ESS arbitrage literature keeps the final acceptance

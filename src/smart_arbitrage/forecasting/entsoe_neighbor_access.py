@@ -97,6 +97,7 @@ REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS: Final[frozenset[str]] = froz
         "feature_column",
         "delivery_timestamp_utc",
         "neighbor_market_price_eur_mwh",
+        "neighbor_market_price_uah_mwh",
         "source_backed",
         "fetch_enabled",
         "security_token_available",
@@ -104,8 +105,15 @@ REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS: Final[frozenset[str]] = froz
         "sample_period_start_utc",
         "sample_period_end_utc",
         "publication_time_policy",
+        "publication_timestamp_utc",
+        "publication_time_status",
+        "ua_decision_anchor_policy",
+        "is_prior_to_ua_decision_anchor",
         "time_zone_policy",
         "currency_policy",
+        "fx_rate_source",
+        "fx_rate_timestamp_utc",
+        "currency_normalization_status",
         "training_use_allowed",
         "feature_use_allowed",
         "training_blockers_csv",
@@ -432,12 +440,46 @@ def validate_entsoe_neighbor_market_feature_candidate_evidence(
         or not bool(row["not_full_dfl"])
         or not bool(row["not_market_execution"])
     ]
+    missing_publication_gate_rows = [
+        row for row in rows if not str(row["publication_time_status"]).strip()
+    ]
+    missing_currency_gate_rows = [
+        row for row in rows if not str(row["currency_normalization_status"]).strip()
+    ]
+    inconsistent_publication_ready_rows = [
+        row
+        for row in rows
+        if str(row["publication_time_status"])
+        == "publication_time_verified_prior_to_ua_anchor"
+        and (
+            not str(row["publication_timestamp_utc"]).strip()
+            or not bool(row["is_prior_to_ua_decision_anchor"])
+        )
+    ]
+    inconsistent_currency_ready_rows = [
+        row
+        for row in rows
+        if str(row["currency_normalization_status"]) == "prior_eur_uah_normalized"
+        and (
+            not str(row["fx_rate_source"]).strip()
+            or not str(row["fx_rate_timestamp_utc"]).strip()
+            or row["neighbor_market_price_uah_mwh"] is None
+        )
+    ]
     if training_rows or feature_rows:
         failures.append("ENTSO-E feature candidates must remain blocked from feature/training use")
     if token_bypass_rows:
         failures.append("ENTSO-E source-backed feature candidates require a security token")
     if bad_claim_rows:
         failures.append("ENTSO-E feature candidates must keep research-only claim flags")
+    if missing_publication_gate_rows:
+        failures.append("ENTSO-E feature candidates must carry publication-time gate status")
+    if missing_currency_gate_rows:
+        failures.append("ENTSO-E feature candidates must carry currency-normalization gate status")
+    if inconsistent_publication_ready_rows:
+        failures.append("publication-ready rows must include a prior publication timestamp")
+    if inconsistent_currency_ready_rows:
+        failures.append("currency-ready rows must include prior FX metadata and UAH price")
 
     metadata = {
         "row_count": len(rows),
@@ -446,6 +488,26 @@ def validate_entsoe_neighbor_market_feature_candidate_evidence(
         "feature_allowed_rows": len(feature_rows),
         "token_bypass_rows": len(token_bypass_rows),
         "bad_claim_rows": len(bad_claim_rows),
+        "publication_blocked_rows": len(
+            [
+                row
+                for row in rows
+                if str(row["publication_time_status"]).startswith("blocked_")
+            ]
+        ),
+        "currency_blocked_rows": len(
+            [
+                row
+                for row in rows
+                if str(row["currency_normalization_status"]).startswith("blocked_")
+            ]
+        ),
+        "missing_publication_gate_rows": len(missing_publication_gate_rows),
+        "missing_currency_gate_rows": len(missing_currency_gate_rows),
+        "inconsistent_publication_ready_rows": len(
+            inconsistent_publication_ready_rows
+        ),
+        "inconsistent_currency_ready_rows": len(inconsistent_currency_ready_rows),
     }
     return EvidenceCheckOutcome(
         passed=not failures,
@@ -671,6 +733,7 @@ def _feature_candidate_row(
         "feature_column": f"entsoe_{country_code}_day_ahead_price_eur_mwh",
         "delivery_timestamp_utc": delivery_timestamp_utc,
         "neighbor_market_price_eur_mwh": price_eur_mwh,
+        "neighbor_market_price_uah_mwh": None,
         "source_backed": source_backed,
         "fetch_enabled": fetch_enabled,
         "security_token_available": token_available,
@@ -678,8 +741,17 @@ def _feature_candidate_row(
         "sample_period_start_utc": sample_period_start_utc,
         "sample_period_end_utc": sample_period_end_utc,
         "publication_time_policy": query_row["publication_time_policy"],
+        "publication_timestamp_utc": "",
+        "publication_time_status": "blocked_missing_publication_timestamp",
+        "ua_decision_anchor_policy": (
+            "publication_must_precede_ukrainian_dam_decision_anchor"
+        ),
+        "is_prior_to_ua_decision_anchor": False,
         "time_zone_policy": query_row["time_zone_policy"],
         "currency_policy": "blocked_until_eur_to_uah_prior_only_normalization",
+        "fx_rate_source": "",
+        "fx_rate_timestamp_utc": "",
+        "currency_normalization_status": "blocked_missing_prior_eur_uah_fx_rate",
         "training_use_allowed": False,
         "feature_use_allowed": False,
         "training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS,

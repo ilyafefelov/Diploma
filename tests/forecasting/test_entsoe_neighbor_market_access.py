@@ -258,10 +258,20 @@ def test_entsoe_neighbor_market_feature_candidate_parses_source_backed_prices_wi
     assert frame["training_use_allowed"].unique().to_list() == [False]
     assert frame["feature_use_allowed"].unique().to_list() == [False]
     assert frame["source_backed"].unique().to_list() == [True]
+    assert frame["publication_time_status"].unique().to_list() == [
+        "blocked_missing_publication_timestamp"
+    ]
+    assert frame["is_prior_to_ua_decision_anchor"].unique().to_list() == [False]
+    assert frame["currency_normalization_status"].unique().to_list() == [
+        "blocked_missing_prior_eur_uah_fx_rate"
+    ]
+    assert frame["neighbor_market_price_uah_mwh"].null_count() == 3
 
     outcome = validate_entsoe_neighbor_market_feature_candidate_evidence(frame)
     assert outcome.passed is True
     assert outcome.metadata["source_backed_rows"] == 3
+    assert outcome.metadata["publication_blocked_rows"] == 3
+    assert outcome.metadata["currency_blocked_rows"] == 3
 
 
 def test_entsoe_neighbor_market_feature_candidate_rejects_training_or_feature_unlock() -> None:
@@ -290,3 +300,53 @@ def test_entsoe_neighbor_market_feature_candidate_rejects_training_or_feature_un
     assert "must remain blocked from feature/training use" in outcome.description
     assert outcome.metadata["training_allowed_rows"] == 1
     assert outcome.metadata["feature_allowed_rows"] == 1
+
+
+def test_entsoe_neighbor_market_feature_candidate_rejects_inconsistent_temporal_or_currency_ready_status() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    xml = """
+    <Publication_MarketDocument>
+      <TimeSeries>
+        <Period>
+          <timeInterval>
+            <start>2026-01-01T00:00Z</start>
+            <end>2026-01-01T01:00Z</end>
+          </timeInterval>
+          <resolution>PT60M</resolution>
+          <Point><position>1</position><price.amount>102.5</price.amount></Point>
+        </Period>
+      </TimeSeries>
+    </Publication_MarketDocument>
+    """
+    frame = build_entsoe_neighbor_market_feature_candidate_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: xml,
+    )
+    broken = frame.with_columns(
+        [
+            pl.lit("publication_time_verified_prior_to_ua_anchor").alias(
+                "publication_time_status"
+            ),
+            pl.lit("prior_eur_uah_normalized").alias("currency_normalization_status"),
+        ]
+    )
+
+    outcome = validate_entsoe_neighbor_market_feature_candidate_evidence(broken)
+
+    assert outcome.passed is False
+    assert "publication-ready rows must include a prior publication timestamp" in (
+        outcome.description
+    )
+    assert "currency-ready rows must include prior FX metadata and UAH price" in (
+        outcome.description
+    )
+    assert outcome.metadata["inconsistent_publication_ready_rows"] == 1
+    assert outcome.metadata["inconsistent_currency_ready_rows"] == 1
