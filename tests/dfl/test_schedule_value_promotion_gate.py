@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 import polars as pl
+import pytest
 
 from smart_arbitrage.dfl.schedule_value_promotion_gate import (
     DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
@@ -170,6 +171,68 @@ def test_schedule_value_production_gate_registry_writes_concise_artifacts(tmp_pa
     )
     assert "NBEATSx" in markdown
     assert "market execution remains disabled" in markdown
+
+
+def test_schedule_value_production_gate_registry_attaches_attempt_evidence(tmp_path) -> None:
+    gate = build_dfl_schedule_value_production_gate_frame(
+        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
+        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        source_model_names=SOURCE_MODELS,
+    )
+    attempt_manifest = tmp_path / "source-attempt.json"
+    monitor_snapshot = tmp_path / "source-monitor.json"
+    attempt_manifest.write_text('{"attempt_kind": "official_global_panel_backfill"}', encoding="utf-8")
+    monitor_snapshot.write_text('{"status": "complete", "next_anchor_index": 365}', encoding="utf-8")
+
+    registry = build_dfl_schedule_value_production_gate_registry(
+        run_slug="unit_schedule_value_gate",
+        gate_frame=gate,
+    )
+    export_dir = write_dfl_schedule_value_production_gate_registry(
+        registry,
+        output_root=tmp_path / "exports",
+        run_slug="unit_schedule_value_gate",
+        attempt_manifest_path=attempt_manifest,
+        monitor_snapshot_path=monitor_snapshot,
+    )
+
+    assert (export_dir / "attempt_manifest.json").read_text(encoding="utf-8") == (
+        '{"attempt_kind": "official_global_panel_backfill"}'
+    )
+    assert (export_dir / "resume-summary.json").read_text(encoding="utf-8") == (
+        '{"status": "complete", "next_anchor_index": 365}'
+    )
+    registry_json = (export_dir / "dfl_schedule_value_production_gate_registry.json").read_text(
+        encoding="utf-8"
+    )
+    assert '"attempt_manifest": "attempt_manifest.json"' in registry_json
+    assert '"monitor_snapshot": "resume-summary.json"' in registry_json
+    markdown = (export_dir / "dfl_schedule_value_production_gate_registry.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Attached Evidence" in markdown
+    assert "`attempt_manifest.json`" in markdown
+    assert "`resume-summary.json`" in markdown
+
+
+def test_schedule_value_production_gate_registry_fails_on_missing_attachment(tmp_path) -> None:
+    gate = build_dfl_schedule_value_production_gate_frame(
+        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
+        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        source_model_names=SOURCE_MODELS,
+    )
+    registry = build_dfl_schedule_value_production_gate_registry(
+        run_slug="unit_schedule_value_gate",
+        gate_frame=gate,
+    )
+
+    with pytest.raises(FileNotFoundError, match="Registry attachment does not exist"):
+        write_dfl_schedule_value_production_gate_registry(
+            registry,
+            output_root=tmp_path / "exports",
+            run_slug="unit_schedule_value_gate",
+            attempt_manifest_path=tmp_path / "missing-attempt-manifest.json",
+        )
 
 
 def test_schedule_value_production_gate_registry_keeps_official_source_names(tmp_path) -> None:

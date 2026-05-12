@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 import json
 from pathlib import Path
+from shutil import copyfile
 from statistics import mean, median
 from typing import Any, Final
 
@@ -33,6 +34,8 @@ DFL_SCHEDULE_VALUE_PRODUCTION_GATE_ACADEMIC_SCOPE: Final[str] = (
     "market execution remains disabled."
 )
 STRICT_DEFAULT_FALLBACK: Final[str] = "strict_similar_day_default_fallback"
+ATTEMPT_MANIFEST_ARTIFACT_NAME: Final[str] = "attempt_manifest.json"
+MONITOR_SNAPSHOT_ARTIFACT_NAME: Final[str] = "resume-summary.json"
 
 REQUIRED_SCHEDULE_VALUE_PRODUCTION_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -241,20 +244,49 @@ def write_dfl_schedule_value_production_gate_registry(
     *,
     output_root: Path,
     run_slug: str,
+    attempt_manifest_path: Path | None = None,
+    monitor_snapshot_path: Path | None = None,
 ) -> Path:
     """Write local JSON and Markdown registry artifacts."""
 
     export_dir = output_root / run_slug
     export_dir.mkdir(parents=True, exist_ok=True)
+    registry_to_write = dict(registry)
+    attached_artifacts: dict[str, str] = {}
+    if attempt_manifest_path is not None:
+        attached_artifacts["attempt_manifest"] = _copy_registry_artifact(
+            attempt_manifest_path,
+            export_dir=export_dir,
+            artifact_name=ATTEMPT_MANIFEST_ARTIFACT_NAME,
+        )
+    if monitor_snapshot_path is not None:
+        attached_artifacts["monitor_snapshot"] = _copy_registry_artifact(
+            monitor_snapshot_path,
+            export_dir=export_dir,
+            artifact_name=MONITOR_SNAPSHOT_ARTIFACT_NAME,
+        )
+    if attached_artifacts:
+        registry_to_write["attached_artifacts"] = attached_artifacts
     (export_dir / "dfl_schedule_value_production_gate_registry.json").write_text(
-        json.dumps(_jsonable(registry), indent=2, sort_keys=True),
+        json.dumps(_jsonable(registry_to_write), indent=2, sort_keys=True),
         encoding="utf-8",
     )
     (export_dir / "dfl_schedule_value_production_gate_registry.md").write_text(
-        _production_gate_registry_markdown(registry),
+        _production_gate_registry_markdown(registry_to_write),
         encoding="utf-8",
     )
     return export_dir
+
+
+def _copy_registry_artifact(source_path: Path, *, export_dir: Path, artifact_name: str) -> str:
+    if not source_path.exists():
+        raise FileNotFoundError(f"Registry attachment does not exist: {source_path}")
+    if not source_path.is_file():
+        raise ValueError(f"Registry attachment must be a file: {source_path}")
+    destination = export_dir / artifact_name
+    if source_path.resolve() != destination.resolve():
+        copyfile(source_path, destination)
+    return artifact_name
 
 
 def _promotion_row(
@@ -542,6 +574,15 @@ def _production_gate_registry_markdown(registry: dict[str, Any]) -> str:
                 challenger=row["allowed_challenger"] or "none",
             )
         )
+    attached_artifacts = registry.get("attached_artifacts", {})
+    if isinstance(attached_artifacts, dict) and attached_artifacts:
+        lines.extend(["", "## Attached Evidence", ""])
+        attempt_manifest = attached_artifacts.get("attempt_manifest")
+        if attempt_manifest:
+            lines.append(f"- Attempt manifest: `{attempt_manifest}`")
+        monitor_snapshot = attached_artifacts.get("monitor_snapshot")
+        if monitor_snapshot:
+            lines.append(f"- Monitor snapshot: `{monitor_snapshot}`")
     lines.extend(
         [
             "",

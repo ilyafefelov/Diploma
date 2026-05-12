@@ -25,6 +25,8 @@ def main() -> None:
     parser.add_argument("--run-slug", default=DEFAULT_RUN_SLUG)
     parser.add_argument("--dagster-run-id", default=None)
     parser.add_argument("--materialization-command", default=None)
+    parser.add_argument("--attempt-manifest", type=Path, default=None)
+    parser.add_argument("--monitor-snapshot", type=Path, default=None)
     args = parser.parse_args()
 
     gate_frame = _load_gate_frame(args.gate_frame_pickle)
@@ -38,12 +40,20 @@ def main() -> None:
         registry,
         output_root=args.output_root,
         run_slug=args.run_slug,
+        attempt_manifest_path=args.attempt_manifest,
+        monitor_snapshot_path=args.monitor_snapshot,
     )
     json.dump(
         {
             "export_dir": str(export_dir),
             "registry_json": str(export_dir / "dfl_schedule_value_production_gate_registry.json"),
             "registry_markdown": str(export_dir / "dfl_schedule_value_production_gate_registry.md"),
+            "attempt_manifest": str(export_dir / "attempt_manifest.json")
+            if args.attempt_manifest
+            else None,
+            "monitor_snapshot": str(export_dir / "resume-summary.json")
+            if args.monitor_snapshot
+            else None,
             "production_promote_count": registry["summary"]["production_promote_count"],
             "promoted_source_model_names": registry["summary"]["promoted_source_model_names"],
             "market_execution_enabled": registry["summary"]["market_execution_enabled"],

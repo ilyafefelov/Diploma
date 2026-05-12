@@ -116,6 +116,28 @@ For future long official runs, use the PowerShell monitor wrapper first. Manual
 `run.log` inspection and ad hoc SQL should be reserved for diagnosis after the
 wrapper reports an invalid manifest, missing DSN, or missing persisted rows.
 
+## Evidence Packet Export
+
+The Schedule/Value production-gate registry exporter can now attach the same
+attempt manifest and monitor snapshot to the final local evidence folder:
+
+```powershell
+.\scripts\monitor-official-evidence-attempt.ps1 `
+  -ManifestPath .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  -StrategyKind official_global_panel_nbeatsx_rolling_strict_lp_benchmark `
+  -OutputPath .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+
+.\.venv\Scripts\python.exe scripts\materialize_schedule_value_production_gate_registry.py `
+  --gate-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_production_gate_frame.pkl `
+  --run-slug week3_official_global_panel_365_strategy_promotion `
+  --attempt-manifest .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  --monitor-snapshot .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+```
+
+The export writes `attempt_manifest.json` and `resume-summary.json` beside the
+registry JSON/Markdown artifacts and records their names in the registry
+metadata. That folder is the preferred supervisor-facing evidence packet.
+
 ## Hugging Face Jobs Integration
 
 `scripts/build_hf_official_schedule_value_job.py` now embeds the same manifest
@@ -177,12 +199,5 @@ git diff --check
 1. If the Codex heartbeat monitor is recreated, point it at
    `scripts/monitor-official-evidence-attempt.ps1` instead of direct `run.log`
    and SQL inspection.
-2. Add an evidence-registry export that copies the manifest next to the final
-   Offline Strategy Promotion summary. The 365-anchor official global-panel
-   run now has a local export at
-   `data/research_runs/week3_official_global_panel_365_strategy_promotion/`.
-   Because the original run began before this manifest interface existed, the
-   backfilled manifest records the resumed `8..365` segment while Postgres row
-   counts and the run logs confirm full 365-anchor coverage.
-3. Add a Hugging Face submission wrapper only after the payload is tested on a
+2. Add a Hugging Face submission wrapper only after the payload is tested on a
    pushed branch and a paid HF Jobs account/token path is confirmed.

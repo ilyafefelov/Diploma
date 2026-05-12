@@ -113,6 +113,17 @@ def test_official_evidence_monitor_wrapper_delegates_to_resume_summary() -> None
     assert "Get-Content -LiteralPath $resolvedOutputPath" in monitor_script
 
 
+def test_schedule_value_registry_export_cli_accepts_evidence_attachments() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_schedule_value_production_gate_registry.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--attempt-manifest" in export_script
+    assert "--monitor-snapshot" in export_script
+    assert "attempt_manifest_path=args.attempt_manifest" in export_script
+    assert "monitor_snapshot_path=args.monitor_snapshot" in export_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)

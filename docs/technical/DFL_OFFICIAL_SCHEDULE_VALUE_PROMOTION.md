@@ -265,7 +265,25 @@ packaged as a local evidence registry:
 | Anchors | `365` distinct anchors across five tenants |
 | Registry export | `data/research_runs/week3_official_global_panel_365_strategy_promotion/` |
 | Manifest | `attempt_manifest.json` copied into the registry export |
+| Monitor snapshot | `resume-summary.json` copied into the registry export |
 | Market execution | `false` |
+
+For reproducible reruns, create the monitor snapshot before exporting the
+registry and pass both attachments into
+`scripts/materialize_schedule_value_production_gate_registry.py`:
+
+```powershell
+.\scripts\monitor-official-evidence-attempt.ps1 `
+  -ManifestPath .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  -StrategyKind official_global_panel_nbeatsx_rolling_strict_lp_benchmark `
+  -OutputPath .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+
+.\.venv\Scripts\python.exe scripts\materialize_schedule_value_production_gate_registry.py `
+  --gate-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_production_gate_frame.pkl `
+  --run-slug week3_official_global_panel_365_strategy_promotion `
+  --attempt-manifest .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  --monitor-snapshot .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+```
 
 Registry summary:
 

@@ -2131,6 +2131,10 @@ strategy-evaluation store, and can write the JSON snapshot to an output path.
 The helper uses the minimum persisted anchor count across source models, which
 keeps partial official runs conservative when one model has fewer completed
 anchors than another.
+The schedule-value registry exporter now accepts that manifest and the monitor
+snapshot directly, copying both into the local evidence packet so the registry
+folder contains run identity, resume status, persisted counts, and the Offline
+Strategy Promotion boundary in one place.
 
 Tracked docs:
 
@@ -2163,10 +2167,19 @@ ignored evidence folder:
 - `data/research_runs/week3_official_global_panel_365_strategy_promotion/`;
 - `dfl_schedule_value_production_gate_registry.json`;
 - `dfl_schedule_value_production_gate_registry.md`;
-- `attempt_manifest.json`.
+- `attempt_manifest.json`;
+- `resume-summary.json`.
 
 The registry records two official NBEATSx source rows with internal
 `production_promote=true`, `market_execution_enabled=false`, and
 `strict_similar_day_default_fallback`. The result remains thesis-safe Offline
 Strategy Promotion only: it supports offline/read-model strategy evidence and
 does not permit live market execution.
+
+Future exports should be regenerated from scripts rather than assembled
+manually: first run
+[monitor-official-evidence-attempt.ps1](../../scripts/monitor-official-evidence-attempt.ps1)
+to write `resume-summary.json`, then run
+[materialize_schedule_value_production_gate_registry.py](../../scripts/materialize_schedule_value_production_gate_registry.py)
+with `--attempt-manifest` and `--monitor-snapshot`. The resulting folder is the
+supervisor-facing evidence packet.
