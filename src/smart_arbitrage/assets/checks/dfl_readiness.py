@@ -64,6 +64,9 @@ from smart_arbitrage.forecasting.afl_error_audit import (
 from smart_arbitrage.forecasting.market_coupling_availability import (
     validate_market_coupling_temporal_availability_evidence,
 )
+from smart_arbitrage.forecasting.market_coupling_features import (
+    validate_market_coupling_feature_route_evidence,
+)
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     validate_entsoe_neighbor_market_access_evidence,
     validate_entsoe_neighbor_market_feature_candidate_evidence,
@@ -393,6 +396,21 @@ def market_coupling_temporal_availability_evidence(
 
 
 @dg.asset_check(
+    asset="official_forecast_exogenous_feature_route_frame",
+    name="official_forecast_exogenous_feature_route_evidence",
+    description="Checks official forecast external-feature routing remains governed before training.",
+)
+def official_forecast_exogenous_feature_route_evidence(
+    official_forecast_exogenous_feature_route_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_market_coupling_feature_route_evidence(
+            official_forecast_exogenous_feature_route_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="entsoe_neighbor_market_query_spec_frame",
     name="entsoe_neighbor_market_access_evidence",
     description="Checks ENTSO-E neighbor-market query specs remain research-only before sample fetch.",
@@ -508,6 +526,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_official_schedule_value_production_gate_evidence,
     forecast_pipeline_truth_audit_evidence,
     market_coupling_temporal_availability_evidence,
+    official_forecast_exogenous_feature_route_evidence,
     entsoe_neighbor_market_access_evidence,
     entsoe_neighbor_market_sample_audit_evidence,
     entsoe_neighbor_market_feature_candidate_evidence,

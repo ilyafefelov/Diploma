@@ -2066,13 +2066,18 @@ New additive assets:
 - `entsoe_neighbor_market_feature_candidate_frame`;
 - `official_forecast_exogenous_feature_route_frame`.
 
+New additive check:
+
+- `official_forecast_exogenous_feature_route_evidence`.
+
 The route centralizes external feature approval for official NBEATSx/TFT/DFL
 training. Source-backed ENTSO-E rows may now be represented as feature
 candidates, but they remain blocked unless they pass licensing, timezone/DST,
 currency normalization, market-rule mapping, temporal-availability, and
-domain-shift gates. This means ENTSO-E, OPSD, Ember, Nord Pool, PriceFM, and
-THieF are still research/external-validation context, not Ukrainian training
-inputs.
+domain-shift gates. The route check makes that boundary visible in Dagster and
+fails if an external feature is marked usable before the full governance state
+is ready. This means ENTSO-E, OPSD, Ember, Nord Pool, PriceFM, and THieF are
+still research/external-validation context, not Ukrainian training inputs.
 
 Academic rationale: market-coupling and neighboring-zone EPF studies support
 the idea that coupled-market features can improve day-ahead price forecasts,

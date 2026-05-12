@@ -31,6 +31,7 @@ Asset check:
 | Check | Requirement |
 |---|---|
 | `market_coupling_temporal_availability_evidence` | External rows must remain blocked from training, list all blockers, define publication-time policy, and keep research-only claim flags. |
+| `official_forecast_exogenous_feature_route_evidence` | The official-training route must reject ungoverned external features before they can enter global-panel NBEATSx/TFT/DFL training. |
 | `entsoe_neighbor_market_feature_candidate_evidence` | Source-backed ENTSO-E candidates must remain blocked until every governance gate passes. |
 
 The deeper route contract is documented in
@@ -106,7 +107,9 @@ global-panel training now consumes `official_forecast_exogenous_feature_route_fr
 Because the route currently has zero approved external feature columns, the
 365-anchor Offline Strategy Promotion evidence remains Ukrainian-only
 OREE/Open-Meteo evidence. Source-backed ENTSO-E sample rows can prove parsing,
-but they are still not training rows.
+but they are still not training rows. The route also has its own Dagster asset
+check, so an accidental approval without full governance fails before official
+training treats the feature as allowed.
 
 Latest materialization on 2026-05-12 used fetch-disabled ENTSO-E sample config,
 so the feature-candidate frame produced one guarded Poland row with

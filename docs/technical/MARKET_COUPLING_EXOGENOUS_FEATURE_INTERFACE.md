@@ -64,6 +64,7 @@ Asset checks:
 | Check | Requirement |
 |---|---|
 | `market_coupling_temporal_availability_evidence` | Every external source keeps blockers and claim flags until governance passes. |
+| `official_forecast_exogenous_feature_route_evidence` | The single official-training route rejects ungoverned external features before they can enter NBEATSx/TFT/DFL training. |
 | `entsoe_neighbor_market_access_evidence` | ENTSO-E query specs stay research-only and use day-ahead price request shape `A44/A01`. |
 | `entsoe_neighbor_market_sample_audit_evidence` | Sample rows never unlock training by themselves. |
 | `entsoe_neighbor_market_feature_candidate_evidence` | Feature candidates remain blocked unless source-backed and fully governed. |
@@ -103,6 +104,8 @@ Current route outcome:
   `thief_temporal_hierarchy_context`;
 - official global-panel training can consume the route without changing the
   current forecast feature set;
+- the route itself is now Dagster-check-backed through
+  `official_forecast_exogenous_feature_route_evidence`;
 - the 365-anchor Offline Strategy Promotion evidence remains Ukrainian-only and
   source-backed by OREE/Open-Meteo.
 
@@ -163,7 +166,7 @@ Focused tests added in this slice cover:
 - blocked route rows remain blocked;
 - source-backed ENTSO-E samples are still blocked until governance passes;
 - official global-panel training records approved and blocked exogenous columns;
-- Dagster asset/check registration includes the route and ENTSO-E feature
+- Dagster asset/check registration includes the route check and ENTSO-E feature
   candidate assets;
 - false claim flags or accidental training use fail evidence validation.
 

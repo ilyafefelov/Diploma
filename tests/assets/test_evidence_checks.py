@@ -105,6 +105,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "market_coupling_temporal_availability_evidence",
         ),
         (
+            "official_forecast_exogenous_feature_route_frame",
+            "official_forecast_exogenous_feature_route_evidence",
+        ),
+        (
             "entsoe_neighbor_market_query_spec_frame",
             "entsoe_neighbor_market_access_evidence",
         ),

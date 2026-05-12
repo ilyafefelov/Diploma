@@ -54,6 +54,9 @@ Validated after rebuilding backend/Dagster services on 2026-05-12:
   `feature_use_allowed=false`.
 - `official_forecast_exogenous_feature_route_frame`: `6 x 23`, all external
   feature candidates blocked.
+- `official_forecast_exogenous_feature_route_evidence`: registered as the
+  Dagster check for the route, so accidental ungoverned approval fails before
+  official training treats the feature as allowed.
 - `official_global_panel_training_frame`: `58,190 x 60`,
   `external_feature_training_status=blocked_by_governance`,
   `allowed_external_feature_columns_csv=""`.
@@ -65,5 +68,7 @@ Validated after rebuilding backend/Dagster services on 2026-05-12:
   cleared.
 - Source-backed is not the same as training-approved.
 - Official training consumes the feature route, not raw source metadata.
+- The feature route is checked directly in Dagster, not only indirectly through
+  downstream official training.
 - `market_execution_enabled=false` remains mandatory for the thesis evidence
   freeze.
