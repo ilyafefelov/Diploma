@@ -104,6 +104,33 @@ $downstreamSelection = "nbeatsx_official_global_panel_rolling_horizon_calibratio
 
 Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchors=$TotalAnchors BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex EndAnchorIndex=$ResolvedEndAnchorIndex AnchorBatchOrder=$AnchorBatchOrder NbeatsxMaxSteps=$NbeatsxMaxSteps"
 
+$manifestPath = Join-Path $runDir "attempt_manifest.json"
+$manifestArgs = @(
+    "run", "python", "scripts/build_official_evidence_attempt_manifest.py",
+    "--attempt-kind", "official_global_panel_backfill",
+    "--generated-at-iso", $GeneratedAtIso,
+    "--total-anchors", "$TotalAnchors",
+    "--batch-size", "$BatchSize",
+    "--start-anchor-index", "$StartAnchorIndex",
+    "--end-anchor-index", "$ResolvedEndAnchorIndex",
+    "--anchor-batch-order", $AnchorBatchOrder,
+    "--enabled-official-models-csv", "nbeatsx_official_global_panel_v1",
+    "--nbeatsx-max-steps", "$NbeatsxMaxSteps",
+    "--tft-max-epochs", "0",
+    "--asset-selection", $officialSelection,
+    "--downstream-selection", $downstreamSelection,
+    "--run-root", ".tmp_runtime/official_global_panel_batches",
+    "--output", $manifestPath
+)
+if ($SkipDownstreamGate) {
+    $manifestArgs += "--skip-downstream-gate"
+}
+& uv @manifestArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to write attempt manifest at $manifestPath."
+}
+Write-RunLog "WROTE attempt_manifest.json"
+
 for ($anchorIndex = $StartAnchorIndex; $anchorIndex -lt $ResolvedEndAnchorIndex; $anchorIndex += $BatchSize) {
     $batchConfigPath = Join-Path $runDir ("official-global-panel-batch-{0}.yaml" -f $anchorIndex)
     @"

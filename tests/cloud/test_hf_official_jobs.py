@@ -34,6 +34,8 @@ def test_hf_official_job_payload_runs_same_official_schedule_value_gate() -> Non
     assert "dagster asset materialize" in script
     assert "official_forecast_rolling_origin_benchmark_frame" in script
     assert "dfl_official_schedule_value_production_gate_frame" in script
+    assert "official_evidence_attempt_manifest.json" in script
+    assert "offline_strategy_promotion_evidence_attempt" in script
     assert "anchor_batch_order: \"latest_first\"" in script
     assert "enabled_official_model_names_csv: \"tft_official_v0\"" in script
     assert "nbeatsx_max_steps: 25" in script

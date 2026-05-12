@@ -3,8 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from textwrap import dedent
 from typing import Literal
+
+from smart_arbitrage.forecasting.official_evidence_attempts import (
+    OfficialEvidenceAttemptConfig,
+    build_official_evidence_attempt_manifest,
+)
 
 OFFICIAL_SCHEDULE_VALUE_SELECTION = (
     "observed_market_price_history_bronze,"
@@ -57,6 +63,7 @@ def build_hf_official_schedule_value_job_payload(
 def _build_uv_script(config: HfOfficialScheduleValueJobConfig) -> str:
     upload_block = _artifact_upload_block(config)
     config_yaml = _dagster_config_yaml(config)
+    attempt_manifest_json = _attempt_manifest_json(config)
     return dedent(
         f"""
         # /// script
@@ -131,10 +138,34 @@ def _build_uv_script(config: HfOfficialScheduleValueJobConfig) -> str:
             "research/offline evidence only; not market execution\\n",
             encoding="utf-8",
         )
+        (artifacts_dir / "official_evidence_attempt_manifest.json").write_text(
+            {attempt_manifest_json!r},
+            encoding="utf-8",
+        )
         {upload_block}
         print(f"HF official schedule-value artifacts: {{artifacts_dir}}")
         """
     ).strip()
+
+
+def _attempt_manifest_json(config: HfOfficialScheduleValueJobConfig) -> str:
+    manifest = build_official_evidence_attempt_manifest(
+        OfficialEvidenceAttemptConfig(
+            attempt_kind="official_schedule_value",
+            generated_at_iso=config.run_slug,
+            total_anchors=config.total_anchors_per_tenant,
+            batch_size=config.batch_size,
+            anchor_batch_order=config.anchor_batch_order,
+            enabled_official_models_csv=config.enabled_official_models_csv,
+            nbeatsx_max_steps=config.nbeatsx_max_steps,
+            tft_max_epochs=config.tft_max_epochs,
+            asset_selection=OFFICIAL_SCHEDULE_VALUE_SELECTION,
+            downstream_gate_enabled=True,
+            downstream_selection="dfl_official_schedule_value_production_gate_frame",
+            run_root="hf://official_schedule_value_jobs",
+        )
+    )
+    return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
 
 
 def _dagster_config_yaml(config: HfOfficialScheduleValueJobConfig) -> str:

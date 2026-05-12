@@ -72,6 +72,11 @@ The runner writes per-batch configs under
 batches, and keeps one fixed `generated_at` so Postgres rows can be merged by
 batch without losing previous work.
 
+It also writes `attempt_manifest.json` in the same run directory. That manifest
+is the stable resume/audit contract for local and future Hugging Face Jobs
+attempts; see
+[OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md](OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md).
+
 ## Contract
 
 The global-panel training frame must satisfy:

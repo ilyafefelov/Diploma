@@ -172,6 +172,7 @@ Latest full verification: `151 passed`.
 - DFL schedule/value Offline Strategy Promotion gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
 - Official global-panel NBEATSx lane: `docs/technical/OFFICIAL_GLOBAL_PANEL_NBEATSX.md`
+- Official evidence-attempt interface: `docs/technical/OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md`
 - Market-coupling exogenous feature interface: `docs/technical/MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md`
 - UA backfill coverage recovery: `docs/technical/DFL_DATA_RECOVERY_ROADMAP.md`
 - DFL/official training compute options: `docs/technical/DFL_TRAINING_COMPUTE_OPTIONS.md`
@@ -217,6 +218,7 @@ Latest read-model smoke:
 - `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are adapter/readiness assets. They must not be cited as SOTA results until they materialize forecast rows and pass the rolling-origin LP/oracle benchmark.
 - `market_coupling_temporal_availability_frame` blocks ENTSO-E, PriceFM, OPSD, Ember, Nord Pool, and THieF rows from training until licensing, timezone, currency, market-rule, temporal-availability, and domain-shift mapping pass.
 - `official_forecast_exogenous_feature_route_frame` is the only route through which external market-coupling columns can enter official global-panel NBEATSx/TFT training; currently all external features are blocked, so the 365-anchor Offline Strategy Promotion result remains Ukrainian OREE/Open-Meteo evidence.
+- `attempt_manifest.json` is the canonical local manifest for long official evidence attempts; it records the fixed generated timestamp, batch plan, resume rule, exact asset selections, and Offline Strategy Promotion claim boundary.
 - `entsoe_neighbor_market_query_spec_frame` prepares ENTSO-E `A44/A01` neighbor day-ahead price query specs, but fetch/training remains blocked unless a security token and no-leakage publication-time audit are present.
 - `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
 - `decision_transformer_forecast_context_silver`, `decision_transformer_trajectory_frame`, `decision_transformer_policy_preview_frame`, and `DecisionTransformerPolicy` provide forecast-conditioned offline return-conditioned policy scaffolding plus deterministic action projection. They are not a market-execution strategy until full offline evaluation is materialized and safety/regret checks pass across tenants.

@@ -56,6 +56,7 @@ def test_official_batch_runner_refreshes_exit_code_after_wait_process() -> None:
     assert 'Select-String -LiteralPath $stderrPath -Pattern "RUN_SUCCESS" -Quiet' in runner_script
     assert "if ($exitCode -ne 0)" in runner_script
     assert '[ValidateSet("chronological", "latest_first")]' in runner_script
+    assert "attempt_manifest.json" in runner_script
     assert "enabled_official_model_names_csv" in runner_script
     assert "nbeatsx_max_steps: $NbeatsxMaxSteps" in runner_script
     assert "tft_max_epochs: $TftMaxEpochs" in runner_script
@@ -67,6 +68,7 @@ def test_official_global_panel_batch_runner_writes_resumable_backfill_config() -
     ).read_text(encoding="utf-8")
 
     assert "real_data_official_global_panel_nbeatsx_backfill_week3.yaml" in runner_script
+    assert "attempt_manifest.json" in runner_script
     assert "[int]$EndAnchorIndex = 0" in runner_script
     assert "$ResolvedEndAnchorIndex = $TotalAnchors" in runner_script
     assert "nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame" in runner_script

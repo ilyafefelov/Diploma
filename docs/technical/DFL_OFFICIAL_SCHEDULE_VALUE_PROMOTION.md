@@ -118,6 +118,12 @@ batch through `forecast_strategy_evaluations`, and then materializes the
 downstream official schedule/value gate. Logs are written under
 `.tmp_runtime/official_schedule_value_batches/`.
 
+As of 2026-05-12 the runner also writes `attempt_manifest.json` before the first
+batch starts. The manifest records the planned anchor batches, resume rule,
+asset selections, downstream gate selection, and Offline Strategy Promotion
+claim boundary. The shared contract is documented in
+[OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md](OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md).
+
 If a batch fails, rerun with the same `-GeneratedAtIso` and the failed
 `-StartAnchorIndex`. Already persisted batches are merged back into the asset
 output when `merge_persisted_batches=true`, so the next successful batch resumes

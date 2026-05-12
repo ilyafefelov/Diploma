@@ -2085,3 +2085,30 @@ Tracked docs:
 
 - [MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md).
 - [../sources/market-coupling-exogenous-feature-interface-source-capture-2026-05-12.md](../sources/market-coupling-exogenous-feature-interface-source-capture-2026-05-12.md).
+
+## Official Evidence Attempt Interface
+
+The official forecast execution layer now has a shared manifest contract for
+long local and future Hugging Face Jobs attempts. The implementation does not
+change the 365-anchor result; it makes serious official runs easier to resume,
+audit, and package.
+
+New evidence-attempt interface:
+
+- module: `smart_arbitrage.forecasting.official_evidence_attempts`;
+- local manifest: `attempt_manifest.json`;
+- HF artifact manifest: `official_evidence_attempt_manifest.json`;
+- scripts using the manifest:
+  [run-official-schedule-value-batches.ps1](../../scripts/run-official-schedule-value-batches.ps1),
+  [run-official-global-panel-batches.ps1](../../scripts/run-official-global-panel-batches.ps1),
+  and [build_hf_official_schedule_value_job.py](../../scripts/build_hf_official_schedule_value_job.py).
+
+Decision update: future official reruns should cite the manifest in addition to
+the generated timestamp. Resume decisions should use the manifest batch plan and
+the latest persisted rows, rather than relying only on free-form `run.log`
+inspection.
+
+Tracked docs:
+
+- [OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md](OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md).
+- [../sources/official-evidence-attempt-interface-source-capture-2026-05-12.md](../sources/official-evidence-attempt-interface-source-capture-2026-05-12.md).

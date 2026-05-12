@@ -98,6 +98,32 @@ $downstreamSelection = "dfl_official_schedule_candidate_library_frame,dfl_offici
 
 Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchorsPerTenant=$TotalAnchorsPerTenant BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex AnchorBatchOrder=$AnchorBatchOrder EnabledOfficialModelsCsv=$EnabledOfficialModelsCsv NbeatsxMaxSteps=$NbeatsxMaxSteps TftMaxEpochs=$TftMaxEpochs"
 
+$manifestPath = Join-Path $runDir "attempt_manifest.json"
+$manifestArgs = @(
+    "run", "python", "scripts/build_official_evidence_attempt_manifest.py",
+    "--attempt-kind", "official_schedule_value",
+    "--generated-at-iso", $GeneratedAtIso,
+    "--total-anchors", "$TotalAnchorsPerTenant",
+    "--batch-size", "$BatchSize",
+    "--start-anchor-index", "$StartAnchorIndex",
+    "--anchor-batch-order", $AnchorBatchOrder,
+    "--enabled-official-models-csv", $EnabledOfficialModelsCsv,
+    "--nbeatsx-max-steps", "$NbeatsxMaxSteps",
+    "--tft-max-epochs", "$TftMaxEpochs",
+    "--asset-selection", $officialSelection,
+    "--downstream-selection", $downstreamSelection,
+    "--run-root", ".tmp_runtime/official_schedule_value_batches",
+    "--output", $manifestPath
+)
+if ($SkipDownstreamGate) {
+    $manifestArgs += "--skip-downstream-gate"
+}
+& uv @manifestArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to write attempt manifest at $manifestPath."
+}
+Write-RunLog "WROTE attempt_manifest.json"
+
 for ($anchorIndex = $StartAnchorIndex; $anchorIndex -lt $TotalAnchorsPerTenant; $anchorIndex += $BatchSize) {
     $batchConfigPath = Join-Path $runDir ("official-batch-{0}.yaml" -f $anchorIndex)
     @"
