@@ -12,6 +12,9 @@ from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_f
 from smart_arbitrage.forecasting.market_coupling_availability import (
 	build_market_coupling_temporal_availability_frame,
 )
+from smart_arbitrage.forecasting.market_coupling_features import (
+	build_market_coupling_feature_route_frame,
+)
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
 from smart_arbitrage.forecasting.official_adapters import (
@@ -92,6 +95,45 @@ def official_forecast_exogenous_governance_frame(context) -> pl.DataFrame:
 			"source_count": frame.select("source_name").n_unique() if frame.height else 0,
 			"training_allowed_rows": frame.filter(pl.col("training_use_allowed")).height,
 			"scope": "official_forecast_exogenous_governance_not_training_data",
+		},
+	)
+	return frame
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		backend="official_forecast_adapters",
+		market_venue="DAM",
+	),
+)
+def official_forecast_exogenous_feature_route_frame(
+	context,
+	official_forecast_exogenous_governance_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Single route interface for approved official forecast exogenous features."""
+
+	frame = build_market_coupling_feature_route_frame(
+		official_forecast_exogenous_governance_frame
+	)
+	_add_metadata(
+		context,
+		{
+			"rows": frame.height,
+			"approved_feature_count": frame.filter(
+				pl.col("approved_for_official_training")
+			).height,
+			"source_backed_rows": frame.select(
+				pl.col("source_backed_row_count").sum()
+			).item()
+			if frame.height
+			else 0,
+			"scope": "official_forecast_exogenous_feature_route_not_training_data",
 		},
 	)
 	return frame
@@ -186,6 +228,7 @@ def official_global_panel_training_frame(
 	config: OfficialGlobalPanelTrainingAssetConfig,
 	real_data_benchmark_silver_feature_frame: pl.DataFrame,
 	official_forecast_exogenous_governance_frame: pl.DataFrame,
+	official_forecast_exogenous_feature_route_frame: pl.DataFrame,
 ) -> pl.DataFrame:
 	"""Point-in-time global panel for serious official NBEATSx/TFT evidence."""
 
@@ -196,6 +239,7 @@ def official_global_panel_training_frame(
 		horizon_hours=config.horizon_hours,
 		temporal_scaler_type=config.temporal_scaler_type,
 		market_coupling_availability_frame=official_forecast_exogenous_governance_frame,
+		market_coupling_feature_route_frame=official_forecast_exogenous_feature_route_frame,
 	)
 	_add_metadata(
 		context,
@@ -460,6 +504,7 @@ NEURAL_FORECAST_SILVER_ASSETS = [
 	neural_forecast_feature_frame,
 	sota_forecast_training_frame,
 	official_forecast_exogenous_governance_frame,
+	official_forecast_exogenous_feature_route_frame,
 	official_global_panel_training_frame,
 	nbeatsx_price_forecast,
 	tft_price_forecast,

@@ -1,8 +1,10 @@
 import polars as pl
 
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
+    validate_entsoe_neighbor_market_feature_candidate_evidence,
     validate_entsoe_neighbor_market_sample_audit_evidence,
     validate_entsoe_neighbor_market_access_evidence,
 )
@@ -211,3 +213,80 @@ def test_entsoe_neighbor_market_sample_audit_rejects_feature_use_before_governan
     assert "ENTSO-E samples must not become feature rows before governance passes" in (
         outcome.description
     )
+
+
+def test_entsoe_neighbor_market_feature_candidate_parses_source_backed_prices_without_training_use() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    xml = """
+    <Publication_MarketDocument>
+      <TimeSeries>
+        <Period>
+          <timeInterval>
+            <start>2026-01-01T00:00Z</start>
+            <end>2026-01-01T03:00Z</end>
+          </timeInterval>
+          <resolution>PT60M</resolution>
+          <Point><position>1</position><price.amount>102.5</price.amount></Point>
+          <Point><position>2</position><price.amount>111.0</price.amount></Point>
+          <Point><position>3</position><price.amount>109.5</price.amount></Point>
+        </Period>
+      </TimeSeries>
+    </Publication_MarketDocument>
+    """
+
+    frame = build_entsoe_neighbor_market_feature_candidate_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: xml,
+    )
+
+    assert frame.height == 3
+    assert frame["feature_name"].unique().to_list() == [
+        "entsoe_neighbor_day_ahead_price_context"
+    ]
+    assert frame["feature_column"].unique().to_list() == [
+        "entsoe_pl_day_ahead_price_eur_mwh"
+    ]
+    assert frame["neighbor_market_price_eur_mwh"].to_list() == [102.5, 111.0, 109.5]
+    assert frame["training_use_allowed"].unique().to_list() == [False]
+    assert frame["feature_use_allowed"].unique().to_list() == [False]
+    assert frame["source_backed"].unique().to_list() == [True]
+
+    outcome = validate_entsoe_neighbor_market_feature_candidate_evidence(frame)
+    assert outcome.passed is True
+    assert outcome.metadata["source_backed_rows"] == 3
+
+
+def test_entsoe_neighbor_market_feature_candidate_rejects_training_or_feature_unlock() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token=None,
+    )
+    frame = build_entsoe_neighbor_market_feature_candidate_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token=None,
+        fetch_enabled=False,
+    )
+    broken = frame.with_columns(
+        [
+            pl.lit(True).alias("feature_use_allowed"),
+            pl.lit(True).alias("training_use_allowed"),
+        ]
+    )
+
+    outcome = validate_entsoe_neighbor_market_feature_candidate_evidence(broken)
+
+    assert outcome.passed is False
+    assert "must remain blocked from feature/training use" in outcome.description
+    assert outcome.metadata["training_allowed_rows"] == 1
+    assert outcome.metadata["feature_allowed_rows"] == 1

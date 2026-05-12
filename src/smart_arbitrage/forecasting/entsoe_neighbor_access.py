@@ -60,6 +60,9 @@ REQUIRED_ENTSOE_NEIGHBOR_ACCESS_COLUMNS: Final[frozenset[str]] = frozenset(
 ENTSOE_NEIGHBOR_MARKET_SAMPLE_CLAIM_SCOPE: Final[str] = (
     "entsoe_neighbor_market_sample_audit_research_gate"
 )
+ENTSOE_NEIGHBOR_MARKET_FEATURE_CANDIDATE_CLAIM_SCOPE: Final[str] = (
+    "entsoe_neighbor_market_feature_candidate_research_gate"
+)
 REQUIRED_ENTSOE_NEIGHBOR_SAMPLE_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "country_code",
@@ -77,6 +80,32 @@ REQUIRED_ENTSOE_NEIGHBOR_SAMPLE_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset
         "last_delivery_timestamp_utc",
         "publication_time_policy",
         "time_zone_policy",
+        "training_use_allowed",
+        "feature_use_allowed",
+        "training_blockers_csv",
+        "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
+    }
+)
+REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "country_code",
+        "country_name",
+        "bidding_zone_eic",
+        "feature_name",
+        "feature_column",
+        "delivery_timestamp_utc",
+        "neighbor_market_price_eur_mwh",
+        "source_backed",
+        "fetch_enabled",
+        "security_token_available",
+        "fetch_status",
+        "sample_period_start_utc",
+        "sample_period_end_utc",
+        "publication_time_policy",
+        "time_zone_policy",
+        "currency_policy",
         "training_use_allowed",
         "feature_use_allowed",
         "training_blockers_csv",
@@ -326,6 +355,109 @@ def validate_entsoe_neighbor_market_sample_audit_evidence(
     )
 
 
+def build_entsoe_neighbor_market_feature_candidate_frame(
+    entsoe_neighbor_market_query_spec_frame: pl.DataFrame,
+    *,
+    sample_country_codes_csv: str,
+    sample_period_start_utc: str,
+    sample_period_end_utc: str,
+    security_token: str | None,
+    fetch_enabled: bool,
+    fetch_xml_by_url: FetchXmlByUrl | None = None,
+) -> pl.DataFrame:
+    """Fetch or skip normalized neighbor price candidates without approving use."""
+
+    failures = _missing_column_failures(
+        entsoe_neighbor_market_query_spec_frame,
+        REQUIRED_ENTSOE_NEIGHBOR_ACCESS_COLUMNS,
+    )
+    if failures:
+        raise ValueError("; ".join(failures))
+    country_codes = _csv_values(sample_country_codes_csv)
+    if not country_codes:
+        raise ValueError("sample_country_codes_csv must contain at least one country code.")
+    _parse_entsoe_period_utc(sample_period_start_utc)
+    _parse_entsoe_period_utc(sample_period_end_utc)
+
+    token_available = bool(security_token and security_token.strip())
+    rows: list[dict[str, object]] = []
+    for country_code in country_codes:
+        country_rows = entsoe_neighbor_market_query_spec_frame.filter(
+            pl.col("country_code") == country_code
+        )
+        if country_rows.height != 1:
+            raise ValueError(f"query spec missing one row for country_code={country_code!r}")
+        query_row = country_rows.to_dicts()[0]
+        rows.extend(
+            _feature_candidate_rows(
+                query_row,
+                sample_period_start_utc=sample_period_start_utc,
+                sample_period_end_utc=sample_period_end_utc,
+                security_token=security_token,
+                token_available=token_available,
+                fetch_enabled=fetch_enabled,
+                fetch_xml_by_url=fetch_xml_by_url,
+            )
+        )
+    return pl.DataFrame(rows).sort(["country_code", "delivery_timestamp_utc"])
+
+
+def validate_entsoe_neighbor_market_feature_candidate_evidence(
+    frame: pl.DataFrame,
+) -> EvidenceCheckOutcome:
+    """Validate source-backed neighbor prices are not approved training features."""
+
+    failures = _missing_column_failures(frame, REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS)
+    if failures:
+        return EvidenceCheckOutcome(False, "; ".join(failures), {"row_count": frame.height})
+    rows = list(frame.iter_rows(named=True))
+    if not rows:
+        return EvidenceCheckOutcome(
+            False,
+            "ENTSO-E neighbor feature candidate frame has no rows",
+            {"row_count": 0},
+        )
+
+    training_rows = [row for row in rows if bool(row["training_use_allowed"])]
+    feature_rows = [row for row in rows if bool(row["feature_use_allowed"])]
+    token_bypass_rows = [
+        row
+        for row in rows
+        if bool(row["source_backed"]) and not bool(row["security_token_available"])
+    ]
+    bad_claim_rows = [
+        row
+        for row in rows
+        if str(row["claim_scope"]) != ENTSOE_NEIGHBOR_MARKET_FEATURE_CANDIDATE_CLAIM_SCOPE
+        or not bool(row["not_full_dfl"])
+        or not bool(row["not_market_execution"])
+    ]
+    if training_rows or feature_rows:
+        failures.append("ENTSO-E feature candidates must remain blocked from feature/training use")
+    if token_bypass_rows:
+        failures.append("ENTSO-E source-backed feature candidates require a security token")
+    if bad_claim_rows:
+        failures.append("ENTSO-E feature candidates must keep research-only claim flags")
+
+    metadata = {
+        "row_count": len(rows),
+        "source_backed_rows": len([row for row in rows if bool(row["source_backed"])]),
+        "training_allowed_rows": len(training_rows),
+        "feature_allowed_rows": len(feature_rows),
+        "token_bypass_rows": len(token_bypass_rows),
+        "bad_claim_rows": len(bad_claim_rows),
+    }
+    return EvidenceCheckOutcome(
+        passed=not failures,
+        description=(
+            "ENTSO-E neighbor feature candidates remain source-backed research-only rows."
+            if not failures
+            else "; ".join(failures)
+        ),
+        metadata=metadata,
+    )
+
+
 def _query_spec_row(row: dict[str, str], *, token_available: bool) -> dict[str, object]:
     eic_mapped = row["eic_mapping_status"] == "mapped"
     fetch_allowed = token_available and eic_mapped
@@ -447,6 +579,111 @@ def _sample_audit_row(
         "feature_use_allowed": False,
         "training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS,
         "claim_scope": ENTSOE_NEIGHBOR_MARKET_SAMPLE_CLAIM_SCOPE,
+        "not_full_dfl": True,
+        "not_market_execution": True,
+    }
+
+
+def _feature_candidate_rows(
+    query_row: dict[str, object],
+    *,
+    sample_period_start_utc: str,
+    sample_period_end_utc: str,
+    security_token: str | None,
+    token_available: bool,
+    fetch_enabled: bool,
+    fetch_xml_by_url: FetchXmlByUrl | None,
+) -> list[dict[str, object]]:
+    eic_mapped = str(query_row["eic_mapping_status"]) == "mapped"
+    parsed_points: list[tuple[datetime, float]] = []
+    if not fetch_enabled:
+        fetch_status = "skipped_fetch_disabled"
+    elif not token_available:
+        fetch_status = "blocked_missing_entsoe_security_token"
+    elif not eic_mapped:
+        fetch_status = "blocked_eic_mapping_review_required"
+    else:
+        url = _request_url(
+            str(query_row["bidding_zone_eic"]),
+            security_token=str(security_token),
+            period_start=sample_period_start_utc,
+            period_end=sample_period_end_utc,
+        )
+        xml_text = (
+            fetch_xml_by_url(url)
+            if fetch_xml_by_url is not None
+            else _fetch_text(url)
+        )
+        parsed_points = _parse_day_ahead_price_points(xml_text)
+        fetch_status = (
+            "source_backed_feature_sample_fetched_not_training"
+            if parsed_points
+            else "source_response_had_no_price_points"
+        )
+    if not parsed_points:
+        return [
+            _feature_candidate_row(
+                query_row,
+                delivery_timestamp_utc="",
+                price_eur_mwh=None,
+                source_backed=False,
+                fetch_enabled=fetch_enabled,
+                token_available=token_available,
+                fetch_status=fetch_status,
+                sample_period_start_utc=sample_period_start_utc,
+                sample_period_end_utc=sample_period_end_utc,
+            )
+        ]
+    return [
+        _feature_candidate_row(
+            query_row,
+            delivery_timestamp_utc=timestamp.isoformat(),
+            price_eur_mwh=price,
+            source_backed=True,
+            fetch_enabled=fetch_enabled,
+            token_available=token_available,
+            fetch_status=fetch_status,
+            sample_period_start_utc=sample_period_start_utc,
+            sample_period_end_utc=sample_period_end_utc,
+        )
+        for timestamp, price in parsed_points
+    ]
+
+
+def _feature_candidate_row(
+    query_row: dict[str, object],
+    *,
+    delivery_timestamp_utc: str,
+    price_eur_mwh: float | None,
+    source_backed: bool,
+    fetch_enabled: bool,
+    token_available: bool,
+    fetch_status: str,
+    sample_period_start_utc: str,
+    sample_period_end_utc: str,
+) -> dict[str, object]:
+    country_code = str(query_row["country_code"]).lower()
+    return {
+        "country_code": query_row["country_code"],
+        "country_name": query_row["country_name"],
+        "bidding_zone_eic": query_row["bidding_zone_eic"],
+        "feature_name": "entsoe_neighbor_day_ahead_price_context",
+        "feature_column": f"entsoe_{country_code}_day_ahead_price_eur_mwh",
+        "delivery_timestamp_utc": delivery_timestamp_utc,
+        "neighbor_market_price_eur_mwh": price_eur_mwh,
+        "source_backed": source_backed,
+        "fetch_enabled": fetch_enabled,
+        "security_token_available": token_available,
+        "fetch_status": fetch_status,
+        "sample_period_start_utc": sample_period_start_utc,
+        "sample_period_end_utc": sample_period_end_utc,
+        "publication_time_policy": query_row["publication_time_policy"],
+        "time_zone_policy": query_row["time_zone_policy"],
+        "currency_policy": "blocked_until_eur_to_uah_prior_only_normalization",
+        "training_use_allowed": False,
+        "feature_use_allowed": False,
+        "training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS,
+        "claim_scope": ENTSOE_NEIGHBOR_MARKET_FEATURE_CANDIDATE_CLAIM_SCOPE,
         "not_full_dfl": True,
         "not_market_execution": True,
     }

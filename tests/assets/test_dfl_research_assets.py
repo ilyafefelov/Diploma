@@ -247,6 +247,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "market_coupling_temporal_availability_frame",
         "entsoe_neighbor_market_query_spec_frame",
         "entsoe_neighbor_market_sample_audit_frame",
+        "entsoe_neighbor_market_feature_candidate_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
         "afl_forecast_error_audit_frame",
         "forecast_candidate_forensics_frame",

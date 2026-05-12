@@ -176,6 +176,7 @@ from smart_arbitrage.forecasting.market_coupling_availability import (
     build_market_coupling_temporal_availability_frame,
 )
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
 )
@@ -1019,6 +1020,61 @@ def entsoe_neighbor_market_sample_audit_frame(
         },
     )
     return sample_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def entsoe_neighbor_market_feature_candidate_frame(
+    context,
+    config: EntsoeNeighborMarketSampleAuditAssetConfig,
+    entsoe_neighbor_market_query_spec_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Source-backed ENTSO-E feature candidates that remain blocked from training."""
+
+    security_token = os.environ.get("ENTSOE_SECURITY_TOKEN") or os.environ.get(
+        "ENTSO_E_SECURITY_TOKEN"
+    )
+    candidate_frame = build_entsoe_neighbor_market_feature_candidate_frame(
+        entsoe_neighbor_market_query_spec_frame,
+        sample_country_codes_csv=config.sample_country_codes_csv,
+        sample_period_start_utc=config.sample_period_start_utc,
+        sample_period_end_utc=config.sample_period_end_utc,
+        security_token=security_token,
+        fetch_enabled=config.fetch_enabled,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": candidate_frame.height,
+            "source_backed_rows": candidate_frame.filter(pl.col("source_backed")).height
+            if candidate_frame.height
+            else 0,
+            "feature_allowed_rows": candidate_frame.filter(
+                pl.col("feature_use_allowed")
+            ).height
+            if candidate_frame.height
+            else 0,
+            "training_allowed_rows": candidate_frame.filter(
+                pl.col("training_use_allowed")
+            ).height
+            if candidate_frame.height
+            else 0,
+            "fetch_enabled": config.fetch_enabled,
+            "security_token_available": bool(security_token),
+            "scope": "entsoe_neighbor_market_feature_candidate_research_gate",
+            "not_market_execution": True,
+        },
+    )
+    return candidate_frame
 
 
 @dg.asset(
@@ -4675,6 +4731,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     market_coupling_temporal_availability_frame,
     entsoe_neighbor_market_query_spec_frame,
     entsoe_neighbor_market_sample_audit_frame,
+    entsoe_neighbor_market_feature_candidate_frame,
     dfl_semantic_event_strict_failure_audit_frame,
     forecast_candidate_forensics_frame,
     afl_training_panel_frame,

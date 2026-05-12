@@ -11,6 +11,9 @@ from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_f
 from smart_arbitrage.forecasting.market_coupling_availability import (
     build_market_coupling_temporal_availability_frame,
 )
+from smart_arbitrage.forecasting.market_coupling_features import (
+    build_market_coupling_feature_route_frame,
+)
 from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
 from smart_arbitrage.forecasting.sota_training import (
     build_official_global_panel_training_frame,
@@ -262,6 +265,61 @@ def test_official_global_panel_training_frame_routes_ready_market_coupling_featu
     assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == feature_name
     assert feature_name in panel.select("known_future_feature_columns_csv").to_series().item(0)
     assert feature_name not in panel.select("blocked_external_feature_columns_csv").to_series().item(0)
+
+
+def test_official_global_panel_training_frame_routes_only_approved_feature_route_rows() -> None:
+    feature_name = "entsoe_neighbor_day_ahead_price_context"
+    silver_frame = _tenant_silver_frame(
+        tenant_ids=("client_003_dnipro_factory",),
+        history_hours=20 * 24,
+        forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    ).with_columns((pl.col("price_uah_mwh") * 0.8).alias(feature_name))
+    market_coupling = build_market_coupling_temporal_availability_frame(
+        build_forecast_afe_feature_catalog_frame()
+    ).with_columns(
+        [
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit(True))
+            .otherwise(pl.col("training_use_allowed"))
+            .alias("training_use_allowed"),
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit("training_ready"))
+            .otherwise(pl.col("readiness_status"))
+            .alias("readiness_status"),
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit(""))
+            .otherwise(pl.col("training_blockers_csv"))
+            .alias("training_blockers_csv"),
+            *[
+                pl.when(pl.col("feature_name") == feature_name)
+                .then(pl.lit("ready"))
+                .otherwise(pl.col(column_name))
+                .alias(column_name)
+                for column_name in (
+                    "licensing_status",
+                    "timezone_status",
+                    "currency_status",
+                    "market_rules_status",
+                    "temporal_availability_status",
+                    "domain_shift_status",
+                )
+            ],
+        ]
+    )
+    route = build_market_coupling_feature_route_frame(market_coupling)
+
+    panel = build_official_global_panel_training_frame(
+        silver_frame,
+        tenant_ids=("client_003_dnipro_factory",),
+        horizon_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+        market_coupling_feature_route_frame=route,
+    )
+
+    assert panel.select("external_feature_governance_scope").to_series().unique().to_list() == [
+        "market_coupling_feature_route_frame"
+    ]
+    assert feature_name in panel.columns
+    assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == feature_name
 
 
 def _tenant_silver_frame(
