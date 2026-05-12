@@ -94,6 +94,25 @@ def test_official_attempt_resume_summary_script_uses_manifest_contract() -> None
     assert "anchor_counts_by_model_for_generated_at" in resume_script
 
 
+def test_official_evidence_monitor_wrapper_delegates_to_resume_summary() -> None:
+    monitor_script = (
+        PROJECT_ROOT / "scripts" / "monitor-official-evidence-attempt.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "[string]$ManifestPath" in monitor_script
+    assert "[string]$StrategyKind" in monitor_script
+    assert "[string]$GeneratedAtIso = \"\"" in monitor_script
+    assert "[string]$OutputPath = \"\"" in monitor_script
+    assert "ManifestPath is required" in monitor_script
+    assert "StrategyKind is required" in monitor_script
+    assert "summarize_official_evidence_attempt_resume.py" in monitor_script
+    assert "--manifest" in monitor_script
+    assert "--strategy-kind" in monitor_script
+    assert "--generated-at-iso" in monitor_script
+    assert "--output" in monitor_script
+    assert "Get-Content -LiteralPath $resolvedOutputPath" in monitor_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)

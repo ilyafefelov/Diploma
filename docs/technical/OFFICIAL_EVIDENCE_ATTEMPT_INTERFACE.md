@@ -62,7 +62,27 @@ automation, and future evidence registries.
 ## Resume Summary
 
 Monitoring automation can now compute the next resume point from the manifest
-instead of parsing free-form `run.log` text. The helper is:
+instead of parsing free-form `run.log` text. The repo-local wrapper is:
+
+- `scripts/monitor-official-evidence-attempt.ps1`
+
+It requires `-ManifestPath` and `-StrategyKind`, accepts an optional
+`-GeneratedAtIso`, and can also write the emitted JSON to `-OutputPath`.
+The wrapper delegates to the Python helper below and reads persisted counts from
+Postgres through the existing strategy-evaluation DSN environment variables:
+`SMART_ARBITRAGE_STRATEGY_EVALUATION_DSN` or
+`SMART_ARBITRAGE_MARKET_DATA_DSN`.
+
+Example:
+
+```powershell
+.\scripts\monitor-official-evidence-attempt.ps1 `
+  -ManifestPath .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  -StrategyKind official_global_panel_nbeatsx_rolling_strict_lp_benchmark `
+  -OutputPath .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+```
+
+The lower-level helper remains available for direct/manual count checks:
 
 - `smart_arbitrage.forecasting.official_evidence_attempts.summarize_official_evidence_attempt_resume`
 - `scripts/summarize_official_evidence_attempt_resume.py`
@@ -91,6 +111,10 @@ models are passed, the effective count is the minimum source count, so a
 partially persisted model cannot be hidden by a complete one. The claim boundary
 is copied through unchanged: Offline Strategy Promotion evidence only,
 `market_execution_enabled=false`.
+
+For future long official runs, use the PowerShell monitor wrapper first. Manual
+`run.log` inspection and ad hoc SQL should be reserved for diagnosis after the
+wrapper reports an invalid manifest, missing DSN, or missing persisted rows.
 
 ## Hugging Face Jobs Integration
 
@@ -150,8 +174,9 @@ git diff --check
 
 ## Next Work
 
-1. Wire the resume-summary script into the monitoring automation's Postgres row
-   count step.
+1. If the Codex heartbeat monitor is recreated, point it at
+   `scripts/monitor-official-evidence-attempt.ps1` instead of direct `run.log`
+   and SQL inspection.
 2. Add an evidence-registry export that copies the manifest next to the final
    Offline Strategy Promotion summary. The 365-anchor official global-panel
    run now has a local export at

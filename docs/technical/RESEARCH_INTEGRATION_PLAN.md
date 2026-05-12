@@ -2116,17 +2116,21 @@ New evidence-attempt interface:
   [run-official-schedule-value-batches.ps1](../../scripts/run-official-schedule-value-batches.ps1),
   [run-official-global-panel-batches.ps1](../../scripts/run-official-global-panel-batches.ps1),
   [build_hf_official_schedule_value_job.py](../../scripts/build_hf_official_schedule_value_job.py),
+  [monitor-official-evidence-attempt.ps1](../../scripts/monitor-official-evidence-attempt.ps1),
   and
   [summarize_official_evidence_attempt_resume.py](../../scripts/summarize_official_evidence_attempt_resume.py).
 
 Decision update: future official reruns should cite the manifest in addition to
 the generated timestamp. Resume decisions should use the manifest batch plan and
 the latest persisted rows, rather than relying only on free-form `run.log`
-inspection. The resume-summary helper uses the minimum persisted anchor count
-across source models, which keeps partial official runs conservative when one
-model has fewer completed anchors than another. It can either receive manual
-counts or read `forecast_strategy_evaluations` by `strategy_kind + generated_at`
-through the strategy-evaluation store.
+inspection. The repo-local monitor wrapper is now the preferred operational
+entrypoint: it validates the manifest path and strategy kind, preserves an
+explicit `GeneratedAtIso` override, calls the resume-summary helper, reads
+`forecast_strategy_evaluations` by `strategy_kind + generated_at` through the
+strategy-evaluation store, and can write the JSON snapshot to an output path.
+The helper uses the minimum persisted anchor count across source models, which
+keeps partial official runs conservative when one model has fewer completed
+anchors than another.
 
 Tracked docs:
 

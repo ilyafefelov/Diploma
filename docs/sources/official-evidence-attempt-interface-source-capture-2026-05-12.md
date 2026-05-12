@@ -13,6 +13,7 @@ forecast evidence-attempt interface.
 | Hugging Face Hub Jobs guide | https://huggingface.co/docs/huggingface_hub/main/guides/jobs | Confirms `run_uv_job`/Jobs support environment, secrets, timeout, and managed execution metadata. |
 | Repo official schedule/value runner | `scripts/run-official-schedule-value-batches.ps1` | Local source of resumable 104-anchor schedule/value evidence. |
 | Repo official global-panel runner | `scripts/run-official-global-panel-batches.ps1` | Local source of resumable 365-anchor global-panel evidence. |
+| Repo official evidence monitor | `scripts/monitor-official-evidence-attempt.ps1` | Repo-local wrapper around the manifest resume summary plus Postgres persisted anchor counts. |
 
 ## Repo Decision
 
@@ -32,6 +33,12 @@ persisted count so the next resume point is conservative and repeatable. The
 helper can accept manual counts or read distinct anchor counts per
 `forecast_model_name` from `forecast_strategy_evaluations` for the fixed
 `strategy_kind + generated_at`.
+
+The monitor wrapper is the preferred operational entrypoint for future long
+official runs. It validates the manifest and strategy kind arguments, preserves
+an explicitly provided generated timestamp, delegates to
+`scripts/summarize_official_evidence_attempt_resume.py`, and can write the JSON
+snapshot to a local output path for heartbeat or registry use.
 
 This is not a new forecast model and not live market execution. It is the
 execution-governance layer needed before reliable Hugging Face Jobs offload.
