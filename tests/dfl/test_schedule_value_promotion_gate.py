@@ -172,6 +172,64 @@ def test_schedule_value_production_gate_registry_writes_concise_artifacts(tmp_pa
     assert "market execution remains disabled" in markdown
 
 
+def test_schedule_value_production_gate_registry_keeps_official_source_names(tmp_path) -> None:
+    gate = pl.DataFrame(
+        {
+            "source_model_name": [
+                "nbeatsx_official_global_panel_horizon_calibrated_v1",
+                "nbeatsx_official_global_panel_v1",
+            ],
+            "tenant_count": [5, 5],
+            "latest_validation_tenant_anchor_count": [90, 90],
+            "latest_strict_mean_regret_uah": [310.58, 310.58],
+            "latest_selected_mean_regret_uah": [206.37, 225.44],
+            "latest_strict_median_regret_uah": [198.39, 198.39],
+            "latest_selected_median_regret_uah": [96.02, 109.69],
+            "latest_mean_regret_improvement_ratio_vs_strict": [0.3355, 0.2741],
+            "latest_median_not_worse": [True, True],
+            "latest_source_signal": [True, True],
+            "rolling_window_count": [4, 4],
+            "rolling_strict_pass_window_count": [4, 4],
+            "rolling_development_pass_window_count": [4, 3],
+            "robust_research_challenger": [True, True],
+            "allowed_challenger": [
+                "dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1",
+                "dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1",
+            ],
+            "fallback_strategy": [
+                "strict_similar_day_default_fallback",
+                "strict_similar_day_default_fallback",
+            ],
+            "promotion_blocker": ["none", "none"],
+            "production_promote": [True, True],
+            "market_execution_enabled": [False, False],
+            "claim_scope": [
+                "dfl_schedule_value_production_gate_offline_strategy_not_market_execution",
+                "dfl_schedule_value_production_gate_offline_strategy_not_market_execution",
+            ],
+            "not_full_dfl": [True, True],
+            "not_market_execution": [True, True],
+        }
+    )
+
+    registry = build_dfl_schedule_value_production_gate_registry(
+        run_slug="unit_official_global_panel_gate",
+        gate_frame=gate,
+    )
+    export_dir = write_dfl_schedule_value_production_gate_registry(
+        registry,
+        output_root=tmp_path,
+        run_slug="unit_official_global_panel_gate",
+    )
+
+    markdown = (export_dir / "dfl_schedule_value_production_gate_registry.md").read_text(
+        encoding="utf-8"
+    )
+    assert "`nbeatsx_official_global_panel_horizon_calibrated_v1`" in markdown
+    assert "`nbeatsx_official_global_panel_v1`" in markdown
+    assert "`nbeatsx_silver_v0`" not in markdown
+
+
 def _row(frame: pl.DataFrame, source_model_name: str) -> dict[str, object]:
     rows = frame.filter(pl.col("source_model_name") == source_model_name).to_dicts()
     assert len(rows) == 1

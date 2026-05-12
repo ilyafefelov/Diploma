@@ -557,10 +557,18 @@ def _production_gate_registry_markdown(registry: dict[str, Any]) -> str:
 
 
 def _display_source_model(source_model_name: str) -> str:
-    if source_model_name.startswith("nbeatsx"):
+    if source_model_name == "nbeatsx_silver_v0":
         return "NBEATSx (`nbeatsx_silver_v0`)"
-    if source_model_name.startswith("tft"):
+    if source_model_name == "tft_silver_v0":
         return "TFT (`tft_silver_v0`)"
+    if source_model_name.startswith("nbeatsx_official"):
+        return f"Official NBEATSx (`{source_model_name}`)"
+    if source_model_name.startswith("tft_official"):
+        return f"Official TFT (`{source_model_name}`)"
+    if source_model_name.startswith("nbeatsx"):
+        return f"NBEATSx (`{source_model_name}`)"
+    if source_model_name.startswith("tft"):
+        return f"TFT (`{source_model_name}`)"
     return f"`{source_model_name}`"
 
 
