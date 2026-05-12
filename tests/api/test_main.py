@@ -1574,6 +1574,8 @@ def test_dfl_schedule_value_production_gate_endpoint_returns_offline_boundary(
 	assert response_payload["fallback_strategy"] == "strict_similar_day_default_fallback"
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["claim_boundary"] == "offline_read_model_strategy_evidence_only_not_market_execution"
+	assert "Offline Strategy Promotion" in response_payload["academic_scope"]
+	assert "market execution remains disabled" in response_payload["academic_scope"]
 	assert response_payload["rows"][0]["market_execution_enabled"] is False
 	assert response_payload["rows"][0]["production_promote"] is True
 

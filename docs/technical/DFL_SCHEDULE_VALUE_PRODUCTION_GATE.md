@@ -15,7 +15,9 @@ Decision Transformer controller.
 
 Implementation note: asset keys, API fields, Postgres rows, and existing file
 names keep the internal term `production_promote`. Thesis-facing prose should
-call the accepted state **Offline Strategy Promotion**.
+call the accepted state **Offline Strategy Promotion**. The shared wording
+contract is tracked in
+[OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md](OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md).
 
 ## Assets
 

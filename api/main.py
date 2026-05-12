@@ -39,6 +39,10 @@ from smart_arbitrage.assets.mvp_demo import (
 	DEMO_USD_TO_UAH_RATE,
 )
 from smart_arbitrage.dfl.regret_weighted import HORIZON_REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND
+from smart_arbitrage.dfl.offline_strategy_promotion import (
+	offline_strategy_promotion_academic_scope,
+	summarize_offline_strategy_promotion,
+)
 from smart_arbitrage.dfl.schedule_value_promotion_gate import (
 	DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
 	STRICT_DEFAULT_FALLBACK,
@@ -2360,25 +2364,23 @@ def _to_dfl_schedule_value_production_gate_response(
 ) -> DflScheduleValueProductionGateResponse:
 	if gate_frame.height == 0:
 		raise HTTPException(status_code=404, detail="DFL schedule/value production gate rows not found.")
+	sorted_gate_frame = gate_frame.sort("source_model_name")
 	rows = [
 		row
-		for row in gate_frame.sort("source_model_name").iter_rows(named=True)
+		for row in sorted_gate_frame.iter_rows(named=True)
 	]
-	promoted_source_model_names = [
-		str(row["source_model_name"]) for row in rows if bool(row["production_promote"])
-	]
-	market_execution_enabled = any(bool(row["market_execution_enabled"]) for row in rows)
+	promotion_summary = summarize_offline_strategy_promotion(sorted_gate_frame)
 	first_row = rows[0]
 	return DflScheduleValueProductionGateResponse(
 		generated_at=_datetime_row_value(first_row["generated_at"], field_name="generated_at"),
 		row_count=gate_frame.height,
-		production_promote_count=len(promoted_source_model_names),
-		promoted_source_model_names=promoted_source_model_names,
+		production_promote_count=int(promotion_summary["production_promote_count"]),
+		promoted_source_model_names=list(promotion_summary["promoted_source_model_names"]),
 		fallback_strategy=STRICT_DEFAULT_FALLBACK,
-		market_execution_enabled=market_execution_enabled,
+		market_execution_enabled=bool(promotion_summary["market_execution_enabled"]),
 		claim_scope=DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
-		claim_boundary="offline_read_model_strategy_evidence_only_not_market_execution",
-		academic_scope=str(first_row["academic_scope"]),
+		claim_boundary=str(promotion_summary["claim_boundary"]),
+		academic_scope=offline_strategy_promotion_academic_scope(str(first_row["academic_scope"])),
 		rows=[
 			DflScheduleValueProductionGatePointResponse(
 				source_model_name=str(row["source_model_name"]),

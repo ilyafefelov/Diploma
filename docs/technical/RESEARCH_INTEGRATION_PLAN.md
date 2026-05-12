@@ -2112,3 +2112,21 @@ Tracked docs:
 
 - [OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md](OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md).
 - [../sources/official-evidence-attempt-interface-source-capture-2026-05-12.md](../sources/official-evidence-attempt-interface-source-capture-2026-05-12.md).
+
+## Offline Strategy Promotion Language Freeze
+
+The thesis-facing term is now **Offline Strategy Promotion**. Internal
+compatibility fields such as `production_promote`,
+`production_promote_count`, `dfl_schedule_value_production_gate_frame`, and
+`/dashboard/dfl-schedule-value-production-gate` remain unchanged for existing
+read models and stored evidence.
+
+The API response language is normalized through
+`smart_arbitrage.dfl.offline_strategy_promotion`, so callers can keep reading
+the stable fields while `academic_scope` states the correct boundary:
+offline/read-model strategy evidence only, `strict_similar_day` fallback, and
+`market_execution_enabled=false`.
+
+Tracked doc:
+
+- [OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md](OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md).
