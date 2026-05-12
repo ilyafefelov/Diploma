@@ -40,7 +40,7 @@ This matrix maps literature, regulation, and project evidence to the architectur
 | `docs/technical/ARCHITECTURE_AND_DATA_FLOW.md` | Durable architecture visual and claim boundaries. |
 | `docs/technical/DATA_INGESTION_SOURCES.md` | Source contracts for OREE, Open-Meteo, NEURC caps, OREE fees, synthetic fallback labeling. |
 | `docs/technical/DFL_READINESS_GATE.md` | DFL readiness status: thesis evidence accepted, full DFL and market execution blocked. |
-| `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md` | Offline/read-model production gate passes for source-specific schedule/value rows while market execution remains false. |
+| `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md` | Offline Strategy Promotion gate passes for source-specific schedule/value rows while market execution remains false. |
 | `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md` | Official NBEATSx/TFT adapters execute but have not beaten strict baseline in rolling value tests. |
 | `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md` | Five-tenant 104-anchor compact forecast audit has zero blocking failures and documented shift warnings. |
 | `src/smart_arbitrage/defs/__init__.py` | Canonical Dagster definitions registration. |

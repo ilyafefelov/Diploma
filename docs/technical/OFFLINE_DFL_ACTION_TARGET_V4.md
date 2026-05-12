@@ -83,7 +83,7 @@ API sanity check after the run:
 
 ## Strict Gate Result
 
-The strict promotion gate blocks production promotion. V4 improves the TFT
+The strict promotion gate blocks Offline Strategy Promotion. V4 improves the TFT
 candidate versus raw TFT, panel v2, and decision-target v3, but it still loses
 badly to the frozen `strict_similar_day` control. NBEATSx v4 regresses versus
 raw, panel v2, and v3.

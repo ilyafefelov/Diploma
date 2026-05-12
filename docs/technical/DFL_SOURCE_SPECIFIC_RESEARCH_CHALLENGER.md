@@ -11,7 +11,7 @@ decision. It combines four existing evidence paths:
 - prior feature-audit clusters.
 
 Claim boundary: research evidence only. This is not full DFL, not deployed
-Decision Transformer control, not production promotion, and not market
+Decision Transformer control, not Offline Strategy Promotion, and not market
 execution. `strict_similar_day` remains the frozen Level 1 control and default
 fallback.
 
@@ -98,7 +98,7 @@ is worse than `strict_similar_day`, even though the median improves.
 The next slice should not add another DT variant. The immediate blocker is
 robustness: either recover more Ukrainian history, strengthen prior-only regime
 features, or make the source-specific TFT switch rule survive earlier rolling
-windows. Production promotion remains blocked until the same source beats
+windows. Offline Strategy Promotion remains blocked until the same source beats
 `strict_similar_day` by the strict gate across rolling evidence.
 
 ## Production Promotion Follow-Up

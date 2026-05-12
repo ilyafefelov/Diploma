@@ -160,5 +160,5 @@ intentionally selected for the report.
   selector yet. Expand UA data or candidate generation first.
 - If the upper bound beats strict on meaningful slices, train a prior-only
   strict-failure selector over those slices.
-- Production promotion remains blocked unless the selected non-strict strategy
+- Offline Strategy Promotion remains blocked unless the selected non-strict strategy
   beats `strict_similar_day` under the conservative strict LP/oracle gate.

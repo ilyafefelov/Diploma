@@ -136,6 +136,10 @@ _Avoid_: live bid, production policy input, oracle forecast, dashboard contract
 Conservative research gate that blocks a forecast, calibration, selector, or DFL candidate from being described as improved control unless it beats the frozen **Strict Similar-Day Rule** on same-scope regret and safety evidence.
 _Avoid_: automatic deployment, dashboard default switch, forecast-only leaderboard, weak model promotion
 
+**Offline Strategy Promotion**:
+Thesis-facing claim state where a forecast, selector, schedule/value, or DFL-style challenger has passed the **Promotion Gate** for offline/read-model strategy evidence while `market_execution_enabled=false`, **Strict Similar-Day Rule** remains the fallback, and no live bids, cleared trades, or inverter commands are generated.
+_Avoid_: production promotion, live market execution, dashboard default switch, deployed controller
+
 **Effective-Dated Market Constraint**:
 Regulatory or market parameter whose value depends on the delivery/decision date, such as DAM/IDM/Balancing price caps, operator transaction tariffs, or fixed participation fees.
 _Avoid_: timeless constant, hidden config, dashboard-only annotation, post-hoc correction

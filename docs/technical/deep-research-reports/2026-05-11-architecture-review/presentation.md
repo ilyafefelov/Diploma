@@ -111,7 +111,7 @@ Supported by literature:
 
 Main message:
 
-The research direction is right, but the current evidence supports disciplined offline promotion gates, not live autonomous control.
+The research direction is right, but the current evidence supports disciplined Offline Strategy Promotion gates, not live autonomous control.
 
 ---
 

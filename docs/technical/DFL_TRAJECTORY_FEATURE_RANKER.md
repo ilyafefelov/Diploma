@@ -112,7 +112,7 @@ Development diagnostic:
 - NBEATSx ranker improves mean regret versus raw NBEATSx by `38.86%`.
 - TFT ranker improves mean regret versus raw TFT by `39.42%`.
 
-Production promotion remains blocked:
+Offline Strategy Promotion remains blocked:
 
 - `strict_similar_day` still has the best mean and median regret.
 - The ranker does not beat strict control by the required 5% mean-regret

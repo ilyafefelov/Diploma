@@ -39,7 +39,7 @@ exists, but full differentiable DFL is not yet a positive result.
 | Horizon-aware calibration | Improves neural candidate diagnostics in some runs, but does not replace strict similar-day as frozen control. |
 | Risk-adjusted selector | Selector evidence only; not full DFL and not market execution. |
 | Offline relaxed-LP DFL v0 | Proves the training loop can run on gated data, but held-out regret worsens and must not be promoted. |
-| Offline relaxed-LP DFL panel v2 | Five tenants x 90 anchors passed the development gate with positive relaxed-regret improvement; production promotion remains blocked until strict-LP/oracle promotion passes. |
+| Offline relaxed-LP DFL panel v2 | Five tenants x 90 anchors passed the development gate with positive relaxed-regret improvement; Offline Strategy Promotion remains blocked until strict-LP/oracle promotion passes. |
 
 ## Planned Research
 

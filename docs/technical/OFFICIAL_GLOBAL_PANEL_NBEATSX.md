@@ -4,8 +4,8 @@ Date: 2026-05-12
 
 This slice starts the stronger official-forecast lane without replacing the
 compact in-repo candidates. The goal is to give Nixtla NBEATSx a fairer
-training contract before spending CPU/GPU time on full rolling-origin
-promotion evidence.
+training contract before spending CPU/GPU time on full rolling-origin Offline
+Strategy Promotion evidence.
 
 ## Why This Exists
 
@@ -46,7 +46,7 @@ of related time series.
 | `dfl_official_global_panel_schedule_value_learner_v2_frame` | Gold | Selects schedule/value profiles from prior anchors, not final-holdout outcomes. |
 | `dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame` | Gold | Strict-scores the selected global-panel schedule/value candidates. |
 | `dfl_official_global_panel_schedule_value_learner_v2_robustness_frame` | Gold | Reports rolling-window screening evidence for the selected schedule/value candidates. |
-| `dfl_official_global_panel_schedule_value_production_gate_frame` | Gold | Applies the full promotion rule and keeps market execution disabled. |
+| `dfl_official_global_panel_schedule_value_production_gate_frame` | Gold | Applies the full Offline Strategy Promotion rule and keeps market execution disabled. |
 
 Tracked config:
 [configs/real_data_official_global_panel_nbeatsx_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_week3.yaml).
@@ -167,7 +167,7 @@ Window detail:
 Interpretation: the official global-panel path is operationally viable, but
 raw NBEATSx still loses the strict LP/oracle gate on both mean and median regret.
 The useful signal is regime-specific: NBEATSx can win some stressed
-tenant-anchor rows, but it is not yet a default or production-promotion
+tenant-anchor rows, but it is not yet a default or Offline Strategy Promotion
 candidate.
 
 Rolling calibration evidence on 2026-05-11:
@@ -235,7 +235,7 @@ Result:
 | Calibrated-source latest improvement vs strict | 60.01% |
 | Raw-source latest improvement vs strict | 9.92% |
 | Rolling strict-pass windows | 1 / 2 for both sources |
-| Production promotion | `false` |
+| Offline Strategy Promotion | `false` |
 | Promotion blocker | `validation_undercoverage` |
 | Fallback strategy | `strict_similar_day_default_fallback` |
 
@@ -245,7 +245,7 @@ in the latest window. This is not enough for promotion. The full promotion
 threshold remains 90 latest validation tenant-anchors per source and 3 of 4
 rolling strict-control passes; the current four-anchor global-panel run is only
 a screening result. This fixes an important governance detail: screening
-thresholds must not be reused as production-promotion thresholds.
+thresholds must not be reused as Offline Strategy Promotion thresholds.
 
 Clean 104-anchor latest-first promotion result on 2026-05-11:
 
@@ -269,7 +269,7 @@ Clean 104-anchor latest-first promotion result on 2026-05-11:
   -BatchTimeoutSeconds 7200
 ```
 
-The first 90-anchor attempt produced promotion-grade latest holdout coverage,
+The first 90-anchor attempt produced Offline Strategy Promotion-grade latest holdout coverage,
 but the downstream robustness asset correctly failed because four 18-anchor
 rolling windows plus prior history require at least 102 anchors. The run was
 resumed with the same fixed `generated_at` and extended to 104 anchors before
@@ -295,7 +295,7 @@ strict control. The promotion signal therefore does not come from replacing the
 forecast directly; it comes from the schedule/value learner choosing feasible
 schedule families with `strict_similar_day` as the default fallback.
 
-Downstream schedule/value production gate:
+Downstream schedule/value Offline Strategy Promotion gate:
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
@@ -312,7 +312,7 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 | Learner rows | 10 |
 | Strict final-holdout rows | 540 |
 | Robustness rows | 8 |
-| Production gate rows | 2 |
+| Offline Strategy Promotion gate rows | 2 |
 | Market execution enabled | `false` |
 
 Latest final-holdout strict LP/oracle evidence:
@@ -333,15 +333,15 @@ Rolling robustness:
 | Raw official NBEATSx | 4 | 4 | 4 | 34.55% | `robust_research_challenger` |
 | Horizon-calibrated official NBEATSx | 4 | 3 | 4 | 23.93% | `robust_research_challenger` |
 
-Production gate:
+Offline Strategy Promotion gate:
 
-| Source | Latest validation tenant-anchors | Allowed challenger | Fallback | Production promote | Market execution | Blocker |
+| Source | Latest validation tenant-anchors | Allowed challenger | Fallback | Internal `production_promote` | Market execution | Blocker |
 |---|---:|---|---|---|---|---|
 | Raw official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
 | Horizon-calibrated official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
 
-Interpretation: this is the first promotion-grade official global-panel result
-that passes the offline/read-model production gate. The precise claim is narrow:
+Interpretation: this is the first Offline Strategy Promotion-grade official
+global-panel result that passes the offline/read-model strategy gate. The precise claim is narrow:
 the schedule/value learner built from official global-panel NBEATSx candidates
 may be used as an offline strategy-evidence challenger behind a
 `strict_similar_day` fallback. It is not live market execution, not a deployed
@@ -363,7 +363,7 @@ better than the strict control.
 The run resumed the clean partial `2026-05-11 20:30:00+00` timestamp after the
 first eight chronological anchors, completed the remaining 357 anchors, and
 then ran horizon calibration, schedule candidate libraries, the schedule/value
-learner, rolling robustness, and the production gate.
+learner, rolling robustness, and the Offline Strategy Promotion gate.
 
 Raw official rolling benchmark:
 
@@ -385,7 +385,7 @@ forecast model. Raw official global-panel NBEATSx and its prior-only horizon
 calibration both still lose to the frozen strict control over the full
 365-anchor Ukrainian backfill panel.
 
-Downstream schedule/value production gate:
+Downstream schedule/value Offline Strategy Promotion gate:
 
 | Evidence item | Value |
 |---|---:|
@@ -396,7 +396,7 @@ Downstream schedule/value production gate:
 | Learner rows | 10 |
 | Strict final-holdout rows | 540 |
 | Robustness rows | 8 |
-| Production gate rows | 2 |
+| Offline Strategy Promotion gate rows | 2 |
 | Market execution enabled | `false` |
 
 Latest final-holdout strict LP/oracle evidence:
@@ -417,16 +417,16 @@ Rolling robustness:
 | Raw official NBEATSx | 4 | 4 | 3 | 27.42% | `robust_research_challenger` |
 | Horizon-calibrated official NBEATSx | 4 | 4 | 4 | 33.56% | `robust_research_challenger` |
 
-Production gate:
+Offline Strategy Promotion gate:
 
-| Source | Latest validation tenant-anchors | Allowed challenger | Fallback | Production promote | Market execution | Blocker |
+| Source | Latest validation tenant-anchors | Allowed challenger | Fallback | Internal `production_promote` | Market execution | Blocker |
 |---|---:|---|---|---|---|---|
 | Raw official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
 | Horizon-calibrated official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
 
 Interpretation: the 104-anchor result generalizes to the larger 365-anchor UA
 backfill panel for the schedule/value learner, not for raw forecasting. This is
-now robust offline/read-model promotion evidence for an official global-panel
+now robust **Offline Strategy Promotion** evidence for an official global-panel
 NBEATSx schedule/value challenger behind `strict_similar_day` fallback. It is
 still not live market execution, not a dashboard/API default switch, not a
 deployed Decision Transformer controller, and not proof that raw NBEATSx

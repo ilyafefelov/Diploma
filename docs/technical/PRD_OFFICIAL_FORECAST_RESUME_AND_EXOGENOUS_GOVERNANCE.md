@@ -42,7 +42,7 @@ source of truth.
 3. As a thesis author, I want each batch to use the same generation timestamp,
    so that persisted rows can be treated as one evidence run.
 4. As a thesis author, I want partial official rows to remain research-only, so
-   that incomplete evidence is not mistaken for promotion-grade evidence.
+   that incomplete evidence is not mistaken for Offline Strategy Promotion-grade evidence.
 5. As a thesis author, I want a clear command for unattended execution, so that
    a long run can continue while I am away from the workstation.
 6. As a thesis author, I want per-batch logs, so that a failed batch can be
@@ -74,7 +74,7 @@ source of truth.
 17. As a researcher, I want official NBEATSx/TFT models to receive governed
     exogenous variables only after availability checks pass, so that improved
     model capacity does not introduce leakage.
-18. As an operator-demo reviewer, I want the offline promotion gate to keep
+18. As an operator-demo reviewer, I want the Offline Strategy Promotion gate to keep
     market execution disabled, so that dashboard/read-model evidence is not
     confused with live trading.
 19. As a future agent, I want a clear next-slice PRD, so that it can pick up

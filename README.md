@@ -9,7 +9,7 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Main control: `strict_similar_day`.
 - Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
-- Latest DFL research challenger: Schedule/Value Learner V2 now passes the offline production/fallback gate for read-model strategy evidence only: NBEATSx-source passes 4/4 rolling strict-control windows, TFT-source passes 3/4, both have `production_promote=true`, and live market execution remains disabled.
+- Latest DFL research challenger: Schedule/Value Learner V2 now passes the **Offline Strategy Promotion** / fallback gate for read-model strategy evidence only: NBEATSx-source passes 4/4 rolling strict-control windows, TFT-source passes 3/4, both have internal `production_promote=true`, and live market execution remains disabled.
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
@@ -165,11 +165,11 @@ Latest full verification: `151 passed`.
 - Baseline LP and pipeline note: `docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md`
 - Residual DFL + offline DT research challenger: `docs/technical/DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md`
 - Source-specific research challenger gate: `docs/technical/DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md`
-- Production promotion gate: `docs/technical/DFL_PRODUCTION_PROMOTION_GATE.md`
+- Offline Strategy Promotion gate: `docs/technical/DFL_PRODUCTION_PROMOTION_GATE.md`
 - Regime-gated TFT selector v2: `docs/technical/DFL_REGIME_GATED_TFT_SELECTOR_V2.md`
 - DFL schedule/value learner v2: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md`
 - DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
-- DFL schedule/value production gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
+- DFL schedule/value Offline Strategy Promotion gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
 - Official global-panel NBEATSx lane: `docs/technical/OFFICIAL_GLOBAL_PANEL_NBEATSX.md`
 - UA backfill coverage recovery: `docs/technical/DFL_DATA_RECOVERY_ROADMAP.md`

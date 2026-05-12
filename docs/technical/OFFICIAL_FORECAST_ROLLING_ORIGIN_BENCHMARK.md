@@ -55,7 +55,7 @@ The tracked config is intentionally CPU-safe:
 
 The scale config raises the first evidence run to four anchors per tenant while
 keeping the same model settings. It is meant for runtime/robustness probing, not
-as a production promotion run.
+as an Offline Strategy Promotion run.
 
 After this path materializes cleanly, the same asset can be rerun with more
 anchors. The promotion authority remains the strict LP/oracle gate, not adapter
@@ -81,7 +81,7 @@ This benchmark can support one of three conservative claims:
 - official NBEATSx/TFT improve raw neural evidence but still lose to
   `strict_similar_day`;
 - one official source becomes a research challenger and must pass rolling
-  robustness before any offline promotion claim.
+  robustness before any Offline Strategy Promotion claim.
 
 It cannot support live execution, full DFL, or deployed Decision Transformer
 claims.
@@ -165,7 +165,7 @@ The official rolling rows now feed an additive schedule/value promotion path:
 
 That path keeps the same frozen LP/oracle evaluator and `strict_similar_day`
 control, but converts official rows into the richer schedule-candidate library,
-Schedule/Value Learner V2, rolling robustness, and offline promotion gate. It
+Schedule/Value Learner V2, rolling robustness, and Offline Strategy Promotion gate. It
 does not change the official forecast benchmark itself and does not enable live
 market execution.
 

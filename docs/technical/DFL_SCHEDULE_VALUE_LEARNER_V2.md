@@ -88,7 +88,7 @@ Interpretation:
 - Both source learners improve strongly versus their raw neural references.
 - This is the first latest-holdout DFL-style schedule/value evidence that beats
   the frozen strict control under strict LP/oracle scoring.
-- It is not enough for production/default promotion by itself. Rolling-window
+- It is not enough for Offline Strategy Promotion by itself. Rolling-window
   robustness over earlier temporal windows is required before the learner can
   feed any offline default-fallback gate.
 
@@ -101,13 +101,13 @@ Rolling robustness update:
 - both source learners now qualify as robust research challengers under the
   current offline evidence gate.
 
-Promotion update:
+Offline Strategy Promotion update:
 
-- production gate run id: `93d0f01c-5140-4958-a64f-74067144df4f`;
+- Offline Strategy Promotion gate run id: `93d0f01c-5140-4958-a64f-74067144df4f`;
 - asset check: `dfl_schedule_value_production_gate_evidence` passed;
-- NBEATSx-source learner: `production_promote=true` for offline/read-model
+- NBEATSx-source learner: internal `production_promote=true` for offline/read-model
   evidence, with `market_execution_enabled=false`;
-- TFT-source learner: `production_promote=true` for offline/read-model evidence,
+- TFT-source learner: internal `production_promote=true` for offline/read-model evidence,
   with `market_execution_enabled=false`;
 - tracked note:
   [DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md](DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md).
@@ -129,8 +129,8 @@ schedules. The promotion gate is stricter:
 - mean regret improves by at least 5% versus `strict_similar_day`;
 - median regret is not worse than `strict_similar_day`.
 
-The rolling robustness gate and the explicit offline promotion/fallback gate now
-pass for NBEATSx-source and TFT-source learner variants. The promotion is still
+The rolling robustness gate and the explicit Offline Strategy Promotion /
+fallback gate now pass for NBEATSx-source and TFT-source learner variants. The promotion is still
 limited to offline/read-model strategy evidence; live execution and dashboard/API
 default changes remain out of scope.
 
@@ -143,7 +143,7 @@ both source models. The follow-up robustness gate also passes:
    windows.
 2. TFT-source Schedule/Value Learner V2 passes 3 of 4 rolling strict-control
    windows.
-3. The explicit offline promotion gate records `production_promote=true` for
+3. The explicit Offline Strategy Promotion gate records internal `production_promote=true` for
    both source learners while keeping `market_execution_enabled=false`.
 4. `strict_similar_day` remains the fallback for undercovered,
    out-of-distribution, failed-source, and live-execution contexts.

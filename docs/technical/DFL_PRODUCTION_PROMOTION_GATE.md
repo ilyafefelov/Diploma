@@ -1,16 +1,21 @@
-# DFL Production Promotion Gate
+# DFL Offline Strategy Promotion Gate
 
 Date: 2026-05-10
 
-This slice defines production promotion for the research stack: an offline
-read-model strategy may automatically choose a DFL/TFT challenger instead of
-`strict_similar_day` only when the strict LP/oracle evidence is robust. It does
-not enable live market execution.
+This slice defines **Offline Strategy Promotion** for the research stack: an
+offline read-model strategy may automatically choose a DFL/TFT challenger
+instead of `strict_similar_day` only when the strict LP/oracle evidence is
+robust. It does not enable live market execution.
 
 Claim boundary: offline strategy evidence only. This is not live trading, not a
 market-execution policy, and not a deployed Decision Transformer controller.
 `strict_similar_day` remains the frozen default unless this gate explicitly
 passes.
+
+Implementation note: the existing Dagster asset, API/read-model fields, and
+Postgres rows still use the internal name `production_promote` for backward
+compatibility. Thesis-facing prose should call the claim state **Offline
+Strategy Promotion**.
 
 ## Assets
 
@@ -55,7 +60,7 @@ Local ignored export:
 | New asset | `dfl_production_promotion_gate_frame` materialized |
 | New asset check | `dfl_production_promotion_gate_evidence` did not pass |
 | Gate rows | 5 source/regime rows |
-| Production promotions | 0 |
+| Offline Strategy Promotions | 0 |
 | Market execution | `false` for every row |
 
 The asset check failed because the backfill/coverage evidence is not
@@ -80,7 +85,7 @@ Asset-check failure messages:
 
 ## Gate Result
 
-| Source/regime | Latest mean improvement vs strict | Rolling strict passes | Coverage expansion | Promotion blocker | Production promote |
+| Source/regime | Latest mean improvement vs strict | Rolling strict passes | Coverage expansion | Promotion blocker | Internal `production_promote` |
 |---|---:|---:|---|---|---|
 | `tft_silver_v0` / `high_spread_volatility` | 18.01% | 0 / 4 | false | `evidence_invalid` | false |
 | `tft_silver_v0` / `strict_stable_region` | 18.01% | 0 / 4 | false | `evidence_invalid` | false |
@@ -101,16 +106,16 @@ No source/regime is promoted. The safe offline default remains
 `strict_similar_day`.
 
 This is the correct thesis finding: the project now has a Dagster-visible
-promotion state that can set `production_promote=true`, but current Ukrainian
-evidence blocks promotion. The next technical step is not another DT variant; it
-is either recovering more observed Ukrainian history or tightening prior-only
-regime gates until rolling windows pass without weakening the strict LP/oracle
-promotion rule.
+Offline Strategy Promotion state that can set internal `production_promote=true`,
+but current Ukrainian evidence blocks promotion. The next technical step is not
+another DT variant; it is either recovering more observed Ukrainian history or
+tightening prior-only regime gates until rolling windows pass without weakening
+the strict LP/oracle promotion rule.
 
 ## Regime-Gated TFT V2 Update
 
 The v2 selector was materialized on 2026-05-10 with Dagster run id
-`1b901874-b713-4762-9154-2e822f91be8d`, then this production gate was rerun with
+`1b901874-b713-4762-9154-2e822f91be8d`, then this Offline Strategy Promotion gate was rerun with
 Dagster run id `e683a4b4-ce32-470b-8c61-71342ff23fa3` so it consumed the new v2
 strict evidence.
 
@@ -130,7 +135,7 @@ The key blockers are now explicit:
 | `nbeatsx_silver_v0` / `strict_failure_captured` | 18 | 1 | true | blocked, source not TFT |
 | `nbeatsx_silver_v0` / `high_spread_volatility` | 18 | 1 | true | blocked, source not TFT |
 
-The production gate check still fails, which is the intended conservative
+The Offline Strategy Promotion gate check still fails, which is the intended conservative
 state. The coverage audit remains `coverage_gap` for the configured 180-anchor
 target: five tenants have 104 eligible anchors each, and `2026-03-29 23:00`
 remains an unrecoverable price-and-weather gap in the current observed feature
@@ -138,7 +143,7 @@ frame.
 
 ## Schedule/Value Sidecar Promotion Update
 
-The broader source/regime production gate above remains blocked for the
+The broader source/regime Offline Strategy Promotion gate above remains blocked for the
 180-anchor coverage target. A narrower sidecar gate now exists for the
 Schedule/Value Learner V2 evidence:
 [DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md](DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md).
@@ -153,13 +158,13 @@ Materialized result:
 
 - Dagster run id: `93d0f01c-5140-4958-a64f-74067144df4f`;
 - asset check: `dfl_schedule_value_production_gate_evidence` passed;
-- `nbeatsx_silver_v0`: `production_promote=true` for offline/read-model
+- `nbeatsx_silver_v0`: internal `production_promote=true` for offline/read-model
   evidence, 17.97% latest mean-regret improvement, 4 of 4 rolling strict passes;
-- `tft_silver_v0`: `production_promote=true` for offline/read-model evidence,
+- `tft_silver_v0`: internal `production_promote=true` for offline/read-model evidence,
   21.07% latest mean-regret improvement, 3 of 4 rolling strict passes;
 - `market_execution_enabled=false` for every row.
 
-Interpretation: the project now has its first offline promotion pass, but it is
-not live market execution and not a dashboard/API default controller change.
+Interpretation: the project now has its first Offline Strategy Promotion pass,
+but it is not live market execution and not a dashboard/API default controller change.
 `strict_similar_day` remains the fallback outside this narrow accepted evidence
 scope.

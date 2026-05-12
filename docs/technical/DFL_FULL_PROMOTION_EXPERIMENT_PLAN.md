@@ -182,7 +182,7 @@ Exit decision:
 - If 180+ anchors become thesis-grade, rerun robustness gates on the larger
   panel.
 - If not, keep 104 anchors and tighten source/regime-specific gates without
-  claiming broad production promotion.
+  claiming broad Offline Strategy Promotion.
 
 ## 7. Phase C: Official Forecast Rolling Benchmark
 
@@ -369,7 +369,7 @@ For any promising candidate:
 3. run tenant-slice analysis;
 4. run source-specific analysis;
 5. run regime-specific analysis;
-6. rerun production promotion gate;
+6. rerun Offline Strategy Promotion gate;
 7. export registry summary;
 8. update thesis docs and research integration plan.
 
@@ -473,7 +473,7 @@ Acceptance criteria:
 - prove validation actual mutation changes scoring only, not selected profiles;
 - require at least three of four strict-control window passes before the source
   becomes a robust research challenger;
-- update the production-promotion gate only after robustness evidence exists.
+- update the Offline Strategy Promotion gate only after robustness evidence exists.
 
 Phase G robustness status:
 
@@ -488,11 +488,11 @@ Phase G robustness status:
 - Both source learners now meet the `robust_research_challenger` label, while
   `production_promote=false` remains enforced by this slice.
 
-## 15. Phase G Materialized Status: Offline Promotion/Fallback Gate
+## 15. Phase G Materialized Status: Offline Strategy Promotion/Fallback Gate
 
-The Schedule/Value Learner V2 promotion gate is now materialized. The term
-"production promotion" remains restricted to offline/read-model strategy
-evidence; live market execution stays disabled.
+The Schedule/Value Learner V2 Offline Strategy Promotion gate is now
+materialized. The internal `production_promote` flag remains restricted to
+offline/read-model strategy evidence; live market execution stays disabled.
 
 Implementation:
 
@@ -508,25 +508,25 @@ Materialized result:
 
 - Dagster run: `93d0f01c-5140-4958-a64f-74067144df4f`;
 - asset check: `dfl_schedule_value_production_gate_evidence` passed;
-- NBEATSx-source learner: `production_promote=true` for offline/read-model
+- NBEATSx-source learner: internal `production_promote=true` for offline/read-model
   evidence, 17.97% latest mean-regret improvement versus strict, 4 of 4 rolling
   strict-control windows passed;
-- TFT-source learner: `production_promote=true` for offline/read-model
+- TFT-source learner: internal `production_promote=true` for offline/read-model
   evidence, 21.07% latest mean-regret improvement versus strict, 3 of 4 rolling
   strict-control windows passed;
 - `market_execution_enabled=false` for every row;
 - `strict_similar_day_default_fallback` remains the fallback strategy.
 
-This is the first offline promotion pass in the long-running DFL experiment
-loop. It does not promote live execution and does not change dashboard/API
-defaults.
+This is the first Offline Strategy Promotion pass in the long-running DFL
+experiment loop. It does not promote live execution and does not change
+dashboard/API defaults.
 
-## 16. Phase H-A: Official Forecast Schedule/Value Promotion
+## 16. Phase H-A: Official Forecast Schedule/Value Offline Strategy Promotion
 
 The compact schedule/value promotion pass is not enough to close the thesis
 loop because the official NBEATSx/TFT adapters previously had only small
 rolling-origin evidence. The next phase routes serious official forecasts
-through the same schedule-candidate library and promotion gate.
+through the same schedule-candidate library and Offline Strategy Promotion gate.
 
 Implementation:
 
@@ -539,7 +539,7 @@ Implementation:
 - `dfl_official_schedule_value_learner_v2_frame`,
   `dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame`,
   `dfl_official_schedule_value_learner_v2_robustness_frame`, and
-  `dfl_official_schedule_value_production_gate_frame` reuse the same promotion
+  `dfl_official_schedule_value_production_gate_frame` reuse the same Offline Strategy Promotion
   semantics as the compact path.
 
 Tracked protocol:
@@ -550,9 +550,9 @@ they fail or time out, the failure is recorded as runtime/source evidence and
 the next route remains feature context, data coverage, and decision loss rather
 than a dashboard/API default change.
 
-## 17. Phase H Status: Promotion Registry
+## 17. Phase H Status: Offline Strategy Promotion Registry
 
-The offline promotion pass has a concise local registry export.
+The Offline Strategy Promotion pass has a concise local registry export.
 
 Implementation:
 
@@ -566,15 +566,15 @@ Implementation:
 
 Registry result:
 
-- production-promoted source models: `nbeatsx_silver_v0`, `tft_silver_v0`;
-- production-promote count: 2;
+- Offline Strategy Promotion source models: `nbeatsx_silver_v0`, `tft_silver_v0`;
+- internal `production_promote` count: 2;
 - market execution enabled: false;
 - strict fallback:
   `strict_similar_day_default_fallback`.
 
 ## 17. Phase I Status: Read-Model Boundary
 
-The offline promotion state now has a narrow backend read model. The Dagster
+The Offline Strategy Promotion state now has a narrow backend read model. The Dagster
 asset persists `dfl_schedule_value_production_gate_frame` through
 `DflTrainingStore` into the internal
 `dfl_schedule_value_production_gate_rows` table, and FastAPI exposes the latest

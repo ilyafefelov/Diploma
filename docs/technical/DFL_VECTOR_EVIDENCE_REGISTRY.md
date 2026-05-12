@@ -98,7 +98,7 @@ API read-model validation:
   latest-batch registry export, and conservative promotion-gate validation.
 - Supported by evidence: Dnipro 90-anchor research preview can feed future DFL
   experiments, but strict baseline still wins under the current gate.
-- Not claimed: full DFL, live trading, market execution, production promotion,
+- Not claimed: full DFL, live trading, market execution, Offline Strategy Promotion,
   full digital twin, or deployed Decision Transformer control.
 
 Research guardrails remain TSFM leakage evaluation for temporal/no-leakage

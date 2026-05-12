@@ -174,7 +174,7 @@ Latest trajectory/value selector result:
   NBEATSx but still losing to 314.81 UAH strict-control regret.
 - TFT selector mean regret: 619.78 UAH, improving 38.24% versus raw TFT but
   still losing to 314.81 UAH strict-control regret.
-- Decision: development diagnostic is useful; production promotion remains
+- Decision: development diagnostic is useful; Offline Strategy Promotion remains
   blocked.
 - Tracked note:
   [DFL_TRAJECTORY_VALUE_SELECTOR.md](DFL_TRAJECTORY_VALUE_SELECTOR.md).
@@ -278,7 +278,7 @@ Strict-failure robustness gate:
 - Result: no source is a robust strict-control challenger yet. TFT passes the
   strict threshold only in the latest window, then loses or ties strict control
   in earlier windows.
-- Decision: production promotion remains blocked; the next work should improve
+- Decision: Offline Strategy Promotion remains blocked; the next work should improve
   prior-window features or extend Ukrainian observed coverage before claiming a
   robust selector.
 - Tracked note:
@@ -327,7 +327,7 @@ Feature-aware strict-failure selector:
 - Result: TFT feature-aware selector reached 299.19 UAH mean regret, improving
   70.19% versus raw TFT and 4.96% versus strict control.
 - Decision: development evidence remains useful, but the conservative 5%
-  strict-control threshold is still not cleared. Production promotion remains
+  strict-control threshold is still not cleared. Offline Strategy Promotion remains
   blocked.
 - Tracked note:
   [DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md](DFL_FEATURE_AWARE_STRICT_FAILURE_SELECTOR.md).

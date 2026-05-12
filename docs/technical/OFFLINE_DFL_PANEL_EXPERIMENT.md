@@ -68,7 +68,7 @@ Latest source batches:
 The development gate passed because each model has 90 final-holdout
 tenant-anchors, thesis-grade observed provenance, `not_full_dfl=true`,
 `not_market_execution=true`, and positive relaxed-regret improvement. This is a
-development gate only. Production promotion remains blocked until a later
+development gate only. Offline Strategy Promotion remains blocked until a later
 strict-LP/oracle promotion gate passes.
 
 | Model | Final holdout tenant-anchors | Raw relaxed regret | v2 relaxed regret | Improvement |

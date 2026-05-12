@@ -99,7 +99,7 @@ Interpretation:
 - The strict-control breakthrough is not robust yet. TFT passes the latest
   window only, not three of four windows.
 - No source receives the `robust_research_challenger` label in this run.
-- Production promotion remains blocked.
+- Offline Strategy Promotion remains blocked.
 
 ## Feature-Audit Follow-Up
 

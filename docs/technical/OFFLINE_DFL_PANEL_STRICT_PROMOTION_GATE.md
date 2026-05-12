@@ -65,7 +65,7 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 
 ## Strict Gate Result
 
-The strict promotion gate blocks production promotion. The v2 checkpointed
+The strict promotion gate blocks Offline Strategy Promotion. The v2 checkpointed
 panel does not beat the frozen strict LP/oracle control.
 
 | Source model | Candidate | Rows | Tenants | Final holdout timestamps | Mean regret UAH | Median regret UAH |

@@ -45,7 +45,7 @@ selected threshold or the prior candidate metadata.
 ## Gate
 
 Development evidence may pass when the selector improves over the raw neural
-schedule. Production promotion remains blocked unless the selected strategy:
+schedule. Offline Strategy Promotion remains blocked unless the selected strategy:
 
 - covers five canonical tenants;
 - covers at least 90 final-holdout tenant-anchors per source model;

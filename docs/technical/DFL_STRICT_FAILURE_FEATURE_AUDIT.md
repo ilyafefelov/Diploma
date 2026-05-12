@@ -95,7 +95,7 @@ spread-volatility regimes where the current switch rule is too blunt. The next
 selector slice should use this panel to gate by price regime, rank stability,
 and load/weather stress before switching away from strict control.
 
-Production promotion remains blocked.
+Offline Strategy Promotion remains blocked.
 
 Follow-up: the feature-aware selector slice now consumes this panel in
 `dfl_feature_aware_strict_failure_selector_frame`, selecting deterministic

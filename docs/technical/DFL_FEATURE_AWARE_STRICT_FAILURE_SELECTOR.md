@@ -81,4 +81,4 @@ Finding:
 - TFT improved versus the v1 robustness failure in earlier-window logic, but
   the latest-window strict improvement is now just below the production
   threshold.
-- Production promotion remains blocked.
+- Offline Strategy Promotion remains blocked.

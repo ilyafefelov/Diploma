@@ -8,7 +8,7 @@ local CPU run proved too slow for blind 104-anchor retries.
 ## Current Position
 
 The local official run persisted 20 chronological anchors per source before it
-was stopped. The partial result is not promotion-grade, but it is enough to show
+was stopped. The partial result is not Offline Strategy Promotion-grade, but it is enough to show
 that a full local CPU run should not be the first diagnostic:
 
 | Model | Anchors | Mean regret | Median regret |

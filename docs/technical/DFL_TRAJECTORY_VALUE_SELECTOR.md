@@ -88,7 +88,7 @@ Selected family distribution:
 The development diagnostic is useful: the selector improves final-holdout mean
 regret versus both raw neural schedules.
 
-Production promotion remains blocked:
+Offline Strategy Promotion remains blocked:
 
 - `strict_similar_day` still has much lower mean and median regret.
 - Selector candidates do not beat strict control by the required 5% mean-regret

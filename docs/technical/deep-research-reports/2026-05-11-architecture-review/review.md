@@ -13,7 +13,7 @@ The architecture makes sense for the diploma if it is described precisely:
 
 - Current strongest claim: a reproducible Dagster/FastAPI/Postgres/MLflow research stack for Ukrainian BESS arbitrage, with observed DAM prices, tenant weather, simulated battery telemetry, strict LP dispatch evaluation, forecast candidate comparison, and thesis-safe regret evidence.
 - Current strongest control strategy: `strict_similar_day` plus Level 1 LP remains the operational baseline and fallback.
-- Current strongest research signal: source-specific Schedule/Value Learner V2 passes the offline production/fallback gate for read-model strategy evidence only; it is still not market execution.
+- Current strongest research signal: source-specific Schedule/Value Learner V2 passes the Offline Strategy Promotion / fallback gate for read-model strategy evidence only; it is still not market execution.
 - Current highest-risk data issue: synthetic telemetry is being generated faster than real time and has future timestamps. The API can report a future synthetic row as latest "live" SOC.
 - Current highest-risk model issue: persisted official NBEATSx smoke rows are wildly outside Ukrainian DAM price caps. Operator routing currently disables them, but the invalid rows should be blocked or quarantined earlier.
 - Current highest-risk runtime issue: Compose services are mostly alive, but Dagster daemon logs repeated heartbeat shutdown warnings.

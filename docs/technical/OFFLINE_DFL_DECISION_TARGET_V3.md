@@ -73,7 +73,7 @@ returned `data_quality_tier=thesis_grade`, `anchor_count=90`, and
 
 ## Strict Gate Result
 
-The strict promotion gate blocks production promotion. V3 does not beat the
+The strict promotion gate blocks Offline Strategy Promotion. V3 does not beat the
 frozen strict LP/oracle control, and therefore remains research evidence only.
 
 | Source model | Candidate | Rows | Tenant-anchors | Mean regret UAH | Median regret UAH |

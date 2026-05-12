@@ -98,7 +98,7 @@ Interpretation:
   undercoverage.
 - The best prior non-strict references remain useful diagnostic evidence, but
   they are not allowed to override strict without robust prior-window evidence.
-- Production promotion remains blocked.
+- Offline Strategy Promotion remains blocked.
 
 ## Decision
 

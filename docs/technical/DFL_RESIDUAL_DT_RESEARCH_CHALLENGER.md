@@ -144,4 +144,4 @@ Latest result:
 - NBEATSx remains blocked: 318.37 UAH mean regret versus 314.81 UAH for
   `strict_similar_day`.
 - Neither source is robust across rolling strict-control windows in this
-  combined gate, so production promotion remains blocked.
+  combined gate, so Offline Strategy Promotion remains blocked.

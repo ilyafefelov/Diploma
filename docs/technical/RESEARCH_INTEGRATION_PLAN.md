@@ -373,7 +373,7 @@ Final-holdout result:
 This improves on the negative Dnipro-only offline v0 result, but it remains
 relaxed-LP development evidence. It must not be described as full DFL, a live
 strategy, a Decision Transformer, or a replacement for the frozen
-`strict_similar_day` control. Production promotion remains blocked until a later
+`strict_similar_day` control. Offline Strategy Promotion remains blocked until a later
 strict-LP/oracle promotion gate passes.
 
 Tracked note:
@@ -415,7 +415,7 @@ Strict-gate result:
 | `tft_silver_v0` | 1003.54 | 989.55 | 314.81 | 1.39% | -214.33% | blocked |
 
 The finding is conservative and useful: v2 checkpointing is not enough to beat
-the frozen strict control under strict LP/oracle scoring. Production promotion
+the frozen strict control under strict LP/oracle scoring. Offline Strategy Promotion
 remains blocked. The next DFL slice should improve the decision target or
 candidate construction before making stronger DFL claims.
 
@@ -799,7 +799,7 @@ Strict LP/oracle result:
 This is the strongest DFL-adjacent selector evidence so far because it improves
 over both raw neural schedules by roughly 39% while preserving prior-only
 selection. It still does not beat the frozen `strict_similar_day` mean or median
-regret, so production promotion remains blocked.
+regret, so Offline Strategy Promotion remains blocked.
 
 Hugging Face source refresh:
 
@@ -862,7 +862,7 @@ prior-only evidence, then re-score the selected strategy under the same strict
 LP/oracle gate.
 
 This remains research evidence only: not full DFL, not Decision Transformer
-control, and not market execution. Production promotion still requires beating
+control, and not market execution. Offline Strategy Promotion still requires beating
 `strict_similar_day` under the conservative strict LP/oracle gate.
 
 Tracked note:
@@ -898,7 +898,7 @@ Selector rule:
   selected threshold or candidate metadata.
 
 The gate remains conservative. Development evidence can pass if the selector
-improves over raw neural schedules, but production promotion remains blocked
+improves over raw neural schedules, but Offline Strategy Promotion remains blocked
 unless it improves mean regret by at least 5% versus `strict_similar_day` and
 does not worsen median regret.
 
@@ -968,7 +968,7 @@ Latest run:
 - Result: no source earns `robust_research_challenger`. TFT passes the strict
   threshold only in the latest window; earlier windows are development evidence
   but not strict-control wins.
-- Decision: production promotion remains blocked. The next work should improve
+- Decision: Offline Strategy Promotion remains blocked. The next work should improve
   prior-window features or extend Ukrainian observed coverage before promoting
   any selector.
 
@@ -1013,7 +1013,7 @@ Latest run:
 - Source summary: NBEATSx improves 40.02% versus raw schedules but only 1.54%
   versus strict control on average; TFT improves 43.07% versus raw schedules
   but is 1.60% worse than strict control on average.
-- Decision: production promotion remains blocked. The next selector experiment
+- Decision: Offline Strategy Promotion remains blocked. The next selector experiment
   should enrich prior-only switching rules with price regime, spread
   volatility, rank stability, calendar/weather/load context, and tenant
   failure clusters.
@@ -1045,7 +1045,7 @@ Protocol:
   rank stability, and spread-volatility regime.
 - The strict benchmark compares `strict_similar_day`, raw source schedules,
   best-prior non-strict schedules, and the feature-aware selector.
-- Production promotion remains blocked unless the conservative strict LP/oracle
+- Offline Strategy Promotion remains blocked unless the conservative strict LP/oracle
   gate clears.
 
 Latest run:
@@ -1300,7 +1300,7 @@ Materialized result:
 - NBEATSx-source fallback is still blocked (`318.37` UAH mean regret versus
   `314.81` UAH for `strict_similar_day`).
 - Therefore the aggregate claim stays conservative: residual DFL/offline DT was
-  tested as research evidence, but production promotion remains blocked.
+  tested as research evidence, but Offline Strategy Promotion remains blocked.
 
 ## Source-Specific Robust TFT Challenger Gate
 
@@ -1327,7 +1327,7 @@ Materialized result:
   `strict_similar_day`, so it remains blocked.
 - Rolling strict-control passes are currently 0 of 4 for both sources in the
   combined gate. The correct label for TFT is therefore
-  `latest_signal_not_robust`, not production promotion.
+  `latest_signal_not_robust`, not Offline Strategy Promotion.
 - Existing check-scope note: `dnipro_thesis_grade_90_anchor_evidence` was built
   for an older Dnipro 90-anchor preview and reports `observed 104` on the
   current all-tenant panel. The source-specific evidence check is the relevant
@@ -1340,7 +1340,7 @@ Decision Transformer variant.
 
 ## Production Promotion Gate
 
-The production-promotion slice turns the previous "always false" promotion
+The Offline Strategy Promotion slice turns the previous "always false" promotion
 field into a real Dagster-visible decision state for offline/read-model
 strategy evidence. It still does not enable market execution.
 
@@ -1376,7 +1376,7 @@ recovery beyond 104 anchors or a prior-only regime gate that survives at least
 
 ## UA Coverage Repair And Regime-Gated TFT Selector V2
 
-The v2 slice tightened the route to production promotion: first prove or repair
+The v2 slice tightened the route to Offline Strategy Promotion: first prove or repair
 the Ukrainian coverage ceiling, then allow TFT only in prior-evidenced
 strict-failure regimes. It does not add another DT/model variant.
 
@@ -1411,7 +1411,7 @@ Materialized result:
   mean regret was `736.743` UAH. The v2 gate did not allow these references to
   override strict because prior-regime evidence was insufficient or the regime
   was strict-stable.
-- Production gate rerun `e683a4b4-ce32-470b-8c61-71342ff23fa3` consumed v2
+- Offline Strategy Promotion gate rerun `e683a4b4-ce32-470b-8c61-71342ff23fa3` consumed v2
   evidence and still set `production_promote=false` for every row.
 
 Decision: v2 made the blocker sharper. The current system should not be
@@ -1493,7 +1493,7 @@ Decision rule:
 - If official forecasts beat compact candidates but not strict, they can feed
   DFL v2 as better source forecasts.
 - If a source beats strict in the latest holdout, it must still survive rolling
-  robustness before any offline promotion claim.
+  robustness before any Offline Strategy Promotion claim.
 
 Claim boundary: the asset is official forecast evidence only. It is not full
 DFL, not Decision Transformer control, and not market execution.
@@ -1655,7 +1655,7 @@ What it adds:
   and claim-boundary validation.
 
 Claim boundary: the learner is offline DFL research evidence only. It may pass a
-development gate against raw neural schedules, but production/default promotion
+development gate against raw neural schedules, but Offline Strategy Promotion
 still requires the existing strict LP/oracle improvement, median, rolling
 robustness, coverage, and no-market-execution gates.
 
@@ -1704,17 +1704,18 @@ Materialized result on 2026-05-11:
 Decision update: both source learners now qualify as robust research
 challengers under the current offline evidence gate. They are still not full
 DFL, not Decision Transformer control, not live market execution, and not a
-dashboard/API default controller. The next required slice is an offline
-production-promotion/default-fallback gate that consumes this robustness result
-and records whether `production_promote=true` is justified for offline
+dashboard/API default controller. The next required slice is an Offline
+Strategy Promotion / default-fallback gate that consumes this robustness result
+and records whether internal `production_promote=true` is justified for offline
 read-model strategy evidence while keeping `market_execution=false`.
 
-## DFL Schedule/Value Production Gate
+## DFL Schedule/Value Offline Strategy Promotion Gate
 
-The offline promotion/fallback gate for Schedule/Value Learner V2 now consumes
-both latest-holdout strict LP/oracle evidence and rolling robustness evidence.
+The Offline Strategy Promotion / fallback gate for Schedule/Value Learner V2
+now consumes both latest-holdout strict LP/oracle evidence and rolling
+robustness evidence.
 This is a narrower sidecar gate than the earlier 180-anchor source/regime
-production gate: it accepts the current documented 104-anchor Ukrainian panel
+Offline Strategy Promotion gate: it accepts the current documented 104-anchor Ukrainian panel
 scope, requires 90 latest validation tenant-anchors per source model, and keeps
 market execution disabled.
 
@@ -1732,25 +1733,25 @@ Materialized result on 2026-05-11:
 
 - Dagster run: `93d0f01c-5140-4958-a64f-74067144df4f`.
 - Asset check `dfl_schedule_value_production_gate_evidence` passed.
-- NBEATSx-source learner: `production_promote=true` for offline/read-model
+- NBEATSx-source learner: internal `production_promote=true` for offline/read-model
   evidence, 90 latest validation tenant-anchors, 17.97% latest mean-regret
   improvement versus `strict_similar_day`, 4 of 4 rolling strict passes.
-- TFT-source learner: `production_promote=true` for offline/read-model
+- TFT-source learner: internal `production_promote=true` for offline/read-model
   evidence, 90 latest validation tenant-anchors, 21.07% latest mean-regret
   improvement versus `strict_similar_day`, 3 of 4 rolling strict passes.
 - `market_execution_enabled=false` for every row.
 - Local ignored registry:
   `data/research_runs/week3_dfl_schedule_value_production_gate/`.
 
-Decision update: this is the first offline promotion pass in the DFL evidence
-stack. The allowed claim is still narrow: source-specific schedule/value
+Decision update: this is the first Offline Strategy Promotion pass in the DFL
+evidence stack. The allowed claim is still narrow: source-specific schedule/value
 learner promoted for offline/read-model strategy evidence only. It is not live
 market execution, not a deployed Decision Transformer controller, not a full
 end-to-end differentiable DFL claim, and not an automatic dashboard/API default
 change. `strict_similar_day` remains the fallback for undercovered,
 out-of-distribution, failed-source, and future live-execution contexts.
 
-Read-model update: the promotion state is now persisted through
+Read-model update: the Offline Strategy Promotion state is now persisted through
 `DflTrainingStore` into `dfl_schedule_value_production_gate_rows` and exposed by
 the opt-in endpoint
 `/dashboard/dfl-schedule-value-production-gate`. The endpoint is source-level
@@ -1762,7 +1763,7 @@ Validation update: Compose-backed run
 reports two promoted rows and `any_market_execution=false`; FastAPI reports
 `row_count=2`, `production_promote_count=2`, and the same narrow claim boundary.
 
-## Official Forecast Schedule/Value Promotion Path
+## Official Forecast Schedule/Value Offline Strategy Promotion Path
 
 The next iteration extends the schedule/value promotion machinery to official
 NBEATSx/TFT forecasts. The purpose is to avoid comparing compact in-repo
@@ -1786,7 +1787,7 @@ Implementation:
 - Tracked note:
   [DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md](DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md).
 
-The gate uses the same promotion semantics as the compact Schedule/Value
+The gate uses the same Offline Strategy Promotion semantics as the compact Schedule/Value
 Learner V2 path: five tenants, 90 final validation tenant-anchors per source,
 three of four rolling strict-control passes, at least 5% mean-regret
 improvement versus `strict_similar_day`, median regret not worse, zero safety
@@ -1798,7 +1799,7 @@ replace the Pydantic Gatekeeper, and does not claim a deployed Decision
 Transformer controller.
 
 Runtime update on 2026-05-11: the first full 104-anchor official attempt hit the
-outer one-hour process timeout before producing promotion-grade official rows.
+outer one-hour process timeout before producing Offline Strategy Promotion-grade official rows.
 The follow-up keeps the same strict LP/oracle rule but changes the execution
 protocol: official rolling-origin generation is split into persisted anchor
 batches with one fixed generated timestamp, and the downstream official
@@ -1814,7 +1815,7 @@ domain-shift checks pass.
 ## Official Global-Panel Schedule/Value Screen
 
 The official global-panel NBEATSx path now feeds a schedule/value screening
-lane without weakening the full promotion gate. This is separate from the
+lane without weakening the full Offline Strategy Promotion gate. This is separate from the
 older tenant/anchor official path: it uses the governed rolling global-panel
 NBEATSx evidence and its prior-only horizon calibration, then builds feasible
 schedule candidates for the Schedule/Value Learner V2 machinery.
@@ -1847,12 +1848,12 @@ Materialized result on 2026-05-11:
   `1495.71` UAH for `strict_similar_day` to `598.09` UAH.
 - Raw-source schedule/value candidate improved latest mean regret to
   `1347.36` UAH.
-- Production promotion remains blocked for both sources with
+- Offline Strategy Promotion remains blocked for both sources with
   `promotion_blocker=validation_undercoverage`.
 
 Decision update: the schedule/value learner can extract a useful latest-window
 signal from official global-panel NBEATSx, especially after prior-only horizon
-calibration. This is screening evidence only. Promotion still requires 90
+calibration. This is screening evidence only. Offline Strategy Promotion still requires 90
 latest validation tenant-anchors per source and three of four rolling
 strict-control passes. The next real improvement path is still UA backfill and
 governed market-coupling/exogenous features, not loosening the LP/oracle gate.
@@ -1886,7 +1887,7 @@ Materialized result on 2026-05-11:
   `2026-03-29 23:00` are source-backed DST/calendar exclusions, not synthesized
   rows.
 
-Decision update: the next official global-panel NBEATSx/TFT and DFL promotion
+Decision update: the next official global-panel NBEATSx/TFT and DFL Offline Strategy Promotion
 experiments should move from the 104-anchor 2026-only panel to the 365-anchor
 UA backfill panel. The strict LP/oracle gate remains unchanged, and the
 calendar-gap hours stay excluded rather than imputed for thesis-grade claims.
@@ -1924,10 +1925,10 @@ global-panel NBEATSx raw and horizon-calibrated strict LP/oracle scoring. The
 runner remains resumable, but the `2026-05-11 20:30:00+00` timestamp is now a
 complete 365-anchor evidence batch rather than a partial smoke.
 
-## Official Global-Panel 104-Anchor Promotion Gate Result
+## Official Global-Panel 104-Anchor Offline Strategy Promotion Gate Result
 
 The first clean latest-first official global-panel run has now reached the
-current 104-anchor promotion scope. The first 90-anchor attempt correctly failed
+current 104-anchor Offline Strategy Promotion scope. The first 90-anchor attempt correctly failed
 at the robustness step because four 18-anchor validation windows plus prior
 history require at least 102 anchors. The run was resumed with the same fixed
 `generated_at` and extended to 104 anchors before rerunning the downstream
@@ -1972,14 +1973,14 @@ Rolling robustness:
 | `nbeatsx_official_global_panel_v1` | 4 | 4 | 4 | `robust_research_challenger` |
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 4 | 3 | 4 | `robust_research_challenger` |
 
-Production gate:
+Offline Strategy Promotion gate:
 
-| Source | Latest validation tenant-anchors | Allowed challenger | Production promote | Market execution | Blocker |
+| Source | Latest validation tenant-anchors | Allowed challenger | Internal `production_promote` | Market execution | Blocker |
 |---|---:|---|---|---|---|
 | `nbeatsx_official_global_panel_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `true` | `false` | `none` |
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `true` | `false` | `none` |
 
-Decision update: the first official global-panel promotion-grade result is a
+Decision update: the first official global-panel Offline Strategy Promotion-grade result is a
 schedule/value learner result, not a raw NBEATSx forecast result. The thesis-safe
 claim is that official global-panel NBEATSx can now feed an offline/read-model
 default-fallback controller candidate that passes the strict LP/oracle promotion
@@ -1989,11 +1990,11 @@ still out of scope.
 
 ## Official Global-Panel 365-Anchor Robustness Result
 
-The 365-anchor Ukrainian backfill rerun tests whether the 104-anchor promotion
+The 365-anchor Ukrainian backfill rerun tests whether the 104-anchor Offline Strategy Promotion
 result survives a larger source-backed panel. It uses the same official
 global-panel NBEATSx raw timestamp (`2026-05-11 20:30:00+00`), the same frozen
 `strict_similar_day` comparator, the same strict LP/oracle scoring, and the same
-offline/read-model production gate thresholds. No EU market-coupling rows enter
+Offline Strategy Promotion thresholds. No EU market-coupling rows enter
 training in this slice.
 
 Implementation:
@@ -2037,17 +2038,17 @@ Rolling robustness:
 | `nbeatsx_official_global_panel_v1` | 4 | 4 | 3 | `robust_research_challenger` |
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 4 | 4 | 4 | `robust_research_challenger` |
 
-Production gate:
+Offline Strategy Promotion gate:
 
-| Source | Latest validation tenant-anchors | Allowed challenger | Production promote | Market execution | Blocker |
+| Source | Latest validation tenant-anchors | Allowed challenger | Internal `production_promote` | Market execution | Blocker |
 |---|---:|---|---|---|---|
 | `nbeatsx_official_global_panel_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `true` | `false` | `none` |
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `true` | `false` | `none` |
 
-Decision update: the 104-anchor official global-panel promotion result
+Decision update: the 104-anchor official global-panel Offline Strategy Promotion result
 generalizes to the 365-anchor Ukrainian backfill panel for the schedule/value
 learner. The stronger thesis headline is now: official global-panel NBEATSx can
-feed a robust offline/read-model DFL-style schedule/value challenger behind
+feed a robust Offline Strategy Promotion DFL-style schedule/value challenger behind
 `strict_similar_day` fallback. The claim remains bounded: no live market
 execution, no dashboard/API default switch, no deployed Decision Transformer,
 and no claim that raw NBEATSx forecasts beat `strict_similar_day`.

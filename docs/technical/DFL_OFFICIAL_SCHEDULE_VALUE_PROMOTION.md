@@ -1,16 +1,16 @@
-# Official NBEATSx/TFT Schedule-Value Promotion Gate
+# Official NBEATSx/TFT Schedule-Value Offline Strategy Promotion Gate
 
 Date: 2026-05-11
 
 This slice routes serious official NBEATSx/TFT rolling-origin forecasts through
 the same feasible schedule library, Schedule/Value Learner V2, rolling
-robustness check, and offline promotion gate used by the compact in-repo
+robustness check, and Offline Strategy Promotion gate used by the compact in-repo
 forecast candidates.
 
 Claim boundary: official forecasts remain research evidence. This is not live
 market execution, not a deployed Decision Transformer controller, and not a full
 end-to-end DFL claim. The frozen `strict_similar_day` control remains the
-fallback unless the strict LP/oracle promotion gate passes.
+fallback unless the strict LP/oracle Offline Strategy Promotion gate passes.
 
 ## Rationale
 
@@ -38,7 +38,7 @@ control.
 | `dfl_official_schedule_value_learner_v2_frame` | Selects the schedule-scoring profile from train-selection anchors only. |
 | `dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame` | Emits strict/raw/learner final-holdout rows for the official sources. |
 | `dfl_official_schedule_value_learner_v2_robustness_frame` | Replays the learner over four prior-only rolling validation windows. |
-| `dfl_official_schedule_value_production_gate_frame` | Emits the final offline promotion/fallback decision per official source. |
+| `dfl_official_schedule_value_production_gate_frame` | Emits the final Offline Strategy Promotion / fallback decision per official source. |
 | `dfl_official_schedule_value_production_gate_evidence` | Dagster asset check for claim flags, coverage, and disabled market execution. |
 
 Tracked config:
@@ -112,7 +112,7 @@ the same evidence run instead of starting over.
 
 ### Latest-window screening mode
 
-The full 104-anchor official run is required only for promotion-grade rolling
+The full 104-anchor official run is required only for Offline Strategy Promotion-grade rolling
 robustness. It should not be the first diagnostic when local CPU runtime is the
 main bottleneck. The official rolling asset now supports three screening knobs:
 
@@ -154,7 +154,7 @@ Implementation is additive:
 - no public FastAPI/dashboard contract changes;
 - no changes to existing compact DFL asset keys;
 - no changes to Pydantic schemas, resources, IO managers, or dependencies;
-- official promotion evidence is not persisted into the existing compact
+- official Offline Strategy Promotion evidence is not persisted into the existing compact
   schedule/value read model.
 
 Verification completed before runtime execution:
@@ -175,11 +175,11 @@ Runtime execution attempt:
 | Result | failed after Codex shell timeout at 3600 seconds |
 | Last active step | `official_forecast_rolling_origin_benchmark_frame` |
 | Completed in that run | observed market bronze, tenant weather bronze, real-data benchmark silver |
-| Not completed in that run | official rolling forecast benchmark, official schedule library, official schedule/value learner, robustness frame, production gate |
+| Not completed in that run | official rolling forecast benchmark, official schedule library, official schedule/value learner, robustness frame, Offline Strategy Promotion gate |
 
 The timeout is a runtime capacity finding, not a promotion result. The serious
 official path is now wired and verified, but the local CPU-backed Compose run did
-not finish enough official rolling-origin anchors to create promotion-grade
+not finish enough official rolling-origin anchors to create Offline Strategy Promotion-grade
 metrics. Until a longer unattended/GPU-backed run completes, the official
 NBEATSx/TFT models remain adapter-ready research candidates, not promoted
 controllers.
@@ -190,13 +190,13 @@ Downstream smoke validation:
 |---|---|
 | Smoke run id | `bea10f88-ed52-4f7d-b85b-93b149262c51` |
 | Input official benchmark | existing 4-anchor official rolling-origin artifact |
-| Scope | official schedule library, library v2, learner v2, strict LP benchmark, robustness, production gate |
+| Scope | official schedule library, library v2, learner v2, strict LP benchmark, robustness, Offline Strategy Promotion gate |
 | Result | run succeeded |
 | Promotion-grade? | no; only 10 latest validation tenant-anchors per source and 2 rolling windows |
 
 Smoke gate summary:
 
-| Source | Latest validation tenant-anchors | Mean-regret improvement vs strict | Median not worse | Rolling strict-pass windows | Production promote | Market execution enabled | Blocker |
+| Source | Latest validation tenant-anchors | Mean-regret improvement vs strict | Median not worse | Rolling strict-pass windows | Internal `production_promote` | Market execution enabled | Blocker |
 |---|---:|---:|---|---:|---|---|---|
 | `nbeatsx_official_v0` | 10 | 0.0% | yes | 0 / 2 | false | false | `mean_improvement_below_threshold` |
 | `tft_official_v0` | 10 | 0.0% | yes | 0 / 2 | false | false | `mean_improvement_below_threshold` |
@@ -220,7 +220,7 @@ Interrupted serious batch attempt:
 | `tft_official_v0` mean / median regret | `1354.23` / `987.03` UAH |
 | Decision | full CPU run stopped; switch to latest-window screening before any full 104-anchor retry |
 
-This is not promotion-grade because it covers only 20 chronological anchors and
+This is not Offline Strategy Promotion-grade because it covers only 20 chronological anchors and
 does not include the latest holdout or rolling robustness windows. It is still
 useful operational evidence: the serious official path is expensive enough that
 screening order and model filtering are required before running a full local CPU
@@ -231,4 +231,4 @@ Follow-up execution protocol:
 - use the resumable batch runner for the next 104-anchor attempt;
 - keep the outer per-batch timeout at least three hours on local CPU;
 - record the generated timestamp and failed anchor index if a resume is needed;
-- do not treat partial official rows as promotion-grade evidence.
+- do not treat partial official rows as Offline Strategy Promotion-grade evidence.
