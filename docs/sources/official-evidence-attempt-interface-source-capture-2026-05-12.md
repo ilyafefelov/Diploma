@@ -26,5 +26,9 @@ starts. The manifest is intentionally small and stable:
 - resume rule;
 - Offline Strategy Promotion claim boundary.
 
+The resume summary helper reads the same manifest and combines it with persisted
+anchor counts. If multiple source models are present, it uses the minimum
+persisted count so the next resume point is conservative and repeatable.
+
 This is not a new forecast model and not live market execution. It is the
 execution-governance layer needed before reliable Hugging Face Jobs offload.

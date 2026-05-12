@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal, cast
 
 OFFICIAL_EVIDENCE_ATTEMPT_CLAIM_SCOPE = "offline_strategy_promotion_evidence_attempt"
 
@@ -102,6 +103,52 @@ def build_official_evidence_attempt_manifest(
     }
 
 
+def summarize_official_evidence_attempt_resume(
+    manifest: Mapping[str, object],
+    *,
+    persisted_anchor_count: int | None = None,
+    persisted_anchor_counts_by_source: Mapping[str, int] | None = None,
+) -> dict[str, object]:
+    """Summarize the next resume point from a manifest and persisted coverage."""
+
+    effective_count = _effective_persisted_anchor_count(
+        persisted_anchor_count=persisted_anchor_count,
+        persisted_anchor_counts_by_source=persisted_anchor_counts_by_source,
+    )
+    batch_plan = _manifest_batch_plan(manifest)
+    planned_anchor_count = sum(
+        _batch_int(batch, "anchor_batch_size") for batch in batch_plan
+    )
+    if effective_count > planned_anchor_count:
+        raise ValueError("persisted anchor count cannot exceed planned anchor count.")
+
+    completed_batch_start_indices: list[int] = []
+    cumulative_count = 0
+    next_anchor_index: int | None = None
+    for batch in batch_plan:
+        batch_size = _batch_int(batch, "anchor_batch_size")
+        batch_start = _batch_int(batch, "anchor_batch_start_index")
+        batch_end_count = cumulative_count + batch_size
+        if effective_count >= batch_end_count:
+            completed_batch_start_indices.append(batch_start)
+        elif next_anchor_index is None:
+            next_anchor_index = batch_start
+        cumulative_count = batch_end_count
+
+    status = "complete" if next_anchor_index is None else "resume_required"
+    return {
+        "status": status,
+        "run_slug": str(manifest.get("run_slug", "")),
+        "resume_generated_at_iso": str(manifest.get("resume_generated_at_iso", "")),
+        "effective_persisted_anchor_count": effective_count,
+        "planned_anchor_count": planned_anchor_count,
+        "next_anchor_index": next_anchor_index,
+        "completed_batch_start_indices": completed_batch_start_indices,
+        "claim_boundary": manifest.get("claim_boundary", {}),
+        "resume_policy": manifest.get("resume_policy", {}),
+    }
+
+
 def _validate_config(config: OfficialEvidenceAttemptConfig) -> None:
     if config.total_anchors <= 0:
         raise ValueError("total_anchors must be positive.")
@@ -149,3 +196,37 @@ def _build_batch_plan(
             }
         )
     return batch_plan
+
+
+def _effective_persisted_anchor_count(
+    *,
+    persisted_anchor_count: int | None,
+    persisted_anchor_counts_by_source: Mapping[str, int] | None,
+) -> int:
+    if persisted_anchor_counts_by_source is not None:
+        if not persisted_anchor_counts_by_source:
+            raise ValueError("persisted_anchor_counts_by_source must not be empty.")
+        count = min(persisted_anchor_counts_by_source.values())
+    elif persisted_anchor_count is not None:
+        count = persisted_anchor_count
+    else:
+        raise ValueError("persisted anchor coverage must be provided.")
+    if count < 0:
+        raise ValueError("persisted anchor count must be non-negative.")
+    return count
+
+
+def _manifest_batch_plan(
+    manifest: Mapping[str, object],
+) -> list[Mapping[str, Any]]:
+    batch_plan = manifest.get("batch_plan")
+    if not isinstance(batch_plan, list) or not batch_plan:
+        raise ValueError("manifest batch_plan must be a non-empty list.")
+    return [cast(Mapping[str, Any], batch) for batch in batch_plan]
+
+
+def _batch_int(batch: Mapping[str, Any], key: str) -> int:
+    value = batch.get(key)
+    if not isinstance(value, int):
+        raise ValueError(f"manifest batch_plan field {key} must be an integer.")
+    return value

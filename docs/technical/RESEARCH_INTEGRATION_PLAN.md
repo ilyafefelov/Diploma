@@ -2115,12 +2115,16 @@ New evidence-attempt interface:
 - scripts using the manifest:
   [run-official-schedule-value-batches.ps1](../../scripts/run-official-schedule-value-batches.ps1),
   [run-official-global-panel-batches.ps1](../../scripts/run-official-global-panel-batches.ps1),
-  and [build_hf_official_schedule_value_job.py](../../scripts/build_hf_official_schedule_value_job.py).
+  [build_hf_official_schedule_value_job.py](../../scripts/build_hf_official_schedule_value_job.py),
+  and
+  [summarize_official_evidence_attempt_resume.py](../../scripts/summarize_official_evidence_attempt_resume.py).
 
 Decision update: future official reruns should cite the manifest in addition to
 the generated timestamp. Resume decisions should use the manifest batch plan and
 the latest persisted rows, rather than relying only on free-form `run.log`
-inspection.
+inspection. The resume-summary helper uses the minimum persisted anchor count
+across source models, which keeps partial official runs conservative when one
+model has fewer completed anchors than another.
 
 Tracked docs:
 

@@ -59,6 +59,29 @@ The manifest is written under the existing run directory:
 This keeps the current resume behavior but makes it explicit for humans,
 automation, and future evidence registries.
 
+## Resume Summary
+
+Monitoring automation can now compute the next resume point from the manifest
+instead of parsing free-form `run.log` text. The helper is:
+
+- `smart_arbitrage.forecasting.official_evidence_attempts.summarize_official_evidence_attempt_resume`
+- `scripts/summarize_official_evidence_attempt_resume.py`
+
+Example:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\summarize_official_evidence_attempt_resume.py `
+  --manifest .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  --persisted-anchor-counts-csv "nbeatsx_official_global_panel_v1=365,nbeatsx_official_global_panel_horizon_calibrated_v1=365"
+```
+
+The summary reports `status`, `effective_persisted_anchor_count`,
+`completed_batch_start_indices`, and `next_anchor_index`. When multiple source
+models are passed, the effective count is the minimum source count, so a
+partially persisted model cannot be hidden by a complete one. The claim boundary
+is copied through unchanged: Offline Strategy Promotion evidence only,
+`market_execution_enabled=false`.
+
 ## Hugging Face Jobs Integration
 
 `scripts/build_hf_official_schedule_value_job.py` now embeds the same manifest
@@ -117,8 +140,8 @@ git diff --check
 
 ## Next Work
 
-1. Use `attempt_manifest.json` in the monitoring automation so it can compute
-   the next resume anchor without parsing free-form logs.
+1. Wire the resume-summary script into the monitoring automation's Postgres row
+   count step.
 2. Add an evidence-registry export that copies the manifest next to the final
    Offline Strategy Promotion summary. The 365-anchor official global-panel
    run now has a local export at

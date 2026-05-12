@@ -81,6 +81,17 @@ def test_official_global_panel_batch_runner_writes_resumable_backfill_config() -
     assert "dfl_official_global_panel_schedule_value_production_gate_frame" in runner_script
 
 
+def test_official_attempt_resume_summary_script_uses_manifest_contract() -> None:
+    resume_script = (
+        PROJECT_ROOT / "scripts" / "summarize_official_evidence_attempt_resume.py"
+    ).read_text(encoding="utf-8")
+
+    assert "summarize_official_evidence_attempt_resume" in resume_script
+    assert "--manifest" in resume_script
+    assert "--persisted-anchor-counts-csv" in resume_script
+    assert "--persisted-anchor-count" in resume_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
