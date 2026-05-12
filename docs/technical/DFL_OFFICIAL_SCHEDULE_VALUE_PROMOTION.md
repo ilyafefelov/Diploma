@@ -67,6 +67,19 @@ The gate requires:
 
 `market_execution_enabled` remains `false` even if an official source passes.
 
+### Thesis evidence freeze
+
+On 2026-05-12 the thesis-facing language was frozen as **Offline Strategy
+Promotion**. The existing internal field name `production_promote` remains
+stable for code/read-model compatibility, but docs should read it as an offline
+strategy-evidence gate, not as live execution permission.
+
+The market-coupling feature route added after the 365-anchor result does not
+change this evidence. No ENTSO-E, OPSD, Ember, Nord Pool, PriceFM, or THieF row
+was used in the promoted official schedule/value result; external features must
+first pass the guarded route in
+[MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md).
+
 ## Materialization
 
 Rebuild the backend/Dagster services so the new assets and config are visible:

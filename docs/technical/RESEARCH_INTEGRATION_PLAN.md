@@ -2052,3 +2052,36 @@ feed a robust Offline Strategy Promotion DFL-style schedule/value challenger beh
 `strict_similar_day` fallback. The claim remains bounded: no live market
 execution, no dashboard/API default switch, no deployed Decision Transformer,
 and no claim that raw NBEATSx forecasts beat `strict_similar_day`.
+
+## Market-Coupling Exogenous Feature Interface Freeze
+
+The market-coupling feature work after the 365-anchor result is an interface
+and governance update, not a change to the headline evidence. The current
+Offline Strategy Promotion result remains Ukrainian-only: observed OREE DAM,
+Open-Meteo/weather context, tenant load/configuration context, strict LP/oracle
+scoring, and `strict_similar_day` fallback.
+
+New additive assets:
+
+- `entsoe_neighbor_market_feature_candidate_frame`;
+- `official_forecast_exogenous_feature_route_frame`.
+
+The route centralizes external feature approval for official NBEATSx/TFT/DFL
+training. Source-backed ENTSO-E rows may now be represented as feature
+candidates, but they remain blocked unless they pass licensing, timezone/DST,
+currency normalization, market-rule mapping, temporal-availability, and
+domain-shift gates. This means ENTSO-E, OPSD, Ember, Nord Pool, PriceFM, and
+THieF are still research/external-validation context, not Ukrainian training
+inputs.
+
+Academic rationale: market-coupling and neighboring-zone EPF studies support
+the idea that coupled-market features can improve day-ahead price forecasts,
+while decision-focused ESS arbitrage literature keeps the final acceptance
+criterion on strict LP/oracle regret and net value. Therefore the next feature
+expansion must preserve prior-only availability and then rerun the same
+official global-panel parity and Offline Strategy Promotion gate.
+
+Tracked docs:
+
+- [MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md).
+- [../sources/market-coupling-exogenous-feature-interface-source-capture-2026-05-12.md](../sources/market-coupling-exogenous-feature-interface-source-capture-2026-05-12.md).

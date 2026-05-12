@@ -23,12 +23,18 @@ Claim boundary:
 | `forecast_afe_feature_catalog_frame` | Registers Ukrainian training features and blocked external bridge sources. |
 | `market_coupling_temporal_availability_frame` | Converts external bridge rows into source-specific availability/readiness evidence. |
 | `entsoe_neighbor_market_query_spec_frame` | Prepares ENTSO-E day-ahead price query specs for Poland/neighbor candidates while blocking fetch/training without a token. |
+| `entsoe_neighbor_market_feature_candidate_frame` | Converts ENTSO-E sample rows into blocked source-backed feature candidates. |
+| `official_forecast_exogenous_feature_route_frame` | Provides the single approved/blocked prior-only external feature route consumed by official global-panel training. |
 
 Asset check:
 
 | Check | Requirement |
 |---|---|
 | `market_coupling_temporal_availability_evidence` | External rows must remain blocked from training, list all blockers, define publication-time policy, and keep research-only claim flags. |
+| `entsoe_neighbor_market_feature_candidate_evidence` | Source-backed ENTSO-E candidates must remain blocked until every governance gate passes. |
+
+The deeper route contract is documented in
+[MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md).
 
 Latest local validation:
 
@@ -94,6 +100,19 @@ leakage: if a neighboring price is published after the Ukrainian decision time,
 or if it is normalized with future information, it becomes invalid training
 input. This gate keeps those features blocked until the source-specific
 availability rules are explicit.
+
+The 2026-05-12 feature-interface update keeps that boundary in code. Official
+global-panel training now consumes `official_forecast_exogenous_feature_route_frame`.
+Because the route currently has zero approved external feature columns, the
+365-anchor Offline Strategy Promotion evidence remains Ukrainian-only
+OREE/Open-Meteo evidence. Source-backed ENTSO-E sample rows can prove parsing,
+but they are still not training rows.
+
+Latest materialization on 2026-05-12 used fetch-disabled ENTSO-E sample config,
+so the feature-candidate frame produced one guarded Poland row with
+`source_backed=false`, `training_use_allowed=false`, and `feature_use_allowed=false`.
+The official training frame consumed the route and reported
+`external_feature_training_status=blocked_by_governance`.
 
 ## Next Slice
 

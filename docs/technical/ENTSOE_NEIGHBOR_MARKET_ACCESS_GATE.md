@@ -18,6 +18,7 @@ so every fetch is blocked. This is expected and thesis-safe.
 | `market_coupling_temporal_availability_frame` | Source-level readiness gate for external market sources. |
 | `entsoe_neighbor_market_query_spec_frame` | ENTSO-E day-ahead price query spec and missing-token access evidence. |
 | `entsoe_neighbor_market_sample_audit_frame` | Optional tiny source-sample audit for mapped neighbors; defaults to fetch-disabled and never unlocks training by itself. |
+| `entsoe_neighbor_market_feature_candidate_frame` | Source-backed feature-candidate adapter for ENTSO-E samples; all rows stay blocked until the market-coupling feature route approves them. |
 
 Asset check:
 
@@ -25,6 +26,7 @@ Asset check:
 |---|---|
 | `entsoe_neighbor_market_access_evidence` | Query rows must remain research-only, use day-ahead price request shape `A44/A01`, block training use, and prevent fetch when no token is available. |
 | `entsoe_neighbor_market_sample_audit_evidence` | Sample rows must remain research-only and non-feature/non-training until full governance passes. |
+| `entsoe_neighbor_market_feature_candidate_evidence` | Feature candidates must be source-backed before they can even be considered, and must remain non-training/non-feature until governance passes. |
 
 Materialization:
 
@@ -91,6 +93,26 @@ data into Ukrainian training:
 
 The audit can prove access and parsing. It cannot by itself approve the feature
 for NBEATSx/TFT/DFL training.
+
+## Feature Candidate Adapter
+
+The first source-backed adapter is intentionally narrow. If the sample audit is
+fetch-disabled or no rows are parsed, it emits a guard row with
+`source_backed=false`. If ENTSO-E price points are parsed, it emits candidate
+columns such as `entsoe_pl_day_ahead_price_eur_mwh`.
+
+In both cases:
+
+- `training_use_allowed=false`;
+- `feature_use_allowed=false`;
+- `currency_policy=blocked_until_eur_to_uah_prior_only_normalization`;
+- `not_full_dfl=true`;
+- `not_market_execution=true`.
+
+The candidate rows flow into
+[MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md),
+which is the only route that can later approve prior-only external features for
+official global-panel training.
 
 ## Query Spec
 

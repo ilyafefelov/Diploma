@@ -33,6 +33,7 @@ of related time series.
 | Asset | Layer | Purpose |
 |---|---|---|
 | `official_forecast_exogenous_governance_frame` | Silver | Records market-coupling source governance for official forecast training without allowing external rows into Ukrainian training. |
+| `official_forecast_exogenous_feature_route_frame` | Silver | Converts source governance and ENTSO-E feature-candidate evidence into approved/blocked prior-only exogenous feature columns. |
 | `official_global_panel_training_frame` | Silver | Builds the multi-tenant point-in-time `unique_id/ds/y` panel and records scaler/exogenous metadata. |
 | `nbeatsx_official_global_panel_price_forecast` | Silver | Trains one Nixtla NBEATSx model over the panel and predicts all forecast rows. |
 | `nbeatsx_official_global_panel_strict_lp_benchmark_frame` | Gold | Strict-scores the global-panel NBEATSx schedule beside frozen `strict_similar_day`. |
@@ -80,13 +81,21 @@ The global-panel training frame must satisfy:
 - `weather_temperature` and other known future fields appear only in the
   known-future feature list;
 - lagged/rolling price features appear in historical-observed feature lists;
-- external market-coupling sources appear only in governance metadata until
-  licensing, timezone, currency normalization, market-rule mapping, temporal
-  availability, and domain-shift controls are completed;
+- external market-coupling sources must pass through
+  `official_forecast_exogenous_feature_route_frame` before they can appear in
+  official training feature lists;
+- licensing, timezone, currency normalization, market-rule mapping, temporal
+  availability, and domain-shift controls must be completed before an external
+  feature can be marked `approved_for_training`;
 - if an external source is marked `training_use_allowed=true` before those
   controls are ready, the official panel builder fails instead of silently
   adding the feature;
 - `not_full_dfl=true` and `not_market_execution=true` remain claim boundaries.
+
+Current parity status: the route has zero approved external feature columns, so
+the 365-anchor official global-panel evidence remains Ukrainian-only
+OREE/Open-Meteo evidence. This protects the thesis claim while making the
+future ENTSO-E/OPSD/PriceFM feature path explicit.
 
 Mutating final-holdout actual prices may change final LP/oracle scoring later,
 but it must not change forecast features, scaler metadata, or selected model
@@ -439,14 +448,16 @@ Not implemented yet:
 - Hugging Face Jobs execution. A payload builder now exists, but it only writes
   a redacted JSON/script for a future remote run and does not submit paid
   compute.
-- market-coupling exogenous training features.
+- market-coupling exogenous training features. A guarded route now exists, but
+  every external feature is still blocked from training.
 
 ## Next Required Work
 
 1. Decide how to present the 365-anchor schedule/value learner as the thesis
    DFL-style headline while preserving the no-market-execution boundary.
-2. Add market-coupling exogenous governance before increasing official model
-   capacity or rerunning TFT at comparable coverage.
+2. Fetch and govern one source-backed ENTSO-E neighbor-market sample, then keep
+   it blocked until publication-time, currency, licensing, market-rule, and
+   domain-shift gates pass.
 3. Use the Hugging Face Jobs payload builder for a latest-first GPU screen only
    after the branch is pushed and artifact upload credentials are available.
 
