@@ -39,7 +39,9 @@ Battery energy storage systems (BESS) стають ключовим елемен
 
 Цей рівень є навмисно обмеженим. Його завдання — не продемонструвати «найрозумнішу» модель, а створити стабільний контрольний контур, який можна тестувати, пояснювати і порівнювати з майбутньою Target Strategy.
 
-Окремий deep-research review уточнює академічну межу цього рівня: поточний MVP є переконливим engineering prototype, але ще не є повноцінним empirical market study, доки історичний market/weather шар суттєво спирається на synthetic fallback. Тому наступний дослідницький крок полягає не в негайному ускладненні моделі, а в побудові real-data Ukraine DAM benchmark із rolling-origin evaluation.
+Пізніший evidence-cycle змінив силу цього твердження. Початковий ризик synthetic/demo-oriented market-weather шару був коректним методологічним застереженням, але для основного research contour тепер сформовано source-backed Ukrainian DAM benchmark: observed OREE DAM, Open-Meteo/weather context, tenant configuration/load context, rolling-origin evaluation та strict LP/oracle scoring. На цьому шарі official global-panel NBEATSx schedule/value learner пройшов вузьку **Offline Strategy Promotion** на 365-anchor Ukrainian panel, причому `strict_similar_day` лишається fallback, а market execution залишається вимкненим.
+
+Отже, поточна академічна межа формулюється так: диплом уже має відтворюваний observed-data evidence path для offline/read-model strategy evidence, але ще не заявляє live trading, dashboard/API default switching, deployed Decision Transformer або використання European market-coupling rows як training inputs.
 
 ## 1.5. Поточний demo-stage: operator-facing MVP
 

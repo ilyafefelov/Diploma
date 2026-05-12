@@ -121,8 +121,40 @@ branch is pushed and the Hugging Face account or organization is ready for Jobs
 compute. Treat this as a cloud execution wrapper for screening, not as a
 replacement for the strict LP/oracle promotion gate.
 
+## Guarded HF Jobs Submission Wrapper
+
+The repo now has a receipt-first submission wrapper:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\submit_hf_official_schedule_value_job.py `
+  --payload .tmp_runtime\hf_jobs\official_latest_tft_screen.json `
+  --output .tmp_runtime\hf_jobs\official_latest_tft_screen_receipt.json
+```
+
+This default command is a dry run. It records the payload path, run slug,
+flavor, timeout, estimated timeout cost, artifact repo, and Offline Strategy
+Promotion claim boundary without contacting Hugging Face.
+
+Paid execution requires an explicit `--submit` flag:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\submit_hf_official_schedule_value_job.py `
+  --payload .tmp_runtime\hf_jobs\official_latest_tft_screen.json `
+  --output .tmp_runtime\hf_jobs\official_latest_tft_screen_receipt.json `
+  --submit
+```
+
+If the payload uploads artifacts, the wrapper resolves `HF_TOKEN` only in
+memory at submit time. The local receipt never stores the token or the
+`$HF_TOKEN` placeholder. Current HF pricing lists Nvidia T4 small at about
+`$0.40/hour`, so the default `t4-small`/`4h` screen has a nominal compute cap
+near `$1.60`, excluding account/subscription requirements and retries.
+
 ## Claim Boundary
 
 Cloud training does not change the academic claim by itself. Any official
 NBEATSx/TFT, DFL, or offline DT candidate must still pass the same strict
 LP/oracle promotion gate against frozen `strict_similar_day`.
+
+Source capture:
+[hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md](../sources/hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md).

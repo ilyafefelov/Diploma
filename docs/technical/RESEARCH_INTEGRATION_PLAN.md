@@ -2136,10 +2136,18 @@ snapshot directly, copying both into the local evidence packet so the registry
 folder contains run identity, resume status, persisted counts, and the Offline
 Strategy Promotion boundary in one place.
 
+The HF offload path is now guarded by a receipt-first wrapper:
+[submit_hf_official_schedule_value_job.py](../../scripts/submit_hf_official_schedule_value_job.py).
+Default execution writes a dry-run receipt only. Paid HF submission requires
+`--submit`, a pushed branch, a Jobs-capable HF account, `HF_TOKEN`, and a
+writable artifact dataset repo. The receipt keeps
+`market_execution_enabled=false` and never writes the token to disk.
+
 Tracked docs:
 
 - [OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md](OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md).
 - [../sources/official-evidence-attempt-interface-source-capture-2026-05-12.md](../sources/official-evidence-attempt-interface-source-capture-2026-05-12.md).
+- [../sources/hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md](../sources/hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md).
 
 ## Offline Strategy Promotion Language Freeze
 

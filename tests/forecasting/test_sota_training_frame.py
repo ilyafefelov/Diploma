@@ -8,6 +8,10 @@ from smart_arbitrage.forecasting.neural_features import (
     build_neural_forecast_feature_frame,
 )
 from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
+from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_neighbor_market_query_spec_frame,
+    build_entsoe_neighbor_market_sample_audit_frame,
+)
 from smart_arbitrage.forecasting.market_coupling_availability import (
     build_market_coupling_temporal_availability_frame,
 )
@@ -211,7 +215,7 @@ def test_official_global_panel_training_frame_rejects_unready_training_allowed_e
         raise AssertionError("unready external market-coupling rows should be blocked from training.")
 
 
-def test_official_global_panel_training_frame_routes_ready_market_coupling_feature() -> None:
+def test_official_global_panel_training_frame_blocks_ready_but_source_unbacked_feature() -> None:
     feature_name = "entsoe_neighbor_day_ahead_price_context"
     silver_frame = _tenant_silver_frame(
         tenant_ids=("client_003_dnipro_factory",),
@@ -258,13 +262,13 @@ def test_official_global_panel_training_frame_routes_ready_market_coupling_featu
         market_coupling_availability_frame=market_coupling,
     )
 
-    assert feature_name in panel.columns
+    assert feature_name not in panel.columns
     assert panel.select("external_feature_training_status").to_series().unique().to_list() == [
-        "training_ready"
+        "blocked_by_governance"
     ]
-    assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == feature_name
-    assert feature_name in panel.select("known_future_feature_columns_csv").to_series().item(0)
-    assert feature_name not in panel.select("blocked_external_feature_columns_csv").to_series().item(0)
+    assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == ""
+    assert feature_name not in panel.select("known_future_feature_columns_csv").to_series().item(0)
+    assert feature_name in panel.select("blocked_external_feature_columns_csv").to_series().item(0)
 
 
 def test_official_global_panel_training_frame_routes_only_approved_feature_route_rows() -> None:
@@ -306,7 +310,10 @@ def test_official_global_panel_training_frame_routes_only_approved_feature_route
             ],
         ]
     )
-    route = build_market_coupling_feature_route_frame(market_coupling)
+    route = build_market_coupling_feature_route_frame(
+        market_coupling,
+        entsoe_neighbor_market_sample_audit_frame=_source_backed_entsoe_sample(),
+    )
 
     panel = build_official_global_panel_training_frame(
         silver_frame,
@@ -320,6 +327,37 @@ def test_official_global_panel_training_frame_routes_only_approved_feature_route
     ]
     assert feature_name in panel.columns
     assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == feature_name
+
+
+def _source_backed_entsoe_sample() -> pl.DataFrame:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        build_market_coupling_temporal_availability_frame(
+            build_forecast_afe_feature_catalog_frame()
+        ),
+        security_token="dummy-token",
+    )
+    return build_entsoe_neighbor_market_sample_audit_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: """
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-01T01:00Z</end>
+              </timeInterval>
+              <resolution>PT60M</resolution>
+              <Point><position>1</position><price.amount>102.5</price.amount></Point>
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
 
 
 def _tenant_silver_frame(

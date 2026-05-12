@@ -79,6 +79,23 @@ The route frame has one row per candidate feature. Current statuses are:
 | `source_backed_but_governance_blocked` | A real sample row exists, but at least one governance blocker remains. | Not routed into training. |
 | `approved_for_training` | Source-backed row passes licensing, timezone, currency, market-rule, temporal-availability, and domain-shift gates. | May be included by official training. |
 
+## Readiness Preflight
+
+`smart_arbitrage.forecasting.market_coupling_readiness` now summarizes whether
+external features can be routed into official forecast training. The preflight
+is intentionally stricter than a source-access check:
+
+- missing ENTSO-E token blocks the route;
+- source-backed ENTSO-E samples alone do not approve training;
+- missing publication-time evidence or prior EUR/UAH FX normalization blocks
+  the route;
+- timezone/DST, licensing, market-rule, and Ukrainian-domain validation must be
+  ready before `external_feature_training_ready=true`.
+
+The output is a local evidence summary, not a public API contract. It preserves
+`market_execution_enabled=false` and keeps all unapproved European rows out of
+the Ukrainian official/DFL training panel.
+
 Approval requires all of the following:
 
 - source-backed row;
@@ -190,7 +207,8 @@ Run:
 
 1. Configure an ENTSO-E token outside git and fetch a tiny Poland sample with
    training still blocked.
-2. Add publication-time evidence for the neighboring source.
-3. Add prior-only EUR/UAH normalization if the data terms permit it.
-4. Rerun official global-panel parity only after at least one feature becomes
+2. Run the readiness preflight and keep the blockers visible in docs.
+3. Add publication-time evidence for the neighboring source.
+4. Add prior-only EUR/UAH normalization if the data terms permit it.
+5. Rerun official global-panel parity only after at least one feature becomes
    `approved_for_training`.

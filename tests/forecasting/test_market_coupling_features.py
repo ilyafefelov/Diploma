@@ -13,6 +13,9 @@ from smart_arbitrage.forecasting.market_coupling_features import (
     market_coupling_feature_route_metadata,
     validate_market_coupling_feature_route_evidence,
 )
+from smart_arbitrage.forecasting.market_coupling_readiness import (
+    build_market_coupling_readiness_preflight,
+)
 
 
 def _availability_frame() -> pl.DataFrame:
@@ -116,7 +119,37 @@ def test_market_coupling_feature_route_approves_only_fully_governed_prior_featur
         ]
     )
 
-    route = build_market_coupling_feature_route_frame(availability)
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    sample = build_entsoe_neighbor_market_sample_audit_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: """
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-01T01:00Z</end>
+              </timeInterval>
+              <resolution>PT60M</resolution>
+              <Point><position>1</position><price.amount>102.5</price.amount></Point>
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
+
+    route = build_market_coupling_feature_route_frame(
+        availability,
+        entsoe_neighbor_market_sample_audit_frame=sample,
+    )
 
     entsoe_row = route.filter(pl.col("feature_name") == feature_name).row(0, named=True)
     assert entsoe_row["approved_for_official_training"] is True
@@ -127,6 +160,160 @@ def test_market_coupling_feature_route_approves_only_fully_governed_prior_featur
     assert metadata["external_feature_training_status"] == "training_ready"
     assert metadata["allowed_external_feature_columns_csv"] == feature_name
     assert feature_name not in metadata["blocked_external_feature_columns_csv"]
+
+
+def test_market_coupling_readiness_preflight_blocks_missing_entsoe_token() -> None:
+    route = build_market_coupling_feature_route_frame(_availability_frame())
+
+    preflight = build_market_coupling_readiness_preflight(
+        route,
+        entsoe_security_token=None,
+    )
+
+    assert preflight["external_feature_training_ready"] is False
+    assert "entsoe_token" in preflight["readiness_blockers_csv"]
+    assert preflight["market_execution_enabled"] is False
+
+
+def test_market_coupling_readiness_preflight_keeps_source_backed_sample_blocked() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    sample = build_entsoe_neighbor_market_sample_audit_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: """
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-01T02:00Z</end>
+              </timeInterval>
+              <resolution>PT60M</resolution>
+              <Point><position>1</position><price.amount>102.5</price.amount></Point>
+              <Point><position>2</position><price.amount>111.0</price.amount></Point>
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
+    route = build_market_coupling_feature_route_frame(
+        _availability_frame(),
+        entsoe_neighbor_market_sample_audit_frame=sample,
+    )
+
+    preflight = build_market_coupling_readiness_preflight(
+        route,
+        entsoe_security_token="dummy-token",
+    )
+
+    assert preflight["external_feature_training_ready"] is False
+    assert preflight["entsoe_source_backed_rows"] == 2
+    assert "no_approved_external_features" in preflight["readiness_blockers_csv"]
+
+
+def test_market_coupling_readiness_preflight_blocks_publication_and_fx_gaps() -> None:
+    route = build_market_coupling_feature_route_frame(_availability_frame())
+
+    preflight = build_market_coupling_readiness_preflight(
+        route,
+        entsoe_security_token="dummy-token",
+        licensing_approved=True,
+        timezone_mapping_ready=True,
+        market_rules_mapped=True,
+        domain_shift_validated=True,
+        publication_time_evidence_available=False,
+        prior_fx_normalization_available=False,
+    )
+
+    assert preflight["external_feature_training_ready"] is False
+    assert "publication_time_evidence" in preflight["readiness_blockers_csv"]
+    assert "prior_eur_uah_fx_rate" in preflight["readiness_blockers_csv"]
+
+
+def test_market_coupling_readiness_preflight_passes_only_after_route_approval() -> None:
+    feature_name = "entsoe_neighbor_day_ahead_price_context"
+    availability = _availability_frame().with_columns(
+        [
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit(True))
+            .otherwise(pl.col("training_use_allowed"))
+            .alias("training_use_allowed"),
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit("training_ready"))
+            .otherwise(pl.col("readiness_status"))
+            .alias("readiness_status"),
+            pl.when(pl.col("feature_name") == feature_name)
+            .then(pl.lit(""))
+            .otherwise(pl.col("training_blockers_csv"))
+            .alias("training_blockers_csv"),
+            *[
+                pl.when(pl.col("feature_name") == feature_name)
+                .then(pl.lit("ready"))
+                .otherwise(pl.col(column_name))
+                .alias(column_name)
+                for column_name in (
+                    "licensing_status",
+                    "timezone_status",
+                    "currency_status",
+                    "market_rules_status",
+                    "temporal_availability_status",
+                    "domain_shift_status",
+                )
+            ],
+        ]
+    )
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    sample = build_entsoe_neighbor_market_sample_audit_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020000",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: """
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-01T01:00Z</end>
+              </timeInterval>
+              <resolution>PT60M</resolution>
+              <Point><position>1</position><price.amount>102.5</price.amount></Point>
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
+    route = build_market_coupling_feature_route_frame(
+        availability,
+        entsoe_neighbor_market_sample_audit_frame=sample,
+    )
+
+    preflight = build_market_coupling_readiness_preflight(
+        route,
+        entsoe_security_token="dummy-token",
+        publication_time_evidence_available=True,
+        prior_fx_normalization_available=True,
+        timezone_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=True,
+    )
+
+    assert preflight["external_feature_training_ready"] is True
+    assert preflight["approved_external_feature_columns_csv"] == feature_name
+    assert preflight["readiness_blockers_csv"] == ""
 
 
 def test_market_coupling_feature_route_validation_rejects_unready_training_rows() -> None:

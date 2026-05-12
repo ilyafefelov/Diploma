@@ -124,6 +124,18 @@ def test_schedule_value_registry_export_cli_accepts_evidence_attachments() -> No
     assert "monitor_snapshot_path=args.monitor_snapshot" in export_script
 
 
+def test_hf_official_job_submission_cli_is_guarded_by_submit_flag() -> None:
+    submit_script = (
+        PROJECT_ROOT / "scripts" / "submit_hf_official_schedule_value_job.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--payload" in submit_script
+    assert "--output" in submit_script
+    assert "--submit" in submit_script
+    assert "submit=args.submit" in submit_script
+    assert "default is a dry-run receipt" in submit_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)

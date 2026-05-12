@@ -101,6 +101,12 @@ def validate_market_coupling_feature_route_evidence(
         )
         and not _row_is_fully_governed(row)
     ]
+    unbacked_approved_rows = [
+        row
+        for row in rows
+        if bool(row["approved_for_official_training"])
+        and int(row["source_backed_row_count"]) <= 0
+    ]
     bad_claim_rows = [
         row
         for row in rows
@@ -120,6 +126,8 @@ def validate_market_coupling_feature_route_evidence(
     ]
     if unready_approved_rows:
         failures.append("market-coupling route must not approve unready external features")
+    if unbacked_approved_rows:
+        failures.append("market-coupling route must not approve source-unbacked features")
     if bad_claim_rows:
         failures.append("market-coupling route rows must keep research-only claim flags")
     if bad_status_rows:
@@ -132,6 +140,7 @@ def validate_market_coupling_feature_route_evidence(
         ),
         "source_backed_rows": sum(int(row["source_backed_row_count"]) for row in rows),
         "unready_approved_rows": len(unready_approved_rows),
+        "unbacked_approved_rows": len(unbacked_approved_rows),
         "bad_claim_rows": len(bad_claim_rows),
         "bad_status_rows": len(bad_status_rows),
     }
@@ -203,8 +212,12 @@ def _route_row(
     entsoe_source_backed_rows: int,
 ) -> dict[str, object]:
     source_name = str(row["source_name"])
-    source_backed_row_count = entsoe_source_backed_rows if source_name == "ENTSO_E" else 0
-    fully_governed = _row_is_fully_governed(row)
+    source_backed_row_count = (
+        entsoe_source_backed_rows
+        if source_name == "ENTSO_E"
+        else _source_observation_count(row)
+    )
+    fully_governed = _row_is_fully_governed(row) and source_backed_row_count > 0
     if fully_governed:
         feature_route_status = "approved_for_training"
     elif source_backed_row_count > 0:
@@ -255,6 +268,17 @@ def _row_is_fully_governed(row: dict[str, object]) -> bool:
             )
         )
     )
+
+
+def _source_observation_count(row: dict[str, object]) -> int:
+    value = row.get("source_observation_count", 0)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str) and value.strip():
+        return int(value)
+    return 0
 
 
 def _entsoe_source_backed_rows(frame: pl.DataFrame | None) -> int:

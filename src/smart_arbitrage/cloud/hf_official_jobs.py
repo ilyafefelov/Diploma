@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+import importlib
 import json
+import os
+from pathlib import Path
+import re
 from textwrap import dedent
 from typing import Literal
 
@@ -24,6 +29,14 @@ OFFICIAL_SCHEDULE_VALUE_SELECTION = (
     "dfl_official_schedule_value_learner_v2_robustness_frame,"
     "dfl_official_schedule_value_production_gate_frame"
 )
+HF_OFFICIAL_JOB_CLAIM_BOUNDARY = (
+    "offline_strategy_promotion_evidence_only_not_market_execution"
+)
+HF_JOB_HOURLY_PRICE_BY_FLAVOR: dict[str, float] = {
+    "t4-small": 0.40,
+}
+HfJobSubmitter = Callable[[dict[str, object]], Mapping[str, object] | object]
+HfTokenResolver = Callable[[], str | None]
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,10 +67,55 @@ def build_hf_official_schedule_value_job_payload(
         "script": _build_uv_script(config),
         "flavor": config.flavor,
         "timeout": config.timeout,
+        "metadata": _payload_metadata(config),
     }
     if config.artifact_repo_id.strip():
         payload["secrets"] = {"HF_TOKEN": "$HF_TOKEN"}
     return payload
+
+
+def submit_hf_official_schedule_value_job_payload(
+    payload_path: Path,
+    *,
+    output_path: Path,
+    submit: bool = False,
+    token_resolver: HfTokenResolver | None = None,
+    submitter: HfJobSubmitter | None = None,
+) -> dict[str, object]:
+    """Write a local receipt and optionally submit a generated HF Jobs payload."""
+
+    payload = _read_payload(payload_path)
+    metadata = _payload_metadata_from_payload(payload)
+    token_required = _payload_requires_hf_token(payload)
+    receipt: dict[str, object] = {
+        "schema_version": 1,
+        "payload_path": str(payload_path),
+        "submit_requested": submit,
+        "submitted": False,
+        "job_id": None,
+        "job_url": None,
+        "job_status": None,
+        "run_slug": metadata["run_slug"],
+        "flavor": str(payload.get("flavor", "")),
+        "timeout": str(payload.get("timeout", "")),
+        "estimated_timeout_cost_usd": metadata["estimated_timeout_cost_usd"],
+        "artifact_repo_id": metadata["artifact_repo_id"],
+        "token_required": token_required,
+        "token_resolved": False,
+        "claim_boundary": HF_OFFICIAL_JOB_CLAIM_BOUNDARY,
+        "market_execution_enabled": False,
+    }
+    if submit:
+        submission_payload = _payload_for_submission(
+            payload,
+            token_resolver=token_resolver,
+        )
+        receipt["token_resolved"] = token_required
+        job = (submitter or _submit_with_huggingface_hub)(submission_payload)
+        receipt.update(_job_receipt_fields(job))
+        receipt["submitted"] = True
+    _write_receipt(output_path, receipt)
+    return receipt
 
 
 def _build_uv_script(config: HfOfficialScheduleValueJobConfig) -> str:
@@ -168,6 +226,22 @@ def _attempt_manifest_json(config: HfOfficialScheduleValueJobConfig) -> str:
     return json.dumps(manifest, indent=2, sort_keys=True) + "\n"
 
 
+def _payload_metadata(config: HfOfficialScheduleValueJobConfig) -> dict[str, object]:
+    return {
+        "schema_version": 1,
+        "run_slug": config.run_slug,
+        "artifact_repo_id": config.artifact_repo_id,
+        "claim_boundary": HF_OFFICIAL_JOB_CLAIM_BOUNDARY,
+        "market_execution_enabled": False,
+        "flavor": config.flavor,
+        "timeout": config.timeout,
+        "estimated_timeout_cost_usd": _estimated_timeout_cost_usd(
+            config.flavor,
+            config.timeout,
+        ),
+    }
+
+
 def _dagster_config_yaml(config: HfOfficialScheduleValueJobConfig) -> str:
     return f"""
     ops:
@@ -223,3 +297,160 @@ def _validate_config(config: HfOfficialScheduleValueJobConfig) -> None:
         raise ValueError("tft_max_epochs must be positive.")
     if not config.run_slug.strip():
         raise ValueError("run_slug must not be blank.")
+
+
+def _read_payload(payload_path: Path) -> dict[str, object]:
+    if not payload_path.exists():
+        raise FileNotFoundError(f"HF Jobs payload does not exist: {payload_path}")
+    payload = json.loads(payload_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError("HF Jobs payload JSON must be an object.")
+    if "script" not in payload:
+        raise ValueError("HF Jobs payload missing script.")
+    return payload
+
+
+def _payload_metadata_from_payload(payload: dict[str, object]) -> dict[str, object]:
+    metadata = payload.get("metadata")
+    if isinstance(metadata, dict):
+        return {
+            "run_slug": str(metadata.get("run_slug", _run_slug_from_script(payload))),
+            "artifact_repo_id": str(metadata.get("artifact_repo_id", "")),
+            "estimated_timeout_cost_usd": metadata.get(
+                "estimated_timeout_cost_usd",
+                _estimated_timeout_cost_usd(
+                    str(payload.get("flavor", "")),
+                    str(payload.get("timeout", "")),
+                ),
+            ),
+        }
+    return {
+        "run_slug": _run_slug_from_script(payload),
+        "artifact_repo_id": _artifact_repo_from_script(payload),
+        "estimated_timeout_cost_usd": _estimated_timeout_cost_usd(
+            str(payload.get("flavor", "")),
+            str(payload.get("timeout", "")),
+        ),
+    }
+
+
+def _run_slug_from_script(payload: dict[str, object]) -> str:
+    return _script_constant(str(payload.get("script", "")), "RUN_SLUG")
+
+
+def _artifact_repo_from_script(payload: dict[str, object]) -> str:
+    return _script_constant(str(payload.get("script", "")), "ARTIFACT_REPO_ID")
+
+
+def _script_constant(script: str, name: str) -> str:
+    match = re.search(rf"^{name}\s*=\s*['\"]([^'\"]*)['\"]", script, flags=re.MULTILINE)
+    return match.group(1) if match else ""
+
+
+def _payload_requires_hf_token(payload: dict[str, object]) -> bool:
+    secrets = payload.get("secrets")
+    if not isinstance(secrets, dict):
+        return False
+    return any(value == "$HF_TOKEN" for value in secrets.values())
+
+
+def _payload_for_submission(
+    payload: dict[str, object],
+    *,
+    token_resolver: HfTokenResolver | None,
+) -> dict[str, object]:
+    submission_payload = json.loads(json.dumps(payload))
+    secrets = submission_payload.get("secrets")
+    if isinstance(secrets, dict) and any(value == "$HF_TOKEN" for value in secrets.values()):
+        token = _resolve_hf_token(token_resolver)
+        if not token:
+            raise RuntimeError(
+                "HF_TOKEN is required to submit a payload that uploads artifacts."
+            )
+        submission_payload["secrets"] = {
+            key: token if value == "$HF_TOKEN" else value for key, value in secrets.items()
+        }
+    return submission_payload
+
+
+def _resolve_hf_token(token_resolver: HfTokenResolver | None) -> str | None:
+    if token_resolver is not None:
+        return token_resolver()
+    environment_token = os.environ.get("HF_TOKEN")
+    if environment_token:
+        return environment_token
+    try:
+        hub = importlib.import_module("huggingface_hub")
+    except ImportError:
+        return None
+    get_token = getattr(hub, "get_token", None)
+    if not callable(get_token):
+        return None
+    token = get_token()
+    return str(token) if token else None
+
+
+def _submit_with_huggingface_hub(payload: dict[str, object]) -> object:
+    hub = importlib.import_module("huggingface_hub")
+    run_uv_job = getattr(hub, "run_uv_job")
+    secrets = payload.get("secrets")
+    return run_uv_job(
+        str(payload["script"]),
+        flavor=str(payload.get("flavor", "")),
+        timeout=str(payload.get("timeout", "")),
+        secrets=secrets if isinstance(secrets, dict) else None,
+    )
+
+
+def _job_receipt_fields(job: Mapping[str, object] | object) -> dict[str, object]:
+    job_id = _job_value(job, "id")
+    status = _job_value(job, "status")
+    status_stage = _job_value(status, "stage") if status is not None else None
+    return {
+        "job_id": str(job_id) if job_id is not None else None,
+        "job_url": _job_url(job),
+        "job_status": str(status_stage or status) if status is not None else None,
+    }
+
+
+def _job_url(job: Mapping[str, object] | object) -> str | None:
+    value = _job_value(job, "url")
+    return str(value) if value is not None else None
+
+
+def _job_value(job: Mapping[str, object] | object | None, key: str) -> object | None:
+    if job is None:
+        return None
+    if isinstance(job, Mapping):
+        return job.get(key)
+    return getattr(job, key, None)
+
+
+def _write_receipt(output_path: Path, receipt: dict[str, object]) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(receipt, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _estimated_timeout_cost_usd(flavor: str, timeout: str) -> float | None:
+    hourly_price = HF_JOB_HOURLY_PRICE_BY_FLAVOR.get(flavor)
+    timeout_hours = _timeout_hours(timeout)
+    if hourly_price is None or timeout_hours is None:
+        return None
+    return round(hourly_price * timeout_hours, 2)
+
+
+def _timeout_hours(timeout: str) -> float | None:
+    match = re.fullmatch(r"(?P<value>\d+(?:\.\d+)?)(?P<unit>[smhd])", timeout.strip())
+    if match is None:
+        return None
+    value = float(match.group("value"))
+    unit = match.group("unit")
+    if unit == "s":
+        return value / 3600
+    if unit == "m":
+        return value / 60
+    if unit == "h":
+        return value
+    if unit == "d":
+        return value * 24
+    return None

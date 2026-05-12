@@ -145,6 +145,11 @@ shape in the generated UV-job payload. The payload still does not submit by
 itself. It remains a safe, inspectable artifact until the branch is pushed and
 the Hugging Face account/token setup is ready.
 
+`scripts/submit_hf_official_schedule_value_job.py` is the guarded wrapper for
+that payload. By default it writes only a dry-run receipt. A real paid job
+requires `--submit`; when artifact upload is configured, the wrapper resolves
+`HF_TOKEN` only in memory and never writes it to the local receipt.
+
 Current Hugging Face Jobs documentation supports:
 
 - UV-script jobs;
@@ -155,8 +160,9 @@ Current Hugging Face Jobs documentation supports:
 The repo therefore keeps the current offload strategy:
 
 1. build and inspect the payload locally;
-2. submit only after `HF_TOKEN` and artifact repo permissions are available;
-3. persist outputs as artifacts, not as live strategy defaults.
+2. write a dry-run receipt with the guarded submission wrapper;
+3. submit only after `HF_TOKEN` and artifact repo permissions are available;
+4. persist outputs as artifacts, not as live strategy defaults.
 
 ## Claim Boundary
 
@@ -199,5 +205,5 @@ git diff --check
 1. If the Codex heartbeat monitor is recreated, point it at
    `scripts/monitor-official-evidence-attempt.ps1` instead of direct `run.log`
    and SQL inspection.
-2. Add a Hugging Face submission wrapper only after the payload is tested on a
-   pushed branch and a paid HF Jobs account/token path is confirmed.
+2. Use the HF submission wrapper only after the payload is tested on a pushed
+   branch and a paid HF Jobs account/token path is confirmed.
