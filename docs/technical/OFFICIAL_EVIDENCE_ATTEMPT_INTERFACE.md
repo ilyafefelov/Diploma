@@ -75,6 +75,16 @@ Example:
   --persisted-anchor-counts-csv "nbeatsx_official_global_panel_v1=365,nbeatsx_official_global_panel_horizon_calibrated_v1=365"
 ```
 
+When `SMART_ARBITRAGE_STRATEGY_EVALUATION_DSN` or
+`SMART_ARBITRAGE_MARKET_DATA_DSN` is configured, the same command can read
+Postgres counts directly:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\summarize_official_evidence_attempt_resume.py `
+  --manifest .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  --strategy-kind official_global_panel_nbeatsx_rolling_strict_lp_benchmark
+```
+
 The summary reports `status`, `effective_persisted_anchor_count`,
 `completed_batch_start_indices`, and `next_anchor_index`. When multiple source
 models are passed, the effective count is the minimum source count, so a

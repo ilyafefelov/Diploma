@@ -12,8 +12,10 @@ from smart_arbitrage.resources.strategy_evaluation_store import (
 
 
 class _RecordingCursor:
-    def __init__(self) -> None:
+    def __init__(self, rows: list[dict[str, Any]] | None = None) -> None:
         self.statements: list[str] = []
+        self.params: list[tuple[Any, ...] | None] = []
+        self.rows = rows or []
 
     def __enter__(self) -> _RecordingCursor:
         return self
@@ -23,11 +25,15 @@ class _RecordingCursor:
 
     def execute(self, statement: str, params: tuple[Any, ...] | None = None) -> None:
         self.statements.append(statement)
+        self.params.append(params)
+
+    def fetchall(self) -> list[dict[str, Any]]:
+        return self.rows
 
 
 class _RecordingConnection:
-    def __init__(self) -> None:
-        self.cursor_instance = _RecordingCursor()
+    def __init__(self, rows: list[dict[str, Any]] | None = None) -> None:
+        self.cursor_instance = _RecordingCursor(rows)
         self.commit_count = 0
 
     def __enter__(self) -> _RecordingConnection:
@@ -145,3 +151,91 @@ def test_in_memory_strategy_store_reads_resumable_batch_by_generated_at() -> Non
 
     assert batch_frame["evaluation_id"].to_list() == ["batch-a", "batch-b"]
     assert batch_frame.schema["generated_at"] == pl.Datetime("us")
+
+
+def test_in_memory_strategy_store_counts_distinct_anchors_by_model_for_resume() -> None:
+    store = InMemoryStrategyEvaluationStore()
+    batch_generated_at = datetime(2026, 5, 11, 12, tzinfo=UTC)
+    store.upsert_evaluation_frame(
+        pl.DataFrame(
+            {
+                "evaluation_id": ["a", "b", "c", "d"],
+                "tenant_id": [
+                    "client_001_kyiv_mall",
+                    "client_002_lviv_office",
+                    "client_001_kyiv_mall",
+                    "client_001_kyiv_mall",
+                ],
+                "forecast_model_name": [
+                    "nbeatsx_official_v0",
+                    "nbeatsx_official_v0",
+                    "nbeatsx_official_v0",
+                    "tft_official_v0",
+                ],
+                "strategy_kind": [
+                    "official_forecast_rolling_origin_benchmark",
+                    "official_forecast_rolling_origin_benchmark",
+                    "official_forecast_rolling_origin_benchmark",
+                    "official_forecast_rolling_origin_benchmark",
+                ],
+                "anchor_timestamp": [
+                    datetime(2026, 4, 1, 23),
+                    datetime(2026, 4, 1, 23),
+                    datetime(2026, 4, 2, 23),
+                    datetime(2026, 4, 1, 23),
+                ],
+                "generated_at": [batch_generated_at for _ in range(4)],
+                "rank_by_regret": [2, 2, 2, 3],
+            }
+        )
+    )
+
+    counts = store.anchor_counts_by_model_for_generated_at(
+        strategy_kind="official_forecast_rolling_origin_benchmark",
+        generated_at=batch_generated_at,
+    )
+
+    assert counts == {
+        "nbeatsx_official_v0": 2,
+        "tft_official_v0": 1,
+    }
+
+
+def test_postgres_strategy_store_counts_distinct_anchors_by_model_for_resume(
+    monkeypatch,
+) -> None:
+    connection = _RecordingConnection(
+        rows=[
+            {
+                "forecast_model_name": "nbeatsx_official_v0",
+                "anchor_count": 8,
+            },
+            {
+                "forecast_model_name": "tft_official_v0",
+                "anchor_count": 4,
+            },
+        ]
+    )
+    monkeypatch.setattr(
+        PostgresStrategyEvaluationStore,
+        "_connect",
+        lambda self: connection,
+    )
+    generated_at = datetime(2026, 5, 11, 12, tzinfo=UTC)
+
+    store = PostgresStrategyEvaluationStore("postgresql://example")
+    counts = store.anchor_counts_by_model_for_generated_at(
+        strategy_kind="official_forecast_rolling_origin_benchmark",
+        generated_at=generated_at,
+    )
+
+    count_sql = " ".join(connection.cursor_instance.statements[-1].split())
+    assert "COUNT(DISTINCT anchor_timestamp) AS anchor_count" in count_sql
+    assert counts == {
+        "nbeatsx_official_v0": 8,
+        "tft_official_v0": 4,
+    }
+    assert connection.cursor_instance.params[-1] == (
+        "official_forecast_rolling_origin_benchmark",
+        generated_at,
+    )

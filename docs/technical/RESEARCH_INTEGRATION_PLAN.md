@@ -2124,7 +2124,9 @@ the generated timestamp. Resume decisions should use the manifest batch plan and
 the latest persisted rows, rather than relying only on free-form `run.log`
 inspection. The resume-summary helper uses the minimum persisted anchor count
 across source models, which keeps partial official runs conservative when one
-model has fewer completed anchors than another.
+model has fewer completed anchors than another. It can either receive manual
+counts or read `forecast_strategy_evaluations` by `strategy_kind + generated_at`
+through the strategy-evaluation store.
 
 Tracked docs:
 

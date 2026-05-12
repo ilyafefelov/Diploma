@@ -28,7 +28,10 @@ starts. The manifest is intentionally small and stable:
 
 The resume summary helper reads the same manifest and combines it with persisted
 anchor counts. If multiple source models are present, it uses the minimum
-persisted count so the next resume point is conservative and repeatable.
+persisted count so the next resume point is conservative and repeatable. The
+helper can accept manual counts or read distinct anchor counts per
+`forecast_model_name` from `forecast_strategy_evaluations` for the fixed
+`strategy_kind + generated_at`.
 
 This is not a new forecast model and not live market execution. It is the
 execution-governance layer needed before reliable Hugging Face Jobs offload.

@@ -25,6 +25,13 @@ class StrategyEvaluationStore(Protocol):
         generated_at: Any,
     ) -> pl.DataFrame: ...
 
+    def anchor_counts_by_model_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> dict[str, int]: ...
+
 
 class NullStrategyEvaluationStore:
     def upsert_evaluation_frame(self, evaluation_frame: pl.DataFrame) -> None:
@@ -46,6 +53,14 @@ class NullStrategyEvaluationStore:
         generated_at: Any,
     ) -> pl.DataFrame:
         return pl.DataFrame()
+
+    def anchor_counts_by_model_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> dict[str, int]:
+        return {}
 
 
 class InMemoryStrategyEvaluationStore:
@@ -97,6 +112,28 @@ class InMemoryStrategyEvaluationStore:
             )
             .sort(["tenant_id", "anchor_timestamp", "rank_by_regret", "forecast_model_name"])
         )
+
+    def anchor_counts_by_model_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> dict[str, int]:
+        frame = self.strategy_kind_frame_for_generated_at(
+            strategy_kind=strategy_kind,
+            generated_at=generated_at,
+        )
+        if frame.height == 0:
+            return {}
+        counts = (
+            frame.group_by("forecast_model_name")
+            .agg(pl.col("anchor_timestamp").n_unique().alias("anchor_count"))
+            .sort("forecast_model_name")
+        )
+        return {
+            str(row["forecast_model_name"]): int(row["anchor_count"])
+            for row in counts.iter_rows(named=True)
+        }
 
 
 class PostgresStrategyEvaluationStore:
@@ -301,6 +338,31 @@ class PostgresStrategyEvaluationStore:
                 )
                 rows = cursor.fetchall()
         return pl.DataFrame([_normalize_row(dict(row)) for row in rows])
+
+    def anchor_counts_by_model_for_generated_at(
+        self,
+        *,
+        strategy_kind: str,
+        generated_at: Any,
+    ) -> dict[str, int]:
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+					SELECT forecast_model_name, COUNT(DISTINCT anchor_timestamp) AS anchor_count
+					FROM forecast_strategy_evaluations
+					WHERE strategy_kind = %s
+					  AND generated_at = %s
+					GROUP BY forecast_model_name
+					ORDER BY forecast_model_name
+					""",
+                    (strategy_kind, generated_at),
+                )
+                rows = cursor.fetchall()
+        return {
+            str(row["forecast_model_name"]): int(row["anchor_count"])
+            for row in rows
+        }
 
 
 def _append_or_replace(

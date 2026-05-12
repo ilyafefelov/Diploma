@@ -90,6 +90,8 @@ def test_official_attempt_resume_summary_script_uses_manifest_contract() -> None
     assert "--manifest" in resume_script
     assert "--persisted-anchor-counts-csv" in resume_script
     assert "--persisted-anchor-count" in resume_script
+    assert "--strategy-kind" in resume_script
+    assert "anchor_counts_by_model_for_generated_at" in resume_script
 
 
 def _environment_without_pythonpath() -> dict[str, str]:
