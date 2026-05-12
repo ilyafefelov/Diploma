@@ -120,6 +120,11 @@ git diff --check
 1. Use `attempt_manifest.json` in the monitoring automation so it can compute
    the next resume anchor without parsing free-form logs.
 2. Add an evidence-registry export that copies the manifest next to the final
-   Offline Strategy Promotion summary.
+   Offline Strategy Promotion summary. The 365-anchor official global-panel
+   run now has a local export at
+   `data/research_runs/week3_official_global_panel_365_strategy_promotion/`.
+   Because the original run began before this manifest interface existed, the
+   backfilled manifest records the resumed `8..365` segment while Postgres row
+   counts and the run logs confirm full 365-anchor coverage.
 3. Add a Hugging Face submission wrapper only after the payload is tested on a
    pushed branch and a paid HF Jobs account/token path is confirmed.

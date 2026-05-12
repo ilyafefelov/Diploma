@@ -251,3 +251,31 @@ Follow-up execution protocol:
 - keep the outer per-batch timeout at least three hours on local CPU;
 - record the generated timestamp and failed anchor index if a resume is needed;
 - do not treat partial official rows as Offline Strategy Promotion-grade evidence.
+
+## 365-Anchor Registry Export
+
+The completed official global-panel 365-anchor Ukrainian backfill run is now
+packaged as a local evidence registry:
+
+| Field | Value |
+|---|---|
+| Run directory | `.tmp_runtime/official_global_panel_batches/official-global-panel-2026-05-11T203000-0000/` |
+| Fixed generated timestamp | `2026-05-11 20:30:00+00:00` |
+| Strategy rows | `3,650` raw official global-panel rows and `5,475` horizon-calibrated rows |
+| Anchors | `365` distinct anchors across five tenants |
+| Registry export | `data/research_runs/week3_official_global_panel_365_strategy_promotion/` |
+| Manifest | `attempt_manifest.json` copied into the registry export |
+| Market execution | `false` |
+
+Registry summary:
+
+| Source | Latest validation tenant-anchors | Strict mean / median | Learner mean / median | Improvement | Rolling strict passes | Internal `production_promote` |
+|---|---:|---:|---:|---:|---:|---|
+| `nbeatsx_official_global_panel_v1` | 90 | 310.583 / 198.386 | 225.437 / 109.692 | 27.41% | 4 / 4 | `true` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 90 | 310.583 / 198.386 | 206.367 / 96.021 | 33.55% | 4 / 4 | `true` |
+
+This registry is the strongest official-forecast evidence package so far, but
+the claim remains unchanged: **Offline Strategy Promotion** for
+offline/read-model strategy evidence only. It is not live market execution, not a
+dashboard default switch, and not a claim that raw official NBEATSx alone beats
+`strict_similar_day`.

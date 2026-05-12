@@ -2130,3 +2130,19 @@ offline/read-model strategy evidence only, `strict_similar_day` fallback, and
 Tracked doc:
 
 - [OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md](OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md).
+
+## Official Global-Panel 365-Anchor Registry Export
+
+The 365-anchor official global-panel result has been packaged into a local
+ignored evidence folder:
+
+- `data/research_runs/week3_official_global_panel_365_strategy_promotion/`;
+- `dfl_schedule_value_production_gate_registry.json`;
+- `dfl_schedule_value_production_gate_registry.md`;
+- `attempt_manifest.json`.
+
+The registry records two official NBEATSx source rows with internal
+`production_promote=true`, `market_execution_enabled=false`, and
+`strict_similar_day_default_fallback`. The result remains thesis-safe Offline
+Strategy Promotion only: it supports offline/read-model strategy evidence and
+does not permit live market execution.
