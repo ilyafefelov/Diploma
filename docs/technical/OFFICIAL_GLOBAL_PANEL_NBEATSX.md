@@ -1,6 +1,6 @@
 # Official Global-Panel NBEATSx
 
-Date: 2026-05-11
+Date: 2026-05-12
 
 This slice starts the stronger official-forecast lane without replacing the
 compact in-repo candidates. The goal is to give Nixtla NBEATSx a fairer
@@ -59,10 +59,10 @@ Resumable local runner:
 ```powershell
 .\scripts\run-official-global-panel-batches.ps1 `
   -TotalAnchors 365 `
-  -BatchSize 4 `
+  -BatchSize 20 `
   -StartAnchorIndex 0 `
-  -EndAnchorIndex 8 `
-  -GeneratedAtIso 2026-05-11T20:00:00Z
+  -GeneratedAtIso 2026-05-11T20:30:00+00:00 `
+  -BatchTimeoutSeconds 7200
 ```
 
 The runner writes per-batch configs under
@@ -348,54 +348,105 @@ may be used as an offline strategy-evidence challenger behind a
 Decision Transformer controller, and not proof that raw NBEATSx forecasts are
 better than the strict control.
 
-365-anchor UA backfill batch evidence on 2026-05-11:
+365-anchor UA backfill robustness evidence on 2026-05-12:
 
 ```powershell
-docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs `
-  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_exogenous_governance_frame,nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame `
-  -c configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml
+.\scripts\run-official-global-panel-batches.ps1 `
+  -TotalAnchors 365 `
+  -BatchSize 20 `
+  -StartAnchorIndex 8 `
+  -AnchorBatchOrder chronological `
+  -GeneratedAtIso 2026-05-11T20:30:00+00:00 `
+  -BatchTimeoutSeconds 7200
 ```
 
-Result:
+The run resumed the clean partial `2026-05-11 20:30:00+00` timestamp after the
+first eight chronological anchors, completed the remaining 357 anchors, and
+then ran horizon calibration, schedule candidate libraries, the schedule/value
+learner, rolling robustness, and the production gate.
+
+Raw official rolling benchmark:
 
 | Evidence item | Value |
 |---|---:|
 | Runner directory | `.tmp_runtime/official_global_panel_batches/official-global-panel-2026-05-11T203000-0000` |
 | Fixed generated_at | `2026-05-11 20:30:00+00` |
-| Batch anchors | 8 |
+| Persisted raw strict rows | 3650 |
+| Persisted calibrated strict rows | 5475 |
 | Tenants | 5 |
-| Persisted rows | 80 |
-| Anchor range | `2025-04-22 23:00` to `2025-04-29 23:00` |
-| `strict_similar_day` mean regret | 334.43 UAH |
-| Raw global-panel NBEATSx mean regret | 931.65 UAH |
-| Production promotion | `false` |
-| Promotion blocker | incomplete batch coverage |
+| Anchors per tenant | 365 |
+| Anchor range | `2025-04-22 23:00` to `2026-04-29 23:00` |
+| `strict_similar_day` mean / median regret | 431.52 / 217.27 UAH |
+| Raw official NBEATSx mean / median regret | 708.14 / 446.08 UAH |
+| Horizon-calibrated official NBEATSx mean / median regret | 602.51 / 351.25 UAH |
 
-Interpretation: the source-backed 365-anchor UA panel can train and strict-score
-official global-panel NBEATSx in resumable batches. The first two chronological
-batches do not beat `strict_similar_day`; this is expected because they are
-early-window batches, not the latest 90-anchor promotion set. The next step is
-to continue batches with the same `generated_at`, then run calibration,
-schedule/value, robustness, and production-gate assets only after enough
-persisted anchors exist.
+Interpretation: the forecast-only result does not generalize into a promoted
+forecast model. Raw official global-panel NBEATSx and its prior-only horizon
+calibration both still lose to the frozen strict control over the full
+365-anchor Ukrainian backfill panel.
+
+Downstream schedule/value production gate:
+
+| Evidence item | Value |
+|---|---:|
+| Dagster run id | `c7d23435-9230-4452-9a0c-99f72b2573a9` |
+| Gate generated timestamp | `2026-05-12 03:10:15.226078+00` |
+| Candidate library rows | 21900 |
+| Candidate library v2 rows | 36360 |
+| Learner rows | 10 |
+| Strict final-holdout rows | 540 |
+| Robustness rows | 8 |
+| Production gate rows | 2 |
+| Market execution enabled | `false` |
+
+Latest final-holdout strict LP/oracle evidence:
+
+| Source | Reference | Rows | Tenants | Anchors | Mean regret | Median regret |
+|---|---|---:|---:|---:|---:|---:|
+| Raw official NBEATSx | raw source | 90 | 5 | 18 | 771.26 | 393.49 |
+| Raw official NBEATSx | strict reference | 90 | 5 | 18 | 310.58 | 198.39 |
+| Raw official NBEATSx | schedule/value learner | 90 | 5 | 18 | 225.44 | 109.69 |
+| Horizon-calibrated official NBEATSx | raw source | 90 | 5 | 18 | 622.25 | 290.22 |
+| Horizon-calibrated official NBEATSx | strict reference | 90 | 5 | 18 | 310.58 | 198.39 |
+| Horizon-calibrated official NBEATSx | schedule/value learner | 90 | 5 | 18 | 206.37 | 96.02 |
+
+Rolling robustness:
+
+| Source | Rolling windows | Strict-control pass windows | Development pass windows | Latest mean-regret improvement vs strict | Gate label |
+|---|---:|---:|---:|---:|---|
+| Raw official NBEATSx | 4 | 4 | 3 | 27.42% | `robust_research_challenger` |
+| Horizon-calibrated official NBEATSx | 4 | 4 | 4 | 33.56% | `robust_research_challenger` |
+
+Production gate:
+
+| Source | Latest validation tenant-anchors | Allowed challenger | Fallback | Production promote | Market execution | Blocker |
+|---|---:|---|---|---|---|---|
+| Raw official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
+| Horizon-calibrated official NBEATSx | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `strict_similar_day_default_fallback` | `true` | `false` | `none` |
+
+Interpretation: the 104-anchor result generalizes to the larger 365-anchor UA
+backfill panel for the schedule/value learner, not for raw forecasting. This is
+now robust offline/read-model promotion evidence for an official global-panel
+NBEATSx schedule/value challenger behind `strict_similar_day` fallback. It is
+still not live market execution, not a dashboard/API default switch, not a
+deployed Decision Transformer controller, and not proof that raw NBEATSx
+forecasts outperform the strict control.
 
 Not implemented yet:
 
 - live market execution or dashboard/API default switching;
-- completed 365-anchor official global-panel backfill. Batch execution is now
-  resumable, but only the first 8 anchors have been materialized locally under
-  the clean `2026-05-11 20:30:00+00` evidence timestamp.
+- official global-panel TFT over the 365-anchor backfill panel;
 - Hugging Face Jobs execution. A payload builder now exists, but it only writes
   a redacted JSON/script for a future remote run and does not submit paid
   compute.
-- broader UA backfill or market-coupling exogenous training features.
+- market-coupling exogenous training features.
 
 ## Next Required Work
 
-1. Expand official global-panel evaluation to promotion-grade coverage only
-   after UA backfill or resumable batching can provide enough anchors.
-2. Add UA backfill and market-coupling exogenous governance before increasing
-   official model capacity.
+1. Decide how to present the 365-anchor schedule/value learner as the thesis
+   DFL-style headline while preserving the no-market-execution boundary.
+2. Add market-coupling exogenous governance before increasing official model
+   capacity or rerunning TFT at comparable coverage.
 3. Use the Hugging Face Jobs payload builder for a latest-first GPU screen only
    after the branch is pushed and artifact upload credentials are available.
 

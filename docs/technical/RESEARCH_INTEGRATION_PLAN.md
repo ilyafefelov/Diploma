@@ -1910,17 +1910,19 @@ Materialized result on 2026-05-11:
 - Runner directory:
   `.tmp_runtime/official_global_panel_batches/official-global-panel-2026-05-11T203000-0000`.
 - Fixed generated timestamp: `2026-05-11 20:30:00+00`.
-- Persisted rows: 80, covering 8 chronological anchors, five tenants, and two
-  forecast models (`strict_similar_day` plus
+- Resumed command:
+  `.\scripts\run-official-global-panel-batches.ps1 -TotalAnchors 365 -BatchSize 20 -StartAnchorIndex 8 -AnchorBatchOrder chronological -GeneratedAtIso 2026-05-11T20:30:00+00:00 -BatchTimeoutSeconds 7200`.
+- Raw strict rows persisted: 3650, covering 365 chronological anchors, five
+  tenants, and two forecast models (`strict_similar_day` plus
   `nbeatsx_official_global_panel_v1`).
-- Anchor range: `2025-04-22 23:00` through `2025-04-29 23:00`.
-- Mean regret: `strict_similar_day=334.43` UAH versus raw official global-panel
-  NBEATSx `931.65` UAH.
+- Calibrated strict rows persisted: 5475, covering the same 365 anchors and
+  adding `nbeatsx_official_global_panel_horizon_calibrated_v1`.
+- Anchor range: `2025-04-22 23:00` through `2026-04-29 23:00`.
 
-Decision update: this proves the 365-anchor backfill lane can run in resumable
-local batches. It is not promotion evidence yet; the gate still needs 90 latest
-validation tenant-anchors per source plus four rolling robustness windows before
-any offline/read-model promotion claim.
+Decision update: the 365-anchor backfill lane is now complete for official
+global-panel NBEATSx raw and horizon-calibrated strict LP/oracle scoring. The
+runner remains resumable, but the `2026-05-11 20:30:00+00` timestamp is now a
+complete 365-anchor evidence batch rather than a partial smoke.
 
 ## Official Global-Panel 104-Anchor Promotion Gate Result
 
@@ -1984,3 +1986,68 @@ default-fallback controller candidate that passes the strict LP/oracle promotion
 gate under the current 104-anchor Ukrainian panel. `market_execution_enabled`
 remains `false`, the Pydantic Gatekeeper remains mandatory, and live bidding is
 still out of scope.
+
+## Official Global-Panel 365-Anchor Robustness Result
+
+The 365-anchor Ukrainian backfill rerun tests whether the 104-anchor promotion
+result survives a larger source-backed panel. It uses the same official
+global-panel NBEATSx raw timestamp (`2026-05-11 20:30:00+00`), the same frozen
+`strict_similar_day` comparator, the same strict LP/oracle scoring, and the same
+offline/read-model production gate thresholds. No EU market-coupling rows enter
+training in this slice.
+
+Implementation:
+
+- Config:
+  [../../configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml](../../configs/real_data_official_global_panel_nbeatsx_backfill_week3.yaml).
+- Runner:
+  [../../scripts/run-official-global-panel-batches.ps1](../../scripts/run-official-global-panel-batches.ps1).
+- Runner directory:
+  `.tmp_runtime/official_global_panel_batches/official-global-panel-2026-05-11T203000-0000`.
+- Fixed raw-benchmark generated timestamp: `2026-05-11 20:30:00+00`.
+- Downstream gate run id: `c7d23435-9230-4452-9a0c-99f72b2573a9`.
+- Downstream gate generated timestamp:
+  `2026-05-12 03:10:15.226078+00`.
+- Tracked note:
+  [OFFICIAL_GLOBAL_PANEL_NBEATSX.md](OFFICIAL_GLOBAL_PANEL_NBEATSX.md).
+
+Raw official rolling benchmark over 365 anchors:
+
+| Strategy | Rows | Tenants | Anchors | Mean regret | Median regret |
+|---|---:|---:|---:|---:|---:|
+| `strict_similar_day` | 1825 | 5 | 365 | 431.52 | 217.27 |
+| `nbeatsx_official_global_panel_v1` | 1825 | 5 | 365 | 708.14 | 446.08 |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 1825 | 5 | 365 | 602.51 | 351.25 |
+
+The raw and horizon-calibrated official NBEATSx forecasts still lose to the
+frozen strict control over the full 365-anchor panel. This remains evidence
+against direct forecast-model promotion.
+
+Schedule/value learner latest holdout:
+
+| Source | Strict mean / median | Raw source mean / median | Learner mean / median | Latest improvement vs strict |
+|---|---:|---:|---:|---:|
+| `nbeatsx_official_global_panel_v1` | 310.58 / 198.39 | 771.26 / 393.49 | 225.44 / 109.69 | 27.42% |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 310.58 / 198.39 | 622.25 / 290.22 | 206.37 / 96.02 | 33.56% |
+
+Rolling robustness:
+
+| Source | Rolling windows | Strict-control pass windows | Development pass windows | Gate label |
+|---|---:|---:|---:|---|
+| `nbeatsx_official_global_panel_v1` | 4 | 4 | 3 | `robust_research_challenger` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 4 | 4 | 4 | `robust_research_challenger` |
+
+Production gate:
+
+| Source | Latest validation tenant-anchors | Allowed challenger | Production promote | Market execution | Blocker |
+|---|---:|---|---|---|---|
+| `nbeatsx_official_global_panel_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_v1` | `true` | `false` | `none` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 90 | `dfl_schedule_value_learner_v2_nbeatsx_official_global_panel_horizon_calibrated_v1` | `true` | `false` | `none` |
+
+Decision update: the 104-anchor official global-panel promotion result
+generalizes to the 365-anchor Ukrainian backfill panel for the schedule/value
+learner. The stronger thesis headline is now: official global-panel NBEATSx can
+feed a robust offline/read-model DFL-style schedule/value challenger behind
+`strict_similar_day` fallback. The claim remains bounded: no live market
+execution, no dashboard/API default switch, no deployed Decision Transformer,
+and no claim that raw NBEATSx forecasts beat `strict_similar_day`.
