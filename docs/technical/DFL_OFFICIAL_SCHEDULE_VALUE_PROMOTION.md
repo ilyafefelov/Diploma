@@ -296,6 +296,7 @@ packaged as a local evidence registry:
 | Registry export | `data/research_runs/week3_official_global_panel_365_strategy_promotion/` |
 | Manifest | `attempt_manifest.json` copied into the registry export |
 | Monitor snapshot | `resume-summary.json` copied into the registry export |
+| Learner V2 trace | `dfl_schedule_value_learner_v2_trace_summary.json` and `.md` copied into the registry export |
 | Market execution | `false` |
 
 For reproducible reruns, create the monitor snapshot before exporting the
@@ -312,7 +313,8 @@ registry and pass both attachments into
   --gate-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_production_gate_frame.pkl `
   --run-slug week3_official_global_panel_365_strategy_promotion `
   --attempt-manifest .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
-  --monitor-snapshot .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+  --monitor-snapshot .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json `
+  --learner-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_learner_v2_frame.pkl
 ```
 
 Registry summary:
@@ -321,6 +323,20 @@ Registry summary:
 |---|---:|---:|---:|---:|---:|---|
 | `nbeatsx_official_global_panel_v1` | 90 | 310.583 / 198.386 | 225.437 / 109.692 | 27.41% | 4 / 4 | `true` |
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 90 | 310.583 / 198.386 | 206.367 / 96.021 | 33.55% | 4 / 4 | `true` |
+
+Learner V2 trace summary:
+
+| Source | Selected weight profiles | Final selected family counts |
+|---|---|---|
+| `nbeatsx_official_global_panel_v1` | `prior_regret_value`, `spread_value`, `strict_guarded_prior_value` | `strict_control=19`, `strict_prior_residual_v2=7`, `strict_raw_blend_v2=64` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | `prior_regret_value` | `strict_control=16`, `strict_prior_residual_v2=19`, `strict_raw_blend_v2=55` |
+
+The learner trace confirms that the 365-anchor result is not a raw-forecast
+superiority claim. It records which fixed scoring profile was selected from
+prior anchors for each tenant/source and which schedule families were selected
+on the final holdout. The final holdout has 900 candidate schedules per source
+model; early train anchors have 9 candidates per anchor, rising to 10 when the
+prior-residual candidate becomes available.
 
 This registry is the strongest official-forecast evidence package so far, but
 the claim remains unchanged: **Offline Strategy Promotion** for

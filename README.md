@@ -7,9 +7,9 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Real-data benchmark: observed OREE DAM prices plus tenant Open-Meteo weather.
 - Tenants: 5 simulated BESS tenants from `simulations/tenants.yml`.
 - Main control: `strict_similar_day`.
-- Forecast candidates: compact `nbeatsx_silver_v0` and `tft_silver_v0`.
+- Forecast candidates: compact `nbeatsx_silver_v0` / `tft_silver_v0` for smoke diagnostics, plus official global-panel NBEATSx evidence for the current Schedule/Value Learner V2 result.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
-- Latest DFL research challenger: Schedule/Value Learner V2 now passes the **Offline Strategy Promotion** / fallback gate for read-model strategy evidence only: NBEATSx-source passes 4/4 rolling strict-control windows, TFT-source passes 3/4, both have internal `production_promote=true`, and live market execution remains disabled.
+- Latest DFL research challenger: official global-panel NBEATSx Schedule/Value Learner V2 now passes the **Offline Strategy Promotion** / fallback gate on the 365-anchor Ukrainian evidence packet for read-model strategy evidence only. The raw and horizon-calibrated official NBEATSx source rows pass 4/4 rolling strict-control windows, internal `production_promote=true`, and `market_execution_enabled=false`; live market execution remains disabled.
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
@@ -34,6 +34,10 @@ forecast candidates upstream of the LP; the LP itself does not train or learn.
 
 Full formula, ML/non-ML boundaries, SOC handling, and academic support are documented
 in [docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md](docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md).
+The thesis methodology and results chapters are
+[docs/thesis/chapters/03-Methodology.md](docs/thesis/chapters/03-Methodology.md)
+and
+[docs/thesis/chapters/04-results-and-discussion.md](docs/thesis/chapters/04-results-and-discussion.md).
 
 ## Operator Weather Signal
 
@@ -57,7 +61,7 @@ weather features -> NBEATSx/TFT/TimeXer-style price forecast -> LP schedule
 The academic boundary and exact formula are documented in
 [docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal](docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal).
 
-Latest materialized result:
+Earlier compact forecast calibration result:
 
 | Model | Rows | Mean regret UAH | Median regret UAH | Win rate |
 |---|---:|---:|---:|---:|
@@ -69,7 +73,7 @@ Latest materialized result:
 | tft_silver_v0 | 450 | 1,128.75 | 732.66 | 13.56% |
 | nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 8.67% |
 
-Interpretation: horizon-aware TFT calibration is the first diagnostic to beat the strict control on mean regret, but strict similar-day still has better median regret and more rank-1 wins. The calibrated and risk-adjusted gates are negative selector results: they are better than raw compact neural candidates but worse than both strict and horizon-TFT. This is not full DFL and is not a dashboard default yet; it is evidence that horizon-structured value calibration is worth expanding into a real DFL objective.
+Interpretation: horizon-aware TFT calibration was an earlier diagnostic to beat the strict control on mean regret, but strict similar-day still had better median regret and more rank-1 wins. The later 365-anchor official Schedule/Value Learner V2 result is the current thesis headline evidence because it passes the Offline Strategy Promotion gate while preserving the strict fallback and disabled market execution boundary.
 
 ## Future Stack Read Models
 

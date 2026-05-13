@@ -119,7 +119,8 @@ wrapper reports an invalid manifest, missing DSN, or missing persisted rows.
 ## Evidence Packet Export
 
 The Schedule/Value production-gate registry exporter can now attach the same
-attempt manifest and monitor snapshot to the final local evidence folder:
+attempt manifest, monitor snapshot, and Schedule/Value Learner V2 trace frame to
+the final local evidence folder:
 
 ```powershell
 .\scripts\monitor-official-evidence-attempt.ps1 `
@@ -131,12 +132,15 @@ attempt manifest and monitor snapshot to the final local evidence folder:
   --gate-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_production_gate_frame.pkl `
   --run-slug week3_official_global_panel_365_strategy_promotion `
   --attempt-manifest .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
-  --monitor-snapshot .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+  --monitor-snapshot .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json `
+  --learner-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_learner_v2_frame.pkl
 ```
 
-The export writes `attempt_manifest.json` and `resume-summary.json` beside the
-registry JSON/Markdown artifacts and records their names in the registry
-metadata. That folder is the preferred supervisor-facing evidence packet.
+The export writes `attempt_manifest.json`, `resume-summary.json`,
+`dfl_schedule_value_learner_v2_trace_summary.json`, and
+`dfl_schedule_value_learner_v2_trace_summary.md` beside the registry
+JSON/Markdown artifacts and records their names in the registry metadata. That
+folder is the preferred supervisor-facing evidence packet.
 
 ## Hugging Face Jobs Integration
 

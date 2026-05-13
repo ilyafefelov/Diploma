@@ -2135,7 +2135,11 @@ anchors than another.
 The schedule-value registry exporter now accepts that manifest and the monitor
 snapshot directly, copying both into the local evidence packet so the registry
 folder contains run identity, resume status, persisted counts, and the Offline
-Strategy Promotion boundary in one place.
+Strategy Promotion boundary in one place. It also accepts
+`--learner-frame-pickle`, which exports a compact Schedule/Value Learner V2
+trace summary beside the registry artifacts. That trace records tenant/source
+weight-profile selections, selected final candidate-family counts, and the
+candidate-library cardinality used by the promotion evidence.
 
 The HF offload path is now guarded by a receipt-first wrapper:
 [submit_hf_official_schedule_value_job.py](../../scripts/submit_hf_official_schedule_value_job.py).
@@ -2186,6 +2190,9 @@ ignored evidence folder:
 - `dfl_schedule_value_production_gate_registry.md`;
 - `attempt_manifest.json`;
 - `resume-summary.json`.
+- `dfl_schedule_value_learner_v2_trace_summary.json`;
+- `dfl_schedule_value_learner_v2_trace_summary.md`;
+- `dfl_official_global_panel_schedule_value_learner_v2_frame.pkl`.
 
 The registry records two official NBEATSx source rows with internal
 `production_promote=true`, `market_execution_enabled=false`, and
@@ -2198,5 +2205,23 @@ manually: first run
 [monitor-official-evidence-attempt.ps1](../../scripts/monitor-official-evidence-attempt.ps1)
 to write `resume-summary.json`, then run
 [materialize_schedule_value_production_gate_registry.py](../../scripts/materialize_schedule_value_production_gate_registry.py)
-with `--attempt-manifest` and `--monitor-snapshot`. The resulting folder is the
-supervisor-facing evidence packet.
+with `--attempt-manifest`, `--monitor-snapshot`, and `--learner-frame-pickle`.
+The resulting folder is the supervisor-facing evidence packet.
+
+## Schedule/Value Learner V3 Next Experiment
+
+The next model experiment should not replace the current 365-anchor result.
+Schedule/Value Learner V2 is frozen as the current promoted offline evidence.
+V3 should be additive and compare against V2, raw official NBEATSx, horizon-aware
+calibrated official NBEATSx, and `strict_similar_day` under the same strict
+LP/oracle scoring.
+
+Candidate V3 directions:
+
+- expand the fixed weight-profile grid over the existing prior-only schedule
+  features;
+- add a small regularized ridge/logistic ranker over schedule features;
+- keep profile/weight selection on train/prior anchors only;
+- never use final-holdout actuals for feature selection, profile selection, or
+  candidate-family selection;
+- promote only if the unchanged Offline Strategy Promotion gate still passes.

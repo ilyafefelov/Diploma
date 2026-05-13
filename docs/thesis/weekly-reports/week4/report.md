@@ -68,6 +68,7 @@ Interpretation: calibration materially improves TFT/NBEATSx relative to their ra
 - Literature review draft: [docs/thesis/chapters/02-literature-review.md](../../chapters/02-literature-review.md)
 - Research protocol: [docs/technical/RESEARCH_INTEGRATION_PLAN.md](../../../technical/RESEARCH_INTEGRATION_PLAN.md)
 - Demo script: [docs/thesis/weekly-reports/week4/demo-script.md](./demo-script.md)
+- Supervisor progress package: [progress-meeting-2026-05-13](./progress-meeting-2026-05-13/README.md)
 - Exported summaries: `data/research_runs/week4_calibration_dnipro_90`
 - Dagster run id: `ce705fa2-b100-4b17-a33b-2011409f3e90`
 - MLflow runs: benchmark `2f1248a3822f4785af5332e867e09953`, regret calibration `89389bea2c62495a99d1581ba7514d90`, horizon calibration `041bbbe236dd438393e442f9dbff3d59`, calibrated ensemble `fed333f97e9b4e33be2f6adab1415f17`, risk gate `e53ce78fdc1d462f9622e7d660241b20`

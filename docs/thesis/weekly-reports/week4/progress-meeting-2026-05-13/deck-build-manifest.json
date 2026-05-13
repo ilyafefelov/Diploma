@@ -1,0 +1,16 @@
+{
+  "output": "D:\\School\\GoIT\\Courses\\Diploma\\docs\\thesis\\weekly-reports\\week4\\progress-meeting-2026-05-13\\supervisor-progress-deck.pptx",
+  "outputBytes": 8010147,
+  "slideCount": 16,
+  "previewDir": "D:\\School\\GoIT\\Courses\\Diploma\\.tmp_runtime\\progress-meeting-deck-2026-05-13\\preview",
+  "contactSheet": "D:\\School\\GoIT\\Courses\\Diploma\\docs\\thesis\\weekly-reports\\week4\\progress-meeting-2026-05-13\\supervisor-progress-deck-contact-sheet.png",
+  "contactSheetError": null,
+  "claimBoundary": "Offline Strategy Promotion only; market_execution_enabled=false; no dashboard/API default switch.",
+  "evidence": {
+    "anchors": 365,
+    "tenants": 5,
+    "officialTrainingFrameShape": "58190 x 60",
+    "bestLatestImprovementVsStrict": "33.55%",
+    "approvedExternalFeatureColumns": 0
+  }
+}
