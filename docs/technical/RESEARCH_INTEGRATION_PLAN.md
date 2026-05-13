@@ -2146,9 +2146,11 @@ writable artifact dataset repo. The receipt keeps
 
 Operational update: day-to-day runs should now start from
 [run-official-evidence.ps1](../../scripts/run-official-evidence.ps1). It uses
-`-Backend local` for the resumable Compose/Dagster path and `-Backend hf` for
-the HF Jobs payload/receipt path, while preserving the same run parameters and
-Offline Strategy Promotion claim boundary.
+`-Backend local -LocalMode compose` for the resumable Compose/Dagster path,
+`-Backend local -LocalMode host` for host `.venv` Dagster runs that can see the
+local CUDA torch install, and `-Backend hf` for the HF Jobs payload/receipt
+path. The runner writes a training-runtime preflight receipt for local runs and
+preserves the same run parameters and Offline Strategy Promotion claim boundary.
 
 Tracked docs:
 

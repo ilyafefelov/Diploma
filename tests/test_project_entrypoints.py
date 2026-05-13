@@ -142,13 +142,36 @@ def test_unified_official_evidence_runner_switches_local_and_hf_backends() -> No
     )
 
     assert '[ValidateSet("local", "hf")]' in runner_script
+    assert '[ValidateSet("compose", "host")]' in runner_script
+    assert "[string]$LocalMode = \"compose\"" in runner_script
+    assert "[string]$HostPostgresDsn" in runner_script
+    assert "SMART_ARBITRAGE_STRATEGY_EVALUATION_DSN" in runner_script
+    assert "postgresql://smart:arbitrage@localhost:" in runner_script
     assert "[string]$Backend = \"local\"" in runner_script
     assert "run-official-schedule-value-batches.ps1" in runner_script
+    assert "official-host-batch-" in runner_script
+    assert ".\\.venv\\Scripts\\dagster.exe" in runner_script
+    assert "scripts\\check_training_runtime.py" in runner_script
+    assert '@(($preflightCommand -join " "), ($manifestCommand -join " "))' in runner_script
     assert "build_hf_official_schedule_value_job.py" in runner_script
     assert "submit_hf_official_schedule_value_job.py" in runner_script
     assert "if ($Submit)" in runner_script
     assert "--submit" in runner_script
     assert "Offline Strategy Promotion evidence only" in runner_script
+
+
+def test_training_runtime_preflight_reports_host_and_optional_docker_runtime() -> None:
+    preflight_script = (
+        PROJECT_ROOT / "scripts" / "check_training_runtime.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--include-docker" in preflight_script
+    assert "torch.cuda.is_available()" in preflight_script
+    assert "torch.cuda.get_device_name" in preflight_script
+    assert "torch.cuda.get_device_properties" in preflight_script
+    assert "docker compose exec -T" in preflight_script
+    assert "market_execution_enabled" in preflight_script
+    assert "Offline Strategy Promotion evidence only" in preflight_script
 
 
 def _environment_without_pythonpath() -> dict[str, str]:

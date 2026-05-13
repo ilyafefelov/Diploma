@@ -154,10 +154,18 @@ Use one wrapper to switch where serious official NBEATSx/TFT evidence runs:
 .\scripts\run-official-evidence.ps1 -Backend hf
 ```
 
-- `-Backend local` calls the resumable Docker/Dagster batch runner.
+- `-Backend local -LocalMode compose` calls the resumable Docker/Dagster batch runner.
+- `-Backend local -LocalMode host` runs `.venv\Scripts\dagster.exe` directly,
+  which can use the host CUDA torch install.
 - `-Backend hf` builds a Hugging Face Jobs payload and writes a dry-run receipt.
 - Add `-Submit` only when the branch is pushed, `HF_TOKEN` is available, and the
   artifact dataset repo is writable.
+
+Check runtime acceleration before serious runs:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_training_runtime.py --include-docker
+```
 
 Both backends preserve the same claim boundary: Offline Strategy Promotion
 evidence only, `strict_similar_day` fallback, and `market_execution_enabled=false`.

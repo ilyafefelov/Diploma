@@ -34,6 +34,32 @@ device for this repo:
 Use it for CUDA sanity checks and tiny screens, not as the main DFL/DT training
 platform.
 
+The repo distinguishes two local execution modes:
+
+- `compose`: the stable Docker/Dagster path. It is best for service parity and
+  Postgres/Dagster evidence runs, but it only uses GPU if the container image
+  and Docker runtime expose CUDA.
+- `host`: the Windows `.venv` path. It can use the local CUDA torch wheel and
+  the GTX 1050 Ti directly, but it depends on the host environment and the
+  same Postgres/MLflow services being reachable from Windows.
+
+Before choosing a mode, record the runtime receipt:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_training_runtime.py `
+  --output .tmp_runtime\official_evidence\training-runtime-preflight.json `
+  --include-docker
+```
+
+This makes the host-vs-container distinction explicit instead of assuming that
+installing CUDA torch in `.venv` automatically accelerates Docker Dagster.
+
+For host mode, the runner defaults Postgres DSNs to
+`postgresql://smart:arbitrage@localhost:5432/smart_arbitrage` and MLflow to
+`http://localhost:5000`. Override `-HostPostgresDsn` or
+`-HostMlflowTrackingUri` if Compose exposes different local ports. The receipt
+masks the DSN password.
+
 ## Best Near-Term Cloud Path
 
 For the thesis workload, the most practical offload path is not Databricks first.
@@ -130,10 +156,12 @@ The preferred switching entrypoint is:
 .\scripts\run-official-evidence.ps1 -Backend hf
 ```
 
-Use `-Backend local` for overnight/local CPU or CUDA-enabled experiments. Use
-`-Backend hf` when the same official evidence run should be packaged for
-Hugging Face Jobs. Both paths share anchor count, batch size, source model,
-NBEATSx/TFT training-limit, and run-slug parameters.
+Use `-Backend local -LocalMode compose` for the stable container path. Use
+`-Backend local -LocalMode host` when the host `.venv` CUDA runtime should run
+the Dagster materialization directly. Use `-Backend hf` when the same official
+evidence run should be packaged for Hugging Face Jobs. All paths share anchor
+count, batch size, source model, NBEATSx/TFT training-limit, and run-slug
+parameters.
 
 The repo now has a receipt-first submission wrapper:
 
@@ -167,6 +195,7 @@ Equivalent unified-runner examples:
 ```powershell
 .\scripts\run-official-evidence.ps1 `
   -Backend local `
+  -LocalMode host `
   -TotalAnchorsPerTenant 18 `
   -BatchSize 4 `
   -EnabledOfficialModelsCsv tft_official_v0 `

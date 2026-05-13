@@ -111,12 +111,25 @@ backend explicitly:
 .\scripts\run-official-evidence.ps1 -Backend hf
 ```
 
-The local backend calls the resumable Compose/Dagster batch runner described
-below. The HF backend builds a Hugging Face Jobs payload and writes a dry-run
-receipt by default; paid cloud execution requires `-Submit`, `HF_TOKEN`, a
-pushed branch, and a writable artifact dataset repo. Both paths preserve the
-same Offline Strategy Promotion boundary and keep
+The local backend has two modes. `-LocalMode compose` calls the resumable
+Compose/Dagster batch runner described below. `-LocalMode host` runs
+`.venv\Scripts\dagster.exe` directly, so the host CUDA torch install can be used
+for small official screens. Host mode defaults store access to local Compose
+ports; use `-HostPostgresDsn` if Postgres is exposed on a non-default port. The
+HF backend builds a Hugging Face Jobs payload and writes a dry-run receipt by
+default; paid cloud execution requires `-Submit`, `HF_TOKEN`, a pushed branch,
+and a writable artifact dataset repo. Both paths preserve the same Offline
+Strategy Promotion boundary and keep
 `market_execution_enabled=false`.
+
+Record the runtime before serious runs:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_training_runtime.py --include-docker
+```
+
+This confirms whether CUDA is visible to the host `.venv`, the Dagster
+container, or both.
 
 ### Resumable 104-anchor runner
 

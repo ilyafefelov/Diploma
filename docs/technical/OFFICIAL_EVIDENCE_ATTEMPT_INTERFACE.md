@@ -162,6 +162,12 @@ backend builds the payload and writes a receipt, then submits only when
 `-Submit` is present. Both backends preserve the same Offline Strategy
 Promotion boundary and write a runner receipt under `.tmp_runtime`.
 
+For GPU diagnostics, the local backend also supports `-LocalMode host`. That
+mode runs `.venv\Scripts\dagster.exe` directly after writing
+`training-runtime-preflight.json`, so host CUDA torch can be tested separately
+from Docker/Dagster CUDA availability. `-LocalMode compose` remains the stable
+service-parity default.
+
 Current Hugging Face Jobs documentation supports:
 
 - UV-script jobs;

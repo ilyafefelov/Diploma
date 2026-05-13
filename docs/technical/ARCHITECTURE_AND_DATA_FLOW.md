@@ -45,19 +45,23 @@ Long official NBEATSx/TFT evidence runs now use one operator-facing entrypoint:
 ```
 
 The backend switch changes compute location, not the research contract. Local
-execution calls the resumable Compose/Dagster batch runner. HF execution builds
-a Hugging Face Jobs payload and writes a dry-run receipt by default; paid cloud
+execution can run either through the stable Compose/Dagster path or the host
+`.venv` path that can see the local CUDA torch install. HF execution builds a
+Hugging Face Jobs payload and writes a dry-run receipt by default; paid cloud
 submission requires `-Submit`.
 
 ```mermaid
 flowchart LR
   A["Official evidence request"] --> B{"Backend"}
-  B -->|"local"| C["run-official-schedule-value-batches.ps1"]
+  B -->|"local compose"| C["run-official-schedule-value-batches.ps1"]
+  B -->|"local host"| L[".venv dagster materialize"]
   B -->|"hf"| D["build HF Jobs payload"]
+  A --> P["runtime preflight receipt"]
   D --> E["submit wrapper receipt"]
   E -->|"without -Submit"| F["dry-run receipt only"]
   E -->|"with -Submit"| G["HF Jobs compute"]
   C --> H["Dagster official forecast assets"]
+  L --> H
   G --> H
   H --> I["Strict LP/oracle scoring"]
   I --> J["Offline Strategy Promotion registry"]

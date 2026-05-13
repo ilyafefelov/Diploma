@@ -92,9 +92,14 @@ entrypoint:
 .\scripts\run-official-evidence.ps1 -Backend hf
 ```
 
-`-Backend local` запускає resumable Docker/Dagster batch runner на локальній
-машині. Це підходить для overnight CPU/CUDA runs, коли час очікування
-допустимий і не потрібна окрема cloud-квитанція.
+`-Backend local -LocalMode compose` запускає resumable Docker/Dagster batch
+runner на локальній машині. Це стабільний evidence path для service parity, але
+він використовує GPU лише тоді, коли CUDA доступна всередині Dagster container.
+
+`-Backend local -LocalMode host` запускає `.venv\Scripts\dagster.exe`
+безпосередньо з Windows host. Цей режим може використовувати локальний
+CUDA-enabled PyTorch і NVIDIA GTX 1050 Ti, але перед запуском має бути
+зафіксований runtime preflight receipt.
 
 `-Backend hf` будує Hugging Face Jobs payload і dry-run receipt. Реальна платна
 submission вимагає явного `-Submit`, pushed branch, `HF_TOKEN`, Jobs-capable
@@ -105,12 +110,15 @@ receipt; він підставляється лише в момент submission
 flowchart TD
   A["Researcher selects official evidence run"] --> B["run-official-evidence.ps1"]
   B --> C{"Backend"}
-  C -->|"local"| D["Resumable Compose/Dagster batches"]
+  C -->|"local compose"| D["Resumable Compose/Dagster batches"]
+  C -->|"local host"| L["Host .venv Dagster + CUDA torch"]
   C -->|"hf"| E["HF Jobs payload + receipt"]
+  B --> P["Training runtime preflight"]
   E --> F{"-Submit?"}
   F -->|"no"| G["Dry-run receipt only"]
   F -->|"yes"| H["Remote HF Job"]
   D --> I["Persisted official benchmark rows"]
+  L --> I
   H --> I
   I --> J["Monitor snapshot and registry export"]
   J --> K["Offline Strategy Promotion evidence packet"]
