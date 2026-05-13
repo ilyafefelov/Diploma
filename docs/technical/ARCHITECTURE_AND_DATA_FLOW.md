@@ -35,6 +35,39 @@ The feedback loops are as important as the forward path:
 - MQTT telemetry feeds the battery state back into the next planning cycle.
 - Dashboard review keeps the operator-facing claim boundary explicit.
 
+## Official Evidence Execution Switch
+
+Long official NBEATSx/TFT evidence runs now use one operator-facing entrypoint:
+
+```powershell
+.\scripts\run-official-evidence.ps1 -Backend local
+.\scripts\run-official-evidence.ps1 -Backend hf
+```
+
+The backend switch changes compute location, not the research contract. Local
+execution calls the resumable Compose/Dagster batch runner. HF execution builds
+a Hugging Face Jobs payload and writes a dry-run receipt by default; paid cloud
+submission requires `-Submit`.
+
+```mermaid
+flowchart LR
+  A["Official evidence request"] --> B{"Backend"}
+  B -->|"local"| C["run-official-schedule-value-batches.ps1"]
+  B -->|"hf"| D["build HF Jobs payload"]
+  D --> E["submit wrapper receipt"]
+  E -->|"without -Submit"| F["dry-run receipt only"]
+  E -->|"with -Submit"| G["HF Jobs compute"]
+  C --> H["Dagster official forecast assets"]
+  G --> H
+  H --> I["Strict LP/oracle scoring"]
+  I --> J["Offline Strategy Promotion registry"]
+  J --> K["Docs/read-model evidence; market_execution_enabled=false"]
+```
+
+The switch is for training/evidence throughput. It does not enable live
+market execution, dashboard default switching, or ungoverned market-coupling
+features.
+
 ## Terminology Note
 
 The PNG is an architecture infographic, not a schema contract. Where the visual

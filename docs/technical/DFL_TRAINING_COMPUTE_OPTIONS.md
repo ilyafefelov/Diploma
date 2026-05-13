@@ -123,6 +123,18 @@ replacement for the strict LP/oracle promotion gate.
 
 ## Guarded HF Jobs Submission Wrapper
 
+The preferred switching entrypoint is:
+
+```powershell
+.\scripts\run-official-evidence.ps1 -Backend local
+.\scripts\run-official-evidence.ps1 -Backend hf
+```
+
+Use `-Backend local` for overnight/local CPU or CUDA-enabled experiments. Use
+`-Backend hf` when the same official evidence run should be packaged for
+Hugging Face Jobs. Both paths share anchor count, batch size, source model,
+NBEATSx/TFT training-limit, and run-slug parameters.
+
 The repo now has a receipt-first submission wrapper:
 
 ```powershell
@@ -149,6 +161,28 @@ memory at submit time. The local receipt never stores the token or the
 `$HF_TOKEN` placeholder. Current HF pricing lists Nvidia T4 small at about
 `$0.40/hour`, so the default `t4-small`/`4h` screen has a nominal compute cap
 near `$1.60`, excluding account/subscription requirements and retries.
+
+Equivalent unified-runner examples:
+
+```powershell
+.\scripts\run-official-evidence.ps1 `
+  -Backend local `
+  -TotalAnchorsPerTenant 18 `
+  -BatchSize 4 `
+  -EnabledOfficialModelsCsv tft_official_v0 `
+  -SkipDownstreamGate
+
+.\scripts\run-official-evidence.ps1 `
+  -Backend hf `
+  -TotalAnchorsPerTenant 18 `
+  -BatchSize 4 `
+  -EnabledOfficialModelsCsv tft_official_v0 `
+  -ArtifactRepoId ilyafefelov/smart-arbitrage-official-evidence
+```
+
+The second command builds the payload and writes a dry-run receipt. Add
+`-Submit` only after the branch is pushed, HF token/account permissions are
+ready, and the artifact dataset repo is writable.
 
 ## Claim Boundary
 

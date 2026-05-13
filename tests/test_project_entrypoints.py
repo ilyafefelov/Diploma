@@ -136,6 +136,21 @@ def test_hf_official_job_submission_cli_is_guarded_by_submit_flag() -> None:
     assert "default is a dry-run receipt" in submit_script
 
 
+def test_unified_official_evidence_runner_switches_local_and_hf_backends() -> None:
+    runner_script = (PROJECT_ROOT / "scripts" / "run-official-evidence.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert '[ValidateSet("local", "hf")]' in runner_script
+    assert "[string]$Backend = \"local\"" in runner_script
+    assert "run-official-schedule-value-batches.ps1" in runner_script
+    assert "build_hf_official_schedule_value_job.py" in runner_script
+    assert "submit_hf_official_schedule_value_job.py" in runner_script
+    assert "if ($Submit)" in runner_script
+    assert "--submit" in runner_script
+    assert "Offline Strategy Promotion evidence only" in runner_script
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)

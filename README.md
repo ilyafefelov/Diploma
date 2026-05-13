@@ -145,6 +145,24 @@ Useful local URLs:
 
 Telemetry note: `GET /dashboard/battery-state` returns `telemetry_ingest_source` with the configured MQTT host, port, and tenant topic `smart-arbitrage/{tenant_id}/battery/telemetry`. This is configuration metadata for operator diagnostics; it is not a broker health check.
 
+## Official Evidence Runs: Local vs HF Jobs
+
+Use one wrapper to switch where serious official NBEATSx/TFT evidence runs:
+
+```powershell
+.\scripts\run-official-evidence.ps1 -Backend local
+.\scripts\run-official-evidence.ps1 -Backend hf
+```
+
+- `-Backend local` calls the resumable Docker/Dagster batch runner.
+- `-Backend hf` builds a Hugging Face Jobs payload and writes a dry-run receipt.
+- Add `-Submit` only when the branch is pushed, `HF_TOKEN` is available, and the
+  artifact dataset repo is writable.
+
+Both backends preserve the same claim boundary: Offline Strategy Promotion
+evidence only, `strict_similar_day` fallback, and `market_execution_enabled=false`.
+The switch changes compute location; it does not enable live market execution.
+
 ## Verification
 
 ```powershell
@@ -162,6 +180,7 @@ Latest full verification: `151 passed`.
 
 - 2026-05-11 strategic architecture review packet: `docs/technical/deep-research-reports/2026-05-11-architecture-review/README.md`
 - Architecture and evidence registry: `docs/technical/ARCHITECTURE_AND_DATA_FLOW.md`
+- Thesis methodology chapter: `docs/thesis/chapters/03-Methodology.md`
 - Baseline LP and pipeline note: `docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md`
 - Residual DFL + offline DT research challenger: `docs/technical/DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md`
 - Source-specific research challenger gate: `docs/technical/DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md`
@@ -174,9 +193,9 @@ Latest full verification: `151 passed`.
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
 - Official global-panel NBEATSx lane: `docs/technical/OFFICIAL_GLOBAL_PANEL_NBEATSX.md`
 - Official evidence-attempt interface: `docs/technical/OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md`
+- Official training compute and HF Jobs switch: `docs/technical/DFL_TRAINING_COMPUTE_OPTIONS.md`
 - Market-coupling exogenous feature interface: `docs/technical/MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md`
 - UA backfill coverage recovery: `docs/technical/DFL_DATA_RECOVERY_ROADMAP.md`
-- DFL/official training compute options: `docs/technical/DFL_TRAINING_COMPUTE_OPTIONS.md`
 - Resumable official forecast and exogenous-governance PRD: `docs/technical/PRD_OFFICIAL_FORECAST_RESUME_AND_EXOGENOUS_GOVERNANCE.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`

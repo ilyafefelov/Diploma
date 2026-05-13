@@ -101,6 +101,23 @@ expected to be a long CPU run. If the optional official backends or local runtim
 cannot complete it, the result should be documented as adapter/runtime evidence,
 not silently replaced by compact-model rows.
 
+### Unified local/HF runner
+
+For new official evidence attempts, prefer the unified runner and choose the
+backend explicitly:
+
+```powershell
+.\scripts\run-official-evidence.ps1 -Backend local
+.\scripts\run-official-evidence.ps1 -Backend hf
+```
+
+The local backend calls the resumable Compose/Dagster batch runner described
+below. The HF backend builds a Hugging Face Jobs payload and writes a dry-run
+receipt by default; paid cloud execution requires `-Submit`, `HF_TOKEN`, a
+pushed branch, and a writable artifact dataset repo. Both paths preserve the
+same Offline Strategy Promotion boundary and keep
+`market_execution_enabled=false`.
+
 ### Resumable 104-anchor runner
 
 For unattended local CPU execution, prefer the resumable batch runner:

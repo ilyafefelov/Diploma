@@ -2113,6 +2113,7 @@ New evidence-attempt interface:
 - local manifest: `attempt_manifest.json`;
 - HF artifact manifest: `official_evidence_attempt_manifest.json`;
 - scripts using the manifest:
+  [run-official-evidence.ps1](../../scripts/run-official-evidence.ps1),
   [run-official-schedule-value-batches.ps1](../../scripts/run-official-schedule-value-batches.ps1),
   [run-official-global-panel-batches.ps1](../../scripts/run-official-global-panel-batches.ps1),
   [build_hf_official_schedule_value_job.py](../../scripts/build_hf_official_schedule_value_job.py),
@@ -2142,6 +2143,12 @@ Default execution writes a dry-run receipt only. Paid HF submission requires
 `--submit`, a pushed branch, a Jobs-capable HF account, `HF_TOKEN`, and a
 writable artifact dataset repo. The receipt keeps
 `market_execution_enabled=false` and never writes the token to disk.
+
+Operational update: day-to-day runs should now start from
+[run-official-evidence.ps1](../../scripts/run-official-evidence.ps1). It uses
+`-Backend local` for the resumable Compose/Dagster path and `-Backend hf` for
+the HF Jobs payload/receipt path, while preserving the same run parameters and
+Offline Strategy Promotion claim boundary.
 
 Tracked docs:
 

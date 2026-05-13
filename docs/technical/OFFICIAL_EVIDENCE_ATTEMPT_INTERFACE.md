@@ -150,6 +150,18 @@ that payload. By default it writes only a dry-run receipt. A real paid job
 requires `--submit`; when artifact upload is configured, the wrapper resolves
 `HF_TOKEN` only in memory and never writes it to the local receipt.
 
+`scripts/run-official-evidence.ps1` is the unified switch for day-to-day use:
+
+```powershell
+.\scripts\run-official-evidence.ps1 -Backend local
+.\scripts\run-official-evidence.ps1 -Backend hf
+```
+
+The local backend dispatches to the resumable Compose/Dagster runner. The HF
+backend builds the payload and writes a receipt, then submits only when
+`-Submit` is present. Both backends preserve the same Offline Strategy
+Promotion boundary and write a runner receipt under `.tmp_runtime`.
+
 Current Hugging Face Jobs documentation supports:
 
 - UV-script jobs;
@@ -160,9 +172,10 @@ Current Hugging Face Jobs documentation supports:
 The repo therefore keeps the current offload strategy:
 
 1. build and inspect the payload locally;
-2. write a dry-run receipt with the guarded submission wrapper;
-3. submit only after `HF_TOKEN` and artifact repo permissions are available;
-4. persist outputs as artifacts, not as live strategy defaults.
+2. prefer `run-official-evidence.ps1 -Backend hf` for the unified receipt path;
+3. write a dry-run receipt with the guarded submission wrapper;
+4. submit only after `HF_TOKEN` and artifact repo permissions are available;
+5. persist outputs as artifacts, not as live strategy defaults.
 
 ## Claim Boundary
 
