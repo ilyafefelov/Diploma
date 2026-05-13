@@ -36,6 +36,12 @@ DFL_SCHEDULE_VALUE_PRODUCTION_GATE_ACADEMIC_SCOPE: Final[str] = (
 STRICT_DEFAULT_FALLBACK: Final[str] = "strict_similar_day_default_fallback"
 ATTEMPT_MANIFEST_ARTIFACT_NAME: Final[str] = "attempt_manifest.json"
 MONITOR_SNAPSHOT_ARTIFACT_NAME: Final[str] = "resume-summary.json"
+LEARNER_TRACE_SUMMARY_ARTIFACT_NAME: Final[str] = (
+    "dfl_schedule_value_learner_v2_trace_summary.json"
+)
+LEARNER_TRACE_MARKDOWN_ARTIFACT_NAME: Final[str] = (
+    "dfl_schedule_value_learner_v2_trace_summary.md"
+)
 
 REQUIRED_SCHEDULE_VALUE_PRODUCTION_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -59,6 +65,20 @@ REQUIRED_SCHEDULE_VALUE_PRODUCTION_COLUMNS: Final[frozenset[str]] = frozenset(
         "production_promote",
         "market_execution_enabled",
         "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
+    }
+)
+REQUIRED_SCHEDULE_VALUE_LEARNER_TRACE_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "source_model_name",
+        "selected_weight_profile_name",
+        "selected_train_family_counts",
+        "selected_final_family_counts",
+        "train_anchor_count",
+        "final_holdout_anchor_count",
+        "final_holdout_tenant_anchor_count",
         "not_full_dfl",
         "not_market_execution",
     }
@@ -129,12 +149,18 @@ def validate_dfl_schedule_value_production_gate_evidence(
         REQUIRED_SCHEDULE_VALUE_PRODUCTION_COLUMNS,
     )
     if failures:
-        return EvidenceCheckOutcome(False, "; ".join(failures), {"row_count": promotion_gate_frame.height})
+        return EvidenceCheckOutcome(
+            False, "; ".join(failures), {"row_count": promotion_gate_frame.height}
+        )
     rows = list(promotion_gate_frame.iter_rows(named=True))
     if not rows:
-        return EvidenceCheckOutcome(False, "schedule/value production gate has no rows", {"row_count": 0})
+        return EvidenceCheckOutcome(
+            False, "schedule/value production gate has no rows", {"row_count": 0}
+        )
 
-    expected_sources = source_model_names or tuple(sorted({str(row["source_model_name"]) for row in rows}))
+    expected_sources = source_model_names or tuple(
+        sorted({str(row["source_model_name"]) for row in rows})
+    )
     rows_by_source = {str(row["source_model_name"]): row for row in rows}
     for source_model_name in expected_sources:
         row = rows_by_source.get(source_model_name)
@@ -184,7 +210,9 @@ def evaluate_dfl_schedule_value_production_gate(
     )
     promoted = list(evidence.metadata.get("promoted_source_model_names", []))
     if not evidence.passed:
-        return PromotionGateResult(False, "blocked", evidence.description, evidence.metadata)
+        return PromotionGateResult(
+            False, "blocked", evidence.description, evidence.metadata
+        )
     if promoted:
         return PromotionGateResult(
             True,
@@ -210,9 +238,16 @@ def build_dfl_schedule_value_production_gate_registry(
     """Build a concise supervisor-facing registry from the promotion gate frame."""
 
     evidence = validate_dfl_schedule_value_production_gate_evidence(gate_frame)
-    rows = [_registry_row(row) for row in gate_frame.sort("source_model_name").iter_rows(named=True)]
-    promoted = [row["source_model_name"] for row in rows if bool(row["production_promote"])]
-    market_execution_enabled = any(bool(row["market_execution_enabled"]) for row in rows)
+    rows = [
+        _registry_row(row)
+        for row in gate_frame.sort("source_model_name").iter_rows(named=True)
+    ]
+    promoted = [
+        row["source_model_name"] for row in rows if bool(row["production_promote"])
+    ]
+    market_execution_enabled = any(
+        bool(row["market_execution_enabled"]) for row in rows
+    )
     return {
         "run_slug": run_slug,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -239,6 +274,72 @@ def build_dfl_schedule_value_production_gate_registry(
     }
 
 
+def build_dfl_schedule_value_learner_v2_trace_summary(
+    learner_frame: pl.DataFrame,
+    *,
+    early_train_candidate_schedules_per_anchor: int = 9,
+    max_candidate_schedules_per_anchor: int = 10,
+) -> dict[str, Any]:
+    """Build a compact trace of V2 source/tenant profile selections."""
+
+    if learner_frame.is_empty():
+        raise ValueError("dfl_schedule_value_learner_v2_frame must not be empty.")
+    _require_columns(
+        learner_frame,
+        REQUIRED_SCHEDULE_VALUE_LEARNER_TRACE_COLUMNS,
+        frame_name="dfl_schedule_value_learner_v2_frame",
+    )
+    if early_train_candidate_schedules_per_anchor < 1:
+        raise ValueError("early_train_candidate_schedules_per_anchor must be positive.")
+    if max_candidate_schedules_per_anchor < early_train_candidate_schedules_per_anchor:
+        raise ValueError(
+            "max_candidate_schedules_per_anchor must be greater than or equal to "
+            "early_train_candidate_schedules_per_anchor."
+        )
+
+    rows = sorted(
+        learner_frame.iter_rows(named=True),
+        key=lambda row: (str(row["source_model_name"]), str(row["tenant_id"])),
+    )
+    _validate_learner_trace_flags(rows)
+    tenant_source_rows = [
+        _learner_trace_tenant_source_row(
+            row,
+            early_train_candidate_schedules_per_anchor=early_train_candidate_schedules_per_anchor,
+            max_candidate_schedules_per_anchor=max_candidate_schedules_per_anchor,
+        )
+        for row in rows
+    ]
+    source_model_rows = _learner_trace_source_rows(
+        tenant_source_rows,
+        max_candidate_schedules_per_anchor=max_candidate_schedules_per_anchor,
+    )
+    return {
+        "claim_boundary": {
+            "offline_read_model_strategy_evidence_only": True,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "market_execution_enabled": False,
+            "strict_fallback": STRICT_DEFAULT_FALLBACK,
+        },
+        "summary": {
+            "row_count": len(tenant_source_rows),
+            "tenant_count": len({row["tenant_id"] for row in tenant_source_rows}),
+            "source_model_count": len(source_model_rows),
+            "early_train_candidate_schedules_per_anchor": (
+                early_train_candidate_schedules_per_anchor
+            ),
+            "max_candidate_schedules_per_anchor": max_candidate_schedules_per_anchor,
+            "final_holdout_candidate_count_per_source_model": {
+                row["source_model_name"]: row["final_holdout_candidate_count"]
+                for row in source_model_rows
+            },
+        },
+        "source_model_rows": source_model_rows,
+        "tenant_source_rows": tenant_source_rows,
+    }
+
+
 def write_dfl_schedule_value_production_gate_registry(
     registry: dict[str, Any],
     *,
@@ -246,6 +347,7 @@ def write_dfl_schedule_value_production_gate_registry(
     run_slug: str,
     attempt_manifest_path: Path | None = None,
     monitor_snapshot_path: Path | None = None,
+    learner_trace_frame: pl.DataFrame | None = None,
 ) -> Path:
     """Write local JSON and Markdown registry artifacts."""
 
@@ -265,6 +367,24 @@ def write_dfl_schedule_value_production_gate_registry(
             export_dir=export_dir,
             artifact_name=MONITOR_SNAPSHOT_ARTIFACT_NAME,
         )
+    if learner_trace_frame is not None:
+        learner_trace_summary = build_dfl_schedule_value_learner_v2_trace_summary(
+            learner_trace_frame
+        )
+        (export_dir / LEARNER_TRACE_SUMMARY_ARTIFACT_NAME).write_text(
+            json.dumps(_jsonable(learner_trace_summary), indent=2, sort_keys=True),
+            encoding="utf-8",
+        )
+        (export_dir / LEARNER_TRACE_MARKDOWN_ARTIFACT_NAME).write_text(
+            _learner_trace_summary_markdown(learner_trace_summary),
+            encoding="utf-8",
+        )
+        attached_artifacts["learner_trace_summary"] = (
+            LEARNER_TRACE_SUMMARY_ARTIFACT_NAME
+        )
+        attached_artifacts["learner_trace_markdown"] = (
+            LEARNER_TRACE_MARKDOWN_ARTIFACT_NAME
+        )
     if attached_artifacts:
         registry_to_write["attached_artifacts"] = attached_artifacts
     (export_dir / "dfl_schedule_value_production_gate_registry.json").write_text(
@@ -278,7 +398,9 @@ def write_dfl_schedule_value_production_gate_registry(
     return export_dir
 
 
-def _copy_registry_artifact(source_path: Path, *, export_dir: Path, artifact_name: str) -> str:
+def _copy_registry_artifact(
+    source_path: Path, *, export_dir: Path, artifact_name: str
+) -> str:
     if not source_path.exists():
         raise FileNotFoundError(f"Registry attachment does not exist: {source_path}")
     if not source_path.is_file():
@@ -287,6 +409,131 @@ def _copy_registry_artifact(source_path: Path, *, export_dir: Path, artifact_nam
     if source_path.resolve() != destination.resolve():
         copyfile(source_path, destination)
     return artifact_name
+
+
+def _validate_learner_trace_flags(rows: list[dict[str, Any]]) -> None:
+    if not all(bool(row["not_full_dfl"]) for row in rows):
+        raise ValueError(
+            "dfl_schedule_value_learner_v2_frame requires not_full_dfl=true."
+        )
+    if not all(bool(row["not_market_execution"]) for row in rows):
+        raise ValueError(
+            "dfl_schedule_value_learner_v2_frame requires not_market_execution=true."
+        )
+
+
+def _learner_trace_tenant_source_row(
+    row: dict[str, Any],
+    *,
+    early_train_candidate_schedules_per_anchor: int,
+    max_candidate_schedules_per_anchor: int,
+) -> dict[str, Any]:
+    train_anchor_count = _positive_int(
+        row["train_anchor_count"], field_name="train_anchor_count"
+    )
+    final_holdout_anchor_count = _positive_int(
+        row["final_holdout_anchor_count"],
+        field_name="final_holdout_anchor_count",
+    )
+    final_holdout_tenant_anchor_count = _positive_int(
+        row["final_holdout_tenant_anchor_count"],
+        field_name="final_holdout_tenant_anchor_count",
+    )
+    return {
+        "tenant_id": str(row["tenant_id"]),
+        "source_model_name": str(row["source_model_name"]),
+        "selected_weight_profile_name": str(row["selected_weight_profile_name"]),
+        "train_anchor_count": train_anchor_count,
+        "final_holdout_anchor_count": final_holdout_anchor_count,
+        "final_holdout_tenant_anchor_count": final_holdout_tenant_anchor_count,
+        "early_train_candidate_schedules_per_anchor": (
+            early_train_candidate_schedules_per_anchor
+        ),
+        "max_candidate_schedules_per_anchor": max_candidate_schedules_per_anchor,
+        "final_holdout_candidate_count": (
+            final_holdout_anchor_count * max_candidate_schedules_per_anchor
+        ),
+        "selected_train_family_counts": _candidate_family_counts(
+            row["selected_train_family_counts"],
+            field_name="selected_train_family_counts",
+        ),
+        "selected_final_family_counts": _candidate_family_counts(
+            row["selected_final_family_counts"],
+            field_name="selected_final_family_counts",
+        ),
+    }
+
+
+def _learner_trace_source_rows(
+    tenant_source_rows: list[dict[str, Any]],
+    *,
+    max_candidate_schedules_per_anchor: int,
+) -> list[dict[str, Any]]:
+    source_model_names = sorted(
+        {str(row["source_model_name"]) for row in tenant_source_rows}
+    )
+    source_rows: list[dict[str, Any]] = []
+    for source_model_name in source_model_names:
+        source_rows_for_model = [
+            row
+            for row in tenant_source_rows
+            if str(row["source_model_name"]) == source_model_name
+        ]
+        final_holdout_tenant_anchor_count = max(
+            int(row["final_holdout_tenant_anchor_count"])
+            for row in source_rows_for_model
+        )
+        source_rows.append(
+            {
+                "source_model_name": source_model_name,
+                "tenant_count": len(
+                    {row["tenant_id"] for row in source_rows_for_model}
+                ),
+                "selected_weight_profile_names": sorted(
+                    {
+                        str(row["selected_weight_profile_name"])
+                        for row in source_rows_for_model
+                    }
+                ),
+                "final_holdout_tenant_anchor_count": final_holdout_tenant_anchor_count,
+                "final_holdout_candidate_count": (
+                    final_holdout_tenant_anchor_count
+                    * max_candidate_schedules_per_anchor
+                ),
+                "selected_final_family_counts": _merge_candidate_family_counts(
+                    [
+                        row["selected_final_family_counts"]
+                        for row in source_rows_for_model
+                        if isinstance(row["selected_final_family_counts"], dict)
+                    ]
+                ),
+            }
+        )
+    return source_rows
+
+
+def _candidate_family_counts(value: Any, *, field_name: str) -> dict[str, int]:
+    if isinstance(value, str):
+        loaded = json.loads(value)
+        if not isinstance(loaded, dict):
+            raise ValueError(f"{field_name} must be a mapping.")
+        value = loaded
+    if not isinstance(value, dict):
+        raise ValueError(f"{field_name} must be a mapping.")
+    return {
+        str(key): 0 if count is None else _nonnegative_int(count, field_name=field_name)
+        for key, count in sorted(value.items(), key=lambda item: str(item[0]))
+    }
+
+
+def _merge_candidate_family_counts(
+    count_mappings: list[dict[str, int]],
+) -> dict[str, int]:
+    merged: dict[str, int] = {}
+    for count_mapping in count_mappings:
+        for family_name, count in count_mapping.items():
+            merged[family_name] = merged.get(family_name, 0) + count
+    return dict(sorted(merged.items()))
 
 
 def _promotion_row(
@@ -304,19 +551,27 @@ def _promotion_row(
         row for row in strict_rows if str(row["source_model_name"]) == source_model_name
     ]
     source_robustness_rows = [
-        row for row in robustness_rows if str(row["source_model_name"]) == source_model_name
+        row
+        for row in robustness_rows
+        if str(row["source_model_name"]) == source_model_name
     ]
     strict_reference_rows = [
         row for row in source_strict_rows if _selection_role(row) == "strict_reference"
     ]
     learner_model_name = schedule_value_learner_v2_model_name(source_model_name)
     selected_rows = [
-        row for row in source_strict_rows if str(row["forecast_model_name"]) == learner_model_name
+        row
+        for row in source_strict_rows
+        if str(row["forecast_model_name"]) == learner_model_name
     ]
     strict_anchor_set = _tenant_anchor_set(strict_reference_rows)
     selected_anchor_set = _tenant_anchor_set(selected_rows)
-    matching_anchor_coverage = bool(strict_anchor_set) and strict_anchor_set == selected_anchor_set
-    latest_validation_tenant_anchor_count = len(strict_anchor_set) if matching_anchor_coverage else 0
+    matching_anchor_coverage = (
+        bool(strict_anchor_set) and strict_anchor_set == selected_anchor_set
+    )
+    latest_validation_tenant_anchor_count = (
+        len(strict_anchor_set) if matching_anchor_coverage else 0
+    )
     tenant_count = len({tenant_id for tenant_id, _ in strict_anchor_set})
     latest_strict_mean = _mean_regret(strict_reference_rows)
     latest_selected_mean = _mean_regret(selected_rows)
@@ -327,9 +582,13 @@ def _promotion_row(
     latest_mean_passed = improvement_ratio >= min_mean_regret_improvement_ratio
     strict_evidence_valid = _strict_evidence_valid(source_strict_rows)
 
-    rolling_window_count = len({int(row["window_index"]) for row in source_robustness_rows})
+    rolling_window_count = len(
+        {int(row["window_index"]) for row in source_robustness_rows}
+    )
     rolling_strict_pass_window_count = sum(
-        1 for row in source_robustness_rows if bool(row["source_specific_strict_passed"])
+        1
+        for row in source_robustness_rows
+        if bool(row["source_specific_strict_passed"])
     )
     rolling_development_pass_window_count = sum(
         1 for row in source_robustness_rows if bool(row["development_passed"])
@@ -448,13 +707,18 @@ def _row_validation_failures(
     source_model_name = str(row["source_model_name"])
     if int(row["tenant_count"]) < min_tenant_count:
         failures.append(f"{source_model_name} tenant_count is below {min_tenant_count}")
-    if int(row["latest_validation_tenant_anchor_count"]) < min_validation_tenant_anchor_count:
+    if (
+        int(row["latest_validation_tenant_anchor_count"])
+        < min_validation_tenant_anchor_count
+    ):
         failures.append(
             f"{source_model_name} latest validation tenant-anchor count is below "
             f"{min_validation_tenant_anchor_count}"
         )
     if int(row["rolling_window_count"]) < min_rolling_window_count:
-        failures.append(f"{source_model_name} rolling window count is below {min_rolling_window_count}")
+        failures.append(
+            f"{source_model_name} rolling window count is below {min_rolling_window_count}"
+        )
     if str(row["claim_scope"]) != DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE:
         failures.append(f"{source_model_name} claim_scope is invalid")
     if not bool(row["not_full_dfl"]):
@@ -465,9 +729,13 @@ def _row_validation_failures(
         failures.append(f"{source_model_name} requires market_execution_enabled=false")
     if bool(row["production_promote"]):
         if str(row["promotion_blocker"]) != "none":
-            failures.append(f"{source_model_name} promoted row must have promotion_blocker=none")
+            failures.append(
+                f"{source_model_name} promoted row must have promotion_blocker=none"
+            )
         if not str(row["allowed_challenger"]):
-            failures.append(f"{source_model_name} promoted row must record allowed_challenger")
+            failures.append(
+                f"{source_model_name} promoted row must record allowed_challenger"
+            )
     return failures
 
 
@@ -476,15 +744,35 @@ def _strict_evidence_valid(rows: list[dict[str, Any]]) -> bool:
         return False
     for row in rows:
         payload = _payload(row)
-        if str(row.get("data_quality_tier", payload.get("data_quality_tier", ""))) != "thesis_grade":
+        if (
+            str(row.get("data_quality_tier", payload.get("data_quality_tier", "")))
+            != "thesis_grade"
+        ):
             return False
-        if float(row.get("observed_coverage_ratio", payload.get("observed_coverage_ratio", 0.0))) < 1.0:
+        if (
+            float(
+                row.get(
+                    "observed_coverage_ratio",
+                    payload.get("observed_coverage_ratio", 0.0),
+                )
+            )
+            < 1.0
+        ):
             return False
-        if int(row.get("safety_violation_count", payload.get("safety_violation_count", 1))) != 0:
+        if (
+            int(
+                row.get(
+                    "safety_violation_count", payload.get("safety_violation_count", 1)
+                )
+            )
+            != 0
+        ):
             return False
         if not bool(row.get("not_full_dfl", payload.get("not_full_dfl", False))):
             return False
-        if not bool(row.get("not_market_execution", payload.get("not_market_execution", False))):
+        if not bool(
+            row.get("not_market_execution", payload.get("not_market_execution", False))
+        ):
             return False
     return True
 
@@ -492,7 +780,9 @@ def _strict_evidence_valid(rows: list[dict[str, Any]]) -> bool:
 def _robustness_claims_valid(rows: list[dict[str, Any]]) -> bool:
     if not rows:
         return False
-    return all(bool(row["not_full_dfl"]) and bool(row["not_market_execution"]) for row in rows)
+    return all(
+        bool(row["not_full_dfl"]) and bool(row["not_market_execution"]) for row in rows
+    )
 
 
 def _source_summary(row: dict[str, Any]) -> dict[str, Any]:
@@ -501,7 +791,9 @@ def _source_summary(row: dict[str, Any]) -> dict[str, Any]:
         "latest_mean_regret_improvement_ratio_vs_strict": float(
             row["latest_mean_regret_improvement_ratio_vs_strict"]
         ),
-        "rolling_strict_pass_window_count": int(row["rolling_strict_pass_window_count"]),
+        "rolling_strict_pass_window_count": int(
+            row["rolling_strict_pass_window_count"]
+        ),
         "robust_research_challenger": bool(row["robust_research_challenger"]),
         "production_promote": bool(row["production_promote"]),
         "promotion_blocker": str(row["promotion_blocker"]),
@@ -515,14 +807,22 @@ def _registry_row(row: dict[str, Any]) -> dict[str, Any]:
             row["latest_validation_tenant_anchor_count"]
         ),
         "latest_strict_mean_regret_uah": float(row["latest_strict_mean_regret_uah"]),
-        "latest_selected_mean_regret_uah": float(row["latest_selected_mean_regret_uah"]),
+        "latest_selected_mean_regret_uah": float(
+            row["latest_selected_mean_regret_uah"]
+        ),
         "latest_mean_regret_improvement_ratio_vs_strict": float(
             row["latest_mean_regret_improvement_ratio_vs_strict"]
         ),
-        "latest_strict_median_regret_uah": float(row["latest_strict_median_regret_uah"]),
-        "latest_selected_median_regret_uah": float(row["latest_selected_median_regret_uah"]),
+        "latest_strict_median_regret_uah": float(
+            row["latest_strict_median_regret_uah"]
+        ),
+        "latest_selected_median_regret_uah": float(
+            row["latest_selected_median_regret_uah"]
+        ),
         "rolling_window_count": int(row["rolling_window_count"]),
-        "rolling_strict_pass_window_count": int(row["rolling_strict_pass_window_count"]),
+        "rolling_strict_pass_window_count": int(
+            row["rolling_strict_pass_window_count"]
+        ),
         "robust_research_challenger": bool(row["robust_research_challenger"]),
         "production_promote": bool(row["production_promote"]),
         "promotion_blocker": str(row["promotion_blocker"]),
@@ -583,6 +883,14 @@ def _production_gate_registry_markdown(registry: dict[str, Any]) -> str:
         monitor_snapshot = attached_artifacts.get("monitor_snapshot")
         if monitor_snapshot:
             lines.append(f"- Monitor snapshot: `{monitor_snapshot}`")
+        learner_trace_summary = attached_artifacts.get("learner_trace_summary")
+        if learner_trace_summary:
+            lines.append(f"- Learner V2 trace summary: `{learner_trace_summary}`")
+        learner_trace_markdown = attached_artifacts.get("learner_trace_markdown")
+        if learner_trace_markdown:
+            lines.append(
+                f"- Learner V2 trace summary markdown: `{learner_trace_markdown}`"
+            )
     lines.extend(
         [
             "",
@@ -613,6 +921,62 @@ def _display_source_model(source_model_name: str) -> str:
     return f"`{source_model_name}`"
 
 
+def _learner_trace_summary_markdown(summary: dict[str, Any]) -> str:
+    lines = [
+        "# Schedule/Value Learner V2 Trace Summary",
+        "",
+        "This attachment records the source/tenant weight-profile selections used by the "
+        "current Offline Strategy Promotion evidence packet. It is trace evidence only; "
+        "market execution remains disabled.",
+        "",
+        "## Candidate Library Cardinality",
+        "",
+        f"- Early train anchors: `{summary['summary']['early_train_candidate_schedules_per_anchor']}` candidate schedules per anchor.",
+        f"- After residual candidate availability: `{summary['summary']['max_candidate_schedules_per_anchor']}` candidate schedules per anchor.",
+        "- Latest final holdout: `900` candidate schedules per source model when five tenants "
+        "and 18 final anchors are present.",
+        "",
+        "## Source Summary",
+        "",
+        "| Source model | Tenants | Weight profiles | Final holdout schedules | Final selected family counts |",
+        "|---|---:|---|---:|---|",
+    ]
+    for row in summary["source_model_rows"]:
+        lines.append(
+            "| {source} | {tenants} | {profiles} | {candidate_count} | {family_counts} |".format(
+                source=str(row["source_model_name"]),
+                tenants=int(row["tenant_count"]),
+                profiles=", ".join(row["selected_weight_profile_names"]),
+                candidate_count=int(row["final_holdout_candidate_count"]),
+                family_counts=_inline_counts(row["selected_final_family_counts"]),
+            )
+        )
+    lines.extend(
+        [
+            "",
+            "## Tenant / Source Selections",
+            "",
+            "| Tenant | Source model | Selected weight profile | Final holdout schedules | Final selected family counts |",
+            "|---|---|---|---:|---|",
+        ]
+    )
+    for row in summary["tenant_source_rows"]:
+        lines.append(
+            "| {tenant} | {source} | {profile} | {candidate_count} | {family_counts} |".format(
+                tenant=str(row["tenant_id"]),
+                source=str(row["source_model_name"]),
+                profile=str(row["selected_weight_profile_name"]),
+                candidate_count=int(row["final_holdout_candidate_count"]),
+                family_counts=_inline_counts(row["selected_final_family_counts"]),
+            )
+        )
+    return "\n".join(lines)
+
+
+def _inline_counts(counts: dict[str, int]) -> str:
+    return ", ".join(f"{family}: {count}" for family, count in counts.items()) or "none"
+
+
 def _jsonable(value: Any) -> Any:
     if isinstance(value, datetime):
         return value.isoformat()
@@ -621,6 +985,22 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, list | tuple):
         return [_jsonable(item) for item in value]
     return value
+
+
+def _positive_int(value: Any, *, field_name: str) -> int:
+    parsed = _nonnegative_int(value, field_name=field_name)
+    if parsed < 1:
+        raise ValueError(f"{field_name} must be positive.")
+    return parsed
+
+
+def _nonnegative_int(value: Any, *, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{field_name} must be an integer.")
+    parsed = int(value)
+    if parsed < 0:
+        raise ValueError(f"{field_name} must be nonnegative.")
+    return parsed
 
 
 def _validate_config(
@@ -645,16 +1025,24 @@ def _validate_config(
     if min_rolling_strict_pass_windows < 1:
         raise ValueError("min_rolling_strict_pass_windows must be positive.")
     if min_rolling_strict_pass_windows > min_rolling_window_count:
-        raise ValueError("min_rolling_strict_pass_windows cannot exceed min_rolling_window_count.")
+        raise ValueError(
+            "min_rolling_strict_pass_windows cannot exceed min_rolling_window_count."
+        )
 
 
-def _require_columns(frame: pl.DataFrame, required_columns: frozenset[str], *, frame_name: str) -> None:
+def _require_columns(
+    frame: pl.DataFrame, required_columns: frozenset[str], *, frame_name: str
+) -> None:
     missing = sorted(required_columns.difference(frame.columns))
     if missing:
-        raise ValueError(f"{frame_name} is missing required columns: {', '.join(missing)}")
+        raise ValueError(
+            f"{frame_name} is missing required columns: {', '.join(missing)}"
+        )
 
 
-def _missing_column_failures(frame: pl.DataFrame, required_columns: frozenset[str]) -> list[str]:
+def _missing_column_failures(
+    frame: pl.DataFrame, required_columns: frozenset[str]
+) -> list[str]:
     missing = sorted(required_columns.difference(frame.columns))
     return [f"missing required columns: {missing}"] if missing else []
 
@@ -673,7 +1061,10 @@ def _payload(row: dict[str, Any]) -> dict[str, Any]:
 
 def _tenant_anchor_set(rows: list[dict[str, Any]]) -> set[tuple[str, datetime]]:
     return {
-        (str(row["tenant_id"]), _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"))
+        (
+            str(row["tenant_id"]),
+            _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+        )
         for row in rows
     }
 
@@ -689,7 +1080,11 @@ def _median_regret(rows: list[dict[str, Any]]) -> float:
 
 
 def _improvement_ratio(control_value: float, candidate_value: float) -> float:
-    return (control_value - candidate_value) / abs(control_value) if abs(control_value) > 1e-9 else 0.0
+    return (
+        (control_value - candidate_value) / abs(control_value)
+        if abs(control_value) > 1e-9
+        else 0.0
+    )
 
 
 def _datetime_value(value: object, *, field_name: str) -> datetime:
@@ -705,6 +1100,7 @@ def _datetime_value(value: object, *, field_name: str) -> datetime:
 
 __all__ = [
     "DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE",
+    "build_dfl_schedule_value_learner_v2_trace_summary",
     "build_dfl_schedule_value_production_gate_frame",
     "build_dfl_schedule_value_production_gate_registry",
     "evaluate_dfl_schedule_value_production_gate",

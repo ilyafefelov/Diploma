@@ -7,6 +7,7 @@ import pytest
 
 from smart_arbitrage.dfl.schedule_value_promotion_gate import (
     DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
+    build_dfl_schedule_value_learner_v2_trace_summary,
     build_dfl_schedule_value_production_gate_frame,
     build_dfl_schedule_value_production_gate_registry,
     validate_dfl_schedule_value_production_gate_evidence,
@@ -33,10 +34,16 @@ FIRST_FINAL_ANCHOR = datetime(2026, 4, 12, 23)
 GENERATED_AT = datetime(2026, 5, 11, 12)
 
 
-def test_schedule_value_production_gate_promotes_offline_when_latest_and_rolling_pass() -> None:
+def test_schedule_value_production_gate_promotes_offline_when_latest_and_rolling_pass() -> (
+    None
+):
     gate = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
-        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+        ),
         source_model_names=SOURCE_MODELS,
     )
     evidence = validate_dfl_schedule_value_production_gate_evidence(
@@ -66,7 +73,9 @@ def test_schedule_value_production_gate_blocks_median_degradation() -> None:
             selected_regrets={"tft_silver_v0": 40.0, "nbeatsx_silver_v0": 85.0},
             selected_median_regrets={"tft_silver_v0": 120.0, "nbeatsx_silver_v0": 85.0},
         ),
-        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+        ),
         source_model_names=SOURCE_MODELS,
     )
 
@@ -81,8 +90,12 @@ def test_schedule_value_production_gate_blocks_median_degradation() -> None:
 
 def test_schedule_value_production_gate_blocks_rolling_failure() -> None:
     gate = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
-        _robustness_frame(strict_pass_counts={"tft_silver_v0": 2, "nbeatsx_silver_v0": 4}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 2, "nbeatsx_silver_v0": 4}
+        ),
         source_model_names=SOURCE_MODELS,
     )
 
@@ -94,15 +107,23 @@ def test_schedule_value_production_gate_blocks_rolling_failure() -> None:
     assert tft["promotion_blocker"] == "rolling_not_robust"
 
 
-def test_schedule_value_production_gate_final_score_mutation_does_not_change_robustness_context() -> None:
-    robust = _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4})
+def test_schedule_value_production_gate_final_score_mutation_does_not_change_robustness_context() -> (
+    None
+):
+    robust = _robustness_frame(
+        strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+    )
     original = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
         robust,
         source_model_names=SOURCE_MODELS,
     )
     mutated = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 140.0, "nbeatsx_silver_v0": 85.0}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 140.0, "nbeatsx_silver_v0": 85.0}
+        ),
         robust,
         source_model_names=SOURCE_MODELS,
     )
@@ -112,18 +133,26 @@ def test_schedule_value_production_gate_final_score_mutation_does_not_change_rob
 
     assert original_tft["latest_selected_mean_regret_uah"] == 80.0
     assert mutated_tft["latest_selected_mean_regret_uah"] == 140.0
-    assert original_tft["rolling_strict_pass_window_count"] == mutated_tft[
-        "rolling_strict_pass_window_count"
-    ]
-    assert original_tft["robust_research_challenger"] == mutated_tft[
-        "robust_research_challenger"
-    ]
+    assert (
+        original_tft["rolling_strict_pass_window_count"]
+        == mutated_tft["rolling_strict_pass_window_count"]
+    )
+    assert (
+        original_tft["robust_research_challenger"]
+        == mutated_tft["robust_research_challenger"]
+    )
 
 
-def test_schedule_value_production_gate_evidence_fails_on_bad_flags_and_market_execution() -> None:
+def test_schedule_value_production_gate_evidence_fails_on_bad_flags_and_market_execution() -> (
+    None
+):
     gate = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
-        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+        ),
         source_model_names=SOURCE_MODELS,
     )
     bad_gate = gate.with_columns(
@@ -141,10 +170,16 @@ def test_schedule_value_production_gate_evidence_fails_on_bad_flags_and_market_e
     assert "market_execution_enabled=false" in evidence.description
 
 
-def test_schedule_value_production_gate_registry_writes_concise_artifacts(tmp_path) -> None:
+def test_schedule_value_production_gate_registry_writes_concise_artifacts(
+    tmp_path,
+) -> None:
     gate = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
-        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+        ),
         source_model_names=SOURCE_MODELS,
     )
 
@@ -166,23 +201,33 @@ def test_schedule_value_production_gate_registry_writes_concise_artifacts(tmp_pa
         "strict_similar_day_default_fallback"
     )
     assert (export_dir / "dfl_schedule_value_production_gate_registry.json").exists()
-    markdown = (export_dir / "dfl_schedule_value_production_gate_registry.md").read_text(
-        encoding="utf-8"
-    )
+    markdown = (
+        export_dir / "dfl_schedule_value_production_gate_registry.md"
+    ).read_text(encoding="utf-8")
     assert "NBEATSx" in markdown
     assert "market execution remains disabled" in markdown
 
 
-def test_schedule_value_production_gate_registry_attaches_attempt_evidence(tmp_path) -> None:
+def test_schedule_value_production_gate_registry_attaches_attempt_evidence(
+    tmp_path,
+) -> None:
     gate = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
-        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+        ),
         source_model_names=SOURCE_MODELS,
     )
     attempt_manifest = tmp_path / "source-attempt.json"
     monitor_snapshot = tmp_path / "source-monitor.json"
-    attempt_manifest.write_text('{"attempt_kind": "official_global_panel_backfill"}', encoding="utf-8")
-    monitor_snapshot.write_text('{"status": "complete", "next_anchor_index": 365}', encoding="utf-8")
+    attempt_manifest.write_text(
+        '{"attempt_kind": "official_global_panel_backfill"}', encoding="utf-8"
+    )
+    monitor_snapshot.write_text(
+        '{"status": "complete", "next_anchor_index": 365}', encoding="utf-8"
+    )
 
     registry = build_dfl_schedule_value_production_gate_registry(
         run_slug="unit_schedule_value_gate",
@@ -202,23 +247,103 @@ def test_schedule_value_production_gate_registry_attaches_attempt_evidence(tmp_p
     assert (export_dir / "resume-summary.json").read_text(encoding="utf-8") == (
         '{"status": "complete", "next_anchor_index": 365}'
     )
-    registry_json = (export_dir / "dfl_schedule_value_production_gate_registry.json").read_text(
-        encoding="utf-8"
-    )
+    registry_json = (
+        export_dir / "dfl_schedule_value_production_gate_registry.json"
+    ).read_text(encoding="utf-8")
     assert '"attempt_manifest": "attempt_manifest.json"' in registry_json
     assert '"monitor_snapshot": "resume-summary.json"' in registry_json
-    markdown = (export_dir / "dfl_schedule_value_production_gate_registry.md").read_text(
-        encoding="utf-8"
-    )
+    markdown = (
+        export_dir / "dfl_schedule_value_production_gate_registry.md"
+    ).read_text(encoding="utf-8")
     assert "## Attached Evidence" in markdown
     assert "`attempt_manifest.json`" in markdown
     assert "`resume-summary.json`" in markdown
 
 
-def test_schedule_value_production_gate_registry_fails_on_missing_attachment(tmp_path) -> None:
+def test_schedule_value_learner_trace_summary_records_profile_and_candidate_counts() -> (
+    None
+):
+    summary = build_dfl_schedule_value_learner_v2_trace_summary(
+        _learner_trace_frame(),
+        early_train_candidate_schedules_per_anchor=9,
+        max_candidate_schedules_per_anchor=10,
+    )
+
+    assert summary["summary"]["tenant_count"] == 5
+    assert summary["summary"]["source_model_count"] == 2
+    assert summary["summary"]["early_train_candidate_schedules_per_anchor"] == 9
+    assert summary["summary"]["max_candidate_schedules_per_anchor"] == 10
+    assert summary["summary"]["final_holdout_candidate_count_per_source_model"] == {
+        "nbeatsx_silver_v0": 900,
+        "tft_silver_v0": 900,
+    }
+    assert summary["source_model_rows"][0]["selected_weight_profile_names"] == [
+        "prior_regret_value"
+    ]
+    assert summary["source_model_rows"][0]["selected_final_family_counts"] == {
+        "strict_guarded_prior_value": 35,
+        "strict_similar_day": 30,
+        "strict_raw_blend_v2": 25,
+    }
+    assert (
+        summary["tenant_source_rows"][0]["selected_train_family_counts"][
+            "forecast_perturbation"
+        ]
+        == 0
+    )
+    assert summary["tenant_source_rows"][0]["final_holdout_candidate_count"] == 180
+
+
+def test_schedule_value_production_gate_registry_attaches_learner_trace_summary(
+    tmp_path,
+) -> None:
     gate = build_dfl_schedule_value_production_gate_frame(
-        _strict_frame(selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}),
-        _robustness_frame(strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}),
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+        ),
+        source_model_names=SOURCE_MODELS,
+    )
+    registry = build_dfl_schedule_value_production_gate_registry(
+        run_slug="unit_schedule_value_gate",
+        gate_frame=gate,
+    )
+    export_dir = write_dfl_schedule_value_production_gate_registry(
+        registry,
+        output_root=tmp_path / "exports",
+        run_slug="unit_schedule_value_gate",
+        learner_trace_frame=_learner_trace_frame(),
+    )
+
+    assert (export_dir / "dfl_schedule_value_learner_v2_trace_summary.json").exists()
+    assert (export_dir / "dfl_schedule_value_learner_v2_trace_summary.md").exists()
+    registry_json = (
+        export_dir / "dfl_schedule_value_production_gate_registry.json"
+    ).read_text(encoding="utf-8")
+    assert '"production_promote_count": 2' in registry_json
+    assert (
+        '"learner_trace_summary": "dfl_schedule_value_learner_v2_trace_summary.json"'
+        in registry_json
+    )
+    markdown = (
+        export_dir / "dfl_schedule_value_production_gate_registry.md"
+    ).read_text(encoding="utf-8")
+    assert "Learner V2 trace summary" in markdown
+    assert "`dfl_schedule_value_learner_v2_trace_summary.md`" in markdown
+
+
+def test_schedule_value_production_gate_registry_fails_on_missing_attachment(
+    tmp_path,
+) -> None:
+    gate = build_dfl_schedule_value_production_gate_frame(
+        _strict_frame(
+            selected_regrets={"tft_silver_v0": 80.0, "nbeatsx_silver_v0": 85.0}
+        ),
+        _robustness_frame(
+            strict_pass_counts={"tft_silver_v0": 3, "nbeatsx_silver_v0": 4}
+        ),
         source_model_names=SOURCE_MODELS,
     )
     registry = build_dfl_schedule_value_production_gate_registry(
@@ -235,7 +360,9 @@ def test_schedule_value_production_gate_registry_fails_on_missing_attachment(tmp
         )
 
 
-def test_schedule_value_production_gate_registry_keeps_official_source_names(tmp_path) -> None:
+def test_schedule_value_production_gate_registry_keeps_official_source_names(
+    tmp_path,
+) -> None:
     gate = pl.DataFrame(
         {
             "source_model_name": [
@@ -285,9 +412,9 @@ def test_schedule_value_production_gate_registry_keeps_official_source_names(tmp
         run_slug="unit_official_global_panel_gate",
     )
 
-    markdown = (export_dir / "dfl_schedule_value_production_gate_registry.md").read_text(
-        encoding="utf-8"
-    )
+    markdown = (
+        export_dir / "dfl_schedule_value_production_gate_registry.md"
+    ).read_text(encoding="utf-8")
     assert "`nbeatsx_official_global_panel_horizon_calibrated_v1`" in markdown
     assert "`nbeatsx_official_global_panel_v1`" in markdown
     assert "`nbeatsx_silver_v0`" not in markdown
@@ -311,7 +438,10 @@ def _strict_frame(
             for anchor_index in range(final_anchor_count_per_tenant):
                 anchor = FIRST_FINAL_ANCHOR + timedelta(days=anchor_index)
                 selected_regret = selected_regrets[source_model_name]
-                if selected_median_regrets and anchor_index <= final_anchor_count_per_tenant // 2:
+                if (
+                    selected_median_regrets
+                    and anchor_index <= final_anchor_count_per_tenant // 2
+                ):
                     selected_regret = selected_median_regrets[source_model_name]
                 rows.extend(
                     [
@@ -396,7 +526,8 @@ def _robustness_frame(*, strict_pass_counts: dict[str, int]) -> pl.DataFrame:
                     "tenant_count": len(TENANTS),
                     "validation_anchor_count_per_tenant": 18,
                     "validation_tenant_anchor_count": 90,
-                    "minimum_prior_anchor_count_before_window": 86 - ((window_index - 1) * 18),
+                    "minimum_prior_anchor_count_before_window": 86
+                    - ((window_index - 1) * 18),
                     "strict_mean_regret_uah": 100.0,
                     "raw_mean_regret_uah": 500.0,
                     "selected_mean_regret_uah": 80.0 if strict_passed else 99.0,
@@ -408,6 +539,36 @@ def _robustness_frame(*, strict_pass_counts: dict[str, int]) -> pl.DataFrame:
                     "robust_research_challenger": pass_count >= 3 and window_index == 1,
                     "production_promote": False,
                     "claim_scope": DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS_CLAIM_SCOPE,
+                    "not_full_dfl": True,
+                    "not_market_execution": True,
+                }
+            )
+    return pl.DataFrame(rows)
+
+
+def _learner_trace_frame() -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for source_model_name in SOURCE_MODELS:
+        for tenant_id in TENANTS:
+            rows.append(
+                {
+                    "tenant_id": tenant_id,
+                    "source_model_name": source_model_name,
+                    "selected_weight_profile_name": "prior_regret_value",
+                    "selected_train_family_counts": {
+                        "forecast_perturbation": None,
+                        "raw_source": 40,
+                        "strict_control": 30,
+                        "strict_raw_blend_v2": 16,
+                    },
+                    "selected_final_family_counts": {
+                        "strict_guarded_prior_value": 7,
+                        "strict_similar_day": 6,
+                        "strict_raw_blend_v2": 5,
+                    },
+                    "train_anchor_count": 347,
+                    "final_holdout_anchor_count": 18,
+                    "final_holdout_tenant_anchor_count": 90,
                     "not_full_dfl": True,
                     "not_market_execution": True,
                 }
