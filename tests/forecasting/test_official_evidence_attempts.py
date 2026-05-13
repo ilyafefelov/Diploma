@@ -146,6 +146,30 @@ def test_attempt_resume_summary_reports_complete_attempt() -> None:
     assert summary["completed_batch_start_indices"] == [0, 4, 8]
 
 
+def test_attempt_resume_summary_handles_partial_resume_window() -> None:
+    manifest = build_official_evidence_attempt_manifest(
+        OfficialEvidenceAttemptConfig(
+            attempt_kind="official_global_panel_backfill",
+            generated_at_iso="2026-05-11T20:30:00+00:00",
+            total_anchors=12,
+            batch_size=4,
+            start_anchor_index=4,
+            asset_selection="asset",
+        )
+    )
+
+    summary = summarize_official_evidence_attempt_resume(
+        manifest,
+        persisted_anchor_count=12,
+    )
+
+    assert summary["status"] == "complete"
+    assert summary["effective_persisted_anchor_count"] == 12
+    assert summary["planned_anchor_count"] == 12
+    assert summary["next_anchor_index"] is None
+    assert summary["completed_batch_start_indices"] == [4, 8]
+
+
 def test_attempt_resume_summary_rejects_counts_beyond_manifest_window() -> None:
     manifest = build_official_evidence_attempt_manifest(
         OfficialEvidenceAttemptConfig(

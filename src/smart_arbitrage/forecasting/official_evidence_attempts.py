@@ -116,24 +116,21 @@ def summarize_official_evidence_attempt_resume(
         persisted_anchor_counts_by_source=persisted_anchor_counts_by_source,
     )
     batch_plan = _manifest_batch_plan(manifest)
-    planned_anchor_count = sum(
-        _batch_int(batch, "anchor_batch_size") for batch in batch_plan
+    planned_anchor_count = max(
+        _batch_int(batch, "anchor_batch_end_index_exclusive") for batch in batch_plan
     )
     if effective_count > planned_anchor_count:
         raise ValueError("persisted anchor count cannot exceed planned anchor count.")
 
     completed_batch_start_indices: list[int] = []
-    cumulative_count = 0
     next_anchor_index: int | None = None
     for batch in batch_plan:
-        batch_size = _batch_int(batch, "anchor_batch_size")
         batch_start = _batch_int(batch, "anchor_batch_start_index")
-        batch_end_count = cumulative_count + batch_size
-        if effective_count >= batch_end_count:
+        batch_end = _batch_int(batch, "anchor_batch_end_index_exclusive")
+        if effective_count >= batch_end:
             completed_batch_start_indices.append(batch_start)
         elif next_anchor_index is None:
             next_anchor_index = batch_start
-        cumulative_count = batch_end_count
 
     status = "complete" if next_anchor_index is None else "resume_required"
     return {
