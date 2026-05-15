@@ -81,10 +81,10 @@ forecast superiority. У проміжних і ранніх офіційних �
 
 ## 4.5. Результат Schedule/Value Learner V2
 
-Найсильніший поточний результат отримано не raw NBEATSx, а Schedule/Value
-Learner V2 поверх official global-panel schedule candidates. Цей шар вибирає
-schedule family на основі prior/train anchors, а final holdout використовується
-лише для scoring.
+Перший стійкий результат отримано не raw NBEATSx, а Schedule/Value Learner V2
+поверх official global-panel schedule candidates. Цей шар вибирає schedule
+family на основі prior/train anchors, а final holdout використовується лише для
+scoring.
 
 365-anchor registry показав:
 
@@ -93,10 +93,10 @@ schedule family на основі prior/train anchors, а final holdout вико
 | `nbeatsx_official_global_panel_v1` | 310.583 / 198.386 | 225.437 / 109.692 | 27.41% | 4 / 4 |
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 310.583 / 198.386 | 206.367 / 96.021 | 33.55% | 4 / 4 |
 
-Обидва source-specific challengers проходять conservative Offline Strategy
-Promotion gate: mean regret покращується більше ніж на 5%, median regret не
-погіршується, rolling robustness проходить 4 з 4 вікон, coverage є
-thesis-grade, а `market_execution_enabled=false`.
+Обидва source-specific challengers пройшли conservative Offline Strategy
+Promotion gate: mean regret покращився більше ніж на 5%, median regret не
+погіршився, rolling robustness пройшов 4 з 4 вікон, coverage є thesis-grade, а
+`market_execution_enabled=false`.
 
 ## 4.6. Traceability Schedule/Value Learner V2
 
@@ -121,7 +121,37 @@ global-panel NBEATSx він вибрав 19 strict-control, 7 strict-prior-resid
 strict-raw-blend schedules. Отже, improvement виник з prior-only вибору між
 feasible schedule families, а не з live-підглядання у final holdout.
 
-## 4.7. Інтерпретація результату
+## 4.7. Результат Schedule/Value Learner V2+
+
+Після фіксації V2 було виконано V2+ експеримент. Він не замінює строгий
+LP/oracle evaluator і не вводить зовнішні європейські training rows. Його зміна
+обмежена candidate library: додаються prior-safe schedule variants навколо
+залишкових failure modes, а selector може перейти з frozen V2 на V2+ лише тоді,
+коли prior/train anchors показують non-degrading improvement.
+
+Latest-holdout comparison packet
+`week3_official_global_panel_schedule_value_v2_plus_comparison` показав:
+
+| Source model | Strict mean regret, UAH | Frozen V2 mean regret, UAH | V2+ mean regret, UAH | Improvement vs strict | Improvement vs V2 |
+|---|---:|---:|---:|---:|---:|
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 310.58 | 206.37 | 174.77 | 43.73% | 15.31% |
+| `nbeatsx_official_global_panel_v1` | 310.58 | 225.44 | 193.36 | 37.74% | 14.23% |
+
+Rolling robustness replay over four 18-anchor windows also passed:
+
+| Source model | Rolling windows passed | Interpretation |
+|---|---:|---|
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 4 / 4 | V2+ beats both `strict_similar_day` and frozen V2 |
+| `nbeatsx_official_global_panel_v1` | 4 / 4 | V2+ beats both `strict_similar_day` and frozen V2 |
+
+Therefore the strongest current thesis result is Schedule/Value Learner V2+ on
+the 365-anchor Ukrainian panel. The calibrated official NBEATSx source is the
+preferred headline because it has the lowest latest-holdout mean regret. The
+claim remains Offline Strategy Promotion only: no live market execution, no
+dashboard/API default switch, and no claim that raw neural forecasting alone is
+superior to `strict_similar_day`.
+
+## 4.8. Інтерпретація результату
 
 Результат підтримує тезу про практичну цінність decision-aware pipeline:
 нейронний forecast сам по собі не був достатнім, але schedule/value layer
@@ -130,13 +160,13 @@ feasible schedule families, а не з live-підглядання у final hold
 системою:
 
 - `strict_similar_day` залишається fallback і контрольним comparator;
-- Schedule/Value Learner V2 може бути promoted лише в offline/read-model
+- Schedule/Value Learner V2+ може бути promoted лише в offline/read-model
   evidence stack;
 - Pydantic Gatekeeper і strict LP/oracle evaluator залишаються
   deterministic safety layers;
 - live execution не активується цим результатом.
 
-## 4.8. Що не підтверджено поточними експериментами
+## 4.9. Що не підтверджено поточними експериментами
 
 Поточні експерименти не доводять такі твердження:
 
@@ -149,10 +179,11 @@ feasible schedule families, а не з live-підглядання у final hold
 цінність отриманого результату, але визначають його точну область застосування:
 offline/read-model Strategy Promotion evidence для Ukrainian DAM BESS arbitrage.
 
-## 4.9. Наступний експеримент: Schedule/Value Learner V3
+## 4.10. Наступний експеримент: Schedule/Value Learner V3
 
 Наступна модельна робота має бути additive experiment, а не заміна V2. V2
-залишається frozen поточним promoted offline evidence. Schedule/Value Learner
+залишається frozen baseline, а V2+ є поточним strongest Offline Strategy
+Promotion evidence. Schedule/Value Learner
 V3 має перевірити, чи можна покращити selector без послаблення gate:
 
 - додати prior-only learned ranker, наприклад ridge/logistic ranker або

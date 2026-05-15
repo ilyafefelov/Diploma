@@ -150,6 +150,21 @@ def test_schedule_value_registry_export_cli_accepts_evidence_attachments() -> No
     assert "learner_trace_frame=learner_frame" in export_script
 
 
+def test_schedule_value_v2_plus_comparison_export_cli_requires_gate_inputs() -> None:
+    export_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_schedule_value_v2_plus_comparison.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--strict-frame-pickle" in export_script
+    assert "--learner-frame-pickle" in export_script
+    assert "--regret-decomposition-pickle" in export_script
+    assert "--dagster-run-id" in export_script
+    assert "build_dfl_schedule_value_learner_v2_plus_comparison_packet" in export_script
+    assert "write_dfl_schedule_value_learner_v2_plus_comparison_packet" in export_script
+
+
 def test_hf_official_job_submission_cli_is_guarded_by_submit_flag() -> None:
     submit_script = (
         PROJECT_ROOT / "scripts" / "submit_hf_official_schedule_value_job.py"

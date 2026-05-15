@@ -2240,3 +2240,57 @@ Implementation update on 2026-05-15:
 - Result status: not materialized yet. V3 is an experiment definition only
   until it is run on the 365-anchor packet, its asset check passes, and the
   unchanged strict LP/oracle gate confirms whether it improves on frozen V2.
+
+Runtime update on 2026-05-15:
+
+- The official global-panel V3 materialization completed and its asset check
+  passed, but V3 did not beat frozen V2.
+- V3 mean regret was `227.555` versus V2 `225.437` for
+  `nbeatsx_official_global_panel_v1`, and `207.537` versus V2 `206.367` for
+  `nbeatsx_official_global_panel_horizon_calibrated_v1`.
+- The gate decision was `diagnostic_pass_production_blocked`, so the thesis
+  headline remains the 365-anchor Schedule/Value Learner V2 Offline Strategy
+  Promotion packet.
+
+## Schedule/Value Learner V2+ Regret Improvement Slice
+
+The next model slice attacks remaining regret directly instead of adding another
+generic ranker. The implementation is additive and keeps V2 frozen:
+
+- `dfl_schedule_value_regret_decomposition_frame` explains remaining V2 regret
+  by tenant/source/anchor, selected family, best-candidate gap, rank/extrema
+  diagnostics, SOC slack, throughput, and deterministic failure mode.
+- `dfl_schedule_candidate_library_v2_plus_frame` adds prior-safe schedule
+  families around top/bottom rank perturbations, spread robustness,
+  strict-neighborhood timing shifts, temporal block reconciliation, and terminal
+  SOC pressure.
+- `dfl_schedule_value_learner_v2_plus_frame` defaults to V2 and switches to V2+
+  only when train/prior anchors show a clear non-degrading improvement.
+- `dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame` scores strict,
+  raw, V2, and V2+ with the unchanged strict LP/oracle evaluator.
+- Official global-panel mirror assets are available for the 365-anchor NBEATSx
+  lane, with config
+  `configs/real_data_official_global_panel_schedule_value_v2_plus_week3.yaml`.
+
+V2+ is now materialized and checked on the 365-anchor official global-panel
+Ukrainian packet. The comparison export is reproducible through
+`scripts/materialize_schedule_value_v2_plus_comparison.py` and stored locally
+under
+`data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/`.
+
+Latest strict-gate run `b09194b2-8bf7-42fb-bcc7-1567ca47037c` showed:
+
+- calibrated official global-panel NBEATSx V2+ mean regret: 174.77 UAH;
+- frozen V2 mean regret on the same rows: 206.37 UAH;
+- `strict_similar_day` mean regret: 310.58 UAH;
+- improvement versus strict: 43.73%;
+- improvement versus frozen V2: 15.31%;
+- `market_execution_enabled=false`.
+
+Rolling robustness run `8832f41e-e605-4107-ab6d-028676faa223` replayed four
+18-anchor validation windows with prior-only selection. Both raw official
+global-panel NBEATSx and horizon-calibrated official global-panel NBEATSx passed
+4 / 4 windows against both `strict_similar_day` and frozen V2. The thesis
+headline therefore moves from frozen V2 to V2+ as stronger **Offline Strategy
+Promotion** evidence, while live market execution, dashboard defaults, and EU
+market-coupling training remain disabled.

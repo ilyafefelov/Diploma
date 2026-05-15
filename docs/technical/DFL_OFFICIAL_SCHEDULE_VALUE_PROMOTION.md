@@ -41,6 +41,18 @@ control.
 | `dfl_official_schedule_value_production_gate_frame` | Emits the final Offline Strategy Promotion / fallback decision per official source. |
 | `dfl_official_schedule_value_production_gate_evidence` | Dagster asset check for claim flags, coverage, and disabled market execution. |
 
+The official global-panel lane now also has an additive V2+ experiment:
+`dfl_official_global_panel_schedule_candidate_library_v2_plus_frame`,
+`dfl_official_global_panel_schedule_value_regret_decomposition_frame`,
+`dfl_official_global_panel_schedule_value_learner_v2_plus_frame`, and
+`dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame`.
+The V2+ robustness lane adds
+`dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame`.
+V2+ now improves over frozen V2 and passes the same strict LP/oracle gate plus
+four rolling windows, so it is the stronger Offline Strategy Promotion headline.
+See
+[DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md](DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md).
+
 Tracked config:
 [configs/real_data_official_schedule_value_promotion_week3.yaml](../../configs/real_data_official_schedule_value_promotion_week3.yaml).
 
@@ -344,9 +356,36 @@ offline/read-model strategy evidence only. It is not live market execution, not 
 dashboard default switch, and not a claim that raw official NBEATSx alone beats
 `strict_similar_day`.
 
+## Schedule/Value Learner V2+ Evidence Freeze
+
+V2+ was materialized and exported on 2026-05-15 as a separate comparison packet:
+`data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/`.
+The reusable exporter is
+`scripts/materialize_schedule_value_v2_plus_comparison.py`, so future packets do
+not depend on a one-off notebook or manual CSV assembly.
+
+Strict-gate run:
+`b09194b2-8bf7-42fb-bcc7-1567ca47037c`.
+
+Rolling robustness run:
+`8832f41e-e605-4107-ab6d-028676faa223`.
+
+| Source | Latest V2+ mean regret | Latest improvement vs strict | Latest improvement vs frozen V2 | Rolling windows |
+|---|---:|---:|---:|---:|
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 174.77 UAH | 43.73% | 15.31% | 4 / 4 |
+| `nbeatsx_official_global_panel_v1` | 193.36 UAH | 37.74% | 14.23% | 4 / 4 |
+
+The calibrated V2+ source is now the thesis-facing Offline Strategy Promotion
+headline because it beats both `strict_similar_day` and frozen V2 in the latest
+holdout and in all four rolling windows. The production/live boundary does not
+change: `market_execution_enabled=false`, `strict_similar_day` remains the
+fallback/control, and no dashboard/API default switch is made.
+
 ## Schedule/Value Learner V3 Experiment
 
-The next additive experiment is implemented but not yet materialized:
+The V3 additive experiment remains useful as a traceable ranker comparison, but
+it did not replace frozen V2 and was superseded by the V2+ candidate-library
+route:
 
 - `dfl_official_global_panel_schedule_value_learner_v3_frame`;
 - `dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame`;
@@ -354,7 +393,7 @@ The next additive experiment is implemented but not yet materialized:
   `configs/real_data_official_global_panel_schedule_value_v3_week3.yaml`.
 
 V3 fits a deterministic prior-only ridge-style schedule ranker over the same
-candidate library used by frozen V2. It compares strict, raw official NBEATSx,
-horizon-calibrated official NBEATSx, V2, and V3 through the unchanged strict
-LP/oracle gate. It does not update the 365-anchor thesis result until it is
-materialized and checked; if V3 fails, V2 remains the headline evidence.
+candidate library used by frozen V2. The current evidence says the next headline
+should be V2+, not V3, because V2+ directly expanded the feasible schedule
+library around observed regret modes and passed the stricter V2 non-degradation
+gate.

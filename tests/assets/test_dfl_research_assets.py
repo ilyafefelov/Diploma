@@ -206,6 +206,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_pipeline_integrity_audit_frame",
         "forecast_pipeline_truth_audit_frame",
         "dfl_schedule_candidate_library_v2_frame",
+        "dfl_schedule_candidate_library_v2_plus_frame",
+        "dfl_schedule_value_regret_decomposition_frame",
         "dfl_non_strict_oracle_upper_bound_frame",
         "dfl_strict_baseline_autopsy_frame",
         "dfl_strict_failure_selector_frame",
@@ -231,6 +233,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_schedule_value_learner_v2_robustness_frame",
         "dfl_schedule_value_learner_v3_frame",
         "dfl_schedule_value_learner_v3_strict_lp_benchmark_frame",
+        "dfl_schedule_value_learner_v2_plus_frame",
+        "dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_schedule_value_production_gate_frame",
         "dfl_official_schedule_candidate_library_frame",
         "dfl_official_schedule_candidate_library_v2_frame",
@@ -240,11 +244,16 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_schedule_value_production_gate_frame",
         "dfl_official_global_panel_schedule_candidate_library_frame",
         "dfl_official_global_panel_schedule_candidate_library_v2_frame",
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
+        "dfl_official_global_panel_schedule_value_regret_decomposition_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_robustness_frame",
         "dfl_official_global_panel_schedule_value_learner_v3_frame",
         "dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "dfl_official_global_panel_schedule_value_production_gate_frame",
         "dfl_production_promotion_gate_frame",
         "forecast_afe_feature_catalog_frame",
@@ -489,6 +498,12 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["afl_forecast_error_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
@@ -590,6 +605,9 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v2_robustness_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame"
+    }
+    assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"
     }
     assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v3_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame"

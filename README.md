@@ -7,9 +7,9 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Real-data benchmark: observed OREE DAM prices plus tenant Open-Meteo weather.
 - Tenants: 5 simulated BESS tenants from `simulations/tenants.yml`.
 - Main control: `strict_similar_day`.
-- Forecast candidates: compact `nbeatsx_silver_v0` / `tft_silver_v0` for smoke diagnostics, plus official global-panel NBEATSx evidence for the current Schedule/Value Learner V2 result.
+- Forecast candidates: compact `nbeatsx_silver_v0` / `tft_silver_v0` for smoke diagnostics, plus official global-panel NBEATSx evidence for the current Schedule/Value Learner V2+ result.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
-- Latest DFL research challenger: official global-panel NBEATSx Schedule/Value Learner V2 now passes the **Offline Strategy Promotion** / fallback gate on the 365-anchor Ukrainian evidence packet for read-model strategy evidence only. The raw and horizon-calibrated official NBEATSx source rows pass 4/4 rolling strict-control windows, internal `production_promote=true`, and `market_execution_enabled=false`; live market execution remains disabled.
+- Latest DFL research challenger: official global-panel NBEATSx Schedule/Value Learner V2+ now passes the **Offline Strategy Promotion** / fallback gate on the 365-anchor Ukrainian evidence packet for read-model strategy evidence only. It improves over frozen V2 and `strict_similar_day`; both raw and horizon-calibrated official NBEATSx source rows pass 4/4 rolling strict-control windows, and `market_execution_enabled=false`; live market execution remains disabled.
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
@@ -201,6 +201,7 @@ Latest full verification: `151 passed`.
 - DFL schedule/value learner v2: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md`
 - DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
 - DFL schedule/value learner v3 experiment: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V3.md`
+- DFL schedule/value learner V2+ evidence freeze and robustness gate: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md`
 - DFL schedule/value Offline Strategy Promotion gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Offline Strategy Promotion language contract: `docs/technical/OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
