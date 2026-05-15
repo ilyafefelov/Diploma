@@ -2225,3 +2225,18 @@ Candidate V3 directions:
 - never use final-holdout actuals for feature selection, profile selection, or
   candidate-family selection;
 - promote only if the unchanged Offline Strategy Promotion gate still passes.
+
+Implementation update on 2026-05-15:
+
+- `smart_arbitrage.dfl.schedule_value_learner_v3` implements the additive V3
+  experiment as a deterministic ridge-style schedule/value ranker.
+- The compact-model assets are `dfl_schedule_value_learner_v3_frame` and
+  `dfl_schedule_value_learner_v3_strict_lp_benchmark_frame`.
+- The official global-panel assets are
+  `dfl_official_global_panel_schedule_value_learner_v3_frame` and
+  `dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame`.
+- The tracked config is
+  `configs/real_data_official_global_panel_schedule_value_v3_week3.yaml`.
+- Result status: not materialized yet. V3 is an experiment definition only
+  until it is run on the 365-anchor packet, its asset check passes, and the
+  unchanged strict LP/oracle gate confirms whether it improves on frozen V2.

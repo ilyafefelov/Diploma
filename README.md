@@ -200,6 +200,7 @@ Latest full verification: `151 passed`.
 - Regime-gated TFT selector v2: `docs/technical/DFL_REGIME_GATED_TFT_SELECTOR_V2.md`
 - DFL schedule/value learner v2: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md`
 - DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
+- DFL schedule/value learner v3 experiment: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V3.md`
 - DFL schedule/value Offline Strategy Promotion gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Offline Strategy Promotion language contract: `docs/technical/OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`

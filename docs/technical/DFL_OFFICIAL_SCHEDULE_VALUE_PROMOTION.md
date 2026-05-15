@@ -343,3 +343,18 @@ the claim remains unchanged: **Offline Strategy Promotion** for
 offline/read-model strategy evidence only. It is not live market execution, not a
 dashboard default switch, and not a claim that raw official NBEATSx alone beats
 `strict_similar_day`.
+
+## Schedule/Value Learner V3 Experiment
+
+The next additive experiment is implemented but not yet materialized:
+
+- `dfl_official_global_panel_schedule_value_learner_v3_frame`;
+- `dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame`;
+- config:
+  `configs/real_data_official_global_panel_schedule_value_v3_week3.yaml`.
+
+V3 fits a deterministic prior-only ridge-style schedule ranker over the same
+candidate library used by frozen V2. It compares strict, raw official NBEATSx,
+horizon-calibrated official NBEATSx, V2, and V3 through the unchanged strict
+LP/oracle gate. It does not update the 365-anchor thesis result until it is
+materialized and checked; if V3 fails, V2 remains the headline evidence.

@@ -89,6 +89,14 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_schedule_value_learner_v2_robustness_evidence",
         ),
         (
+            "dfl_schedule_value_learner_v3_strict_lp_benchmark_frame",
+            "dfl_schedule_value_learner_v3_evidence",
+        ),
+        (
+            "dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame",
+            "dfl_official_global_panel_schedule_value_learner_v3_evidence",
+        ),
+        (
             "dfl_schedule_value_production_gate_frame",
             "dfl_schedule_value_production_gate_evidence",
         ),

@@ -148,6 +148,12 @@ from smart_arbitrage.dfl.schedule_value_learner import (
     build_dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
     evaluate_dfl_schedule_value_learner_v2_gate,
 )
+from smart_arbitrage.dfl.schedule_value_learner_v3 import (
+    DFL_SCHEDULE_VALUE_LEARNER_V3_STRICT_LP_STRATEGY_KIND,
+    build_dfl_schedule_value_learner_v3_frame,
+    build_dfl_schedule_value_learner_v3_strict_lp_benchmark_frame,
+    evaluate_dfl_schedule_value_learner_v3_gate,
+)
 from smart_arbitrage.dfl.schedule_value_learner_robustness import (
     build_dfl_schedule_value_learner_v2_robustness_frame,
     evaluate_dfl_schedule_value_learner_v2_robustness_gate,
@@ -552,6 +558,19 @@ class DflScheduleValueLearnerV2AssetConfig(dg.Config):
     min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
+class DflScheduleValueLearnerV3AssetConfig(dg.Config):
+    """Prior-only schedule/value learner v3 ridge-ranker scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = "tft_silver_v0,nbeatsx_silver_v0"
+    final_validation_anchor_count_per_tenant: int = 18
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    ridge_regularization: float = 1.0
+
+
 class DflScheduleValueLearnerV2RobustnessAssetConfig(dg.Config):
     """Rolling-window robustness evidence for schedule/value learner v2."""
 
@@ -658,6 +677,22 @@ class DflOfficialGlobalPanelScheduleValueLearnerV2AssetConfig(dg.Config):
     )
     final_validation_anchor_count_per_tenant: int = 1
     min_validation_tenant_anchor_count_per_source_model: int = 5
+
+
+class DflOfficialGlobalPanelScheduleValueLearnerV3AssetConfig(dg.Config):
+    """Official global-panel schedule/value learner v3 scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = (
+        "nbeatsx_official_global_panel_v1,"
+        "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    )
+    final_validation_anchor_count_per_tenant: int = 1
+    min_validation_tenant_anchor_count_per_source_model: int = 5
+    ridge_regularization: float = 1.0
 
 
 class DflOfficialGlobalPanelScheduleValueLearnerV2RobustnessAssetConfig(
@@ -2150,6 +2185,119 @@ def dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_fram
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "scope": (
                 "dfl_official_global_panel_schedule_value_v2_strict_gate_"
+                "screen_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_schedule_value_learner_v3_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueLearnerV3AssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only V3 ridge ranker over global-panel schedule candidates."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    learner_frame = build_dfl_schedule_value_learner_v3_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        ridge_regularization=config.ridge_regularization,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": learner_frame.height,
+            "tenant_count": learner_frame.select("tenant_id").n_unique()
+            if learner_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            if learner_frame.height
+            else [],
+            "scope": "dfl_official_global_panel_schedule_value_v3_screen_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return learner_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueLearnerV3AssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v3_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle rows for global-panel schedule/value V3 screening."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_schedule_value_learner_v3_strict_lp_benchmark_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_frame,
+        dfl_official_global_panel_schedule_value_learner_v3_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_frame,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_candidate_library_v2_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_schedule_value_learner_v3_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    learner_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_schedule_value_learner_v3_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "learner_validation_tenant_anchor_count": learner_rows.height,
+            "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V3_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "production_gate_passed": gate.metrics.get("production_gate_passed", False),
+            "market_execution_enabled": False,
+            "scope": (
+                "dfl_official_global_panel_schedule_value_v3_strict_gate_"
                 "screen_not_full_dfl"
             ),
             "not_market_execution": True,
@@ -4383,6 +4531,113 @@ def dfl_schedule_value_learner_v2_strict_lp_benchmark_frame(
         market_venue="DAM",
     ),
 )
+def dfl_schedule_value_learner_v3_frame(
+    context,
+    config: DflScheduleValueLearnerV3AssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only DFL v3 schedule/value ridge ranker over feasible candidate schedules."""
+
+    tenant_ids = _csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv")
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    learner_frame = build_dfl_schedule_value_learner_v3_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        tenant_ids=tenant_ids,
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        ridge_regularization=config.ridge_regularization,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": learner_frame.height,
+            "tenant_count": learner_frame.select("tenant_id").n_unique()
+            if learner_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            if learner_frame.height
+            else [],
+            "scope": "dfl_schedule_value_learner_v3_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return learner_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
+def dfl_schedule_value_learner_v3_strict_lp_benchmark_frame(
+    context,
+    config: DflScheduleValueLearnerV3AssetConfig,
+    dfl_schedule_candidate_library_v2_frame: pl.DataFrame,
+    dfl_schedule_value_learner_v2_frame: pl.DataFrame,
+    dfl_schedule_value_learner_v3_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle evidence for the schedule/value learner v3."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_schedule_value_learner_v3_strict_lp_benchmark_frame(
+        dfl_schedule_candidate_library_v2_frame,
+        dfl_schedule_value_learner_v3_frame,
+        dfl_schedule_value_learner_v2_frame,
+        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_schedule_value_learner_v3_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    learner_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("dfl_schedule_value_learner_v3_")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "learner_validation_tenant_anchor_count": learner_rows.height,
+            "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V3_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "production_gate_passed": gate.metrics.get("production_gate_passed", False),
+            "market_execution_enabled": False,
+            "scope": "dfl_schedule_value_learner_v3_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        market_venue="DAM",
+    ),
+)
 def dfl_production_promotion_gate_frame(
     context,
     config: DflProductionPromotionGateAssetConfig,
@@ -4784,6 +5039,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_schedule_value_learner_v2_frame,
     dfl_schedule_value_learner_v2_strict_lp_benchmark_frame,
     dfl_schedule_value_learner_v2_robustness_frame,
+    dfl_schedule_value_learner_v3_frame,
+    dfl_schedule_value_learner_v3_strict_lp_benchmark_frame,
     dfl_schedule_value_production_gate_frame,
     dfl_official_schedule_candidate_library_frame,
     dfl_official_schedule_candidate_library_v2_frame,
@@ -4796,6 +5053,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v2_frame,
     dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_robustness_frame,
+    dfl_official_global_panel_schedule_value_learner_v3_frame,
+    dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_production_gate_frame,
     dfl_production_promotion_gate_frame,
     regret_weighted_forecast_calibration_frame,

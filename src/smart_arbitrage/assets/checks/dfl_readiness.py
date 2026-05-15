@@ -49,6 +49,9 @@ from smart_arbitrage.dfl.production_promotion_gate import (
 from smart_arbitrage.dfl.schedule_value_learner import (
     validate_dfl_schedule_value_learner_v2_evidence,
 )
+from smart_arbitrage.dfl.schedule_value_learner_v3 import (
+    validate_dfl_schedule_value_learner_v3_evidence,
+)
 from smart_arbitrage.dfl.schedule_value_learner_robustness import (
     validate_dfl_schedule_value_learner_v2_robustness_evidence,
 )
@@ -349,6 +352,45 @@ def dfl_schedule_value_production_gate_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_schedule_value_learner_v3_strict_lp_benchmark_frame",
+    name="dfl_schedule_value_learner_v3_evidence",
+    description="Checks schedule/value learner v3 strict LP coverage and claim boundaries.",
+)
+def dfl_schedule_value_learner_v3_evidence(
+    dfl_schedule_value_learner_v3_strict_lp_benchmark_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_schedule_value_learner_v3_evidence(
+            dfl_schedule_value_learner_v3_strict_lp_benchmark_frame
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame",
+    name="dfl_official_global_panel_schedule_value_learner_v3_evidence",
+    description="Checks official global-panel schedule/value learner v3 strict LP coverage and claim boundaries.",
+)
+def dfl_official_global_panel_schedule_value_learner_v3_evidence(
+    dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_schedule_value_learner_v3_evidence(
+            dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame,
+            source_model_names=(
+                "nbeatsx_official_global_panel_v1",
+                "nbeatsx_official_global_panel_horizon_calibrated_v1",
+            ),
+            min_validation_tenant_anchor_count=90,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_official_schedule_value_production_gate_frame",
     name="dfl_official_schedule_value_production_gate_evidence",
     description="Checks official NBEATSx/TFT schedule/value promotion decisions while market execution remains disabled.",
@@ -523,6 +565,8 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_schedule_value_learner_v2_evidence,
     dfl_schedule_value_learner_v2_robustness_evidence,
     dfl_schedule_value_production_gate_evidence,
+    dfl_schedule_value_learner_v3_evidence,
+    dfl_official_global_panel_schedule_value_learner_v3_evidence,
     dfl_official_schedule_value_production_gate_evidence,
     forecast_pipeline_truth_audit_evidence,
     market_coupling_temporal_availability_evidence,
