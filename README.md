@@ -213,6 +213,7 @@ Latest full verification: `151 passed`.
 - Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
 - Official forecast rolling-origin benchmark: `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md`
 - Current source-capture packages: `docs/sources/README.md`
+- Weekly release notes from merged PRs: `docs/release-notes/README.md`
 - Local official 365-anchor Offline Strategy Promotion registry:
   `data/research_runs/week3_official_global_panel_365_strategy_promotion/`
 - Market-coupling temporal availability gate: `docs/technical/MARKET_COUPLING_TEMPORAL_AVAILABILITY.md`
