@@ -206,6 +206,14 @@ neighbor-market feature український V2+ baseline. Якщо governance
 path повинен повертати `blocked_by_governance` і не запускати market-coupled
 training variant.
 
+Матеріалізований ablation packet підтвердив саме цей governance outcome:
+`blocked_by_governance` для обох official global-panel NBEATSx source paths,
+approved external feature columns відсутні, market-coupled B variant не
+тренувався, а `market_execution_enabled=false`. Отже, поточний headline result
+залишається українським V2+ evidence, а ENTSO-E/neighbor-market джерела
+залишаються тільки governance/readiness шаром до завершення publication-time,
+timezone/DST, FX, licensing, market-rule та domain-shift перевірок.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

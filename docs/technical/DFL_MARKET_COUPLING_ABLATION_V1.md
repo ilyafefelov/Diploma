@@ -76,6 +76,71 @@ Dagster asset-check surface after materialization:
 uv run dg check defs
 ```
 
+## Local Evidence Packet Export
+
+After materialization, export the ablation frame from Dagster storage and build
+the local evidence packet:
+
+```powershell
+$RunSlug = "week3_dfl_market_coupling_ablation_v1"
+$ExportDir = Join-Path "data\research_runs" $RunSlug
+New-Item -ItemType Directory -Force -Path $ExportDir | Out-Null
+$ContainerId = docker compose ps -q dagster-webserver
+docker cp "${ContainerId}:/opt/dagster/dagster_home/storage/dfl_market_coupling_v2_plus_ablation_frame" (Join-Path $ExportDir "dfl_market_coupling_v2_plus_ablation_frame.pkl")
+.\.venv\Scripts\python.exe scripts\materialize_market_coupling_ablation_packet.py --ablation-frame-pickle (Join-Path $ExportDir "dfl_market_coupling_v2_plus_ablation_frame.pkl") --run-slug $RunSlug
+```
+
+The exporter writes:
+
+- `dfl_market_coupling_v2_plus_ablation_summary.json`;
+- `dfl_market_coupling_v2_plus_ablation_summary.md`;
+- `dfl_market_coupling_v2_plus_ablation_rows.csv`.
+
+The export is allowed when the ablation evidence check passes. A
+`blocked_by_governance` row is valid exportable evidence because it proves that
+no market-coupled B variant was trained without a fully approved exogenous
+feature route. Failed evidence checks are refused.
+
+## Materialized Evidence
+
+The 2026-05-16 materialization closed the slice with the expected governance
+block:
+
+- Dagster run id: `b1026e47-249f-463d-a60d-b4f01b3897cd`;
+- local packet:
+  `data/research_runs/week3_dfl_market_coupling_ablation_v1/`;
+- ablation rows: `2`;
+- status counts: `blocked_by_governance=2`;
+- approved external feature columns: none;
+- market-coupled B training runs: `0`;
+- passing ablation rows: `0`;
+- evidence check:
+  `dfl_market_coupling_v2_plus_ablation_evidence` passed;
+- `market_execution_enabled=false`.
+
+Blocked feature columns:
+
+- `entsoe_neighbor_day_ahead_price_context`;
+- `europe_generation_mix_context_placeholder`;
+- `european_power_system_time_series_placeholder`;
+- `nord_pool_price_context_placeholder`;
+- `pricefm_european_price_context`;
+- `thief_temporal_hierarchy_context`.
+
+Training blockers reported by the packet:
+
+- `currency`;
+- `domain_shift`;
+- `licensing`;
+- `market_rules`;
+- `temporal_availability`;
+- `timezone`.
+
+This means the ablation did not test whether neighbor-market features improve
+regret yet. It tested and passed the governance behavior: incomplete external
+feature governance blocks Ukrainian-plus-neighbor training instead of silently
+mixing EU-derived signals into the thesis result.
+
 ## Current Interpretation
 
 Until all governance columns pass, ENTSO-E Poland is a readiness/audit lane, not

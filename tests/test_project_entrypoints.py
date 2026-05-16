@@ -166,6 +166,20 @@ def test_schedule_value_v2_plus_comparison_export_cli_requires_gate_inputs() -> 
     assert "write_dfl_schedule_value_learner_v2_plus_comparison_packet" in export_script
 
 
+def test_market_coupling_ablation_export_cli_requires_evidence_input() -> None:
+    export_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_market_coupling_ablation_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--ablation-frame-pickle" in export_script
+    assert "--run-slug" in export_script
+    assert "--dagster-run-id" in export_script
+    assert "build_dfl_market_coupling_v2_plus_ablation_packet" in export_script
+    assert "write_dfl_market_coupling_v2_plus_ablation_packet" in export_script
+
+
 def test_hf_official_job_submission_cli_is_guarded_by_submit_flag() -> None:
     submit_script = (
         PROJECT_ROOT / "scripts" / "submit_hf_official_schedule_value_job.py"

@@ -2334,3 +2334,23 @@ Tracked docs:
 
 - [DFL_MARKET_COUPLING_ABLATION_V1.md](DFL_MARKET_COUPLING_ABLATION_V1.md).
 - [../sources/market-coupling-ablation-v1-source-capture-2026-05-16.md](../sources/market-coupling-ablation-v1-source-capture-2026-05-16.md).
+
+Materialized evidence closure:
+
+- Dagster run id: `b1026e47-249f-463d-a60d-b4f01b3897cd`;
+- local evidence packet:
+  `data/research_runs/week3_dfl_market_coupling_ablation_v1/`;
+- evidence check:
+  `dfl_market_coupling_v2_plus_ablation_evidence` passed;
+- row count: 2 source-model rows;
+- status: `blocked_by_governance` for both raw and calibrated official
+  global-panel NBEATSx paths;
+- approved external feature columns: none;
+- market-coupled B training runs: 0;
+- claim boundary: Offline Strategy Promotion only,
+  `market_execution_enabled=false`, no European rows in Ukrainian training.
+
+Interpretation: this is a successful governance result, not a regret-improvement
+result. It confirms that the system refuses to route ENTSO-E/neighbor-market
+features into official training until temporal availability, currency,
+timezone/DST, licensing, market-rule, and domain-shift evidence are complete.

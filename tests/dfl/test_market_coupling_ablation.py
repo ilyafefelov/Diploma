@@ -8,6 +8,10 @@ from smart_arbitrage.dfl.market_coupling_ablation import (
     build_dfl_market_coupling_v2_plus_ablation_frame,
     validate_dfl_market_coupling_v2_plus_ablation_evidence,
 )
+from smart_arbitrage.dfl.market_coupling_ablation_export import (
+    build_dfl_market_coupling_v2_plus_ablation_packet,
+    write_dfl_market_coupling_v2_plus_ablation_packet,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus import (
     DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_CLAIM_SCOPE,
     DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND,
@@ -149,6 +153,69 @@ def test_market_coupling_ablation_validation_rejects_false_claim_flags() -> None
 
     assert outcome.passed is False
     assert "research-only claim flags" in outcome.description
+
+
+def test_market_coupling_ablation_packet_writes_blocked_governance_artifacts(
+    tmp_path,
+) -> None:
+    frame = build_dfl_market_coupling_v2_plus_ablation_frame(
+        _strict_frame(baseline_selected_regrets=[100.0, 100.0, 100.0, 100.0]),
+        _robustness_frame(passed_windows=4),
+        _feature_route(approved=False),
+        source_model_names=(SOURCE,),
+        min_tenant_count=2,
+        min_validation_tenant_anchor_count=4,
+    )
+
+    packet = build_dfl_market_coupling_v2_plus_ablation_packet(
+        run_slug="market-coupling-ablation-test",
+        ablation_frame=frame,
+        dagster_run_id="run-abc",
+        materialization_command="dagster asset materialize ...",
+    )
+    export_dir = write_dfl_market_coupling_v2_plus_ablation_packet(
+        packet,
+        output_root=tmp_path,
+        ablation_frame=frame,
+    )
+
+    assert packet["baseline_comparator"]["calibrated_v2_plus_mean_regret_uah"] == 174.77
+    assert packet["claim_boundary"]["market_execution_enabled"] is False
+    assert packet["ablation_summary"]["status_counts"] == {"blocked_by_governance": 1}
+    assert packet["ablation_summary"]["trained_market_coupled_variant_count"] == 0
+    assert (
+        export_dir / "dfl_market_coupling_v2_plus_ablation_summary.json"
+    ).exists()
+    assert (
+        export_dir / "dfl_market_coupling_v2_plus_ablation_summary.md"
+    ).exists()
+    assert (export_dir / "dfl_market_coupling_v2_plus_ablation_rows.csv").exists()
+    markdown = (
+        export_dir / "dfl_market_coupling_v2_plus_ablation_summary.md"
+    ).read_text(encoding="utf-8")
+    assert "blocked_by_governance" in markdown
+    assert "No market-coupled training run was executed" in markdown
+
+
+def test_market_coupling_ablation_packet_refuses_failed_evidence() -> None:
+    frame = build_dfl_market_coupling_v2_plus_ablation_frame(
+        _strict_frame(baseline_selected_regrets=[100.0, 100.0, 100.0, 100.0]),
+        _robustness_frame(passed_windows=4),
+        _feature_route(approved=False),
+        source_model_names=(SOURCE,),
+        min_tenant_count=2,
+        min_validation_tenant_anchor_count=4,
+    ).drop("claim_scope")
+
+    try:
+        build_dfl_market_coupling_v2_plus_ablation_packet(
+            run_slug="market-coupling-ablation-test",
+            ablation_frame=frame,
+        )
+    except ValueError as exc:
+        assert "ablation evidence check failed" in str(exc)
+    else:
+        raise AssertionError("Expected failed evidence to block export.")
 
 
 def _feature_route(*, approved: bool) -> pl.DataFrame:
