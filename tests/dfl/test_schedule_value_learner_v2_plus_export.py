@@ -17,6 +17,9 @@ from smart_arbitrage.dfl.schedule_value_learner_v2_plus_export import (
     build_dfl_schedule_value_learner_v2_plus_comparison_packet,
     write_dfl_schedule_value_learner_v2_plus_comparison_packet,
 )
+from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
+    DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_ROBUSTNESS_CLAIM_SCOPE,
+)
 
 TENANTS: tuple[str, ...] = (
     "client_001_kyiv_mall",
@@ -73,6 +76,70 @@ def test_v2_plus_comparison_packet_writes_artifacts_after_gate_pass(
     assert "Offline Strategy Promotion evidence only" in (
         export_dir / "dfl_schedule_value_learner_v2_plus_comparison.md"
     ).read_text(encoding="utf-8")
+
+
+def test_v2_plus_comparison_packet_attaches_rolling_robustness_summary(
+    tmp_path,
+) -> None:
+    strict_frame, learner_frame, decomposition_frame = _frames_from_regrets(
+        strict_final_regret=300.0,
+        raw_final_regret=700.0,
+        v2_final_regret=220.0,
+        v2_plus_final_regret=180.0,
+        v2_plus_train_regret=30.0,
+    )
+    robustness_frame = _robustness_frame(robust=True)
+
+    packet = build_dfl_schedule_value_learner_v2_plus_comparison_packet(
+        run_slug="v2-plus-test",
+        strict_frame=strict_frame,
+        learner_frame=learner_frame,
+        regret_decomposition_frame=decomposition_frame,
+        rolling_robustness_frame=robustness_frame,
+    )
+    export_dir = write_dfl_schedule_value_learner_v2_plus_comparison_packet(
+        packet,
+        output_root=tmp_path,
+        strict_frame=strict_frame,
+        rolling_robustness_frame=robustness_frame,
+    )
+
+    assert packet["rolling_robustness"]["gate"]["decision"] == (
+        "v2_plus_robust_research_challenger"
+    )
+    assert packet["rolling_robustness"]["gate"]["metrics"][
+        "market_execution_enabled"
+    ] is False
+    assert packet["attached_artifacts"]["rolling_robustness_csv"] == (
+        "dfl_schedule_value_learner_v2_plus_rolling_robustness.csv"
+    )
+    assert (
+        export_dir / "dfl_schedule_value_learner_v2_plus_rolling_robustness.csv"
+    ).exists()
+    markdown = (
+        export_dir / "dfl_schedule_value_learner_v2_plus_comparison.md"
+    ).read_text(encoding="utf-8")
+    assert "## Rolling Robustness" in markdown
+    assert "4 / 4" in markdown
+
+
+def test_v2_plus_comparison_packet_refuses_non_robust_attachment() -> None:
+    strict_frame, learner_frame, decomposition_frame = _frames_from_regrets(
+        strict_final_regret=300.0,
+        raw_final_regret=700.0,
+        v2_final_regret=220.0,
+        v2_plus_final_regret=180.0,
+        v2_plus_train_regret=30.0,
+    )
+
+    with pytest.raises(ValueError, match="robustness gate failed"):
+        build_dfl_schedule_value_learner_v2_plus_comparison_packet(
+            run_slug="v2-plus-test",
+            strict_frame=strict_frame,
+            learner_frame=learner_frame,
+            regret_decomposition_frame=decomposition_frame,
+            rolling_robustness_frame=_robustness_frame(robust=False),
+        )
 
 
 def test_v2_plus_comparison_export_refuses_failed_evidence() -> None:
@@ -300,3 +367,56 @@ def _candidate_row(
             "source_forecast_model_name": source_model_name,
         },
     }
+
+
+def _robustness_frame(*, robust: bool) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for source_model_name in SOURCE_MODELS:
+        passing_count = 4 if robust else 2
+        for window_index in range(1, 5):
+            passed = window_index <= passing_count
+            rows.append(
+                {
+                    "source_model_name": source_model_name,
+                    "window_index": window_index,
+                    "validation_start_anchor_timestamp": (
+                        FIRST_ANCHOR + timedelta(days=window_index)
+                    ),
+                    "validation_end_anchor_timestamp": (
+                        FIRST_ANCHOR + timedelta(days=window_index + 17)
+                    ),
+                    "tenant_count": len(TENANTS),
+                    "validation_anchor_count_per_tenant": 18,
+                    "validation_tenant_anchor_count": 90,
+                    "minimum_prior_anchor_count_before_window": 30,
+                    "fallback_to_v2_by_tenant": {},
+                    "selected_family_counts": {"strict_raw_blend_v2": 90},
+                    "strict_mean_regret_uah": 300.0,
+                    "raw_mean_regret_uah": 700.0,
+                    "v2_mean_regret_uah": 220.0,
+                    "selected_mean_regret_uah": 180.0 if passed else 240.0,
+                    "strict_median_regret_uah": 200.0,
+                    "v2_median_regret_uah": 120.0,
+                    "selected_median_regret_uah": 100.0 if passed else 130.0,
+                    "mean_regret_improvement_ratio_vs_raw": 0.7 if passed else 0.6,
+                    "mean_regret_improvement_ratio_vs_strict": 0.4 if passed else 0.2,
+                    "mean_regret_improvement_ratio_vs_v2": 0.1 if passed else -0.1,
+                    "development_passed": passed,
+                    "source_specific_strict_passed": passed,
+                    "v2_non_degradation_passed": passed,
+                    "v2_plus_window_passed": passed,
+                    "passing_window_count_for_source": passing_count,
+                    "robust_research_challenger": robust,
+                    "production_promote": False,
+                    "claim_scope": (
+                        DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_ROBUSTNESS_CLAIM_SCOPE
+                    ),
+                    "academic_scope": "test robustness evidence",
+                    "not_full_dfl": True,
+                    "not_market_execution": True,
+                    "gate_label": (
+                        "robust_research_challenger" if robust else "blocked"
+                    ),
+                }
+            )
+    return pl.DataFrame(rows)

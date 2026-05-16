@@ -2210,11 +2210,11 @@ The resulting folder is the supervisor-facing evidence packet.
 
 ## Schedule/Value Learner V3 Next Experiment
 
-The next model experiment should not replace the current 365-anchor result.
-Schedule/Value Learner V2 is frozen as the current promoted offline evidence.
-V3 should be additive and compare against V2, raw official NBEATSx, horizon-aware
-calibrated official NBEATSx, and `strict_similar_day` under the same strict
-LP/oracle scoring.
+This section is now historical context. Schedule/Value Learner V3 was the next
+additive ranker test after frozen V2, but it did not become the thesis headline.
+Future selector work must compare against V2+, not only against frozen V2, raw
+official NBEATSx, horizon-aware calibrated official NBEATSx, and
+`strict_similar_day`.
 
 Candidate V3 directions:
 
@@ -2237,9 +2237,8 @@ Implementation update on 2026-05-15:
   `dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame`.
 - The tracked config is
   `configs/real_data_official_global_panel_schedule_value_v3_week3.yaml`.
-- Result status: not materialized yet. V3 is an experiment definition only
-  until it is run on the 365-anchor packet, its asset check passes, and the
-  unchanged strict LP/oracle gate confirms whether it improves on frozen V2.
+- Result status: materialized and checked. V3 remains diagnostic evidence
+  because it did not improve on frozen V2.
 
 Runtime update on 2026-05-15:
 
@@ -2248,9 +2247,8 @@ Runtime update on 2026-05-15:
 - V3 mean regret was `227.555` versus V2 `225.437` for
   `nbeatsx_official_global_panel_v1`, and `207.537` versus V2 `206.367` for
   `nbeatsx_official_global_panel_horizon_calibrated_v1`.
-- The gate decision was `diagnostic_pass_production_blocked`, so the thesis
-  headline remains the 365-anchor Schedule/Value Learner V2 Offline Strategy
-  Promotion packet.
+- The gate decision was `diagnostic_pass_production_blocked`. This kept V3 out
+  of the headline path and motivated the later V2+ candidate-library route.
 
 ## Schedule/Value Learner V2+ Regret Improvement Slice
 
@@ -2294,3 +2292,9 @@ global-panel NBEATSx and horizon-calibrated official global-panel NBEATSx passed
 headline therefore moves from frozen V2 to V2+ as stronger **Offline Strategy
 Promotion** evidence, while live market execution, dashboard defaults, and EU
 market-coupling training remain disabled.
+
+Next work after this evidence lock should avoid another small selector ranker.
+The two useful branches are a governed market-coupling ablation, where external
+features can enter only through the approved prior-only route, or a true
+decision-aligned DFL/DT bridge that must beat V2+ and behavior-cloning/selector
+baselines under the unchanged strict LP/oracle gate.

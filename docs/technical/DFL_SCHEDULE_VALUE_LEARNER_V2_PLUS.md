@@ -117,6 +117,9 @@ Implementation status: materialized and checked on 2026-05-15.
 
 Latest-holdout comparison packet:
 `data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/`.
+The packet now includes the attached rolling artifact
+`dfl_schedule_value_learner_v2_plus_rolling_robustness.csv` beside the strict
+rows, learner trace, role summary, and regret decomposition summary.
 
 Latest strict-gate run:
 `b09194b2-8bf7-42fb-bcc7-1567ca47037c`.

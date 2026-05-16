@@ -69,7 +69,8 @@ V3 is promoted as stronger offline evidence only if it:
 - does not degrade the frozen V2 schedule/value result;
 - keeps `not_market_execution=true`.
 
-If V3 fails any of those conditions, V2 remains the thesis headline evidence.
+If V3 fails any of those conditions, it remains diagnostic evidence only. The
+current thesis headline is V2+, while V2 remains the frozen comparison baseline.
 
 ## Run Command
 
@@ -83,5 +84,6 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize `
 ```
 
 Record the result as V3 evidence only after the strict benchmark frame is
-materialized and the asset check passes. Until then, V3 is an implemented
-experiment definition, not a thesis result.
+materialized and the asset check passes. The materialized V3 run did not replace
+the stronger V2+ evidence; future selector work should compare against V2+, not
+only against frozen V2.

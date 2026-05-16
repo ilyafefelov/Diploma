@@ -14,6 +14,10 @@ from smart_arbitrage.dfl.schedule_value_learner_v2_plus import (
     evaluate_dfl_schedule_value_learner_v2_plus_gate,
     validate_dfl_schedule_value_learner_v2_plus_evidence,
 )
+from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
+    evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate,
+    validate_dfl_schedule_value_learner_v2_plus_robustness_evidence,
+)
 
 COMPARISON_JSON_ARTIFACT_NAME: Final[str] = (
     "dfl_schedule_value_learner_v2_plus_comparison.json"
@@ -31,6 +35,9 @@ FAILURE_SUMMARY_CSV_ARTIFACT_NAME: Final[str] = (
 STRICT_ROWS_CSV_ARTIFACT_NAME: Final[str] = (
     "dfl_schedule_value_learner_v2_plus_strict_rows.csv"
 )
+ROLLING_ROBUSTNESS_CSV_ARTIFACT_NAME: Final[str] = (
+    "dfl_schedule_value_learner_v2_plus_rolling_robustness.csv"
+)
 
 
 def build_dfl_schedule_value_learner_v2_plus_comparison_packet(
@@ -39,6 +46,7 @@ def build_dfl_schedule_value_learner_v2_plus_comparison_packet(
     strict_frame: pl.DataFrame,
     learner_frame: pl.DataFrame,
     regret_decomposition_frame: pl.DataFrame,
+    rolling_robustness_frame: pl.DataFrame | None = None,
     dagster_run_id: str | None = None,
     materialization_command: str | None = None,
 ) -> dict[str, Any]:
@@ -53,7 +61,7 @@ def build_dfl_schedule_value_learner_v2_plus_comparison_packet(
             f"V2+ strict gate failed; refusing export: {gate.decision}: {gate.description}"
         )
     trace_rows = _learner_trace_rows(learner_frame)
-    return {
+    packet: dict[str, Any] = {
         "run_slug": run_slug,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dagster_run_id": dagster_run_id,
@@ -93,6 +101,14 @@ def build_dfl_schedule_value_learner_v2_plus_comparison_packet(
             "strict_rows_csv": STRICT_ROWS_CSV_ARTIFACT_NAME,
         },
     }
+    if rolling_robustness_frame is not None:
+        packet["rolling_robustness"] = _rolling_robustness_packet(
+            rolling_robustness_frame
+        )
+        packet["attached_artifacts"]["rolling_robustness_csv"] = (
+            ROLLING_ROBUSTNESS_CSV_ARTIFACT_NAME
+        )
+    return packet
 
 
 def write_dfl_schedule_value_learner_v2_plus_comparison_packet(
@@ -100,6 +116,7 @@ def write_dfl_schedule_value_learner_v2_plus_comparison_packet(
     *,
     output_root: Path,
     strict_frame: pl.DataFrame,
+    rolling_robustness_frame: pl.DataFrame | None = None,
 ) -> Path:
     """Write local JSON, Markdown, and CSV evidence artifacts."""
 
@@ -116,6 +133,11 @@ def write_dfl_schedule_value_learner_v2_plus_comparison_packet(
         export_dir / FAILURE_SUMMARY_CSV_ARTIFACT_NAME,
         list(packet["failure_mode_summary"]),
     )
+    if rolling_robustness_frame is not None:
+        _write_rows_csv(
+            export_dir / ROLLING_ROBUSTNESS_CSV_ARTIFACT_NAME,
+            _frame_rows(rolling_robustness_frame),
+        )
     (export_dir / COMPARISON_JSON_ARTIFACT_NAME).write_text(
         json.dumps(_jsonable(packet), indent=2, sort_keys=True),
         encoding="utf-8",
@@ -125,6 +147,37 @@ def write_dfl_schedule_value_learner_v2_plus_comparison_packet(
         encoding="utf-8",
     )
     return export_dir
+
+
+def _rolling_robustness_packet(robustness_frame: pl.DataFrame) -> dict[str, Any]:
+    evidence = validate_dfl_schedule_value_learner_v2_plus_robustness_evidence(
+        robustness_frame
+    )
+    if not evidence.passed:
+        raise ValueError(
+            "V2+ robustness evidence check failed; refusing export: "
+            f"{evidence.description}"
+        )
+    gate = evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate(
+        robustness_frame
+    )
+    if gate.decision != "v2_plus_robust_research_challenger":
+        raise ValueError(
+            f"V2+ robustness gate failed; refusing export: "
+            f"{gate.decision}: {gate.description}"
+        )
+    return {
+        "evidence_check": {
+            "passed": evidence.passed,
+            "description": evidence.description,
+            "metadata": evidence.metadata,
+        },
+        "gate": {
+            "decision": gate.decision,
+            "description": gate.description,
+            "metrics": gate.metrics,
+        },
+    }
 
 
 def _source_role_summary(strict_frame: pl.DataFrame) -> list[dict[str, Any]]:
@@ -293,6 +346,35 @@ def _comparison_markdown(packet: dict[str, Any]) -> str:
             f"- `{STRICT_ROWS_CSV_ARTIFACT_NAME}`",
         ]
     )
+    if "rolling_robustness" in packet:
+        robustness = packet["rolling_robustness"]
+        lines.extend(
+            [
+                "",
+                "## Rolling Robustness",
+                "",
+                f"- Gate: `{robustness['gate']['decision']}`",
+                "- Market execution enabled: "
+                f"`{robustness['gate']['metrics']['market_execution_enabled']}`",
+                "",
+                "| Source | Rolling windows | Result |",
+                "|---|---:|---|",
+            ]
+        )
+        for summary in robustness["gate"]["metrics"]["model_summaries"]:
+            lines.append(
+                "| {source} | {passes} / {windows} | {result} |".format(
+                    source=summary["source_model_name"],
+                    passes=summary["v2_plus_window_count"],
+                    windows=summary["window_count"],
+                    result=(
+                        "robust V2+ research challenger"
+                        if summary["robust_research_challenger"]
+                        else "not robust"
+                    ),
+                )
+            )
+        lines.extend(["", f"- `{ROLLING_ROBUSTNESS_CSV_ARTIFACT_NAME}`"])
     return "\n".join(lines) + "\n"
 
 

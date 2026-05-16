@@ -179,28 +179,26 @@ superior to `strict_similar_day`.
 цінність отриманого результату, але визначають його точну область застосування:
 offline/read-model Strategy Promotion evidence для Ukrainian DAM BESS arbitrage.
 
-## 4.10. Наступний експеримент: Schedule/Value Learner V3
+## 4.10. Наступний напрямок після V2+
 
-Наступна модельна робота має бути additive experiment, а не заміна V2. V2
-залишається frozen baseline, а V2+ є поточним strongest Offline Strategy
-Promotion evidence. Schedule/Value Learner
-V3 має перевірити, чи можна покращити selector без послаблення gate:
+Оскільки V2+ уже покращив frozen V2 і пройшов rolling robustness, наступна
+робота не повинна бути ще одним малим selector/ranker experiment. Доцільні два
+напрями:
 
-- додати prior-only learned ranker, наприклад ridge/logistic ranker або
-  розширений grid-profile selector;
-- тренуватися тільки на train/prior anchors;
-- порівнювати V3 з V2, raw NBEATSx, calibrated NBEATSx і `strict_similar_day`;
-- final scoring залишити тим самим strict LP/oracle evaluator;
-- не використовувати final-holdout actuals для вибору weight profile, feature
-  weights або candidate family.
+- governed market-coupling ablation: додати лише point-in-time approved
+  сусідні market features і порівняти Ukrainian-only V2+ з
+  Ukrainian-plus-governed-features без послаблення strict LP/oracle gate;
+- true DFL/DT bridge: навчити decision-aligned або trajectory model, який
+  повинен перевершити V2+ і behavior-cloning/selector baselines, а не просто
+  повторити вже знайдений schedule/value rule.
 
-Якщо V3 покращить V2 і збереже conservative promotion gate, це буде наступним
-кроком до full DFL-style controller. Якщо V3 не покращить V2, поточний V2
-результат залишається найсильнішим thesis headline evidence, а наступний
-напрямок має зміщуватися до UA backfill, market-coupling governance або
-повноцінного differentiable decision loss.
+V2+ залишається current thesis headline evidence до появи сильнішого результату
+за тим самим conservative gate. Європейські market-coupling sources не входять у
+поточний результат і можуть бути використані лише після перевірки publication
+time, timezone/DST, currency normalization, licensing, market-rule mapping і
+domain-shift ризику.
 
-## 4.10. Supervisor-facing evidence
+## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:
 `docs/thesis/weekly-reports/week4/progress-meeting-2026-05-13/`.

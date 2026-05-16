@@ -160,6 +160,7 @@ def test_schedule_value_v2_plus_comparison_export_cli_requires_gate_inputs() -> 
     assert "--strict-frame-pickle" in export_script
     assert "--learner-frame-pickle" in export_script
     assert "--regret-decomposition-pickle" in export_script
+    assert "--rolling-robustness-pickle" in export_script
     assert "--dagster-run-id" in export_script
     assert "build_dfl_schedule_value_learner_v2_plus_comparison_packet" in export_script
     assert "write_dfl_schedule_value_learner_v2_plus_comparison_packet" in export_script

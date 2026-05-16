@@ -73,7 +73,7 @@ Earlier compact forecast calibration result:
 | tft_silver_v0 | 450 | 1,128.75 | 732.66 | 13.56% |
 | nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 8.67% |
 
-Interpretation: horizon-aware TFT calibration was an earlier diagnostic to beat the strict control on mean regret, but strict similar-day still had better median regret and more rank-1 wins. The later 365-anchor official Schedule/Value Learner V2 result is the current thesis headline evidence because it passes the Offline Strategy Promotion gate while preserving the strict fallback and disabled market execution boundary.
+Interpretation: horizon-aware TFT calibration was an earlier diagnostic to beat the strict control on mean regret, but strict similar-day still had better median regret and more rank-1 wins. The 365-anchor official Schedule/Value Learner V2 result became the first robust Offline Strategy Promotion evidence. The later V2+ evidence is now the thesis headline because it improves over frozen V2 and still passes 4/4 rolling robustness windows while preserving the strict fallback and disabled market execution boundary.
 
 ## Future Stack Read Models
 
