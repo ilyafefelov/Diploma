@@ -2298,3 +2298,39 @@ The two useful branches are a governed market-coupling ablation, where external
 features can enter only through the approved prior-only route, or a true
 decision-aligned DFL/DT bridge that must beat V2+ and behavior-cloning/selector
 baselines under the unchanged strict LP/oracle gate.
+
+## Governed Market-Coupling Ablation V1
+
+The next branch after freezing V2+ is now implemented as a governance-first
+ablation, not as direct EU-feature training. The comparator remains the
+Ukrainian-only Schedule/Value Learner V2+ result:
+
+- calibrated V2+ mean regret: 174.77 UAH;
+- improvement versus `strict_similar_day`: 43.73%;
+- rolling robustness: 4 / 4 windows;
+- `market_execution_enabled=false`.
+
+Implementation:
+
+- `entsoe_neighbor_market_aligned_feature_panel_frame` aligns Poland-first
+  ENTSO-E candidate rows to Ukrainian benchmark timestamps while keeping them
+  research-only by default.
+- `dfl_market_coupling_v2_plus_ablation_frame` consumes the existing official
+  exogenous route, V2+ strict benchmark evidence, and V2+ rolling robustness. If
+  no external feature is approved, it emits
+  `ablation_status=blocked_by_governance` and does not train the
+  Ukrainian-plus-neighbor variant.
+- `dfl_market_coupling_v2_plus_ablation_evidence` makes the blocked or completed
+  ablation visible as a Dagster asset check.
+
+Decision rule: an external feature can enter official training only if source
+coverage, publication time, timezone/DST alignment, prior-known EUR/UAH FX,
+licensing, market-rule mapping, and domain-shift checks all pass. Source-backed
+samples alone are insufficient. Even after approval, the B variant must improve
+mean regret versus Ukrainian-only V2+, avoid median degradation, and preserve
+rolling robustness under the unchanged strict LP/oracle gate.
+
+Tracked docs:
+
+- [DFL_MARKET_COUPLING_ABLATION_V1.md](DFL_MARKET_COUPLING_ABLATION_V1.md).
+- [../sources/market-coupling-ablation-v1-source-capture-2026-05-16.md](../sources/market-coupling-ablation-v1-source-capture-2026-05-16.md).

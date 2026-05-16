@@ -1,6 +1,9 @@
+from datetime import datetime
+
 import polars as pl
 
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_neighbor_market_aligned_feature_panel_frame,
     build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
@@ -272,6 +275,68 @@ def test_entsoe_neighbor_market_feature_candidate_parses_source_backed_prices_wi
     assert outcome.metadata["source_backed_rows"] == 3
     assert outcome.metadata["publication_blocked_rows"] == 3
     assert outcome.metadata["currency_blocked_rows"] == 3
+
+
+def test_entsoe_neighbor_market_aligned_feature_panel_keeps_poland_source_rows_research_only() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    candidates = build_entsoe_neighbor_market_feature_candidate_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601010200",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: """
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-01T02:00Z</end>
+              </timeInterval>
+              <resolution>PT60M</resolution>
+              <Point><position>1</position><price.amount>102.5</price.amount></Point>
+              <Point><position>2</position><price.amount>111.0</price.amount></Point>
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 1, hour),
+                "price_uah_mwh": 1200.0 + hour,
+            }
+            for hour in range(2)
+        ]
+        + [
+            {
+                "tenant_id": "client_002_lviv_office",
+                "timestamp": datetime(2026, 1, 1, hour),
+                "price_uah_mwh": 1300.0 + hour,
+            }
+            for hour in range(2)
+        ]
+    )
+
+    aligned = build_entsoe_neighbor_market_aligned_feature_panel_frame(
+        benchmark,
+        candidates,
+        country_codes=("PL",),
+    )
+
+    assert aligned.height == 4
+    assert aligned.select("tenant_id").n_unique() == 2
+    assert aligned.select("timestamp").n_unique() == 2
+    assert aligned["source_backed"].unique().to_list() == [True]
+    assert aligned["training_use_allowed"].unique().to_list() == [False]
+    assert aligned["feature_use_allowed"].unique().to_list() == [False]
+    assert aligned["not_market_execution"].unique().to_list() == [True]
 
 
 def test_entsoe_neighbor_market_feature_candidate_rejects_training_or_feature_unlock() -> None:

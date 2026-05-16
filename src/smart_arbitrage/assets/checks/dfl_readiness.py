@@ -64,6 +64,9 @@ from smart_arbitrage.dfl.schedule_value_learner_robustness import (
 from smart_arbitrage.dfl.schedule_value_promotion_gate import (
     validate_dfl_schedule_value_production_gate_evidence,
 )
+from smart_arbitrage.dfl.market_coupling_ablation import (
+    validate_dfl_market_coupling_v2_plus_ablation_evidence,
+)
 from smart_arbitrage.dfl.forecast_pipeline_truth import (
     validate_forecast_pipeline_truth_audit_evidence,
 )
@@ -460,6 +463,24 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence
 
 
 @dg.asset_check(
+    asset="dfl_market_coupling_v2_plus_ablation_frame",
+    name="dfl_market_coupling_v2_plus_ablation_evidence",
+    description=(
+        "Checks governed market-coupling ablation evidence preserves Offline "
+        "Strategy Promotion boundaries."
+    ),
+)
+def dfl_market_coupling_v2_plus_ablation_evidence(
+    dfl_market_coupling_v2_plus_ablation_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_market_coupling_v2_plus_ablation_evidence(
+            dfl_market_coupling_v2_plus_ablation_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="dfl_official_schedule_value_production_gate_frame",
     name="dfl_official_schedule_value_production_gate_evidence",
     description="Checks official NBEATSx/TFT schedule/value promotion decisions while market execution remains disabled.",
@@ -639,6 +660,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_official_global_panel_schedule_value_learner_v3_evidence,
     dfl_official_global_panel_schedule_value_learner_v2_plus_evidence,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence,
+    dfl_market_coupling_v2_plus_ablation_evidence,
     dfl_official_schedule_value_production_gate_evidence,
     forecast_pipeline_truth_audit_evidence,
     market_coupling_temporal_availability_evidence,

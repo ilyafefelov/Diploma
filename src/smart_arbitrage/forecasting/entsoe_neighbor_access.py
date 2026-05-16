@@ -63,6 +63,9 @@ ENTSOE_NEIGHBOR_MARKET_SAMPLE_CLAIM_SCOPE: Final[str] = (
 ENTSOE_NEIGHBOR_MARKET_FEATURE_CANDIDATE_CLAIM_SCOPE: Final[str] = (
     "entsoe_neighbor_market_feature_candidate_research_gate"
 )
+ENTSOE_NEIGHBOR_MARKET_ALIGNED_FEATURE_CLAIM_SCOPE: Final[str] = (
+    "entsoe_neighbor_market_aligned_feature_research_gate"
+)
 REQUIRED_ENTSOE_NEIGHBOR_SAMPLE_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "country_code",
@@ -117,6 +120,26 @@ REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS: Final[frozenset[str]] = froz
         "training_use_allowed",
         "feature_use_allowed",
         "training_blockers_csv",
+        "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
+    }
+)
+REQUIRED_ENTSOE_NEIGHBOR_ALIGNED_FEATURE_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "timestamp",
+        "country_code",
+        "country_name",
+        "feature_name",
+        "feature_column",
+        "neighbor_market_price_eur_mwh",
+        "neighbor_market_price_uah_mwh",
+        "source_backed",
+        "publication_time_status",
+        "currency_normalization_status",
+        "training_use_allowed",
+        "feature_use_allowed",
         "claim_scope",
         "not_full_dfl",
         "not_market_execution",
@@ -520,6 +543,59 @@ def validate_entsoe_neighbor_market_feature_candidate_evidence(
     )
 
 
+def build_entsoe_neighbor_market_aligned_feature_panel_frame(
+    benchmark_frame: pl.DataFrame,
+    entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
+    *,
+    country_codes: tuple[str, ...] = ("PL",),
+) -> pl.DataFrame:
+    """Align ENTSO-E neighbor prices to tenant benchmark timestamps.
+
+    The output is source/context evidence only. It does not approve a feature for
+    official model training; approval stays centralized in the route frame.
+    """
+
+    missing_benchmark = sorted({"tenant_id", "timestamp"}.difference(benchmark_frame.columns))
+    if missing_benchmark:
+        raise ValueError(f"benchmark_frame missing columns: {missing_benchmark}")
+    candidate_failures = _missing_column_failures(
+        entsoe_neighbor_market_feature_candidate_frame,
+        REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS,
+    )
+    if candidate_failures:
+        raise ValueError("; ".join(candidate_failures))
+    normalized_country_codes = tuple(dict.fromkeys(code.upper() for code in country_codes))
+    if not normalized_country_codes:
+        raise ValueError("country_codes must contain at least one country code.")
+
+    candidates_by_country_timestamp: dict[tuple[str, datetime], dict[str, object]] = {}
+    for row in entsoe_neighbor_market_feature_candidate_frame.iter_rows(named=True):
+        country_code = str(row["country_code"]).upper()
+        delivery_timestamp = str(row["delivery_timestamp_utc"]).strip()
+        if country_code not in normalized_country_codes or not delivery_timestamp:
+            continue
+        timestamp = _parse_iso_utc(delivery_timestamp).replace(tzinfo=None)
+        candidates_by_country_timestamp[(country_code, timestamp)] = row
+
+    rows: list[dict[str, object]] = []
+    benchmark_rows = benchmark_frame.select(["tenant_id", "timestamp"]).unique().sort(
+        ["tenant_id", "timestamp"]
+    )
+    for benchmark_row in benchmark_rows.iter_rows(named=True):
+        timestamp = _timestamp_naive_utc(benchmark_row["timestamp"])
+        for country_code in normalized_country_codes:
+            candidate = candidates_by_country_timestamp.get((country_code, timestamp))
+            rows.append(
+                _aligned_feature_row(
+                    benchmark_row,
+                    country_code=country_code,
+                    timestamp=timestamp,
+                    candidate=candidate,
+                )
+            )
+    return pl.DataFrame(rows).sort(["tenant_id", "timestamp", "country_code"])
+
+
 def _query_spec_row(row: dict[str, str], *, token_available: bool) -> dict[str, object]:
     eic_mapped = row["eic_mapping_status"] == "mapped"
     fetch_allowed = token_available and eic_mapped
@@ -761,6 +837,75 @@ def _feature_candidate_row(
     }
 
 
+def _aligned_feature_row(
+    benchmark_row: dict[str, object],
+    *,
+    country_code: str,
+    timestamp: datetime,
+    candidate: dict[str, object] | None,
+) -> dict[str, object]:
+    if candidate is None:
+        country_lower = country_code.lower()
+        return {
+            "tenant_id": str(benchmark_row["tenant_id"]),
+            "timestamp": timestamp,
+            "country_code": country_code,
+            "country_name": "",
+            "bidding_zone_eic": "",
+            "feature_name": "entsoe_neighbor_day_ahead_price_context",
+            "feature_column": f"entsoe_{country_lower}_day_ahead_price_eur_mwh",
+            "delivery_timestamp_utc": "",
+            "neighbor_market_price_eur_mwh": None,
+            "neighbor_market_price_uah_mwh": None,
+            "source_backed": False,
+            "fetch_status": "no_source_candidate_for_benchmark_timestamp",
+            "publication_time_policy": "must_be_published_before_ua_anchor",
+            "publication_timestamp_utc": "",
+            "publication_time_status": "blocked_missing_publication_timestamp",
+            "is_prior_to_ua_decision_anchor": False,
+            "time_zone_policy": "request_utc_align_to_europe_kyiv_anchor",
+            "currency_policy": "blocked_until_eur_to_uah_prior_only_normalization",
+            "fx_rate_source": "",
+            "fx_rate_timestamp_utc": "",
+            "currency_normalization_status": "blocked_missing_prior_eur_uah_fx_rate",
+            "training_use_allowed": False,
+            "feature_use_allowed": False,
+            "training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS,
+            "claim_scope": ENTSOE_NEIGHBOR_MARKET_ALIGNED_FEATURE_CLAIM_SCOPE,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+        }
+    return {
+        "tenant_id": str(benchmark_row["tenant_id"]),
+        "timestamp": timestamp,
+        "country_code": str(candidate["country_code"]).upper(),
+        "country_name": str(candidate["country_name"]),
+        "bidding_zone_eic": str(candidate["bidding_zone_eic"]),
+        "feature_name": str(candidate["feature_name"]),
+        "feature_column": str(candidate["feature_column"]),
+        "delivery_timestamp_utc": str(candidate["delivery_timestamp_utc"]),
+        "neighbor_market_price_eur_mwh": candidate["neighbor_market_price_eur_mwh"],
+        "neighbor_market_price_uah_mwh": candidate["neighbor_market_price_uah_mwh"],
+        "source_backed": bool(candidate["source_backed"]),
+        "fetch_status": str(candidate["fetch_status"]),
+        "publication_time_policy": str(candidate["publication_time_policy"]),
+        "publication_timestamp_utc": str(candidate["publication_timestamp_utc"]),
+        "publication_time_status": str(candidate["publication_time_status"]),
+        "is_prior_to_ua_decision_anchor": bool(candidate["is_prior_to_ua_decision_anchor"]),
+        "time_zone_policy": str(candidate["time_zone_policy"]),
+        "currency_policy": str(candidate["currency_policy"]),
+        "fx_rate_source": str(candidate["fx_rate_source"]),
+        "fx_rate_timestamp_utc": str(candidate["fx_rate_timestamp_utc"]),
+        "currency_normalization_status": str(candidate["currency_normalization_status"]),
+        "training_use_allowed": False,
+        "feature_use_allowed": False,
+        "training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS,
+        "claim_scope": ENTSOE_NEIGHBOR_MARKET_ALIGNED_FEATURE_CLAIM_SCOPE,
+        "not_full_dfl": True,
+        "not_market_execution": True,
+    }
+
+
 def _request_url(
     bidding_zone_eic: str,
     *,
@@ -812,6 +957,13 @@ def _parse_iso_utc(value: str) -> datetime:
     normalized = value.replace("Z", "+00:00")
     parsed = datetime.fromisoformat(normalized)
     return parsed.astimezone(UTC) if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
+def _timestamp_naive_utc(value: object) -> datetime:
+    if isinstance(value, datetime):
+        return value.astimezone(UTC).replace(tzinfo=None) if value.tzinfo else value
+    parsed = datetime.fromisoformat(str(value))
+    return parsed.astimezone(UTC).replace(tzinfo=None) if parsed.tzinfo else parsed
 
 
 def _csv_values(value: str) -> list[str]:

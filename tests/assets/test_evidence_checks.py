@@ -109,6 +109,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence",
         ),
         (
+            "dfl_market_coupling_v2_plus_ablation_frame",
+            "dfl_market_coupling_v2_plus_ablation_evidence",
+        ),
+        (
             "dfl_schedule_value_production_gate_frame",
             "dfl_schedule_value_production_gate_evidence",
         ),

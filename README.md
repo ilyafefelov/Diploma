@@ -10,6 +10,7 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Forecast candidates: compact `nbeatsx_silver_v0` / `tft_silver_v0` for smoke diagnostics, plus official global-panel NBEATSx evidence for the current Schedule/Value Learner V2+ result.
 - Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
 - Latest DFL research challenger: official global-panel NBEATSx Schedule/Value Learner V2+ now passes the **Offline Strategy Promotion** / fallback gate on the 365-anchor Ukrainian evidence packet for read-model strategy evidence only. It improves over frozen V2 and `strict_similar_day`; both raw and horizon-calibrated official NBEATSx source rows pass 4/4 rolling strict-control windows, and `market_execution_enabled=false`; live market execution remains disabled.
+- Market-coupling status: ENTSO-E/neighbor-market signals are prepared as governed exogenous feature columns only. They are not part of the current V2+ result, and the ablation path must emit `blocked_by_governance` until source-backed coverage, publication time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule mapping, and domain-shift checks pass.
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
@@ -209,6 +210,7 @@ Latest full verification: `151 passed`.
 - Official evidence-attempt interface: `docs/technical/OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md`
 - Official training compute and HF Jobs switch: `docs/technical/DFL_TRAINING_COMPUTE_OPTIONS.md`
 - Market-coupling exogenous feature interface: `docs/technical/MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md`
+- DFL market-coupling ablation v1: `docs/technical/DFL_MARKET_COUPLING_ABLATION_V1.md`
 - UA backfill coverage recovery: `docs/technical/DFL_DATA_RECOVERY_ROADMAP.md`
 - Resumable official forecast and exogenous-governance PRD: `docs/technical/PRD_OFFICIAL_FORECAST_RESUME_AND_EXOGENOUS_GOVERNANCE.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`

@@ -38,12 +38,17 @@ than raw forecast MAE or hourly action accuracy.
 | `dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame` | Replays V2+ across four rolling 18-anchor validation windows using prior-only selection. |
 | `dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence` | Dagster asset check for V2+ rolling-window evidence validity. |
 | `dfl_official_global_panel_schedule_*_v2_plus_*` | Official global-panel mirrors for the 365-anchor NBEATSx evidence lane. |
+| `entsoe_neighbor_market_aligned_feature_panel_frame` | Poland-first neighbor-market feature alignment lane. Rows remain research/governance evidence until the route approves them for training. |
+| `dfl_market_coupling_v2_plus_ablation_frame` | Compares Ukrainian-only V2+ against a future Ukrainian-plus-governed-neighbor V2+ route, or emits `blocked_by_governance` without training B. |
 
 Tracked config:
 [real_data_official_global_panel_schedule_value_v2_plus_week3.yaml](../../configs/real_data_official_global_panel_schedule_value_v2_plus_week3.yaml).
 
 Rolling robustness config:
 [real_data_official_global_panel_schedule_value_v2_plus_robustness_week3.yaml](../../configs/real_data_official_global_panel_schedule_value_v2_plus_robustness_week3.yaml).
+
+Governed market-coupling ablation config:
+[real_data_dfl_market_coupling_ablation_week3.yaml](../../configs/real_data_dfl_market_coupling_ablation_week3.yaml).
 
 ## Candidate Library V2+
 
@@ -145,3 +150,18 @@ The calibrated source has the best latest-holdout mean regret, so it is the
 preferred thesis-facing V2+ source. Both sources remain offline/read-model
 evidence only: `market_execution_enabled=false`, no dashboard/API default switch,
 and no live market execution claim.
+
+## Market-Coupling Ablation Baseline
+
+V2+ is now the frozen Ukrainian-only comparator for the next feature experiment.
+The market-coupling ablation does not reinterpret the V2+ result as EU-assisted:
+the current evidence uses Ukrainian OREE DAM prices, Open-Meteo/weather context,
+tenant load/configuration context, and strict LP/oracle scoring only.
+
+The new ablation route may add ENTSO-E Poland or later neighbor-market columns
+only after `official_forecast_exogenous_feature_route_frame` marks those columns
+`approved_for_official_training=true`. Until then,
+`dfl_market_coupling_v2_plus_ablation_frame` must emit
+`ablation_status=blocked_by_governance` and `did_train_market_coupled_variant=false`.
+The detailed gate is documented in
+[DFL_MARKET_COUPLING_ABLATION_V1.md](DFL_MARKET_COUPLING_ABLATION_V1.md).

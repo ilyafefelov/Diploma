@@ -172,7 +172,8 @@ superior to `strict_similar_day`.
 
 - raw NBEATSx або TFT стабільно кращі за `strict_similar_day`;
 - Decision Transformer уже є deployed controller;
-- market-coupling exogenous features з ЄС уже покращили український результат;
+- market-coupling exogenous features з ЄС входили у training або пояснюють
+  поточний V2+ результат;
 - система готова до реального виконання угод на ринку.
 
 Ці обмеження є важливими для академічної чесності роботи. Вони не зменшують
@@ -197,6 +198,13 @@ V2+ залишається current thesis headline evidence до появи си
 поточний результат і можуть бути використані лише після перевірки publication
 time, timezone/DST, currency normalization, licensing, market-rule mapping і
 domain-shift ризику.
+
+Після фіксації V2+ додано окремий governed market-coupling ablation path. Його
+роль полягає не в тому, щоб заднім числом пояснити V2+ через європейські дані, а
+в тому, щоб перевірити нову гіпотезу: чи покращить point-in-time approved
+neighbor-market feature український V2+ baseline. Якщо governance неповний, цей
+path повинен повертати `blocked_by_governance` і не запускати market-coupled
+training variant.
 
 ## 4.11. Supervisor-facing evidence
 

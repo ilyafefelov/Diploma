@@ -174,6 +174,9 @@ from smart_arbitrage.dfl.schedule_value_promotion_gate import (
     build_dfl_schedule_value_production_gate_frame,
     evaluate_dfl_schedule_value_production_gate,
 )
+from smart_arbitrage.dfl.market_coupling_ablation import (
+    build_dfl_market_coupling_v2_plus_ablation_frame,
+)
 from smart_arbitrage.dfl.production_promotion_gate import (
     build_dfl_production_promotion_gate_frame,
     evaluate_dfl_production_promotion_gate,
@@ -194,6 +197,7 @@ from smart_arbitrage.forecasting.market_coupling_availability import (
     build_market_coupling_temporal_availability_frame,
 )
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_neighbor_market_aligned_feature_panel_frame,
     build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
@@ -239,6 +243,12 @@ class EntsoeNeighborMarketSampleAuditAssetConfig(dg.Config):
     sample_period_start_utc: str = "202601010000"
     sample_period_end_utc: str = "202601020000"
     fetch_enabled: bool = False
+
+
+class EntsoeNeighborMarketAlignedFeaturePanelAssetConfig(dg.Config):
+    """Timestamp-aligned ENTSO-E neighbor feature panel scope."""
+
+    country_codes_csv: str = "PL"
 
 
 class DflActionLabelPanelAssetConfig(dg.Config):
@@ -801,6 +811,18 @@ class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
     min_rolling_strict_pass_windows: int = 3
 
 
+class DflMarketCouplingV2PlusAblationAssetConfig(dg.Config):
+    """Governed market-coupling ablation gate for official global-panel V2+."""
+
+    source_model_names_csv: str = (
+        "nbeatsx_official_global_panel_v1,"
+        "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    )
+    min_tenant_count: int = 5
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    min_window_count: int = 4
+
+
 class DflProductionPromotionGateAssetConfig(dg.Config):
     """Offline/read-model production-promotion gate scope."""
 
@@ -1182,6 +1204,60 @@ def entsoe_neighbor_market_feature_candidate_frame(
         },
     )
     return candidate_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def entsoe_neighbor_market_aligned_feature_panel_frame(
+    context,
+    config: EntsoeNeighborMarketAlignedFeaturePanelAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Timestamp-align ENTSO-E neighbor features without approving training use."""
+
+    aligned_frame = build_entsoe_neighbor_market_aligned_feature_panel_frame(
+        real_data_benchmark_silver_feature_frame,
+        entsoe_neighbor_market_feature_candidate_frame,
+        country_codes=_csv_values(config.country_codes_csv, field_name="country_codes_csv"),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": aligned_frame.height,
+            "tenant_count": aligned_frame.select("tenant_id").n_unique()
+            if aligned_frame.height
+            else 0,
+            "country_codes": sorted(aligned_frame["country_code"].unique().to_list())
+            if aligned_frame.height
+            else [],
+            "source_backed_rows": aligned_frame.filter(pl.col("source_backed")).height
+            if aligned_frame.height
+            else 0,
+            "feature_allowed_rows": aligned_frame.filter(
+                pl.col("feature_use_allowed")
+            ).height
+            if aligned_frame.height
+            else 0,
+            "training_allowed_rows": aligned_frame.filter(
+                pl.col("training_use_allowed")
+            ).height
+            if aligned_frame.height
+            else 0,
+            "scope": "entsoe_neighbor_market_aligned_feature_research_gate",
+            "not_market_execution": True,
+        },
+    )
+    return aligned_frame
 
 
 @dg.asset(
@@ -2652,6 +2728,78 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame(
         },
     )
     return robustness_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_market_coupling_v2_plus_ablation_frame(
+    context,
+    config: DflMarketCouplingV2PlusAblationAssetConfig,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame: (
+        pl.DataFrame
+    ),
+    official_forecast_exogenous_feature_route_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Compare Ukrainian-only V2+ against governed neighbor-market features.
+
+    When no external feature is approved by governance, the asset emits a
+    blocked readiness row and intentionally does not train a B variant.
+    """
+
+    source_model_names = _forecast_model_names(config.source_model_names_csv)
+    ablation_frame = build_dfl_market_coupling_v2_plus_ablation_frame(
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,
+        official_forecast_exogenous_feature_route_frame,
+        source_model_names=source_model_names,
+        min_tenant_count=config.min_tenant_count,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_window_count=config.min_window_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": ablation_frame.height,
+            "source_model_count": len(source_model_names),
+            "ablation_statuses": sorted(
+                ablation_frame["ablation_status"].unique().to_list()
+            )
+            if ablation_frame.height
+            else [],
+            "approved_external_feature_columns": sorted(
+                {
+                    value
+                    for row in ablation_frame.iter_rows(named=True)
+                    for value in str(
+                        row["approved_external_feature_columns_csv"]
+                    ).split(",")
+                    if value
+                }
+            ),
+            "passed_rows": ablation_frame.filter(pl.col("ablation_passed")).height
+            if ablation_frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_market_coupling_v2_plus_ablation_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return ablation_frame
 
 
 @dg.asset(
@@ -5540,6 +5688,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     entsoe_neighbor_market_query_spec_frame,
     entsoe_neighbor_market_sample_audit_frame,
     entsoe_neighbor_market_feature_candidate_frame,
+    entsoe_neighbor_market_aligned_feature_panel_frame,
     dfl_semantic_event_strict_failure_audit_frame,
     forecast_candidate_forensics_frame,
     afl_training_panel_frame,
@@ -5617,6 +5766,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,
+    dfl_market_coupling_v2_plus_ablation_frame,
     dfl_official_global_panel_schedule_value_production_gate_frame,
     dfl_production_promotion_gate_frame,
     regret_weighted_forecast_calibration_frame,

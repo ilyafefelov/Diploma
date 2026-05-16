@@ -254,6 +254,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
+        "dfl_market_coupling_v2_plus_ablation_frame",
         "dfl_official_global_panel_schedule_value_production_gate_frame",
         "dfl_production_promotion_gate_frame",
         "forecast_afe_feature_catalog_frame",
@@ -261,6 +262,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "entsoe_neighbor_market_query_spec_frame",
         "entsoe_neighbor_market_sample_audit_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
+        "entsoe_neighbor_market_aligned_feature_panel_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
         "afl_forecast_error_audit_frame",
         "forecast_candidate_forensics_frame",
@@ -347,6 +349,11 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["market_coupling_temporal_availability_frame"] == "gold_dfl_training"
     assert groups_by_key["entsoe_neighbor_market_query_spec_frame"] == "gold_dfl_training"
     assert groups_by_key["entsoe_neighbor_market_sample_audit_frame"] == "gold_dfl_training"
+    assert groups_by_key["entsoe_neighbor_market_feature_candidate_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_semantic_event_strict_failure_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["afl_forecast_error_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_candidate_forensics_frame"] == "gold_dfl_training"
@@ -427,6 +434,10 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["market_coupling_temporal_availability_frame"]["ml_stage"] == "feature_engineering"
     assert tags_by_key["entsoe_neighbor_market_query_spec_frame"]["ml_stage"] == "feature_engineering"
     assert tags_by_key["entsoe_neighbor_market_sample_audit_frame"]["ml_stage"] == "feature_engineering"
+    assert (
+        tags_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]["ml_stage"]
+        == "feature_engineering"
+    )
     assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["afl_forecast_error_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"
@@ -504,6 +515,10 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_market_coupling_v2_plus_ablation_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["afl_forecast_error_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
@@ -516,6 +531,10 @@ def test_dfl_research_assets_are_registered() -> None:
     assert "grid_event_signal_silver" not in deps_by_key[
         "dfl_semantic_event_strict_failure_audit_frame"
     ]
+    assert deps_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"] == {
+        "real_data_benchmark_silver_feature_frame",
+        "entsoe_neighbor_market_feature_candidate_frame",
+    }
     assert deps_by_key["dfl_real_data_trajectory_dataset_frame"] == {
         "dfl_schedule_candidate_library_v2_frame",
         "dfl_strict_failure_prior_feature_panel_frame",
@@ -608,6 +627,11 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"
+    }
+    assert deps_by_key["dfl_market_coupling_v2_plus_ablation_frame"] == {
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
+        "official_forecast_exogenous_feature_route_frame",
     }
     assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v3_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame"
