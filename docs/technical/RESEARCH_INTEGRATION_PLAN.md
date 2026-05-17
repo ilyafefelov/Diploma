@@ -2354,3 +2354,53 @@ Interpretation: this is a successful governance result, not a regret-improvement
 result. It confirms that the system refuses to route ENTSO-E/neighbor-market
 features into official training until temporal availability, currency,
 timezone/DST, licensing, market-rule, and domain-shift evidence are complete.
+
+## ENTSO-E Poland Governance Completion Lane
+
+The next market-coupling slice narrows the external-data question to one
+governed route: Poland ENTSO-E day-ahead price context as a point-in-time
+exogenous column. It still does not add European training rows.
+
+New implementation:
+
+- `entsoe_poland_feature_governance_frame` validates the Poland candidate row
+  against local ENTSO-E token availability, source-backed sample evidence,
+  publication time before the Ukrainian decision anchor, timezone/DST readiness,
+  prior-known EUR/UAH FX, licensing, market-rule mapping, and domain-shift
+  validation.
+- `official_forecast_exogenous_feature_route_frame` now consumes that Poland
+  governance row and remains the only external-feature route into official
+  global-panel training.
+- `configs/real_data_dfl_entsoe_poland_feature_ablation_week3.yaml` is the
+  tracked config for the lane. Its default state is intentionally blocked until
+  the source, publication, FX, licensing, market-rule, timezone/DST, and
+  domain-shift controls are provided.
+
+Tracked docs:
+
+- [DFL_ENTSOE_POLAND_GOVERNANCE_ABLATION.md](DFL_ENTSOE_POLAND_GOVERNANCE_ABLATION.md).
+- [../sources/entsoe-poland-governance-ablation-source-capture-2026-05-17.md](../sources/entsoe-poland-governance-ablation-source-capture-2026-05-17.md).
+
+Decision: the correct near-term result is either exactly one approved Poland
+feature route plus a rerun of the V2+ ablation, or a stronger blocked packet
+with explicit blockers. V2+ remains the thesis headline until a governed
+Ukrainian-plus-neighbor variant beats it under the same strict LP/oracle gate.
+
+Materialized evidence closure:
+
+- Dagster run id: `65c87210-36f3-4491-add7-995fa0214d86`;
+- local evidence packet:
+  `data/research_runs/week3_dfl_entsoe_poland_feature_ablation_v1/`;
+- status: `blocked_by_governance` for both raw and calibrated official
+  global-panel NBEATSx paths;
+- approved external feature columns: none;
+- blocked Poland feature column: `entsoe_pl_day_ahead_price_uah_mwh`;
+- market-coupled B training runs: 0;
+- claim boundary: Offline Strategy Promotion only,
+  `market_execution_enabled=false`, no European rows in Ukrainian training.
+
+The precise blockers are now `entsoe_token`, `source_backed_sample`,
+`publication_time`, `prior_eur_uah_fx_rate`, `currency`, `timezone`,
+`licensing`, `market_rules`, `domain_shift`, and `temporal_availability`.
+Interpretation: the system still blocks training, but the blocker is now
+actionable governance evidence rather than an unspecified market-coupling gap.

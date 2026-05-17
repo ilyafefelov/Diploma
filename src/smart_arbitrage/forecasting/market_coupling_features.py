@@ -48,6 +48,7 @@ def build_market_coupling_feature_route_frame(
     market_coupling_temporal_availability_frame: pl.DataFrame,
     *,
     entsoe_neighbor_market_sample_audit_frame: pl.DataFrame | None = None,
+    entsoe_poland_feature_governance_frame: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Build the single approval interface for official exogenous features.
 
@@ -68,8 +69,15 @@ def build_market_coupling_feature_route_frame(
     entsoe_source_backed_rows = _entsoe_source_backed_rows(
         entsoe_neighbor_market_sample_audit_frame
     )
+    entsoe_poland_governance = _entsoe_poland_governance_row(
+        entsoe_poland_feature_governance_frame
+    )
     rows = [
-        _route_row(row, entsoe_source_backed_rows=entsoe_source_backed_rows)
+        _route_row(
+            row,
+            entsoe_source_backed_rows=entsoe_source_backed_rows,
+            entsoe_poland_governance=entsoe_poland_governance,
+        )
         for row in market_coupling_temporal_availability_frame.iter_rows(named=True)
     ]
     return pl.DataFrame(rows).sort(["source_name", "feature_name"])
@@ -210,14 +218,22 @@ def _route_row(
     row: dict[str, object],
     *,
     entsoe_source_backed_rows: int,
+    entsoe_poland_governance: dict[str, object] | None,
 ) -> dict[str, object]:
     source_name = str(row["source_name"])
+    effective_row = _effective_route_row(
+        row,
+        entsoe_poland_governance=entsoe_poland_governance,
+    )
     source_backed_row_count = (
-        entsoe_source_backed_rows
+        _governed_entsoe_source_backed_rows(
+            entsoe_source_backed_rows,
+            entsoe_poland_governance=entsoe_poland_governance,
+        )
         if source_name == "ENTSO_E"
         else _source_observation_count(row)
     )
-    fully_governed = _row_is_fully_governed(row) and source_backed_row_count > 0
+    fully_governed = _row_is_fully_governed(effective_row) and source_backed_row_count > 0
     if fully_governed:
         feature_route_status = "approved_for_training"
     elif source_backed_row_count > 0:
@@ -225,26 +241,26 @@ def _route_row(
     else:
         feature_route_status = "blocked_by_governance"
     return {
-        "feature_name": str(row["feature_name"]),
+        "feature_name": str(effective_row["feature_name"]),
         "source_name": source_name,
-        "source_kind": str(row["source_kind"]),
-        "approved_feature_column": str(row["feature_name"]),
+        "source_kind": str(effective_row["source_kind"]),
+        "approved_feature_column": str(effective_row["approved_feature_column"]),
         "feature_route_status": feature_route_status,
         "source_backed_row_count": source_backed_row_count,
-        "training_use_allowed": bool(row["training_use_allowed"]),
+        "training_use_allowed": bool(effective_row["training_use_allowed"]),
         "feature_use_allowed": fully_governed,
         "approved_for_official_training": fully_governed,
-        "training_blockers_csv": str(row["training_blockers_csv"]),
-        "readiness_status": str(row["readiness_status"]),
-        "licensing_status": str(row["licensing_status"]),
-        "timezone_status": str(row["timezone_status"]),
-        "currency_status": str(row["currency_status"]),
-        "market_rules_status": str(row["market_rules_status"]),
-        "temporal_availability_status": str(row["temporal_availability_status"]),
-        "domain_shift_status": str(row["domain_shift_status"]),
-        "publication_time_policy": str(row["publication_time_policy"]),
-        "decision_cutoff_policy": str(row["decision_cutoff_policy"]),
-        "external_feature_role": str(row["external_validation_role"]),
+        "training_blockers_csv": str(effective_row["training_blockers_csv"]),
+        "readiness_status": str(effective_row["readiness_status"]),
+        "licensing_status": str(effective_row["licensing_status"]),
+        "timezone_status": str(effective_row["timezone_status"]),
+        "currency_status": str(effective_row["currency_status"]),
+        "market_rules_status": str(effective_row["market_rules_status"]),
+        "temporal_availability_status": str(effective_row["temporal_availability_status"]),
+        "domain_shift_status": str(effective_row["domain_shift_status"]),
+        "publication_time_policy": str(effective_row["publication_time_policy"]),
+        "decision_cutoff_policy": str(effective_row["decision_cutoff_policy"]),
+        "external_feature_role": str(effective_row["external_validation_role"]),
         "claim_scope": MARKET_COUPLING_FEATURE_ROUTE_CLAIM_SCOPE,
         "not_full_dfl": True,
         "not_market_execution": True,
@@ -287,6 +303,77 @@ def _entsoe_source_backed_rows(frame: pl.DataFrame | None) -> int:
     if "source_backed_row_count" not in frame.columns:
         raise ValueError("entsoe_neighbor_market_sample_audit_frame missing source_backed_row_count")
     return int(frame.select(pl.col("source_backed_row_count").sum()).item() or 0)
+
+
+def _entsoe_poland_governance_row(frame: pl.DataFrame | None) -> dict[str, object] | None:
+    if frame is None or frame.is_empty():
+        return None
+    required_columns = {
+        "country_code",
+        "feature_name",
+        "approved_feature_column",
+        "source_backed_row_count",
+        "training_use_allowed",
+        "training_blockers_csv",
+        "readiness_status",
+        "licensing_status",
+        "timezone_status",
+        "currency_status",
+        "market_rules_status",
+        "temporal_availability_status",
+        "domain_shift_status",
+    }
+    missing = sorted(required_columns.difference(frame.columns))
+    if missing:
+        raise ValueError(f"entsoe_poland_feature_governance_frame missing columns: {missing}")
+    poland_rows = frame.filter(pl.col("country_code") == "PL")
+    if poland_rows.height != 1:
+        raise ValueError("entsoe_poland_feature_governance_frame must contain one PL row")
+    return poland_rows.to_dicts()[0]
+
+
+def _effective_route_row(
+    row: dict[str, object],
+    *,
+    entsoe_poland_governance: dict[str, object] | None,
+) -> dict[str, object]:
+    if str(row["source_name"]) != "ENTSO_E" or entsoe_poland_governance is None:
+        return {
+            **row,
+            "approved_feature_column": str(row["feature_name"]),
+        }
+    return {
+        **row,
+        "approved_feature_column": str(entsoe_poland_governance["approved_feature_column"]),
+        "training_use_allowed": bool(entsoe_poland_governance["training_use_allowed"]),
+        "training_blockers_csv": str(entsoe_poland_governance["training_blockers_csv"]),
+        "readiness_status": str(entsoe_poland_governance["readiness_status"]),
+        "licensing_status": str(entsoe_poland_governance["licensing_status"]),
+        "timezone_status": str(entsoe_poland_governance["timezone_status"]),
+        "currency_status": str(entsoe_poland_governance["currency_status"]),
+        "market_rules_status": str(entsoe_poland_governance["market_rules_status"]),
+        "temporal_availability_status": str(
+            entsoe_poland_governance["temporal_availability_status"]
+        ),
+        "domain_shift_status": str(entsoe_poland_governance["domain_shift_status"]),
+    }
+
+
+def _governed_entsoe_source_backed_rows(
+    entsoe_source_backed_rows: int,
+    *,
+    entsoe_poland_governance: dict[str, object] | None,
+) -> int:
+    if entsoe_poland_governance is None:
+        return entsoe_source_backed_rows
+    source_backed_row_count = entsoe_poland_governance["source_backed_row_count"]
+    if isinstance(source_backed_row_count, bool):
+        return int(source_backed_row_count)
+    if isinstance(source_backed_row_count, int):
+        return source_backed_row_count
+    if isinstance(source_backed_row_count, float | str):
+        return int(source_backed_row_count)
+    raise TypeError("source_backed_row_count must be numeric or string-like.")
 
 
 def _missing_column_failures(frame: pl.DataFrame, required_columns: frozenset[str]) -> list[str]:

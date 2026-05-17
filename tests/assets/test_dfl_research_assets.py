@@ -262,6 +262,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "entsoe_neighbor_market_query_spec_frame",
         "entsoe_neighbor_market_sample_audit_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
+        "entsoe_poland_feature_governance_frame",
         "entsoe_neighbor_market_aligned_feature_panel_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
         "afl_forecast_error_audit_frame",
@@ -438,6 +439,9 @@ def test_dfl_research_assets_are_registered() -> None:
         tags_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]["ml_stage"]
         == "feature_engineering"
     )
+    assert tags_by_key["entsoe_poland_feature_governance_frame"]["ml_stage"] == (
+        "feature_engineering"
+    )
     assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["afl_forecast_error_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"
@@ -534,6 +538,9 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"] == {
         "real_data_benchmark_silver_feature_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
+    }
+    assert deps_by_key["entsoe_poland_feature_governance_frame"] == {
+        "entsoe_neighbor_market_feature_candidate_frame"
     }
     assert deps_by_key["dfl_real_data_trajectory_dataset_frame"] == {
         "dfl_schedule_candidate_library_v2_frame",

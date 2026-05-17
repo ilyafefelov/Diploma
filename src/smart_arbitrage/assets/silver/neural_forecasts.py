@@ -115,11 +115,13 @@ def official_forecast_exogenous_governance_frame(context) -> pl.DataFrame:
 def official_forecast_exogenous_feature_route_frame(
 	context,
 	official_forecast_exogenous_governance_frame: pl.DataFrame,
+	entsoe_poland_feature_governance_frame: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
 	"""Single route interface for approved official forecast exogenous features."""
 
 	frame = build_market_coupling_feature_route_frame(
-		official_forecast_exogenous_governance_frame
+		official_forecast_exogenous_governance_frame,
+		entsoe_poland_feature_governance_frame=entsoe_poland_feature_governance_frame,
 	)
 	_add_metadata(
 		context,

@@ -201,6 +201,7 @@ from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
+    build_entsoe_poland_feature_governance_frame,
 )
 from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
 from smart_arbitrage.dfl.semantic_event_failure_audit import (
@@ -249,6 +250,20 @@ class EntsoeNeighborMarketAlignedFeaturePanelAssetConfig(dg.Config):
     """Timestamp-aligned ENTSO-E neighbor feature panel scope."""
 
     country_codes_csv: str = "PL"
+
+
+class EntsoePolandFeatureGovernanceAssetConfig(dg.Config):
+    """Point-in-time Poland ENTSO-E feature governance controls."""
+
+    publication_timestamp_utc: str = ""
+    ua_decision_anchor_timestamp_utc: str = "2025-12-31T12:00:00+00:00"
+    prior_eur_uah_fx_rate: float = 0.0
+    prior_eur_uah_fx_timestamp_utc: str = ""
+    fx_rate_source: str = ""
+    timezone_dst_mapping_ready: bool = False
+    licensing_approved: bool = False
+    market_rules_mapped: bool = False
+    domain_shift_validated: bool = False
 
 
 class DflActionLabelPanelAssetConfig(dg.Config):
@@ -1068,9 +1083,7 @@ def entsoe_neighbor_market_query_spec_frame(
 ) -> pl.DataFrame:
     """ENTSO-E neighbor-market query spec and access blocker evidence."""
 
-    security_token = os.environ.get("ENTSOE_SECURITY_TOKEN") or os.environ.get(
-        "ENTSO_E_SECURITY_TOKEN"
-    )
+    security_token = _entsoe_security_token()
     query_spec_frame = build_entsoe_neighbor_market_query_spec_frame(
         market_coupling_temporal_availability_frame,
         security_token=security_token,
@@ -1113,9 +1126,7 @@ def entsoe_neighbor_market_sample_audit_frame(
 ) -> pl.DataFrame:
     """Tiny ENTSO-E sample audit that never unlocks training use by itself."""
 
-    security_token = os.environ.get("ENTSOE_SECURITY_TOKEN") or os.environ.get(
-        "ENTSO_E_SECURITY_TOKEN"
-    )
+    security_token = _entsoe_security_token()
     sample_frame = build_entsoe_neighbor_market_sample_audit_frame(
         entsoe_neighbor_market_query_spec_frame,
         sample_country_codes_csv=config.sample_country_codes_csv,
@@ -1169,9 +1180,7 @@ def entsoe_neighbor_market_feature_candidate_frame(
 ) -> pl.DataFrame:
     """Source-backed ENTSO-E feature candidates that remain blocked from training."""
 
-    security_token = os.environ.get("ENTSOE_SECURITY_TOKEN") or os.environ.get(
-        "ENTSO_E_SECURITY_TOKEN"
-    )
+    security_token = _entsoe_security_token()
     candidate_frame = build_entsoe_neighbor_market_feature_candidate_frame(
         entsoe_neighbor_market_query_spec_frame,
         sample_country_codes_csv=config.sample_country_codes_csv,
@@ -1204,6 +1213,64 @@ def entsoe_neighbor_market_feature_candidate_frame(
         },
     )
     return candidate_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def entsoe_poland_feature_governance_frame(
+    context,
+    config: EntsoePolandFeatureGovernanceAssetConfig,
+    entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Point-in-time governance gate for one Poland ENTSO-E exogenous feature."""
+
+    security_token = _entsoe_security_token()
+    governance_frame = build_entsoe_poland_feature_governance_frame(
+        entsoe_neighbor_market_feature_candidate_frame,
+        entsoe_security_token=security_token,
+        publication_timestamp_utc=config.publication_timestamp_utc,
+        ua_decision_anchor_timestamp_utc=config.ua_decision_anchor_timestamp_utc,
+        prior_eur_uah_fx_rate=config.prior_eur_uah_fx_rate,
+        prior_eur_uah_fx_timestamp_utc=config.prior_eur_uah_fx_timestamp_utc,
+        fx_rate_source=config.fx_rate_source,
+        timezone_dst_mapping_ready=config.timezone_dst_mapping_ready,
+        licensing_approved=config.licensing_approved,
+        market_rules_mapped=config.market_rules_mapped,
+        domain_shift_validated=config.domain_shift_validated,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": governance_frame.height,
+            "approved_feature_count": governance_frame.filter(
+                pl.col("approved_for_official_training")
+            ).height
+            if governance_frame.height
+            else 0,
+            "source_backed_rows": governance_frame.select(
+                pl.col("source_backed_row_count").sum()
+            ).item()
+            if governance_frame.height
+            else 0,
+            "training_blockers": governance_frame["training_blockers_csv"].to_list()
+            if governance_frame.height
+            else [],
+            "security_token_available": bool(security_token),
+            "scope": "entsoe_poland_feature_governance_research_gate",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return governance_frame
 
 
 @dg.asset(
@@ -5688,6 +5755,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     entsoe_neighbor_market_query_spec_frame,
     entsoe_neighbor_market_sample_audit_frame,
     entsoe_neighbor_market_feature_candidate_frame,
+    entsoe_poland_feature_governance_frame,
     entsoe_neighbor_market_aligned_feature_panel_frame,
     dfl_semantic_event_strict_failure_audit_frame,
     forecast_candidate_forensics_frame,
@@ -5793,6 +5861,16 @@ def _csv_values(raw_value: str, *, field_name: str) -> tuple[str, ...]:
     if not values:
         raise ValueError(f"{field_name} must contain at least one value.")
     return values
+
+
+def _entsoe_security_token() -> str | None:
+    """Return the local ENTSO-E token without recording it in evidence artifacts."""
+
+    return (
+        os.environ.get("ENTSOE_TOKEN")
+        or os.environ.get("ENTSOE_SECURITY_TOKEN")
+        or os.environ.get("ENTSO_E_SECURITY_TOKEN")
+    )
 
 
 def _float_csv_values(raw_value: str, *, field_name: str) -> tuple[float, ...]:

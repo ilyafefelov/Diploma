@@ -66,6 +66,9 @@ ENTSOE_NEIGHBOR_MARKET_FEATURE_CANDIDATE_CLAIM_SCOPE: Final[str] = (
 ENTSOE_NEIGHBOR_MARKET_ALIGNED_FEATURE_CLAIM_SCOPE: Final[str] = (
     "entsoe_neighbor_market_aligned_feature_research_gate"
 )
+ENTSOE_POLAND_FEATURE_GOVERNANCE_CLAIM_SCOPE: Final[str] = (
+    "entsoe_poland_feature_governance_research_gate"
+)
 REQUIRED_ENTSOE_NEIGHBOR_SAMPLE_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "country_code",
@@ -140,6 +143,38 @@ REQUIRED_ENTSOE_NEIGHBOR_ALIGNED_FEATURE_COLUMNS: Final[frozenset[str]] = frozen
         "currency_normalization_status",
         "training_use_allowed",
         "feature_use_allowed",
+        "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
+    }
+)
+REQUIRED_ENTSOE_POLAND_FEATURE_GOVERNANCE_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "country_code",
+        "country_name",
+        "feature_name",
+        "approved_feature_column",
+        "source_backed_row_count",
+        "entsoe_security_token_available",
+        "publication_timestamp_utc",
+        "ua_decision_anchor_timestamp_utc",
+        "publication_time_status",
+        "is_publication_prior_to_anchor",
+        "timezone_status",
+        "fx_rate_source",
+        "fx_rate_timestamp_utc",
+        "fx_rate_eur_uah",
+        "currency_status",
+        "market_rules_status",
+        "licensing_status",
+        "domain_shift_status",
+        "temporal_availability_status",
+        "readiness_status",
+        "training_blockers_csv",
+        "training_use_allowed",
+        "feature_use_allowed",
+        "approved_for_official_training",
+        "market_execution_enabled",
         "claim_scope",
         "not_full_dfl",
         "not_market_execution",
@@ -543,6 +578,194 @@ def validate_entsoe_neighbor_market_feature_candidate_evidence(
     )
 
 
+def build_entsoe_poland_feature_governance_frame(
+    entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
+    *,
+    entsoe_security_token: str | None,
+    publication_timestamp_utc: str,
+    ua_decision_anchor_timestamp_utc: str,
+    prior_eur_uah_fx_rate: float,
+    prior_eur_uah_fx_timestamp_utc: str,
+    fx_rate_source: str,
+    timezone_dst_mapping_ready: bool,
+    licensing_approved: bool,
+    market_rules_mapped: bool,
+    domain_shift_validated: bool,
+) -> pl.DataFrame:
+    """Evaluate whether the Poland ENTSO-E feature may enter official training."""
+
+    candidate_failures = _missing_column_failures(
+        entsoe_neighbor_market_feature_candidate_frame,
+        REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS,
+    )
+    if candidate_failures:
+        raise ValueError("; ".join(candidate_failures))
+    rows = [
+        row
+        for row in entsoe_neighbor_market_feature_candidate_frame.iter_rows(named=True)
+        if str(row["country_code"]).upper() == "PL"
+        and str(row["feature_name"]) == "entsoe_neighbor_day_ahead_price_context"
+    ]
+    source_backed_count = len([row for row in rows if bool(row["source_backed"])])
+    anchor = (
+        _parse_iso_utc(ua_decision_anchor_timestamp_utc)
+        if ua_decision_anchor_timestamp_utc.strip()
+        else None
+    )
+    publication = (
+        _parse_iso_utc(publication_timestamp_utc)
+        if publication_timestamp_utc.strip()
+        else None
+    )
+    fx_timestamp = (
+        _parse_iso_utc(prior_eur_uah_fx_timestamp_utc)
+        if prior_eur_uah_fx_timestamp_utc.strip()
+        else None
+    )
+    publication_prior = publication is not None and anchor is not None and publication < anchor
+    fx_prior = fx_timestamp is not None and anchor is not None and fx_timestamp < anchor
+    token_available = bool(entsoe_security_token and entsoe_security_token.strip())
+    blockers = _entsoe_poland_governance_blockers(
+        token_available=token_available,
+        source_backed_count=source_backed_count,
+        publication_prior=publication_prior,
+        timezone_dst_mapping_ready=timezone_dst_mapping_ready,
+        prior_eur_uah_fx_rate=prior_eur_uah_fx_rate,
+        fx_prior=fx_prior,
+        fx_rate_source=fx_rate_source,
+        licensing_approved=licensing_approved,
+        market_rules_mapped=market_rules_mapped,
+        domain_shift_validated=domain_shift_validated,
+    )
+    approved = not blockers
+    return pl.DataFrame(
+        [
+            {
+                "country_code": "PL",
+                "country_name": "Poland",
+                "feature_name": "entsoe_neighbor_day_ahead_price_context",
+                "approved_feature_column": "entsoe_pl_day_ahead_price_uah_mwh",
+                "source_backed_row_count": source_backed_count,
+                "entsoe_security_token_available": token_available,
+                "publication_timestamp_utc": publication.isoformat()
+                if publication is not None
+                else "",
+                "ua_decision_anchor_timestamp_utc": anchor.isoformat()
+                if anchor is not None
+                else "",
+                "publication_time_status": "publication_time_verified_prior_to_ua_anchor"
+                if publication_prior
+                else "blocked_publication_not_prior_to_anchor",
+                "is_publication_prior_to_anchor": publication_prior,
+                "timezone_status": "ready"
+                if timezone_dst_mapping_ready
+                else "blocked_until_zone_and_dst_alignment",
+                "fx_rate_source": fx_rate_source,
+                "fx_rate_timestamp_utc": fx_timestamp.isoformat()
+                if fx_timestamp is not None
+                else "",
+                "fx_rate_eur_uah": prior_eur_uah_fx_rate,
+                "currency_status": "ready"
+                if prior_eur_uah_fx_rate > 0.0 and fx_prior and fx_rate_source.strip()
+                else "blocked_missing_prior_eur_uah_fx_rate",
+                "market_rules_status": "ready"
+                if market_rules_mapped
+                else "blocked_until_dam_gate_closure_and_price_cap_mapping",
+                "licensing_status": "ready"
+                if licensing_approved
+                else "blocked_until_license_terms_are_recorded",
+                "domain_shift_status": "ready"
+                if domain_shift_validated
+                else "blocked_until_ukrainian_holdout_validation",
+                "temporal_availability_status": "ready"
+                if publication_prior
+                else "blocked_until_publication_timestamp_mapping",
+                "readiness_status": "training_ready" if approved else "blocked_by_governance",
+                "training_blockers_csv": ",".join(blockers),
+                "training_use_allowed": approved,
+                "feature_use_allowed": approved,
+                "approved_for_official_training": approved,
+                "market_execution_enabled": False,
+                "claim_scope": ENTSOE_POLAND_FEATURE_GOVERNANCE_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+
+
+def validate_entsoe_poland_feature_governance_evidence(
+    frame: pl.DataFrame,
+) -> EvidenceCheckOutcome:
+    """Validate Poland feature governance before it can drive route approval."""
+
+    failures = _missing_column_failures(frame, REQUIRED_ENTSOE_POLAND_FEATURE_GOVERNANCE_COLUMNS)
+    if failures:
+        return EvidenceCheckOutcome(False, "; ".join(failures), {"row_count": frame.height})
+    rows = list(frame.iter_rows(named=True))
+    if not rows:
+        return EvidenceCheckOutcome(
+            False,
+            "ENTSO-E Poland feature governance frame has no rows",
+            {"row_count": 0},
+        )
+    bad_country_rows = [row for row in rows if str(row["country_code"]) != "PL"]
+    bad_claim_rows = [
+        row
+        for row in rows
+        if str(row["claim_scope"]) != ENTSOE_POLAND_FEATURE_GOVERNANCE_CLAIM_SCOPE
+        or not bool(row["not_full_dfl"])
+        or not bool(row["not_market_execution"])
+        or bool(row["market_execution_enabled"])
+    ]
+    inconsistent_approved_rows = [
+        row
+        for row in rows
+        if bool(row["approved_for_official_training"])
+        and (
+            str(row["training_blockers_csv"]).strip()
+            or int(row["source_backed_row_count"]) <= 0
+            or str(row["readiness_status"]) != "training_ready"
+            or not bool(row["training_use_allowed"])
+            or not bool(row["feature_use_allowed"])
+        )
+    ]
+    unapproved_without_blockers = [
+        row
+        for row in rows
+        if not bool(row["approved_for_official_training"])
+        and not str(row["training_blockers_csv"]).strip()
+    ]
+    if bad_country_rows:
+        failures.append("Poland governance frame must contain only PL rows")
+    if bad_claim_rows:
+        failures.append("Poland governance rows must keep research-only claim flags")
+    if inconsistent_approved_rows:
+        failures.append("approved Poland rows must be source-backed and blocker-free")
+    if unapproved_without_blockers:
+        failures.append("blocked Poland rows must report governance blockers")
+
+    metadata = {
+        "row_count": len(rows),
+        "approved_feature_count": len(
+            [row for row in rows if bool(row["approved_for_official_training"])]
+        ),
+        "source_backed_rows": sum(int(row["source_backed_row_count"]) for row in rows),
+        "bad_country_rows": len(bad_country_rows),
+        "bad_claim_rows": len(bad_claim_rows),
+        "inconsistent_approved_rows": len(inconsistent_approved_rows),
+    }
+    return EvidenceCheckOutcome(
+        passed=not failures,
+        description=(
+            "ENTSO-E Poland feature governance is explicit and claim-safe."
+            if not failures
+            else "; ".join(failures)
+        ),
+        metadata=metadata,
+    )
+
+
 def build_entsoe_neighbor_market_aligned_feature_panel_frame(
     benchmark_frame: pl.DataFrame,
     entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
@@ -906,6 +1129,39 @@ def _aligned_feature_row(
     }
 
 
+def _entsoe_poland_governance_blockers(
+    *,
+    token_available: bool,
+    source_backed_count: int,
+    publication_prior: bool,
+    timezone_dst_mapping_ready: bool,
+    prior_eur_uah_fx_rate: float,
+    fx_prior: bool,
+    fx_rate_source: str,
+    licensing_approved: bool,
+    market_rules_mapped: bool,
+    domain_shift_validated: bool,
+) -> list[str]:
+    blockers: list[str] = []
+    if not token_available:
+        blockers.append("entsoe_token")
+    if source_backed_count <= 0:
+        blockers.append("source_backed_sample")
+    if not publication_prior:
+        blockers.append("publication_time")
+    if not timezone_dst_mapping_ready:
+        blockers.append("timezone")
+    if prior_eur_uah_fx_rate <= 0.0 or not fx_prior or not fx_rate_source.strip():
+        blockers.append("prior_eur_uah_fx_rate")
+    if not licensing_approved:
+        blockers.append("licensing")
+    if not market_rules_mapped:
+        blockers.append("market_rules")
+    if not domain_shift_validated:
+        blockers.append("domain_shift")
+    return blockers
+
+
 def _request_url(
     bidding_zone_eic: str,
     *,
@@ -994,3 +1250,16 @@ def _child_text(element: ElementTree.Element | None, name: str) -> str:
 
 def _local_name(tag: str) -> str:
     return tag.rsplit("}", maxsplit=1)[-1]
+
+
+__all__ = [
+    "build_entsoe_neighbor_market_aligned_feature_panel_frame",
+    "build_entsoe_neighbor_market_feature_candidate_frame",
+    "build_entsoe_neighbor_market_query_spec_frame",
+    "build_entsoe_neighbor_market_sample_audit_frame",
+    "build_entsoe_poland_feature_governance_frame",
+    "validate_entsoe_neighbor_market_access_evidence",
+    "validate_entsoe_neighbor_market_feature_candidate_evidence",
+    "validate_entsoe_neighbor_market_sample_audit_evidence",
+    "validate_entsoe_poland_feature_governance_evidence",
+]

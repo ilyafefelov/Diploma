@@ -37,11 +37,15 @@ The current expected state is blocked:
 | Asset | Purpose |
 |---|---|
 | `entsoe_neighbor_market_aligned_feature_panel_frame` | Aligns Poland-first ENTSO-E feature candidates to tenant benchmark timestamps while keeping `training_use_allowed=false`. |
+| `entsoe_poland_feature_governance_frame` | Checks the Poland route for source-backed rows, publication time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule mapping, and domain-shift validation before any official training approval. |
 | `dfl_market_coupling_v2_plus_ablation_frame` | Compares Ukrainian-only V2+ against Ukrainian plus approved neighbor-market features, or emits `ablation_status=blocked_by_governance`. |
 | `dfl_market_coupling_v2_plus_ablation_evidence` | Dagster asset check for thesis-grade claim boundaries, blocked-training behavior, and strict comparison semantics. |
 
 Tracked config:
 [real_data_dfl_market_coupling_ablation_week3.yaml](../../configs/real_data_dfl_market_coupling_ablation_week3.yaml).
+
+Poland governance-completion config:
+[real_data_dfl_entsoe_poland_feature_ablation_week3.yaml](../../configs/real_data_dfl_entsoe_poland_feature_ablation_week3.yaml).
 
 ## Gate Semantics
 
@@ -66,7 +70,7 @@ If B is materialized, it passes only when:
 After the Ukrainian-only V2+ strict and robustness assets exist:
 
 ```powershell
-docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select forecast_afe_feature_catalog_frame,market_coupling_temporal_availability_frame,entsoe_neighbor_market_query_spec_frame,entsoe_neighbor_market_feature_candidate_frame,entsoe_neighbor_market_aligned_feature_panel_frame,official_forecast_exogenous_governance_frame,official_forecast_exogenous_feature_route_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,dfl_market_coupling_v2_plus_ablation_frame -c configs/real_data_dfl_market_coupling_ablation_week3.yaml
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select forecast_afe_feature_catalog_frame,market_coupling_temporal_availability_frame,entsoe_neighbor_market_query_spec_frame,entsoe_neighbor_market_feature_candidate_frame,entsoe_poland_feature_governance_frame,entsoe_neighbor_market_aligned_feature_panel_frame,official_forecast_exogenous_governance_frame,official_forecast_exogenous_feature_route_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,dfl_market_coupling_v2_plus_ablation_frame -c configs/real_data_dfl_entsoe_poland_feature_ablation_week3.yaml
 ```
 
 Validate definitions locally, then run the asset check from Dagster UI or the
@@ -156,3 +160,37 @@ The follow-on path is:
    unchanged strict LP/oracle gate;
 4. revisit official global-panel TFT only if the feature lane is approved or
    clearly blocked.
+
+## Poland Governance Completion Evidence
+
+The 2026-05-17 Poland-specific rerun used
+[real_data_dfl_entsoe_poland_feature_ablation_week3.yaml](../../configs/real_data_dfl_entsoe_poland_feature_ablation_week3.yaml)
+and the new `entsoe_poland_feature_governance_frame`:
+
+- Dagster run id: `65c87210-36f3-4491-add7-995fa0214d86`;
+- local packet:
+  `data/research_runs/week3_dfl_entsoe_poland_feature_ablation_v1/`;
+- status counts: `blocked_by_governance=2`;
+- approved feature columns: none;
+- blocked Poland feature column: `entsoe_pl_day_ahead_price_uah_mwh`;
+- market-coupled B training runs: `0`;
+- evidence check passed;
+- `market_execution_enabled=false`.
+
+The new packet reports more precise blockers:
+
+- `entsoe_token`;
+- `source_backed_sample`;
+- `publication_time`;
+- `prior_eur_uah_fx_rate`;
+- `currency`;
+- `timezone`;
+- `licensing`;
+- `market_rules`;
+- `domain_shift`;
+- `temporal_availability`.
+
+Therefore the next external-feature action is operational governance, not model
+selection: provide a local ENTSO-E token, fetch a source-backed Poland sample,
+attach publication-time evidence, attach prior-known EUR/UAH FX, and resolve
+licensing/market-rule/domain-shift checks before rerunning the ablation.

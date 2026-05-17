@@ -3,10 +3,12 @@ from datetime import datetime
 import polars as pl
 
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_poland_feature_governance_frame,
     build_entsoe_neighbor_market_aligned_feature_panel_frame,
     build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
+    validate_entsoe_poland_feature_governance_evidence,
     validate_entsoe_neighbor_market_feature_candidate_evidence,
     validate_entsoe_neighbor_market_sample_audit_evidence,
     validate_entsoe_neighbor_market_access_evidence,
@@ -23,6 +25,36 @@ def _availability_frame() -> pl.DataFrame:
     )
 
 
+def _source_backed_poland_candidates() -> pl.DataFrame:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    return build_entsoe_neighbor_market_feature_candidate_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601010200",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: """
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-01T02:00Z</end>
+              </timeInterval>
+              <resolution>PT60M</resolution>
+              <Point><position>1</position><price.amount>102.5</price.amount></Point>
+              <Point><position>2</position><price.amount>111.0</price.amount></Point>
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
+
+
 def test_entsoe_neighbor_market_query_spec_blocks_fetch_without_token() -> None:
     frame = build_entsoe_neighbor_market_query_spec_frame(
         _availability_frame(),
@@ -34,6 +66,86 @@ def test_entsoe_neighbor_market_query_spec_blocks_fetch_without_token() -> None:
     assert frame["fetch_allowed"].unique().to_list() == [False]
     assert frame["training_use_allowed"].unique().to_list() == [False]
     assert frame["access_status"].unique().to_list() == ["blocked_missing_entsoe_security_token"]
+
+
+def test_entsoe_poland_governance_blocks_missing_token_and_prior_fx() -> None:
+    frame = build_entsoe_poland_feature_governance_frame(
+        _source_backed_poland_candidates(),
+        entsoe_security_token=None,
+        publication_timestamp_utc="2025-12-31T11:00:00+00:00",
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+        prior_eur_uah_fx_rate=0.0,
+        prior_eur_uah_fx_timestamp_utc="",
+        fx_rate_source="",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=True,
+    )
+
+    row = frame.row(0, named=True)
+    assert row["approved_for_official_training"] is False
+    assert row["approved_feature_column"] == "entsoe_pl_day_ahead_price_uah_mwh"
+    assert row["readiness_status"] == "blocked_by_governance"
+    assert "entsoe_token" in row["training_blockers_csv"]
+    assert "prior_eur_uah_fx_rate" in row["training_blockers_csv"]
+    assert row["market_execution_enabled"] is False
+
+    outcome = validate_entsoe_poland_feature_governance_evidence(frame)
+    assert outcome.passed is True
+    assert outcome.metadata["approved_feature_count"] == 0
+
+
+def test_entsoe_poland_governance_blocks_publication_after_anchor() -> None:
+    frame = build_entsoe_poland_feature_governance_frame(
+        _source_backed_poland_candidates(),
+        entsoe_security_token="dummy-token",
+        publication_timestamp_utc="2025-12-31T13:00:00+00:00",
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2025-12-31T11:30:00+00:00",
+        fx_rate_source="fixture_prior_fx",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=True,
+    )
+
+    row = frame.row(0, named=True)
+    assert row["approved_for_official_training"] is False
+    assert row["publication_time_status"] == "blocked_publication_not_prior_to_anchor"
+    assert "publication_time" in row["training_blockers_csv"]
+
+
+def test_entsoe_poland_governance_approves_fully_governed_source_backed_feature() -> None:
+    frame = build_entsoe_poland_feature_governance_frame(
+        _source_backed_poland_candidates(),
+        entsoe_security_token="dummy-token",
+        publication_timestamp_utc="2025-12-31T11:00:00+00:00",
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2025-12-31T11:30:00+00:00",
+        fx_rate_source="fixture_prior_fx",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=True,
+    )
+
+    row = frame.row(0, named=True)
+    assert row["approved_for_official_training"] is True
+    assert row["training_use_allowed"] is True
+    assert row["feature_use_allowed"] is True
+    assert row["training_blockers_csv"] == ""
+    assert row["readiness_status"] == "training_ready"
+    assert row["source_backed_row_count"] == 2
+    assert row["currency_status"] == "ready"
+    assert row["temporal_availability_status"] == "ready"
+    assert row["approved_feature_column"] == "entsoe_pl_day_ahead_price_uah_mwh"
+
+    outcome = validate_entsoe_poland_feature_governance_evidence(frame)
+    assert outcome.passed is True
+    assert outcome.metadata["approved_feature_count"] == 1
 
 
 def test_entsoe_neighbor_market_query_spec_records_day_ahead_price_request_shape() -> None:

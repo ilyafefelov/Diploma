@@ -214,6 +214,19 @@ approved external feature columns відсутні, market-coupled B variant н�
 залишаються тільки governance/readiness шаром до завершення publication-time,
 timezone/DST, FX, licensing, market-rule та domain-shift перевірок.
 
+Додатковий Poland-specific governance run уточнив цей висновок. Новий
+`entsoe_poland_feature_governance_frame` звів перший external lane до одного
+можливого point-in-time feature column:
+`entsoe_pl_day_ahead_price_uah_mwh`. Пакет
+`week3_dfl_entsoe_poland_feature_ablation_v1` знову показав
+`blocked_by_governance`, approved feature columns відсутні, а B-training не
+запускався. На відміну від попереднього generic blocker, цей пакет уже називає
+конкретні відсутні докази: ENTSO-E token/source-backed sample,
+publication-time evidence, prior-known EUR/UAH FX, timezone/DST, licensing,
+market-rule mapping, domain-shift validation і temporal availability. Це
+означає, що наступна робота над market coupling є governance/data-acquisition
+задачею, а не новим selector experiment.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

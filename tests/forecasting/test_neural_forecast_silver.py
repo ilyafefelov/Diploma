@@ -257,6 +257,14 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 		for asset in NEURAL_FORECAST_SILVER_ASSETS
 		for asset_key, group in asset.group_names_by_key.items()
 	}
+	deps_by_key = {
+		asset_key.to_user_string(): {
+			dependency.to_user_string()
+			for dependency in asset.asset_deps.get(asset_key, set())
+		}
+		for asset in NEURAL_FORECAST_SILVER_ASSETS
+		for asset_key in asset.keys
+	}
 	assert tags_by_key["sota_forecast_training_frame"]["medallion"] == "silver"
 	assert groups_by_key["neural_forecast_feature_frame"] == "silver_forecast_features"
 	assert groups_by_key["sota_forecast_training_frame"] == "silver_forecast_features"
@@ -266,6 +274,10 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 	assert groups_by_key["nbeatsx_official_global_panel_price_forecast"] == "silver_forecast_candidates"
 	assert groups_by_key["nbeatsx_price_forecast"] == "silver_forecast_candidates"
 	assert groups_by_key["tft_price_forecast"] == "silver_forecast_candidates"
+	assert deps_by_key["official_forecast_exogenous_feature_route_frame"] == {
+		"entsoe_poland_feature_governance_frame",
+		"official_forecast_exogenous_governance_frame",
+	}
 
 
 def test_official_global_panel_training_asset_materializes_multi_tenant_contract() -> None:
