@@ -180,6 +180,12 @@ from smart_arbitrage.dfl.schedule_value_learner_v2_plus import (
     build_dfl_schedule_value_regret_decomposition_frame,
     evaluate_dfl_schedule_value_learner_v2_plus_gate,
 )
+from smart_arbitrage.dfl.schedule_value_dfl_v2 import (
+    DFL_SCHEDULE_VALUE_DFL_V2_STRICT_LP_STRATEGY_KIND,
+    build_dfl_schedule_value_dfl_v2_frame,
+    build_dfl_schedule_value_dfl_v2_strict_lp_benchmark_frame,
+    evaluate_dfl_schedule_value_dfl_v2_gate,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     build_dfl_schedule_value_learner_v2_plus_robustness_frame,
     evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate,
@@ -848,6 +854,24 @@ class DflOfficialGlobalPanelScheduleValueLearnerV2PlusAssetConfig(dg.Config):
     final_validation_anchor_count_per_tenant: int = 18
     min_validation_tenant_anchor_count_per_source_model: int = 90
     min_prior_mean_improvement_ratio_vs_v2: float = 0.01
+
+
+class DflOfficialGlobalPanelScheduleValueDflV2AssetConfig(dg.Config):
+    """Official global-panel V2+-anchored pairwise DFL v2 scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = (
+        "nbeatsx_official_global_panel_v1,"
+        "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    )
+    final_validation_anchor_count_per_tenant: int = 18
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    min_prior_mean_improvement_ratio_vs_v2_plus: float = 0.01
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.0
+    min_mean_regret_improvement_ratio_vs_strict: float = 0.05
 
 
 class DflOfficialGlobalPanelScheduleValueLearnerV2RobustnessAssetConfig(
@@ -3032,6 +3056,133 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark
             "scope": (
                 "dfl_official_global_panel_schedule_value_v2_plus_strict_gate_"
                 "screen_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_schedule_value_dfl_v2_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueDflV2AssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only pairwise schedule-family ranking with frozen V2+ fallback."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    learner_frame = build_dfl_schedule_value_dfl_v2_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        min_prior_mean_improvement_ratio_vs_v2_plus=(
+            config.min_prior_mean_improvement_ratio_vs_v2_plus
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": learner_frame.height,
+            "tenant_count": learner_frame.select("tenant_id").n_unique()
+            if learner_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "fallback_rows": learner_frame.filter(pl.col("fallback_to_v2_plus")).height
+            if learner_frame.height
+            else 0,
+            "scope": "dfl_official_global_panel_schedule_value_dfl_v2_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return learner_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueDflV2AssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_dfl_v2_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Compare pairwise DFL v2 against frozen official V2+ strict evidence."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_schedule_value_dfl_v2_strict_lp_benchmark_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+        dfl_official_global_panel_schedule_value_dfl_v2_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_schedule_value_dfl_v2_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "strategy_kind": DFL_SCHEDULE_VALUE_DFL_V2_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "best_source_model_name": gate.metrics.get("best_source_model_name"),
+            "offline_strategy_replacement_passed": gate.metrics.get(
+                "offline_strategy_replacement_passed",
+                False,
+            ),
+            "market_execution_enabled": False,
+            "scope": (
+                "dfl_official_global_panel_schedule_value_dfl_v2_strict_gate_"
+                "not_full_dfl"
             ),
             "not_market_execution": True,
         },
@@ -6424,6 +6575,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    dfl_official_global_panel_schedule_value_dfl_v2_frame,
+    dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,
     dfl_official_global_panel_v2_plus_trajectory_dataset_frame,
     dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame,

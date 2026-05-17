@@ -64,6 +64,9 @@ from smart_arbitrage.dfl.schedule_value_learner_v3 import (
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus import (
     validate_dfl_schedule_value_learner_v2_plus_evidence,
 )
+from smart_arbitrage.dfl.schedule_value_dfl_v2 import (
+    validate_dfl_schedule_value_dfl_v2_evidence,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     validate_dfl_schedule_value_learner_v2_plus_robustness_evidence,
 )
@@ -512,6 +515,32 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame",
+    name="dfl_official_global_panel_schedule_value_dfl_v2_evidence",
+    description=(
+        "Checks official global-panel pairwise schedule-value DFL v2 strict LP "
+        "coverage and claim boundaries."
+    ),
+)
+def dfl_official_global_panel_schedule_value_dfl_v2_evidence(
+    dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_schedule_value_dfl_v2_evidence(
+            dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame,
+            source_model_names=(
+                "nbeatsx_official_global_panel_v1",
+                "nbeatsx_official_global_panel_horizon_calibrated_v1",
+            ),
+            min_validation_tenant_anchor_count=90,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
     name="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence",
     description="Checks official global-panel schedule/value learner v2+ rolling robustness evidence.",
@@ -810,6 +839,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_schedule_value_learner_v2_plus_evidence,
     dfl_official_global_panel_schedule_value_learner_v3_evidence,
     dfl_official_global_panel_schedule_value_learner_v2_plus_evidence,
+    dfl_official_global_panel_schedule_value_dfl_v2_evidence,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence,
     dfl_market_coupling_v2_plus_ablation_evidence,
     dfl_official_schedule_value_production_gate_evidence,

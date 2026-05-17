@@ -117,19 +117,35 @@ A new DFL v2 candidate can replace V2+ only when all of these hold:
 - zero safety violations;
 - `market_execution_enabled=false`.
 
-## Next Implementation Slice
+## Implemented DFL v2 Slice
 
-The next code slice should be `dfl_schedule_value_dfl_v2`:
+The code slice is implemented as `dfl_schedule_value_dfl_v2`:
 
-1. Build a train/prior pairwise schedule-value dataset from the official V2+
-   candidate library.
-2. Train a deterministic ridge/logistic pairwise scorer first, with optional
-   CUDA Torch MLP only after the linear scorer proves signal.
-3. Emit a trace showing selected candidate family, score, V2+ fallback decision,
-   and non-degradation confidence.
-4. Benchmark against `strict_similar_day`, official V2+, behavior cloning,
-   residual DFL, and offline DT under the unchanged strict LP/oracle gate.
+1. Build train/prior pairwise schedule-family value scores from the official
+   V2+ candidate library.
+2. Select a schedule family only when prior anchors show non-degrading
+   improvement versus frozen V2+.
+3. Emit a trace showing selected candidate family, pairwise value scores, V2+
+   fallback decision, and final scoring labels.
+4. Benchmark against `strict_similar_day`, raw source rows, and official V2+
+   under the unchanged strict LP/oracle gate.
 
-If this branch fails, the result remains useful: it shows that the final thesis
-headline should stay with V2+ while DFL/DT remains future work rather than an
-unsupported claim.
+The tracked config is
+`configs/real_data_dfl_schedule_value_dfl_v2_week3.yaml`, and the technical run
+contract is documented in [DFL_SCHEDULE_VALUE_DFL_V2.md](DFL_SCHEDULE_VALUE_DFL_V2.md).
+
+Materialized result:
+
+- Dagster run id: `9af65d45-6c7d-4aec-b71b-7fb31fd2147d`;
+- evidence check passed;
+- local packet:
+  `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/`;
+- gate decision: `diagnostic_pass_replacement_blocked`;
+- calibrated DFL v2 mean regret: `174.77` UAH;
+- calibrated V2+ mean regret: `174.77` UAH;
+- improvement versus V2+: `0.00%`.
+
+The result is useful negative evidence. The redesigned pairwise objective did
+not beat frozen V2+, so the final thesis headline stays with V2+ while the next
+DFL branch should focus on richer candidate values/families rather than another
+small DT over the same trajectory objective.

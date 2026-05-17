@@ -2496,3 +2496,39 @@ Tracked docs:
 
 - [DFL_V2_PLUS_DFL_DT_BRIDGE.md](DFL_V2_PLUS_DFL_DT_BRIDGE.md).
 - [DFL_OBJECTIVE_REDESIGN_PLAN.md](DFL_OBJECTIVE_REDESIGN_PLAN.md).
+
+## Pairwise Schedule-Value DFL v2
+
+The next objective-redesign slice is implemented as a V2+-anchored,
+official-global-panel experiment rather than another Decision Transformer over
+the same action-imitation target. The new assets are:
+
+- `dfl_official_global_panel_schedule_value_dfl_v2_frame`;
+- `dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame`;
+- asset check `dfl_official_global_panel_schedule_value_dfl_v2_evidence`.
+
+The selector computes pairwise schedule-family value scores from train/prior
+anchors only, then uses a non-degradation fallback to frozen V2+. Final-holdout
+actuals are scoring labels only. A DFL v2 row can become a stronger thesis
+headline only if it improves mean regret versus V2+, does not worsen median
+regret versus V2+, still beats `strict_similar_day` by at least `5%`, and keeps
+`market_execution_enabled=false`.
+
+Tracked run config:
+
+- `configs/real_data_dfl_schedule_value_dfl_v2_week3.yaml`.
+
+Technical details:
+
+- [DFL_SCHEDULE_VALUE_DFL_V2.md](DFL_SCHEDULE_VALUE_DFL_V2.md).
+
+Materialized result:
+
+- Dagster run id: `9af65d45-6c7d-4aec-b71b-7fb31fd2147d`;
+- evidence check passed;
+- local packet:
+  `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/`;
+- gate decision: `diagnostic_pass_replacement_blocked`;
+- calibrated DFL v2 matched V2+ at `174.77` UAH mean regret, so improvement
+  versus V2+ was `0.00%`;
+- V2+ remains the thesis headline Offline Strategy Promotion evidence.

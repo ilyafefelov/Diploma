@@ -261,6 +261,25 @@ V2+. Тому наступний академічно чистий DFL v2 нап
 ranking або return-conditioned schedule-family selector, а не більший DT з тим
 самим action-imitation objective.
 
+Цей напрям реалізовано як окремий pairwise schedule-value DFL v2 slice. Він
+працює не як deployed Decision Transformer, а як prior-only selector: на
+train/prior anchors він порівнює feasible schedule families попарно за
+value/regret, вибирає одну family тільки за наявності non-degradation signal
+проти frozen V2+, інакше повертається до V2+. Final holdout використовується
+лише для strict LP/oracle scoring. Отже, новий експеримент перевіряє саме
+гіпотезу з failure audit: чи можна зменшити `candidate_family_collapse` через
+кращу schedule-value objective, не послаблюючи V2+ fallback і не роблячи
+market-execution claim.
+
+Матеріалізація цього slice показала важливий негативний результат. Asset check
+пройшов, evidence packet було збережено локально у
+`data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/`, але gate
+залишився `diagnostic_pass_replacement_blocked`: для calibrated official
+NBEATSx DFL v2 повторив V2+ mean regret 174.77 UAH і median regret 67.30 UAH,
+тобто improvement проти V2+ дорівнював 0.00%. Для raw official NBEATSx DFL v2
+так само повторив V2+ mean regret 193.36 UAH. Отже, поточний DFL v2 objective
+є валідним diagnostic evidence, але не замінює V2+ як thesis headline.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

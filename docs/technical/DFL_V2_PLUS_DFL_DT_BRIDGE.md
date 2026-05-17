@@ -207,6 +207,31 @@ value ordering and non-degrading fallback behavior directly. The redesign plan
 is tracked in
 [DFL_OBJECTIVE_REDESIGN_PLAN.md](DFL_OBJECTIVE_REDESIGN_PLAN.md).
 
+The first implementation of that redesign is the pairwise schedule-value DFL v2
+slice:
+
+- `dfl_official_global_panel_schedule_value_dfl_v2_frame`;
+- `dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame`;
+- `configs/real_data_dfl_schedule_value_dfl_v2_week3.yaml`.
+
+It learns a prior-only schedule-family ranking and falls back to V2+ unless the
+train/prior evidence clears a non-degradation threshold. Details are tracked in
+[DFL_SCHEDULE_VALUE_DFL_V2.md](DFL_SCHEDULE_VALUE_DFL_V2.md).
+
+Materialized outcome:
+
+- Dagster run id: `9af65d45-6c7d-4aec-b71b-7fb31fd2147d`;
+- evidence check passed;
+- local packet:
+  `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/`;
+- gate decision: `diagnostic_pass_replacement_blocked`;
+- calibrated DFL v2 matched V2+ at `174.77` UAH mean regret, so it did not
+  replace V2+.
+
+This strengthens the bridge conclusion: the next useful DFL work is not another
+tiny DT over the same objective, but richer candidate-family/value evidence or a
+candidate-value loss that can actually improve over frozen V2+.
+
 ## Boundary
 
 Poland/ENTSO-E features remain blocked by governance and do not enter this
