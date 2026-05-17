@@ -2404,3 +2404,10 @@ The precise blockers are now `entsoe_token`, `source_backed_sample`,
 `licensing`, `market_rules`, `domain_shift`, and `temporal_availability`.
 Interpretation: the system still blocks training, but the blocker is now
 actionable governance evidence rather than an unspecified market-coupling gap.
+
+Operational follow-up: use
+[run-entsoe-poland-governance-ablation.ps1](../../scripts/run-entsoe-poland-governance-ablation.ps1)
+for the next attempt. It records a receipt, runs the exact asset selection,
+copies the Dagster-stored ablation frame, and exports the local packet. This
+keeps the next token-backed source sample auditable without manual Docker copy
+or free-form log inspection.

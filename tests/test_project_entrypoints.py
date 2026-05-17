@@ -180,6 +180,24 @@ def test_market_coupling_ablation_export_cli_requires_evidence_input() -> None:
     assert "write_dfl_market_coupling_v2_plus_ablation_packet" in export_script
 
 
+def test_entsoe_poland_governance_ablation_runner_exports_packet() -> None:
+    runner_script = (
+        PROJECT_ROOT / "scripts" / "run-entsoe-poland-governance-ablation.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "real_data_dfl_entsoe_poland_feature_ablation_week3.yaml" in runner_script
+    assert "ENTSOE_TOKEN" in runner_script
+    assert "ENTSOE_SECURITY_TOKEN" in runner_script
+    assert "ENTSO_E_SECURITY_TOKEN" in runner_script
+    assert "entsoe_poland_feature_governance_frame" in runner_script
+    assert "official_forecast_exogenous_feature_route_frame" in runner_script
+    assert "dfl_market_coupling_v2_plus_ablation_frame" in runner_script
+    assert "materialize_market_coupling_ablation_packet.py" in runner_script
+    assert "docker cp" in runner_script
+    assert "market_execution_enabled = $false" in runner_script
+    assert "[switch]$DryRun" in runner_script
+
+
 def test_hf_official_job_submission_cli_is_guarded_by_submit_flag() -> None:
     submit_script = (
         PROJECT_ROOT / "scripts" / "submit_hf_official_schedule_value_job.py"

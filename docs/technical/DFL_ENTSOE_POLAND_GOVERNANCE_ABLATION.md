@@ -63,6 +63,25 @@ publication, FX, licensing, market-rule, and domain-shift evidence is blocked.
 
 ## Materialization
 
+Preferred repo-local wrapper:
+
+```powershell
+.\scripts\run-entsoe-poland-governance-ablation.ps1 -RunSlug week3_dfl_entsoe_poland_feature_ablation_v1
+```
+
+Use dry-run mode before a token-backed run:
+
+```powershell
+.\scripts\run-entsoe-poland-governance-ablation.ps1 -DryRun
+```
+
+The wrapper records an `entsoe-poland-governance-run-receipt.json`, runs the
+Dagster materialization, copies the materialized ablation frame from Dagster
+storage, and exports the local evidence packet with
+[materialize_market_coupling_ablation_packet.py](../../scripts/materialize_market_coupling_ablation_packet.py).
+
+Manual equivalent:
+
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select forecast_afe_feature_catalog_frame,market_coupling_temporal_availability_frame,entsoe_neighbor_market_query_spec_frame,entsoe_neighbor_market_feature_candidate_frame,entsoe_poland_feature_governance_frame,entsoe_neighbor_market_aligned_feature_panel_frame,official_forecast_exogenous_governance_frame,official_forecast_exogenous_feature_route_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,dfl_market_coupling_v2_plus_ablation_frame -c configs/real_data_dfl_entsoe_poland_feature_ablation_week3.yaml
 ```

@@ -212,6 +212,7 @@ Latest full verification: `151 passed`.
 - Market-coupling exogenous feature interface: `docs/technical/MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md`
 - DFL market-coupling ablation v1: `docs/technical/DFL_MARKET_COUPLING_ABLATION_V1.md`
 - ENTSO-E Poland governance ablation: `docs/technical/DFL_ENTSOE_POLAND_GOVERNANCE_ABLATION.md`
+- ENTSO-E Poland governance runner: `scripts/run-entsoe-poland-governance-ablation.ps1`
 - UA backfill coverage recovery: `docs/technical/DFL_DATA_RECOVERY_ROADMAP.md`
 - Resumable official forecast and exogenous-governance PRD: `docs/technical/PRD_OFFICIAL_FORECAST_RESUME_AND_EXOGENOUS_GOVERNANCE.md`
 - Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
@@ -258,6 +259,7 @@ Latest read-model smoke:
 - `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are adapter/readiness assets. They must not be cited as SOTA results until they materialize forecast rows and pass the rolling-origin LP/oracle benchmark.
 - `market_coupling_temporal_availability_frame` blocks ENTSO-E, PriceFM, OPSD, Ember, Nord Pool, and THieF rows from training until licensing, timezone, currency, market-rule, temporal-availability, and domain-shift mapping pass.
 - `entsoe_poland_feature_governance_frame` is the first concrete Poland readiness lane. It can approve only a point-in-time `entsoe_pl_day_ahead_price_uah_mwh` feature after source-backed sample, publication-time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule, and domain-shift gates pass.
+- `scripts/run-entsoe-poland-governance-ablation.ps1` is the repeatable runner for that lane; start with `-DryRun`, then run it after `ENTSOE_TOKEN` and the governance config are ready.
 - `official_forecast_exogenous_feature_route_frame` is the only route through which external market-coupling columns can enter official global-panel NBEATSx/TFT training; currently all external features are blocked, so the 365-anchor Offline Strategy Promotion result remains Ukrainian OREE/Open-Meteo evidence.
 - The latest Poland-specific packet is `data/research_runs/week3_dfl_entsoe_poland_feature_ablation_v1/`: it is `blocked_by_governance`, approved no feature columns, trained no market-coupled B variant, and kept `market_execution_enabled=false`.
 - `attempt_manifest.json` is the canonical local manifest for long official evidence attempts; it records the fixed generated timestamp, batch plan, resume rule, exact asset selections, and Offline Strategy Promotion claim boundary.

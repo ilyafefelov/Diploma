@@ -194,3 +194,13 @@ Therefore the next external-feature action is operational governance, not model
 selection: provide a local ENTSO-E token, fetch a source-backed Poland sample,
 attach publication-time evidence, attach prior-known EUR/UAH FX, and resolve
 licensing/market-rule/domain-shift checks before rerunning the ablation.
+
+For future reruns, use the repo-local wrapper instead of manual log/copy steps:
+
+```powershell
+.\scripts\run-entsoe-poland-governance-ablation.ps1 -DryRun
+.\scripts\run-entsoe-poland-governance-ablation.ps1 -RunSlug week3_dfl_entsoe_poland_feature_ablation_v1
+```
+
+The wrapper writes a receipt, runs the exact asset selection, copies the
+materialized ablation frame from Dagster storage, and exports the packet.
