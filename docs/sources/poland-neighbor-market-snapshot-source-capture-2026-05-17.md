@@ -82,6 +82,13 @@ licensing, timezone/DST, market-rule, and domain-shift checks are also required
 before any official global-panel training route can set
 `approved_for_official_training=true`.
 
+The local evidence packet for this closure is exported by
+`scripts/materialize_entsoe_poland_governance_closure_packet.py` under
+`data/research_runs/week3_entsoe_poland_governance_closure/`. It includes the
+source snapshot rows, hourly feature rows, governance closure row, and the same
+claim boundary: `market_execution_enabled=false`, no live execution, no
+dashboard/API default switch, and no EU training rows.
+
 ## Governance Interpretation
 
 The implementation must not scrape protected ENTSO-E pages to bypass tokens.

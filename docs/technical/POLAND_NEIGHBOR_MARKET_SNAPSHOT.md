@@ -218,6 +218,28 @@ The 2026-05-17 governance-closure materialization produced:
   `licensing`, `market_rule_mapping`, `domain_shift`,
   `temporal_availability`.
 
+Export the closure evidence packet from the materialized local Dagster storage:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_entsoe_poland_governance_closure_packet.py `
+  --snapshot-frame-pickle .tmp_dagster_home_entsoe_poland_governance_closure\storage\poland_neighbor_market_snapshot_bronze `
+  --hourly-feature-frame-pickle .tmp_dagster_home_entsoe_poland_governance_closure\storage\poland_neighbor_market_hourly_feature_frame `
+  --governance-closure-frame-pickle .tmp_dagster_home_entsoe_poland_governance_closure\storage\entsoe_poland_governance_closure_frame `
+  --run-slug week3_entsoe_poland_governance_closure `
+  --dagster-run-id 7fb842f0-1aa2-4f5c-afd4-48d055e9bda0
+```
+
+The exporter writes:
+
+- `entsoe_poland_governance_closure_summary.json`;
+- `entsoe_poland_governance_closure_summary.md`;
+- `poland_neighbor_market_snapshot_rows.csv`;
+- `poland_neighbor_market_hourly_feature_rows.csv`;
+- `entsoe_poland_governance_closure_rows.csv`.
+
+The packet is exportable when all source/hourly/closure evidence checks pass. A
+blocked governance row is valid evidence; a failed evidence check is not.
+
 ## Next Step
 
 If a real Poland CSV export is available, materialize this route with its

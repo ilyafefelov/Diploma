@@ -262,3 +262,17 @@ passed with `approved_for_official_training=false`,
 - `market_rule_mapping`;
 - `domain_shift`;
 - `temporal_availability`.
+
+The closure packet is exported with:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_entsoe_poland_governance_closure_packet.py `
+  --snapshot-frame-pickle .tmp_dagster_home_entsoe_poland_governance_closure\storage\poland_neighbor_market_snapshot_bronze `
+  --hourly-feature-frame-pickle .tmp_dagster_home_entsoe_poland_governance_closure\storage\poland_neighbor_market_hourly_feature_frame `
+  --governance-closure-frame-pickle .tmp_dagster_home_entsoe_poland_governance_closure\storage\entsoe_poland_governance_closure_frame `
+  --run-slug week3_entsoe_poland_governance_closure `
+  --dagster-run-id 7fb842f0-1aa2-4f5c-afd4-48d055e9bda0
+```
+
+Local packet:
+`data/research_runs/week3_entsoe_poland_governance_closure/`.

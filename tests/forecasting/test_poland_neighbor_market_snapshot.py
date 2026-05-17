@@ -28,7 +28,9 @@ from smart_arbitrage.forecasting.poland_neighbor_snapshot import (
     validate_poland_neighbor_market_snapshot_evidence,
 )
 from smart_arbitrage.forecasting.poland_neighbor_snapshot_export import (
+    build_entsoe_poland_governance_closure_packet,
     build_poland_neighbor_market_snapshot_packet,
+    write_entsoe_poland_governance_closure_packet,
     write_poland_neighbor_market_snapshot_packet,
 )
 
@@ -256,6 +258,83 @@ def test_entsoe_poland_governance_closure_approves_fully_point_in_time_fixture(
     outcome = validate_entsoe_poland_governance_closure_evidence(closure)
     assert outcome.passed is True
     assert outcome.metadata["approved_feature_count"] == 1
+
+
+def test_entsoe_poland_governance_closure_packet_exports_blocked_evidence(
+    tmp_path: Path,
+) -> None:
+    snapshot = _snapshot_frame(tmp_path).with_columns(
+        pl.lit("2026-05-02T18:55:16.465000+00:00").alias(
+            "source_publication_timestamp_utc"
+        ),
+        pl.lit("requires_entsoe_terms_mapping").alias("source_license_status"),
+    )
+    hourly = build_poland_neighbor_market_hourly_feature_frame(snapshot)
+    closure = build_entsoe_poland_governance_closure_frame(
+        hourly,
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+    )
+
+    packet = build_entsoe_poland_governance_closure_packet(
+        snapshot_frame=snapshot,
+        hourly_feature_frame=hourly,
+        governance_closure_frame=closure,
+        dagster_run_id="test-run-id",
+        materialization_command="dagster asset materialize ...",
+    )
+
+    assert packet["packet_kind"] == "entsoe_poland_governance_closure"
+    assert packet["snapshot_summary"]["source_backed_rows"] == 2
+    assert packet["hourly_feature_summary"]["source_backed_hour_count"] == 2
+    assert packet["governance_summary"]["approved_feature_count"] == 0
+    assert packet["governance_summary"]["training_allowed_rows"] == 0
+    assert packet["governance_summary"]["blockers"] == [
+        "publication_time",
+        "timezone_dst_mapping",
+        "prior_eur_uah_fx",
+        "licensing",
+        "market_rule_mapping",
+        "domain_shift",
+        "temporal_availability",
+    ]
+    assert packet["claim_boundary"]["market_execution_enabled"] is False
+
+    export_dir = write_entsoe_poland_governance_closure_packet(
+        output_root=tmp_path,
+        run_slug="governance-closure",
+        snapshot_frame=snapshot,
+        hourly_feature_frame=hourly,
+        governance_closure_frame=closure,
+        dagster_run_id="test-run-id",
+        materialization_command="dagster asset materialize ...",
+    )
+
+    assert (export_dir / "entsoe_poland_governance_closure_summary.json").exists()
+    assert (export_dir / "entsoe_poland_governance_closure_summary.md").exists()
+    assert (export_dir / "poland_neighbor_market_snapshot_rows.csv").exists()
+    assert (export_dir / "poland_neighbor_market_hourly_feature_rows.csv").exists()
+    assert (export_dir / "entsoe_poland_governance_closure_rows.csv").exists()
+
+
+def test_entsoe_poland_governance_closure_packet_refuses_failed_evidence(
+    tmp_path: Path,
+) -> None:
+    snapshot = _snapshot_frame(tmp_path)
+    hourly = build_poland_neighbor_market_hourly_feature_frame(snapshot)
+    closure = build_entsoe_poland_governance_closure_frame(hourly).with_columns(
+        pl.lit(True).alias("market_execution_enabled")
+    )
+
+    try:
+        build_entsoe_poland_governance_closure_packet(
+            snapshot_frame=snapshot,
+            hourly_feature_frame=hourly,
+            governance_closure_frame=closure,
+        )
+    except ValueError as exc:
+        assert "governance closure evidence check failed" in str(exc)
+    else:
+        raise AssertionError("failed governance closure evidence should block export")
 
 
 def test_poland_snapshot_missing_required_columns_fails(tmp_path: Path) -> None:

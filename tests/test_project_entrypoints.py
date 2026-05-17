@@ -209,6 +209,20 @@ def test_poland_neighbor_market_snapshot_packet_cli_exists() -> None:
     assert "write_poland_neighbor_market_snapshot_packet" in export_script
 
 
+def test_entsoe_poland_governance_closure_packet_cli_exists() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_entsoe_poland_governance_closure_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--snapshot-frame-pickle" in export_script
+    assert "--hourly-feature-frame-pickle" in export_script
+    assert "--governance-closure-frame-pickle" in export_script
+    assert "--dagster-run-id" in export_script
+    assert "--materialization-command" in export_script
+    assert "build_entsoe_poland_governance_closure_packet" in export_script
+    assert "write_entsoe_poland_governance_closure_packet" in export_script
+
+
 def test_entsoe_file_library_energy_prices_fetch_cli_is_secret_safe() -> None:
     fetch_script = (
         PROJECT_ROOT / "scripts" / "fetch_entsoe_file_library_energy_prices.py"
