@@ -53,6 +53,7 @@ Official V2+-teacher additive assets:
 - `dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame`;
 - `dfl_official_global_panel_v2_plus_offline_dt_candidate_frame`;
 - `dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame`.
+- `dfl_official_v2_plus_bridge_failure_audit_frame`.
 
 Inputs:
 
@@ -62,11 +63,15 @@ Inputs:
 Asset check:
 
 - `dfl_official_global_panel_v2_plus_dfl_dt_bridge_evidence`.
+- `dfl_official_v2_plus_bridge_failure_audit_evidence`.
 
 The official path uses the same role schema, but the source models are
 `nbeatsx_official_global_panel_v1` and
 `nbeatsx_official_global_panel_horizon_calibrated_v1`. Teacher labels are
 selected only from train/prior anchors. Final-holdout rows are scoring-only.
+The failure audit is analysis-only: it reads the official bridge benchmark,
+compares challenger selections against V2+ selections, and labels why residual
+DFL/offline DT lost. It is not training input.
 
 ## Gate
 
@@ -133,6 +138,25 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -c configs/real_data_dfl_official_v2_plus_dfl_dt_bridge_week3.yaml
 ```
 
+Official negative-evidence export:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_v2_plus_dfl_dt_bridge_packet.py `
+  --bridge-frame-pickle .tmp_runtime\official_v2_plus_bridge\frame.pkl `
+  --run-slug week3_dfl_official_v2_plus_dfl_dt_bridge_negative_evidence `
+  --dagster-run-id 53efba76-38cb-4624-9cd8-e15fb8c1c7a9 `
+  --asset-check-status passed
+```
+
+Official bridge failure audit:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_official_v2_plus_bridge_failure_audit_frame `
+  -c configs/real_data_dfl_official_v2_plus_dfl_dt_bridge_week3.yaml
+```
+
 Useful focused tests:
 
 ```powershell
@@ -163,6 +187,25 @@ gate still blocked headline replacement:
 The official bridge result confirms the same conclusion at the stronger
 comparator level: the tiny residual DFL / offline DT candidate is not yet a
 better controller than V2+. V2+ remains the thesis headline.
+
+The failure audit was materialized in Dagster run
+`5ccff4bd-4628-4595-bb82-f91cb9194180`; the check passed. It produced 720
+analysis rows and the local ignored packet
+`data/research_runs/week3_dfl_official_v2_plus_dfl_dt_bridge_negative_evidence/`
+now includes audit CSV/JSON/Markdown artifacts. The failure-mode distribution is:
+
+| Failure mode | Rows | Share | Mean delta vs V2+, UAH | Interpretation |
+| --- | ---: | ---: | ---: | --- |
+| `candidate_family_collapse` | 351 | 48.75% | 249.58 | Residual/DT/fallback repeatedly selected the same `strict_raw_blend_v2` family instead of learning when V2+ uses a different schedule family. |
+| `dt_imitation_weaker_than_v2_selector` | 142 | 19.72% | 518.69 | Behavior cloning imitates high-value trajectories but remains much weaker than V2+ selection. |
+| `weak_trajectory_objective` | 135 | 18.75% | -30.25 | Some challenger rows are locally competitive, but the objective is not robust enough to become a headline replacement. |
+| `bad_teacher_target` | 92 | 12.78% | 123.24 | Some anchors show that blindly teaching from V2+ is wrong because strict is already stronger or near-oracle. |
+
+The immediate modeling implication is that the next DFL attempt should not be a
+larger tiny DT over the same trajectory contract. It should optimize schedule
+value ordering and non-degrading fallback behavior directly. The redesign plan
+is tracked in
+[DFL_OBJECTIVE_REDESIGN_PLAN.md](DFL_OBJECTIVE_REDESIGN_PLAN.md).
 
 ## Boundary
 

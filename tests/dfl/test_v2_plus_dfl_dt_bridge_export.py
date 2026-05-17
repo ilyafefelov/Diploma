@@ -9,6 +9,10 @@ from smart_arbitrage.dfl.v2_plus_dfl_dt_bridge_export import (
     build_dfl_v2_plus_dfl_dt_bridge_packet,
     write_dfl_v2_plus_dfl_dt_bridge_packet,
 )
+from smart_arbitrage.dfl.official_v2_plus_dfl_dt_bridge import (
+    DFL_OFFICIAL_GLOBAL_PANEL_V2_PLUS_DFL_DT_BRIDGE_CLAIM_SCOPE,
+    DFL_OFFICIAL_GLOBAL_PANEL_V2_PLUS_DFL_DT_BRIDGE_STRICT_LP_STRATEGY_KIND,
+)
 
 TENANTS: tuple[str, ...] = (
     "client_001_kyiv_mall",
@@ -60,6 +64,46 @@ def test_bridge_packet_exports_negative_evidence_when_gate_blocks(tmp_path) -> N
     assert "market_execution_enabled=false" in markdown
 
 
+def test_official_bridge_packet_exports_negative_evidence_with_official_scope(
+    tmp_path,
+) -> None:
+    frame = _bridge_frame(
+        strict_regret=310.0,
+        v2_plus_regret=180.0,
+        residual_regret=330.0,
+        offline_dt_regret=340.0,
+        behavior_cloning_regret=500.0,
+        fallback_regret=330.0,
+        strategy_kind=DFL_OFFICIAL_GLOBAL_PANEL_V2_PLUS_DFL_DT_BRIDGE_STRICT_LP_STRATEGY_KIND,
+        claim_scope=DFL_OFFICIAL_GLOBAL_PANEL_V2_PLUS_DFL_DT_BRIDGE_CLAIM_SCOPE,
+        source_models=(
+            "nbeatsx_official_global_panel_v1",
+            "nbeatsx_official_global_panel_horizon_calibrated_v1",
+        ),
+    )
+
+    packet = build_dfl_v2_plus_dfl_dt_bridge_packet(
+        run_slug="official-bridge-negative",
+        strict_frame=frame,
+        dagster_run_id="53efba76-38cb-4624-9cd8-e15fb8c1c7a9",
+        asset_check_status="passed",
+    )
+    export_dir = write_dfl_v2_plus_dfl_dt_bridge_packet(
+        packet,
+        output_root=tmp_path,
+        strict_frame=frame,
+    )
+
+    assert packet["bridge_scope"] == "official_global_panel_v2_plus_teacher"
+    assert packet["negative_evidence"] is True
+    assert packet["claim_boundary"]["market_execution_enabled"] is False
+    markdown = (export_dir / "dfl_v2_plus_dfl_dt_bridge_summary.md").read_text(
+        encoding="utf-8"
+    )
+    assert "official global-panel V2+-teacher residual DFL / offline DT did not beat V2+" in markdown
+    assert "53efba76-38cb-4624-9cd8-e15fb8c1c7a9" in markdown
+
+
 def test_bridge_packet_refuses_structurally_invalid_evidence() -> None:
     frame = _bridge_frame(
         strict_regret=310.0,
@@ -109,6 +153,9 @@ def _bridge_frame(
     offline_dt_regret: float,
     behavior_cloning_regret: float,
     fallback_regret: float,
+    strategy_kind: str = "dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark",
+    claim_scope: str = "dfl_v2_plus_dfl_dt_bridge_not_full_dfl",
+    source_models: tuple[str, ...] = SOURCE_MODELS,
 ) -> pl.DataFrame:
     role_regrets = {
         "strict_reference": strict_regret,
@@ -119,7 +166,7 @@ def _bridge_frame(
         "residual_dt_fallback_reference": fallback_regret,
     }
     rows: list[dict[str, object]] = []
-    for source_model_name in SOURCE_MODELS:
+    for source_model_name in source_models:
         for tenant_id in TENANTS:
             for anchor_index in range(18):
                 anchor = FIRST_ANCHOR + timedelta(days=anchor_index)
@@ -130,7 +177,7 @@ def _bridge_frame(
                             "tenant_id": tenant_id,
                             "source_model_name": source_model_name,
                             "forecast_model_name": role,
-                            "strategy_kind": "dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark",
+                            "strategy_kind": strategy_kind,
                             "market_venue": "DAM",
                             "anchor_timestamp": anchor,
                             "generated_at": GENERATED_AT,
@@ -152,7 +199,7 @@ def _bridge_frame(
                             "safety_violation_count": 0,
                             "selection_role": role,
                             "selected_strategy_source": role,
-                            "claim_scope": "dfl_v2_plus_dfl_dt_bridge_not_full_dfl",
+                            "claim_scope": claim_scope,
                             "not_full_dfl": True,
                             "not_market_execution": True,
                             "evaluation_payload": {

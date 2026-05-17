@@ -149,6 +149,10 @@ from smart_arbitrage.dfl.official_v2_plus_dfl_dt_bridge import (
     build_dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame as build_official_v2_plus_residual_schedule_value_model_frame,
     build_dfl_official_global_panel_v2_plus_trajectory_dataset_frame as build_official_v2_plus_trajectory_dataset_frame,
 )
+from smart_arbitrage.dfl.official_v2_plus_bridge_failure_audit import (
+    DFL_OFFICIAL_V2_PLUS_BRIDGE_FAILURE_AUDIT_CLAIM_SCOPE,
+    build_dfl_official_v2_plus_bridge_failure_audit_frame,
+)
 from smart_arbitrage.dfl.trajectory_dataset import (
     build_dfl_real_data_trajectory_dataset_frame,
 )
@@ -3339,6 +3343,53 @@ def dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame(
         medallion="gold",
         domain="dfl_research",
         elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_v2_plus_bridge_failure_audit_frame(
+    context,
+    dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Explain why official V2+-teacher residual/DT challengers lose to V2+."""
+
+    audit_frame = build_dfl_official_v2_plus_bridge_failure_audit_frame(
+        dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "tenant_count": audit_frame.select("tenant_id").n_unique()
+            if audit_frame.height
+            else 0,
+            "source_model_count": audit_frame.select("source_model_name").n_unique()
+            if audit_frame.height
+            else 0,
+            "failure_modes": sorted(
+                str(mode)
+                for mode in audit_frame["analysis_only_failure_mode"].unique().to_list()
+            )
+            if audit_frame.height
+            else [],
+            "scope": DFL_OFFICIAL_V2_PLUS_BRIDGE_FAILURE_AUDIT_CLAIM_SCOPE,
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
         ml_stage="evaluation",
         evidence_scope="not_market_execution",
         backend="official_global_panel_nbeatsx",
@@ -6378,6 +6429,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame,
     dfl_official_global_panel_v2_plus_offline_dt_candidate_frame,
     dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame,
+    dfl_official_v2_plus_bridge_failure_audit_frame,
     dfl_market_coupling_v2_plus_ablation_frame,
     dfl_official_global_panel_schedule_value_production_gate_frame,
     dfl_production_promotion_gate_frame,

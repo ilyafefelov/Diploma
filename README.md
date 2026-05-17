@@ -203,6 +203,8 @@ Latest full verification: `151 passed`.
 - DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
 - DFL schedule/value learner v3 experiment: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V3.md`
 - DFL schedule/value learner V2+ evidence freeze and robustness gate: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md`
+- V2+-anchored DFL/DT bridge negative evidence: `docs/technical/DFL_V2_PLUS_DFL_DT_BRIDGE.md`
+- DFL objective redesign plan: `docs/technical/DFL_OBJECTIVE_REDESIGN_PLAN.md`
 - DFL schedule/value Offline Strategy Promotion gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Offline Strategy Promotion language contract: `docs/technical/OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`

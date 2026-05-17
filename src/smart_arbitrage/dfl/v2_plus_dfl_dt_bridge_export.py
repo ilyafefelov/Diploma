@@ -45,8 +45,10 @@ def build_dfl_v2_plus_dfl_dt_bridge_packet(
             f"{evidence.description}"
         )
     gate = evaluate_dfl_v2_plus_dfl_dt_bridge_gate(strict_frame)
+    bridge_scope = _bridge_scope(strict_frame)
     return {
         "run_slug": run_slug,
+        "bridge_scope": bridge_scope,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "dagster_run_id": dagster_run_id,
         "materialization_command": materialization_command,
@@ -138,10 +140,12 @@ def _bridge_markdown(packet: dict[str, Any]) -> str:
         if packet["negative_evidence"]
         else "Offline Strategy Challenger Result"
     )
+    negative_sentence = _negative_evidence_sentence(str(packet.get("bridge_scope", "")))
     lines = [
         "# DFL V2+ Residual/DT Bridge Evidence Packet",
         "",
         f"Run slug: `{packet['run_slug']}`",
+        f"Bridge scope: `{packet.get('bridge_scope')}`",
         f"Dagster run: `{packet.get('dagster_run_id')}`",
         f"Asset check status: `{packet.get('asset_check_status')}`",
         "",
@@ -158,7 +162,7 @@ def _bridge_markdown(packet: dict[str, Any]) -> str:
         f"- Gate decision: `{gate['decision']}`",
         f"- Gate passed: `{gate['passed']}`",
         f"- Gate description: {gate['description']}",
-        "- compact residual DFL / offline DT did not beat V2+."
+        f"- {negative_sentence}"
         if packet["negative_evidence"]
         else "- A residual/DT challenger beat V2+ under the strict gate.",
         f"- Market execution enabled: `{metrics['market_execution_enabled']}`",
@@ -200,6 +204,26 @@ def _bridge_markdown(packet: dict[str, Any]) -> str:
         ]
     )
     return "\n".join(lines)
+
+
+def _bridge_scope(strict_frame: pl.DataFrame) -> str:
+    if "strategy_kind" not in strict_frame.columns or strict_frame.height == 0:
+        return "unknown_v2_plus_bridge"
+    strategy_kinds = {
+        str(strategy_kind)
+        for strategy_kind in strict_frame["strategy_kind"].unique().to_list()
+    }
+    if "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark" in strategy_kinds:
+        return "official_global_panel_v2_plus_teacher"
+    return "compact_v2_plus_bridge"
+
+
+def _negative_evidence_sentence(bridge_scope: str) -> str:
+    if bridge_scope == "official_global_panel_v2_plus_teacher":
+        return (
+            "official global-panel V2+-teacher residual DFL / offline DT did not beat V2+."
+        )
+    return "compact residual DFL / offline DT did not beat V2+."
 
 
 def _write_rows_csv(path: Path, rows: list[dict[str, Any]]) -> None:

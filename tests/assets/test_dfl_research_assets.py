@@ -260,6 +260,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame",
         "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame",
         "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame",
+        "dfl_official_v2_plus_bridge_failure_audit_frame",
         "dfl_market_coupling_v2_plus_ablation_frame",
         "dfl_official_global_panel_schedule_value_production_gate_frame",
         "dfl_production_promotion_gate_frame",
@@ -353,6 +354,7 @@ def test_dfl_research_assets_are_registered() -> None:
         groups_by_key["dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
     )
+    assert groups_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_source_specific_research_challenger_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_schedule_value_learner_v2_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"] == "gold_dfl_training"
@@ -452,6 +454,7 @@ def test_dfl_research_assets_are_registered() -> None:
         ]
         == "evaluation"
     )
+    assert tags_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"]["ml_stage"] == "diagnostics"
     assert tags_by_key["dfl_source_specific_research_challenger_frame"]["ml_stage"] == "evaluation"
     assert tags_by_key["dfl_schedule_value_learner_v2_frame"]["ml_stage"] == "selection"
     assert tags_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
@@ -573,6 +576,10 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["afl_forecast_error_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
@@ -643,6 +650,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame",
         "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"] == {
+        "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
     }
     assert deps_by_key["dfl_source_specific_research_challenger_frame"] == {
         "dfl_residual_dt_fallback_strict_lp_benchmark_frame",

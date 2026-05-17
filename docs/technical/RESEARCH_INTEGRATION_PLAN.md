@@ -2467,6 +2467,8 @@ Materialized official result:
 - Dagster run id: `53efba76-38cb-4624-9cd8-e15fb8c1c7a9`;
 - evidence check:
   `dfl_official_global_panel_v2_plus_dfl_dt_bridge_evidence` passed;
+- local negative-evidence packet:
+  `data/research_runs/week3_dfl_official_v2_plus_dfl_dt_bridge_negative_evidence/`;
 - calibrated official V2+ mean regret: 174.77 UAH;
 - calibrated residual/DT mean regret: 367.70 UAH;
 - raw official V2+ mean regret: 193.36 UAH;
@@ -2474,6 +2476,16 @@ Materialized official result:
 - outcome: blocked versus V2+ for both official source models;
 - claim boundary: `market_execution_enabled=false`, no Poland/ENTSO-E training,
   no dashboard/API switch.
+
+Failure audit closure:
+
+- audit asset: `dfl_official_v2_plus_bridge_failure_audit_frame`;
+- audit check: `dfl_official_v2_plus_bridge_failure_audit_evidence` passed;
+- Dagster run id: `5ccff4bd-4628-4595-bb82-f91cb9194180`;
+- audit rows: 720 analysis-only challenger rows;
+- dominant blocker: `candidate_family_collapse`, 351 rows or 48.75%;
+- interpretation: residual/DT mostly collapses to the same schedule family and
+  fails to learn the full schedule-value ordering that V2+ selected offline.
 
 Operational note: the official trajectory frame is large. On local Docker
 Desktop, materialize the residual model, offline DT candidate, and final bridge
@@ -2483,3 +2495,4 @@ can load the trajectory frame at the same time and destabilize the Docker API.
 Tracked docs:
 
 - [DFL_V2_PLUS_DFL_DT_BRIDGE.md](DFL_V2_PLUS_DFL_DT_BRIDGE.md).
+- [DFL_OBJECTIVE_REDESIGN_PLAN.md](DFL_OBJECTIVE_REDESIGN_PLAN.md).

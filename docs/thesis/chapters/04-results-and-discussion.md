@@ -250,6 +250,17 @@ headline, а наступний DFL/DT крок потребує кращої tr
 багатшого teacher/candidate design, а не простого tiny DT поверх наявних
 траєкторій.
 
+Додатковий failure audit для official bridge сформував 720 analysis-only rows.
+Найбільший клас помилок - `candidate_family_collapse`: 351 rows, або 48.75%.
+Це означає, що residual DFL / offline DT / fallback часто вибирали одну й ту
+саму schedule-family, переважно `strict_raw_blend_v2`, замість того щоб
+навчитися, коли V2+ змінює family/profile. Інші класи: behavior cloning
+слабший за V2+ selector (142 rows), weak trajectory objective (135 rows) і
+bad teacher target (92 rows), де strict already near-oracle або сильніший за
+V2+. Тому наступний академічно чистий DFL v2 напрям - pairwise schedule-value
+ranking або return-conditioned schedule-family selector, а не більший DT з тим
+самим action-imitation objective.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

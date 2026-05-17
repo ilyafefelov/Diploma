@@ -46,6 +46,9 @@ from smart_arbitrage.dfl.v2_plus_dfl_dt_bridge import (
 from smart_arbitrage.dfl.official_v2_plus_dfl_dt_bridge import (
     OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
 )
+from smart_arbitrage.dfl.official_v2_plus_bridge_failure_audit import (
+    validate_dfl_official_v2_plus_bridge_failure_audit_evidence,
+)
 from smart_arbitrage.dfl.source_specific_challenger import (
     validate_dfl_source_specific_research_challenger_evidence,
 )
@@ -329,6 +332,25 @@ def dfl_official_global_panel_v2_plus_dfl_dt_bridge_evidence(
             dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame,
             source_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
             min_validation_tenant_anchor_count=90,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_official_v2_plus_bridge_failure_audit_frame",
+    name="dfl_official_v2_plus_bridge_failure_audit_evidence",
+    description=(
+        "Checks official V2+-teacher bridge failure audit remains "
+        "analysis-only evidence."
+    ),
+)
+def dfl_official_v2_plus_bridge_failure_audit_evidence(
+    dfl_official_v2_plus_bridge_failure_audit_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_official_v2_plus_bridge_failure_audit_evidence(
+            dfl_official_v2_plus_bridge_failure_audit_frame
         ),
         failed_severity=dg.AssetCheckSeverity.WARN,
     )
@@ -778,6 +800,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_residual_dt_fallback_evidence,
     dfl_v2_plus_dfl_dt_bridge_evidence,
     dfl_official_global_panel_v2_plus_dfl_dt_bridge_evidence,
+    dfl_official_v2_plus_bridge_failure_audit_evidence,
     dfl_source_specific_research_challenger_evidence,
     dfl_production_promotion_gate_evidence,
     dfl_schedule_value_learner_v2_evidence,
