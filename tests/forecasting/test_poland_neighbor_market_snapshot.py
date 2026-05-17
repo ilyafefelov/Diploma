@@ -19,8 +19,12 @@ from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     validate_entsoe_poland_feature_governance_evidence,
 )
 from smart_arbitrage.forecasting.poland_neighbor_snapshot import (
+    build_entsoe_poland_governance_closure_frame,
+    build_poland_neighbor_market_hourly_feature_frame,
     build_poland_neighbor_market_snapshot_bronze_frame,
     build_poland_neighbor_market_snapshot_feature_candidate_frame,
+    validate_entsoe_poland_governance_closure_evidence,
+    validate_poland_neighbor_market_hourly_feature_evidence,
     validate_poland_neighbor_market_snapshot_evidence,
 )
 from smart_arbitrage.forecasting.poland_neighbor_snapshot_export import (
@@ -138,6 +142,120 @@ def test_poland_snapshot_candidate_feeds_existing_governance_without_token(
     governance_outcome = validate_entsoe_poland_feature_governance_evidence(governance)
     assert governance_outcome.passed is True
     assert governance_outcome.metadata["approved_feature_count"] == 1
+
+
+def test_poland_snapshot_hourly_feature_aggregates_source_rows(
+    tmp_path: Path,
+) -> None:
+    snapshot_path = tmp_path / "poland-quarter-hour-export.csv"
+    snapshot_path.write_text(
+        "\n".join(
+            [
+                "delivery_timestamp_utc,price_eur_mwh",
+                "2026-01-01T00:00:00+00:00,100.00",
+                "2026-01-01T00:15:00+00:00,110.00",
+                "2026-01-01T00:30:00+00:00,120.00",
+                "2026-01-01T00:45:00+00:00,130.00",
+                "2026-01-01T01:00:00+00:00,150.00",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    snapshot = build_poland_neighbor_market_snapshot_bronze_frame(
+        snapshot_csv_path=snapshot_path,
+        source_url=ENTSOE_PHYSICAL_FLOWS_PAGE,
+        source_access_method="entsoe_fms_file_library",
+        source_retrieved_at_utc="2026-05-17T10:00:00+00:00",
+        source_publication_timestamp_utc="2026-05-02T18:55:16.465+00:00",
+        source_license_status="requires_entsoe_terms_mapping",
+    )
+
+    hourly = build_poland_neighbor_market_hourly_feature_frame(snapshot)
+
+    assert hourly.height == 2
+    assert hourly["feature_column"].unique().to_list() == [
+        "entsoe_pl_day_ahead_price_eur_mwh_hourly"
+    ]
+    assert hourly["delivery_hour_utc"].to_list() == [
+        "2026-01-01T00:00:00+00:00",
+        "2026-01-01T01:00:00+00:00",
+    ]
+    assert hourly["hourly_neighbor_market_price_eur_mwh"].to_list() == [115.0, 150.0]
+    assert hourly["source_interval_count"].to_list() == [4, 1]
+    assert hourly["training_use_allowed"].unique().to_list() == [False]
+    assert hourly["feature_use_allowed"].unique().to_list() == [False]
+    assert hourly["market_execution_enabled"].unique().to_list() == [False]
+
+    outcome = validate_poland_neighbor_market_hourly_feature_evidence(hourly)
+    assert outcome.passed is True
+    assert outcome.metadata["source_backed_hour_count"] == 2
+
+
+def test_entsoe_poland_governance_closure_blocks_late_publication_and_missing_fx(
+    tmp_path: Path,
+) -> None:
+    snapshot = _snapshot_frame(tmp_path)
+    snapshot = snapshot.with_columns(
+        pl.lit("2026-05-02T18:55:16.465000+00:00").alias(
+            "source_publication_timestamp_utc"
+        ),
+        pl.lit("requires_entsoe_terms_mapping").alias("source_license_status"),
+    )
+    hourly = build_poland_neighbor_market_hourly_feature_frame(snapshot)
+
+    closure = build_entsoe_poland_governance_closure_frame(
+        hourly,
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+        prior_eur_uah_fx_rate=0.0,
+        prior_eur_uah_fx_timestamp_utc="",
+        fx_rate_source="",
+        timezone_dst_mapping_ready=False,
+        licensing_approved=False,
+        market_rules_mapped=False,
+        domain_shift_validated=False,
+    )
+    row = closure.row(0, named=True)
+
+    assert row["approved_for_official_training"] is False
+    assert row["training_use_allowed"] is False
+    assert row["publication_time_status"] == "blocked_publication_not_prior_to_anchor"
+    assert row["currency_status"] == "blocked_missing_prior_eur_uah_fx_rate"
+    assert "publication_time" in row["training_blockers_csv"]
+    assert "prior_eur_uah_fx" in row["training_blockers_csv"]
+    assert "licensing" in row["training_blockers_csv"]
+
+    outcome = validate_entsoe_poland_governance_closure_evidence(closure)
+    assert outcome.passed is True
+    assert outcome.metadata["approved_feature_count"] == 0
+
+
+def test_entsoe_poland_governance_closure_approves_fully_point_in_time_fixture(
+    tmp_path: Path,
+) -> None:
+    hourly = build_poland_neighbor_market_hourly_feature_frame(_snapshot_frame(tmp_path))
+
+    closure = build_entsoe_poland_governance_closure_frame(
+        hourly,
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2025-12-31T11:30:00+00:00",
+        fx_rate_source="fixture_prior_fx",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=True,
+    )
+    row = closure.row(0, named=True)
+
+    assert row["approved_for_official_training"] is True
+    assert row["training_use_allowed"] is True
+    assert row["approved_feature_column"] == "entsoe_pl_day_ahead_price_eur_mwh_hourly"
+    assert row["training_blockers_csv"] == ""
+    assert row["source_backed_hour_count"] == 2
+
+    outcome = validate_entsoe_poland_governance_closure_evidence(closure)
+    assert outcome.passed is True
+    assert outcome.metadata["approved_feature_count"] == 1
 
 
 def test_poland_snapshot_missing_required_columns_fails(tmp_path: Path) -> None:

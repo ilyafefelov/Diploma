@@ -264,6 +264,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "entsoe_neighbor_market_sample_audit_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
         "poland_neighbor_market_snapshot_feature_candidate_frame",
+        "poland_neighbor_market_hourly_feature_frame",
+        "entsoe_poland_governance_closure_frame",
         "entsoe_poland_feature_governance_frame",
         "entsoe_neighbor_market_aligned_feature_panel_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
@@ -358,6 +360,8 @@ def test_dfl_research_assets_are_registered() -> None:
         groups_by_key["poland_neighbor_market_snapshot_feature_candidate_frame"]
         == "gold_dfl_training"
     )
+    assert groups_by_key["poland_neighbor_market_hourly_feature_frame"] == "gold_dfl_training"
+    assert groups_by_key["entsoe_poland_governance_closure_frame"] == "gold_dfl_training"
     assert (
         groups_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]
         == "gold_dfl_training"
@@ -447,6 +451,12 @@ def test_dfl_research_assets_are_registered() -> None:
         == "feature_engineering"
     )
     assert tags_by_key["entsoe_poland_feature_governance_frame"]["ml_stage"] == (
+        "feature_engineering"
+    )
+    assert tags_by_key["poland_neighbor_market_hourly_feature_frame"]["ml_stage"] == (
+        "feature_engineering"
+    )
+    assert tags_by_key["entsoe_poland_governance_closure_frame"]["ml_stage"] == (
         "feature_engineering"
     )
     assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
@@ -549,6 +559,12 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["entsoe_poland_feature_governance_frame"] == {
         "entsoe_neighbor_market_feature_candidate_frame",
         "poland_neighbor_market_snapshot_feature_candidate_frame",
+    }
+    assert deps_by_key["poland_neighbor_market_hourly_feature_frame"] == {
+        "poland_neighbor_market_snapshot_bronze"
+    }
+    assert deps_by_key["entsoe_poland_governance_closure_frame"] == {
+        "poland_neighbor_market_hourly_feature_frame"
     }
     assert deps_by_key["dfl_real_data_trajectory_dataset_frame"] == {
         "dfl_schedule_candidate_library_v2_frame",

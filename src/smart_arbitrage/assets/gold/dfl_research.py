@@ -204,6 +204,8 @@ from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     build_entsoe_poland_feature_governance_frame,
 )
 from smart_arbitrage.forecasting.poland_neighbor_snapshot import (
+    build_entsoe_poland_governance_closure_frame,
+    build_poland_neighbor_market_hourly_feature_frame,
     build_poland_neighbor_market_snapshot_feature_candidate_frame,
 )
 from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
@@ -276,6 +278,19 @@ class PolandNeighborMarketSnapshotFeatureCandidateAssetConfig(dg.Config):
     prior_eur_uah_fx_rate: float = 0.0
     prior_eur_uah_fx_timestamp_utc: str = ""
     fx_rate_source: str = ""
+
+
+class EntsoePolandGovernanceClosureAssetConfig(dg.Config):
+    """Source-backed Poland hourly feature governance closure controls."""
+
+    ua_decision_anchor_timestamp_utc: str = "2025-12-31T12:00:00+00:00"
+    prior_eur_uah_fx_rate: float = 0.0
+    prior_eur_uah_fx_timestamp_utc: str = ""
+    fx_rate_source: str = ""
+    timezone_dst_mapping_ready: bool = False
+    licensing_approved: bool = False
+    market_rules_mapped: bool = False
+    domain_shift_validated: bool = False
 
 
 class DflActionLabelPanelAssetConfig(dg.Config):
@@ -1274,6 +1289,106 @@ def poland_neighbor_market_snapshot_feature_candidate_frame(
         },
     )
     return candidate_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def poland_neighbor_market_hourly_feature_frame(
+    context,
+    poland_neighbor_market_snapshot_bronze: pl.DataFrame,
+) -> pl.DataFrame:
+    """Aggregate source-backed Poland snapshots to hourly exogenous evidence."""
+
+    hourly_frame = build_poland_neighbor_market_hourly_feature_frame(
+        poland_neighbor_market_snapshot_bronze
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": hourly_frame.height,
+            "source_backed_hour_count": hourly_frame.filter(pl.col("source_backed")).height
+            if hourly_frame.height
+            else 0,
+            "training_allowed_rows": hourly_frame.filter(
+                pl.col("training_use_allowed")
+            ).height
+            if hourly_frame.height
+            else 0,
+            "feature_allowed_rows": hourly_frame.filter(pl.col("feature_use_allowed")).height
+            if hourly_frame.height
+            else 0,
+            "feature_columns": hourly_frame["feature_column"].unique().to_list()
+            if hourly_frame.height
+            else [],
+            "scope": "poland_neighbor_market_hourly_feature_research_gate",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return hourly_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def entsoe_poland_governance_closure_frame(
+    context,
+    config: EntsoePolandGovernanceClosureAssetConfig,
+    poland_neighbor_market_hourly_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Close the source-backed Poland feature lane with explicit governance blockers."""
+
+    closure_frame = build_entsoe_poland_governance_closure_frame(
+        poland_neighbor_market_hourly_feature_frame,
+        ua_decision_anchor_timestamp_utc=config.ua_decision_anchor_timestamp_utc,
+        prior_eur_uah_fx_rate=config.prior_eur_uah_fx_rate,
+        prior_eur_uah_fx_timestamp_utc=config.prior_eur_uah_fx_timestamp_utc,
+        fx_rate_source=config.fx_rate_source,
+        timezone_dst_mapping_ready=config.timezone_dst_mapping_ready,
+        licensing_approved=config.licensing_approved,
+        market_rules_mapped=config.market_rules_mapped,
+        domain_shift_validated=config.domain_shift_validated,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": closure_frame.height,
+            "approved_feature_count": closure_frame.filter(
+                pl.col("approved_for_official_training")
+            ).height
+            if closure_frame.height
+            else 0,
+            "training_allowed_rows": closure_frame.filter(
+                pl.col("training_use_allowed")
+            ).height
+            if closure_frame.height
+            else 0,
+            "training_blockers": closure_frame["training_blockers_csv"].to_list()
+            if closure_frame.height
+            else [],
+            "scope": "entsoe_poland_governance_closure_research_gate",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return closure_frame
 
 
 @dg.asset(
@@ -5822,6 +5937,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     entsoe_neighbor_market_sample_audit_frame,
     entsoe_neighbor_market_feature_candidate_frame,
     poland_neighbor_market_snapshot_feature_candidate_frame,
+    poland_neighbor_market_hourly_feature_frame,
+    entsoe_poland_governance_closure_frame,
     entsoe_poland_feature_governance_frame,
     entsoe_neighbor_market_aligned_feature_panel_frame,
     dfl_semantic_event_strict_failure_audit_frame,

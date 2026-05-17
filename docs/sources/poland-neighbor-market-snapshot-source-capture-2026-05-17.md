@@ -66,6 +66,22 @@ The live smoke proves source-backed ENTSO-E File Library access is available.
 It does not approve the feature for official training, because licensing,
 prior-known EUR/UAH FX, and broader governance remain separate blockers.
 
+## Hourly Governance Closure
+
+The source-backed File Library rows are 15-minute Poland prices. They can be
+aggregated to the Ukrainian hourly evidence grid as
+`entsoe_pl_day_ahead_price_eur_mwh_hourly`, but this is still source evidence,
+not a training feature.
+
+The selected File Library update timestamp
+(`2026-05-02T18:55:16.465Z`) is later than the current Ukrainian decision-anchor
+boundary (`2025-12-31T12:00:00Z`). Unless a separate publication-time rule or
+export-log record proves the relevant day-ahead value was available before the
+Ukrainian anchor, the route must remain blocked. Prior-known EUR/UAH FX,
+licensing, timezone/DST, market-rule, and domain-shift checks are also required
+before any official global-panel training route can set
+`approved_for_official_training=true`.
+
 ## Governance Interpretation
 
 The implementation must not scrape protected ENTSO-E pages to bypass tokens.

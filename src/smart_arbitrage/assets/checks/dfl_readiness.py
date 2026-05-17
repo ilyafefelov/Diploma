@@ -86,6 +86,8 @@ from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     validate_entsoe_poland_feature_governance_evidence,
 )
 from smart_arbitrage.forecasting.poland_neighbor_snapshot import (
+    validate_entsoe_poland_governance_closure_evidence,
+    validate_poland_neighbor_market_hourly_feature_evidence,
     validate_poland_neighbor_market_snapshot_evidence,
 )
 
@@ -622,6 +624,36 @@ def poland_neighbor_market_snapshot_feature_candidate_evidence(
 
 
 @dg.asset_check(
+    asset="poland_neighbor_market_hourly_feature_frame",
+    name="poland_neighbor_market_hourly_feature_evidence",
+    description="Checks hourly Poland neighbor-market features remain source-only evidence.",
+)
+def poland_neighbor_market_hourly_feature_evidence(
+    poland_neighbor_market_hourly_feature_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_poland_neighbor_market_hourly_feature_evidence(
+            poland_neighbor_market_hourly_feature_frame
+        )
+    )
+
+
+@dg.asset_check(
+    asset="entsoe_poland_governance_closure_frame",
+    name="entsoe_poland_governance_closure_evidence",
+    description="Checks source-backed Poland feature governance closure before training approval.",
+)
+def entsoe_poland_governance_closure_evidence(
+    entsoe_poland_governance_closure_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_entsoe_poland_governance_closure_evidence(
+            entsoe_poland_governance_closure_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="entsoe_poland_feature_governance_frame",
     name="entsoe_poland_feature_governance_evidence",
     description="Checks Poland ENTSO-E feature governance before official training approval.",
@@ -719,6 +751,8 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     entsoe_neighbor_market_feature_candidate_evidence,
     poland_neighbor_market_snapshot_evidence,
     poland_neighbor_market_snapshot_feature_candidate_evidence,
+    poland_neighbor_market_hourly_feature_evidence,
+    entsoe_poland_governance_closure_evidence,
     entsoe_poland_feature_governance_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,

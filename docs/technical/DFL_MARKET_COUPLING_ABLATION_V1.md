@@ -39,6 +39,14 @@ approve training use. The ablation remains blocked until the route also has
 license approval, point-in-time EUR/UAH FX, timezone/DST, market-rule mapping,
 and domain-shift evidence.
 
+The follow-up governance-closure slice hourly-aligns those Poland rows before
+approval. It adds `poland_neighbor_market_hourly_feature_frame` and
+`entsoe_poland_governance_closure_frame`. The expected current result is still
+blocked: the downloaded FMS file update timestamp is later than the Ukrainian
+decision-anchor boundary, and prior-known EUR/UAH FX plus licensing,
+timezone/DST, market-rule, and domain-shift evidence are incomplete. Therefore
+no Ukrainian-plus-Poland B training run is admitted yet.
+
 ## Assets
 
 | Asset | Purpose |
@@ -47,6 +55,8 @@ and domain-shift evidence.
 | `entsoe_poland_feature_governance_frame` | Checks the Poland route for source-backed rows, publication time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule mapping, and domain-shift validation before any official training approval. |
 | `poland_neighbor_market_snapshot_bronze` | Parses a no-token local/public Poland CSV export with source URL, retrieval timestamp, publication timestamp, license status, and checksum. |
 | `poland_neighbor_market_snapshot_feature_candidate_frame` | Converts no-token Poland snapshots into the same feature-candidate contract used by the ENTSO-E route. |
+| `poland_neighbor_market_hourly_feature_frame` | Aggregates source-backed Poland rows to hourly feature evidence without approving training use. |
+| `entsoe_poland_governance_closure_frame` | Records the Poland-specific governance closure result and exact blockers. |
 | `dfl_market_coupling_v2_plus_ablation_frame` | Compares Ukrainian-only V2+ against Ukrainian plus approved neighbor-market features, or emits `ablation_status=blocked_by_governance`. |
 | `dfl_market_coupling_v2_plus_ablation_evidence` | Dagster asset check for thesis-grade claim boundaries, blocked-training behavior, and strict comparison semantics. |
 
@@ -58,6 +68,9 @@ Poland governance-completion config:
 
 No-token Poland snapshot config:
 [real_data_dfl_poland_snapshot_ablation_week3.yaml](../../configs/real_data_dfl_poland_snapshot_ablation_week3.yaml).
+
+Poland hourly governance-closure config:
+[real_data_dfl_entsoe_poland_governance_closure_week3.yaml](../../configs/real_data_dfl_entsoe_poland_governance_closure_week3.yaml).
 
 ## Gate Semantics
 
@@ -231,3 +244,21 @@ manual/public snapshot rows set `security_token_required=false`, but they still
 feed the same `entsoe_poland_feature_governance_frame` and remain blocked until
 publication-time, prior-known EUR/UAH FX, timezone/DST, licensing, market-rule,
 and domain-shift gates pass.
+
+The hourly governance-closure layer is the stricter source-backed audit before
+any ablation rerun. It can close evidence as `blocked_by_governance`, but it
+does not route Poland features into official training unless all point-in-time
+and governance checks pass.
+
+The 2026-05-17 closure materialization produced `744` hourly Poland feature
+rows from `2,976` source-backed 15-minute File Library rows. The closure check
+passed with `approved_for_official_training=false`,
+`market_execution_enabled=false`, and blockers:
+
+- `publication_time`;
+- `timezone_dst_mapping`;
+- `prior_eur_uah_fx`;
+- `licensing`;
+- `market_rule_mapping`;
+- `domain_shift`;
+- `temporal_availability`.

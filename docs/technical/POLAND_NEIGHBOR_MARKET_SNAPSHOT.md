@@ -83,6 +83,27 @@ The snapshot and feature-candidate asset checks passed, but the feature remains
 blocked from training until licensing, publication-time, FX, timezone/DST,
 market-rule, and domain-shift governance is completed.
 
+## Hourly Feature And Governance Closure
+
+The source-backed File Library rows are 15-minute records, while the Ukrainian
+evidence panel and strict LP/oracle gate are hourly. The governance-closure
+slice therefore adds a narrow hourly evidence layer before any training route:
+
+| Asset / check | Purpose |
+|---|---|
+| `poland_neighbor_market_hourly_feature_frame` | Aggregates source-backed Poland price rows to hourly `entsoe_pl_day_ahead_price_eur_mwh_hourly` evidence. |
+| `poland_neighbor_market_hourly_feature_evidence` | Confirms hourly rows are source-backed, research-only, and still have `training_use_allowed=false`. |
+| `entsoe_poland_governance_closure_frame` | Emits one readiness row with publication-time, prior EUR/UAH FX, timezone/DST, licensing, market-rule, and domain-shift blockers. |
+| `entsoe_poland_governance_closure_evidence` | Allows a blocked governance row to pass as evidence, but rejects inconsistent approval flags. |
+
+The 2026-05-17 FMS smoke can be hourly-aligned, but the selected file update
+timestamp (`2026-05-02T18:55:16.465Z`) is later than the current Ukrainian
+decision-anchor boundary (`2025-12-31T12:00:00Z`). Without separate
+publication-rule evidence proving the day-ahead value was available before each
+Ukrainian anchor, the route must stay blocked. Prior-known EUR/UAH FX,
+licensing, timezone/DST, market-rule, and domain-shift evidence are also still
+required.
+
 ## Assets And Checks
 
 | Asset / check | Purpose |
@@ -91,6 +112,8 @@ market-rule, and domain-shift governance is completed.
 | `poland_neighbor_market_snapshot_evidence` | Validates source rows are source-only, no-token, no-training evidence. |
 | `poland_neighbor_market_snapshot_feature_candidate_frame` | Converts snapshot rows into the existing `entsoe_neighbor_day_ahead_price_context` candidate schema. |
 | `poland_neighbor_market_snapshot_feature_candidate_evidence` | Reuses the feature-candidate evidence check to keep rows out of training before governance passes. |
+| `poland_neighbor_market_hourly_feature_frame` | Aggregates source-backed Poland rows to hourly feature evidence for the Ukrainian hourly panel. |
+| `entsoe_poland_governance_closure_frame` | Records the stronger Poland-specific blocker set before the route can be approved. |
 | `entsoe_poland_feature_governance_frame` | Now accepts both token/API candidates and no-token snapshot candidates, then applies the same publication-time, FX, timezone, licensing, market-rule, and domain-shift gates. |
 | `official_forecast_exogenous_feature_route_frame` | Remains the only approved/blocked interface into official global-panel training. |
 
@@ -113,6 +136,9 @@ Both routes converge into the same governance and ablation gate.
 
 Tracked config:
 [real_data_dfl_poland_snapshot_ablation_week3.yaml](../../configs/real_data_dfl_poland_snapshot_ablation_week3.yaml).
+
+Poland hourly governance-closure config:
+[real_data_dfl_entsoe_poland_governance_closure_week3.yaml](../../configs/real_data_dfl_entsoe_poland_governance_closure_week3.yaml).
 
 Example source section:
 
@@ -161,6 +187,36 @@ $env:DAGSTER_HOME = (Resolve-Path .).Path + '\.tmp_dagster_home_entsoe_fms_smoke
 This produced `2,976` source-backed snapshot rows and `2,976` feature-candidate
 rows. Both attached asset checks passed, and `market_execution_enabled=false`
 remained unchanged.
+
+For the hourly governance closure, run:
+
+```powershell
+$env:DAGSTER_HOME = (Resolve-Path .).Path + '\.tmp_dagster_home_entsoe_poland_governance_closure'
+.\.venv\Scripts\dagster.exe asset materialize -m smart_arbitrage.defs `
+  --select poland_neighbor_market_snapshot_bronze,poland_neighbor_market_hourly_feature_frame,entsoe_poland_governance_closure_frame `
+  -c configs\real_data_dfl_entsoe_poland_governance_closure_week3.yaml
+```
+
+The expected current status is a passing evidence check with
+`approved_for_official_training=false` and blockers including publication time,
+prior EUR/UAH FX, licensing, timezone/DST, market-rule mapping, domain shift,
+and temporal availability. That is evidence closure, not feature admission.
+
+The 2026-05-17 governance-closure materialization produced:
+
+- Dagster run id: `7fb842f0-1aa2-4f5c-afd4-48d055e9bda0`;
+- hourly Poland feature rows: `744`;
+- source intervals represented: `2,976`;
+- `approved_for_official_training=false`;
+- `market_execution_enabled=false`;
+- checks passed:
+  `poland_neighbor_market_snapshot_evidence`,
+  `poland_neighbor_market_hourly_feature_evidence`,
+  `entsoe_poland_governance_closure_evidence`;
+- blockers:
+  `publication_time`, `timezone_dst_mapping`, `prior_eur_uah_fx`,
+  `licensing`, `market_rule_mapping`, `domain_shift`,
+  `temporal_availability`.
 
 ## Next Step
 
