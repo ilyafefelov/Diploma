@@ -85,6 +85,9 @@ from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     validate_entsoe_neighbor_market_sample_audit_evidence,
     validate_entsoe_poland_feature_governance_evidence,
 )
+from smart_arbitrage.forecasting.poland_neighbor_snapshot import (
+    validate_poland_neighbor_market_snapshot_evidence,
+)
 
 
 @dg.asset_check(
@@ -589,6 +592,36 @@ def entsoe_neighbor_market_feature_candidate_evidence(
 
 
 @dg.asset_check(
+    asset="poland_neighbor_market_snapshot_bronze",
+    name="poland_neighbor_market_snapshot_evidence",
+    description="Checks no-token Poland neighbor-market snapshots remain source-only evidence.",
+)
+def poland_neighbor_market_snapshot_evidence(
+    poland_neighbor_market_snapshot_bronze: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_poland_neighbor_market_snapshot_evidence(
+            poland_neighbor_market_snapshot_bronze
+        )
+    )
+
+
+@dg.asset_check(
+    asset="poland_neighbor_market_snapshot_feature_candidate_frame",
+    name="poland_neighbor_market_snapshot_feature_candidate_evidence",
+    description="Checks no-token Poland snapshot candidates remain governed before training.",
+)
+def poland_neighbor_market_snapshot_feature_candidate_evidence(
+    poland_neighbor_market_snapshot_feature_candidate_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_entsoe_neighbor_market_feature_candidate_evidence(
+            poland_neighbor_market_snapshot_feature_candidate_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="entsoe_poland_feature_governance_frame",
     name="entsoe_poland_feature_governance_evidence",
     description="Checks Poland ENTSO-E feature governance before official training approval.",
@@ -684,6 +717,8 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     entsoe_neighbor_market_access_evidence,
     entsoe_neighbor_market_sample_audit_evidence,
     entsoe_neighbor_market_feature_candidate_evidence,
+    poland_neighbor_market_snapshot_evidence,
+    poland_neighbor_market_snapshot_feature_candidate_evidence,
     entsoe_poland_feature_governance_evidence,
     horizon_calibration_no_leakage_evidence,
     calibrated_selector_cardinality_evidence,

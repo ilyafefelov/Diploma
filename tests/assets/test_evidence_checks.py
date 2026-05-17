@@ -145,6 +145,14 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "entsoe_neighbor_market_feature_candidate_evidence",
         ),
         (
+            "poland_neighbor_market_snapshot_bronze",
+            "poland_neighbor_market_snapshot_evidence",
+        ),
+        (
+            "poland_neighbor_market_snapshot_feature_candidate_frame",
+            "poland_neighbor_market_snapshot_feature_candidate_evidence",
+        ),
+        (
             "entsoe_poland_feature_governance_frame",
             "entsoe_poland_feature_governance_evidence",
         ),

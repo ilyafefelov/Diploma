@@ -4,6 +4,9 @@ from dagster import Definitions
 
 from smart_arbitrage.assets.bronze.grid_events import GRID_EVENT_BRONZE_ASSETS
 from smart_arbitrage.assets.bronze.market_weather import REAL_DATA_BENCHMARK_BRONZE_ASSETS
+from smart_arbitrage.assets.bronze.poland_neighbor_snapshot import (
+    POLAND_NEIGHBOR_MARKET_SNAPSHOT_BRONZE_ASSETS,
+)
 from smart_arbitrage.assets.bronze.tenant_load import TENANT_LOAD_BRONZE_ASSETS
 from smart_arbitrage.assets.checks import DFL_EVIDENCE_ASSET_CHECKS
 from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
@@ -28,6 +31,7 @@ defs = Definitions(
     assets=[
         *MVP_DEMO_ASSETS,
         *REAL_DATA_BENCHMARK_BRONZE_ASSETS,
+        *POLAND_NEIGHBOR_MARKET_SNAPSHOT_BRONZE_ASSETS,
         *GRID_EVENT_BRONZE_ASSETS,
         *TENANT_LOAD_BRONZE_ASSETS,
         *GRID_EVENT_SILVER_ASSETS,

@@ -169,6 +169,7 @@ def test_global_panel_schedule_value_production_gate_uses_full_promotion_thresho
 def test_dfl_research_assets_are_registered() -> None:
     asset_keys = {asset.key.to_user_string() for asset in DFL_RESEARCH_GOLD_ASSETS}
     registered_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
+    registered_all_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
 
     assert {
         "real_data_value_aware_ensemble_frame",
@@ -262,6 +263,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "entsoe_neighbor_market_query_spec_frame",
         "entsoe_neighbor_market_sample_audit_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
+        "poland_neighbor_market_snapshot_feature_candidate_frame",
         "entsoe_poland_feature_governance_frame",
         "entsoe_neighbor_market_aligned_feature_panel_frame",
         "dfl_semantic_event_strict_failure_audit_frame",
@@ -270,6 +272,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "afl_training_panel_frame",
     }.issubset(asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
+    assert "poland_neighbor_market_snapshot_bronze" in registered_all_asset_keys
     tags_by_key = {
         asset_key.to_user_string(): tags
         for asset in DFL_RESEARCH_GOLD_ASSETS
@@ -351,6 +354,10 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["entsoe_neighbor_market_query_spec_frame"] == "gold_dfl_training"
     assert groups_by_key["entsoe_neighbor_market_sample_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["entsoe_neighbor_market_feature_candidate_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["poland_neighbor_market_snapshot_feature_candidate_frame"]
+        == "gold_dfl_training"
+    )
     assert (
         groups_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]
         == "gold_dfl_training"
@@ -540,7 +547,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "entsoe_neighbor_market_feature_candidate_frame",
     }
     assert deps_by_key["entsoe_poland_feature_governance_frame"] == {
-        "entsoe_neighbor_market_feature_candidate_frame"
+        "entsoe_neighbor_market_feature_candidate_frame",
+        "poland_neighbor_market_snapshot_feature_candidate_frame",
     }
     assert deps_by_key["dfl_real_data_trajectory_dataset_frame"] == {
         "dfl_schedule_candidate_library_v2_frame",

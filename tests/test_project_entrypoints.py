@@ -198,6 +198,17 @@ def test_entsoe_poland_governance_ablation_runner_exports_packet() -> None:
     assert "[switch]$DryRun" in runner_script
 
 
+def test_poland_neighbor_market_snapshot_packet_cli_exists() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_poland_neighbor_market_snapshot_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--snapshot-frame-pickle" in export_script
+    assert "--feature-candidate-frame-pickle" in export_script
+    assert "build_poland_neighbor_market_snapshot_packet" in export_script
+    assert "write_poland_neighbor_market_snapshot_packet" in export_script
+
+
 def test_hf_official_job_submission_cli_is_guarded_by_submit_flag() -> None:
     submit_script = (
         PROJECT_ROOT / "scripts" / "submit_hf_official_schedule_value_job.py"

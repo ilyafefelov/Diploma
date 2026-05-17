@@ -24,6 +24,8 @@ Claim boundary:
 | `market_coupling_temporal_availability_frame` | Converts external bridge rows into source-specific availability/readiness evidence. |
 | `entsoe_neighbor_market_query_spec_frame` | Prepares ENTSO-E day-ahead price query specs for Poland/neighbor candidates while blocking fetch/training without a token. |
 | `entsoe_neighbor_market_feature_candidate_frame` | Converts ENTSO-E sample rows into blocked source-backed feature candidates. |
+| `poland_neighbor_market_snapshot_bronze` | Parses no-token local/public Poland CSV snapshots as source evidence only. |
+| `poland_neighbor_market_snapshot_feature_candidate_frame` | Converts no-token Poland snapshots into the same blocked feature-candidate contract. |
 | `official_forecast_exogenous_feature_route_frame` | Provides the single approved/blocked prior-only external feature route consumed by official global-panel training. |
 
 Asset check:
@@ -36,6 +38,8 @@ Asset check:
 
 The deeper route contract is documented in
 [MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md).
+The no-token Poland snapshot lane is documented in
+[POLAND_NEIGHBOR_MARKET_SNAPSHOT.md](POLAND_NEIGHBOR_MARKET_SNAPSHOT.md).
 
 Latest local validation:
 

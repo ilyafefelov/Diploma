@@ -38,6 +38,8 @@ The current expected state is blocked:
 |---|---|
 | `entsoe_neighbor_market_aligned_feature_panel_frame` | Aligns Poland-first ENTSO-E feature candidates to tenant benchmark timestamps while keeping `training_use_allowed=false`. |
 | `entsoe_poland_feature_governance_frame` | Checks the Poland route for source-backed rows, publication time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule mapping, and domain-shift validation before any official training approval. |
+| `poland_neighbor_market_snapshot_bronze` | Parses a no-token local/public Poland CSV export with source URL, retrieval timestamp, publication timestamp, license status, and checksum. |
+| `poland_neighbor_market_snapshot_feature_candidate_frame` | Converts no-token Poland snapshots into the same feature-candidate contract used by the ENTSO-E route. |
 | `dfl_market_coupling_v2_plus_ablation_frame` | Compares Ukrainian-only V2+ against Ukrainian plus approved neighbor-market features, or emits `ablation_status=blocked_by_governance`. |
 | `dfl_market_coupling_v2_plus_ablation_evidence` | Dagster asset check for thesis-grade claim boundaries, blocked-training behavior, and strict comparison semantics. |
 
@@ -46,6 +48,9 @@ Tracked config:
 
 Poland governance-completion config:
 [real_data_dfl_entsoe_poland_feature_ablation_week3.yaml](../../configs/real_data_dfl_entsoe_poland_feature_ablation_week3.yaml).
+
+No-token Poland snapshot config:
+[real_data_dfl_poland_snapshot_ablation_week3.yaml](../../configs/real_data_dfl_poland_snapshot_ablation_week3.yaml).
 
 ## Gate Semantics
 
@@ -204,3 +209,18 @@ For future reruns, use the repo-local wrapper instead of manual log/copy steps:
 
 The wrapper writes a receipt, runs the exact asset selection, copies the
 materialized ablation frame from Dagster storage, and exports the packet.
+
+## No-Token Poland Snapshot Route
+
+If an ENTSO-E token is unavailable, the project now has a source-neutral local
+snapshot route:
+[POLAND_NEIGHBOR_MARKET_SNAPSHOT.md](POLAND_NEIGHBOR_MARKET_SNAPSHOT.md).
+It supports manual/exported CSV snapshots from ENTSO-E File Library, PSE public
+exports, or Instrat Polish DAM context, provided the source URL, retrieval time,
+publication timestamp, license status, and raw file checksum are recorded.
+
+This route does not scrape protected pages and does not weaken governance:
+manual/public snapshot rows set `security_token_required=false`, but they still
+feed the same `entsoe_poland_feature_governance_frame` and remain blocked until
+publication-time, prior-known EUR/UAH FX, timezone/DST, licensing, market-rule,
+and domain-shift gates pass.

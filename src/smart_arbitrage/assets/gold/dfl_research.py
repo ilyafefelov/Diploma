@@ -203,6 +203,9 @@ from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     build_entsoe_neighbor_market_query_spec_frame,
     build_entsoe_poland_feature_governance_frame,
 )
+from smart_arbitrage.forecasting.poland_neighbor_snapshot import (
+    build_poland_neighbor_market_snapshot_feature_candidate_frame,
+)
 from smart_arbitrage.forecasting.grid_event_signals import build_grid_event_signal_frame
 from smart_arbitrage.dfl.semantic_event_failure_audit import (
     build_dfl_semantic_event_strict_failure_audit_frame,
@@ -264,6 +267,15 @@ class EntsoePolandFeatureGovernanceAssetConfig(dg.Config):
     licensing_approved: bool = False
     market_rules_mapped: bool = False
     domain_shift_validated: bool = False
+
+
+class PolandNeighborMarketSnapshotFeatureCandidateAssetConfig(dg.Config):
+    """No-token Poland snapshot candidate normalization controls."""
+
+    ua_decision_anchor_timestamp_utc: str = "2025-12-31T12:00:00+00:00"
+    prior_eur_uah_fx_rate: float = 0.0
+    prior_eur_uah_fx_timestamp_utc: str = ""
+    fx_rate_source: str = ""
 
 
 class DflActionLabelPanelAssetConfig(dg.Config):
@@ -1226,16 +1238,70 @@ def entsoe_neighbor_market_feature_candidate_frame(
         market_venue="DAM",
     ),
 )
+def poland_neighbor_market_snapshot_feature_candidate_frame(
+    context,
+    config: PolandNeighborMarketSnapshotFeatureCandidateAssetConfig,
+    poland_neighbor_market_snapshot_bronze: pl.DataFrame,
+) -> pl.DataFrame:
+    """Convert no-token Poland snapshots into governed feature candidates."""
+
+    candidate_frame = build_poland_neighbor_market_snapshot_feature_candidate_frame(
+        poland_neighbor_market_snapshot_bronze,
+        ua_decision_anchor_timestamp_utc=config.ua_decision_anchor_timestamp_utc,
+        prior_eur_uah_fx_rate=config.prior_eur_uah_fx_rate,
+        prior_eur_uah_fx_timestamp_utc=config.prior_eur_uah_fx_timestamp_utc,
+        fx_rate_source=config.fx_rate_source,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": candidate_frame.height,
+            "source_backed_rows": candidate_frame.filter(pl.col("source_backed")).height
+            if candidate_frame.height
+            else 0,
+            "training_allowed_rows": candidate_frame.filter(
+                pl.col("training_use_allowed")
+            ).height
+            if candidate_frame.height
+            else 0,
+            "security_token_required_rows": candidate_frame.filter(
+                pl.col("security_token_required")
+            ).height
+            if candidate_frame.height
+            else 0,
+            "scope": "poland_neighbor_market_snapshot_feature_candidate_research_gate",
+            "not_market_execution": True,
+        },
+    )
+    return candidate_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
 def entsoe_poland_feature_governance_frame(
     context,
     config: EntsoePolandFeatureGovernanceAssetConfig,
     entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
+    poland_neighbor_market_snapshot_feature_candidate_frame: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Point-in-time governance gate for one Poland ENTSO-E exogenous feature."""
 
     security_token = _entsoe_security_token()
-    governance_frame = build_entsoe_poland_feature_governance_frame(
+    candidate_frame = _concat_feature_candidate_frames(
         entsoe_neighbor_market_feature_candidate_frame,
+        poland_neighbor_market_snapshot_feature_candidate_frame,
+    )
+    governance_frame = build_entsoe_poland_feature_governance_frame(
+        candidate_frame,
         entsoe_security_token=security_token,
         publication_timestamp_utc=config.publication_timestamp_utc,
         ua_decision_anchor_timestamp_utc=config.ua_decision_anchor_timestamp_utc,
@@ -5755,6 +5821,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     entsoe_neighbor_market_query_spec_frame,
     entsoe_neighbor_market_sample_audit_frame,
     entsoe_neighbor_market_feature_candidate_frame,
+    poland_neighbor_market_snapshot_feature_candidate_frame,
     entsoe_poland_feature_governance_frame,
     entsoe_neighbor_market_aligned_feature_panel_frame,
     dfl_semantic_event_strict_failure_audit_frame,
@@ -5861,6 +5928,29 @@ def _csv_values(raw_value: str, *, field_name: str) -> tuple[str, ...]:
     if not values:
         raise ValueError(f"{field_name} must contain at least one value.")
     return values
+
+
+def _concat_feature_candidate_frames(
+    primary_frame: pl.DataFrame,
+    optional_frame: pl.DataFrame | None,
+) -> pl.DataFrame:
+    if optional_frame is None or optional_frame.is_empty():
+        return primary_frame
+    if primary_frame.is_empty():
+        return optional_frame
+    for column_name in optional_frame.columns:
+        if column_name not in primary_frame.columns:
+            primary_frame = primary_frame.with_columns(pl.lit(None).alias(column_name))
+    for column_name in primary_frame.columns:
+        if column_name not in optional_frame.columns:
+            optional_frame = optional_frame.with_columns(pl.lit(None).alias(column_name))
+    return pl.concat(
+        [
+            primary_frame.select(optional_frame.columns),
+            optional_frame,
+        ],
+        how="vertical",
+    )
 
 
 def _entsoe_security_token() -> str | None:

@@ -78,6 +78,12 @@ REQUIRED_ENTSOE_NEIGHBOR_SAMPLE_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset
         "sample_period_end_utc",
         "fetch_enabled",
         "security_token_available",
+        "security_token_required",
+        "source_access_method",
+        "source_url",
+        "source_retrieved_at_utc",
+        "source_sha256",
+        "source_license_status",
         "fetch_status",
         "request_url_template",
         "source_backed_row_count",
@@ -106,7 +112,13 @@ REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS: Final[frozenset[str]] = froz
         "neighbor_market_price_uah_mwh",
         "source_backed",
         "fetch_enabled",
+        "security_token_required",
         "security_token_available",
+        "source_access_method",
+        "source_url",
+        "source_retrieved_at_utc",
+        "source_sha256",
+        "source_license_status",
         "fetch_status",
         "sample_period_start_utc",
         "sample_period_end_utc",
@@ -490,6 +502,7 @@ def validate_entsoe_neighbor_market_feature_candidate_evidence(
         row
         for row in rows
         if bool(row["source_backed"]) and not bool(row["security_token_available"])
+        and bool(row["security_token_required"])
     ]
     bad_claim_rows = [
         row
@@ -625,7 +638,12 @@ def build_entsoe_poland_feature_governance_frame(
     publication_prior = publication is not None and anchor is not None and publication < anchor
     fx_prior = fx_timestamp is not None and anchor is not None and fx_timestamp < anchor
     token_available = bool(entsoe_security_token and entsoe_security_token.strip())
+    source_backed_rows = [row for row in rows if bool(row["source_backed"])]
+    token_required = any(
+        bool(row.get("security_token_required", True)) for row in source_backed_rows
+    )
     blockers = _entsoe_poland_governance_blockers(
+        token_required=token_required,
         token_available=token_available,
         source_backed_count=source_backed_count,
         publication_prior=publication_prior,
@@ -927,7 +945,13 @@ def _sample_audit_row(
         "sample_period_start_utc": sample_period_start_utc,
         "sample_period_end_utc": sample_period_end_utc,
         "fetch_enabled": fetch_enabled,
+        "security_token_required": True,
         "security_token_available": token_available,
+        "source_access_method": "entsoe_rest_api",
+        "source_url": ENTSOE_API_BASE_URL,
+        "source_retrieved_at_utc": "",
+        "source_sha256": "",
+        "source_license_status": "requires_entsoe_terms_mapping",
         "fetch_status": fetch_status,
         "request_url_template": query_row["request_url_template"],
         "source_backed_row_count": parsed_count,
@@ -1035,7 +1059,13 @@ def _feature_candidate_row(
         "neighbor_market_price_uah_mwh": None,
         "source_backed": source_backed,
         "fetch_enabled": fetch_enabled,
+        "security_token_required": True,
         "security_token_available": token_available,
+        "source_access_method": "entsoe_rest_api",
+        "source_url": ENTSOE_API_BASE_URL,
+        "source_retrieved_at_utc": "",
+        "source_sha256": "",
+        "source_license_status": "requires_entsoe_terms_mapping",
         "fetch_status": fetch_status,
         "sample_period_start_utc": sample_period_start_utc,
         "sample_period_end_utc": sample_period_end_utc,
@@ -1081,6 +1111,13 @@ def _aligned_feature_row(
             "neighbor_market_price_eur_mwh": None,
             "neighbor_market_price_uah_mwh": None,
             "source_backed": False,
+            "security_token_required": True,
+            "security_token_available": False,
+            "source_access_method": "",
+            "source_url": "",
+            "source_retrieved_at_utc": "",
+            "source_sha256": "",
+            "source_license_status": "",
             "fetch_status": "no_source_candidate_for_benchmark_timestamp",
             "publication_time_policy": "must_be_published_before_ua_anchor",
             "publication_timestamp_utc": "",
@@ -1110,6 +1147,13 @@ def _aligned_feature_row(
         "neighbor_market_price_eur_mwh": candidate["neighbor_market_price_eur_mwh"],
         "neighbor_market_price_uah_mwh": candidate["neighbor_market_price_uah_mwh"],
         "source_backed": bool(candidate["source_backed"]),
+        "security_token_required": bool(candidate.get("security_token_required", True)),
+        "security_token_available": bool(candidate["security_token_available"]),
+        "source_access_method": str(candidate.get("source_access_method", "")),
+        "source_url": str(candidate.get("source_url", "")),
+        "source_retrieved_at_utc": str(candidate.get("source_retrieved_at_utc", "")),
+        "source_sha256": str(candidate.get("source_sha256", "")),
+        "source_license_status": str(candidate.get("source_license_status", "")),
         "fetch_status": str(candidate["fetch_status"]),
         "publication_time_policy": str(candidate["publication_time_policy"]),
         "publication_timestamp_utc": str(candidate["publication_timestamp_utc"]),
@@ -1131,6 +1175,7 @@ def _aligned_feature_row(
 
 def _entsoe_poland_governance_blockers(
     *,
+    token_required: bool,
     token_available: bool,
     source_backed_count: int,
     publication_prior: bool,
@@ -1143,7 +1188,7 @@ def _entsoe_poland_governance_blockers(
     domain_shift_validated: bool,
 ) -> list[str]:
     blockers: list[str] = []
-    if not token_available:
+    if token_required and not token_available:
         blockers.append("entsoe_token")
     if source_backed_count <= 0:
         blockers.append("source_backed_sample")
