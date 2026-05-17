@@ -209,6 +209,22 @@ def test_poland_neighbor_market_snapshot_packet_cli_exists() -> None:
     assert "write_poland_neighbor_market_snapshot_packet" in export_script
 
 
+def test_entsoe_file_library_energy_prices_fetch_cli_is_secret_safe() -> None:
+    fetch_script = (
+        PROJECT_ROOT / "scripts" / "fetch_entsoe_file_library_energy_prices.py"
+    ).read_text(encoding="utf-8")
+
+    assert "load_entsoe_file_library_credentials" in fetch_script
+    assert "request_entsoe_fms_token" in fetch_script
+    assert "--env-file" in fetch_script
+    assert "--token-only" in fetch_script
+    assert "--list-only" in fetch_script
+    assert "--config-output" in fetch_script
+    assert "safe_entsoe_fms_smoke_receipt" in fetch_script
+    assert "access_token" not in fetch_script
+    assert "entsoe_password" not in fetch_script
+
+
 def test_hf_official_job_submission_cli_is_guarded_by_submit_flag() -> None:
     submit_script = (
         PROJECT_ROOT / "scripts" / "submit_hf_official_schedule_value_job.py"

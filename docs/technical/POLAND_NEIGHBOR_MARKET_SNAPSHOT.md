@@ -2,10 +2,11 @@
 
 Date: 2026-05-17
 
-This slice adds a no-token route for Poland neighbor-market evidence without
-weakening the market-coupling governance gate. It is not a scraper that bypasses
-ENTSO-E access. It accepts local/source-backed CSV snapshots, parses them into
-the existing Poland feature-candidate contract, and then lets the existing
+This slice adds a no-token/manual route and a credentialed ENTSO-E File Library
+smoke route for Poland neighbor-market evidence without weakening the
+market-coupling governance gate. It is not a scraper that bypasses ENTSO-E
+access. It accepts local/source-backed CSV snapshots, parses them into the
+existing Poland feature-candidate contract, and then lets the existing
 `entsoe_poland_feature_governance_frame` decide whether the feature can be
 routed into official global-panel training.
 
@@ -44,6 +45,44 @@ Practical source candidates:
 | PSE public report/export pages | Public Polish system/market context snapshot if the needed series is exportable. | Still requires source terms, timestamp, and unit mapping. |
 | Instrat Polish DAM page | Research/non-commercial Polish DAM context snapshot if the license boundary is acceptable. | Still blocked unless license, publication-time, FX, and market-rule checks pass. |
 
+## Credentialed ENTSO-E FMS Smoke
+
+The repository includes a secret-safe helper for source-backed File Library
+smoke tests:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\fetch_entsoe_file_library_energy_prices.py `
+  --env-file .env `
+  --month 2026-01 `
+  --output-dir data\external_sources\poland\entsoe_fms `
+  --config-output .tmp_runtime\poland_snapshot_entsoe_fms_smoke.yaml
+```
+
+The helper reads `entsoe_email` / `entsoe_password` from `.env`, requests the
+ENTSO-E Keycloak bearer token in memory, lists files through FMS
+`listFileMetadata`, downloads one `EnergyPrices_12.1.D_r3` monthly file, and
+normalizes Poland rows to:
+
+- `delivery_timestamp_utc`;
+- `price_eur_mwh`.
+
+The token and password are never written to receipts, configs, logs, or evidence
+packets. The generated CSV and receipt live under ignored local evidence paths.
+
+The 2026-05-17 smoke fetched:
+
+- file: `2026_01_EnergyPrices_12.1.D_r3.csv`;
+- normalized Poland rows: `2,976`;
+- selected file update timestamp: `2026-05-02T18:55:16.465Z`;
+- local receipt:
+  `data/external_sources/poland/entsoe_fms/entsoe-fms-smoke-receipt.json`;
+- local evidence packet:
+  `data/research_runs/week3_poland_neighbor_market_snapshot_entsoe_fms_smoke/`.
+
+The snapshot and feature-candidate asset checks passed, but the feature remains
+blocked from training until licensing, publication-time, FX, timezone/DST,
+market-rule, and domain-shift governance is completed.
+
 ## Assets And Checks
 
 | Asset / check | Purpose |
@@ -64,8 +103,8 @@ not train until governance passes.
 
 This means there are two valid source-backed routes:
 
-1. ENTSO-E API/File Library route with credentials handled through environment
-   variables and no token written to evidence artifacts.
+1. ENTSO-E API/File Library route with credentials handled through `.env` or
+   environment variables and no token written to evidence artifacts.
 2. Manual/public snapshot route with raw local file checksum and source metadata.
 
 Both routes converge into the same governance and ablation gate.
@@ -109,6 +148,19 @@ Artifacts:
 
 The packet is allowed only when both evidence checks pass. A blocked governance
 state is valid; a failed evidence check is not.
+
+For the 2026-05-17 credentialed FMS smoke, the host materialization command was:
+
+```powershell
+$env:DAGSTER_HOME = (Resolve-Path .).Path + '\.tmp_dagster_home_entsoe_fms_smoke'
+.\.venv\Scripts\dagster.exe asset materialize -m smart_arbitrage.defs `
+  --select poland_neighbor_market_snapshot_bronze,poland_neighbor_market_snapshot_feature_candidate_frame `
+  -c .tmp_runtime\poland_snapshot_entsoe_fms_smoke.yaml
+```
+
+This produced `2,976` source-backed snapshot rows and `2,976` feature-candidate
+rows. Both attached asset checks passed, and `market_execution_enabled=false`
+remained unchanged.
 
 ## Next Step
 

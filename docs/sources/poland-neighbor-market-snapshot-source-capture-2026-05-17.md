@@ -15,23 +15,56 @@ governed exogenous feature evidence for future Ukrainian V2+ ablations.
    use bearer authorization; download limits are documented; files are
    tab-delimited UTF-8 CSV; the export log records recent creation/update times.
 
-2. ENTSO-E Transparency Platform
+2. ENTSO-E File Library Python download example
+   URL: <https://transparencyplatform.zendesk.com/hc/en-us/articles/36523801579025-How-to-download-file-from-FMS-via-Python>
+   Captured facts: the official example uses `client_id=tp-fms-public`,
+   `grant_type=password`, Keycloak bearer-token authentication, and FMS
+   `downloadFileContent`.
+
+3. ENTSO-E File Library Python list example
+   URL: <https://transparencyplatform.zendesk.com/hc/en-us/articles/38943763721105-How-to-list-folder-content-from-FMS-via-Python>
+   Captured facts: the official example uses FMS `listFolder`; in live smoke,
+   `listFileMetadata` returned the monthly `EnergyPrices_12.1.D_r3` items needed
+   for source-backed exports.
+
+4. ENTSO-E Transparency Platform
    URL: <https://www.entsoe.eu/data/transparency-platform/>
    Captured role: official transparency-platform entrypoint and source registry
    for future token/API or manual export evidence.
 
-3. PSE public report/export page
+5. PSE public report/export page
    URL: <https://www.pse.pl/web/pse-eng/data/polish-power-system-operation/day-ahead-basic-data>
    Captured role: possible public Polish source snapshot lane. Before training
    use, a concrete exported series still needs license, timestamp, unit, and
    market-rule mapping.
 
-4. Instrat Polish DAM price page
+6. Instrat Polish DAM price page
    URL: <https://energy.instrat.pl/en/prices/electricity-dam/>
    Captured role: possible research/non-commercial Polish DAM context snapshot.
    Before training use, the route must preserve license status, publication
    timestamp, EUR/UAH prior-known FX, timezone/DST mapping, and domain-shift
    evidence.
+
+## 2026-05-17 Live Smoke Result
+
+The credentialed File Library smoke succeeded without writing secrets to disk:
+
+- token-only smoke: passed with redacted metadata;
+- metadata listing: `139` `EnergyPrices_12.1.D_r3` monthly files found;
+- selected file: `2026_01_EnergyPrices_12.1.D_r3.csv`;
+- selected file update timestamp: `2026-05-02T18:55:16.465Z`;
+- normalized Poland rows: `2,976`;
+- local receipt:
+  `data/external_sources/poland/entsoe_fms/entsoe-fms-smoke-receipt.json`;
+- local evidence packet:
+  `data/research_runs/week3_poland_neighbor_market_snapshot_entsoe_fms_smoke/`;
+- `training_use_allowed=false`;
+- `feature_use_allowed=false`;
+- `market_execution_enabled=false`.
+
+The live smoke proves source-backed ENTSO-E File Library access is available.
+It does not approve the feature for official training, because licensing,
+prior-known EUR/UAH FX, and broader governance remain separate blockers.
 
 ## Governance Interpretation
 

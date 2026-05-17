@@ -332,7 +332,7 @@ def _snapshot_row(
 
 def _source_name(source_url: str) -> str:
     lowered = source_url.lower()
-    if "entsoe" in lowered:
+    if "entsoe" in lowered or "transparencyplatform.zendesk.com" in lowered:
         return "ENTSO_E_MANUAL_EXPORT"
     if "pse.pl" in lowered or "raporty.pse" in lowered:
         return "PSE_PUBLIC_EXPORT"

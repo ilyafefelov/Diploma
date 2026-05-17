@@ -32,6 +32,13 @@ The current expected state is blocked:
   all pass before `approved_for_official_training=true`;
 - no dashboard/API default switch is made.
 
+As of 2026-05-17, the ENTSO-E File Library credentialed smoke is source-backed:
+`2026_01_EnergyPrices_12.1.D_r3.csv` was downloaded and normalized to `2,976`
+Poland price rows. This improves source evidence, but it does not by itself
+approve training use. The ablation remains blocked until the route also has
+license approval, point-in-time EUR/UAH FX, timezone/DST, market-rule mapping,
+and domain-shift evidence.
+
 ## Assets
 
 | Asset | Purpose |
