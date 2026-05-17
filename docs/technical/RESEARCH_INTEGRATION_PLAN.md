@@ -2532,3 +2532,34 @@ Materialized result:
 - calibrated DFL v2 matched V2+ at `174.77` UAH mean regret, so improvement
   versus V2+ was `0.00%`;
 - V2+ remains the thesis headline Offline Strategy Promotion evidence.
+
+## Candidate-Value DFL v3
+
+Candidate-Value DFL v3 is the follow-up to the negative DFL v2 result. It does
+not run another tiny Decision Transformer. Instead, it expands the official
+global-panel candidate library around audited failure modes and trains/selects
+a prior-only schedule-level value scorer.
+
+New assets:
+
+- `dfl_official_global_panel_schedule_candidate_library_v3_frame`;
+- `dfl_official_global_panel_candidate_value_dfl_v3_frame`;
+- `dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame`;
+- asset check `dfl_official_global_panel_candidate_value_dfl_v3_evidence`.
+
+Gate: V3 must beat frozen V2+ mean regret, avoid median degradation, still beat
+`strict_similar_day`, and keep `market_execution_enabled=false`. Otherwise V2+
+remains the thesis headline.
+
+Materialized result:
+
+- Dagster run `0263a956-12e0-4b93-86b8-b10d2194317b`;
+- evidence check passed;
+- gate decision: `diagnostic_pass_replacement_blocked`;
+- calibrated V3 matched V2+ at `174.77` UAH mean regret;
+- raw V3 matched V2+ at `193.36` UAH mean regret;
+- improvement versus V2+ was `0.00%`, so V2+ remains the thesis headline.
+
+Runbook:
+
+- [DFL_CANDIDATE_VALUE_DFL_V3.md](DFL_CANDIDATE_VALUE_DFL_V3.md).

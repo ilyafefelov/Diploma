@@ -280,6 +280,28 @@ NBEATSx DFL v2 повторив V2+ mean regret 174.77 UAH і median regret 67.3
 так само повторив V2+ mean regret 193.36 UAH. Отже, поточний DFL v2 objective
 є валідним diagnostic evidence, але не замінює V2+ як thesis headline.
 
+Наступний експеримент визначено як Candidate-Value DFL v3. На відміну від DFL
+v2, він не вибирає одну family для всіх final anchors. Він розширює candidate
+library навколо реальних failure modes - strict-neighborhood, SOC terminal
+target, peak/trough timing, uncertainty/risk, degradation-price sweeps, а також
+train-only oracle-neighborhood diagnostics - і тренує prior-only value scorer
+для кожного candidate schedule. Перший materialization config зберігає повний
+final holdout, але генерує додаткові V3 schedule variants лише для останніх
+10 train anchors на tenant/source, тоді як повна V2+ library залишається
+fallback/history. Promotion rule лишається незмінним: V3 має
+перевершити V2+ за mean regret, не погіршити median regret і пройти strict
+LP/oracle scoring без market-execution claim.
+
+Матеріалізований результат Candidate-Value DFL v3 також не замінив V2+. У
+Dagster run `0263a956-12e0-4b93-86b8-b10d2194317b` evidence check пройшов, але
+gate залишився `diagnostic_pass_replacement_blocked`: для calibrated official
+global-panel NBEATSx V3 повторив V2+ mean regret `174.77` UAH і median regret
+`67.30` UAH; для raw official global-panel NBEATSx V3 повторив V2+ mean regret
+`193.36` UAH і median regret `68.89` UAH. Отже, кандидатний value scorer
+підтвердив силу V2+ fallback, але не знайшов schedule, який покращує V2+ на
+final holdout. V2+ залишається thesis headline Offline Strategy Promotion
+evidence.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

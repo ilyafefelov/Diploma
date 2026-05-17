@@ -149,3 +149,42 @@ The result is useful negative evidence. The redesigned pairwise objective did
 not beat frozen V2+, so the final thesis headline stays with V2+ while the next
 DFL branch should focus on richer candidate values/families rather than another
 small DT over the same trajectory objective.
+
+## Candidate-Value DFL v3 Slice
+
+The next branch is implemented as Candidate-Value DFL v3:
+
+1. Expand the official global-panel V2+ library with failure-mode schedule
+   families: strict-neighborhood, SOC terminal-target, peak/trough timing,
+   uncertainty/risk, degradation-price sweeps, and train-only
+   oracle-neighborhood diagnostics.
+2. Train/select a candidate-level value scorer on train/prior anchors using a
+   regret-weighted pairwise/listwise ranking objective.
+3. Fall back to frozen V2+ unless prior evidence predicts a non-degrading
+   improvement.
+4. Strict-score against V2+, raw official NBEATSx, and `strict_similar_day`.
+
+Tracked config:
+
+- `configs/real_data_dfl_candidate_value_dfl_v3_week3.yaml`.
+
+Materialized result:
+
+- Dagster run `0263a956-12e0-4b93-86b8-b10d2194317b`;
+- evidence check passed;
+- gate decision: `diagnostic_pass_replacement_blocked`;
+- calibrated Candidate-Value DFL v3 mean regret: `174.77` UAH;
+- calibrated V2+ mean regret: `174.77` UAH;
+- raw Candidate-Value DFL v3 mean regret: `193.36` UAH;
+- raw V2+ mean regret: `193.36` UAH;
+- improvement versus V2+: `0.00%`.
+
+Interpretation: candidate-level scoring did not find a schedule/value
+improvement beyond V2+. The next redesign should either broaden the
+candidate-library search space in a targeted way or introduce a truly learned
+value model with stronger point-in-time features; another tiny DT over the same
+objective remains deprioritized.
+
+Technical runbook:
+
+- [DFL_CANDIDATE_VALUE_DFL_V3.md](DFL_CANDIDATE_VALUE_DFL_V3.md).

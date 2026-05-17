@@ -85,6 +85,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_official_global_panel_schedule_value_dfl_v2_evidence",
         ),
         (
+            "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame",
+            "dfl_official_global_panel_candidate_value_dfl_v3_evidence",
+        ),
+        (
             "dfl_official_v2_plus_bridge_failure_audit_frame",
             "dfl_official_v2_plus_bridge_failure_audit_evidence",
         ),

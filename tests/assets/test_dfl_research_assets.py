@@ -360,6 +360,12 @@ def test_dfl_research_assets_are_registered() -> None:
         groups_by_key["dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
     )
+    assert groups_by_key["dfl_official_global_panel_schedule_candidate_library_v3_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_source_specific_research_challenger_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_schedule_value_learner_v2_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"] == "gold_dfl_training"
@@ -571,6 +577,12 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["dfl_market_coupling_v2_plus_ablation_frame"]["evidence_scope"]
         == "not_market_execution"
     )
@@ -664,6 +676,18 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_dfl_v2_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_official_global_panel_schedule_candidate_library_v3_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"
+    }
+    assert deps_by_key["dfl_official_global_panel_candidate_value_dfl_v3_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v3_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
+    }
+    assert deps_by_key["dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v3_frame",
+        "dfl_official_global_panel_candidate_value_dfl_v3_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
     assert deps_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"] == {
