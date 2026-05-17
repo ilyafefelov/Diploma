@@ -2299,6 +2299,19 @@ features can enter only through the approved prior-only route, or a true
 decision-aligned DFL/DT bridge that must beat V2+ and behavior-cloning/selector
 baselines under the unchanged strict LP/oracle gate.
 
+The Solver-Free-DFL research direction is now scoped as a schedule-neighbor
+surrogate spike, not an immediate dependency or controller rewrite. It can become
+implementation work only if it improves V2+ under the same strict LP/oracle gate
+or explains remaining V2+ regret well enough to justify a concrete candidate
+library change. Otherwise it remains future work. See
+[DFL_SOLVER_FREE_SURROGATE_SPIKE.md](DFL_SOLVER_FREE_SURROGATE_SPIKE.md).
+
+What not to do next: do not spend another slice on solver-free prior-only
+selector variants over the same V2+ candidate library. The archived 2026-05-17
+proof and scratch sweeps did not beat V2+ under the unchanged strict LP/oracle
+gate, so the next useful work must change candidate-family design or add
+governed prior features before revisiting this direction.
+
 ## Governed Market-Coupling Ablation V1
 
 The next branch after freezing V2+ is now implemented as a governance-first
@@ -2411,3 +2424,62 @@ for the next attempt. It records a receipt, runs the exact asset selection,
 copies the Dagster-stored ablation frame, and exports the local packet. This
 keeps the next token-backed source sample auditable without manual Docker copy
 or free-form log inspection.
+
+## V2+-Anchored DFL/DT Bridge Evidence
+
+The compact residual DFL / offline DT bridge is now treated as negative evidence
+against the current thesis baseline rather than as a failed thesis direction.
+The bridge compares residual DFL, tiny offline DT, behavior cloning, fallback,
+`strict_similar_day`, and V2+ under the same strict LP/oracle evaluator.
+
+Current compact-path result:
+
+- asset: `dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame`;
+- check: `dfl_v2_plus_dfl_dt_bridge_evidence`;
+- source rows: compact `nbeatsx_silver_v0` and `tft_silver_v0`;
+- outcome: no residual/DT challenger beats V2+ mean regret without median
+  degradation while preserving the strict-control gate;
+- claim boundary: valid negative Offline Strategy Promotion evidence only,
+  `market_execution_enabled=false`.
+
+This result does not invalidate Decision Transformers as a research direction.
+It shows that the older compact candidate path is weaker than the official
+global-panel V2+ schedule/value learner. The next meaningful DFL/DT experiment
+therefore uses official V2+ and oracle-style schedules as teacher trajectories,
+not compact model schedules.
+
+Official bridge path:
+
+- `dfl_official_global_panel_v2_plus_trajectory_dataset_frame` builds a
+  real-data trajectory panel from
+  `dfl_official_global_panel_schedule_candidate_library_v2_plus_frame`;
+- teacher labels are built only from train/prior anchors;
+- final-holdout rows are scoring-only;
+- `dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame`
+  compares official V2+, residual/value learner, offline DT, behavior cloning,
+  fallback, and `strict_similar_day`;
+- a challenger can replace V2+ as headline evidence only if it beats V2+ mean
+  regret, avoids median degradation, preserves rolling robustness, and keeps
+  zero safety violations.
+
+Materialized official result:
+
+- Dagster run id: `53efba76-38cb-4624-9cd8-e15fb8c1c7a9`;
+- evidence check:
+  `dfl_official_global_panel_v2_plus_dfl_dt_bridge_evidence` passed;
+- calibrated official V2+ mean regret: 174.77 UAH;
+- calibrated residual/DT mean regret: 367.70 UAH;
+- raw official V2+ mean regret: 193.36 UAH;
+- raw residual/DT mean regret: 328.51 UAH;
+- outcome: blocked versus V2+ for both official source models;
+- claim boundary: `market_execution_enabled=false`, no Poland/ENTSO-E training,
+  no dashboard/API switch.
+
+Operational note: the official trajectory frame is large. On local Docker
+Desktop, materialize the residual model, offline DT candidate, and final bridge
+asset serially after the trajectory asset exists, otherwise two parallel workers
+can load the trajectory frame at the same time and destabilize the Docker API.
+
+Tracked docs:
+
+- [DFL_V2_PLUS_DFL_DT_BRIDGE.md](DFL_V2_PLUS_DFL_DT_BRIDGE.md).

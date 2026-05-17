@@ -180,6 +180,20 @@ def test_market_coupling_ablation_export_cli_requires_evidence_input() -> None:
     assert "write_dfl_market_coupling_v2_plus_ablation_packet" in export_script
 
 
+def test_v2_plus_dfl_dt_bridge_packet_cli_exports_negative_evidence() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_v2_plus_dfl_dt_bridge_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--bridge-frame-pickle" in export_script
+    assert "--run-slug" in export_script
+    assert "--dagster-run-id" in export_script
+    assert "--asset-check-status" in export_script
+    assert "build_dfl_v2_plus_dfl_dt_bridge_packet" in export_script
+    assert "write_dfl_v2_plus_dfl_dt_bridge_packet" in export_script
+    assert "negative_evidence" in export_script
+
+
 def test_entsoe_poland_governance_ablation_runner_exports_packet() -> None:
     runner_script = (
         PROJECT_ROOT / "scripts" / "run-entsoe-poland-governance-ablation.ps1"

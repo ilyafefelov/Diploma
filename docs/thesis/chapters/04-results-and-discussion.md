@@ -227,6 +227,29 @@ market-rule mapping, domain-shift validation і temporal availability. Це
 означає, що наступна робота над market coupling є governance/data-acquisition
 задачею, а не новим selector experiment.
 
+Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
+DFL, tiny offline Decision Transformer, behavior cloning і fallback
+порівнювалися не лише зі `strict_similar_day`, а з поточним українським V2+
+baseline. Результат є негативним, але корисним: compact bridge не перевершив
+V2+ за mean regret без погіршення median regret. Тому він не стає headline
+result і не змінює claim boundary.
+
+Академічна інтерпретація цього результату така: відмова compact bridge не
+спростовує DFL/DT як напрям. Вона показує, що старий compact candidate path є
+слабшим за official global-panel V2+ schedule/value learner. Тому було додано
+official V2+-teacher bridge path, де teacher trajectories формуються з official
+V2+ та oracle-style schedule evidence, а final holdout залишається тільки для
+scoring.
+
+Цей official bridge також не перевершив V2+. Для calibrated official NBEATSx
+V2+ mean regret становив 174.77 UAH, тоді як residual/DT challenger дав 367.70
+UAH. Для raw official NBEATSx V2+ mean regret становив 193.36 UAH, тоді як
+residual/DT challenger дав 328.51 UAH. Behavior cloning також залишився гіршим
+за V2+. Отже, поточний висновок стає сильнішим: V2+ залишається thesis
+headline, а наступний DFL/DT крок потребує кращої trajectory objective або
+багатшого teacher/candidate design, а не простого tiny DT поверх наявних
+траєкторій.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

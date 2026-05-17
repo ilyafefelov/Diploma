@@ -73,6 +73,14 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_residual_dt_fallback_evidence",
         ),
         (
+            "dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame",
+            "dfl_v2_plus_dfl_dt_bridge_evidence",
+        ),
+        (
+            "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame",
+            "dfl_official_global_panel_v2_plus_dfl_dt_bridge_evidence",
+        ),
+        (
             "dfl_source_specific_research_challenger_frame",
             "dfl_source_specific_research_challenger_evidence",
         ),
