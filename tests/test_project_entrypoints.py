@@ -112,6 +112,11 @@ def test_tft_quantile_gate_batch_runner_writes_calibrated_schedule_config() -> N
     assert "attempt_manifest.json" in runner_script
     assert '"--attempt-kind", "official_global_panel_backfill"' in runner_script
     assert "$env:SMART_ARBITRAGE_STRATEGY_EVALUATION_DSN = $HostPostgresDsn" in runner_script
+    assert "[switch]$ReuseMaterializedInputs" in runner_script
+    assert "[string]$DagsterHome" in runner_script
+    assert "$env:DAGSTER_HOME = $DagsterHome" in runner_script
+    assert 'if ($ReuseMaterializedInputs)' in runner_script
+    assert '$officialSelection = "tft_official_global_panel_rolling_strict_lp_benchmark_frame"' in runner_script
     assert "tft_official_global_panel_rolling_strict_lp_benchmark_frame" in runner_script
     assert (
         "tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame"

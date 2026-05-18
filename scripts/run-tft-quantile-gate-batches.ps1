@@ -19,6 +19,8 @@ param(
     [int]$BatchTimeoutSeconds = 7200,
     [string]$HostPostgresDsn = "",
     [string]$HostMlflowTrackingUri = "http://localhost:5000",
+    [string]$DagsterHome = "",
+    [switch]$ReuseMaterializedInputs,
     [switch]$SkipDownstreamGate
 )
 
@@ -71,6 +73,12 @@ $runSlug = "tft-quantile-gate-" + ($GeneratedAtIso -replace "[:]", "" -replace "
 $runDir = Join-Path $root ".tmp_runtime\tft_quantile_gate_batches\$runSlug"
 New-Item -ItemType Directory -Force -Path $runDir | Out-Null
 $runLog = Join-Path $runDir "run.log"
+if (-not [string]::IsNullOrWhiteSpace($DagsterHome)) {
+    if (-not [System.IO.Path]::IsPathRooted($DagsterHome)) {
+        $DagsterHome = Join-Path $root $DagsterHome
+    }
+    New-Item -ItemType Directory -Force -Path $DagsterHome | Out-Null
+}
 
 function Write-RunLog {
     param([string]$Message)
@@ -161,6 +169,9 @@ function Invoke-DagsterMaterialize {
     $env:SMART_ARBITRAGE_SIMULATED_TRADE_DSN = $HostPostgresDsn
     $env:SMART_ARBITRAGE_OPERATOR_STATUS_DSN = $HostPostgresDsn
     $env:MLFLOW_TRACKING_URI = $HostMlflowTrackingUri
+    if (-not [string]::IsNullOrWhiteSpace($DagsterHome)) {
+        $env:DAGSTER_HOME = $DagsterHome
+    }
     $dagsterExe = Join-Path $root ".venv\Scripts\dagster.exe"
     if (Test-Path -LiteralPath $dagsterExe) {
         Invoke-ProcessWithLogs `
@@ -189,9 +200,12 @@ function Invoke-DagsterMaterialize {
 $tenantIds = "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
 $calibratedTftModels = "tft_official_global_panel_p10_v1_horizon_quantile_calibrated_v1,tft_official_global_panel_v1_horizon_quantile_calibrated_v1,tft_official_global_panel_p90_v1_horizon_quantile_calibrated_v1"
 $officialSelection = "observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_exogenous_governance_frame,tft_official_global_panel_rolling_strict_lp_benchmark_frame"
+if ($ReuseMaterializedInputs) {
+    $officialSelection = "tft_official_global_panel_rolling_strict_lp_benchmark_frame"
+}
 $downstreamSelection = "tft_official_global_panel_horizon_quantile_calibration_frame,tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame,dfl_tft_calibrated_quantile_schedule_candidate_library_frame,dfl_tft_calibrated_augmented_v2_plus_strict_lp_benchmark_frame,dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame"
 
-Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchors=$TotalAnchors BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex EndAnchorIndex=$ResolvedEndAnchorIndex AnchorBatchOrder=$AnchorBatchOrder LocalMode=$LocalMode TftMaxEpochs=$TftMaxEpochs TftMaxSteps=$TftMaxSteps"
+Write-RunLog "GeneratedAtIso=$GeneratedAtIso TotalAnchors=$TotalAnchors BatchSize=$BatchSize StartAnchorIndex=$StartAnchorIndex EndAnchorIndex=$ResolvedEndAnchorIndex AnchorBatchOrder=$AnchorBatchOrder LocalMode=$LocalMode TftMaxEpochs=$TftMaxEpochs TftMaxSteps=$TftMaxSteps ReuseMaterializedInputs=$ReuseMaterializedInputs DagsterHome=$DagsterHome"
 
 $manifestPath = Join-Path $runDir "attempt_manifest.json"
 $manifestArgs = @(
