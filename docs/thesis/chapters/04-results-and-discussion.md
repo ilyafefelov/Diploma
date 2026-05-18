@@ -302,6 +302,19 @@ global-panel NBEATSx V3 повторив V2+ mean regret `174.77` UAH і median 
 final holdout. V2+ залишається thesis headline Offline Strategy Promotion
 evidence.
 
+Після цього Candidate-Value DFL v3 було посилено не через новий DT, а через
+покращення самого candidate/label шару. Додано prior-template schedule
+families: `prior_best_family_template_v3` переносить середній forecast-vector
+delta між raw forecast і найкращим prior feasible schedule, а
+`prior_oracle_residual_template_v3` переносить середній raw-vs-actual residual
+з train-selection anchors. На final holdout ці сімейства використовують тільки
+prior templates, тоді як actual prices залишаються лише для strict scoring.
+Також додано `dfl_official_global_panel_candidate_value_label_panel_v3_frame`,
+де `selector_feature_*` колонки є prior-safe inputs, а `label_*` колонки є
+realized value/regret labels. Це формує кращу основу для наступного DFL
+objective: модель має вчитися оцінювати candidate schedule value, а не одразу
+імітувати hourly BUY/SELL/HOLD trajectory.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

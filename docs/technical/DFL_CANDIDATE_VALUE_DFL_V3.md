@@ -50,17 +50,48 @@ and adds deterministic schedule families around observed failure modes:
 - `peak_trough_timing_shift_v3`;
 - `uncertainty_risk_schedule_v3`;
 - `degradation_price_sweep_v3`;
+- `prior_best_family_template_v3`;
+- `prior_oracle_residual_template_v3`;
 - `oracle_neighborhood_diagnostic_v3`.
 
 The oracle-neighborhood family is train-only diagnostic evidence. It uses
 realized prices only on train/prior anchors and is never available in final
 holdout selection.
 
+The two prior-template families are the first V3 change that creates genuinely
+new candidate schedules from previous anchors instead of only perturbing the
+current forecast. `prior_best_family_template_v3` averages the historical
+forecast-vector delta between raw forecasts and the best prior feasible
+schedule. `prior_oracle_residual_template_v3` averages historical residuals
+between raw forecasts and realized prices on train-selection anchors. Both
+templates are applied to the current raw forecast and clipped to the DAM price
+range before strict LP/oracle scoring. Final-holdout actual prices are not used
+for template generation; they remain scoring labels only.
+
 The tracked first-run config keeps the final holdout complete, but bounds
 additional V3 schedule generation to the latest `10` train anchors per
 tenant/source. The full V2+ library is still carried forward as the default
 fallback/history; the bound only limits expensive extra LP-scored V3 variants
 so the evidence run remains resumable on the local stack.
+
+## Candidate-Value Label Panel
+
+The new label-panel asset is:
+
+- `dfl_official_global_panel_candidate_value_label_panel_v3_frame`.
+
+It creates one row per candidate schedule and separates columns by contract:
+
+- `selector_feature_*` columns are prior-safe schedule/context features such as
+  prior family regret, forecast spread, forecast objective value, throughput,
+  degradation penalty, SOC slack, and candidate-library version;
+- `label_*` columns are realized scoring labels such as regret, decision value,
+  oracle value, best-candidate flag, margin to anchor best, and margin versus
+  strict control.
+
+This panel is the correct input shape for the next objective redesign. It gives
+a model stronger value labels and richer candidate schedules before any new
+Decision Transformer attempt.
 
 ## Candidate-Value Scorer
 
@@ -119,6 +150,12 @@ evidence.
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_official_global_panel_schedule_candidate_library_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame -c configs/real_data_dfl_candidate_value_dfl_v3_week3.yaml
+```
+
+To include the value-label panel for the next objective-design pass:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_official_global_panel_schedule_candidate_library_v3_frame,dfl_official_global_panel_candidate_value_label_panel_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame -c configs/real_data_dfl_candidate_value_dfl_v3_week3.yaml
 ```
 
 Claim boundary:

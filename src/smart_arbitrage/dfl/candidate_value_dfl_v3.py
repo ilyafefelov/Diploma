@@ -46,6 +46,10 @@ CANDIDATE_FAMILY_DEGRADATION_SWEEP_V3: Final[str] = "degradation_price_sweep_v3"
 CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V3: Final[str] = (
     "oracle_neighborhood_diagnostic_v3"
 )
+CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3: Final[str] = "prior_best_family_template_v3"
+CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3: Final[str] = (
+    "prior_oracle_residual_template_v3"
+)
 
 V3_GENERATED_CANDIDATE_FAMILIES: Final[frozenset[str]] = frozenset(
     {
@@ -55,7 +59,12 @@ V3_GENERATED_CANDIDATE_FAMILIES: Final[frozenset[str]] = frozenset(
         CANDIDATE_FAMILY_UNCERTAINTY_RISK_V3,
         CANDIDATE_FAMILY_DEGRADATION_SWEEP_V3,
         CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V3,
+        CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
+        CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
     }
+)
+DFL_CANDIDATE_VALUE_LABEL_PANEL_V3_CLAIM_SCOPE: Final[str] = (
+    "dfl_candidate_value_label_panel_v3_not_full_dfl"
 )
 REQUIRED_MODEL_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -97,6 +106,29 @@ REQUIRED_STRICT_COLUMNS: Final[frozenset[str]] = frozenset(
         "regret_uah",
         "selection_role",
         "evaluation_payload",
+    }
+)
+REQUIRED_LABEL_PANEL_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "source_model_name",
+        "candidate_family",
+        "candidate_model_name",
+        "anchor_timestamp",
+        "split_name",
+        "selector_feature_prior_family_mean_regret_uah",
+        "selector_feature_forecast_spread_uah_mwh",
+        "selector_feature_total_throughput_mwh",
+        "selector_feature_total_degradation_penalty_uah",
+        "selector_feature_soc_min_slack_fraction",
+        "label_regret_uah",
+        "label_decision_value_uah",
+        "label_oracle_value_uah",
+        "label_is_anchor_best_candidate",
+        "label_regret_margin_to_anchor_best_uah",
+        "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
     }
 )
 
@@ -156,6 +188,7 @@ def build_dfl_schedule_candidate_library_v3_frame(
     degradation_spread_scales: tuple[float, ...] = (0.6, 0.85),
     include_train_oracle_neighborhood: bool = True,
     max_train_generation_anchor_count_per_tenant: int | None = 60,
+    min_prior_template_anchor_count: int = 3,
     generated_at: datetime | None = None,
 ) -> pl.DataFrame:
     """Expand V2+ schedules with V3 failure-mode candidate families.
@@ -178,6 +211,8 @@ def build_dfl_schedule_candidate_library_v3_frame(
         raise ValueError(
             "max_train_generation_anchor_count_per_tenant must be non-negative or null."
         )
+    if min_prior_template_anchor_count < 0:
+        raise ValueError("min_prior_template_anchor_count must be non-negative.")
     resolved_generated_at = generated_at or v2._latest_generated_at(
         schedule_candidate_library_v2_plus_frame
     )
@@ -195,7 +230,7 @@ def build_dfl_schedule_candidate_library_v3_frame(
     for key in sorted(grouped, key=lambda item: (item[0], item[1], item[2])):
         if key not in generation_keys:
             continue
-        _, source_model_name, _ = key
+        tenant_id, source_model_name, anchor_timestamp = key
         anchor_rows = grouped[key]
         strict_row = v2._single_family_row(anchor_rows, v2.CANDIDATE_FAMILY_STRICT)
         raw_row = v2._single_family_row(anchor_rows, v2.CANDIDATE_FAMILY_RAW)
@@ -207,6 +242,24 @@ def build_dfl_schedule_candidate_library_v3_frame(
             raw_row["forecast_price_uah_mwh_vector"],
             field_name="raw forecast",
         )
+        prior_template_rows = _prior_template_rows(
+            grouped,
+            tenant_id=tenant_id,
+            source_model_name=source_model_name,
+            anchor_timestamp=anchor_timestamp,
+        )
+        prior_template_anchor_count = len(v2._anchor_set(prior_template_rows))
+        if prior_template_anchor_count >= min_prior_template_anchor_count:
+            rows.extend(
+                _prior_template_candidates(
+                    strict_row,
+                    raw_forecast=raw_forecast,
+                    prior_rows=prior_template_rows,
+                    source_model_name=source_model_name,
+                    generated_at=resolved_generated_at,
+                    prior_template_anchor_count=prior_template_anchor_count,
+                )
+            )
         for shift_hours in strict_neighborhood_shift_hours:
             if shift_hours == 0:
                 continue
@@ -346,6 +399,310 @@ def _v3_generation_anchor_keys(
             selected_keys = sorted_keys[-max_train_generation_anchor_count_per_tenant:]
         generation_keys.update(selected_keys)
     return generation_keys
+
+
+def _prior_template_rows(
+    grouped: dict[tuple[str, str, datetime], list[dict[str, Any]]],
+    *,
+    tenant_id: str,
+    source_model_name: str,
+    anchor_timestamp: datetime,
+) -> list[dict[str, Any]]:
+    rows: list[dict[str, Any]] = []
+    for (group_tenant_id, group_source_model_name, group_anchor), group_rows in grouped.items():
+        if group_tenant_id != tenant_id or group_source_model_name != source_model_name:
+            continue
+        if group_anchor >= anchor_timestamp:
+            continue
+        if not group_rows or str(group_rows[0]["split_name"]) != "train_selection":
+            continue
+        rows.extend(group_rows)
+    return rows
+
+
+def _prior_template_candidates(
+    reference_row: dict[str, Any],
+    *,
+    raw_forecast: list[float],
+    prior_rows: list[dict[str, Any]],
+    source_model_name: str,
+    generated_at: datetime,
+    prior_template_anchor_count: int,
+) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]] = []
+    oracle_residual = _mean_prior_oracle_residual(prior_rows)
+    if oracle_residual:
+        candidates.append(
+            _generated_v3_candidate(
+                reference_row,
+                source_model_name=source_model_name,
+                candidate_family=CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
+                candidate_model_name=(
+                    f"dfl_candidate_library_v3_prior_oracle_residual_{source_model_name}"
+                ),
+                forecast_prices=_bounded_prices(
+                    [price + residual for price, residual in zip(raw_forecast, oracle_residual)]
+                ),
+                generated_at=generated_at,
+                metadata={
+                    "prior_template_kind": "oracle_residual",
+                    "prior_template_anchor_count": prior_template_anchor_count,
+                    "no_final_holdout_actuals_used_for_generation": True,
+                },
+            )
+        )
+    best_template_delta = _mean_prior_best_template_delta(prior_rows)
+    if best_template_delta:
+        candidates.append(
+            _generated_v3_candidate(
+                reference_row,
+                source_model_name=source_model_name,
+                candidate_family=CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
+                candidate_model_name=(
+                    f"dfl_candidate_library_v3_prior_best_template_{source_model_name}"
+                ),
+                forecast_prices=_bounded_prices(
+                    [
+                        price + delta
+                        for price, delta in zip(raw_forecast, best_template_delta)
+                    ]
+                ),
+                generated_at=generated_at,
+                metadata={
+                    "prior_template_kind": "best_family_delta",
+                    "prior_template_anchor_count": prior_template_anchor_count,
+                    "no_final_holdout_actuals_used_for_generation": True,
+                },
+            )
+        )
+    return candidates
+
+
+def _mean_prior_oracle_residual(prior_rows: list[dict[str, Any]]) -> list[float]:
+    residuals: list[list[float]] = []
+    for anchor_rows in v2._rows_by_anchor(prior_rows).values():
+        try:
+            raw_row = v2._single_family_row(anchor_rows, v2.CANDIDATE_FAMILY_RAW)
+        except ValueError:
+            continue
+        raw_forecast = v2._float_list(
+            raw_row["forecast_price_uah_mwh_vector"],
+            field_name="raw forecast",
+        )
+        actual_prices = v2._float_list(
+            raw_row["actual_price_uah_mwh_vector"],
+            field_name="actual prices",
+        )
+        if len(raw_forecast) != len(actual_prices):
+            continue
+        residuals.append(
+            [actual - forecast for actual, forecast in zip(actual_prices, raw_forecast)]
+        )
+    return _mean_vectors(residuals)
+
+
+def _mean_prior_best_template_delta(prior_rows: list[dict[str, Any]]) -> list[float]:
+    deltas: list[list[float]] = []
+    for anchor_rows in v2._rows_by_anchor(prior_rows).values():
+        try:
+            raw_row = v2._single_family_row(anchor_rows, v2.CANDIDATE_FAMILY_RAW)
+        except ValueError:
+            continue
+        raw_forecast = v2._float_list(
+            raw_row["forecast_price_uah_mwh_vector"],
+            field_name="raw forecast",
+        )
+        candidate_rows = [
+            row
+            for row in anchor_rows
+            if str(row["candidate_family"]) != CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V3
+        ]
+        if not candidate_rows:
+            continue
+        best_row = min(
+            candidate_rows,
+            key=lambda row: (
+                float(row["regret_uah"]),
+                v2._family_sort_index(str(row["candidate_family"])),
+                str(row["candidate_model_name"]),
+            ),
+        )
+        best_forecast = v2._float_list(
+            best_row["forecast_price_uah_mwh_vector"],
+            field_name="best forecast",
+        )
+        if len(raw_forecast) != len(best_forecast):
+            continue
+        deltas.append([best - raw for best, raw in zip(best_forecast, raw_forecast)])
+    return _mean_vectors(deltas)
+
+
+def _mean_vectors(vectors: list[list[float]]) -> list[float]:
+    if not vectors:
+        return []
+    horizon = len(vectors[0])
+    if horizon == 0 or any(len(vector) != horizon for vector in vectors):
+        return []
+    return [mean(vector[index] for vector in vectors) for index in range(horizon)]
+
+
+def _bounded_prices(
+    prices: list[float],
+    *,
+    floor_uah_mwh: float = 0.0,
+    cap_uah_mwh: float = 16_000.0,
+) -> list[float]:
+    return [min(cap_uah_mwh, max(floor_uah_mwh, float(price))) for price in prices]
+
+
+def build_dfl_candidate_value_label_panel_v3_frame(
+    schedule_candidate_library_v3_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build prior-safe candidate features plus realized value labels for V3."""
+
+    v2._validate_library_frame(schedule_candidate_library_v3_frame)
+    rows: list[dict[str, Any]] = []
+    grouped = v2_plus._rows_by_tenant_source_anchor(schedule_candidate_library_v3_frame)
+    for key in sorted(grouped, key=lambda item: (item[0], item[1], item[2])):
+        anchor_rows = grouped[key]
+        best_regret = min(float(row["regret_uah"]) for row in anchor_rows)
+        strict_row = v2._single_family_row(anchor_rows, v2.CANDIDATE_FAMILY_STRICT)
+        strict_regret = float(strict_row["regret_uah"])
+        for row in sorted(
+            anchor_rows,
+            key=lambda item: (
+                str(item["candidate_family"]),
+                str(item["candidate_model_name"]),
+            ),
+        ):
+            regret = float(row["regret_uah"])
+            payload = dict(v2._payload(row))
+            rows.append(
+                {
+                    "tenant_id": str(row["tenant_id"]),
+                    "source_model_name": str(row["source_model_name"]),
+                    "candidate_family": str(row["candidate_family"]),
+                    "candidate_model_name": str(row["candidate_model_name"]),
+                    "anchor_timestamp": v2._datetime_value(
+                        row["anchor_timestamp"],
+                        field_name="anchor_timestamp",
+                    ),
+                    "split_name": str(row["split_name"]),
+                    "horizon_hours": int(row["horizon_hours"]),
+                    "selector_feature_prior_family_mean_regret_uah": float(
+                        row.get("prior_family_mean_regret_uah", regret)
+                    ),
+                    "selector_feature_forecast_spread_uah_mwh": float(
+                        row.get("forecast_spread_uah_mwh", 0.0)
+                    ),
+                    "selector_feature_forecast_objective_value_uah": float(
+                        row["forecast_objective_value_uah"]
+                    ),
+                    "selector_feature_total_throughput_mwh": float(
+                        row.get("total_throughput_mwh", 0.0)
+                    ),
+                    "selector_feature_total_degradation_penalty_uah": float(
+                        row.get("total_degradation_penalty_uah", 0.0)
+                    ),
+                    "selector_feature_soc_min_slack_fraction": float(
+                        row.get("soc_min_slack_fraction", 0.0)
+                    ),
+                    "selector_feature_candidate_library_version": str(
+                        row.get("candidate_library_version", "unknown")
+                    ),
+                    "label_regret_uah": regret,
+                    "label_decision_value_uah": float(row["decision_value_uah"]),
+                    "label_oracle_value_uah": float(row["oracle_value_uah"]),
+                    "label_is_anchor_best_candidate": abs(regret - best_regret) <= 1e-9,
+                    "label_regret_margin_to_anchor_best_uah": regret - best_regret,
+                    "label_value_margin_vs_strict_uah": strict_regret - regret,
+                    "label_value_tier": _value_tier(
+                        regret=regret,
+                        best_regret=best_regret,
+                    ),
+                    "claim_scope": DFL_CANDIDATE_VALUE_LABEL_PANEL_V3_CLAIM_SCOPE,
+                    "not_full_dfl": True,
+                    "not_market_execution": True,
+                    "market_execution_enabled": False,
+                    "evaluation_payload": {
+                        "claim_scope": DFL_CANDIDATE_VALUE_LABEL_PANEL_V3_CLAIM_SCOPE,
+                        "source_candidate_claim_scope": payload.get("claim_scope"),
+                        "selector_features_prior_only": True,
+                        "labels_are_realized_scoring_outcomes": True,
+                        "not_full_dfl": True,
+                        "not_market_execution": True,
+                        "market_execution_enabled": False,
+                    },
+                }
+            )
+    return pl.DataFrame(rows).sort(
+        [
+            "tenant_id",
+            "source_model_name",
+            "anchor_timestamp",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+
+
+def validate_dfl_candidate_value_label_panel_v3_evidence(
+    label_panel_frame: pl.DataFrame,
+) -> EvidenceCheckOutcome:
+    """Validate V3 candidate value-label panel structure and claim boundaries."""
+
+    missing_columns = sorted(REQUIRED_LABEL_PANEL_COLUMNS.difference(label_panel_frame.columns))
+    if missing_columns:
+        return EvidenceCheckOutcome(
+            False,
+            f"candidate-value DFL v3 label panel is missing required columns: {missing_columns}",
+            {"row_count": label_panel_frame.height},
+        )
+    selector_columns = [
+        column for column in label_panel_frame.columns if column.startswith("selector_feature_")
+    ]
+    label_columns = [
+        column for column in label_panel_frame.columns if column.startswith("label_")
+    ]
+    failures: list[str] = []
+    if not selector_columns:
+        failures.append("label panel must expose selector_feature_* columns")
+    if not label_columns:
+        failures.append("label panel must expose label_* columns")
+    for row in label_panel_frame.iter_rows(named=True):
+        if str(row["claim_scope"]) != DFL_CANDIDATE_VALUE_LABEL_PANEL_V3_CLAIM_SCOPE:
+            failures.append("unexpected claim_scope")
+            break
+        if not bool(row["not_full_dfl"]):
+            failures.append("not_full_dfl must be true")
+            break
+        if not bool(row["not_market_execution"]):
+            failures.append("not_market_execution must be true")
+            break
+        if bool(row.get("market_execution_enabled", False)):
+            failures.append("market_execution_enabled must be false")
+            break
+    return EvidenceCheckOutcome(
+        not failures,
+        "Candidate-value DFL v3 label panel keeps prior features separate from realized labels."
+        if not failures
+        else "; ".join(failures),
+        {
+            "row_count": label_panel_frame.height,
+            "selector_feature_columns": selector_columns,
+            "label_columns": label_columns,
+            "market_execution_enabled": False,
+        },
+    )
+
+
+def _value_tier(*, regret: float, best_regret: float) -> str:
+    margin = regret - best_regret
+    if margin <= 1e-9:
+        return "best"
+    if margin <= 50.0:
+        return "competitive"
+    return "dominated"
 
 
 def build_dfl_candidate_value_dfl_v3_frame(
@@ -1382,11 +1739,15 @@ def _selection_role(row: dict[str, Any]) -> str:
 __all__ = [
     "CANDIDATE_FAMILY_DEGRADATION_SWEEP_V3",
     "CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V3",
+    "CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3",
+    "CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3",
     "CANDIDATE_VALUE_DFL_V3_STRICT_LP_STRATEGY_KIND",
     "build_dfl_candidate_value_dfl_v3_frame",
     "build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame",
+    "build_dfl_candidate_value_label_panel_v3_frame",
     "build_dfl_schedule_candidate_library_v3_frame",
     "candidate_value_dfl_v3_model_name",
     "evaluate_dfl_candidate_value_dfl_v3_gate",
     "validate_dfl_candidate_value_dfl_v3_evidence",
+    "validate_dfl_candidate_value_label_panel_v3_evidence",
 ]

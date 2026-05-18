@@ -190,6 +190,7 @@ from smart_arbitrage.dfl.candidate_value_dfl_v3 import (
     CANDIDATE_VALUE_DFL_V3_STRICT_LP_STRATEGY_KIND,
     build_dfl_candidate_value_dfl_v3_frame,
     build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame,
+    build_dfl_candidate_value_label_panel_v3_frame,
     build_dfl_schedule_candidate_library_v3_frame,
     evaluate_dfl_candidate_value_dfl_v3_gate,
 )
@@ -901,6 +902,7 @@ class DflOfficialGlobalPanelCandidateValueDflV3AssetConfig(dg.Config):
     degradation_spread_scales_csv: str = "0.6,0.85"
     include_train_oracle_neighborhood: bool = True
     max_train_generation_anchor_count_per_tenant: int = 60
+    min_prior_template_anchor_count: int = 3
     min_prior_mean_improvement_ratio_vs_v2_plus: float = 0.01
     pairwise_loss_weight: float = 0.05
     min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.0
@@ -3268,6 +3270,7 @@ def dfl_official_global_panel_schedule_candidate_library_v3_frame(
         max_train_generation_anchor_count_per_tenant=(
             config.max_train_generation_anchor_count_per_tenant
         ),
+        min_prior_template_anchor_count=config.min_prior_template_anchor_count,
         generated_at=_latest_generated_at(
             dfl_official_global_panel_schedule_candidate_library_v2_plus_frame
         ),
@@ -3290,12 +3293,66 @@ def dfl_official_global_panel_schedule_candidate_library_v3_frame(
             "max_train_generation_anchor_count_per_tenant": (
                 config.max_train_generation_anchor_count_per_tenant
             ),
+            "min_prior_template_anchor_count": config.min_prior_template_anchor_count,
             "scope": "dfl_official_global_panel_schedule_candidate_library_v3_not_full_dfl",
             "market_execution_enabled": False,
             "not_market_execution": True,
         },
     )
     return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_candidate_value_label_panel_v3_frame(
+    context,
+    dfl_official_global_panel_schedule_candidate_library_v3_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-safe candidate features and realized value labels for V3 objective work."""
+
+    label_panel_frame = build_dfl_candidate_value_label_panel_v3_frame(
+        dfl_official_global_panel_schedule_candidate_library_v3_frame
+    )
+    selector_feature_count = len(
+        [
+            column
+            for column in label_panel_frame.columns
+            if column.startswith("selector_feature_")
+        ]
+    )
+    label_count = len(
+        [column for column in label_panel_frame.columns if column.startswith("label_")]
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": label_panel_frame.height,
+            "tenant_count": label_panel_frame.select("tenant_id").n_unique()
+            if label_panel_frame.height
+            else 0,
+            "source_model_count": label_panel_frame.select(
+                "source_model_name"
+            ).n_unique()
+            if label_panel_frame.height
+            else 0,
+            "selector_feature_count": selector_feature_count,
+            "label_count": label_count,
+            "scope": "dfl_official_global_panel_candidate_value_label_panel_v3_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return label_panel_frame
 
 
 @dg.asset(
@@ -6809,6 +6866,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_dfl_v2_frame,
     dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_candidate_library_v3_frame,
+    dfl_official_global_panel_candidate_value_label_panel_v3_frame,
     dfl_official_global_panel_candidate_value_dfl_v3_frame,
     dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,

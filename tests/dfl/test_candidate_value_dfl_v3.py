@@ -7,9 +7,12 @@ import polars as pl
 from smart_arbitrage.dfl.candidate_value_dfl_v3 import (
     CANDIDATE_FAMILY_DEGRADATION_SWEEP_V3,
     CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V3,
+    CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
+    CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
     CANDIDATE_VALUE_DFL_V3_STRICT_LP_STRATEGY_KIND,
     build_dfl_candidate_value_dfl_v3_frame,
     build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame,
+    build_dfl_candidate_value_label_panel_v3_frame,
     build_dfl_schedule_candidate_library_v3_frame,
     candidate_value_dfl_v3_model_name,
     evaluate_dfl_candidate_value_dfl_v3_gate,
@@ -92,6 +95,88 @@ def test_v3_candidate_library_bounds_expensive_train_generation() -> None:
     assert generated_train_anchor_count == 1
     assert generated_final_anchor_count == 2
     assert oracle_rows.height == 1
+
+
+def test_v3_candidate_library_adds_prior_only_template_schedules() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        train_anchor_count=3,
+        final_anchor_count=2,
+    )
+
+    expanded = build_dfl_schedule_candidate_library_v3_frame(
+        base_library,
+        min_prior_template_anchor_count=2,
+    )
+
+    generated_final = expanded.filter(
+        (pl.col("split_name") == "final_holdout")
+        & (
+            pl.col("candidate_family").is_in(
+                [
+                    CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
+                    CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
+                ]
+            )
+        )
+    )
+    payloads = generated_final["evaluation_payload"].to_list()
+
+    assert generated_final.height == 4
+    assert set(generated_final["candidate_family"].unique().to_list()) == {
+        CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
+        CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
+    }
+    assert {
+        payload["prior_template_anchor_count"]
+        for payload in payloads
+        if isinstance(payload, dict)
+    } == {3}
+    assert all(
+        bool(payload.get("no_final_holdout_actuals_used_for_generation"))
+        for payload in payloads
+        if isinstance(payload, dict)
+    )
+
+
+def test_v3_value_label_panel_separates_prior_features_from_actual_labels() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        train_anchor_count=3,
+        final_anchor_count=2,
+    )
+    expanded = build_dfl_schedule_candidate_library_v3_frame(base_library)
+    mutated = _mutate_final_all_candidate_regret(expanded, regret_delta=55.0)
+
+    original_labels = build_dfl_candidate_value_label_panel_v3_frame(expanded)
+    mutated_labels = build_dfl_candidate_value_label_panel_v3_frame(mutated)
+    feature_columns = sorted(
+        column for column in original_labels.columns if column.startswith("selector_feature_")
+    )
+    label_columns = sorted(
+        column for column in original_labels.columns if column.startswith("label_")
+    )
+
+    assert feature_columns
+    assert label_columns
+    assert original_labels.select(feature_columns).to_dicts() == mutated_labels.select(
+        feature_columns
+    ).to_dicts()
+    assert original_labels.select(label_columns).to_dicts() != mutated_labels.select(
+        label_columns
+    ).to_dicts()
 
 
 def test_candidate_value_dfl_v3_can_beat_v2_plus_when_prior_value_signal_exists() -> None:
@@ -466,5 +551,19 @@ def _mutate_final_value_family_regret(
             copied["regret_uah"] = regret
             copied["decision_value_uah"] = 1000.0 - regret
             copied["actual_price_uah_mwh_vector"] = [1200.0, 4500.0]
+        rows.append(copied)
+    return pl.DataFrame(rows)
+
+
+def _mutate_final_all_candidate_regret(
+    frame: pl.DataFrame, *, regret_delta: float
+) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for row in frame.iter_rows(named=True):
+        copied = dict(row)
+        if str(row["split_name"]) == "final_holdout":
+            copied["regret_uah"] = float(row["regret_uah"]) + regret_delta
+            copied["decision_value_uah"] = float(row["decision_value_uah"]) - regret_delta
+            copied["actual_price_uah_mwh_vector"] = [1300.0, 4200.0]
         rows.append(copied)
     return pl.DataFrame(rows)

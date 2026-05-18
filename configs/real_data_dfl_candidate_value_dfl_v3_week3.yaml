@@ -35,6 +35,7 @@ ops:
       degradation_spread_scales_csv: "0.7"
       include_train_oracle_neighborhood: true
       max_train_generation_anchor_count_per_tenant: 10
+      min_prior_template_anchor_count: 3
   dfl_official_global_panel_schedule_value_learner_v2_frame:
     config:
       tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"

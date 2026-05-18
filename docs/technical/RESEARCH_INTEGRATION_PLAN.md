@@ -2312,6 +2312,17 @@ proof and scratch sweeps did not beat V2+ under the unchanged strict LP/oracle
 gate, so the next useful work must change candidate-family design or add
 governed prior features before revisiting this direction.
 
+The follow-up V3 objective-design slice now changes the candidate and label
+basis before any new DT attempt. `dfl_official_global_panel_schedule_candidate_library_v3_frame`
+adds prior-template schedules: one family transfers the historical best-family
+forecast delta from train-selection anchors, and one family transfers historical
+raw-vs-actual residuals from train-selection anchors. Both are applied only from
+prior anchors and strict-scored like all other candidates. The companion
+`dfl_official_global_panel_candidate_value_label_panel_v3_frame` separates
+`selector_feature_*` prior-safe columns from `label_*` realized scoring
+outcomes. This makes the next DFL objective about candidate-level value labels
+instead of action imitation over the same weak trajectory contract.
+
 ## Governed Market-Coupling Ablation V1
 
 The next branch after freezing V2+ is now implemented as a governance-first
