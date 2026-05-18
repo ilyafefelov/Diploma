@@ -3,6 +3,13 @@
 # Claim boundary: Offline Strategy Promotion evidence only. This is not live
 # market execution, not deployed Decision Transformer control, and not
 # EU-feature training. Ukrainian-only V2+ remains the frozen comparator/fallback.
+#
+# Latest verified materialization:
+# - Dagster run id: 11a3effb-ffb5-4e1a-97e2-878b00106381
+# - date: 2026-05-18
+# - V5 strict rows: 720
+# - result: V5 evidence passed but selected V2+ fallback for both source rows.
+# - calibrated mean regret: 174.77 UAH, raw mean regret: 193.36 UAH.
 ops:
   dfl_official_global_panel_schedule_candidate_library_frame:
     config:

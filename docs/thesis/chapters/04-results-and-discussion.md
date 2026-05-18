@@ -14,12 +14,13 @@ RMSE, а regret відносно oracle LP, тобто різниця між з�
 LP/oracle evaluator. Таким чином, порівняння з ним є консервативним контрольним
 рубежем для Level 1 MVP.
 
-Поточна claims boundary є такою:
+Поточна межа твердження є такою:
 
 - система демонструє offline/read-model Strategy Promotion evidence;
 - `market_execution_enabled=false` в усіх evidence packets;
-- результат не є live trading, не є deployed Decision Transformer control і не
-  є твердженням про повну перевагу raw neural forecast;
+- результат не є ринковою торгівлею в реальному часі, не є розгорнутим
+  Decision Transformer-контролером і не є твердженням про повну перевагу raw
+  neural forecast;
 - зовнішні європейські джерела, зокрема ENTSO-E, OPSD, Ember, Nord Pool,
   PriceFM і THieF, залишаються governance-only і не входять до тренування цього
   результату.
@@ -66,6 +67,21 @@ panel:
 Він містить registry JSON/Markdown, attempt manifest, monitor snapshot,
 promotion gate frame і окремий trace summary для Schedule/Value Learner V2.
 
+Окремий FastAPI-шар використовується лише для подання цих результатів у
+read-model формі. У контексті розділу результатів API не розглядається як
+самостійний метод оптимізації: він показує вже матеріалізовані benchmark,
+forecast і promotion rows, збережені в Postgres/read stores після Dagster
+materialization. Детальна специфікація наведена в
+[Додатку А](../appendices/api-read-model-specification.md), а в цьому розділі
+важливими є лише ті API-групи, які демонструють експериментальні результати.
+
+| Evidence surface | API read model | Що дозволяє перевірити | Межа твердження |
+|---|---|---|---|
+| Forecast-to-schedule comparison | `/dashboard/forecast-strategy-comparison` | Чи проходили strict, NBEATSx і TFT через однаковий LP/oracle contour; які regret/value показники отримано. | Read-model evidence; не повертає `ProposedBid`, `ClearedTrade` або `DispatchCommand`. |
+| Observed-data benchmark | `/dashboard/real-data-benchmark` | Чи має результат observed-data provenance, rolling-origin rows і data-quality tier. | Benchmark evidence; не є ринковим виконанням. |
+| V2/V2+ promotion evidence | `/dashboard/dfl-schedule-value-production-gate` | Чи пройдено promotion gate, чи збережено fallback і чи залишається `market_execution_enabled=false`. | Offline/read-model Strategy Promotion only. |
+| Forecast/DT preview surfaces | `/dashboard/future-stack-preview`, `/dashboard/decision-policy-preview` | Які forecast або policy-preview rows доступні для пояснення operator/defense сценарію. | Preview/diagnostic layer; не є розгорнутим DT-контролером. |
+
 ## 4.4. Raw official NBEATSx як важливий, але недостатній сигнал
 
 Official global-panel NBEATSx був потрібний для чеснішого тесту, ніж компактні
@@ -77,7 +93,7 @@ forecast superiority. У проміжних і ранніх офіційних �
 лише від середньої похибки прогнозу.
 
 Тому офіційний neural forecast у підсумковому evidence packet використовується
-як джерело candidate schedules, але не як автоматичний controller.
+як джерело candidate schedules, але не як автоматичний контролер.
 
 ## 4.5. Результат Schedule/Value Learner V2
 
@@ -119,7 +135,7 @@ control. Для calibrated official NBEATSx він вибрав 16 strict-contro
 strict-prior-residual і 55 strict-raw-blend schedules. Для raw official
 global-panel NBEATSx він вибрав 19 strict-control, 7 strict-prior-residual і 64
 strict-raw-blend schedules. Отже, improvement виник з prior-only вибору між
-feasible schedule families, а не з live-підглядання у final holdout.
+feasible schedule families, а не з підглядання у final holdout.
 
 ## 4.7. Результат Schedule/Value Learner V2+
 
@@ -147,16 +163,17 @@ Rolling robustness replay over four 18-anchor windows also passed:
 Therefore the strongest current thesis result is Schedule/Value Learner V2+ on
 the 365-anchor Ukrainian panel. The calibrated official NBEATSx source is the
 preferred headline because it has the lowest latest-holdout mean regret. The
-claim remains Offline Strategy Promotion only: no live market execution, no
-dashboard/API default switch, and no claim that raw neural forecasting alone is
-superior to `strict_similar_day`.
+межа твердження залишається такою: Offline Strategy Promotion only, без
+ринкового виконання в реальному часі, без автоматичного перемикання
+dashboard/API на нову стратегію і без твердження, що raw neural forecasting
+сам по собі є кращим за `strict_similar_day`.
 
 ## 4.8. Інтерпретація результату
 
 Результат підтримує тезу про практичну цінність decision-aware pipeline:
 нейронний forecast сам по собі не був достатнім, але schedule/value layer
-перетворив прогнозний сигнал у кращий LP-feasible decision. Для дипломної
-архітектури це означає, що фінальний controller має бути default-fallback
+перетворив прогнозний сигнал у кращий LP-feasible decision. Для розглядаємої
+архітектури це означає, що фінальний контролер має бути default-fallback
 системою:
 
 - `strict_similar_day` залишається fallback і контрольним comparator;
@@ -164,19 +181,19 @@ superior to `strict_similar_day`.
   evidence stack;
 - Pydantic Gatekeeper і strict LP/oracle evaluator залишаються
   deterministic safety layers;
-- live execution не активується цим результатом.
+- ринкове виконання не активується цим результатом.
 
 ## 4.9. Що не підтверджено поточними експериментами
 
 Поточні експерименти не доводять такі твердження:
 
 - raw NBEATSx або TFT стабільно кращі за `strict_similar_day`;
-- Decision Transformer уже є deployed controller;
+- Decision Transformer уже є розгорнутим контролером;
 - market-coupling exogenous features з ЄС входили у training або пояснюють
   поточний V2+ результат;
 - система готова до реального виконання угод на ринку.
 
-Ці обмеження є важливими для академічної чесності роботи. Вони не зменшують
+Ці обмеження є важливими. Вони не зменшують
 цінність отриманого результату, але визначають його точну область застосування:
 offline/read-model Strategy Promotion evidence для Ukrainian DAM BESS arbitrage.
 
@@ -262,7 +279,7 @@ ranking або return-conditioned schedule-family selector, а не більши
 самим action-imitation objective.
 
 Цей напрям реалізовано як окремий pairwise schedule-value DFL v2 slice. Він
-працює не як deployed Decision Transformer, а як prior-only selector: на
+працює не як розгорнутий Decision Transformer, а як prior-only selector: на
 train/prior anchors він порівнює feasible schedule families попарно за
 value/regret, вибирає одну family тільки за наявності non-degradation signal
 проти frozen V2+, інакше повертається до V2+. Final holdout використовується
@@ -377,6 +394,24 @@ calibrated V2+ mean regret `174.77` UAH, не погіршить median regret, 
 rolling robustness і залишить `market_execution_enabled=false`. До такого
 strict LP/oracle результату V2+ залишається thesis headline Offline Strategy
 Promotion evidence.
+
+Матеріалізований V5 run `11a3effb-ffb5-4e1a-97e2-878b00106381` пройшов
+evidence check, але не замінив V2+. Було отримано `14,600` context-audit rows,
+`3,650` prior-only context-feature rows, `10` learner rows і `720` strict
+LP/oracle benchmark rows. Для calibrated official NBEATSx V5 повторив V2+
+mean regret `174.77` UAH і median regret `67.30` UAH; для raw official NBEATSx
+V5 повторив V2+ mean regret `193.36` UAH і median regret `68.89` UAH. Усі
+tenant/source rows активували V2+ fallback, тому improvement проти V2+ дорівнює
+`0.00%`.
+
+Цей результат уточнює висновок про плато. Поточний point-in-time context panel
+показав `3,650` rows з `missing_weather_load_context`, `3,650` rows з
+`missing_calendar_event_context` і `3,650` rows з `missing_publication_time`.
+Отже, проблема не вирішується простим додаванням existing context columns до
+scorer-а. Для наступного покращення потрібне або source-backed поповнення
+українських context families, або teacher-trajectory DFL/DT branch, який
+навчається від V2+ та oracle schedules, але все одно порівнюється з V2+ через
+той самий strict LP/oracle gate.
 
 ## 4.11. Supervisor-facing evidence
 

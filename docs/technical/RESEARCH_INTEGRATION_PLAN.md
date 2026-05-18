@@ -2693,6 +2693,26 @@ V2+ only if strict LP/oracle scoring improves mean regret versus V2+, avoids
 median degradation, preserves rolling robustness, keeps zero safety violations,
 and leaves the claim boundary as Offline Strategy Promotion only.
 
+Materialized result:
+
+- Dagster run id: `11a3effb-ffb5-4e1a-97e2-878b00106381`;
+- context repair audit rows: `14,600`;
+- point-in-time context feature panel rows: `3,650`;
+- V5 learner rows: `10`;
+- V5 strict LP/oracle benchmark rows: `720`;
+- evidence check passed;
+- calibrated V5 selected V2+ at `174.77` UAH mean regret;
+- raw V5 selected V2+ at `193.36` UAH mean regret;
+- improvement versus V2+ was `0.00%`, so V2+ remains the thesis headline.
+
+The context audit did not show a clean new signal ready to replace V2+. It
+reported `3,650` rows each for `missing_weather_load_context`,
+`missing_calendar_event_context`, and `missing_publication_time`, plus `3,589`
+`context_ready` rows for regret-cluster alignment and `61`
+`context_available_not_used` rows. The result confirms the plateau diagnosis:
+current Ukrainian-only context is not yet rich enough to make V5 beat V2+ under
+the unchanged gate.
+
 Tracked implementation:
 
 - `dfl_point_in_time_context_repair_audit_frame`;

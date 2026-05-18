@@ -180,10 +180,11 @@ The follow-up slice is now implemented as an additive V5 gate:
 - `dfl_context_enriched_*_v5_frame` assets rerun the candidate-value scorer with
   context-conditioned features and the same V2+ fallback.
 
-The V5 path does not admit Poland/ENTSO-E/EU features. It can replace V2+ only
-after strict LP/oracle scoring shows a mean-regret improvement versus V2+
-without median degradation, rolling-robustness loss, safety violations, or any
-market-execution claim. See [DFL_POINT_IN_TIME_CONTEXT_REPAIR.md](DFL_POINT_IN_TIME_CONTEXT_REPAIR.md).
+The V5 path does not admit Poland/ENTSO-E/EU features. The materialized V5 run
+`11a3effb-ffb5-4e1a-97e2-878b00106381` passed its evidence check, but selected
+the V2+ fallback for all tenant/source rows: calibrated V5 remained at
+`174.77` UAH mean regret and raw V5 remained at `193.36` UAH. It therefore does
+not replace V2+ as headline evidence. See [DFL_POINT_IN_TIME_CONTEXT_REPAIR.md](DFL_POINT_IN_TIME_CONTEXT_REPAIR.md).
 
 ## Run
 

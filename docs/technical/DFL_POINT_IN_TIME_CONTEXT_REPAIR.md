@@ -120,6 +120,48 @@ unchanged strict gate, and the next branch should be either stronger Ukrainian
 context acquisition/backfill or a teacher-trajectory DT experiment with V2+ and
 oracle schedules as teachers.
 
+## Materialized Result
+
+The 2026-05-18 materialization completed successfully.
+
+- Dagster run id: `11a3effb-ffb5-4e1a-97e2-878b00106381`;
+- context repair audit rows: `14,600`;
+- point-in-time context feature rows: `3,650`;
+- V5 learner rows: `10` tenant/source rows;
+- V5 strict LP/oracle benchmark rows: `720`;
+- V5 strict-benchmark evidence check passed;
+- `market_execution_enabled=false`.
+
+Context audit blockers:
+
+| Blocker | Rows | Interpretation |
+| --- | ---: | --- |
+| `missing_weather_load_context` | `3,650` | Weather/load context is still not source-complete enough to act as a differentiating V5 feature. |
+| `missing_calendar_event_context` | `3,650` | Calendar/event context remains absent for every source/tenant/anchor row. |
+| `missing_publication_time` | `3,650` | Publication-time availability is still not proven. |
+| `context_ready` | `3,589` | Regret-cluster alignment context is available as diagnostic/prior evidence. |
+| `context_available_not_used` | `61` | Some diagnostic context exists but does not justify replacing V2+ under the gate. |
+
+Strict LP/oracle latest-holdout result:
+
+| Source row | V5 selected mean regret | V2+ mean regret | Strict mean regret | Raw neural mean regret | Improvement vs V2+ | Gate |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| raw official global-panel NBEATSx | `193.36` UAH | `193.36` UAH | `310.58` UAH | `771.26` UAH | `0.00%` | blocked |
+| horizon-calibrated official global-panel NBEATSx | `174.77` UAH | `174.77` UAH | `310.58` UAH | `622.25` UAH | `0.00%` | blocked |
+
+The V5 scorer fell back to V2+ for all `10 / 10` tenant/source rows. Before
+fallback, the raw source candidate mean regret was `189.65` UAH versus raw V2+
+at `193.36` UAH, but this still did not beat calibrated V2+ at `174.77` UAH and
+did not satisfy the replacement gate. For the calibrated source, the
+pre-fallback candidate mean regret was `187.62` UAH, worse than calibrated V2+.
+
+Conclusion: V5 is valid context-repair and negative-improvement evidence. It
+confirms that merely exposing the current incomplete point-in-time context does
+not break the V2+ plateau. The next improvement should either acquire/fill the
+missing Ukrainian context families with source-backed point-in-time evidence or
+move to a teacher-trajectory DT/DFL branch that learns from V2+ and oracle
+schedules without weakening the strict LP/oracle gate.
+
 ## Run
 
 ```powershell
