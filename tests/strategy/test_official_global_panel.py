@@ -11,13 +11,18 @@ from smart_arbitrage.strategy.official_global_panel import (
     OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_P10_CALIBRATED_MODEL_NAME,
     OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_P90_CALIBRATED_MODEL_NAME,
     OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND,
+    OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME,
     OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
     build_official_global_panel_nbeatsx_horizon_calibration_frame,
     build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
+    build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_tft_horizon_quantile_calibration_frame,
     build_official_global_panel_tft_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_tft_strict_lp_benchmark_frame,
@@ -376,6 +381,88 @@ def test_global_panel_tft_quantile_calibration_uses_prior_anchors_only() -> None
     assert first_p50["calibration_status"] == "insufficient_prior_history"
 
 
+def test_global_panel_tft_horizon_quantile_calibrated_gate_routes_corrected_forecasts() -> None:
+    anchor = datetime(2026, 1, 10, 23)
+    evaluation_frame = pl.DataFrame(
+        [
+            _evaluation_row(
+                anchor,
+                model_name="strict_similar_day",
+                forecast_prices=[1000.0, 1400.0],
+            ),
+            _evaluation_row(
+                anchor,
+                model_name=OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+                forecast_prices=[700.0, 1100.0],
+            ),
+            _evaluation_row(
+                anchor,
+                model_name=OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+                forecast_prices=[900.0, 1200.0],
+            ),
+            _evaluation_row(
+                anchor,
+                model_name=OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+                forecast_prices=[1300.0, 1500.0],
+            ),
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            _tft_calibration_row(
+                anchor=anchor,
+                source_model_name=OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+                corrected_model_name=OFFICIAL_GLOBAL_PANEL_TFT_P10_CALIBRATED_MODEL_NAME,
+                source_quantile="p10",
+                horizon_biases=[100.0, 200.0],
+            ),
+            _tft_calibration_row(
+                anchor=anchor,
+                source_model_name=OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+                corrected_model_name=OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME,
+                source_quantile="p50",
+                horizon_biases=[200.0, 300.0],
+            ),
+            _tft_calibration_row(
+                anchor=anchor,
+                source_model_name=OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+                corrected_model_name=OFFICIAL_GLOBAL_PANEL_TFT_P90_CALIBRATED_MODEL_NAME,
+                source_quantile="p90",
+                horizon_biases=[-100.0, 50.0],
+            ),
+        ]
+    )
+
+    result = build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame(
+        evaluation_frame,
+        calibration_frame,
+    )
+
+    assert set(result["forecast_model_name"].to_list()) == {
+        "strict_similar_day",
+        OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P10_CALIBRATED_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P90_CALIBRATED_MODEL_NAME,
+    }
+    assert set(result["strategy_kind"].to_list()) == {
+        OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND
+    }
+    corrected_payload = result.filter(
+        pl.col("forecast_model_name")
+        == OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME
+    ).row(0, named=True)["evaluation_payload"]
+    assert corrected_payload["source_forecast_model_name"] == (
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME
+    )
+    assert corrected_payload["source_quantile"] == "p50"
+    assert corrected_payload["horizon_biases_uah_mwh"] == [200.0, 300.0]
+    assert corrected_payload["not_full_dfl"] is True
+    assert corrected_payload["not_market_execution"] is True
+
+
 def _silver_frame(
     *,
     tenant_ids: tuple[str, ...] = (TENANT_ID,),
@@ -399,6 +486,33 @@ def _silver_frame(
                 }
             )
     return pl.DataFrame(rows)
+
+
+def _tft_calibration_row(
+    *,
+    anchor: datetime,
+    source_model_name: str,
+    corrected_model_name: str,
+    source_quantile: str,
+    horizon_biases: list[float],
+) -> dict[str, object]:
+    return {
+        "tenant_id": TENANT_ID,
+        "anchor_timestamp": anchor,
+        "source_forecast_model_name": source_model_name,
+        "corrected_forecast_model_name": corrected_model_name,
+        "source_quantile": source_quantile,
+        "horizon_biases_uah_mwh": horizon_biases,
+        "mean_horizon_bias_uah_mwh": sum(horizon_biases) / len(horizon_biases),
+        "max_abs_horizon_bias_uah_mwh": max(abs(value) for value in horizon_biases),
+        "quantile_spread_scale": 1.0,
+        "prior_anchor_count": 14,
+        "calibration_window_anchor_count": 14,
+        "calibration_status": "calibrated",
+        "data_quality_tier": "thesis_grade",
+        "not_full_dfl": True,
+        "not_market_execution": True,
+    }
 
 
 def _global_panel_forecast_frame(*, anchor_timestamp: datetime) -> pl.DataFrame:

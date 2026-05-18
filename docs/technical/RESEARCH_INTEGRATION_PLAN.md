@@ -2733,7 +2733,7 @@ V2+ strong:
 
 - train one official TFT over the five-tenant panel;
 - keep p10, p50, and p90 quantile forecasts as separate schedule sources;
-- calibrate horizon/quantile rows using prior anchors only;
+- calibrate and strict-score horizon/quantile rows using prior anchors only;
 - route TFT quantile schedules into the same strict schedule/value gate;
 - compare against Ukrainian-only calibrated V2+ at `174.77` UAH mean regret and
   `4 / 4` rolling windows.
@@ -2742,10 +2742,18 @@ Tracked implementation:
 
 - `tft_official_global_panel_rolling_strict_lp_benchmark_frame`;
 - `tft_official_global_panel_horizon_quantile_calibration_frame`;
+- `tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame`;
 - `dfl_tft_quantile_schedule_candidate_library_frame`;
 - `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame`;
+- `dfl_tft_calibrated_quantile_schedule_candidate_library_frame`;
+- `dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame`;
 - `dfl_tft_augmented_v2_plus_evidence`;
 - [DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md](DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md).
+
+The serious follow-up uses
+`scripts/run-tft-quantile-gate-batches.ps1` with
+`configs/real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml`
+so the 365-anchor lane is resumable and can run in host CUDA mode.
 
 Decision rule: TFT alone, or the combined NBEATSx+TFT candidate selector, can
 become the next headline only if it beats frozen V2+ mean regret, does not

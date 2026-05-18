@@ -103,6 +103,40 @@ def test_official_global_panel_batch_runner_writes_resumable_backfill_config() -
     )
 
 
+def test_tft_quantile_gate_batch_runner_writes_calibrated_schedule_config() -> None:
+    runner_script = (
+        PROJECT_ROOT / "scripts" / "run-tft-quantile-gate-batches.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "[ValidateSet(\"compose\", \"host\")]" in runner_script
+    assert "attempt_manifest.json" in runner_script
+    assert '"--attempt-kind", "official_global_panel_backfill"' in runner_script
+    assert "$env:SMART_ARBITRAGE_STRATEGY_EVALUATION_DSN = $HostPostgresDsn" in runner_script
+    assert "tft_official_global_panel_rolling_strict_lp_benchmark_frame" in runner_script
+    assert (
+        "tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame"
+        in runner_script
+    )
+    assert (
+        "dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame"
+        in runner_script
+    )
+    assert "max_eval_windows: $TotalAnchors" in runner_script
+    assert "anchor_batch_start_index: $anchorIndex" in runner_script
+    assert "anchor_batch_size: $BatchSize" in runner_script
+    assert 'resume_generated_at_iso: "$GeneratedAtIso"' in runner_script
+    assert "merge_persisted_batches: true" in runner_script
+    assert "tft_max_epochs: $TftMaxEpochs" in runner_script
+    assert "tft_max_steps: $TftMaxSteps" in runner_script
+    assert (
+        "$calibratedTftModels = "
+        '"tft_official_global_panel_p10_v1_horizon_quantile_calibrated_v1,'
+        "tft_official_global_panel_v1_horizon_quantile_calibrated_v1,"
+        'tft_official_global_panel_p90_v1_horizon_quantile_calibrated_v1"'
+    ) in runner_script
+    assert 'forecast_model_names_csv: "$calibratedTftModels"' in runner_script
+
+
 def test_official_attempt_resume_summary_script_uses_manifest_contract() -> None:
     resume_script = (
         PROJECT_ROOT / "scripts" / "summarize_official_evidence_attempt_resume.py"

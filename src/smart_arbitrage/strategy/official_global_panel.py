@@ -54,6 +54,26 @@ OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME: Final[str] = (
 OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME: Final[str] = (
     "tft_official_global_panel_p90_v1"
 )
+OFFICIAL_GLOBAL_PANEL_TFT_P10_CALIBRATED_MODEL_NAME: Final[str] = (
+    "tft_official_global_panel_p10_v1_horizon_quantile_calibrated_v1"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME: Final[str] = (
+    "tft_official_global_panel_v1_horizon_quantile_calibrated_v1"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_P90_CALIBRATED_MODEL_NAME: Final[str] = (
+    "tft_official_global_panel_p90_v1_horizon_quantile_calibrated_v1"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAMES: Final[tuple[str, ...]] = (
+    OFFICIAL_GLOBAL_PANEL_TFT_P10_CALIBRATED_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_P90_CALIBRATED_MODEL_NAME,
+)
+OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND: Final[str] = (
+    "official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_CLAIM_SCOPE: Final[str] = (
+    "official_global_panel_tft_horizon_quantile_calibrated_strict_lp_not_full_dfl"
+)
 OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND: Final[str] = (
     "official_global_panel_tft_quantile_rolling_strict_lp_benchmark"
 )
@@ -624,6 +644,133 @@ def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_f
     )
 
 
+def build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame(
+    evaluation_frame: pl.DataFrame,
+    calibration_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score raw and prior-only calibrated global-panel TFT quantiles."""
+
+    _validate_evaluation_frame(evaluation_frame)
+    _validate_calibration_frame(calibration_frame)
+    if evaluation_frame.is_empty() or calibration_frame.is_empty():
+        return pl.DataFrame()
+
+    source_rows = {
+        (
+            str(row["tenant_id"]),
+            _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+            str(row["forecast_model_name"]),
+        ): row
+        for row in evaluation_frame.iter_rows(named=True)
+    }
+    rows_by_anchor: dict[tuple[str, datetime], list[dict[str, Any]]] = {}
+    for row in calibration_frame.sort(
+        ["tenant_id", "anchor_timestamp", "source_forecast_model_name"]
+    ).iter_rows(named=True):
+        anchor_key = (
+            str(row["tenant_id"]),
+            _datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+        )
+        rows_by_anchor.setdefault(anchor_key, []).append(row)
+
+    result_frames: list[pl.DataFrame] = []
+    for (tenant_id, anchor_timestamp), calibration_rows in rows_by_anchor.items():
+        strict_key = (tenant_id, anchor_timestamp, "strict_similar_day")
+        if strict_key not in source_rows:
+            raise ValueError(
+                f"evaluation_frame is missing strict_similar_day for {tenant_id} {anchor_timestamp}."
+            )
+        strict_row = source_rows[strict_key]
+        strict_payload = _payload(strict_row["evaluation_payload"])
+        _require_thesis_grade_payload(strict_payload)
+        candidates = [
+            ForecastCandidate(
+                model_name="strict_similar_day",
+                forecast_frame=_forecast_frame_from_payload(
+                    strict_payload,
+                    price_column_name="predicted_price_uah_mwh",
+                    horizon_biases=None,
+                ),
+                point_prediction_column="predicted_price_uah_mwh",
+            )
+        ]
+        source_payload_by_model: dict[str, dict[str, Any]] = {}
+        for source_model_name in (
+            OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+            OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+            OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+        ):
+            source_key = (tenant_id, anchor_timestamp, source_model_name)
+            if source_key not in source_rows:
+                raise ValueError(
+                    f"evaluation_frame is missing {source_model_name} for "
+                    f"{tenant_id} {anchor_timestamp}."
+                )
+            source_row = source_rows[source_key]
+            source_payload = _payload(source_row["evaluation_payload"])
+            _require_thesis_grade_payload(source_payload)
+            source_payload_by_model[source_model_name] = source_payload
+            candidates.append(
+                ForecastCandidate(
+                    model_name=source_model_name,
+                    forecast_frame=_forecast_frame_from_payload(
+                        source_payload,
+                        price_column_name="predicted_price_uah_mwh",
+                        horizon_biases=None,
+                    ),
+                    point_prediction_column="predicted_price_uah_mwh",
+                )
+            )
+        for calibration_row in calibration_rows:
+            source_model_name = str(calibration_row["source_forecast_model_name"])
+            if source_model_name not in source_payload_by_model:
+                raise ValueError(
+                    f"calibration_frame references unsupported TFT source {source_model_name}."
+                )
+            candidates.append(
+                ForecastCandidate(
+                    model_name=str(calibration_row["corrected_forecast_model_name"]),
+                    forecast_frame=_forecast_frame_from_payload(
+                        source_payload_by_model[source_model_name],
+                        price_column_name="predicted_price_uah_mwh",
+                        horizon_biases=_float_list(
+                            calibration_row["horizon_biases_uah_mwh"]
+                        ),
+                    ),
+                    point_prediction_column="predicted_price_uah_mwh",
+                )
+            )
+        tenant_defaults = tenant_battery_defaults_from_registry(tenant_id)
+        evaluation = evaluate_forecast_candidates_against_oracle(
+            price_history=_price_history_from_payload(strict_payload),
+            tenant_id=tenant_id,
+            battery_metrics=tenant_defaults.metrics,
+            starting_soc_fraction=float(strict_row["starting_soc_fraction"]),
+            starting_soc_source=str(strict_row["starting_soc_source"]),
+            anchor_timestamp=anchor_timestamp,
+            candidates=candidates,
+            evaluation_id=(
+                f"{tenant_id}:official-global-panel-tft-quantile-calibrated:"
+                f"{anchor_timestamp:%Y%m%dT%H%M}"
+            ),
+            generated_at=_datetime_value(
+                strict_row["generated_at"], field_name="generated_at"
+            ),
+        )
+        result_frames.append(
+            _with_tft_quantile_calibration_metadata(
+                evaluation,
+                source_payload_by_model=source_payload_by_model,
+                calibration_rows=calibration_rows,
+            )
+        )
+    if not result_frames:
+        return pl.DataFrame()
+    return pl.concat(result_frames, how="diagonal_relaxed").sort(
+        ["tenant_id", "anchor_timestamp", "rank_by_regret", "forecast_model_name"]
+    )
+
+
 def _tenant_forecast(forecast_frame: pl.DataFrame, *, tenant_id: str) -> pl.DataFrame:
     required_columns = {"unique_id", "forecast_timestamp", "predicted_price_uah_mwh"}
     missing_columns = required_columns.difference(forecast_frame.columns)
@@ -1119,6 +1266,82 @@ def _with_calibration_metadata(
     return evaluation.with_columns(
         [
             pl.lit(OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND).alias(
+                "strategy_kind"
+            ),
+            pl.Series("evaluation_payload", payloads),
+        ]
+    )
+
+
+def _with_tft_quantile_calibration_metadata(
+    evaluation: pl.DataFrame,
+    *,
+    source_payload_by_model: dict[str, dict[str, Any]],
+    calibration_rows: list[dict[str, Any]],
+) -> pl.DataFrame:
+    payloads: list[dict[str, Any]] = []
+    calibration_by_model = {
+        str(row["corrected_forecast_model_name"]): row for row in calibration_rows
+    }
+    source_payload = next(iter(source_payload_by_model.values()))
+    for row in evaluation.iter_rows(named=True):
+        model_name = str(row["forecast_model_name"])
+        payload = dict(row["evaluation_payload"])
+        payload.update(
+            {
+                "claim_scope": OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_CLAIM_SCOPE,
+                "benchmark_kind": OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND,
+                "data_quality_tier": str(source_payload.get("data_quality_tier", "demo_grade")),
+                "observed_coverage_ratio": float(source_payload.get("observed_coverage_ratio", 0.0)),
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        )
+        calibration_row = calibration_by_model.get(model_name)
+        if calibration_row is not None:
+            payload.update(
+                {
+                    "source_forecast_model_name": str(
+                        calibration_row["source_forecast_model_name"]
+                    ),
+                    "source_quantile": str(calibration_row["source_quantile"]),
+                    "horizon_biases_uah_mwh": _float_list(
+                        calibration_row["horizon_biases_uah_mwh"]
+                    ),
+                    "mean_horizon_bias_uah_mwh": float(
+                        calibration_row["mean_horizon_bias_uah_mwh"]
+                    ),
+                    "max_abs_horizon_bias_uah_mwh": float(
+                        calibration_row["max_abs_horizon_bias_uah_mwh"]
+                    ),
+                    "quantile_spread_scale": float(
+                        calibration_row["quantile_spread_scale"]
+                    ),
+                    "prior_anchor_count": int(calibration_row["prior_anchor_count"]),
+                    "calibration_window_anchor_count": int(
+                        calibration_row["calibration_window_anchor_count"]
+                    ),
+                    "calibration_status": str(calibration_row["calibration_status"]),
+                }
+            )
+        else:
+            payload.update(
+                {
+                    "source_forecast_model_name": model_name,
+                    "source_quantile": _tft_source_quantile(model_name),
+                    "horizon_biases_uah_mwh": [],
+                    "mean_horizon_bias_uah_mwh": 0.0,
+                    "max_abs_horizon_bias_uah_mwh": 0.0,
+                    "quantile_spread_scale": 1.0,
+                    "prior_anchor_count": 0,
+                    "calibration_window_anchor_count": 0,
+                    "calibration_status": "comparator_source_row",
+                }
+            )
+        payloads.append(payload)
+    return evaluation.with_columns(
+        [
+            pl.lit(OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND).alias(
                 "strategy_kind"
             ),
             pl.Series("evaluation_payload", payloads),

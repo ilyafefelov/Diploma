@@ -26,6 +26,11 @@ TFT_QUANTILE_SOURCE_MODELS: Final[tuple[str, ...]] = (
     "tft_official_global_panel_v1",
     "tft_official_global_panel_p90_v1",
 )
+TFT_QUANTILE_CALIBRATED_SOURCE_MODELS: Final[tuple[str, ...]] = (
+    "tft_official_global_panel_p10_v1_horizon_quantile_calibrated_v1",
+    "tft_official_global_panel_v1_horizon_quantile_calibrated_v1",
+    "tft_official_global_panel_p90_v1_horizon_quantile_calibrated_v1",
+)
 TFT_BASE_QUANTILE_MODEL_NAME: Final[str] = "tft_official_global_panel_v1"
 FROZEN_V2_PLUS_BASELINE_MODEL_NAME: Final[str] = (
     "nbeatsx_official_global_panel_horizon_calibrated_v1"
@@ -963,9 +968,9 @@ def _market_execution_enabled(rows: list[dict[str, Any]]) -> bool:
 
 
 def _source_quantile(source_model_name: str) -> str:
-    if source_model_name.endswith("_p10_v1"):
+    if source_model_name.endswith("_p10_v1") or "_p10_" in source_model_name:
         return "p10"
-    if source_model_name.endswith("_p90_v1"):
+    if source_model_name.endswith("_p90_v1") or "_p90_" in source_model_name:
         return "p90"
     return "p50"
 
@@ -973,6 +978,7 @@ def _source_quantile(source_model_name: str) -> str:
 __all__ = [
     "DFL_TFT_AUGMENTED_V2_PLUS_STRICT_LP_STRATEGY_KIND",
     "DFL_TFT_COMBINED_V2_PLUS_STRICT_LP_STRATEGY_KIND",
+    "TFT_QUANTILE_CALIBRATED_SOURCE_MODELS",
     "TFT_QUANTILE_SOURCE_MODELS",
     "build_dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame",
     "build_dfl_tft_combined_v2_plus_strict_lp_benchmark_frame",

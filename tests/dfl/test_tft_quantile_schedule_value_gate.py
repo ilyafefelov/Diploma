@@ -7,6 +7,7 @@ import polars as pl
 from smart_arbitrage.dfl.tft_quantile_schedule_value import (
     DFL_TFT_AUGMENTED_V2_PLUS_STRICT_LP_STRATEGY_KIND,
     DFL_TFT_COMBINED_V2_PLUS_STRICT_LP_STRATEGY_KIND,
+    TFT_QUANTILE_CALIBRATED_SOURCE_MODELS,
     TFT_QUANTILE_SOURCE_MODELS,
     build_dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame,
     build_dfl_tft_combined_v2_plus_strict_lp_benchmark_frame,
@@ -45,6 +46,26 @@ def test_tft_quantile_candidate_library_keeps_quantile_sources() -> None:
     assert set(library["source_quantile"].unique().to_list()) == {"p10", "p50", "p90"}
     assert library.filter(pl.col("split_name") == "final_holdout").height > 0
     assert set(library["market_execution_enabled"].unique().to_list()) == {False}
+
+
+def test_tft_quantile_candidate_library_keeps_calibrated_quantile_sources() -> None:
+    benchmark = _strict_benchmark_frame(
+        tenant_ids=TENANTS[:1],
+        source_model_names=TFT_QUANTILE_CALIBRATED_SOURCE_MODELS,
+        anchor_count=2,
+    )
+
+    library = build_dfl_tft_quantile_schedule_candidate_library_frame(
+        benchmark,
+        tenant_ids=TENANTS[:1],
+        forecast_model_names=TFT_QUANTILE_CALIBRATED_SOURCE_MODELS,
+        final_validation_anchor_count_per_tenant=1,
+    )
+
+    assert set(library["source_model_name"].unique().to_list()) == set(
+        TFT_QUANTILE_CALIBRATED_SOURCE_MODELS
+    )
+    assert set(library["source_quantile"].unique().to_list()) == {"p10", "p50", "p90"}
 
 
 def test_tft_augmented_gate_requires_beating_frozen_v2_plus() -> None:

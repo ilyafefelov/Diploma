@@ -28,6 +28,7 @@ from smart_arbitrage.assets.gold.forecast_strategy import (
     official_forecast_rolling_origin_benchmark_frame,
     official_forecast_strict_lp_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,
+    tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame,
     tft_official_global_panel_horizon_quantile_calibration_frame,
     tft_official_global_panel_rolling_strict_lp_benchmark_frame,
 )
@@ -238,6 +239,7 @@ def test_forecast_strategy_gold_asset_is_registered() -> None:
         "nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame",
         "tft_official_global_panel_rolling_strict_lp_benchmark_frame",
         "tft_official_global_panel_horizon_quantile_calibration_frame",
+        "tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame",
         "real_data_rolling_origin_benchmark_frame",
     }.issubset(asset_keys)
     assert {"real_data_benchmark_silver_feature_frame"}.issubset(silver_asset_keys)
@@ -640,6 +642,84 @@ def test_global_panel_nbeatsx_calibrated_assets_build_and_persist_rows(monkeypat
 
     assert calibration["calibration_status"].to_list() == ["insufficient_prior_history"]
     assert benchmark["evaluation_id"].to_list() == ["global-panel-calibrated"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_global_panel_tft_quantile_calibrated_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 20)
+    rolling_frame = pl.DataFrame(
+        [
+            _official_rolling_row(
+                evaluation_id="global-panel-tft-raw",
+                tenant_id="client_003_dnipro_factory",
+                model_name="tft_official_global_panel_v1",
+                anchor_timestamp=datetime(2026, 4, 2, 23),
+                generated_at=generated_at,
+            )
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_003_dnipro_factory",
+                "anchor_timestamp": datetime(2026, 4, 2, 23),
+                "source_forecast_model_name": "tft_official_global_panel_v1",
+                "source_quantile": "p50",
+                "corrected_forecast_model_name": (
+                    "tft_official_global_panel_v1_horizon_quantile_calibrated_v1"
+                ),
+                "horizon_biases_uah_mwh": [20.0],
+                "mean_horizon_bias_uah_mwh": 20.0,
+                "max_abs_horizon_bias_uah_mwh": 20.0,
+                "quantile_spread_scale": 1.0,
+                "prior_anchor_count": 2,
+                "calibration_window_anchor_count": 2,
+                "calibration_status": "calibrated",
+                "data_quality_tier": "thesis_grade",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+
+    def fake_benchmark_builder(
+        evaluation_frame: pl.DataFrame,
+        calibration: pl.DataFrame,
+    ) -> pl.DataFrame:
+        assert evaluation_frame.height == 1
+        assert calibration.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel-tft-calibrated",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name=(
+                        "tft_official_global_panel_v1_horizon_quantile_calibrated_v1"
+                    ),
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame",
+        fake_benchmark_builder,
+    )
+
+    benchmark = tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame(
+        None,
+        rolling_frame,
+        calibration_frame,
+    )
+
+    assert benchmark["evaluation_id"].to_list() == ["global-panel-tft-calibrated"]
     assert store.evaluation_frame.height == 1
 
 

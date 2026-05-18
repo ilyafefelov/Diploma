@@ -52,14 +52,20 @@ forecast quality.
 |---|---|
 | `tft_official_global_panel_rolling_strict_lp_benchmark_frame` | Trains one official TFT per rolling anchor over the five-tenant panel and strict-scores p10/p50/p90 quantile forecasts. |
 | `tft_official_global_panel_horizon_quantile_calibration_frame` | Builds prior-only horizon/quantile calibration rows for TFT quantile sources. |
+| `tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame` | Re-scores raw and horizon-calibrated TFT p10/p50/p90 forecasts through the strict LP/oracle evaluator. |
 | `dfl_tft_quantile_schedule_candidate_library_frame` | Converts TFT p10/p50/p90 strict benchmark rows into feasible schedule candidates. |
 | `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame` | Compares frozen NBEATSx V2+ rows against TFT-quantile V2/V2+ rows under the unchanged strict LP/oracle gate. |
 | `dfl_tft_augmented_v2_plus_evidence` | Asset check for coverage, claim boundary, and strict comparator discipline. |
 | `dfl_tft_combined_v2_plus_strict_lp_benchmark_frame` | Tests whether TFT quantile schedules add value as complementary candidates on top of frozen NBEATSx V2+. |
 | `dfl_tft_combined_v2_plus_evidence` | Asset check for combined NBEATSx+TFT coverage, claim boundary, and no-live-execution flags. |
+| `dfl_tft_calibrated_quantile_schedule_candidate_library_frame` | Converts calibrated TFT p10/p50/p90 strict rows into the same schedule-candidate contract. |
+| `dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame` | Tests whether calibrated TFT schedules add complementary value on top of frozen NBEATSx V2+. |
 
 Tracked config:
 [real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml](../../configs/real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml).
+
+Serious 365-anchor config:
+[real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml](../../configs/real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml).
 
 ## Implementation Notes
 
@@ -74,10 +80,10 @@ Tracked config:
   interpolation backward path does not have a deterministic CUDA implementation.
 - TFT runs are bounded with `tft_max_steps` in addition to `tft_max_epochs` so a
   screen run cannot silently become an unbounded overnight job.
-- The current horizon quantile calibration path records prior-only horizon
-  biases and a conservative quantile spread scale. It is safe for evidence
-  routing, but materialized empirical coverage should be reviewed before making
-  any stronger calibration claim.
+- The horizon quantile calibration path is now strict-scored as its own
+  `tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame`
+  asset. Raw TFT rows remain visible, but calibrated p10/p50/p90 rows can also
+  enter the schedule-candidate library without mutating earlier evidence.
 
 ## Materialized Screen: 2026-05-18
 
@@ -192,6 +198,43 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize -m sma
 For host CUDA execution, use the unified official-evidence runner pattern where
 possible, or run the matching Dagster selection from the activated root venv so
 the Windows CUDA torch install is visible.
+
+For the serious 365-anchor lane, use the resumable TFT runner. It writes
+`attempt_manifest.json`, persists batches under
+`.tmp_runtime/tft_quantile_gate_batches/`, and can run in host mode so the local
+CUDA PyTorch install is visible:
+
+```powershell
+.\scripts\run-tft-quantile-gate-batches.ps1 `
+  -TotalAnchors 365 `
+  -BatchSize 2 `
+  -AnchorBatchOrder chronological `
+  -LocalMode host `
+  -TftMaxEpochs 30 `
+  -TftMaxSteps 20 `
+  -TftBatchSize 8
+```
+
+For a bounded proof batch before committing to the full run:
+
+```powershell
+.\scripts\run-tft-quantile-gate-batches.ps1 `
+  -TotalAnchors 365 `
+  -BatchSize 1 `
+  -EndAnchorIndex 1 `
+  -AnchorBatchOrder chronological `
+  -LocalMode host `
+  -TftMaxEpochs 30 `
+  -TftMaxSteps 20 `
+  -SkipDownstreamGate
+```
+
+Once enough batches are persisted, rerun without `-SkipDownstreamGate` or
+materialize the downstream calibrated selection:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select tft_official_global_panel_horizon_quantile_calibration_frame,tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame,dfl_tft_calibrated_quantile_schedule_candidate_library_frame,dfl_tft_calibrated_augmented_v2_plus_strict_lp_benchmark_frame,dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame -c configs/real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml
+```
 
 ## Acceptance Rule
 

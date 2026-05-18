@@ -42,6 +42,7 @@ than raw forecast MAE or hourly action accuracy.
 | `dfl_market_coupling_v2_plus_ablation_frame` | Compares Ukrainian-only V2+ against a future Ukrainian-plus-governed-neighbor V2+ route, or emits `blocked_by_governance` without training B. |
 | `tft_official_global_panel_rolling_strict_lp_benchmark_frame` | Additive official global-panel TFT parity lane that strict-scores p10/p50/p90 quantile forecasts. |
 | `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame` | Compares frozen NBEATSx V2+ against TFT quantile schedule/value candidates under the unchanged strict LP/oracle gate. |
+| `dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame` | Tests whether prior-only horizon/quantile-calibrated TFT schedules add complementary value on top of the frozen Ukrainian-only V2+ baseline. |
 
 Tracked config:
 [real_data_official_global_panel_schedule_value_v2_plus_week3.yaml](../../configs/real_data_official_global_panel_schedule_value_v2_plus_week3.yaml).
@@ -54,6 +55,9 @@ Governed market-coupling ablation config:
 
 TFT parity/quantile gate config:
 [real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml](../../configs/real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml).
+
+Serious calibrated TFT quantile gate config:
+[real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml](../../configs/real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml).
 
 ## Candidate Library V2+
 
