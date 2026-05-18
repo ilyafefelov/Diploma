@@ -33,3 +33,12 @@ ops:
       min_validation_tenant_anchor_count_per_source_model: 90
       min_prior_mean_improvement_ratio_vs_v2: 0.01
       min_mean_regret_improvement_ratio_vs_baseline: 0.0
+  dfl_tft_combined_v2_plus_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "tft_official_global_panel_p10_v1,tft_official_global_panel_v1,tft_official_global_panel_p90_v1"
+      baseline_source_model_name: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      final_validation_anchor_count_per_tenant: 18
+      min_validation_tenant_anchor_count_per_source_model: 90
+      min_prior_mean_improvement_ratio_vs_v2: 0.01
+      min_mean_regret_improvement_ratio_vs_baseline: 0.0

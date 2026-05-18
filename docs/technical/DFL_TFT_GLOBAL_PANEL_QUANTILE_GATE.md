@@ -55,6 +55,8 @@ forecast quality.
 | `dfl_tft_quantile_schedule_candidate_library_frame` | Converts TFT p10/p50/p90 strict benchmark rows into feasible schedule candidates. |
 | `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame` | Compares frozen NBEATSx V2+ rows against TFT-quantile V2/V2+ rows under the unchanged strict LP/oracle gate. |
 | `dfl_tft_augmented_v2_plus_evidence` | Asset check for coverage, claim boundary, and strict comparator discipline. |
+| `dfl_tft_combined_v2_plus_strict_lp_benchmark_frame` | Tests whether TFT quantile schedules add value as complementary candidates on top of frozen NBEATSx V2+. |
+| `dfl_tft_combined_v2_plus_evidence` | Asset check for combined NBEATSx+TFT coverage, claim boundary, and no-live-execution flags. |
 
 Tracked config:
 [real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml](../../configs/real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml).
@@ -145,12 +147,46 @@ work with richer context or longer training.
 Local packet:
 `data/research_runs/week3_tft_quantile_36_anchor_prior_holdout_screen/`.
 
+## Combined NBEATSx+TFT Complementary Path
+
+The first augmented gate answered whether TFT can stand alone after the same
+V2/V2+ schedule-value treatment. A separate combined path now answers the more
+specific question: can TFT contribute one or more schedules that improve the
+frozen Ukrainian-only NBEATSx V2+ selector?
+
+The combined path keeps the calibrated NBEATSx V2+ schedule as the default
+fallback for every tenant/anchor. For each tenant, it uses prior/train rows only
+to select the best TFT candidate key (`source_model_name`, `candidate_family`,
+`candidate_model_name`). TFT is allowed into the final holdout only when its
+prior mean regret beats the frozen V2+ prior profile by the configured threshold.
+If that evidence is absent or weak, the emitted combined row is exactly the
+frozen V2+ fallback. Final-holdout actuals affect scoring only.
+
+This means a combined result can pass only if TFT improves the final strict
+LP/oracle mean regret versus calibrated V2+ and does not worsen median regret.
+Matching V2+ through fallback is valid negative evidence, but it is not a
+promotion.
+
+Materialized combined result on the 36-anchor screen, Dagster run
+`df0d00ac-49ae-4e56-bc82-7e33c43b7e36`:
+
+| Role | Rows | Mean regret UAH | Median regret UAH |
+|---|---:|---:|---:|
+| Frozen calibrated NBEATSx V2+ | 90 | 174.77 | 67.30 |
+| Combined NBEATSx+TFT selector | 90 | 174.77 | 67.30 |
+
+The combined gate was blocked, not promoted. It selected the frozen V2+ fallback
+for all 90 tenant-anchor rows because TFT prior/train candidates did not clear
+the required improvement threshold. Therefore the current evidence says TFT does
+not yet help as complementary schedules under the small 36-anchor, bounded
+global-panel configuration.
+
 ## Materialization
 
 Screen the latest anchors before attempting a full 365-anchor run:
 
 ```powershell
-docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select tft_official_global_panel_rolling_strict_lp_benchmark_frame,tft_official_global_panel_horizon_quantile_calibration_frame,dfl_tft_quantile_schedule_candidate_library_frame,dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame -c configs/real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select tft_official_global_panel_rolling_strict_lp_benchmark_frame,tft_official_global_panel_horizon_quantile_calibration_frame,dfl_tft_quantile_schedule_candidate_library_frame,dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame,dfl_tft_combined_v2_plus_strict_lp_benchmark_frame -c configs/real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml
 ```
 
 For host CUDA execution, use the unified official-evidence runner pattern where

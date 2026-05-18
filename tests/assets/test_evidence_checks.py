@@ -178,6 +178,10 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_tft_augmented_v2_plus_evidence",
         ),
         (
+            "dfl_tft_combined_v2_plus_strict_lp_benchmark_frame",
+            "dfl_tft_combined_v2_plus_evidence",
+        ),
+        (
             "dfl_market_coupling_v2_plus_ablation_frame",
             "dfl_market_coupling_v2_plus_ablation_evidence",
         ),
