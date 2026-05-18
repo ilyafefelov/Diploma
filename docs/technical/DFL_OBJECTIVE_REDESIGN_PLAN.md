@@ -194,3 +194,50 @@ the same objective remains deprioritized.
 Technical runbook:
 
 - [DFL_CANDIDATE_VALUE_DFL_V3.md](DFL_CANDIDATE_VALUE_DFL_V3.md).
+
+## Plateau-Breaker / Candidate-Value DFL v4 Slice
+
+The next implemented branch is V4, and it starts with diagnosis rather than a
+larger model. V3 matched V2+ because the non-degradation fallback selected V2+
+for every tenant/source row. V4 therefore adds:
+
+1. a V2+/V3 plateau autopsy with three deterministic causes:
+   `candidate_not_better`, `candidate_available_but_not_selected`, and
+   `fallback_too_conservative`;
+2. a data-quality/context audit over the 365-anchor Ukrainian panel;
+3. stronger feasible candidate schedules: quantile/risk, block peak,
+   terminal SOC reserve, spread-volatility robust, tenant degradation/throughput
+   sweep, and train-only oracle-neighborhood diagnostic schedules;
+4. a candidate-level value scorer with richer schedule/regime features.
+
+The zero-threshold raw NBEATSx diagnostic remains non-promoted: it could reduce
+raw mean regret from `193.36` to `185.62` UAH, but this still does not beat the
+calibrated V2+ comparator at `174.77` UAH and did not satisfy prior evidence
+requirements.
+
+Tracked config:
+
+- `configs/real_data_dfl_candidate_value_dfl_v4_week3.yaml`.
+
+Technical runbook:
+
+- [DFL_PLATEAU_BREAKER_V4.md](DFL_PLATEAU_BREAKER_V4.md).
+
+Materialized result:
+
+- Dagster run id: `0c57f795-3b5b-4106-ad9d-0776294a1eb4`;
+- candidate library rows: `71,040`;
+- V4 label-panel rows: `71,040`;
+- strict benchmark rows: `720`;
+- label-panel and strict-benchmark checks passed;
+- calibrated V4 selected V2+ at `174.77` UAH mean regret;
+- raw V4 selected V2+ at `193.36` UAH mean regret;
+- improvement versus V2+: `0.00%`.
+
+Interpretation: V4 did not weaken the gate, and the gate correctly kept V2+ as
+the thesis headline. The autopsy now shows that calibrated NBEATSx is mostly
+`candidate_not_better` (`71 / 90` final-holdout rows), while raw NBEATSx has a
+larger `fallback_too_conservative` slice (`42 / 90` rows). The data audit still
+flags weather/load, calendar/event, and publication-time gaps, so the next work
+should be Ukrainian data/context improvement or a teacher-trajectory DT only
+after the candidate/value layer has stronger labels.

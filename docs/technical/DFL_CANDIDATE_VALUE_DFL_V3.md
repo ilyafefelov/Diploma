@@ -201,6 +201,24 @@ regret by allowing one weak-prior switch. This is not promoted because it still
 does not beat the calibrated V2+ headline (`174.77` UAH) and the train/prior
 signal is too small for the conservative thesis gate.
 
+## Plateau-Breaker V4 Follow-Up
+
+The V3 result creates a specific plateau question: did V3 fail because no
+candidate was better than V2+, because a better candidate existed but was not
+selected, or because the fallback was too conservative? The follow-up V4 slice
+adds this autopsy explicitly and then expands the candidate library with
+stronger schedule families before training another candidate-level value scorer.
+
+The new technical contract is documented in
+[DFL_PLATEAU_BREAKER_V4.md](DFL_PLATEAU_BREAKER_V4.md). V4 keeps the same
+claim boundary: V2+ remains the headline unless the new candidate beats V2+ by
+mean regret, does not worsen median regret, preserves robustness, and keeps
+`market_execution_enabled=false`.
+
+The first V4 materialization passed its evidence checks but again selected V2+
+for every tenant/source row. It is therefore diagnostic evidence, not a new
+headline result.
+
 ## Run
 
 ```powershell

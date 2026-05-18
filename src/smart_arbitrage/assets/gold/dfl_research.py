@@ -195,6 +195,16 @@ from smart_arbitrage.dfl.candidate_value_dfl_v3 import (
     build_dfl_schedule_candidate_library_v3_frame,
     evaluate_dfl_candidate_value_dfl_v3_gate,
 )
+from smart_arbitrage.dfl.candidate_value_dfl_v4 import (
+    CANDIDATE_VALUE_DFL_V4_STRICT_LP_STRATEGY_KIND,
+    build_dfl_candidate_value_dfl_v4_frame,
+    build_dfl_candidate_value_dfl_v4_strict_lp_benchmark_frame,
+    build_dfl_candidate_value_label_panel_v4_frame,
+    build_dfl_plateau_data_quality_audit_frame,
+    build_dfl_schedule_candidate_library_v4_frame,
+    build_dfl_v2_v3_plateau_autopsy_frame,
+    evaluate_dfl_candidate_value_dfl_v4_gate,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     build_dfl_schedule_value_learner_v2_plus_robustness_frame,
     evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate,
@@ -906,6 +916,32 @@ class DflOfficialGlobalPanelCandidateValueDflV3AssetConfig(dg.Config):
     min_prior_template_anchor_count: int = 3
     min_prior_mean_improvement_ratio_vs_v2_plus: float = 0.01
     pairwise_loss_weight: float = 0.05
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.0
+    min_mean_regret_improvement_ratio_vs_strict: float = 0.05
+
+
+class DflOfficialGlobalPanelCandidateValueDflV4AssetConfig(dg.Config):
+    """Official global-panel plateau-breaker candidate-value DFL v4 scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = (
+        "nbeatsx_official_global_panel_v1,"
+        "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    )
+    final_validation_anchor_count_per_tenant: int = 18
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    quantile_risk_spread_scales_csv: str = "1.25,1.5"
+    block_peak_delta_uah_mwh: float = 225.0
+    terminal_reserve_shift_uah_mwh: float = 250.0
+    spread_volatility_scale: float = 0.65
+    tenant_sweep_spread_scales_csv: str = "0.75,1.35"
+    include_train_oracle_neighborhood: bool = True
+    max_train_generation_anchor_count_per_tenant: int = 20
+    min_prior_mean_improvement_ratio_vs_v2_plus: float = 0.01
+    ridge_l2: float = 1.0
     min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.0
     min_mean_regret_improvement_ratio_vs_strict: float = 0.05
 
@@ -3524,6 +3560,321 @@ def dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame(
         },
     )
     return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_v2_v3_plateau_autopsy_frame(
+    context,
+    dfl_official_global_panel_schedule_candidate_library_v3_frame: pl.DataFrame,
+    dfl_official_global_panel_candidate_value_label_panel_v3_frame: pl.DataFrame,
+    dfl_official_global_panel_candidate_value_dfl_v3_frame: pl.DataFrame,
+    dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Classify why Candidate-Value DFL v3 did not replace frozen V2+."""
+
+    autopsy_frame = build_dfl_v2_v3_plateau_autopsy_frame(
+        dfl_official_global_panel_schedule_candidate_library_v3_frame,
+        dfl_official_global_panel_candidate_value_label_panel_v3_frame,
+        dfl_official_global_panel_candidate_value_dfl_v3_frame,
+        dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": autopsy_frame.height,
+            "source_model_count": autopsy_frame.select("source_model_name").n_unique()
+            if autopsy_frame.height
+            else 0,
+            "plateau_cause_count": autopsy_frame.select("plateau_cause").n_unique()
+            if autopsy_frame.height
+            else 0,
+            "scope": "dfl_official_global_panel_v2_v3_plateau_autopsy_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return autopsy_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_plateau_data_quality_audit_frame(
+    context,
+    dfl_official_global_panel_schedule_candidate_library_v3_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    dfl_official_global_panel_v2_v3_plateau_autopsy_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit whether the plateau points to missing data/context before new DT work."""
+
+    audit_frame = build_dfl_plateau_data_quality_audit_frame(
+        dfl_official_global_panel_schedule_candidate_library_v3_frame,
+        real_data_benchmark_silver_feature_frame,
+        dfl_official_global_panel_v2_v3_plateau_autopsy_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "gap_count": audit_frame.filter(pl.col("audit_status") != "ready").height
+            if audit_frame.height
+            else 0,
+            "scope": "dfl_official_global_panel_plateau_data_quality_audit_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_schedule_candidate_library_v4_frame(
+    context,
+    config: DflOfficialGlobalPanelCandidateValueDflV4AssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v3_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Expand V3 with stronger plateau-breaker candidate schedules."""
+
+    library_frame = build_dfl_schedule_candidate_library_v4_frame(
+        dfl_official_global_panel_schedule_candidate_library_v3_frame,
+        quantile_risk_spread_scales=_float_csv_values(
+            config.quantile_risk_spread_scales_csv,
+            field_name="quantile_risk_spread_scales_csv",
+        ),
+        block_peak_delta_uah_mwh=config.block_peak_delta_uah_mwh,
+        terminal_reserve_shift_uah_mwh=config.terminal_reserve_shift_uah_mwh,
+        spread_volatility_scale=config.spread_volatility_scale,
+        tenant_sweep_spread_scales=_float_csv_values(
+            config.tenant_sweep_spread_scales_csv,
+            field_name="tenant_sweep_spread_scales_csv",
+        ),
+        include_train_oracle_neighborhood=config.include_train_oracle_neighborhood,
+        max_train_generation_anchor_count_per_tenant=(
+            config.max_train_generation_anchor_count_per_tenant
+        ),
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_candidate_library_v3_frame
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "tenant_count": library_frame.select("tenant_id").n_unique()
+            if library_frame.height
+            else 0,
+            "source_model_count": len(
+                _forecast_model_names(config.forecast_model_names_csv)
+            ),
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
+            if library_frame.height
+            else 0,
+            "scope": "dfl_official_global_panel_schedule_candidate_library_v4_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_candidate_value_label_panel_v4_frame(
+    context,
+    dfl_official_global_panel_schedule_candidate_library_v4_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-safe V4 candidate features and realized value labels."""
+
+    label_panel_frame = build_dfl_candidate_value_label_panel_v4_frame(
+        dfl_official_global_panel_schedule_candidate_library_v4_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": label_panel_frame.height,
+            "selector_feature_count": len(
+                [
+                    column
+                    for column in label_panel_frame.columns
+                    if column.startswith("selector_feature_")
+                ]
+            ),
+            "label_count": len(
+                [
+                    column
+                    for column in label_panel_frame.columns
+                    if column.startswith("label_")
+                ]
+            ),
+            "scope": "dfl_official_global_panel_candidate_value_label_panel_v4_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return label_panel_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_candidate_value_dfl_v4_frame(
+    context,
+    config: DflOfficialGlobalPanelCandidateValueDflV4AssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v4_frame: pl.DataFrame,
+    dfl_official_global_panel_candidate_value_label_panel_v4_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Candidate-level V4 value scorer selected on prior anchors with V2+ fallback."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    model_frame = build_dfl_candidate_value_dfl_v4_frame(
+        dfl_official_global_panel_schedule_candidate_library_v4_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
+        dfl_official_global_panel_candidate_value_label_panel_v4_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        min_prior_mean_improvement_ratio_vs_v2_plus=(
+            config.min_prior_mean_improvement_ratio_vs_v2_plus
+        ),
+        ridge_l2=config.ridge_l2,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": model_frame.height,
+            "source_model_count": len(source_model_names),
+            "fallback_rows": model_frame.filter(pl.col("fallback_to_v2_plus")).height
+            if model_frame.height
+            else 0,
+            "scope": "dfl_official_global_panel_candidate_value_dfl_v4_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return model_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame(
+    context,
+    config: DflOfficialGlobalPanelCandidateValueDflV4AssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v4_frame: pl.DataFrame,
+    dfl_official_global_panel_candidate_value_dfl_v4_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict-score candidate-value DFL v4 against frozen Ukrainian-only V2+."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_candidate_value_dfl_v4_strict_lp_benchmark_frame(
+        dfl_official_global_panel_schedule_candidate_library_v4_frame,
+        dfl_official_global_panel_candidate_value_dfl_v4_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_candidate_value_dfl_v4_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "source_model_count": len(source_model_names),
+            "strategy_kind": CANDIDATE_VALUE_DFL_V4_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_replacement_passed": gate.metrics.get(
+                "offline_strategy_replacement_passed",
+                False,
+            ),
+            "market_execution_enabled": False,
+            "scope": "dfl_official_global_panel_candidate_value_dfl_v4_strict_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
 
 
 @dg.asset(
@@ -6918,6 +7269,12 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_candidate_value_dfl_v3_frame,
     dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame,
     dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame,
+    dfl_official_global_panel_v2_v3_plateau_autopsy_frame,
+    dfl_official_global_panel_plateau_data_quality_audit_frame,
+    dfl_official_global_panel_schedule_candidate_library_v4_frame,
+    dfl_official_global_panel_candidate_value_label_panel_v4_frame,
+    dfl_official_global_panel_candidate_value_dfl_v4_frame,
+    dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,
     dfl_official_global_panel_v2_plus_trajectory_dataset_frame,
     dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame,

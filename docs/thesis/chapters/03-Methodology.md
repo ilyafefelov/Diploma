@@ -12,9 +12,28 @@ degradation proxy та дотримання safety constraints.
 Базовим контрольним контуром є `strict_similar_day`. Він залишається
 замороженим fallback і comparator для всіх ML/DFL-кандидатів. Neural forecast
 models, schedule/value learners та DFL-style challengers можуть бути
-розглянуті лише як Offline Strategy Promotion evidence: вони можуть
-підтримувати offline/read-model strategy evidence, але не означають live market
-execution, dashboard/API default switch або deployed Decision Transformer.
+розглянуті лише як доказова база для Offline Strategy Promotion: вони можуть
+підтримувати offline/read-model strategy evidence, але не означають ринкове
+виконання в реальному часі, автоматичне перемикання dashboard/API на нову
+стратегію або розгорнутий Decision Transformer-контролер.
+
+Для уникнення змішування дослідницьких, демонстраційних і продуктово
+орієнтованих тверджень у роботі використовується стисла таблиця методів.
+Таблиця 3.1 показує, які дані використовує кожний метод, чи допускає він
+майбутню інформацію, яку роль має у decision pipeline та яку межу твердження
+дозволяє.
+
+| Метод | Вхідні дані | Чи використовує майбутні дані? | Роль у прийнятті рішення | Основна метрика | Межа твердження |
+|---|---|---|---|---|---|
+| Bronze/Silver/Gold data pipeline | OREE DAM, Open-Meteo/weather context, tenant configuration/load context, telemetry та guarded external-source candidates | Ні; кожен ряд має відповідати часовій доступності джерела | Формує відтворюваний evidence layer і lineage для всіх наступних експериментів | Повнота даних, provenance, `data_quality_tier`, coverage | Твердження рівня thesis-grade дозволені лише для observed Ukrainian evidence; demo/synthetic rows не підтримують висновки про ефективність. |
+| `strict_similar_day` baseline | Історичні ціни та календарний контекст, доступні до anchor | Ні | Заморожений comparator і fallback для всіх ML/DFL-кандидатів | Oracle regret, net value, median regret, rolling robustness | Є контрольним контуром і fallback; не є твердженням про оптимальність у всіх майбутніх ринкових режимах. |
+| LP dispatch optimizer | Forecast vector, battery capacity/power limits, SOC, efficiency, degradation proxy | Ні для schedule, який може бути використаний у попередньому плануванні; realized prices використовуються лише в oracle-evaluation режимі | Перетворює forecast на feasible charge/discharge schedule | Feasibility, SOC bounds, throughput, degradation-adjusted value | Детермінований scheduling/preview layer; не створює ринкових заявок і не є фізичним dispatch controller. |
+| Official NBEATSx/TFT forecast candidates | Rolling-origin training history, tenant-aligned features, approved prior-only exogenous context | Ні | Дає forecast input для того самого LP/oracle contour, що й baseline | Forecast metrics як допоміжні; основна оцінка через downstream regret/value | Нейронний forecast не promoted сам по собі; він має покращити decision value після LP. |
+| Strict LP/oracle evaluation | Вибраний schedule та realized prices після anchor | Так, але лише після факту і лише для оцінювання | Обчислює theoretical best value та regret для offline comparison | Mean/median oracle regret, value gap | Oracle не є стратегією, яку можна застосовувати для виконання ринкових рішень, і не використовується як джерело прогнозу. |
+| Schedule/Value Learner V2/V2+ | Feasible LP-scored candidate schedules і prior-only schedule/value features | Ні для selection rule; final-holdout realized values використовуються тільки для scoring | Offline selector між schedule families; поточний найсильніший promotion evidence | Mean-regret improvement, median-not-worse condition, 4-window robustness | Підтримує Offline Strategy Promotion/read-model evidence; не вмикає ринкове виконання. |
+| Candidate-Value DFL v3 та DFL/DT challengers | Candidate libraries, train/prior label panels, trajectory/value diagnostics | Train/prior labels можуть містити realized outcomes минулих anchors; final holdout не використовується для selection | Дослідницька перевірка більш decision-focused objective та підготовка до майбутнього DT | Improvement vs V2+, robustness, failure-mode diagnostics | Research-only/diagnostic layer, доки не перевершить V2+ під незмінним strict LP/oracle gate. |
+| Pydantic Gatekeeper і governance policies | `ProposedBid`/dispatch contracts, market caps, SOC/physical limits, source-governance flags | Ні | Детермінована валідація safety, market та data-governance constraints | Validation failures, cap/SOC/envelope feasibility, blocked governance status | Safety boundary системи; не є ML-моделлю і не підтверджує автономне ринкове виконання. |
+| Evidence packet і run registry | Attempt manifest, monitor snapshot, persisted rows, registry JSON/Markdown, asset checks | Ні | Забезпечує відтворюваність і аудит експерименту | Persisted row count, check status, run receipt consistency | Доказовий пакет для дипломної оцінки; не є журналом фактичної торгівлі. |
 
 ## 3.2. Дані та межа доказовості
 
@@ -40,8 +59,8 @@ publication-time availability та domain-shift gates.
 Оцінювання виконується як temporal rolling-origin protocol. Для кожного anchor
 модель бачить лише інформацію, доступну до decision time. Реалізовані ціни
 після anchor можуть використовуватися для oracle evaluation, regret labels і
-diagnostics, але не для формування deployable forecast input або prior-only
-selector feature.
+diagnostics, але не для формування forecast input для майбутнього виконання
+рішення або prior-only ознак selector-а.
 
 ```mermaid
 flowchart LR
@@ -57,9 +76,10 @@ flowchart LR
   I --> J["Read-model evidence; market_execution_enabled=false"]
 ```
 
-У цьому протоколі oracle LP є only offline evaluator. Він має доступ до
+У цьому протоколі oracle LP є лише офлайн-оцінювачем. Він має доступ до
 realized prices лише для обчислення theoretical best value та regret. Oracle не
-є deployable strategy і не використовується як live forecast source.
+є стратегією, яку можна застосовувати для виконання ринкових рішень, і не
+використовується як джерело прогнозу.
 
 ## 3.4. Forecast-to-schedule evaluation
 
@@ -76,7 +96,7 @@ realized prices лише для обчислення theoretical best value та
 - rolling-window robustness;
 - здатність не погіршувати `strict_similar_day` у стабільних режимах.
 
-Schedule/value learner не замінює physical execution layer. Він вибирає
+Schedule/value learner не замінює фізичний контур виконання. Він вибирає
 candidate schedule family у offline/read-model evidence stack і завжди
 залишається за `strict_similar_day` fallback, доки promotion gate не доводить
 стійку перевагу.
@@ -188,15 +208,16 @@ actuals можуть впливати лише на оцінку вже вибр
 - Predict-then-bid research для стратегічного energy storage підтримує
   архітектуру, де forecasting, optimization та market/value evaluation
   розглядаються разом. У цій дипломній роботі це реалізовано обережно:
-  Schedule/Value Learner V2 є offline/read-model challenger, а не live bidding
-  controller.
+  Schedule/Value Learner V2 є offline/read-model challenger, а не контролером
+  для подання ринкових заявок у реальному часі.
 
 Таким чином, Schedule/Value Learner V2 у методології роботи займає проміжне
 місце між класичним Predict-then-Optimize і повним DFL/Decision Transformer
-controller. Він уже оптимізує вибір за downstream decision value, але зберігає
-strict LP/oracle evaluator, deterministic fallback і no-market-execution claim
-boundary. Це дозволяє академічно коректно стверджувати Offline Strategy
-Promotion evidence, не заявляючи live trading або deployed DT control.
+контролером. Він уже оптимізує вибір за downstream decision value, але зберігає
+strict LP/oracle evaluator, deterministic fallback і межу твердження про
+відсутність ринкового виконання. Це дозволяє академічно коректно стверджувати
+Offline Strategy Promotion evidence, не заявляючи ринкову торгівлю в реальному
+часі або розгорнутий DT-контролер.
 
 ## 3.6. Candidate-Value DFL v3 як schedule-level value scorer
 
@@ -235,10 +256,22 @@ schedules були неконкурентними проти V2+ на більш
 Отже, наступний DFL/DT крок має покращувати feature/context або candidate
 generation mechanism, а не повторювати ті самі історичні residual templates.
 
-## 3.7. Unified execution runner: local vs Hugging Face Jobs
+V4 plateau-breaker методологічно фіксує саме цю проблему перед переходом до DT.
+Спочатку він класифікує причину плато між V2+ і V3:
+`candidate_not_better`, `candidate_available_but_not_selected` або
+`fallback_too_conservative`. Потім окремий data-quality audit перевіряє, чи не
+пов'язаний залишковий regret з браком point-in-time context: Ukrainian DAM
+coverage, weather/load, calendar/event, publication-time availability та regret
+clusters. Лише після цього V4 додає сильніші feasible schedules: quantile/risk,
+block peak, terminal SOC reserve, spread-volatility robust,
+tenant degradation/throughput sweep та train-only oracle-neighborhood
+diagnostics. Усі ці schedules все одно проходять той самий LP/oracle scoring, а
+фінальний scorer навчається на train/prior labels і fallback-иться до V2+, якщо
+prior evidence не доводить очікуване покращення.
 
-Для довгих official evidence runs використовується єдиний operational
-entrypoint:
+## 3.7. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
+
+Для довгих official evidence runs використовується єдиний технічний entrypoint:
 
 ```powershell
 .\scripts\run-official-evidence.ps1 -Backend local
@@ -277,7 +310,7 @@ flowchart TD
   J --> K["Offline Strategy Promotion evidence packet"]
 ```
 
-Обидва backend-и мають однакову методологічну межу: зміна compute location не
+Обидва backend-и мають однакову методологічну межу: зміна місця обчислення не
 змінює claim boundary. Результати залишаються offline/read-model evidence, а
 `market_execution_enabled` має залишатися `false`.
 
@@ -293,7 +326,7 @@ LP/oracle gate. Мінімальні умови:
 - mean-regret improvement не менше 5% проти `strict_similar_day`;
 - median regret не гірший за frozen control;
 - `strict_similar_day` лишається fallback;
-- market execution не вмикається.
+- ринкове виконання не вмикається.
 
 Якщо candidate не проходить gate, це не вважається failure of implementation.
 Це є валідним негативним результатом: система коректно відхиляє слабкий
@@ -316,9 +349,10 @@ resume run, і яка claim boundary застосована.
 - посилання на relevant technical docs;
 - явне формулювання `market_execution_enabled=false`.
 
-Така структура дозволяє відокремити engineering success від overclaiming:
-показуючи reproducible Offline Strategy Promotion evidence без
-твердження, що система вже виконує live trading або deployed DT control.
+Така структура дозволяє відокремити інженерний успіх від завищених тверджень:
+вона демонструє відтворювану доказову базу для Offline Strategy Promotion без
+твердження, що система вже виконує ринкові операції в реальному часі або має
+розгорнутий DT-контролер.
 
 ## 3.10. Джерела методологічного обґрунтування
 

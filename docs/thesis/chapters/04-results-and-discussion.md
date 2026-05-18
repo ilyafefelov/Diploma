@@ -330,6 +330,34 @@ regret. Це не було promoted, тому що результат усе щ�
 V2+ headline (`174.77` UAH), а train/prior signal є надто слабким для
 консервативного thesis gate.
 
+На основі цього результату додано Plateau-Breaker / Candidate-Value DFL v4
+slice. Його мета - не одразу запускати більший DT, а спершу розділити причини
+плато: відсутність кращого candidate schedule, помилка scorer-а, або надто
+консервативний fallback. Далі V4 перевіряє data/context gaps на 365-anchor
+панелі та додає сильніші schedule families: quantile/risk, block peak,
+terminal SOC reserve, spread-volatility robust, tenant-specific
+degradation/throughput sweep і train-only oracle-neighborhood diagnostics.
+
+Матеріалізований V4 run `0c57f795-3b5b-4106-ad9d-0776294a1eb4` пройшов
+label-panel і strict-benchmark evidence checks, але також не замінив V2+. У
+strict LP/oracle benchmark було `720` rows: для calibrated official NBEATSx V4
+повторив V2+ mean regret `174.77` UAH, а для raw official NBEATSx повторив V2+
+mean regret `193.36` UAH. Отже, improvement проти V2+ знову дорівнював
+`0.00%`.
+
+Новий внесок V4 полягає в кращій діагностиці плато. Autopsy показав, що для
+calibrated NBEATSx `71 / 90` final-holdout tenant-anchor rows мають причину
+`candidate_not_better`, а `19 / 90` - `fallback_too_conservative`. Для raw
+NBEATSx відповідні числа становлять `48 / 90` і `42 / 90`. Pre-fallback raw
+candidate scoring міг знизити mean regret до `190.59` UAH проти raw V2+
+`193.36` UAH, але цей результат усе ще гірший за calibrated V2+ `174.77` UAH і
+не мав достатнього prior/train evidence для promotion. Data-quality audit також
+показав, що Ukrainian DAM history і regret-cluster alignment готові, але
+weather/load context, calendar/event context і publication-time availability
+мають gaps. Тому V2+ залишається thesis headline, а наступне покращення має
+починатися з point-in-time context і нових schedule shapes, не з більшого DT
+над тим самим objective.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

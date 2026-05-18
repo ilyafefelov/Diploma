@@ -72,6 +72,12 @@ from smart_arbitrage.dfl.candidate_value_dfl_v3 import (
     validate_dfl_candidate_value_dfl_v3_failure_audit_evidence,
     validate_dfl_candidate_value_label_panel_v3_evidence,
 )
+from smart_arbitrage.dfl.candidate_value_dfl_v4 import (
+    validate_dfl_candidate_value_dfl_v4_evidence,
+    validate_dfl_candidate_value_label_panel_v4_evidence,
+    validate_dfl_plateau_data_quality_audit_evidence,
+    validate_dfl_v2_v3_plateau_autopsy_evidence,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     validate_dfl_schedule_value_learner_v2_plus_robustness_evidence,
 )
@@ -610,6 +616,86 @@ def dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_official_global_panel_v2_v3_plateau_autopsy_frame",
+    name="dfl_official_global_panel_v2_v3_plateau_autopsy_evidence",
+    description=(
+        "Checks official global-panel V2+/V3 plateau autopsy coverage and "
+        "research claim boundaries."
+    ),
+)
+def dfl_official_global_panel_v2_v3_plateau_autopsy_evidence(
+    dfl_official_global_panel_v2_v3_plateau_autopsy_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_v2_v3_plateau_autopsy_evidence(
+            dfl_official_global_panel_v2_v3_plateau_autopsy_frame,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_official_global_panel_plateau_data_quality_audit_frame",
+    name="dfl_official_global_panel_plateau_data_quality_audit_evidence",
+    description=(
+        "Checks official global-panel plateau data-quality audit rows and "
+        "research claim boundaries."
+    ),
+)
+def dfl_official_global_panel_plateau_data_quality_audit_evidence(
+    dfl_official_global_panel_plateau_data_quality_audit_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_plateau_data_quality_audit_evidence(
+            dfl_official_global_panel_plateau_data_quality_audit_frame,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_official_global_panel_candidate_value_label_panel_v4_frame",
+    name="dfl_official_global_panel_candidate_value_label_panel_v4_evidence",
+    description=(
+        "Checks official global-panel candidate-value DFL v4 label-panel "
+        "feature/label separation and claim boundaries."
+    ),
+)
+def dfl_official_global_panel_candidate_value_label_panel_v4_evidence(
+    dfl_official_global_panel_candidate_value_label_panel_v4_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_candidate_value_label_panel_v4_evidence(
+            dfl_official_global_panel_candidate_value_label_panel_v4_frame,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame",
+    name="dfl_official_global_panel_candidate_value_dfl_v4_evidence",
+    description=(
+        "Checks official global-panel candidate-value DFL v4 strict LP coverage "
+        "and claim boundaries."
+    ),
+)
+def dfl_official_global_panel_candidate_value_dfl_v4_evidence(
+    dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_candidate_value_dfl_v4_evidence(
+            dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame,
+            source_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+            min_validation_tenant_anchor_count=90,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
     name="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence",
     description="Checks official global-panel schedule/value learner v2+ rolling robustness evidence.",
@@ -912,6 +998,10 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_official_global_panel_candidate_value_label_panel_v3_evidence,
     dfl_official_global_panel_candidate_value_dfl_v3_evidence,
     dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_evidence,
+    dfl_official_global_panel_v2_v3_plateau_autopsy_evidence,
+    dfl_official_global_panel_plateau_data_quality_audit_evidence,
+    dfl_official_global_panel_candidate_value_label_panel_v4_evidence,
+    dfl_official_global_panel_candidate_value_dfl_v4_evidence,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence,
     dfl_market_coupling_v2_plus_ablation_evidence,
     dfl_official_schedule_value_production_gate_evidence,

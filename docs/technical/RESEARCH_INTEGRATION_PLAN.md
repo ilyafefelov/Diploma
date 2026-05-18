@@ -2594,3 +2594,69 @@ already robust V2+ schedule/value blend.
 Runbook:
 
 - [DFL_CANDIDATE_VALUE_DFL_V3.md](DFL_CANDIDATE_VALUE_DFL_V3.md).
+
+## Plateau-Breaker / Candidate-Value DFL v4
+
+Candidate-Value DFL v4 is the follow-up to the V3 plateau. It does not start
+another Decision Transformer run. It first asks why V3 matched V2+ and separates
+the plateau into three deterministic causes:
+
+- `candidate_not_better`: no available candidate schedule beats V2+ on the
+  anchor;
+- `candidate_available_but_not_selected`: a better candidate exists, but the
+  scorer/fallback misses it;
+- `fallback_too_conservative`: a relaxed fallback threshold would improve
+  final-holdout score, but prior/train evidence is too weak for promotion.
+
+The slice adds:
+
+- `dfl_official_global_panel_v2_v3_plateau_autopsy_frame`;
+- `dfl_official_global_panel_plateau_data_quality_audit_frame`;
+- `dfl_official_global_panel_schedule_candidate_library_v4_frame`;
+- `dfl_official_global_panel_candidate_value_label_panel_v4_frame`;
+- `dfl_official_global_panel_candidate_value_dfl_v4_frame`;
+- `dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame`.
+
+The V4 candidate library targets the actual failure mode rather than simply
+adding another scorer: calibrated quantile/risk schedules, block-structured
+morning/evening peak schedules, SOC terminal reserve variants,
+spread-volatility robust schedules, tenant degradation/throughput sweeps, and
+train-only oracle-neighborhood diagnostics. Final-holdout candidate generation
+does not use oracle-derived rows.
+
+Gate: V4 can replace the thesis headline only if it improves mean regret versus
+V2+, does not worsen median regret versus V2+, still beats `strict_similar_day`
+by at least `5%`, preserves rolling robustness, and keeps
+`market_execution_enabled=false`. Otherwise V2+ remains the current
+Offline Strategy Promotion evidence.
+
+Materialized result:
+
+- Dagster run id: `0c57f795-3b5b-4106-ad9d-0776294a1eb4`;
+- candidate library rows: `71,040`;
+- V4 label-panel rows: `71,040`;
+- V4 learner rows: `10`;
+- V4 strict LP/oracle benchmark rows: `720`;
+- evidence checks passed;
+- calibrated V4 selected V2+ at `174.77` UAH mean regret;
+- raw V4 selected V2+ at `193.36` UAH mean regret;
+- improvement versus V2+ was `0.00%`, so V2+ remains the thesis headline.
+
+The autopsy now gives a sharper diagnosis than the V3 failure audit. For
+calibrated NBEATSx, `71 / 90` final-holdout tenant-anchor rows were
+`candidate_not_better` and `19 / 90` were `fallback_too_conservative`. For raw
+NBEATSx, `48 / 90` were `candidate_not_better` and `42 / 90` were
+`fallback_too_conservative`. The raw source had a pre-fallback candidate mean
+of `190.59` UAH versus raw V2+ at `193.36` UAH, but that still did not beat the
+calibrated V2+ headline at `174.77` UAH and lacked enough prior evidence for
+promotion.
+
+The data audit marks Ukrainian DAM history and regret-cluster alignment as
+ready, but still flags weather/load, calendar/event context, and
+publication-time availability gaps. That points the next improvement branch
+toward point-in-time context and genuinely new schedule shapes, not another
+small selector over the same evidence.
+
+Runbook:
+
+- [DFL_PLATEAU_BREAKER_V4.md](DFL_PLATEAU_BREAKER_V4.md).

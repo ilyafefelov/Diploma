@@ -19,6 +19,22 @@ from smart_arbitrage.dfl.candidate_value_dfl_v3 import (
     evaluate_dfl_candidate_value_dfl_v3_gate,
     validate_dfl_candidate_value_dfl_v3_evidence,
 )
+from smart_arbitrage.dfl.candidate_value_dfl_v4 import (
+    CANDIDATE_FAMILY_BLOCK_PEAK_V4,
+    CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V4,
+    CANDIDATE_FAMILY_QUANTILE_RISK_V4,
+    CANDIDATE_VALUE_DFL_V4_STRICT_LP_STRATEGY_KIND,
+    build_dfl_candidate_value_dfl_v4_frame,
+    build_dfl_candidate_value_dfl_v4_strict_lp_benchmark_frame,
+    build_dfl_candidate_value_label_panel_v4_frame,
+    build_dfl_plateau_data_quality_audit_frame,
+    build_dfl_v2_v3_plateau_autopsy_frame,
+    build_dfl_schedule_candidate_library_v4_frame,
+    evaluate_dfl_candidate_value_dfl_v4_gate,
+    validate_dfl_candidate_value_dfl_v4_evidence,
+    validate_dfl_plateau_data_quality_audit_evidence,
+    validate_dfl_v2_v3_plateau_autopsy_evidence,
+)
 from smart_arbitrage.dfl.official_v2_plus_dfl_dt_bridge import (
     OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
 )
@@ -478,6 +494,226 @@ def test_candidate_value_dfl_v3_failure_audit_explains_prior_template_gap() -> N
         }
         for diagnosis in prior_rows["diagnosis"].to_list()
     )
+
+
+def test_plateau_autopsy_classifies_fallback_too_conservative() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=45.0,
+        value_final_regret=90.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_anchor_count=2,
+    )
+    full_library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=45.0,
+        value_final_regret=90.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_anchor_count=2,
+    )
+    _, v2_plus_model, v2_plus_strict = _v2_plus_reference(
+        base_library,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_validation_anchor_count_per_tenant=2,
+    )
+    label_panel = build_dfl_candidate_value_label_panel_v3_frame(full_library)
+    v3_model = build_dfl_candidate_value_dfl_v3_frame(
+        full_library,
+        v2_plus_model,
+        label_panel,
+        tenant_ids=(TENANTS[0],),
+        forecast_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_validation_anchor_count_per_tenant=2,
+    )
+    strict_frame = build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame(
+        full_library,
+        v3_model,
+        v2_plus_strict,
+        generated_at=GENERATED_AT,
+    )
+
+    autopsy = build_dfl_v2_v3_plateau_autopsy_frame(
+        full_library,
+        label_panel,
+        v3_model,
+        strict_frame,
+    )
+    evidence = validate_dfl_v2_v3_plateau_autopsy_evidence(autopsy)
+
+    assert evidence.passed is True
+    assert set(autopsy["plateau_cause"].to_list()) == {"fallback_too_conservative"}
+    assert set(autopsy["best_candidate_family"].to_list()) == {"candidate_value_good_v3"}
+    assert set(autopsy["selected_family"].to_list()) == {
+        "rank_extrema_perturbation_v2_plus"
+    }
+    assert set(autopsy["market_execution_enabled"].to_list()) == {False}
+
+
+def test_plateau_data_quality_audit_reports_context_and_publication_gaps() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=45.0,
+        value_final_regret=90.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_anchor_count=2,
+    )
+    full_library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=45.0,
+        value_final_regret=90.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_anchor_count=2,
+    )
+    _, v2_plus_model, v2_plus_strict = _v2_plus_reference(
+        base_library,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_validation_anchor_count_per_tenant=2,
+    )
+    label_panel = build_dfl_candidate_value_label_panel_v3_frame(full_library)
+    v3_model = build_dfl_candidate_value_dfl_v3_frame(
+        full_library,
+        v2_plus_model,
+        label_panel,
+        tenant_ids=(TENANTS[0],),
+        forecast_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_validation_anchor_count_per_tenant=2,
+    )
+    strict_frame = build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame(
+        full_library,
+        v3_model,
+        v2_plus_strict,
+        generated_at=GENERATED_AT,
+    )
+    autopsy = build_dfl_v2_v3_plateau_autopsy_frame(
+        full_library,
+        label_panel,
+        v3_model,
+        strict_frame,
+    )
+    benchmark_context = pl.DataFrame(
+        [
+            {
+                "tenant_id": TENANTS[0],
+                "timestamp": FIRST_ANCHOR,
+                "price_source_kind": "observed",
+                "weather_temperature": 11.0,
+                "weather_source_kind": "observed",
+            }
+        ]
+    )
+
+    audit = build_dfl_plateau_data_quality_audit_frame(
+        full_library,
+        benchmark_context,
+        autopsy,
+    )
+    evidence = validate_dfl_plateau_data_quality_audit_evidence(audit)
+
+    assert evidence.passed is True
+    assert {
+        "ukrainian_dam_history",
+        "weather_load_context",
+        "calendar_event_context",
+        "publication_time_availability",
+        "regret_cluster_alignment",
+    }.issubset(set(audit["audit_area"].to_list()))
+    assert set(audit["market_execution_enabled"].to_list()) == {False}
+    assert (
+        audit.filter(pl.col("audit_area") == "publication_time_availability")
+        .select("audit_status")
+        .item()
+        == "gap_detected"
+    )
+
+
+def test_v4_candidate_library_adds_stronger_families_and_train_only_oracle() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_anchor_count=2,
+    )
+    v3_library = build_dfl_schedule_candidate_library_v3_frame(base_library)
+
+    v4_library = build_dfl_schedule_candidate_library_v4_frame(v3_library)
+
+    families = set(v4_library["candidate_family"].unique().to_list())
+    oracle_rows = v4_library.filter(
+        pl.col("candidate_family") == CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V4
+    )
+    assert CANDIDATE_FAMILY_QUANTILE_RISK_V4 in families
+    assert CANDIDATE_FAMILY_BLOCK_PEAK_V4 in families
+    assert set(oracle_rows["split_name"].unique().to_list()) == {"train_selection"}
+    assert set(v4_library["not_market_execution"].unique().to_list()) == {True}
+
+
+def test_candidate_value_dfl_v4_can_replace_v2_plus_when_value_signal_exists() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+    )
+    full_library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+    )
+    _, v2_plus_model, v2_plus_strict = _v2_plus_reference(base_library)
+    v4_labels = build_dfl_candidate_value_label_panel_v4_frame(full_library)
+
+    v4_model = build_dfl_candidate_value_dfl_v4_frame(
+        full_library,
+        v2_plus_model,
+        v4_labels,
+        tenant_ids=TENANTS,
+        forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+    )
+    strict_frame = build_dfl_candidate_value_dfl_v4_strict_lp_benchmark_frame(
+        full_library,
+        v4_model,
+        v2_plus_strict,
+        generated_at=GENERATED_AT,
+    )
+    evidence = validate_dfl_candidate_value_dfl_v4_evidence(
+        strict_frame,
+        source_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+        min_validation_tenant_anchor_count=90,
+    )
+    gate = evaluate_dfl_candidate_value_dfl_v4_gate(
+        strict_frame,
+        source_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+        min_validation_tenant_anchor_count=90,
+    )
+
+    assert set(v4_model["fallback_to_v2_plus"].to_list()) == {False}
+    assert strict_frame["strategy_kind"].unique().to_list() == [
+        CANDIDATE_VALUE_DFL_V4_STRICT_LP_STRATEGY_KIND
+    ]
+    assert evidence.passed is True
+    assert gate.passed is True
+    assert gate.metrics["market_execution_enabled"] is False
 
 
 def _v2_plus_reference(
