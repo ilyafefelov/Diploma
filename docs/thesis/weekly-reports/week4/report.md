@@ -84,7 +84,7 @@ Interpretation: calibration materially improves TFT/NBEATSx relative to their ra
 
 ## 7. План на наступний тиждень
 
-1. Підготувати короткий supervisor package для першої submission-ready версії `Вступ` і `Огляд літератури`, використовуючи вже оновлені [01-project-overview.md](../../chapters/01-project-overview.md) та [02-literature-review.md](../../chapters/02-literature-review.md).
+1. Підготувати короткий supervisor package для першої версії `Вступ` і `Огляд літератури`, готової до подання, використовуючи вже оновлені [01-project-overview.md](../../chapters/01-project-overview.md) та [02-literature-review.md](../../chapters/02-literature-review.md).
 2. Розширювати benchmark на all-tenants лише після узгодження з керівником, бо Dnipro 90-anchor slice уже показав змістовний calibration result.
 3. Додати thesis narrative про негативні/нейтральні результати як сильну сторону методології: pipeline не підганяє висновок під neural model.
 4. Підготувати наступний технічний зріз тільки після review: або all-tenant robustness, або narrow DFL pilot against the fixed benchmark.

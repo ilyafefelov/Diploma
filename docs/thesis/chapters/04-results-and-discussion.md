@@ -60,7 +60,7 @@ panel:
 | Final validation coverage | 90 tenant-anchors per source model |
 | Market venue | DAM |
 | Currency | UAH |
-| Claim scope | Offline Strategy Promotion only |
+| Межа твердження | Лише Offline Strategy Promotion |
 
 Пакет доказів збережений у
 `data/research_runs/week3_official_global_panel_365_strategy_promotion/`.
@@ -160,24 +160,24 @@ Rolling robustness replay over four 18-anchor windows also passed:
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 4 / 4 | V2+ beats both `strict_similar_day` and frozen V2 |
 | `nbeatsx_official_global_panel_v1` | 4 / 4 | V2+ beats both `strict_similar_day` and frozen V2 |
 
-Therefore the strongest current thesis result is Schedule/Value Learner V2+ on
-the 365-anchor Ukrainian panel. The calibrated official NBEATSx source is the
-preferred headline because it has the lowest latest-holdout mean regret. The
-межа твердження залишається такою: Offline Strategy Promotion only, без
-ринкового виконання в реальному часі, без автоматичного перемикання
-dashboard/API на нову стратегію і без твердження, що raw neural forecasting
-сам по собі є кращим за `strict_similar_day`.
+Отже, найсильнішим поточним результатом дипломної роботи є Schedule/Value
+Learner V2+ на 365-anchor Ukrainian panel. Calibrated official NBEATSx є
+основним source row для формулювання результату, оскільки має найнижчий
+latest-holdout mean regret. Межа твердження залишається такою: лише Offline
+Strategy Promotion, без ринкового виконання в реальному часі, без автоматичного
+перемикання dashboard/API на нову стратегію і без твердження, що raw neural
+forecasting сам по собі є кращим за `strict_similar_day`.
 
 ## 4.8. Інтерпретація результату
 
 Результат підтримує тезу про практичну цінність decision-aware pipeline:
 нейронний forecast сам по собі не був достатнім, але schedule/value layer
 перетворив прогнозний сигнал у кращий LP-feasible decision. Для розглядаємої
-архітектури це означає, що фінальний контролер має бути default-fallback
-системою:
+архітектури це означає, що фінальний контролер має бути системою з фіксованим
+fallback:
 
 - `strict_similar_day` залишається fallback і контрольним comparator;
-- Schedule/Value Learner V2+ може бути promoted лише в offline/read-model
+- Schedule/Value Learner V2+ може прийматися лише в offline/read-model
   evidence stack;
 - Pydantic Gatekeeper і strict LP/oracle evaluator залишаються
   deterministic safety layers;
@@ -197,11 +197,11 @@ dashboard/API на нову стратегію і без твердження, �
 цінність отриманого результату, але визначають його точну область застосування:
 offline/read-model Strategy Promotion evidence для Ukrainian DAM BESS arbitrage.
 
-## 4.10. Наступний напрямок після V2+
+## 4.10. Дослідницькі перевірки після V2+
 
-Оскільки V2+ уже покращив frozen V2 і пройшов rolling robustness, наступна
-робота не повинна бути ще одним малим selector/ranker experiment. Доцільні два
-напрями:
+Оскільки V2+ покращив frozen V2 і пройшов rolling robustness, подальша
+перевірка була спрямована не на ще один малий selector/ranker experiment, а на
+два методологічно відмінні напрями:
 
 - governed market-coupling ablation: додати лише point-in-time approved
   сусідні market features і порівняти Ukrainian-only V2+ з
@@ -210,7 +210,7 @@ offline/read-model Strategy Promotion evidence для Ukrainian DAM BESS arbitra
   повинен перевершити V2+ і behavior-cloning/selector baselines, а не просто
   повторити вже знайдений schedule/value rule.
 
-V2+ залишається current thesis headline evidence до появи сильнішого результату
+V2+ залишається основним доказовим результатом диплома до появи сильнішого результату
 за тим самим conservative gate. Європейські market-coupling sources не входять у
 поточний результат і можуть бути використані лише після перевірки publication
 time, timezone/DST, currency normalization, licensing, market-rule mapping і
@@ -226,7 +226,7 @@ training variant.
 Матеріалізований ablation packet підтвердив саме цей governance outcome:
 `blocked_by_governance` для обох official global-panel NBEATSx source paths,
 approved external feature columns відсутні, market-coupled B variant не
-тренувався, а `market_execution_enabled=false`. Отже, поточний headline result
+тренувався, а `market_execution_enabled=false`. Отже, поточний основний результат
 залишається українським V2+ evidence, а ENTSO-E/neighbor-market джерела
 залишаються тільки governance/readiness шаром до завершення publication-time,
 timezone/DST, FX, licensing, market-rule та domain-shift перевірок.
@@ -248,8 +248,8 @@ market-rule mapping, domain-shift validation і temporal availability. Це
 DFL, tiny offline Decision Transformer, behavior cloning і fallback
 порівнювалися не лише зі `strict_similar_day`, а з поточним українським V2+
 baseline. Результат є негативним, але корисним: compact bridge не перевершив
-V2+ за mean regret без погіршення median regret. Тому він не стає headline
-result і не змінює claim boundary.
+V2+ за mean regret без погіршення median regret. Тому він не стає основним
+результатом і не змінює claim boundary.
 
 Академічна інтерпретація цього результату така: відмова compact bridge не
 спростовує DFL/DT як напрям. Вона показує, що старий compact candidate path є
@@ -262,8 +262,8 @@ scoring.
 V2+ mean regret становив 174.77 UAH, тоді як residual/DT challenger дав 367.70
 UAH. Для raw official NBEATSx V2+ mean regret становив 193.36 UAH, тоді як
 residual/DT challenger дав 328.51 UAH. Behavior cloning також залишився гіршим
-за V2+. Отже, поточний висновок стає сильнішим: V2+ залишається thesis
-headline, а наступний DFL/DT крок потребує кращої trajectory objective або
+за V2+. Отже, поточний висновок стає сильнішим: V2+ залишається основним
+доказовим результатом, а наступний DFL/DT крок потребує кращої trajectory objective або
 багатшого teacher/candidate design, а не простого tiny DT поверх наявних
 траєкторій.
 
@@ -278,7 +278,7 @@ V2+. Тому наступний академічно чистий DFL v2 нап
 ranking або return-conditioned schedule-family selector, а не більший DT з тим
 самим action-imitation objective.
 
-Цей напрям реалізовано як окремий pairwise schedule-value DFL v2 slice. Він
+Цей напрям реалізовано як окремий pairwise schedule-value DFL v2 етап. Він
 працює не як розгорнутий Decision Transformer, а як prior-only selector: на
 train/prior anchors він порівнює feasible schedule families попарно за
 value/regret, вибирає одну family тільки за наявності non-degradation signal
@@ -288,14 +288,14 @@ value/regret, вибирає одну family тільки за наявност�
 кращу schedule-value objective, не послаблюючи V2+ fallback і не роблячи
 market-execution claim.
 
-Матеріалізація цього slice показала важливий негативний результат. Asset check
+Матеріалізація цього етапу показала важливий негативний результат. Asset check
 пройшов, evidence packet було збережено локально у
 `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/`, але gate
 залишився `diagnostic_pass_replacement_blocked`: для calibrated official
 NBEATSx DFL v2 повторив V2+ mean regret 174.77 UAH і median regret 67.30 UAH,
 тобто improvement проти V2+ дорівнював 0.00%. Для raw official NBEATSx DFL v2
 так само повторив V2+ mean regret 193.36 UAH. Отже, поточний DFL v2 objective
-є валідним diagnostic evidence, але не замінює V2+ як thesis headline.
+є валідним diagnostic evidence, але не замінює V2+ як основний результат диплома.
 
 Наступний експеримент визначено як Candidate-Value DFL v3. На відміну від DFL
 v2, він не вибирає одну family для всіх final anchors і не запускає ще один
@@ -328,7 +328,7 @@ NBEATSx V3 повторив V2+ mean regret `174.77` UAH і median regret `67.30
 для raw official global-panel NBEATSx V3 повторив V2+ mean regret `193.36` UAH
 і median regret `68.89` UAH. Отже, candidate-level value scorer підтвердив
 силу V2+ fallback, але не знайшов schedule, який надійно покращує V2+ на final
-holdout. V2+ залишається thesis headline Offline Strategy Promotion evidence.
+holdout. V2+ залишається основним Offline Strategy Promotion evidence диплома.
 
 Failure audit пояснив, чому нові prior-template schedules не перемогли V2+
 достатньо часто. На final holdout `prior_best_family_template_v3` мав mean
@@ -341,14 +341,14 @@ candidate schedules сама по собі, а `template_not_competitive_vs_v2_p
 але в середньому гірше переносяться між price regimes, ніж уже знайдений
 V2+ schedule/value blend.
 
-Додатковий scratch, non-persisted zero-threshold probe показав, що послаблення
+Додаткова незбережена zero-threshold проба показала, що послаблення
 fallback могло б покращити raw NBEATSx source з `193.36` до `185.62` UAH mean
 regret. Це не було promoted, тому що результат усе ще гірший за calibrated
-V2+ headline (`174.77` UAH), а train/prior signal є надто слабким для
+V2+ (`174.77` UAH), а train/prior signal є надто слабким для
 консервативного thesis gate.
 
 На основі цього результату додано Plateau-Breaker / Candidate-Value DFL v4
-slice. Його мета - не одразу запускати більший DT, а спершу розділити причини
+етап. Його мета - не одразу запускати більший DT, а спершу розділити причини
 плато: відсутність кращого candidate schedule, помилка scorer-а, або надто
 консервативний fallback. Далі V4 перевіряє data/context gaps на 365-anchor
 панелі та додає сильніші schedule families: quantile/risk, block peak,
@@ -371,12 +371,12 @@ candidate scoring міг знизити mean regret до `190.59` UAH проти
 не мав достатнього prior/train evidence для promotion. Data-quality audit також
 показав, що Ukrainian DAM history і regret-cluster alignment готові, але
 weather/load context, calendar/event context і publication-time availability
-мають gaps. Тому V2+ залишається thesis headline, а наступне покращення має
+мають прогалини. Тому V2+ залишається основним результатом диплома, а наступне покращення має
 починатися з point-in-time context і нових schedule shapes, не з більшого DT
 над тим самим objective.
 
 Після цього реалізовано окремий Point-in-Time Context Repair + Candidate-Value
-DFL V5 slice. Його роль полягає не в тому, щоб послабити gate або додати
+DFL V5 етап. Його роль полягає не в тому, щоб послабити gate або додати
 європейські ряди до навчання, а в тому, щоб перетворити broad V4 gaps на точні
 tenant/source/anchor blocker rows. Новий audit розрізняє
 `missing_weather_load_context`, `missing_calendar_event_context`,
@@ -388,11 +388,11 @@ selector-а мають префікс `selector_feature_*`, а realized outcomes
 V5 повторно використовує V4 candidate schedules, але додає context-conditioned
 features до candidate-level value scorer. Final holdout actuals залишаються
 лише scoring evidence і не використовуються для feature generation, weight
-selection або fallback decision. Тому V5 є наступним академічно чистим
-експериментом після V4: він може замінити V2+ тільки якщо перевершить
+selection або fallback decision. Тому V5 є академічно чистим продовженням
+після V4: він може замінити V2+ тільки якщо перевершить
 calibrated V2+ mean regret `174.77` UAH, не погіршить median regret, збереже
 rolling robustness і залишить `market_execution_enabled=false`. До такого
-strict LP/oracle результату V2+ залишається thesis headline Offline Strategy
+strict LP/oracle результату V2+ залишається основним Offline Strategy
 Promotion evidence.
 
 Матеріалізований V5 run `11a3effb-ffb5-4e1a-97e2-878b00106381` пройшов
@@ -413,18 +413,28 @@ scorer-а. Для наступного покращення потрібне а�
 навчається від V2+ та oracle schedules, але все одно порівнюється з V2+ через
 той самий strict LP/oracle gate.
 
-## 4.11. Supervisor-facing evidence
+## 4.11. Доказові артефакти
 
-Для короткої зустрічі з керівником підготовлено progress package:
-`docs/thesis/weekly-reports/week4/progress-meeting-2026-05-13/`.
+Основні доказові артефакти розділу розміщені у технічних evidence packets,
+research-run каталогах і документах, які можна відтворити з Dagster/Postgres
+rows:
 
-Пакет включає:
+- `data/research_runs/week3_official_global_panel_365_strategy_promotion/` -
+  базовий 365-anchor promotion packet для Schedule/Value Learner V2;
+- `data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/` -
+  latest-holdout comparison packet для V2+;
+- `data/research_runs/week3_dfl_entsoe_poland_feature_ablation_v1/` -
+  governance-blocked Poland/ENTSO-E feature ablation evidence;
+- `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/` -
+  pairwise schedule-value DFL v2 diagnostic packet;
+- `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
+  `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
+  `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,
+  V4 і V5 з їхніми межами тверджень;
+- `docs/thesis/weekly-reports/week4/progress-meeting-2026-05-13/` -
+  презентаційний пакет для стислого пояснення результатів керівнику.
 
-- короткий progress brief;
-- speaker notes для 5-хвилинної презентації;
-- графіки та інфографіку strategy ladder;
-- feature audit Schedule/Value Learner V2;
-- presentation deck package.
-
-Цей пакет використовується як supervisor-facing summary, тоді як 365-anchor
-registry є machine-checkable evidence packet для відтворення результатів.
+Презентаційні матеріали використовуються лише як summary. Машинно
+перевірюваним джерелом результатів залишаються persisted evidence rows,
+registry JSON/Markdown, attempt manifests, asset checks і strict LP/oracle
+benchmark rows.

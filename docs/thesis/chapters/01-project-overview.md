@@ -1,7 +1,5 @@
 # Розділ 1. Загальна характеристика проєкту
 
-> Перший submission-ready варіант розділу 1 для подання керівнику. Текст уже можна використовувати як базу для Week 1 package, supervisor review та подальшої фінальної версії пояснювальної записки без зміни базової архітектурної логіки.
-
 ## 1.1. Проблема та актуальність
 
 Battery energy storage systems (BESS) стають ключовим елементом сучасної енергетики, оскільки дають змогу згладжувати піки навантаження, інтегрувати нестабільну генерацію та створювати додаткову економічну цінність через енергоарбітраж. Однак практична побудова автономної системи для арбітражу є складною задачею: потрібно одночасно працювати з волатильними цінами, фізичними обмеженнями батареї, ризиком деградації, ринковими правилами та вимогою до відтворюваного engineering pipeline.
@@ -20,7 +18,7 @@ Battery energy storage systems (BESS) стають ключовим елемен
 
 ## 1.3. Чому це інженерний диплом із дослідницькою траєкторією
 
-Формально ця робота є інженерним проєктом, оскільки в центрі стоїть побудова працездатної системи з чіткими API, пайплайнами, dashboard-поверхнею, тестами та demo-ready артефактами. Водночас проєкт має виражену дослідницьку траєкторію, бо його фінальна ціль не обмежується простим rule-based або LP-based scheduling. Він спрямований на перехід до Decision-Focused Learning (DFL), де система навчається не лише прогнозувати, а й оптимізувати фінансовий результат з урахуванням market response та degradation-aware objective.
+Формально ця робота є інженерним проєктом, оскільки в центрі стоїть побудова працездатної системи з чіткими API, пайплайнами, dashboard-поверхнею, тестами та демонстраційними артефактами. Водночас проєкт має виражену дослідницьку траєкторію, бо його фінальна ціль не обмежується простим rule-based або LP-based scheduling. Він спрямований на перехід до Decision-Focused Learning (DFL), де система навчається не лише прогнозувати, а й оптимізувати фінансовий результат з урахуванням market response та degradation-aware objective.
 
 Саме така комбінація і робить тему сильною для диплома: вже на ранньому етапі є перевірюваний інженерний результат, але водночас існує чітка research gap, яку не закриває поточний MVP.
 
@@ -37,7 +35,7 @@ Battery energy storage systems (BESS) стають ключовим елемен
 - експериментальні результати й regret логуються в MLflow;
 - контракти й safety semantics описано через strict Pydantic schemas.
 
-Цей рівень є навмисно обмеженим. Його завдання — не продемонструвати «найрозумнішу» модель, а створити стабільний контрольний контур, який можна тестувати, пояснювати і порівнювати з майбутньою Target Strategy.
+Цей рівень є навмисно обмеженим. Його завдання — не продемонструвати найскладнішу модель, а створити стабільний контрольний контур, який можна тестувати, пояснювати і порівнювати з майбутньою цільовою стратегією.
 
 Пізніший evidence-cycle змінив силу цього твердження. Початковий ризик synthetic/demo-oriented market-weather шару був коректним методологічним застереженням, але для основного research contour тепер сформовано source-backed Ukrainian DAM benchmark: observed OREE DAM, Open-Meteo/weather context, tenant configuration/load context, rolling-origin evaluation та strict LP/oracle scoring. На цьому шарі official global-panel NBEATSx schedule/value learner пройшов вузьку **Offline Strategy Promotion** на 365-anchor Ukrainian panel, причому `strict_similar_day` лишається fallback, а ринкове виконання залишається вимкненим.
 
@@ -57,7 +55,7 @@ Battery energy storage systems (BESS) стають ключовим елемен
 
 На цьому етапі шар батареї коректніше описувати не як повноцінну фізичну симуляцію, а як feasibility-and-economics preview model. Поточний контур прогнозує допустимий стан батареї на погодинному горизонті, враховує SOC-вікно, ліміт потужності, спрощений round-trip efficiency та throughput-based degradation penalty. Такий рівень моделі достатній для operator-facing recommendation preview, baseline evaluation і regret-aware порівняння, але ще не є digital twin у строгому фізичному сенсі.
 
-Для current demo-profile цей penalty параметризується як public-source capex-throughput proxy, а не як довільна локальна константа: `210 USD/kWh` з видимого capex anchor у Grimaldi et al., `15-year lifetime` і `~1 cycle/day` з NREL ATB та курс НБУ `43.9129 UAH/USD` на `04.05.2026`. Для demo battery `10 MWh` це дає `16,843.3 UAH/cycle`, тобто `842.2 UAH/MWh throughput`.
+Для демонстраційного профілю цей штраф деградації параметризується як public-source capex-throughput proxy, а не як довільна локальна константа: `210 USD/kWh` з видимого capex anchor у Grimaldi et al., `15-year lifetime` і `~1 cycle/day` з NREL ATB та курс НБУ `43.9129 UAH/USD` на `04.05.2026`. Для демонстраційної батареї `10 MWh` це дає `16,843.3 UAH/cycle`, тобто `842.2 UAH/MWh throughput`.
 
 Критично важливо, що demo-stage не видається за повний механізм ринкового виконання. Поточна dashboard-поверхня демонструє recommendation preview та operator review, але не претендує на завершену реалізацію `Proposed Bid`, `Cleared Trade` або `Dispatch Command`.
 
@@ -71,7 +69,7 @@ Battery energy storage systems (BESS) стають ключовим елемен
 - learned strategy layer на кшталт Decision Transformer;
 - глибший digital twin батареї з точнішим обліком фізичних процесів деградації;
 - поступове розширення з DAM-only scope до venue-aware і, за потреби, multi-venue сценаріїв;
-- більш production-ready persistence, auditability та control-plane infrastructure.
+- зріліший контур збереження даних, аудиту та control-plane infrastructure.
 
 Отже, фінальна planned version не заперечує поточний MVP, а спирається на нього. Baseline тут виступає контрольним контуром, а не тимчасовим «чернетковим» рішенням без наукової цінності.
 
@@ -120,4 +118,4 @@ flowchart LR
 
 Щоб обґрунтувати такий вибір архітектури, потрібно окремо розглянути state of the art у forecasting, optimization, degradation-aware economics, DFL та інженерній оркестрації. Саме це робиться в [02-literature-review.md](./02-literature-review.md), де пояснюється, чому поточна поетапна логіка розвитку системи є дослідницьки та інженерно виправданою.
 
-Після deep-research update ця поетапна логіка формулюється ще точніше: спочатку реальний історичний benchmark, потім порівняння strict similar-day, NBEATSx і TFT за decision value та oracle regret, далі robustness аналіз деградації/fees/SOC assumptions, і лише після цього DFL pilot.
+З урахуванням оновленого огляду джерел ця поетапна логіка формулюється ще точніше: спочатку реальний історичний benchmark, потім порівняння strict similar-day, NBEATSx і TFT за decision value та oracle regret, далі robustness-аналіз деградації, fees і SOC assumptions, і лише після цього DFL-дослід.

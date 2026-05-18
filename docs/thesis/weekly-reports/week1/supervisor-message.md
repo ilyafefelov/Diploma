@@ -32,7 +32,7 @@
 
 Також у звіті пояснено, чому поточний батарейний шар слід описувати як feasibility-and-economics preview model, а не як повний digital twin, і чому для MVP зараз використовується throughput-based economic penalty за деградацію, параметризований як прозорий public-source proxy `16,843.3 UAH/cycle` або `842.2 UAH/MWh throughput`.
 
-Окремо підготовлено перший submission-ready варіант розділу "Огляд літератури", який пояснює, чому проєкт починається саме з LP baseline, як цей baseline буде доведено до завершеного control contour і чому лише після цього коректно переходити до stronger forecast layer та Decision-Focused Learning.
+Окремо підготовлено перший варіант розділу "Огляд літератури", готовий до подання, який пояснює, чому проєкт починається саме з LP baseline, як цей baseline буде доведено до завершеного control contour і чому лише після цього коректно переходити до stronger forecast layer та Decision-Focused Learning.
 
 Основні матеріали:
 - `docs/thesis/weekly-reports/week1/report.md`

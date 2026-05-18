@@ -19,7 +19,7 @@
 - Реалізовано persisted operator status read model у [src/smart_arbitrage/resources/operator_status_store.py](src/smart_arbitrage/resources/operator_status_store.py) з Postgres-backed store і in-memory fallback для dev-середовища.
 - Розширено control-plane API в [api/main.py](../../../../api/main.py) endpoint-ами `GET /tenants`, `POST /weather/run-config`, `POST /weather/materialize`, `GET /dashboard/signal-preview`, `GET /dashboard/operator-status`, `POST /dashboard/projected-battery-state`, `GET /dashboard/baseline-lp-preview`.
 - Реалізовано operator-facing dashboard surfaces в [dashboard](../../../../dashboard): tenant selection, weather control, operator status sync і baseline LP preview.
-- Підготовлено перший submission-ready пакет розділів пояснювальної записки: [docs/thesis/chapters/01-project-overview.md](../../chapters/01-project-overview.md), [docs/thesis/chapters/02-literature-review.md](../../chapters/02-literature-review.md) і source map у [docs/technical/papers/README.md](../../../technical/papers/README.md).
+- Підготовлено перший пакет розділів пояснювальної записки, готовий до подання: [docs/thesis/chapters/01-project-overview.md](../../chapters/01-project-overview.md), [docs/thesis/chapters/02-literature-review.md](../../chapters/02-literature-review.md) і source map у [docs/technical/papers/README.md](../../../technical/papers/README.md).
 - Підтверджено реальний Dagster asset graph через `uv run dg list defs --json` із `PYTHONPATH=.;src`; зареєстровані assets: `weather_forecast_bronze`, `dam_price_history`, `strict_similar_day_forecast`, `baseline_dispatch_plan`, `validated_dispatch_command`, `oracle_benchmark_metrics`, `baseline_regret_tracking` та інші demo-support assets.
 - Focused API tests у [tests/api/test_main.py](../../../../tests/api/test_main.py) покривають ключові control-plane slices, а для dashboard виправлено локальну proxy-невідповідність у [dashboard/server/api/control-plane/tenants.get.ts](../../../../dashboard/server/api/control-plane/tenants.get.ts), щоб tenant selector використовував той самий API port, що й інші dashboard routes.
 
@@ -91,7 +91,7 @@ $$
 
 У письмовому звіті важливо підкреслити, що цей ideal flow є research target architecture. Поточна реалізація зупиняється на Baseline Strategy, operator preview і demo-ready control plane.
 
-## 5.1. Як буде завершино LP baseline
+## 5.1. Як буде завершено LP baseline
 
 У межах цього диплома "повністю завершити LP baseline" не означає нескінченно ускладнювати baseline або перетворювати його на фінальну target system. Йдеться про інше: baseline треба довести до стабільного контрольного контуру, який можна freeze-нути як чесну контрольну групу для наступних forecast- і DFL-експериментів.
 

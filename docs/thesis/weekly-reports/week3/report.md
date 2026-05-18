@@ -102,7 +102,7 @@ Week 3 preview finding: horizon-aware calibration improves the neural candidate 
 ## 7. План на наступний тиждень
 
 1. Підготувати друге демо на основі вже перевіреного Week 3 benchmark contour і, за потреби, показати 90-anchor calibration як prepared-ahead preview.
-2. Підготувати перші submission-ready draft sections: `Вступ` і `Огляд літератури`, прив'язавши літературу до rolling-origin no-leakage benchmark, exogenous forecasting і regret-aware calibration.
+2. Підготувати перші draft sections, готові до подання: `Вступ` і `Огляд літератури`, прив'язавши літературу до rolling-origin no-leakage benchmark, exogenous forecasting і regret-aware calibration.
 3. Використати 90-anchor calibration тільки як Week 4 calibration/selector evidence: raw forecast candidates окремо, calibrated candidates окремо, selector diagnostics окремо.
 4. Розширювати benchmark на all-tenants лише після supervisor review, бо Dnipro 30-anchor path уже виконав Week 3 acceptance target.
 5. Не переходити до full DFL або market execution claim, поки strict LP/oracle benchmark і calibration semantics не узгоджені з керівником.

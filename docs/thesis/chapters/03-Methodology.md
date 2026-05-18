@@ -31,7 +31,7 @@ models, schedule/value learners та DFL-style challengers можуть бути
 | Official NBEATSx/TFT forecast candidates | Rolling-origin training history, tenant-aligned features, approved prior-only exogenous context | Ні | Дає forecast input для того самого LP/oracle contour, що й baseline | Forecast metrics як допоміжні; основна оцінка через downstream regret/value | Нейронний forecast не promoted сам по собі; він має покращити decision value після LP. |
 | Strict LP/oracle evaluation | Вибраний schedule та realized prices після anchor | Так, але лише після факту і лише для оцінювання | Обчислює theoretical best value та regret для offline comparison | Mean/median oracle regret, value gap | Oracle не є стратегією, яку можна застосовувати для виконання ринкових рішень, і не використовується як джерело прогнозу. |
 | Schedule/Value Learner V2/V2+ | Feasible LP-scored candidate schedules і prior-only schedule/value features | Ні для selection rule; final-holdout realized values використовуються тільки для scoring | Offline selector між schedule families; поточний найсильніший promotion evidence | Mean-regret improvement, median-not-worse condition, 4-window robustness | Підтримує Offline Strategy Promotion/read-model evidence; не вмикає ринкове виконання. |
-| Candidate-Value DFL v3 та DFL/DT challengers | Candidate libraries, train/prior label panels, trajectory/value diagnostics | Train/prior labels можуть містити realized outcomes минулих anchors; final holdout не використовується для selection | Дослідницька перевірка більш decision-focused objective та підготовка до майбутнього DT | Improvement vs V2+, robustness, failure-mode diagnostics | Research-only/diagnostic layer, доки не перевершить V2+ під незмінним strict LP/oracle gate. |
+| Candidate-Value DFL v3/V4/V5 та DFL/DT challengers | Candidate libraries, train/prior label panels, trajectory/value diagnostics, point-in-time context audit rows | Train/prior labels можуть містити realized outcomes минулих anchors; final holdout не використовується для selection | Дослідницька перевірка більш decision-focused objective, context repair та підготовка до майбутнього DT | Improvement vs V2+, robustness, failure-mode/context diagnostics | Дослідницький/діагностичний шар, доки не перевершить V2+ під незмінним strict LP/oracle gate. |
 | Pydantic Gatekeeper і governance policies | `ProposedBid`/dispatch contracts, market caps, SOC/physical limits, source-governance flags | Ні | Детермінована валідація safety, market та data-governance constraints | Validation failures, cap/SOC/envelope feasibility, blocked governance status | Safety boundary системи; не є ML-моделлю і не підтверджує автономне ринкове виконання. |
 | Evidence packet і run registry | Attempt manifest, monitor snapshot, persisted rows, registry JSON/Markdown, asset checks | Ні | Забезпечує відтворюваність і аудит експерименту | Persisted row count, check status, run receipt consistency | Доказовий пакет для дипломної оцінки; не є журналом фактичної торгівлі. |
 
@@ -51,7 +51,7 @@ models, schedule/value learners та DFL-style challengers можуть бути
 | Forecast evidence methods | `GET /dashboard/future-stack-preview`, `GET /dashboard/forecast-strategy-comparison` | Forecast store, strategy evaluation store, NBEATSx/TFT/strict comparison rows | Forecast-to-schedule evaluation через LP/oracle contour | Forecast series, model status, regret/value comparison, quality boundary | Forecast evidence surface; neural forecast не promoted без downstream regret gate. |
 | Benchmark/research methods | `GET /dashboard/real-data-benchmark`, `GET /dashboard/dfl-schedule-value-production-gate` | Postgres strategy/DFL stores, promotion gate rows, persisted benchmark frames | Rolling-origin benchmark, V2/V2+ schedule/value promotion evidence | Regret rows, data-quality tier, promotion flags, `market_execution_enabled=false` | Offline/read-model evidence only; не є ринковим виконанням. |
 | DT/policy-preview methods | `GET /dashboard/decision-transformer-trajectories`, `GET /dashboard/decision-policy-preview` | Simulated trade store, offline trajectory/policy-preview rows | Offline DT preparation і policy-preview diagnostics | Trajectory rows, projected actions, safety projection, value gap | Research/preview layer; не є розгорнутим DT-контролером. |
-| Operator recommendation methods | `GET /dashboard/operator-recommendation` | Battery state, tenant load/PV context, strategy availability, forecast/read stores, LP preview | Operator-facing aggregation of available evidence | Selected strategy, available strategies, forecast series, value-gap series, feasible schedule | Product read model для operator review; не подає ринкових заявок. |
+| Operator recommendation methods | `GET /dashboard/operator-recommendation` | Battery state, tenant load/PV context, strategy availability, forecast/read stores, LP preview | Operator-facing aggregation of available evidence | Selected strategy, available strategies, forecast series, value-gap series, feasible schedule | Продуктовий read model для операторського перегляду; не подає ринкових заявок. |
 
 ## 3.2. Дані та межа доказовості
 
@@ -61,7 +61,7 @@ Open-Meteo/weather контексті та tenant configuration/load context. Д
 features для rolling-origin evaluation.
 
 Синтетичні або demo-oriented rows не можуть використовуватися для thesis-grade
-performance claim. Вони можуть існувати для стабільності demo або smoke tests,
+тверджень про ефективність. Вони можуть існувати для стабільності demo або smoke tests,
 але benchmark має спиратися на provenance flags,
 `data_quality_tier=thesis_grade`, `not_market_execution=true` і явні
 claim-boundary поля.
@@ -119,7 +119,319 @@ candidate schedule family у offline/read-model evidence stack і завжди
 залишається за `strict_similar_day` fallback, доки promotion gate не доводить
 стійку перевагу.
 
-## 3.5. Schedule/Value Learner V2 як decision-value selector
+## 3.5. Методологічна роль ML, calibration, DFL і DT методів
+
+У методології важливо розділити кілька різних класів методів. NBEATSx і TFT
+належать до forecast layer: вони оцінюють майбутні ціни або розподіл можливих
+цін. LP optimizer належить до decision layer: він перетворює forecast на
+feasible battery schedule. AFL, DFL, Schedule/Value Learner і DT-related
+experiments належать до research/evidence layer: вони перевіряють, чи можна
+краще вибирати або оцінювати schedules за downstream value/regret. Тому ці
+методи не слід описувати як один "ML controller".
+
+Термінологічно в роботі використовуються два окремі поняття: DFL
+(Decision-Focused Learning) і DT (Decision Transformer). Якщо у робочих
+нотатках зустрічається скорочення на кшталт "DTFL", у фінальному академічному
+тексті його краще розкласти на DFL/DT, бо DFL є принципом навчання під
+downstream decision loss, а DT є окремою sequence-model архітектурою для
+offline policy approximation.
+
+| Метод | Академічна ідея | Реалізація у проєкті | Вихід методу | Межа твердження |
+|---|---|---|---|---|
+| `strict_similar_day` | Сильний простий temporal baseline для EPF/арбітражу | Бере ціну з подібного попереднього дня і передає її в Level 1 LP | Baseline forecast і feasible LP schedule | Frozen comparator і fallback; не є доказом універсальної оптимальності. |
+| NBEATSx | Neural basis expansion з екзогенними змінними для electricity price forecasting | Compact `nbeatsx_silver_v0` і official/global-panel NBEATSx lanes; прогноз проходить через той самий LP/oracle contour | Point forecast, decomposition/context evidence, downstream schedule rows | Forecast source; не просувається без regret/value improvement після LP. |
+| TFT | Temporal Fusion Transformer для multi-horizon forecasting, variable selection і quantile forecasts | Compact `tft_silver_v0`, official TFT adapter і global-panel TFT p10/p50/p90 lane | p10/p50/p90 forecasts, feature-weight diagnostics, TFT schedule candidates | Forecast/uncertainty evidence; поточні TFT gates не замінюють V2+ і не вмикають market execution. |
+| Horizon/regret-weighted calibration | Prior-only correction, що коригує forecast behavior за horizon і decision-relevant regret | `horizon_regret_weighted_forecast_calibration_benchmark` та calibrated NBEATSx/TFT read models | Calibrated forecast rows і calibrated benchmark evidence | Calibration evidence only; final claims проходять strict LP/oracle scoring. |
+| TFT quantile schedule/value gate | Використання p10/p50/p90 як risk-aware schedule sources, а не тільки як графік uncertainty | `tft_official_global_panel_horizon_quantile_calibration_frame`, `dfl_tft_quantile_schedule_candidate_library_frame`, augmented/combined V2+ gates | Quantile-derived feasible schedule candidates і gate result | Additive offline evidence; 36-anchor screen не просунутий, бо TFT не перевершує frozen NBEATSx V2+. |
+| AFL Arbitrage-Focused Learning | Forecast-layer діагностика, яка дивиться на decision-relevant помилки, а не тільки MAE/RMSE | `afl_training_panel_frame`, `afl_forecast_error_audit_frame`, forecast forensics | Failure modes: spread-shape, rank/extrema, LP-value, weather/load context | Research diagnostics; labels не стають live features. |
+| AFE/governed exogenous features | Контрольоване додавання нових covariates з перевіркою доступності й governance | AFE catalog, semantic grid-event context, market-coupling feature route, ENTSO-E/PriceFM/OPSD/Ember/Nord Pool blockers | Feature registry, source-availability status, blocked/approved route | External features не входять у training, доки не пройдені licensing/timezone/currency/availability gates. |
+| DFL forecast decision loss v1 | Навчання forecast correction за downstream decision loss замість лише forecast error | Prior-only horizon-bias correction with relaxed decision loss and strict final scoring | DFL-shaped corrected forecast rows і negative evidence | DFL-readiness evidence; current result stable but not improved over strict gate. |
+| Schedule/Value Learner V2/V2+ | Decision-aware selection між already feasible LP-scored schedules | Prior-only selector over candidate schedules; V2+ adds richer candidate families and robustness gate | Selected schedule family, strict/raw/V2/V2+ benchmark rows, mean/median regret | Current strongest offline/read-model evidence; still not live controller. |
+| Candidate-Value DFL v3/V4/V5 | Schedule-level value scoring, failure-mode redesign і point-in-time context repair | Ridge-style candidate scorer, plateau/failure audit, stronger candidate libraries, context-conditioned selector features | Candidate value scores, failure labels, context blockers, blocked/pass gate diagnostics | Дослідницький challenger; не замінює V2+, доки не перевершить його під незмінним gate. |
+| Decision Transformer | Return-conditioned sequence modeling for offline policy approximation | Offline trajectory dataset, policy-preview rows, V2+-anchored bridge, deterministic projection of raw action | Projected policy-preview actions, value gap, readiness flags | Future/offline policy surface; не є розгорнутим DT-control і не є market execution. |
+
+Ця таблиця також визначає, де саме в дипломі кожен метод повинен з'являтися.
+Розділ 2 обґрунтовує методи через літературу: NBEATSx, TFT, EPF benchmarks,
+SPO/DFL, storage-specific DFL, differentiable optimization layers і Decision
+Transformer. Розділ 3 пояснює, як ці методи застосовані в експерименті та які
+дані вони мають право бачити. Розділ 4 уже показує фактичні результати:
+наприклад, V2+ проходить як найсильніше offline evidence, тоді як TFT quantile
+screen, DFL v1 і V2+-anchored DT bridge є корисними, але blocked/negative
+research evidence.
+
+NBEATSx у цій роботі використовується тому, що electricity-price forecasting
+часто має трендові, сезонні та екзогенні компоненти. У compact реалізації модель
+має trend stack і exogenous stack; в official/global-panel lane вона
+розглядається як серйозніший forecast source для кількох tenants. Але у всіх
+випадках методологічний критерій однаковий: прогноз NBEATSx має перейти через
+LP dispatch, realized-value scoring і oracle-regret benchmark.
+
+TFT використовується як багатогоризонтна transformer-style модель із
+інтерпретованими feature weights і quantile виходами. Його p10/p50/p90 не
+трактуються автоматично як гарантований confidence interval. У проекті ці
+квантилі використовуються обережніше: як альтернативні forecast sources для
+schedule/value gate. Це дозволяє перевірити risk-aware поведінку без того, щоб
+змішати uncertainty visualization із ринковим виконанням.
+
+DFL у методології означає не "вже розгорнуту нейромережу-контролер", а принцип:
+навчати або вибирати модель за якістю downstream рішення. У поточному стані
+проєкту це реалізовано через кілька безпечних наближень: AFL labels,
+forecast-decision-loss v1, schedule/value selectors, candidate-value scorers і
+V2+-anchored DFL/DT bridge. Усі вони мають однаковий academic contract:
+train/prior anchors можуть формувати selection rule, final-holdout actuals
+використовуються лише для scoring, а strict LP/oracle evaluator залишається
+незмінним.
+
+Decision Transformer розглядається як майбутній policy layer, тому що
+storage arbitrage є послідовною задачею: рішення в одній годині змінює SOC і
+обмежує наступні години. Проте поточний DT у репозиторії є policy-preview
+research primitive. Raw DT action не довіряється напряму: вона має проходити
+детерміновану projection/feasibility перевірку, порівнюватися з behavior
+cloning і V2+, і тільки після цього може претендувати на сильніший offline
+evidence claim.
+
+## 3.6. Метрики оцінювання і роль regret
+
+Метрики в роботі поділяються на діагностичні, decision-value та обмежувальні
+метрики. Такий поділ потрібний тому, що для BESS-арбітражу якість прогнозу
+сама по собі не гарантує кращого рішення. Модель може мати меншу середню
+помилку прогнозу, але все одно обрати невдалий час заряджання або розряджання.
+Тому головним критерієм є не forecast-only accuracy, а економічний результат
+feasible schedule після LP-оптимізації та оцінювання на реалізованих цінах.
+
+| Рівень оцінювання | Метрики | Коли використовується | Методологічна роль |
+|---|---|---|---|
+| Якість даних | `data_quality_tier`, `observed_coverage_ratio`, provenance/source flags, кількість anchors і tenants | Перед будь-яким benchmark або promotion claim | Визначає, чи можна робити thesis-grade висновок; synthetic/demo rows не підтримують твердження про ефективність. |
+| Forecast diagnostics | `mae_uah_mwh`, `rmse_uah_mwh`, `smape`, directional accuracy, spread/rank quality, top-k price recall, pinball loss для quantile forecasts | Після побудови NBEATSx/TFT/strict forecast rows | Пояснює помилки прогнозу, але не визначає переможця самостійно. |
+| Decision-value evaluation | `decision_value_uah`, `forecast_objective_value_uah`, `oracle_value_uah`, `regret_uah`, `regret_ratio`, `rank_by_regret` | Після перетворення forecast у LP schedule і появи realized prices для horizon | Є основним контуром порівняння стратегій, бо вимірює втрачений економічний результат. |
+| Battery/feasibility guardrails | SOC bounds, `total_throughput_mwh`, `total_degradation_penalty_uah`, `efc_proxy`, safety/governance violations | Паралельно з LP scoring і перед promotion | Перевіряє, що результат не отриманий через фізично або політично неприпустиму поведінку. |
+| Promotion/robustness | `mean_regret_uah`, `median_regret_uah`, mean-regret improvement, median-not-worse condition, rolling-window robustness, win rate | На рівні batch/panel після багатьох anchors | Визначає, чи кандидат може бути прийнятий як Offline Strategy Promotion evidence. |
+
+Особливе місце займає regret, тобто втрачена економічна можливість порівняно з
+oracle LP. У цій роботі oracle не є моделлю для використання в реальному часі.
+Це perfect-foresight evaluator: після завершення horizon він бачить realized
+prices і розв'язує той самий LP із тими самими battery constraints, SOC bounds,
+efficiency, market caps та degradation proxy. Отже, regret показує не "помилку
+прогнозу" у звичайному статистичному сенсі, а скільки гривень стратегія
+втратила через гірше рішення відносно теоретично найкращого feasible schedule
+для того самого horizon.
+
+Для tenant \(i\), anchor \(t\), forecast/selector strategy \(s\) і горизонту
+\(H\) decision value стратегії обчислюється на реалізованих цінах:
+
+\[
+V_{i,t}^{(s)} =
+\sum_{h=1}^{H}
+\left(
+p_{i,t,h}^{real} \cdot
+P_{i,t,h}^{(s)} \cdot \Delta h
+-
+C_{deg}(a_{i,t,h}^{(s)})
+\right),
+\]
+
+де \(p_{i,t,h}^{real}\) - реалізована ціна DAM у грн/МВт·год,
+\(P_{i,t,h}^{(s)}\) - signed net power LP schedule: додатне значення означає
+розряд/продаж, від'ємне - заряд/купівлю, \(\Delta h\) - тривалість інтервалу
+в годинах, а \(C_{deg}\) - деградаційний штраф, пов'язаний із throughput.
+У реалізації це відповідає полю `decision_value_uah`: schedule, побудований на
+forecast або selector output, повторно оцінюється на фактичних цінах horizon.
+
+Oracle value для того самого tenant-anchor визначається аналогічно, але LP
+отримує realized price vector як perfect-foresight forecast:
+
+\[
+V_{i,t}^{oracle} =
+\max_{a \in \mathcal{A}_{i,t}}
+\left[
+\sum_{h=1}^{H}
+\left(
+p_{i,t,h}^{real} \cdot
+P_{i,t,h}^{a} \cdot \Delta h
+-
+C_{deg}(a_{i,t,h})
+\right)
+\right],
+\]
+
+де \(\mathcal{A}_{i,t}\) - множина feasible schedules, дозволених battery
+capacity, power, SOC, efficiency та market-cap constraints. Governance і safety
+constraints перевіряються окремо як обмежувальні метрики. Тоді regret стратегії:
+
+\[
+R_{i,t}^{(s)} =
+\max\left(0,\; V_{i,t}^{oracle} - V_{i,t}^{(s)}\right).
+\]
+
+Нульовий regret означає, що стратегія досягла oracle-equivalent value під тими
+самими constraints. Чим більший regret, тим більше економічної цінності
+втрачено. Нормована версія зберігається як `regret_ratio`:
+
+\[
+RR_{i,t}^{(s)} =
+\frac{R_{i,t}^{(s)}}{\max(|V_{i,t}^{oracle}|,\epsilon)}.
+\]
+
+У коді ця логіка реалізована в `evaluate_forecast_candidates_against_oracle`:
+для кожного кандидата будується LP schedule, потім `_actual_decision_value_uah`
+рахує realized value за фактичними цінами, oracle LP рахує
+`oracle_value_uah`, а `regret_uah` визначається як
+`max(0.0, oracle_value_uah - decision_value_uah)`. Результат зберігається в
+strategy evaluation store з полями `decision_value_uah`, `oracle_value_uah`,
+`regret_uah`, `regret_ratio`, `rank_by_regret`,
+`total_degradation_penalty_uah`, `total_throughput_mwh` та
+`evaluation_payload`. Для demo/MVP baseline аналогічний asset
+`oracle_benchmark_metrics` порівнює baseline LP із perfect-foresight LP і
+передає regret metrics у `baseline_regret_tracking`.
+
+Після оцінювання окремих tenant-anchor rows regret агрегується на рівні
+експерименту:
+
+\[
+\overline{R}^{(s)} =
+\frac{1}{N}\sum_{(i,t)\in\mathcal{D}} R_{i,t}^{(s)}, \qquad
+\widetilde{R}^{(s)} =
+\operatorname{median}_{(i,t)\in\mathcal{D}} R_{i,t}^{(s)}.
+\]
+
+Mean regret показує середню втрату економічної цінності, а median regret
+захищає інтерпретацію від одиничних extreme anchors. У promotion gate кандидата
+недостатньо оцінювати лише за найкращим середнім значенням: він має не
+погіршувати median regret, проходити rolling-window robustness, не порушувати
+safety constraints і залишати `strict_similar_day` fallback. Саме тому
+Schedule/Value Learner V2/V2+ порівнюється з `strict_similar_day` за
+mean/median regret, а DFL/DT challengers повинні перевершити V2+ під тим самим
+strict LP/oracle evaluator, перш ніж їх можна описувати як сильніший evidence
+candidate.
+
+## 3.7. Перехід від ML pipeline до рекомендаційного schedule
+
+Кінцевий результат ML/Data pipeline у цій роботі не є безпосередньою командою
+для біржі або фізичного інвертора. Його коректно описувати як рекомендаційний
+read-model schedule: погодинний план заряджання, розряджання або утримання
+батареї на наступний горизонт планування. Для поточного MVP горизонт становить
+24 години DAM із погодинним кроком. Такий schedule може пояснювати оператору
+очікувану арбітражну логіку, але не є `ProposedBid`, `ClearedTrade` або
+`DispatchCommand` для live market execution.
+
+Методологічно кінцевий контур має однакову форму для operator preview і для
+offline training/evaluation:
+
+```mermaid
+flowchart LR
+  A["Tenant, SOC, price and context data"] --> B["Forecast or selected strategy"]
+  B --> C["Deterministic LP optimizer"]
+  C --> D["Feasible hourly schedule"]
+  D --> E["Projected SOC, throughput and degradation"]
+  E --> F["Recommendation/read model for operator"]
+  D --> G["Offline realized-value scoring"]
+  G --> H["Oracle, regret and promotion evidence"]
+```
+
+У простішому формулюванні модель не натискає "купити" або "продати"
+самостійно. Вона дає прогноз або вибирає candidate schedule family. Далі
+детермінований LP-шар перетворює це в фізично допустимий погодинний план із
+SOC constraints, power limits, efficiency та degradation penalty. Після цього
+read-model шар показує оператору, що саме рекомендується зробити в кожній
+годині, який SOC очікується після дії, яка економіка плану і які warnings або
+claim boundaries діють.
+
+### Операторський preview-режим
+
+Для operator-facing режиму FastAPI формує рекомендацію у кілька кроків. Спочатку
+визначається tenant, його battery metrics, location-aware price history,
+поточний або fallback SOC та доступні strategy options. Якщо вибрана official
+NBEATSx/TFT strategy має валідні forecast-store rows і ціни не порушують DAM
+caps, ці forecast points передаються в той самий Level 1 LP optimizer. Якщо
+такої strategy немає або вона неготова, система повертається до
+`strict_similar_day` як safe fallback.
+
+LP розв'язує задачу максимізації очікуваної net value:
+
+\[
+\max_{P_h^{ch},P_h^{dis},SOC_h}
+\sum_{h=1}^{H}
+\left(
+\hat{p}_h \cdot (P_h^{dis}-P_h^{ch}) \cdot \Delta h
+-
+c_{deg}\cdot(P_h^{ch}+P_h^{dis})\cdot\Delta h
+\right),
+\]
+
+за умов:
+
+\[
+SOC_{h+1}=SOC_h+
+\eta_{ch}P_h^{ch}\Delta h-
+\frac{P_h^{dis}\Delta h}{\eta_{dis}},
+\]
+
+\[
+SOC^{min}\le SOC_h\le SOC^{max}, \qquad
+0\le P_h^{ch}\le P^{max}, \qquad
+0\le P_h^{dis}\le P^{max}.
+\]
+
+Після розв'язання LP формується signed net power:
+
+\[
+u_h=P_h^{dis}-P_h^{ch}.
+\]
+
+Якщо \(u_h>0\), schedule означає розряд/продаж енергії; якщо \(u_h<0\), він
+означає заряд/купівлю; якщо \(u_h\approx 0\), батарея утримується. Для
+оператора це відображається як hourly recommendation schedule із forecast
+price, signed MW, projected SOC, throughput, degradation penalty і net value.
+Додатковий projected-battery-state simulator повторно проходить schedule і
+перевіряє, що requested power не виводить батарею за SOC/power bounds. Тому
+навіть у preview режимі рекомендація має фізичний feasibility layer.
+
+З погляду бідингу та арбітражу кожний ряд schedule можна інтерпретувати як
+кандидатну дію: напрям `BUY/CHARGE`, `SELL/DISCHARGE` або `HOLD`, обсяг
+\(|u_h|\Delta h\) у МВт·год і очікуваний net value для цієї години. Однак у
+поточній дипломній межі це лише bid recommendation, а не executable bid:
+система ще не формує ринковий order payload, не подає заявку на DAM, не отримує
+clearing result і не підтверджує фізичний dispatch.
+
+У read model також додаються `available_strategies`, `selected_strategy_id`,
+`selection_reason`, `readiness_warnings`, `forecast_model_series`,
+`value_gap_series`, load/PV context, projected SOC і value against hold
+baseline. Це дає оператору пояснення: чому вибрана саме ця strategy, які інші
+strategy доступні, скільки value очікується за горизонтом і де schedule має
+найбільший локальний value gap. Водночас ця відповідь не є заявкою на DAM:
+у ній немає market-order contract, clearing status, balancing responsibility
+або execution confirmation.
+
+### Офлайн-навчання та оцінювання
+
+Під час offline training/evaluation той самий forecast-to-LP механізм
+використовується не для рекомендації оператору, а для створення labels,
+порівняння стратегій і promotion evidence. Dagster materializes observed DAM
+prices, weather/context features, forecast candidates, benchmark frames і
+DFL/schedule-value assets. Для кожного rolling-origin anchor модель бачить
+лише інформацію, доступну до anchor. На цій основі створюються forecast або
+candidate schedules, після чого кожен candidate проходить LP optimizer.
+
+Коли realized prices для horizon уже відомі, offline evaluator перераховує
+економіку вибраного schedule на фактичних цінах, будує oracle LP для того
+самого tenant-anchor і рахує `decision_value_uah`, `oracle_value_uah`,
+`regret_uah` та `regret_ratio`. Ці rows не є live рекомендаціями. Вони є
+навчальним і доказовим матеріалом: з них формується schedule candidate
+library, train/prior label panel, final-holdout scoring, mean/median regret і
+promotion-gate висновок.
+
+Schedule/Value Learner V2/V2+ працює саме на цьому рівні. Він не генерує
+сиру команду батареї, а вибирає між already feasible LP-scored schedules за
+prior-only schedule/value features. Candidate-Value DFL v3 і DT-related
+experiments також залишаються offline: вони можуть навчатися оцінювати або
+ранжувати trajectory candidates, але final action усе одно має бути
+спроєктована через deterministic feasibility layer і перевірена проти
+`strict_similar_day` та V2+ під незмінним strict LP/oracle gate. Отже,
+коректне твердження таке: ML pipeline перетворює дані на рекомендаційні
+schedules і offline strategy evidence, але ще не перетворює їх на автономне
+ринкове виконання.
+
+## 3.8. Schedule/Value Learner V2 як decision-value selector
 
 Після первинного forecast-to-schedule evaluation у роботі вводиться проміжний
 decision-aware шар: Schedule/Value Learner V2. Його методологічна роль полягає
@@ -237,9 +549,9 @@ strict LP/oracle evaluator, deterministic fallback і межу тверджен�
 Offline Strategy Promotion evidence, не заявляючи ринкову торгівлю в реальному
 часі або розгорнутий DT-контролер.
 
-## 3.6. Candidate-Value DFL v3 як schedule-level value scorer
+## 3.9. Candidate-Value DFL v3-V5 як schedule-level value scorer і context repair
 
-Після фіксації V2+ як headline evidence було перевірено сильніший, але все ще
+Після фіксації V2+ як основного доказового результату було перевірено сильніший, але все ще
 обережний DFL-напрям: Candidate-Value DFL v3. Його мета - не генерувати raw
 hourly BUY/SELL/HOLD дії, а навчитися оцінювати вже feasible LP-scored
 candidate schedules. Це відповідає decision-focused логіці: модель має
@@ -287,7 +599,18 @@ diagnostics. Усі ці schedules все одно проходять той с�
 фінальний scorer навчається на train/prior labels і fallback-иться до V2+, якщо
 prior evidence не доводить очікуване покращення.
 
-## 3.7. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
+V5 розширює цей підхід через point-in-time context repair. Його завдання -
+перетворити широкі V4 gaps на конкретні tenant/source/anchor blockers:
+відсутність weather/load context, calendar/event context, publication-time
+evidence або вже доступний, але ще не використаний context. На цьому етапі
+context-enriched scorer знову використовує лише prior-safe
+`selector_feature_*` inputs, не додає ENTSO-E/European market-coupling rows до
+training і не змінює strict LP/oracle gate. Матеріалізований V5 результат
+повторив V2+ і не замінив його, тому методологічний висновок такий: поточний
+український context layer є корисним для діагностики, але ще недостатньо
+повним, щоб покращити V2+ під незмінною доказовою межею.
+
+## 3.10. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний технічний entrypoint:
 
@@ -332,7 +655,7 @@ flowchart TD
 змінює claim boundary. Результати залишаються offline/read-model evidence, а
 `market_execution_enabled` має залишатися `false`.
 
-## 3.8. Promotion criteria
+## 3.11. Promotion criteria
 
 Offline Strategy Promotion допускається тільки після проходження strict
 LP/oracle gate. Мінімальні умови:
@@ -350,7 +673,7 @@ LP/oracle gate. Мінімальні умови:
 Це є валідним негативним результатом: система коректно відхиляє слабкий
 контролер і зберігає safe baseline.
 
-## 3.9. Відтворюваність і evidence packet
+## 3.12. Відтворюваність і evidence packet
 
 Кожен довгий official run має супроводжуватися run receipt, attempt manifest,
 monitor snapshot і registry export. Разом ці артефакти відповідають на ключові
@@ -372,11 +695,11 @@ resume run, і яка claim boundary застосована.
 твердження, що система вже виконує ринкові операції в реальному часі або має
 розгорнутий DT-контролер.
 
-## 3.10. Джерела методологічного обґрунтування
+## 3.13. Джерела методологічного обґрунтування
 
 Методологічна позиція розділу спирається на джерела, зафіксовані у
-`docs/thesis/sources/README.md` та розділі 2. Для Schedule/Value Learner V2
-особливо релевантні:
+`docs/thesis/sources/README.md` та розділі 2. Для описаних у методології
+forecast, calibration, LP, DFL і DT методів особливо релевантні:
 
 1. Park et al. (2017) - LP formulation for short-term ESS scheduling; підтримує
    використання прозорого LP dispatch layer із SOC, efficiency, power-limit та
@@ -395,3 +718,16 @@ resume run, і яка claim boundary застосована.
 7. Yi et al. (2025) - decision-focused predict-then-bid framework for strategic
    energy storage; підтримує архітектурну траєкторію `forecast -> optimize ->
    bid/value evaluate`, збережену в цій роботі як offline/read-model evidence.
+8. Chen et al. (2021) - Decision Transformer; обґрунтовує майбутній
+   return-conditioned offline policy layer, але не є доказом поточного
+   live-control deployment.
+9. Agrawal et al. (2019) та Amos and Kolter (2017) - differentiable
+   optimization layers; підтримують DFL/relaxed-LP roadmap, але final scoring
+   у роботі лишається strict LP/oracle.
+10. Lago et al. (2021) та Yu et al. (2026) - EPF benchmark/review sources;
+    підтримують вимогу порівнювати neural forecasts із сильними baselines і
+    не робити value claims без realistic rolling-origin evaluation.
+11. Jin et al. (2025) - probabilistic forecasting context; підтримує
+    probabilistic/quantile forecast framing. У цій роботі quantiles
+    використовуються як schedule candidates і calibration evidence, а не як
+    самостійна гарантія trading performance.
