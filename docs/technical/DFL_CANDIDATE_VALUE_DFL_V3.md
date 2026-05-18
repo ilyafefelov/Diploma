@@ -7,10 +7,12 @@ DFL v2 result. It does not start another Decision Transformer. It expands the
 official global-panel schedule library and trains/selects a candidate-level
 value scorer over feasible LP-scored schedules.
 
-Materialized status: `2026-05-17` Dagster run
-`0263a956-12e0-4b93-86b8-b10d2194317b` passed the evidence check but did not
-replace V2+. Candidate-Value DFL v3 matched frozen V2+ on the latest strict
-holdout, so the gate remained `diagnostic_pass_replacement_blocked`.
+Materialized status: `2026-05-18` Dagster run
+`2dcdb48d-70b0-44f5-99b8-b8b5d4d58057` passed the label-panel, strict
+benchmark, and failure-audit evidence checks. Candidate-Value DFL v3 used a
+learned candidate-level value scorer, but the conservative fallback still
+matched frozen V2+ on the latest strict holdout. The gate therefore remained
+`diagnostic_pass_replacement_blocked`.
 
 Frozen comparator:
 
@@ -100,16 +102,33 @@ The new selection asset is:
 - `dfl_official_global_panel_candidate_value_dfl_v3_frame`.
 
 The scorer chooses among full candidate schedules, not only one static family.
-It selects a deterministic profile by train/prior objective:
+The current materialized scorer is `learned_linear_candidate_value_v3`: a small
+ridge-style linear value model trained on `train_selection` rows from
+`dfl_official_global_panel_candidate_value_label_panel_v3_frame`. The learned
+target is realized candidate regret on prior anchors; final-holdout labels are
+never used for weight fitting.
 
-- predicted value/regret score per candidate schedule;
-- regret-weighted pairwise/listwise ranking loss on train/prior anchors;
-- schedule features such as prior family regret, forecast spread, throughput,
-  degradation penalty, SOC slack, and teacher-family value bonus;
-- V2+ fallback unless prior mean regret improves over frozen V2+.
+The learned features are:
+
+- prior family mean regret;
+- forecast spread;
+- forecast objective value;
+- total throughput;
+- degradation penalty;
+- SOC minimum slack;
+- candidate-family intercepts.
+
+The selection contract is:
+
+1. fit the candidate-value scorer on train/prior label rows only;
+2. score train and final candidate schedules using prior-safe `selector_feature_*`
+   columns;
+3. compute a regret-weighted pairwise ranking diagnostic on train/prior rows;
+4. fall back to frozen V2+ unless train/prior mean regret improves enough.
 
 Final-holdout actuals may affect only scoring labels, never the selected value
-profile, feature weights, candidate generation parameters, or fallback decision.
+profile, learned feature weights, candidate generation parameters, or fallback
+decision.
 
 ## Strict Gate
 
@@ -120,6 +139,11 @@ The strict benchmark asset is:
 The asset check is:
 
 - `dfl_official_global_panel_candidate_value_dfl_v3_evidence`.
+
+The analysis-only failure-audit asset/check are:
+
+- `dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame`;
+- `dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_evidence`.
 
 The tracked config is:
 
@@ -136,26 +160,51 @@ V3 can replace V2+ only if it:
 
 Materialized latest-holdout result:
 
-| Source row | V3 mean regret | V2+ mean regret | Strict mean regret | Improvement vs V2+ | Gate |
-| --- | ---: | ---: | ---: | ---: | --- |
-| raw official global-panel NBEATSx | `193.36` UAH | `193.36` UAH | `310.58` UAH | `0.00%` | blocked |
-| horizon-calibrated official global-panel NBEATSx | `174.77` UAH | `174.77` UAH | `310.58` UAH | `0.00%` | blocked |
+| Source row | V3 mean regret | V2+ mean regret | Strict mean regret | Raw neural mean regret | Improvement vs V2+ | Gate |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| raw official global-panel NBEATSx | `193.36` UAH | `193.36` UAH | `310.58` UAH | `771.26` UAH | `0.00%` | blocked |
+| horizon-calibrated official global-panel NBEATSx | `174.77` UAH | `174.77` UAH | `310.58` UAH | `622.25` UAH | `0.00%` | blocked |
 
 Interpretation: the candidate-level value scorer improves strongly over raw
 neural schedules, but only by selecting/falling back to the same schedules as
 V2+. Therefore V2+ remains the thesis headline Offline Strategy Promotion
 evidence.
 
+The learned scorer was trained, but all 10 tenant/source model rows fell back
+to V2+ under the configured `1%` prior/train improvement requirement. This is
+the correct safety behavior: several pre-fallback candidate selections looked
+better on the final holdout, but their train/prior evidence was weaker than
+V2+.
+
+## Failure Audit
+
+The V3 failure audit explains why the new prior-template schedules did not beat
+V2+ often enough. On the final holdout, both prior-template families were much
+worse than V2+ on mean regret and won only a small minority of anchors:
+
+| Source row | Candidate family | Mean regret | V2+ mean regret | Delta vs V2+ | Win rate vs V2+ | Diagnosis |
+| --- | --- | ---: | ---: | ---: | ---: | --- |
+| calibrated NBEATSx | `prior_best_family_template_v3` | `605.71` UAH | `174.77` UAH | `+430.94` UAH | `4.44%` | `template_not_competitive_vs_v2_plus` |
+| calibrated NBEATSx | `prior_oracle_residual_template_v3` | `627.08` UAH | `174.77` UAH | `+452.31` UAH | `5.56%` | `template_not_competitive_vs_v2_plus` |
+| raw NBEATSx | `prior_best_family_template_v3` | `689.66` UAH | `193.36` UAH | `+496.30` UAH | `13.33%` | `template_not_competitive_vs_v2_plus` |
+| raw NBEATSx | `prior_oracle_residual_template_v3` | `729.69` UAH | `193.36` UAH | `+536.33` UAH | `7.78%` | `template_not_competitive_vs_v2_plus` |
+
+The failure mode is therefore not lack of candidate count alone. The simple
+historical templates transfer average prior residuals/deltas into regimes where
+V2+ already has a stronger strict/forecast blend. They occasionally help an
+anchor, especially for raw NBEATSx, but not often enough to become a robust
+replacement family.
+
+A scratch, non-persisted zero-threshold fallback probe showed that the learned
+scorer could improve the raw NBEATSx source from `193.36` to `185.62` UAH mean
+regret by allowing one weak-prior switch. This is not promoted because it still
+does not beat the calibrated V2+ headline (`174.77` UAH) and the train/prior
+signal is too small for the conservative thesis gate.
+
 ## Run
 
 ```powershell
-docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_official_global_panel_schedule_candidate_library_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame -c configs/real_data_dfl_candidate_value_dfl_v3_week3.yaml
-```
-
-To include the value-label panel for the next objective-design pass:
-
-```powershell
-docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_official_global_panel_schedule_candidate_library_v3_frame,dfl_official_global_panel_candidate_value_label_panel_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame -c configs/real_data_dfl_candidate_value_dfl_v3_week3.yaml
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_official_global_panel_schedule_candidate_library_v3_frame,dfl_official_global_panel_candidate_value_label_panel_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_frame,dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame,dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame -c configs/real_data_dfl_candidate_value_dfl_v3_week3.yaml
 ```
 
 Claim boundary:

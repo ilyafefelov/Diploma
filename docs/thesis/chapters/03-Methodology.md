@@ -198,7 +198,44 @@ strict LP/oracle evaluator, deterministic fallback і no-market-execution claim
 boundary. Це дозволяє академічно коректно стверджувати Offline Strategy
 Promotion evidence, не заявляючи live trading або deployed DT control.
 
-## 3.6. Unified execution runner: local vs Hugging Face Jobs
+## 3.6. Candidate-Value DFL v3 як schedule-level value scorer
+
+Після фіксації V2+ як headline evidence було перевірено сильніший, але все ще
+обережний DFL-напрям: Candidate-Value DFL v3. Його мета - не генерувати raw
+hourly BUY/SELL/HOLD дії, а навчитися оцінювати вже feasible LP-scored
+candidate schedules. Це відповідає decision-focused логіці: модель має
+навчатися на downstream value/regret labels і порівнювати повні траєкторії, а
+не лише копіювати одиничні hourly labels.
+
+Candidate-Value DFL v3 складається з трьох методологічних шарів:
+
+1. Розширена candidate library навколо реальних failure modes:
+   strict-neighborhood schedules, SOC terminal-target variants, peak/trough
+   timing shifts, uncertainty/risk schedules, degradation-price sweeps,
+   train-only oracle-neighborhood diagnostics і prior-template schedules.
+2. Candidate-value label panel, де `selector_feature_*` колонки є prior-safe
+   inputs, а `label_*` колонки є realized regret/value labels. Final-holdout
+   labels не використовуються для train-time model selection.
+3. `learned_linear_candidate_value_v3`, ridge-style schedule-level scorer,
+   який навчає ваги на train/prior candidate rows і прогнозує value/regret для
+   кожного candidate schedule.
+
+Цей підхід відрізняється від V2 weight-profile selection. У V2 профіль ваг
+обирається offline з фіксованого набору профілів. У Candidate-Value DFL v3
+ваги candidate-level scorer справді оцінюються з label panel, але deployment
+rule залишається безпечним: якщо prior/train evidence не показує достатнього
+покращення проти frozen V2+, selector повертається до V2+. Тому V3 може
+пояснювати failure modes і перевіряти більш DFL-подібний objective, не
+послаблюючи thesis gate.
+
+Методологічне значення матеріалізованого результату є негативним, але корисним:
+V3 пройшов evidence checks і навчив candidate-level scorer, проте strict
+LP/oracle gate залишив V2+ як fallback. Failure audit показав, що prior-template
+schedules були неконкурентними проти V2+ на більшості final-holdout anchors.
+Отже, наступний DFL/DT крок має покращувати feature/context або candidate
+generation mechanism, а не повторювати ті самі історичні residual templates.
+
+## 3.7. Unified execution runner: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний operational
 entrypoint:
@@ -244,7 +281,7 @@ flowchart TD
 змінює claim boundary. Результати залишаються offline/read-model evidence, а
 `market_execution_enabled` має залишатися `false`.
 
-## 3.7. Promotion criteria
+## 3.8. Promotion criteria
 
 Offline Strategy Promotion допускається тільки після проходження strict
 LP/oracle gate. Мінімальні умови:
@@ -262,7 +299,7 @@ LP/oracle gate. Мінімальні умови:
 Це є валідним негативним результатом: система коректно відхиляє слабкий
 контролер і зберігає safe baseline.
 
-## 3.8. Відтворюваність і evidence packet
+## 3.9. Відтворюваність і evidence packet
 
 Кожен довгий official run має супроводжуватися run receipt, attempt manifest,
 monitor snapshot і registry export. Разом ці артефакти відповідають на ключові
@@ -283,7 +320,7 @@ resume run, і яка claim boundary застосована.
 показуючи reproducible Offline Strategy Promotion evidence без
 твердження, що система вже виконує live trading або deployed DT control.
 
-## 3.9. Джерела методологічного обґрунтування
+## 3.10. Джерела методологічного обґрунтування
 
 Методологічна позиція розділу спирається на джерела, зафіксовані у
 `docs/thesis/sources/README.md` та розділі 2. Для Schedule/Value Learner V2

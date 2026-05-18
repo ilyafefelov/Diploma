@@ -157,12 +157,15 @@ The next branch is implemented as Candidate-Value DFL v3:
 1. Expand the official global-panel V2+ library with failure-mode schedule
    families: strict-neighborhood, SOC terminal-target, peak/trough timing,
    uncertainty/risk, degradation-price sweeps, and train-only
-   oracle-neighborhood diagnostics.
-2. Train/select a candidate-level value scorer on train/prior anchors using a
-   regret-weighted pairwise/listwise ranking objective.
-3. Fall back to frozen V2+ unless prior evidence predicts a non-degrading
+   oracle-neighborhood diagnostics, plus prior-template families that transfer
+   historical forecast deltas/residuals into new feasible schedules.
+2. Build a candidate-value label panel with prior-safe `selector_feature_*`
+   columns and realized `label_*` value/regret columns.
+3. Train a learned candidate-level value scorer on train/prior anchors using a
+   ridge-style schedule-value objective and regret-weighted ranking diagnostics.
+4. Fall back to frozen V2+ unless prior evidence predicts a non-degrading
    improvement.
-4. Strict-score against V2+, raw official NBEATSx, and `strict_similar_day`.
+5. Strict-score against V2+, raw official NBEATSx, and `strict_similar_day`.
 
 Tracked config:
 
@@ -170,8 +173,8 @@ Tracked config:
 
 Materialized result:
 
-- Dagster run `0263a956-12e0-4b93-86b8-b10d2194317b`;
-- evidence check passed;
+- Dagster run `2dcdb48d-70b0-44f5-99b8-b8b5d4d58057`;
+- label-panel, strict-benchmark, and failure-audit evidence checks passed;
 - gate decision: `diagnostic_pass_replacement_blocked`;
 - calibrated Candidate-Value DFL v3 mean regret: `174.77` UAH;
 - calibrated V2+ mean regret: `174.77` UAH;
@@ -179,11 +182,14 @@ Materialized result:
 - raw V2+ mean regret: `193.36` UAH;
 - improvement versus V2+: `0.00%`.
 
-Interpretation: candidate-level scoring did not find a schedule/value
-improvement beyond V2+. The next redesign should either broaden the
-candidate-library search space in a targeted way or introduce a truly learned
-value model with stronger point-in-time features; another tiny DT over the same
-objective remains deprioritized.
+Interpretation: the learned candidate-level scorer worked as an evidence path,
+but the conservative gate correctly kept V2+ as fallback. The failure audit
+showed that the new prior-template schedules were not competitive often enough:
+their final-holdout mean regret ranged from `605.71` to `729.69` UAH, and their
+win rates versus V2+ ranged from `4.44%` to `13.33%`. The next redesign should
+therefore improve point-in-time features or candidate generation quality rather
+than repeat the same average residual-template mechanism; another tiny DT over
+the same objective remains deprioritized.
 
 Technical runbook:
 

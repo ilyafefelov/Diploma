@@ -2554,9 +2554,19 @@ a prior-only schedule-level value scorer.
 New assets:
 
 - `dfl_official_global_panel_schedule_candidate_library_v3_frame`;
+- `dfl_official_global_panel_candidate_value_label_panel_v3_frame`;
 - `dfl_official_global_panel_candidate_value_dfl_v3_frame`;
 - `dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame`;
-- asset check `dfl_official_global_panel_candidate_value_dfl_v3_evidence`.
+- `dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame`;
+- asset checks `dfl_official_global_panel_candidate_value_dfl_v3_evidence`
+  and `dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_evidence`.
+
+The implemented scorer is `learned_linear_candidate_value_v3`, a small
+ridge-style candidate-level value model trained on `train_selection` rows from
+the V3 label panel. It scores full candidate schedules from prior-safe
+`selector_feature_*` columns and falls back to frozen V2+ unless train/prior
+evidence predicts a clear improvement. Final-holdout labels are used only for
+strict scoring and audit metrics.
 
 Gate: V3 must beat frozen V2+ mean regret, avoid median degradation, still beat
 `strict_similar_day`, and keep `market_execution_enabled=false`. Otherwise V2+
@@ -2564,12 +2574,22 @@ remains the thesis headline.
 
 Materialized result:
 
-- Dagster run `0263a956-12e0-4b93-86b8-b10d2194317b`;
-- evidence check passed;
+- Dagster run `2dcdb48d-70b0-44f5-99b8-b8b5d4d58057`;
+- label-panel, strict-benchmark, and failure-audit evidence checks passed;
 - gate decision: `diagnostic_pass_replacement_blocked`;
 - calibrated V3 matched V2+ at `174.77` UAH mean regret;
 - raw V3 matched V2+ at `193.36` UAH mean regret;
 - improvement versus V2+ was `0.00%`, so V2+ remains the thesis headline.
+
+The failure audit explains why the new prior-template schedules did not beat
+V2+ often enough. On final holdout, `prior_best_family_template_v3` had
+`605.71` UAH mean regret for calibrated NBEATSx and `689.66` UAH for raw
+NBEATSx, while `prior_oracle_residual_template_v3` had `627.08` UAH and
+`729.69` UAH respectively. Their final-holdout win rates versus V2+ were only
+`4.44%`, `13.33%`, `5.56%`, and `7.78%` depending on source row. The diagnosis
+is therefore `template_not_competitive_vs_v2_plus`: the templates occasionally
+help individual anchors, but average prior residual transfer is weaker than the
+already robust V2+ schedule/value blend.
 
 Runbook:
 

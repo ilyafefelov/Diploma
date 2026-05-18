@@ -34,6 +34,9 @@ CANDIDATE_VALUE_DFL_V3_ACADEMIC_SCOPE: Final[str] = (
     "pairwise/listwise objective and falls back to frozen V2+ unless prior "
     "evidence predicts improvement. This is not full DFL and not market execution."
 )
+CANDIDATE_VALUE_DFL_V3_FAILURE_AUDIT_CLAIM_SCOPE: Final[str] = (
+    "dfl_candidate_value_dfl_v3_failure_audit_not_full_dfl"
+)
 
 DFL_SCHEDULE_CANDIDATE_LIBRARY_V3_CLAIM_SCOPE: Final[str] = (
     "dfl_schedule_candidate_library_v3_not_full_dfl"
@@ -72,6 +75,7 @@ REQUIRED_MODEL_COLUMNS: Final[frozenset[str]] = frozenset(
         "source_model_name",
         "learner_model_name",
         "selected_value_profile_name",
+        "selected_scorer_type",
         "selected_feature_weights",
         "fallback_to_v2_plus",
         "train_anchor_count",
@@ -81,6 +85,34 @@ REQUIRED_MODEL_COLUMNS: Final[frozenset[str]] = frozenset(
         "claim_scope",
         "not_full_dfl",
         "not_market_execution",
+    }
+)
+LEARNED_SCORER_TYPE: Final[str] = "learned_linear_candidate_value_v3"
+LEARNED_SCORER_PROFILE_NAME: Final[str] = "learned_candidate_value_ridge_v3"
+LEARNED_SCORER_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
+    "selector_feature_prior_family_mean_regret_uah",
+    "selector_feature_forecast_spread_uah_mwh",
+    "selector_feature_forecast_objective_value_uah",
+    "selector_feature_total_throughput_mwh",
+    "selector_feature_total_degradation_penalty_uah",
+    "selector_feature_soc_min_slack_fraction",
+)
+REQUIRED_FAILURE_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "source_model_name",
+        "audit_grain",
+        "candidate_family",
+        "row_count",
+        "anchor_count",
+        "mean_regret_uah",
+        "v2_plus_mean_regret_uah",
+        "mean_delta_vs_v2_plus_uah",
+        "win_rate_vs_v2_plus",
+        "diagnosis",
+        "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
+        "market_execution_enabled",
     }
 )
 REQUIRED_STRICT_COLUMNS: Final[frozenset[str]] = frozenset(
@@ -708,6 +740,7 @@ def _value_tier(*, regret: float, best_regret: float) -> str:
 def build_dfl_candidate_value_dfl_v3_frame(
     schedule_candidate_library_v3_frame: pl.DataFrame,
     learner_v2_plus_frame: pl.DataFrame,
+    candidate_value_label_panel_v3_frame: pl.DataFrame | None = None,
     *,
     tenant_ids: tuple[str, ...],
     forecast_model_names: tuple[str, ...],
@@ -727,6 +760,15 @@ def build_dfl_candidate_value_dfl_v3_frame(
     )
     v2._validate_library_frame(schedule_candidate_library_v3_frame)
     _validate_v2_plus_model_frame(learner_v2_plus_frame)
+    label_panel_frame = (
+        candidate_value_label_panel_v3_frame
+        if candidate_value_label_panel_v3_frame is not None
+        else build_dfl_candidate_value_label_panel_v3_frame(
+            schedule_candidate_library_v3_frame
+        )
+    )
+    _validate_label_panel_frame(label_panel_frame)
+    label_rows_by_key = _label_rows_by_key(label_panel_frame)
     v2_plus_rows = {
         (str(row["tenant_id"]), str(row["source_model_name"])): row
         for row in learner_v2_plus_frame.iter_rows(named=True)
@@ -763,31 +805,44 @@ def build_dfl_candidate_value_dfl_v3_frame(
                 final_rows,
                 required_final_anchor_count=final_anchor_count,
             )
+            train_label_rows = _label_rows_for_library_rows(
+                train_rows,
+                label_rows_by_key=label_rows_by_key,
+                candidate_families=eligible_families,
+            )
+            final_label_rows = _label_rows_for_library_rows(
+                final_rows,
+                label_rows_by_key=label_rows_by_key,
+                candidate_families=eligible_families,
+            )
             teacher_family_scores = _teacher_family_scores(
                 train_rows,
                 candidate_families=eligible_families,
             )
-            selected_profile = _select_value_profile(
-                train_rows,
+            learned_scorer = _fit_learned_candidate_value_scorer(
+                train_label_rows,
                 candidate_families=eligible_families,
-                teacher_family_scores=teacher_family_scores,
-                pairwise_loss_weight=pairwise_loss_weight,
             )
-            selected_train_rows = _select_rows_by_value_score(
+            selected_train_rows = _select_rows_by_learned_scorer(
                 train_rows,
-                profile=selected_profile,
+                label_rows_by_key=label_rows_by_key,
+                scorer=learned_scorer,
                 candidate_families=eligible_families,
-                teacher_family_scores=teacher_family_scores,
             )
-            selected_final_rows = _select_rows_by_value_score(
+            selected_final_rows = _select_rows_by_learned_scorer(
                 final_rows,
-                profile=selected_profile,
+                label_rows_by_key=label_rows_by_key,
+                scorer=learned_scorer,
                 candidate_families=eligible_families,
-                teacher_family_scores=teacher_family_scores,
             )
             v2_plus_train_mean = float(v2_plus_row["selected_train_mean_regret_uah"])
             v2_plus_final_mean = float(v2_plus_row["selected_final_mean_regret_uah"])
             selected_train_mean = v2._mean_regret(selected_train_rows)
+            pairwise_loss = _pairwise_regret_weighted_loss_by_scorer(
+                train_label_rows,
+                scorer=learned_scorer,
+                candidate_families=eligible_families,
+            )
             fallback_to_v2_plus = (
                 v2._improvement_ratio(v2_plus_train_mean, selected_train_mean)
                 < min_prior_mean_improvement_ratio_vs_v2_plus
@@ -805,21 +860,15 @@ def build_dfl_candidate_value_dfl_v3_frame(
                     "learner_model_name": candidate_value_dfl_v3_model_name(
                         source_model_name
                     ),
-                    "selected_value_profile_name": str(selected_profile["name"]),
-                    "selected_objective_name": "candidate_value_pairwise_listwise_regret_ranking",
-                    "selected_feature_names": [
-                        "prior_family_mean_regret_uah",
-                        "forecast_spread_uah_mwh",
-                        "total_throughput_mwh",
-                        "total_degradation_penalty_uah",
-                        "soc_min_slack_fraction",
-                        "teacher_family_value_bonus",
-                    ],
-                    "selected_feature_weights": {
-                        key: value
-                        for key, value in selected_profile.items()
-                        if key != "name"
-                    },
+                    "selected_value_profile_name": str(learned_scorer["name"]),
+                    "selected_scorer_type": LEARNED_SCORER_TYPE,
+                    "selected_objective_name": (
+                        "candidate_value_train_label_ridge_pairwise_ranking"
+                    ),
+                    "selected_feature_names": list(LEARNED_SCORER_FEATURE_COLUMNS),
+                    "selected_feature_weights": dict(learned_scorer["weights"]),
+                    "selected_feature_means": dict(learned_scorer["feature_means"]),
+                    "selected_feature_scales": dict(learned_scorer["feature_scales"]),
                     "eligible_candidate_families": sorted(eligible_families),
                     "teacher_family_scores": teacher_family_scores,
                     "pairwise_loss_weight": pairwise_loss_weight,
@@ -833,9 +882,9 @@ def build_dfl_candidate_value_dfl_v3_frame(
                     "v2_plus_train_mean_regret_uah": v2_plus_train_mean,
                     "v2_plus_final_mean_regret_uah": v2_plus_final_mean,
                     "candidate_train_mean_regret_uah": selected_train_mean,
-                    "candidate_train_pairwise_loss_uah": float(
-                        selected_profile["pairwise_loss_uah"]
-                    ),
+                    "candidate_train_pairwise_loss_uah": pairwise_loss,
+                    "candidate_train_label_row_count": len(train_label_rows),
+                    "candidate_final_label_row_count": len(final_label_rows),
                     "candidate_final_mean_regret_uah": v2._mean_regret(
                         selected_final_rows
                     ),
@@ -932,13 +981,12 @@ def build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame(
             tenant_id=tenant_id,
             source_model_name=source_model_name,
         )
-        candidate_rows = _select_rows_by_value_score(
+        candidate_rows = _select_rows_by_model_row(
             final_rows,
-            profile=_profile_from_model_row(learner_row),
+            learner_row=learner_row,
             candidate_families=frozenset(
                 str(family) for family in learner_row["eligible_candidate_families"]
             ),
-            teacher_family_scores=dict(learner_row["teacher_family_scores"]),
         )
         candidate_by_anchor = {
             v2._datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"): row
@@ -1046,6 +1094,144 @@ def validate_dfl_candidate_value_dfl_v3_evidence(
             "source_model_count": len(source_names),
             "source_model_names": list(source_names),
             "model_summaries": summaries,
+        },
+    )
+
+
+def build_dfl_candidate_value_dfl_v3_failure_audit_frame(
+    candidate_value_label_panel_v3_frame: pl.DataFrame,
+    candidate_value_dfl_v3_frame: pl.DataFrame,
+    candidate_value_dfl_v3_strict_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Explain why V3 candidate schedules did or did not improve over V2+."""
+
+    _validate_label_panel_frame(candidate_value_label_panel_v3_frame)
+    _validate_candidate_value_model_frame(candidate_value_dfl_v3_frame)
+    missing_columns = sorted(
+        REQUIRED_STRICT_COLUMNS.difference(candidate_value_dfl_v3_strict_frame.columns)
+    )
+    if missing_columns:
+        raise ValueError(f"candidate-value DFL v3 strict frame is missing columns: {missing_columns}")
+    strict_rows = list(candidate_value_dfl_v3_strict_frame.iter_rows(named=True))
+    v2_plus_regret_by_anchor = _strict_reference_regret_by_anchor(
+        strict_rows,
+        role="schedule_value_learner_v2_plus_reference",
+    )
+    selected_regret_by_anchor = _strict_reference_regret_by_anchor(
+        strict_rows,
+        role="candidate_value_dfl_v3",
+    )
+    model_rows_by_source = {
+        (str(row["tenant_id"]), str(row["source_model_name"])): row
+        for row in candidate_value_dfl_v3_frame.iter_rows(named=True)
+    }
+    rows: list[dict[str, Any]] = []
+    label_rows = [
+        row
+        for row in candidate_value_label_panel_v3_frame.iter_rows(named=True)
+        if str(row["split_name"]) == "final_holdout"
+    ]
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for row in label_rows:
+        grouped.setdefault(
+            (str(row["source_model_name"]), str(row["candidate_family"])),
+            [],
+        ).append(row)
+    for (source_model_name, candidate_family), family_rows in sorted(grouped.items()):
+        matched_rows = [
+            row
+            for row in family_rows
+            if _tenant_source_anchor_key(row) in v2_plus_regret_by_anchor
+        ]
+        if not matched_rows:
+            continue
+        candidate_regrets = [float(row["label_regret_uah"]) for row in matched_rows]
+        v2_plus_regrets = [
+            v2_plus_regret_by_anchor[_tenant_source_anchor_key(row)]
+            for row in matched_rows
+        ]
+        selected_regrets = [
+            selected_regret_by_anchor.get(_tenant_source_anchor_key(row))
+            for row in matched_rows
+        ]
+        selected_count = sum(
+            1
+            for candidate, selected in zip(candidate_regrets, selected_regrets, strict=True)
+            if selected is not None and abs(candidate - selected) <= 1e-9
+        )
+        win_count = sum(
+            1
+            for candidate, baseline in zip(candidate_regrets, v2_plus_regrets, strict=True)
+            if candidate < baseline
+        )
+        mean_regret = mean(candidate_regrets)
+        v2_plus_mean = mean(v2_plus_regrets)
+        win_rate = win_count / len(matched_rows)
+        delta = mean_regret - v2_plus_mean
+        fallback_count = _fallback_count_for_source(
+            model_rows_by_source,
+            source_model_name=source_model_name,
+        )
+        rows.append(
+            {
+                "source_model_name": source_model_name,
+                "audit_grain": "candidate_family",
+                "candidate_family": candidate_family,
+                "split_name": "final_holdout",
+                "row_count": len(matched_rows),
+                "anchor_count": len({_tenant_source_anchor_key(row) for row in matched_rows}),
+                "mean_regret_uah": mean_regret,
+                "v2_plus_mean_regret_uah": v2_plus_mean,
+                "mean_delta_vs_v2_plus_uah": delta,
+                "win_rate_vs_v2_plus": win_rate,
+                "selected_count": selected_count,
+                "fallback_model_count": fallback_count,
+                "diagnosis": _candidate_family_failure_diagnosis(
+                    candidate_family=candidate_family,
+                    mean_delta_vs_v2_plus=delta,
+                    win_rate_vs_v2_plus=win_rate,
+                    selected_count=selected_count,
+                ),
+                "claim_scope": CANDIDATE_VALUE_DFL_V3_FAILURE_AUDIT_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+    return pl.DataFrame(rows).sort(["source_model_name", "audit_grain", "candidate_family"])
+
+
+def validate_dfl_candidate_value_dfl_v3_failure_audit_evidence(
+    failure_audit_frame: pl.DataFrame,
+) -> EvidenceCheckOutcome:
+    """Validate analysis-only V3 failure audit rows."""
+
+    missing_columns = sorted(REQUIRED_FAILURE_AUDIT_COLUMNS.difference(failure_audit_frame.columns))
+    if missing_columns:
+        return EvidenceCheckOutcome(
+            False,
+            f"candidate-value DFL v3 failure audit is missing required columns: {missing_columns}",
+            {"row_count": failure_audit_frame.height},
+        )
+    failures: list[str] = []
+    for row in failure_audit_frame.iter_rows(named=True):
+        if str(row["claim_scope"]) != CANDIDATE_VALUE_DFL_V3_FAILURE_AUDIT_CLAIM_SCOPE:
+            failures.append("unexpected claim_scope")
+            break
+        if not bool(row["not_full_dfl"]) or not bool(row["not_market_execution"]):
+            failures.append("failure audit claim boundary violation")
+            break
+        if bool(row["market_execution_enabled"]):
+            failures.append("market_execution_enabled must be false")
+            break
+    return EvidenceCheckOutcome(
+        not failures,
+        "Candidate-value DFL v3 failure audit is valid analysis-only evidence."
+        if not failures
+        else "; ".join(failures),
+        {
+            "row_count": failure_audit_frame.height,
+            "market_execution_enabled": False,
         },
     )
 
@@ -1252,6 +1438,23 @@ def _validate_candidate_value_model_frame(frame: pl.DataFrame) -> None:
             )
 
 
+def _validate_label_panel_frame(frame: pl.DataFrame) -> None:
+    v2._require_columns(
+        frame,
+        REQUIRED_LABEL_PANEL_COLUMNS,
+        frame_name="candidate_value_label_panel_v3_frame",
+    )
+    for row in frame.iter_rows(named=True):
+        if str(row["claim_scope"]) != DFL_CANDIDATE_VALUE_LABEL_PANEL_V3_CLAIM_SCOPE:
+            raise ValueError("candidate-value DFL v3 label panel has unexpected claim_scope")
+        if not bool(row["not_full_dfl"]):
+            raise ValueError("candidate-value DFL v3 label rows must keep not_full_dfl=true")
+        if not bool(row["not_market_execution"]):
+            raise ValueError(
+                "candidate-value DFL v3 label rows must keep not_market_execution=true"
+            )
+
+
 def _eligible_candidate_families(
     train_rows: list[dict[str, Any]],
     final_rows: list[dict[str, Any]],
@@ -1309,6 +1512,341 @@ def _teacher_family_scores(
         wins[str(best_row["candidate_family"])] += 1.0
     anchor_count = max(len(by_anchor), 1)
     return {family: wins[family] / anchor_count for family in sorted(candidate_families)}
+
+
+def _label_rows_by_key(frame: pl.DataFrame) -> dict[tuple[str, str, datetime, str, str], dict[str, Any]]:
+    rows: dict[tuple[str, str, datetime, str, str], dict[str, Any]] = {}
+    for row in frame.iter_rows(named=True):
+        rows[_candidate_identity_key(row)] = row
+    return rows
+
+
+def _candidate_identity_key(row: dict[str, Any]) -> tuple[str, str, datetime, str, str]:
+    return (
+        str(row["tenant_id"]),
+        str(row["source_model_name"]),
+        v2._datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+        str(row["candidate_family"]),
+        str(row["candidate_model_name"]),
+    )
+
+
+def _label_rows_for_library_rows(
+    rows: list[dict[str, Any]],
+    *,
+    label_rows_by_key: dict[tuple[str, str, datetime, str, str], dict[str, Any]],
+    candidate_families: frozenset[str],
+) -> list[dict[str, Any]]:
+    label_rows: list[dict[str, Any]] = []
+    for row in rows:
+        if str(row["candidate_family"]) not in candidate_families:
+            continue
+        label_row = label_rows_by_key.get(_candidate_identity_key(row))
+        if label_row is not None:
+            label_rows.append(label_row)
+    return label_rows
+
+
+def _fit_learned_candidate_value_scorer(
+    train_label_rows: list[dict[str, Any]],
+    *,
+    candidate_families: frozenset[str],
+    ridge_l2: float = 1.0,
+) -> dict[str, Any]:
+    eligible_rows = [
+        row
+        for row in train_label_rows
+        if str(row["candidate_family"]) in candidate_families
+        and str(row["split_name"]) == "train_selection"
+    ]
+    if not eligible_rows:
+        raise ValueError("candidate-value DFL v3 learned scorer needs train label rows")
+    feature_means: dict[str, float] = {}
+    feature_scales: dict[str, float] = {}
+    for column in LEARNED_SCORER_FEATURE_COLUMNS:
+        values = [float(row[column]) for row in eligible_rows]
+        feature_means[column] = mean(values)
+        span = max(values) - min(values)
+        feature_scales[column] = span if span > 1e-9 else 1.0
+    family_columns = tuple(f"family::{family}" for family in sorted(candidate_families))
+    feature_matrix = [
+        _learned_feature_vector(
+            row,
+            feature_means=feature_means,
+            feature_scales=feature_scales,
+            family_columns=family_columns,
+        )
+        for row in eligible_rows
+    ]
+    targets = [float(row["label_regret_uah"]) for row in eligible_rows]
+    coefficients = _fit_ridge_coefficients(
+        feature_matrix,
+        targets,
+        ridge_l2=ridge_l2,
+    )
+    feature_names = [*LEARNED_SCORER_FEATURE_COLUMNS, *family_columns]
+    weights = {"intercept": coefficients[0]}
+    weights.update(
+        {
+            feature_name: coefficients[index + 1]
+            for index, feature_name in enumerate(feature_names)
+        }
+    )
+    return {
+        "name": LEARNED_SCORER_PROFILE_NAME,
+        "scorer_type": LEARNED_SCORER_TYPE,
+        "weights": weights,
+        "feature_means": feature_means,
+        "feature_scales": feature_scales,
+        "family_columns": family_columns,
+    }
+
+
+def _fit_ridge_coefficients(
+    feature_matrix: list[list[float]],
+    targets: list[float],
+    *,
+    ridge_l2: float,
+) -> list[float]:
+    if not feature_matrix:
+        raise ValueError("feature_matrix must not be empty")
+    width = len(feature_matrix[0]) + 1
+    xtx = [[0.0 for _ in range(width)] for _ in range(width)]
+    xty = [0.0 for _ in range(width)]
+    for features, target in zip(feature_matrix, targets, strict=True):
+        row = [1.0, *features]
+        for left_index, left_value in enumerate(row):
+            xty[left_index] += left_value * target
+            for right_index, right_value in enumerate(row):
+                xtx[left_index][right_index] += left_value * right_value
+    for index in range(1, width):
+        xtx[index][index] += ridge_l2
+    return _solve_linear_system(xtx, xty)
+
+
+def _solve_linear_system(matrix: list[list[float]], vector: list[float]) -> list[float]:
+    size = len(vector)
+    augmented = [list(row) + [vector[index]] for index, row in enumerate(matrix)]
+    for column in range(size):
+        pivot_row = max(
+            range(column, size),
+            key=lambda row_index: abs(augmented[row_index][column]),
+        )
+        if abs(augmented[pivot_row][column]) < 1e-10:
+            augmented[column][column] += 1e-6
+            pivot_row = column
+        if pivot_row != column:
+            augmented[column], augmented[pivot_row] = (
+                augmented[pivot_row],
+                augmented[column],
+            )
+        pivot = augmented[column][column]
+        if abs(pivot) < 1e-12:
+            continue
+        for item_index in range(column, size + 1):
+            augmented[column][item_index] /= pivot
+        for row_index in range(size):
+            if row_index == column:
+                continue
+            factor = augmented[row_index][column]
+            if abs(factor) <= 1e-12:
+                continue
+            for item_index in range(column, size + 1):
+                augmented[row_index][item_index] -= factor * augmented[column][item_index]
+    return [augmented[index][size] for index in range(size)]
+
+
+def _learned_feature_vector(
+    row: dict[str, Any],
+    *,
+    feature_means: dict[str, float],
+    feature_scales: dict[str, float],
+    family_columns: tuple[str, ...],
+) -> list[float]:
+    features = _selector_feature_values(row)
+    numeric = [
+        (features[column] - feature_means[column]) / feature_scales[column]
+        for column in LEARNED_SCORER_FEATURE_COLUMNS
+    ]
+    family = str(row["candidate_family"])
+    one_hot = [1.0 if column == f"family::{family}" else 0.0 for column in family_columns]
+    return [*numeric, *one_hot]
+
+
+def _selector_feature_values(row: dict[str, Any]) -> dict[str, float]:
+    if "selector_feature_prior_family_mean_regret_uah" in row:
+        return {
+            column: float(row[column])
+            for column in LEARNED_SCORER_FEATURE_COLUMNS
+        }
+    return {
+        "selector_feature_prior_family_mean_regret_uah": float(
+            row.get("prior_family_mean_regret_uah", row["regret_uah"])
+        ),
+        "selector_feature_forecast_spread_uah_mwh": float(
+            row.get("forecast_spread_uah_mwh", 0.0)
+        ),
+        "selector_feature_forecast_objective_value_uah": float(
+            row["forecast_objective_value_uah"]
+        ),
+        "selector_feature_total_throughput_mwh": float(
+            row.get("total_throughput_mwh", 0.0)
+        ),
+        "selector_feature_total_degradation_penalty_uah": float(
+            row.get("total_degradation_penalty_uah", 0.0)
+        ),
+        "selector_feature_soc_min_slack_fraction": float(
+            row.get("soc_min_slack_fraction", 0.0)
+        ),
+    }
+
+
+def _select_rows_by_learned_scorer(
+    rows: list[dict[str, Any]],
+    *,
+    label_rows_by_key: dict[tuple[str, str, datetime, str, str], dict[str, Any]],
+    scorer: dict[str, Any],
+    candidate_families: frozenset[str],
+) -> list[dict[str, Any]]:
+    selected_rows: list[dict[str, Any]] = []
+    for _, anchor_rows in sorted(v2._rows_by_anchor(rows).items()):
+        candidates = [
+            row
+            for row in anchor_rows
+            if str(row["candidate_family"]) in candidate_families
+        ]
+        if not candidates:
+            continue
+        selected_rows.append(
+            min(
+                candidates,
+                key=lambda row: (
+                    _predict_learned_candidate_regret(
+                        _label_row_or_candidate_row(
+                            row, label_rows_by_key=label_rows_by_key
+                        ),
+                        scorer=scorer,
+                    ),
+                    v2._family_sort_index(str(row["candidate_family"])),
+                    str(row["candidate_model_name"]),
+                ),
+            )
+        )
+    return selected_rows
+
+
+def _label_row_or_candidate_row(
+    row: dict[str, Any],
+    *,
+    label_rows_by_key: dict[tuple[str, str, datetime, str, str], dict[str, Any]],
+) -> dict[str, Any]:
+    label_row = label_rows_by_key.get(_candidate_identity_key(row))
+    if label_row is None:
+        return row
+    return label_row
+
+
+def _select_rows_by_model_row(
+    rows: list[dict[str, Any]],
+    *,
+    learner_row: dict[str, Any],
+    candidate_families: frozenset[str],
+) -> list[dict[str, Any]]:
+    if str(learner_row.get("selected_scorer_type", "")) == LEARNED_SCORER_TYPE:
+        scorer = _learned_scorer_from_model_row(learner_row)
+        selected_rows: list[dict[str, Any]] = []
+        for _, anchor_rows in sorted(v2._rows_by_anchor(rows).items()):
+            candidates = [
+                row
+                for row in anchor_rows
+                if str(row["candidate_family"]) in candidate_families
+            ]
+            if not candidates:
+                continue
+            selected_rows.append(
+                min(
+                    candidates,
+                    key=lambda row: (
+                        _predict_learned_candidate_regret(row, scorer=scorer),
+                        v2._family_sort_index(str(row["candidate_family"])),
+                        str(row["candidate_model_name"]),
+                    ),
+                )
+            )
+        return selected_rows
+    return _select_rows_by_value_score(
+        rows,
+        profile=_profile_from_model_row(learner_row),
+        candidate_families=candidate_families,
+        teacher_family_scores=dict(learner_row["teacher_family_scores"]),
+    )
+
+
+def _learned_scorer_from_model_row(row: dict[str, Any]) -> dict[str, Any]:
+    family_columns = tuple(
+        sorted(
+            key
+            for key in dict(row["selected_feature_weights"])
+            if key.startswith("family::")
+        )
+    )
+    return {
+        "name": str(row["selected_value_profile_name"]),
+        "scorer_type": LEARNED_SCORER_TYPE,
+        "weights": dict(row["selected_feature_weights"]),
+        "feature_means": dict(row.get("selected_feature_means", {})),
+        "feature_scales": dict(row.get("selected_feature_scales", {})),
+        "family_columns": family_columns,
+    }
+
+
+def _predict_learned_candidate_regret(row: dict[str, Any], *, scorer: dict[str, Any]) -> float:
+    weights = dict(scorer["weights"])
+    feature_means = dict(scorer["feature_means"])
+    feature_scales = dict(scorer["feature_scales"])
+    family_columns = tuple(str(column) for column in scorer["family_columns"])
+    features = _learned_feature_vector(
+        row,
+        feature_means=feature_means,
+        feature_scales=feature_scales,
+        family_columns=family_columns,
+    )
+    feature_names = [*LEARNED_SCORER_FEATURE_COLUMNS, *family_columns]
+    score = float(weights.get("intercept", 0.0))
+    for feature_name, feature_value in zip(feature_names, features, strict=True):
+        score += float(weights.get(feature_name, 0.0)) * feature_value
+    return score
+
+
+def _pairwise_regret_weighted_loss_by_scorer(
+    train_label_rows: list[dict[str, Any]],
+    *,
+    scorer: dict[str, Any],
+    candidate_families: frozenset[str],
+) -> float:
+    losses: list[float] = []
+    rows_by_anchor: dict[datetime, list[dict[str, Any]]] = {}
+    for row in train_label_rows:
+        if str(row["candidate_family"]) not in candidate_families:
+            continue
+        anchor = v2._datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp")
+        rows_by_anchor.setdefault(anchor, []).append(row)
+    for anchor_rows in rows_by_anchor.values():
+        for left_index, left in enumerate(anchor_rows):
+            for right in anchor_rows[left_index + 1 :]:
+                left_regret = float(left["label_regret_uah"])
+                right_regret = float(right["label_regret_uah"])
+                if abs(left_regret - right_regret) <= 1e-9:
+                    continue
+                better, worse = (left, right) if left_regret < right_regret else (right, left)
+                if _predict_learned_candidate_regret(
+                    better,
+                    scorer=scorer,
+                ) > _predict_learned_candidate_regret(worse, scorer=scorer):
+                    losses.append(abs(left_regret - right_regret))
+                else:
+                    losses.append(0.0)
+    return mean(losses) if losses else 0.0
 
 
 def _select_value_profile(
@@ -1729,6 +2267,65 @@ def _source_model_name(row: dict[str, Any]) -> str:
     return str(payload.get("source_forecast_model_name", ""))
 
 
+def _tenant_source_anchor_key(row: dict[str, Any]) -> tuple[str, str, datetime]:
+    return (
+        str(row["tenant_id"]),
+        _source_model_name(row),
+        v2._datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+    )
+
+
+def _strict_reference_regret_by_anchor(
+    rows: list[dict[str, Any]],
+    *,
+    role: str,
+) -> dict[tuple[str, str, datetime], float]:
+    return {
+        _tenant_source_anchor_key(row): float(row["regret_uah"])
+        for row in rows
+        if _selection_role(row) == role
+    }
+
+
+def _fallback_count_for_source(
+    model_rows_by_source: dict[tuple[str, str], dict[str, Any]],
+    *,
+    source_model_name: str,
+) -> int:
+    return sum(
+        1
+        for (_, model_source_name), row in model_rows_by_source.items()
+        if model_source_name == source_model_name and bool(row["fallback_to_v2_plus"])
+    )
+
+
+def _candidate_family_failure_diagnosis(
+    *,
+    candidate_family: str,
+    mean_delta_vs_v2_plus: float,
+    win_rate_vs_v2_plus: float,
+    selected_count: int,
+) -> str:
+    if mean_delta_vs_v2_plus < 0.0:
+        return "template_beats_v2_plus_candidate" if _is_prior_template(candidate_family) else (
+            "candidate_family_beats_v2_plus"
+        )
+    if _is_prior_template(candidate_family):
+        if win_rate_vs_v2_plus >= 0.25 and selected_count == 0:
+            return "template_competitive_but_not_selected"
+        return "template_not_competitive_vs_v2_plus"
+    if selected_count > 0:
+        return "selected_candidate_worse_than_v2_plus"
+    return "candidate_not_competitive_vs_v2_plus"
+
+
+def _is_prior_template(candidate_family: str) -> bool:
+    return candidate_family in {
+        CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
+        CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
+    }
+
+
 def _selection_role(row: dict[str, Any]) -> str:
     if row.get("selection_role"):
         return str(row["selection_role"])
@@ -1741,7 +2338,9 @@ __all__ = [
     "CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V3",
     "CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3",
     "CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3",
+    "CANDIDATE_VALUE_DFL_V3_FAILURE_AUDIT_CLAIM_SCOPE",
     "CANDIDATE_VALUE_DFL_V3_STRICT_LP_STRATEGY_KIND",
+    "build_dfl_candidate_value_dfl_v3_failure_audit_frame",
     "build_dfl_candidate_value_dfl_v3_frame",
     "build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame",
     "build_dfl_candidate_value_label_panel_v3_frame",
@@ -1749,5 +2348,6 @@ __all__ = [
     "candidate_value_dfl_v3_model_name",
     "evaluate_dfl_candidate_value_dfl_v3_gate",
     "validate_dfl_candidate_value_dfl_v3_evidence",
+    "validate_dfl_candidate_value_dfl_v3_failure_audit_evidence",
     "validate_dfl_candidate_value_label_panel_v3_evidence",
 ]

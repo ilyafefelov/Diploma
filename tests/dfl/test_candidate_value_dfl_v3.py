@@ -10,6 +10,7 @@ from smart_arbitrage.dfl.candidate_value_dfl_v3 import (
     CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
     CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
     CANDIDATE_VALUE_DFL_V3_STRICT_LP_STRATEGY_KIND,
+    build_dfl_candidate_value_dfl_v3_failure_audit_frame,
     build_dfl_candidate_value_dfl_v3_frame,
     build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame,
     build_dfl_candidate_value_label_panel_v3_frame,
@@ -195,10 +196,12 @@ def test_candidate_value_dfl_v3_can_beat_v2_plus_when_prior_value_signal_exists(
         value_final_regret=120.0,
     )
     v2_model, v2_plus_model, v2_plus_strict = _v2_plus_reference(base_library)
+    label_panel = build_dfl_candidate_value_label_panel_v3_frame(full_library)
 
     v3_model = build_dfl_candidate_value_dfl_v3_frame(
         full_library,
         v2_plus_model,
+        label_panel,
         tenant_ids=TENANTS,
         forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
     )
@@ -221,6 +224,13 @@ def test_candidate_value_dfl_v3_can_beat_v2_plus_when_prior_value_signal_exists(
 
     assert v2_model.height == 10
     assert set(v3_model["fallback_to_v2_plus"].to_list()) == {False}
+    assert set(v3_model["selected_scorer_type"].to_list()) == {
+        "learned_linear_candidate_value_v3"
+    }
+    assert all(
+        "selector_feature_prior_family_mean_regret_uah" in weights
+        for weights in v3_model["selected_feature_weights"].to_list()
+    )
     assert set(v3_model["selected_final_family_counts"].to_list()[0]) == {
         "candidate_value_good_v3"
     }
@@ -279,10 +289,12 @@ def test_candidate_value_dfl_v3_falls_back_when_prior_signal_is_weak() -> None:
         value_final_regret=90.0,
     )
     _, v2_plus_model, v2_plus_strict = _v2_plus_reference(base_library)
+    label_panel = build_dfl_candidate_value_label_panel_v3_frame(full_library)
 
     v3_model = build_dfl_candidate_value_dfl_v3_frame(
         full_library,
         v2_plus_model,
+        label_panel,
         tenant_ids=TENANTS,
         forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
     )
@@ -321,16 +333,20 @@ def test_candidate_value_dfl_v3_final_mutation_changes_scores_not_selected_profi
     )
     mutated_library = _mutate_final_value_family_regret(full_library, regret=70.0)
     _, v2_plus_model, _ = _v2_plus_reference(base_library)
+    label_panel = build_dfl_candidate_value_label_panel_v3_frame(full_library)
+    mutated_label_panel = _mutate_final_label_panel_regret(label_panel, regret=70.0)
 
     original = build_dfl_candidate_value_dfl_v3_frame(
         full_library,
         v2_plus_model,
+        label_panel,
         tenant_ids=TENANTS,
         forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
     )
     mutated = build_dfl_candidate_value_dfl_v3_frame(
         mutated_library,
         v2_plus_model,
+        mutated_label_panel,
         tenant_ids=TENANTS,
         forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
     )
@@ -339,6 +355,7 @@ def test_candidate_value_dfl_v3_final_mutation_changes_scores_not_selected_profi
         "tenant_id",
         "source_model_name",
         "selected_value_profile_name",
+        "selected_scorer_type",
         "selected_feature_weights",
         "fallback_to_v2_plus",
     ]
@@ -351,19 +368,137 @@ def test_candidate_value_dfl_v3_final_mutation_changes_scores_not_selected_profi
     )
 
 
+def test_candidate_value_dfl_v3_learned_scorer_uses_train_label_panel() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+    )
+    full_library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+    )
+    _, v2_plus_model, _ = _v2_plus_reference(base_library)
+    label_panel = build_dfl_candidate_value_label_panel_v3_frame(full_library)
+    poisoned_train_labels = _mutate_train_label_panel_family_regret(
+        label_panel,
+        family="candidate_value_good_v3",
+        regret=900.0,
+    )
+
+    original = build_dfl_candidate_value_dfl_v3_frame(
+        full_library,
+        v2_plus_model,
+        label_panel,
+        tenant_ids=TENANTS,
+        forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+    )
+    poisoned = build_dfl_candidate_value_dfl_v3_frame(
+        full_library,
+        v2_plus_model,
+        poisoned_train_labels,
+        tenant_ids=TENANTS,
+        forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+    )
+
+    assert set(original["fallback_to_v2_plus"].to_list()) == {False}
+    assert set(poisoned["fallback_to_v2_plus"].to_list()) == {True}
+    assert (
+        original["selected_feature_weights"].to_list()
+        != poisoned["selected_feature_weights"].to_list()
+    )
+
+
+def test_candidate_value_dfl_v3_failure_audit_explains_prior_template_gap() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        train_anchor_count=3,
+        final_anchor_count=2,
+    )
+    expanded = build_dfl_schedule_candidate_library_v3_frame(
+        base_library,
+        min_prior_template_anchor_count=2,
+    )
+    label_panel = build_dfl_candidate_value_label_panel_v3_frame(expanded)
+    _, v2_plus_model, v2_plus_strict = _v2_plus_reference(
+        base_library,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_validation_anchor_count_per_tenant=2,
+    )
+    v3_model = build_dfl_candidate_value_dfl_v3_frame(
+        expanded,
+        v2_plus_model,
+        label_panel,
+        tenant_ids=(TENANTS[0],),
+        forecast_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_validation_anchor_count_per_tenant=2,
+    )
+    strict_frame = build_dfl_candidate_value_dfl_v3_strict_lp_benchmark_frame(
+        expanded,
+        v3_model,
+        v2_plus_strict,
+        generated_at=GENERATED_AT,
+    )
+
+    audit = build_dfl_candidate_value_dfl_v3_failure_audit_frame(
+        label_panel,
+        v3_model,
+        strict_frame,
+    )
+    prior_rows = audit.filter(
+        pl.col("candidate_family").is_in(
+            [
+                CANDIDATE_FAMILY_PRIOR_BEST_TEMPLATE_V3,
+                CANDIDATE_FAMILY_PRIOR_ORACLE_RESIDUAL_V3,
+            ]
+        )
+    )
+
+    assert prior_rows.height == 2
+    assert set(prior_rows["audit_grain"].to_list()) == {"candidate_family"}
+    assert set(prior_rows["market_execution_enabled"].to_list()) == {False}
+    assert all(
+        diagnosis
+        in {
+            "template_not_competitive_vs_v2_plus",
+            "template_competitive_but_not_selected",
+            "template_beats_v2_plus_candidate",
+        }
+        for diagnosis in prior_rows["diagnosis"].to_list()
+    )
+
+
 def _v2_plus_reference(
     library: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...] = TENANTS,
+    source_model_names: tuple[str, ...] = OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+    final_validation_anchor_count_per_tenant: int = 18,
 ) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     v2_model = build_dfl_schedule_value_learner_v2_frame(
         library,
-        tenant_ids=TENANTS,
-        forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+        tenant_ids=tenant_ids,
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=final_validation_anchor_count_per_tenant,
     )
     v2_plus_model = build_dfl_schedule_value_learner_v2_plus_frame(
         library,
         v2_model,
-        tenant_ids=TENANTS,
-        forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+        tenant_ids=tenant_ids,
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=final_validation_anchor_count_per_tenant,
     )
     v2_plus_strict = build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
         library,
@@ -565,5 +700,32 @@ def _mutate_final_all_candidate_regret(
             copied["regret_uah"] = float(row["regret_uah"]) + regret_delta
             copied["decision_value_uah"] = float(row["decision_value_uah"]) - regret_delta
             copied["actual_price_uah_mwh_vector"] = [1300.0, 4200.0]
+        rows.append(copied)
+    return pl.DataFrame(rows)
+
+
+def _mutate_final_label_panel_regret(frame: pl.DataFrame, *, regret: float) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for row in frame.iter_rows(named=True):
+        copied = dict(row)
+        if str(row["split_name"]) == "final_holdout":
+            copied["label_regret_uah"] = regret
+            copied["label_decision_value_uah"] = float(row["label_oracle_value_uah"]) - regret
+        rows.append(copied)
+    return pl.DataFrame(rows)
+
+
+def _mutate_train_label_panel_family_regret(
+    frame: pl.DataFrame,
+    *,
+    family: str,
+    regret: float,
+) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for row in frame.iter_rows(named=True):
+        copied = dict(row)
+        if str(row["split_name"]) == "train_selection" and str(row["candidate_family"]) == family:
+            copied["label_regret_uah"] = regret
+            copied["label_decision_value_uah"] = float(row["label_oracle_value_uah"]) - regret
         rows.append(copied)
     return pl.DataFrame(rows)

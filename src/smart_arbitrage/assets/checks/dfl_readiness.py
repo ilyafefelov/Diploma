@@ -69,6 +69,7 @@ from smart_arbitrage.dfl.schedule_value_dfl_v2 import (
 )
 from smart_arbitrage.dfl.candidate_value_dfl_v3 import (
     validate_dfl_candidate_value_dfl_v3_evidence,
+    validate_dfl_candidate_value_dfl_v3_failure_audit_evidence,
     validate_dfl_candidate_value_label_panel_v3_evidence,
 )
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
@@ -590,6 +591,25 @@ def dfl_official_global_panel_candidate_value_dfl_v3_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame",
+    name="dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_evidence",
+    description=(
+        "Checks official global-panel candidate-value DFL v3 failure-audit "
+        "claim boundaries."
+    ),
+)
+def dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_evidence(
+    dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_candidate_value_dfl_v3_failure_audit_evidence(
+            dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
     name="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence",
     description="Checks official global-panel schedule/value learner v2+ rolling robustness evidence.",
@@ -891,6 +911,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_official_global_panel_schedule_value_dfl_v2_evidence,
     dfl_official_global_panel_candidate_value_label_panel_v3_evidence,
     dfl_official_global_panel_candidate_value_dfl_v3_evidence,
+    dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_evidence,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence,
     dfl_market_coupling_v2_plus_ablation_evidence,
     dfl_official_schedule_value_production_gate_evidence,

@@ -281,39 +281,54 @@ NBEATSx DFL v2 повторив V2+ mean regret 174.77 UAH і median regret 67.3
 є валідним diagnostic evidence, але не замінює V2+ як thesis headline.
 
 Наступний експеримент визначено як Candidate-Value DFL v3. На відміну від DFL
-v2, він не вибирає одну family для всіх final anchors. Він розширює candidate
-library навколо реальних failure modes - strict-neighborhood, SOC terminal
-target, peak/trough timing, uncertainty/risk, degradation-price sweeps, а також
-train-only oracle-neighborhood diagnostics - і тренує prior-only value scorer
-для кожного candidate schedule. Перший materialization config зберігає повний
-final holdout, але генерує додаткові V3 schedule variants лише для останніх
-10 train anchors на tenant/source, тоді як повна V2+ library залишається
-fallback/history. Promotion rule лишається незмінним: V3 має
-перевершити V2+ за mean regret, не погіршити median regret і пройти strict
-LP/oracle scoring без market-execution claim.
+v2, він не вибирає одну family для всіх final anchors і не запускає ще один
+малий Decision Transformer. Він розширює candidate library навколо реальних
+failure modes - strict-neighborhood, SOC terminal target, peak/trough timing,
+uncertainty/risk, degradation-price sweeps, train-only oracle-neighborhood
+diagnostics, а також дві prior-template сім'ї. `prior_best_family_template_v3`
+переносить середній forecast-vector delta між raw forecast і найкращим prior
+feasible schedule, а `prior_oracle_residual_template_v3` переносить середній
+raw-vs-actual residual з train-selection anchors. На final holdout ці сімейства
+використовують тільки prior templates, тоді як actual prices залишаються лише
+для strict scoring.
+
+Окремий label panel,
+`dfl_official_global_panel_candidate_value_label_panel_v3_frame`, розділяє
+`selector_feature_*` prior-safe inputs і `label_*` realized value/regret labels.
+На цьому panel тренується `learned_linear_candidate_value_v3`: невеликий
+ridge-style candidate-level value scorer, який оцінює повні candidate schedules
+за prior family regret, forecast spread, LP objective value, throughput,
+degradation penalty, SOC slack і candidate-family intercepts. На відміну від
+попередніх fixed profile selectors, тут справді підбираються ваги value scorer
+на train/prior rows. Final-holdout labels не використовуються для weights,
+profile selection або fallback decision.
 
 Матеріалізований результат Candidate-Value DFL v3 також не замінив V2+. У
-Dagster run `0263a956-12e0-4b93-86b8-b10d2194317b` evidence check пройшов, але
-gate залишився `diagnostic_pass_replacement_blocked`: для calibrated official
-global-panel NBEATSx V3 повторив V2+ mean regret `174.77` UAH і median regret
-`67.30` UAH; для raw official global-panel NBEATSx V3 повторив V2+ mean regret
-`193.36` UAH і median regret `68.89` UAH. Отже, кандидатний value scorer
-підтвердив силу V2+ fallback, але не знайшов schedule, який покращує V2+ на
-final holdout. V2+ залишається thesis headline Offline Strategy Promotion
-evidence.
+Dagster run `2dcdb48d-70b0-44f5-99b8-b8b5d4d58057` label-panel, strict
+benchmark і failure-audit checks пройшли, але gate залишився
+`diagnostic_pass_replacement_blocked`. Для calibrated official global-panel
+NBEATSx V3 повторив V2+ mean regret `174.77` UAH і median regret `67.30` UAH;
+для raw official global-panel NBEATSx V3 повторив V2+ mean regret `193.36` UAH
+і median regret `68.89` UAH. Отже, candidate-level value scorer підтвердив
+силу V2+ fallback, але не знайшов schedule, який надійно покращує V2+ на final
+holdout. V2+ залишається thesis headline Offline Strategy Promotion evidence.
 
-Після цього Candidate-Value DFL v3 було посилено не через новий DT, а через
-покращення самого candidate/label шару. Додано prior-template schedule
-families: `prior_best_family_template_v3` переносить середній forecast-vector
-delta між raw forecast і найкращим prior feasible schedule, а
-`prior_oracle_residual_template_v3` переносить середній raw-vs-actual residual
-з train-selection anchors. На final holdout ці сімейства використовують тільки
-prior templates, тоді як actual prices залишаються лише для strict scoring.
-Також додано `dfl_official_global_panel_candidate_value_label_panel_v3_frame`,
-де `selector_feature_*` колонки є prior-safe inputs, а `label_*` колонки є
-realized value/regret labels. Це формує кращу основу для наступного DFL
-objective: модель має вчитися оцінювати candidate schedule value, а не одразу
-імітувати hourly BUY/SELL/HOLD trajectory.
+Failure audit пояснив, чому нові prior-template schedules не перемогли V2+
+достатньо часто. На final holdout `prior_best_family_template_v3` мав mean
+regret `605.71` UAH для calibrated NBEATSx і `689.66` UAH для raw NBEATSx;
+`prior_oracle_residual_template_v3` мав відповідно `627.08` UAH і `729.69` UAH.
+Win rate цих сімейств проти V2+ становив лише `4.44%`, `13.33%`, `5.56%` і
+`7.78%` залежно від source row. Тому diagnosis - не нестача кількості
+candidate schedules сама по собі, а `template_not_competitive_vs_v2_plus`:
+середні історичні residual/delta шаблони іноді допомагають окремим anchors,
+але в середньому гірше переносяться між price regimes, ніж уже знайдений
+V2+ schedule/value blend.
+
+Додатковий scratch, non-persisted zero-threshold probe показав, що послаблення
+fallback могло б покращити raw NBEATSx source з `193.36` до `185.62` UAH mean
+regret. Це не було promoted, тому що результат усе ще гірший за calibrated
+V2+ headline (`174.77` UAH), а train/prior signal є надто слабким для
+консервативного thesis gate.
 
 ## 4.11. Supervisor-facing evidence
 

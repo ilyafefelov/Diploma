@@ -256,6 +256,11 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
+        "dfl_official_global_panel_schedule_candidate_library_v3_frame",
+        "dfl_official_global_panel_candidate_value_label_panel_v3_frame",
+        "dfl_official_global_panel_candidate_value_dfl_v3_frame",
+        "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame",
+        "dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame",
         "dfl_official_global_panel_v2_plus_trajectory_dataset_frame",
         "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame",
         "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame",
@@ -370,6 +375,10 @@ def test_dfl_research_assets_are_registered() -> None:
     assert groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_frame"] == "gold_dfl_training"
     assert (
         groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"]
         == "gold_dfl_training"
     )
     assert groups_by_key["dfl_source_specific_research_challenger_frame"] == "gold_dfl_training"
@@ -589,6 +598,18 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["dfl_official_global_panel_candidate_value_label_panel_v3_frame"][
             "ml_stage"
         ]
@@ -697,6 +718,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_candidate_value_label_panel_v3_frame"
     ] == {"dfl_official_global_panel_schedule_candidate_library_v3_frame"}
     assert deps_by_key["dfl_official_global_panel_candidate_value_dfl_v3_frame"] == {
+        "dfl_official_global_panel_candidate_value_label_panel_v3_frame",
         "dfl_official_global_panel_schedule_candidate_library_v3_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
     }
@@ -704,6 +726,11 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_candidate_library_v3_frame",
         "dfl_official_global_panel_candidate_value_dfl_v3_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"] == {
+        "dfl_official_global_panel_candidate_value_label_panel_v3_frame",
+        "dfl_official_global_panel_candidate_value_dfl_v3_frame",
+        "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame",
     }
     assert deps_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"] == {
         "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
