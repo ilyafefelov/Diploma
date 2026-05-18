@@ -35,6 +35,20 @@ from smart_arbitrage.dfl.candidate_value_dfl_v4 import (
     validate_dfl_plateau_data_quality_audit_evidence,
     validate_dfl_v2_v3_plateau_autopsy_evidence,
 )
+from smart_arbitrage.dfl.point_in_time_context_v5 import (
+    CONTEXT_ENRICHED_CANDIDATE_VALUE_DFL_V5_STRICT_LP_STRATEGY_KIND,
+    V5_CONTEXT_SELECTOR_FEATURE_COLUMNS,
+    build_dfl_context_enriched_candidate_value_dfl_v5_frame,
+    build_dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame,
+    build_dfl_context_enriched_candidate_value_label_panel_v5_frame,
+    build_dfl_context_enriched_schedule_candidate_library_v5_frame,
+    build_dfl_point_in_time_context_feature_panel_frame,
+    build_dfl_point_in_time_context_repair_audit_frame,
+    evaluate_dfl_context_enriched_candidate_value_dfl_v5_gate,
+    validate_dfl_context_enriched_candidate_value_dfl_v5_evidence,
+    validate_dfl_point_in_time_context_feature_panel_evidence,
+    validate_dfl_point_in_time_context_repair_audit_evidence,
+)
 from smart_arbitrage.dfl.official_v2_plus_dfl_dt_bridge import (
     OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
 )
@@ -57,7 +71,9 @@ FIRST_ANCHOR = datetime(2026, 1, 1, 23)
 GENERATED_AT = datetime(2026, 5, 17, 21)
 
 
-def test_v3_candidate_library_adds_failure_mode_families_and_train_only_oracle() -> None:
+def test_v3_candidate_library_adds_failure_mode_families_and_train_only_oracle() -> (
+    None
+):
     base_library = _candidate_library(
         include_v3_value_family=False,
         v2_plus_train_regret=30.0,
@@ -99,12 +115,18 @@ def test_v3_candidate_library_bounds_expensive_train_generation() -> None:
     )
 
     generated = expanded.filter(pl.col("candidate_library_version") == "v3_generated")
-    generated_train_anchor_count = generated.filter(
-        pl.col("split_name") == "train_selection"
-    ).select(["tenant_id", "source_model_name", "anchor_timestamp"]).unique().height
-    generated_final_anchor_count = generated.filter(
-        pl.col("split_name") == "final_holdout"
-    ).select(["tenant_id", "source_model_name", "anchor_timestamp"]).unique().height
+    generated_train_anchor_count = (
+        generated.filter(pl.col("split_name") == "train_selection")
+        .select(["tenant_id", "source_model_name", "anchor_timestamp"])
+        .unique()
+        .height
+    )
+    generated_final_anchor_count = (
+        generated.filter(pl.col("split_name") == "final_holdout")
+        .select(["tenant_id", "source_model_name", "anchor_timestamp"])
+        .unique()
+        .height
+    )
     oracle_rows = generated.filter(
         pl.col("candidate_family") == CANDIDATE_FAMILY_ORACLE_NEIGHBORHOOD_DIAGNOSTIC_V3
     )
@@ -180,7 +202,9 @@ def test_v3_value_label_panel_separates_prior_features_from_actual_labels() -> N
     original_labels = build_dfl_candidate_value_label_panel_v3_frame(expanded)
     mutated_labels = build_dfl_candidate_value_label_panel_v3_frame(mutated)
     feature_columns = sorted(
-        column for column in original_labels.columns if column.startswith("selector_feature_")
+        column
+        for column in original_labels.columns
+        if column.startswith("selector_feature_")
     )
     label_columns = sorted(
         column for column in original_labels.columns if column.startswith("label_")
@@ -188,15 +212,19 @@ def test_v3_value_label_panel_separates_prior_features_from_actual_labels() -> N
 
     assert feature_columns
     assert label_columns
-    assert original_labels.select(feature_columns).to_dicts() == mutated_labels.select(
-        feature_columns
-    ).to_dicts()
-    assert original_labels.select(label_columns).to_dicts() != mutated_labels.select(
-        label_columns
-    ).to_dicts()
+    assert (
+        original_labels.select(feature_columns).to_dicts()
+        == mutated_labels.select(feature_columns).to_dicts()
+    )
+    assert (
+        original_labels.select(label_columns).to_dicts()
+        != mutated_labels.select(label_columns).to_dicts()
+    )
 
 
-def test_candidate_value_dfl_v3_can_beat_v2_plus_when_prior_value_signal_exists() -> None:
+def test_candidate_value_dfl_v3_can_beat_v2_plus_when_prior_value_signal_exists() -> (
+    None
+):
     base_library = _candidate_library(
         include_v3_value_family=False,
         v2_plus_train_regret=30.0,
@@ -332,7 +360,9 @@ def test_candidate_value_dfl_v3_falls_back_when_prior_signal_is_weak() -> None:
     assert gate.decision == "diagnostic_pass_replacement_blocked"
 
 
-def test_candidate_value_dfl_v3_final_mutation_changes_scores_not_selected_profile() -> None:
+def test_candidate_value_dfl_v3_final_mutation_changes_scores_not_selected_profile() -> (
+    None
+):
     base_library = _candidate_library(
         include_v3_value_family=False,
         v2_plus_train_regret=30.0,
@@ -375,9 +405,10 @@ def test_candidate_value_dfl_v3_final_mutation_changes_scores_not_selected_profi
         "selected_feature_weights",
         "fallback_to_v2_plus",
     ]
-    assert original.select(prior_columns).to_dicts() == mutated.select(
-        prior_columns
-    ).to_dicts()
+    assert (
+        original.select(prior_columns).to_dicts()
+        == mutated.select(prior_columns).to_dicts()
+    )
     assert (
         original["selected_final_mean_regret_uah"].to_list()
         != mutated["selected_final_mean_regret_uah"].to_list()
@@ -549,7 +580,9 @@ def test_plateau_autopsy_classifies_fallback_too_conservative() -> None:
 
     assert evidence.passed is True
     assert set(autopsy["plateau_cause"].to_list()) == {"fallback_too_conservative"}
-    assert set(autopsy["best_candidate_family"].to_list()) == {"candidate_value_good_v3"}
+    assert set(autopsy["best_candidate_family"].to_list()) == {
+        "candidate_value_good_v3"
+    }
     assert set(autopsy["selected_family"].to_list()) == {
         "rank_extrema_perturbation_v2_plus"
     }
@@ -716,6 +749,199 @@ def test_candidate_value_dfl_v4_can_replace_v2_plus_when_value_signal_exists() -
     assert gate.metrics["market_execution_enabled"] is False
 
 
+def test_point_in_time_context_repair_audit_reports_anchor_blockers() -> None:
+    library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=45.0,
+        value_final_regret=90.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_anchor_count=2,
+    )
+    benchmark_context = pl.DataFrame(
+        [
+            {
+                "tenant_id": TENANTS[0],
+                "timestamp": FIRST_ANCHOR,
+                "price_source_kind": "observed",
+                "weather_temperature": 11.0,
+                "weather_source_kind": "observed",
+            }
+        ]
+    )
+
+    audit = build_dfl_point_in_time_context_repair_audit_frame(
+        library,
+        benchmark_context,
+    )
+    evidence = validate_dfl_point_in_time_context_repair_audit_evidence(audit)
+
+    assert evidence.passed is True
+    assert {
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "feature_family",
+        "blocker",
+        "feature_available_timestamp",
+        "available_before_anchor",
+    }.issubset(set(audit.columns))
+    assert {
+        "missing_weather_load_context",
+        "missing_calendar_event_context",
+        "missing_publication_time",
+        "context_ready",
+    }.issubset(set(audit["blocker"].to_list()))
+    assert set(audit["market_execution_enabled"].to_list()) == {False}
+
+
+def test_context_feature_panel_keeps_selector_features_prior_only() -> None:
+    library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=45.0,
+        value_final_regret=90.0,
+        tenant_ids=(TENANTS[0],),
+        source_model_names=(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS[0],),
+        final_anchor_count=2,
+    )
+    mutated = _mutate_final_all_candidate_regret(library, regret_delta=55.0)
+    benchmark_context = pl.DataFrame(
+        [
+            {
+                "tenant_id": TENANTS[0],
+                "timestamp": FIRST_ANCHOR - timedelta(hours=2),
+                "weather_temperature": 11.0,
+                "net_load_mw": 1.4,
+                "calendar_is_holiday": False,
+                "publication_timestamp": FIRST_ANCHOR - timedelta(hours=4),
+                "entsoe_poland_price_eur_mwh": 85.0,
+            }
+        ]
+    )
+    audit = build_dfl_point_in_time_context_repair_audit_frame(
+        library,
+        benchmark_context,
+    )
+
+    panel = build_dfl_point_in_time_context_feature_panel_frame(
+        library,
+        audit,
+        benchmark_context,
+    )
+    mutated_panel = build_dfl_point_in_time_context_feature_panel_frame(
+        mutated,
+        audit,
+        benchmark_context,
+    )
+    evidence = validate_dfl_point_in_time_context_feature_panel_evidence(panel)
+    selector_columns = sorted(
+        column for column in panel.columns if column.startswith("selector_feature_")
+    )
+    label_columns = sorted(
+        column for column in panel.columns if column.startswith("label_")
+    )
+
+    assert evidence.passed is True
+    assert set(V5_CONTEXT_SELECTOR_FEATURE_COLUMNS).issubset(selector_columns)
+    assert not any(
+        token in column.lower()
+        for column in selector_columns
+        for token in ("entsoe", "poland", "nord_pool", "ember", "pricefm", "thief")
+    )
+    assert (
+        panel.select(selector_columns).to_dicts()
+        == mutated_panel.select(selector_columns).to_dicts()
+    )
+    assert (
+        panel.select(label_columns).to_dicts()
+        != mutated_panel.select(label_columns).to_dicts()
+    )
+
+
+def test_context_enriched_candidate_value_dfl_v5_can_replace_v2_plus() -> None:
+    base_library = _candidate_library(
+        include_v3_value_family=False,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+    )
+    full_library = _candidate_library(
+        include_v3_value_family=True,
+        v2_plus_train_regret=30.0,
+        v2_plus_final_regret=180.0,
+        value_train_regret=20.0,
+        value_final_regret=120.0,
+    )
+    _, v2_plus_model, v2_plus_strict = _v2_plus_reference(base_library)
+    benchmark_context = _complete_context_frame(full_library)
+    audit = build_dfl_point_in_time_context_repair_audit_frame(
+        full_library,
+        benchmark_context,
+    )
+    context_panel = build_dfl_point_in_time_context_feature_panel_frame(
+        full_library,
+        audit,
+        benchmark_context,
+    )
+    v5_library = build_dfl_context_enriched_schedule_candidate_library_v5_frame(
+        full_library,
+        context_panel,
+    )
+    v5_labels = build_dfl_context_enriched_candidate_value_label_panel_v5_frame(
+        v5_library,
+        context_panel,
+    )
+
+    v5_model = build_dfl_context_enriched_candidate_value_dfl_v5_frame(
+        v5_library,
+        v2_plus_model,
+        v5_labels,
+        tenant_ids=TENANTS,
+        forecast_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+    )
+    strict_frame = (
+        build_dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame(
+            v5_library,
+            v5_model,
+            v2_plus_strict,
+            generated_at=GENERATED_AT,
+        )
+    )
+    evidence = validate_dfl_context_enriched_candidate_value_dfl_v5_evidence(
+        strict_frame,
+        source_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+        min_validation_tenant_anchor_count=90,
+    )
+    gate = evaluate_dfl_context_enriched_candidate_value_dfl_v5_gate(
+        strict_frame,
+        source_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+        min_validation_tenant_anchor_count=90,
+    )
+
+    assert set(v5_model["fallback_to_v2_plus"].to_list()) == {False}
+    assert all(
+        "selector_feature_context_blocker_count" in feature_names
+        for feature_names in v5_model["selected_feature_names"].to_list()
+    )
+    assert strict_frame["strategy_kind"].unique().to_list() == [
+        CONTEXT_ENRICHED_CANDIDATE_VALUE_DFL_V5_STRICT_LP_STRATEGY_KIND
+    ]
+    assert set(strict_frame["selection_role"].unique().to_list()) == {
+        "context_enriched_candidate_value_dfl_v5",
+        "raw_reference",
+        "schedule_value_learner_v2_plus_reference",
+        "strict_reference",
+    }
+    assert evidence.passed is True
+    assert gate.passed is True
+    assert gate.metrics["market_execution_enabled"] is False
+
+
 def _v2_plus_reference(
     library: pl.DataFrame,
     *,
@@ -836,6 +1062,33 @@ def _candidate_library(
     return pl.DataFrame(rows)
 
 
+def _complete_context_frame(library: pl.DataFrame) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    anchors = (
+        library.select(["tenant_id", "anchor_timestamp"])
+        .unique()
+        .sort(["tenant_id", "anchor_timestamp"])
+        .iter_rows(named=True)
+    )
+    for row in anchors:
+        anchor = row["anchor_timestamp"]
+        assert isinstance(anchor, datetime)
+        rows.append(
+            {
+                "tenant_id": row["tenant_id"],
+                "timestamp": anchor - timedelta(hours=2),
+                "weather_temperature": 11.0,
+                "weather_wind_speed": 4.5,
+                "net_load_mw": 1.4,
+                "calendar_is_holiday": False,
+                "publication_timestamp": anchor - timedelta(hours=4),
+                "price_source_kind": "observed",
+                "weather_source_kind": "observed",
+            }
+        )
+    return pl.DataFrame(rows)
+
+
 def _candidate_row(
     *,
     tenant_id: str,
@@ -934,19 +1187,25 @@ def _mutate_final_all_candidate_regret(
         copied = dict(row)
         if str(row["split_name"]) == "final_holdout":
             copied["regret_uah"] = float(row["regret_uah"]) + regret_delta
-            copied["decision_value_uah"] = float(row["decision_value_uah"]) - regret_delta
+            copied["decision_value_uah"] = (
+                float(row["decision_value_uah"]) - regret_delta
+            )
             copied["actual_price_uah_mwh_vector"] = [1300.0, 4200.0]
         rows.append(copied)
     return pl.DataFrame(rows)
 
 
-def _mutate_final_label_panel_regret(frame: pl.DataFrame, *, regret: float) -> pl.DataFrame:
+def _mutate_final_label_panel_regret(
+    frame: pl.DataFrame, *, regret: float
+) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     for row in frame.iter_rows(named=True):
         copied = dict(row)
         if str(row["split_name"]) == "final_holdout":
             copied["label_regret_uah"] = regret
-            copied["label_decision_value_uah"] = float(row["label_oracle_value_uah"]) - regret
+            copied["label_decision_value_uah"] = (
+                float(row["label_oracle_value_uah"]) - regret
+            )
         rows.append(copied)
     return pl.DataFrame(rows)
 
@@ -960,8 +1219,13 @@ def _mutate_train_label_panel_family_regret(
     rows: list[dict[str, object]] = []
     for row in frame.iter_rows(named=True):
         copied = dict(row)
-        if str(row["split_name"]) == "train_selection" and str(row["candidate_family"]) == family:
+        if (
+            str(row["split_name"]) == "train_selection"
+            and str(row["candidate_family"]) == family
+        ):
             copied["label_regret_uah"] = regret
-            copied["label_decision_value_uah"] = float(row["label_oracle_value_uah"]) - regret
+            copied["label_decision_value_uah"] = (
+                float(row["label_oracle_value_uah"]) - regret
+            )
         rows.append(copied)
     return pl.DataFrame(rows)

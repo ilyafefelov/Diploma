@@ -78,6 +78,11 @@ from smart_arbitrage.dfl.candidate_value_dfl_v4 import (
     validate_dfl_plateau_data_quality_audit_evidence,
     validate_dfl_v2_v3_plateau_autopsy_evidence,
 )
+from smart_arbitrage.dfl.point_in_time_context_v5 import (
+    validate_dfl_context_enriched_candidate_value_dfl_v5_evidence,
+    validate_dfl_point_in_time_context_feature_panel_evidence,
+    validate_dfl_point_in_time_context_repair_audit_evidence,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     validate_dfl_schedule_value_learner_v2_plus_robustness_evidence,
 )
@@ -696,6 +701,65 @@ def dfl_official_global_panel_candidate_value_dfl_v4_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_point_in_time_context_repair_audit_frame",
+    name="dfl_point_in_time_context_repair_audit_evidence",
+    description=(
+        "Checks point-in-time context repair audit rows and research claim boundaries."
+    ),
+)
+def dfl_point_in_time_context_repair_audit_evidence(
+    dfl_point_in_time_context_repair_audit_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_point_in_time_context_repair_audit_evidence(
+            dfl_point_in_time_context_repair_audit_frame,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_point_in_time_context_feature_panel_frame",
+    name="dfl_point_in_time_context_feature_panel_evidence",
+    description=(
+        "Checks V5 point-in-time context features stay prior-only and Ukrainian-only."
+    ),
+)
+def dfl_point_in_time_context_feature_panel_evidence(
+    dfl_point_in_time_context_feature_panel_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_point_in_time_context_feature_panel_evidence(
+            dfl_point_in_time_context_feature_panel_frame,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame",
+    name="dfl_context_enriched_candidate_value_dfl_v5_evidence",
+    description=(
+        "Checks context-enriched candidate-value DFL v5 strict LP coverage and "
+        "claim boundaries."
+    ),
+)
+def dfl_context_enriched_candidate_value_dfl_v5_evidence(
+    dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_context_enriched_candidate_value_dfl_v5_evidence(
+            dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame,
+            source_model_names=OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
+            min_validation_tenant_anchor_count=90,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
     name="dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence",
     description="Checks official global-panel schedule/value learner v2+ rolling robustness evidence.",
@@ -1002,6 +1066,9 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_official_global_panel_plateau_data_quality_audit_evidence,
     dfl_official_global_panel_candidate_value_label_panel_v4_evidence,
     dfl_official_global_panel_candidate_value_dfl_v4_evidence,
+    dfl_point_in_time_context_repair_audit_evidence,
+    dfl_point_in_time_context_feature_panel_evidence,
+    dfl_context_enriched_candidate_value_dfl_v5_evidence,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence,
     dfl_market_coupling_v2_plus_ablation_evidence,
     dfl_official_schedule_value_production_gate_evidence,

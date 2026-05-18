@@ -358,6 +358,26 @@ weather/load context, calendar/event context і publication-time availability
 починатися з point-in-time context і нових schedule shapes, не з більшого DT
 над тим самим objective.
 
+Після цього реалізовано окремий Point-in-Time Context Repair + Candidate-Value
+DFL V5 slice. Його роль полягає не в тому, щоб послабити gate або додати
+європейські ряди до навчання, а в тому, щоб перетворити broad V4 gaps на точні
+tenant/source/anchor blocker rows. Новий audit розрізняє
+`missing_weather_load_context`, `missing_calendar_event_context`,
+`missing_publication_time`, `context_available_not_used` і `context_ready`.
+На основі цього створюється prior-only context panel, де всі вхідні ознаки для
+selector-а мають префікс `selector_feature_*`, а realized outcomes залишаються
+тільки в `label_*` або `diagnostic_*` columns.
+
+V5 повторно використовує V4 candidate schedules, але додає context-conditioned
+features до candidate-level value scorer. Final holdout actuals залишаються
+лише scoring evidence і не використовуються для feature generation, weight
+selection або fallback decision. Тому V5 є наступним академічно чистим
+експериментом після V4: він може замінити V2+ тільки якщо перевершить
+calibrated V2+ mean regret `174.77` UAH, не погіршить median regret, збереже
+rolling robustness і залишить `market_execution_enabled=false`. До такого
+strict LP/oracle результату V2+ залишається thesis headline Offline Strategy
+Promotion evidence.
+
 ## 4.11. Supervisor-facing evidence
 
 Для короткої зустрічі з керівником підготовлено progress package:

@@ -2660,3 +2660,45 @@ small selector over the same evidence.
 Runbook:
 
 - [DFL_PLATEAU_BREAKER_V4.md](DFL_PLATEAU_BREAKER_V4.md).
+
+## Point-In-Time Context Repair + Candidate-Value DFL V5
+
+The V4 plateau result changed the next branch from "try a larger DT" to
+"repair point-in-time context first." V5 is implemented as an additive,
+Ukrainian-only context-enriched candidate-value gate against the same frozen
+Schedule/Value Learner V2+ comparator:
+
+- calibrated V2+ mean regret: `174.77` UAH;
+- raw V2+ mean regret: `193.36` UAH;
+- rolling robustness: `4 / 4`;
+- `market_execution_enabled=false`.
+
+The new context audit converts V4's broad data-quality gaps into exact rows by
+tenant, source model, anchor, feature family, and blocker:
+
+- `missing_weather_load_context`;
+- `missing_calendar_event_context`;
+- `missing_publication_time`;
+- `context_available_not_used`;
+- `context_ready`.
+
+The feature panel keeps a strict contract: prior-only inputs are named
+`selector_feature_*`, while realized values and strict-scoring outcomes stay in
+`label_*` or `diagnostic_*` columns. Poland, ENTSO-E, and other European
+market-coupling features are absent from this slice.
+
+V5 reuses the V4 candidate schedules and adds context-conditioned selector
+features before fitting the candidate-level value scorer. A V5 row can replace
+V2+ only if strict LP/oracle scoring improves mean regret versus V2+, avoids
+median degradation, preserves rolling robustness, keeps zero safety violations,
+and leaves the claim boundary as Offline Strategy Promotion only.
+
+Tracked implementation:
+
+- `dfl_point_in_time_context_repair_audit_frame`;
+- `dfl_point_in_time_context_feature_panel_frame`;
+- `dfl_context_enriched_schedule_candidate_library_v5_frame`;
+- `dfl_context_enriched_candidate_value_label_panel_v5_frame`;
+- `dfl_context_enriched_candidate_value_dfl_v5_frame`;
+- `dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame`;
+- [DFL_POINT_IN_TIME_CONTEXT_REPAIR.md](DFL_POINT_IN_TIME_CONTEXT_REPAIR.md).

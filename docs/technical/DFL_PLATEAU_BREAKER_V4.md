@@ -168,6 +168,23 @@ The plateau is now better explained: the current candidate library still does
 not beat calibrated V2+ often enough, and remaining regret likely needs stronger
 point-in-time context plus genuinely new candidate shapes before DT is retried.
 
+## Follow-Up: Point-In-Time Context Repair + V5
+
+The follow-up slice is now implemented as an additive V5 gate:
+
+- `dfl_point_in_time_context_repair_audit_frame` converts the V4 context gaps
+  into exact tenant/source/anchor/feature-family blocker rows;
+- `dfl_point_in_time_context_feature_panel_frame` creates Ukrainian-only
+  `selector_feature_*` context features while keeping realized outcomes in
+  `label_*` / `diagnostic_*` columns;
+- `dfl_context_enriched_*_v5_frame` assets rerun the candidate-value scorer with
+  context-conditioned features and the same V2+ fallback.
+
+The V5 path does not admit Poland/ENTSO-E/EU features. It can replace V2+ only
+after strict LP/oracle scoring shows a mean-regret improvement versus V2+
+without median degradation, rolling-robustness loss, safety violations, or any
+market-execution claim. See [DFL_POINT_IN_TIME_CONTEXT_REPAIR.md](DFL_POINT_IN_TIME_CONTEXT_REPAIR.md).
+
 ## Run
 
 ```powershell

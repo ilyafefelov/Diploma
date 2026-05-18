@@ -75,7 +75,9 @@ from smart_arbitrage.assets.gold.dfl_research import (
 from smart_arbitrage.defs import defs
 from smart_arbitrage.dfl.promotion_gate import PromotionGateResult
 from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
-from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
+from smart_arbitrage.resources.strategy_evaluation_store import (
+    InMemoryStrategyEvaluationStore,
+)
 
 
 def _benchmark_frame() -> pl.DataFrame:
@@ -121,7 +123,9 @@ def _benchmark_frame() -> pl.DataFrame:
                         "horizon": [
                             {
                                 "step_index": 0,
-                                "interval_start": (anchor + timedelta(hours=1)).isoformat(),
+                                "interval_start": (
+                                    anchor + timedelta(hours=1)
+                                ).isoformat(),
                                 "forecast_price_uah_mwh": 1000.0,
                                 "actual_price_uah_mwh": 1100.0,
                                 "net_power_mw": 0.0,
@@ -129,7 +133,9 @@ def _benchmark_frame() -> pl.DataFrame:
                             },
                             {
                                 "step_index": 1,
-                                "interval_start": (anchor + timedelta(hours=2)).isoformat(),
+                                "interval_start": (
+                                    anchor + timedelta(hours=2)
+                                ).isoformat(),
                                 "forecast_price_uah_mwh": 1050.0,
                                 "actual_price_uah_mwh": 1150.0,
                                 "net_power_mw": 0.0,
@@ -158,7 +164,9 @@ def _silver_feature_frame() -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
-def test_global_panel_schedule_value_production_gate_uses_full_promotion_thresholds() -> None:
+def test_global_panel_schedule_value_production_gate_uses_full_promotion_thresholds() -> (
+    None
+):
     config = DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig()
 
     assert config.min_validation_tenant_anchor_count_per_source_model == 90
@@ -169,7 +177,9 @@ def test_global_panel_schedule_value_production_gate_uses_full_promotion_thresho
 def test_dfl_research_assets_are_registered() -> None:
     asset_keys = {asset.key.to_user_string() for asset in DFL_RESEARCH_GOLD_ASSETS}
     registered_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
-    registered_all_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
+    registered_all_asset_keys = {
+        asset.key.to_user_string() for asset in defs.assets or []
+    }
 
     assert {
         "real_data_value_aware_ensemble_frame",
@@ -267,6 +277,12 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_candidate_value_label_panel_v4_frame",
         "dfl_official_global_panel_candidate_value_dfl_v4_frame",
         "dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame",
+        "dfl_point_in_time_context_repair_audit_frame",
+        "dfl_point_in_time_context_feature_panel_frame",
+        "dfl_context_enriched_schedule_candidate_library_v5_frame",
+        "dfl_context_enriched_candidate_value_label_panel_v5_frame",
+        "dfl_context_enriched_candidate_value_dfl_v5_frame",
+        "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame",
         "dfl_official_global_panel_v2_plus_trajectory_dataset_frame",
         "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame",
         "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame",
@@ -309,85 +325,193 @@ def test_dfl_research_assets_are_registered() -> None:
         for asset in DFL_RESEARCH_GOLD_ASSETS
     }
     assert tags_by_key["dfl_relaxed_lp_pilot_frame"]["medallion"] == "gold"
-    assert tags_by_key["offline_dfl_experiment_frame"]["evidence_scope"] == "not_market_execution"
+    assert (
+        tags_by_key["offline_dfl_experiment_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
     assert groups_by_key["dfl_training_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_training_example_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_data_coverage_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_ua_coverage_repair_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_label_panel_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_action_classifier_baseline_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_action_classifier_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_action_classifier_failure_analysis_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_action_classifier_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_action_classifier_failure_analysis_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["offline_dfl_experiment_frame"] == "gold_dfl_training"
     assert groups_by_key["offline_dfl_panel_experiment_frame"] == "gold_dfl_training"
-    assert groups_by_key["offline_dfl_panel_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["offline_dfl_decision_target_panel_frame"] == "gold_dfl_training"
-    assert groups_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["offline_dfl_decision_target_panel_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["offline_dfl_action_target_panel_frame"] == "gold_dfl_training"
-    assert groups_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_trajectory_value_candidate_panel_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_trajectory_value_candidate_panel_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_trajectory_value_selector_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_schedule_candidate_library_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_trajectory_feature_ranker_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_pipeline_integrity_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_pipeline_truth_audit_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_schedule_candidate_library_v2_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_non_strict_oracle_upper_bound_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_schedule_candidate_library_v2_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_non_strict_oracle_upper_bound_frame"] == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_strict_baseline_autopsy_frame"] == "gold_dfl_training"
     assert groups_by_key["dfl_strict_failure_selector_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_strict_failure_selector_robustness_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_strict_failure_prior_feature_panel_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_strict_failure_feature_audit_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_feature_aware_strict_failure_selector_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_regime_gated_tft_selector_v2_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_forecast_dfl_v1_panel_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_forecast_dfl_v1_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_real_data_trajectory_dataset_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_residual_schedule_value_model_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_residual_schedule_value_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_offline_dt_candidate_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_global_panel_v2_plus_trajectory_dataset_frame"] == "gold_dfl_training"
     assert (
-        groups_by_key["dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame"]
+        groups_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_official_global_panel_v2_plus_offline_dt_candidate_frame"] == "gold_dfl_training"
     assert (
-        groups_by_key["dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"]
+        groups_by_key["dfl_strict_failure_selector_robustness_frame"]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_global_panel_schedule_value_dfl_v2_frame"] == "gold_dfl_training"
     assert (
-        groups_by_key["dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame"]
+        groups_by_key["dfl_strict_failure_prior_feature_panel_frame"]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_official_global_panel_schedule_candidate_library_v3_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_strict_failure_feature_audit_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_feature_aware_strict_failure_selector_frame"]
+        == "gold_dfl_training"
+    )
     assert (
         groups_by_key[
-            "dfl_official_global_panel_candidate_value_label_panel_v3_frame"
+            "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"
         ]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_frame"] == "gold_dfl_training"
     assert (
-        groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"]
+        groups_by_key["dfl_regime_gated_tft_selector_v2_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert groups_by_key["dfl_forecast_dfl_v1_panel_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_forecast_dfl_v1_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
     )
     assert (
-        groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"]
+        groups_by_key["dfl_real_data_trajectory_dataset_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_residual_schedule_value_model_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_residual_schedule_value_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_official_global_panel_v2_v3_plateau_autopsy_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_offline_dt_candidate_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_v2_plus_trajectory_dataset_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_v2_plus_offline_dt_candidate_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_schedule_value_dfl_v2_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_schedule_candidate_library_v3_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_candidate_value_label_panel_v3_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_candidate_value_dfl_v3_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_v2_v3_plateau_autopsy_frame"]
+        == "gold_dfl_training"
+    )
     assert (
         groups_by_key["dfl_official_global_panel_plateau_data_quality_audit_frame"]
         == "gold_dfl_training"
@@ -397,137 +521,365 @@ def test_dfl_research_assets_are_registered() -> None:
         == "gold_dfl_training"
     )
     assert (
+        groups_by_key["dfl_official_global_panel_candidate_value_label_panel_v4_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_global_panel_candidate_value_dfl_v4_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
         groups_by_key[
-            "dfl_official_global_panel_candidate_value_label_panel_v4_frame"
+            "dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame"
         ]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_official_global_panel_candidate_value_dfl_v4_frame"] == "gold_dfl_training"
     assert (
-        groups_by_key["dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame"]
+        groups_by_key["dfl_point_in_time_context_repair_audit_frame"]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_source_specific_research_challenger_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_point_in_time_context_feature_panel_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_context_enriched_schedule_candidate_library_v5_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_context_enriched_candidate_value_label_panel_v5_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_context_enriched_candidate_value_dfl_v5_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_source_specific_research_challenger_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_schedule_value_learner_v2_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_schedule_value_learner_v2_robustness_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_schedule_value_learner_v2_robustness_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_schedule_value_learner_v3_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_schedule_value_learner_v3_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_schedule_value_production_gate_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_schedule_candidate_library_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_schedule_candidate_library_v2_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_schedule_value_learner_v2_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_schedule_value_learner_v2_robustness_frame"] == "gold_dfl_training"
-    assert groups_by_key["dfl_official_schedule_value_production_gate_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_schedule_value_learner_v3_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_schedule_value_production_gate_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_schedule_candidate_library_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_schedule_candidate_library_v2_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_schedule_value_learner_v2_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_schedule_value_learner_v2_robustness_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_official_schedule_value_production_gate_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["dfl_production_promotion_gate_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_afe_feature_catalog_frame"] == "gold_dfl_training"
-    assert groups_by_key["market_coupling_temporal_availability_frame"] == "gold_dfl_training"
-    assert groups_by_key["entsoe_neighbor_market_query_spec_frame"] == "gold_dfl_training"
-    assert groups_by_key["entsoe_neighbor_market_sample_audit_frame"] == "gold_dfl_training"
-    assert groups_by_key["entsoe_neighbor_market_feature_candidate_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["market_coupling_temporal_availability_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["entsoe_neighbor_market_query_spec_frame"] == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["entsoe_neighbor_market_sample_audit_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["entsoe_neighbor_market_feature_candidate_frame"]
+        == "gold_dfl_training"
+    )
     assert (
         groups_by_key["poland_neighbor_market_snapshot_feature_candidate_frame"]
         == "gold_dfl_training"
     )
-    assert groups_by_key["poland_neighbor_market_hourly_feature_frame"] == "gold_dfl_training"
-    assert groups_by_key["entsoe_poland_governance_closure_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["poland_neighbor_market_hourly_feature_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["entsoe_poland_governance_closure_frame"] == "gold_dfl_training"
+    )
     assert (
         groups_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]
         == "gold_dfl_training"
     )
-    assert groups_by_key["dfl_semantic_event_strict_failure_audit_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_semantic_event_strict_failure_audit_frame"]
+        == "gold_dfl_training"
+    )
     assert groups_by_key["afl_forecast_error_audit_frame"] == "gold_dfl_training"
     assert groups_by_key["forecast_candidate_forensics_frame"] == "gold_dfl_training"
     assert groups_by_key["afl_training_panel_frame"] == "gold_dfl_training"
-    assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"] == "not_market_execution"
-    assert tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
-        tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["evidence_scope"]
+        tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["offline_dfl_panel_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
-    assert tags_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
-        tags_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"]["evidence_scope"]
+        tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["offline_dfl_decision_target_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
         == "not_market_execution"
     )
-    assert tags_by_key["dfl_trajectory_value_candidate_panel_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["offline_dfl_action_target_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_trajectory_value_candidate_panel_frame"]["ml_stage"]
+        == "evaluation"
+    )
     assert tags_by_key["dfl_trajectory_value_selector_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
-        tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"]["evidence_scope"]
-        == "not_market_execution"
-    )
-    assert tags_by_key["dfl_schedule_candidate_library_frame"]["ml_stage"] == "training_data"
-    assert tags_by_key["dfl_trajectory_feature_ranker_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert (
-        tags_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"]["evidence_scope"]
-        == "not_market_execution"
-    )
-    assert tags_by_key["dfl_pipeline_integrity_audit_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["forecast_pipeline_truth_audit_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["forecast_pipeline_truth_audit_frame"]["evidence_scope"] == "research_only"
-    assert tags_by_key["dfl_schedule_candidate_library_v2_frame"]["ml_stage"] == "training_data"
-    assert tags_by_key["dfl_non_strict_oracle_upper_bound_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_strict_baseline_autopsy_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["dfl_strict_failure_selector_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_strict_failure_selector_robustness_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_strict_failure_prior_feature_panel_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["dfl_strict_failure_feature_audit_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["dfl_feature_aware_strict_failure_selector_frame"]["ml_stage"] == "selection"
-    assert (
-        tags_by_key["dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"]
-        == "evaluation"
-    )
-    assert tags_by_key["dfl_regime_gated_tft_selector_v2_frame"]["ml_stage"] == "selection"
-    assert (
-        tags_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"]["ml_stage"]
-        == "evaluation"
-    )
-    assert tags_by_key["dfl_forecast_dfl_v1_panel_frame"]["ml_stage"] == "training_data"
-    assert tags_by_key["dfl_forecast_dfl_v1_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_real_data_trajectory_dataset_frame"]["ml_stage"] == "training_data"
-    assert tags_by_key["dfl_residual_schedule_value_model_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_residual_schedule_value_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_offline_dt_candidate_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert (
-        tags_by_key["dfl_official_global_panel_v2_plus_trajectory_dataset_frame"]["ml_stage"]
-        == "training_data"
-    )
-    assert (
-        tags_by_key["dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"][
+        tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"][
             "ml_stage"
         ]
         == "evaluation"
     )
-    assert tags_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["dfl_source_specific_research_challenger_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_schedule_value_learner_v2_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_schedule_value_learner_v2_robustness_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_schedule_value_learner_v3_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_schedule_value_learner_v3_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_schedule_value_production_gate_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["dfl_official_schedule_candidate_library_frame"]["ml_stage"] == "training_data"
-    assert tags_by_key["dfl_official_schedule_candidate_library_v2_frame"]["ml_stage"] == "training_data"
-    assert tags_by_key["dfl_official_schedule_value_learner_v2_frame"]["ml_stage"] == "selection"
     assert (
-        tags_by_key["dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"]["ml_stage"]
+        tags_by_key["dfl_trajectory_value_selector_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_schedule_candidate_library_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert tags_by_key["dfl_trajectory_feature_ranker_frame"]["ml_stage"] == "selection"
+    assert (
+        tags_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"][
+            "ml_stage"
+        ]
         == "evaluation"
     )
-    assert tags_by_key["dfl_official_schedule_value_learner_v2_robustness_frame"]["ml_stage"] == "evaluation"
-    assert tags_by_key["dfl_official_schedule_value_production_gate_frame"]["ml_stage"] == "selection"
+    assert (
+        tags_by_key["dfl_trajectory_feature_ranker_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_pipeline_integrity_audit_frame"]["ml_stage"] == "diagnostics"
+    )
+    assert (
+        tags_by_key["forecast_pipeline_truth_audit_frame"]["ml_stage"] == "diagnostics"
+    )
+    assert (
+        tags_by_key["forecast_pipeline_truth_audit_frame"]["evidence_scope"]
+        == "research_only"
+    )
+    assert (
+        tags_by_key["dfl_schedule_candidate_library_v2_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_non_strict_oracle_upper_bound_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert tags_by_key["dfl_strict_baseline_autopsy_frame"]["ml_stage"] == "diagnostics"
+    assert tags_by_key["dfl_strict_failure_selector_frame"]["ml_stage"] == "selection"
+    assert (
+        tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_strict_failure_selector_robustness_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_strict_failure_prior_feature_panel_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_strict_failure_feature_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_feature_aware_strict_failure_selector_frame"]["ml_stage"]
+        == "selection"
+    )
+    assert (
+        tags_by_key[
+            "dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame"
+        ]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_regime_gated_tft_selector_v2_frame"]["ml_stage"] == "selection"
+    )
+    assert (
+        tags_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert tags_by_key["dfl_forecast_dfl_v1_panel_frame"]["ml_stage"] == "training_data"
+    assert (
+        tags_by_key["dfl_forecast_dfl_v1_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_real_data_trajectory_dataset_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_residual_schedule_value_model_frame"]["ml_stage"]
+        == "selection"
+    )
+    assert (
+        tags_by_key["dfl_residual_schedule_value_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert tags_by_key["dfl_offline_dt_candidate_frame"]["ml_stage"] == "selection"
+    assert (
+        tags_by_key["dfl_offline_dt_candidate_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_residual_dt_fallback_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_official_global_panel_v2_plus_trajectory_dataset_frame"][
+            "ml_stage"
+        ]
+        == "training_data"
+    )
+    assert (
+        tags_by_key[
+            "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
+        ]["ml_stage"]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_source_specific_research_challenger_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert tags_by_key["dfl_schedule_value_learner_v2_frame"]["ml_stage"] == "selection"
+    assert (
+        tags_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_schedule_value_learner_v2_robustness_frame"]["ml_stage"]
+        == "evaluation"
+    )
+    assert tags_by_key["dfl_schedule_value_learner_v3_frame"]["ml_stage"] == "selection"
+    assert (
+        tags_by_key["dfl_schedule_value_learner_v3_strict_lp_benchmark_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_schedule_value_production_gate_frame"]["ml_stage"]
+        == "selection"
+    )
+    assert (
+        tags_by_key["dfl_official_schedule_candidate_library_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_official_schedule_candidate_library_v2_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_official_schedule_value_learner_v2_frame"]["ml_stage"]
+        == "selection"
+    )
+    assert (
+        tags_by_key["dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_official_schedule_value_learner_v2_robustness_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_official_schedule_value_production_gate_frame"]["ml_stage"]
+        == "selection"
+    )
     assert tags_by_key["dfl_production_promotion_gate_frame"]["ml_stage"] == "selection"
-    assert tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"] == "feature_engineering"
-    assert tags_by_key["market_coupling_temporal_availability_frame"]["ml_stage"] == "feature_engineering"
-    assert tags_by_key["entsoe_neighbor_market_query_spec_frame"]["ml_stage"] == "feature_engineering"
-    assert tags_by_key["entsoe_neighbor_market_sample_audit_frame"]["ml_stage"] == "feature_engineering"
+    assert (
+        tags_by_key["forecast_afe_feature_catalog_frame"]["ml_stage"]
+        == "feature_engineering"
+    )
+    assert (
+        tags_by_key["market_coupling_temporal_availability_frame"]["ml_stage"]
+        == "feature_engineering"
+    )
+    assert (
+        tags_by_key["entsoe_neighbor_market_query_spec_frame"]["ml_stage"]
+        == "feature_engineering"
+    )
+    assert (
+        tags_by_key["entsoe_neighbor_market_sample_audit_frame"]["ml_stage"]
+        == "feature_engineering"
+    )
     assert (
         tags_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]["ml_stage"]
         == "feature_engineering"
@@ -541,12 +893,19 @@ def test_dfl_research_assets_are_registered() -> None:
     assert tags_by_key["entsoe_poland_governance_closure_frame"]["ml_stage"] == (
         "feature_engineering"
     )
-    assert tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"] == "diagnostics"
+    assert (
+        tags_by_key["dfl_semantic_event_strict_failure_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
     assert tags_by_key["afl_forecast_error_audit_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"
+    assert (
+        tags_by_key["forecast_candidate_forensics_frame"]["ml_stage"] == "diagnostics"
+    )
     assert tags_by_key["afl_training_panel_frame"]["ml_stage"] == "training_data"
     assert (
-        tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"]["evidence_scope"]
+        tags_by_key["dfl_strict_failure_selector_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
         == "not_market_execution"
     )
     assert (
@@ -578,7 +937,9 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"]["evidence_scope"]
+        tags_by_key["dfl_schedule_value_learner_v2_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
         == "not_market_execution"
     )
     assert (
@@ -586,7 +947,9 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_schedule_value_learner_v3_strict_lp_benchmark_frame"]["evidence_scope"]
+        tags_by_key["dfl_schedule_value_learner_v3_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
         == "not_market_execution"
     )
     assert (
@@ -594,45 +957,51 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"]["evidence_scope"]
-        == "not_market_execution"
-    )
-    assert (
-        tags_by_key["dfl_official_schedule_value_learner_v2_robustness_frame"]["evidence_scope"]
-        == "not_market_execution"
-    )
-    assert (
-        tags_by_key["dfl_official_schedule_value_production_gate_frame"]["evidence_scope"]
-        == "not_market_execution"
-    )
-    assert (
-        tags_by_key["dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame"][
+        tags_by_key["dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"][
             "evidence_scope"
         ]
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"][
+        tags_by_key["dfl_official_schedule_value_learner_v2_robustness_frame"][
             "evidence_scope"
         ]
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"][
+        tags_by_key["dfl_official_schedule_value_production_gate_frame"][
             "evidence_scope"
         ]
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"][
-            "ml_stage"
-        ]
+        tags_by_key[
+            "dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame"
+        ]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key[
+            "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"
+        ]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key[
+            "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"
+        ]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key[
+            "dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"
+        ]["ml_stage"]
         == "evaluation"
     )
     assert (
-        tags_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"][
-            "evidence_scope"
-        ]
+        tags_by_key[
+            "dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"
+        ]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -642,9 +1011,7 @@ def test_dfl_research_assets_are_registered() -> None:
         == "training_data"
     )
     assert (
-        tags_by_key["dfl_official_global_panel_v2_v3_plateau_autopsy_frame"][
-            "ml_stage"
-        ]
+        tags_by_key["dfl_official_global_panel_v2_v3_plateau_autopsy_frame"]["ml_stage"]
         == "diagnostics"
     )
     assert (
@@ -654,9 +1021,9 @@ def test_dfl_research_assets_are_registered() -> None:
         == "diagnostics"
     )
     assert (
-        tags_by_key["dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame"][
-            "evidence_scope"
-        ]
+        tags_by_key[
+            "dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame"
+        ]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -666,13 +1033,27 @@ def test_dfl_research_assets_are_registered() -> None:
         == "training_data"
     )
     assert (
+        tags_by_key["dfl_point_in_time_context_repair_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_point_in_time_context_feature_panel_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key[
+            "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
+        ]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["dfl_market_coupling_v2_plus_ablation_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"][
-            "evidence_scope"
-        ]
+        tags_by_key[
+            "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
+        ]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -683,15 +1064,18 @@ def test_dfl_research_assets_are_registered() -> None:
         tags_by_key["afl_forecast_error_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
-    assert "real_data_benchmark_silver_feature_frame" in deps_by_key[
-        "dfl_semantic_event_strict_failure_audit_frame"
-    ]
-    assert "ukrenergo_grid_events_bronze" in deps_by_key[
-        "dfl_semantic_event_strict_failure_audit_frame"
-    ]
-    assert "grid_event_signal_silver" not in deps_by_key[
-        "dfl_semantic_event_strict_failure_audit_frame"
-    ]
+    assert (
+        "real_data_benchmark_silver_feature_frame"
+        in deps_by_key["dfl_semantic_event_strict_failure_audit_frame"]
+    )
+    assert (
+        "ukrenergo_grid_events_bronze"
+        in deps_by_key["dfl_semantic_event_strict_failure_audit_frame"]
+    )
+    assert (
+        "grid_event_signal_silver"
+        not in deps_by_key["dfl_semantic_event_strict_failure_audit_frame"]
+    )
     assert deps_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"] == {
         "real_data_benchmark_silver_feature_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
@@ -736,16 +1120,18 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_residual_dt_fallback_strict_lp_benchmark_frame",
         "dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_v2_plus_trajectory_dataset_frame"] == {
-        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"
-    }
-    assert deps_by_key["dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame"] == {
+    assert deps_by_key[
         "dfl_official_global_panel_v2_plus_trajectory_dataset_frame"
-    }
-    assert deps_by_key["dfl_official_global_panel_v2_plus_offline_dt_candidate_frame"] == {
-        "dfl_official_global_panel_v2_plus_trajectory_dataset_frame"
-    }
-    assert deps_by_key["dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"] == {
+    ] == {"dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"}
+    assert deps_by_key[
+        "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame"
+    ] == {"dfl_official_global_panel_v2_plus_trajectory_dataset_frame"}
+    assert deps_by_key[
+        "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame"
+    ] == {"dfl_official_global_panel_v2_plus_trajectory_dataset_frame"}
+    assert deps_by_key[
+        "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
         "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame",
         "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame",
@@ -756,14 +1142,16 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_dfl_v2_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_candidate_library_v3_frame"] == {
-        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"
-    }
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_candidate_library_v3_frame"
+    ] == {"dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"}
     assert deps_by_key[
         "dfl_official_global_panel_candidate_value_label_panel_v3_frame"
     ] == {"dfl_official_global_panel_schedule_candidate_library_v3_frame"}
@@ -772,12 +1160,16 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_candidate_library_v3_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v3_frame",
         "dfl_official_global_panel_candidate_value_dfl_v3_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_candidate_value_dfl_v3_failure_audit_frame"
+    ] == {
         "dfl_official_global_panel_candidate_value_label_panel_v3_frame",
         "dfl_official_global_panel_candidate_value_dfl_v3_frame",
         "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame",
@@ -788,14 +1180,16 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_candidate_value_dfl_v3_frame",
         "dfl_official_global_panel_candidate_value_dfl_v3_strict_lp_benchmark_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_plateau_data_quality_audit_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_plateau_data_quality_audit_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v3_frame",
         "real_data_benchmark_silver_feature_frame",
         "dfl_official_global_panel_v2_v3_plateau_autopsy_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_candidate_library_v4_frame"] == {
-        "dfl_official_global_panel_schedule_candidate_library_v3_frame"
-    }
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_candidate_library_v4_frame"
+    ] == {"dfl_official_global_panel_schedule_candidate_library_v3_frame"}
     assert deps_by_key[
         "dfl_official_global_panel_candidate_value_label_panel_v4_frame"
     ] == {"dfl_official_global_panel_schedule_candidate_library_v4_frame"}
@@ -804,9 +1198,41 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",
         "dfl_official_global_panel_candidate_value_dfl_v4_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_point_in_time_context_repair_audit_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v4_frame",
+        "real_data_benchmark_silver_feature_frame",
+        "dfl_official_global_panel_v2_v3_plateau_autopsy_frame",
+    }
+    assert deps_by_key["dfl_point_in_time_context_feature_panel_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v4_frame",
+        "dfl_point_in_time_context_repair_audit_frame",
+        "real_data_benchmark_silver_feature_frame",
+    }
+    assert deps_by_key["dfl_context_enriched_schedule_candidate_library_v5_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v4_frame",
+        "dfl_point_in_time_context_feature_panel_frame",
+    }
+    assert deps_by_key["dfl_context_enriched_candidate_value_label_panel_v5_frame"] == {
+        "dfl_context_enriched_schedule_candidate_library_v5_frame",
+        "dfl_point_in_time_context_feature_panel_frame",
+    }
+    assert deps_by_key["dfl_context_enriched_candidate_value_dfl_v5_frame"] == {
+        "dfl_context_enriched_schedule_candidate_library_v5_frame",
+        "dfl_context_enriched_candidate_value_label_panel_v5_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
+    }
+    assert deps_by_key[
+        "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
+    ] == {
+        "dfl_context_enriched_schedule_candidate_library_v5_frame",
+        "dfl_context_enriched_candidate_value_dfl_v5_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
     assert deps_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"] == {
@@ -849,7 +1275,9 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_official_schedule_value_learner_v2_frame"] == {
         "dfl_official_schedule_candidate_library_v2_frame"
     }
-    assert deps_by_key["dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame"
+    ] == {
         "dfl_official_schedule_candidate_library_v2_frame",
         "dfl_official_schedule_value_learner_v2_frame",
     }
@@ -860,25 +1288,27 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame",
         "dfl_official_schedule_value_learner_v2_robustness_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_candidate_library_frame"] == {
-        "nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame"
-    }
-    assert deps_by_key["dfl_official_global_panel_schedule_candidate_library_v2_frame"] == {
+    assert deps_by_key[
         "dfl_official_global_panel_schedule_candidate_library_frame"
-    }
+    ] == {"nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame"}
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_candidate_library_v2_frame"
+    ] == {"dfl_official_global_panel_schedule_candidate_library_frame"}
     assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v2_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame"
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v2_robustness_frame"] == {
-        "dfl_official_global_panel_schedule_candidate_library_v2_frame"
-    }
-    assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"] == {
-        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"
-    }
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_value_learner_v2_robustness_frame"
+    ] == {"dfl_official_global_panel_schedule_candidate_library_v2_frame"}
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"
+    ] == {"dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"}
     assert deps_by_key["dfl_market_coupling_v2_plus_ablation_frame"] == {
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
@@ -887,12 +1317,16 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v3_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame"
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_frame",
         "dfl_official_global_panel_schedule_value_learner_v3_frame",
     }
-    assert deps_by_key["dfl_official_global_panel_schedule_value_production_gate_frame"] == {
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_value_production_gate_frame"
+    ] == {
         "dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_robustness_frame",
     }
@@ -904,7 +1338,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_strict_failure_prior_feature_panel_frame",
         "dfl_strict_failure_feature_audit_frame",
     }
-    assert deps_by_key["dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame"
+    ] == {
         "dfl_schedule_candidate_library_v2_frame",
         "dfl_regime_gated_tft_selector_v2_frame",
         "dfl_strict_failure_prior_feature_panel_frame",
@@ -918,35 +1354,72 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame",
     }
     assert tags_by_key["dfl_data_coverage_audit_frame"]["ml_stage"] == "diagnostics"
-    assert tags_by_key["dfl_ua_coverage_repair_audit_frame"]["ml_stage"] == "diagnostics"
+    assert (
+        tags_by_key["dfl_ua_coverage_repair_audit_frame"]["ml_stage"] == "diagnostics"
+    )
     assert tags_by_key["dfl_action_label_panel_frame"]["ml_stage"] == "training_data"
-    assert tags_by_key["dfl_action_classifier_baseline_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["dfl_action_classifier_baseline_frame"]["ml_stage"] == "evaluation"
+    )
     assert (
         tags_by_key["dfl_action_classifier_baseline_frame"]["evidence_scope"]
         == "not_market_execution"
     )
-    assert tags_by_key["dfl_action_classifier_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
+    assert (
+        tags_by_key["dfl_action_classifier_strict_lp_benchmark_frame"]["ml_stage"]
+        == "evaluation"
+    )
     assert (
         tags_by_key["dfl_action_classifier_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
-    assert tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"]["ml_stage"] == "evaluation"
     assert (
-        tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"]["evidence_scope"]
+        tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key["dfl_value_aware_action_classifier_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
         == "not_market_execution"
     )
-    assert tags_by_key["dfl_action_classifier_failure_analysis_frame"]["ml_stage"] == "diagnostics"
+    assert (
+        tags_by_key["dfl_action_classifier_failure_analysis_frame"]["ml_stage"]
+        == "diagnostics"
+    )
     assert (
         tags_by_key["dfl_action_classifier_failure_analysis_frame"]["evidence_scope"]
         == "not_market_execution"
     )
-    assert groups_by_key["regret_weighted_forecast_calibration_frame"] == "gold_calibration"
-    assert groups_by_key["horizon_regret_weighted_forecast_calibration_frame"] == "gold_calibration"
-    assert groups_by_key["regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
-    assert groups_by_key["horizon_regret_weighted_forecast_strategy_benchmark_frame"] == "gold_calibration"
-    assert groups_by_key["calibrated_value_aware_ensemble_frame"] == "gold_selector_diagnostics"
-    assert groups_by_key["forecast_dispatch_sensitivity_frame"] == "gold_selector_diagnostics"
-    assert groups_by_key["risk_adjusted_value_gate_frame"] == "gold_selector_diagnostics"
+    assert (
+        groups_by_key["regret_weighted_forecast_calibration_frame"]
+        == "gold_calibration"
+    )
+    assert (
+        groups_by_key["horizon_regret_weighted_forecast_calibration_frame"]
+        == "gold_calibration"
+    )
+    assert (
+        groups_by_key["regret_weighted_forecast_strategy_benchmark_frame"]
+        == "gold_calibration"
+    )
+    assert (
+        groups_by_key["horizon_regret_weighted_forecast_strategy_benchmark_frame"]
+        == "gold_calibration"
+    )
+    assert (
+        groups_by_key["calibrated_value_aware_ensemble_frame"]
+        == "gold_selector_diagnostics"
+    )
+    assert (
+        groups_by_key["forecast_dispatch_sensitivity_frame"]
+        == "gold_selector_diagnostics"
+    )
+    assert (
+        groups_by_key["risk_adjusted_value_gate_frame"] == "gold_selector_diagnostics"
+    )
 
 
 def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) -> None:
@@ -1003,11 +1476,15 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         action_classifier,
         benchmark,
     )
-    value_aware_action_classifier_strict = dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
-        None,
-        DflValueAwareActionClassifierStrictLpProjectionAssetConfig(value_weight_scale_uah=100.0),
-        action_labels,
-        benchmark,
+    value_aware_action_classifier_strict = (
+        dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
+            None,
+            DflValueAwareActionClassifierStrictLpProjectionAssetConfig(
+                value_weight_scale_uah=100.0
+            ),
+            action_labels,
+            benchmark,
+        )
     )
     failure_analysis = dfl_action_classifier_failure_analysis_frame(
         None,
@@ -1044,10 +1521,12 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         ),
         benchmark,
     )
-    horizon_calibrated_benchmark = horizon_regret_weighted_forecast_strategy_benchmark_frame(
-        None,
-        benchmark,
-        horizon_calibration,
+    horizon_calibrated_benchmark = (
+        horizon_regret_weighted_forecast_strategy_benchmark_frame(
+            None,
+            benchmark,
+            horizon_calibration,
+        )
     )
     calibrated_ensemble = calibrated_value_aware_ensemble_frame(
         None,
@@ -1061,7 +1540,9 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         None,
         horizon_calibrated_benchmark,
     )
-    relaxed_pilot = dfl_relaxed_lp_pilot_frame(None, RelaxedDflPilotAssetConfig(max_examples=4), benchmark)
+    relaxed_pilot = dfl_relaxed_lp_pilot_frame(
+        None, RelaxedDflPilotAssetConfig(max_examples=4), benchmark
+    )
     offline_experiment = offline_dfl_experiment_frame(
         None,
         OfflineDflExperimentAssetConfig(
@@ -1232,7 +1713,9 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         residual_min_prior_anchors=1,
         min_final_holdout_tenant_anchor_count_per_source_model=1,
     )
-    pipeline_audit = dfl_pipeline_integrity_audit_frame(None, benchmark, schedule_library)
+    pipeline_audit = dfl_pipeline_integrity_audit_frame(
+        None, benchmark, schedule_library
+    )
     truth_audit = forecast_pipeline_truth_audit_frame(
         None,
         DflForecastPipelineTruthAuditAssetConfig(price_cap_uah_mwh=16_000.0),
@@ -1266,11 +1749,13 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         schedule_library_v2,
         strict_autopsy,
     )
-    strict_failure_selector_strict = dfl_strict_failure_selector_strict_lp_benchmark_frame(
-        None,
-        strict_failure_selector_config,
-        schedule_library_v2,
-        strict_failure_selector,
+    strict_failure_selector_strict = (
+        dfl_strict_failure_selector_strict_lp_benchmark_frame(
+            None,
+            strict_failure_selector_config,
+            schedule_library_v2,
+            strict_failure_selector,
+        )
     )
     strict_failure_selector_robustness = dfl_strict_failure_selector_robustness_frame(
         None,
@@ -1309,23 +1794,31 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert action_classifier.select("claim_scope").to_series().unique().to_list() == [
         "dfl_action_classifier_baseline_not_full_dfl"
     ]
-    assert action_classifier.select("promotion_status").to_series().unique().to_list() == [
+    assert action_classifier.select(
+        "promotion_status"
+    ).to_series().unique().to_list() == [
         "blocked_classification_only_no_strict_lp_value"
     ]
     assert action_classifier_strict.height == 4
-    assert action_classifier_strict.select("strategy_kind").to_series().unique().to_list() == [
-        "dfl_action_classifier_strict_lp_projection"
-    ]
-    assert "dfl_action_classifier_v0_tft_silver_v0" in action_classifier_strict[
-        "forecast_model_name"
-    ].unique().to_list()
+    assert action_classifier_strict.select(
+        "strategy_kind"
+    ).to_series().unique().to_list() == ["dfl_action_classifier_strict_lp_projection"]
+    assert (
+        "dfl_action_classifier_v0_tft_silver_v0"
+        in action_classifier_strict["forecast_model_name"].unique().to_list()
+    )
     assert value_aware_action_classifier_strict.height == 4
-    assert value_aware_action_classifier_strict.select("strategy_kind").to_series().unique().to_list() == [
+    assert value_aware_action_classifier_strict.select(
+        "strategy_kind"
+    ).to_series().unique().to_list() == [
         "dfl_value_aware_action_classifier_strict_lp_projection"
     ]
-    assert "dfl_value_aware_action_classifier_v1_tft_silver_v0" in value_aware_action_classifier_strict[
-        "forecast_model_name"
-    ].unique().to_list()
+    assert (
+        "dfl_value_aware_action_classifier_v1_tft_silver_v0"
+        in value_aware_action_classifier_strict["forecast_model_name"]
+        .unique()
+        .to_list()
+    )
     assert failure_analysis.height == 2
     assert failure_analysis.select("claim_scope").to_series().unique().to_list() == [
         "dfl_action_classifier_failure_analysis_not_full_dfl"
@@ -1346,7 +1839,9 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert {
         "nbeatsx_horizon_regret_weighted_calibrated_v0",
         "tft_horizon_regret_weighted_calibrated_v0",
-    }.issubset(set(horizon_calibrated_benchmark["forecast_model_name"].unique().to_list()))
+    }.issubset(
+        set(horizon_calibrated_benchmark["forecast_model_name"].unique().to_list())
+    )
     assert calibrated_ensemble.height == 5
     assert set(calibrated_ensemble["forecast_model_name"].unique().to_list()) == {
         "calibrated_value_aware_ensemble_v0"
@@ -1366,49 +1861,68 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
     assert offline_experiment.select("claim_scope").to_series().unique().to_list() == [
         "offline_dfl_experiment_not_full_dfl"
     ]
-    assert offline_experiment.select("not_market_execution").to_series().unique().to_list() == [True]
+    assert offline_experiment.select(
+        "not_market_execution"
+    ).to_series().unique().to_list() == [True]
     assert offline_panel.height == 1
     assert offline_panel.select("claim_scope").to_series().unique().to_list() == [
         "offline_dfl_panel_experiment_not_full_dfl"
     ]
-    assert offline_panel.select("not_market_execution").to_series().unique().to_list() == [True]
+    assert offline_panel.select(
+        "not_market_execution"
+    ).to_series().unique().to_list() == [True]
     assert strict_panel.height == 6
     assert strict_panel.select("strategy_kind").to_series().unique().to_list() == [
         "offline_dfl_panel_strict_lp_benchmark"
     ]
-    assert "offline_dfl_panel_v2_tft_silver_v0" in strict_panel["forecast_model_name"].unique().to_list()
+    assert (
+        "offline_dfl_panel_v2_tft_silver_v0"
+        in strict_panel["forecast_model_name"].unique().to_list()
+    )
     assert decision_target_panel.height == 1
-    assert decision_target_panel.select("claim_scope").to_series().unique().to_list() == [
-        "offline_dfl_decision_target_v3_not_full_dfl"
-    ]
+    assert decision_target_panel.select(
+        "claim_scope"
+    ).to_series().unique().to_list() == ["offline_dfl_decision_target_v3_not_full_dfl"]
     assert decision_target_strict.height == 8
-    assert decision_target_strict.select("strategy_kind").to_series().unique().to_list() == [
+    assert decision_target_strict.select(
+        "strategy_kind"
+    ).to_series().unique().to_list() == [
         "offline_dfl_decision_target_strict_lp_benchmark"
     ]
-    assert "offline_dfl_decision_target_v3_tft_silver_v0" in decision_target_strict[
-        "forecast_model_name"
-    ].unique().to_list()
+    assert (
+        "offline_dfl_decision_target_v3_tft_silver_v0"
+        in decision_target_strict["forecast_model_name"].unique().to_list()
+    )
     assert action_target_panel.height == 1
     assert action_target_panel.select("claim_scope").to_series().unique().to_list() == [
         "offline_dfl_action_target_v4_not_full_dfl"
     ]
     assert action_target_strict.height == 10
-    assert action_target_strict.select("strategy_kind").to_series().unique().to_list() == [
+    assert action_target_strict.select(
+        "strategy_kind"
+    ).to_series().unique().to_list() == [
         "offline_dfl_action_target_strict_lp_benchmark"
     ]
-    assert "offline_dfl_action_target_v4_tft_silver_v0" in action_target_strict[
-        "forecast_model_name"
-    ].unique().to_list()
+    assert (
+        "offline_dfl_action_target_v4_tft_silver_v0"
+        in action_target_strict["forecast_model_name"].unique().to_list()
+    )
     assert trajectory_value_panel.height == 10
-    assert trajectory_value_panel.select("claim_scope").to_series().unique().to_list() == [
+    assert trajectory_value_panel.select(
+        "claim_scope"
+    ).to_series().unique().to_list() == [
         "dfl_trajectory_value_candidate_panel_not_full_dfl"
     ]
     assert trajectory_value_selector.height == 1
-    assert trajectory_value_selector.select("claim_scope").to_series().unique().to_list() == [
+    assert trajectory_value_selector.select(
+        "claim_scope"
+    ).to_series().unique().to_list() == [
         "dfl_trajectory_value_selector_v1_not_full_dfl"
     ]
     assert trajectory_value_strict.height >= 4
-    assert trajectory_value_strict.select("strategy_kind").to_series().unique().to_list() == [
+    assert trajectory_value_strict.select(
+        "strategy_kind"
+    ).to_series().unique().to_list() == [
         "dfl_trajectory_value_selector_strict_lp_benchmark"
     ]
     assert schedule_library.height > 0
@@ -1420,12 +1934,15 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "dfl_trajectory_feature_ranker_v1_not_full_dfl"
     ]
     assert trajectory_ranker_strict.height == 6
-    assert trajectory_ranker_strict.select("strategy_kind").to_series().unique().to_list() == [
+    assert trajectory_ranker_strict.select(
+        "strategy_kind"
+    ).to_series().unique().to_list() == [
         "dfl_trajectory_feature_ranker_strict_lp_benchmark"
     ]
-    assert "dfl_trajectory_feature_ranker_v1_tft_silver_v0" in trajectory_ranker_strict[
-        "forecast_model_name"
-    ].unique().to_list()
+    assert (
+        "dfl_trajectory_feature_ranker_v1_tft_silver_v0"
+        in trajectory_ranker_strict["forecast_model_name"].unique().to_list()
+    )
     assert pipeline_audit.height == 1
     assert pipeline_audit.select("claim_scope").to_series().unique().to_list() == [
         "dfl_pipeline_integrity_audit_not_full_dfl"
@@ -1435,9 +1952,14 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "dfl_forecast_pipeline_truth_audit_not_full_dfl"
     ]
     assert schedule_library_v2.height > schedule_library.height
-    assert "strict_raw_blend_v2" in schedule_library_v2["candidate_family"].unique().to_list()
+    assert (
+        "strict_raw_blend_v2"
+        in schedule_library_v2["candidate_family"].unique().to_list()
+    )
     assert non_strict_upper_bound.height >= 2
-    assert non_strict_upper_bound.select("claim_scope").to_series().unique().to_list() == [
+    assert non_strict_upper_bound.select(
+        "claim_scope"
+    ).to_series().unique().to_list() == [
         "dfl_non_strict_oracle_upper_bound_not_full_dfl"
     ]
     assert strict_autopsy.height == non_strict_upper_bound.height
@@ -1445,22 +1967,30 @@ def test_dfl_research_assets_persist_ensemble_training_and_pilot(monkeypatch) ->
         "dfl_strict_baseline_autopsy_not_full_dfl"
     ]
     assert strict_failure_selector.height == 1
-    assert strict_failure_selector.select("claim_scope").to_series().unique().to_list() == [
-        "dfl_strict_failure_selector_v1_not_full_dfl"
-    ]
+    assert strict_failure_selector.select(
+        "claim_scope"
+    ).to_series().unique().to_list() == ["dfl_strict_failure_selector_v1_not_full_dfl"]
     assert strict_failure_selector_strict.height >= 4
-    assert strict_failure_selector_strict.select("strategy_kind").to_series().unique().to_list() == [
+    assert strict_failure_selector_strict.select(
+        "strategy_kind"
+    ).to_series().unique().to_list() == [
         "dfl_strict_failure_selector_strict_lp_benchmark"
     ]
-    assert "dfl_strict_failure_selector_v1_tft_silver_v0" in strict_failure_selector_strict[
-        "forecast_model_name"
-    ].unique().to_list()
+    assert (
+        "dfl_strict_failure_selector_v1_tft_silver_v0"
+        in strict_failure_selector_strict["forecast_model_name"].unique().to_list()
+    )
     assert strict_failure_selector_robustness.height == 1
-    assert strict_failure_selector_robustness.select("claim_scope").to_series().unique().to_list() == [
+    assert strict_failure_selector_robustness.select(
+        "claim_scope"
+    ).to_series().unique().to_list() == [
         "dfl_strict_failure_selector_robustness_not_full_dfl"
     ]
     assert forecast_forensics.height == 3
-    assert "compact_silver_candidate" in forecast_forensics["candidate_kind"].unique().to_list()
+    assert (
+        "compact_silver_candidate"
+        in forecast_forensics["candidate_kind"].unique().to_list()
+    )
     assert afl_panel.height == benchmark.height
     assert afl_panel.select("claim_scope").to_series().unique().to_list() == [
         "arbitrage_focused_learning_panel_not_full_dfl"
@@ -1485,10 +2015,17 @@ def test_dfl_forecast_v1_assets_materialize_panel_and_strict_rows(monkeypatch) -
     )
 
     panel = dfl_forecast_dfl_v1_panel_frame(None, config, benchmark)
-    strict = dfl_forecast_dfl_v1_strict_lp_benchmark_frame(None, config, benchmark, panel)
+    strict = dfl_forecast_dfl_v1_strict_lp_benchmark_frame(
+        None, config, benchmark, panel
+    )
 
     assert panel.height == 1
-    assert strict.filter(pl.col("forecast_model_name").str.starts_with("dfl_forecast_dfl_v1_")).height == 2
+    assert (
+        strict.filter(
+            pl.col("forecast_model_name").str.starts_with("dfl_forecast_dfl_v1_")
+        ).height
+        == 2
+    )
     assert strategy_store.evaluation_frame.height == strict.height
 
 
@@ -1556,7 +2093,9 @@ def test_trajectory_value_strict_asset_uses_fresh_generated_at(monkeypatch) -> N
 
     dfl_trajectory_value_selector_strict_lp_benchmark_frame(
         None,
-        OfflineDflTrajectoryValueSelectorAssetConfig(forecast_model_names_csv="tft_silver_v0"),
+        OfflineDflTrajectoryValueSelectorAssetConfig(
+            forecast_model_names_csv="tft_silver_v0"
+        ),
         pl.DataFrame({"generated_at": [datetime(2026, 1, 1)]}),
         pl.DataFrame(),
     )

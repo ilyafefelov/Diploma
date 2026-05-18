@@ -23,14 +23,23 @@ TENANT_ID = "client_003_dnipro_factory"
 
 def test_dfl_evidence_asset_checks_are_registered() -> None:
     expected_check_keys = {
-        ("real_data_rolling_origin_benchmark_frame", "dnipro_thesis_grade_90_anchor_evidence"),
+        (
+            "real_data_rolling_origin_benchmark_frame",
+            "dnipro_thesis_grade_90_anchor_evidence",
+        ),
         ("dfl_training_frame", "dfl_training_readiness_evidence"),
         (
             "horizon_regret_weighted_forecast_strategy_benchmark_frame",
             "horizon_calibration_no_leakage_evidence",
         ),
-        ("calibrated_value_aware_ensemble_frame", "calibrated_selector_cardinality_evidence"),
-        ("risk_adjusted_value_gate_frame", "risk_adjusted_selector_cardinality_evidence"),
+        (
+            "calibrated_value_aware_ensemble_frame",
+            "calibrated_selector_cardinality_evidence",
+        ),
+        (
+            "risk_adjusted_value_gate_frame",
+            "risk_adjusted_selector_cardinality_evidence",
+        ),
         ("dfl_action_label_panel_frame", "dfl_action_label_panel_readiness_evidence"),
         (
             "dfl_action_classifier_failure_analysis_frame",
@@ -111,6 +120,18 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
         (
             "dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame",
             "dfl_official_global_panel_candidate_value_dfl_v4_evidence",
+        ),
+        (
+            "dfl_point_in_time_context_repair_audit_frame",
+            "dfl_point_in_time_context_repair_audit_evidence",
+        ),
+        (
+            "dfl_point_in_time_context_feature_panel_frame",
+            "dfl_point_in_time_context_feature_panel_evidence",
+        ),
+        (
+            "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame",
+            "dfl_context_enriched_candidate_value_dfl_v5_evidence",
         ),
         (
             "dfl_official_v2_plus_bridge_failure_audit_frame",
@@ -225,7 +246,9 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
     assert check_keys.issubset(registered_check_keys)
 
 
-def test_real_data_benchmark_evidence_requires_dnipro_thesis_grade_anchors_and_models() -> None:
+def test_real_data_benchmark_evidence_requires_dnipro_thesis_grade_anchors_and_models() -> (
+    None
+):
     outcome = validate_real_data_benchmark_evidence(_benchmark_frame(anchor_count=90))
 
     assert outcome.passed is True
@@ -254,7 +277,9 @@ def test_real_data_benchmark_evidence_fails_for_non_thesis_rows() -> None:
 
 
 def test_real_data_benchmark_evidence_fails_when_raw_candidate_is_missing() -> None:
-    frame = _benchmark_frame(anchor_count=90).filter(pl.col("forecast_model_name") != "tft_silver_v0")
+    frame = _benchmark_frame(anchor_count=90).filter(
+        pl.col("forecast_model_name") != "tft_silver_v0"
+    )
 
     outcome = validate_real_data_benchmark_evidence(frame)
 
@@ -291,7 +316,8 @@ def test_horizon_calibration_evidence_rejects_future_prior_anchor_metadata() -> 
     for row in rows:
         if (
             row["anchor_timestamp"] == _first_anchor()
-            and row["forecast_model_name"] == "tft_horizon_regret_weighted_calibrated_v0"
+            and row["forecast_model_name"]
+            == "tft_horizon_regret_weighted_calibrated_v0"
         ):
             row = {
                 **row,
@@ -343,7 +369,9 @@ def test_selector_evidence_requires_one_row_per_anchor() -> None:
 
 
 def test_dfl_action_label_panel_evidence_accepts_104_anchor_all_tenant_panel() -> None:
-    outcome = validate_dfl_action_label_panel_evidence(_action_label_frame(anchor_count=104))
+    outcome = validate_dfl_action_label_panel_evidence(
+        _action_label_frame(anchor_count=104)
+    )
 
     assert outcome.passed is True
     assert outcome.metadata["row_count"] == 1040
@@ -358,7 +386,9 @@ def test_dfl_action_label_panel_evidence_accepts_104_anchor_all_tenant_panel() -
     assert outcome.metadata["train_final_overlap_count"] == 0
 
 
-def test_dfl_action_label_panel_evidence_blocks_missing_tenant_or_model_and_under_90() -> None:
+def test_dfl_action_label_panel_evidence_blocks_missing_tenant_or_model_and_under_90() -> (
+    None
+):
     missing_tenant = _action_label_frame(anchor_count=104).filter(
         pl.col("tenant_id") != "client_005_odesa_hotel"
     )
@@ -372,7 +402,9 @@ def test_dfl_action_label_panel_evidence_blocks_missing_tenant_or_model_and_unde
     under_90_outcome = validate_dfl_action_label_panel_evidence(under_90)
 
     assert missing_tenant_outcome.passed is False
-    assert missing_tenant_outcome.metadata["missing_tenants"] == ["client_005_odesa_hotel"]
+    assert missing_tenant_outcome.metadata["missing_tenants"] == [
+        "client_005_odesa_hotel"
+    ]
     assert missing_model_outcome.passed is False
     assert missing_model_outcome.metadata["missing_models"] == ["nbeatsx_silver_v0"]
     assert under_90_outcome.passed is False
@@ -405,7 +437,9 @@ def test_dfl_action_label_panel_evidence_blocks_bad_vectors_claims_and_masks() -
     assert mask_outcome.metadata["one_hot_mask_failures"] == 1
 
 
-def test_dfl_action_label_panel_evidence_blocks_non_latest_holdout_and_overlap() -> None:
+def test_dfl_action_label_panel_evidence_blocks_non_latest_holdout_and_overlap() -> (
+    None
+):
     good_frame = _action_label_frame(anchor_count=104)
     non_latest_holdout = _replace_first_action_label_row(
         good_frame,
@@ -473,7 +507,9 @@ def _benchmark_frame(
                     "rank_by_regret": rank,
                     "evaluation_payload": {
                         "data_quality_tier": data_quality_tier,
-                        "observed_coverage_ratio": 1.0 if data_quality_tier == "thesis_grade" else 0.5,
+                        "observed_coverage_ratio": 1.0
+                        if data_quality_tier == "thesis_grade"
+                        else 0.5,
                         "academic_scope": "Real-data rolling-origin DAM benchmark.",
                         "horizon": _horizon_payload(anchor),
                     },
@@ -622,7 +658,9 @@ def _action_label_frame(*, anchor_count: int) -> pl.DataFrame:
                         "strict_baseline_evaluation_id": f"{tenant_id}:strict:{anchor.isoformat()}",
                         "tenant_id": tenant_id,
                         "anchor_timestamp": anchor,
-                        "split_name": "final_holdout" if is_final_holdout else "train_selection",
+                        "split_name": "final_holdout"
+                        if is_final_holdout
+                        else "train_selection",
                         "is_final_holdout": is_final_holdout,
                         "horizon_start": anchor + timedelta(hours=1),
                         "horizon_end": anchor + timedelta(hours=24),
@@ -633,13 +671,25 @@ def _action_label_frame(*, anchor_count: int) -> pl.DataFrame:
                         "source_strategy_kind": "real_data_rolling_origin_benchmark",
                         "strict_baseline_forecast_model_name": "strict_similar_day",
                         "target_strategy_name": "oracle_lp",
-                        "forecast_price_vector_uah_mwh": _float_vector(1000.0 + anchor_index),
-                        "actual_price_vector_uah_mwh": _float_vector(1100.0 + anchor_index),
+                        "forecast_price_vector_uah_mwh": _float_vector(
+                            1000.0 + anchor_index
+                        ),
+                        "actual_price_vector_uah_mwh": _float_vector(
+                            1100.0 + anchor_index
+                        ),
                         "candidate_signed_dispatch_vector_mw": _dispatch_vector(),
                         "strict_baseline_signed_dispatch_vector_mw": _dispatch_vector(),
-                        "oracle_signed_dispatch_vector_mw": _oracle_dispatch_vector(anchor_index),
-                        "oracle_charge_mw_vector": [0.25 if value < 0 else 0.0 for value in _oracle_dispatch_vector(anchor_index)],
-                        "oracle_discharge_mw_vector": [0.25 if value > 0 else 0.0 for value in _oracle_dispatch_vector(anchor_index)],
+                        "oracle_signed_dispatch_vector_mw": _oracle_dispatch_vector(
+                            anchor_index
+                        ),
+                        "oracle_charge_mw_vector": [
+                            0.25 if value < 0 else 0.0
+                            for value in _oracle_dispatch_vector(anchor_index)
+                        ],
+                        "oracle_discharge_mw_vector": [
+                            0.25 if value > 0 else 0.0
+                            for value in _oracle_dispatch_vector(anchor_index)
+                        ],
                         "oracle_soc_before_mwh_vector": _float_vector(0.5),
                         "oracle_soc_after_mwh_vector": _float_vector(0.5),
                         "oracle_degradation_penalty_vector_uah": _float_vector(1.0),
@@ -669,7 +719,9 @@ def _action_label_frame(*, anchor_count: int) -> pl.DataFrame:
     return pl.DataFrame(rows)
 
 
-def _replace_first_action_label_row(frame: pl.DataFrame, **updates: object) -> pl.DataFrame:
+def _replace_first_action_label_row(
+    frame: pl.DataFrame, **updates: object
+) -> pl.DataFrame:
     rows = frame.iter_rows(named=True)
     updated_rows: list[dict[str, object]] = []
     for row_index, row in enumerate(rows):

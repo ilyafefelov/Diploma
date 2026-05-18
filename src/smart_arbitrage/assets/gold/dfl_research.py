@@ -41,7 +41,9 @@ from smart_arbitrage.dfl.promotion_gate import (
     evaluate_offline_dfl_panel_strict_promotion_gate,
 )
 from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
-from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
+from smart_arbitrage.resources.strategy_evaluation_store import (
+    get_strategy_evaluation_store,
+)
 from smart_arbitrage.strategy.ensemble_gate import (
     CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND,
     RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND,
@@ -49,7 +51,9 @@ from smart_arbitrage.strategy.ensemble_gate import (
     build_risk_adjusted_value_gate_frame,
     build_value_aware_ensemble_frame,
 )
-from smart_arbitrage.strategy.dispatch_sensitivity import build_forecast_dispatch_sensitivity_frame
+from smart_arbitrage.strategy.dispatch_sensitivity import (
+    build_forecast_dispatch_sensitivity_frame,
+)
 from smart_arbitrage.training.dfl_training import build_dfl_training_frame
 from smart_arbitrage.dfl.training_examples import build_dfl_training_example_frame
 from smart_arbitrage.dfl.action_classifier import (
@@ -204,6 +208,16 @@ from smart_arbitrage.dfl.candidate_value_dfl_v4 import (
     build_dfl_schedule_candidate_library_v4_frame,
     build_dfl_v2_v3_plateau_autopsy_frame,
     evaluate_dfl_candidate_value_dfl_v4_gate,
+)
+from smart_arbitrage.dfl.point_in_time_context_v5 import (
+    CONTEXT_ENRICHED_CANDIDATE_VALUE_DFL_V5_STRICT_LP_STRATEGY_KIND,
+    build_dfl_context_enriched_candidate_value_dfl_v5_frame,
+    build_dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame,
+    build_dfl_context_enriched_candidate_value_label_panel_v5_frame,
+    build_dfl_context_enriched_schedule_candidate_library_v5_frame,
+    build_dfl_point_in_time_context_feature_panel_frame,
+    build_dfl_point_in_time_context_repair_audit_frame,
+    evaluate_dfl_context_enriched_candidate_value_dfl_v5_gate,
 )
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     build_dfl_schedule_value_learner_v2_plus_robustness_frame,
@@ -659,7 +673,9 @@ class DflOfficialGlobalPanelV2PlusDflDtBridgeAssetConfig(dg.Config):
         "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
         "client_004_kharkiv_hospital,client_005_odesa_hotel"
     )
-    forecast_model_names_csv: str = ",".join(OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS)
+    forecast_model_names_csv: str = ",".join(
+        OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS
+    )
     final_validation_anchor_count_per_tenant: int = 18
     min_validation_tenant_anchor_count_per_source_model: int = 90
     min_tenant_count: int = 5
@@ -946,9 +962,13 @@ class DflOfficialGlobalPanelCandidateValueDflV4AssetConfig(dg.Config):
     min_mean_regret_improvement_ratio_vs_strict: float = 0.05
 
 
-class DflOfficialGlobalPanelScheduleValueLearnerV2RobustnessAssetConfig(
-    dg.Config
+class DflContextEnrichedCandidateValueDflV5AssetConfig(
+    DflOfficialGlobalPanelCandidateValueDflV4AssetConfig
 ):
+    """Context-enriched candidate-value DFL v5 scope."""
+
+
+class DflOfficialGlobalPanelScheduleValueLearnerV2RobustnessAssetConfig(dg.Config):
     """Rolling robustness scope for official global-panel schedule/value v2."""
 
     tenant_ids_csv: str = (
@@ -966,9 +986,7 @@ class DflOfficialGlobalPanelScheduleValueLearnerV2RobustnessAssetConfig(
     min_validation_tenant_anchor_count_per_source_model: int = 5
 
 
-class DflOfficialGlobalPanelScheduleValueLearnerV2PlusRobustnessAssetConfig(
-    dg.Config
-):
+class DflOfficialGlobalPanelScheduleValueLearnerV2PlusRobustnessAssetConfig(dg.Config):
     """Rolling robustness scope for official global-panel schedule/value v2+."""
 
     tenant_ids_csv: str = (
@@ -1064,14 +1082,20 @@ def real_data_value_aware_ensemble_frame(
 ) -> pl.DataFrame:
     """Gold value-aware ensemble gate using prior-anchor validation regret only."""
 
-    ensemble_frame = build_value_aware_ensemble_frame(real_data_rolling_origin_benchmark_frame)
+    ensemble_frame = build_value_aware_ensemble_frame(
+        real_data_rolling_origin_benchmark_frame
+    )
     get_strategy_evaluation_store().upsert_evaluation_frame(ensemble_frame)
     _add_metadata(
         context,
         {
             "rows": ensemble_frame.height,
-            "tenant_count": ensemble_frame.select("tenant_id").n_unique() if ensemble_frame.height else 0,
-            "anchor_count": ensemble_frame.select("anchor_timestamp").n_unique() if ensemble_frame.height else 0,
+            "tenant_count": ensemble_frame.select("tenant_id").n_unique()
+            if ensemble_frame.height
+            else 0,
+            "anchor_count": ensemble_frame.select("anchor_timestamp").n_unique()
+            if ensemble_frame.height
+            else 0,
             "strategy_kind": "value_aware_ensemble_gate",
             "selection_policy": "prior_anchor_validation_regret_only",
         },
@@ -1099,7 +1123,10 @@ def dfl_training_frame(
     """DFL-ready supervised examples from benchmark and ensemble rows."""
 
     source_frame = pl.concat(
-        [real_data_rolling_origin_benchmark_frame, real_data_value_aware_ensemble_frame],
+        [
+            real_data_rolling_origin_benchmark_frame,
+            real_data_value_aware_ensemble_frame,
+        ],
         how="diagonal_relaxed",
     )
     training_frame = build_dfl_training_frame(
@@ -1111,8 +1138,12 @@ def dfl_training_frame(
         context,
         {
             "rows": training_frame.height,
-            "tenant_count": training_frame.select("tenant_id").n_unique() if training_frame.height else 0,
-            "model_count": training_frame.select("forecast_model_name").n_unique() if training_frame.height else 0,
+            "tenant_count": training_frame.select("tenant_id").n_unique()
+            if training_frame.height
+            else 0,
+            "model_count": training_frame.select("forecast_model_name").n_unique()
+            if training_frame.height
+            else 0,
             "scope": "dfl_ready_training_examples_not_full_dfl",
         },
     )
@@ -1136,7 +1167,9 @@ def dfl_training_example_frame(
 ) -> pl.DataFrame:
     """Vector-rich sidecar DFL examples from strict LP/oracle benchmark rows."""
 
-    training_example_frame = build_dfl_training_example_frame(real_data_rolling_origin_benchmark_frame)
+    training_example_frame = build_dfl_training_example_frame(
+        real_data_rolling_origin_benchmark_frame
+    )
     get_dfl_training_store().upsert_training_example_frame(training_example_frame)
     _add_metadata(
         context,
@@ -1272,7 +1305,9 @@ def entsoe_neighbor_market_query_spec_frame(
             ).height
             if query_spec_frame.height
             else 0,
-            "fetch_allowed_rows": query_spec_frame.filter(pl.col("fetch_allowed")).height
+            "fetch_allowed_rows": query_spec_frame.filter(
+                pl.col("fetch_allowed")
+            ).height
             if query_spec_frame.height
             else 0,
             "security_token_available": bool(security_token),
@@ -1463,7 +1498,9 @@ def poland_neighbor_market_hourly_feature_frame(
         context,
         {
             "rows": hourly_frame.height,
-            "source_backed_hour_count": hourly_frame.filter(pl.col("source_backed")).height
+            "source_backed_hour_count": hourly_frame.filter(
+                pl.col("source_backed")
+            ).height
             if hourly_frame.height
             else 0,
             "training_allowed_rows": hourly_frame.filter(
@@ -1471,7 +1508,9 @@ def poland_neighbor_market_hourly_feature_frame(
             ).height
             if hourly_frame.height
             else 0,
-            "feature_allowed_rows": hourly_frame.filter(pl.col("feature_use_allowed")).height
+            "feature_allowed_rows": hourly_frame.filter(
+                pl.col("feature_use_allowed")
+            ).height
             if hourly_frame.height
             else 0,
             "feature_columns": hourly_frame["feature_column"].unique().to_list()
@@ -1624,7 +1663,9 @@ def entsoe_neighbor_market_aligned_feature_panel_frame(
     aligned_frame = build_entsoe_neighbor_market_aligned_feature_panel_frame(
         real_data_benchmark_silver_feature_frame,
         entsoe_neighbor_market_feature_candidate_frame,
-        country_codes=_csv_values(config.country_codes_csv, field_name="country_codes_csv"),
+        country_codes=_csv_values(
+            config.country_codes_csv, field_name="country_codes_csv"
+        ),
     )
     _add_metadata(
         context,
@@ -1700,7 +1741,9 @@ def dfl_semantic_event_strict_failure_audit_frame(
             else 0,
             "strict_failure_with_event_count": audit_frame.select(
                 "strict_failure_with_event_count"
-            ).sum().item()
+            )
+            .sum()
+            .item()
             if audit_frame.height
             else 0,
             "scope": "dfl_semantic_event_strict_failure_audit_not_full_dfl",
@@ -1785,7 +1828,9 @@ def afl_training_panel_frame(
             "model_count": panel_frame.select("forecast_model_name").n_unique()
             if panel_frame.height
             else 0,
-            "final_holdout_rows": panel_frame.filter(pl.col("split") == "final_holdout").height
+            "final_holdout_rows": panel_frame.filter(
+                pl.col("split") == "final_holdout"
+            ).height
             if panel_frame.height
             else 0,
             "scope": "arbitrage_focused_learning_panel_not_full_dfl",
@@ -1831,19 +1876,23 @@ def afl_forecast_error_audit_frame(
             "model_count": audit_frame.select("forecast_model_name").n_unique()
             if audit_frame.height
             else 0,
-            "mean_lp_value_failure_rate": audit_frame.select(
-                "lp_value_failure_rate"
-            ).mean().item()
+            "mean_lp_value_failure_rate": audit_frame.select("lp_value_failure_rate")
+            .mean()
+            .item()
             if audit_frame.height
             else 0.0,
             "mean_spread_shape_failure_rate": audit_frame.select(
                 "spread_shape_failure_rate"
-            ).mean().item()
+            )
+            .mean()
+            .item()
             if audit_frame.height
             else 0.0,
             "mean_rank_extrema_failure_rate": audit_frame.select(
                 "rank_extrema_failure_rate"
-            ).mean().item()
+            )
+            .mean()
+            .item()
             if audit_frame.height
             else 0.0,
             "scope": "afl_forecast_error_audit_not_full_dfl",
@@ -1884,9 +1933,13 @@ def dfl_data_coverage_audit_frame(
         context,
         {
             "rows": audit_frame.height,
-            "tenant_count": audit_frame.select("tenant_id").n_unique() if audit_frame.height else 0,
+            "tenant_count": audit_frame.select("tenant_id").n_unique()
+            if audit_frame.height
+            else 0,
             "target_anchor_count_per_tenant": config.target_anchor_count_per_tenant,
-            "minimum_eligible_anchor_count": audit_frame.select("eligible_anchor_count").min().item()
+            "minimum_eligible_anchor_count": audit_frame.select("eligible_anchor_count")
+            .min()
+            .item()
             if audit_frame.height
             else 0,
             "scope": "ua_observed_dfl_data_coverage_audit_not_full_dfl",
@@ -1921,7 +1974,11 @@ def dfl_ua_coverage_repair_audit_frame(
         tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
         target_anchor_count_per_tenant=config.target_anchor_count_per_tenant,
     )
-    gap_rows = repair_frame.filter(pl.col("gap_kind") != "none") if repair_frame.height else pl.DataFrame()
+    gap_rows = (
+        repair_frame.filter(pl.col("gap_kind") != "none")
+        if repair_frame.height
+        else pl.DataFrame()
+    )
     _add_metadata(
         context,
         {
@@ -1979,7 +2036,9 @@ def dfl_action_label_panel_frame(
             "tenant_count": action_label_frame.select("tenant_id").n_unique()
             if action_label_frame.height
             else 0,
-            "source_model_count": action_label_frame.select("forecast_model_name").n_unique()
+            "source_model_count": action_label_frame.select(
+                "forecast_model_name"
+            ).n_unique()
             if action_label_frame.height
             else 0,
             "final_holdout_rows": final_holdout_rows.height,
@@ -2068,7 +2127,9 @@ def dfl_action_classifier_strict_lp_benchmark_frame(
     candidate_rows = strict_frame.filter(
         pl.col("forecast_model_name").str.starts_with(f"{config.baseline_name}_")
     )
-    strict_rows = strict_frame.filter(pl.col("forecast_model_name") == "strict_similar_day")
+    strict_rows = strict_frame.filter(
+        pl.col("forecast_model_name") == "strict_similar_day"
+    )
     _add_metadata(
         context,
         {
@@ -2076,7 +2137,9 @@ def dfl_action_classifier_strict_lp_benchmark_frame(
             "candidate_rows": candidate_rows.height,
             "strict_control_rows": strict_rows.height,
             "classifier_summary_rows": dfl_action_classifier_baseline_frame.height,
-            "mean_candidate_regret_uah": candidate_rows.select("regret_uah").mean().item()
+            "mean_candidate_regret_uah": candidate_rows.select("regret_uah")
+            .mean()
+            .item()
             if candidate_rows.height
             else None,
             "mean_strict_regret_uah": strict_rows.select("regret_uah").mean().item()
@@ -2179,7 +2242,9 @@ def dfl_schedule_value_production_gate_frame(
         min_rolling_window_count=config.min_rolling_window_count,
         min_rolling_strict_pass_windows=config.min_rolling_strict_pass_windows,
     )
-    generated_at = _latest_generated_at(dfl_schedule_value_learner_v2_strict_lp_benchmark_frame)
+    generated_at = _latest_generated_at(
+        dfl_schedule_value_learner_v2_strict_lp_benchmark_frame
+    )
     if generated_at is None:
         generated_at = datetime.now(UTC)
     gate_frame = gate_frame.with_columns(pl.lit(generated_at).alias("generated_at"))
@@ -2250,10 +2315,14 @@ def dfl_official_schedule_candidate_library_frame(
             if library_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
             if library_frame.height
             else 0,
-            "final_holdout_rows": library_frame.filter(pl.col("split_name") == "final_holdout").height
+            "final_holdout_rows": library_frame.filter(
+                pl.col("split_name") == "final_holdout"
+            ).height
             if library_frame.height
             else 0,
             "scope": "dfl_official_schedule_candidate_library_not_full_dfl",
@@ -2284,7 +2353,9 @@ def dfl_official_schedule_candidate_library_v2_frame(
 
     library_frame = build_schedule_candidate_library_v2_frame(
         dfl_official_schedule_candidate_library_frame,
-        blend_weights=_float_csv_values(config.blend_weights_csv, field_name="blend_weights_csv"),
+        blend_weights=_float_csv_values(
+            config.blend_weights_csv, field_name="blend_weights_csv"
+        ),
         residual_min_prior_anchors=config.residual_min_prior_anchors,
     )
     _add_metadata(
@@ -2297,7 +2368,9 @@ def dfl_official_schedule_candidate_library_v2_frame(
             "source_model_count": library_frame.select("source_model_name").n_unique()
             if library_frame.height
             else 0,
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
             if library_frame.height
             else 0,
             "residual_min_prior_anchors": config.residual_min_prior_anchors,
@@ -2342,7 +2415,9 @@ def dfl_official_schedule_value_learner_v2_frame(
             if learner_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            "profile_names": sorted(
+                learner_frame["selected_weight_profile_name"].unique().to_list()
+            )
             if learner_frame.height
             else [],
             "scope": "dfl_official_schedule_value_learner_v2_not_full_dfl",
@@ -2376,7 +2451,9 @@ def dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame(
     strict_frame = build_dfl_schedule_value_learner_v2_strict_lp_benchmark_frame(
         dfl_official_schedule_candidate_library_v2_frame,
         dfl_official_schedule_value_learner_v2_frame,
-        generated_at=_latest_generated_at(dfl_official_schedule_candidate_library_v2_frame),
+        generated_at=_latest_generated_at(
+            dfl_official_schedule_candidate_library_v2_frame
+        ),
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
     gate = evaluate_dfl_schedule_value_learner_v2_gate(
@@ -2401,7 +2478,9 @@ def dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame(
             "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V2_STRICT_LP_STRATEGY_KIND,
             "gate_decision": gate.decision,
             "gate_description": gate.description,
-            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "scope": "dfl_official_schedule_value_learner_v2_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
@@ -2453,7 +2532,9 @@ def dfl_official_schedule_value_learner_v2_robustness_frame(
             "source_model_count": len(source_model_names),
             "validation_window_count": config.validation_window_count,
             "validation_anchor_count": config.validation_anchor_count,
-            "robust_source_model_names": gate.metrics.get("robust_source_model_names", []),
+            "robust_source_model_names": gate.metrics.get(
+                "robust_source_model_names", []
+            ),
             "gate_decision": gate.decision,
             "gate_description": gate.description,
             "production_promote": False,
@@ -2497,7 +2578,9 @@ def dfl_official_schedule_value_production_gate_frame(
         min_rolling_window_count=config.min_rolling_window_count,
         min_rolling_strict_pass_windows=config.min_rolling_strict_pass_windows,
     )
-    generated_at = _latest_generated_at(dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame)
+    generated_at = _latest_generated_at(
+        dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame
+    )
     if generated_at is None:
         generated_at = datetime.now(UTC)
     gate_frame = gate_frame.with_columns(pl.lit(generated_at).alias("generated_at"))
@@ -2510,7 +2593,9 @@ def dfl_official_schedule_value_production_gate_frame(
         {
             "rows": gate_frame.height,
             "source_model_count": len(source_model_names),
-            "promoted_source_model_names": gate.metrics.get("promoted_source_model_names", []),
+            "promoted_source_model_names": gate.metrics.get(
+                "promoted_source_model_names", []
+            ),
             "production_promote_count": gate.metrics.get("production_promote_count", 0),
             "promotion_gate_decision": gate.decision,
             "promotion_gate_description": gate.description,
@@ -2568,7 +2653,9 @@ def dfl_official_global_panel_schedule_candidate_library_frame(
             if library_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
             if library_frame.height
             else 0,
             "final_holdout_rows": library_frame.filter(
@@ -2604,7 +2691,9 @@ def dfl_official_global_panel_schedule_candidate_library_v2_frame(
 
     library_frame = build_schedule_candidate_library_v2_frame(
         dfl_official_global_panel_schedule_candidate_library_frame,
-        blend_weights=_float_csv_values(config.blend_weights_csv, field_name="blend_weights_csv"),
+        blend_weights=_float_csv_values(
+            config.blend_weights_csv, field_name="blend_weights_csv"
+        ),
         residual_min_prior_anchors=config.residual_min_prior_anchors,
     )
     _add_metadata(
@@ -2617,7 +2706,9 @@ def dfl_official_global_panel_schedule_candidate_library_v2_frame(
             "source_model_count": library_frame.select("source_model_name").n_unique()
             if library_frame.height
             else 0,
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
             if library_frame.height
             else 0,
             "residual_min_prior_anchors": config.residual_min_prior_anchors,
@@ -2677,7 +2768,9 @@ def dfl_official_global_panel_schedule_candidate_library_v2_plus_frame(
             "source_model_count": library_frame.select("source_model_name").n_unique()
             if library_frame.height
             else 0,
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
             if library_frame.height
             else 0,
             "scope": "dfl_official_global_panel_schedule_library_v2_plus_not_full_dfl",
@@ -2714,7 +2807,9 @@ def dfl_official_global_panel_schedule_value_regret_decomposition_frame(
         context,
         {
             "rows": decomposition_frame.height,
-            "failure_modes": sorted(decomposition_frame["failure_mode"].unique().to_list())
+            "failure_modes": sorted(
+                decomposition_frame["failure_mode"].unique().to_list()
+            )
             if decomposition_frame.height
             else [],
             "scope": "dfl_official_global_panel_schedule_value_regret_autopsy_not_full_dfl",
@@ -2760,7 +2855,9 @@ def dfl_official_global_panel_schedule_value_learner_v2_frame(
             if learner_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            "profile_names": sorted(
+                learner_frame["selected_weight_profile_name"].unique().to_list()
+            )
             if learner_frame.height
             else [],
             "scope": "dfl_official_global_panel_schedule_value_v2_screen_not_full_dfl",
@@ -2821,7 +2918,9 @@ def dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_fram
             "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V2_STRICT_LP_STRATEGY_KIND,
             "gate_decision": gate.decision,
             "gate_description": gate.description,
-            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "scope": (
                 "dfl_official_global_panel_schedule_value_v2_strict_gate_"
@@ -2940,7 +3039,9 @@ def dfl_official_global_panel_schedule_value_learner_v3_frame(
             if learner_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            "profile_names": sorted(
+                learner_frame["selected_weight_profile_name"].unique().to_list()
+            )
             if learner_frame.height
             else [],
             "scope": "dfl_official_global_panel_schedule_value_v3_screen_not_full_dfl",
@@ -3003,7 +3104,9 @@ def dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_fram
             "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V3_STRICT_LP_STRATEGY_KIND,
             "gate_decision": gate.decision,
             "gate_description": gate.description,
-            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "market_execution_enabled": False,
             "scope": (
@@ -3122,7 +3225,9 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark
             "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND,
             "gate_decision": gate.decision,
             "gate_description": gate.description,
-            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "market_execution_enabled": False,
             "scope": (
@@ -3883,6 +3988,309 @@ def dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame(
         medallion="gold",
         domain="dfl_research",
         elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_point_in_time_context_repair_audit_frame(
+    context,
+    dfl_official_global_panel_schedule_candidate_library_v4_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    dfl_official_global_panel_v2_v3_plateau_autopsy_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Report exact point-in-time context blockers by tenant/source/anchor."""
+
+    audit_frame = build_dfl_point_in_time_context_repair_audit_frame(
+        dfl_official_global_panel_schedule_candidate_library_v4_frame,
+        real_data_benchmark_silver_feature_frame,
+        dfl_official_global_panel_v2_v3_plateau_autopsy_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "blocker_count": audit_frame.select("blocker").n_unique()
+            if audit_frame.height
+            else 0,
+            "missing_context_rows": audit_frame.filter(
+                pl.col("blocker").str.starts_with("missing_")
+            ).height
+            if audit_frame.height
+            else 0,
+            "scope": "dfl_point_in_time_context_repair_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_point_in_time_context_feature_panel_frame(
+    context,
+    dfl_official_global_panel_schedule_candidate_library_v4_frame: pl.DataFrame,
+    dfl_point_in_time_context_repair_audit_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build prior-only Ukrainian context features for context-aware V5 selection."""
+
+    panel_frame = build_dfl_point_in_time_context_feature_panel_frame(
+        dfl_official_global_panel_schedule_candidate_library_v4_frame,
+        dfl_point_in_time_context_repair_audit_frame,
+        real_data_benchmark_silver_feature_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": panel_frame.height,
+            "selector_feature_count": len(
+                [
+                    column
+                    for column in panel_frame.columns
+                    if column.startswith("selector_feature_")
+                ]
+            ),
+            "label_count": len(
+                [
+                    column
+                    for column in panel_frame.columns
+                    if column.startswith("label_")
+                ]
+            ),
+            "scope": "dfl_point_in_time_context_feature_panel_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return panel_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_context_enriched_schedule_candidate_library_v5_frame(
+    context,
+    dfl_official_global_panel_schedule_candidate_library_v4_frame: pl.DataFrame,
+    dfl_point_in_time_context_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach point-in-time context features to V4 candidate schedules."""
+
+    library_frame = build_dfl_context_enriched_schedule_candidate_library_v5_frame(
+        dfl_official_global_panel_schedule_candidate_library_v4_frame,
+        dfl_point_in_time_context_feature_panel_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
+            if library_frame.height
+            else 0,
+            "scope": "dfl_context_enriched_schedule_candidate_library_v5_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_context_enriched_candidate_value_label_panel_v5_frame(
+    context,
+    dfl_context_enriched_schedule_candidate_library_v5_frame: pl.DataFrame,
+    dfl_point_in_time_context_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build V5 context-enriched prior features and realized value labels."""
+
+    label_panel_frame = build_dfl_context_enriched_candidate_value_label_panel_v5_frame(
+        dfl_context_enriched_schedule_candidate_library_v5_frame,
+        dfl_point_in_time_context_feature_panel_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": label_panel_frame.height,
+            "selector_feature_count": len(
+                [
+                    column
+                    for column in label_panel_frame.columns
+                    if column.startswith("selector_feature_")
+                ]
+            ),
+            "label_count": len(
+                [
+                    column
+                    for column in label_panel_frame.columns
+                    if column.startswith("label_")
+                ]
+            ),
+            "scope": "dfl_context_enriched_candidate_value_label_panel_v5_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return label_panel_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_context_enriched_candidate_value_dfl_v5_frame(
+    context,
+    config: DflContextEnrichedCandidateValueDflV5AssetConfig,
+    dfl_context_enriched_schedule_candidate_library_v5_frame: pl.DataFrame,
+    dfl_context_enriched_candidate_value_label_panel_v5_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Train context-enriched candidate-value DFL v5 with frozen V2+ fallback."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    model_frame = build_dfl_context_enriched_candidate_value_dfl_v5_frame(
+        dfl_context_enriched_schedule_candidate_library_v5_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
+        dfl_context_enriched_candidate_value_label_panel_v5_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        min_prior_mean_improvement_ratio_vs_v2_plus=(
+            config.min_prior_mean_improvement_ratio_vs_v2_plus
+        ),
+        ridge_l2=config.ridge_l2,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": model_frame.height,
+            "source_model_count": len(source_model_names),
+            "fallback_rows": model_frame.filter(pl.col("fallback_to_v2_plus")).height
+            if model_frame.height
+            else 0,
+            "scope": "dfl_context_enriched_candidate_value_dfl_v5_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return model_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame(
+    context,
+    config: DflContextEnrichedCandidateValueDflV5AssetConfig,
+    dfl_context_enriched_schedule_candidate_library_v5_frame: pl.DataFrame,
+    dfl_context_enriched_candidate_value_dfl_v5_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict-score context-enriched DFL v5 against frozen Ukrainian-only V2+."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame(
+        dfl_context_enriched_schedule_candidate_library_v5_frame,
+        dfl_context_enriched_candidate_value_dfl_v5_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_context_enriched_candidate_value_dfl_v5_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "source_model_count": len(source_model_names),
+            "strategy_kind": CONTEXT_ENRICHED_CANDIDATE_VALUE_DFL_V5_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_replacement_passed": gate.metrics.get(
+                "offline_strategy_replacement_passed",
+                False,
+            ),
+            "market_execution_enabled": False,
+            "scope": "dfl_context_enriched_candidate_value_dfl_v5_strict_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
         ml_stage="evaluation",
         evidence_scope="not_market_execution",
         backend="official_global_panel_nbeatsx",
@@ -3923,7 +4331,9 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame(
             "source_model_count": len(source_model_names),
             "validation_window_count": config.validation_window_count,
             "validation_anchor_count": config.validation_anchor_count,
-            "robust_source_model_names": gate.metrics.get("robust_source_model_names", []),
+            "robust_source_model_names": gate.metrics.get(
+                "robust_source_model_names", []
+            ),
             "gate_decision": gate.decision,
             "gate_description": gate.description,
             "production_promote": False,
@@ -4337,7 +4747,9 @@ def dfl_official_global_panel_schedule_value_learner_v2_robustness_frame(
             "source_model_count": len(source_model_names),
             "validation_window_count": config.validation_window_count,
             "validation_anchor_count": config.validation_anchor_count,
-            "robust_source_model_names": gate.metrics.get("robust_source_model_names", []),
+            "robust_source_model_names": gate.metrics.get(
+                "robust_source_model_names", []
+            ),
             "gate_decision": gate.decision,
             "gate_description": gate.description,
             "production_promote": False,
@@ -4403,7 +4815,9 @@ def dfl_official_global_panel_schedule_value_production_gate_frame(
         {
             "rows": gate_frame.height,
             "source_model_count": len(source_model_names),
-            "promoted_source_model_names": gate.metrics.get("promoted_source_model_names", []),
+            "promoted_source_model_names": gate.metrics.get(
+                "promoted_source_model_names", []
+            ),
             "production_promote_count": gate.metrics.get("production_promote_count", 0),
             "promotion_gate_decision": gate.decision,
             "promotion_gate_description": gate.description,
@@ -4445,7 +4859,9 @@ def dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
     candidate_rows = strict_frame.filter(
         pl.col("forecast_model_name").str.starts_with(f"{config.baseline_name}_")
     )
-    strict_rows = strict_frame.filter(pl.col("forecast_model_name") == "strict_similar_day")
+    strict_rows = strict_frame.filter(
+        pl.col("forecast_model_name") == "strict_similar_day"
+    )
     _add_metadata(
         context,
         {
@@ -4453,7 +4869,9 @@ def dfl_value_aware_action_classifier_strict_lp_benchmark_frame(
             "candidate_rows": candidate_rows.height,
             "strict_control_rows": strict_rows.height,
             "value_weight_scale_uah": config.value_weight_scale_uah,
-            "mean_candidate_regret_uah": candidate_rows.select("regret_uah").mean().item()
+            "mean_candidate_regret_uah": candidate_rows.select("regret_uah")
+            .mean()
+            .item()
             if candidate_rows.height
             else None,
             "mean_strict_regret_uah": strict_rows.select("regret_uah").mean().item()
@@ -4657,7 +5075,9 @@ def offline_dfl_panel_experiment_frame(
         context,
         {
             "rows": panel_frame.height,
-            "tenant_count": panel_frame.select("tenant_id").n_unique() if panel_frame.height else 0,
+            "tenant_count": panel_frame.select("tenant_id").n_unique()
+            if panel_frame.height
+            else 0,
             "model_count": panel_frame.select("forecast_model_name").n_unique()
             if panel_frame.height
             else 0,
@@ -4707,7 +5127,9 @@ def offline_dfl_panel_strict_lp_benchmark_frame(
         strict_panel_frame,
         source_model_names=source_model_names,
     )
-    v2_rows = strict_panel_frame.filter(pl.col("forecast_model_name").str.starts_with("offline_dfl_panel_v2_"))
+    v2_rows = strict_panel_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("offline_dfl_panel_v2_")
+    )
     _add_metadata(
         context,
         {
@@ -4755,7 +5177,9 @@ def offline_dfl_decision_target_panel_frame(
         final_validation_anchor_count_per_tenant=config.final_validation_anchor_count_per_tenant,
         max_train_anchors_per_tenant=config.max_train_anchors_per_tenant,
         inner_validation_fraction=config.inner_validation_fraction,
-        spread_scale_grid=_float_csv_values(config.spread_scale_grid_csv, field_name="spread_scale_grid_csv"),
+        spread_scale_grid=_float_csv_values(
+            config.spread_scale_grid_csv, field_name="spread_scale_grid_csv"
+        ),
         mean_shift_grid_uah_mwh=_float_csv_values(
             config.mean_shift_grid_uah_mwh_csv,
             field_name="mean_shift_grid_uah_mwh_csv",
@@ -4815,12 +5239,16 @@ def offline_dfl_decision_target_strict_lp_benchmark_frame(
         strict_frame,
         source_model_names=source_model_names,
     )
-    v3_rows = strict_frame.filter(pl.col("forecast_model_name").str.starts_with("offline_dfl_decision_target_v3_"))
+    v3_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("offline_dfl_decision_target_v3_")
+    )
     _add_metadata(
         context,
         {
             "rows": strict_frame.height,
-            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
             "source_model_count": len(source_model_names),
             "v3_validation_tenant_anchor_count": v3_rows.height,
             "strategy_kind": DECISION_TARGET_STRICT_LP_STRATEGY_KIND,
@@ -4936,12 +5364,16 @@ def offline_dfl_action_target_strict_lp_benchmark_frame(
         strict_frame,
         source_model_names=source_model_names,
     )
-    v4_rows = strict_frame.filter(pl.col("forecast_model_name").str.starts_with("offline_dfl_action_target_v4_"))
+    v4_rows = strict_frame.filter(
+        pl.col("forecast_model_name").str.starts_with("offline_dfl_action_target_v4_")
+    )
     _add_metadata(
         context,
         {
             "rows": strict_frame.height,
-            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
             "source_model_count": len(source_model_names),
             "v4_validation_tenant_anchor_count": v4_rows.height,
             "strategy_kind": ACTION_TARGET_STRICT_LP_STRATEGY_KIND,
@@ -4996,9 +5428,13 @@ def dfl_trajectory_value_candidate_panel_frame(
         context,
         {
             "rows": candidate_panel.height,
-            "tenant_count": candidate_panel.select("tenant_id").n_unique() if candidate_panel.height else 0,
+            "tenant_count": candidate_panel.select("tenant_id").n_unique()
+            if candidate_panel.height
+            else 0,
             "source_model_count": len(source_model_names),
-            "candidate_family_count": candidate_panel.select("candidate_family").n_unique()
+            "candidate_family_count": candidate_panel.select(
+                "candidate_family"
+            ).n_unique()
             if candidate_panel.height
             else 0,
             "scope": "dfl_trajectory_value_candidate_panel_not_full_dfl",
@@ -5039,12 +5475,18 @@ def dfl_trajectory_value_selector_frame(
         context,
         {
             "rows": selector_frame.height,
-            "tenant_count": selector_frame.select("tenant_id").n_unique() if selector_frame.height else 0,
-            "source_model_count": len(source_model_names),
-            "development_gate_rows": selector_frame.filter(pl.col("development_gate_passed")).height
+            "tenant_count": selector_frame.select("tenant_id").n_unique()
             if selector_frame.height
             else 0,
-            "production_promotion_rows": selector_frame.filter(pl.col("production_promotion_passed")).height
+            "source_model_count": len(source_model_names),
+            "development_gate_rows": selector_frame.filter(
+                pl.col("development_gate_passed")
+            ).height
+            if selector_frame.height
+            else 0,
+            "production_promotion_rows": selector_frame.filter(
+                pl.col("production_promotion_passed")
+            ).height
             if selector_frame.height
             else 0,
             "scope": "dfl_trajectory_value_selector_v1_not_full_dfl",
@@ -5085,19 +5527,25 @@ def dfl_trajectory_value_selector_strict_lp_benchmark_frame(
         min_validation_tenant_anchor_count=config.min_final_holdout_tenant_anchor_count_per_source_model,
     )
     selector_rows = strict_frame.filter(
-        pl.col("forecast_model_name").str.starts_with("dfl_trajectory_value_selector_v1_")
+        pl.col("forecast_model_name").str.starts_with(
+            "dfl_trajectory_value_selector_v1_"
+        )
     )
     _add_metadata(
         context,
         {
             "rows": strict_frame.height,
-            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
             "source_model_count": len(source_model_names),
             "selector_validation_tenant_anchor_count": selector_rows.height,
             "strategy_kind": TRAJECTORY_VALUE_SELECTOR_STRICT_LP_STRATEGY_KIND,
             "promotion_gate_decision": promotion_gate.decision,
             "promotion_gate_description": promotion_gate.description,
-            "development_gate_passed": promotion_gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": promotion_gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "scope": "dfl_trajectory_value_selector_v1_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
         },
@@ -5144,12 +5592,18 @@ def dfl_schedule_candidate_library_frame(
         context,
         {
             "rows": library_frame.height,
-            "tenant_count": library_frame.select("tenant_id").n_unique() if library_frame.height else 0,
-            "source_model_count": len(source_model_names),
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "tenant_count": library_frame.select("tenant_id").n_unique()
             if library_frame.height
             else 0,
-            "final_holdout_rows": library_frame.filter(pl.col("split_name") == "final_holdout").height
+            "source_model_count": len(source_model_names),
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
+            if library_frame.height
+            else 0,
+            "final_holdout_rows": library_frame.filter(
+                pl.col("split_name") == "final_holdout"
+            ).height
             if library_frame.height
             else 0,
             "scope": "dfl_schedule_candidate_library_not_full_dfl",
@@ -5190,9 +5644,13 @@ def dfl_trajectory_feature_ranker_frame(
         context,
         {
             "rows": ranker_frame.height,
-            "tenant_count": ranker_frame.select("tenant_id").n_unique() if ranker_frame.height else 0,
+            "tenant_count": ranker_frame.select("tenant_id").n_unique()
+            if ranker_frame.height
+            else 0,
             "source_model_count": len(source_model_names),
-            "weight_profile_count": ranker_frame.select("selected_weight_profile_name").n_unique()
+            "weight_profile_count": ranker_frame.select(
+                "selected_weight_profile_name"
+            ).n_unique()
             if ranker_frame.height
             else 0,
             "scope": "dfl_trajectory_feature_ranker_v1_not_full_dfl",
@@ -5233,19 +5691,25 @@ def dfl_trajectory_feature_ranker_strict_lp_benchmark_frame(
         min_validation_tenant_anchor_count=config.min_final_holdout_tenant_anchor_count_per_source_model,
     )
     ranker_rows = strict_frame.filter(
-        pl.col("forecast_model_name").str.starts_with("dfl_trajectory_feature_ranker_v1_")
+        pl.col("forecast_model_name").str.starts_with(
+            "dfl_trajectory_feature_ranker_v1_"
+        )
     )
     _add_metadata(
         context,
         {
             "rows": strict_frame.height,
-            "tenant_count": strict_frame.select("tenant_id").n_unique() if strict_frame.height else 0,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
             "source_model_count": len(source_model_names),
             "ranker_validation_tenant_anchor_count": ranker_rows.height,
             "strategy_kind": DFL_TRAJECTORY_FEATURE_RANKER_STRICT_LP_STRATEGY_KIND,
             "promotion_gate_decision": promotion_gate.decision,
             "promotion_gate_description": promotion_gate.description,
-            "development_gate_passed": promotion_gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": promotion_gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "scope": "dfl_trajectory_feature_ranker_v1_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
         },
@@ -5357,18 +5821,24 @@ def dfl_schedule_candidate_library_v2_frame(
 
     library_frame = build_schedule_candidate_library_v2_frame(
         dfl_schedule_candidate_library_frame,
-        blend_weights=_float_csv_values(config.blend_weights_csv, field_name="blend_weights_csv"),
+        blend_weights=_float_csv_values(
+            config.blend_weights_csv, field_name="blend_weights_csv"
+        ),
         residual_min_prior_anchors=config.residual_min_prior_anchors,
     )
     _add_metadata(
         context,
         {
             "rows": library_frame.height,
-            "tenant_count": library_frame.select("tenant_id").n_unique() if library_frame.height else 0,
+            "tenant_count": library_frame.select("tenant_id").n_unique()
+            if library_frame.height
+            else 0,
             "source_model_count": library_frame.select("source_model_name").n_unique()
             if library_frame.height
             else 0,
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
             if library_frame.height
             else 0,
             "residual_min_prior_anchors": config.residual_min_prior_anchors,
@@ -5425,7 +5895,9 @@ def dfl_schedule_candidate_library_v2_plus_frame(
             "source_model_count": library_frame.select("source_model_name").n_unique()
             if library_frame.height
             else 0,
-            "candidate_family_count": library_frame.select("candidate_family").n_unique()
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
             if library_frame.height
             else 0,
             "scope": "dfl_schedule_candidate_library_v2_plus_not_full_dfl",
@@ -5505,12 +5977,15 @@ def dfl_strict_baseline_autopsy_frame(
         context,
         {
             "rows": autopsy_frame.height,
-            "tenant_count": autopsy_frame.select("tenant_id").n_unique() if autopsy_frame.height else 0,
+            "tenant_count": autopsy_frame.select("tenant_id").n_unique()
+            if autopsy_frame.height
+            else 0,
             "source_model_count": autopsy_frame.select("source_model_name").n_unique()
             if autopsy_frame.height
             else 0,
             "strict_failure_opportunity_rows": autopsy_frame.filter(
-                pl.col("recommended_next_action") == "train_selector_to_detect_strict_failure"
+                pl.col("recommended_next_action")
+                == "train_selector_to_detect_strict_failure"
             ).height
             if autopsy_frame.height
             else 0,
@@ -5564,7 +6039,9 @@ def dfl_strict_failure_selector_frame(
             if selector_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "final_switch_count": selector_frame.select("final_switch_count").sum().item()
+            "final_switch_count": selector_frame.select("final_switch_count")
+            .sum()
+            .item()
             if selector_frame.height
             else 0,
             "min_prior_anchor_count": config.min_prior_anchor_count,
@@ -5781,7 +6258,9 @@ def dfl_strict_failure_feature_audit_frame(
             "window_count": audit_frame.select("window_index").n_unique()
             if audit_frame.height
             else 0,
-            "failure_clusters": sorted(audit_frame["failure_cluster"].unique().to_list())
+            "failure_clusters": sorted(
+                audit_frame["failure_cluster"].unique().to_list()
+            )
             if audit_frame.height
             else [],
             "scope": "strict_failure_feature_audit_not_full_dfl",
@@ -5841,7 +6320,9 @@ def dfl_feature_aware_strict_failure_selector_frame(
             if selector_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "final_switch_count": selector_frame.select("final_switch_count").sum().item()
+            "final_switch_count": selector_frame.select("final_switch_count")
+            .sum()
+            .item()
             if selector_frame.height
             else 0,
             "scope": "dfl_feature_aware_strict_failure_selector_v2_not_full_dfl",
@@ -5872,11 +6353,13 @@ def dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
     """Strict LP/oracle rows for the feature-aware strict-failure selector."""
 
     source_model_names = _forecast_model_names(config.forecast_model_names_csv)
-    strict_frame = build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
-        dfl_schedule_candidate_library_v2_frame,
-        dfl_feature_aware_strict_failure_selector_frame,
-        dfl_strict_failure_prior_feature_panel_frame,
-        generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+    strict_frame = (
+        build_dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
+            dfl_schedule_candidate_library_v2_frame,
+            dfl_feature_aware_strict_failure_selector_frame,
+            dfl_strict_failure_prior_feature_panel_frame,
+            generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
+        )
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
     promotion_gate = evaluate_dfl_feature_aware_strict_failure_selector_gate(
@@ -5887,7 +6370,9 @@ def dfl_feature_aware_strict_failure_selector_strict_lp_benchmark_frame(
         ),
     )
     selector_rows = strict_frame.filter(
-        pl.col("forecast_model_name").str.starts_with("dfl_feature_aware_strict_failure_selector_v2_")
+        pl.col("forecast_model_name").str.starts_with(
+            "dfl_feature_aware_strict_failure_selector_v2_"
+        )
     )
     _add_metadata(
         context,
@@ -5946,10 +6431,14 @@ def dfl_regime_gated_tft_selector_v2_frame(
         {
             "rows": selector_frame.height,
             "source_model_count": len(source_model_names),
-            "allow_challenger_rows": selector_frame.filter(pl.col("allow_challenger")).height
+            "allow_challenger_rows": selector_frame.filter(
+                pl.col("allow_challenger")
+            ).height
             if selector_frame.height
             else 0,
-            "strict_default_rows": selector_frame.filter(~pl.col("allow_challenger")).height
+            "strict_default_rows": selector_frame.filter(
+                ~pl.col("allow_challenger")
+            ).height
             if selector_frame.height
             else 0,
             "scope": "dfl_regime_gated_tft_selector_v2_not_full_dfl",
@@ -5994,7 +6483,9 @@ def dfl_regime_gated_tft_selector_v2_strict_lp_benchmark_frame(
         source_model_names=source_model_names,
     )
     selector_rows = strict_frame.filter(
-        pl.col("forecast_model_name").str.starts_with("dfl_regime_gated_tft_selector_v2_")
+        pl.col("forecast_model_name").str.starts_with(
+            "dfl_regime_gated_tft_selector_v2_"
+        )
     )
     _add_metadata(
         context,
@@ -6053,7 +6544,9 @@ def dfl_forecast_dfl_v1_panel_frame(
             if panel_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "final_validation_anchor_count": panel_frame.select(pl.sum("final_validation_anchor_count")).item()
+            "final_validation_anchor_count": panel_frame.select(
+                pl.sum("final_validation_anchor_count")
+            ).item()
             if panel_frame.height
             else 0,
             "scope": "dfl_forecast_decision_loss_v1_not_full_dfl",
@@ -6372,7 +6865,9 @@ def dfl_residual_dt_fallback_strict_lp_benchmark_frame(
         generated_at=_latest_generated_at(dfl_schedule_candidate_library_v2_frame),
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
-    source_model_names = tuple(sorted(strict_frame["source_model_name"].unique().to_list()))
+    source_model_names = tuple(
+        sorted(strict_frame["source_model_name"].unique().to_list())
+    )
     promotion_gate = evaluate_dfl_residual_dt_fallback_gate(
         strict_frame,
         source_model_names=source_model_names,
@@ -6393,7 +6888,9 @@ def dfl_residual_dt_fallback_strict_lp_benchmark_frame(
             "strategy_kind": DFL_RESIDUAL_DT_FALLBACK_STRICT_LP_STRATEGY_KIND,
             "promotion_gate_decision": promotion_gate.decision,
             "promotion_gate_description": promotion_gate.description,
-            "production_promote": promotion_gate.metrics.get("production_promote", False),
+            "production_promote": promotion_gate.metrics.get(
+                "production_promote", False
+            ),
             "scope": "dfl_residual_dt_fallback_v1_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
         },
@@ -6450,7 +6947,9 @@ def dfl_source_specific_research_challenger_frame(
                 "latest_signal_source_model_names",
                 [],
             ),
-            "robust_source_model_names": gate.metrics.get("robust_source_model_names", []),
+            "robust_source_model_names": gate.metrics.get(
+                "robust_source_model_names", []
+            ),
             "gate_decision": gate.decision,
             "gate_description": gate.description,
             "production_promote": False,
@@ -6497,7 +6996,9 @@ def dfl_schedule_value_learner_v2_frame(
             if learner_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            "profile_names": sorted(
+                learner_frame["selected_weight_profile_name"].unique().to_list()
+            )
             if learner_frame.height
             else [],
             "scope": "dfl_schedule_value_learner_v2_not_full_dfl",
@@ -6555,7 +7056,9 @@ def dfl_schedule_value_learner_v2_strict_lp_benchmark_frame(
             "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V2_STRICT_LP_STRATEGY_KIND,
             "gate_decision": gate.decision,
             "gate_description": gate.description,
-            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "scope": "dfl_schedule_value_learner_v2_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
@@ -6590,7 +7093,9 @@ def dfl_schedule_value_regret_decomposition_frame(
         context,
         {
             "rows": decomposition_frame.height,
-            "failure_modes": sorted(decomposition_frame["failure_mode"].unique().to_list())
+            "failure_modes": sorted(
+                decomposition_frame["failure_mode"].unique().to_list()
+            )
             if decomposition_frame.height
             else [],
             "scope": "dfl_schedule_value_regret_decomposition_not_full_dfl",
@@ -6703,7 +7208,9 @@ def dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
             "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND,
             "gate_decision": gate.decision,
             "gate_description": gate.description,
-            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "market_execution_enabled": False,
             "scope": "dfl_schedule_value_learner_v2_plus_strict_lp_gate_not_full_dfl",
@@ -6750,7 +7257,9 @@ def dfl_schedule_value_learner_v3_frame(
             if learner_frame.height
             else 0,
             "source_model_count": len(source_model_names),
-            "profile_names": sorted(learner_frame["selected_weight_profile_name"].unique().to_list())
+            "profile_names": sorted(
+                learner_frame["selected_weight_profile_name"].unique().to_list()
+            )
             if learner_frame.height
             else [],
             "scope": "dfl_schedule_value_learner_v3_not_full_dfl",
@@ -6810,7 +7319,9 @@ def dfl_schedule_value_learner_v3_strict_lp_benchmark_frame(
             "strategy_kind": DFL_SCHEDULE_VALUE_LEARNER_V3_STRICT_LP_STRATEGY_KIND,
             "gate_decision": gate.decision,
             "gate_description": gate.description,
-            "development_gate_passed": gate.metrics.get("development_gate_passed", False),
+            "development_gate_passed": gate.metrics.get(
+                "development_gate_passed", False
+            ),
             "production_gate_passed": gate.metrics.get("production_gate_passed", False),
             "market_execution_enabled": False,
             "scope": "dfl_schedule_value_learner_v3_strict_lp_gate_not_full_dfl",
@@ -6913,8 +7424,12 @@ def regret_weighted_forecast_calibration_frame(
         context,
         {
             "rows": calibration_frame.height,
-            "tenant_count": calibration_frame.select("tenant_id").n_unique() if calibration_frame.height else 0,
-            "source_model_count": calibration_frame.select("source_forecast_model_name").n_unique()
+            "tenant_count": calibration_frame.select("tenant_id").n_unique()
+            if calibration_frame.height
+            else 0,
+            "source_model_count": calibration_frame.select(
+                "source_forecast_model_name"
+            ).n_unique()
             if calibration_frame.height
             else 0,
             "scope": "regret_weighted_forecast_calibration_not_full_dfl",
@@ -6950,9 +7465,15 @@ def regret_weighted_forecast_strategy_benchmark_frame(
         context,
         {
             "rows": benchmark_frame.height,
-            "tenant_count": benchmark_frame.select("tenant_id").n_unique() if benchmark_frame.height else 0,
-            "anchor_count": benchmark_frame.select("anchor_timestamp").n_unique() if benchmark_frame.height else 0,
-            "model_count": benchmark_frame.select("forecast_model_name").n_unique() if benchmark_frame.height else 0,
+            "tenant_count": benchmark_frame.select("tenant_id").n_unique()
+            if benchmark_frame.height
+            else 0,
+            "anchor_count": benchmark_frame.select("anchor_timestamp").n_unique()
+            if benchmark_frame.height
+            else 0,
+            "model_count": benchmark_frame.select("forecast_model_name").n_unique()
+            if benchmark_frame.height
+            else 0,
             "strategy_kind": REGRET_WEIGHTED_CALIBRATION_STRATEGY_KIND,
             "scope": "regret_weighted_forecast_calibration_benchmark_not_full_dfl",
         },
@@ -6992,7 +7513,9 @@ def horizon_regret_weighted_forecast_calibration_frame(
             "tenant_count": calibration_frame.select("tenant_id").n_unique()
             if calibration_frame.height
             else 0,
-            "source_model_count": calibration_frame.select("source_forecast_model_name").n_unique()
+            "source_model_count": calibration_frame.select(
+                "source_forecast_model_name"
+            ).n_unique()
             if calibration_frame.height
             else 0,
             "scope": "horizon_regret_weighted_forecast_calibration_not_full_dfl",
@@ -7028,7 +7551,9 @@ def horizon_regret_weighted_forecast_strategy_benchmark_frame(
         context,
         {
             "rows": benchmark_frame.height,
-            "tenant_count": benchmark_frame.select("tenant_id").n_unique() if benchmark_frame.height else 0,
+            "tenant_count": benchmark_frame.select("tenant_id").n_unique()
+            if benchmark_frame.height
+            else 0,
             "anchor_count": benchmark_frame.select("anchor_timestamp").n_unique()
             if benchmark_frame.height
             else 0,
@@ -7275,6 +7800,12 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_candidate_value_label_panel_v4_frame,
     dfl_official_global_panel_candidate_value_dfl_v4_frame,
     dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame,
+    dfl_point_in_time_context_repair_audit_frame,
+    dfl_point_in_time_context_feature_panel_frame,
+    dfl_context_enriched_schedule_candidate_library_v5_frame,
+    dfl_context_enriched_candidate_value_label_panel_v5_frame,
+    dfl_context_enriched_candidate_value_dfl_v5_frame,
+    dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,
     dfl_official_global_panel_v2_plus_trajectory_dataset_frame,
     dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame,
@@ -7294,7 +7825,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
 ]
 
 
-def _add_metadata(context: dg.AssetExecutionContext | None, metadata: dict[str, Any]) -> None:
+def _add_metadata(
+    context: dg.AssetExecutionContext | None, metadata: dict[str, Any]
+) -> None:
     if context is not None:
         context.add_output_metadata(metadata)
 
@@ -7323,7 +7856,9 @@ def _concat_feature_candidate_frames(
             primary_frame = primary_frame.with_columns(pl.lit(None).alias(column_name))
     for column_name in primary_frame.columns:
         if column_name not in optional_frame.columns:
-            optional_frame = optional_frame.with_columns(pl.lit(None).alias(column_name))
+            optional_frame = optional_frame.with_columns(
+                pl.lit(None).alias(column_name)
+            )
     return pl.concat(
         [
             primary_frame.select(optional_frame.columns),
@@ -7419,17 +7954,13 @@ def _log_mlflow_summary(
 
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
-    summary = (
-        benchmark_frame
-        .group_by("forecast_model_name")
-        .agg(
-            [
-                pl.len().alias("rows"),
-                pl.mean("regret_uah").alias("mean_regret_uah"),
-                pl.median("regret_uah").alias("median_regret_uah"),
-                pl.mean("decision_value_uah").alias("mean_decision_value_uah"),
-            ]
-        )
+    summary = benchmark_frame.group_by("forecast_model_name").agg(
+        [
+            pl.len().alias("rows"),
+            pl.mean("regret_uah").alias("mean_regret_uah"),
+            pl.median("regret_uah").alias("median_regret_uah"),
+            pl.mean("decision_value_uah").alias("mean_decision_value_uah"),
+        ]
     )
     with mlflow.start_run(run_name=strategy_kind):
         mlflow.set_tags(
@@ -7439,9 +7970,17 @@ def _log_mlflow_summary(
             }
         )
         mlflow.log_metric("rows", benchmark_frame.height)
-        mlflow.log_metric("tenant_count", benchmark_frame.select("tenant_id").n_unique())
-        mlflow.log_metric("anchor_count", benchmark_frame.select("anchor_timestamp").n_unique())
+        mlflow.log_metric(
+            "tenant_count", benchmark_frame.select("tenant_id").n_unique()
+        )
+        mlflow.log_metric(
+            "anchor_count", benchmark_frame.select("anchor_timestamp").n_unique()
+        )
         for row in summary.iter_rows(named=True):
             model_name = str(row["forecast_model_name"]).replace("-", "_")
-            mlflow.log_metric(f"{model_name}_mean_regret_uah", float(row["mean_regret_uah"]))
-            mlflow.log_metric(f"{model_name}_median_regret_uah", float(row["median_regret_uah"]))
+            mlflow.log_metric(
+                f"{model_name}_mean_regret_uah", float(row["mean_regret_uah"])
+            )
+            mlflow.log_metric(
+                f"{model_name}_median_regret_uah", float(row["median_regret_uah"])
+            )
