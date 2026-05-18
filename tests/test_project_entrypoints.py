@@ -194,6 +194,20 @@ def test_v2_plus_dfl_dt_bridge_packet_cli_exports_negative_evidence() -> None:
     assert "negative_evidence" in export_script
 
 
+def test_tft_quantile_screen_packet_cli_exports_blocked_screen_evidence() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_tft_quantile_screen_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--raw-strict-frame-pickle" in export_script
+    assert "--candidate-library-pickle" in export_script
+    assert "--augmented-gate-frame-pickle" in export_script
+    assert "--asset-check-status" in export_script
+    assert "build_dfl_tft_quantile_screen_packet" in export_script
+    assert "write_dfl_tft_quantile_screen_packet" in export_script
+    assert "gate_blockers" in export_script
+
+
 def test_entsoe_poland_governance_ablation_runner_exports_packet() -> None:
     runner_script = (
         PROJECT_ROOT / "scripts" / "run-entsoe-poland-governance-ablation.ps1"

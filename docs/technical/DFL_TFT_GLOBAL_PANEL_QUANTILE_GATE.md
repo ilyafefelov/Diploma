@@ -104,6 +104,47 @@ frozen Ukrainian-only NBEATSx V2+ comparator. The next TFT attempt should use a
 larger prior+holdout run and richer context, not a claim that this screen is a
 failed full TFT schedule/value experiment.
 
+Local packet:
+`data/research_runs/week3_tft_quantile_latest18_screen/`.
+
+## Prior+Holdout Screen: 2026-05-18
+
+The second bounded host-CUDA screen used 36 anchors: 18 prior/train-selection
+anchors plus the latest 18 final-holdout anchors. It used the same conservative
+local GPU settings (`tft_max_steps=8`, batch size 8, hidden size 8) and
+materialized the full TFT-augmented V2+ gate.
+
+Raw strict LP/oracle rows across all 36 anchors:
+
+| Source | Rows | Mean regret UAH | Median regret UAH |
+|---|---:|---:|---:|
+| `strict_similar_day` | 180 | 578.94 | 312.76 |
+| `tft_official_global_panel_p10_v1` | 180 | 3158.21 | 2717.61 |
+| `tft_official_global_panel_v1` | 180 | 2991.32 | 2485.08 |
+| `tft_official_global_panel_p90_v1` | 180 | 2997.03 | 2565.38 |
+
+Final-holdout schedule/value gate rows:
+
+| Source | Selection role | Mean regret UAH | Median regret UAH |
+|---|---|---:|---:|
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | V2+ | 174.77 | 67.30 |
+| `nbeatsx_official_global_panel_v1` | V2+ | 193.36 | 68.89 |
+| `tft_official_global_panel_p10_v1` | V2+ | 337.74 | 244.92 |
+| `tft_official_global_panel_v1` | V2+ | 337.74 | 244.92 |
+| `tft_official_global_panel_p90_v1` | V2+ | 337.74 | 244.92 |
+| `strict_similar_day` | strict reference | 310.58 | 198.39 |
+
+The 36-anchor screen closes the missing-train-row caveat from the latest-18
+screen. TFT now had prior/train anchors, the gate materialized, and the result
+still did not beat frozen Ukrainian-only V2+. The TFT schedule/value selector
+improved strongly over raw TFT, but the final TFT V2+ regret remained worse than
+both `strict_similar_day` and NBEATSx V2+. This is negative evidence for the
+current small global-panel TFT configuration, not a general claim that TFT cannot
+work with richer context or longer training.
+
+Local packet:
+`data/research_runs/week3_tft_quantile_36_anchor_prior_holdout_screen/`.
+
 ## Materialization
 
 Screen the latest anchors before attempting a full 365-anchor run:
