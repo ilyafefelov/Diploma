@@ -40,6 +40,8 @@ than raw forecast MAE or hourly action accuracy.
 | `dfl_official_global_panel_schedule_*_v2_plus_*` | Official global-panel mirrors for the 365-anchor NBEATSx evidence lane. |
 | `entsoe_neighbor_market_aligned_feature_panel_frame` | Poland-first neighbor-market feature alignment lane. Rows remain research/governance evidence until the route approves them for training. |
 | `dfl_market_coupling_v2_plus_ablation_frame` | Compares Ukrainian-only V2+ against a future Ukrainian-plus-governed-neighbor V2+ route, or emits `blocked_by_governance` without training B. |
+| `tft_official_global_panel_rolling_strict_lp_benchmark_frame` | Additive official global-panel TFT parity lane that strict-scores p10/p50/p90 quantile forecasts. |
+| `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame` | Compares frozen NBEATSx V2+ against TFT quantile schedule/value candidates under the unchanged strict LP/oracle gate. |
 
 Tracked config:
 [real_data_official_global_panel_schedule_value_v2_plus_week3.yaml](../../configs/real_data_official_global_panel_schedule_value_v2_plus_week3.yaml).
@@ -49,6 +51,9 @@ Rolling robustness config:
 
 Governed market-coupling ablation config:
 [real_data_dfl_market_coupling_ablation_week3.yaml](../../configs/real_data_dfl_market_coupling_ablation_week3.yaml).
+
+TFT parity/quantile gate config:
+[real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml](../../configs/real_data_official_global_panel_tft_quantile_schedule_value_week3.yaml).
 
 ## Candidate Library V2+
 
@@ -165,3 +170,23 @@ only after `official_forecast_exogenous_feature_route_frame` marks those columns
 `ablation_status=blocked_by_governance` and `did_train_market_coupled_variant=false`.
 The detailed gate is documented in
 [DFL_MARKET_COUPLING_ABLATION_V1.md](DFL_MARKET_COUPLING_ABLATION_V1.md).
+
+## TFT Quantile Parity Lane
+
+V2+ remains the frozen Ukrainian-only comparator, but TFT now has a fair
+additive path that mirrors the official global-panel treatment instead of
+repeating isolated per-tenant retraining. The new lane trains one official TFT
+over the five-tenant panel, preserves tenant `unique_id`, emits p10/p50/p90
+quantile forecasts, and routes those quantiles into schedule/value candidate
+generation.
+
+The lane is evaluated as a schedule/value contributor, not as a raw-forecast
+promotion. TFT can replace V2+ only if strict LP/oracle scoring improves mean
+regret versus calibrated V2+, avoids median degradation, preserves rolling
+robustness, and keeps `market_execution_enabled=false`. Otherwise the result is
+still useful evidence: either TFT contributes complementary schedules to a
+combined NBEATSx+TFT selector, or it confirms that the current Ukrainian-only
+feature space still favors V2+.
+
+Runbook:
+[DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md](DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md).

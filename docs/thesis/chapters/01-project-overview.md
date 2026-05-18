@@ -39,9 +39,9 @@ Battery energy storage systems (BESS) стають ключовим елемен
 
 Цей рівень є навмисно обмеженим. Його завдання — не продемонструвати «найрозумнішу» модель, а створити стабільний контрольний контур, який можна тестувати, пояснювати і порівнювати з майбутньою Target Strategy.
 
-Пізніший evidence-cycle змінив силу цього твердження. Початковий ризик synthetic/demo-oriented market-weather шару був коректним методологічним застереженням, але для основного research contour тепер сформовано source-backed Ukrainian DAM benchmark: observed OREE DAM, Open-Meteo/weather context, tenant configuration/load context, rolling-origin evaluation та strict LP/oracle scoring. На цьому шарі official global-panel NBEATSx schedule/value learner пройшов вузьку **Offline Strategy Promotion** на 365-anchor Ukrainian panel, причому `strict_similar_day` лишається fallback, а market execution залишається вимкненим.
+Пізніший evidence-cycle змінив силу цього твердження. Початковий ризик synthetic/demo-oriented market-weather шару був коректним методологічним застереженням, але для основного research contour тепер сформовано source-backed Ukrainian DAM benchmark: observed OREE DAM, Open-Meteo/weather context, tenant configuration/load context, rolling-origin evaluation та strict LP/oracle scoring. На цьому шарі official global-panel NBEATSx schedule/value learner пройшов вузьку **Offline Strategy Promotion** на 365-anchor Ukrainian panel, причому `strict_similar_day` лишається fallback, а ринкове виконання залишається вимкненим.
 
-Отже, поточна академічна межа формулюється так: диплом уже має відтворюваний observed-data evidence path для offline/read-model strategy evidence, але ще не заявляє live trading, dashboard/API default switching, deployed Decision Transformer або використання European market-coupling rows як training inputs.
+Отже, поточна академічна межа формулюється так: диплом уже має відтворюваний observed-data evidence path для offline/read-model strategy evidence, але ще не заявляє ринкову торгівлю в реальному часі, автоматичне перемикання dashboard/API на нову strategy, розгорнутий Decision Transformer або використання European market-coupling rows як training inputs.
 
 ## 1.5. Поточний demo-stage: operator-facing MVP
 
@@ -59,7 +59,7 @@ Battery energy storage systems (BESS) стають ключовим елемен
 
 Для current demo-profile цей penalty параметризується як public-source capex-throughput proxy, а не як довільна локальна константа: `210 USD/kWh` з видимого capex anchor у Grimaldi et al., `15-year lifetime` і `~1 cycle/day` з NREL ATB та курс НБУ `43.9129 UAH/USD` на `04.05.2026`. Для demo battery `10 MWh` це дає `16,843.3 UAH/cycle`, тобто `842.2 UAH/MWh throughput`.
 
-Критично важливо, що demo-stage не видається за повний market execution engine. Поточна dashboard-поверхня демонструє recommendation preview та operator review, але не претендує на завершену реалізацію `Proposed Bid`, `Cleared Trade` або `Dispatch Command`.
+Критично важливо, що demo-stage не видається за повний механізм ринкового виконання. Поточна dashboard-поверхня демонструє recommendation preview та operator review, але не претендує на завершену реалізацію `Proposed Bid`, `Cleared Trade` або `Dispatch Command`.
 
 ## 1.6. Фінальна planned version
 
@@ -87,13 +87,36 @@ Battery energy storage systems (BESS) стають ключовим елемен
 
 В академічному позиціюванні важливо підкреслити, що предметом диплома є не сам MCP. MCP/agent tooling тут — допоміжна інженерна інфраструктура, яка підтримує процес розробки, але не становить головної наукової новизни роботи.
 
-## 1.8. Як цей проєкт співвідноситься з дипломом
+## 1.8. Роль FastAPI як read-model інтерфейсу
+
+FastAPI-шар у цій роботі виконує роль інженерного інтерфейсу між
+ML/Dagster pipeline та операторськими read models. Він не є окремим
+стратегічним рушієм і не виконує ринкові заявки. Його завдання полягає в тому, щоб
+надати перевірювані контракти для tenant context, weather/materialization
+control, telemetry state, baseline LP preview, forecast evidence, DFL/DT
+research evidence та operator recommendation preview.
+
+У такій архітектурі API є способом подання результатів і стану системи, а не
+джерелом нової стратегії. Рішення про якість ML/DFL-кандидатів приймається в
+Dagster/Postgres/evidence pipeline через rolling-origin evaluation,
+LP/oracle regret та promotion gates. API лише публікує ці результати у
+контрольованій формі для operator-facing та defense-facing сценаріїв.
+
+```mermaid
+flowchart LR
+  A["Dagster assets and checks"] --> B["Postgres/read stores"]
+  B --> C["FastAPI read-model contracts"]
+  C --> D["Operator and defense surfaces"]
+  C --> E["Evidence review and thesis demo"]
+```
+
+## 1.9. Як цей проєкт співвідноситься з дипломом
 
 Для дипломної роботи цей проєкт цінний з кількох причин. По-перше, він має чітку прикладну проблему і реалістичний engineering contour. По-друге, він містить природну дослідницьку прогалину між baseline-рішенням і decision-focused target architecture. По-третє, він дозволяє поетапно демонструвати прогрес: спочатку концепцію і baseline, далі demo-stage operator surface, а потім перехід до learned strategy.
 
 Отже, диплом не зводиться до «дашборду для батареї» і не зводиться до «чергової ML-моделі». Його змістовне ядро — це побудова відтворюваної архітектури автономного енергоарбітражу, у якій baseline, operator demo і фінальна DFL-траєкторія пов’язані в один логічний контур.
 
-## 1.9. Перехід до огляду літератури
+## 1.10. Перехід до огляду літератури
 
 Щоб обґрунтувати такий вибір архітектури, потрібно окремо розглянути state of the art у forecasting, optimization, degradation-aware economics, DFL та інженерній оркестрації. Саме це робиться в [02-literature-review.md](./02-literature-review.md), де пояснюється, чому поточна поетапна логіка розвитку системи є дослідницьки та інженерно виправданою.
 

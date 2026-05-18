@@ -2722,3 +2722,33 @@ Tracked implementation:
 - `dfl_context_enriched_candidate_value_dfl_v5_frame`;
 - `dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame`;
 - [DFL_POINT_IN_TIME_CONTEXT_REPAIR.md](DFL_POINT_IN_TIME_CONTEXT_REPAIR.md).
+
+## TFT Global-Panel Quantile Schedule/Value Gate
+
+The next TFT slice is implemented as a parity path, not as a claim that raw TFT
+should replace the current V2+ headline. Earlier compact TFT evidence had useful
+latest-window signals but failed rolling robustness. The new lane therefore gives
+TFT the same decision-value treatment that made official global-panel NBEATSx
+V2+ strong:
+
+- train one official TFT over the five-tenant panel;
+- keep p10, p50, and p90 quantile forecasts as separate schedule sources;
+- calibrate horizon/quantile rows using prior anchors only;
+- route TFT quantile schedules into the same strict schedule/value gate;
+- compare against Ukrainian-only calibrated V2+ at `174.77` UAH mean regret and
+  `4 / 4` rolling windows.
+
+Tracked implementation:
+
+- `tft_official_global_panel_rolling_strict_lp_benchmark_frame`;
+- `tft_official_global_panel_horizon_quantile_calibration_frame`;
+- `dfl_tft_quantile_schedule_candidate_library_frame`;
+- `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame`;
+- `dfl_tft_augmented_v2_plus_evidence`;
+- [DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md](DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md).
+
+Decision rule: TFT alone, or the combined NBEATSx+TFT candidate selector, can
+become the next headline only if it beats frozen V2+ mean regret, does not
+worsen median regret, preserves rolling robustness, and keeps
+`market_execution_enabled=false`. No Poland/ENTSO-E feature is routed into this
+TFT run.
