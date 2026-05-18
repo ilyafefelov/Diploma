@@ -10,10 +10,17 @@ from smart_arbitrage.strategy.official_global_panel import (
     OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND,
+    OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
     build_official_global_panel_nbeatsx_horizon_calibration_frame,
     build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
+    build_official_global_panel_tft_horizon_quantile_calibration_frame,
+    build_official_global_panel_tft_rolling_strict_lp_benchmark_frame,
+    build_official_global_panel_tft_strict_lp_benchmark_frame,
 )
 
 
@@ -249,6 +256,126 @@ def test_global_panel_nbeatsx_rolling_benchmark_slices_resumable_anchor_batches(
     assert result.select("anchor_timestamp").n_unique() == 2
 
 
+def test_global_panel_tft_strict_lp_benchmark_scores_quantile_sources() -> None:
+    silver_frame = _silver_frame()
+    forecast_frame = _global_panel_tft_forecast_frame(anchor_timestamp=datetime(2026, 1, 10, 23))
+
+    result = build_official_global_panel_tft_strict_lp_benchmark_frame(
+        silver_frame,
+        forecast_frame,
+        tenant_ids=(TENANT_ID,),
+        generated_at=GENERATED_AT,
+    )
+
+    assert set(result["forecast_model_name"].to_list()) == {
+        "strict_similar_day",
+        OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    }
+    assert result.select("strategy_kind").to_series().unique().to_list() == [
+        OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND
+    ]
+    p50_payload = result.filter(
+        pl.col("forecast_model_name") == OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME
+    ).row(0, named=True)["evaluation_payload"]
+    assert p50_payload["claim_scope"] == "official_global_panel_tft_quantile_strict_lp_not_full_dfl"
+    assert p50_payload["source_quantile"] == "p50"
+    assert p50_payload["not_full_dfl"] is True
+    assert p50_payload["not_market_execution"] is True
+
+
+def test_global_panel_tft_rolling_benchmark_trains_once_per_anchor_across_tenants() -> None:
+    silver_frame = _silver_frame(tenant_ids=(TENANT_ID, SECOND_TENANT_ID), day_count=14)
+    builder_calls: list[pl.DataFrame] = []
+
+    def fake_tft_builder(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        builder_calls.append(training_frame)
+        assert kwargs["max_epochs"] == 2
+        assert kwargs["max_steps"] == 7
+        forecast_rows = (
+            training_frame
+            .filter(pl.col("is_forecast"))
+            .select(["unique_id", "ds"])
+            .sort(["unique_id", "ds"])
+        )
+        return _global_panel_tft_forecast_from_rows(forecast_rows)
+
+    result = build_official_global_panel_tft_rolling_strict_lp_benchmark_frame(
+        silver_frame,
+        tenant_ids=(TENANT_ID, SECOND_TENANT_ID),
+        max_eval_windows=2,
+        horizon_hours=24,
+        tft_max_epochs=2,
+        tft_max_steps=7,
+        generated_at=GENERATED_AT,
+        tft_builder=fake_tft_builder,
+    )
+
+    assert len(builder_calls) == 2
+    assert set(result["strategy_kind"].to_list()) == {
+        OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND
+    }
+    assert result.select("anchor_timestamp").n_unique() == 2
+    assert set(result["tenant_id"].to_list()) == {TENANT_ID, SECOND_TENANT_ID}
+    assert set(result["forecast_model_name"].to_list()) == {
+        "strict_similar_day",
+        OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    }
+
+
+def test_global_panel_tft_quantile_calibration_uses_prior_anchors_only() -> None:
+    first_anchor = datetime(2026, 1, 10, 23)
+    source_rows = []
+    for index in range(5):
+        anchor = first_anchor + timedelta(days=index)
+        source_rows.extend(
+            [
+                _evaluation_row(
+                    anchor,
+                    model_name=OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+                    forecast_prices=[800.0, 900.0],
+                    actual_prices=[1000.0 if index < 4 else 7000.0, 1000.0],
+                ),
+                _evaluation_row(
+                    anchor,
+                    model_name=OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+                    forecast_prices=[1000.0, 1100.0],
+                    actual_prices=[1200.0 if index < 4 else 7000.0, 1000.0],
+                ),
+                _evaluation_row(
+                    anchor,
+                    model_name=OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+                    forecast_prices=[1200.0, 1300.0],
+                    actual_prices=[1400.0 if index < 4 else 7000.0, 1000.0],
+                ),
+            ]
+        )
+
+    calibration = build_official_global_panel_tft_horizon_quantile_calibration_frame(
+        pl.DataFrame(source_rows),
+        min_prior_anchors=2,
+        rolling_calibration_window_anchors=3,
+    )
+
+    latest_p50 = calibration.filter(
+        (pl.col("anchor_timestamp") == first_anchor + timedelta(days=4))
+        & (pl.col("source_forecast_model_name") == OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME)
+    ).row(0, named=True)
+    first_p50 = calibration.filter(
+        (pl.col("anchor_timestamp") == first_anchor)
+        & (pl.col("source_forecast_model_name") == OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME)
+    ).row(0, named=True)
+
+    assert latest_p50["source_quantile"] == "p50"
+    assert latest_p50["calibration_status"] == "calibrated"
+    assert latest_p50["horizon_biases_uah_mwh"] == pytest.approx([200.0, -100.0])
+    assert latest_p50["quantile_spread_scale"] == pytest.approx(1.0)
+    assert first_p50["calibration_status"] == "insufficient_prior_history"
+
+
 def _silver_frame(
     *,
     tenant_ids: tuple[str, ...] = (TENANT_ID,),
@@ -292,6 +419,50 @@ def _global_panel_forecast_frame(*, anchor_timestamp: datetime) -> pl.DataFrame:
             "training_rows": [200] * 24,
             "horizon_rows": [24] * 24,
             "adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * 24,
+        }
+    )
+
+
+def _global_panel_tft_forecast_frame(*, anchor_timestamp: datetime) -> pl.DataFrame:
+    timestamps = [anchor_timestamp + timedelta(hours=index + 1) for index in range(24)]
+    return pl.DataFrame(
+        {
+            "model_name": [OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME] * 24,
+            "model_family": ["TFT"] * 24,
+            "backend_name": ["pytorch_forecasting"] * 24,
+            "backend_status": ["trained"] * 24,
+            "unique_id": [f"{TENANT_ID}:DAM"] * 24,
+            "forecast_timestamp": timestamps,
+            "predicted_price_uah_mwh": [1100.0 + float(index % 5) * 25.0 for index in range(24)],
+            "predicted_price_p10_uah_mwh": [1000.0 + float(index % 5) * 25.0 for index in range(24)],
+            "predicted_price_p50_uah_mwh": [1100.0 + float(index % 5) * 25.0 for index in range(24)],
+            "predicted_price_p90_uah_mwh": [1200.0 + float(index % 5) * 25.0 for index in range(24)],
+            "prediction_interval_kind": ["quantile"] * 24,
+            "training_rows": [200] * 24,
+            "horizon_rows": [24] * 24,
+            "adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * 24,
+        }
+    )
+
+
+def _global_panel_tft_forecast_from_rows(forecast_rows: pl.DataFrame) -> pl.DataFrame:
+    row_count = forecast_rows.height
+    return pl.DataFrame(
+        {
+            "model_name": [OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME] * row_count,
+            "model_family": ["TFT"] * row_count,
+            "backend_name": ["pytorch_forecasting"] * row_count,
+            "backend_status": ["trained"] * row_count,
+            "unique_id": forecast_rows["unique_id"].to_list(),
+            "forecast_timestamp": forecast_rows["ds"].to_list(),
+            "predicted_price_uah_mwh": [1100.0] * row_count,
+            "predicted_price_p10_uah_mwh": [1000.0] * row_count,
+            "predicted_price_p50_uah_mwh": [1100.0] * row_count,
+            "predicted_price_p90_uah_mwh": [1200.0] * row_count,
+            "prediction_interval_kind": ["quantile"] * row_count,
+            "training_rows": [200] * row_count,
+            "horizon_rows": [24] * row_count,
+            "adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * row_count,
         }
     )
 

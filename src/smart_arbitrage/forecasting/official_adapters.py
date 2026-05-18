@@ -271,6 +271,7 @@ def build_official_tft_forecast(
     *,
     horizon_hours: int = 24,
     max_epochs: int = 1,
+    max_steps: int = -1,
     batch_size: int = 64,
     learning_rate: float = 0.01,
     hidden_size: int = 8,
@@ -338,6 +339,7 @@ def build_official_tft_forecast(
         )
         trainer = trainer_cls(
             max_epochs=max_epochs,
+            max_steps=max_steps,
             accelerator="cpu",
             devices=1,
             logger=False,
@@ -345,7 +347,7 @@ def build_official_tft_forecast(
             enable_progress_bar=False,
             enable_model_summary=False,
             num_sanity_val_steps=0,
-            deterministic=True,
+            deterministic="warn",
         )
         trainer.fit(model, train_dataloaders=train_loader)
         prediction_output = model.predict(prediction_loader, mode="quantiles", return_x=False)
@@ -360,6 +362,136 @@ def build_official_tft_forecast(
         unique_id=str(prediction_frame.select("unique_id").to_series().item(0)),
         timestamps=prediction_frame.tail(horizon_hours).select("ds").to_series().to_list(),
         quantile_rows=quantile_rows,
+        training_rows=train_frame.height,
+        interval_kind="quantile",
+    )
+
+
+def build_official_global_panel_tft_forecast(
+    training_frame: pl.DataFrame,
+    *,
+    horizon_hours: int = 24,
+    max_epochs: int = 15,
+    max_steps: int = -1,
+    batch_size: int = 32,
+    learning_rate: float = 0.005,
+    hidden_size: int = 12,
+    hidden_continuous_size: int = 6,
+    accelerator: str = "auto",
+    devices: int | str = "auto",
+    importer: _Importer = import_module,
+) -> pl.DataFrame:
+    """Train one PyTorch-Forecasting TFT over all unique_id series in the panel."""
+
+    _validate_training_frame(training_frame)
+    status = inspect_official_forecast_backends(importer=importer)
+    if not status["pytorch_forecasting"].available or not status["lightning"].available:
+        return _empty_forecast_frame()
+
+    try:
+        pytorch_forecasting_module = importer("pytorch_forecasting")
+        pytorch_forecasting_metrics = importer("pytorch_forecasting.metrics")
+        lightning_module = importer("lightning.pytorch")
+        time_series_dataset_cls = getattr(pytorch_forecasting_module, "TimeSeriesDataSet")
+        temporal_fusion_transformer_cls = getattr(pytorch_forecasting_module, "TemporalFusionTransformer")
+        quantile_loss_cls = getattr(pytorch_forecasting_metrics, "QuantileLoss")
+        trainer_cls = getattr(lightning_module, "Trainer")
+    except Exception as exc:  # pragma: no cover - depends on optional backend internals
+        raise OfficialForecastAdapterError(
+            f"unable to import official global-panel TFT backend: {exc}"
+        ) from exc
+
+    tft_frames = _tft_global_panel_training_frames(
+        training_frame,
+        horizon_hours=horizon_hours,
+    )
+    if tft_frames is None:
+        return _empty_forecast_frame()
+    (
+        train_frame,
+        prediction_frame,
+        future_frame,
+        _feature_columns,
+        known_future_columns,
+        historical_observed_columns,
+        encoder_length,
+    ) = tft_frames
+
+    try:
+        training_dataset = time_series_dataset_cls(
+            train_frame.to_pandas(),
+            time_idx="time_idx",
+            target="y",
+            group_ids=["unique_id"],
+            max_encoder_length=encoder_length,
+            max_prediction_length=horizon_hours,
+            static_categoricals=["unique_id"],
+            time_varying_known_reals=known_future_columns,
+            time_varying_unknown_reals=["y", *historical_observed_columns],
+            add_relative_time_idx=True,
+            add_target_scales=True,
+            add_encoder_length=True,
+            allow_missing_timesteps=False,
+        )
+        prediction_dataset = time_series_dataset_cls.from_dataset(
+            training_dataset,
+            prediction_frame.to_pandas(),
+            predict=True,
+            stop_randomization=True,
+        )
+        train_loader = training_dataset.to_dataloader(
+            train=True,
+            batch_size=batch_size,
+            num_workers=0,
+        )
+        prediction_loader = prediction_dataset.to_dataloader(
+            train=False,
+            batch_size=batch_size,
+            num_workers=0,
+        )
+        model = temporal_fusion_transformer_cls.from_dataset(
+            training_dataset,
+            learning_rate=learning_rate,
+            hidden_size=hidden_size,
+            attention_head_size=1,
+            dropout=0.1,
+            hidden_continuous_size=hidden_continuous_size,
+            output_size=3,
+            loss=quantile_loss_cls(quantiles=[0.1, 0.5, 0.9]),
+            log_interval=-1,
+            reduce_on_plateau_patience=2,
+        )
+        trainer = trainer_cls(
+            max_epochs=max_epochs,
+            max_steps=max_steps,
+            accelerator=accelerator,
+            devices=devices,
+            logger=False,
+            enable_checkpointing=False,
+            enable_progress_bar=False,
+            enable_model_summary=False,
+            num_sanity_val_steps=0,
+            deterministic="warn",
+        )
+        trainer.fit(model, train_dataloaders=train_loader)
+        prediction_output = model.predict(
+            prediction_loader,
+            mode="quantiles",
+            return_x=False,
+        )
+    except Exception as exc:  # pragma: no cover - requires optional backend training
+        raise OfficialForecastAdapterError(
+            f"official global-panel TFT training failed: {exc}"
+        ) from exc
+
+    quantile_batches = _nested_prediction_values(prediction_output)
+    return _official_quantile_forecast_frame_from_panel(
+        model_name="tft_official_global_panel_v1",
+        model_family="TFT",
+        backend_name="pytorch_forecasting",
+        future_frame=future_frame,
+        quantile_batches=quantile_batches,
+        horizon_hours=horizon_hours,
         training_rows=train_frame.height,
         interval_kind="quantile",
     )
@@ -438,6 +570,101 @@ def _tft_training_frames(
     return (
         indexed_train_frame,
         indexed_prediction_frame,
+        feature_columns,
+        known_future_columns,
+        historical_observed_columns,
+        encoder_length,
+    )
+
+
+def _tft_global_panel_training_frames(
+    training_frame: pl.DataFrame,
+    *,
+    horizon_hours: int,
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame, list[str], list[str], list[str], int] | None:
+    feature_columns = _existing_feature_columns(training_frame)
+    if not feature_columns:
+        return None
+    known_future_columns = [
+        column
+        for column in _csv_columns(training_frame, "known_future_feature_columns_csv")
+        if column in feature_columns
+    ]
+    historical_observed_columns = [
+        column
+        for column in _csv_columns(training_frame, "historical_observed_feature_columns_csv")
+        if column in feature_columns and column not in known_future_columns
+    ]
+    selected_columns = ["unique_id", "ds", "y", *feature_columns]
+    train_frame = (
+        training_frame
+        .filter(pl.col("is_train") & pl.col("y").is_not_null())
+        .select(selected_columns)
+        .pipe(_fill_numeric_feature_nulls, feature_columns=feature_columns)
+        .drop_nulls(subset=["y"])
+    )
+    future_frame = _global_panel_future_with_target_frame(
+        training_frame,
+        train_frame=train_frame,
+        horizon_hours=horizon_hours,
+        feature_columns=feature_columns,
+    )
+    if train_frame.is_empty() or future_frame.is_empty():
+        return None
+    min_training_rows_per_id = (
+        train_frame
+        .group_by("unique_id")
+        .len()
+        .select("len")
+        .min()
+        .item()
+    )
+    if not isinstance(min_training_rows_per_id, int):
+        return None
+    encoder_length = _tft_encoder_length(
+        training_rows=min_training_rows_per_id,
+        horizon_rows=horizon_hours,
+    )
+    if encoder_length is None:
+        return None
+
+    indexed_train_frames: list[pl.DataFrame] = []
+    indexed_prediction_frames: list[pl.DataFrame] = []
+    for unique_id in sorted(str(value) for value in train_frame["unique_id"].unique().to_list()):
+        tenant_train = train_frame.filter(pl.col("unique_id") == unique_id).sort("ds")
+        tenant_future = future_frame.filter(pl.col("unique_id") == unique_id).sort("ds")
+        if tenant_future.height != horizon_hours:
+            return None
+        combined = (
+            pl.concat(
+                [
+                    tenant_train.with_columns(pl.lit(True).alias("_is_train")),
+                    tenant_future.with_columns(pl.lit(False).alias("_is_train")),
+                ],
+                how="vertical_relaxed",
+            )
+            .sort("ds")
+            .with_row_index("time_idx")
+            .with_columns(pl.col("time_idx").cast(pl.Int64))
+        )
+        indexed_tenant_train = combined.filter(pl.col("_is_train")).drop("_is_train")
+        indexed_train_frames.append(indexed_tenant_train)
+        indexed_prediction_frames.append(
+            pl.concat(
+                [
+                    indexed_tenant_train.tail(encoder_length),
+                    combined.filter(~pl.col("_is_train")).drop("_is_train"),
+                ],
+                how="vertical_relaxed",
+            )
+            .sort("time_idx")
+        )
+    if not indexed_train_frames or not indexed_prediction_frames:
+        return None
+    return (
+        pl.concat(indexed_train_frames, how="diagonal_relaxed").sort(["unique_id", "time_idx"]),
+        pl.concat(indexed_prediction_frames, how="diagonal_relaxed").sort(["unique_id", "time_idx"]),
+        future_frame.sort(["unique_id", "ds"]),
         feature_columns,
         known_future_columns,
         historical_observed_columns,
@@ -574,6 +801,40 @@ def _global_panel_future_frame(
             .sort("ds")
             .head(horizon_hours)
             .select(selected_columns)
+        )
+    if not future_frames:
+        return pl.DataFrame()
+    return (
+        pl.concat(future_frames, how="diagonal_relaxed")
+        .pipe(_fill_numeric_feature_nulls, feature_columns=feature_columns)
+        .sort(["unique_id", "ds"])
+    )
+
+
+def _global_panel_future_with_target_frame(
+    training_frame: pl.DataFrame,
+    *,
+    train_frame: pl.DataFrame,
+    horizon_hours: int,
+    feature_columns: list[str],
+) -> pl.DataFrame:
+    selected_columns = ["unique_id", "ds", *feature_columns]
+    future_frames: list[pl.DataFrame] = []
+    for unique_id in sorted(str(value) for value in training_frame["unique_id"].unique().to_list()):
+        tenant_train = train_frame.filter(pl.col("unique_id") == unique_id).sort("ds")
+        if tenant_train.is_empty():
+            return pl.DataFrame()
+        last_training_target = tenant_train.select("y").tail(1).to_series().item()
+        if last_training_target is None:
+            return pl.DataFrame()
+        future_frames.append(
+            training_frame
+            .filter((pl.col("unique_id") == unique_id) & pl.col("is_forecast"))
+            .sort("ds")
+            .head(horizon_hours)
+            .select(selected_columns)
+            .with_columns(pl.lit(float(last_training_target)).alias("y"))
+            .select(["unique_id", "ds", "y", *feature_columns])
         )
     if not future_frames:
         return pl.DataFrame()
@@ -723,6 +984,46 @@ def _official_quantile_forecast_frame(
         },
         schema=_OFFICIAL_FORECAST_SCHEMA,
     )
+
+
+def _official_quantile_forecast_frame_from_panel(
+    *,
+    model_name: str,
+    model_family: str,
+    backend_name: str,
+    future_frame: pl.DataFrame,
+    quantile_batches: list[list[list[float]]],
+    horizon_hours: int,
+    training_rows: int,
+    interval_kind: str,
+) -> pl.DataFrame:
+    unique_ids = sorted(str(value) for value in future_frame["unique_id"].unique().to_list())
+    if len(quantile_batches) < len(unique_ids):
+        return _empty_forecast_frame()
+    frames: list[pl.DataFrame] = []
+    for batch_index, unique_id in enumerate(unique_ids):
+        tenant_future = future_frame.filter(pl.col("unique_id") == unique_id).sort("ds")
+        quantile_rows = [
+            (float(row[0]), float(row[1]), float(row[2]))
+            for row in quantile_batches[batch_index][:horizon_hours]
+            if len(row) >= 3
+        ]
+        frames.append(
+            _official_quantile_forecast_frame(
+                model_name=model_name,
+                model_family=model_family,
+                backend_name=backend_name,
+                unique_id=unique_id,
+                timestamps=tenant_future.select("ds").to_series().to_list(),
+                quantile_rows=quantile_rows,
+                training_rows=training_rows,
+                interval_kind=interval_kind,
+            )
+        )
+    frames = [frame for frame in frames if not frame.is_empty()]
+    if not frames:
+        return _empty_forecast_frame()
+    return pl.concat(frames, how="diagonal_relaxed").sort(["unique_id", "forecast_timestamp"])
 
 
 def _empty_forecast_frame() -> pl.DataFrame:

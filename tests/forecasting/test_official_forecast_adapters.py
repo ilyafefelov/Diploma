@@ -7,6 +7,7 @@ from smart_arbitrage.forecasting.neural_features import build_neural_forecast_fe
 from smart_arbitrage.forecasting.official_adapters import (
     OFFICIAL_FORECAST_COLUMNS,
     build_official_global_panel_nbeatsx_forecast,
+    build_official_global_panel_tft_forecast,
     build_official_nbeatsx_forecast,
     build_official_tft_forecast,
     inspect_official_forecast_backends,
@@ -311,6 +312,7 @@ def test_official_tft_adapter_trains_quantile_smoke_when_backend_available() -> 
     class FakeTrainer:
         def __init__(self, **kwargs: object) -> None:
             captured["trainer_max_epochs"] = kwargs["max_epochs"]
+            captured["trainer_max_steps"] = kwargs["max_steps"]
             assert kwargs["logger"] is False
             assert kwargs["enable_checkpointing"] is False
             assert kwargs["enable_progress_bar"] is False
@@ -341,6 +343,7 @@ def test_official_tft_adapter_trains_quantile_smoke_when_backend_available() -> 
     forecast = build_official_tft_forecast(
         _training_frame(),
         max_epochs=15,
+        max_steps=11,
         batch_size=32,
         learning_rate=0.005,
         hidden_size=12,
@@ -360,9 +363,145 @@ def test_official_tft_adapter_trains_quantile_smoke_when_backend_available() -> 
     assert captured["quantiles"] == [0.1, 0.5, 0.9]
     assert captured["output_size"] == 3
     assert captured["trainer_max_epochs"] == 15
+    assert captured["trainer_max_steps"] == 11
     assert captured["batch_size_True"] == 32
     assert captured["batch_size_False"] == 32
     assert captured["hidden_size"] == 12
     assert captured["hidden_continuous_size"] == 6
     assert captured["learning_rate"] == 0.005
     assert captured["fit_loader"] == "loader:True"
+
+
+def test_official_global_panel_tft_adapter_preserves_tenant_quantile_horizons() -> None:
+    captured: dict[str, object] = {}
+
+    class FakeTimeSeriesDataSet:
+        def __init__(self, data: object, **kwargs: object) -> None:
+            frame = pl.from_pandas(data)  # type: ignore[arg-type]
+            captured.setdefault("training_unique_ids", sorted(frame["unique_id"].unique().to_list()))
+            captured.setdefault("group_ids", kwargs["group_ids"])
+            captured.setdefault("max_prediction_length", kwargs["max_prediction_length"])
+            captured.setdefault("time_varying_known_reals", kwargs["time_varying_known_reals"])
+            captured.setdefault("time_varying_unknown_reals", kwargs["time_varying_unknown_reals"])
+
+        @classmethod
+        def from_dataset(
+            cls,
+            dataset: object,
+            data: object,
+            *,
+            predict: bool,
+            stop_randomization: bool,
+        ) -> "FakeTimeSeriesDataSet":
+            frame = pl.from_pandas(data)  # type: ignore[arg-type]
+            captured["prediction_unique_ids"] = sorted(frame["unique_id"].unique().to_list())
+            captured["prediction_rows"] = frame.height
+            assert predict is True
+            assert stop_randomization is True
+            return cls(
+                data,
+                group_ids=["unique_id"],
+                max_prediction_length=24,
+                time_varying_known_reals=[],
+                time_varying_unknown_reals=[],
+            )
+
+        def to_dataloader(self, *, train: bool, batch_size: int, num_workers: int) -> str:
+            assert num_workers == 0
+            captured[f"batch_size_{train}"] = batch_size
+            return f"global-loader:{train}"
+
+    class FakeTemporalFusionTransformer:
+        @classmethod
+        def from_dataset(cls, dataset: object, **kwargs: object) -> "FakeTemporalFusionTransformer":
+            captured["hidden_size"] = kwargs["hidden_size"]
+            captured["hidden_continuous_size"] = kwargs["hidden_continuous_size"]
+            captured["loss"] = kwargs["loss"]
+            return cls()
+
+        def predict(self, data: object, *, mode: str, return_x: bool) -> list[list[list[float]]]:
+            assert data == "global-loader:False"
+            assert mode == "quantiles"
+            assert return_x is False
+            return [
+                [[3900.0 + step, 4000.0 + step, 4100.0 + step] for step in range(24)],
+                [[4900.0 + step, 5000.0 + step, 5100.0 + step] for step in range(24)],
+            ]
+
+    class FakeQuantileLoss:
+        def __init__(self, quantiles: list[float]) -> None:
+            captured["quantiles"] = quantiles
+
+    class FakeTrainer:
+        def __init__(self, **kwargs: object) -> None:
+            captured["trainer_max_epochs"] = kwargs["max_epochs"]
+            captured["trainer_max_steps"] = kwargs["max_steps"]
+            captured["accelerator"] = kwargs["accelerator"]
+            captured["devices"] = kwargs["devices"]
+            assert kwargs["deterministic"] == "warn"
+
+        def fit(self, model: object, *, train_dataloaders: object) -> None:
+            captured["fit_loader"] = train_dataloaders
+
+    class FakePyTorchForecastingModule:
+        TimeSeriesDataSet = FakeTimeSeriesDataSet
+        TemporalFusionTransformer = FakeTemporalFusionTransformer
+
+    class FakeMetricsModule:
+        QuantileLoss = FakeQuantileLoss
+
+    class FakeLightningModule:
+        Trainer = FakeTrainer
+
+    def fake_importer(name: str) -> object:
+        if name == "pytorch_forecasting":
+            return FakePyTorchForecastingModule()
+        if name == "pytorch_forecasting.metrics":
+            return FakeMetricsModule()
+        if name == "lightning.pytorch":
+            return FakeLightningModule()
+        raise ModuleNotFoundError(name)
+
+    forecast = build_official_global_panel_tft_forecast(
+        _global_panel_training_frame(),
+        max_epochs=15,
+        max_steps=12,
+        batch_size=16,
+        learning_rate=0.005,
+        hidden_size=12,
+        hidden_continuous_size=6,
+        accelerator="auto",
+        devices="auto",
+        importer=fake_importer,
+    )
+
+    assert forecast.height == 48
+    assert forecast.select("model_name").to_series().unique().to_list() == [
+        "tft_official_global_panel_v1"
+    ]
+    assert forecast.select("prediction_interval_kind").to_series().unique().to_list() == [
+        "quantile"
+    ]
+    assert forecast.group_by("unique_id").len().select("len").to_series().to_list() == [24, 24]
+    first_rows = forecast.sort(["unique_id", "forecast_timestamp"]).group_by(
+        "unique_id", maintain_order=True
+    ).first()
+    assert first_rows["predicted_price_p10_uah_mwh"].to_list() == [3900.0, 4900.0]
+    assert first_rows["predicted_price_p50_uah_mwh"].to_list() == [4000.0, 5000.0]
+    assert first_rows["predicted_price_p90_uah_mwh"].to_list() == [4100.0, 5100.0]
+    assert captured["training_unique_ids"] == [
+        "client_001_kyiv_mall:DAM",
+        "client_003_dnipro_factory:DAM",
+    ]
+    assert captured["prediction_unique_ids"] == [
+        "client_001_kyiv_mall:DAM",
+        "client_003_dnipro_factory:DAM",
+    ]
+    assert captured["group_ids"] == ["unique_id"]
+    assert captured["max_prediction_length"] == 24
+    assert "y" in cast(list[str], captured["time_varying_unknown_reals"])
+    assert captured["quantiles"] == [0.1, 0.5, 0.9]
+    assert captured["trainer_max_epochs"] == 15
+    assert captured["trainer_max_steps"] == 12
+    assert captured["accelerator"] == "auto"
+    assert captured["devices"] == "auto"

@@ -19,6 +19,7 @@ from smart_arbitrage.strategy.forecast_strategy_evaluation import (
 )
 from smart_arbitrage.forecasting.official_adapters import (
     build_official_global_panel_nbeatsx_forecast,
+    build_official_global_panel_tft_forecast,
 )
 from smart_arbitrage.forecasting.sota_training import (
     build_official_global_panel_training_frame,
@@ -45,6 +46,22 @@ OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND: Final[str] = (
 )
 OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_CLAIM_SCOPE: Final[str] = (
     "official_global_panel_nbeatsx_rolling_strict_lp_not_full_dfl"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME: Final[str] = "tft_official_global_panel_v1"
+OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME: Final[str] = (
+    "tft_official_global_panel_p10_v1"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME: Final[str] = (
+    "tft_official_global_panel_p90_v1"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND: Final[str] = (
+    "official_global_panel_tft_quantile_rolling_strict_lp_benchmark"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_CLAIM_SCOPE: Final[str] = (
+    "official_global_panel_tft_quantile_strict_lp_not_full_dfl"
+)
+OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_CLAIM_SCOPE: Final[str] = (
+    "official_global_panel_tft_quantile_rolling_strict_lp_not_full_dfl"
 )
 
 
@@ -178,6 +195,260 @@ def build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
         return pl.DataFrame()
     return pl.concat(frames, how="diagonal_relaxed").sort(
         ["anchor_timestamp", "tenant_id", "rank_by_regret", "forecast_model_name"]
+    )
+
+
+def build_official_global_panel_tft_strict_lp_benchmark_frame(
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    tft_official_global_panel_price_forecast: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Strict-score global-panel TFT quantile forecasts beside frozen strict control."""
+
+    if not tenant_ids:
+        raise ValueError("tenant_ids must contain at least one tenant.")
+    if tft_official_global_panel_price_forecast.is_empty():
+        raise ValueError("Missing global-panel TFT forecast rows.")
+    resolved_generated_at = generated_at or datetime.now(UTC)
+    rows: list[pl.DataFrame] = []
+    for tenant_id in tenant_ids:
+        tenant_forecast = _tenant_tft_quantile_forecast(
+            tft_official_global_panel_price_forecast,
+            tenant_id=tenant_id,
+        )
+        anchor_timestamp = _anchor_from_forecast(tenant_forecast)
+        price_history = _tenant_price_history(
+            real_data_benchmark_silver_feature_frame,
+            tenant_id=tenant_id,
+        )
+        defaults = tenant_battery_defaults_from_registry(tenant_id)
+        strict_forecast = _strict_forecast_frame(price_history, anchor_timestamp=anchor_timestamp)
+        evaluation = evaluate_forecast_candidates_against_oracle(
+            price_history=price_history,
+            tenant_id=tenant_id,
+            battery_metrics=defaults.metrics,
+            starting_soc_fraction=defaults.initial_soc_fraction,
+            starting_soc_source="tenant_default",
+            anchor_timestamp=anchor_timestamp,
+            candidates=[
+                ForecastCandidate(
+                    model_name="strict_similar_day",
+                    forecast_frame=strict_forecast,
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+                ForecastCandidate(
+                    model_name=OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+                    forecast_frame=_tft_quantile_candidate_forecast(
+                        tenant_forecast,
+                        source_column="predicted_price_p10_uah_mwh",
+                    ),
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+                ForecastCandidate(
+                    model_name=OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+                    forecast_frame=_tft_quantile_candidate_forecast(
+                        tenant_forecast,
+                        source_column="predicted_price_p50_uah_mwh",
+                    ),
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+                ForecastCandidate(
+                    model_name=OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+                    forecast_frame=_tft_quantile_candidate_forecast(
+                        tenant_forecast,
+                        source_column="predicted_price_p90_uah_mwh",
+                    ),
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+            ],
+            evaluation_id=f"{tenant_id}:official-global-panel-tft:{anchor_timestamp:%Y%m%dT%H%M}",
+            generated_at=resolved_generated_at,
+        )
+        rows.append(
+            _with_tft_global_panel_metadata(
+                evaluation,
+                tenant_id=tenant_id,
+                anchor_timestamp=anchor_timestamp,
+                price_history=price_history,
+            )
+        )
+    return pl.concat(rows, how="diagonal_relaxed").sort(
+        ["tenant_id", "anchor_timestamp", "rank_by_regret", "forecast_model_name"]
+    )
+
+
+def build_official_global_panel_tft_rolling_strict_lp_benchmark_frame(
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    max_eval_windows: int,
+    horizon_hours: int = 24,
+    tft_max_epochs: int = 15,
+    tft_max_steps: int = -1,
+    tft_batch_size: int = 16,
+    tft_learning_rate: float = 0.005,
+    tft_hidden_size: int = 12,
+    tft_hidden_continuous_size: int = 6,
+    tft_accelerator: str = "auto",
+    tft_devices: int | str = "auto",
+    anchor_batch_order: str = "latest_first",
+    anchor_batch_start_index: int = 0,
+    anchor_batch_size: int = 0,
+    generated_at: datetime | None = None,
+    market_coupling_availability_frame: pl.DataFrame | None = None,
+    tft_builder: Callable[..., pl.DataFrame] = build_official_global_panel_tft_forecast,
+) -> pl.DataFrame:
+    """Run one global-panel TFT fit per rolling anchor across all tenants."""
+
+    if not tenant_ids:
+        raise ValueError("tenant_ids must contain at least one tenant.")
+    if max_eval_windows <= 0:
+        raise ValueError("max_eval_windows must be positive.")
+    if horizon_hours <= 0:
+        raise ValueError("horizon_hours must be positive.")
+    if tft_max_epochs <= 0:
+        raise ValueError("tft_max_epochs must be positive.")
+    anchors = _eligible_global_panel_anchors(
+        real_data_benchmark_silver_feature_frame,
+        tenant_ids=tenant_ids,
+        horizon_hours=horizon_hours,
+        max_eval_windows=max_eval_windows,
+        anchor_batch_order=anchor_batch_order,
+    )
+    anchors = _slice_anchor_batch(
+        anchors,
+        anchor_batch_start_index=anchor_batch_start_index,
+        anchor_batch_size=anchor_batch_size,
+    )
+    resolved_generated_at = generated_at or datetime.now(UTC)
+    frames: list[pl.DataFrame] = []
+    for anchor_timestamp in anchors:
+        training_frame = build_official_global_panel_training_frame(
+            real_data_benchmark_silver_feature_frame,
+            tenant_ids=tenant_ids,
+            horizon_hours=horizon_hours,
+            anchor_timestamp=anchor_timestamp,
+            market_coupling_availability_frame=market_coupling_availability_frame,
+        )
+        forecast_frame = tft_builder(
+            training_frame,
+            horizon_hours=horizon_hours,
+            max_epochs=tft_max_epochs,
+            max_steps=tft_max_steps,
+            batch_size=tft_batch_size,
+            learning_rate=tft_learning_rate,
+            hidden_size=tft_hidden_size,
+            hidden_continuous_size=tft_hidden_continuous_size,
+            accelerator=tft_accelerator,
+            devices=tft_devices,
+        )
+        benchmark = build_official_global_panel_tft_strict_lp_benchmark_frame(
+            real_data_benchmark_silver_feature_frame,
+            forecast_frame,
+            tenant_ids=tenant_ids,
+            generated_at=resolved_generated_at,
+        )
+        frames.append(
+            _with_tft_rolling_metadata(
+                benchmark,
+                rolling_anchor_timestamp=anchor_timestamp,
+                rolling_window_index=len(frames),
+            )
+        )
+    if not frames:
+        return pl.DataFrame()
+    return pl.concat(frames, how="diagonal_relaxed").sort(
+        ["anchor_timestamp", "tenant_id", "rank_by_regret", "forecast_model_name"]
+    )
+
+
+def build_official_global_panel_tft_horizon_quantile_calibration_frame(
+    evaluation_frame: pl.DataFrame,
+    *,
+    min_prior_anchors: int = 14,
+    rolling_calibration_window_anchors: int = 28,
+) -> pl.DataFrame:
+    """Build prior-only horizon biases for global-panel TFT quantile rows."""
+
+    if min_prior_anchors <= 0:
+        raise ValueError("min_prior_anchors must be positive.")
+    if rolling_calibration_window_anchors <= 0:
+        raise ValueError("rolling_calibration_window_anchors must be positive.")
+    _validate_evaluation_frame(evaluation_frame)
+    if evaluation_frame.is_empty():
+        return pl.DataFrame()
+
+    rows: list[dict[str, Any]] = []
+    tenant_ids = sorted(str(value) for value in set(evaluation_frame["tenant_id"].to_list()))
+    quantile_models = (
+        OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    )
+    for tenant_id in tenant_ids:
+        for source_model_name in quantile_models:
+            model_frame = (
+                evaluation_frame
+                .filter(
+                    (pl.col("tenant_id") == tenant_id)
+                    & (pl.col("forecast_model_name") == source_model_name)
+                )
+                .sort("anchor_timestamp")
+            )
+            prior_rows: list[dict[str, Any]] = []
+            for row in model_frame.iter_rows(named=True):
+                anchor_timestamp = _datetime_value(
+                    row["anchor_timestamp"],
+                    field_name="anchor_timestamp",
+                )
+                payload = _payload(row["evaluation_payload"])
+                _require_thesis_grade_payload(payload)
+                horizon_count = len(_horizon_rows(payload))
+                window_rows = prior_rows[-rolling_calibration_window_anchors:]
+                if len(prior_rows) < min_prior_anchors:
+                    horizon_biases = [0.0 for _ in range(horizon_count)]
+                    status = "insufficient_prior_history"
+                else:
+                    horizon_biases = _weighted_horizon_biases(
+                        window_rows,
+                        horizon_count=horizon_count,
+                    )
+                    status = "calibrated"
+                rows.append(
+                    {
+                        "tenant_id": tenant_id,
+                        "anchor_timestamp": anchor_timestamp,
+                        "source_forecast_model_name": source_model_name,
+                        "corrected_forecast_model_name": (
+                            f"{source_model_name}_horizon_quantile_calibrated_v1"
+                        ),
+                        "source_quantile": _tft_source_quantile(source_model_name),
+                        "horizon_biases_uah_mwh": horizon_biases,
+                        "mean_horizon_bias_uah_mwh": _mean_float(horizon_biases),
+                        "max_abs_horizon_bias_uah_mwh": max(
+                            (abs(value) for value in horizon_biases),
+                            default=0.0,
+                        ),
+                        "quantile_spread_scale": _tft_quantile_spread_scale(
+                            window_rows
+                        ),
+                        "prior_anchor_count": len(prior_rows),
+                        "calibration_window_anchor_count": len(window_rows),
+                        "calibration_status": status,
+                        "data_quality_tier": str(
+                            payload.get("data_quality_tier", "demo_grade")
+                        ),
+                        "not_full_dfl": True,
+                        "not_market_execution": True,
+                    }
+                )
+                prior_rows.append(row)
+    if not rows:
+        return pl.DataFrame()
+    return pl.DataFrame(rows).sort(
+        ["tenant_id", "source_forecast_model_name", "anchor_timestamp"]
     )
 
 
@@ -370,6 +641,62 @@ def _tenant_forecast(forecast_frame: pl.DataFrame, *, tenant_id: str) -> pl.Data
     return tenant_forecast
 
 
+def _tenant_tft_quantile_forecast(forecast_frame: pl.DataFrame, *, tenant_id: str) -> pl.DataFrame:
+    required_columns = {
+        "unique_id",
+        "forecast_timestamp",
+        "predicted_price_uah_mwh",
+        "predicted_price_p10_uah_mwh",
+        "predicted_price_p50_uah_mwh",
+        "predicted_price_p90_uah_mwh",
+    }
+    missing_columns = required_columns.difference(forecast_frame.columns)
+    if missing_columns:
+        raise ValueError(f"global-panel TFT forecast is missing columns: {sorted(missing_columns)}")
+    unique_id = f"{tenant_id}:DAM"
+    tenant_forecast = (
+        forecast_frame
+        .filter(pl.col("unique_id") == unique_id)
+        .select(
+            [
+                "forecast_timestamp",
+                "predicted_price_uah_mwh",
+                "predicted_price_p10_uah_mwh",
+                "predicted_price_p50_uah_mwh",
+                "predicted_price_p90_uah_mwh",
+            ]
+        )
+        .sort("forecast_timestamp")
+    )
+    if tenant_forecast.is_empty():
+        raise ValueError(f"Missing global-panel TFT forecast rows for tenant_id={tenant_id}.")
+    return tenant_forecast
+
+
+def _tft_quantile_candidate_forecast(
+    tenant_forecast: pl.DataFrame,
+    *,
+    source_column: str,
+) -> pl.DataFrame:
+    if source_column not in tenant_forecast.columns:
+        raise ValueError(f"TFT forecast is missing quantile column {source_column}.")
+    candidate = (
+        tenant_forecast
+        .select(
+            [
+                "forecast_timestamp",
+                pl.col(source_column).cast(pl.Float64).alias("predicted_price_uah_mwh"),
+            ]
+        )
+        .with_columns(pl.col("forecast_timestamp").alias("source_timestamp"))
+        .select(["forecast_timestamp", "source_timestamp", "predicted_price_uah_mwh"])
+        .sort("forecast_timestamp")
+    )
+    if candidate.filter(pl.col("predicted_price_uah_mwh").is_null()).height:
+        raise ValueError(f"TFT forecast column {source_column} contains null values.")
+    return candidate
+
+
 def _tenant_price_history(silver_frame: pl.DataFrame, *, tenant_id: str) -> pl.DataFrame:
     required_columns = {"tenant_id", DEFAULT_TIMESTAMP_COLUMN, DEFAULT_PRICE_COLUMN}
     missing_columns = required_columns.difference(silver_frame.columns)
@@ -443,6 +770,54 @@ def _with_global_panel_metadata(
             pl.Series("evaluation_payload", payloads),
         ]
     )
+
+
+def _with_tft_global_panel_metadata(
+    evaluation: pl.DataFrame,
+    *,
+    tenant_id: str,
+    anchor_timestamp: datetime,
+    price_history: pl.DataFrame,
+) -> pl.DataFrame:
+    payloads: list[dict[str, Any]] = []
+    data_quality_tier = _data_quality_tier(price_history)
+    observed_coverage_ratio = _observed_coverage_ratio(price_history)
+    for row in evaluation.iter_rows(named=True):
+        model_name = str(row["forecast_model_name"])
+        payload = dict(row["evaluation_payload"])
+        payload.update(
+            {
+                "claim_scope": OFFICIAL_GLOBAL_PANEL_TFT_CLAIM_SCOPE,
+                "benchmark_kind": OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
+                "data_quality_tier": data_quality_tier,
+                "observed_coverage_ratio": observed_coverage_ratio,
+                "tenant_id": tenant_id,
+                "anchor_timestamp": anchor_timestamp.isoformat(),
+                "source_forecast_model_name": OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+                "source_quantile": _tft_source_quantile(model_name),
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        )
+        payloads.append(payload)
+    return evaluation.with_columns(
+        [
+            pl.lit(OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND).alias(
+                "strategy_kind"
+            ),
+            pl.Series("evaluation_payload", payloads),
+        ]
+    )
+
+
+def _tft_source_quantile(model_name: str) -> str:
+    if model_name == OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME:
+        return "p10"
+    if model_name == OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME:
+        return "p50"
+    if model_name == OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME:
+        return "p90"
+    return "strict"
 
 
 def _data_quality_tier(price_history: pl.DataFrame) -> str:
@@ -541,6 +916,36 @@ def _with_rolling_metadata(
     return benchmark.with_columns(
         [
             pl.lit(OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND).alias(
+                "strategy_kind"
+            ),
+            pl.Series("evaluation_payload", payloads),
+        ]
+    )
+
+
+def _with_tft_rolling_metadata(
+    benchmark: pl.DataFrame,
+    *,
+    rolling_anchor_timestamp: datetime,
+    rolling_window_index: int,
+) -> pl.DataFrame:
+    payloads: list[dict[str, Any]] = []
+    for row in benchmark.iter_rows(named=True):
+        payload = dict(row["evaluation_payload"])
+        payload.update(
+            {
+                "claim_scope": OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_CLAIM_SCOPE,
+                "benchmark_kind": OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
+                "rolling_anchor_timestamp": rolling_anchor_timestamp.isoformat(),
+                "rolling_window_index": rolling_window_index,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        )
+        payloads.append(payload)
+    return benchmark.with_columns(
+        [
+            pl.lit(OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND).alias(
                 "strategy_kind"
             ),
             pl.Series("evaluation_payload", payloads),
@@ -752,6 +1157,12 @@ def _weighted_mean(values: list[float], weights: list[float]) -> float:
     if denominator <= 0.0:
         raise ValueError("weights must sum to a positive value.")
     return sum(value * weight for value, weight in zip(values, weights)) / denominator
+
+
+def _tft_quantile_spread_scale(prior_rows: list[dict[str, Any]]) -> float:
+    if not prior_rows:
+        return 1.0
+    return 1.0
 
 
 def _mean_float(values: list[float]) -> float:

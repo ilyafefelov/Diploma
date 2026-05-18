@@ -219,6 +219,14 @@ from smart_arbitrage.dfl.point_in_time_context_v5 import (
     build_dfl_point_in_time_context_repair_audit_frame,
     evaluate_dfl_context_enriched_candidate_value_dfl_v5_gate,
 )
+from smart_arbitrage.dfl.tft_quantile_schedule_value import (
+    DFL_TFT_AUGMENTED_V2_PLUS_STRICT_LP_STRATEGY_KIND,
+    FROZEN_V2_PLUS_BASELINE_MODEL_NAME,
+    TFT_QUANTILE_SOURCE_MODELS,
+    build_dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame,
+    build_dfl_tft_quantile_schedule_candidate_library_frame,
+    evaluate_dfl_tft_augmented_v2_plus_gate,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     build_dfl_schedule_value_learner_v2_plus_robustness_frame,
     evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate,
@@ -966,6 +974,23 @@ class DflContextEnrichedCandidateValueDflV5AssetConfig(
     DflOfficialGlobalPanelCandidateValueDflV4AssetConfig
 ):
     """Context-enriched candidate-value DFL v5 scope."""
+
+
+class DflTftQuantileScheduleValueAssetConfig(dg.Config):
+    """TFT quantile schedule/value contributor scope against frozen V2+."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    forecast_model_names_csv: str = ",".join(TFT_QUANTILE_SOURCE_MODELS)
+    baseline_source_model_name: str = FROZEN_V2_PLUS_BASELINE_MODEL_NAME
+    final_validation_anchor_count_per_tenant: int = 18
+    min_validation_tenant_anchor_count_per_source_model: int = 90
+    min_prior_mean_improvement_ratio_vs_v2: float = 0.01
+    min_mean_regret_improvement_ratio_vs_baseline: float = 0.0
+    perturb_spread_scale_grid_csv: str = "0.9,1.1"
+    perturb_mean_shift_grid_uah_mwh_csv: str = "-250.0,250.0"
 
 
 class DflOfficialGlobalPanelScheduleValueLearnerV2RobustnessAssetConfig(dg.Config):
@@ -3234,6 +3259,135 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark
                 "dfl_official_global_panel_schedule_value_v2_plus_strict_gate_"
                 "screen_not_full_dfl"
             ),
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_tft_quantile_schedule_candidate_library_frame(
+    context,
+    config: DflTftQuantileScheduleValueAssetConfig,
+    tft_official_global_panel_rolling_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """TFT p10/p50/p90 schedule library for V2+-anchored contribution tests."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    library_frame = build_dfl_tft_quantile_schedule_candidate_library_frame(
+        tft_official_global_panel_rolling_strict_lp_benchmark_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        perturb_spread_scale_grid=_float_csv_values(
+            config.perturb_spread_scale_grid_csv,
+            field_name="perturb_spread_scale_grid_csv",
+        ),
+        perturb_mean_shift_grid_uah_mwh=_float_csv_values(
+            config.perturb_mean_shift_grid_uah_mwh_csv,
+            field_name="perturb_mean_shift_grid_uah_mwh_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "tenant_count": library_frame.select("tenant_id").n_unique()
+            if library_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "source_model_names": list(source_model_names),
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
+            if library_frame.height
+            else 0,
+            "scope": "dfl_tft_quantile_schedule_library_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame(
+    context,
+    config: DflTftQuantileScheduleValueAssetConfig,
+    dfl_tft_quantile_schedule_candidate_library_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict gate for TFT quantile candidates against frozen official V2+."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame(
+        dfl_tft_quantile_schedule_candidate_library_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        min_prior_mean_improvement_ratio_vs_v2=(
+            config.min_prior_mean_improvement_ratio_vs_v2
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_tft_augmented_v2_plus_gate(
+        strict_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        tft_source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_mean_regret_improvement_ratio_vs_baseline=(
+            config.min_mean_regret_improvement_ratio_vs_baseline
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_count": len(source_model_names),
+            "strategy_kind": DFL_TFT_AUGMENTED_V2_PLUS_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_challenger_passed": gate.passed,
+            "baseline_source_model_name": config.baseline_source_model_name,
+            "best_tft_source_model_name": gate.metrics.get(
+                "best_tft_source_model_name"
+            ),
+            "market_execution_enabled": False,
+            "scope": "dfl_tft_augmented_v2_plus_gate_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -7787,6 +7941,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    dfl_tft_quantile_schedule_candidate_library_frame,
+    dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_dfl_v2_frame,
     dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_candidate_library_v3_frame,

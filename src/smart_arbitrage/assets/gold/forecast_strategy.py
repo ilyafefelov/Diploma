@@ -20,10 +20,13 @@ from smart_arbitrage.strategy.official_global_panel import (
     OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_ROLLING_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND,
+    OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
     build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_horizon_calibration_frame,
     build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
+    build_official_global_panel_tft_horizon_quantile_calibration_frame,
+    build_official_global_panel_tft_rolling_strict_lp_benchmark_frame,
 )
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
     ForecastCandidate,
@@ -78,7 +81,7 @@ class OfficialGlobalPanelCalibrationAssetConfig(dg.Config):
 
 
 class OfficialGlobalPanelRollingAssetConfig(dg.Config):
-    """Windowed global-panel NBEATSx rolling strict LP evidence settings."""
+    """Windowed global-panel official rolling strict LP evidence settings."""
 
     tenant_ids_csv: str = ""
     max_eval_windows: int = 4
@@ -90,6 +93,14 @@ class OfficialGlobalPanelRollingAssetConfig(dg.Config):
     anchor_batch_order: str = "latest_first"
     resume_generated_at_iso: str = ""
     merge_persisted_batches: bool = False
+    tft_max_epochs: int = 15
+    tft_max_steps: int = -1
+    tft_batch_size: int = 16
+    tft_learning_rate: float = 0.005
+    tft_hidden_size: int = 12
+    tft_hidden_continuous_size: int = 6
+    tft_accelerator: str = "auto"
+    tft_devices: str = "auto"
 
 
 @dataclass(frozen=True, slots=True)
@@ -449,6 +460,77 @@ def nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
 
 
 @dg.asset(
+    group_name=taxonomy.GOLD_REAL_DATA_BENCHMARK,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="research_only",
+        backend="official_global_panel_tft",
+        market_venue="DAM",
+    ),
+)
+def tft_official_global_panel_rolling_strict_lp_benchmark_frame(
+    context,
+    config: OfficialGlobalPanelRollingAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    official_forecast_exogenous_governance_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Windowed rolling strict LP benchmark for official global-panel TFT quantiles."""
+
+    tenant_ids = tuple(_tenant_ids_from_csv(config.tenant_ids_csv))
+    generated_at = _optional_datetime(config.resume_generated_at_iso)
+    frame = build_official_global_panel_tft_rolling_strict_lp_benchmark_frame(
+        real_data_benchmark_silver_feature_frame,
+        tenant_ids=tenant_ids,
+        max_eval_windows=config.max_eval_windows,
+        horizon_hours=config.horizon_hours,
+        tft_max_epochs=config.tft_max_epochs,
+        tft_max_steps=config.tft_max_steps,
+        tft_batch_size=config.tft_batch_size,
+        tft_learning_rate=config.tft_learning_rate,
+        tft_hidden_size=config.tft_hidden_size,
+        tft_hidden_continuous_size=config.tft_hidden_continuous_size,
+        tft_accelerator=config.tft_accelerator,
+        tft_devices=config.tft_devices,
+        anchor_batch_order=config.anchor_batch_order,
+        anchor_batch_start_index=config.anchor_batch_start_index,
+        anchor_batch_size=config.anchor_batch_size,
+        generated_at=generated_at,
+        market_coupling_availability_frame=official_forecast_exogenous_governance_frame,
+    )
+    store = get_strategy_evaluation_store()
+    store.upsert_evaluation_frame(frame)
+    if config.merge_persisted_batches and generated_at is not None:
+        persisted_frame = store.strategy_kind_frame_for_generated_at(
+            strategy_kind=OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
+            generated_at=generated_at,
+        )
+        if persisted_frame.height:
+            frame = persisted_frame
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "anchor_count": frame.select("anchor_timestamp").n_unique() if frame.height else 0,
+            "anchor_batch_start_index": config.anchor_batch_start_index,
+            "anchor_batch_size": config.anchor_batch_size,
+            "merge_persisted_batches": config.merge_persisted_batches,
+            "forecast_candidate_count": frame.select("forecast_model_name").n_unique()
+            if frame.height
+            else 0,
+            "market_venue": "DAM",
+            "strategy_kind": OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
+            "scope": "official_global_panel_tft_quantile_rolling_strict_lp_not_full_dfl",
+            "market_execution_enabled": False,
+        },
+    )
+    return frame
+
+
+@dg.asset(
     group_name=taxonomy.GOLD_CALIBRATION,
     tags=taxonomy.asset_tags(
         medallion="gold",
@@ -557,6 +639,50 @@ def nbeatsx_official_global_panel_rolling_horizon_calibration_frame(
             "min_prior_anchors": config.min_prior_anchors,
             "rolling_calibration_window_anchors": config.rolling_calibration_window_anchors,
             "scope": "official_global_panel_rolling_nbeatsx_prior_only_horizon_calibration_not_full_dfl",
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_CALIBRATION,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="forecast_strategy",
+        elt_stage="publish",
+        ml_stage="calibration",
+        evidence_scope="research_only",
+        backend="official_global_panel_tft",
+        market_venue="DAM",
+    ),
+)
+def tft_official_global_panel_horizon_quantile_calibration_frame(
+    context,
+    config: OfficialGlobalPanelCalibrationAssetConfig,
+    tft_official_global_panel_rolling_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only horizon/quantile calibration metadata for global-panel TFT evidence."""
+
+    frame = build_official_global_panel_tft_horizon_quantile_calibration_frame(
+        tft_official_global_panel_rolling_strict_lp_benchmark_frame,
+        min_prior_anchors=config.min_prior_anchors,
+        rolling_calibration_window_anchors=config.rolling_calibration_window_anchors,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+            "source_model_count": frame.select("source_forecast_model_name").n_unique()
+            if frame.height
+            else 0,
+            "quantiles": sorted(frame["source_quantile"].unique().to_list())
+            if frame.height
+            else [],
+            "min_prior_anchors": config.min_prior_anchors,
+            "rolling_calibration_window_anchors": config.rolling_calibration_window_anchors,
+            "scope": "official_global_panel_tft_prior_only_horizon_quantile_calibration_not_full_dfl",
+            "market_execution_enabled": False,
         },
     )
     return frame
@@ -692,9 +818,11 @@ FORECAST_STRATEGY_GOLD_ASSETS = [
     official_forecast_rolling_origin_benchmark_frame,
     nbeatsx_official_global_panel_strict_lp_benchmark_frame,
     nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,
+    tft_official_global_panel_rolling_strict_lp_benchmark_frame,
     nbeatsx_official_global_panel_horizon_calibration_frame,
     nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame,
     nbeatsx_official_global_panel_rolling_horizon_calibration_frame,
+    tft_official_global_panel_horizon_quantile_calibration_frame,
     nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame,
     real_data_rolling_origin_benchmark_frame,
 ]

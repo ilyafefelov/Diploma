@@ -266,6 +266,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
+        "dfl_tft_quantile_schedule_candidate_library_frame",
+        "dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_candidate_library_v3_frame",
         "dfl_official_global_panel_candidate_value_label_panel_v3_frame",
         "dfl_official_global_panel_candidate_value_dfl_v3_frame",
@@ -1047,6 +1049,12 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["dfl_market_coupling_v2_plus_ablation_frame"]["evidence_scope"]
         == "not_market_execution"
     )
@@ -1309,6 +1317,13 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key[
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame"
     ] == {"dfl_official_global_panel_schedule_candidate_library_v2_plus_frame"}
+    assert deps_by_key["dfl_tft_quantile_schedule_candidate_library_frame"] == {
+        "tft_official_global_panel_rolling_strict_lp_benchmark_frame"
+    }
+    assert deps_by_key["dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame"] == {
+        "dfl_tft_quantile_schedule_candidate_library_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
     assert deps_by_key["dfl_market_coupling_v2_plus_ablation_frame"] == {
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",

@@ -83,6 +83,11 @@ from smart_arbitrage.dfl.point_in_time_context_v5 import (
     validate_dfl_point_in_time_context_feature_panel_evidence,
     validate_dfl_point_in_time_context_repair_audit_evidence,
 )
+from smart_arbitrage.dfl.tft_quantile_schedule_value import (
+    FROZEN_V2_PLUS_BASELINE_MODEL_NAME,
+    TFT_QUANTILE_SOURCE_MODELS,
+    validate_dfl_tft_augmented_v2_plus_evidence,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     validate_dfl_schedule_value_learner_v2_plus_robustness_evidence,
 )
@@ -701,6 +706,28 @@ def dfl_official_global_panel_candidate_value_dfl_v4_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame",
+    name="dfl_tft_augmented_v2_plus_evidence",
+    description=(
+        "Checks TFT quantile V2+ contributor coverage and claim boundaries "
+        "against frozen official V2+."
+    ),
+)
+def dfl_tft_augmented_v2_plus_evidence(
+    dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_tft_augmented_v2_plus_evidence(
+            dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame,
+            baseline_source_model_name=FROZEN_V2_PLUS_BASELINE_MODEL_NAME,
+            tft_source_model_names=TFT_QUANTILE_SOURCE_MODELS,
+            min_validation_tenant_anchor_count=90,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_point_in_time_context_repair_audit_frame",
     name="dfl_point_in_time_context_repair_audit_evidence",
     description=(
@@ -1066,6 +1093,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_official_global_panel_plateau_data_quality_audit_evidence,
     dfl_official_global_panel_candidate_value_label_panel_v4_evidence,
     dfl_official_global_panel_candidate_value_dfl_v4_evidence,
+    dfl_tft_augmented_v2_plus_evidence,
     dfl_point_in_time_context_repair_audit_evidence,
     dfl_point_in_time_context_feature_panel_evidence,
     dfl_context_enriched_candidate_value_dfl_v5_evidence,
