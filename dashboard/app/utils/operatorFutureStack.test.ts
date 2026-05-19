@@ -211,6 +211,10 @@ describe('operator future stack display helpers', () => {
       policy_forecast_context_coverage_ratio: 0.5,
       policy_forecast_context_row_count: 12
     })).toBe('50% forecast-conditioned (12 rows)')
+    expect(formatOperatorPolicyForecastContextLabel({
+      policy_forecast_context_coverage_ratio: 0,
+      policy_forecast_context_row_count: 0
+    })).toBe('forecast context not applicable')
   })
 
   it('summarizes forecast quality boundaries without hiding cap violations', () => {

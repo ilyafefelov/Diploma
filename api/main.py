@@ -90,6 +90,9 @@ OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID = "schedule_value_learner_v2_plus"
 OFFLINE_V2_PLUS_MEAN_REGRET_UAH = 174.77
 OFFLINE_V2_PLUS_WIN_RATE = 1.0
 OFFLINE_V2_PLUS_LABEL = "Offline V2+ schedule/value learner"
+OFFLINE_V2_PLUS_PREVIEW_SPREAD_SCALE = 1.1
+OFFLINE_V2_PLUS_PREVIEW_RANK_DELTA_UAH_MWH = 120.0
+OFFLINE_V2_PLUS_PREVIEW_EXTREMA_COUNT = 3
 
 
 app = FastAPI(
@@ -2862,8 +2865,8 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 			label=OFFLINE_V2_PLUS_LABEL,
 			enabled=True,
 			reason=(
-				"frozen Offline Strategy Promotion comparator; preview schedule keeps "
-				"strict_similar_day fallback because market execution is disabled"
+				"frozen Offline Strategy Promotion comparator; preview uses a deterministic "
+				"V2+ read-model adapter and remains market-execution disabled"
 			),
 			mean_regret_uah=OFFLINE_V2_PLUS_MEAN_REGRET_UAH,
 			win_rate=OFFLINE_V2_PLUS_WIN_RATE,
@@ -3084,7 +3087,7 @@ def _operator_forecast_source(strategy_id: str) -> str:
 	if strategy_id == "strict_similar_day":
 		return "HourlyDamBaselineSolver / strict similar-day baseline"
 	if strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
-		return "Ukrainian-only V2+ Offline Strategy Promotion evidence with strict fallback schedule preview"
+		return "Ukrainian-only V2+ Offline Strategy Promotion evidence with read-model preview adapter"
 	if strategy_id == "nbeatsx_official_v0":
 		return "official NBEATSx forecast candidate routed through Level 1 LP preview"
 	if strategy_id == "tft_official_v0":
@@ -3161,8 +3164,9 @@ def _operator_policy_context(
 			"selected_policy_id": OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
 			"policy_explanation": (
 				"Frozen Ukrainian-only V2+ Offline Strategy Promotion evidence is selected for "
-				"operator review. It remains read-model evidence only; the visible schedule uses "
-				"strict fallback feasibility and market execution stays disabled."
+				"operator review. The visible schedule uses a deterministic V2+ read-model "
+				"preview adapter over current price context, then the same battery feasibility "
+				"LP; market execution stays disabled."
 			),
 			"policy_readiness": "offline_strategy_promotion_ready",
 			**_operator_policy_context_not_applicable(),
@@ -3405,6 +3409,15 @@ def _operator_solve_result_for_strategy(
 	current_soc_fraction: float,
 	anchor_timestamp: datetime,
 ) -> BaselineSolveResult:
+	if selected_strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
+		return solver.solve_dispatch_from_forecast(
+			forecast=_operator_v2_plus_preview_forecast(baseline_solve_result.forecast),
+			battery_metrics=battery_metrics,
+			current_soc_fraction=current_soc_fraction,
+			anchor_timestamp=anchor_timestamp,
+			commit_reason="schedule_value_learner_v2_plus_read_model_preview",
+		)
+
 	forecast = _operator_forecast_store_forecast(
 		model_name=selected_strategy_id,
 		anchor_timestamp=anchor_timestamp,
@@ -3418,6 +3431,40 @@ def _operator_solve_result_for_strategy(
 		anchor_timestamp=anchor_timestamp,
 		commit_reason=f"{selected_strategy_id}_forecast_to_lp_preview",
 	)
+
+
+def _operator_v2_plus_preview_forecast(
+	baseline_forecast: list[BaselineForecastPoint],
+) -> list[BaselineForecastPoint]:
+	"""Build a demo/read-model V2+ preview forecast without claiming live learned dispatch."""
+	if not baseline_forecast:
+		return []
+
+	prices = [point.predicted_price_uah_mwh for point in baseline_forecast]
+	mean_price = sum(prices) / len(prices)
+	ordered_indices = sorted(range(len(prices)), key=lambda index: prices[index])
+	extrema_count = min(OFFLINE_V2_PLUS_PREVIEW_EXTREMA_COUNT, max(1, len(ordered_indices) // 4))
+	low_indices = set(ordered_indices[:extrema_count])
+	high_indices = set(ordered_indices[-extrema_count:])
+	preview_forecast: list[BaselineForecastPoint] = []
+	for index, point in enumerate(baseline_forecast):
+		centered_price = point.predicted_price_uah_mwh - mean_price
+		adjusted_price = mean_price + centered_price * OFFLINE_V2_PLUS_PREVIEW_SPREAD_SCALE
+		if index in high_indices:
+			adjusted_price += OFFLINE_V2_PLUS_PREVIEW_RANK_DELTA_UAH_MWH
+		if index in low_indices:
+			adjusted_price -= OFFLINE_V2_PLUS_PREVIEW_RANK_DELTA_UAH_MWH
+		preview_forecast.append(
+			BaselineForecastPoint(
+				forecast_timestamp=point.forecast_timestamp,
+				source_timestamp=point.source_timestamp,
+				predicted_price_uah_mwh=max(
+					FUTURE_STACK_DAM_PRICE_CAP_MIN_UAH_MWH,
+					min(FUTURE_STACK_DAM_PRICE_CAP_MAX_UAH_MWH, adjusted_price),
+				),
+			)
+		)
+	return preview_forecast
 
 
 def _operator_forecast_store_forecast(

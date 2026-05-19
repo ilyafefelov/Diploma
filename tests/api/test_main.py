@@ -653,18 +653,33 @@ def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns
 def test_operator_recommendation_exposes_v2_plus_offline_strategy(
 	client: TestClient,
 ) -> None:
+	strict_response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "strict_similar_day"},
+	)
 	response = client.get(
 		"/dashboard/operator-recommendation",
 		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "schedule_value_learner_v2_plus"},
 	)
 
+	assert strict_response.status_code == 200
 	assert response.status_code == 200
+	strict_payload = strict_response.json()
 	response_payload = response.json()
 	assert response_payload["selected_strategy_id"] == "schedule_value_learner_v2_plus"
 	assert response_payload["policy_mode"] == "offline_strategy_promotion_preview"
 	assert response_payload["selected_policy_id"] == "schedule_value_learner_v2_plus"
-	assert "strict fallback" in response_payload["policy_explanation"].lower()
+	assert "read-model preview adapter" in response_payload["policy_explanation"].lower()
+	assert "strict fallback" not in response_payload["policy_explanation"].lower()
 	assert "V2+" in response_payload["forecast_source"]
+	assert "read-model preview adapter" in response_payload["forecast_source"].lower()
+	assert [
+		point["forecast_price_uah_mwh"]
+		for point in response_payload["recommendation_schedule"]
+	] != [
+		point["forecast_price_uah_mwh"]
+		for point in strict_payload["recommendation_schedule"]
+	]
 	v2_plus_option = next(
 		strategy
 		for strategy in response_payload["available_strategies"]

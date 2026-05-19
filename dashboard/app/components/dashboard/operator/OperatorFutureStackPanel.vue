@@ -8,8 +8,10 @@ import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 
 import type {
+  BaselineRecommendationPoint,
   DecisionPolicyPreviewResponse,
   FutureStackPreviewResponse,
+  OperatorValueGapPointResponse,
   OperatorRecommendationResponse
 } from '~/types/control-plane'
 import {
@@ -40,9 +42,16 @@ const emit = defineEmits<{
   'update:selectedStrategyId': [value: string]
 }>()
 
-type PolicyValueMode = 'dt' | 'official'
+type PolicyValueMode = 'selected' | 'official'
 
-const policyValueMode = ref<PolicyValueMode>('dt')
+interface SelectedRecommendationChartRow {
+  label: string
+  netPowerMw: number
+  forecastPriceUahMwh: number
+  valueGapUah: number
+}
+
+const policyValueMode = ref<PolicyValueMode>('selected')
 
 const forecastSeries = computed(() => {
   const apiSeries = props.futureStack?.forecast_series?.length
@@ -55,6 +64,8 @@ const forecastSeries = computed(() => {
       .filter(isChartSafeForecastSeries)
   )
 })
+
+const forecastChartSeries = computed(() => forecastSeries.value.slice(0, 3))
 
 const hiddenUnsafeForecastItems = computed(() => {
   const apiSeries = props.futureStack?.forecast_series?.length
@@ -71,7 +82,7 @@ const hiddenUnsafeForecastItems = computed(() => {
 })
 
 const forecastLabels = computed(() => {
-  const firstSeries = forecastSeries.value[0]
+  const firstSeries = forecastChartSeries.value[0]
   if (!firstSeries) {
     return []
   }
@@ -96,7 +107,7 @@ const forecastOption = computed(() => ({
     textStyle: { color: '#f0fbff' },
     formatter: (params: Array<{ marker?: string, seriesName?: string, value?: number, axisValue?: string }>) => {
       const lines = params.map(item => `${item.marker || ''}${item.seriesName}: ${Math.round(item.value ?? 0).toLocaleString('en-GB')} UAH/MWh`)
-      return [`<strong>${params[0]?.axisValue || 'hour'}</strong>`, ...lines, 'NBEATSx/TFT forecast evidence; not a bid.'].join('<br/>')
+      return [`<strong>${params[0]?.axisValue || 'hour'}</strong>`, ...lines, 'Price context only; selected strategy is shown in the schedule chart.'].join('<br/>')
     }
   },
   legend: {
@@ -114,55 +125,34 @@ const forecastOption = computed(() => ({
     name: 'UAH/MWh',
     axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
   },
-  series: forecastSeries.value.flatMap((series) => {
-    const baseLine = {
-      type: 'line',
-      name: series.model_name,
-      smooth: true,
-      symbol: series.model_family === 'TFT' ? 'diamond' : 'circle',
-      symbolSize: 7,
-      lineStyle: {
-        width: 3,
-        color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32'
-      },
-      itemStyle: { color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32' },
-      data: series.points.map(point => Math.round(point.p50_price_uah_mwh ?? point.forecast_price_uah_mwh))
-    }
-
-    if (series.model_family !== 'TFT') {
-      return [baseLine]
-    }
-
-    return [
-      {
-        ...baseLine,
-        name: `${series.model_name} p50`
-      },
-      {
-        type: 'line',
-        name: `${series.model_name} p10`,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { width: 1.5, color: 'rgba(255, 111, 174, 0.45)', type: 'dashed' },
-        data: series.points.map(point => Math.round(point.p10_price_uah_mwh ?? point.forecast_price_uah_mwh))
-      },
-      {
-        type: 'line',
-        name: `${series.model_name} p90`,
-        smooth: true,
-        symbol: 'none',
-        lineStyle: { width: 1.5, color: 'rgba(255, 111, 174, 0.45)', type: 'dashed' },
-        data: series.points.map(point => Math.round(point.p90_price_uah_mwh ?? point.forecast_price_uah_mwh))
-      }
-    ]
-  })
+  series: forecastChartSeries.value.map(series => ({
+    type: 'line',
+    name: formatForecastSeriesLabel(series.model_name),
+    smooth: true,
+    symbol: series.model_family === 'TFT' ? 'diamond' : 'circle',
+    symbolSize: 7,
+    lineStyle: {
+      width: 3,
+      color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32'
+    },
+    itemStyle: { color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32' },
+    data: series.points.map(point => Math.round(point.p50_price_uah_mwh ?? point.forecast_price_uah_mwh))
+  }))
 }))
 
 const policyRows = computed(() => props.decisionPolicy?.rows ?? [])
+const recommendationScheduleRows = computed(() => props.operatorRecommendation?.recommendation_schedule ?? [])
 const valueGapRows = computed(() => props.operatorRecommendation?.value_gap_series ?? [])
 const officialPolicyForecastSeries = computed(() => filterOfficialPolicyValueSeries(forecastSeries.value))
 const hasOfficialPolicyRows = computed(() => officialPolicyForecastSeries.value.length > 0)
 const isOfficialPolicyMode = computed(() => policyValueMode.value === 'official' && hasOfficialPolicyRows.value)
+const selectedStrategyKey = computed(() => props.operatorRecommendation?.selected_strategy_id || props.selectedStrategyId)
+const selectedStrategyLabel = computed(() => {
+  const selectedStrategyId = props.operatorRecommendation?.selected_strategy_id || props.selectedStrategyId
+  const option = props.operatorRecommendation?.available_strategies.find(strategy => strategy.strategy_id === selectedStrategyId)
+  return option?.label || selectedStrategyId || 'strict_similar_day'
+})
+const usesDecisionPolicyPreview = computed(() => selectedStrategyKey.value === 'decision_transformer' && policyRows.value.length > 0)
 const policyForecastContextRows = computed(() => buildPolicyForecastContextPoints(policyRows.value))
 const policyForecastContextLabel = computed(() => props.decisionPolicy
   ? formatPolicyForecastContextLabel(props.decisionPolicy)
@@ -179,7 +169,7 @@ const policyProjectionSummary = computed(() => {
     {
       label: 'Safety projection',
       value: `${projectedRows}/${policyRows.value.length}`,
-      meta: 'DT rows changed by feasibility layer'
+      meta: 'policy rows changed by feasibility layer'
     },
     {
       label: 'Mean value gap',
@@ -193,20 +183,46 @@ const officialPolicyProjectionSummary = computed(() => officialPolicyForecastSer
   value: `${series.points.length} row${series.points.length === 1 ? '' : 's'}`,
   meta: series.out_of_dam_cap_rows > 0 ? `${series.out_of_dam_cap_rows} out-of-cap` : formatForecastQualityLabel(series)
 })))
+const selectedRecommendationChartRows = computed(() => buildSelectedRecommendationChartRows(
+  recommendationScheduleRows.value,
+  valueGapRows.value
+))
+const selectedRecommendationProjectionSummary = computed(() => {
+  if (selectedRecommendationChartRows.value.length === 0) {
+    return []
+  }
+
+  const nonIdleRows = selectedRecommendationChartRows.value.filter(row => Math.abs(row.netPowerMw) >= 0.005).length
+  const meanValueGap = selectedRecommendationChartRows.value.reduce((total, row) => total + row.valueGapUah, 0) / selectedRecommendationChartRows.value.length
+  return [
+    {
+      label: 'Selected schedule',
+      value: `${nonIdleRows}/${selectedRecommendationChartRows.value.length}`,
+      meta: 'non-idle action windows'
+    },
+    {
+      label: 'Mean visible gap',
+      value: `${Math.round(meanValueGap).toLocaleString('en-GB')} UAH`,
+      meta: selectedStrategyLabel.value
+    }
+  ]
+})
 const policyChartSummary = computed(() => isOfficialPolicyMode.value
   ? officialPolicyProjectionSummary.value
-  : policyProjectionSummary.value)
+  : usesDecisionPolicyPreview.value
+    ? policyProjectionSummary.value
+    : selectedRecommendationProjectionSummary.value)
 const officialPolicyLabels = computed(() => officialPolicyForecastSeries.value[0]?.points.map(point => formatHour(point.interval_start)) ?? [])
 const policyLabels = computed(() => {
   if (isOfficialPolicyMode.value) {
     return officialPolicyLabels.value
   }
 
-  if (policyRows.value.length > 0) {
+  if (usesDecisionPolicyPreview.value) {
     return policyRows.value.map(row => formatHour(row.interval_start))
   }
 
-  return valueGapRows.value.map(row => formatHour(row.interval_start))
+  return selectedRecommendationChartRows.value.map(row => row.label)
 })
 const officialPolicyChartSeries = computed(() => officialPolicyForecastSeries.value.flatMap((series) => {
   const isTft = series.model_family === 'TFT'
@@ -248,10 +264,74 @@ const officialPolicyChartSeries = computed(() => officialPolicyForecastSeries.va
 }))
 const policyChartTitle = computed(() => isOfficialPolicyMode.value
   ? 'Safe forecast rows'
-  : 'Selected policy value gap')
+  : usesDecisionPolicyPreview.value
+    ? 'Decision policy preview'
+    : 'Selected strategy schedule')
 const policyChartDescription = computed(() => isOfficialPolicyMode.value
   ? 'Forecast-store rows that are inside DAM caps. Hidden raw out-of-cap rows remain diagnostics, not schedule inputs.'
-  : 'Value gap is counterfactual lost value; action bars are projected through battery feasibility for the selected preview strategy.')
+  : usesDecisionPolicyPreview.value
+    ? 'Counterfactual value gap and projected action rows for the selected policy preview.'
+    : 'Bars are the selected preview strategy charge/discharge schedule. Lines show visible value gap and the price context used by the same LP feasibility layer.')
+
+const selectedRecommendationChartSeries = computed(() => [
+  {
+    type: 'bar',
+    name: 'Selected net power',
+    yAxisIndex: 1,
+    data: selectedRecommendationChartRows.value.map(row => row.netPowerMw),
+    itemStyle: { color: 'rgba(83, 178, 234, 0.8)', borderRadius: [8, 8, 0, 0] }
+  },
+  {
+    type: 'line',
+    name: 'Visible value gap',
+    smooth: true,
+    data: selectedRecommendationChartRows.value.map(row => row.valueGapUah),
+    lineStyle: { width: 4, color: '#f5a623' },
+    itemStyle: { color: '#f5a623' }
+  },
+  {
+    type: 'line',
+    name: 'Selected price context',
+    smooth: true,
+    data: selectedRecommendationChartRows.value.map(row => row.forecastPriceUahMwh),
+    lineStyle: { width: 3, color: '#b8ff32', type: 'dashed' },
+    itemStyle: { color: '#b8ff32' }
+  }
+])
+
+const decisionPolicyChartSeries = computed(() => [
+  {
+    type: 'line',
+    name: 'Policy value gap',
+    smooth: true,
+    data: policyRows.value.map(row => Math.round(row.value_gap_uah)),
+    lineStyle: { width: 4, color: '#f5a623' },
+    itemStyle: { color: '#f5a623' }
+  },
+  {
+    type: 'bar',
+    name: 'Projected action',
+    yAxisIndex: 1,
+    data: policyRows.value.map(row => Number(row.projected_net_power_mw.toFixed(3))),
+    itemStyle: { color: 'rgba(83, 178, 234, 0.78)', borderRadius: [8, 8, 0, 0] }
+  },
+  {
+    type: 'line',
+    name: 'NBEATSx state forecast',
+    smooth: true,
+    data: policyForecastContextRows.value.map(row => Math.round(row.nbeatsxForecastUahMwh)),
+    lineStyle: { width: 2.5, color: '#b8ff32', type: 'dashed' },
+    itemStyle: { color: '#b8ff32' }
+  },
+  {
+    type: 'line',
+    name: 'TFT state forecast',
+    smooth: true,
+    data: policyForecastContextRows.value.map(row => Math.round(row.tftForecastUahMwh)),
+    lineStyle: { width: 2.5, color: '#ff6fae', type: 'dashed' },
+    itemStyle: { color: '#ff6fae' }
+  }
+])
 
 const policyOption = computed(() => ({
   animationDuration: 500,
@@ -293,50 +373,9 @@ const policyOption = computed(() => ({
       ],
   series: isOfficialPolicyMode.value
     ? officialPolicyChartSeries.value
-    : policyRows.value.length > 0
-      ? [
-          {
-            type: 'line',
-            name: 'DT value gap',
-            smooth: true,
-            data: policyRows.value.map(row => Math.round(row.value_gap_uah)),
-            lineStyle: { width: 4, color: '#f5a623' },
-            itemStyle: { color: '#f5a623' }
-          },
-          {
-            type: 'bar',
-            name: 'Projected action',
-            yAxisIndex: 1,
-            data: policyRows.value.map(row => Number(row.projected_net_power_mw.toFixed(3))),
-            itemStyle: { color: 'rgba(83, 178, 234, 0.78)', borderRadius: [8, 8, 0, 0] }
-          },
-          {
-            type: 'line',
-            name: 'State NBEATSx forecast',
-            smooth: true,
-            data: policyForecastContextRows.value.map(row => Math.round(row.nbeatsxForecastUahMwh)),
-            lineStyle: { width: 2.5, color: '#b8ff32', type: 'dashed' },
-            itemStyle: { color: '#b8ff32' }
-          },
-          {
-            type: 'line',
-            name: 'State TFT forecast',
-            smooth: true,
-            data: policyForecastContextRows.value.map(row => Math.round(row.tftForecastUahMwh)),
-            lineStyle: { width: 2.5, color: '#ff6fae', type: 'dashed' },
-            itemStyle: { color: '#ff6fae' }
-          }
-        ]
-      : [
-          {
-            type: 'line',
-            name: 'Visible value gap',
-            smooth: true,
-            data: valueGapRows.value.map(row => Math.round(row.value_gap_uah)),
-            lineStyle: { width: 4, color: '#f5a623' },
-            itemStyle: { color: '#f5a623' }
-          }
-        ]
+    : usesDecisionPolicyPreview.value
+      ? decisionPolicyChartSeries.value
+      : selectedRecommendationChartSeries.value
 }))
 
 const statusCards = computed(() => [
@@ -375,11 +414,6 @@ const forecastWindowLabel = computed(() => formatForecastWindowLabel(
 const strategySelectItems = computed(() => buildRecommendationStrategySelectItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))
-const selectedStrategyLabel = computed(() => {
-  const selectedStrategyId = props.operatorRecommendation?.selected_strategy_id || props.selectedStrategyId
-  const option = props.operatorRecommendation?.available_strategies.find(strategy => strategy.strategy_id === selectedStrategyId)
-  return option?.label || selectedStrategyId || 'strict_similar_day'
-})
 const strategyReadinessItems = computed(() => buildStrategyReadinessItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))
@@ -401,6 +435,37 @@ const setPolicyValueMode = (mode: PolicyValueMode): void => {
   }
 
   policyValueMode.value = mode
+}
+
+function buildSelectedRecommendationChartRows(
+  scheduleRows: BaselineRecommendationPoint[],
+  gapRows: OperatorValueGapPointResponse[]
+): SelectedRecommendationChartRow[] {
+  return scheduleRows.map((row, index) => {
+    const gapRow = gapRows[index]
+    return {
+      label: formatHour(row.interval_start),
+      netPowerMw: Number(row.recommended_net_power_mw.toFixed(3)),
+      forecastPriceUahMwh: Math.round(row.forecast_price_uah_mwh),
+      valueGapUah: Math.round(gapRow?.value_gap_uah ?? 0)
+    }
+  })
+}
+
+function formatForecastSeriesLabel(modelName: string): string {
+  if (modelName === 'nbeatsx_silver_v0') {
+    return 'Compact NBEATSx'
+  }
+  if (modelName === 'tft_silver_v0') {
+    return 'Compact TFT p50'
+  }
+  if (modelName === 'nbeatsx_official_v0') {
+    return 'Official NBEATSx'
+  }
+  if (modelName === 'tft_official_v0') {
+    return 'Official TFT p50'
+  }
+  return modelName
 }
 
 const roundOptionalPrice = (value: number | null): number | null => value === null ? null : Math.round(value)
@@ -480,8 +545,8 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           <p class="decision-chart-card__eyebrow">
             Forecast stack
           </p>
-          <h3>Safe NBEATSx/TFT forecast paths</h3>
-          <p>Prediction window: <strong>{{ forecastWindowLabel }}</strong>. Chart hides unsafe raw out-of-cap rows; V2+ evidence is shown by regret cards, not raw forecast superiority.</p>
+          <h3>Price-model context</h3>
+          <p>Prediction window: <strong>{{ forecastWindowLabel }}</strong>. These are forecast context lines only; the selected strategy schedule is shown in the policy chart and bottom dock.</p>
           <div class="forecast-quality-strip">
             <span
               v-for="item in forecastQualityItems"
@@ -526,10 +591,10 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
               type="button"
               :aria-pressed="!isOfficialPolicyMode"
               :class="{ 'policy-chart-toggle__button--active': !isOfficialPolicyMode }"
-              @click="setPolicyValueMode('dt')"
+              @click="setPolicyValueMode('selected')"
             >
               <UIcon name="i-lucide-brain" />
-              <span>Policy preview</span>
+              <span>Strategy schedule</span>
             </button>
             <button
               type="button"
@@ -570,15 +635,15 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
       <article>
         <span>Forecast source</span>
         <p>
-          Current headline is Ukrainian-only V2+ schedule/value evidence. Raw official NBEATSx out-of-cap rows are
-          diagnostic only and are hidden from the chart until calibration makes them safe.
+          Current headline is Ukrainian-only V2+ schedule/value evidence. The price chart is context only: raw
+          forecast superiority is not the claim, and unsafe out-of-cap rows stay hidden from schedule inputs.
         </p>
       </article>
       <article>
         <span>Decision source</span>
         <p>
-          Selected strategy preview comes from the operator recommendation endpoint. The raw schedule is still only a
-          review candidate; deterministic battery feasibility and claim boundaries remain visible.
+          Selected strategy preview comes from the operator recommendation endpoint. V2+ uses a read-model adapter
+          and the same battery feasibility LP; the raw schedule is still only a review candidate.
           Forecast context: {{ policyForecastContextLabel }}.
           {{ operatorRecommendation?.policy_explanation || '' }}
           {{ decisionPolicy?.policy_value_interpretation || '' }}
@@ -816,7 +881,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 }
 
 .future-chart {
-  min-height: 18rem;
+  min-height: 20rem;
 }
 
 .future-explainer-grid article {

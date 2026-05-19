@@ -191,6 +191,9 @@ export const formatOperatorPolicyForecastContextLabel = (
   if (!operatorRecommendation) {
     return 'forecast context pending'
   }
+  if (operatorRecommendation.policy_forecast_context_row_count === 0) {
+    return 'forecast context not applicable'
+  }
 
   const percentage = Math.round(operatorRecommendation.policy_forecast_context_coverage_ratio * 100)
   return `${percentage}% forecast-conditioned (${operatorRecommendation.policy_forecast_context_row_count} rows)`
