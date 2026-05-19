@@ -43,6 +43,8 @@ than raw forecast MAE or hourly action accuracy.
 | `tft_official_global_panel_rolling_strict_lp_benchmark_frame` | Additive official global-panel TFT parity lane that strict-scores p10/p50/p90 quantile forecasts. |
 | `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame` | Compares frozen NBEATSx V2+ against TFT quantile schedule/value candidates under the unchanged strict LP/oracle gate. |
 | `dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame` | Tests whether prior-only horizon/quantile-calibrated TFT schedules add complementary value on top of the frozen Ukrainian-only V2+ baseline. |
+| `dfl_nbeatsx_tft_candidate_portfolio_v1_frame` | Builds the candidate-level NBEATSx V2+ plus calibrated TFT portfolio with strict/V2+ fallback and cross-model schedule candidates. |
+| `dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame` | Strict-scores the candidate-portfolio meta-selector against frozen calibrated V2+. |
 
 Tracked config:
 [real_data_official_global_panel_schedule_value_v2_plus_week3.yaml](../../configs/real_data_official_global_panel_schedule_value_v2_plus_week3.yaml).
@@ -58,6 +60,9 @@ TFT parity/quantile gate config:
 
 Serious calibrated TFT quantile gate config:
 [real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml](../../configs/real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml).
+
+Candidate-level NBEATSx+TFT portfolio config:
+[real_data_dfl_nbeatsx_tft_combined_portfolio_week3.yaml](../../configs/real_data_dfl_nbeatsx_tft_combined_portfolio_week3.yaml).
 
 ## Candidate Library V2+
 
@@ -194,3 +199,11 @@ feature space still favors V2+.
 
 Runbook:
 [DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md](DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md).
+
+The first combined TFT lane selected a single TFT candidate key per tenant and
+matched V2+ through fallback. The stronger follow-up is candidate-level:
+[DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md](DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md).
+It keeps V2+ as the default expert, admits TFT only as feasible schedule
+diversity, and can replace V2+ only if it improves mean regret by at least 5%,
+does not worsen median regret, preserves rolling robustness, and keeps
+`market_execution_enabled=false`.

@@ -90,6 +90,11 @@ from smart_arbitrage.dfl.tft_quantile_schedule_value import (
     validate_dfl_tft_augmented_v2_plus_evidence,
     validate_dfl_tft_combined_v2_plus_evidence,
 )
+from smart_arbitrage.dfl.nbeatsx_tft_combined_portfolio import (
+    DEFAULT_COMBINED_SOURCE_MODEL_NAME,
+    validate_dfl_nbeatsx_tft_meta_selector_evidence,
+    validate_dfl_nbeatsx_tft_meta_selector_robustness_evidence,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     validate_dfl_schedule_value_learner_v2_plus_robustness_evidence,
 )
@@ -794,6 +799,90 @@ def dfl_tft_calibrated_combined_v2_plus_evidence(
 
 
 @dg.asset_check(
+    asset="dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame",
+    name="dfl_nbeatsx_tft_meta_selector_evidence",
+    description=(
+        "Checks candidate-level NBEATSx V2+ plus calibrated TFT portfolio "
+        "coverage and claim boundaries."
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_evidence(
+    dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_nbeatsx_tft_meta_selector_evidence(
+            dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame,
+            baseline_source_model_name=FROZEN_V2_PLUS_BASELINE_MODEL_NAME,
+            combined_source_model_name=DEFAULT_COMBINED_SOURCE_MODEL_NAME,
+            min_validation_tenant_anchor_count=90,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_nbeatsx_tft_meta_selector_robustness_frame",
+    name="dfl_nbeatsx_tft_meta_selector_robustness_evidence",
+    description=(
+        "Checks rolling-window evidence for the NBEATSx+TFT candidate "
+        "portfolio meta-selector."
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_robustness_evidence(
+    dfl_nbeatsx_tft_meta_selector_robustness_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_nbeatsx_tft_meta_selector_robustness_evidence(
+            dfl_nbeatsx_tft_meta_selector_robustness_frame,
+            validation_window_count=4,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame",
+    name="dfl_nbeatsx_tft_meta_selector_rolling_strict_evidence",
+    description=(
+        "Checks true rolling strict LP/oracle evidence for the NBEATSx+TFT "
+        "candidate portfolio meta-selector."
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_rolling_strict_evidence(
+    dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_nbeatsx_tft_meta_selector_evidence(
+            dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame,
+            baseline_source_model_name=FROZEN_V2_PLUS_BASELINE_MODEL_NAME,
+            combined_source_model_name=DEFAULT_COMBINED_SOURCE_MODEL_NAME,
+            min_validation_tenant_anchor_count=360,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
+    asset="dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame",
+    name="dfl_nbeatsx_tft_meta_selector_prior_rolling_evidence",
+    description=(
+        "Checks true rolling-window robustness evidence for the NBEATSx+TFT "
+        "candidate portfolio meta-selector."
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_prior_rolling_evidence(
+    dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_dfl_nbeatsx_tft_meta_selector_robustness_evidence(
+            dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame,
+            validation_window_count=4,
+        ),
+        failed_severity=dg.AssetCheckSeverity.WARN,
+    )
+
+
+@dg.asset_check(
     asset="dfl_point_in_time_context_repair_audit_frame",
     name="dfl_point_in_time_context_repair_audit_evidence",
     description=(
@@ -1163,6 +1252,10 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     dfl_tft_combined_v2_plus_evidence,
     dfl_tft_calibrated_augmented_v2_plus_evidence,
     dfl_tft_calibrated_combined_v2_plus_evidence,
+    dfl_nbeatsx_tft_meta_selector_evidence,
+    dfl_nbeatsx_tft_meta_selector_robustness_evidence,
+    dfl_nbeatsx_tft_meta_selector_rolling_strict_evidence,
+    dfl_nbeatsx_tft_meta_selector_prior_rolling_evidence,
     dfl_point_in_time_context_repair_audit_evidence,
     dfl_point_in_time_context_feature_panel_evidence,
     dfl_context_enriched_candidate_value_dfl_v5_evidence,

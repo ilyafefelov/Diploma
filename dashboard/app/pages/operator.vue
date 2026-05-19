@@ -159,6 +159,7 @@ const schedulePredictionHeadLabel = computed(() => {
 const operatorResearchMetrics = computed(() => buildOperatorResearchMetrics({
   modelRows: defense.modelRows.value,
   readinessRows: defense.researchReadinessRows.value,
+  offlineStrategyPromotion: defense.offlineStrategyPromotion.value,
   exogenousSignals: defense.exogenousSignals.value,
   batteryState: defense.batteryState.value
 }))

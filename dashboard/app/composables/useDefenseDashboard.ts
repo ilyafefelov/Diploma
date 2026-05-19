@@ -6,6 +6,7 @@ import type {
   DecisionPolicyPreviewResponse,
   DecisionTransformerTrajectoryResponse,
   DflRelaxedPilotResponse,
+  DflScheduleValueProductionGateResponse,
   ForecastDispatchSensitivityResponse,
   FutureStackPreviewResponse,
   RealDataBenchmarkResponse,
@@ -23,6 +24,7 @@ type DefenseResourceKey
     | 'riskGate'
     | 'sensitivity'
     | 'dflPilot'
+    | 'offlineStrategyPromotion'
     | 'dtTrajectories'
     | 'dtPolicyPreview'
     | 'simulatedLiveTrading'
@@ -38,6 +40,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
   const riskGate = ref<RealDataBenchmarkResponse | null>(null)
   const sensitivity = ref<ForecastDispatchSensitivityResponse | null>(null)
   const dflPilot = ref<DflRelaxedPilotResponse | null>(null)
+  const offlineStrategyPromotion = ref<DflScheduleValueProductionGateResponse | null>(null)
   const dtTrajectories = ref<DecisionTransformerTrajectoryResponse | null>(null)
   const dtPolicyPreview = ref<DecisionPolicyPreviewResponse | null>(null)
   const simulatedLiveTrading = ref<SimulatedLiveTradingResponse | null>(null)
@@ -103,6 +106,13 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
       loadResource('sensitivity', sensitivity, '/api/control-plane/dashboard/forecast-dispatch-sensitivity'),
       loadResource('dflPilot', dflPilot, '/api/control-plane/dashboard/dfl-relaxed-pilot', {}, true),
       loadResource(
+        'offlineStrategyPromotion',
+        offlineStrategyPromotion,
+        '/api/control-plane/dashboard/dfl-schedule-value-production-gate',
+        {},
+        true
+      ),
+      loadResource(
         'dtTrajectories',
         dtTrajectories,
         '/api/control-plane/dashboard/decision-transformer-trajectories',
@@ -166,6 +176,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     riskGate.value = null
     sensitivity.value = null
     dflPilot.value = null
+    offlineStrategyPromotion.value = null
     dtTrajectories.value = null
     dtPolicyPreview.value = null
     simulatedLiveTrading.value = null
@@ -196,6 +207,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     loadDefenseDashboard,
     futureStack,
     modelRows,
+    offlineStrategyPromotion,
     researchReadinessRows,
     riskGate,
     sensitivity,

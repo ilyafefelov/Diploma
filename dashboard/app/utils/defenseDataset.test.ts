@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest'
 import {
   buildDefenseModelRows,
   buildResearchReadinessRows,
-  summarizeDefenseBenchmark
+  summarizeDefenseBenchmark,
+  summarizeScheduleValuePromotionReadModel
 } from './defenseDataset'
 import type {
   DecisionPolicyPreviewResponse,
   DecisionTransformerTrajectoryResponse,
   DflRelaxedPilotResponse,
+  DflScheduleValueProductionGateResponse,
   RealDataBenchmarkResponse,
   SimulatedLiveTradingResponse
 } from '../types/control-plane'
@@ -190,5 +192,24 @@ describe('defense dataset summaries', () => {
         boundary: 'not market execution'
       }
     ])
+  })
+
+  it('summarizes offline strategy promotion without implying market execution', () => {
+    const response: DflScheduleValueProductionGateResponse = {
+      generated_at: '2026-05-11T02:54:50Z',
+      row_count: 2,
+      production_promote_count: 2,
+      promoted_source_model_names: ['nbeatsx_silver_v0', 'tft_silver_v0'],
+      fallback_strategy: 'strict_similar_day_default_fallback',
+      market_execution_enabled: false,
+      claim_scope: 'dfl_schedule_value_production_gate_offline_strategy_not_market_execution',
+      claim_boundary: 'offline_read_model_strategy_evidence_only_not_market_execution',
+      academic_scope: 'Offline Strategy Promotion evidence only.',
+      rows: []
+    }
+
+    expect(summarizeScheduleValuePromotionReadModel(response)).toBe(
+      '2/2 read-model rows promoted, market execution disabled'
+    )
   })
 })

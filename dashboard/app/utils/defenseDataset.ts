@@ -2,6 +2,7 @@ import type {
   DecisionPolicyPreviewResponse,
   DecisionTransformerTrajectoryResponse,
   DflRelaxedPilotResponse,
+  DflScheduleValueProductionGateResponse,
   RealDataBenchmarkResponse,
   SimulatedLiveTradingResponse
 } from '../types/control-plane'
@@ -36,6 +37,28 @@ export interface ResearchReadinessRow {
   status: string
   metric: string
   boundary: string
+}
+
+export interface OfflineStrategyPromotionHeadline {
+  modelName: string
+  meanRegretUah: number
+  strictMeanRegretUah: number
+  improvementVsStrict: number
+  rollingPassCount: number
+  rollingWindowCount: number
+  marketExecutionEnabled: boolean
+  claimBoundary: string
+}
+
+export const CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE: OfflineStrategyPromotionHeadline = {
+  modelName: 'Schedule/Value Learner V2+',
+  meanRegretUah: 174.77,
+  strictMeanRegretUah: 310.58,
+  improvementVsStrict: 0.4373,
+  rollingPassCount: 4,
+  rollingWindowCount: 4,
+  marketExecutionEnabled: false,
+  claimBoundary: 'Offline Strategy Promotion evidence only'
 }
 
 export const summarizeDefenseBenchmark = (
@@ -115,6 +138,16 @@ export const buildResearchReadinessRows = (input: {
     boundary: 'not market execution'
   }
 ]
+
+export const summarizeScheduleValuePromotionReadModel = (
+  response: DflScheduleValueProductionGateResponse | null
+): string => {
+  if (!response) {
+    return 'backend gate pending'
+  }
+
+  return `${response.production_promote_count}/${response.row_count} read-model rows promoted, market execution ${response.market_execution_enabled ? 'enabled' : 'disabled'}`
+}
 
 export const formatCompactNumber = (value: number): string => {
   if (Math.abs(value) >= 1000) {

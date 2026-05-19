@@ -3,7 +3,8 @@ import { describe, expect, it } from 'vitest'
 import { buildOperatorResearchMetrics } from './operatorResearchMetrics'
 import type {
   DashboardBatteryStateResponse,
-  DashboardExogenousSignalsResponse
+  DashboardExogenousSignalsResponse,
+  DflScheduleValueProductionGateResponse
 } from '../types/control-plane'
 import type { DefenseModelRow, ResearchReadinessRow } from './defenseDataset'
 
@@ -71,10 +72,23 @@ describe('operator research metrics', () => {
       hourly_snapshot: null,
       fallback_reason: null
     }
+    const offlineStrategyPromotion: DflScheduleValueProductionGateResponse = {
+      generated_at: '2026-05-11T02:54:50Z',
+      row_count: 2,
+      production_promote_count: 2,
+      promoted_source_model_names: ['nbeatsx_silver_v0', 'tft_silver_v0'],
+      fallback_strategy: 'strict_similar_day_default_fallback',
+      market_execution_enabled: false,
+      claim_scope: 'dfl_schedule_value_production_gate_offline_strategy_not_market_execution',
+      claim_boundary: 'offline_read_model_strategy_evidence_only_not_market_execution',
+      academic_scope: 'Offline Strategy Promotion evidence only.',
+      rows: []
+    }
 
     const metrics = buildOperatorResearchMetrics({
       modelRows,
       readinessRows,
+      offlineStrategyPromotion,
       exogenousSignals,
       batteryState
     })
@@ -97,6 +111,15 @@ describe('operator research metrics', () => {
         tooltipTitle: 'Best comparator',
         tooltipBody: 'Lowest mean regret among live benchmark candidates for this tenant, including ensemble gates where materialized.',
         tooltipFormula: 'best = argmin(mean_regret_uah)'
+      },
+      {
+        label: 'Offline V2+',
+        value: '175 UAH',
+        meta: '44% vs strict / 4/4 rolling',
+        tone: 'purple',
+        tooltipTitle: 'Offline Strategy Promotion headline',
+        tooltipBody: 'Current thesis headline evidence is Ukrainian-only official global-panel NBEATSx Schedule/Value Learner V2+. The backend gate is shown only as read-model context.',
+        tooltipFormula: '2/2 read-model rows promoted, market execution disabled'
       },
       {
         label: 'Grid risk',

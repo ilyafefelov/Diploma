@@ -272,6 +272,13 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_tft_calibrated_quantile_schedule_candidate_library_frame",
         "dfl_tft_calibrated_augmented_v2_plus_strict_lp_benchmark_frame",
         "dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame",
+        "dfl_nbeatsx_tft_complementarity_audit_frame",
+        "dfl_nbeatsx_tft_candidate_portfolio_v1_frame",
+        "dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame",
+        "dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame",
+        "dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame",
+        "dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame",
+        "dfl_nbeatsx_tft_meta_selector_robustness_frame",
         "dfl_official_global_panel_schedule_candidate_library_v3_frame",
         "dfl_official_global_panel_candidate_value_label_panel_v3_frame",
         "dfl_official_global_panel_candidate_value_dfl_v3_frame",
@@ -538,6 +545,26 @@ def test_dfl_research_assets_are_registered() -> None:
         groups_by_key[
             "dfl_official_global_panel_candidate_value_dfl_v4_strict_lp_benchmark_frame"
         ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_nbeatsx_tft_complementarity_audit_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_nbeatsx_tft_candidate_portfolio_v1_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_nbeatsx_tft_meta_selector_robustness_frame"]
         == "gold_dfl_training"
     )
     assert (
@@ -1071,6 +1098,32 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_nbeatsx_tft_complementarity_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_nbeatsx_tft_candidate_portfolio_v1_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame"][
+            "ml_stage"
+        ]
+        == "selection"
+    )
+    assert (
+        tags_by_key["dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_nbeatsx_tft_meta_selector_robustness_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["dfl_market_coupling_v2_plus_ablation_frame"]["evidence_scope"]
         == "not_market_execution"
     )
@@ -1360,6 +1413,28 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_tft_calibrated_quantile_schedule_candidate_library_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_nbeatsx_tft_complementarity_audit_frame"] == {
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_tft_calibrated_quantile_schedule_candidate_library_frame",
+    }
+    assert deps_by_key["dfl_nbeatsx_tft_candidate_portfolio_v1_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
+        "dfl_tft_calibrated_quantile_schedule_candidate_library_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_nbeatsx_tft_complementarity_audit_frame",
+    }
+    assert deps_by_key["dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame"] == {
+        "dfl_nbeatsx_tft_candidate_portfolio_v1_frame",
+        "dfl_nbeatsx_tft_complementarity_audit_frame",
+    }
+    assert deps_by_key["dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame"] == {
+        "dfl_nbeatsx_tft_candidate_portfolio_v1_frame",
+        "dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_nbeatsx_tft_meta_selector_robustness_frame"] == {
+        "dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame"
     }
     assert deps_by_key["dfl_market_coupling_v2_plus_ablation_frame"] == {
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",

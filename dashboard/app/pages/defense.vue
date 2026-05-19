@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 
-import { formatPercent, formatUah } from '~/utils/defenseDataset'
+import {
+  CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
+  formatPercent,
+  formatUah,
+  summarizeScheduleValuePromotionReadModel
+} from '~/utils/defenseDataset'
 import { formatRuntimeAccelerationLabel } from '~/utils/operatorFutureStack'
 
 const preferredTenantId = 'client_003_dnipro_factory'
@@ -83,6 +88,14 @@ const latestBatterySoc = computed(() => {
 
 const thesisEvidence = computed(() => [
   {
+    label: 'Offline V2+',
+    value: formatUah(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.meanRegretUah),
+    note: `${formatPercent(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.improvementVsStrict)} vs strict / ${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingPassCount}/${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingWindowCount} rolling`,
+    tooltipTitle: 'Offline Strategy Promotion headline',
+    tooltipBody: 'Current strongest thesis evidence: Ukrainian-only official global-panel NBEATSx Schedule/Value Learner V2+. This card is evidence/read-model language, not live dispatch.',
+    tooltipFormula: 'promotion = strict LP/oracle regret gate, market_execution_enabled=false'
+  },
+  {
     label: 'Control baseline',
     value: controlRow.value ? formatUah(controlRow.value.meanRegretUah) : 'unavailable',
     note: 'strict_similar_day mean regret',
@@ -115,6 +128,12 @@ const thesisEvidence = computed(() => [
     tooltipFormula: 'SOC = latest_telemetry.current_soc ?? hourly_snapshot.soc_close'
   }
 ])
+
+const offlinePromotionRows = computed(() => defense.offlineStrategyPromotion.value?.rows ?? [])
+
+const offlinePromotionReadModelLabel = computed(() => (
+  summarizeScheduleValuePromotionReadModel(defense.offlineStrategyPromotion.value)
+))
 
 const narrativeSteps = [
   {
@@ -273,6 +292,49 @@ useHead({
         <span>{{ step.label }}</span>
         <p>{{ step.text }}</p>
       </article>
+    </section>
+
+    <section class="offline-promotion-panel">
+      <div>
+        <p class="eyebrow">
+          Offline Strategy Promotion
+        </p>
+        <h2>Current thesis headline remains V2+</h2>
+        <p class="section-explainer">
+          The strongest current result is Ukrainian-only official global-panel NBEATSx Schedule/Value Learner V2+:
+          {{ formatUah(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.meanRegretUah) }} mean regret,
+          {{ formatPercent(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.improvementVsStrict) }} better than strict,
+          and {{ CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingPassCount }}/{{ CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingWindowCount }}
+          rolling windows. It is still read-model evidence only.
+        </p>
+      </div>
+      <div class="offline-promotion-metrics">
+        <article>
+          <span>Strict baseline</span>
+          <strong>{{ formatUah(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.strictMeanRegretUah) }}</strong>
+        </article>
+        <article>
+          <span>Market execution</span>
+          <strong>{{ CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.marketExecutionEnabled ? 'enabled' : 'false' }}</strong>
+        </article>
+        <article>
+          <span>Backend gate</span>
+          <strong>{{ offlinePromotionReadModelLabel }}</strong>
+        </article>
+      </div>
+      <div
+        v-if="offlinePromotionRows.length > 0"
+        class="offline-promotion-rows"
+      >
+        <article
+          v-for="row in offlinePromotionRows"
+          :key="row.source_model_name"
+        >
+          <span>{{ row.source_model_name }}</span>
+          <strong>{{ formatUah(row.latest_selected_mean_regret_uah) }}</strong>
+          <small>{{ row.rolling_strict_pass_window_count }}/{{ row.rolling_window_count }} rolling / {{ row.production_promote ? 'read-model promoted' : row.promotion_blocker }}</small>
+        </article>
+      </div>
     </section>
 
     <section class="section-grid">
@@ -880,6 +942,57 @@ h2 {
   line-height: 1.55;
 }
 
+.offline-promotion-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.62fr);
+  gap: 1rem;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(220, 252, 231, 0.95), rgba(255, 255, 255, 0.95));
+  padding: 1rem;
+}
+
+.offline-promotion-metrics,
+.offline-promotion-rows {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.offline-promotion-metrics article,
+.offline-promotion-rows article {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid rgba(20, 32, 51, 0.1);
+  border-radius: 0.7rem;
+  background: rgba(255, 255, 255, 0.84);
+  padding: 0.72rem;
+}
+
+.offline-promotion-metrics span,
+.offline-promotion-rows span {
+  color: #166534;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.offline-promotion-metrics strong,
+.offline-promotion-rows strong {
+  overflow-wrap: anywhere;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.offline-promotion-rows {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.offline-promotion-rows small {
+  color: #465468;
+  line-height: 1.4;
+}
+
 .section-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.34fr);
@@ -1050,7 +1163,8 @@ td {
 
 @media (max-width: 1080px) {
   .defense-hero,
-  .section-grid {
+  .section-grid,
+  .offline-promotion-panel {
     grid-template-columns: 1fr;
   }
 
@@ -1091,7 +1205,8 @@ td {
   .narrative-band,
   .bucket-grid,
   .context-grid,
-  .future-stack-grid {
+  .future-stack-grid,
+  .offline-promotion-rows {
     grid-template-columns: 1fr;
   }
 }

@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Regret ladder across recent experiments</title>
+  <desc id="desc">Horizontal bar chart of mean regret in UAH, lower is better.</desc>
+  <rect width="1200" height="720" fill="#ffffff"/>
+  <text x="70" y="74" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#111827">Regret Ladder: What Actually Improved</text>
+  <text x="70" y="108" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">Mean regret UAH, lower is better. V3/V4/V5 and TFT portfolio are evidence paths, not replacements.</text>
+  <line x1="330" y1="150" x2="1080" y2="150" stroke="#e5e7eb"/>
+  <text x="330" y="140" font-family="Arial, sans-serif" font-size="13" fill="#6b7280">0</text>
+  <text x="520" y="140" font-family="Arial, sans-serif" font-size="13" fill="#6b7280">800</text>
+  <text x="710" y="140" font-family="Arial, sans-serif" font-size="13" fill="#6b7280">1600</text>
+  <text x="900" y="140" font-family="Arial, sans-serif" font-size="13" fill="#6b7280">2400</text>
+  <text x="1050" y="140" font-family="Arial, sans-serif" font-size="13" fill="#6b7280">3000</text>
+
+  <g font-family="Arial, sans-serif" font-size="17" fill="#111827">
+    <text x="70" y="190">strict_similar_day</text>
+    <rect x="330" y="168" width="78" height="28" rx="5" fill="#f59e0b"/>
+    <text x="420" y="190">310.58</text>
+
+    <text x="70" y="250">raw official NBEATSx</text>
+    <rect x="330" y="228" width="156" height="28" rx="5" fill="#94a3b8"/>
+    <text x="498" y="250">622.25</text>
+
+    <text x="70" y="310">raw official TFT p50</text>
+    <rect x="330" y="288" width="748" height="28" rx="5" fill="#94a3b8"/>
+    <text x="1090" y="310">2991.32</text>
+
+    <text x="70" y="370">Schedule/Value V2</text>
+    <rect x="330" y="348" width="52" height="28" rx="5" fill="#60a5fa"/>
+    <text x="394" y="370">206.37</text>
+
+    <text x="70" y="430">Schedule/Value V2+</text>
+    <rect x="330" y="408" width="44" height="28" rx="5" fill="#22c55e"/>
+    <text x="386" y="430">174.77</text>
+
+    <text x="70" y="490">V3 / V4 / V5 gates</text>
+    <rect x="330" y="468" width="44" height="28" rx="5" fill="#86efac"/>
+    <text x="386" y="490">174.77 (matched V2+ fallback)</text>
+
+    <text x="70" y="550">TFT portfolio latest</text>
+    <rect x="330" y="528" width="44" height="28" rx="5" fill="#c4b5fd"/>
+    <text x="386" y="550">174.77 (fallback 90/90)</text>
+
+    <text x="70" y="610">TFT portfolio rolling</text>
+    <rect x="330" y="588" width="253" height="28" rx="5" fill="#ef4444"/>
+    <text x="596" y="610">0/4 pass; older windows degrade vs V2+</text>
+  </g>
+</svg>

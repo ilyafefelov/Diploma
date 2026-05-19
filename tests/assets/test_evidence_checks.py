@@ -190,6 +190,22 @@ def test_dfl_evidence_asset_checks_are_registered() -> None:
             "dfl_tft_calibrated_combined_v2_plus_evidence",
         ),
         (
+            "dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame",
+            "dfl_nbeatsx_tft_meta_selector_evidence",
+        ),
+        (
+            "dfl_nbeatsx_tft_meta_selector_robustness_frame",
+            "dfl_nbeatsx_tft_meta_selector_robustness_evidence",
+        ),
+        (
+            "dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame",
+            "dfl_nbeatsx_tft_meta_selector_rolling_strict_evidence",
+        ),
+        (
+            "dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame",
+            "dfl_nbeatsx_tft_meta_selector_prior_rolling_evidence",
+        ),
+        (
             "dfl_market_coupling_v2_plus_ablation_frame",
             "dfl_market_coupling_v2_plus_ablation_evidence",
         ),

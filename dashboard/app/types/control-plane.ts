@@ -318,6 +318,40 @@ export interface DflRelaxedPilotResponse {
   rows: DflRelaxedPilotPointResponse[]
 }
 
+export interface DflScheduleValueProductionGatePointResponse {
+  source_model_name: string
+  tenant_count: number
+  latest_validation_tenant_anchor_count: number
+  latest_strict_mean_regret_uah: number
+  latest_selected_mean_regret_uah: number
+  latest_strict_median_regret_uah: number
+  latest_selected_median_regret_uah: number
+  latest_mean_regret_improvement_ratio_vs_strict: number
+  rolling_window_count: number
+  rolling_strict_pass_window_count: number
+  robust_research_challenger: boolean
+  production_promote: boolean
+  promotion_blocker: string
+  allowed_challenger: string
+  fallback_strategy: string
+  market_execution_enabled: boolean
+  not_full_dfl: boolean
+  not_market_execution: boolean
+}
+
+export interface DflScheduleValueProductionGateResponse {
+  generated_at: string
+  row_count: number
+  production_promote_count: number
+  promoted_source_model_names: string[]
+  fallback_strategy: string
+  market_execution_enabled: boolean
+  claim_scope: string
+  claim_boundary: string
+  academic_scope: string
+  rows: DflScheduleValueProductionGatePointResponse[]
+}
+
 export interface DecisionTransformerTrajectoryPointResponse {
   episode_id: string
   market_venue: string

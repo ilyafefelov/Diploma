@@ -231,6 +231,18 @@ from smart_arbitrage.dfl.tft_quantile_schedule_value import (
     evaluate_dfl_tft_augmented_v2_plus_gate,
     evaluate_dfl_tft_combined_v2_plus_gate,
 )
+from smart_arbitrage.dfl.nbeatsx_tft_combined_portfolio import (
+    DEFAULT_COMBINED_SOURCE_MODEL_NAME,
+    DFL_NBEATSX_TFT_META_SELECTOR_ROLLING_STRICT_LP_STRATEGY_KIND,
+    DFL_NBEATSX_TFT_META_SELECTOR_STRICT_LP_STRATEGY_KIND,
+    build_dfl_nbeatsx_tft_candidate_portfolio_v1_frame,
+    build_dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame,
+    build_dfl_nbeatsx_tft_complementarity_audit_frame,
+    build_dfl_nbeatsx_tft_meta_selector_robustness_frame,
+    build_dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame,
+    build_dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame,
+    evaluate_dfl_nbeatsx_tft_meta_selector_gate,
+)
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     build_dfl_schedule_value_learner_v2_plus_robustness_frame,
     evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate,
@@ -1003,6 +1015,26 @@ class DflTftCalibratedQuantileScheduleValueAssetConfig(
     """Calibrated TFT quantile contributor scope against frozen V2+."""
 
     forecast_model_names_csv: str = ",".join(TFT_QUANTILE_CALIBRATED_SOURCE_MODELS)
+
+
+class DflNbeatsxTftCombinedPortfolioAssetConfig(dg.Config):
+    """Candidate-level NBEATSx V2+ plus TFT portfolio selector scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    baseline_source_model_name: str = FROZEN_V2_PLUS_BASELINE_MODEL_NAME
+    tft_source_model_names_csv: str = ",".join(TFT_QUANTILE_CALIBRATED_SOURCE_MODELS)
+    combined_source_model_name: str = DEFAULT_COMBINED_SOURCE_MODEL_NAME
+    final_validation_anchor_count_per_tenant: int = 18
+    min_validation_tenant_anchor_count: int = 90
+    min_prior_mean_improvement_ratio_vs_v2_plus: float = 0.05
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.05
+    validation_window_count: int = 4
+    validation_anchor_count: int = 18
+    min_prior_anchors_before_window: int = 30
+    max_tft_candidates_per_anchor_source_family: int = 3
 
 
 class DflOfficialGlobalPanelScheduleValueLearnerV2RobustnessAssetConfig(dg.Config):
@@ -3685,6 +3717,424 @@ def dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame(
         },
     )
     return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_nbeatsx_tft_complementarity_audit_frame(
+    context,
+    config: DflNbeatsxTftCombinedPortfolioAssetConfig,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_tft_calibrated_quantile_schedule_candidate_library_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit whether calibrated TFT has per-anchor candidates that beat V2+."""
+
+    tft_source_model_names = _forecast_model_names(config.tft_source_model_names_csv)
+    audit_frame = build_dfl_nbeatsx_tft_complementarity_audit_frame(
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        dfl_tft_calibrated_quantile_schedule_candidate_library_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        tft_source_model_names=tft_source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "tenant_count": audit_frame.select("tenant_id").n_unique()
+            if audit_frame.height
+            else 0,
+            "complementarity_classes": sorted(
+                audit_frame["complementarity_class"].unique().to_list()
+            )
+            if audit_frame.height
+            else [],
+            "baseline_source_model_name": config.baseline_source_model_name,
+            "tft_source_model_names": list(tft_source_model_names),
+            "scope": "dfl_nbeatsx_tft_complementarity_audit_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_nbeatsx_tft_candidate_portfolio_v1_frame(
+    context,
+    config: DflNbeatsxTftCombinedPortfolioAssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_tft_calibrated_quantile_schedule_candidate_library_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_nbeatsx_tft_complementarity_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Candidate-level NBEATSx V2+ plus calibrated TFT schedule portfolio."""
+
+    tft_source_model_names = _forecast_model_names(config.tft_source_model_names_csv)
+    portfolio_frame = build_dfl_nbeatsx_tft_candidate_portfolio_v1_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+        dfl_tft_calibrated_quantile_schedule_candidate_library_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        dfl_nbeatsx_tft_complementarity_audit_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        tft_source_model_names=tft_source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": portfolio_frame.height,
+            "tenant_count": portfolio_frame.select("tenant_id").n_unique()
+            if portfolio_frame.height
+            else 0,
+            "portfolio_source_count": portfolio_frame.select(
+                "portfolio_source"
+            ).n_unique()
+            if portfolio_frame.height
+            else 0,
+            "candidate_family_count": portfolio_frame.select(
+                "candidate_family"
+            ).n_unique()
+            if portfolio_frame.height
+            else 0,
+            "scope": "dfl_nbeatsx_tft_candidate_portfolio_v1_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return portfolio_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame(
+    context,
+    config: DflNbeatsxTftCombinedPortfolioAssetConfig,
+    dfl_nbeatsx_tft_candidate_portfolio_v1_frame: pl.DataFrame,
+    dfl_nbeatsx_tft_complementarity_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only candidate-level value selector with frozen V2+ fallback."""
+
+    selector_frame = build_dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame(
+        dfl_nbeatsx_tft_candidate_portfolio_v1_frame,
+        dfl_nbeatsx_tft_complementarity_audit_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        baseline_source_model_name=config.baseline_source_model_name,
+        combined_source_model_name=config.combined_source_model_name,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        min_prior_mean_improvement_ratio_vs_v2_plus=(
+            config.min_prior_mean_improvement_ratio_vs_v2_plus
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": selector_frame.height,
+            "tenant_count": selector_frame.select("tenant_id").n_unique()
+            if selector_frame.height
+            else 0,
+            "fallback_to_v2_plus_count": selector_frame.filter(
+                pl.col("fallback_to_v2_plus")
+            ).height
+            if selector_frame.height
+            else 0,
+            "combined_source_model_name": config.combined_source_model_name,
+            "scope": "dfl_nbeatsx_tft_candidate_value_meta_selector_v1_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return selector_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame(
+    context,
+    config: DflNbeatsxTftCombinedPortfolioAssetConfig,
+    dfl_nbeatsx_tft_candidate_portfolio_v1_frame: pl.DataFrame,
+    dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict LP/oracle benchmark for the candidate-portfolio meta-selector."""
+
+    strict_frame = build_dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame(
+        dfl_nbeatsx_tft_candidate_portfolio_v1_frame,
+        dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_nbeatsx_tft_meta_selector_gate(
+        strict_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        combined_source_model_name=config.combined_source_model_name,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "strategy_kind": DFL_NBEATSX_TFT_META_SELECTOR_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_replacement_passed": gate.passed,
+            "v2_plus_mean_regret_uah": gate.metrics.get("v2_plus_mean_regret_uah"),
+            "selected_mean_regret_uah": gate.metrics.get("selected_mean_regret_uah"),
+            "fallback_to_v2_plus_count": gate.metrics.get(
+                "fallback_to_v2_plus_count"
+            ),
+            "combined_source_model_name": config.combined_source_model_name,
+            "market_execution_enabled": False,
+            "scope": "dfl_nbeatsx_tft_meta_selector_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame(
+    context,
+    config: DflNbeatsxTftCombinedPortfolioAssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_tft_calibrated_quantile_schedule_candidate_library_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """True rolling strict LP/oracle benchmark for the portfolio selector."""
+
+    tft_source_model_names = _forecast_model_names(config.tft_source_model_names_csv)
+    strict_frame = build_dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+        dfl_tft_calibrated_quantile_schedule_candidate_library_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        baseline_source_model_name=config.baseline_source_model_name,
+        tft_source_model_names=tft_source_model_names,
+        combined_source_model_name=config.combined_source_model_name,
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        min_prior_mean_improvement_ratio_vs_v2_plus=(
+            config.min_prior_mean_improvement_ratio_vs_v2_plus
+        ),
+        max_tft_candidates_per_anchor_source_family=(
+            config.max_tft_candidates_per_anchor_source_family
+        ),
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_candidate_library_v2_plus_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_nbeatsx_tft_meta_selector_gate(
+        strict_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        combined_source_model_name=config.combined_source_model_name,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count
+            * config.validation_window_count
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "strategy_kind": DFL_NBEATSX_TFT_META_SELECTOR_ROLLING_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_replacement_passed": gate.passed,
+            "v2_plus_mean_regret_uah": gate.metrics.get("v2_plus_mean_regret_uah"),
+            "selected_mean_regret_uah": gate.metrics.get("selected_mean_regret_uah"),
+            "fallback_to_v2_plus_count": gate.metrics.get(
+                "fallback_to_v2_plus_count"
+            ),
+            "validation_window_count": config.validation_window_count,
+            "validation_anchor_count": config.validation_anchor_count,
+            "min_prior_anchors_before_window": config.min_prior_anchors_before_window,
+            "combined_source_model_name": config.combined_source_model_name,
+            "market_execution_enabled": False,
+            "scope": (
+                "dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_gate_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame(
+    context,
+    config: DflNbeatsxTftCombinedPortfolioAssetConfig,
+    dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Robustness summary from the true rolling portfolio strict frame."""
+
+    robustness_frame = build_dfl_nbeatsx_tft_meta_selector_robustness_frame(
+        dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        combined_source_model_name=config.combined_source_model_name,
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": robustness_frame.height,
+            "rolling_pass_count": robustness_frame.filter(
+                pl.col("rolling_pass")
+            ).height
+            if robustness_frame.height
+            else 0,
+            "validation_window_count": config.validation_window_count,
+            "validation_anchor_count": config.validation_anchor_count,
+            "combined_source_model_name": config.combined_source_model_name,
+            "market_execution_enabled": False,
+            "scope": "dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return robustness_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx_tft",
+        market_venue="DAM",
+    ),
+)
+def dfl_nbeatsx_tft_meta_selector_robustness_frame(
+    context,
+    config: DflNbeatsxTftCombinedPortfolioAssetConfig,
+    dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling robustness for the NBEATSx+TFT candidate portfolio."""
+
+    robustness_frame = build_dfl_nbeatsx_tft_meta_selector_robustness_frame(
+        dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        combined_source_model_name=config.combined_source_model_name,
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": robustness_frame.height,
+            "rolling_pass_count": robustness_frame.filter(
+                pl.col("rolling_pass")
+            ).height
+            if robustness_frame.height
+            else 0,
+            "validation_window_count": config.validation_window_count,
+            "validation_anchor_count": config.validation_anchor_count,
+            "combined_source_model_name": config.combined_source_model_name,
+            "market_execution_enabled": False,
+            "scope": "dfl_nbeatsx_tft_meta_selector_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return robustness_frame
 
 
 @dg.asset(
@@ -8240,6 +8690,13 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_tft_calibrated_quantile_schedule_candidate_library_frame,
     dfl_tft_calibrated_augmented_v2_plus_strict_lp_benchmark_frame,
     dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame,
+    dfl_nbeatsx_tft_complementarity_audit_frame,
+    dfl_nbeatsx_tft_candidate_portfolio_v1_frame,
+    dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame,
+    dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame,
+    dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame,
+    dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame,
+    dfl_nbeatsx_tft_meta_selector_robustness_frame,
     dfl_official_global_panel_schedule_value_dfl_v2_frame,
     dfl_official_global_panel_schedule_value_dfl_v2_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_candidate_library_v3_frame,

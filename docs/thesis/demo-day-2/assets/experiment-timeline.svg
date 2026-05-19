@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Experiment timeline</title>
+  <desc id="desc">Last ten days of evidence work.</desc>
+  <rect width="1200" height="675" fill="#ffffff"/>
+  <text x="70" y="78" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#111827">Last 10 Days: From Forecasts To Decision Evidence</text>
+  <line x1="110" y1="340" x2="1090" y2="340" stroke="#94a3b8" stroke-width="4"/>
+
+  <g font-family="Arial, sans-serif">
+    <circle cx="150" cy="340" r="14" fill="#f59e0b"/>
+    <text x="110" y="290" font-size="18" font-weight="700" fill="#111827">Baseline</text>
+    <text x="85" y="315" font-size="14" fill="#475569">strict remains hard</text>
+
+    <circle cx="310" cy="340" r="14" fill="#60a5fa"/>
+    <text x="260" y="390" font-size="18" font-weight="700" fill="#111827">Official NBEATSx</text>
+    <text x="235" y="415" font-size="14" fill="#475569">global panel + calibration</text>
+
+    <circle cx="470" cy="340" r="14" fill="#22c55e"/>
+    <text x="430" y="290" font-size="18" font-weight="700" fill="#111827">V2+</text>
+    <text x="395" y="315" font-size="14" fill="#475569">174.77 UAH, 4/4</text>
+
+    <circle cx="630" cy="340" r="14" fill="#a78bfa"/>
+    <text x="585" y="390" font-size="18" font-weight="700" fill="#111827">V3/V4/V5</text>
+    <text x="545" y="415" font-size="14" fill="#475569">matched V2+, no replacement</text>
+
+    <circle cx="790" cy="340" r="14" fill="#ef4444"/>
+    <text x="735" y="290" font-size="18" font-weight="700" fill="#111827">TFT parity</text>
+    <text x="710" y="315" font-size="14" fill="#475569">not stronger standalone</text>
+
+    <circle cx="950" cy="340" r="14" fill="#7c3aed"/>
+    <text x="885" y="390" font-size="18" font-weight="700" fill="#111827">TFT portfolio</text>
+    <text x="860" y="415" font-size="14" fill="#475569">24/90 opportunities, 0/4 rolling</text>
+
+    <circle cx="1090" cy="340" r="14" fill="#0f172a"/>
+    <text x="1020" y="290" font-size="18" font-weight="700" fill="#111827">Next</text>
+    <text x="990" y="315" font-size="14" fill="#475569">DT/LAVA vs frozen V2+</text>
+  </g>
+</svg>

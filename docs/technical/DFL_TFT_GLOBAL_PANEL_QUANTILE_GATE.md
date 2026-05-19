@@ -160,13 +160,21 @@ V2/V2+ schedule-value treatment. A separate combined path now answers the more
 specific question: can TFT contribute one or more schedules that improve the
 frozen Ukrainian-only NBEATSx V2+ selector?
 
-The combined path keeps the calibrated NBEATSx V2+ schedule as the default
+The first combined path keeps the calibrated NBEATSx V2+ schedule as the default
 fallback for every tenant/anchor. For each tenant, it uses prior/train rows only
 to select the best TFT candidate key (`source_model_name`, `candidate_family`,
-`candidate_model_name`). TFT is allowed into the final holdout only when its
-prior mean regret beats the frozen V2+ prior profile by the configured threshold.
-If that evidence is absent or weak, the emitted combined row is exactly the
-frozen V2+ fallback. Final-holdout actuals affect scoring only.
+`candidate_model_name`). This was intentionally conservative, but it is still
+coarse because it treats TFT as one tenant-level alternative.
+
+The next combined path is candidate-level and is documented in
+[DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md](DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md).
+It builds a portfolio from frozen NBEATSx V2+, strict fallback, calibrated TFT
+p10/p50/p90 schedules, and cross-model schedule candidates. It adds prior-only
+disagreement features such as peak/trough disagreement, quantile spread,
+schedule distance from V2+, terminal SOC delta, and throughput delta. TFT is
+allowed into final scoring only when train/prior evidence predicts a non-
+degrading improvement; otherwise the emitted row remains the frozen V2+ fallback.
+Final-holdout actuals affect scoring only.
 
 This means a combined result can pass only if TFT improves the final strict
 LP/oracle mean regret versus calibrated V2+ and does not worsen median regret.
@@ -186,6 +194,14 @@ for all 90 tenant-anchor rows because TFT prior/train candidates did not clear
 the required improvement threshold. Therefore the current evidence says TFT does
 not yet help as complementary schedules under the small 36-anchor, bounded
 global-panel configuration.
+
+The follow-up full-data candidate-portfolio gate is documented in
+[DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md](DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md).
+It found local TFT opportunities on `24 / 90` latest tenant-anchors, but the true
+rolling strict replay still failed `0 / 4` windows. The latest windows fell back
+to V2+; older windows selected TFT-derived schedules and worsened mean/median
+regret. This is negative evidence for TFT as a robust complementary schedule
+source under the current Ukrainian-only feature space.
 
 ## Materialization
 
@@ -235,6 +251,26 @@ materialize the downstream calibrated selection:
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select tft_official_global_panel_horizon_quantile_calibration_frame,tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame,dfl_tft_calibrated_quantile_schedule_candidate_library_frame,dfl_tft_calibrated_augmented_v2_plus_strict_lp_benchmark_frame,dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame -c configs/real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml
 ```
+
+For the candidate-level combined portfolio after both V2+ and calibrated TFT
+candidate rows exist:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_nbeatsx_tft_complementarity_audit_frame,dfl_nbeatsx_tft_candidate_portfolio_v1_frame,dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame,dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame,dfl_nbeatsx_tft_meta_selector_robustness_frame -c configs/real_data_dfl_nbeatsx_tft_combined_portfolio_week3.yaml
+```
+
+The 2026-05-19 selector diagnostic found that this latest-holdout strict frame
+can show TFT complementarity but cannot prove that the prior selector is safe
+across rolling windows. The thesis-safe fix is the true rolling strict path:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame,dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame -c configs/real_data_dfl_nbeatsx_tft_combined_portfolio_week3.yaml
+```
+
+This path rebuilds V2+ from anchors before each validation window and
+synthesizes V2+ fallback candidate rows before testing calibrated TFT
+candidates. It must be used before treating TFT as a robust complement or
+before moving to DT/LAVA-style work.
 
 ## Acceptance Rule
 

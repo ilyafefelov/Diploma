@@ -1,15 +1,21 @@
 import type {
   DashboardBatteryStateResponse,
-  DashboardExogenousSignalsResponse
+  DashboardExogenousSignalsResponse,
+  DflScheduleValueProductionGateResponse
 } from '../types/control-plane'
 import type { DefenseModelRow, ResearchReadinessRow } from './defenseDataset'
-import { formatPercent, formatUah } from './defenseDataset'
+import {
+  CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
+  formatPercent,
+  formatUah,
+  summarizeScheduleValuePromotionReadModel
+} from './defenseDataset'
 
 export interface OperatorResearchMetric {
   label: string
   value: string
   meta: string
-  tone: 'blue' | 'green' | 'orange' | 'mint' | 'lime'
+  tone: 'blue' | 'green' | 'orange' | 'mint' | 'lime' | 'purple'
   tooltipTitle: string
   tooltipBody: string
   tooltipFormula: string
@@ -18,6 +24,7 @@ export interface OperatorResearchMetric {
 export const buildOperatorResearchMetrics = (input: {
   modelRows: DefenseModelRow[]
   readinessRows: ResearchReadinessRow[]
+  offlineStrategyPromotion: DflScheduleValueProductionGateResponse | null
   exogenousSignals: DashboardExogenousSignalsResponse | null
   batteryState: DashboardBatteryStateResponse | null
 }): OperatorResearchMetric[] => {
@@ -47,6 +54,15 @@ export const buildOperatorResearchMetrics = (input: {
       tooltipTitle: 'Best comparator',
       tooltipBody: 'Lowest mean regret among live benchmark candidates for this tenant, including ensemble gates where materialized.',
       tooltipFormula: 'best = argmin(mean_regret_uah)'
+    },
+    {
+      label: 'Offline V2+',
+      value: formatUah(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.meanRegretUah),
+      meta: `${formatPercent(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.improvementVsStrict)} vs strict / ${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingPassCount}/${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingWindowCount} rolling`,
+      tone: 'purple',
+      tooltipTitle: 'Offline Strategy Promotion headline',
+      tooltipBody: 'Current thesis headline evidence is Ukrainian-only official global-panel NBEATSx Schedule/Value Learner V2+. The backend gate is shown only as read-model context.',
+      tooltipFormula: summarizeScheduleValuePromotionReadModel(input.offlineStrategyPromotion)
     },
     {
       label: 'Grid risk',

@@ -60,6 +60,7 @@ docs/
 │
 ├── thesis/             # Матеріали дипломної роботи
 │   ├── chapters/       # Розділи пояснювальної записки
+│   │   ├── 00-terms-and-abbreviations.md
 │   │   ├── 01-project-overview.md
 │   │   ├── 02-literature-review.md
 │   │   ├── 03-Methodology.md
@@ -88,7 +89,8 @@ docs/
 | Роль | Куди дивитися |
 |------|--------------|
 | **Науковий керівник** | [thesis/weekly-reports/week1/supervisor-summary.md](thesis/weekly-reports/week1/supervisor-summary.md) · [thesis/weekly-reports/week1/report.md](thesis/weekly-reports/week1/report.md) · [Vercel live demo](https://dashboard-gilt-one-97.vercel.app/week1/interactive_report1) |
-| **Академічна записка** | [thesis/chapters/01-project-overview.md](thesis/chapters/01-project-overview.md) · [thesis/chapters/02-literature-review.md](thesis/chapters/02-literature-review.md) · [thesis/chapters/03-Methodology.md](thesis/chapters/03-Methodology.md) · [thesis/chapters/04-results-and-discussion.md](thesis/chapters/04-results-and-discussion.md) |
+| **Академічна записка** | [thesis/chapters/00-terms-and-abbreviations.md](thesis/chapters/00-terms-and-abbreviations.md) · [thesis/chapters/01-project-overview.md](thesis/chapters/01-project-overview.md) · [thesis/chapters/02-literature-review.md](thesis/chapters/02-literature-review.md) · [thesis/chapters/03-Methodology.md](thesis/chapters/03-Methodology.md) · [thesis/chapters/04-results-and-discussion.md](thesis/chapters/04-results-and-discussion.md) |
+| **Demo Day 2 пакет** | [thesis/demo-day-2/index.md](thesis/demo-day-2/index.md) · [HTML packet](thesis/demo-day-2/demo-day-2.html) — evidence-grounded visuals for the supervisor/peer progress update |
 | **Бібліографія / джерела** | [thesis/sources/README.md](thesis/sources/README.md) — індекс усіх PDF · [sources/README.md](sources/README.md) — короткі source-capture пакети для поточних зрізів |
 | **Архітектура і data flow** | [technical/ARCHITECTURE_AND_DATA_FLOW.md](technical/ARCHITECTURE_AND_DATA_FLOW.md) — інфографіка архітектури, потоків даних і safety boundary |
 | **Compute/offload switching** | [technical/DFL_TRAINING_COMPUTE_OPTIONS.md](technical/DFL_TRAINING_COMPUTE_OPTIONS.md) · [technical/OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md](technical/OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md) — local Compose, local host CUDA, HF Jobs switching, receipts, token boundary, and Offline Strategy Promotion claim boundary |

@@ -2760,3 +2760,66 @@ become the next headline only if it beats frozen V2+ mean regret, does not
 worsen median regret, preserves rolling robustness, and keeps
 `market_execution_enabled=false`. No Poland/ENTSO-E feature is routed into this
 TFT run.
+
+## NBEATSx + TFT Candidate-Portfolio Meta-Selector
+
+The first combined TFT path was too coarse because it selected one TFT candidate
+key per tenant and otherwise fell back to V2+. The next combined test is now
+implemented as a candidate-level portfolio:
+
+- frozen Ukrainian-only NBEATSx V2+ remains the default expert;
+- calibrated TFT p10/p50/p90 schedules enter only as feasible schedule
+  candidates;
+- cross-model candidates preserve feasible LP schedules while adding
+  disagreement/risk metadata;
+- selector inputs are prior-only `selector_feature_*` columns;
+- realized regret deltas stay in `label_*` columns;
+- final holdout actuals affect scoring only.
+
+Tracked implementation:
+
+- `dfl_nbeatsx_tft_complementarity_audit_frame`;
+- `dfl_nbeatsx_tft_candidate_portfolio_v1_frame`;
+- `dfl_nbeatsx_tft_candidate_value_meta_selector_v1_frame`;
+- `dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame`;
+- `dfl_nbeatsx_tft_meta_selector_robustness_frame`;
+- `dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame`;
+- `dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame`;
+- `configs/real_data_dfl_nbeatsx_tft_combined_portfolio_week3.yaml`;
+- [DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md](DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md).
+
+The gate is unchanged: the portfolio can become the next Offline Strategy
+Promotion headline only if it improves mean regret versus calibrated V2+ by at
+least `5%`, does not worsen median regret, passes rolling robustness, keeps zero
+safety violations, and preserves `market_execution_enabled=false`. If it fails,
+the result is negative evidence explaining whether TFT had no useful
+complementary candidates, the selector missed them, or the fallback was correctly
+conservative.
+
+Selector-fix note: the first combined strict frame was latest-holdout only and
+therefore could not safely estimate TFT-versus-V2+ complementarity in prior
+windows. The rolling strict frame repairs that by rebuilding V2+ from older
+anchors inside each validation window and by adding V2+ fallback candidate rows
+before the portfolio selector is trained. DT/LAVA-style work should start only
+after this rolling evidence is materialized, because otherwise it would inherit
+an unverified selector/comparator contract.
+
+Materialized rolling result:
+
+- Dagster run id: `35c6ddcd-ce54-4ae8-b527-670a875faf3f`;
+- rolling strict rows: `1,800`;
+- rolling robustness rows: `4`;
+- rolling asset checks: passed structurally;
+- rolling pass count: `0 / 4`;
+- latest two windows used V2+ fallback for all `90 / 90` tenant-anchor rows;
+- older two windows selected TFT-derived candidates but degraded mean/median
+  regret versus V2+.
+
+Interpretation: TFT provides some local complementary schedules (`24 / 90`
+latest tenant-anchors), but the current prior-only selector cannot exploit them
+robustly. V2+ remains the thesis headline. The next research branch should be
+DT/LAVA-style schedule-neighbor or candidate/value supervision against frozen
+V2+, not another small selector variant.
+
+Demo visuals for the supervisor/peer meeting are indexed at
+[../thesis/demo-day-2/index.md](../thesis/demo-day-2/index.md).

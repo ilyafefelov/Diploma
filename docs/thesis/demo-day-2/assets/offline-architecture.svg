@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="675" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Offline evidence architecture</title>
+  <desc id="desc">Offline architecture from Ukrainian data sources to strict LP/oracle gate.</desc>
+  <rect width="1200" height="675" fill="#f8fafc"/>
+  <text x="70" y="78" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#111827">Offline Evidence Architecture</text>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#475569"/>
+    </marker>
+  </defs>
+  <g font-family="Arial, sans-serif" font-size="18" fill="#111827">
+    <rect x="70" y="150" width="210" height="90" rx="12" fill="#e0f2fe" stroke="#7dd3fc"/>
+    <text x="95" y="185">OREE DAM</text><text x="95" y="214">observed prices</text>
+    <rect x="70" y="285" width="210" height="90" rx="12" fill="#e0f2fe" stroke="#7dd3fc"/>
+    <text x="95" y="320">Open-Meteo</text><text x="95" y="349">weather context</text>
+    <rect x="70" y="420" width="210" height="90" rx="12" fill="#e0f2fe" stroke="#7dd3fc"/>
+    <text x="95" y="455">Tenant load</text><text x="95" y="484">and config</text>
+
+    <rect x="365" y="230" width="210" height="170" rx="12" fill="#dcfce7" stroke="#86efac"/>
+    <text x="395" y="275">Dagster</text><text x="395" y="304">Bronze/Silver</text><text x="395" y="333">feature panels</text>
+
+    <rect x="660" y="150" width="210" height="90" rx="12" fill="#ede9fe" stroke="#c4b5fd"/>
+    <text x="685" y="185">Official</text><text x="685" y="214">NBEATSx / TFT</text>
+    <rect x="660" y="285" width="210" height="90" rx="12" fill="#fef3c7" stroke="#fbbf24"/>
+    <text x="685" y="320">Candidate</text><text x="685" y="349">schedule library</text>
+    <rect x="660" y="420" width="210" height="90" rx="12" fill="#fee2e2" stroke="#fca5a5"/>
+    <text x="685" y="455">Strict LP</text><text x="685" y="484">and oracle regret</text>
+
+    <rect x="955" y="285" width="180" height="90" rx="12" fill="#dcfce7" stroke="#86efac"/>
+    <text x="980" y="320">V2+ gate</text><text x="980" y="349">offline only</text>
+  </g>
+  <g stroke="#475569" stroke-width="3" marker-end="url(#arrow)">
+    <line x1="280" y1="195" x2="365" y2="275"/>
+    <line x1="280" y1="330" x2="365" y2="315"/>
+    <line x1="280" y1="465" x2="365" y2="355"/>
+    <line x1="575" y1="315" x2="660" y2="195"/>
+    <line x1="765" y1="240" x2="765" y2="285"/>
+    <line x1="765" y1="375" x2="765" y2="420"/>
+    <line x1="870" y1="465" x2="955" y2="330"/>
+  </g>
+</svg>

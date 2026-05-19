@@ -158,7 +158,7 @@ defineProps<{
 }
 
 .research-metric-grid {
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .research-diagnostic-grid {
@@ -218,6 +218,10 @@ defineProps<{
 
 .research-metric--lime {
   background: linear-gradient(180deg, rgba(82, 178, 35, 0.82), rgba(36, 111, 28, 0.86));
+}
+
+.research-metric--purple {
+  background: linear-gradient(180deg, rgba(124, 58, 237, 0.84), rgba(76, 29, 149, 0.86));
 }
 
 .research-tooltip {
