@@ -242,6 +242,7 @@ def test_tft_quantile_screen_packet_cli_exports_blocked_screen_evidence() -> Non
     assert "--candidate-library-pickle" in export_script
     assert "--augmented-gate-frame-pickle" in export_script
     assert "--asset-check-status" in export_script
+    assert "--tft-source-models-csv" in export_script
     assert "build_dfl_tft_quantile_screen_packet" in export_script
     assert "write_dfl_tft_quantile_screen_packet" in export_script
     assert "gate_blockers" in export_script

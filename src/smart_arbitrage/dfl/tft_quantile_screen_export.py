@@ -29,6 +29,7 @@ def build_dfl_tft_quantile_screen_packet(
     raw_strict_frame: pl.DataFrame,
     candidate_library_frame: pl.DataFrame,
     augmented_gate_frame: pl.DataFrame,
+    tft_source_model_names: tuple[str, ...] | None = None,
     dagster_run_id: str | None = None,
     materialization_command: str | None = None,
     asset_check_status: str | None = None,
@@ -78,7 +79,7 @@ def build_dfl_tft_quantile_screen_packet(
     gate = evaluate_dfl_tft_augmented_v2_plus_gate(
         augmented_gate_frame,
         baseline_source_model_name=FROZEN_V2_PLUS_BASELINE_MODEL_NAME,
-        tft_source_model_names=TFT_QUANTILE_SOURCE_MODELS,
+        tft_source_model_names=tft_source_model_names or TFT_QUANTILE_SOURCE_MODELS,
     )
     return {
         "run_slug": run_slug,

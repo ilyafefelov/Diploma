@@ -28,6 +28,7 @@ def main() -> None:
     parser.add_argument("--dagster-run-id", default=None)
     parser.add_argument("--materialization-command", default=None)
     parser.add_argument("--asset-check-status", default=None)
+    parser.add_argument("--tft-source-models-csv", default="")
     args = parser.parse_args()
 
     raw_strict_frame = _load_polars_frame(args.raw_strict_frame_pickle)
@@ -38,6 +39,7 @@ def main() -> None:
         raw_strict_frame=raw_strict_frame,
         candidate_library_frame=candidate_library_frame,
         augmented_gate_frame=augmented_gate_frame,
+        tft_source_model_names=_parse_csv(args.tft_source_models_csv),
         dagster_run_id=args.dagster_run_id,
         materialization_command=args.materialization_command,
         asset_check_status=args.asset_check_status,
@@ -75,6 +77,12 @@ def _load_polars_frame(path: Path) -> pl.DataFrame:
     if not isinstance(value, pl.DataFrame):
         raise TypeError(f"{path} must contain a pickled Polars DataFrame.")
     return value
+
+
+def _parse_csv(value: str) -> tuple[str, ...] | None:
+    if not value.strip():
+        return None
+    return tuple(item.strip() for item in value.split(",") if item.strip())
 
 
 if __name__ == "__main__":

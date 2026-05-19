@@ -82,6 +82,33 @@ def test_tft_quantile_screen_packet_refuses_market_execution_rows() -> None:
         raise AssertionError("expected market-execution guard to fail")
 
 
+def test_tft_quantile_screen_packet_accepts_calibrated_source_models() -> None:
+    calibrated_source = "tft_official_global_panel_v1_horizon_quantile_calibrated_v1"
+    raw_strict = _raw_tft_strict_frame(anchor_count=18)
+    candidates = build_dfl_tft_quantile_schedule_candidate_library_frame(
+        raw_strict,
+        tenant_ids=TENANTS,
+        final_validation_anchor_count_per_tenant=18,
+    )
+
+    packet = build_dfl_tft_quantile_screen_packet(
+        run_slug="unit_calibrated_tft_screen",
+        raw_strict_frame=raw_strict,
+        candidate_library_frame=candidates,
+        augmented_gate_frame=_v2_plus_augmented_with_tft_source_frame(
+            calibrated_source
+        ),
+        tft_source_model_names=(calibrated_source,),
+    )
+
+    assert packet["gate"]["passed"] is False
+    assert (
+        packet["gate"]["metrics"]["best_tft_source_model_name"]
+        == calibrated_source
+    )
+    assert "no TFT quantile V2+ challenger rows" not in packet["gate"]["description"]
+
+
 def _raw_tft_strict_frame(*, anchor_count: int) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     for tenant_id in TENANTS:
@@ -131,6 +158,39 @@ def _v2_plus_augmented_blocked_frame() -> pl.DataFrame:
             row["market_execution_enabled"] = False
             row["tft_gate_blocker"] = "missing_tft_train_rows"
             rows.append(row)
+    return pl.DataFrame(rows)
+
+
+def _v2_plus_augmented_with_tft_source_frame(source_model_name: str) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for tenant_id in TENANTS:
+        for anchor_index in range(18):
+            anchor = FIRST_ANCHOR + timedelta(days=anchor_index)
+            baseline = _evaluation_row(
+                tenant_id=tenant_id,
+                forecast_model_name="dfl_schedule_value_learner_v2_plus_nbeatsx_official_global_panel_horizon_calibrated_v1",
+                anchor=anchor,
+                regret=174.0,
+            )
+            baseline["source_model_name"] = (
+                "nbeatsx_official_global_panel_horizon_calibrated_v1"
+            )
+            baseline["selection_role"] = "schedule_value_learner_v2_plus"
+            baseline["strategy_kind"] = DFL_TFT_AUGMENTED_V2_PLUS_STRICT_LP_STRATEGY_KIND
+            baseline["market_execution_enabled"] = False
+            rows.append(baseline)
+
+            challenger = _evaluation_row(
+                tenant_id=tenant_id,
+                forecast_model_name=f"dfl_schedule_value_learner_v2_plus_{source_model_name}",
+                anchor=anchor,
+                regret=220.0,
+            )
+            challenger["source_model_name"] = source_model_name
+            challenger["selection_role"] = "schedule_value_learner_v2_plus"
+            challenger["strategy_kind"] = DFL_TFT_AUGMENTED_V2_PLUS_STRICT_LP_STRATEGY_KIND
+            challenger["market_execution_enabled"] = False
+            rows.append(challenger)
     return pl.DataFrame(rows)
 
 
