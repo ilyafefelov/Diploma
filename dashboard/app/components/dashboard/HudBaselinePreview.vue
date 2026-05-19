@@ -8,13 +8,15 @@ import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 
 import CollapsibleTextCard from '~/components/dashboard/CollapsibleTextCard.vue'
-import type { BaselineLpPreview } from '~/types/control-plane'
+import type { BaselineLpPreview, OperatorRecommendationResponse } from '~/types/control-plane'
 import { buildBaselineForecastChartOption, buildBaselineScheduleChartOption } from '~/utils/dashboardChartTheme'
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
   baselinePreview: BaselineLpPreview | null
+  operatorRecommendation: OperatorRecommendationResponse | null
+  selectedStrategyId: string
   isLoading: boolean
   lastLoadedLabel: string
   explanationMode: 'mvp' | 'future'
@@ -24,6 +26,24 @@ const forecastOption = computed(() => buildBaselineForecastChartOption(props.bas
 const scheduleOption = computed(() => buildBaselineScheduleChartOption(props.baselinePreview))
 const startingSocSourceLabel = computed(() => props.baselinePreview?.starting_soc_source || 'not reported')
 const telemetryFreshnessLabel = computed(() => formatTelemetryFreshness(props.baselinePreview?.telemetry_freshness))
+const selectedStrategyLabel = computed(() => {
+  if (!props.operatorRecommendation) {
+    return formatStrategyId(props.selectedStrategyId)
+  }
+
+  const selectedOption = props.operatorRecommendation.available_strategies.find(strategy =>
+    strategy.strategy_id === props.operatorRecommendation?.selected_strategy_id
+  )
+
+  return selectedOption?.label || props.operatorRecommendation.selected_strategy_id
+})
+const selectedStrategyValueLabel = computed(() => {
+  if (!props.operatorRecommendation) {
+    return 'value loading'
+  }
+
+  return `${Math.round(props.operatorRecommendation.economics.total_net_value_uah).toLocaleString('en-GB')} UAH`
+})
 
 const economicsItems = computed(() => {
   if (!props.baselinePreview) {
@@ -164,6 +184,12 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
 
   return typeof freshnessLabel === 'string' ? freshnessLabel : 'metadata available'
 }
+
+const formatStrategyId = (strategyId: string): string => strategyId
+  .split('_')
+  .filter(Boolean)
+  .map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+  .join(' ')
 </script>
 
 <template>
@@ -171,11 +197,16 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
     <div class="baseline-slab__header">
       <div>
         <p class="baseline-slab__eyebrow">
-          Slice 2 preview
+          Baseline comparator preview
         </p>
         <h3 class="baseline-slab__title">
-          Baseline LP recommendation surface
+          Baseline LP comparator surface
         </h3>
+        <p class="baseline-slab__summary">
+          This panel is the deterministic <strong>baseline LP</strong> comparator. It is kept so the operator can compare
+          the selected strategy preview above against a simpler hourly LP plan. Its UAH cards are baseline-only economics,
+          so they can differ from the top ribbon.
+        </p>
       </div>
 
       <div class="baseline-slab__meta-block">
@@ -183,9 +214,27 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
           Updated {{ lastLoadedLabel }}
         </p>
         <p class="baseline-slab__meta baseline-slab__meta-soft">
-          Recommendation preview only, not bid intent
+          Comparator preview only, not selected strategy
         </p>
       </div>
+    </div>
+
+    <div class="baseline-comparison-strip">
+      <article class="baseline-comparison-pill baseline-comparison-pill-active">
+        <span>This panel</span>
+        <strong>Baseline LP comparator</strong>
+        <small>Simple forecast + LP feasible schedule.</small>
+      </article>
+      <article class="baseline-comparison-pill">
+        <span>Top ribbon / schedule dock</span>
+        <strong>{{ selectedStrategyLabel }}</strong>
+        <small>{{ selectedStrategyValueLabel }} selected-strategy preview.</small>
+      </article>
+      <article class="baseline-comparison-pill">
+        <span>Why numbers differ</span>
+        <strong>Different strategy, same tenant</strong>
+        <small>Baseline cards score the LP comparator; top cards score the selected strategy preview.</small>
+      </article>
     </div>
 
     <div class="baseline-slab__economics">
@@ -272,10 +321,11 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
               Forecast horizon
             </p>
             <h4 class="baseline-card__title">
-              Hourly DAM baseline forecast
+              Baseline LP forecast input
             </h4>
             <p class="baseline-card__summary">
-              Y-axis values are quoted in <strong>UAH/MWh</strong>.
+              This is the price curve used by the baseline LP comparator, not the selected strategy evidence path. Y-axis
+              values are quoted in <strong>UAH/MWh</strong>.
             </p>
           </div>
         </div>
@@ -301,10 +351,11 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
               Feasible plan
             </p>
             <h4 class="baseline-card__title">
-              Signed MW schedule and projected SOC
+              Baseline signed MW schedule and projected SOC
             </h4>
             <p class="baseline-card__summary">
-              Bars use signed <strong>MW</strong>; the pink line is projected <strong>SOC %</strong> after each feasible step.
+              Bars use signed <strong>MW</strong>; the pink line is projected <strong>SOC %</strong> after each baseline
+              feasible step. Positive MW means discharge, negative MW means charge.
             </p>
           </div>
         </div>
@@ -343,6 +394,7 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
             This panel is still the baseline LP preview, not an NBEATSx/TFT forecast and not bid intent. Starting SOC source:
             <strong>{{ startingSocSourceLabel }}</strong>; telemetry freshness:
             <strong>{{ telemetryFreshnessLabel }}</strong>.
+            The selected strategy currently shown elsewhere is <strong>{{ selectedStrategyLabel }}</strong>.
           </p>
         </template>
         <template v-else>
@@ -407,8 +459,9 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
     >
       <template v-if="props.explanationMode === 'mvp'">
         <p class="baseline-boundary__copy">
-          This surface shows a feasible hourly recommendation derived from the baseline LP and constrained battery state.
-          It is for operator review and demo planning, not market-order or dispatch semantics.
+          This surface shows a feasible hourly recommendation derived from the baseline LP comparator and constrained
+          battery state. It is useful for comparison with the selected strategy preview, but it is not the chosen schedule
+          unless the user explicitly selects the baseline strategy.
         </p>
         <p class="baseline-boundary__copy baseline-boundary__copy-strong">
           Feasible plan means the preview already respects the visible power corridor, SOC guardrails, interval grain,
@@ -478,6 +531,15 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
   font-size: 1.25rem;
 }
 
+.baseline-slab__summary {
+  max-width: 58rem;
+  margin-top: 0.38rem;
+  color: rgba(229, 249, 255, 0.82);
+  font-size: 0.86rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 .baseline-card__title {
   font-size: 1.08rem;
 }
@@ -498,11 +560,57 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
 }
 
 .baseline-slab__economics,
+.baseline-comparison-strip,
 .baseline-feasible-strip,
 .baseline-slab__grid,
 .baseline-explainer-grid {
   display: grid;
   gap: 0.9rem;
+}
+
+.baseline-comparison-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.baseline-comparison-pill {
+  display: grid;
+  min-height: 5.4rem;
+  gap: 0.24rem;
+  border: 1px solid rgba(202, 249, 255, 0.3);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, rgba(215, 255, 79, 0.12), transparent 30%),
+    linear-gradient(180deg, rgba(5, 117, 190, 0.74), rgba(3, 72, 133, 0.72));
+  padding: 0.64rem 0.72rem;
+}
+
+.baseline-comparison-pill-active {
+  border-color: rgba(215, 255, 79, 0.5);
+  background:
+    radial-gradient(circle at top right, rgba(215, 255, 79, 0.2), transparent 32%),
+    linear-gradient(180deg, rgba(2, 132, 199, 0.82), rgba(4, 90, 151, 0.78));
+}
+
+.baseline-comparison-pill span {
+  color: rgba(215, 255, 79, 0.84);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.baseline-comparison-pill strong {
+  color: white;
+  font-size: 0.98rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.baseline-comparison-pill small {
+  color: rgba(229, 249, 255, 0.78);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.32;
 }
 
 .economics-pill,
@@ -798,6 +906,12 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
 
   .baseline-slab__grid {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 859px) {
+  .baseline-comparison-strip {
+    grid-template-columns: 1fr;
   }
 }
 </style>

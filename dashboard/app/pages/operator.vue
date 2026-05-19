@@ -276,6 +276,8 @@ onBeforeUnmount(() => {
 
           <OperatorBaselineConsole
             :baseline-preview="baselinePreview"
+            :operator-recommendation="operatorRecommendation"
+            :selected-strategy-id="selectedOperatorStrategyId"
             :is-loading="isBaselinePreviewLoading"
             :last-loaded-label="baselinePreviewLastLoadedLabel"
             :explanation-mode="explanationMode"
