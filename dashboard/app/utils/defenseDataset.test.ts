@@ -4,6 +4,7 @@ import {
   buildDefenseModelRows,
   buildResearchReadinessRows,
   CURRENT_DASHBOARD_EXPERIMENTS,
+  CURRENT_DT_LAVA_NEXT_STEPS,
   CURRENT_REGRET_LADDER,
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
@@ -247,6 +248,9 @@ describe('defense dataset summaries', () => {
       label: 'Calibrated V2+',
       meanRegretUah: 174.77
     })
+    expect(CURRENT_REGRET_LADDER.find(point => point.label === 'Calibrated V2+')?.note).toContain(
+      'Prior-only forecast correction'
+    )
     expect(CURRENT_TFT_PORTFOLIO_DIAGNOSTICS.map(point => `${point.numerator}/${point.denominator}`)).toEqual([
       '24/90',
       '90/90',
@@ -263,6 +267,18 @@ describe('defense dataset summaries', () => {
     )
     expect(CURRENT_TFT_USE_DECISION.find(point => point.label === 'Promotion blocker')?.body).toContain(
       'leak final-holdout'
+    )
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.map(point => point.label)).toEqual([
+      'Teacher data',
+      'Prediction target',
+      'LAVA-style layer',
+      'Promotion gate'
+    ])
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Promotion gate')?.body).toContain(
+      'market_execution_enabled=false'
+    )
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Prediction target')?.body).toContain(
+      'BUY/SELL/HOLD'
     )
   })
 })

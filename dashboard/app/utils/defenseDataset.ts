@@ -91,6 +91,13 @@ export interface DefenseTftUseDecision {
   status: 'useful' | 'blocked' | 'next'
 }
 
+export interface DefenseDtLavaPlanStep {
+  label: string
+  value: string
+  body: string
+  status: 'input' | 'model' | 'gate' | 'boundary'
+}
+
 export const CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE: OfflineStrategyPromotionHeadline = {
   modelName: 'Schedule/Value Learner V2+',
   meanRegretUah: 174.77,
@@ -163,7 +170,7 @@ export const CURRENT_REGRET_LADDER: DefenseRegretLadderPoint[] = [
   {
     label: 'Calibrated V2+',
     meanRegretUah: 174.77,
-    note: 'Current thesis headline, 4/4 rolling windows',
+    note: 'Prior-only forecast correction by horizon; current thesis headline, 4/4 rolling windows',
     status: 'headline'
   },
   {
@@ -228,6 +235,33 @@ export const CURRENT_TFT_USE_DECISION: DefenseTftUseDecision[] = [
     value: 'future branch',
     body: 'Train a stronger prior-only portfolio selector or DT/LAVA schedule-neighbor model that predicts when TFT risk schedules beat V2+, then re-score through the same gate.',
     status: 'next'
+  }
+]
+
+export const CURRENT_DT_LAVA_NEXT_STEPS: DefenseDtLavaPlanStep[] = [
+  {
+    label: 'Teacher data',
+    value: 'V2+ + oracle schedules',
+    body: 'Train only on prior/train anchors with V2+, oracle/high-value schedules, and candidate value labels. Final holdout stays scoring-only.',
+    status: 'input'
+  },
+  {
+    label: 'Prediction target',
+    value: 'schedule block / candidate',
+    body: 'Predict schedule family, schedule block, or candidate index first. Do not start by emitting raw hourly BUY/SELL/HOLD commands.',
+    status: 'model'
+  },
+  {
+    label: 'LAVA-style layer',
+    value: 'feasible neighbors',
+    body: 'Use precomputed LP-feasible schedule neighbors and value labels, so the model learns decision quality without live solver calls inside training.',
+    status: 'model'
+  },
+  {
+    label: 'Promotion gate',
+    value: 'beat V2+',
+    body: 'A challenger must beat 174.77 UAH mean regret, avoid median degradation, preserve rolling robustness, and keep market_execution_enabled=false.',
+    status: 'gate'
   }
 ]
 

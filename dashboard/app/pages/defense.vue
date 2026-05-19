@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 
 import {
   CURRENT_DASHBOARD_EXPERIMENTS,
+  CURRENT_DT_LAVA_NEXT_STEPS,
   CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
   CURRENT_REGRET_LADDER,
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
@@ -380,6 +381,14 @@ useHead({
         v-if="offlinePromotionRows.length > 0"
         class="offline-promotion-rows"
       >
+        <div class="evidence-scope-note evidence-scope-note--wide">
+          <UIcon name="i-lucide-info" />
+          <p>
+            The fixed V2+ headline above comes from the frozen 365-anchor evidence packet. Rows below are FastAPI
+            read-model rows from the available gate endpoint, so NBEATSx/TFT UAH values may reflect older compact or
+            source-specific evidence and are kept for traceability, not as the headline comparator.
+          </p>
+        </div>
         <article
           v-for="row in offlinePromotionRows"
           :key="row.source_model_name"
@@ -433,6 +442,17 @@ useHead({
                 />
               </div>
               <strong>{{ formatUah(point.meanRegretUah) }}</strong>
+            </div>
+          </div>
+          <div class="calibration-explainer">
+            <UIcon name="i-lucide-sliders-horizontal" />
+            <div>
+              <strong>Calibrated means “corrected before scoring”, not “peeked at the answer”.</strong>
+              <p>
+                V2+ first looks at previous anchors and learns a small horizon-by-horizon correction for forecast bias.
+                Then it builds schedules and scores them with the same strict LP/oracle regret gate. Final-holdout
+                realized prices are used only to score the result, not to choose the correction.
+              </p>
             </div>
           </div>
         </article>
@@ -707,6 +727,17 @@ useHead({
           DT/LAVA is the next research branch after the TFT portfolio closure. It must use V2+ as comparator and keep
           strict LP/oracle scoring before any claim changes. {{ futureBackendStatusText }}
         </p>
+        <div class="dt-lava-plan-grid">
+          <article
+            v-for="step in CURRENT_DT_LAVA_NEXT_STEPS"
+            :key="step.label"
+            :class="`dt-lava-plan-card dt-lava-plan-card--${step.status}`"
+          >
+            <span>{{ step.label }}</span>
+            <strong>{{ step.value }}</strong>
+            <small>{{ step.body }}</small>
+          </article>
+        </div>
       </aside>
     </section>
 
@@ -1309,6 +1340,33 @@ h2 {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.evidence-scope-note {
+  display: grid;
+  grid-template-columns: 1.15rem minmax(0, 1fr);
+  gap: 0.62rem;
+  align-items: start;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  border-radius: 0.65rem;
+  background: rgba(224, 242, 254, 0.76);
+  padding: 0.72rem;
+}
+
+.evidence-scope-note--wide {
+  grid-column: 1 / -1;
+}
+
+.evidence-scope-note svg {
+  margin-top: 0.08rem;
+  color: #0284c7;
+}
+
+.evidence-scope-note p {
+  margin: 0;
+  color: #465468;
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
 .offline-promotion-rows small {
   color: #465468;
   line-height: 1.4;
@@ -1462,6 +1520,52 @@ h2 {
   background: linear-gradient(180deg, rgba(220, 252, 231, 0.88), rgba(255, 255, 255, 0.94));
 }
 
+.dt-lava-plan-grid {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 0.85rem;
+}
+
+.dt-lava-plan-card {
+  display: grid;
+  gap: 0.32rem;
+  border: 1px solid rgba(20, 32, 51, 0.1);
+  border-radius: 0.62rem;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.72rem;
+}
+
+.dt-lava-plan-card span {
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.dt-lava-plan-card strong {
+  color: #142033;
+  font-size: 0.94rem;
+  line-height: 1.22;
+}
+
+.dt-lava-plan-card small {
+  color: #617084;
+  line-height: 1.45;
+}
+
+.dt-lava-plan-card--input {
+  border-color: rgba(14, 165, 233, 0.24);
+}
+
+.dt-lava-plan-card--model {
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+.dt-lava-plan-card--gate,
+.dt-lava-plan-card--boundary {
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
 .chart-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.8fr);
@@ -1504,6 +1608,36 @@ h2 {
 .portfolio-diagnostic-list {
   display: grid;
   gap: 0.75rem;
+}
+
+.calibration-explainer {
+  display: grid;
+  grid-template-columns: 1.35rem minmax(0, 1fr);
+  gap: 0.7rem;
+  align-items: start;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.92), rgba(255, 255, 255, 0.96));
+  padding: 0.82rem;
+}
+
+.calibration-explainer svg {
+  margin-top: 0.08rem;
+  color: #0284c7;
+}
+
+.calibration-explainer strong {
+  display: block;
+  color: #142033;
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+.calibration-explainer p {
+  margin-top: 0.25rem;
+  color: #617084;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .regret-row {
