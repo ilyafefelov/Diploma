@@ -69,6 +69,21 @@ export interface DashboardExperimentCard {
   status: 'headline' | 'closed' | 'blocked' | 'next'
 }
 
+export interface DefenseRegretLadderPoint {
+  label: string
+  meanRegretUah: number
+  note: string
+  status: 'control' | 'improved' | 'headline' | 'plateau' | 'failed'
+}
+
+export interface DefensePortfolioDiagnosticPoint {
+  label: string
+  numerator: number
+  denominator: number
+  note: string
+  status: 'opportunity' | 'fallback' | 'blocked'
+}
+
 export const CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE: OfflineStrategyPromotionHeadline = {
   modelName: 'Schedule/Value Learner V2+',
   meanRegretUah: 174.77,
@@ -116,6 +131,69 @@ export const CURRENT_DASHBOARD_EXPERIMENTS: DashboardExperimentCard[] = [
     value: 'DT/LAVA',
     meta: 'candidate/value or schedule-neighbor supervision against V2+',
     status: 'next'
+  }
+]
+
+export const CURRENT_REGRET_LADDER: DefenseRegretLadderPoint[] = [
+  {
+    label: 'strict_similar_day',
+    meanRegretUah: 310.58,
+    note: 'Frozen control comparator',
+    status: 'control'
+  },
+  {
+    label: 'Frozen V2',
+    meanRegretUah: 206.37,
+    note: 'First schedule/value promotion evidence',
+    status: 'improved'
+  },
+  {
+    label: 'Raw V2+',
+    meanRegretUah: 193.36,
+    note: 'Official global-panel NBEATSx, uncalibrated source',
+    status: 'improved'
+  },
+  {
+    label: 'Calibrated V2+',
+    meanRegretUah: 174.77,
+    note: 'Current thesis headline, 4/4 rolling windows',
+    status: 'headline'
+  },
+  {
+    label: 'V3/V4/V5',
+    meanRegretUah: 174.77,
+    note: 'Matched V2+ through fallback; no replacement claim',
+    status: 'plateau'
+  },
+  {
+    label: 'Official bridge DFL/DT',
+    meanRegretUah: 367.70,
+    note: 'Negative evidence versus V2+',
+    status: 'failed'
+  }
+]
+
+export const CURRENT_TFT_PORTFOLIO_DIAGNOSTICS: DefensePortfolioDiagnosticPoint[] = [
+  {
+    label: 'TFT local opportunities',
+    numerator: 24,
+    denominator: 90,
+    note: 'TFT had a better candidate on some latest tenant-anchors.',
+    status: 'opportunity'
+  },
+  {
+    label: 'Selector fallback',
+    numerator: 90,
+    denominator: 90,
+    note: 'Prior-only selector stayed with V2+ on the latest holdout.',
+    status: 'fallback'
+  },
+  {
+    label: 'Rolling robustness',
+    numerator: 0,
+    denominator: 4,
+    note: 'Portfolio did not pass the rolling strict replay gate.',
+    status: 'blocked'
   }
 ]
 

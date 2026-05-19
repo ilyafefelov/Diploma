@@ -4,6 +4,8 @@ import {
   buildDefenseModelRows,
   buildResearchReadinessRows,
   CURRENT_DASHBOARD_EXPERIMENTS,
+  CURRENT_REGRET_LADDER,
+  CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
   summarizeDefenseBenchmark,
   summarizeScheduleValuePromotionReadModel
@@ -230,6 +232,24 @@ describe('defense dataset summaries', () => {
       'TFT portfolio',
       'Market coupling',
       'Next branch'
+    ])
+
+    expect(CURRENT_REGRET_LADDER.map(point => point.label)).toEqual([
+      'strict_similar_day',
+      'Frozen V2',
+      'Raw V2+',
+      'Calibrated V2+',
+      'V3/V4/V5',
+      'Official bridge DFL/DT'
+    ])
+    expect(CURRENT_REGRET_LADDER.find(point => point.status === 'headline')).toMatchObject({
+      label: 'Calibrated V2+',
+      meanRegretUah: 174.77
+    })
+    expect(CURRENT_TFT_PORTFOLIO_DIAGNOSTICS.map(point => `${point.numerator}/${point.denominator}`)).toEqual([
+      '24/90',
+      '90/90',
+      '0/4'
     ])
   })
 })

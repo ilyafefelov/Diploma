@@ -4,6 +4,8 @@ import { computed, onMounted, ref } from 'vue'
 import {
   CURRENT_DASHBOARD_EXPERIMENTS,
   CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
+  CURRENT_REGRET_LADDER,
+  CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
   formatPercent,
   formatUah,
@@ -15,6 +17,7 @@ const preferredTenantId = 'client_003_dnipro_factory'
 const selectedTenantId = ref(preferredTenantId)
 const registry = useControlPlaneRegistry()
 const defense = useDefenseDashboard(selectedTenantId)
+const pipelineInfographicUrl = '/design/v2-plus-pipeline-infographic.png'
 
 const selectedTenant = computed(() => {
   return registry.tenants.value.find(tenant => tenant.tenant_id === selectedTenantId.value) || null
@@ -128,6 +131,22 @@ const offlinePromotionRows = computed(() => defense.offlineStrategyPromotion.val
 const offlinePromotionReadModelLabel = computed(() => (
   summarizeScheduleValuePromotionReadModel(defense.offlineStrategyPromotion.value)
 ))
+
+const regretLadderMax = computed(() => Math.max(
+  ...CURRENT_REGRET_LADDER.map(point => point.meanRegretUah),
+  1
+))
+
+const regretLadderRows = computed(() => CURRENT_REGRET_LADDER.map(point => ({
+  ...point,
+  barWidthPercent: Math.max(8, Math.round((point.meanRegretUah / regretLadderMax.value) * 100))
+})))
+
+const tftPortfolioRows = computed(() => CURRENT_TFT_PORTFOLIO_DIAGNOSTICS.map(point => ({
+  ...point,
+  percentLabel: point.denominator === 0 ? 'n/a' : formatPercent(point.numerator / point.denominator),
+  barWidthPercent: point.denominator === 0 ? 0 : Math.max(4, Math.round((point.numerator / point.denominator) * 100))
+})))
 
 const narrativeSteps = [
   {
@@ -288,6 +307,46 @@ useHead({
       </article>
     </section>
 
+    <section class="pipeline-visual-panel">
+      <div class="pipeline-visual-copy">
+        <p class="eyebrow">
+          V2+ pipeline visual
+        </p>
+        <h2>How the offline result is produced</h2>
+        <p class="section-explainer">
+          Ukrainian DAM history, weather/load context, official global-panel NBEATSx forecasts, candidate schedules,
+          and strict LP/oracle scoring are joined into a read-model evidence path. The image is illustrative; the metric
+          cards and charts below remain the deterministic source of numeric evidence.
+        </p>
+        <div class="pipeline-stat-strip">
+          <article>
+            <span>Input boundary</span>
+            <strong>Ukraine only</strong>
+            <small>OREE DAM, Open-Meteo/weather, tenant context</small>
+          </article>
+          <article>
+            <span>Decision target</span>
+            <strong>Regret</strong>
+            <small>oracle_value_uah - decision_value_uah</small>
+          </article>
+          <article>
+            <span>Execution claim</span>
+            <strong>false</strong>
+            <small>market_execution_enabled</small>
+          </article>
+        </div>
+      </div>
+      <figure class="pipeline-figure">
+        <img
+          :src="pipelineInfographicUrl"
+          alt="V2+ offline schedule value pipeline infographic"
+        >
+        <figcaption>
+          Generated dashboard visual: V2+ pipeline from Ukrainian source-backed features to strict LP/oracle evidence.
+        </figcaption>
+      </figure>
+    </section>
+
     <section class="offline-promotion-panel">
       <div>
         <p class="eyebrow">
@@ -331,6 +390,83 @@ useHead({
       </div>
     </section>
 
+    <section class="evidence-chart-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">
+            Evidence charts
+          </p>
+          <h2>Best results and closed branches</h2>
+          <p class="section-explainer">
+            Lower regret is better. These charts separate the promoted V2+ result from research branches that were tested
+            but did not replace it.
+          </p>
+        </div>
+        <span class="source-pill">strict LP/oracle scoring</span>
+      </div>
+      <div class="chart-grid">
+        <article class="chart-card chart-card-wide">
+          <div class="chart-card-header">
+            <div>
+              <p class="eyebrow">
+                Regret ladder
+              </p>
+              <h3>V2+ is the current low-regret headline</h3>
+            </div>
+            <strong>{{ formatUah(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.meanRegretUah) }}</strong>
+          </div>
+          <div class="regret-ladder">
+            <div
+              v-for="point in regretLadderRows"
+              :key="point.label"
+              :class="`regret-row regret-row--${point.status}`"
+            >
+              <div class="regret-row-label">
+                <span>{{ point.label }}</span>
+                <small>{{ point.note }}</small>
+              </div>
+              <div class="regret-bar-track">
+                <span
+                  class="regret-bar-fill"
+                  :style="{ width: `${point.barWidthPercent}%` }"
+                />
+              </div>
+              <strong>{{ formatUah(point.meanRegretUah) }}</strong>
+            </div>
+          </div>
+        </article>
+
+        <article class="chart-card">
+          <div class="chart-card-header">
+            <div>
+              <p class="eyebrow">
+                TFT portfolio closure
+              </p>
+              <h3>Complementary schedules exist, but not robustly</h3>
+            </div>
+            <strong>{{ CURRENT_TFT_PORTFOLIO_CLOSURE.rollingPassCount }}/{{ CURRENT_TFT_PORTFOLIO_CLOSURE.rollingWindowCount }}</strong>
+          </div>
+          <div class="portfolio-diagnostic-list">
+            <div
+              v-for="point in tftPortfolioRows"
+              :key="point.label"
+              :class="`portfolio-diagnostic portfolio-diagnostic--${point.status}`"
+            >
+              <div>
+                <span>{{ point.label }}</span>
+                <strong>{{ point.numerator }}/{{ point.denominator }}</strong>
+                <small>{{ point.note }}</small>
+              </div>
+              <div class="portfolio-track">
+                <span :style="{ width: `${point.barWidthPercent}%` }" />
+              </div>
+              <em>{{ point.percentLabel }}</em>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <section class="latest-experiment-panel">
       <div class="section-heading">
         <div>
@@ -359,9 +495,14 @@ useHead({
         <div class="section-heading">
           <div>
             <p class="eyebrow">
-              Gold benchmark
+              Legacy FastAPI benchmark context
             </p>
-            <h2>Model regret evidence</h2>
+            <h2>104-anchor compact rows, kept for read-model health</h2>
+            <p class="section-explainer">
+              This table is not the headline 365-anchor V2+ packet. It stays on the defense page as a backend/API
+              consistency check for older benchmark rows; the promoted result is summarized in the V2+ cards and charts
+              above.
+            </p>
           </div>
           <span class="source-pill">{{ defense.benchmarkSummary.value?.sourceMode || 'FastAPI pending' }}</span>
         </div>
@@ -746,6 +887,8 @@ useHead({
 
 .defense-hero,
 .narrative-band,
+.pipeline-visual-panel,
+.evidence-chart-panel,
 .section-grid {
   max-width: 1380px;
   margin: 0 auto 1rem;
@@ -959,6 +1102,86 @@ h2 {
   line-height: 1.55;
 }
 
+.pipeline-visual-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.62fr) minmax(420px, 1fr);
+  gap: 1rem;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.9rem;
+  background: linear-gradient(135deg, rgba(3, 42, 75, 0.98), rgba(4, 86, 132, 0.94));
+  padding: 1rem;
+  color: white;
+  overflow: hidden;
+}
+
+.pipeline-visual-copy {
+  display: grid;
+  align-content: center;
+  gap: 0.9rem;
+}
+
+.pipeline-visual-panel .eyebrow,
+.pipeline-visual-panel .section-explainer {
+  color: rgba(229, 249, 255, 0.84);
+}
+
+.pipeline-visual-panel h2 {
+  font-size: 1.65rem;
+}
+
+.pipeline-stat-strip {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.pipeline-stat-strip article {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(202, 249, 255, 0.2);
+  border-radius: 0.65rem;
+  background: rgba(3, 105, 161, 0.4);
+  padding: 0.75rem;
+}
+
+.pipeline-stat-strip span {
+  color: #d7ff4f;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.pipeline-stat-strip strong {
+  font-size: 1.05rem;
+}
+
+.pipeline-stat-strip small {
+  color: rgba(229, 249, 255, 0.78);
+  line-height: 1.4;
+}
+
+.pipeline-figure {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.pipeline-figure img {
+  width: 100%;
+  min-height: 22rem;
+  max-height: 35rem;
+  border: 1px solid rgba(202, 249, 255, 0.24);
+  border-radius: 0.8rem;
+  object-fit: cover;
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.28);
+}
+
+.pipeline-figure figcaption {
+  color: rgba(229, 249, 255, 0.74);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
 .offline-promotion-panel {
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.62fr);
@@ -1073,6 +1296,157 @@ h2 {
 .latest-experiment-card--next {
   border-color: rgba(14, 165, 233, 0.3);
   background: linear-gradient(180deg, rgba(224, 242, 254, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.evidence-chart-panel {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 1rem;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.8fr);
+  gap: 1rem;
+}
+
+.chart-card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.7rem;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 0.98));
+  padding: 1rem;
+}
+
+.chart-card-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.chart-card-header h3 {
+  margin: 0.2rem 0 0;
+  color: #142033;
+  font-size: 1.08rem;
+  line-height: 1.25;
+}
+
+.chart-card-header > strong {
+  border-radius: 999px;
+  background: rgba(220, 252, 231, 0.9);
+  padding: 0.4rem 0.65rem;
+  color: #166534;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.regret-ladder,
+.portfolio-diagnostic-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.regret-row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 0.5fr) minmax(12rem, 1fr) 6.2rem;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.regret-row-label {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.regret-row-label span,
+.portfolio-diagnostic span {
+  color: #334155;
+  font-size: 0.8rem;
+  font-weight: 850;
+}
+
+.regret-row-label small,
+.portfolio-diagnostic small {
+  color: #617084;
+  line-height: 1.35;
+}
+
+.regret-bar-track,
+.portfolio-track {
+  position: relative;
+  min-height: 0.78rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+}
+
+.regret-bar-fill,
+.portfolio-track span {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #38bdf8, #22c55e);
+}
+
+.regret-row--control .regret-bar-fill,
+.regret-row--failed .regret-bar-fill {
+  background: linear-gradient(90deg, #fb923c, #f97316);
+}
+
+.regret-row--headline .regret-bar-fill {
+  background: linear-gradient(90deg, #84cc16, #22c55e);
+}
+
+.regret-row--plateau .regret-bar-fill {
+  background: linear-gradient(90deg, #a78bfa, #6366f1);
+}
+
+.regret-row strong {
+  color: #142033;
+  font-size: 0.9rem;
+  text-align: right;
+}
+
+.portfolio-diagnostic {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.45rem;
+  border: 1px solid rgba(20, 32, 51, 0.1);
+  border-radius: 0.6rem;
+  padding: 0.7rem;
+}
+
+.portfolio-diagnostic div:first-child {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.portfolio-diagnostic strong {
+  color: #142033;
+  font-size: 1.18rem;
+}
+
+.portfolio-diagnostic em {
+  color: #617084;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.portfolio-diagnostic--opportunity .portfolio-track span {
+  background: linear-gradient(90deg, #38bdf8, #0ea5e9);
+}
+
+.portfolio-diagnostic--fallback .portfolio-track span {
+  background: linear-gradient(90deg, #a78bfa, #6366f1);
+}
+
+.portfolio-diagnostic--blocked .portfolio-track span {
+  background: linear-gradient(90deg, #fb923c, #f97316);
 }
 
 .section-grid {
@@ -1246,6 +1620,8 @@ td {
 @media (max-width: 1080px) {
   .defense-hero,
   .section-grid,
+  .pipeline-visual-panel,
+  .chart-grid,
   .offline-promotion-panel {
     grid-template-columns: 1fr;
   }
@@ -1292,6 +1668,18 @@ td {
   .future-stack-grid,
   .offline-promotion-rows {
     grid-template-columns: 1fr;
+  }
+
+  .regret-row {
+    grid-template-columns: 1fr;
+  }
+
+  .regret-row strong {
+    text-align: left;
+  }
+
+  .pipeline-figure img {
+    min-height: 14rem;
   }
 }
 </style>
