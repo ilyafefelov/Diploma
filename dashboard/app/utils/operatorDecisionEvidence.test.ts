@@ -12,6 +12,7 @@ import type {
   DashboardBatteryStateResponse,
   DashboardExogenousSignalsResponse,
   ForecastDispatchSensitivityResponse,
+  OperatorRecommendationResponse,
   RealDataBenchmarkResponse
 } from '../types/control-plane'
 import type { DefenseModelRow } from './defenseDataset'
@@ -178,19 +179,36 @@ describe('operator decision evidence', () => {
     expect(buildOperatorDecisionReadinessItems({
       batteryState,
       baselinePreview,
+      operatorRecommendation: {
+        selected_strategy_id: 'schedule_value_learner_v2_plus',
+        selection_reason: 'manual strategy: Offline V2+ schedule/value learner',
+        soc_source: 'telemetry_live',
+        soc_projection: [
+          {
+            timestamp: '2026-05-05T12:00:00Z',
+            physical_soc: 0.54,
+            estimated_soc: 0.58,
+            planning_soc: 0.58,
+            soc_source: 'telemetry_live',
+            confidence: 'observed'
+          }
+        ],
+        review_required: false,
+        readiness_warnings: []
+      } as unknown as OperatorRecommendationResponse,
       exogenousSignals
     })).toEqual([
       {
         label: 'Physical SOC',
         status: 'live',
         tone: 'green',
-        detail: '54% from latest telemetry'
+        detail: '58% via telemetry_live'
       },
       {
         label: 'Selected strategy',
-        status: 'pending',
-        tone: 'blue',
-        detail: '58% start; 4% gap vs physical'
+        status: 'Offline V2+',
+        tone: 'green',
+        detail: 'manual strategy: Offline V2+ schedule/value learner'
       },
       {
         label: 'Grid context',

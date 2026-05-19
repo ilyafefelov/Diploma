@@ -86,6 +86,11 @@ from smart_arbitrage.tenant_load import (
 )
 from smart_arbitrage.telemetry.mqtt import battery_telemetry_topic
 
+OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID = "schedule_value_learner_v2_plus"
+OFFLINE_V2_PLUS_MEAN_REGRET_UAH = 174.77
+OFFLINE_V2_PLUS_WIN_RATE = 1.0
+OFFLINE_V2_PLUS_LABEL = "Offline V2+ schedule/value learner"
+
 
 app = FastAPI(
 	title="Smart Energy Arbitrage API",
@@ -2852,6 +2857,17 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 			reason="control baseline",
 			metrics_by_model=metrics_by_model,
 		),
+		OperatorStrategyOptionResponse(
+			strategy_id=OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
+			label=OFFLINE_V2_PLUS_LABEL,
+			enabled=True,
+			reason=(
+				"frozen Offline Strategy Promotion comparator; preview schedule keeps "
+				"strict_similar_day fallback because market execution is disabled"
+			),
+			mean_regret_uah=OFFLINE_V2_PLUS_MEAN_REGRET_UAH,
+			win_rate=OFFLINE_V2_PLUS_WIN_RATE,
+		),
 		_operator_strategy_option(
 			strategy_id="tft_silver_v0",
 			label="Compact TFT",
@@ -3067,6 +3083,8 @@ def _to_operator_soc_projection_points(
 def _operator_forecast_source(strategy_id: str) -> str:
 	if strategy_id == "strict_similar_day":
 		return "HourlyDamBaselineSolver / strict similar-day baseline"
+	if strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
+		return "Ukrainian-only V2+ Offline Strategy Promotion evidence with strict fallback schedule preview"
 	if strategy_id == "nbeatsx_official_v0":
 		return "official NBEATSx forecast candidate routed through Level 1 LP preview"
 	if strategy_id == "tft_official_v0":
@@ -3135,6 +3153,18 @@ def _operator_policy_context(
 				"Level 1 LP and battery projection. This is still operator preview, not market execution."
 			),
 			"policy_readiness": "forecast_to_lp_ready",
+			**_operator_policy_context_not_applicable(),
+		}
+	if selected_strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
+		return {
+			"policy_mode": "offline_strategy_promotion_preview",
+			"selected_policy_id": OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
+			"policy_explanation": (
+				"Frozen Ukrainian-only V2+ Offline Strategy Promotion evidence is selected for "
+				"operator review. It remains read-model evidence only; the visible schedule uses "
+				"strict fallback feasibility and market execution stays disabled."
+			),
+			"policy_readiness": "offline_strategy_promotion_ready",
 			**_operator_policy_context_not_applicable(),
 		}
 	return {

@@ -650,6 +650,30 @@ def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns
 	assert any(strategy["enabled"] is False for strategy in response_payload["available_strategies"] if strategy["strategy_id"] == "decision_transformer")
 
 
+def test_operator_recommendation_exposes_v2_plus_offline_strategy(
+	client: TestClient,
+) -> None:
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "schedule_value_learner_v2_plus"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["selected_strategy_id"] == "schedule_value_learner_v2_plus"
+	assert response_payload["policy_mode"] == "offline_strategy_promotion_preview"
+	assert response_payload["selected_policy_id"] == "schedule_value_learner_v2_plus"
+	assert "strict fallback" in response_payload["policy_explanation"].lower()
+	assert "V2+" in response_payload["forecast_source"]
+	v2_plus_option = next(
+		strategy
+		for strategy in response_payload["available_strategies"]
+		if strategy["strategy_id"] == "schedule_value_learner_v2_plus"
+	)
+	assert v2_plus_option["enabled"] is True
+	assert v2_plus_option["mean_regret_uah"] == pytest.approx(174.77)
+
+
 def test_operator_recommendation_reports_dt_forecast_context_when_selected(
 	client: TestClient,
 	fake_simulated_trade_store: InMemorySimulatedTradeStore,

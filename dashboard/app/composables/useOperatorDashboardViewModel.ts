@@ -42,6 +42,9 @@ interface OperatorDashboardViewModelInput {
   isMaterializing: Readonly<Ref<boolean>>
 }
 
+const TIMELINE_ACTION_THRESHOLD_MW = 0.005
+const TIMELINE_SEGMENT_LIMIT = 5
+
 export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelInput) => {
   const operatorNavItems = computed<OperatorNavItem[]>(() => [
     { label: 'Overview', icon: 'i-lucide-house', active: true },
@@ -327,7 +330,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   ])
 
   const timelineSegments = computed<OperatorTimelineSegment[]>(() => {
-    const schedule = activeRecommendationSchedule.value.slice(0, 5)
+    const schedule = selectTimelineSchedulePoints(activeRecommendationSchedule.value)
 
     if (schedule.length === 0) {
       return [
@@ -487,3 +490,12 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
 }
 
 const formatUah = (value: number): string => `${Math.round(value).toLocaleString('en-GB')} UAH`
+
+const selectTimelineSchedulePoints = <T extends { recommended_net_power_mw: number }>(schedule: T[]): T[] => {
+  const actionPoints = schedule.filter(point => Math.abs(point.recommended_net_power_mw) >= TIMELINE_ACTION_THRESHOLD_MW)
+  if (actionPoints.length > 0) {
+    return actionPoints.slice(0, TIMELINE_SEGMENT_LIMIT)
+  }
+
+  return schedule.slice(0, TIMELINE_SEGMENT_LIMIT)
+}

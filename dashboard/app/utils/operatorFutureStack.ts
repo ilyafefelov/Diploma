@@ -24,6 +24,8 @@ const EXCLUDED_RECOMMENDATION_STRATEGIES = new Set([
   'tft_official_v0'
 ])
 
+const OFFLINE_V2_PLUS_STRATEGY_ID = 'schedule_value_learner_v2_plus'
+
 export interface StrategyReadinessItem {
   strategyId: string
   label: string
@@ -104,6 +106,14 @@ export const buildRecommendationStrategySelectItems = (
     return strategy.strategy_id === 'strict_similar_day' || typeof strategy.mean_regret_uah === 'number'
   })
   .sort((left, right) => {
+    if (left.strategy_id === OFFLINE_V2_PLUS_STRATEGY_ID) {
+      return -1
+    }
+
+    if (right.strategy_id === OFFLINE_V2_PLUS_STRATEGY_ID) {
+      return 1
+    }
+
     if (left.strategy_id === 'strict_similar_day') {
       return -1
     }

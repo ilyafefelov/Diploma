@@ -80,13 +80,12 @@ const hideSegmentTooltip = (): void => {
 
     <div class="dock-selectors">
       <label>
-        <span>Strategy mode</span>
+        <span>Selected strategy</span>
         <USelect
           class="dock-select"
-          :model-value="'arbitrage-reg'"
+          :model-value="predictionHeadLabel"
           :items="[
-            { label: 'Arbitrage + Reg', value: 'arbitrage-reg' },
-            { label: 'Arbitrage only', value: 'arbitrage-only' }
+            { label: predictionHeadLabel, value: predictionHeadLabel }
           ]"
           value-key="value"
           label-key="label"

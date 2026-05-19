@@ -133,10 +133,12 @@ describe('operator future stack display helpers', () => {
   it('builds recommendation strategy switch items only from real schedule strategies', () => {
     expect(buildRecommendationStrategySelectItems([
       strategy('strict_similar_day', 'Strict similar-day control', true, 'fallback/control', 310.58),
+      strategy('schedule_value_learner_v2_plus', 'Offline V2+ schedule/value learner', true, 'offline comparator', 174.77),
       strategy('nbeatsx_silver_v0', 'Compact NBEATSx', true, 'schedule rows materialized', 481.2),
       strategy('nbeatsx_official_v0', 'Official NBEATSx', true, 'forecast rows only', null),
       strategy('decision_transformer', 'Decision Transformer', false)
     ])).toEqual([
+      { label: 'Offline V2+ schedule/value learner · 175 UAH', value: 'schedule_value_learner_v2_plus', disabled: false },
       { label: 'Strict similar-day control · 311 UAH', value: 'strict_similar_day', disabled: false },
       { label: 'Compact NBEATSx · 481 UAH', value: 'nbeatsx_silver_v0', disabled: false }
     ])
@@ -145,6 +147,7 @@ describe('operator future stack display helpers', () => {
   it('builds visible readiness chips for schedule strategies, not blocked raw official forecasts', () => {
     expect(buildStrategyReadinessItems([
       strategy('strict_similar_day', 'Strict similar-day control', true, 'fallback/control', 310.58),
+      strategy('schedule_value_learner_v2_plus', 'Offline V2+ schedule/value learner', true, 'offline comparator', 174.77),
       strategy('nbeatsx_silver_v0', 'Compact NBEATSx', true, 'schedule rows materialized', 481.2),
       strategy(
         'nbeatsx_official_v0',
@@ -160,6 +163,12 @@ describe('operator future stack display helpers', () => {
         label: 'Strict similar-day control',
         status: 'ready',
         reason: '311 UAH mean regret'
+      },
+      {
+        strategyId: 'schedule_value_learner_v2_plus',
+        label: 'Offline V2+ schedule/value learner',
+        status: 'ready',
+        reason: '175 UAH mean regret'
       },
       {
         strategyId: 'nbeatsx_silver_v0',

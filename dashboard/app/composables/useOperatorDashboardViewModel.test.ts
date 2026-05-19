@@ -26,10 +26,13 @@ describe('useOperatorDashboardViewModel', () => {
     })
 
     const operatorRecommendation = ref({
-      selected_strategy_id: 'nbeatsx_silver_v0',
+      selected_strategy_id: 'schedule_value_learner_v2_plus',
       recommendation_schedule: [
+        schedulePoint('2026-05-19T08:00:00Z', 0),
+        schedulePoint('2026-05-19T09:00:00Z', 0),
         schedulePoint('2026-05-19T11:00:00Z', 0.25),
-        schedulePoint('2026-05-19T12:00:00Z', -0.4)
+        schedulePoint('2026-05-19T12:00:00Z', -0.4),
+        schedulePoint('2026-05-19T13:00:00Z', 0)
       ],
       economics: {
         total_gross_market_value_uah: 120,
@@ -58,13 +61,13 @@ describe('useOperatorDashboardViewModel', () => {
       isMaterializing: ref(false)
     } as never)
 
-    expect(viewModel.latestRecommendedPowerLabel.value).toBe('+0.3 MW')
+    expect(viewModel.latestRecommendedPowerLabel.value).toBe('0.0 MW')
     expect(viewModel.timelineSegments.value.map(segment => segment.label)).toEqual(['Discharge', 'Charge'])
     expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['11:00', '12:00'])
     expect(viewModel.headlineMetrics.value[0]).toMatchObject({
       label: 'Net plan value',
       value: '100 UAH',
-      meta: 'nbeatsx_silver_v0'
+      meta: 'schedule_value_learner_v2_plus'
     })
   })
 })

@@ -50,6 +50,14 @@ export interface OperatorDecisionStateCard {
   tooltipFormula: string
 }
 
+const SELECTED_STRATEGY_STATUS_LABELS: Record<string, string> = {
+  schedule_value_learner_v2_plus: 'Offline V2+',
+  strict_similar_day: 'Strict control',
+  nbeatsx_silver_v0: 'Compact NBEATSx',
+  tft_silver_v0: 'Compact TFT',
+  decision_transformer: 'DT preview'
+}
+
 export const buildOperatorStrategyEvidenceRows = (
   modelRows: DefenseModelRow[]
 ): OperatorStrategyEvidenceRow[] => {
@@ -112,7 +120,7 @@ export const buildOperatorDecisionStateCards = (input: {
 }): OperatorDecisionStateCard[] => {
   const latestTelemetrySoc = input.batteryState?.latest_telemetry?.current_soc ?? null
   const hourlySoc = input.batteryState?.hourly_snapshot?.soc_close ?? null
-  const firstSocProjection = input.operatorRecommendation?.soc_projection[0] ?? null
+  const firstSocProjection = input.operatorRecommendation?.soc_projection?.[0] ?? null
   const physicalSoc = firstSocProjection?.physical_soc ?? latestTelemetrySoc ?? hourlySoc
   const planningSoc = firstSocProjection?.planning_soc ?? input.baselinePreview?.starting_soc_fraction ?? null
   const gridRisk = input.exogenousSignals?.national_grid_risk_score ?? null
@@ -131,7 +139,9 @@ export const buildOperatorDecisionStateCards = (input: {
     {
       label: 'Planning SOC',
       value: planningSoc === null ? 'waiting' : formatFraction(planningSoc),
-      meta: input.operatorRecommendation?.selected_strategy_id || input.baselinePreview?.starting_soc_source || 'baseline preview',
+      meta: input.operatorRecommendation
+        ? formatSelectedStrategyStatus(input.operatorRecommendation.selected_strategy_id)
+        : input.baselinePreview?.starting_soc_source || 'baseline preview',
       tooltipTitle: 'Planning SOC',
       tooltipBody: 'SOC after the first feasible planning step from the current selected operator strategy read model.',
       tooltipFormula: 'planning_soc = feasible_schedule[0].projected_soc_after_fraction'
@@ -163,7 +173,7 @@ export const buildOperatorDecisionReadinessItems = (input: {
 }): OperatorDecisionReadinessItem[] => {
   const latestTelemetrySoc = input.batteryState?.latest_telemetry?.current_soc ?? null
   const hourlySoc = input.batteryState?.hourly_snapshot?.soc_close ?? null
-  const firstSocProjection = input.operatorRecommendation?.soc_projection[0] ?? null
+  const firstSocProjection = input.operatorRecommendation?.soc_projection?.[0] ?? null
   const physicalSoc = firstSocProjection?.physical_soc ?? latestTelemetrySoc ?? hourlySoc
   const planningSoc = firstSocProjection?.planning_soc ?? input.baselinePreview?.starting_soc_fraction ?? null
   const gridFlags = collectGridFlags(input.exogenousSignals)
@@ -180,7 +190,7 @@ export const buildOperatorDecisionReadinessItems = (input: {
         ? 'orange'
         : latestTelemetrySoc !== null ? 'green' : hourlySoc !== null ? 'orange' : 'red',
       detail: input.operatorRecommendation
-        ? `${formatFraction(input.operatorRecommendation.soc_projection[0]?.estimated_soc ?? planningSoc ?? 0)} via ${input.operatorRecommendation.soc_source}`
+        ? `${formatFraction(input.operatorRecommendation.soc_projection?.[0]?.estimated_soc ?? planningSoc ?? 0)} via ${input.operatorRecommendation.soc_source}`
         : latestTelemetrySoc !== null
           ? `${formatFraction(latestTelemetrySoc)} from latest telemetry`
           : hourlySoc !== null
@@ -189,7 +199,9 @@ export const buildOperatorDecisionReadinessItems = (input: {
     },
     {
       label: 'Selected strategy',
-      status: input.operatorRecommendation?.selected_strategy_id ?? 'pending',
+      status: input.operatorRecommendation
+        ? formatSelectedStrategyStatus(input.operatorRecommendation.selected_strategy_id)
+        : 'pending',
       tone: input.operatorRecommendation?.review_required ? 'orange' : input.operatorRecommendation ? 'green' : 'blue',
       detail: input.operatorRecommendation?.selection_reason || planningReadinessDetail(physicalSoc, planningSoc, input.baselinePreview?.starting_soc_source)
     },
@@ -214,6 +226,13 @@ const formatAnchorLabel = (timestamp: string): string => new Date(timestamp).toL
 })
 
 const formatFraction = (value: number): string => `${Math.round(value * 100)}%`
+
+const formatSelectedStrategyStatus = (strategyId: string): string => SELECTED_STRATEGY_STATUS_LABELS[strategyId]
+  ?? strategyId
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ')
 
 const planningReadinessDetail = (
   physicalSoc: number | null,

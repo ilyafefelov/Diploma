@@ -347,7 +347,7 @@ const statusCards = computed(() => [
   },
   {
     label: 'Strategy preview',
-    value: props.operatorRecommendation?.selected_strategy_id || 'strict_similar_day',
+    value: selectedStrategyLabel.value,
     meta: props.operatorRecommendation?.selection_reason || 'strict fallback/control'
   },
   {
@@ -375,6 +375,11 @@ const forecastWindowLabel = computed(() => formatForecastWindowLabel(
 const strategySelectItems = computed(() => buildRecommendationStrategySelectItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))
+const selectedStrategyLabel = computed(() => {
+  const selectedStrategyId = props.operatorRecommendation?.selected_strategy_id || props.selectedStrategyId
+  const option = props.operatorRecommendation?.available_strategies.find(strategy => strategy.strategy_id === selectedStrategyId)
+  return option?.label || selectedStrategyId || 'strict_similar_day'
+})
 const strategyReadinessItems = computed(() => buildStrategyReadinessItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))

@@ -72,7 +72,7 @@ const {
 
 const includePriceHistory = ref(true)
 const explanationMode = ref<'mvp' | 'future'>('mvp')
-const selectedOperatorStrategyId = ref('strict_similar_day')
+const selectedOperatorStrategyId = ref('schedule_value_learner_v2_plus')
 
 const {
   operatorRecommendation,
@@ -150,12 +150,21 @@ const nextStepsItems = computed(() => explanationMode.value === 'mvp'
 
 const schedulePredictionHeadLabel = computed(() => {
   if (operatorRecommendation.value) {
-    return `Strategy preview: ${operatorRecommendation.value.selected_strategy_id}`
+    const selectedOption = operatorRecommendation.value.available_strategies.find((strategy) => {
+      return strategy.strategy_id === operatorRecommendation.value?.selected_strategy_id
+    })
+    return `Strategy preview: ${selectedOption?.label || formatStrategyId(operatorRecommendation.value.selected_strategy_id)}`
   }
   return explanationMode.value === 'mvp'
     ? 'Strategy preview: strict_similar_day fallback'
     : 'Research branch: TFT/DT candidate review'
 })
+
+const formatStrategyId = (strategyId: string): string => strategyId
+  .split('_')
+  .filter(Boolean)
+  .map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+  .join(' ')
 
 const operatorResearchMetrics = computed(() => buildOperatorResearchMetrics({
   modelRows: defense.modelRows.value,
