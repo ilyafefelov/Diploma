@@ -6,6 +6,7 @@ import type {
   OperatorRecommendationResponse,
   RealDataBenchmarkResponse
 } from '../types/control-plane'
+import { CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE } from './defenseDataset'
 import type { DefenseModelRow } from './defenseDataset'
 
 export interface OperatorStrategyEvidenceRow {
@@ -115,11 +116,6 @@ export const buildOperatorDecisionStateCards = (input: {
   const physicalSoc = firstSocProjection?.physical_soc ?? latestTelemetrySoc ?? hourlySoc
   const planningSoc = firstSocProjection?.planning_soc ?? input.baselinePreview?.starting_soc_fraction ?? null
   const gridRisk = input.exogenousSignals?.national_grid_risk_score ?? null
-  const bestOperatorStrategy = input.operatorRecommendation?.available_strategies
-    .filter(strategy => strategy.enabled && typeof strategy.mean_regret_uah === 'number')
-    .sort((left, right) => (left.mean_regret_uah ?? Number.POSITIVE_INFINITY) - (right.mean_regret_uah ?? Number.POSITIVE_INFINITY))[0] ?? null
-  const bestRow = [...input.modelRows].sort((left, right) => left.meanRegretUah - right.meanRegretUah)[0] ?? null
-
   return [
     {
       label: 'Physical SOC',
@@ -141,12 +137,12 @@ export const buildOperatorDecisionStateCards = (input: {
       tooltipFormula: 'planning_soc = feasible_schedule[0].projected_soc_after_fraction'
     },
     {
-      label: 'Best comparator',
-      value: bestOperatorStrategy?.strategy_id ?? bestRow?.modelName ?? 'waiting',
-      meta: bestOperatorStrategy ? 'lowest mean regret in live read model' : bestRow ? 'lowest mean regret in defense model' : 'benchmark not loaded',
-      tooltipTitle: 'Best comparator',
-      tooltipBody: 'Lowest mean regret strategy in returned benchmark rows. It is a comparison signal, not automatic production model promotion.',
-      tooltipFormula: 'best = argmin(mean_regret_uah) across benchmark model rows'
+      label: 'V2+ comparator',
+      value: `${Math.round(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.meanRegretUah)} UAH`,
+      meta: `${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingPassCount}/${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingWindowCount} rolling; strict remains fallback`,
+      tooltipTitle: 'Frozen V2+ comparator',
+      tooltipBody: 'Current thesis headline: Ukrainian-only Schedule/Value Learner V2+. Dashboard strategy previews should be read against this frozen offline comparator.',
+      tooltipFormula: 'headline = strict LP/oracle regret gate; market_execution_enabled=false'
     },
     {
       label: 'Grid context',

@@ -1,14 +1,11 @@
 import type { BaselineLpPreview } from '~/types/control-plane'
+import { fetchControlPlane } from '../../../utils/controlPlaneProxy'
 
 export default defineEventHandler(async (event): Promise<BaselineLpPreview> => {
-  const runtimeConfig = useRuntimeConfig()
-  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8010')
   const query = getQuery(event)
 
   try {
-    return await $fetch<BaselineLpPreview>(`${apiBase}/dashboard/baseline-lp-preview`, {
-      query
-    })
+    return await fetchControlPlane<BaselineLpPreview>('/dashboard/baseline-lp-preview', { query })
   } catch (error) {
     throw createError({
       statusCode: 502,

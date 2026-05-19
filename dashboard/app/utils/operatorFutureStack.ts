@@ -18,10 +18,10 @@ const MODEL_PRIORITY: Record<string, number> = {
   tft: 1
 }
 
-const READINESS_STRATEGY_IDS = new Set([
+const EXCLUDED_RECOMMENDATION_STRATEGIES = new Set([
+  'decision_transformer',
   'nbeatsx_official_v0',
-  'tft_official_v0',
-  'decision_transformer'
+  'tft_official_v0'
 ])
 
 export interface StrategyReadinessItem {
@@ -89,16 +89,59 @@ export const buildStrategySelectItems = (
   disabled: !strategy.enabled
 }))
 
+export const buildRecommendationStrategySelectItems = (
+  strategies: OperatorStrategyOptionResponse[]
+): Array<{ label: string, value: string, disabled: boolean }> => strategies
+  .filter((strategy) => {
+    if (!strategy.enabled) {
+      return false
+    }
+
+    if (EXCLUDED_RECOMMENDATION_STRATEGIES.has(strategy.strategy_id)) {
+      return false
+    }
+
+    return strategy.strategy_id === 'strict_similar_day' || typeof strategy.mean_regret_uah === 'number'
+  })
+  .sort((left, right) => {
+    if (left.strategy_id === 'strict_similar_day') {
+      return -1
+    }
+
+    if (right.strategy_id === 'strict_similar_day') {
+      return 1
+    }
+
+    return (left.mean_regret_uah ?? Number.POSITIVE_INFINITY) - (right.mean_regret_uah ?? Number.POSITIVE_INFINITY)
+  })
+  .map(strategy => ({
+    label: formatRecommendationStrategyLabel(strategy),
+    value: strategy.strategy_id,
+    disabled: false
+  }))
+
 export const buildStrategyReadinessItems = (
   strategies: OperatorStrategyOptionResponse[]
 ): StrategyReadinessItem[] => strategies
-  .filter(strategy => READINESS_STRATEGY_IDS.has(strategy.strategy_id))
+  .filter(strategy => strategy.enabled)
+  .filter(strategy => !EXCLUDED_RECOMMENDATION_STRATEGIES.has(strategy.strategy_id))
+  .filter(strategy => strategy.strategy_id === 'strict_similar_day' || typeof strategy.mean_regret_uah === 'number')
   .map(strategy => ({
     strategyId: strategy.strategy_id,
     label: strategy.label,
-    status: strategy.enabled ? 'ready' : 'blocked',
-    reason: strategy.reason
+    status: 'ready',
+    reason: typeof strategy.mean_regret_uah === 'number'
+      ? `${Math.round(strategy.mean_regret_uah).toLocaleString('en-GB')} UAH mean regret`
+      : strategy.reason
   }))
+
+export const isChartSafeForecastSeries = (series: FutureForecastSeriesResponse): boolean => {
+  const normalizedBoundary = series.quality_boundary.toLowerCase()
+
+  return series.points.length > 0
+    && series.out_of_dam_cap_rows === 0
+    && !normalizedBoundary.includes('needs_calibration')
+}
 
 export const buildPolicyForecastContextPoints = (
   policyRows: PolicyForecastContextRow[]
@@ -188,6 +231,14 @@ const modelPriority = (modelName: string): number => {
     }
   }
   return 99
+}
+
+const formatRecommendationStrategyLabel = (strategy: OperatorStrategyOptionResponse): string => {
+  if (typeof strategy.mean_regret_uah !== 'number') {
+    return strategy.label
+  }
+
+  return `${strategy.label} · ${Math.round(strategy.mean_regret_uah).toLocaleString('en-GB')} UAH`
 }
 
 const formatWindowTimestamp = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {

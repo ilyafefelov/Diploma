@@ -120,7 +120,7 @@ const safePowerMode = computed(() => {
           <p>Latest power intent</p>
           <UIcon
             class="metric-lens-card__icon"
-            name="i-lucide-wave-square"
+            name="i-lucide-activity"
           />
         </div>
         <strong>{{ powerLabel }}</strong>

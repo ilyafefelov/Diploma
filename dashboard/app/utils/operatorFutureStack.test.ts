@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildRecommendationStrategySelectItems,
   filterOfficialPolicyValueSeries,
   buildPolicyForecastContextPoints,
   buildStrategyReadinessItems,
@@ -10,6 +11,7 @@ import {
   formatOperatorPolicyForecastContextLabel,
   formatPolicyForecastContextLabel,
   formatRuntimeAccelerationLabel,
+  isChartSafeForecastSeries,
   sortFutureForecastSeries
 } from './operatorFutureStack'
 
@@ -33,13 +35,14 @@ const strategy = (
   strategyId: string,
   label: string,
   enabled: boolean,
-  reason?: string
+  reason?: string,
+  meanRegretUah: number | null = null
 ): OperatorStrategyOptionResponse => ({
   strategy_id: strategyId,
   label,
   enabled,
   reason: reason ?? (enabled ? 'materialized' : 'missing'),
-  mean_regret_uah: null,
+  mean_regret_uah: meanRegretUah,
   win_rate: null
 })
 
@@ -127,9 +130,22 @@ describe('operator future stack display helpers', () => {
     ])
   })
 
-  it('builds visible readiness chips for official forecasts and DT policy', () => {
+  it('builds recommendation strategy switch items only from real schedule strategies', () => {
+    expect(buildRecommendationStrategySelectItems([
+      strategy('strict_similar_day', 'Strict similar-day control', true, 'fallback/control', 310.58),
+      strategy('nbeatsx_silver_v0', 'Compact NBEATSx', true, 'schedule rows materialized', 481.2),
+      strategy('nbeatsx_official_v0', 'Official NBEATSx', true, 'forecast rows only', null),
+      strategy('decision_transformer', 'Decision Transformer', false)
+    ])).toEqual([
+      { label: 'Strict similar-day control · 311 UAH', value: 'strict_similar_day', disabled: false },
+      { label: 'Compact NBEATSx · 481 UAH', value: 'nbeatsx_silver_v0', disabled: false }
+    ])
+  })
+
+  it('builds visible readiness chips for schedule strategies, not blocked raw official forecasts', () => {
     expect(buildStrategyReadinessItems([
-      strategy('strict_similar_day', 'Strict similar-day control', true),
+      strategy('strict_similar_day', 'Strict similar-day control', true, 'fallback/control', 310.58),
+      strategy('nbeatsx_silver_v0', 'Compact NBEATSx', true, 'schedule rows materialized', 481.2),
       strategy(
         'nbeatsx_official_v0',
         'Official NBEATSx',
@@ -140,22 +156,16 @@ describe('operator future stack display helpers', () => {
       strategy('decision_transformer', 'Decision Transformer', false)
     ])).toEqual([
       {
-        strategyId: 'nbeatsx_official_v0',
-        label: 'Official NBEATSx',
-        status: 'blocked',
-        reason: 'official forecast rows need calibration: 1 out-of-cap rows'
-      },
-      {
-        strategyId: 'tft_official_v0',
-        label: 'Official TFT',
+        strategyId: 'strict_similar_day',
+        label: 'Strict similar-day control',
         status: 'ready',
-        reason: 'materialized forecast-store rows; values inside DAM caps'
+        reason: '311 UAH mean regret'
       },
       {
-        strategyId: 'decision_transformer',
-        label: 'Decision Transformer',
-        status: 'blocked',
-        reason: 'missing'
+        strategyId: 'nbeatsx_silver_v0',
+        label: 'Compact NBEATSx',
+        status: 'ready',
+        reason: '481 UAH mean regret'
       }
     ])
   })
@@ -204,6 +214,46 @@ describe('operator future stack display helpers', () => {
       out_of_dam_cap_rows: 2,
       quality_boundary: 'needs_calibration_before_value_claim'
     })).toBe('2 out-of-cap rows')
+  })
+
+  it('filters unsafe raw forecast rows out of operator charts', () => {
+    expect(isChartSafeForecastSeries({
+      ...emptySeries('nbeatsx_official_v0', 'official'),
+      points: [
+        {
+          step_index: 0,
+          interval_start: '2026-05-06T14:00:00Z',
+          forecast_price_uah_mwh: 115_000_000,
+          actual_price_uah_mwh: null,
+          p10_price_uah_mwh: null,
+          p50_price_uah_mwh: 115_000_000,
+          p90_price_uah_mwh: null,
+          net_power_mw: null,
+          value_gap_uah: null,
+          price_cap_status: 'above_dam_cap'
+        }
+      ],
+      out_of_dam_cap_rows: 1,
+      quality_boundary: 'needs_calibration_before_value_claim'
+    })).toBe(false)
+
+    expect(isChartSafeForecastSeries({
+      ...emptySeries('tft_silver_v0', 'compact'),
+      points: [
+        {
+          step_index: 0,
+          interval_start: '2026-05-06T14:00:00Z',
+          forecast_price_uah_mwh: 4200,
+          actual_price_uah_mwh: null,
+          p10_price_uah_mwh: 3900,
+          p50_price_uah_mwh: 4200,
+          p90_price_uah_mwh: 4500,
+          net_power_mw: null,
+          value_gap_uah: null,
+          price_cap_status: 'inside_dam_cap'
+        }
+      ]
+    })).toBe(true)
   })
 
   it('extracts NBEATSx and TFT forecast context from DT policy rows', () => {

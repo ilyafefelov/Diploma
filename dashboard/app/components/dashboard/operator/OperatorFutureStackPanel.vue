@@ -14,14 +14,15 @@ import type {
 } from '~/types/control-plane'
 import {
   buildPolicyForecastContextPoints,
+  buildRecommendationStrategySelectItems,
   buildStrategyReadinessItems,
-  buildStrategySelectItems,
   filterOfficialPolicyValueSeries,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
   formatOperatorPolicyForecastContextLabel,
   formatPolicyForecastContextLabel,
   formatRuntimeAccelerationLabel,
+  isChartSafeForecastSeries,
   sortFutureForecastSeries
 } from '~/utils/operatorFutureStack'
 
@@ -49,8 +50,24 @@ const forecastSeries = computed(() => {
     : props.operatorRecommendation?.forecast_model_series ?? []
 
   return sortFutureForecastSeries(
-    apiSeries.filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
+    apiSeries
+      .filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
+      .filter(isChartSafeForecastSeries)
   )
+})
+
+const hiddenUnsafeForecastItems = computed(() => {
+  const apiSeries = props.futureStack?.forecast_series?.length
+    ? props.futureStack.forecast_series
+    : props.operatorRecommendation?.forecast_model_series ?? []
+
+  return apiSeries
+    .filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
+    .filter(series => !isChartSafeForecastSeries(series))
+    .map(series => ({
+      modelName: series.model_name,
+      label: formatForecastQualityLabel(series)
+    }))
 })
 
 const forecastLabels = computed(() => {
@@ -230,11 +247,11 @@ const officialPolicyChartSeries = computed(() => officialPolicyForecastSeries.va
   return [baseLine, ...quantileLines]
 }))
 const policyChartTitle = computed(() => isOfficialPolicyMode.value
-  ? 'Official forecast rows'
-  : 'DT action and value gap')
+  ? 'Safe forecast rows'
+  : 'Selected policy value gap')
 const policyChartDescription = computed(() => isOfficialPolicyMode.value
-  ? 'Direct forecast-store rows from official NBEATSx/TFT candidates. These rows are evidence only; blocked rows are not routed to dispatch.'
-  : 'Value gap is counterfactual lost value; action bars are projected through battery feasibility. Dashed forecast lines show the NBEATSx/TFT state seen by the DT preview.')
+  ? 'Forecast-store rows that are inside DAM caps. Hidden raw out-of-cap rows remain diagnostics, not schedule inputs.'
+  : 'Value gap is counterfactual lost value; action bars are projected through battery feasibility for the selected preview strategy.')
 
 const policyOption = computed(() => ({
   animationDuration: 500,
@@ -324,16 +341,14 @@ const policyOption = computed(() => ({
 
 const statusCards = computed(() => [
   {
-    label: 'Forecast head',
-    value: props.futureStack?.selected_forecast_model || props.operatorRecommendation?.forecast_source || 'waiting',
-    meta: 'NBEATSx/TFT graph source'
+    label: 'Headline result',
+    value: 'V2+ offline',
+    meta: '174.77 UAH mean regret / 4 of 4 rolling windows'
   },
   {
-    label: 'DT preview',
-    value: props.decisionPolicy?.policy_readiness || props.operatorRecommendation?.policy_readiness || 'not materialized',
-    meta: props.decisionPolicy
-      ? `${props.decisionPolicy.constraint_violation_count} safety violations / ${policyForecastContextLabel.value}`
-      : policyForecastContextLabel.value
+    label: 'Strategy preview',
+    value: props.operatorRecommendation?.selected_strategy_id || 'strict_similar_day',
+    meta: props.operatorRecommendation?.selection_reason || 'strict fallback/control'
   },
   {
     label: 'Policy mode',
@@ -348,7 +363,7 @@ const statusCards = computed(() => [
   {
     label: 'Execution boundary',
     value: props.decisionPolicy?.market_execution_enabled ? 'market enabled' : 'preview only',
-    meta: 'deterministic gatekeeper still required'
+    meta: 'read-model evidence; no live dispatch'
   }
 ])
 
@@ -357,7 +372,7 @@ const forecastWindowLabel = computed(() => formatForecastWindowLabel(
   props.futureStack?.forecast_window_start,
   props.futureStack?.forecast_window_end
 ))
-const strategySelectItems = computed(() => buildStrategySelectItems(
+const strategySelectItems = computed(() => buildRecommendationStrategySelectItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))
 const strategyReadinessItems = computed(() => buildStrategyReadinessItems(
@@ -367,6 +382,11 @@ const strategyReadinessItems = computed(() => buildStrategyReadinessItems(
 const updateSelectedStrategy = (value: string | number | boolean | Record<string, unknown>): void => {
   if (typeof value === 'string') {
     emit('update:selectedStrategyId', value)
+    return
+  }
+
+  if (typeof value === 'object' && value !== null && typeof value.value === 'string') {
+    emit('update:selectedStrategyId', value.value)
   }
 }
 
@@ -393,10 +413,10 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
     <div class="console-heading">
       <div>
         <p class="eyebrow">
-          Future stack / live read model
+          Forecast evidence / read model
         </p>
         <h2 class="section-title">
-          NBEATSx, TFT, and DT policy evidence
+          V2+ schedule evidence, TFT portfolio, and strategy preview
         </h2>
       </div>
       <div class="future-control-stack">
@@ -415,7 +435,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
         </label>
         <UBadge
           class="status-badge"
-          :label="isLoading ? 'Refreshing' : 'FastAPI live'"
+          :label="isLoading ? 'Refreshing' : 'FastAPI read model'"
           color="success"
           variant="soft"
         />
@@ -455,8 +475,8 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           <p class="decision-chart-card__eyebrow">
             Forecast stack
           </p>
-          <h3>NBEATSx/TFT forecast paths</h3>
-          <p>Prediction window: <strong>{{ forecastWindowLabel }}</strong>. Shows official model rows first; compact/calibrated rows remain fallback evidence.</p>
+          <h3>Safe NBEATSx/TFT forecast paths</h3>
+          <p>Prediction window: <strong>{{ forecastWindowLabel }}</strong>. Chart hides unsafe raw out-of-cap rows; V2+ evidence is shown by regret cards, not raw forecast superiority.</p>
           <div class="forecast-quality-strip">
             <span
               v-for="item in forecastQualityItems"
@@ -464,6 +484,13 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
               :class="{ 'forecast-quality-strip__item--warn': item.needsCalibration }"
             >
               {{ item.modelName }}: {{ item.label }}
+            </span>
+            <span
+              v-for="item in hiddenUnsafeForecastItems"
+              :key="`hidden-${item.modelName}`"
+              class="forecast-quality-strip__item--warn"
+            >
+              hidden {{ item.modelName }}: {{ item.label }}
             </span>
           </div>
         </div>
@@ -497,7 +524,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
               @click="setPolicyValueMode('dt')"
             >
               <UIcon name="i-lucide-brain" />
-              <span>DT</span>
+              <span>Policy preview</span>
             </button>
             <button
               type="button"
@@ -507,7 +534,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
               @click="setPolicyValueMode('official')"
             >
               <UIcon name="i-lucide-database" />
-              <span>Official rows</span>
+              <span>Forecast rows</span>
             </button>
           </div>
         </div>
@@ -538,17 +565,17 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
       <article>
         <span>Forecast source</span>
         <p>
-          Target production price inputs come from NBEATSx/TFT over price history, weather, calendar, market rules,
-          grid-event context, and battery state features.
+          Current headline is Ukrainian-only V2+ schedule/value evidence. Raw official NBEATSx out-of-cap rows are
+          diagnostic only and are hidden from the chart until calibration makes them safe.
         </p>
       </article>
       <article>
         <span>Decision source</span>
         <p>
-          DT preview consumes forecast state, SOC, economic context, and return target. The raw action is never trusted;
-          it is projected and checked before the operator sees it.
+          Selected strategy preview comes from the operator recommendation endpoint. The raw schedule is still only a
+          review candidate; deterministic battery feasibility and claim boundaries remain visible.
           Forecast context: {{ policyForecastContextLabel }}.
-          {{ decisionPolicy?.policy_state_features?.length ? `State features: ${decisionPolicy.policy_state_features.join(', ')}.` : '' }}
+          {{ operatorRecommendation?.policy_explanation || '' }}
           {{ decisionPolicy?.policy_value_interpretation || '' }}
         </p>
       </article>

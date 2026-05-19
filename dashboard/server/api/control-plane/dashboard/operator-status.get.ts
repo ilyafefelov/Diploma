@@ -1,14 +1,11 @@
 import type { OperatorStatus } from '~/types/control-plane'
+import { fetchControlPlane } from '../../../utils/controlPlaneProxy'
 
 export default defineEventHandler(async (event): Promise<OperatorStatus> => {
-  const runtimeConfig = useRuntimeConfig()
-  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8010')
   const query = getQuery(event)
 
   try {
-    return await $fetch<OperatorStatus>(`${apiBase}/dashboard/operator-status`, {
-      query
-    })
+    return await fetchControlPlane<OperatorStatus>('/dashboard/operator-status', { query })
   } catch (error) {
     const fetchError = error as {
       statusCode?: number

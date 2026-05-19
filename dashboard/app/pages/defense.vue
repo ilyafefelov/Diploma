@@ -2,7 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 
 import {
+  CURRENT_DASHBOARD_EXPERIMENTS,
   CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
+  CURRENT_TFT_PORTFOLIO_CLOSURE,
   formatPercent,
   formatUah,
   summarizeScheduleValuePromotionReadModel
@@ -16,14 +18,6 @@ const defense = useDefenseDashboard(selectedTenantId)
 
 const selectedTenant = computed(() => {
   return registry.tenants.value.find(tenant => tenant.tenant_id === selectedTenantId.value) || null
-})
-
-const controlRow = computed(() => {
-  return defense.modelRows.value.find(row => row.modelName === 'strict_similar_day') || null
-})
-
-const bestRow = computed(() => {
-  return [...defense.modelRows.value].sort((left, right) => left.meanRegretUah - right.meanRegretUah)[0] || null
 })
 
 const futureForecastRows = computed(() => {
@@ -97,19 +91,19 @@ const thesisEvidence = computed(() => [
   },
   {
     label: 'Control baseline',
-    value: controlRow.value ? formatUah(controlRow.value.meanRegretUah) : 'unavailable',
+    value: formatUah(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.strictMeanRegretUah),
     note: 'strict_similar_day mean regret',
     tooltipTitle: 'Control baseline',
-    tooltipBody: 'Mean regret for the strict similar-day strategy. This is the default control comparator, not a neural forecast.',
+    tooltipBody: 'Frozen strict similar-day comparator from the current V2+ evidence packet. It remains the default fallback/control.',
     tooltipFormula: 'mean_regret = avg(oracle_value_uah - decision_value_uah)'
   },
   {
-    label: 'Best live model',
-    value: bestRow.value?.modelName || 'unavailable',
-    note: bestRow.value ? `${formatUah(bestRow.value.meanRegretUah)} mean regret` : 'FastAPI row missing',
-    tooltipTitle: 'Best live model',
-    tooltipBody: 'Lowest mean regret row returned by the live benchmark read model for the selected tenant.',
-    tooltipFormula: 'best = argmin(mean_regret_uah)'
+    label: 'TFT portfolio',
+    value: `${CURRENT_TFT_PORTFOLIO_CLOSURE.rollingPassCount}/${CURRENT_TFT_PORTFOLIO_CLOSURE.rollingWindowCount}`,
+    note: `${CURRENT_TFT_PORTFOLIO_CLOSURE.tftBetterCandidateCount}/${CURRENT_TFT_PORTFOLIO_CLOSURE.latestTenantAnchors} local opportunities`,
+    tooltipTitle: 'Latest closed TFT portfolio test',
+    tooltipBody: CURRENT_TFT_PORTFOLIO_CLOSURE.interpretation,
+    tooltipFormula: `candidate_portfolio_rows=${CURRENT_TFT_PORTFOLIO_CLOSURE.candidatePortfolioRows}`
   },
   {
     label: 'Observed anchors',
@@ -137,33 +131,33 @@ const offlinePromotionReadModelLabel = computed(() => (
 
 const narrativeSteps = [
   {
-    label: '1. Data',
-    text: 'Observed OREE DAM, tenant weather, grid-event text, and battery telemetry enter Bronze/Silver assets.'
+    label: '1. Headline',
+    text: 'V2+ is the current Ukrainian-only Offline Strategy Promotion result: 174.77 UAH mean regret and 4/4 rolling windows.'
   },
   {
-    label: '2. Forecasts',
-    text: 'strict_similar_day stays control; compact NBEATSx/TFT remain forecast candidates, not SOTA claim.'
+    label: '2. Control',
+    text: 'strict_similar_day remains the frozen fallback and comparator. The dashboard does not switch live strategy defaults.'
   },
   {
-    label: '3. Decision',
-    text: 'Every forecast is routed through same LP, Level 1 battery simulator, and oracle-regret scorer.'
+    label: '3. TFT portfolio',
+    text: 'TFT contributed local schedule opportunities, but rolling replay failed 0/4, so it is not promoted over V2+.'
   },
   {
-    label: '4. Diagnosis',
-    text: 'Forecast error, spread mismatch, and LP sensitivity sit beside profit/regret metrics.'
+    label: '4. Evidence path',
+    text: 'Forecasts become feasible schedules, schedules are strict-scored by LP/oracle regret, and claims stay offline/read-model only.'
   },
   {
-    label: '5. Boundary',
-    text: 'DFL, DT, and live trading surfaces are research primitives until strict evaluation proves them.'
+    label: '5. Next',
+    text: 'The next research branch is DT/LAVA-style candidate or schedule-neighbor supervision against V2+, not another dashboard default.'
   }
 ]
 
 const claimBoundaries = [
   'thesis-grade only when source rows are observed and complete',
   'strict_similar_day remains default comparator',
-  'DFL pilot is relaxed-LP diagnostic, not final DFL training',
-  'Decision Transformer rows are offline trajectories, not deployed policy',
-  'paper trading is simulated and carries no settlement identifiers'
+  'V2+ is offline/read-model evidence, not live market execution',
+  'TFT portfolio is closed negative evidence until it beats V2+ robustly',
+  'DT/LAVA work is next research, not deployed policy'
 ]
 
 const errorRows = computed(() => {
@@ -243,12 +237,12 @@ useHead({
     <section class="defense-hero">
       <div class="hero-copy">
         <p class="eyebrow">
-          Research defense / live FastAPI read model
+          Research defense / FastAPI read model
         </p>
-        <h1>Can forecast-to-optimize improve Ukrainian BESS arbitrage against a strict similar-day control?</h1>
+        <h1>Current result: V2+ improves Ukrainian BESS arbitrage offline, TFT portfolio did not replace it.</h1>
         <p class="hero-body">
-          This route shows only live backend rows from FastAPI/Postgres. It separates empirical benchmark evidence
-          from DFL, Decision Transformer, telemetry, and simulated paper-trading readiness.
+          This route keeps the demo focused on the latest evidence from this week: V2+ is the headline Offline Strategy
+          Promotion result, while TFT portfolio, market coupling, and DT/LAVA remain bounded research branches.
         </p>
         <div class="tenant-context">
           <span>{{ selectedTenant?.name || selectedTenantId }}</span>
@@ -333,6 +327,29 @@ useHead({
           <span>{{ row.source_model_name }}</span>
           <strong>{{ formatUah(row.latest_selected_mean_regret_uah) }}</strong>
           <small>{{ row.rolling_strict_pass_window_count }}/{{ row.rolling_window_count }} rolling / {{ row.production_promote ? 'read-model promoted' : row.promotion_blocker }}</small>
+        </article>
+      </div>
+    </section>
+
+    <section class="latest-experiment-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">
+            Latest experiments
+          </p>
+          <h2>This week’s dashboard story</h2>
+        </div>
+        <span class="source-pill">Demo Day 2</span>
+      </div>
+      <div class="latest-experiment-grid">
+        <article
+          v-for="experiment in CURRENT_DASHBOARD_EXPERIMENTS"
+          :key="experiment.label"
+          :class="`latest-experiment-card latest-experiment-card--${experiment.status}`"
+        >
+          <span>{{ experiment.label }}</span>
+          <strong>{{ experiment.value }}</strong>
+          <small>{{ experiment.meta }}</small>
         </article>
       </div>
     </section>
@@ -426,13 +443,12 @@ useHead({
         <div class="section-heading">
           <div>
             <p class="eyebrow">
-              Future stack preview
+              Forecast evidence
             </p>
-            <h2>NBEATSx/TFT forecast evidence</h2>
+            <h2>Official forecast rows and TFT boundary</h2>
             <p class="section-explainer">
-              This is the target architecture surface: price paths come from the forecast stack, while dispatch intent
-              moves toward a policy layer. These rows remain read-model evidence unless the backend marks them
-              materialized and safe.
+              These rows explain the forecast layer, but the promoted result is schedule/value V2+. Raw or quantile
+              TFT rows do not become the dashboard default unless they beat V2+ under strict LP/oracle scoring.
             </p>
           </div>
           <span class="source-pill">{{ defense.futureStack.value?.selected_forecast_model || 'forecast stack pending' }}</span>
@@ -472,9 +488,9 @@ useHead({
 
       <aside class="side-panel">
         <p class="eyebrow">
-          DT policy preview
+          DT/LAVA next branch
         </p>
-        <h2>Offline policy boundary</h2>
+        <h2>Not a deployed policy</h2>
         <div
           v-if="dtPolicySummary"
           class="readiness-list"
@@ -501,7 +517,8 @@ useHead({
           No DT policy preview rows returned yet.
         </p>
         <p class="section-explainer">
-          {{ futureBackendStatusText }}
+          DT/LAVA is the next research branch after the TFT portfolio closure. It must use V2+ as comparator and keep
+          strict LP/oracle scoring before any claim changes. {{ futureBackendStatusText }}
         </p>
       </aside>
     </section>
@@ -557,9 +574,9 @@ useHead({
 
       <aside class="side-panel">
         <p class="eyebrow">
-          Research primitives
+          Research branches
         </p>
-        <h2>DFL / DT readiness</h2>
+        <h2>Not dashboard defaults</h2>
         <div class="readiness-list">
           <article
             v-for="row in defense.researchReadinessRows.value"
@@ -993,6 +1010,71 @@ h2 {
   line-height: 1.4;
 }
 
+.latest-experiment-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 1380px;
+  margin: 0 auto 1rem;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.94);
+  padding: 1rem;
+}
+
+.latest-experiment-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.latest-experiment-card {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 8rem;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, rgba(241, 245, 249, 0.92), rgba(255, 255, 255, 0.96));
+  padding: 0.85rem;
+}
+
+.latest-experiment-card span {
+  color: #475569;
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.latest-experiment-card strong {
+  color: #0f172a;
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.latest-experiment-card small {
+  color: #617084;
+  line-height: 1.45;
+}
+
+.latest-experiment-card--headline {
+  border-color: rgba(34, 197, 94, 0.3);
+  background: linear-gradient(180deg, rgba(220, 252, 231, 0.94), rgba(255, 255, 255, 0.96));
+}
+
+.latest-experiment-card--closed {
+  border-color: rgba(249, 115, 22, 0.26);
+  background: linear-gradient(180deg, rgba(255, 237, 213, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.latest-experiment-card--blocked {
+  border-color: rgba(148, 163, 184, 0.3);
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.latest-experiment-card--next {
+  border-color: rgba(14, 165, 233, 0.3);
+  background: linear-gradient(180deg, rgba(224, 242, 254, 0.92), rgba(255, 255, 255, 0.96));
+}
+
 .section-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.34fr);
@@ -1171,6 +1253,7 @@ td {
   .narrative-band,
   .bucket-grid,
   .context-grid,
+  .latest-experiment-grid,
   .future-stack-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1205,6 +1288,7 @@ td {
   .narrative-band,
   .bucket-grid,
   .context-grid,
+  .latest-experiment-grid,
   .future-stack-grid,
   .offline-promotion-rows {
     grid-template-columns: 1fr;

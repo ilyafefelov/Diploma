@@ -1,14 +1,11 @@
 import type { OperatorRecommendationResponse } from '~/types/control-plane'
+import { fetchControlPlane } from '../../../utils/controlPlaneProxy'
 
 export default defineEventHandler(async (event): Promise<OperatorRecommendationResponse> => {
-  const runtimeConfig = useRuntimeConfig()
-  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8010')
   const query = getQuery(event)
 
   try {
-    return await $fetch<OperatorRecommendationResponse>(`${apiBase}/dashboard/operator-recommendation`, {
-      query
-    })
+    return await fetchControlPlane<OperatorRecommendationResponse>('/dashboard/operator-recommendation', { query })
   } catch (error) {
     throw createError({
       statusCode: 502,

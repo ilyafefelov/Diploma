@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest'
 import {
   buildDefenseModelRows,
   buildResearchReadinessRows,
+  CURRENT_DASHBOARD_EXPERIMENTS,
+  CURRENT_TFT_PORTFOLIO_CLOSURE,
   summarizeDefenseBenchmark,
   summarizeScheduleValuePromotionReadModel
 } from './defenseDataset'
@@ -209,7 +211,25 @@ describe('defense dataset summaries', () => {
     }
 
     expect(summarizeScheduleValuePromotionReadModel(response)).toBe(
-      '2/2 read-model rows promoted, market execution disabled'
+      '2/2 offline rows passed, market execution disabled'
     )
+  })
+
+  it('keeps current demo evidence focused on V2+ and closed TFT portfolio evidence', () => {
+    expect(CURRENT_TFT_PORTFOLIO_CLOSURE).toMatchObject({
+      latestTenantAnchors: 90,
+      tftBetterCandidateCount: 24,
+      selectorFallbackCount: 90,
+      rollingPassCount: 0,
+      rollingWindowCount: 4,
+      status: 'negative_evidence'
+    })
+
+    expect(CURRENT_DASHBOARD_EXPERIMENTS.map(experiment => experiment.label)).toEqual([
+      'Headline',
+      'TFT portfolio',
+      'Market coupling',
+      'Next branch'
+    ])
   })
 })

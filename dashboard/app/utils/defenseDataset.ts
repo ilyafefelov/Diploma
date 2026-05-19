@@ -50,6 +50,25 @@ export interface OfflineStrategyPromotionHeadline {
   claimBoundary: string
 }
 
+export interface TftPortfolioClosureHeadline {
+  label: string
+  latestTenantAnchors: number
+  tftBetterCandidateCount: number
+  selectorFallbackCount: number
+  rollingPassCount: number
+  rollingWindowCount: number
+  candidatePortfolioRows: number
+  status: 'negative_evidence'
+  interpretation: string
+}
+
+export interface DashboardExperimentCard {
+  label: string
+  value: string
+  meta: string
+  status: 'headline' | 'closed' | 'blocked' | 'next'
+}
+
 export const CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE: OfflineStrategyPromotionHeadline = {
   modelName: 'Schedule/Value Learner V2+',
   meanRegretUah: 174.77,
@@ -60,6 +79,45 @@ export const CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE: OfflineStrategyPromoti
   marketExecutionEnabled: false,
   claimBoundary: 'Offline Strategy Promotion evidence only'
 }
+
+export const CURRENT_TFT_PORTFOLIO_CLOSURE: TftPortfolioClosureHeadline = {
+  label: 'NBEATSx+TFT candidate portfolio',
+  latestTenantAnchors: 90,
+  tftBetterCandidateCount: 24,
+  selectorFallbackCount: 90,
+  rollingPassCount: 0,
+  rollingWindowCount: 4,
+  candidatePortfolioRows: 120380,
+  status: 'negative_evidence',
+  interpretation: 'TFT offered local candidate diversity, but the prior-only selector could not exploit it robustly.'
+}
+
+export const CURRENT_DASHBOARD_EXPERIMENTS: DashboardExperimentCard[] = [
+  {
+    label: 'Headline',
+    value: 'V2+',
+    meta: '174.77 UAH mean regret / 4 of 4 rolling windows',
+    status: 'headline'
+  },
+  {
+    label: 'TFT portfolio',
+    value: '0/4 rolling',
+    meta: '24/90 local TFT opportunities, selector fell back on latest holdout',
+    status: 'closed'
+  },
+  {
+    label: 'Market coupling',
+    value: 'blocked',
+    meta: 'ENTSO-E/Poland remains governance-only, not training input',
+    status: 'blocked'
+  },
+  {
+    label: 'Next branch',
+    value: 'DT/LAVA',
+    meta: 'candidate/value or schedule-neighbor supervision against V2+',
+    status: 'next'
+  }
+]
 
 export const summarizeDefenseBenchmark = (
   response: RealDataBenchmarkResponse
@@ -143,10 +201,10 @@ export const summarizeScheduleValuePromotionReadModel = (
   response: DflScheduleValueProductionGateResponse | null
 ): string => {
   if (!response) {
-    return 'backend gate pending'
+    return 'backend read model pending'
   }
 
-  return `${response.production_promote_count}/${response.row_count} read-model rows promoted, market execution ${response.market_execution_enabled ? 'enabled' : 'disabled'}`
+  return `${response.production_promote_count}/${response.row_count} offline rows passed, market execution ${response.market_execution_enabled ? 'enabled' : 'disabled'}`
 }
 
 export const formatCompactNumber = (value: number): string => {

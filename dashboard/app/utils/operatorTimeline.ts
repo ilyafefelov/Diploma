@@ -18,11 +18,11 @@ export const powerToTimelineLabel = (powerMw: number): OperatorTimelineSegment['
 
 export const timelineTooltipBody = (label: OperatorTimelineSegment['label'], powerMw: number): string => {
   if (label === 'Charge') {
-    return `Recommended net power is ${formatSignedMw(powerMw)}, so the baseline preview is filling the battery for a later market window.`
+    return `Recommended net power is ${formatSignedMw(powerMw)}, so the selected preview is filling the battery for a later market window.`
   }
 
   if (label === 'Discharge') {
-    return `Recommended net power is ${formatSignedMw(powerMw)}, so the baseline preview is selling stored energy into this interval.`
+    return `Recommended net power is ${formatSignedMw(powerMw)}, so the selected preview is selling stored energy into this interval.`
   }
 
   return `Recommended net power is ${formatSignedMw(powerMw)}, so the preview keeps the battery idle and avoids unnecessary cycling.`

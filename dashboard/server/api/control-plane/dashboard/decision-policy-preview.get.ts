@@ -1,17 +1,14 @@
 import type { DecisionPolicyPreviewResponse } from '~/types/control-plane'
+import { fetchControlPlane } from '../../../utils/controlPlaneProxy'
 
 type ControlPlaneQuery = Record<string, string | number | boolean | null | undefined>
 
 export default defineEventHandler(async (event): Promise<DecisionPolicyPreviewResponse> => {
-  const runtimeConfig = useRuntimeConfig()
-  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8010')
   const query = getQuery(event) as ControlPlaneQuery
   const tenantId = String(query.tenant_id || 'unknown')
 
   try {
-    return await $fetch<DecisionPolicyPreviewResponse>(`${apiBase}/dashboard/decision-policy-preview`, {
-      query
-    })
+    return await fetchControlPlane<DecisionPolicyPreviewResponse>('/dashboard/decision-policy-preview', { query })
   } catch {
     return {
       tenant_id: tenantId,

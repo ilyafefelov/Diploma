@@ -187,9 +187,9 @@ describe('operator decision evidence', () => {
         detail: '54% from latest telemetry'
       },
       {
-        label: 'Planning SOC',
-        status: 'aligned',
-        tone: 'green',
+        label: 'Selected strategy',
+        status: 'pending',
+        tone: 'blue',
         detail: '58% start; 4% gap vs physical'
       },
       {
@@ -199,7 +199,7 @@ describe('operator decision evidence', () => {
         detail: 'tenant region affected; saving request active'
       },
       {
-        label: 'Source freshness',
+        label: 'Readiness',
         status: 'fresh',
         tone: 'green',
         detail: 'weather 1.5h / grid 2.0h'
@@ -251,12 +251,12 @@ describe('operator decision evidence', () => {
         label: 'Planning SOC',
         value: '50%',
         meta: 'tenant_default',
-        tooltipFormula: 'starting_soc_source = request_override | telemetry_hourly | tenant_default'
+        tooltipFormula: 'planning_soc = feasible_schedule[0].projected_soc_after_fraction'
       }),
       expect.objectContaining({
-        label: 'Best comparator',
-        value: 'risk_adjusted_value_gate_v0',
-        meta: 'lowest mean regret in read model'
+        label: 'V2+ comparator',
+        value: '175 UAH',
+        meta: '4/4 rolling; strict remains fallback'
       }),
       expect.objectContaining({
         label: 'Grid context',

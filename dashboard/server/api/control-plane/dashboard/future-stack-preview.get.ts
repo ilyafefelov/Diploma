@@ -1,38 +1,24 @@
 import type { FutureStackPreviewResponse } from '~/types/control-plane'
+import { fetchControlPlane } from '../../../utils/controlPlaneProxy'
 
 type ControlPlaneQuery = Record<string, string | number | boolean | null | undefined>
 
 export default defineEventHandler(async (event): Promise<FutureStackPreviewResponse> => {
-  const runtimeConfig = useRuntimeConfig()
-  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8010')
   const query = getQuery(event) as ControlPlaneQuery
   const tenantId = String(query.tenant_id || 'unknown')
 
   try {
-    return await fetchFutureStackPreview(apiBase, query, 5000)
+    return await fetchFutureStackPreview(query, 5000)
   } catch {
     return buildStaticFutureStackFallback(tenantId)
   }
 })
 
 const fetchFutureStackPreview = async (
-  apiBase: string,
   query: ControlPlaneQuery,
   timeoutMs: number
 ): Promise<FutureStackPreviewResponse> => {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => {
-    controller.abort()
-  }, timeoutMs)
-
-  try {
-    return await ($fetch<FutureStackPreviewResponse>(`${apiBase}/dashboard/future-stack-preview`, {
-      query,
-      signal: controller.signal
-    }) as Promise<FutureStackPreviewResponse>)
-  } finally {
-    clearTimeout(timeout)
-  }
+  return await fetchControlPlane<FutureStackPreviewResponse>('/dashboard/future-stack-preview', { query, timeoutMs })
 }
 
 const buildStaticFutureStackFallback = (tenantId: string): FutureStackPreviewResponse => {

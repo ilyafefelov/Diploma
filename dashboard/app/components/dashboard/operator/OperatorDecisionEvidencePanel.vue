@@ -242,7 +242,7 @@ const sensitivityOption = computed(() => ({
       </div>
       <UBadge
         class="status-badge"
-        :label="isLoading ? 'Refreshing' : 'FastAPI live'"
+        :label="isLoading ? 'Refreshing' : 'FastAPI read model'"
         color="success"
         variant="soft"
       />

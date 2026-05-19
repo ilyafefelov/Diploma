@@ -104,22 +104,22 @@ describe('operator research metrics', () => {
         tooltipFormula: 'regret = oracle_value_uah - decision_value_uah'
       },
       {
-        label: 'Best comparator',
-        value: 'tft_silver_v0',
-        meta: '1,100 UAH mean regret',
-        tone: 'green',
-        tooltipTitle: 'Best comparator',
-        tooltipBody: 'Lowest mean regret among live benchmark candidates for this tenant, including ensemble gates where materialized.',
-        tooltipFormula: 'best = argmin(mean_regret_uah)'
-      },
-      {
         label: 'Offline V2+',
         value: '175 UAH',
         meta: '44% vs strict / 4/4 rolling',
         tone: 'purple',
         tooltipTitle: 'Offline Strategy Promotion headline',
         tooltipBody: 'Current thesis headline evidence is Ukrainian-only official global-panel NBEATSx Schedule/Value Learner V2+. The backend gate is shown only as read-model context.',
-        tooltipFormula: '2/2 read-model rows promoted, market execution disabled'
+        tooltipFormula: '2/2 offline rows passed, market execution disabled'
+      },
+      {
+        label: 'TFT portfolio',
+        value: '0/4 rolling',
+        meta: '24/90 local opportunities',
+        tone: 'orange',
+        tooltipTitle: 'Closed TFT complementarity test',
+        tooltipBody: 'TFT offered local candidate diversity, but the prior-only selector could not exploit it robustly.',
+        tooltipFormula: 'portfolio_rows=120380; fallback=90/90'
       },
       {
         label: 'Grid risk',
@@ -140,12 +140,12 @@ describe('operator research metrics', () => {
         tooltipFormula: 'display_soc = latest_telemetry.current_soc ?? hourly_snapshot.soc_close'
       },
       {
-        label: 'Research boundary',
-        value: 'pilot',
-        meta: 'DFL: not full DFL',
+        label: 'Claim boundary',
+        value: 'offline only',
+        meta: 'market_execution_enabled=false',
         tone: 'lime',
         tooltipTitle: 'Research claim boundary',
-        tooltipBody: 'Shows whether DFL/DT/live replay outputs are materialized, and prevents research primitives from being read as production decisions.',
+        tooltipBody: 'Keeps V2+, TFT portfolio, and DT/LAVA evidence in offline/read-model scope. Nothing on this screen is live market execution.',
         tooltipFormula: 'boundary = academic_scope / provenance flags from backend read models'
       }
     ])

@@ -1,58 +1,31 @@
-import type { BaselineForecastPoint, BaselineLpPreview, SignalPreview } from '~/types/control-plane'
+import type { BaselineLpPreview, SignalPreview } from '~/types/control-plane'
+import { fetchControlPlane } from '../../../utils/controlPlaneProxy'
 
 type ControlPlaneQuery = Record<string, string | number | boolean | null | undefined>
 
 export default defineEventHandler(async (event): Promise<SignalPreview> => {
-  const runtimeConfig = useRuntimeConfig()
-  const apiBase = String(runtimeConfig.apiBase || 'http://127.0.0.1:8010')
   const query = getQuery(event) as ControlPlaneQuery
   const tenantId = String(query.tenant_id || 'unknown')
 
   try {
-    return await fetchSignalPreview(apiBase, query, 5000)
+    return await fetchSignalPreview(query, 5000)
   } catch {
-    return buildBaselineSignalFallback(apiBase, query, tenantId)
+    return buildBaselineSignalFallback(query, tenantId)
   }
 })
 
 const fetchSignalPreview = async (
-  apiBase: string,
   query: ControlPlaneQuery,
   timeoutMs: number
 ): Promise<SignalPreview> => {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => {
-    controller.abort()
-  }, timeoutMs)
-
-  try {
-    return await ($fetch<SignalPreview>(`${apiBase}/dashboard/signal-preview`, {
-      query,
-      signal: controller.signal
-    }) as Promise<SignalPreview>)
-  } finally {
-    clearTimeout(timeout)
-  }
+  return await fetchControlPlane<SignalPreview>('/dashboard/signal-preview', { query, timeoutMs })
 }
 
 const fetchBaselinePreview = async (
-  apiBase: string,
   query: ControlPlaneQuery,
   timeoutMs: number
 ): Promise<BaselineLpPreview> => {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => {
-    controller.abort()
-  }, timeoutMs)
-
-  try {
-    return await ($fetch<BaselineLpPreview>(`${apiBase}/dashboard/baseline-lp-preview`, {
-      query,
-      signal: controller.signal
-    }) as Promise<BaselineLpPreview>)
-  } finally {
-    clearTimeout(timeout)
-  }
+  return await fetchControlPlane<BaselineLpPreview>('/dashboard/baseline-lp-preview', { query, timeoutMs })
 }
 
 const buildStaticSignalFallback = (tenantId: string): SignalPreview => {
@@ -85,29 +58,28 @@ const buildStaticSignalFallback = (tenantId: string): SignalPreview => {
 }
 
 const buildBaselineSignalFallback = async (
-  apiBase: string,
   query: ControlPlaneQuery,
   tenantId: string
 ): Promise<SignalPreview> => {
   let baseline: BaselineLpPreview
   try {
-    baseline = await fetchBaselinePreview(apiBase, query, 4000)
+    baseline = await fetchBaselinePreview(query, 4000)
   } catch {
     return buildStaticSignalFallback(tenantId)
   }
   const points = baseline.forecast
-    .filter((_point: BaselineForecastPoint, index: number) => index % 3 === 0)
+    .filter((_point, index: number) => index % 3 === 0)
     .slice(0, 6)
   const lastPoint = points[points.length - 1]
-  const marketPrice = points.map((point: BaselineForecastPoint) => Number(point.predicted_price_uah_mwh.toFixed(2)))
+  const marketPrice = points.map(point => Number(point.predicted_price_uah_mwh.toFixed(2)))
   const averagePrice = marketPrice.reduce((total, value) => total + value, 0) / Math.max(1, marketPrice.length)
-  const maxDeviation = Math.max(1, ...marketPrice.map((value) => Math.abs(value - averagePrice)))
+  const maxDeviation = Math.max(1, ...marketPrice.map(value => Math.abs(value - averagePrice)))
   const maxPowerMw = baseline.battery_metrics.max_power_mw
 
   return {
     tenant_id: tenantId,
-    labels: points.map((point) => formatHourLabel(point.forecast_timestamp)),
-    label_timestamps: points.map((point) => point.forecast_timestamp),
+    labels: points.map(point => formatHourLabel(point.forecast_timestamp)),
+    label_timestamps: points.map(point => point.forecast_timestamp),
     latest_price_timestamp: lastPoint?.forecast_timestamp ?? null,
     forecast_window_start: points[0]?.forecast_timestamp ?? null,
     forecast_window_end: lastPoint?.forecast_timestamp ?? null,
@@ -115,10 +87,10 @@ const buildBaselineSignalFallback = async (
     market_price: marketPrice,
     weather_bias: points.map(() => 0),
     weather_sources: points.map(() => 'BASELINE_FALLBACK'),
-    charge_intent: marketPrice.map((value) =>
+    charge_intent: marketPrice.map(value =>
       Number(Math.max(-maxPowerMw, Math.min(maxPowerMw, ((value - averagePrice) / maxDeviation) * maxPowerMw)).toFixed(2))
     ),
-    regret: marketPrice.map((value) => Number(Math.max(80, Math.abs(value - averagePrice) * 0.45).toFixed(2))),
+    regret: marketPrice.map(value => Number(Math.max(80, Math.abs(value - averagePrice) * 0.45).toFixed(2))),
     resolved_location: baseline.resolved_location
   }
 }

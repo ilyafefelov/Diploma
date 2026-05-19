@@ -109,15 +109,15 @@ const weatherSourceBadge = computed(() => {
 
         <CollapsibleTextCard
           v-else
-          title="How the future price should be calculated"
-          eyebrow="Future production calculation"
+          title="How the research forecast should be used"
+          eyebrow="Research forecast calculation"
         >
           <p class="signal-explainer-card__copy">
-            In the target architecture, <strong>expected price</strong> will come from a forecasting stack led by
-            <strong>NBEATSx</strong> and <strong>TFT</strong>, not from the current MVP baseline solver path.
+            In the current thesis architecture, raw <strong>NBEATSx</strong> and <strong>TFT</strong> forecasts are useful
+            only after they become feasible schedules and pass the strict LP/oracle regret gate.
           </p>
           <p class="signal-explainer-card__formula">
-            Target flow: <strong>market forecast model -> weather-aware feature attribution -> decision policy input</strong>
+            Evidence flow: <strong>market forecast model -> candidate schedules -> schedule/value gate</strong>
           </p>
           <p class="signal-explainer-card__copy">
             The weather explanation will shift from a single calibrated uplift number to model-driven attribution,
@@ -128,7 +128,7 @@ const weatherSourceBadge = computed(() => {
         <CollapsibleTextCard
           class="signal-explainer-card-accent"
           :title="props.explanationMode === 'mvp' ? 'Current market and weather sources' : 'Future forecast evidence'"
-          :eyebrow="props.explanationMode === 'mvp' ? 'Current data sources' : 'Future production data sources'"
+          :eyebrow="props.explanationMode === 'mvp' ? 'Current data sources' : 'Research evidence data sources'"
           tone="accent"
         >
           <template v-if="props.explanationMode === 'mvp'">
@@ -141,13 +141,13 @@ const weatherSourceBadge = computed(() => {
               synthetic fallback weather window. The badge above shows which source was used for the visible points.
             </p>
             <p class="signal-explainer-card__copy signal-explainer-card__copy-note">
-              This explanation is specific to the current MVP path and will change once forecast generation moves to
-              <strong>NBEATSx + TFT</strong> and downstream decisions move to <strong>DT/M3DT</strong>.
+              This explanation is specific to the visible preview path. Current thesis evidence is led by V2+
+              schedule/value scoring; TFT portfolio and DT/LAVA remain research branches until they beat V2+.
             </p>
           </template>
           <template v-else>
             <p class="signal-explainer-card__eyebrow">
-              Future production data sources
+              Research evidence data sources
             </p>
             <p class="signal-explainer-card__copy">
               <strong>Forecast inputs:</strong> DAM or IDM market history, weather history and forecasts, calendar signals,
@@ -230,15 +230,14 @@ const weatherSourceBadge = computed(() => {
         <CollapsibleTextCard
           v-else
           title="How dispatch should be decided later"
-          eyebrow="Future dispatch logic"
+          eyebrow="Research dispatch logic"
         >
           <p class="signal-explainer-card__copy">
             In the target stack, the action bar should no longer be described as a normalized price-distance heuristic.
-            It should come from a decision policy such as <strong>DT/M3DT</strong> that consumes forecasts, battery state,
-            and economic context directly.
+            Future DT/LAVA work should predict candidate schedules or schedule blocks first, then compete against V2+.
           </p>
           <p class="signal-explainer-card__formula">
-            Target flow: <strong>forecast state + battery state + return target -> policy action trajectory</strong>
+            Research flow: <strong>forecast state + battery state + return target -> candidate schedule trajectory</strong>
           </p>
           <p class="signal-explainer-card__copy">
             At that point, action explanation should describe policy intent, safety constraints, and counterfactual value,
@@ -262,7 +261,7 @@ const weatherSourceBadge = computed(() => {
             </p>
             <p class="signal-explainer-card__copy signal-explainer-card__copy-note">
               This value will be replaced later by explanations tied to the stronger stack: forecast attribution from
-              <strong>NBEATSx/TFT</strong> and action-value or policy reasoning from <strong>DT/M3DT</strong>.
+              <strong>NBEATSx/TFT</strong> and action-value or policy reasoning that beats V2+.
             </p>
           </template>
           <template v-else>
@@ -277,7 +276,7 @@ const weatherSourceBadge = computed(() => {
               Target interpretation: <strong>value_gap = value(best feasible action) - value(chosen action)</strong>
             </p>
             <p class="signal-explainer-card__copy signal-explainer-card__copy-note">
-              That shift makes the explanation consistent with DT/M3DT and avoids carrying today’s heuristic score into a
+              That shift makes the explanation consistent with candidate-value learning and avoids carrying today’s heuristic score into a
               stronger decision stack.
             </p>
           </template>

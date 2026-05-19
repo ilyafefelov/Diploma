@@ -465,7 +465,7 @@ export const buildDispatchBalanceChartOption = (
           'Battery action formula: clamp(((adjusted_price - avg_adjusted_price) / max_deviation) * max_power_mw)',
           'Sign meaning: positive MW = discharge bias, negative MW = charge bias',
           'Missed value formula: max(80, weather_bias * 2.4 + |adjusted_price - avg_adjusted_price| * 0.45)',
-          'Missed value is a current MVP opportunity score, not settlement revenue and not the final DT/M3DT policy metric'
+          'Missed value is a current MVP opportunity score, not settlement revenue and not the final promoted policy metric'
         ].join('<br/>')
       }
     },

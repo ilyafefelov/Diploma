@@ -6,6 +6,7 @@ import type {
 import type { DefenseModelRow, ResearchReadinessRow } from './defenseDataset'
 import {
   CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
+  CURRENT_TFT_PORTFOLIO_CLOSURE,
   formatPercent,
   formatUah,
   summarizeScheduleValuePromotionReadModel
@@ -29,12 +30,11 @@ export const buildOperatorResearchMetrics = (input: {
   batteryState: DashboardBatteryStateResponse | null
 }): OperatorResearchMetric[] => {
   const controlRow = input.modelRows.find(row => row.modelName === 'strict_similar_day') ?? null
-  const bestRow = [...input.modelRows].sort((left, right) => left.meanRegretUah - right.meanRegretUah)[0] ?? null
   const gridRisk = input.exogenousSignals?.national_grid_risk_score ?? null
   const soc = input.batteryState?.latest_telemetry?.current_soc
     ?? input.batteryState?.hourly_snapshot?.soc_close
     ?? null
-  const firstBoundary = input.readinessRows[0] ?? null
+  const boundaryRowsLoaded = input.readinessRows.length
 
   return [
     {
@@ -47,15 +47,6 @@ export const buildOperatorResearchMetrics = (input: {
       tooltipFormula: 'regret = oracle_value_uah - decision_value_uah'
     },
     {
-      label: 'Best comparator',
-      value: bestRow?.modelName ?? 'unavailable',
-      meta: bestRow ? `${formatUah(bestRow.meanRegretUah)} mean regret` : 'benchmark not loaded',
-      tone: 'green',
-      tooltipTitle: 'Best comparator',
-      tooltipBody: 'Lowest mean regret among live benchmark candidates for this tenant, including ensemble gates where materialized.',
-      tooltipFormula: 'best = argmin(mean_regret_uah)'
-    },
-    {
       label: 'Offline V2+',
       value: formatUah(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.meanRegretUah),
       meta: `${formatPercent(CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.improvementVsStrict)} vs strict / ${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingPassCount}/${CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE.rollingWindowCount} rolling`,
@@ -63,6 +54,15 @@ export const buildOperatorResearchMetrics = (input: {
       tooltipTitle: 'Offline Strategy Promotion headline',
       tooltipBody: 'Current thesis headline evidence is Ukrainian-only official global-panel NBEATSx Schedule/Value Learner V2+. The backend gate is shown only as read-model context.',
       tooltipFormula: summarizeScheduleValuePromotionReadModel(input.offlineStrategyPromotion)
+    },
+    {
+      label: 'TFT portfolio',
+      value: `${CURRENT_TFT_PORTFOLIO_CLOSURE.rollingPassCount}/${CURRENT_TFT_PORTFOLIO_CLOSURE.rollingWindowCount} rolling`,
+      meta: `${CURRENT_TFT_PORTFOLIO_CLOSURE.tftBetterCandidateCount}/${CURRENT_TFT_PORTFOLIO_CLOSURE.latestTenantAnchors} local opportunities`,
+      tone: 'orange',
+      tooltipTitle: 'Closed TFT complementarity test',
+      tooltipBody: CURRENT_TFT_PORTFOLIO_CLOSURE.interpretation,
+      tooltipFormula: `portfolio_rows=${CURRENT_TFT_PORTFOLIO_CLOSURE.candidatePortfolioRows}; fallback=${CURRENT_TFT_PORTFOLIO_CLOSURE.selectorFallbackCount}/${CURRENT_TFT_PORTFOLIO_CLOSURE.latestTenantAnchors}`
     },
     {
       label: 'Grid risk',
@@ -83,12 +83,12 @@ export const buildOperatorResearchMetrics = (input: {
       tooltipFormula: 'display_soc = latest_telemetry.current_soc ?? hourly_snapshot.soc_close'
     },
     {
-      label: 'Research boundary',
-      value: firstBoundary?.status ?? 'not loaded',
-      meta: firstBoundary ? `${firstBoundary.label}: ${firstBoundary.boundary}` : 'research rows unavailable',
+      label: 'Claim boundary',
+      value: 'offline only',
+      meta: boundaryRowsLoaded > 0 ? 'market_execution_enabled=false' : 'research rows pending',
       tone: 'lime',
       tooltipTitle: 'Research claim boundary',
-      tooltipBody: 'Shows whether DFL/DT/live replay outputs are materialized, and prevents research primitives from being read as production decisions.',
+      tooltipBody: 'Keeps V2+, TFT portfolio, and DT/LAVA evidence in offline/read-model scope. Nothing on this screen is live market execution.',
       tooltipFormula: 'boundary = academic_scope / provenance flags from backend read models'
     }
   ]

@@ -82,7 +82,7 @@ const {
   loadOperatorRecommendation
 } = useOperatorRecommendation(selectedTenantId, selectedOperatorStrategyId)
 
-const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Current MVP logic' : 'Future production logic')
+const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Current V2+ evidence' : 'Research roadmap')
 
 const {
   activeAlertCount,
@@ -116,6 +116,7 @@ const {
   selectedTenant,
   signalPreview,
   baselinePreview,
+  operatorRecommendation,
   batteryState: defense.batteryState,
   runConfig,
   materializeResult,
@@ -130,30 +131,30 @@ const {
 })
 
 const primaryBoundaryCopy = computed(() => explanationMode.value === 'mvp'
-  ? 'Browser requests stay same-origin and are forwarded by Nuxt to the control-plane API. That keeps the dashboard bright and simple while the data plumbing stays behind the glass.'
-  : 'The future surface should still keep the browser same-origin, but the meaning of the cards changes: forecast outputs come from dedicated models and dispatch intent comes from policy logic plus deterministic validation.'
+  ? 'The dashboard reads FastAPI evidence and previews the selected schedule. It does not execute trades or switch a live controller.'
+  : 'Next research surfaces stay behind the same read-model boundary: TFT portfolio, market coupling, and DT/LAVA must beat V2+ before claim changes.'
 )
 
 const nextStepsItems = computed(() => explanationMode.value === 'mvp'
   ? [
-      'Materialization controls for weather and bronze assets.',
-      'Feasible plan review with units, SOC guardrails, and operator-ready explanations.',
-      'Dispatch and regret signatures with bright Sims-style motion cues.'
+      'Use V2+ as the headline offline schedule/value comparator.',
+      'Compare any selected strategy against strict_similar_day and frozen V2+.',
+      'Treat the lower schedule dock as a preview recommendation, not market execution.'
     ]
   : [
-      'Forecast cards fed by NBEATSx and TFT with uncertainty bands and feature evidence.',
-      'Dispatch cards fed by DT or M3DT with policy intent, counterfactual value, and safety outcomes.',
-      'Benchmark views that keep the LP baseline visible as a comparison surface rather than the final decision layer.'
+      'Keep the closed TFT portfolio result visible as negative evidence.',
+      'Route future DT/LAVA work through candidate-value or schedule-neighbor supervision.',
+      'Promote nothing unless it beats V2+ under strict LP/oracle scoring.'
     ]
 )
 
 const schedulePredictionHeadLabel = computed(() => {
   if (operatorRecommendation.value) {
-    return `Prediction head: ${operatorRecommendation.value.forecast_source}`
+    return `Strategy preview: ${operatorRecommendation.value.selected_strategy_id}`
   }
   return explanationMode.value === 'mvp'
-    ? 'Prediction head: HourlyDamBaselineSolver -> baseline LP'
-    : 'Target head: NBEATSx/TFT -> policy review'
+    ? 'Strategy preview: strict_similar_day fallback'
+    : 'Research branch: TFT/DT candidate review'
 })
 
 const operatorResearchMetrics = computed(() => buildOperatorResearchMetrics({

@@ -3,6 +3,7 @@ import { computed, type Ref } from 'vue'
 import type {
   BaselineLpPreview,
   DashboardBatteryStateResponse,
+  OperatorRecommendationResponse,
   OperatorStatus,
   SignalPreview,
   TenantSummary
@@ -19,14 +20,15 @@ import type {
   OperatorWeatherMaterializeResult,
   OperatorWeatherRunConfig
 } from '~/types/operator-dashboard'
-import { buildOperatorBatteryDisplay } from '~/utils/operatorBatteryDisplay'
-import { formatSignedMw, powerToTimelineLabel, timelineTooltipBody } from '~/utils/operatorTimeline'
+import { buildOperatorBatteryDisplay } from '../utils/operatorBatteryDisplay'
+import { formatSignedMw, powerToTimelineLabel, timelineTooltipBody } from '../utils/operatorTimeline'
 
 interface OperatorDashboardViewModelInput {
   tenants: Readonly<Ref<TenantSummary[]>>
   selectedTenant: Readonly<Ref<TenantSummary | null>>
   signalPreview: Readonly<Ref<SignalPreview | null>>
   baselinePreview: Readonly<Ref<BaselineLpPreview | null>>
+  operatorRecommendation?: Readonly<Ref<OperatorRecommendationResponse | null>>
   batteryState?: Readonly<Ref<DashboardBatteryStateResponse | null>>
   runConfig: Readonly<Ref<OperatorWeatherRunConfig | null>>
   materializeResult: Readonly<Ref<OperatorWeatherMaterializeResult | null>>
@@ -109,10 +111,23 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     return values.reduce((total, value) => total + value, 0) / values.length
   })
 
+  const activeRecommendationSchedule = computed(() => {
+    const selectedSchedule = input.operatorRecommendation?.value?.recommendation_schedule ?? []
+    if (selectedSchedule.length > 0) {
+      return selectedSchedule
+    }
+
+    return input.baselinePreview.value?.recommendation_schedule ?? []
+  })
+
+  const activeEconomics = computed(() => input.operatorRecommendation?.value?.economics
+    ?? input.baselinePreview.value?.economics
+    ?? null)
+
   const latestRecommendedPowerMw = computed(() => {
-    const baselinePoint = input.baselinePreview.value?.recommendation_schedule?.[0]
-    if (baselinePoint) {
-      return baselinePoint.recommended_net_power_mw
+    const selectedPoint = activeRecommendationSchedule.value[0]
+    if (selectedPoint) {
+      return selectedPoint.recommended_net_power_mw
     }
 
     return input.signalPreview.value?.charge_intent?.[0] ?? 0
@@ -146,7 +161,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
 
   const equivalentCyclePreview = computed(() => {
     const metrics = input.baselinePreview.value?.battery_metrics
-    const throughput = input.baselinePreview.value?.economics.total_throughput_mwh
+    const throughput = activeEconomics.value?.total_throughput_mwh
 
     if (!metrics || typeof throughput !== 'number' || metrics.capacity_mwh === 0) {
       return 'Waiting'
@@ -158,17 +173,17 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   const headlineMetrics = computed<OperatorHeadlineMetric[]>(() => [
     {
       label: 'Net plan value',
-      value: input.baselinePreview.value ? formatUah(input.baselinePreview.value.economics.total_net_value_uah) : 'Waiting',
-      meta: 'Baseline LP preview',
+      value: activeEconomics.value ? formatUah(activeEconomics.value.total_net_value_uah) : 'Waiting',
+      meta: input.operatorRecommendation?.value?.selected_strategy_id || 'Baseline LP preview',
       icon: 'i-lucide-wallet-cards',
       tone: 'green',
       tooltipTitle: 'Net plan value',
-      tooltipBody: 'Operator-facing value after the baseline LP preview subtracts battery degradation from gross market revenue.',
+      tooltipBody: 'Operator-facing value after the selected preview schedule subtracts battery degradation from gross market revenue.',
       tooltipFormula: 'net_value = gross_market_value - degradation_penalty'
     },
     {
       label: 'Energy arbitrage',
-      value: input.baselinePreview.value ? formatUah(input.baselinePreview.value.economics.total_gross_market_value_uah) : 'Waiting',
+      value: activeEconomics.value ? formatUah(activeEconomics.value.total_gross_market_value_uah) : 'Waiting',
       meta: 'Gross market value',
       icon: 'i-lucide-zap',
       tone: 'blue',
@@ -216,7 +231,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     },
     {
       label: 'Spread',
-      value: input.baselinePreview.value && input.baselinePreview.value.economics.total_net_value_uah > 0 ? 'Strong' : 'Learning',
+      value: activeEconomics.value && activeEconomics.value.total_net_value_uah > 0 ? 'Strong' : 'Learning',
       tone: 'green'
     },
     {
@@ -261,8 +276,8 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     {
       label: 'Recovery',
       icon: 'i-lucide-trending-up',
-      active: input.baselinePreview.value?.economics.total_net_value_uah
-        ? input.baselinePreview.value.economics.total_net_value_uah > 0
+      active: activeEconomics.value?.total_net_value_uah
+        ? activeEconomics.value.total_net_value_uah > 0
         : false,
       tooltipTitle: 'Recovery window',
       tooltipBody: 'The LP preview is net-positive after degradation cost, so the screen flags this as a useful arbitrage recovery surface.'
@@ -312,7 +327,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   ])
 
   const timelineSegments = computed<OperatorTimelineSegment[]>(() => {
-    const schedule = input.baselinePreview.value?.recommendation_schedule?.slice(0, 5) || []
+    const schedule = activeRecommendationSchedule.value.slice(0, 5)
 
     if (schedule.length === 0) {
       return [

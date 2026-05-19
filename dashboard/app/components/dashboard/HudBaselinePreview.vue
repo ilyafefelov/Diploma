@@ -382,14 +382,14 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
         </template>
         <template v-else>
           <p class="baseline-explainer-card__eyebrow">
-            Future decision logic
+            Research decision logic
           </p>
           <p class="baseline-explainer-card__copy">
-            Once decisions move to <strong>DT/M3DT</strong>, the action path should come from a learned policy and then be
-            checked by the same deterministic battery and gatekeeper constraints.
+            Future DT/LAVA work must compete against frozen V2+ first. Any learned action path should still be checked by
+            the same deterministic battery and gatekeeper constraints.
           </p>
           <p class="baseline-explainer-card__formula">
-            Target flow: <strong>forecast state + battery state + return target -> policy schedule -> feasibility check</strong>
+            Research flow: <strong>forecast state + battery state + return target -> candidate schedule -> feasibility check</strong>
           </p>
           <p class="baseline-explainer-card__copy">
             The SOC line can stay, but its explanation should tie back to the validated policy trajectory rather than the
