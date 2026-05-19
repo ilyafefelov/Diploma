@@ -7,6 +7,7 @@ import {
   CURRENT_REGRET_LADDER,
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
+  CURRENT_TFT_USE_DECISION,
   formatPercent,
   formatUah,
   summarizeScheduleValuePromotionReadModel
@@ -159,7 +160,7 @@ const narrativeSteps = [
   },
   {
     label: '3. TFT portfolio',
-    text: 'TFT contributed local schedule opportunities, but rolling replay failed 0/4, so it is not promoted over V2+.'
+    text: 'TFT contributed 24/90 local post-hoc schedule opportunities, but the prior-only selector could not safely pick them and rolling replay failed 0/4.'
   },
   {
     label: '4. Evidence path',
@@ -175,7 +176,7 @@ const claimBoundaries = [
   'thesis-grade only when source rows are observed and complete',
   'strict_similar_day remains default comparator',
   'V2+ is offline/read-model evidence, not live market execution',
-  'TFT portfolio is closed negative evidence until it beats V2+ robustly',
+  'TFT schedules are candidate evidence only until a prior-only selector beats V2+ robustly',
   'DT/LAVA work is next research, not deployed policy'
 ]
 
@@ -465,6 +466,33 @@ useHead({
           </div>
         </article>
       </div>
+
+      <div class="tft-use-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              Can TFT be used?
+            </p>
+            <h3>TFT is useful as candidate diversity, not as the selected policy yet</h3>
+            <p class="section-explainer">
+              The important nuance is timing. The 24 winning TFT schedules are known after realized prices are scored.
+              A live or offline-promoted selector must know before the window starts, using only prior features.
+            </p>
+          </div>
+          <span class="source-pill">no final-holdout leakage</span>
+        </div>
+        <div class="tft-use-grid">
+          <article
+            v-for="decision in CURRENT_TFT_USE_DECISION"
+            :key="decision.label"
+            :class="`tft-use-card tft-use-card--${decision.status}`"
+          >
+            <span>{{ decision.label }}</span>
+            <strong>{{ decision.value }}</strong>
+            <small>{{ decision.body }}</small>
+          </article>
+        </div>
+      </div>
     </section>
 
     <section class="latest-experiment-panel">
@@ -586,10 +614,11 @@ useHead({
             <p class="eyebrow">
               Forecast evidence
             </p>
-            <h2>Official forecast rows and TFT boundary</h2>
+            <h2>Forecast rows are inputs, not promotion claims</h2>
             <p class="section-explainer">
-              These rows explain the forecast layer, but the promoted result is schedule/value V2+. Raw or quantile
-              TFT rows do not become the dashboard default unless they beat V2+ under strict LP/oracle scoring.
+              This section shows the live/read-model forecast stack that feeds preview charts. It is not the final
+              thesis metric by itself: NBEATSx/TFT forecasts must become feasible schedules and then pass strict
+              LP/oracle regret scoring. TFT remains a candidate source until it beats V2+ before the fact.
             </p>
           </div>
           <span class="source-pill">{{ defense.futureStack.value?.selected_forecast_model || 'forecast stack pending' }}</span>
@@ -625,6 +654,23 @@ useHead({
         >
           No NBEATSx/TFT forecast stack rows returned yet.
         </p>
+        <div class="section-note-strip">
+          <article>
+            <span>Current role</span>
+            <strong>Forecast context</strong>
+            <small>These rows explain price scenarios and uncertainty; the selected headline result remains V2+ schedule/value evidence.</small>
+          </article>
+          <article>
+            <span>TFT boundary</span>
+            <strong>Candidate only</strong>
+            <small>TFT p10/p50/p90 schedules can enter a portfolio, but cannot be selected from hindsight winners.</small>
+          </article>
+          <article>
+            <span>Admission rule</span>
+            <strong>Beat V2+</strong>
+            <small>Any TFT-combined strategy must improve mean regret versus 174.77 UAH and preserve robustness.</small>
+          </article>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -671,11 +717,11 @@ useHead({
             <p class="eyebrow">
               Forecast diagnostics
             </p>
-            <h2>Error vs LP sensitivity</h2>
+            <h2>Legacy error vs LP sensitivity diagnostic</h2>
             <p class="section-explainer">
-              Buckets explain why forecast-to-LP rows lost value: raw price error, weak spread ranking, or dispatch
-              sensitivity after the LP converts forecasts into battery actions. Realized prices are used only after
-              each anchor for diagnosis, not as model inputs.
+              These buckets are explanatory diagnostics from older forecast-to-LP rows. They are still useful for
+              explaining failure modes, but they are not the V2+ promotion packet and should not be read as the current
+              selected strategy. Realized prices are used only after each anchor for diagnosis, not as model inputs.
             </p>
           </div>
           <span class="source-pill">{{ defense.sensitivity.value?.source_strategy_kind || 'not loaded' }}</span>
@@ -711,6 +757,18 @@ useHead({
         >
           No sensitivity buckets returned by FastAPI.
         </p>
+        <div class="section-note-strip">
+          <article>
+            <span>What it explains</span>
+            <strong>Failure modes</strong>
+            <small>Whether value was lost by forecast magnitude, price rank, spread shape, or LP dispatch sensitivity.</small>
+          </article>
+          <article>
+            <span>What it is not</span>
+            <strong>Not headline V2+</strong>
+            <small>The headline metric comes from the 365-anchor V2+ strict LP/oracle gate, not this older bucket table.</small>
+          </article>
+        </div>
       </div>
 
       <aside class="side-panel">
@@ -740,7 +798,12 @@ useHead({
             <p class="eyebrow">
               Live exogenous context
             </p>
-            <h2>Grid, weather, telemetry</h2>
+            <h2>Grid, weather, telemetry for demo context</h2>
+            <p class="section-explainer">
+              These are current operator-context signals. They help explain the live tenant state, but they do not change
+              the frozen V2+ thesis evidence unless a future point-in-time experiment explicitly routes and validates
+              them through the strict gate.
+            </p>
           </div>
           <span class="source-pill">live-only</span>
         </div>
@@ -775,6 +838,24 @@ useHead({
                 : 'unavailable' }}
             </small>
             <small>{{ formatDateTime(defense.batteryState.value?.latest_telemetry?.observed_at) }}</small>
+          </article>
+        </div>
+
+        <div class="section-note-strip">
+          <article>
+            <span>Weather/load</span>
+            <strong>Ukrainian context</strong>
+            <small>Allowed as point-in-time context when source-backed and available before the decision window.</small>
+          </article>
+          <article>
+            <span>Grid events</span>
+            <strong>Operator explanation</strong>
+            <small>Useful for demo and risk context; not a silent override of the offline promotion result.</small>
+          </article>
+          <article>
+            <span>External markets</span>
+            <strong>Governance blocked</strong>
+            <small>ENTSO-E/Poland remains excluded from training until publication-time, FX, licensing, and domain-shift gates pass.</small>
           </article>
         </div>
 
@@ -1307,6 +1388,80 @@ h2 {
   padding: 1rem;
 }
 
+.tft-use-panel {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  border-radius: 0.72rem;
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.76), rgba(255, 255, 255, 0.92));
+  padding: 1rem;
+}
+
+.tft-use-panel .section-heading {
+  margin-bottom: 0;
+}
+
+.tft-use-grid,
+.section-note-strip {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.tft-use-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.section-note-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.tft-use-card,
+.section-note-strip article {
+  display: grid;
+  gap: 0.35rem;
+  border: 1px solid rgba(20, 32, 51, 0.1);
+  border-radius: 0.62rem;
+  background: rgba(255, 255, 255, 0.88);
+  padding: 0.78rem;
+}
+
+.tft-use-card span,
+.section-note-strip span {
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.tft-use-card strong,
+.section-note-strip strong {
+  color: #142033;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.tft-use-card small,
+.section-note-strip small {
+  color: #617084;
+  line-height: 1.45;
+}
+
+.tft-use-card--useful {
+  border-color: rgba(14, 165, 233, 0.28);
+  background: linear-gradient(180deg, rgba(224, 242, 254, 0.9), rgba(255, 255, 255, 0.94));
+}
+
+.tft-use-card--blocked {
+  border-color: rgba(249, 115, 22, 0.26);
+  background: linear-gradient(180deg, rgba(255, 237, 213, 0.9), rgba(255, 255, 255, 0.94));
+}
+
+.tft-use-card--next {
+  border-color: rgba(34, 197, 94, 0.24);
+  background: linear-gradient(180deg, rgba(220, 252, 231, 0.88), rgba(255, 255, 255, 0.94));
+}
+
 .chart-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.8fr);
@@ -1633,6 +1788,11 @@ td {
   .future-stack-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .tft-use-grid,
+  .section-note-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1666,7 +1826,9 @@ td {
   .context-grid,
   .latest-experiment-grid,
   .future-stack-grid,
-  .offline-promotion-rows {
+  .offline-promotion-rows,
+  .tft-use-grid,
+  .section-note-strip {
     grid-template-columns: 1fr;
   }
 

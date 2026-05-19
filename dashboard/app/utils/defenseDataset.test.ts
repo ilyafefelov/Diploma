@@ -7,6 +7,7 @@ import {
   CURRENT_REGRET_LADDER,
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
+  CURRENT_TFT_USE_DECISION,
   summarizeDefenseBenchmark,
   summarizeScheduleValuePromotionReadModel
 } from './defenseDataset'
@@ -251,5 +252,17 @@ describe('defense dataset summaries', () => {
       '90/90',
       '0/4'
     ])
+    expect(CURRENT_TFT_USE_DECISION.map(point => point.label)).toEqual([
+      'What worked',
+      'Why not use now',
+      'Promotion blocker',
+      'How to make TFT usable'
+    ])
+    expect(CURRENT_TFT_USE_DECISION.find(point => point.label === 'Why not use now')?.body).toContain(
+      'prior-only selector'
+    )
+    expect(CURRENT_TFT_USE_DECISION.find(point => point.label === 'Promotion blocker')?.body).toContain(
+      'leak final-holdout'
+    )
   })
 })

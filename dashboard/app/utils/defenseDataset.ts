@@ -84,6 +84,13 @@ export interface DefensePortfolioDiagnosticPoint {
   status: 'opportunity' | 'fallback' | 'blocked'
 }
 
+export interface DefenseTftUseDecision {
+  label: string
+  value: string
+  body: string
+  status: 'useful' | 'blocked' | 'next'
+}
+
 export const CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE: OfflineStrategyPromotionHeadline = {
   modelName: 'Schedule/Value Learner V2+',
   meanRegretUah: 174.77,
@@ -194,6 +201,33 @@ export const CURRENT_TFT_PORTFOLIO_DIAGNOSTICS: DefensePortfolioDiagnosticPoint[
     denominator: 4,
     note: 'Portfolio did not pass the rolling strict replay gate.',
     status: 'blocked'
+  }
+]
+
+export const CURRENT_TFT_USE_DECISION: DefenseTftUseDecision[] = [
+  {
+    label: 'What worked',
+    value: '24 / 90',
+    body: 'TFT produced candidate schedules that beat V2+ on some latest tenant-anchor rows after strict LP/oracle scoring.',
+    status: 'useful'
+  },
+  {
+    label: 'Why not use now',
+    value: '90 / 90 fallback',
+    body: 'Before realized prices were known, the prior-only selector could not identify those wins safely, so it chose V2+ for every latest-holdout row.',
+    status: 'blocked'
+  },
+  {
+    label: 'Promotion blocker',
+    value: '0 / 4 rolling',
+    body: 'Using the 24 post-hoc winners directly would leak final-holdout information. TFT must pass rolling robustness before it becomes a selected strategy.',
+    status: 'blocked'
+  },
+  {
+    label: 'How to make TFT usable',
+    value: 'future branch',
+    body: 'Train a stronger prior-only portfolio selector or DT/LAVA schedule-neighbor model that predicts when TFT risk schedules beat V2+, then re-score through the same gate.',
+    status: 'next'
   }
 ]
 
