@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import HudSignalCharts from '~/components/dashboard/HudSignalCharts.vue'
 import OperatorMarketSignalHero from '~/components/dashboard/operator/OperatorMarketSignalHero.vue'
-import type { SignalPreview, TenantSummary } from '~/types/control-plane'
+import type { OperatorRecommendationResponse, SignalPreview, TenantSummary } from '~/types/control-plane'
 import type { OperatorExplanationMode, OperatorMarketRegimeChip } from '~/types/operator-dashboard'
 
 defineProps<{
@@ -12,6 +12,7 @@ defineProps<{
   explanationModeLabel: string
   marketRegimeChips: OperatorMarketRegimeChip[]
   signalPreview: SignalPreview | null
+  operatorRecommendation: OperatorRecommendationResponse | null
   isRegistryLoading: boolean
   isSignalPreviewLoading: boolean
   signalPreviewLastLoadedLabel: string
@@ -105,6 +106,7 @@ const emit = defineEmits<{
     <ClientOnly>
       <HudSignalCharts
         :signal-preview="signalPreview"
+        :operator-recommendation="operatorRecommendation"
         :is-loading="isSignalPreviewLoading"
         :last-loaded-label="signalPreviewLastLoadedLabel"
         :explanation-mode="explanationMode"

@@ -327,8 +327,8 @@ const sensitivityOption = computed(() => ({
           <p class="decision-chart-card__eyebrow">
             Diagnosis graph
           </p>
-          <h3>Why value is lost</h3>
-          <p>Forecast error, spread mismatch, and LP sensitivity buckets explain the regret source.</p>
+          <h3>Where regret risk concentrates</h3>
+          <p>These buckets explain historical regret mechanisms for the selected preview context; they are diagnosis, not live dispatch rules.</p>
         </div>
         <ClientOnly>
           <VChart
@@ -345,7 +345,7 @@ const sensitivityOption = computed(() => ({
         <span>Gatekeeper meaning</span>
         <p>
           Current BUY/SELL/HOLD scores are operator previews. Future Bid Gatekeeper validates Proposed Bids before
-          market submission; final dispatch still requires Battery Telemetry safety checks.
+          market submission; V2+ remains a read-model schedule preview until Battery Telemetry and bid-gate checks are wired.
         </p>
       </article>
       <article>

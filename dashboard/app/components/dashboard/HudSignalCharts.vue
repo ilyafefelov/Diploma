@@ -8,20 +8,33 @@ import { CanvasRenderer } from 'echarts/renderers'
 import VChart from 'vue-echarts'
 
 import CollapsibleTextCard from '~/components/dashboard/CollapsibleTextCard.vue'
-import type { SignalPreview } from '~/types/control-plane'
-import { buildDispatchBalanceChartOption, buildMarketPulseChartOption, formatWeatherSourceLabel } from '~/utils/dashboardChartTheme'
+import type { OperatorRecommendationResponse, SignalPreview } from '~/types/control-plane'
+import { buildMarketPulseChartOption, buildSelectedStrategyDispatchChartOption, formatWeatherSourceLabel } from '~/utils/dashboardChartTheme'
 
 use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
   signalPreview: SignalPreview | null
+  operatorRecommendation: OperatorRecommendationResponse | null
   isLoading: boolean
   lastLoadedLabel: string
   explanationMode: 'mvp' | 'future'
 }>()
 
 const marketOption = computed(() => buildMarketPulseChartOption(props.signalPreview))
-const dispatchOption = computed(() => buildDispatchBalanceChartOption(props.signalPreview))
+const dispatchOption = computed(() => buildSelectedStrategyDispatchChartOption(props.operatorRecommendation, props.signalPreview))
+const selectedStrategyLabel = computed(() => {
+  if (!props.operatorRecommendation) {
+    return 'selected strategy pending'
+  }
+
+  const selectedOption = props.operatorRecommendation.available_strategies.find(strategy =>
+    strategy.strategy_id === props.operatorRecommendation?.selected_strategy_id
+  )
+
+  return selectedOption?.label || props.operatorRecommendation.selected_strategy_id
+})
+const hasSelectedSchedule = computed(() => (props.operatorRecommendation?.recommendation_schedule.length || 0) > 0)
 const weatherSourceBadge = computed(() => {
   const sources = props.signalPreview?.weather_sources || []
 
@@ -48,13 +61,12 @@ const weatherSourceBadge = computed(() => {
             Market pulse
           </p>
           <h3 class="signal-card__title">
-            How weather may change the expected electricity price
+            Market context for the selected strategy
           </h3>
           <p class="signal-card__summary">
-            This chart starts from the current MVP baseline DAM forecast for each hour, then adds a calibrated weather
-            effect. Read it as: <strong>expected price</strong> + <strong>weather effect</strong> = <strong>weather-adjusted price</strong>.
-            It is still the right operator chart for weather sensitivity; final strategy choice belongs to the LP/decision
-            evidence panels below. All values use <strong>UAH/MWh</strong>.
+            This chart explains the price/weather context visible to <strong>{{ selectedStrategyLabel }}</strong>.
+            Read it as market price plus weather effect. It is context, not a bid; the selected preview schedule is shown
+            in Dispatch Balance and the schedule dock. All values use <strong>UAH/MWh</strong>.
           </p>
         </div>
 
@@ -69,7 +81,7 @@ const weatherSourceBadge = computed(() => {
         <span class="signal-guide-pill">Green bars: extra effect from weather</span>
         <span class="signal-guide-pill">Dashed green: final price after weather</span>
         <span class="signal-guide-pill signal-guide-pill-source">{{ weatherSourceBadge }}</span>
-        <span class="signal-guide-pill signal-guide-pill-source">Use now: weather sensitivity, not final bid</span>
+        <span class="signal-guide-pill signal-guide-pill-source">Use now: context for selected preview</span>
         <span class="signal-guide-pill">Bottom axis: local time of day</span>
       </div>
 
@@ -93,9 +105,9 @@ const weatherSourceBadge = computed(() => {
           eyebrow="Current calculation"
         >
           <p class="signal-explainer-card__copy">
-            <strong>Expected price</strong> comes from the current baseline solver path in the API. The backend builds a
-            tenant-aware MVP DAM price history, resolves an anchor hour, runs the hourly baseline solver, and samples the
-            resulting forecast horizon.
+            <strong>Expected price</strong> comes from the current API read model for the selected tenant. The visible
+            V2+ preview adapter can reuse this context, but the thesis result itself was validated offline on the
+            365-anchor Ukrainian panel.
           </p>
           <p class="signal-explainer-card__formula">
             Formula: <strong>price_after_weather = market_price + weather_bias</strong>
@@ -142,7 +154,7 @@ const weatherSourceBadge = computed(() => {
             </p>
             <p class="signal-explainer-card__copy signal-explainer-card__copy-note">
               This explanation is specific to the visible preview path. Current thesis evidence is led by V2+
-              schedule/value scoring; TFT portfolio and DT/LAVA remain research branches until they beat V2+.
+              schedule/value scoring; the dashboard preview is not live market execution.
             </p>
           </template>
           <template v-else>
@@ -173,26 +185,26 @@ const weatherSourceBadge = computed(() => {
             Dispatch balance
           </p>
           <h3 class="signal-card__title">
-            Battery action and missed-value preview
+            Selected dispatch and value preview
           </h3>
           <p class="signal-card__summary">
-            Blue bars show a simplified battery action preview derived from the weather-adjusted price curve. Pink line
-            shows a simplified <strong>missed value</strong> score for operator review. Battery action is shown in
-            <strong>MW</strong>, and missed value is shown in <strong>UAH</strong>. Keep this chart as motive context;
-            the feasible LP schedule below is the constraint-checked plan.
+            Blue bars now follow <strong>{{ selectedStrategyLabel }}</strong> from the operator recommendation endpoint.
+            Lines show selected net value and visible value gap for review. This is the same preview strategy family as
+            the lower schedule dock, still read-model evidence and not a dispatch command.
           </p>
         </div>
 
         <p class="signal-card__meta">
-          API-backed preview
+          {{ hasSelectedSchedule ? 'Selected-strategy preview' : 'API-backed preview' }}
         </p>
       </div>
 
       <div class="signal-card__guide">
-        <span class="signal-guide-pill signal-guide-pill-blue">Bars: battery action in MW</span>
-        <span class="signal-guide-pill signal-guide-pill-berry">Pink line: missed value in UAH</span>
+        <span class="signal-guide-pill signal-guide-pill-blue">Bars: selected net power in MW</span>
+        <span class="signal-guide-pill">Green line: selected net value in UAH</span>
+        <span class="signal-guide-pill signal-guide-pill-berry">Pink line: visible value gap in UAH</span>
         <span class="signal-guide-pill">Preview only: not dispatch command</span>
-        <span class="signal-guide-pill">Use LP panel below for feasibility</span>
+        <span class="signal-guide-pill">Feasibility is re-solved before display</span>
       </div>
 
       <div
@@ -211,19 +223,19 @@ const weatherSourceBadge = computed(() => {
       <div class="signal-explainer-grid">
         <CollapsibleTextCard
           v-if="props.explanationMode === 'mvp'"
-          title="How battery action is calculated now"
-          eyebrow="Battery action formula"
+          title="How the selected schedule is calculated now"
+          eyebrow="Selected strategy adapter"
         >
           <p class="signal-explainer-card__copy">
-            The API first computes a weather-adjusted price for each visible hour. Then it compares each hour to the
-            average adjusted price across the preview window and scales the difference into the battery power corridor.
+            The API asks for the selected strategy. For <strong>Offline V2+</strong>, the dashboard uses a frozen
+            read-model preview adapter, then runs the same battery feasibility projection before returning the schedule.
           </p>
           <p class="signal-explainer-card__formula">
-            Formula: <strong>charge_intent = clamp(((adjusted_price - avg_adjusted_price) / max_deviation) * max_power_mw, -max_power_mw, +max_power_mw)</strong>
+            Flow: <strong>selected strategy -> preview forecast/context -> feasible schedule -> operator review</strong>
           </p>
           <p class="signal-explainer-card__copy">
-            In the current preview, <strong>positive MW</strong> means the hour looks more valuable for discharge and
-            <strong>negative MW</strong> means it looks better for charge.
+            <strong>Positive MW</strong> means discharge, and <strong>negative MW</strong> means charge. The lower dock
+            filters idle hours so the next meaningful actions are visible first.
           </p>
         </CollapsibleTextCard>
 
@@ -246,22 +258,21 @@ const weatherSourceBadge = computed(() => {
         </CollapsibleTextCard>
 
         <CollapsibleTextCard
-          :title="props.explanationMode === 'mvp' ? 'How missed value is calculated now' : 'What the future opportunity metric should mean'"
-          :eyebrow="props.explanationMode === 'mvp' ? 'Missed value formula' : 'Future opportunity metric'"
+          :title="props.explanationMode === 'mvp' ? 'How value gap is calculated now' : 'What the future opportunity metric should mean'"
+          :eyebrow="props.explanationMode === 'mvp' ? 'Selected value gap' : 'Future opportunity metric'"
           tone="rose"
         >
           <template v-if="props.explanationMode === 'mvp'">
             <p class="signal-explainer-card__copy">
-              Missed value is not a market settlement field and not the LP objective. It is a simplified operator-facing
-              opportunity score used in this MVP to show where weather uplift and price deviation make an hour look more
-              important.
+              The value gap line is an operator-facing counterfactual preview: how much value is visible between the
+              selected action and the best visible action at that hour. It is not market settlement revenue.
             </p>
             <p class="signal-explainer-card__formula">
-              Formula: <strong>missed_value = max(80, weather_bias * 2.4 + abs(adjusted_price - avg_adjusted_price) * 0.45)</strong>
+              Interpretation: <strong>value_gap = best_visible_value - selected_action_value</strong>
             </p>
             <p class="signal-explainer-card__copy signal-explainer-card__copy-note">
-              This value will be replaced later by explanations tied to the stronger stack: forecast attribution from
-              <strong>NBEATSx/TFT</strong> and action-value or policy reasoning that beats V2+.
+              This value helps explain the preview schedule. It does not change the claim boundary:
+              <strong>Offline Strategy Promotion</strong>, not live trading.
             </p>
           </template>
           <template v-else>

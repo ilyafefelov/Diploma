@@ -267,6 +267,7 @@ onBeforeUnmount(() => {
             :explanation-mode-label="explanationModeLabel"
             :market-regime-chips="marketRegimeChips"
             :signal-preview="signalPreview"
+            :operator-recommendation="operatorRecommendation"
             :is-registry-loading="isLoading"
             :is-signal-preview-loading="isSignalPreviewLoading"
             :signal-preview-last-loaded-label="signalPreviewLastLoadedLabel"
