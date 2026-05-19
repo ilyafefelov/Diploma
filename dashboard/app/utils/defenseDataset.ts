@@ -91,6 +91,15 @@ export interface DefenseTftUseDecision {
   status: 'useful' | 'blocked' | 'next'
 }
 
+export interface DefenseTftSafeSelectionExplanation {
+  label: string
+  englishTitle: string
+  ukrainianTitle: string
+  englishBody: string
+  ukrainianBody: string
+  status: 'opportunity' | 'leakage' | 'diagnosis' | 'next'
+}
+
 export interface DefenseDtLavaPlanStep {
   label: string
   value: string
@@ -244,6 +253,49 @@ export const CURRENT_TFT_USE_DECISION: DefenseTftUseDecision[] = [
     label: 'How to make TFT usable',
     value: 'future branch',
     body: 'Train a stronger prior-only portfolio selector or DT/LAVA schedule-neighbor model that predicts when TFT risk schedules beat V2+, then re-score through the same gate.',
+    status: 'next'
+  }
+]
+
+export const CURRENT_TFT_SAFE_SELECTION_EXPLAINER: DefenseTftSafeSelectionExplanation[] = [
+  {
+    label: '24 good schedules',
+    englishTitle: 'They were post-hoc winners',
+    ukrainianTitle: 'Це були post-hoc переможці',
+    englishBody: 'The 24 TFT schedules were identified after realized prices were scored. That proves TFT has useful schedule diversity, but it does not prove we knew which TFT rows would win before the validation window started.',
+    ukrainianBody: '24 TFT-розклади знайшлися після того, як уже були відомі realized prices і strict LP/oracle scoring. Це доводить, що TFT має корисну schedule diversity, але не доводить, що ми могли знати ці перемоги до початку validation window.',
+    status: 'opportunity'
+  },
+  {
+    label: 'Why not select them',
+    englishTitle: 'Directly using them would leak the answer',
+    ukrainianTitle: 'Прямо взяти їх означало б підглянути відповідь',
+    englishBody: 'If we picked those 24 rows because they won after scoring, the selector would be using final-holdout information. That is leakage, so the result would not be thesis-safe or deployable.',
+    ukrainianBody: 'Якщо вибрати ці 24 rows саме тому, що вони виграли після scoring, selector використає final-holdout information. Це leakage, тому такий результат не буде thesis-safe і не буде придатний для deployment.',
+    status: 'leakage'
+  },
+  {
+    label: 'Prior-only selector',
+    englishTitle: 'The selector had to decide before the window',
+    ukrainianTitle: 'Selector мав вирішити до початку вікна',
+    englishBody: 'Prior-only means it may use only features available before the target hours: forecast disagreement, quantile spread, schedule distance, calendar/weather/load context, and prior rolling evidence. It cannot use realized prices or final regret labels from the same holdout window.',
+    ukrainianBody: 'Prior-only означає, що можна використовувати тільки features, доступні до target hours: forecast disagreement, quantile spread, schedule distance, calendar/weather/load context і prior rolling evidence. Не можна використовувати realized prices або final regret labels з цього ж holdout window.',
+    status: 'diagnosis'
+  },
+  {
+    label: 'Why it failed',
+    englishTitle: 'The prior signal was not reliable enough',
+    ukrainianTitle: 'Prior-сигнал був недостатньо надійний',
+    englishBody: 'The current prior features could not separate the few TFT-winning regimes from the many cases where V2+ stayed safer. The conservative fallback therefore chose V2+ on 90/90 latest rows and the portfolio failed 0/4 rolling windows.',
+    ukrainianBody: 'Поточні prior features не змогли відрізнити рідкі TFT-winning regimes від багатьох випадків, де V2+ був безпечнішим. Тому conservative fallback вибрав V2+ у 90/90 latest rows, а portfolio отримав 0/4 rolling windows.',
+    status: 'diagnosis'
+  },
+  {
+    label: 'What next',
+    englishTitle: 'Use TFT as a teacher signal, not a shortcut',
+    ukrainianTitle: 'TFT треба використати як teacher signal, не shortcut',
+    englishBody: 'Next work is to build stronger prior context and candidate/value or DT/LAVA schedule-neighbor supervision that learns when TFT-like risk schedules help. Promotion still requires beating V2+ before the fact under the same strict gate.',
+    ukrainianBody: 'Наступний крок: сильніший prior context і candidate/value або DT/LAVA schedule-neighbor supervision, який навчиться передбачати, коли TFT-like risk schedules допомагають. Promotion можливий тільки якщо кандидат beat V2+ before the fact under the same strict gate.',
     status: 'next'
   }
 ]

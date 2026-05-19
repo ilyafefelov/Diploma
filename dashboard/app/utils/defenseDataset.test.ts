@@ -7,6 +7,7 @@ import {
   CURRENT_DASHBOARD_EXPERIMENTS,
   CURRENT_DT_LAVA_NEXT_STEPS,
   CURRENT_REGRET_LADDER,
+  CURRENT_TFT_SAFE_SELECTION_EXPLAINER,
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
   CURRENT_TFT_USE_DECISION,
@@ -268,6 +269,22 @@ describe('defense dataset summaries', () => {
     )
     expect(CURRENT_TFT_USE_DECISION.find(point => point.label === 'Promotion blocker')?.body).toContain(
       'leak final-holdout'
+    )
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.map(point => point.label)).toEqual([
+      '24 good schedules',
+      'Why not select them',
+      'Prior-only selector',
+      'Why it failed',
+      'What next'
+    ])
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.find(point => point.label === 'Why not select them')?.englishBody).toContain(
+      'leakage'
+    )
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.find(point => point.label === 'Prior-only selector')?.ukrainianBody).toContain(
+      'realized prices'
+    )
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.find(point => point.label === 'Why it failed')?.ukrainianBody).toContain(
+      '90/90'
     )
     expect(CURRENT_DT_LAVA_NEXT_STEPS.map(point => point.label)).toEqual([
       'Teacher data',

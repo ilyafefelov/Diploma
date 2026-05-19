@@ -7,6 +7,7 @@ import {
   CURRENT_DT_LAVA_NEXT_STEPS,
   CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
   CURRENT_REGRET_LADDER,
+  CURRENT_TFT_SAFE_SELECTION_EXPLAINER,
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
   CURRENT_TFT_USE_DECISION,
@@ -571,6 +572,37 @@ useHead({
             <strong>{{ decision.value }}</strong>
             <small>{{ decision.body }}</small>
           </article>
+        </div>
+        <div class="tft-safe-selection-panel">
+          <div class="tft-safe-selection-heading">
+            <p class="eyebrow">
+              Why the 24 TFT wins are not selected yet
+            </p>
+            <h4>Good hindsight schedules are not enough for a safe selector</h4>
+            <p>
+              The selector must decide before the target hours begin. A schedule that is known to be good only after
+              realized prices are scored is useful diagnostic evidence, not a safe promotion rule.
+            </p>
+          </div>
+          <div class="tft-safe-selection-grid">
+            <article
+              v-for="item in CURRENT_TFT_SAFE_SELECTION_EXPLAINER"
+              :key="item.label"
+              :class="`tft-safe-selection-card tft-safe-selection-card--${item.status}`"
+            >
+              <span>{{ item.label }}</span>
+              <div class="tft-safe-language-row">
+                <div>
+                  <strong>{{ item.englishTitle }}</strong>
+                  <small>{{ item.englishBody }}</small>
+                </div>
+                <div>
+                  <strong>{{ item.ukrainianTitle }}</strong>
+                  <small>{{ item.ukrainianBody }}</small>
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
       </div>
     </section>
@@ -1668,6 +1700,91 @@ h2 {
   background: linear-gradient(180deg, rgba(220, 252, 231, 0.88), rgba(255, 255, 255, 0.94));
 }
 
+.tft-safe-selection-panel {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid rgba(20, 32, 51, 0.08);
+  border-radius: 0.72rem;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.85rem;
+}
+
+.tft-safe-selection-heading {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.tft-safe-selection-heading h4 {
+  margin: 0;
+  color: #142033;
+  font-size: 1.02rem;
+  line-height: 1.25;
+}
+
+.tft-safe-selection-heading p:not(.eyebrow) {
+  margin: 0;
+  color: #617084;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.tft-safe-selection-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.tft-safe-selection-card {
+  display: grid;
+  gap: 0.5rem;
+  border: 1px solid rgba(20, 32, 51, 0.1);
+  border-radius: 0.62rem;
+  background: rgba(248, 250, 252, 0.9);
+  padding: 0.75rem;
+}
+
+.tft-safe-selection-card > span {
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.tft-safe-language-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.tft-safe-language-row div {
+  display: grid;
+  align-content: start;
+  gap: 0.25rem;
+}
+
+.tft-safe-language-row strong {
+  color: #142033;
+  font-size: 0.9rem;
+  line-height: 1.25;
+}
+
+.tft-safe-language-row small {
+  color: #617084;
+  line-height: 1.45;
+}
+
+.tft-safe-selection-card--opportunity {
+  border-color: rgba(14, 165, 233, 0.24);
+}
+
+.tft-safe-selection-card--leakage,
+.tft-safe-selection-card--diagnosis {
+  border-color: rgba(249, 115, 22, 0.22);
+}
+
+.tft-safe-selection-card--next {
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
 .dt-lava-plan-grid {
   display: grid;
   gap: 0.7rem;
@@ -2073,6 +2190,7 @@ td {
   }
 
   .tft-use-grid,
+  .tft-safe-language-row,
   .section-note-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2111,6 +2229,7 @@ td {
   .future-stack-grid,
   .offline-promotion-rows,
   .tft-use-grid,
+  .tft-safe-language-row,
   .section-note-strip {
     grid-template-columns: 1fr;
   }
