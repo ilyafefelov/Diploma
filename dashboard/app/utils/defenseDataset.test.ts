@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildDefenseModelRows,
   buildResearchReadinessRows,
+  CURRENT_BILINGUAL_STRATEGY_EXPLAINER,
   CURRENT_DASHBOARD_EXPERIMENTS,
   CURRENT_DT_LAVA_NEXT_STEPS,
   CURRENT_REGRET_LADDER,
@@ -280,5 +281,15 @@ describe('defense dataset summaries', () => {
     expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Prediction target')?.body).toContain(
       'BUY/SELL/HOLD'
     )
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER.map(section => section.label)).toEqual([
+      'Offline vs online',
+      'V2+ pipeline',
+      'Governance to recommendation',
+      'Path to DT/LAVA'
+    ])
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[0]?.englishBody).toContain('not automatic market bidding')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[0]?.ukrainianBody).toContain('не автоматичною біржовою заявкою')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[1]?.englishBullets.join(' ')).toContain('174.77 UAH')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[3]?.ukrainianTitle).toContain('DT/LAVA')
   })
 })

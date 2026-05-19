@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 
 import {
+  CURRENT_BILINGUAL_STRATEGY_EXPLAINER,
   CURRENT_DASHBOARD_EXPERIMENTS,
   CURRENT_DT_LAVA_NEXT_STEPS,
   CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
@@ -347,6 +348,65 @@ useHead({
           Generated dashboard visual: V2+ pipeline from Ukrainian source-backed features to strict LP/oracle evidence.
         </figcaption>
       </figure>
+    </section>
+
+    <section class="bilingual-explainer-panel">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">
+            Bilingual strategy explainer
+          </p>
+          <h2>Offline V2+ today, DT/LAVA next</h2>
+          <p class="section-explainer">
+            A plain-language explanation for ML reviewers and thesis defense: what V2+ is, why it is not live execution,
+            how data moves through the pipeline, and how this becomes the teacher path for DT/LAVA.
+          </p>
+        </div>
+        <span class="source-pill">EN / UA</span>
+      </div>
+      <div class="bilingual-explainer-grid">
+        <article
+          v-for="section in CURRENT_BILINGUAL_STRATEGY_EXPLAINER"
+          :key="section.label"
+          class="bilingual-explainer-card"
+        >
+          <header>
+            <span>{{ section.label }}</span>
+          </header>
+          <div class="language-columns">
+            <div class="language-column">
+              <p class="language-kicker">
+                English
+              </p>
+              <h3>{{ section.englishTitle }}</h3>
+              <p>{{ section.englishBody }}</p>
+              <ul>
+                <li
+                  v-for="bullet in section.englishBullets"
+                  :key="`en-${section.label}-${bullet}`"
+                >
+                  {{ bullet }}
+                </li>
+              </ul>
+            </div>
+            <div class="language-column language-column--ua">
+              <p class="language-kicker">
+                Українською
+              </p>
+              <h3>{{ section.ukrainianTitle }}</h3>
+              <p>{{ section.ukrainianBody }}</p>
+              <ul>
+                <li
+                  v-for="bullet in section.ukrainianBullets"
+                  :key="`ua-${section.label}-${bullet}`"
+                >
+                  {{ bullet }}
+                </li>
+              </ul>
+            </div>
+          </div>
+        </article>
+      </div>
     </section>
 
     <section class="offline-promotion-panel">
@@ -1294,6 +1354,94 @@ h2 {
   line-height: 1.4;
 }
 
+.bilingual-explainer-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 1380px;
+  margin: 0 auto 1rem;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1rem;
+}
+
+.bilingual-explainer-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.bilingual-explainer-card {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid rgba(14, 165, 233, 0.18);
+  border-radius: 0.72rem;
+  background: linear-gradient(135deg, rgba(224, 242, 254, 0.7), rgba(255, 255, 255, 0.94));
+  padding: 0.85rem;
+}
+
+.bilingual-explainer-card header span {
+  color: #0369a1;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.language-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.language-column {
+  display: grid;
+  align-content: start;
+  gap: 0.48rem;
+  border: 1px solid rgba(20, 32, 51, 0.08);
+  border-radius: 0.62rem;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.78rem;
+}
+
+.language-column--ua {
+  background: rgba(240, 253, 244, 0.82);
+}
+
+.language-kicker {
+  margin: 0;
+  color: #475569;
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.language-column h3 {
+  margin: 0;
+  color: #142033;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.language-column p:not(.language-kicker) {
+  margin: 0;
+  color: #465468;
+  font-size: 0.84rem;
+  line-height: 1.56;
+}
+
+.language-column ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0;
+  padding-left: 1.05rem;
+}
+
+.language-column li {
+  color: #334155;
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .offline-promotion-panel {
   display: grid;
   grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.62fr);
@@ -1910,6 +2058,7 @@ td {
   .defense-hero,
   .section-grid,
   .pipeline-visual-panel,
+  .language-columns,
   .chart-grid,
   .offline-promotion-panel {
     grid-template-columns: 1fr;
