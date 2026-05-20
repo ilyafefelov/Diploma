@@ -434,6 +434,7 @@ def _approved_feature_columns(route_frame: pl.DataFrame) -> tuple[str, ...]:
             str(row["approved_feature_column"])
             for row in route_frame.iter_rows(named=True)
             if bool(row["approved_for_official_training"])
+            or bool(row.get("approved_for_experimental_ablation", False))
         )
     )
 

@@ -148,9 +148,22 @@ closes the selector issue for the current portfolio: TFT has local opportunities
 but the present prior-only features are not reliable enough to exploit them
 robustly.
 
-The correct next step is not another small prior selector. It is a separately
-bounded DT/LAVA-style research branch trained/evaluated against frozen V2+ with
-the same strict LP/oracle gate.
+The practical fix is not to use the `24 / 90` TFT wins directly. Those wins are
+known only after scoring the validation anchors, so using them as final choices
+would leak future outcomes. The safe route is:
+
+1. keep V2+ as the default schedule;
+2. expose TFT candidate wins as teacher/opportunity labels on train/prior
+   anchors;
+3. add stronger prior context, especially governed market-regime features;
+4. train a reject-option value/trajectory model that chooses a TFT schedule
+   only when prior evidence predicts non-degrading improvement;
+5. keep the same strict LP/oracle gate and require 4 / 4 rolling windows.
+
+This is why the next meaningful TFT/DFL bridge is not another small prior
+selector over the same feature space. It should be a bounded DT/LAVA-style
+research branch trained on V2+, oracle, and high-value feasible schedule
+neighbors, with TFT opportunity labels used only as prior/train supervision.
 
 ## Selector Features
 

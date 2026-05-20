@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
-from collections.abc import Callable
+import os
+from pathlib import Path
 from typing import Final
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import urlopen
 from xml.etree import ElementTree
@@ -15,6 +18,9 @@ from smart_arbitrage.evidence.quality_checks import EvidenceCheckOutcome
 from smart_arbitrage.forecasting.market_coupling_availability import (
     EXTERNAL_TRAINING_BLOCKERS,
     REQUIRED_MARKET_COUPLING_AVAILABILITY_COLUMNS,
+)
+from smart_arbitrage.forecasting.nbu_fx import (
+    REQUIRED_NBU_EUR_UAH_FX_METADATA_COLUMNS,
 )
 
 ENTSOE_NEIGHBOR_MARKET_ACCESS_CLAIM_SCOPE: Final[str] = (
@@ -68,6 +74,12 @@ ENTSOE_NEIGHBOR_MARKET_ALIGNED_FEATURE_CLAIM_SCOPE: Final[str] = (
 )
 ENTSOE_POLAND_FEATURE_GOVERNANCE_CLAIM_SCOPE: Final[str] = (
     "entsoe_poland_feature_governance_research_gate"
+)
+ENTSOE_POLAND_DAY_AHEAD_FEATURE_NAME: Final[str] = (
+    "entsoe_neighbor_day_ahead_price_context"
+)
+ENTSOE_POLAND_LAGGED_FEATURE_NAME: Final[str] = (
+    "entsoe_neighbor_lagged_day_ahead_price_context"
 )
 REQUIRED_ENTSOE_NEIGHBOR_SAMPLE_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -186,6 +198,8 @@ REQUIRED_ENTSOE_POLAND_FEATURE_GOVERNANCE_COLUMNS: Final[frozenset[str]] = froze
         "training_use_allowed",
         "feature_use_allowed",
         "approved_for_official_training",
+        "experimental_ablation_use_allowed",
+        "experimental_ablation_status",
         "market_execution_enabled",
         "claim_scope",
         "not_full_dfl",
@@ -226,6 +240,49 @@ _NEIGHBOR_BIDDING_ZONE_ROWS: Final[tuple[dict[str, str], ...]] = (
 )
 
 FetchXmlByUrl = Callable[[str], str]
+_ENTSOE_SECURITY_TOKEN_KEYS: Final[tuple[str, ...]] = (
+    "ENTSOE_TOKEN",
+    "ENTSOE_SECURITY_TOKEN",
+    "ENTSO_E_SECURITY_TOKEN",
+    "entsoe_token",
+    "entsoe_security_token",
+    "entso_e_security_token",
+)
+
+
+def load_entsoe_security_token(
+    *,
+    env: Mapping[str, str] | None = None,
+    env_file: Path | str | None = Path(".env"),
+) -> str | None:
+    """Load an ENTSO-E API security token without serializing it to evidence."""
+
+    env_values = dict(os.environ if env is None else env)
+    file_values = _read_env_file(Path(env_file)) if env_file is not None else {}
+    values = {**file_values, **env_values}
+    return _first_present(values, _ENTSOE_SECURITY_TOKEN_KEYS)
+
+
+def _first_present(values: Mapping[str, str], names: tuple[str, ...]) -> str | None:
+    for name in names:
+        value = values.get(name)
+        if value is not None and value.strip():
+            return value.strip()
+    return None
+
+
+def _read_env_file(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    values: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", maxsplit=1)
+        clean_value = value.strip().strip('"').strip("'")
+        values[key.strip()] = clean_value
+    return values
 
 
 def build_entsoe_neighbor_market_query_spec_frame(
@@ -454,8 +511,8 @@ def build_entsoe_neighbor_market_feature_candidate_frame(
     country_codes = _csv_values(sample_country_codes_csv)
     if not country_codes:
         raise ValueError("sample_country_codes_csv must contain at least one country code.")
-    _parse_entsoe_period_utc(sample_period_start_utc)
-    _parse_entsoe_period_utc(sample_period_end_utc)
+    period_start = _parse_entsoe_period_utc(sample_period_start_utc)
+    period_end = _parse_entsoe_period_utc(sample_period_end_utc)
 
     token_available = bool(security_token and security_token.strip())
     rows: list[dict[str, object]] = []
@@ -466,18 +523,104 @@ def build_entsoe_neighbor_market_feature_candidate_frame(
         if country_rows.height != 1:
             raise ValueError(f"query spec missing one row for country_code={country_code!r}")
         query_row = country_rows.to_dicts()[0]
-        rows.extend(
-            _feature_candidate_rows(
-                query_row,
-                sample_period_start_utc=sample_period_start_utc,
-                sample_period_end_utc=sample_period_end_utc,
-                security_token=security_token,
-                token_available=token_available,
-                fetch_enabled=fetch_enabled,
-                fetch_xml_by_url=fetch_xml_by_url,
+        for chunk_start, chunk_end in _entsoe_period_chunks(
+            period_start,
+            period_end,
+            chunk_days=31,
+        ):
+            rows.extend(
+                _feature_candidate_rows(
+                    query_row,
+                    sample_period_start_utc=_format_entsoe_period_utc(chunk_start),
+                    sample_period_end_utc=_format_entsoe_period_utc(chunk_end),
+                    security_token=security_token,
+                    token_available=token_available,
+                    fetch_enabled=fetch_enabled,
+                    fetch_xml_by_url=fetch_xml_by_url,
+                )
             )
-        )
     return pl.DataFrame(rows).sort(["country_code", "delivery_timestamp_utc"])
+
+
+def build_entsoe_poland_lagged_feature_candidate_frame(
+    benchmark_frame: pl.DataFrame,
+    entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
+    *,
+    lag_hours: int = 24,
+    prior_eur_uah_fx_rate: float = 0.0,
+    prior_eur_uah_fx_timestamp_utc: str = "",
+    fx_rate_source: str = "",
+    nbu_eur_uah_fx_metadata_frame: pl.DataFrame | None = None,
+) -> pl.DataFrame:
+    """Build a prior-safe lagged Poland feature from source-backed ENTSO-E rows.
+
+    The row value for Ukrainian timestamp ``t`` uses Poland DAM price at
+    ``t - lag_hours``. This makes the feature historical context rather than a
+    same-delivery-day market-coupling signal, so it can prove temporal
+    availability without pretending to know the ENTSO-E publication timestamp.
+    """
+
+    missing_benchmark = sorted({"tenant_id", "timestamp"}.difference(benchmark_frame.columns))
+    if missing_benchmark:
+        raise ValueError(f"benchmark_frame missing columns: {missing_benchmark}")
+    candidate_failures = _missing_column_failures(
+        entsoe_neighbor_market_feature_candidate_frame,
+        REQUIRED_ENTSOE_NEIGHBOR_FEATURE_CANDIDATE_COLUMNS,
+    )
+    if candidate_failures:
+        raise ValueError("; ".join(candidate_failures))
+    if lag_hours <= 0:
+        raise ValueError("lag_hours must be positive.")
+
+    fx_timestamp = (
+        _parse_iso_utc(prior_eur_uah_fx_timestamp_utc)
+        if prior_eur_uah_fx_timestamp_utc.strip()
+        else None
+    )
+    fx_by_effective_date = _fx_metadata_by_effective_date(
+        nbu_eur_uah_fx_metadata_frame
+    )
+    source_candidates = _poland_source_candidates_by_delivery_timestamp(
+        entsoe_neighbor_market_feature_candidate_frame
+    )
+    benchmark_timestamps = (
+        benchmark_frame.select("timestamp").unique().sort("timestamp").to_series().to_list()
+    )
+    rows = [
+        _lagged_feature_candidate_row(
+            timestamp=_timestamp_naive_utc(timestamp_value),
+            lag_hours=lag_hours,
+            source_candidate=source_candidates.get(
+                _timestamp_naive_utc(timestamp_value) - timedelta(hours=lag_hours)
+            ),
+            prior_eur_uah_fx_rate=prior_eur_uah_fx_rate,
+            fx_timestamp=fx_timestamp,
+            fx_rate_source=fx_rate_source,
+            fx_metadata=fx_by_effective_date.get(
+                (
+                    _timestamp_naive_utc(timestamp_value) - timedelta(hours=lag_hours)
+                ).date().isoformat()
+            ),
+            required_timestamp_count=len(benchmark_timestamps),
+        )
+        for timestamp_value in benchmark_timestamps
+    ]
+    covered_count = len([row for row in rows if bool(row["source_backed"])])
+    coverage_status = (
+        "full_lagged_feature_coverage"
+        if covered_count == len(rows)
+        else "partial_lagged_feature_coverage"
+    )
+    return (
+        pl.DataFrame(rows, infer_schema_length=None)
+        .with_columns(
+            [
+                pl.lit(covered_count).alias("covered_benchmark_timestamp_count"),
+                pl.lit(coverage_status).alias("coverage_status"),
+            ]
+        )
+        .sort(["country_code", "delivery_timestamp_utc"])
+    )
 
 
 def validate_entsoe_neighbor_market_feature_candidate_evidence(
@@ -613,12 +756,9 @@ def build_entsoe_poland_feature_governance_frame(
     )
     if candidate_failures:
         raise ValueError("; ".join(candidate_failures))
-    rows = [
-        row
-        for row in entsoe_neighbor_market_feature_candidate_frame.iter_rows(named=True)
-        if str(row["country_code"]).upper() == "PL"
-        and str(row["feature_name"]) == "entsoe_neighbor_day_ahead_price_context"
-    ]
+    rows = _select_poland_governance_candidate_rows(
+        entsoe_neighbor_market_feature_candidate_frame
+    )
     source_backed_count = len([row for row in rows if bool(row["source_backed"])])
     anchor = (
         _parse_iso_utc(ua_decision_anchor_timestamp_utc)
@@ -635,8 +775,21 @@ def build_entsoe_poland_feature_governance_frame(
         if prior_eur_uah_fx_timestamp_utc.strip()
         else None
     )
-    publication_prior = publication is not None and anchor is not None and publication < anchor
+    row_publication_prior = _candidate_rows_are_prior_available(rows)
+    row_currency_ready = _candidate_rows_have_prior_currency(rows)
+    publication_prior = (
+        publication is not None and anchor is not None and publication < anchor
+    ) or (publication is None and row_publication_prior)
+    publication_status = _governance_publication_status(
+        publication=publication,
+        publication_prior=publication_prior,
+        rows=rows,
+    )
     fx_prior = fx_timestamp is not None and anchor is not None and fx_timestamp < anchor
+    scalar_currency_ready = (
+        prior_eur_uah_fx_rate > 0.0 and fx_prior and bool(fx_rate_source.strip())
+    )
+    currency_ready = row_currency_ready or scalar_currency_ready
     token_available = bool(entsoe_security_token and entsoe_security_token.strip())
     source_backed_rows = [row for row in rows if bool(row["source_backed"])]
     token_required = any(
@@ -648,43 +801,62 @@ def build_entsoe_poland_feature_governance_frame(
         source_backed_count=source_backed_count,
         publication_prior=publication_prior,
         timezone_dst_mapping_ready=timezone_dst_mapping_ready,
-        prior_eur_uah_fx_rate=prior_eur_uah_fx_rate,
-        fx_prior=fx_prior,
-        fx_rate_source=fx_rate_source,
+        currency_ready=currency_ready,
         licensing_approved=licensing_approved,
         market_rules_mapped=market_rules_mapped,
         domain_shift_validated=domain_shift_validated,
     )
+    experimental_blockers = tuple(
+        blocker for blocker in blockers if blocker != "domain_shift"
+    )
+    experimental_allowed = not experimental_blockers
     approved = not blockers
+    feature_name = (
+        str(rows[0]["feature_name"])
+        if rows
+        else ENTSOE_POLAND_DAY_AHEAD_FEATURE_NAME
+    )
+    approved_feature_column = (
+        _governance_feature_column(rows[0])
+        if rows
+        else "entsoe_pl_day_ahead_price_uah_mwh"
+    )
+    output_fx_source = fx_rate_source or _first_nonempty(rows, "fx_rate_source")
+    output_fx_timestamp = (
+        fx_timestamp.isoformat()
+        if fx_timestamp is not None
+        else _first_nonempty(rows, "fx_rate_timestamp_utc")
+    )
+    output_fx_rate = (
+        prior_eur_uah_fx_rate
+        if prior_eur_uah_fx_rate > 0.0
+        else _first_float(rows, "fx_rate_eur_uah")
+    )
     return pl.DataFrame(
         [
             {
                 "country_code": "PL",
                 "country_name": "Poland",
-                "feature_name": "entsoe_neighbor_day_ahead_price_context",
-                "approved_feature_column": "entsoe_pl_day_ahead_price_uah_mwh",
+                "feature_name": feature_name,
+                "approved_feature_column": approved_feature_column,
                 "source_backed_row_count": source_backed_count,
                 "entsoe_security_token_available": token_available,
                 "publication_timestamp_utc": publication.isoformat()
                 if publication is not None
-                else "",
+                else _first_nonempty(rows, "publication_timestamp_utc"),
                 "ua_decision_anchor_timestamp_utc": anchor.isoformat()
                 if anchor is not None
                 else "",
-                "publication_time_status": "publication_time_verified_prior_to_ua_anchor"
-                if publication_prior
-                else "blocked_publication_not_prior_to_anchor",
+                "publication_time_status": publication_status,
                 "is_publication_prior_to_anchor": publication_prior,
                 "timezone_status": "ready"
                 if timezone_dst_mapping_ready
                 else "blocked_until_zone_and_dst_alignment",
-                "fx_rate_source": fx_rate_source,
-                "fx_rate_timestamp_utc": fx_timestamp.isoformat()
-                if fx_timestamp is not None
-                else "",
-                "fx_rate_eur_uah": prior_eur_uah_fx_rate,
+                "fx_rate_source": output_fx_source,
+                "fx_rate_timestamp_utc": output_fx_timestamp,
+                "fx_rate_eur_uah": output_fx_rate,
                 "currency_status": "ready"
-                if prior_eur_uah_fx_rate > 0.0 and fx_prior and fx_rate_source.strip()
+                if currency_ready
                 else "blocked_missing_prior_eur_uah_fx_rate",
                 "market_rules_status": "ready"
                 if market_rules_mapped
@@ -703,6 +875,11 @@ def build_entsoe_poland_feature_governance_frame(
                 "training_use_allowed": approved,
                 "feature_use_allowed": approved,
                 "approved_for_official_training": approved,
+                "experimental_ablation_use_allowed": experimental_allowed,
+                "experimental_ablation_status": _experimental_ablation_status(
+                    approved=approved,
+                    experimental_allowed=experimental_allowed,
+                ),
                 "market_execution_enabled": False,
                 "claim_scope": ENTSOE_POLAND_FEATURE_GOVERNANCE_CLAIM_SCOPE,
                 "not_full_dfl": True,
@@ -748,6 +925,17 @@ def validate_entsoe_poland_feature_governance_evidence(
             or not bool(row["feature_use_allowed"])
         )
     ]
+    inconsistent_experimental_rows = [
+        row
+        for row in rows
+        if bool(row["experimental_ablation_use_allowed"])
+        and (
+            int(row["source_backed_row_count"]) <= 0
+            or str(row["experimental_ablation_status"])
+            not in {"official_training_ready", "ablation_ready_pending_domain_shift"}
+            or str(row["training_blockers_csv"]) not in {"", "domain_shift"}
+        )
+    ]
     unapproved_without_blockers = [
         row
         for row in rows
@@ -760,6 +948,10 @@ def validate_entsoe_poland_feature_governance_evidence(
         failures.append("Poland governance rows must keep research-only claim flags")
     if inconsistent_approved_rows:
         failures.append("approved Poland rows must be source-backed and blocker-free")
+    if inconsistent_experimental_rows:
+        failures.append(
+            "experimental Poland ablation rows must be source-backed and blocked only by domain_shift"
+        )
     if unapproved_without_blockers:
         failures.append("blocked Poland rows must report governance blockers")
 
@@ -769,9 +961,13 @@ def validate_entsoe_poland_feature_governance_evidence(
             [row for row in rows if bool(row["approved_for_official_training"])]
         ),
         "source_backed_rows": sum(int(row["source_backed_row_count"]) for row in rows),
+        "experimental_ablation_feature_count": len(
+            [row for row in rows if bool(row["experimental_ablation_use_allowed"])]
+        ),
         "bad_country_rows": len(bad_country_rows),
         "bad_claim_rows": len(bad_claim_rows),
         "inconsistent_approved_rows": len(inconsistent_approved_rows),
+        "inconsistent_experimental_rows": len(inconsistent_experimental_rows),
     }
     return EvidenceCheckOutcome(
         passed=not failures,
@@ -834,7 +1030,9 @@ def build_entsoe_neighbor_market_aligned_feature_panel_frame(
                     candidate=candidate,
                 )
             )
-    return pl.DataFrame(rows).sort(["tenant_id", "timestamp", "country_code"])
+    return pl.DataFrame(rows, infer_schema_length=None).sort(
+        ["tenant_id", "timestamp", "country_code"]
+    )
 
 
 def _query_spec_row(row: dict[str, str], *, token_available: bool) -> dict[str, object]:
@@ -1090,6 +1288,147 @@ def _feature_candidate_row(
     }
 
 
+def _poland_source_candidates_by_delivery_timestamp(
+    frame: pl.DataFrame,
+) -> dict[datetime, dict[str, object]]:
+    candidates: dict[datetime, dict[str, object]] = {}
+    for row in frame.iter_rows(named=True):
+        if str(row["country_code"]).upper() != "PL" or not bool(row["source_backed"]):
+            continue
+        if row["neighbor_market_price_eur_mwh"] is None:
+            continue
+        delivery_timestamp = str(row["delivery_timestamp_utc"]).strip()
+        if not delivery_timestamp:
+            continue
+        timestamp = _parse_iso_utc(delivery_timestamp).replace(tzinfo=None)
+        candidates[timestamp] = row
+    return candidates
+
+
+def _lagged_feature_candidate_row(
+    *,
+    timestamp: datetime,
+    lag_hours: int,
+    source_candidate: dict[str, object] | None,
+    prior_eur_uah_fx_rate: float,
+    fx_timestamp: datetime | None,
+    fx_rate_source: str,
+    fx_metadata: dict[str, object] | None,
+    required_timestamp_count: int,
+) -> dict[str, object]:
+    feature_column = f"entsoe_pl_lag{lag_hours}_day_ahead_price_uah_mwh"
+    source_timestamp = timestamp - timedelta(hours=lag_hours)
+    effective_fx_rate = prior_eur_uah_fx_rate
+    effective_fx_timestamp = fx_timestamp
+    effective_fx_source = fx_rate_source
+    if fx_metadata is not None and bool(fx_metadata.get("source_backed", False)):
+        effective_fx_rate = float(str(fx_metadata["fx_rate_eur_uah"]))
+        effective_fx_timestamp = _parse_iso_utc(
+            str(fx_metadata["fx_rate_timestamp_utc"])
+        )
+        effective_fx_source = str(fx_metadata["fx_rate_source"])
+    fx_prior = (
+        effective_fx_timestamp is not None
+        and effective_fx_timestamp.replace(tzinfo=None) < timestamp
+    )
+    currency_ready = (
+        effective_fx_rate > 0.0
+        and fx_prior
+        and bool(effective_fx_source.strip())
+        and source_candidate is not None
+    )
+    price_eur = (
+        source_candidate["neighbor_market_price_eur_mwh"]
+        if source_candidate is not None
+        else None
+    )
+    price_uah = (
+        float(str(price_eur)) * effective_fx_rate
+        if price_eur is not None and currency_ready
+        else None
+    )
+    source_backed = source_candidate is not None
+    source_delivery_timestamp_utc = source_timestamp.replace(tzinfo=UTC).isoformat()
+    return {
+        "country_code": "PL",
+        "country_name": "Poland",
+        "bidding_zone_eic": "10YPL-AREA-----S",
+        "feature_name": ENTSOE_POLAND_LAGGED_FEATURE_NAME,
+        "feature_column": feature_column,
+        "delivery_timestamp_utc": timestamp.replace(tzinfo=UTC).isoformat(),
+        "source_delivery_timestamp_utc": source_delivery_timestamp_utc,
+        "lag_hours": lag_hours,
+        "neighbor_market_price_eur_mwh": price_eur,
+        "neighbor_market_price_uah_mwh": price_uah,
+        "source_backed": source_backed,
+        "fetch_enabled": bool(source_candidate.get("fetch_enabled", False))
+        if source_candidate is not None
+        else False,
+        "security_token_required": bool(
+            source_candidate.get("security_token_required", True)
+        )
+        if source_candidate is not None
+        else True,
+        "security_token_available": bool(
+            source_candidate.get("security_token_available", False)
+        )
+        if source_candidate is not None
+        else False,
+        "source_access_method": str(source_candidate.get("source_access_method", ""))
+        if source_candidate is not None
+        else "",
+        "source_url": str(source_candidate.get("source_url", ""))
+        if source_candidate is not None
+        else "",
+        "source_retrieved_at_utc": str(
+            source_candidate.get("source_retrieved_at_utc", "")
+        )
+        if source_candidate is not None
+        else "",
+        "source_sha256": str(source_candidate.get("source_sha256", ""))
+        if source_candidate is not None
+        else "",
+        "source_license_status": str(
+            source_candidate.get("source_license_status", "")
+        )
+        if source_candidate is not None
+        else "",
+        "fetch_status": "source_backed_lagged_feature_not_training"
+        if source_backed
+        else "no_source_candidate_for_lagged_timestamp",
+        "sample_period_start_utc": "",
+        "sample_period_end_utc": "",
+        "publication_time_policy": "lagged_delivery_must_precede_ua_anchor",
+        "publication_timestamp_utc": source_delivery_timestamp_utc
+        if source_backed
+        else "",
+        "publication_time_status": "lagged_delivery_observed_before_ua_anchor"
+        if source_backed
+        else "blocked_missing_lagged_source_timestamp",
+        "ua_decision_anchor_policy": (
+            "lagged_poland_delivery_timestamp_must_precede_ukrainian_anchor"
+        ),
+        "is_prior_to_ua_decision_anchor": source_backed,
+        "time_zone_policy": "source_delivery_utc_shifted_by_lag_hours",
+        "currency_policy": "prior_known_nbu_eur_uah_normalization_required",
+        "fx_rate_source": effective_fx_source,
+        "fx_rate_timestamp_utc": effective_fx_timestamp.isoformat()
+        if effective_fx_timestamp is not None
+        else "",
+        "fx_rate_eur_uah": effective_fx_rate if effective_fx_rate > 0.0 else None,
+        "currency_normalization_status": "prior_eur_uah_normalized"
+        if currency_ready
+        else "blocked_missing_prior_eur_uah_fx_rate",
+        "required_benchmark_timestamp_count": required_timestamp_count,
+        "training_use_allowed": False,
+        "feature_use_allowed": False,
+        "training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS,
+        "claim_scope": ENTSOE_NEIGHBOR_MARKET_FEATURE_CANDIDATE_CLAIM_SCOPE,
+        "not_full_dfl": True,
+        "not_market_execution": True,
+    }
+
+
 def _aligned_feature_row(
     benchmark_row: dict[str, object],
     *,
@@ -1173,6 +1512,137 @@ def _aligned_feature_row(
     }
 
 
+def _select_poland_governance_candidate_rows(frame: pl.DataFrame) -> list[dict[str, object]]:
+    poland_rows = [
+        row
+        for row in frame.iter_rows(named=True)
+        if str(row["country_code"]).upper() == "PL"
+        and str(row["feature_name"])
+        in {ENTSOE_POLAND_LAGGED_FEATURE_NAME, ENTSOE_POLAND_DAY_AHEAD_FEATURE_NAME}
+    ]
+    lagged_rows = [
+        row
+        for row in poland_rows
+        if str(row["feature_name"]) == ENTSOE_POLAND_LAGGED_FEATURE_NAME
+    ]
+    return lagged_rows or poland_rows
+
+
+def _fx_metadata_by_effective_date(
+    frame: pl.DataFrame | None,
+) -> dict[str, dict[str, object]]:
+    if frame is None:
+        return {}
+    missing = sorted(REQUIRED_NBU_EUR_UAH_FX_METADATA_COLUMNS.difference(frame.columns))
+    if missing:
+        raise ValueError(f"nbu_eur_uah_fx_metadata_frame missing columns: {missing}")
+    rows: dict[str, dict[str, object]] = {}
+    for row in frame.iter_rows(named=True):
+        if not bool(row["source_backed"]):
+            continue
+        if str(row["currency_normalization_status"]) != "prior_eur_uah_normalized":
+            continue
+        rows[str(row["fx_rate_effective_date"])] = row
+    return rows
+
+
+def _candidate_rows_are_prior_available(rows: list[dict[str, object]]) -> bool:
+    source_backed_rows = [row for row in rows if bool(row["source_backed"])]
+    if not source_backed_rows:
+        return False
+    if any(str(row["feature_name"]) == ENTSOE_POLAND_LAGGED_FEATURE_NAME for row in rows):
+        coverage_statuses = {
+            str(row.get("coverage_status", "")) for row in rows if str(row.get("coverage_status", ""))
+        }
+        if coverage_statuses != {"full_lagged_feature_coverage"}:
+            return False
+        if len(source_backed_rows) != len(rows):
+            return False
+    return all(
+        bool(row["is_prior_to_ua_decision_anchor"])
+        and not str(row["publication_time_status"]).startswith("blocked_")
+        for row in source_backed_rows
+    )
+
+
+def _candidate_rows_have_prior_currency(rows: list[dict[str, object]]) -> bool:
+    source_backed_rows = [row for row in rows if bool(row["source_backed"])]
+    if not source_backed_rows:
+        return False
+    if any(str(row["feature_name"]) == ENTSOE_POLAND_LAGGED_FEATURE_NAME for row in rows):
+        coverage_statuses = {
+            str(row.get("coverage_status", "")) for row in rows if str(row.get("coverage_status", ""))
+        }
+        if coverage_statuses != {"full_lagged_feature_coverage"}:
+            return False
+        if len(source_backed_rows) != len(rows):
+            return False
+    for row in source_backed_rows:
+        if str(row["currency_normalization_status"]) != "prior_eur_uah_normalized":
+            return False
+        if not str(row.get("fx_rate_source", "")).strip():
+            return False
+        fx_timestamp_text = str(row.get("fx_rate_timestamp_utc", "")).strip()
+        if not fx_timestamp_text:
+            return False
+        if row.get("neighbor_market_price_uah_mwh") is None:
+            return False
+        delivery_timestamp = _parse_iso_utc(str(row["delivery_timestamp_utc"]))
+        if _parse_iso_utc(fx_timestamp_text) >= delivery_timestamp:
+            return False
+    return True
+
+
+def _governance_publication_status(
+    *,
+    publication: datetime | None,
+    publication_prior: bool,
+    rows: list[dict[str, object]],
+) -> str:
+    if publication is not None:
+        return (
+            "publication_time_verified_prior_to_ua_anchor"
+            if publication_prior
+            else "blocked_publication_not_prior_to_anchor"
+        )
+    statuses = [
+        str(row["publication_time_status"])
+        for row in rows
+        if bool(row["source_backed"]) and str(row["publication_time_status"]).strip()
+    ]
+    if publication_prior and statuses:
+        return statuses[0]
+    return "blocked_publication_not_prior_to_anchor"
+
+
+def _first_nonempty(rows: list[dict[str, object]], column_name: str) -> str:
+    for row in rows:
+        value = str(row.get(column_name, "")).strip()
+        if value:
+            return value
+    return ""
+
+
+def _first_float(rows: list[dict[str, object]], column_name: str) -> float:
+    for row in rows:
+        value = row.get(column_name)
+        if value is None:
+            continue
+        if isinstance(value, bool):
+            continue
+        if isinstance(value, int | float):
+            return float(value)
+        if isinstance(value, str) and value.strip():
+            return float(value)
+    return 0.0
+
+
+def _governance_feature_column(row: dict[str, object]) -> str:
+    if str(row["feature_name"]) == ENTSOE_POLAND_LAGGED_FEATURE_NAME:
+        return str(row["feature_column"])
+    return "entsoe_pl_day_ahead_price_uah_mwh"
+
+
 def _entsoe_poland_governance_blockers(
     *,
     token_required: bool,
@@ -1180,9 +1650,7 @@ def _entsoe_poland_governance_blockers(
     source_backed_count: int,
     publication_prior: bool,
     timezone_dst_mapping_ready: bool,
-    prior_eur_uah_fx_rate: float,
-    fx_prior: bool,
-    fx_rate_source: str,
+    currency_ready: bool,
     licensing_approved: bool,
     market_rules_mapped: bool,
     domain_shift_validated: bool,
@@ -1196,7 +1664,7 @@ def _entsoe_poland_governance_blockers(
         blockers.append("publication_time")
     if not timezone_dst_mapping_ready:
         blockers.append("timezone")
-    if prior_eur_uah_fx_rate <= 0.0 or not fx_prior or not fx_rate_source.strip():
+    if not currency_ready:
         blockers.append("prior_eur_uah_fx_rate")
     if not licensing_approved:
         blockers.append("licensing")
@@ -1205,6 +1673,18 @@ def _entsoe_poland_governance_blockers(
     if not domain_shift_validated:
         blockers.append("domain_shift")
     return blockers
+
+
+def _experimental_ablation_status(
+    *,
+    approved: bool,
+    experimental_allowed: bool,
+) -> str:
+    if approved:
+        return "official_training_ready"
+    if experimental_allowed:
+        return "ablation_ready_pending_domain_shift"
+    return "blocked_by_governance"
 
 
 def _request_url(
@@ -1227,8 +1707,15 @@ def _request_url(
 
 
 def _fetch_text(url: str) -> str:
-    with urlopen(url, timeout=60) as response:  # noqa: S310 - URL is ENTSO-E API.
-        return response.read().decode("utf-8")
+    try:
+        with urlopen(url, timeout=60) as response:  # noqa: S310 - URL is ENTSO-E API.
+            return response.read().decode("utf-8")
+    except HTTPError as exc:
+        raise RuntimeError(
+            f"ENTSO-E API fetch failed with HTTP {exc.code}; security token redacted."
+        ) from exc
+    except URLError as exc:
+        raise RuntimeError("ENTSO-E API fetch failed; security token redacted.") from exc
 
 
 def _parse_day_ahead_price_points(xml_text: str) -> list[tuple[datetime, float]]:
@@ -1239,19 +1726,51 @@ def _parse_day_ahead_price_points(xml_text: str) -> list[tuple[datetime, float]]
         if not start_text:
             continue
         start = _parse_iso_utc(start_text)
+        resolution = _duration_to_timedelta(_child_text(period, "resolution") or "PT60M")
         for point in _children_named(period, "Point"):
             position_text = _child_text(point, "position")
             price_text = _child_text(point, "price.amount")
             if not position_text or not price_text:
                 continue
             position = int(position_text)
-            timestamp = start + timedelta(hours=position - 1)
+            timestamp = start + resolution * (position - 1)
             points.append((timestamp, float(price_text)))
     return sorted(points, key=lambda item: item[0])
 
 
 def _parse_entsoe_period_utc(value: str) -> datetime:
     return datetime.strptime(value, "%Y%m%d%H%M").replace(tzinfo=UTC)
+
+
+def _duration_to_timedelta(value: str) -> timedelta:
+    if not value.startswith("PT") or not value.endswith("M"):
+        raise ValueError(f"unsupported ENTSO-E resolution: {value!r}")
+    minutes_text = value.removeprefix("PT").removesuffix("M")
+    return timedelta(minutes=int(minutes_text))
+
+
+def _format_entsoe_period_utc(value: datetime) -> str:
+    return value.astimezone(UTC).strftime("%Y%m%d%H%M")
+
+
+def _entsoe_period_chunks(
+    period_start: datetime,
+    period_end: datetime,
+    *,
+    chunk_days: int,
+) -> list[tuple[datetime, datetime]]:
+    if period_end <= period_start:
+        raise ValueError("sample_period_end_utc must be after sample_period_start_utc.")
+    if chunk_days <= 0:
+        raise ValueError("chunk_days must be positive.")
+    chunks: list[tuple[datetime, datetime]] = []
+    cursor = period_start
+    chunk_delta = timedelta(days=chunk_days)
+    while cursor < period_end:
+        chunk_end = min(cursor + chunk_delta, period_end)
+        chunks.append((cursor, chunk_end))
+        cursor = chunk_end
+    return chunks
 
 
 def _parse_iso_utc(value: str) -> datetime:
@@ -1298,11 +1817,13 @@ def _local_name(tag: str) -> str:
 
 
 __all__ = [
+    "build_entsoe_poland_lagged_feature_candidate_frame",
     "build_entsoe_neighbor_market_aligned_feature_panel_frame",
     "build_entsoe_neighbor_market_feature_candidate_frame",
     "build_entsoe_neighbor_market_query_spec_frame",
     "build_entsoe_neighbor_market_sample_audit_frame",
     "build_entsoe_poland_feature_governance_frame",
+    "load_entsoe_security_token",
     "validate_entsoe_neighbor_market_access_evidence",
     "validate_entsoe_neighbor_market_feature_candidate_evidence",
     "validate_entsoe_neighbor_market_sample_audit_evidence",

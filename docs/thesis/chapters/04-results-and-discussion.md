@@ -1,4 +1,4 @@
-# 4. Результати експериментів та обговорення
+# Розділ 4. Результати експериментів та обговорення
 
 ## 4.1. Мета експериментального оцінювання
 
@@ -41,6 +41,13 @@ decision-aware schedule selection:
 5. Schedule/Value Learner V2 - decision-value selector, який вибирає один із
    feasible LP-scored schedule candidates, а не оцінює модель лише за помилкою
    forecast.
+6. Schedule/Value Learner V2+ - розширення candidate library і prior-only
+   fallback rule, яке стало основним підтвердженим результатом.
+7. Candidate-Value DFL v3/V4/V5 - діагностичні спроби покращити V2+ через
+   candidate-level value labels, failure-mode schedules і point-in-time context.
+8. Official global-panel TFT quantile lane - перевірка того, чи можуть
+   TFT-derived p10/p50/p90 schedules доповнити NBEATSx V2+ як джерело
+   schedule diversity.
 
 Ця драбина показала важливий методологічний висновок: у задачі BESS arbitrage
 raw neural forecast може мати корисний сигнал, але цей сигнал стає цінним лише
@@ -66,6 +73,10 @@ panel:
 `data/research_runs/week3_official_global_panel_365_strategy_promotion/`.
 Він містить registry JSON/Markdown, attempt manifest, monitor snapshot,
 promotion gate frame і окремий trace summary для Schedule/Value Learner V2.
+Поточний сильніший V2+ comparison/robustness packet збережений у
+`data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/`
+і використовується як головний локальний evidence packet для результату цього
+розділу.
 
 Окремий FastAPI-шар використовується лише для подання цих результатів у
 read-model формі. У контексті розділу результатів API не розглядається як
@@ -153,6 +164,30 @@ Latest-holdout comparison packet
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 310.58 | 206.37 | 174.77 | 43.73% | 15.31% |
 | `nbeatsx_official_global_panel_v1` | 310.58 | 225.44 | 193.36 | 37.74% | 14.23% |
 
+Це покращення має важливу інтерпретацію. V2+ не доводить, що raw neural
+forecast сам по собі став кращим за baseline у кожній ситуації. Він доводить,
+що decision layer може краще використати forecast/context signal, якщо
+перетворити його на ширший набір feasible schedule candidates і вибирати між
+ними за prior-only evidence. Для calibrated source mean regret зменшився з
+`206.37` UAH у frozen V2 до `174.77` UAH у V2+, тобто на `31.60` UAH або
+`15.31%` проти V2. Для raw official global-panel source mean regret зменшився
+з `225.44` UAH до `193.36` UAH, тобто на `32.08` UAH або `14.23%` проти V2.
+
+| Компонент | Frozen V2 | V2+ | Чому це покращило результат |
+|---|---|---|---|
+| Candidate space | Strict, raw, perturbation, strict/raw blend і prior residual schedules | Додає rank-extrema, robust-spread, strict-neighborhood, temporal-block і terminal-SOC schedules | Selector отримує більше feasible альтернатив саме навколо observed failure modes. |
+| Selection rule | Profile selected offline from prior anchors | Та сама no-leakage логіка плюс frozen V2 fallback | Нові candidates приймаються лише коли train/prior evidence не прогнозує деградацію. |
+| Scoring | Strict LP/oracle regret gate | Не змінюється | V2 і V2+ порівнюються за однаковим UAH-native regret metric. |
+| Claim boundary | Offline/read-model evidence only | Не змінюється | Результат не означає live dispatch, market execution або dashboard/API default switch. |
+
+Простою мовою, V2 мав непоганий механізм вибору, але інколи недостатньо
+різноманітні маршрути для батареї. V2+ додав нові безпечні маршрути навколо
+типових помилок - невірного peak/trough timing, надто ризикового high-spread
+schedule, локального timing shift і terminal SOC pressure. Той самий strict
+LP/oracle evaluator потім перевірив, що ці маршрути справді зменшують regret.
+Саме тому результат є evidence for decision-aware scheduling, а не claim про
+самостійну перевагу raw forecast.
+
 Rolling robustness replay over four 18-anchor windows also passed:
 
 | Source model | Rolling windows passed | Interpretation |
@@ -160,7 +195,7 @@ Rolling robustness replay over four 18-anchor windows also passed:
 | `nbeatsx_official_global_panel_horizon_calibrated_v1` | 4 / 4 | V2+ beats both `strict_similar_day` and frozen V2 |
 | `nbeatsx_official_global_panel_v1` | 4 / 4 | V2+ beats both `strict_similar_day` and frozen V2 |
 
-Отже, найсильнішим поточним результатом дипломної роботи є Schedule/Value
+Отже, основним підтвердженим результатом дипломної роботи є Schedule/Value
 Learner V2+ на 365-anchor Ukrainian panel. Calibrated official NBEATSx є
 основним source row для формулювання результату, оскільки має найнижчий
 latest-holdout mean regret. Межа твердження залишається такою: лише Offline
@@ -168,11 +203,18 @@ Strategy Promotion, без ринкового виконання в реальн
 перемикання dashboard/API на нову стратегію і без твердження, що raw neural
 forecasting сам по собі є кращим за `strict_similar_day`.
 
+![Порівняння mean regret для strict control, frozen V2, V2+ та пізніших V3-V5 gates](assets/chapter4-v2plus-regret-comparison.svg)
+
+Рисунок 4.1 узагальнює головний числовий результат: V2+ знижує mean regret
+до `174.77` UAH і залишається найсильнішим підтвердженим offline/read-model
+результатом. Пізніші V3/V4/V5 експерименти не погіршили результат, але й не
+створили нового headline, оскільки активували V2+ fallback.
+
 ## 4.8. Інтерпретація результату
 
 Результат підтримує тезу про практичну цінність decision-aware pipeline:
 нейронний forecast сам по собі не був достатнім, але schedule/value layer
-перетворив прогнозний сигнал у кращий LP-feasible decision. Для розглядаємої
+перетворив прогнозний сигнал у кращий LP-feasible decision. Для розглянутої
 архітектури це означає, що фінальний контролер має бути системою з фіксованим
 fallback:
 
@@ -237,12 +279,49 @@ timezone/DST, FX, licensing, market-rule та domain-shift перевірок.
 `entsoe_pl_day_ahead_price_uah_mwh`. Пакет
 `week3_dfl_entsoe_poland_feature_ablation_v1` знову показав
 `blocked_by_governance`, approved feature columns відсутні, а B-training не
-запускався. На відміну від попереднього generic blocker, цей пакет уже називає
-конкретні відсутні докази: ENTSO-E token/source-backed sample,
-publication-time evidence, prior-known EUR/UAH FX, timezone/DST, licensing,
-market-rule mapping, domain-shift validation і temporal availability. Це
-означає, що наступна робота над market coupling є governance/data-acquisition
-задачею, а не новим selector experiment.
+запускався.
+
+Після отримання ENTSO-E token було виконано ще один source-backed smoke run:
+`week3_dfl_entsoe_poland_token_source_governance_v3`. Він підтвердив, що token
+та джерельний доступ уже працюють: ENTSO-E API повернув 186 source-backed
+Poland day-ahead candidate rows, а token value не записувався в evidence
+artifacts. Однак route все одно залишився `blocked_by_governance`: approved
+feature columns відсутні, B-training не запускався, а
+`market_execution_enabled=false`. Тобто source access більше не є головним
+blocker; залишаються publication-time evidence, prior-known EUR/UAH FX,
+currency normalization, timezone/DST, licensing, market-rule mapping,
+domain-shift validation і temporal availability. Це означає, що наступна
+робота над market coupling є governance/data-acquisition задачею, а не новим
+selector experiment.
+
+Для цієї задачі введено двоступеневу межу. Якщо source access,
+publication-time, timezone/DST, FX, licensing, market-rule mapping і temporal
+availability готові, але domain-shift ще не перевірено, рядок може отримати
+статус `approved_for_experimental_ablation=true`. Це дозволяє побудувати
+контрольований Ukrainian-plus-Poland ablation packet, але не дозволяє називати
+feature офіційно допущеним до headline training. Лише після проходження
+domain-shift/holdout перевірки та порівняння з frozen V2+ route може стати
+`approved_for_official_training=true`.
+
+Перший такий кандидат реалізовано як lagged Poland market-regime feature:
+`entsoe_pl_lag24_day_ahead_price_uah_mwh`. Для українського timestamp `t` цей
+стовпець бере ENTSO-E Poland day-ahead price з `t - 24h` і може конвертувати
+EUR/MWh у UAH/MWh лише за наявності prior-known NBU EUR/UAH rate, timestamp і
+source label. Також потрібне повне покриття всіх benchmark timestamps; якщо
+хоч один timestamp не має source-backed lagged Poland value, feature лишається
+заблокованим. Це робить перший market-coupling ablation leak-safe, але не
+змінює поточний headline: V2+ залишається українським результатом, а
+Poland/ENTSO-E може бути лише контрольованим exogenous ablation candidate.
+
+Матеріалізований run
+`week3_dfl_entsoe_poland_lag24_governance_attempt` підтвердив цю межу
+емпірично. Evidence check пройшов, але обидва official NBEATSx rows залишилися
+`blocked_by_governance`: approved external feature columns відсутні,
+B-training не запускався, а `market_execution_enabled=false`. Основні
+нерозв'язані blocker-и: currency, domain shift, licensing, market rules,
+prior-known EUR/UAH FX, publication time, temporal availability і timezone.
+Отже, token/source доступ і lagged interface вже готові як pipeline evidence,
+але market-coupled training ще не є допущеним результатом.
 
 Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
 DFL, tiny offline Decision Transformer, behavior cloning і fallback
@@ -413,7 +492,62 @@ scorer-а. Для наступного покращення потрібне а�
 навчається від V2+ та oracle schedules, але все одно порівнюється з V2+ через
 той самий strict LP/oracle gate.
 
-## 4.11. Доказові артефакти
+![Діагностика плато після V2+: candidate weakness, fallback conservatism і point-in-time context gaps](assets/chapter4-plateau-diagnostics.svg)
+
+Рисунок 4.2 показує, чому подальші candidate-value етапи не слід трактувати
+як невдачу всієї DFL ідеї. Вони звузили причину плато: більшість нових
+candidate schedules не була стабільно кращою за V2+, а контекстні families
+потребують source-backed point-in-time поповнення перед новою promotion
+спробою.
+
+## 4.11. Official TFT quantile evidence
+
+Окремо було перевірено, чи може Temporal Fusion Transformer стати не
+самостійною заміною V2+, а джерелом комплементарних schedule candidates. Для
+цього було виконано official global-panel TFT quantile run на 365-anchor
+Ukrainian panel. Методологічно цей експеримент не перевіряє тезу "TFT має
+нижчий MAE", а перевіряє downstream питання: чи зменшують p10/p50/p90
+TFT-derived schedules regret після того самого strict LP/oracle evaluator.
+
+Повний raw strict-scoring шар на 365 anchors показав, що standalone TFT lane
+не є конкурентом V2+: `strict_similar_day` мав mean/median regret
+`431.52 / 217.27` UAH, тоді як `tft_official_global_panel_v1` мав
+`1520.18 / 1201.58` UAH, p10 lane - `1964.36` UAH mean regret, а p90 lane -
+`1714.53` UAH mean regret. Ці числа належать до повного TFT strict-screen
+шару і не мають змішуватися з latest-holdout V2+ таблицею.
+
+Після schedule/value augmentation на latest-holdout comparator slice результат
+також залишився заблокованим: frozen calibrated NBEATSx V2+ мав
+`174.77` UAH mean regret і `67.30` UAH median regret, тоді як найкращий
+TFT-derived schedule/value row, calibrated p90 lane, мав `225.47` UAH mean
+regret і `121.00` UAH median regret. Отже, TFT не замінив V2+ і не став
+підставою для нового promotion claim.
+
+Цей негативний результат є змістовним. Він показує, що в поточному
+Ukrainian-only feature space TFT корисний передусім як forecast/uncertainty
+research layer і потенційне джерело schedule diversity, але не як
+самостійний headline result. Будь-який майбутній NBEATSx+TFT portfolio result
+має довести, що TFT schedules зменшують mean regret проти frozen V2+, не
+погіршують median regret і проходять rolling robustness без зміни claim
+boundary.
+
+Після цього було матеріалізовано NBEATSx+TFT candidate-portfolio gate. Він
+підтвердив локальну комплементарність TFT: на latest holdout TFT мав candidate,
+який бив V2+ на `24 / 90` tenant-anchor rows. Водночас full-data portfolio
+selector не зміг безпечно використати ці можливості: latest strict frame
+залишився на V2+ fallback для `90 / 90` rows, а true rolling strict replay
+пройшов `0 / 4` windows. Отже, поточний TFT висновок є негативним, але
+корисним: TFT додає schedule diversity, проте current prior-only selector
+не має достатньо стабільного сигналу, щоб robustly замінити V2+.
+
+![TFT як complementary schedule expert: local opportunities, but rolling portfolio gate remains blocked](assets/chapter4-tft-portfolio-rolling.svg)
+
+Рисунок 4.3 фіксує межу цього результату. Він не заперечує цінність TFT як
+uncertainty/research layer, але показує, що headline architecture станом на
+поточну ітерацію залишається Ukrainian-only NBEATSx V2+ із `strict_similar_day`
+fallback.
+
+## 4.12. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
 research-run каталогах і документах, які можна відтворити з Dagster/Postgres
@@ -427,6 +561,8 @@ rows:
   governance-blocked Poland/ENTSO-E feature ablation evidence;
 - `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/` -
   pairwise schedule-value DFL v2 diagnostic packet;
+- `data/research_runs/week3_tft_quantile_365_full_negative_evidence/` -
+  official global-panel TFT quantile negative evidence packet;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

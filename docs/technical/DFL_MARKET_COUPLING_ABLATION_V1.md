@@ -66,6 +66,9 @@ Tracked config:
 Poland governance-completion config:
 [real_data_dfl_entsoe_poland_feature_ablation_week3.yaml](../../configs/real_data_dfl_entsoe_poland_feature_ablation_week3.yaml).
 
+Token-backed Poland governance config:
+[real_data_dfl_entsoe_poland_feature_ablation_token_week3.yaml](../../configs/real_data_dfl_entsoe_poland_feature_ablation_token_week3.yaml).
+
 No-token Poland snapshot config:
 [real_data_dfl_poland_snapshot_ablation_week3.yaml](../../configs/real_data_dfl_poland_snapshot_ablation_week3.yaml).
 
@@ -216,9 +219,10 @@ The new packet reports more precise blockers:
 - `temporal_availability`.
 
 Therefore the next external-feature action is operational governance, not model
-selection: provide a local ENTSO-E token, fetch a source-backed Poland sample,
-attach publication-time evidence, attach prior-known EUR/UAH FX, and resolve
-licensing/market-rule/domain-shift checks before rerunning the ablation.
+selection: after token/source access is available, attach publication-time
+evidence, attach prior-known EUR/UAH FX, and resolve licensing,
+market-rule/timezone, and domain-shift checks before rerunning any approved
+ablation.
 
 For future reruns, use the repo-local wrapper instead of manual log/copy steps:
 
@@ -229,6 +233,80 @@ For future reruns, use the repo-local wrapper instead of manual log/copy steps:
 
 The wrapper writes a receipt, runs the exact asset selection, copies the
 materialized ablation frame from Dagster storage, and exports the packet.
+
+## Token-Backed ENTSO-E Source Evidence
+
+The 2026-05-20 local rerun used a real local ENTSO-E token through the lowercase
+`.env` key `entsoe_token`, accepted as a safe alias for `ENTSOE_TOKEN`. The
+wrapper passes only the variable name into Docker (`-e ENTSOE_TOKEN`) and writes
+only `entsoe_token_available=true` to the receipt.
+
+Run:
+
+```powershell
+.\scripts\run-entsoe-poland-governance-ablation.ps1 -ConfigPath configs\real_data_dfl_entsoe_poland_feature_ablation_token_week3.yaml -RunSlug week3_dfl_entsoe_poland_token_source_governance_v3
+```
+
+Evidence:
+
+- Dagster run id: `2a1983fd-3b54-4020-9d76-a8fc6c36ef90`;
+- local packet:
+  `data/research_runs/week3_dfl_entsoe_poland_token_source_governance_v3/`;
+- ENTSO-E API source-backed Poland candidate rows: `186`;
+- token/source-backed-sample blockers cleared;
+- status counts: `blocked_by_governance=2`;
+- approved feature columns: none;
+- market-coupled B training runs: `0`;
+- evidence check passed;
+- `market_execution_enabled=false`.
+
+Remaining blockers:
+
+- `publication_time`;
+- `prior_eur_uah_fx_rate`;
+- `currency`;
+- `timezone`;
+- `licensing`;
+- `market_rules`;
+- `domain_shift`;
+- `temporal_availability`.
+
+This is a stronger blocked packet than the 2026-05-17 run. It proves that source
+access is no longer the blocker, but the feature is still not allowed into
+training because point-in-time economic/governance evidence is incomplete.
+
+## Experimental-Ablation Route
+
+The feature route now distinguishes controlled ablation readiness from official
+training approval:
+
+- `approved_for_experimental_ablation=true` means the point-in-time mechanics
+  are ready, but `domain_shift` is still pending. This may produce
+  `ablation_status=approved_route_pending_materialization`.
+- `approved_for_official_training=true` is stricter. It requires the same
+  mechanics plus a passing Ukrainian holdout/domain-shift validation result.
+- `training_use_allowed` and `feature_use_allowed` remain false until official
+  approval. This keeps accidental NBEATSx/TFT/DFL training from consuming a
+  not-yet-validated external feature.
+
+The next market-coupling implementation target has now been added as
+`entsoe_poland_lagged_feature_candidate_frame`. It emits the prior-safe
+candidate column `entsoe_pl_lag24_day_ahead_price_uah_mwh`, where Ukrainian
+timestamp `t` receives the Poland ENTSO-E price from `t - 24h`. The row is only
+eligible for controlled ablation when the benchmark has full timestamp coverage,
+the NBU EUR/UAH FX rate is source-labelled and timestamped before the Ukrainian
+anchor, and the remaining timezone/DST, licensing, and market-rule controls are
+ready. This clears the mechanics for a leak-safe lagged feature without
+assuming that same-delivery Polish DAM results are always published before the
+Ukrainian decision anchor.
+
+The first lag-24 materialization ran on 2026-05-20 as
+`week3_dfl_entsoe_poland_lag24_governance_attempt` with Dagster run
+`e004a33f-8851-4451-9da5-83ddf8b43154`. The ablation evidence check passed and
+exported a valid packet, but the state remained `blocked_by_governance` for both
+official NBEATSx source rows. No market-coupled B model was trained. The blocker
+list is now precise:
+`currency,domain_shift,licensing,market_rules,prior_eur_uah_fx_rate,publication_time,temporal_availability,timezone`.
 
 ## No-Token Poland Snapshot Route
 

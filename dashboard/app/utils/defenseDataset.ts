@@ -100,6 +100,14 @@ export interface DefenseTftSafeSelectionExplanation {
   status: 'opportunity' | 'leakage' | 'diagnosis' | 'next'
 }
 
+export interface DefenseV2PlusImprovementPoint {
+  label: string
+  value: string
+  englishBody: string
+  ukrainianBody: string
+  status: 'candidate_space' | 'fallback' | 'scoring' | 'boundary'
+}
+
 export interface DefenseDtLavaPlanStep {
   label: string
   value: string
@@ -297,6 +305,37 @@ export const CURRENT_TFT_SAFE_SELECTION_EXPLAINER: DefenseTftSafeSelectionExplan
     englishBody: 'Next work is to build stronger prior context and candidate/value or DT/LAVA schedule-neighbor supervision that learns when TFT-like risk schedules help. Promotion still requires beating V2+ before the fact under the same strict gate.',
     ukrainianBody: 'Наступний крок: сильніший prior context і candidate/value або DT/LAVA schedule-neighbor supervision, який навчиться передбачати, коли TFT-like risk schedules допомагають. Promotion можливий тільки якщо кандидат beat V2+ before the fact under the same strict gate.',
     status: 'next'
+  }
+]
+
+export const CURRENT_V2_PLUS_IMPROVEMENT_STORY: DefenseV2PlusImprovementPoint[] = [
+  {
+    label: 'Frozen V2 to V2+',
+    value: '206.37 -> 174.77 UAH',
+    englishBody: 'The calibrated lane improved by 31.60 UAH mean regret, or 15.31% versus frozen V2, while keeping the same strict LP/oracle judge.',
+    ukrainianBody: 'Calibrated lane покращив mean regret на 31.60 UAH, або 15.31% проти frozen V2, з тим самим strict LP/oracle evaluator.',
+    status: 'scoring'
+  },
+  {
+    label: 'Better schedule map',
+    value: '5 new families',
+    englishBody: 'V2+ adds rank-extrema, robust-spread, strict-neighborhood, temporal-block, and terminal-SOC candidates around the actual failure modes.',
+    ukrainianBody: 'V2+ додає rank-extrema, robust-spread, strict-neighborhood, temporal-block і terminal-SOC candidates навколо реальних failure modes.',
+    status: 'candidate_space'
+  },
+  {
+    label: 'Safe fallback',
+    value: 'V2 remains guard',
+    englishBody: 'A new candidate can replace frozen V2 only when prior/train anchors predict non-degrading improvement. Otherwise V2+ falls back to V2.',
+    ukrainianBody: 'Новий candidate може замінити frozen V2 тільки коли prior/train anchors прогнозують non-degrading improvement. Інакше V2+ повертається до V2.',
+    status: 'fallback'
+  },
+  {
+    label: 'What it proves',
+    value: 'decision layer won',
+    englishBody: 'The result is not a raw-forecast-superiority claim. It shows that forecast/context signals become valuable after calibration, candidate generation, and strict value scoring.',
+    ukrainianBody: 'Це не claim, що raw forecast сам по собі кращий. Результат показує, що forecast/context signals стають корисними після calibration, candidate generation і strict value scoring.',
+    status: 'boundary'
   }
 ]
 

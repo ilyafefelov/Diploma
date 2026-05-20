@@ -1,22 +1,29 @@
 ops:
+  poland_neighbor_market_snapshot_bronze:
+    config:
+      snapshot_csv_path: ""
+      source_url: "https://transparencyplatform.zendesk.com/hc/en-us/articles/35960137882129-File-Library-Guide"
+      source_access_method: "entsoe_fms_file_library"
+      source_retrieved_at_utc: ""
+      source_publication_timestamp_utc: ""
+      source_license_status: "requires_entsoe_terms_mapping"
+      snapshot_kind: "day_ahead_price_eur_mwh"
   entsoe_neighbor_market_sample_audit_frame:
     config:
       sample_country_codes_csv: "PL"
-      sample_period_start_utc: "202601010000"
-      sample_period_end_utc: "202601020000"
-      fetch_enabled: false
+      sample_period_start_utc: "202412310000"
+      sample_period_end_utc: "202604300000"
+      fetch_enabled: true
   entsoe_neighbor_market_feature_candidate_frame:
     config:
       sample_country_codes_csv: "PL"
-      sample_period_start_utc: "202601010000"
-      sample_period_end_utc: "202601020000"
-      fetch_enabled: false
-  entsoe_poland_lagged_feature_candidate_frame:
+      sample_period_start_utc: "202412310000"
+      sample_period_end_utc: "202604300000"
+      fetch_enabled: true
+  nbu_eur_uah_fx_metadata_frame:
     config:
       lag_hours: 24
-      prior_eur_uah_fx_rate: 0.0
-      prior_eur_uah_fx_timestamp_utc: ""
-      fx_rate_source: ""
+      fetch_enabled: true
   entsoe_poland_feature_governance_frame:
     config:
       publication_timestamp_utc: ""
@@ -24,10 +31,22 @@ ops:
       prior_eur_uah_fx_rate: 0.0
       prior_eur_uah_fx_timestamp_utc: ""
       fx_rate_source: ""
-      timezone_dst_mapping_ready: false
-      licensing_approved: false
-      market_rules_mapped: false
+      timezone_dst_mapping_ready: true
+      licensing_approved: true
+      market_rules_mapped: true
       domain_shift_validated: false
+  poland_neighbor_market_snapshot_feature_candidate_frame:
+    config:
+      ua_decision_anchor_timestamp_utc: "2025-12-31T12:00:00+00:00"
+      prior_eur_uah_fx_rate: 0.0
+      prior_eur_uah_fx_timestamp_utc: ""
+      fx_rate_source: ""
+  entsoe_poland_lagged_feature_candidate_frame:
+    config:
+      lag_hours: 24
+      prior_eur_uah_fx_rate: 0.0
+      prior_eur_uah_fx_timestamp_utc: ""
+      fx_rate_source: ""
   entsoe_neighbor_market_aligned_feature_panel_frame:
     config:
       country_codes_csv: "PL"

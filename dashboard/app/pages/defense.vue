@@ -11,6 +11,7 @@ import {
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
   CURRENT_TFT_USE_DECISION,
+  CURRENT_V2_PLUS_IMPROVEMENT_STORY,
   formatPercent,
   formatUah,
   summarizeScheduleValuePromotionReadModel
@@ -546,6 +547,35 @@ useHead({
             </div>
           </div>
         </article>
+      </div>
+
+      <div class="v2-plus-improvement-panel">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">
+              Why V2+ beats V2
+            </p>
+            <h3>Same strict judge, better schedule candidates</h3>
+            <p class="section-explainer">
+              V2+ did not weaken the benchmark and did not claim raw forecast superiority. It improved the decision
+              layer by adding prior-safe schedule families around the failure modes found after V2, while keeping V2
+              as fallback.
+            </p>
+          </div>
+          <span class="source-pill">206.37 -> 174.77 UAH</span>
+        </div>
+        <div class="v2-plus-improvement-grid">
+          <article
+            v-for="point in CURRENT_V2_PLUS_IMPROVEMENT_STORY"
+            :key="point.label"
+            :class="`v2-plus-improvement-card v2-plus-improvement-card--${point.status}`"
+          >
+            <span>{{ point.label }}</span>
+            <strong>{{ point.value }}</strong>
+            <small>{{ point.englishBody }}</small>
+            <em>{{ point.ukrainianBody }}</em>
+          </article>
+        </div>
       </div>
 
       <div class="tft-use-panel">
@@ -1639,6 +1669,75 @@ h2 {
   margin-bottom: 0;
 }
 
+.v2-plus-improvement-panel {
+  display: grid;
+  gap: 0.85rem;
+  border: 1px solid rgba(34, 197, 94, 0.18);
+  border-radius: 0.72rem;
+  background: linear-gradient(135deg, rgba(220, 252, 231, 0.78), rgba(255, 255, 255, 0.94));
+  padding: 1rem;
+}
+
+.v2-plus-improvement-panel .section-heading {
+  margin-bottom: 0;
+}
+
+.v2-plus-improvement-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.v2-plus-improvement-card {
+  display: grid;
+  gap: 0.38rem;
+  border: 1px solid rgba(20, 32, 51, 0.1);
+  border-radius: 0.62rem;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.78rem;
+}
+
+.v2-plus-improvement-card span {
+  color: #475569;
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.v2-plus-improvement-card strong {
+  color: #142033;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.v2-plus-improvement-card small,
+.v2-plus-improvement-card em {
+  color: #617084;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.v2-plus-improvement-card em {
+  border-top: 1px solid rgba(20, 32, 51, 0.08);
+  padding-top: 0.35rem;
+}
+
+.v2-plus-improvement-card--candidate_space {
+  border-color: rgba(14, 165, 233, 0.24);
+}
+
+.v2-plus-improvement-card--fallback {
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+.v2-plus-improvement-card--scoring {
+  border-color: rgba(99, 102, 241, 0.22);
+}
+
+.v2-plus-improvement-card--boundary {
+  border-color: rgba(249, 115, 22, 0.22);
+}
+
 .tft-use-grid,
 .section-note-strip {
   display: grid;
@@ -2185,6 +2284,7 @@ td {
   .bucket-grid,
   .context-grid,
   .latest-experiment-grid,
+  .v2-plus-improvement-grid,
   .future-stack-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2226,6 +2326,7 @@ td {
   .bucket-grid,
   .context-grid,
   .latest-experiment-grid,
+  .v2-plus-improvement-grid,
   .future-stack-grid,
   .offline-promotion-rows,
   .tft-use-grid,

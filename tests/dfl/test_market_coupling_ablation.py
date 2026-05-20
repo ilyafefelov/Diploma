@@ -52,6 +52,26 @@ def test_market_coupling_ablation_blocks_without_approved_features() -> None:
     assert outcome.passed is True
 
 
+def test_market_coupling_ablation_can_wait_for_experimental_route_materialization() -> None:
+    frame = build_dfl_market_coupling_v2_plus_ablation_frame(
+        _strict_frame(baseline_selected_regrets=[100.0, 100.0, 100.0, 100.0]),
+        _robustness_frame(passed_windows=4),
+        _feature_route(approved=False, experimental=True),
+        source_model_names=(SOURCE,),
+        min_tenant_count=2,
+        min_validation_tenant_anchor_count=4,
+    )
+
+    row = frame.row(0, named=True)
+    assert row["ablation_status"] == "approved_route_pending_materialization"
+    assert row["did_train_market_coupled_variant"] is False
+    assert row["approved_external_feature_columns_csv"] == (
+        "entsoe_neighbor_day_ahead_price_context"
+    )
+    assert row["ablation_blocker"] == "missing_market_coupled_v2_plus_evidence"
+    assert row["market_execution_enabled"] is False
+
+
 def test_market_coupling_ablation_passes_only_when_market_coupled_variant_beats_v2_plus() -> None:
     frame = build_dfl_market_coupling_v2_plus_ablation_frame(
         _strict_frame(baseline_selected_regrets=[100.0, 100.0, 100.0, 100.0]),
@@ -218,9 +238,10 @@ def test_market_coupling_ablation_packet_refuses_failed_evidence() -> None:
         raise AssertionError("Expected failed evidence to block export.")
 
 
-def _feature_route(*, approved: bool) -> pl.DataFrame:
+def _feature_route(*, approved: bool, experimental: bool = False) -> pl.DataFrame:
     status = "approved_for_training" if approved else "blocked_by_governance"
-    blockers = "" if approved else "publication_time,prior_fx,licensing"
+    blockers = "" if approved else ("domain_shift" if experimental else "publication_time,prior_fx,licensing")
+    point_in_time_ready = approved or experimental
     return pl.DataFrame(
         [
             {
@@ -229,17 +250,23 @@ def _feature_route(*, approved: bool) -> pl.DataFrame:
                 "source_kind": "neighbor_market_api",
                 "approved_feature_column": "entsoe_neighbor_day_ahead_price_context",
                 "feature_route_status": status,
-                "source_backed_row_count": 24 if approved else 0,
+                "source_backed_row_count": 24 if point_in_time_ready else 0,
                 "training_use_allowed": approved,
                 "feature_use_allowed": approved,
                 "approved_for_official_training": approved,
+                "experimental_feature_route_status": (
+                    "approved_for_experimental_ablation"
+                    if experimental
+                    else "blocked_for_experimental_ablation"
+                ),
+                "approved_for_experimental_ablation": experimental,
                 "training_blockers_csv": blockers,
                 "readiness_status": "training_ready" if approved else "blocked",
-                "licensing_status": "ready" if approved else "blocked",
-                "timezone_status": "ready" if approved else "blocked",
-                "currency_status": "ready" if approved else "blocked",
-                "market_rules_status": "ready" if approved else "blocked",
-                "temporal_availability_status": "ready" if approved else "blocked",
+                "licensing_status": "ready" if point_in_time_ready else "blocked",
+                "timezone_status": "ready" if point_in_time_ready else "blocked",
+                "currency_status": "ready" if point_in_time_ready else "blocked",
+                "market_rules_status": "ready" if point_in_time_ready else "blocked",
+                "temporal_availability_status": "ready" if point_in_time_ready else "blocked",
                 "domain_shift_status": "ready" if approved else "blocked",
                 "publication_time_policy": "must_be_published_before_ua_anchor",
                 "decision_cutoff_policy": "ua_dam_day_ahead_cutoff",

@@ -22,6 +22,7 @@ $resolvedConfigPath = if ([System.IO.Path]::IsPathRooted($ConfigPath)) {
 if (-not (Test-Path -LiteralPath $resolvedConfigPath)) {
     throw "ConfigPath does not exist: $resolvedConfigPath"
 }
+$containerConfigPath = [System.IO.Path]::GetRelativePath($projectRoot, $resolvedConfigPath) -replace "\\", "/"
 
 $resolvedOutputRoot = if ([System.IO.Path]::IsPathRooted($OutputRoot)) {
     $OutputRoot
@@ -35,22 +36,65 @@ $picklePath = Join-Path $exportDir "dfl_market_coupling_v2_plus_ablation_frame.p
 $receiptPath = Join-Path $exportDir "entsoe-poland-governance-run-receipt.json"
 $materializationLogPath = Join-Path $exportDir "entsoe-poland-governance-materialization.log"
 
-$entsoeTokenAvailable = -not [string]::IsNullOrWhiteSpace($env:ENTSOE_TOKEN)
-if (-not $entsoeTokenAvailable) {
-    $entsoeTokenAvailable = -not [string]::IsNullOrWhiteSpace($env:ENTSOE_SECURITY_TOKEN)
-}
-if (-not $entsoeTokenAvailable) {
-    $entsoeTokenAvailable = -not [string]::IsNullOrWhiteSpace($env:ENTSO_E_SECURITY_TOKEN)
+function Read-LocalEnvFile {
+    param([string]$Path)
+
+    $values = @{}
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return $values
+    }
+    foreach ($rawLine in Get-Content -LiteralPath $Path) {
+        $line = $rawLine.Trim()
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#") -or -not $line.Contains("=")) {
+            continue
+        }
+        $key, $value = $line.Split("=", 2)
+        $values[$key.Trim()] = $value.Trim().Trim('"').Trim("'")
+    }
+    return $values
 }
 
-$assetSelection = "forecast_afe_feature_catalog_frame,market_coupling_temporal_availability_frame,entsoe_neighbor_market_query_spec_frame,entsoe_neighbor_market_feature_candidate_frame,entsoe_poland_feature_governance_frame,entsoe_neighbor_market_aligned_feature_panel_frame,official_forecast_exogenous_governance_frame,official_forecast_exogenous_feature_route_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,dfl_market_coupling_v2_plus_ablation_frame"
+$localEnvValues = Read-LocalEnvFile -Path (Join-Path $projectRoot ".env")
+$entsoeTokenKeys = @(
+    "ENTSOE_TOKEN",
+    "ENTSOE_SECURITY_TOKEN",
+    "ENTSO_E_SECURITY_TOKEN",
+    "entsoe_token",
+    "entsoe_security_token",
+    "entso_e_security_token"
+)
+$entsoeTokenValue = $null
+foreach ($key in $entsoeTokenKeys) {
+    $candidate = [System.Environment]::GetEnvironmentVariable($key)
+    if (-not [string]::IsNullOrWhiteSpace($candidate)) {
+        $entsoeTokenValue = $candidate
+        break
+    }
+    if ($localEnvValues.ContainsKey($key) -and -not [string]::IsNullOrWhiteSpace($localEnvValues[$key])) {
+        $entsoeTokenValue = $localEnvValues[$key]
+        break
+    }
+}
+$entsoeTokenAvailable = -not [string]::IsNullOrWhiteSpace($entsoeTokenValue)
+if ($entsoeTokenAvailable -and [string]::IsNullOrWhiteSpace($env:ENTSOE_TOKEN)) {
+    $env:ENTSOE_TOKEN = $entsoeTokenValue
+}
 
-$materializationCommand = @(
-    "docker", "compose", "exec", "-T", "dagster-webserver",
+$assetSelection = "forecast_afe_feature_catalog_frame,market_coupling_temporal_availability_frame,entsoe_neighbor_market_query_spec_frame,entsoe_neighbor_market_feature_candidate_frame,poland_neighbor_market_snapshot_bronze,poland_neighbor_market_snapshot_feature_candidate_frame,nbu_eur_uah_fx_metadata_frame,entsoe_poland_lagged_feature_candidate_frame,entsoe_poland_feature_governance_frame,entsoe_neighbor_market_aligned_feature_panel_frame,official_forecast_exogenous_governance_frame,official_forecast_exogenous_feature_route_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,dfl_market_coupling_v2_plus_ablation_frame"
+
+$dockerExecArguments = @("docker", "compose", "exec", "-T")
+if ($entsoeTokenAvailable) {
+    $dockerExecArguments += @("-e", "ENTSOE_TOKEN")
+}
+$dockerExecArguments += @("dagster-webserver")
+
+$materializationCommand = @()
+$materializationCommand += $dockerExecArguments
+$materializationCommand += @(
     "uv", "run", "dagster", "asset", "materialize",
     "-m", "smart_arbitrage.defs",
     "--select", $assetSelection,
-    "-c", $ConfigPath
+    "-c", $containerConfigPath
 )
 
 $receipt = @{

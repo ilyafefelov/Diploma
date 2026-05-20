@@ -71,6 +71,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     regret_weighted_forecast_strategy_benchmark_frame,
     regret_weighted_dfl_pilot_frame,
     risk_adjusted_value_gate_frame,
+    _concat_feature_candidate_frames,
 )
 from smart_arbitrage.defs import defs
 from smart_arbitrage.dfl.promotion_gate import PromotionGateResult
@@ -146,6 +147,26 @@ def _benchmark_frame() -> pl.DataFrame:
                 }
             )
     return pl.DataFrame(rows)
+
+
+def test_feature_candidate_concat_relaxes_null_lagged_columns() -> None:
+    primary = pl.DataFrame({"feature_name": ["base"]}).with_columns(
+        pl.lit(None).alias("source_delivery_timestamp_utc")
+    )
+    lagged = pl.DataFrame(
+        {
+            "feature_name": ["lagged"],
+            "source_delivery_timestamp_utc": ["2026-01-01T00:00:00+00:00"],
+        }
+    )
+
+    merged = _concat_feature_candidate_frames(primary, lagged)
+
+    assert merged["feature_name"].to_list() == ["base", "lagged"]
+    assert merged["source_delivery_timestamp_utc"].to_list() == [
+        None,
+        "2026-01-01T00:00:00+00:00",
+    ]
 
 
 def _silver_feature_frame() -> pl.DataFrame:
@@ -309,6 +330,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "entsoe_neighbor_market_query_spec_frame",
         "entsoe_neighbor_market_sample_audit_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
+        "nbu_eur_uah_fx_metadata_frame",
+        "entsoe_poland_lagged_feature_candidate_frame",
         "poland_neighbor_market_snapshot_feature_candidate_frame",
         "poland_neighbor_market_hourly_feature_frame",
         "entsoe_poland_governance_closure_frame",
@@ -658,6 +681,10 @@ def test_dfl_research_assets_are_registered() -> None:
         == "gold_dfl_training"
     )
     assert (
+        groups_by_key["entsoe_poland_lagged_feature_candidate_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
         groups_by_key["poland_neighbor_market_snapshot_feature_candidate_frame"]
         == "gold_dfl_training"
     )
@@ -917,6 +944,13 @@ def test_dfl_research_assets_are_registered() -> None:
         tags_by_key["entsoe_neighbor_market_aligned_feature_panel_frame"]["ml_stage"]
         == "feature_engineering"
     )
+    assert tags_by_key["nbu_eur_uah_fx_metadata_frame"]["ml_stage"] == (
+        "feature_engineering"
+    )
+    assert (
+        tags_by_key["entsoe_poland_lagged_feature_candidate_frame"]["ml_stage"]
+        == "feature_engineering"
+    )
     assert tags_by_key["entsoe_poland_feature_governance_frame"]["ml_stage"] == (
         "feature_engineering"
     )
@@ -1157,8 +1191,15 @@ def test_dfl_research_assets_are_registered() -> None:
         "real_data_benchmark_silver_feature_frame",
         "entsoe_neighbor_market_feature_candidate_frame",
     }
+    assert deps_by_key["entsoe_poland_lagged_feature_candidate_frame"] == {
+        "real_data_benchmark_silver_feature_frame",
+        "entsoe_neighbor_market_feature_candidate_frame",
+        "nbu_eur_uah_fx_metadata_frame",
+        "poland_neighbor_market_snapshot_feature_candidate_frame",
+    }
     assert deps_by_key["entsoe_poland_feature_governance_frame"] == {
         "entsoe_neighbor_market_feature_candidate_frame",
+        "entsoe_poland_lagged_feature_candidate_frame",
         "poland_neighbor_market_snapshot_feature_candidate_frame",
     }
     assert deps_by_key["poland_neighbor_market_hourly_feature_frame"] == {

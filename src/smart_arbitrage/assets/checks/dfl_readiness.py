@@ -1091,6 +1091,21 @@ def entsoe_neighbor_market_feature_candidate_evidence(
 
 
 @dg.asset_check(
+    asset="entsoe_poland_lagged_feature_candidate_frame",
+    name="entsoe_poland_lagged_feature_candidate_evidence",
+    description="Checks lagged Poland features are prior-safe source evidence before ablation/training.",
+)
+def entsoe_poland_lagged_feature_candidate_evidence(
+    entsoe_poland_lagged_feature_candidate_frame: pl.DataFrame,
+) -> dg.AssetCheckResult:
+    return _asset_check_result(
+        validate_entsoe_neighbor_market_feature_candidate_evidence(
+            entsoe_poland_lagged_feature_candidate_frame
+        )
+    )
+
+
+@dg.asset_check(
     asset="poland_neighbor_market_snapshot_bronze",
     name="poland_neighbor_market_snapshot_evidence",
     description="Checks no-token Poland neighbor-market snapshots remain source-only evidence.",
@@ -1268,6 +1283,7 @@ DFL_EVIDENCE_ASSET_CHECKS = [
     entsoe_neighbor_market_access_evidence,
     entsoe_neighbor_market_sample_audit_evidence,
     entsoe_neighbor_market_feature_candidate_evidence,
+    entsoe_poland_lagged_feature_candidate_evidence,
     poland_neighbor_market_snapshot_evidence,
     poland_neighbor_market_snapshot_feature_candidate_evidence,
     poland_neighbor_market_hourly_feature_evidence,

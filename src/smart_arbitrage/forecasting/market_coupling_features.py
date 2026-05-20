@@ -22,10 +22,12 @@ REQUIRED_MARKET_COUPLING_FEATURE_ROUTE_COLUMNS: Final[frozenset[str]] = frozense
         "source_kind",
         "approved_feature_column",
         "feature_route_status",
+        "experimental_feature_route_status",
         "source_backed_row_count",
         "training_use_allowed",
         "feature_use_allowed",
         "approved_for_official_training",
+        "approved_for_experimental_ablation",
         "training_blockers_csv",
         "readiness_status",
         "licensing_status",
@@ -109,6 +111,12 @@ def validate_market_coupling_feature_route_evidence(
         )
         and not _row_is_fully_governed(row)
     ]
+    unready_experimental_rows = [
+        row
+        for row in rows
+        if bool(row["approved_for_experimental_ablation"])
+        and not _row_is_experimentally_governed(row)
+    ]
     unbacked_approved_rows = [
         row
         for row in rows
@@ -132,25 +140,47 @@ def validate_market_coupling_feature_route_evidence(
             "blocked_by_governance",
         }
     ]
+    bad_experimental_status_rows = [
+        row
+        for row in rows
+        if str(row["experimental_feature_route_status"])
+        not in {
+            "approved_for_experimental_ablation",
+            "blocked_for_experimental_ablation",
+        }
+    ]
     if unready_approved_rows:
         failures.append("market-coupling route must not approve unready external features")
+    if unready_experimental_rows:
+        failures.append(
+            "market-coupling route must not mark experimental features unless only domain_shift remains"
+        )
     if unbacked_approved_rows:
         failures.append("market-coupling route must not approve source-unbacked features")
     if bad_claim_rows:
         failures.append("market-coupling route rows must keep research-only claim flags")
     if bad_status_rows:
         failures.append("market-coupling route rows have invalid feature_route_status")
+    if bad_experimental_status_rows:
+        failures.append(
+            "market-coupling route rows have invalid experimental_feature_route_status"
+        )
 
     metadata = {
         "row_count": len(rows),
         "approved_feature_count": len(
             [row for row in rows if bool(row["approved_for_official_training"])]
         ),
+        "experimental_feature_count": len(
+            [row for row in rows if bool(row["approved_for_experimental_ablation"])]
+        ),
         "source_backed_rows": sum(int(row["source_backed_row_count"]) for row in rows),
         "unready_approved_rows": len(unready_approved_rows),
+        "unready_experimental_rows": len(unready_experimental_rows),
         "unbacked_approved_rows": len(unbacked_approved_rows),
         "bad_claim_rows": len(bad_claim_rows),
         "bad_status_rows": len(bad_status_rows),
+        "bad_experimental_status_rows": len(bad_experimental_status_rows),
     }
     return EvidenceCheckOutcome(
         passed=not failures,
@@ -171,7 +201,9 @@ def market_coupling_feature_route_metadata(
     if route_frame is None:
         return {
             "external_feature_training_status": "not_configured",
+            "external_feature_experimental_status": "not_configured",
             "allowed_external_feature_columns_csv": "",
+            "experimental_external_feature_columns_csv": "",
             "blocked_external_feature_columns_csv": "",
             "external_training_blockers_csv": "",
             "external_feature_governance_scope": "market_coupling_not_attached",
@@ -197,6 +229,11 @@ def market_coupling_feature_route_metadata(
         for row in rows
         if bool(row["approved_for_official_training"])
     )
+    experimental = sorted(
+        str(row["approved_feature_column"])
+        for row in rows
+        if bool(row["approved_for_experimental_ablation"])
+    )
     blocked = sorted(
         str(row["approved_feature_column"])
         for row in rows
@@ -207,7 +244,11 @@ def market_coupling_feature_route_metadata(
         "external_feature_training_status": "training_ready"
         if allowed
         else "blocked_by_governance",
+        "external_feature_experimental_status": "ablation_ready"
+        if experimental
+        else "blocked_by_governance",
         "allowed_external_feature_columns_csv": ",".join(allowed),
+        "experimental_external_feature_columns_csv": ",".join(experimental),
         "blocked_external_feature_columns_csv": ",".join(blocked),
         "external_training_blockers_csv": EXTERNAL_TRAINING_BLOCKERS if blocked else "",
         "external_feature_governance_scope": "market_coupling_feature_route_frame",
@@ -234,6 +275,9 @@ def _route_row(
         else _source_observation_count(row)
     )
     fully_governed = _row_is_fully_governed(effective_row) and source_backed_row_count > 0
+    experimentally_governed = (
+        _row_is_experimentally_governed(effective_row) and source_backed_row_count > 0
+    )
     if fully_governed:
         feature_route_status = "approved_for_training"
     elif source_backed_row_count > 0:
@@ -246,10 +290,16 @@ def _route_row(
         "source_kind": str(effective_row["source_kind"]),
         "approved_feature_column": str(effective_row["approved_feature_column"]),
         "feature_route_status": feature_route_status,
+        "experimental_feature_route_status": (
+            "approved_for_experimental_ablation"
+            if experimentally_governed
+            else "blocked_for_experimental_ablation"
+        ),
         "source_backed_row_count": source_backed_row_count,
         "training_use_allowed": bool(effective_row["training_use_allowed"]),
         "feature_use_allowed": fully_governed,
         "approved_for_official_training": fully_governed,
+        "approved_for_experimental_ablation": experimentally_governed,
         "training_blockers_csv": str(effective_row["training_blockers_csv"]),
         "readiness_status": str(effective_row["readiness_status"]),
         "licensing_status": str(effective_row["licensing_status"]),
@@ -286,6 +336,28 @@ def _row_is_fully_governed(row: dict[str, object]) -> bool:
     )
 
 
+def _row_is_experimentally_governed(row: dict[str, object]) -> bool:
+    if "experimental_ablation_use_allowed" in row:
+        return bool(row.get("experimental_ablation_use_allowed", False))
+    if (
+        str(row.get("experimental_feature_route_status", ""))
+        == "approved_for_experimental_ablation"
+        and str(row["training_blockers_csv"]) in {"", "domain_shift"}
+        and all(
+            str(row[column_name]) == "ready"
+            for column_name in (
+                "licensing_status",
+                "timezone_status",
+                "currency_status",
+                "market_rules_status",
+                "temporal_availability_status",
+            )
+        )
+    ):
+        return True
+    return False
+
+
 def _source_observation_count(row: dict[str, object]) -> int:
     value = row.get("source_observation_count", 0)
     if isinstance(value, int):
@@ -314,6 +386,7 @@ def _entsoe_poland_governance_row(frame: pl.DataFrame | None) -> dict[str, objec
         "approved_feature_column",
         "source_backed_row_count",
         "training_use_allowed",
+        "experimental_ablation_use_allowed",
         "training_blockers_csv",
         "readiness_status",
         "licensing_status",
@@ -346,6 +419,9 @@ def _effective_route_row(
         **row,
         "approved_feature_column": str(entsoe_poland_governance["approved_feature_column"]),
         "training_use_allowed": bool(entsoe_poland_governance["training_use_allowed"]),
+        "experimental_ablation_use_allowed": bool(
+            entsoe_poland_governance.get("experimental_ablation_use_allowed", False)
+        ),
         "training_blockers_csv": str(entsoe_poland_governance["training_blockers_csv"]),
         "readiness_status": str(entsoe_poland_governance["readiness_status"]),
         "licensing_status": str(entsoe_poland_governance["licensing_status"]),

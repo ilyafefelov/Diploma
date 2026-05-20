@@ -257,6 +257,13 @@ def test_entsoe_poland_governance_ablation_runner_exports_packet() -> None:
     assert "ENTSOE_TOKEN" in runner_script
     assert "ENTSOE_SECURITY_TOKEN" in runner_script
     assert "ENTSO_E_SECURITY_TOKEN" in runner_script
+    assert "entsoe_token" in runner_script
+    assert '("-e", "ENTSOE_TOKEN")' in runner_script
+    assert "GetRelativePath" in runner_script
+    assert "poland_neighbor_market_snapshot_bronze" in runner_script
+    assert "poland_neighbor_market_snapshot_feature_candidate_frame" in runner_script
+    assert "nbu_eur_uah_fx_metadata_frame" in runner_script
+    assert "entsoe_poland_lagged_feature_candidate_frame" in runner_script
     assert "entsoe_poland_feature_governance_frame" in runner_script
     assert "official_forecast_exogenous_feature_route_frame" in runner_script
     assert "dfl_market_coupling_v2_plus_ablation_frame" in runner_script

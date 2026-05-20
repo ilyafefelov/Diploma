@@ -277,12 +277,15 @@ from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_f
 from smart_arbitrage.forecasting.market_coupling_availability import (
     build_market_coupling_temporal_availability_frame,
 )
+from smart_arbitrage.forecasting.nbu_fx import build_nbu_eur_uah_fx_metadata_frame
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_poland_lagged_feature_candidate_frame,
     build_entsoe_neighbor_market_aligned_feature_panel_frame,
     build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
     build_entsoe_poland_feature_governance_frame,
+    load_entsoe_security_token,
 )
 from smart_arbitrage.forecasting.poland_neighbor_snapshot import (
     build_entsoe_poland_governance_closure_frame,
@@ -336,6 +339,22 @@ class EntsoeNeighborMarketAlignedFeaturePanelAssetConfig(dg.Config):
     """Timestamp-aligned ENTSO-E neighbor feature panel scope."""
 
     country_codes_csv: str = "PL"
+
+
+class EntsoePolandLaggedFeatureCandidateAssetConfig(dg.Config):
+    """Prior-safe lagged Poland ENTSO-E feature candidate controls."""
+
+    lag_hours: int = 24
+    prior_eur_uah_fx_rate: float = 0.0
+    prior_eur_uah_fx_timestamp_utc: str = ""
+    fx_rate_source: str = ""
+
+
+class NbuEurUahFxMetadataAssetConfig(dg.Config):
+    """NBU EUR/UAH metadata scope for lagged Poland feature normalization."""
+
+    lag_hours: int = 24
+    fetch_enabled: bool = True
 
 
 class EntsoePolandFeatureGovernanceAssetConfig(dg.Config):
@@ -1505,6 +1524,112 @@ def entsoe_neighbor_market_feature_candidate_frame(
         market_venue="DAM",
     ),
 )
+def nbu_eur_uah_fx_metadata_frame(
+    context,
+    config: NbuEurUahFxMetadataAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-known NBU EUR/UAH metadata for lagged market-coupling features."""
+
+    fx_frame = build_nbu_eur_uah_fx_metadata_frame(
+        real_data_benchmark_silver_feature_frame,
+        lag_hours=config.lag_hours,
+        fetch_enabled=config.fetch_enabled,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": fx_frame.height,
+            "source_backed_rows": fx_frame.filter(pl.col("source_backed")).height
+            if fx_frame.height
+            else 0,
+            "first_effective_date": fx_frame.select(
+                pl.col("fx_rate_effective_date").min()
+            ).item()
+            if fx_frame.height
+            else "",
+            "last_effective_date": fx_frame.select(
+                pl.col("fx_rate_effective_date").max()
+            ).item()
+            if fx_frame.height
+            else "",
+            "fetch_enabled": config.fetch_enabled,
+            "scope": "nbu_eur_uah_fx_metadata_research_gate",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return fx_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
+def entsoe_poland_lagged_feature_candidate_frame(
+    context,
+    config: EntsoePolandLaggedFeatureCandidateAssetConfig,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
+    nbu_eur_uah_fx_metadata_frame: pl.DataFrame | None = None,
+    poland_neighbor_market_snapshot_feature_candidate_frame: pl.DataFrame | None = None,
+) -> pl.DataFrame:
+    """Prior-safe lagged Poland feature candidates with FX metadata."""
+
+    candidate_frame = _concat_feature_candidate_frames(
+        entsoe_neighbor_market_feature_candidate_frame,
+        poland_neighbor_market_snapshot_feature_candidate_frame,
+    )
+    lagged_frame = build_entsoe_poland_lagged_feature_candidate_frame(
+        real_data_benchmark_silver_feature_frame,
+        candidate_frame,
+        lag_hours=config.lag_hours,
+        prior_eur_uah_fx_rate=config.prior_eur_uah_fx_rate,
+        prior_eur_uah_fx_timestamp_utc=config.prior_eur_uah_fx_timestamp_utc,
+        fx_rate_source=config.fx_rate_source,
+        nbu_eur_uah_fx_metadata_frame=nbu_eur_uah_fx_metadata_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": lagged_frame.height,
+            "source_backed_rows": lagged_frame.filter(pl.col("source_backed")).height
+            if lagged_frame.height
+            else 0,
+            "coverage_status": lagged_frame.select("coverage_status").to_series().item(0)
+            if lagged_frame.height and "coverage_status" in lagged_frame.columns
+            else "empty",
+            "feature_column": lagged_frame.select("feature_column").to_series().item(0)
+            if lagged_frame.height
+            else "",
+            "lag_hours": config.lag_hours,
+            "fx_rate_source": config.fx_rate_source,
+            "scope": "entsoe_poland_lagged_feature_candidate_research_gate",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return lagged_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="research_only",
+        market_venue="DAM",
+    ),
+)
 def poland_neighbor_market_snapshot_feature_candidate_frame(
     context,
     config: PolandNeighborMarketSnapshotFeatureCandidateAssetConfig,
@@ -1663,6 +1788,7 @@ def entsoe_poland_feature_governance_frame(
     config: EntsoePolandFeatureGovernanceAssetConfig,
     entsoe_neighbor_market_feature_candidate_frame: pl.DataFrame,
     poland_neighbor_market_snapshot_feature_candidate_frame: pl.DataFrame | None = None,
+    entsoe_poland_lagged_feature_candidate_frame: pl.DataFrame | None = None,
 ) -> pl.DataFrame:
     """Point-in-time governance gate for one Poland ENTSO-E exogenous feature."""
 
@@ -1670,6 +1796,10 @@ def entsoe_poland_feature_governance_frame(
     candidate_frame = _concat_feature_candidate_frames(
         entsoe_neighbor_market_feature_candidate_frame,
         poland_neighbor_market_snapshot_feature_candidate_frame,
+    )
+    candidate_frame = _concat_feature_candidate_frames(
+        candidate_frame,
+        entsoe_poland_lagged_feature_candidate_frame,
     )
     governance_frame = build_entsoe_poland_feature_governance_frame(
         candidate_frame,
@@ -8602,6 +8732,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     entsoe_neighbor_market_query_spec_frame,
     entsoe_neighbor_market_sample_audit_frame,
     entsoe_neighbor_market_feature_candidate_frame,
+    nbu_eur_uah_fx_metadata_frame,
+    entsoe_poland_lagged_feature_candidate_frame,
     poland_neighbor_market_snapshot_feature_candidate_frame,
     poland_neighbor_market_hourly_feature_frame,
     entsoe_poland_governance_closure_frame,
@@ -8774,18 +8906,14 @@ def _concat_feature_candidate_frames(
             primary_frame.select(optional_frame.columns),
             optional_frame,
         ],
-        how="vertical",
+        how="vertical_relaxed",
     )
 
 
 def _entsoe_security_token() -> str | None:
     """Return the local ENTSO-E token without recording it in evidence artifacts."""
 
-    return (
-        os.environ.get("ENTSOE_TOKEN")
-        or os.environ.get("ENTSOE_SECURITY_TOKEN")
-        or os.environ.get("ENTSO_E_SECURITY_TOKEN")
-    )
+    return load_entsoe_security_token()
 
 
 def _float_csv_values(raw_value: str, *, field_name: str) -> tuple[float, ...]:

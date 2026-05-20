@@ -11,6 +11,7 @@ import {
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
   CURRENT_TFT_USE_DECISION,
+  CURRENT_V2_PLUS_IMPROVEMENT_STORY,
   summarizeDefenseBenchmark,
   summarizeScheduleValuePromotionReadModel
 } from './defenseDataset'
@@ -285,6 +286,19 @@ describe('defense dataset summaries', () => {
     )
     expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.find(point => point.label === 'Why it failed')?.ukrainianBody).toContain(
       '90/90'
+    )
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY.map(point => point.label)).toEqual([
+      'Frozen V2 to V2+',
+      'Better schedule map',
+      'Safe fallback',
+      'What it proves'
+    ])
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY[0]?.value).toBe('206.37 -> 174.77 UAH')
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY.find(point => point.label === 'Better schedule map')?.englishBody).toContain(
+      'terminal-SOC'
+    )
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY.find(point => point.label === 'What it proves')?.ukrainianBody).toContain(
+      'raw forecast'
     )
     expect(CURRENT_DT_LAVA_NEXT_STEPS.map(point => point.label)).toEqual([
       'Teacher data',

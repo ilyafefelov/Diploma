@@ -1,7 +1,10 @@
+from datetime import datetime
+
 import polars as pl
 
 from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_poland_lagged_feature_candidate_frame,
     build_entsoe_poland_feature_governance_frame,
     build_entsoe_neighbor_market_query_spec_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
@@ -178,6 +181,103 @@ def test_market_coupling_feature_route_approves_poland_when_governance_passes() 
         metadata["allowed_external_feature_columns_csv"]
         == "entsoe_pl_day_ahead_price_uah_mwh"
     )
+
+
+def test_market_coupling_feature_route_keeps_domain_shift_pending_as_experimental_only() -> None:
+    poland_governance = build_entsoe_poland_feature_governance_frame(
+        _source_backed_poland_candidates(),
+        entsoe_security_token="dummy-token",
+        publication_timestamp_utc="2025-12-31T11:00:00+00:00",
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2025-12-31T11:30:00+00:00",
+        fx_rate_source="fixture_prior_fx",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=False,
+    )
+
+    route = build_market_coupling_feature_route_frame(
+        _availability_frame(),
+        entsoe_poland_feature_governance_frame=poland_governance,
+    )
+
+    entsoe_row = route.filter(pl.col("source_name") == "ENTSO_E").row(0, named=True)
+    assert entsoe_row["feature_route_status"] == "source_backed_but_governance_blocked"
+    assert entsoe_row["experimental_feature_route_status"] == (
+        "approved_for_experimental_ablation"
+    )
+    assert entsoe_row["approved_for_experimental_ablation"] is True
+    assert entsoe_row["approved_for_official_training"] is False
+    assert entsoe_row["training_use_allowed"] is False
+    assert entsoe_row["feature_use_allowed"] is False
+
+    metadata = market_coupling_feature_route_metadata(route)
+    assert metadata["external_feature_training_status"] == "blocked_by_governance"
+    assert metadata["external_feature_experimental_status"] == "ablation_ready"
+    assert (
+        metadata["experimental_external_feature_columns_csv"]
+        == "entsoe_pl_day_ahead_price_uah_mwh"
+    )
+    assert metadata["allowed_external_feature_columns_csv"] == ""
+
+
+def test_market_coupling_feature_route_allows_lagged_poland_ablation_before_training() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+            }
+            for hour in range(1)
+        ]
+    )
+    poland_governance = build_entsoe_poland_feature_governance_frame(
+        build_entsoe_poland_lagged_feature_candidate_frame(
+            benchmark,
+            _source_backed_poland_candidates(),
+            lag_hours=24,
+            prior_eur_uah_fx_rate=45.0,
+            prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+            fx_rate_source="NBUStatService EUR/UAH",
+        ),
+        entsoe_security_token="dummy-token",
+        publication_timestamp_utc="",
+        ua_decision_anchor_timestamp_utc="2026-01-02T00:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=False,
+    )
+
+    route = build_market_coupling_feature_route_frame(
+        _availability_frame(),
+        entsoe_poland_feature_governance_frame=poland_governance,
+    )
+
+    entsoe_row = route.filter(pl.col("source_name") == "ENTSO_E").row(0, named=True)
+    assert entsoe_row["approved_feature_column"] == (
+        "entsoe_pl_lag24_day_ahead_price_uah_mwh"
+    )
+    assert entsoe_row["feature_route_status"] == "source_backed_but_governance_blocked"
+    assert entsoe_row["experimental_feature_route_status"] == (
+        "approved_for_experimental_ablation"
+    )
+    assert entsoe_row["approved_for_experimental_ablation"] is True
+    assert entsoe_row["approved_for_official_training"] is False
+    assert entsoe_row["training_use_allowed"] is False
+    assert entsoe_row["feature_use_allowed"] is False
+
+    metadata = market_coupling_feature_route_metadata(route)
+    assert metadata["external_feature_experimental_status"] == "ablation_ready"
+    assert metadata["experimental_external_feature_columns_csv"] == (
+        "entsoe_pl_lag24_day_ahead_price_uah_mwh"
+    )
+    assert metadata["allowed_external_feature_columns_csv"] == ""
 
 
 def test_market_coupling_feature_route_approves_only_fully_governed_prior_features() -> None:

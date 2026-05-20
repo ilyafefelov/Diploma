@@ -163,6 +163,15 @@ keeps parsed EUR prices separate from model inputs: `neighbor_market_price_uah_m
 stays null until the row has a prior-known publication timestamp and a prior-known
 EUR/UAH FX rate.
 
+The first leak-safe extension of that adapter is
+`entsoe_poland_lagged_feature_candidate_frame`. It builds
+`entsoe_pl_lag24_day_ahead_price_uah_mwh`, where a Ukrainian timestamp `t` uses
+the source-backed Poland price from `t - 24h`. This is still an exogenous
+feature candidate, not a European training row. It requires full benchmark
+timestamp coverage and prior-known NBU EUR/UAH FX metadata before it can enter a
+controlled ablation; official training remains blocked until domain shift is
+validated under the unchanged V2+ strict LP/oracle gate.
+
 ## Academic And Source Basis
 
 - Nixtla NeuralForecast supports static, historic, and future exogenous
@@ -205,10 +214,13 @@ Run:
 
 ## Next Work
 
-1. Configure an ENTSO-E token outside git and fetch a tiny Poland sample with
-   training still blocked.
-2. Run the readiness preflight and keep the blockers visible in docs.
-3. Add publication-time evidence for the neighboring source.
-4. Add prior-only EUR/UAH normalization if the data terms permit it.
+1. Keep ENTSO-E token-backed and snapshot-backed Poland samples outside git and
+   leave official training blocked by default.
+2. Materialize the lag-24 Poland candidate with full benchmark timestamp
+   coverage and prior-known NBU EUR/UAH metadata.
+3. Run the controlled Ukrainian-only V2+ versus Ukrainian-plus-Poland ablation
+   only after the route reports `approved_for_experimental_ablation=true`.
+4. Promote no external feature to official training until domain-shift
+   validation passes under the same strict LP/oracle gate.
 5. Rerun official global-panel parity only after at least one feature becomes
    `approved_for_training`.

@@ -2423,11 +2423,58 @@ Materialized evidence closure:
 - claim boundary: Offline Strategy Promotion only,
   `market_execution_enabled=false`, no European rows in Ukrainian training.
 
-The precise blockers are now `entsoe_token`, `source_backed_sample`,
-`publication_time`, `prior_eur_uah_fx_rate`, `currency`, `timezone`,
-`licensing`, `market_rules`, `domain_shift`, and `temporal_availability`.
-Interpretation: the system still blocks training, but the blocker is now
-actionable governance evidence rather than an unspecified market-coupling gap.
+The 2026-05-20 local rerun added a real token-backed source check through the
+lowercase `.env` alias `entsoe_token`. The File Library token smoke returned
+safe metadata only (`token_available=true`, `token_type=Bearer`,
+`expires_in=900`), and the ENTSO-E API source-backed Poland sample produced
+`186` feature-candidate rows with status
+`source_backed_feature_sample_fetched_not_training`.
+
+Token-backed evidence closure:
+
+- config:
+  [real_data_dfl_entsoe_poland_feature_ablation_token_week3.yaml](../../configs/real_data_dfl_entsoe_poland_feature_ablation_token_week3.yaml);
+- Dagster run id: `2a1983fd-3b54-4020-9d76-a8fc6c36ef90`;
+- local evidence packet:
+  `data/research_runs/week3_dfl_entsoe_poland_token_source_governance_v3/`;
+- status: `blocked_by_governance` for both raw and calibrated official
+  global-panel NBEATSx paths;
+- approved external feature columns: none;
+- market-coupled B training runs: 0;
+- claim boundary: Offline Strategy Promotion only,
+  `market_execution_enabled=false`, no European rows in Ukrainian training.
+
+The token and source-backed-sample blockers are now cleared for this smoke run.
+The precise remaining blockers are `publication_time`,
+`prior_eur_uah_fx_rate`, `currency`, `timezone`, `licensing`, `market_rules`,
+`domain_shift`, and `temporal_availability`. Interpretation: source access is
+no longer the active blocker, but the system still correctly blocks training
+until point-in-time publication metadata, prior-known FX, licensing/rule
+evidence, timezone/DST mapping, and domain-shift validation are complete.
+
+The governance route now has a two-stage status. A row may become
+`approved_for_experimental_ablation=true` after point-in-time mechanics pass
+while still keeping `approved_for_official_training=false` until domain-shift
+validation passes. This is needed because domain shift can only be tested by a
+controlled Ukrainian-plus-Poland ablation, but that ablation must not be
+described as headline official training.
+
+The first practical route has now been implemented as
+`entsoe_poland_lagged_feature_candidate_frame`. It emits
+`entsoe_pl_lag24_day_ahead_price_uah_mwh`: Ukrainian timestamp `t` receives the
+source-backed Poland ENTSO-E day-ahead price from `t - 24h`, converted with
+prior-known NBU EUR/UAH metadata when the FX source, timestamp, and rate are
+configured. Full benchmark timestamp coverage is required before the feature can
+be considered for the controlled ablation. This avoids publication-time and
+temporal-availability leakage while still keeping same-delivery Poland prices
+blocked from training.
+
+The first lag-24 run, `week3_dfl_entsoe_poland_lag24_governance_attempt`,
+materialized the route and exported the ablation packet. It remained
+`blocked_by_governance`: no approved external feature columns, no B training,
+and `market_execution_enabled=false`. The blocked feature list now includes
+`entsoe_pl_lag24_day_ahead_price_uah_mwh`, and the unresolved controls are
+`currency,domain_shift,licensing,market_rules,prior_eur_uah_fx_rate,publication_time,temporal_availability,timezone`.
 
 Operational follow-up: use
 [run-entsoe-poland-governance-ablation.ps1](../../scripts/run-entsoe-poland-governance-ablation.ps1)

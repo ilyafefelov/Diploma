@@ -1,18 +1,22 @@
 from datetime import datetime
+from pathlib import Path
 
 import polars as pl
 
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
+    build_entsoe_poland_lagged_feature_candidate_frame,
     build_entsoe_poland_feature_governance_frame,
     build_entsoe_neighbor_market_aligned_feature_panel_frame,
     build_entsoe_neighbor_market_feature_candidate_frame,
     build_entsoe_neighbor_market_sample_audit_frame,
     build_entsoe_neighbor_market_query_spec_frame,
+    load_entsoe_security_token,
     validate_entsoe_poland_feature_governance_evidence,
     validate_entsoe_neighbor_market_feature_candidate_evidence,
     validate_entsoe_neighbor_market_sample_audit_evidence,
     validate_entsoe_neighbor_market_access_evidence,
 )
+from smart_arbitrage.forecasting.nbu_fx import build_nbu_eur_uah_fx_metadata_frame
 from smart_arbitrage.forecasting.afe import build_forecast_afe_feature_catalog_frame
 from smart_arbitrage.forecasting.market_coupling_availability import (
     build_market_coupling_temporal_availability_frame,
@@ -55,6 +59,45 @@ def _source_backed_poland_candidates() -> pl.DataFrame:
     )
 
 
+def test_entsoe_feature_candidate_parses_quarter_hour_resolution_without_hour_drift() -> None:
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    frame = build_entsoe_neighbor_market_feature_candidate_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601010100",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: """
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-01T01:00Z</end>
+              </timeInterval>
+              <resolution>PT15M</resolution>
+              <Point><position>1</position><price.amount>100.0</price.amount></Point>
+              <Point><position>2</position><price.amount>101.0</price.amount></Point>
+              <Point><position>3</position><price.amount>102.0</price.amount></Point>
+              <Point><position>4</position><price.amount>103.0</price.amount></Point>
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
+
+    assert frame["delivery_timestamp_utc"].to_list() == [
+        "2026-01-01T00:00:00+00:00",
+        "2026-01-01T00:15:00+00:00",
+        "2026-01-01T00:30:00+00:00",
+        "2026-01-01T00:45:00+00:00",
+    ]
+
+
 def test_entsoe_neighbor_market_query_spec_blocks_fetch_without_token() -> None:
     frame = build_entsoe_neighbor_market_query_spec_frame(
         _availability_frame(),
@@ -66,6 +109,23 @@ def test_entsoe_neighbor_market_query_spec_blocks_fetch_without_token() -> None:
     assert frame["fetch_allowed"].unique().to_list() == [False]
     assert frame["training_use_allowed"].unique().to_list() == [False]
     assert frame["access_status"].unique().to_list() == ["blocked_missing_entsoe_security_token"]
+
+
+def test_entsoe_security_token_loads_lowercase_env_file_alias_without_leaking_secret(
+    tmp_path: Path,
+) -> None:
+    env_file = tmp_path / ".env"
+    env_file.write_text("entsoe_token=secret-token-value\n", encoding="utf-8")
+
+    token = load_entsoe_security_token(env={}, env_file=env_file)
+
+    assert token == "secret-token-value"
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token=token,
+    )
+    assert query_spec["security_token_available"].unique().to_list() == [True]
+    assert "secret-token-value" not in str(query_spec.to_dicts())
 
 
 def test_entsoe_poland_governance_blocks_missing_token_and_prior_fx() -> None:
@@ -94,6 +154,57 @@ def test_entsoe_poland_governance_blocks_missing_token_and_prior_fx() -> None:
     outcome = validate_entsoe_poland_feature_governance_evidence(frame)
     assert outcome.passed is True
     assert outcome.metadata["approved_feature_count"] == 0
+
+
+def test_entsoe_aligned_feature_panel_handles_missing_then_source_backed_rows() -> None:
+    missing_rows = [
+        {
+            "tenant_id": "client_001_kyiv_mall",
+            "timestamp": datetime(2025, 12, 20, hour),
+        }
+        for hour in range(24)
+    ] + [
+        {
+            "tenant_id": "client_001_kyiv_mall",
+            "timestamp": datetime(2025, 12, 21, hour),
+        }
+        for hour in range(24)
+    ] + [
+        {
+            "tenant_id": "client_001_kyiv_mall",
+            "timestamp": datetime(2025, 12, 22, hour),
+        }
+        for hour in range(24)
+    ] + [
+        {
+            "tenant_id": "client_001_kyiv_mall",
+            "timestamp": datetime(2025, 12, 23, hour),
+        }
+        for hour in range(24)
+    ] + [
+        {
+            "tenant_id": "client_001_kyiv_mall",
+            "timestamp": datetime(2025, 12, 24, hour),
+        }
+        for hour in range(24)
+    ]
+    frame = build_entsoe_neighbor_market_aligned_feature_panel_frame(
+        pl.DataFrame(
+            [
+                *missing_rows,
+                {
+                    "tenant_id": "client_001_kyiv_mall",
+                    "timestamp": datetime(2026, 1, 1, 0),
+                },
+            ]
+        ),
+        _source_backed_poland_candidates(),
+        country_codes=("PL",),
+    )
+
+    assert frame.height == 121
+    assert frame.filter(pl.col("source_backed")).height == 1
+    assert frame.schema["neighbor_market_price_eur_mwh"] == pl.Float64
 
 
 def test_entsoe_poland_governance_blocks_publication_after_anchor() -> None:
@@ -146,6 +257,278 @@ def test_entsoe_poland_governance_approves_fully_governed_source_backed_feature(
     outcome = validate_entsoe_poland_feature_governance_evidence(frame)
     assert outcome.passed is True
     assert outcome.metadata["approved_feature_count"] == 1
+
+
+def test_entsoe_poland_governance_allows_experimental_ablation_before_domain_shift() -> None:
+    frame = build_entsoe_poland_feature_governance_frame(
+        _source_backed_poland_candidates(),
+        entsoe_security_token="dummy-token",
+        publication_timestamp_utc="2025-12-31T11:00:00+00:00",
+        ua_decision_anchor_timestamp_utc="2025-12-31T12:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2025-12-31T11:30:00+00:00",
+        fx_rate_source="fixture_prior_fx",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=False,
+    )
+
+    row = frame.row(0, named=True)
+    assert row["experimental_ablation_use_allowed"] is True
+    assert row["experimental_ablation_status"] == "ablation_ready_pending_domain_shift"
+    assert row["approved_for_official_training"] is False
+    assert row["training_use_allowed"] is False
+    assert row["feature_use_allowed"] is False
+    assert row["training_blockers_csv"] == "domain_shift"
+
+    outcome = validate_entsoe_poland_feature_governance_evidence(frame)
+    assert outcome.passed is True
+    assert outcome.metadata["experimental_ablation_feature_count"] == 1
+    assert outcome.metadata["approved_feature_count"] == 0
+
+
+def test_entsoe_poland_lag24_feature_is_prior_safe_with_nbu_fx_metadata() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+            }
+            for hour in range(2)
+        ]
+    )
+
+    lagged = build_entsoe_poland_lagged_feature_candidate_frame(
+        benchmark,
+        _source_backed_poland_candidates(),
+        lag_hours=24,
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+    )
+
+    assert lagged.height == 2
+    assert lagged["feature_name"].unique().to_list() == [
+        "entsoe_neighbor_lagged_day_ahead_price_context"
+    ]
+    assert lagged["feature_column"].unique().to_list() == [
+        "entsoe_pl_lag24_day_ahead_price_uah_mwh"
+    ]
+    assert lagged["source_delivery_timestamp_utc"].to_list() == [
+        "2026-01-01T00:00:00+00:00",
+        "2026-01-01T01:00:00+00:00",
+    ]
+    assert lagged["neighbor_market_price_uah_mwh"].to_list() == [4612.5, 4995.0]
+    assert lagged["publication_time_status"].unique().to_list() == [
+        "lagged_delivery_observed_before_ua_anchor"
+    ]
+    assert lagged["currency_normalization_status"].unique().to_list() == [
+        "prior_eur_uah_normalized"
+    ]
+    assert lagged["coverage_status"].unique().to_list() == ["full_lagged_feature_coverage"]
+    assert lagged["training_use_allowed"].unique().to_list() == [False]
+    assert lagged["feature_use_allowed"].unique().to_list() == [False]
+
+    outcome = validate_entsoe_neighbor_market_feature_candidate_evidence(lagged)
+    assert outcome.passed is True
+    assert outcome.metadata["source_backed_rows"] == 2
+    assert outcome.metadata["publication_blocked_rows"] == 0
+    assert outcome.metadata["currency_blocked_rows"] == 0
+
+
+def test_nbu_fx_metadata_frame_fetches_lagged_source_dates_from_official_range() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, day, 0),
+            }
+            for day in (2, 3)
+        ]
+    )
+    captured_urls: list[str] = []
+
+    def fake_fetch(url: str) -> str:
+        captured_urls.append(url)
+        return """
+        [
+          {
+            "exchangedate": "01.01.2026",
+            "cc": "EUR",
+            "rate": 45.25,
+            "rate_per_unit": 45.25,
+            "calcdate": "31.12.2025"
+          },
+          {
+            "exchangedate": "02.01.2026",
+            "cc": "EUR",
+            "rate": 45.50,
+            "rate_per_unit": 45.50,
+            "calcdate": "01.01.2026"
+          }
+        ]
+        """
+
+    frame = build_nbu_eur_uah_fx_metadata_frame(
+        benchmark,
+        lag_hours=24,
+        fetch_json_by_url=fake_fetch,
+    )
+
+    assert captured_urls == [
+        "https://bank.gov.ua/NBU_Exchange/exchange_site?start=20260101&end=20260102&valcode=eur&sort=exchangedate&order=asc&json"
+    ]
+    assert frame["fx_rate_effective_date"].to_list() == [
+        "2026-01-01",
+        "2026-01-02",
+    ]
+    assert frame["fx_rate_eur_uah"].to_list() == [45.25, 45.5]
+    assert frame["fx_rate_timestamp_utc"].to_list() == [
+        "2025-12-31T13:30:00+00:00",
+        "2026-01-01T13:30:00+00:00",
+    ]
+    assert frame["source_backed"].to_list() == [True, True]
+    assert frame["currency_normalization_status"].to_list() == [
+        "prior_eur_uah_normalized",
+        "prior_eur_uah_normalized",
+    ]
+
+
+def test_entsoe_poland_lag24_uses_per_date_nbu_fx_metadata() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+            }
+            for hour in range(2)
+        ]
+    )
+    nbu_fx = pl.DataFrame(
+        [
+            {
+                "fx_rate_effective_date": "2026-01-01",
+                "fx_rate_eur_uah": 46.0,
+                "fx_rate_timestamp_utc": "2026-01-01T13:30:00+00:00",
+                "fx_rate_source": "NBU official exchange_site EUR/UAH",
+                "fx_rate_calc_date": "2026-01-01",
+                "currency_pair": "EUR/UAH",
+                "source_url": "https://bank.gov.ua/NBU_Exchange/exchange_site",
+                "source_backed": True,
+                "currency_normalization_status": "prior_eur_uah_normalized",
+                "claim_scope": "nbu_eur_uah_fx_metadata_research_gate",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+
+    lagged = build_entsoe_poland_lagged_feature_candidate_frame(
+        benchmark,
+        _source_backed_poland_candidates(),
+        lag_hours=24,
+        nbu_eur_uah_fx_metadata_frame=nbu_fx,
+    )
+
+    assert lagged["neighbor_market_price_uah_mwh"].to_list() == [4715.0, 5106.0]
+    assert lagged["fx_rate_eur_uah"].unique().to_list() == [46.0]
+    assert lagged["fx_rate_source"].unique().to_list() == [
+        "NBU official exchange_site EUR/UAH"
+    ]
+    assert lagged["currency_normalization_status"].unique().to_list() == [
+        "prior_eur_uah_normalized"
+    ]
+
+
+def test_entsoe_poland_lag24_governance_is_ablation_ready_until_domain_shift_passes() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+            }
+            for hour in range(2)
+        ]
+    )
+    lagged = build_entsoe_poland_lagged_feature_candidate_frame(
+        benchmark,
+        _source_backed_poland_candidates(),
+        lag_hours=24,
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+    )
+
+    governance = build_entsoe_poland_feature_governance_frame(
+        lagged,
+        entsoe_security_token="dummy-token",
+        publication_timestamp_utc="",
+        ua_decision_anchor_timestamp_utc="2026-01-02T00:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=False,
+    )
+
+    row = governance.row(0, named=True)
+    assert row["feature_name"] == "entsoe_neighbor_lagged_day_ahead_price_context"
+    assert row["approved_feature_column"] == "entsoe_pl_lag24_day_ahead_price_uah_mwh"
+    assert row["publication_time_status"] == "lagged_delivery_observed_before_ua_anchor"
+    assert row["temporal_availability_status"] == "ready"
+    assert row["experimental_ablation_use_allowed"] is True
+    assert row["approved_for_official_training"] is False
+    assert row["training_use_allowed"] is False
+    assert row["training_blockers_csv"] == "domain_shift"
+
+    outcome = validate_entsoe_poland_feature_governance_evidence(governance)
+    assert outcome.passed is True
+    assert outcome.metadata["experimental_ablation_feature_count"] == 1
+    assert outcome.metadata["approved_feature_count"] == 0
+
+
+def test_entsoe_poland_lag24_governance_blocks_partial_timestamp_coverage() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+            }
+            for hour in range(3)
+        ]
+    )
+    lagged = build_entsoe_poland_lagged_feature_candidate_frame(
+        benchmark,
+        _source_backed_poland_candidates(),
+        lag_hours=24,
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+    )
+
+    governance = build_entsoe_poland_feature_governance_frame(
+        lagged,
+        entsoe_security_token="dummy-token",
+        publication_timestamp_utc="",
+        ua_decision_anchor_timestamp_utc="2026-01-02T00:00:00+00:00",
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+        timezone_dst_mapping_ready=True,
+        licensing_approved=True,
+        market_rules_mapped=True,
+        domain_shift_validated=False,
+    )
+
+    row = governance.row(0, named=True)
+    assert row["experimental_ablation_use_allowed"] is False
+    assert row["temporal_availability_status"] == (
+        "blocked_until_publication_timestamp_mapping"
+    )
+    assert "publication_time" in row["training_blockers_csv"]
 
 
 def test_entsoe_neighbor_market_query_spec_records_day_ahead_price_request_shape() -> None:
