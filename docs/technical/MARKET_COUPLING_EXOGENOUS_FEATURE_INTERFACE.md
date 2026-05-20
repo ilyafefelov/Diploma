@@ -242,6 +242,15 @@ exist, but that diagnostic is not admissible because it uses final outcomes to
 avoid bad Poland rows. The next safe improvement is a prior-only tail-risk veto,
 not blind admission of every Poland-enhanced schedule.
 
+That veto is now materialized as
+`data/research_runs/week3_poland_lag24_prior_tail_risk_veto/`. It trains only
+on earlier anchors and uses pre-anchor forecast/schedule/candidate metadata to
+decide whether to use the Poland-enhanced calibrated TFT schedule or fall back
+to frozen V2+. The screen improves mean regret from `174.77` to `167.05` UAH and
+median regret from `67.30` to `55.97` UAH while selecting Poland schedules on
+`34 / 90` rows. It still does not become the headline because the improvement is
+`4.41%`, below the conservative `5%` replacement rule.
+
 ## Academic And Source Basis
 
 - Nixtla NeuralForecast supports static, historic, and future exogenous

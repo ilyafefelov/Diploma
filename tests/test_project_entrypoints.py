@@ -263,6 +263,20 @@ def test_poland_lag24_tail_risk_audit_cli_exports_near_miss_autopsy() -> None:
     assert "oracle_loss_avoidance_is_diagnostic_only" in export_script
 
 
+def test_poland_lag24_prior_veto_cli_exports_prior_only_selector() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_poland_lag24_prior_veto_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--tail-risk-audit-csv" in export_script
+    assert "--ridge-alpha" in export_script
+    assert "--min-prior-rows" in export_script
+    assert "--promotion-min-improvement-ratio" in export_script
+    assert "build_poland_lag24_prior_veto_frame" in export_script
+    assert "write_poland_lag24_prior_veto_packet" in export_script
+    assert "selector_is_prior_only" in export_script
+
+
 def test_poland_lag24_calibrated_schedule_value_config_routes_new_model_names() -> None:
     run_config = (
         PROJECT_ROOT

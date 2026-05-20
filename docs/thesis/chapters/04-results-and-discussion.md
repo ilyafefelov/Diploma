@@ -455,6 +455,19 @@ value, але поточний prior-only selector ще не вміє безпе
 tail-risk випадки. Наступний коректний крок - prior-only tail-risk veto/fallback
 перед повним повтором gate.
 
+Цей veto було реалізовано як окремий research screen. Він навчає маленький
+ridge scorer тільки на anchors, які були до поточного anchor, і використовує
+тільки pre-anchor metadata: tenant, candidate family, TFT quantile/spread,
+forecast peak/trough positions, schedule throughput/degradation deltas.
+Результат `week3_poland_lag24_prior_tail_risk_veto`: selector вибрав Poland
+schedules у `34 / 90` rows, mean regret зменшився з `174.77` до `167.05` UAH,
+а median regret - з `67.30` до `55.97` UAH. Це перший Poland-enhanced selector,
+який справді покращив і mean, і median проти frozen V2+ у цьому screen. Але
+покращення mean дорівнює `4.41%`, а conservative replacement rule вимагає
+мінімум `5%` і rolling robustness. Тому V2+ все ще лишається thesis headline,
+а Poland prior-veto стає найперспективнішим next candidate для ширшого
+rolling-window rerun.
+
 Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
 DFL, tiny offline Decision Transformer, behavior cloning і fallback
 порівнювалися не лише зі `strict_similar_day`, а з поточним українським V2+
@@ -733,6 +746,9 @@ rows:
 - `data/research_runs/week3_poland_lag24_richer_tail_risk_audit/` -
   tail-risk autopsy showing why the Poland near-miss lowers median regret but
   fails mean-regret promotion;
+- `data/research_runs/week3_poland_lag24_prior_tail_risk_veto/` -
+  prior-only Poland veto screen that improves V2+ mean/median but stays below
+  the `5%` replacement threshold;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

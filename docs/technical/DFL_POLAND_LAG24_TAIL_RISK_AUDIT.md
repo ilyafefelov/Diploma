@@ -97,3 +97,14 @@ slice is a prior-only tail-risk veto:
 
 The accept rule remains: mean regret beats frozen V2+, median regret does not
 worsen, rolling robustness remains passing, and `market_execution_enabled=false`.
+
+## Prior-Only Veto Follow-Up
+
+The follow-up prior-only veto is documented in
+[DFL_POLAND_LAG24_PRIOR_VETO.md](DFL_POLAND_LAG24_PRIOR_VETO.md). It uses the
+same tail-risk rows but trains a deterministic ridge veto only on earlier
+anchors. On the matched 90-row screen it selects Poland-enhanced schedules on
+`34 / 90` rows and improves mean regret from `174.77` to `167.05` UAH while
+improving median regret from `67.30` to `55.97` UAH. This is a real improvement,
+but it remains below the `5%` replacement threshold (`4.41%`), so frozen V2+
+remains the thesis headline.

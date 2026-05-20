@@ -408,6 +408,15 @@ admissible because it uses final outcomes. The next valid branch is therefore a
 prior-only tail-risk veto/fallback around the Poland route, not blind promotion
 of all Poland-enhanced schedules.
 
+That branch now exists as
+[DFL_POLAND_LAG24_PRIOR_VETO.md](DFL_POLAND_LAG24_PRIOR_VETO.md) and local
+packet `week3_poland_lag24_prior_tail_risk_veto`. It selects Poland schedules
+only when a pre-anchor ridge veto predicts safety from prior rows. The result is
+better than frozen V2+ on the 90-row screen (`167.05` versus `174.77` UAH mean
+regret, `55.97` versus `67.30` UAH median regret), but the improvement is
+`4.41%`, not the required `5%`. Therefore it is useful improvement evidence but
+not a thesis-headline replacement yet.
+
 ## No-Token Poland Snapshot Route
 
 If an ENTSO-E token is unavailable, the project now has a source-neutral local
