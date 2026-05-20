@@ -9532,7 +9532,19 @@ def _add_metadata(
     context: dg.AssetExecutionContext | None, metadata: dict[str, Any]
 ) -> None:
     if context is not None:
-        context.add_output_metadata(metadata)
+        context.add_output_metadata(_normalize_asset_metadata(metadata))
+
+
+def _normalize_asset_metadata(value: Any) -> Any:
+    if isinstance(value, tuple):
+        return [_normalize_asset_metadata(item) for item in value]
+    if isinstance(value, list):
+        return [_normalize_asset_metadata(item) for item in value]
+    if isinstance(value, dict):
+        return {
+            str(key): _normalize_asset_metadata(item) for key, item in value.items()
+        }
+    return value
 
 
 def _forecast_model_names(raw_value: str) -> tuple[str, ...]:

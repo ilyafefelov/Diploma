@@ -407,12 +407,23 @@ regret і rolling-safe comparison, тому blocker лишається
 `mean_not_improved_vs_frozen_v2_plus`. Висновок: ENTSO-E Poland features уже
 можуть проходити через NBEATSx/TFT adapters, але current lag-24 feature
 representation ще не дає достатньої decision value для headline replacement.
-Тому наступна гілка не переходить одразу до DT/LAVA, а спершу покращує
-market-coupling representation: додає prior-safe cross-market spread features
-між Poland lag-24 price і observed Ukrainian DAM price на тому самому lagged
-timestamp. Це перевіряє більш конкретну гіпотезу: не абсолютний рівень
-польської ціни, а відносний тиск Poland-vs-UA може бути корисним для NBEATSx,
-TFT і подальшого schedule/value gate.
+Тому наступна гілка спершу покращила market-coupling representation: було
+додано prior-safe cross-market spread features між Poland lag-24 price і
+observed Ukrainian DAM price на тому самому lagged timestamp. Це перевірило
+більш конкретну гіпотезу: не абсолютний рівень польської ціни, а відносний
+тиск Poland-vs-UA може бути корисним для NBEATSx, TFT і подальшого
+schedule/value gate.
+
+Результат цієї перевірки також не замінив український V2+. Evidence packet
+`week3_poland_lag24_cross_market_experimental_schedule_value` показав:
+calibrated Ukrainian-only V2+ mean regret `174.77` UAH; Poland cross-market TFT
+V2+ `188.26` UAH; Poland cross-market NBEATSx V2+ `253.68` UAH. Це покращило
+TFT відносно попереднього lag-only Poland TFT screen (`218.12` -> `188.26`
+UAH), але найкращий external-feature результат усе ще гірший за frozen V2+ на
+`13.49` UAH. Отже, висновок стає чіткішим: ENTSO-E Poland features уже
+працюють як point-in-time exogenous route, але поточна репрезентація
+market-coupling не створює достатнього decision value для headline replacement
+без нових джерел, глибшої доменної трансформації або іншої DFL/DT objective.
 
 Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
 DFL, tiny offline Decision Transformer, behavior cloning і fallback

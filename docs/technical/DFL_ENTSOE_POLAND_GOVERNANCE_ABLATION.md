@@ -474,8 +474,25 @@ These features are closer to the market-coupling hypothesis than Poland price
 level alone because they describe relative pressure between the neighbor market
 and the Ukrainian observed market state. They are still computed only from
 timestamp `t - 24h` and earlier data, so they remain prior-safe for Ukrainian
-timestamp `t`. They are not a promotion result until a fresh NBEATSx/TFT
-forecast run and downstream schedule/value gate beat frozen Ukrainian-only V2+.
+timestamp `t`.
+
+The follow-up materialization completed as Dagster run
+`65d86cdd-435e-46d1-86ac-80f1ce960245` and is exported locally as
+`data/research_runs/week3_poland_lag24_cross_market_experimental_schedule_value/`.
+It did not pass the frozen V2+ replacement gate:
+
+| Schedule/value row | Mean regret, UAH | Median regret, UAH | Interpretation |
+|---|---:|---:|---|
+| Frozen Ukrainian-only V2+ | `174.77` | `67.30` | headline comparator |
+| Poland cross-market TFT V2+ | `188.26` | `71.06` | improved over lag-only TFT, but still worse than V2+ |
+| Poland cross-market NBEATSx V2+ | `253.68` | `137.35` | worse than V2+ and worse than lag-only NBEATSx |
+
+The best cross-market experimental result is therefore `13.49` UAH worse than
+frozen Ukrainian-only V2+ (`-7.72%` improvement ratio versus the comparator).
+This is useful negative evidence: relative Poland-vs-UA pressure features are
+mechanically routed through official NBEATSx/TFT and help the TFT branch versus
+the earlier lag-only TFT screen, but they still do not provide enough decision
+value to replace Ukrainian-only V2+ under the unchanged strict LP/oracle gate.
 
 Reusable export:
 
@@ -484,4 +501,14 @@ Reusable export:
   --comparison-frame-pickle .tmp_runtime\poland_lag24_experimental_schedule_value_export\comparison.pkl `
   --raw-strict-frame-pickle .tmp_runtime\poland_lag24_experimental_schedule_value_export\raw_strict.pkl `
   --run-slug week3_poland_lag24_experimental_schedule_value_near_miss
+```
+
+Cross-market export:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_poland_lag24_experimental_schedule_value_packet.py `
+  --comparison-frame-pickle .tmp_runtime\poland_lag24_cross_market_export\comparison.pkl `
+  --raw-strict-frame-pickle .tmp_runtime\poland_lag24_cross_market_export\raw_strict.pkl `
+  --run-slug week3_poland_lag24_cross_market_experimental_schedule_value `
+  --dagster-run-id 65d86cdd-435e-46d1-86ac-80f1ce960245
 ```

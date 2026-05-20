@@ -72,6 +72,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     regret_weighted_dfl_pilot_frame,
     risk_adjusted_value_gate_frame,
     _concat_feature_candidate_frames,
+    _normalize_asset_metadata,
 )
 from smart_arbitrage.defs import defs
 from smart_arbitrage.dfl.promotion_gate import PromotionGateResult
@@ -167,6 +168,20 @@ def test_feature_candidate_concat_relaxes_null_lagged_columns() -> None:
         None,
         "2026-01-01T00:00:00+00:00",
     ]
+
+
+def test_dfl_research_asset_metadata_normalizes_tuple_values() -> None:
+    metadata = _normalize_asset_metadata(
+        {
+            "source_model_names": ("nbeatsx", "tft"),
+            "nested": {"candidate_profiles": ("strict", "risk")},
+        }
+    )
+
+    assert metadata == {
+        "source_model_names": ["nbeatsx", "tft"],
+        "nested": {"candidate_profiles": ["strict", "risk"]},
+    }
 
 
 def _silver_feature_frame() -> pl.DataFrame:
