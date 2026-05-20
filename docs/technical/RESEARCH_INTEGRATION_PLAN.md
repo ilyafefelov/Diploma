@@ -2993,3 +2993,17 @@ regret. This is useful near-miss evidence, not a reason to run the full
 candidate/value or schedule-neighbor supervision against frozen V2+, unless a
 new external feature representation is added with a stronger prior-safe
 hypothesis.
+
+That stronger prior-safe representation was then tested without changing the
+claim boundary. The feature lane now includes rolling Poland 24h/168h mean and
+spread context, rolling min/max, price-vs-rolling-mean, daily peak/trough
+distance and indicator flags, and rolling PL-vs-UA spread context. Dagster run
+`58e38050-9db1-4f34-9215-bc3e99644f46` exported
+`data/research_runs/week3_poland_lag24_richer_calibrated_experimental_schedule_value/`.
+The best row was still calibrated TFT V2+, now at `177.34` UAH mean regret and
+`39.46` UAH median regret. This narrowed the gap to frozen Ukrainian-only V2+
+from `7.16` UAH to `2.58` UAH, but still did not promote because mean regret did
+not beat `174.77` UAH. The next Poland branch should not be a full 365-anchor
+rerun of the same representation; it needs either better domain features,
+stronger schedule/value use of the low-median TFT signal, or DT/LAVA-style
+teacher/candidate supervision.

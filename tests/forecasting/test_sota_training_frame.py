@@ -490,6 +490,20 @@ def _poland_lagged_feature_frame(silver_frame: pl.DataFrame) -> pl.DataFrame:
                     None if index < 24 else 100.0
                 ),
                 "entsoe_pl_lag24_ua_spread_ratio": (price - 3000.0) / 3000.0,
+                "entsoe_pl_lag24_rolling_24h_mean_uah_mwh": 3730.0,
+                "entsoe_pl_lag24_rolling_24h_min_uah_mwh": 3500.0,
+                "entsoe_pl_lag24_rolling_24h_max_uah_mwh": 3960.0,
+                "entsoe_pl_lag24_rolling_24h_spread_uah_mwh": 460.0,
+                "entsoe_pl_lag24_rolling_168h_mean_uah_mwh": 3730.0,
+                "entsoe_pl_lag24_rolling_168h_spread_uah_mwh": 460.0,
+                "entsoe_pl_lag24_price_vs_rolling_24h_mean_uah_mwh": price - 3730.0,
+                "entsoe_pl_lag24_peak_distance_hours": float(abs(23 - index % 24)),
+                "entsoe_pl_lag24_trough_distance_hours": float(index % 24),
+                "entsoe_pl_lag24_is_daily_peak_hour": 1.0 if index % 24 == 23 else 0.0,
+                "entsoe_pl_lag24_is_daily_trough_hour": 1.0 if index % 24 == 0 else 0.0,
+                "entsoe_pl_lag24_ua_spread_rolling_24h_mean_uah_mwh": price - 3000.0,
+                "entsoe_pl_lag24_ua_spread_vs_rolling_24h_mean_uah_mwh": 0.0,
+                "entsoe_pl_lag24_ua_spread_abs_ratio": abs((price - 3000.0) / 3000.0),
             }
         )
     return pl.DataFrame(rows)

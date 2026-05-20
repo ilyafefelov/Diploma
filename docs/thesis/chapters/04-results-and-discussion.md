@@ -665,7 +665,32 @@ uncertainty/research layer, але показує, що headline architecture с
 поточну ітерацію залишається Ukrainian-only NBEATSx V2+ із `strict_similar_day`
 fallback.
 
-## 4.12. Доказові артефакти
+## 4.12. Poland-enhanced forecast evidence
+
+Після закриття ENTSO-E/NBU route було перевірено, чи може Poland market context
+покращити саме forecast layer перед V2+ schedule/value gate. Це не означає, що
+європейські ряди стали training targets. Poland data використовується лише як
+point-in-time exogenous columns: лагований на 24 години польський DAM price,
+короткі deltas, daily spread/rank, peak/trough timing, PL-vs-UA lagged spread і
+пізніше rolling regime features.
+
+Перший calibrated Poland screen показав, що calibration реально допомагає TFT:
+best Poland calibrated TFT V2+ мав `181.93` UAH mean regret і `44.29` UAH median
+regret. Це краще за raw Poland TFT, але все ще гірше за frozen Ukrainian-only
+V2+ (`174.77` UAH mean, `67.30` UAH median).
+
+Потім було додано багатшу prior-safe Poland representation: 24h/168h rolling
+mean/spread, rolling min/max, price-vs-rolling-mean, daily extrema-distance
+flags і rolling PL-vs-UA spread context. Run
+`58e38050-9db1-4f34-9215-bc3e99644f46` покращив best Poland result до `177.34`
+UAH mean regret і `39.46` UAH median regret. Це найкращий Poland-enhanced
+near-miss: median regret став нижчим за V2+, але mean regret усе ще на `2.58`
+UAH гірший за V2+. Тому thesis headline не змінюється. Висновок: Poland context
+технічно працює і дає корисний TFT risk signal, але поки не проходить той самий
+strict LP/oracle promotion rule, тож залишається research-only evidence with
+`market_execution_enabled=false`.
+
+## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
 research-run каталогах і документах, які можна відтворити з Dagster/Postgres
@@ -681,6 +706,8 @@ rows:
   pairwise schedule-value DFL v2 diagnostic packet;
 - `data/research_runs/week3_tft_quantile_365_full_negative_evidence/` -
   official global-panel TFT quantile negative evidence packet;
+- `data/research_runs/week3_poland_lag24_richer_calibrated_experimental_schedule_value/` -
+  richer Poland-enhanced calibrated forecast near-miss packet;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

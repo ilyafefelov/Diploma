@@ -385,9 +385,16 @@ rows before the same V2+ schedule/value gate. The calibrated model names are
 Dagster run `25ac4101-b557-42b0-8950-3613dc77ad4e` exported
 `week3_poland_lag24_calibrated_experimental_schedule_value`: best Poland row was
 calibrated TFT V2+ at `181.93` UAH mean regret and `44.29` UAH median regret.
-This improved raw Poland TFT, but it still missed frozen Ukrainian-only V2+
-mean regret (`174.77` UAH), so the blocker remains
-`mean_not_improved_vs_frozen_v2_plus`.
+
+The next richer-representation rerun added prior-safe rolling Poland regime
+columns: 24h/168h rolling means and spreads, rolling min/max, price-vs-rolling
+mean, daily peak/trough distance and indicator flags, and rolling PL-vs-UA
+spread context. Dagster run `58e38050-9db1-4f34-9215-bc3e99644f46` exported
+`week3_poland_lag24_richer_calibrated_experimental_schedule_value`. The best
+Poland row again came from calibrated TFT V2+, now at `177.34` UAH mean regret
+and `39.46` UAH median regret. This is the closest Poland result so far, but it
+still misses frozen Ukrainian-only V2+ mean regret (`174.77` UAH) by `2.58`
+UAH, so the blocker remains `mean_not_improved_vs_frozen_v2_plus`.
 
 ## No-Token Poland Snapshot Route
 

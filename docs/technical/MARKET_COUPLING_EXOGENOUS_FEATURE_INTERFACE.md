@@ -183,10 +183,11 @@ separate Ukrainian-only V2+ versus Ukrainian-plus-Poland comparison.
 The same approved-for-ablation lane now has a forecast-training interface for
 official global-panel NBEATSx/TFT screens:
 `official_global_panel_poland_lag24_experimental_training_frame`. It carries
-the lagged Poland level, 1h/24h deltas, daily spread, daily price rank, and
-lagged peak/trough hour as `known_future_feature_columns_csv`, so the existing
-NBEATSx `futr_exog_list` and TFT `time_varying_known_reals` adapters can test
-the features without changing the official Ukrainian-only training route. The
+the lagged Poland level, 1h/24h deltas, daily spread, daily price rank, lagged
+peak/trough hour, PL-vs-UA lagged spread, and rolling prior-safe Poland regime
+columns as `known_future_feature_columns_csv`, so the existing NBEATSx
+`futr_exog_list` and TFT `time_varying_known_reals` adapters can test the
+features without changing the official Ukrainian-only training route. The
 output model names are separated as
 `nbeatsx_official_global_panel_poland_lag24_experimental_v1` and
 `tft_official_global_panel_poland_lag24_experimental_v1`; they remain
@@ -219,6 +220,16 @@ frozen Ukrainian-only V2+ comparator (`174.77` UAH). The NBEATSx branch worsened
 to `253.68` UAH mean regret. The acceptance blocker remains
 `mean_not_improved_vs_frozen_v2_plus`, so these market-coupling features stay
 research-only exogenous evidence and do not change the thesis headline.
+
+A further richer-representation rerun added rolling PL level/spread features,
+daily extrema-distance flags, and rolling PL-vs-UA spread features. The local
+packet
+`data/research_runs/week3_poland_lag24_richer_calibrated_experimental_schedule_value/`
+shows a much closer calibrated TFT result: `177.34` UAH mean regret and `39.46`
+UAH median regret. This improves the previous calibrated Poland TFT near-miss
+(`181.93` UAH mean), but it still does not beat frozen Ukrainian-only V2+ on
+mean regret (`174.77` UAH). The route remains research-only and
+`market_execution_enabled=false`.
 
 ## Academic And Source Basis
 

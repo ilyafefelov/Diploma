@@ -60,6 +60,39 @@ def _source_backed_poland_candidates() -> pl.DataFrame:
     )
 
 
+def _source_backed_poland_candidates_for_hours(hours: int) -> pl.DataFrame:
+    points = "\n".join(
+        f"<Point><position>{hour + 1}</position><price.amount>{100.0 + hour}</price.amount></Point>"
+        for hour in range(hours)
+    )
+    query_spec = build_entsoe_neighbor_market_query_spec_frame(
+        _availability_frame(),
+        security_token="dummy-token",
+    )
+    return build_entsoe_neighbor_market_feature_candidate_frame(
+        query_spec,
+        sample_country_codes_csv="PL",
+        sample_period_start_utc="202601010000",
+        sample_period_end_utc="202601020600",
+        security_token="dummy-token",
+        fetch_enabled=True,
+        fetch_xml_by_url=lambda _url: f"""
+        <Publication_MarketDocument>
+          <TimeSeries>
+            <Period>
+              <timeInterval>
+                <start>2026-01-01T00:00Z</start>
+                <end>2026-01-02T06:00Z</end>
+              </timeInterval>
+              <resolution>PT60M</resolution>
+              {points}
+            </Period>
+          </TimeSeries>
+        </Publication_MarketDocument>
+        """,
+    )
+
+
 def test_entsoe_feature_candidate_parses_quarter_hour_resolution_without_hour_drift() -> None:
     query_spec = build_entsoe_neighbor_market_query_spec_frame(
         _availability_frame(),
@@ -422,6 +455,50 @@ def test_entsoe_poland_lag24_emits_cross_market_spread_features() -> None:
         None,
         None,
     ]
+
+
+def test_entsoe_poland_lag24_emits_richer_prior_safe_regime_features() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 1, hour),
+                "price_uah_mwh": 900.0 + 5.0 * hour,
+            }
+            for hour in range(24)
+        ]
+        + [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+                "price_uah_mwh": 1000.0 + 10.0 * hour,
+            }
+            for hour in range(6)
+        ]
+    )
+
+    lagged = build_entsoe_poland_lagged_feature_candidate_frame(
+        benchmark,
+        _source_backed_poland_candidates_for_hours(30),
+        lag_hours=24,
+        prior_eur_uah_fx_rate=10.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+    ).filter(pl.col("delivery_timestamp_utc") == "2026-01-02T05:00:00+00:00")
+
+    row = lagged.row(0, named=True)
+    assert row["entsoe_pl_lag24_rolling_24h_mean_uah_mwh"] == 1025.0
+    assert row["entsoe_pl_lag24_rolling_24h_spread_uah_mwh"] == 50.0
+    assert row["entsoe_pl_lag24_price_vs_rolling_24h_mean_uah_mwh"] == 25.0
+    assert row["entsoe_pl_lag24_peak_distance_hours"] == 18.0
+    assert row["entsoe_pl_lag24_trough_distance_hours"] == 5.0
+    assert row["entsoe_pl_lag24_is_daily_peak_hour"] == 0.0
+    assert row["entsoe_pl_lag24_is_daily_trough_hour"] == 0.0
+    assert row["entsoe_pl_lag24_ua_spread_abs_ratio"] == abs(
+        row["entsoe_pl_lag24_ua_spread_ratio"]
+    )
+    assert row["training_use_allowed"] is False
+    assert row["feature_use_allowed"] is False
 
 
 def test_nbu_fx_metadata_frame_fetches_lagged_source_dates_from_official_range() -> None:

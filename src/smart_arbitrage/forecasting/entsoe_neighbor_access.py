@@ -1396,6 +1396,21 @@ def _prior_safe_lagged_poland_features(
         peak_hour = None
         trough_hour = None
         rank = None
+    rolling_24h_values = _rolling_source_prices_uah(
+        source_timestamp,
+        window_hours=24,
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    rolling_168h_values = _rolling_source_prices_uah(
+        source_timestamp,
+        window_hours=168,
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    rolling_24h_mean = _mean_or_none(rolling_24h_values)
     return {
         "entsoe_pl_lag24_delta_1h_uah_mwh": _delta(price_uah, previous_1h_uah),
         "entsoe_pl_lag24_delta_24h_uah_mwh": _delta(price_uah, previous_24h_uah),
@@ -1403,6 +1418,42 @@ def _prior_safe_lagged_poland_features(
         "entsoe_pl_lag24_daily_price_rank": rank,
         "entsoe_pl_lag24_daily_peak_hour_utc": peak_hour,
         "entsoe_pl_lag24_daily_trough_hour_utc": trough_hour,
+        "entsoe_pl_lag24_rolling_24h_mean_uah_mwh": rolling_24h_mean,
+        "entsoe_pl_lag24_rolling_24h_min_uah_mwh": _min_or_none(
+            rolling_24h_values
+        ),
+        "entsoe_pl_lag24_rolling_24h_max_uah_mwh": _max_or_none(
+            rolling_24h_values
+        ),
+        "entsoe_pl_lag24_rolling_24h_spread_uah_mwh": _spread_or_none(
+            rolling_24h_values
+        ),
+        "entsoe_pl_lag24_rolling_168h_mean_uah_mwh": _mean_or_none(
+            rolling_168h_values
+        ),
+        "entsoe_pl_lag24_rolling_168h_spread_uah_mwh": _spread_or_none(
+            rolling_168h_values
+        ),
+        "entsoe_pl_lag24_price_vs_rolling_24h_mean_uah_mwh": _delta(
+            price_uah,
+            rolling_24h_mean,
+        ),
+        "entsoe_pl_lag24_peak_distance_hours": _hour_distance(
+            source_timestamp.hour,
+            peak_hour,
+        ),
+        "entsoe_pl_lag24_trough_distance_hours": _hour_distance(
+            source_timestamp.hour,
+            trough_hour,
+        ),
+        "entsoe_pl_lag24_is_daily_peak_hour": _hour_indicator(
+            source_timestamp.hour,
+            peak_hour,
+        ),
+        "entsoe_pl_lag24_is_daily_trough_hour": _hour_indicator(
+            source_timestamp.hour,
+            trough_hour,
+        ),
     }
 
 
@@ -1427,6 +1478,15 @@ def _prior_safe_cross_market_features(
         source_timestamp - timedelta(hours=24)
     )
     previous_spread = _delta(previous_poland_price, previous_ukrainian_price)
+    rolling_spreads = _rolling_cross_market_spreads_uah(
+        source_timestamp,
+        source_candidates=source_candidates,
+        ukrainian_price_by_timestamp=ukrainian_price_by_timestamp,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+        window_hours=24,
+    )
+    rolling_spread_mean = _mean_or_none(rolling_spreads)
     return {
         "entsoe_pl_lag24_ua_spread_uah_mwh": spread,
         "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh": _delta(
@@ -1437,7 +1497,72 @@ def _prior_safe_cross_market_features(
             spread,
             ukrainian_lagged_price,
         ),
+        "entsoe_pl_lag24_ua_spread_rolling_24h_mean_uah_mwh": (
+            rolling_spread_mean
+        ),
+        "entsoe_pl_lag24_ua_spread_vs_rolling_24h_mean_uah_mwh": _delta(
+            spread,
+            rolling_spread_mean,
+        ),
+        "entsoe_pl_lag24_ua_spread_abs_ratio": _abs_or_none(
+            _safe_ratio(spread, ukrainian_lagged_price)
+        ),
     }
+
+
+def _rolling_source_prices_uah(
+    source_timestamp: datetime,
+    *,
+    window_hours: int,
+    source_candidates: dict[datetime, dict[str, object]],
+    effective_fx_rate: float,
+    currency_ready: bool,
+) -> list[float]:
+    if not currency_ready or window_hours <= 0:
+        return []
+    window_start = source_timestamp - timedelta(hours=window_hours - 1)
+    values: list[float] = []
+    for timestamp in sorted(source_candidates):
+        if timestamp < window_start or timestamp > source_timestamp:
+            continue
+        price = _source_price_uah(
+            timestamp,
+            source_candidates=source_candidates,
+            effective_fx_rate=effective_fx_rate,
+            currency_ready=currency_ready,
+        )
+        if price is not None:
+            values.append(price)
+    return values
+
+
+def _rolling_cross_market_spreads_uah(
+    source_timestamp: datetime,
+    *,
+    source_candidates: dict[datetime, dict[str, object]],
+    ukrainian_price_by_timestamp: dict[datetime, float],
+    effective_fx_rate: float,
+    currency_ready: bool,
+    window_hours: int,
+) -> list[float]:
+    if not currency_ready or window_hours <= 0:
+        return []
+    window_start = source_timestamp - timedelta(hours=window_hours - 1)
+    spreads: list[float] = []
+    for timestamp in sorted(source_candidates):
+        if timestamp < window_start or timestamp > source_timestamp:
+            continue
+        poland_price = _source_price_uah(
+            timestamp,
+            source_candidates=source_candidates,
+            effective_fx_rate=effective_fx_rate,
+            currency_ready=currency_ready,
+        )
+        ukrainian_price = ukrainian_price_by_timestamp.get(timestamp)
+        spread = _delta(poland_price, ukrainian_price)
+        if spread is not None:
+            spreads.append(spread)
+    return spreads
 
 
 def _source_price_uah(
@@ -1521,6 +1646,42 @@ def _safe_ratio(numerator: float | None, denominator: float | None) -> float | N
     if numerator is None or denominator is None or abs(denominator) < 1e-9:
         return None
     return numerator / abs(denominator)
+
+
+def _mean_or_none(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return sum(values) / float(len(values))
+
+
+def _min_or_none(values: list[float]) -> float | None:
+    return min(values) if values else None
+
+
+def _max_or_none(values: list[float]) -> float | None:
+    return max(values) if values else None
+
+
+def _spread_or_none(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return max(values) - min(values)
+
+
+def _hour_distance(current_hour: int, target_hour: int | None) -> float | None:
+    if target_hour is None:
+        return None
+    return float(abs(current_hour - target_hour))
+
+
+def _hour_indicator(current_hour: int, target_hour: int | None) -> float | None:
+    if target_hour is None:
+        return None
+    return 1.0 if current_hour == target_hour else 0.0
+
+
+def _abs_or_none(value: float | None) -> float | None:
+    return abs(value) if value is not None else None
 
 
 def _lagged_feature_candidate_row(
