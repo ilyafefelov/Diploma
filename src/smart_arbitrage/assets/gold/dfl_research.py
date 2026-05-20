@@ -265,8 +265,17 @@ from smart_arbitrage.dfl.market_coupled_v2_plus import (
     build_dfl_market_coupled_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
 )
 from smart_arbitrage.strategy.official_global_panel import (
+    POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
+    POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
+    POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME,
+    POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
     POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
+    POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
+    POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+    build_official_global_panel_nbeatsx_horizon_calibration_frame,
+    build_official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
+    build_official_global_panel_tft_horizon_quantile_calibration_frame,
 )
 from smart_arbitrage.dfl.production_promotion_gate import (
     build_dfl_production_promotion_gate_frame,
@@ -971,6 +980,13 @@ class DflPolandLag24ExperimentalRollingStrictAssetConfig(dg.Config):
     anchor_batch_start_index: int = 0
     anchor_batch_size: int = 0
     generated_at_iso: str = ""
+
+
+class DflPolandLag24ExperimentalCalibrationAssetConfig(dg.Config):
+    """Prior-only calibration scope for Poland lag-24 experimental forecasts."""
+
+    min_prior_anchors: int = 14
+    rolling_calibration_window_anchors: int = 28
 
 
 class DflOfficialGlobalPanelScheduleValueDflV2AssetConfig(dg.Config):
@@ -3570,6 +3586,499 @@ def official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_
         },
     )
     return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="calibration",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_experimental",
+        market_venue="DAM",
+    ),
+)
+def official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame(
+    context,
+    config: DflPolandLag24ExperimentalCalibrationAssetConfig,
+    official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Prior-only horizon calibration for Poland-enhanced NBEATSx rows."""
+
+    calibration_frame = build_official_global_panel_nbeatsx_horizon_calibration_frame(
+        official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
+        min_prior_anchors=config.min_prior_anchors,
+        rolling_calibration_window_anchors=(
+            config.rolling_calibration_window_anchors
+        ),
+        source_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+        corrected_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": calibration_frame.height,
+            "source_model_name": POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+            "corrected_model_name": (
+                POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME
+            ),
+            "scope": (
+                "official_global_panel_poland_lag24_nbeatsx_prior_only_"
+                "horizon_calibration_not_full_dfl"
+            ),
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return calibration_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="calibration",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_experimental",
+        market_venue="DAM",
+    ),
+)
+def official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame(
+    context,
+    config: DflPolandLag24ExperimentalCalibrationAssetConfig,
+    official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Prior-only p50 horizon/quantile calibration for Poland-enhanced TFT rows."""
+
+    calibration_frame = (
+        build_official_global_panel_tft_horizon_quantile_calibration_frame(
+            official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
+            min_prior_anchors=config.min_prior_anchors,
+            rolling_calibration_window_anchors=(
+                config.rolling_calibration_window_anchors
+            ),
+            source_model_names=(POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,),
+            corrected_model_names=(
+                POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
+            ),
+            source_quantiles=("p50",),
+        )
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": calibration_frame.height,
+            "source_model_name": POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+            "corrected_model_name": (
+                POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME
+            ),
+            "source_quantile": "p50",
+            "scope": (
+                "official_global_panel_poland_lag24_tft_prior_only_"
+                "horizon_quantile_calibration_not_full_dfl"
+            ),
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return calibration_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_experimental",
+        market_venue="DAM",
+    ),
+)
+def official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame(
+    context,
+    official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame: (
+        pl.DataFrame
+    ),
+    official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict LP/oracle rows for raw and calibrated Poland-enhanced forecasts."""
+
+    strict_frame = (
+        build_official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame(
+            official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
+            official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
+            official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,
+        )
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "tenant_count": strict_frame.select("tenant_id").n_unique()
+            if strict_frame.height
+            else 0,
+            "anchor_count": strict_frame.select("anchor_timestamp").n_unique()
+            if strict_frame.height
+            else 0,
+            "source_model_names": POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
+            "strategy_kind": POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
+            "scope": (
+                "official_global_panel_poland_lag24_horizon_calibrated_"
+                "strict_lp_not_full_dfl"
+            ),
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_schedule_candidate_library_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleCandidateLibraryAssetConfig,
+    official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Schedule library for raw and calibrated Poland-enhanced forecast names."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    library_frame = build_dfl_schedule_candidate_library_from_strict_benchmark_frame(
+        official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        perturb_spread_scale_grid=_float_csv_values(
+            config.perturb_spread_scale_grid_csv,
+            field_name="perturb_spread_scale_grid_csv",
+        ),
+        perturb_mean_shift_grid_uah_mwh=_float_csv_values(
+            config.perturb_mean_shift_grid_uah_mwh_csv,
+            field_name="perturb_mean_shift_grid_uah_mwh_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "source_model_names": source_model_names,
+            "candidate_family_count": library_frame.select(
+                "candidate_family"
+            ).n_unique()
+            if library_frame.height
+            else 0,
+            "scope": "dfl_poland_lag24_calibrated_schedule_library_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame(
+    context,
+    config: DflStrictChallengerAssetConfig,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Blend/residual candidates for calibrated Poland-enhanced schedules."""
+
+    library_frame = build_schedule_candidate_library_v2_frame(
+        dfl_poland_lag24_calibrated_schedule_candidate_library_frame,
+        blend_weights=_float_csv_values(
+            config.blend_weights_csv,
+            field_name="blend_weights_csv",
+        ),
+        residual_min_prior_anchors=config.residual_min_prior_anchors,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "scope": "dfl_poland_lag24_calibrated_schedule_library_v2_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame(
+    context,
+    config: DflScheduleCandidateLibraryV2PlusAssetConfig,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """V2+ candidate expansion for calibrated Poland-enhanced schedules."""
+
+    library_frame = build_dfl_schedule_candidate_library_v2_plus_frame(
+        dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame,
+        rank_perturbation_delta_uah_mwh=config.rank_perturbation_delta_uah_mwh,
+        robust_spread_scales=_float_csv_values(
+            config.robust_spread_scales_csv,
+            field_name="robust_spread_scales_csv",
+        ),
+        strict_neighborhood_shift_hours=_int_csv_values(
+            config.strict_neighborhood_shift_hours_csv,
+            field_name="strict_neighborhood_shift_hours_csv",
+        ),
+        block_reconcile_hours=_int_csv_values(
+            config.block_reconcile_hours_csv,
+            field_name="block_reconcile_hours_csv",
+        ),
+        terminal_target_shift_uah_mwh=config.terminal_target_shift_uah_mwh,
+        generated_at=_latest_generated_at(
+            dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": library_frame.height,
+            "scope": (
+                "dfl_poland_lag24_calibrated_schedule_library_v2_plus_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return library_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_schedule_value_learner_v2_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueLearnerV2AssetConfig,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only schedule/value learner over calibrated Poland-enhanced schedules."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    learner_frame = build_dfl_schedule_value_learner_v2_frame(
+        dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": learner_frame.height,
+            "source_model_names": source_model_names,
+            "scope": "dfl_poland_lag24_calibrated_schedule_value_v2_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return learner_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueLearnerV2PlusAssetConfig,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """V2+ selector for calibrated Poland-enhanced source schedules."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    learner_frame = build_dfl_schedule_value_learner_v2_plus_frame(
+        dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame,
+        dfl_poland_lag24_calibrated_schedule_value_learner_v2_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        final_validation_anchor_count_per_tenant=(
+            config.final_validation_anchor_count_per_tenant
+        ),
+        min_prior_mean_improvement_ratio_vs_v2=(
+            config.min_prior_mean_improvement_ratio_vs_v2
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": learner_frame.height,
+            "source_model_names": source_model_names,
+            "fallback_rows": learner_frame.filter(pl.col("fallback_to_v2")).height
+            if learner_frame.height
+            else 0,
+            "scope": "dfl_poland_lag24_calibrated_schedule_value_v2_plus_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return learner_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueLearnerV2PlusAssetConfig,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_frame: pl.DataFrame,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle schedule-value rows for calibrated Poland-enhanced sources."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    strict_frame = build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
+        dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame,
+        dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_frame,
+        dfl_poland_lag24_calibrated_schedule_value_learner_v2_frame,
+        generated_at=_latest_generated_at(
+            dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_schedule_value_learner_v2_plus_gate(
+        strict_frame,
+        source_model_names=source_model_names,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "source_model_names": source_model_names,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "production_gate_passed": gate.metrics.get("production_gate_passed", False),
+            "market_execution_enabled": False,
+            "scope": (
+                "dfl_poland_lag24_calibrated_schedule_value_v2_plus_"
+                "strict_gate_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame(
+    context,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Compare calibrated Poland-enhanced schedule/value rows with frozen V2+."""
+
+    comparison_rows = _summarize_poland_lag24_vs_v2_plus(
+        dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": comparison_rows.height,
+            "scope": (
+                "dfl_poland_lag24_calibrated_vs_frozen_ukrainian_v2_plus_"
+                "comparison_not_full_dfl"
+            ),
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return comparison_rows
 
 
 @dg.asset(
@@ -9467,6 +9976,16 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
+    official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
+    official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,
+    official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_frame,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_frame,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_frame,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_v2_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_v2_plus_frame,

@@ -249,6 +249,21 @@ def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss()
     assert "promotes_over_frozen_v2_plus" in export_script
 
 
+def test_poland_lag24_calibrated_schedule_value_config_routes_new_model_names() -> None:
+    run_config = (
+        PROJECT_ROOT
+        / "configs"
+        / "real_data_official_global_panel_poland_lag24_calibrated_schedule_value_week3.yaml"
+    ).read_text(encoding="utf-8")
+
+    assert "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame" in run_config
+    assert "official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame" in run_config
+    assert "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame" in run_config
+    assert "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1" in run_config
+    assert "tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1" in run_config
+    assert "market_execution_enabled: true" not in run_config.lower()
+
+
 def test_tft_quantile_screen_packet_cli_exports_blocked_screen_evidence() -> None:
     export_script = (
         PROJECT_ROOT / "scripts" / "materialize_tft_quantile_screen_packet.py"

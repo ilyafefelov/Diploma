@@ -18,13 +18,17 @@ from smart_arbitrage.strategy.official_global_panel import (
     OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME,
     OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
+    POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
+    POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME,
     POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
     POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
+    POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
     POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
     build_official_global_panel_nbeatsx_horizon_calibration_frame,
     build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
+    build_official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_tft_horizon_quantile_calibration_frame,
@@ -408,6 +412,126 @@ def test_poland_lag24_experimental_rolling_benchmark_scores_both_sources() -> No
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_not_full_dfl"
     )
     assert experimental_payload["not_market_execution"] is True
+
+
+def test_poland_lag24_nbeatsx_calibration_uses_experimental_model_names() -> None:
+    first_anchor = datetime(2026, 1, 10, 23)
+    source_rows = [
+        _evaluation_row(
+            first_anchor + timedelta(days=index),
+            model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+            forecast_prices=[1000.0, 1000.0],
+            actual_prices=[
+                1200.0 if index < 5 else 5000.0,
+                900.0 if index < 5 else 5000.0,
+            ],
+        )
+        for index in range(6)
+    ]
+
+    calibration = build_official_global_panel_nbeatsx_horizon_calibration_frame(
+        pl.DataFrame(source_rows),
+        min_prior_anchors=2,
+        rolling_calibration_window_anchors=3,
+        source_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+        corrected_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME,
+    )
+
+    latest_row = calibration.filter(
+        pl.col("anchor_timestamp") == first_anchor + timedelta(days=4)
+    ).row(0, named=True)
+    assert latest_row["source_forecast_model_name"] == (
+        POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME
+    )
+    assert latest_row["corrected_forecast_model_name"] == (
+        POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME
+    )
+    assert latest_row["horizon_biases_uah_mwh"] == pytest.approx([200.0, -100.0])
+    assert latest_row["calibration_status"] == "calibrated"
+
+
+def test_poland_lag24_calibrated_gate_routes_nbeatsx_and_tft_through_lp() -> None:
+    anchor = datetime(2026, 1, 10, 23)
+    evaluation_frame = pl.DataFrame(
+        [
+            _evaluation_row(
+                anchor,
+                model_name="strict_similar_day",
+                forecast_prices=[1000.0, 1400.0],
+            ),
+            _evaluation_row(
+                anchor,
+                model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+                forecast_prices=[900.0, 1200.0],
+            ),
+            _evaluation_row(
+                anchor,
+                model_name=POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+                forecast_prices=[950.0, 1250.0],
+            ),
+        ]
+    )
+    nbeatsx_calibration = pl.DataFrame(
+        [
+            {
+                "tenant_id": TENANT_ID,
+                "anchor_timestamp": anchor,
+                "source_forecast_model_name": POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+                "corrected_forecast_model_name": (
+                    POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME
+                ),
+                "horizon_biases_uah_mwh": [100.0, 300.0],
+                "mean_horizon_bias_uah_mwh": 200.0,
+                "max_abs_horizon_bias_uah_mwh": 300.0,
+                "prior_anchor_count": 14,
+                "calibration_window_anchor_count": 14,
+                "calibration_status": "calibrated",
+                "data_quality_tier": "thesis_grade",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+    tft_calibration = pl.DataFrame(
+        [
+            _tft_calibration_row(
+                anchor=anchor,
+                source_model_name=POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+                corrected_model_name=POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
+                source_quantile="p50",
+                horizon_biases=[150.0, 250.0],
+            )
+        ]
+    )
+
+    result = (
+        build_official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame(
+            evaluation_frame,
+            nbeatsx_calibration,
+            tft_calibration,
+        )
+    )
+
+    assert set(result["forecast_model_name"].to_list()) == {
+        "strict_similar_day",
+        POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+        POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+        POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME,
+        POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
+    }
+    assert set(result["strategy_kind"].to_list()) == {
+        POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND
+    }
+    calibrated_tft_payload = result.filter(
+        pl.col("forecast_model_name") == POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME
+    ).row(0, named=True)["evaluation_payload"]
+    assert calibrated_tft_payload["source_forecast_model_name"] == (
+        POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME
+    )
+    assert calibrated_tft_payload["source_quantile"] == "p50"
+    assert calibrated_tft_payload["horizon_biases_uah_mwh"] == [150.0, 250.0]
+    assert calibrated_tft_payload["not_full_dfl"] is True
+    assert calibrated_tft_payload["not_market_execution"] is True
 
 
 def test_global_panel_tft_quantile_calibration_uses_prior_anchors_only() -> None:

@@ -494,6 +494,35 @@ mechanically routed through official NBEATSx/TFT and help the TFT branch versus
 the earlier lag-only TFT screen, but they still do not provide enough decision
 value to replace Ukrainian-only V2+ under the unchanged strict LP/oracle gate.
 
+The calibrated follow-up tested whether the same Poland-enhanced forecast rows
+help after prior-only forecast calibration, before V2+ schedule/value
+selection. The additive calibrated model names are
+`nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1` and
+`tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1`.
+NBEATSx uses horizon-aware residual calibration. TFT uses the same
+horizon/quantile-compatible calibration contract for the p50 Poland-enhanced
+route; true p10/p90 Poland quantile routes remain future work. Calibration rows
+are built from train/prior anchors only.
+
+The screen materialized as Dagster run
+`25ac4101-b557-42b0-8950-3613dc77ad4e` and is exported locally as
+`data/research_runs/week3_poland_lag24_calibrated_experimental_schedule_value/`.
+It is still a near miss, not a promoted replacement:
+
+| Schedule/value row | Mean regret, UAH | Median regret, UAH | Interpretation |
+|---|---:|---:|---|
+| Frozen Ukrainian-only calibrated V2+ | `174.77` | `67.30` | headline comparator |
+| Poland calibrated TFT V2+ | `181.93` | `44.29` | best Poland result; median improves, mean still worse |
+| Poland raw TFT V2+ | `188.26` | `71.06` | cross-market raw TFT near miss |
+| Poland calibrated NBEATSx V2+ | `233.37` | `126.81` | calibration helps raw NBEATSx but remains weak |
+| Poland raw NBEATSx V2+ | `253.68` | `137.35` | weakest experimental row |
+
+The best Poland-enhanced result is now calibrated TFT. It improves the previous
+cross-market TFT screen (`188.26` -> `181.93` UAH) and materially improves
+median regret (`44.29` UAH), but the unchanged promotion rule is based on mean
+regret versus frozen V2+. The remaining blocker is
+`mean_not_improved_vs_frozen_v2_plus`, with a `+7.16` UAH mean-regret gap.
+
 Reusable export:
 
 ```powershell
@@ -511,4 +540,14 @@ Cross-market export:
   --raw-strict-frame-pickle .tmp_runtime\poland_lag24_cross_market_export\raw_strict.pkl `
   --run-slug week3_poland_lag24_cross_market_experimental_schedule_value `
   --dagster-run-id 65d86cdd-435e-46d1-86ac-80f1ce960245
+```
+
+Calibrated export:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_poland_lag24_experimental_schedule_value_packet.py `
+  --comparison-frame-pickle .tmp_runtime\poland_lag24_calibrated_export\dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame.pkl `
+  --raw-strict-frame-pickle .tmp_runtime\poland_lag24_calibrated_export\official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame.pkl `
+  --run-slug week3_poland_lag24_calibrated_experimental_schedule_value `
+  --dagster-run-id 25ac4101-b557-42b0-8950-3613dc77ad4e
 ```

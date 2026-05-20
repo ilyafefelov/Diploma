@@ -2950,3 +2950,46 @@ V2+, not another small selector variant.
 
 Demo visuals for the supervisor/peer meeting are indexed at
 [../thesis/demo-day-2/index.md](../thesis/demo-day-2/index.md).
+
+## Poland-Enhanced Calibrated Forecast Screen
+
+The governed Poland lane was also tested one level earlier in the stack: as
+point-in-time exogenous features for official global-panel NBEATSx/TFT, followed
+by prior-only calibration and the same V2+ schedule/value gate. This keeps the
+comparator frozen:
+
+- calibrated Ukrainian-only V2+ mean regret: `174.77` UAH;
+- median regret: `67.30` UAH;
+- rolling robustness: `4 / 4`;
+- `market_execution_enabled=false`.
+
+Implemented additive assets:
+
+- `official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame`;
+- `official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame`;
+- `official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame`;
+- `dfl_poland_lag24_calibrated_schedule_candidate_library_frame`;
+- `dfl_poland_lag24_calibrated_schedule_candidate_library_v2_frame`;
+- `dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame`;
+- `dfl_poland_lag24_calibrated_schedule_value_learner_v2_frame`;
+- `dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_frame`;
+- `dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame`;
+- `dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame`;
+- `configs/real_data_official_global_panel_poland_lag24_calibrated_schedule_value_week3.yaml`.
+
+Materialized result:
+
+- Dagster run id: `25ac4101-b557-42b0-8950-3613dc77ad4e`;
+- evidence packet:
+  `data/research_runs/week3_poland_lag24_calibrated_experimental_schedule_value/`;
+- best Poland row: calibrated TFT V2+ at `181.93` UAH mean regret and
+  `44.29` UAH median regret;
+- gate blocker: `mean_not_improved_vs_frozen_v2_plus`.
+
+Interpretation: calibration made the Poland TFT branch meaningfully better than
+raw Poland TFT, but not enough to beat the frozen Ukrainian-only V2+ mean
+regret. This is useful near-miss evidence, not a reason to run the full
+365-anchor path yet. The next model-improvement branch should be DT/LAVA-style
+candidate/value or schedule-neighbor supervision against frozen V2+, unless a
+new external feature representation is added with a stronger prior-safe
+hypothesis.

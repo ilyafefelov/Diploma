@@ -377,6 +377,18 @@ new headline result. The next external-feature improvement must either add
 stronger governed context than lagged Poland price regimes or change the
 decision objective; the current V2+ headline remains Ukrainian-only.
 
+The forecast-layer follow-up routed the richer lagged/cross-market Poland
+features through official global-panel NBEATSx/TFT, then calibrated the forecast
+rows before the same V2+ schedule/value gate. The calibrated model names are
+`nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1` and
+`tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1`.
+Dagster run `25ac4101-b557-42b0-8950-3613dc77ad4e` exported
+`week3_poland_lag24_calibrated_experimental_schedule_value`: best Poland row was
+calibrated TFT V2+ at `181.93` UAH mean regret and `44.29` UAH median regret.
+This improved raw Poland TFT, but it still missed frozen Ukrainian-only V2+
+mean regret (`174.77` UAH), so the blocker remains
+`mean_not_improved_vs_frozen_v2_plus`.
+
 ## No-Token Poland Snapshot Route
 
 If an ENTSO-E token is unavailable, the project now has a source-neutral local

@@ -90,15 +90,33 @@ POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME: Final[str] = (
 POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME: Final[str] = (
     "tft_official_global_panel_poland_lag24_experimental_v1"
 )
+POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME: Final[str] = (
+    "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1"
+)
+POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME: Final[str] = (
+    "tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1"
+)
 POLAND_LAG24_EXPERIMENTAL_SOURCE_MODEL_NAMES: Final[tuple[str, ...]] = (
     POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
     POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+)
+POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES: Final[tuple[str, ...]] = (
+    POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+    POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+    POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME,
+    POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
 )
 POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND: Final[str] = (
     "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark"
 )
 POLAND_LAG24_EXPERIMENTAL_ROLLING_CLAIM_SCOPE: Final[str] = (
     "official_global_panel_poland_lag24_experimental_rolling_strict_lp_not_full_dfl"
+)
+POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND: Final[str] = (
+    "official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark"
+)
+POLAND_LAG24_EXPERIMENTAL_CALIBRATION_CLAIM_SCOPE: Final[str] = (
+    "official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_not_full_dfl"
 )
 
 
@@ -550,6 +568,13 @@ def build_official_global_panel_tft_horizon_quantile_calibration_frame(
     *,
     min_prior_anchors: int = 14,
     rolling_calibration_window_anchors: int = 28,
+    source_model_names: tuple[str, ...] = (
+        OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    ),
+    corrected_model_names: tuple[str, ...] | None = None,
+    source_quantiles: tuple[str, ...] | None = None,
 ) -> pl.DataFrame:
     """Build prior-only horizon biases for global-panel TFT quantile rows."""
 
@@ -557,19 +582,31 @@ def build_official_global_panel_tft_horizon_quantile_calibration_frame(
         raise ValueError("min_prior_anchors must be positive.")
     if rolling_calibration_window_anchors <= 0:
         raise ValueError("rolling_calibration_window_anchors must be positive.")
+    if not source_model_names:
+        raise ValueError("source_model_names must contain at least one model.")
+    resolved_corrected_model_names = corrected_model_names or tuple(
+        f"{source_model_name}_horizon_quantile_calibrated_v1"
+        for source_model_name in source_model_names
+    )
+    if len(resolved_corrected_model_names) != len(source_model_names):
+        raise ValueError("corrected_model_names must match source_model_names length.")
+    resolved_source_quantiles = source_quantiles or tuple(
+        _tft_source_quantile(source_model_name)
+        for source_model_name in source_model_names
+    )
+    if len(resolved_source_quantiles) != len(source_model_names):
+        raise ValueError("source_quantiles must match source_model_names length.")
     _validate_evaluation_frame(evaluation_frame)
     if evaluation_frame.is_empty():
         return pl.DataFrame()
 
     rows: list[dict[str, Any]] = []
     tenant_ids = sorted(str(value) for value in set(evaluation_frame["tenant_id"].to_list()))
-    quantile_models = (
-        OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
-        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
-        OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    model_metadata = tuple(
+        zip(source_model_names, resolved_corrected_model_names, resolved_source_quantiles)
     )
     for tenant_id in tenant_ids:
-        for source_model_name in quantile_models:
+        for source_model_name, corrected_model_name, source_quantile in model_metadata:
             model_frame = (
                 evaluation_frame
                 .filter(
@@ -602,10 +639,8 @@ def build_official_global_panel_tft_horizon_quantile_calibration_frame(
                         "tenant_id": tenant_id,
                         "anchor_timestamp": anchor_timestamp,
                         "source_forecast_model_name": source_model_name,
-                        "corrected_forecast_model_name": (
-                            f"{source_model_name}_horizon_quantile_calibrated_v1"
-                        ),
-                        "source_quantile": _tft_source_quantile(source_model_name),
+                        "corrected_forecast_model_name": corrected_model_name,
+                        "source_quantile": source_quantile,
                         "horizon_biases_uah_mwh": horizon_biases,
                         "mean_horizon_bias_uah_mwh": _mean_float(horizon_biases),
                         "max_abs_horizon_bias_uah_mwh": max(
@@ -638,6 +673,8 @@ def build_official_global_panel_nbeatsx_horizon_calibration_frame(
     *,
     min_prior_anchors: int = 14,
     rolling_calibration_window_anchors: int = 28,
+    source_model_name: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME,
+    corrected_model_name: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATED_MODEL_NAME,
 ) -> pl.DataFrame:
     """Build prior-only horizon biases for official global-panel NBEATSx rows."""
 
@@ -645,6 +682,10 @@ def build_official_global_panel_nbeatsx_horizon_calibration_frame(
         raise ValueError("min_prior_anchors must be positive.")
     if rolling_calibration_window_anchors <= 0:
         raise ValueError("rolling_calibration_window_anchors must be positive.")
+    if not source_model_name:
+        raise ValueError("source_model_name must not be empty.")
+    if not corrected_model_name:
+        raise ValueError("corrected_model_name must not be empty.")
     _validate_evaluation_frame(evaluation_frame)
 
     rows: list[dict[str, Any]] = []
@@ -654,7 +695,7 @@ def build_official_global_panel_nbeatsx_horizon_calibration_frame(
             evaluation_frame
             .filter(
                 (pl.col("tenant_id") == tenant_id)
-                & (pl.col("forecast_model_name") == OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME)
+                & (pl.col("forecast_model_name") == source_model_name)
             )
             .sort("anchor_timestamp")
         )
@@ -681,10 +722,8 @@ def build_official_global_panel_nbeatsx_horizon_calibration_frame(
                 {
                     "tenant_id": tenant_id,
                     "anchor_timestamp": anchor_timestamp,
-                    "source_forecast_model_name": OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME,
-                    "corrected_forecast_model_name": (
-                        OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATED_MODEL_NAME
-                    ),
+                    "source_forecast_model_name": source_model_name,
+                    "corrected_forecast_model_name": corrected_model_name,
                     "horizon_biases_uah_mwh": horizon_biases,
                     "mean_horizon_bias_uah_mwh": _mean_float(horizon_biases),
                     "max_abs_horizon_bias_uah_mwh": max(
@@ -708,9 +747,19 @@ def build_official_global_panel_nbeatsx_horizon_calibration_frame(
 def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame(
     evaluation_frame: pl.DataFrame,
     calibration_frame: pl.DataFrame,
+    *,
+    source_model_name: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME,
+    calibrated_model_name: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATED_MODEL_NAME,
+    strategy_kind: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
+    claim_scope: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_CLAIM_SCOPE,
+    evaluation_id_prefix: str = "official-global-panel-nbeatsx-calibrated",
 ) -> pl.DataFrame:
     """Strict-score raw and prior-only calibrated official global-panel NBEATSx."""
 
+    if not source_model_name:
+        raise ValueError("source_model_name must not be empty.")
+    if not calibrated_model_name:
+        raise ValueError("calibrated_model_name must not be empty.")
     _validate_evaluation_frame(evaluation_frame)
     _validate_calibration_frame(calibration_frame)
     if evaluation_frame.is_empty() or calibration_frame.is_empty():
@@ -732,14 +781,14 @@ def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_f
             field_name="anchor_timestamp",
         )
         strict_key = (tenant_id, anchor_timestamp, "strict_similar_day")
-        source_key = (tenant_id, anchor_timestamp, OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME)
         if strict_key not in source_rows:
             raise ValueError(
                 f"evaluation_frame is missing strict_similar_day for {tenant_id} {anchor_timestamp}."
             )
+        source_key = (tenant_id, anchor_timestamp, source_model_name)
         if source_key not in source_rows:
             raise ValueError(
-                "evaluation_frame is missing nbeatsx_official_global_panel_v1 "
+                f"evaluation_frame is missing {source_model_name} "
                 f"for {tenant_id} {anchor_timestamp}."
             )
         strict_row = source_rows[strict_key]
@@ -760,7 +809,7 @@ def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_f
                 point_prediction_column="predicted_price_uah_mwh",
             ),
             ForecastCandidate(
-                model_name=OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME,
+                model_name=source_model_name,
                 forecast_frame=_forecast_frame_from_payload(
                     source_payload,
                     price_column_name="predicted_price_uah_mwh",
@@ -769,7 +818,7 @@ def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_f
                 point_prediction_column="predicted_price_uah_mwh",
             ),
             ForecastCandidate(
-                model_name=OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATED_MODEL_NAME,
+                model_name=calibrated_model_name,
                 forecast_frame=_forecast_frame_from_payload(
                     source_payload,
                     price_column_name="predicted_price_uah_mwh",
@@ -788,7 +837,7 @@ def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_f
             anchor_timestamp=anchor_timestamp,
             candidates=candidates,
             evaluation_id=(
-                f"{tenant_id}:official-global-panel-nbeatsx-calibrated:"
+                f"{tenant_id}:{evaluation_id_prefix}:"
                 f"{anchor_timestamp:%Y%m%dT%H%M}"
             ),
             generated_at=_datetime_value(strict_row["generated_at"], field_name="generated_at"),
@@ -798,6 +847,10 @@ def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_f
                 evaluation,
                 source_payload=source_payload,
                 calibration_row=calibration_row,
+                source_model_name=source_model_name,
+                calibrated_model_name=calibrated_model_name,
+                strategy_kind=strategy_kind,
+                claim_scope=claim_scope,
             )
         )
     return pl.concat(result_frames, how="diagonal_relaxed").sort(
@@ -808,9 +861,20 @@ def build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_f
 def build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame(
     evaluation_frame: pl.DataFrame,
     calibration_frame: pl.DataFrame,
+    *,
+    source_model_names: tuple[str, ...] = (
+        OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+        OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
+    ),
+    strategy_kind: str = OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND,
+    claim_scope: str = OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_CLAIM_SCOPE,
+    evaluation_id_prefix: str = "official-global-panel-tft-quantile-calibrated",
 ) -> pl.DataFrame:
     """Strict-score raw and prior-only calibrated global-panel TFT quantiles."""
 
+    if not source_model_names:
+        raise ValueError("source_model_names must contain at least one model.")
     _validate_evaluation_frame(evaluation_frame)
     _validate_calibration_frame(calibration_frame)
     if evaluation_frame.is_empty() or calibration_frame.is_empty():
@@ -856,11 +920,7 @@ def build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchm
             )
         ]
         source_payload_by_model: dict[str, dict[str, Any]] = {}
-        for source_model_name in (
-            OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME,
-            OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
-            OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME,
-        ):
+        for source_model_name in source_model_names:
             source_key = (tenant_id, anchor_timestamp, source_model_name)
             if source_key not in source_rows:
                 raise ValueError(
@@ -911,7 +971,7 @@ def build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchm
             anchor_timestamp=anchor_timestamp,
             candidates=candidates,
             evaluation_id=(
-                f"{tenant_id}:official-global-panel-tft-quantile-calibrated:"
+                f"{tenant_id}:{evaluation_id_prefix}:"
                 f"{anchor_timestamp:%Y%m%dT%H%M}"
             ),
             generated_at=_datetime_value(
@@ -923,11 +983,57 @@ def build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchm
                 evaluation,
                 source_payload_by_model=source_payload_by_model,
                 calibration_rows=calibration_rows,
+                strategy_kind=strategy_kind,
+                claim_scope=claim_scope,
             )
         )
     if not result_frames:
         return pl.DataFrame()
     return pl.concat(result_frames, how="diagonal_relaxed").sort(
+        ["tenant_id", "anchor_timestamp", "rank_by_regret", "forecast_model_name"]
+    )
+
+
+def build_official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame(
+    evaluation_frame: pl.DataFrame,
+    nbeatsx_calibration_frame: pl.DataFrame,
+    tft_calibration_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score raw and prior-only calibrated Poland-lag24 NBEATSx/TFT rows."""
+
+    frames: list[pl.DataFrame] = []
+    if not nbeatsx_calibration_frame.is_empty():
+        frames.append(
+            build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame(
+                evaluation_frame,
+                nbeatsx_calibration_frame,
+                source_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+                calibrated_model_name=(
+                    POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME
+                ),
+                strategy_kind=POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
+                claim_scope=POLAND_LAG24_EXPERIMENTAL_CALIBRATION_CLAIM_SCOPE,
+                evaluation_id_prefix=(
+                    "official-global-panel-poland-lag24-nbeatsx-calibrated"
+                ),
+            )
+        )
+    if not tft_calibration_frame.is_empty():
+        frames.append(
+            build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame(
+                evaluation_frame,
+                tft_calibration_frame,
+                source_model_names=(POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,),
+                strategy_kind=POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
+                claim_scope=POLAND_LAG24_EXPERIMENTAL_CALIBRATION_CLAIM_SCOPE,
+                evaluation_id_prefix=(
+                    "official-global-panel-poland-lag24-tft-calibrated"
+                ),
+            )
+        )
+    if not frames:
+        return pl.DataFrame()
+    return pl.concat(frames, how="diagonal_relaxed").sort(
         ["tenant_id", "anchor_timestamp", "rank_by_regret", "forecast_model_name"]
     )
 
@@ -1289,7 +1395,11 @@ def _with_poland_lag24_experimental_metadata(
 def _tft_source_quantile(model_name: str) -> str:
     if model_name == OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME:
         return "p10"
-    if model_name == OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME:
+    if model_name in {
+        OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+        POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+        POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
+    }:
         return "p50"
     if model_name == OFFICIAL_GLOBAL_PANEL_TFT_P90_MODEL_NAME:
         return "p90"
@@ -1575,6 +1685,10 @@ def _with_calibration_metadata(
     *,
     source_payload: dict[str, Any],
     calibration_row: dict[str, Any],
+    source_model_name: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME,
+    calibrated_model_name: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATED_MODEL_NAME,
+    strategy_kind: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
+    claim_scope: str = OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_CLAIM_SCOPE,
 ) -> pl.DataFrame:
     payloads: list[dict[str, Any]] = []
     horizon_biases = _float_list(calibration_row["horizon_biases_uah_mwh"])
@@ -1583,18 +1697,18 @@ def _with_calibration_metadata(
         payload = dict(row["evaluation_payload"])
         payload.update(
             {
-                "claim_scope": OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_CLAIM_SCOPE,
-                "benchmark_kind": OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND,
+                "claim_scope": claim_scope,
+                "benchmark_kind": strategy_kind,
                 "data_quality_tier": str(source_payload.get("data_quality_tier", "demo_grade")),
                 "observed_coverage_ratio": float(source_payload.get("observed_coverage_ratio", 0.0)),
                 "not_full_dfl": True,
                 "not_market_execution": True,
             }
         )
-        if model_name == OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATED_MODEL_NAME:
+        if model_name == calibrated_model_name:
             payload.update(
                 {
-                    "source_forecast_model_name": OFFICIAL_GLOBAL_PANEL_NBEATSX_MODEL_NAME,
+                    "source_forecast_model_name": source_model_name,
                     "horizon_biases_uah_mwh": horizon_biases,
                     "mean_horizon_bias_uah_mwh": float(
                         calibration_row["mean_horizon_bias_uah_mwh"]
@@ -1624,9 +1738,7 @@ def _with_calibration_metadata(
         payloads.append(payload)
     return evaluation.with_columns(
         [
-            pl.lit(OFFICIAL_GLOBAL_PANEL_NBEATSX_CALIBRATION_STRATEGY_KIND).alias(
-                "strategy_kind"
-            ),
+            pl.lit(strategy_kind).alias("strategy_kind"),
             pl.Series("evaluation_payload", payloads),
         ]
     )
@@ -1637,6 +1749,8 @@ def _with_tft_quantile_calibration_metadata(
     *,
     source_payload_by_model: dict[str, dict[str, Any]],
     calibration_rows: list[dict[str, Any]],
+    strategy_kind: str = OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND,
+    claim_scope: str = OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_CLAIM_SCOPE,
 ) -> pl.DataFrame:
     payloads: list[dict[str, Any]] = []
     calibration_by_model = {
@@ -1648,8 +1762,8 @@ def _with_tft_quantile_calibration_metadata(
         payload = dict(row["evaluation_payload"])
         payload.update(
             {
-                "claim_scope": OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_CLAIM_SCOPE,
-                "benchmark_kind": OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND,
+                "claim_scope": claim_scope,
+                "benchmark_kind": strategy_kind,
                 "data_quality_tier": str(source_payload.get("data_quality_tier", "demo_grade")),
                 "observed_coverage_ratio": float(source_payload.get("observed_coverage_ratio", 0.0)),
                 "not_full_dfl": True,
@@ -1700,9 +1814,7 @@ def _with_tft_quantile_calibration_metadata(
         payloads.append(payload)
     return evaluation.with_columns(
         [
-            pl.lit(OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND).alias(
-                "strategy_kind"
-            ),
+            pl.lit(strategy_kind).alias("strategy_kind"),
             pl.Series("evaluation_payload", payloads),
         ]
     )

@@ -425,6 +425,22 @@ UAH), але найкращий external-feature результат усе ще 
 market-coupling не створює достатнього decision value для headline replacement
 без нових джерел, глибшої доменної трансформації або іншої DFL/DT objective.
 
+Після цього було перевірено саме calibrated forecast route, тобто Poland
+features спочатку входили в official global-panel NBEATSx/TFT, потім прогноз
+проходив prior-only calibration, і тільки після цього результати потрапляли в
+V2+ schedule/value gate. Нові research model names:
+`nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1` і
+`tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1`.
+Цей screen також не замінив український V2+, але дав найсильніший Poland
+near-miss: calibrated TFT V2+ мав mean regret `181.93` UAH і median regret
+`44.29` UAH. Це краще за raw Poland TFT (`188.26` / `71.06` UAH) і показує,
+що calibration справді допомогла TFT schedule/value path. Проте frozen
+Ukrainian-only calibrated V2+ лишається кращим за mean regret (`174.77` UAH),
+тому blocker лишається `mean_not_improved_vs_frozen_v2_plus`. Для дипломного
+claim це означає: Poland features already work technically and improve a TFT
+near-miss after calibration, but they are not headline evidence until they beat
+V2+ under the same strict LP/oracle gate.
+
 Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
 DFL, tiny offline Decision Transformer, behavior cloning і fallback
 порівнювалися не лише зі `strict_similar_day`, а з поточним українським V2+
