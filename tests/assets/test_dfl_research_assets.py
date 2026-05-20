@@ -287,6 +287,14 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
+        "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
+        "dfl_poland_lag24_experimental_schedule_candidate_library_frame",
+        "dfl_poland_lag24_experimental_schedule_candidate_library_v2_frame",
+        "dfl_poland_lag24_experimental_schedule_candidate_library_v2_plus_frame",
+        "dfl_poland_lag24_experimental_schedule_value_learner_v2_frame",
+        "dfl_poland_lag24_experimental_schedule_value_learner_v2_plus_frame",
+        "dfl_poland_lag24_experimental_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_poland_lag24_experimental_vs_v2_plus_comparison_frame",
         "dfl_tft_quantile_schedule_candidate_library_frame",
         "dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame",
         "dfl_tft_combined_v2_plus_strict_lp_benchmark_frame",
@@ -322,6 +330,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame",
         "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame",
         "dfl_official_v2_plus_bridge_failure_audit_frame",
+        "dfl_market_coupled_schedule_value_learner_v2_plus_frame",
+        "dfl_market_coupled_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame",
         "dfl_market_coupling_v2_plus_ablation_frame",
         "dfl_official_global_panel_schedule_value_production_gate_frame",
         "dfl_production_promotion_gate_frame",
@@ -1481,6 +1492,29 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_forecast_exogenous_feature_route_frame",
+        "dfl_market_coupled_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame",
+    }
+    assert deps_by_key["dfl_market_coupled_schedule_value_learner_v2_plus_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
+        "official_forecast_exogenous_feature_route_frame",
+        "entsoe_poland_lagged_feature_candidate_frame",
+    }
+    assert deps_by_key[
+        "dfl_market_coupled_schedule_value_learner_v2_plus_strict_lp_benchmark_frame"
+    ] == {
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
+        "dfl_market_coupled_schedule_value_learner_v2_plus_frame",
+        "entsoe_poland_lagged_feature_candidate_frame",
+    }
+    assert deps_by_key["dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame"] == {
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
+        "official_forecast_exogenous_feature_route_frame",
+        "entsoe_poland_lagged_feature_candidate_frame",
     }
     assert deps_by_key["dfl_official_global_panel_schedule_value_learner_v3_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_frame"

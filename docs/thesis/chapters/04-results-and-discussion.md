@@ -323,6 +323,91 @@ prior-known EUR/UAH FX, publication time, temporal availability і timezone.
 Отже, token/source доступ і lagged interface вже готові як pipeline evidence,
 але market-coupled training ще не є допущеним результатом.
 
+Наступний run,
+`week3_dfl_entsoe_poland_lag24_nbu_approved_route`, закрив механічні
+governance gaps для контрольованого ablation route. ENTSO-E lag-24 panel
+покрив `11,638 / 11,638` українських benchmark timestamps; NBU EUR/UAH metadata
+покрив `485 / 485` effective dates; `141` невеликий пропуск у ENTSO-E hourly
+source series було заповнено детермінованою interpolation з сусідніх ENTSO-E
+source prices, без використання українських target actuals. Після цього
+`entsoe_pl_lag24_day_ahead_price_uah_mwh` отримав
+`approved_for_experimental_ablation=true`, а ablation packet перейшов у
+`approved_route_pending_materialization`. Це все ще не є покращенням моделі:
+market-coupled B variant не тренувався, official training лишається заблокованим
+через `domain_shift`, а `market_execution_enabled=false`. Але тепер наступний
+чесний крок визначений точно: матеріалізувати Ukrainian-plus-Poland B variant і
+перевірити, чи він перевершує frozen Ukrainian-only V2+ під тим самим strict
+LP/oracle gate.
+
+Цей B variant було матеріалізовано у packet
+`week3_dfl_entsoe_poland_lag24_b_variant_comparison`. Evidence check пройшов,
+а ablation status став `comparison_complete` для обох official global-panel
+NBEATSx rows. Проте B не замінив український V2+: для calibrated source mean
+regret залишився `174.77` UAH проти `174.77` UAH у Ukrainian-only V2+, а для
+raw source - `193.36` UAH проти `193.36` UAH. Rolling robustness лишився
+`4 / 4`, бо selector безпечно повернувся до V2+ fallback. Отже, ablation
+passed = `false`, blocker = `mean_not_improved`.
+
+Цей результат уточнює висновок: source access, timestamp coverage і prior-known
+FX для першої Poland lag-24 feature вже працюють, але сама feature у поточному
+prior-only selector не дала додаткової decision value понад український V2+.
+Тому ENTSO-E/Poland лишається контрольованим exogenous ablation evidence, а не
+новим headline результатом.
+
+Після цього було перевірено багатший prior-safe Poland feature set, щоб
+відповісти на питання, чи проблема була лише у занадто простій одиночній
+feature. Новий lagged panel додав до
+`entsoe_pl_lag24_day_ahead_price_uah_mwh` похідні режими: 1-hour delta,
+24-hour delta, daily spread, daily price rank, lagged peak hour і lagged trough
+hour. Усі ці змінні обчислюються з ENTSO-E Poland series у момент `t - 24h` і
+prior-known NBU EUR/UAH metadata, тобто не використовують final Ukrainian
+actuals і не додають європейські training rows.
+
+Матеріалізований packet
+`week3_dfl_entsoe_poland_rich_prior_safe_b_variant_comparison` мав Dagster run
+`3fe654b3-43e3-471d-9b36-2be5baf16477`. Evidence check пройшов, lagged frame
+містив `11,638` source-backed benchmark rows із повним primary lagged coverage,
+а selector перевірив prior-only profiles за рівнем, spread, delta і timing
+режимами. Проте всі `10 / 10` tenant/source rows активували Ukrainian-only V2+
+fallback, бо train/prior evidence показав, що market-coupled candidate choices
+погіршують regret. Під strict LP/oracle gate результат залишився нейтральним:
+calibrated source `174.77` UAH проти B `174.77` UAH, raw source `193.36` UAH
+проти B `193.36` UAH, rolling robustness `4 / 4`, `ablation_passed=false`,
+blocker `mean_not_improved`.
+
+Отже, richer Poland spreads/deltas/peak-trough regimes уже технічно доступні як
+контрольований exogenous ablation layer, але вони не замінюють український V2+
+headline. Науковий висновок тут негативний, але корисний: для поточного
+українського 365-anchor panel лагові польські режими не дали додаткового
+decision value понад OREE/Open-Meteo/tenant-context V2+ selector.
+
+Окремий наступний крок полягає не в прямому schedule selector, а в перевірці
+forecast layer: ті самі prior-safe Poland features додано до експериментальної
+official global-panel training frame для NBEATSx і TFT. Вони входять як
+known-future covariates (`futr_exog_list` для NBEATSx і
+`time_varying_known_reals` для TFT), але отримують окремі research model names:
+`nbeatsx_official_global_panel_poland_lag24_experimental_v1` і
+`tft_official_global_panel_poland_lag24_experimental_v1`. Це не змінює
+headline claim: official training усе ще заблокований domain-shift governance,
+а будь-який Poland-enhanced forecast має пройти той самий downstream
+schedule/value gate проти frozen Ukrainian-only V2+.
+Перший smoke materialization для цього route завершився `RUN_SUCCESS`
+(`9ca621e7-9959-4b65-99fe-68ff4a2d7a15`), тобто NBEATSx/TFT adapters технічно
+вміють споживати ці ознаки. Однак це ще не є результатом regret improvement.
+
+Наступний downstream schedule/value screen уже перевірив ці experimental
+forecast model names під тим самим strict LP/oracle gate. Evidence packet
+`week3_poland_lag24_experimental_schedule_value_near_miss` показав, що
+Poland-enhanced forecasts не замінюють frozen Ukrainian-only V2+. Для
+calibrated headline comparator mean regret лишився `174.77` UAH, тоді як
+Poland lag-24 NBEATSx V2+ отримав `184.66` UAH, а Poland lag-24 TFT V2+ -
+`218.12` UAH. NBEATSx route є near-miss, бо median regret навіть трохи нижчий
+(`65.16` UAH проти `67.30` UAH), але thesis gate приймає результат за mean
+regret і rolling-safe comparison, тому blocker лишається
+`mean_not_improved_vs_frozen_v2_plus`. Висновок: ENTSO-E Poland features уже
+можуть проходити через NBEATSx/TFT adapters, але current lag-24 feature
+representation ще не дає достатньої decision value для headline replacement.
+
 Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
 DFL, tiny offline Decision Transformer, behavior cloning і fallback
 порівнювалися не лише зі `strict_similar_day`, а з поточним українським V2+

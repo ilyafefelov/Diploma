@@ -172,6 +172,36 @@ timestamp coverage and prior-known NBU EUR/UAH FX metadata before it can enter a
 controlled ablation; official training remains blocked until domain shift is
 validated under the unchanged V2+ strict LP/oracle gate.
 
+As of the `week3_dfl_entsoe_poland_lag24_nbu_approved_route` packet, the
+lagged Poland lane has full benchmark timestamp coverage (`11,638 / 11,638`)
+and source-backed NBU EUR/UAH metadata (`485` effective dates). The route is
+therefore approved for experimental ablation only:
+`approved_for_experimental_ablation=true` and
+`approved_for_official_training=false`. Domain-shift validation still requires a
+separate Ukrainian-only V2+ versus Ukrainian-plus-Poland comparison.
+
+The same approved-for-ablation lane now has a forecast-training interface for
+official global-panel NBEATSx/TFT screens:
+`official_global_panel_poland_lag24_experimental_training_frame`. It carries
+the lagged Poland level, 1h/24h deltas, daily spread, daily price rank, and
+lagged peak/trough hour as `known_future_feature_columns_csv`, so the existing
+NBEATSx `futr_exog_list` and TFT `time_varying_known_reals` adapters can test
+the features without changing the official Ukrainian-only training route. The
+output model names are separated as
+`nbeatsx_official_global_panel_poland_lag24_experimental_v1` and
+`tft_official_global_panel_poland_lag24_experimental_v1`; they remain
+experimental ablation candidates until they beat frozen V2+ under the strict
+LP/oracle gate.
+
+The first downstream strict LP/oracle schedule-value screen did not pass that
+gate. The local packet
+`data/research_runs/week3_poland_lag24_experimental_schedule_value_near_miss/`
+records frozen Ukrainian-only V2+ at `174.77` UAH mean regret, Poland lag-24
+NBEATSx V2+ at `184.66` UAH, and Poland lag-24 TFT V2+ at `218.12` UAH. This
+is useful negative evidence: the route is now mechanically usable by
+NBEATSx/TFT, but the current prior-safe Poland feature representation is not
+strong enough to replace the Ukrainian-only V2+ schedule/value result.
+
 ## Academic And Source Basis
 
 - Nixtla NeuralForecast supports static, historic, and future exogenous
@@ -216,11 +246,9 @@ Run:
 
 1. Keep ENTSO-E token-backed and snapshot-backed Poland samples outside git and
    leave official training blocked by default.
-2. Materialize the lag-24 Poland candidate with full benchmark timestamp
-   coverage and prior-known NBU EUR/UAH metadata.
-3. Run the controlled Ukrainian-only V2+ versus Ukrainian-plus-Poland ablation
+2. Run the controlled Ukrainian-only V2+ versus Ukrainian-plus-Poland ablation
    only after the route reports `approved_for_experimental_ablation=true`.
-4. Promote no external feature to official training until domain-shift
+3. Promote no external feature to official training until domain-shift
    validation passes under the same strict LP/oracle gate.
-5. Rerun official global-panel parity only after at least one feature becomes
+4. Rerun official global-panel parity only after at least one feature becomes
    `approved_for_training`.

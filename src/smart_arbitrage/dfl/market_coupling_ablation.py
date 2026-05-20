@@ -126,7 +126,12 @@ def build_dfl_market_coupling_v2_plus_ablation_frame(
                 )
             )
             continue
-        if market_coupled_strict_frame is None or market_coupled_robustness_frame is None:
+        if (
+            market_coupled_strict_frame is None
+            or market_coupled_robustness_frame is None
+            or market_coupled_strict_frame.is_empty()
+            or market_coupled_robustness_frame.is_empty()
+        ):
             rows.append(
                 _ablation_row(
                     source_model_name=source_model_name,

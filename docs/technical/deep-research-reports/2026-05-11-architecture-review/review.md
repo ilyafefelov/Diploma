@@ -584,7 +584,7 @@ Scientific sources:
 - Sang et al., Electricity Price Prediction for ESS Arbitrage, Decision-Focused Approach: <https://doi.org/10.1109/TSG.2022.3166791>
 - Yi et al., Perturbed Decision-Focused Learning for Strategic Energy Storage: <https://arxiv.org/abs/2406.17085>
 - Mandi et al., Decision-Focused Learning survey: <https://arxiv.org/abs/2307.13565>
-- Olivares et al., NBEATSx / NeuralForecast: <https://arxiv.org/abs/2201.12886>
+- Olivares et al., NBEATSx / NeuralForecast: <https://arxiv.org/abs/2104.05522>
 - Lim et al., Temporal Fusion Transformers: <https://arxiv.org/abs/1912.09363>
 - Agrawal et al., cvxpylayers: <https://arxiv.org/abs/1910.12430>
 - Amos and Kolter, OptNet: <https://arxiv.org/abs/1703.00443>

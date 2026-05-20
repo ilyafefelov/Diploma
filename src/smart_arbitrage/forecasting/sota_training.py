@@ -22,6 +22,18 @@ from smart_arbitrage.forecasting.market_coupling_features import (
 SOTA_SCHEMA_VERSION: Final[str] = "sota_forecast_training_v1"
 OFFICIAL_GLOBAL_PANEL_SOTA_SCHEMA_VERSION: Final[str] = "official_global_panel_sota_v1"
 SOTA_UNIQUE_ID_SUFFIX: Final[str] = "DAM"
+POLAND_LAG24_PRIMARY_FEATURE_COLUMN: Final[str] = (
+    "entsoe_pl_lag24_day_ahead_price_uah_mwh"
+)
+POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
+    POLAND_LAG24_PRIMARY_FEATURE_COLUMN,
+    "entsoe_pl_lag24_delta_1h_uah_mwh",
+    "entsoe_pl_lag24_delta_24h_uah_mwh",
+    "entsoe_pl_lag24_daily_spread_uah_mwh",
+    "entsoe_pl_lag24_daily_price_rank",
+    "entsoe_pl_lag24_daily_peak_hour_utc",
+    "entsoe_pl_lag24_daily_trough_hour_utc",
+)
 
 KNOWN_FUTURE_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "hour_sin",
@@ -223,6 +235,192 @@ def build_official_global_panel_training_frame(
         )
         tenant_frames.append(tenant_training_frame)
     return pl.concat(tenant_frames, how="diagonal_relaxed").sort(["unique_id", "ds"])
+
+
+def build_official_global_panel_poland_lag24_experimental_training_frame(
+    silver_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    entsoe_poland_lagged_feature_candidate_frame: pl.DataFrame,
+    market_coupling_feature_route_frame: pl.DataFrame,
+    horizon_hours: int = DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    market_venue: str = SOTA_UNIQUE_ID_SUFFIX,
+    future_weather_mode: FutureWeatherMode = "forecast_only",
+    temporal_scaler_type: str = "robust",
+    anchor_timestamp: datetime | None = None,
+) -> pl.DataFrame:
+    """Build an experimental global panel with prior-safe lagged Poland features.
+
+    This path is deliberately separate from the official training route. It can
+    use Poland lag24 columns once the route is ablation-ready, but it keeps the
+    output labelled as experimental until domain-shift governance is complete.
+    """
+
+    _validate_global_panel_inputs(
+        silver_frame,
+        tenant_ids=tenant_ids,
+        horizon_hours=horizon_hours,
+        temporal_scaler_type=temporal_scaler_type,
+    )
+    route_metadata = _validate_poland_lag24_experimental_route(
+        market_coupling_feature_route_frame
+    )
+    enriched_silver = _attach_poland_lag24_experimental_features_to_silver(
+        silver_frame,
+        entsoe_poland_lagged_feature_candidate_frame,
+    )
+    _validate_allowed_external_features_present(
+        enriched_silver,
+        allowed_external_feature_columns=POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS,
+    )
+    experimental_columns_csv = ",".join(POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS)
+    tenant_frames: list[pl.DataFrame] = []
+    for tenant_id in tenant_ids:
+        tenant_history = _tenant_history_from_silver(
+            enriched_silver,
+            tenant_id=tenant_id,
+            anchor_timestamp=anchor_timestamp,
+            horizon_hours=horizon_hours,
+        )
+        feature_frame = build_neural_forecast_feature_frame(
+            tenant_history,
+            horizon_hours=horizon_hours,
+            future_weather_mode=future_weather_mode,
+        )
+        feature_frame = _attach_allowed_external_features(
+            feature_frame,
+            tenant_history,
+            allowed_external_feature_columns=POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS,
+        )
+        tenant_training_frame = build_sota_forecast_training_frame(
+            feature_frame,
+            tenant_id=tenant_id,
+            market_venue=market_venue,
+            extra_known_future_feature_columns=POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS,
+        ).with_columns(
+            [
+                pl.lit(OFFICIAL_GLOBAL_PANEL_SOTA_SCHEMA_VERSION).alias("sota_schema_version"),
+                pl.lit("official_global_panel_poland_lag24_experimental").alias(
+                    "training_panel_kind"
+                ),
+                pl.lit("train_rows_only_per_unique_id").alias("target_scaler_fit_scope"),
+                pl.lit("train_rows_only_per_unique_id").alias("feature_scaler_fit_scope"),
+                pl.lit(temporal_scaler_type).alias("temporal_scaler_type"),
+                pl.lit("experimental_ablation_not_headline_training").alias("claim_boundary"),
+                pl.lit(True).alias("not_full_dfl"),
+                pl.lit(True).alias("not_market_execution"),
+                pl.lit("experimental_ablation_only").alias(
+                    "external_feature_training_status"
+                ),
+                pl.lit(route_metadata["external_feature_experimental_status"]).alias(
+                    "external_feature_experimental_status"
+                ),
+                pl.lit("").alias("allowed_external_feature_columns_csv"),
+                pl.lit(experimental_columns_csv).alias(
+                    "experimental_external_feature_columns_csv"
+                ),
+                pl.lit(route_metadata["blocked_external_feature_columns_csv"]).alias(
+                    "blocked_external_feature_columns_csv"
+                ),
+                pl.lit(route_metadata["external_training_blockers_csv"]).alias(
+                    "external_training_blockers_csv"
+                ),
+                pl.lit(route_metadata["external_feature_governance_scope"]).alias(
+                    "external_feature_governance_scope"
+                ),
+            ]
+        )
+        tenant_frames.append(tenant_training_frame)
+    return pl.concat(tenant_frames, how="diagonal_relaxed").sort(["unique_id", "ds"])
+
+
+def _validate_poland_lag24_experimental_route(route_frame: pl.DataFrame) -> dict[str, str]:
+    route_metadata = market_coupling_feature_route_metadata(route_frame)
+    experimental_columns = _csv_column_tuple(
+        route_metadata["experimental_external_feature_columns_csv"]
+    )
+    allowed_columns = _csv_column_tuple(
+        route_metadata["allowed_external_feature_columns_csv"]
+    )
+    if (
+        POLAND_LAG24_PRIMARY_FEATURE_COLUMN not in experimental_columns
+        and POLAND_LAG24_PRIMARY_FEATURE_COLUMN not in allowed_columns
+    ):
+        raise ValueError(
+            "Poland lag24 experimental training requires an ablation-ready Poland "
+            f"lag24 route for {POLAND_LAG24_PRIMARY_FEATURE_COLUMN}."
+        )
+    return route_metadata
+
+
+def _attach_poland_lag24_experimental_features_to_silver(
+    silver_frame: pl.DataFrame,
+    lagged_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    required_columns = {
+        "delivery_timestamp_utc",
+        "source_backed",
+        "coverage_status",
+        *POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS,
+    }
+    missing_columns = sorted(required_columns.difference(lagged_feature_frame.columns))
+    if missing_columns:
+        raise ValueError(
+            "entsoe_poland_lagged_feature_candidate_frame is missing required "
+            f"experimental columns: {missing_columns}"
+        )
+    if lagged_feature_frame.filter(~pl.col("source_backed")).height:
+        raise ValueError("Poland lag24 experimental features require source-backed rows.")
+    coverage_statuses = set(
+        str(value)
+        for value in lagged_feature_frame.select("coverage_status").to_series().to_list()
+    )
+    if coverage_statuses != {"full_lagged_feature_coverage"}:
+        raise ValueError(
+            "Poland lag24 experimental features require full timestamp coverage."
+        )
+
+    external_frame = (
+        lagged_feature_frame
+        .with_columns(
+            pl.col("delivery_timestamp_utc")
+            .map_elements(_naive_datetime_from_iso, return_dtype=pl.Datetime)
+            .alias(DEFAULT_TIMESTAMP_COLUMN)
+        )
+        .select([DEFAULT_TIMESTAMP_COLUMN, *POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS])
+        .unique(subset=[DEFAULT_TIMESTAMP_COLUMN], keep="last")
+        .sort(DEFAULT_TIMESTAMP_COLUMN)
+    )
+    if external_frame.select(POLAND_LAG24_PRIMARY_FEATURE_COLUMN).null_count().item():
+        raise ValueError("primary Poland lag24 price feature cannot contain nulls.")
+    external_frame = external_frame.with_columns(
+        [
+            pl.col(column_name)
+            .cast(pl.Float64)
+            .fill_null(strategy="forward")
+            .fill_null(strategy="backward")
+            .fill_null(0.0)
+            .alias(column_name)
+            for column_name in POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS
+        ]
+    )
+    joined = silver_frame.join(external_frame, on=DEFAULT_TIMESTAMP_COLUMN, how="left")
+    null_columns = [
+        column_name
+        for column_name in POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS
+        if joined.select(pl.col(column_name).is_null().any()).item()
+    ]
+    if null_columns:
+        raise ValueError(
+            "Poland lag24 experimental features must cover every official training "
+            f"timestamp: {null_columns}"
+        )
+    return joined
+
+
+def _naive_datetime_from_iso(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    return parsed.replace(tzinfo=None) if parsed.tzinfo is not None else parsed
 
 
 def _validate_feature_frame(feature_frame: pl.DataFrame) -> None:

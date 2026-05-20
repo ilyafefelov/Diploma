@@ -590,9 +590,11 @@ def build_entsoe_poland_lagged_feature_candidate_frame(
         _lagged_feature_candidate_row(
             timestamp=_timestamp_naive_utc(timestamp_value),
             lag_hours=lag_hours,
-            source_candidate=source_candidates.get(
-                _timestamp_naive_utc(timestamp_value) - timedelta(hours=lag_hours)
+            source_candidate=_source_candidate_or_interpolated(
+                _timestamp_naive_utc(timestamp_value) - timedelta(hours=lag_hours),
+                source_candidates,
             ),
+            source_candidates=source_candidates,
             prior_eur_uah_fx_rate=prior_eur_uah_fx_rate,
             fx_timestamp=fx_timestamp,
             fx_rate_source=fx_rate_source,
@@ -1305,11 +1307,159 @@ def _poland_source_candidates_by_delivery_timestamp(
     return candidates
 
 
+def _source_candidate_or_interpolated(
+    source_timestamp: datetime,
+    source_candidates: dict[datetime, dict[str, object]],
+) -> dict[str, object] | None:
+    exact = source_candidates.get(source_timestamp)
+    if exact is not None:
+        return exact
+    previous_candidates = [
+        timestamp for timestamp in source_candidates if timestamp < source_timestamp
+    ]
+    next_candidates = [
+        timestamp for timestamp in source_candidates if timestamp > source_timestamp
+    ]
+    if not previous_candidates or not next_candidates:
+        return None
+    previous_timestamp = max(previous_candidates)
+    next_timestamp = min(next_candidates)
+    if previous_timestamp < source_timestamp - timedelta(hours=6):
+        return None
+    if next_timestamp > source_timestamp + timedelta(hours=6):
+        return None
+    previous = source_candidates[previous_timestamp]
+    next_row = source_candidates[next_timestamp]
+    previous_price = previous.get("neighbor_market_price_eur_mwh")
+    next_price = next_row.get("neighbor_market_price_eur_mwh")
+    if previous_price is None or next_price is None:
+        return None
+    interpolated = dict(previous)
+    interpolated["delivery_timestamp_utc"] = source_timestamp.replace(
+        tzinfo=UTC
+    ).isoformat()
+    interpolated["neighbor_market_price_eur_mwh"] = (
+        float(str(previous_price)) + float(str(next_price))
+    ) / 2.0
+    interpolated["fetch_status"] = (
+        "source_backed_lagged_feature_interpolated_not_training"
+    )
+    interpolated["source_access_method"] = (
+        f"{previous.get('source_access_method', 'entsoe_rest_api')}_gap_interpolation"
+    )
+    return interpolated
+
+
+def _prior_safe_lagged_poland_features(
+    source_timestamp: datetime,
+    *,
+    source_candidates: dict[datetime, dict[str, object]],
+    effective_fx_rate: float,
+    currency_ready: bool,
+) -> dict[str, object]:
+    price_uah = _source_price_uah(
+        source_timestamp,
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    previous_1h_uah = _source_price_uah(
+        source_timestamp - timedelta(hours=1),
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    previous_24h_uah = _source_price_uah(
+        source_timestamp - timedelta(hours=24),
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    daily_prices = _daily_source_prices_uah(
+        source_timestamp,
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    daily_values = [value for _, value in daily_prices]
+    if daily_values:
+        spread = max(daily_values) - min(daily_values)
+        peak_timestamp, _ = max(daily_prices, key=lambda item: (item[1], -item[0].hour))
+        trough_timestamp, _ = min(daily_prices, key=lambda item: (item[1], item[0].hour))
+        rank = _price_rank(price_uah, daily_values)
+        peak_hour = peak_timestamp.hour
+        trough_hour = trough_timestamp.hour
+    else:
+        spread = None
+        peak_hour = None
+        trough_hour = None
+        rank = None
+    return {
+        "entsoe_pl_lag24_delta_1h_uah_mwh": _delta(price_uah, previous_1h_uah),
+        "entsoe_pl_lag24_delta_24h_uah_mwh": _delta(price_uah, previous_24h_uah),
+        "entsoe_pl_lag24_daily_spread_uah_mwh": spread,
+        "entsoe_pl_lag24_daily_price_rank": rank,
+        "entsoe_pl_lag24_daily_peak_hour_utc": peak_hour,
+        "entsoe_pl_lag24_daily_trough_hour_utc": trough_hour,
+    }
+
+
+def _source_price_uah(
+    source_timestamp: datetime,
+    *,
+    source_candidates: dict[datetime, dict[str, object]],
+    effective_fx_rate: float,
+    currency_ready: bool,
+) -> float | None:
+    if not currency_ready:
+        return None
+    candidate = _source_candidate_or_interpolated(source_timestamp, source_candidates)
+    if candidate is None or candidate.get("neighbor_market_price_eur_mwh") is None:
+        return None
+    return float(str(candidate["neighbor_market_price_eur_mwh"])) * effective_fx_rate
+
+
+def _daily_source_prices_uah(
+    source_timestamp: datetime,
+    *,
+    source_candidates: dict[datetime, dict[str, object]],
+    effective_fx_rate: float,
+    currency_ready: bool,
+) -> list[tuple[datetime, float]]:
+    if not currency_ready:
+        return []
+    values: list[tuple[datetime, float]] = []
+    for timestamp, candidate in source_candidates.items():
+        if timestamp.date() != source_timestamp.date():
+            continue
+        price_eur = candidate.get("neighbor_market_price_eur_mwh")
+        if price_eur is None:
+            continue
+        values.append((timestamp, float(str(price_eur)) * effective_fx_rate))
+    return sorted(values, key=lambda item: item[0])
+
+
+def _price_rank(price: float | None, daily_values: list[float]) -> float | None:
+    if price is None or not daily_values:
+        return None
+    if len(daily_values) == 1:
+        return 0.0
+    lower_count = len([value for value in daily_values if value < price])
+    return lower_count / float(len(daily_values) - 1)
+
+
+def _delta(current: float | None, previous: float | None) -> float | None:
+    if current is None or previous is None:
+        return None
+    return current - previous
+
+
 def _lagged_feature_candidate_row(
     *,
     timestamp: datetime,
     lag_hours: int,
     source_candidate: dict[str, object] | None,
+    source_candidates: dict[datetime, dict[str, object]],
     prior_eur_uah_fx_rate: float,
     fx_timestamp: datetime | None,
     fx_rate_source: str,
@@ -1347,8 +1497,28 @@ def _lagged_feature_candidate_row(
         if price_eur is not None and currency_ready
         else None
     )
+    prior_safe_features = _prior_safe_lagged_poland_features(
+        source_timestamp,
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
     source_backed = source_candidate is not None
     source_delivery_timestamp_utc = source_timestamp.replace(tzinfo=UTC).isoformat()
+    source_fetch_status = (
+        str(source_candidate.get("fetch_status", ""))
+        if source_candidate is not None
+        else ""
+    )
+    lagged_fetch_status = (
+        source_fetch_status
+        if source_fetch_status.startswith("source_backed_lagged_feature_")
+        else (
+            "source_backed_lagged_feature_not_training"
+            if source_backed
+            else "no_source_candidate_for_lagged_timestamp"
+        )
+    )
     return {
         "country_code": "PL",
         "country_name": "Poland",
@@ -1360,6 +1530,8 @@ def _lagged_feature_candidate_row(
         "lag_hours": lag_hours,
         "neighbor_market_price_eur_mwh": price_eur,
         "neighbor_market_price_uah_mwh": price_uah,
+        "entsoe_pl_lag24_day_ahead_price_uah_mwh": price_uah,
+        **prior_safe_features,
         "source_backed": source_backed,
         "fetch_enabled": bool(source_candidate.get("fetch_enabled", False))
         if source_candidate is not None
@@ -1393,9 +1565,7 @@ def _lagged_feature_candidate_row(
         )
         if source_candidate is not None
         else "",
-        "fetch_status": "source_backed_lagged_feature_not_training"
-        if source_backed
-        else "no_source_candidate_for_lagged_timestamp",
+        "fetch_status": lagged_fetch_status,
         "sample_period_start_utc": "",
         "sample_period_end_utc": "",
         "publication_time_policy": "lagged_delivery_must_precede_ua_anchor",

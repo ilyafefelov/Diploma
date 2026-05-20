@@ -8,15 +8,19 @@ from smart_arbitrage.assets.silver.neural_forecasts import (
 	NbeatsxOfficialForecastAssetConfig,
 	OfficialGlobalPanelTrainingAssetConfig,
 	TftOfficialForecastAssetConfig,
+	TftOfficialGlobalPanelForecastAssetConfig,
 	_forecast_metrics,
 	official_forecast_exogenous_feature_route_frame,
 	official_global_panel_training_frame,
+	official_global_panel_poland_lag24_experimental_training_frame,
 	nbeatsx_official_global_panel_price_forecast,
+	nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast,
 	nbeatsx_official_price_forecast,
 	nbeatsx_price_forecast,
 	neural_forecast_feature_frame,
 	official_forecast_exogenous_governance_frame,
 	sota_forecast_training_frame,
+	tft_official_global_panel_poland_lag24_experimental_price_forecast,
 	tft_official_price_forecast,
 	tft_price_forecast,
 )
@@ -25,6 +29,7 @@ from smart_arbitrage.forecasting.neural_features import (
 	NEURAL_FORECAST_FEATURE_COLUMNS,
 	build_neural_forecast_feature_frame,
 )
+from smart_arbitrage.forecasting.sota_training import POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS
 from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.defs import defs
@@ -36,6 +41,86 @@ def _synthetic_price_history() -> pl.DataFrame:
 		history_hours=15 * 24,
 		forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
 		now=datetime(2026, 5, 4, 12, 0),
+	)
+
+
+def _experimental_poland_route_frame() -> pl.DataFrame:
+	return pl.DataFrame(
+		{
+			"feature_name": ["entsoe_neighbor_lagged_day_ahead_price_context"],
+			"source_name": ["ENTSO_E"],
+			"source_kind": ["neighbor_market_day_ahead_price"],
+			"approved_feature_column": ["entsoe_pl_lag24_day_ahead_price_uah_mwh"],
+			"feature_route_status": ["source_backed_but_governance_blocked"],
+			"experimental_feature_route_status": ["approved_for_experimental_ablation"],
+			"source_backed_row_count": [999],
+			"training_use_allowed": [False],
+			"feature_use_allowed": [False],
+			"approved_for_official_training": [False],
+			"approved_for_experimental_ablation": [True],
+			"training_blockers_csv": ["domain_shift"],
+			"readiness_status": ["blocked_until_domain_shift_validation"],
+			"licensing_status": ["ready"],
+			"timezone_status": ["ready"],
+			"currency_status": ["ready"],
+			"market_rules_status": ["ready"],
+			"temporal_availability_status": ["ready"],
+			"domain_shift_status": ["blocked_pending_validation"],
+			"publication_time_policy": ["lagged_delivery_must_precede_ua_anchor"],
+			"decision_cutoff_policy": ["lagged_poland_delivery_before_ua_anchor"],
+			"external_feature_role": ["experimental_ablation_context"],
+			"claim_scope": ["market_coupling_feature_route_research_gate"],
+			"not_full_dfl": [True],
+			"not_market_execution": [True],
+		}
+	)
+
+
+def _poland_lagged_feature_frame(silver_frame: pl.DataFrame) -> pl.DataFrame:
+	timestamps = (
+		silver_frame.select("timestamp").unique().sort("timestamp").to_series().to_list()
+	)
+	rows: list[dict[str, object]] = []
+	for index, timestamp in enumerate(timestamps):
+		assert isinstance(timestamp, datetime)
+		price = 3200.0 + float(index % 24) * 25.0
+		rows.append(
+			{
+				"feature_name": "entsoe_neighbor_lagged_day_ahead_price_context",
+				"feature_column": "entsoe_pl_lag24_day_ahead_price_uah_mwh",
+				"delivery_timestamp_utc": timestamp.replace(tzinfo=UTC).isoformat(),
+				"source_backed": True,
+				"coverage_status": "full_lagged_feature_coverage",
+				"entsoe_pl_lag24_day_ahead_price_uah_mwh": price,
+				"entsoe_pl_lag24_delta_1h_uah_mwh": None if index == 0 else 25.0,
+				"entsoe_pl_lag24_delta_24h_uah_mwh": None if index < 24 else 600.0,
+				"entsoe_pl_lag24_daily_spread_uah_mwh": 575.0,
+				"entsoe_pl_lag24_daily_price_rank": float(index % 24) / 23.0,
+				"entsoe_pl_lag24_daily_peak_hour_utc": 23,
+				"entsoe_pl_lag24_daily_trough_hour_utc": 0,
+			}
+		)
+	return pl.DataFrame(rows)
+
+
+def _official_forecast_row(model_name: str) -> pl.DataFrame:
+	return pl.DataFrame(
+		{
+			"model_name": [model_name],
+			"model_family": ["NBEATSx" if "nbeatsx" in model_name else "TFT"],
+			"backend_name": ["fake"],
+			"backend_status": ["trained"],
+			"unique_id": ["client_003_dnipro_factory:DAM"],
+			"forecast_timestamp": [datetime(2026, 5, 1, 1)],
+			"predicted_price_uah_mwh": [4100.0],
+			"predicted_price_p10_uah_mwh": [4000.0],
+			"predicted_price_p50_uah_mwh": [4100.0],
+			"predicted_price_p90_uah_mwh": [4200.0],
+			"prediction_interval_kind": ["fake"],
+			"training_rows": [100],
+			"horizon_rows": [1],
+			"adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"],
+		}
 	)
 
 
@@ -240,7 +325,10 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 		"official_forecast_exogenous_governance_frame",
 		"official_forecast_exogenous_feature_route_frame",
 		"official_global_panel_training_frame",
+		"official_global_panel_poland_lag24_experimental_training_frame",
 		"nbeatsx_official_global_panel_price_forecast",
+		"nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast",
+		"tft_official_global_panel_poland_lag24_experimental_price_forecast",
 		"nbeatsx_price_forecast",
 		"tft_price_forecast",
 		"nbeatsx_official_price_forecast",
@@ -271,12 +359,26 @@ def test_neural_forecast_silver_assets_are_registered_without_dashboard_contract
 	assert groups_by_key["official_forecast_exogenous_governance_frame"] == "silver_forecast_features"
 	assert groups_by_key["official_forecast_exogenous_feature_route_frame"] == "silver_forecast_features"
 	assert groups_by_key["official_global_panel_training_frame"] == "silver_forecast_features"
+	assert groups_by_key["official_global_panel_poland_lag24_experimental_training_frame"] == "silver_forecast_features"
 	assert groups_by_key["nbeatsx_official_global_panel_price_forecast"] == "silver_forecast_candidates"
+	assert groups_by_key["nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast"] == "silver_forecast_candidates"
+	assert groups_by_key["tft_official_global_panel_poland_lag24_experimental_price_forecast"] == "silver_forecast_candidates"
 	assert groups_by_key["nbeatsx_price_forecast"] == "silver_forecast_candidates"
 	assert groups_by_key["tft_price_forecast"] == "silver_forecast_candidates"
 	assert deps_by_key["official_forecast_exogenous_feature_route_frame"] == {
 		"entsoe_poland_feature_governance_frame",
 		"official_forecast_exogenous_governance_frame",
+	}
+	assert deps_by_key["official_global_panel_poland_lag24_experimental_training_frame"] == {
+		"entsoe_poland_lagged_feature_candidate_frame",
+		"official_forecast_exogenous_feature_route_frame",
+		"real_data_benchmark_silver_feature_frame",
+	}
+	assert deps_by_key["nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast"] == {
+		"official_global_panel_poland_lag24_experimental_training_frame",
+	}
+	assert deps_by_key["tft_official_global_panel_poland_lag24_experimental_price_forecast"] == {
+		"official_global_panel_poland_lag24_experimental_training_frame",
 	}
 
 
@@ -321,6 +423,121 @@ def test_official_global_panel_training_asset_materializes_multi_tenant_contract
 	assert "entsoe_neighbor_day_ahead_price_context" in frame.select(
 		"blocked_external_feature_columns_csv"
 	).to_series().item(0)
+
+
+def test_poland_lag24_experimental_training_asset_materializes_feature_contract() -> None:
+	price_history = _synthetic_price_history().with_columns(
+		[
+			pl.lit("client_003_dnipro_factory").alias("tenant_id"),
+			pl.lit("observed").alias("source_kind"),
+			pl.lit("forecast").alias("weather_source_kind"),
+		]
+	)
+
+	frame = official_global_panel_poland_lag24_experimental_training_frame(
+		None,
+		OfficialGlobalPanelTrainingAssetConfig(),
+		price_history,
+		_experimental_poland_route_frame(),
+		_poland_lagged_feature_frame(price_history),
+	)
+
+	known_future_csv = frame.select("known_future_feature_columns_csv").to_series().item(0)
+	for column_name in POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS:
+		assert column_name in known_future_csv
+		assert column_name in frame.columns
+	assert frame.select("external_feature_training_status").to_series().unique().to_list() == [
+		"experimental_ablation_only"
+	]
+	assert frame.select("not_market_execution").to_series().unique().to_list() == [True]
+
+
+def test_poland_lag24_experimental_forecast_assets_rename_research_candidates(monkeypatch) -> None:
+	training_frame = pl.DataFrame(
+		{
+			"unique_id": ["client_003_dnipro_factory:DAM"],
+			"ds": [datetime(2026, 5, 1, 1)],
+			"y": [None],
+			"split": ["forecast"],
+			"tenant_id": ["client_003_dnipro_factory"],
+			"market_venue": ["DAM"],
+			"is_train": [False],
+			"is_forecast": [True],
+			"sota_schema_version": ["official_global_panel_sota_v1"],
+			"supported_backends_csv": ["neuralforecast_nbeatsx,pytorch_forecasting_tft"],
+			"known_future_feature_columns_csv": [
+				",".join(POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS)
+			],
+			"experimental_external_feature_columns_csv": [
+				",".join(POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS)
+			],
+			"historical_observed_feature_columns_csv": ["lag_24_price_uah_mwh"],
+			"static_feature_columns_csv": ["tenant_id,market_venue"],
+			"training_panel_kind": ["official_global_panel_poland_lag24_experimental"],
+			"target_scaler_fit_scope": ["train_rows_only_per_unique_id"],
+			"feature_scaler_fit_scope": ["train_rows_only_per_unique_id"],
+			"temporal_scaler_type": ["robust"],
+			"not_market_execution": [True],
+			POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS[0]: [4000.0],
+		}
+	)
+
+	def fake_nbeatsx(frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+		assert frame.select("training_panel_kind").to_series().item(0) == (
+			"official_global_panel_poland_lag24_experimental"
+		)
+		assert kwargs["max_steps"] == 3
+		return _official_forecast_row("nbeatsx_official_global_panel_v1")
+
+	def fake_tft(frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+		assert frame.select("training_panel_kind").to_series().item(0) == (
+			"official_global_panel_poland_lag24_experimental"
+		)
+		assert kwargs["max_epochs"] == 2
+		assert kwargs["max_steps"] == 5
+		return _official_forecast_row("tft_official_global_panel_v1")
+
+	def fake_backend_status() -> dict[str, object]:
+		class Status:
+			available = True
+			reason = "fake_backend"
+
+		return {
+			"neuralforecast": Status(),
+			"pytorch_forecasting": Status(),
+			"lightning": Status(),
+		}
+
+	monkeypatch.setattr(
+		"smart_arbitrage.assets.silver.neural_forecasts.build_official_global_panel_nbeatsx_forecast",
+		fake_nbeatsx,
+	)
+	monkeypatch.setattr(
+		"smart_arbitrage.assets.silver.neural_forecasts.build_official_global_panel_tft_forecast",
+		fake_tft,
+	)
+	monkeypatch.setattr(
+		"smart_arbitrage.assets.silver.neural_forecasts.inspect_official_forecast_backends",
+		fake_backend_status,
+	)
+
+	nbeatsx = nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast(
+		None,
+		NbeatsxOfficialForecastAssetConfig(horizon_hours=1, max_steps=3),
+		training_frame,
+	)
+	tft = tft_official_global_panel_poland_lag24_experimental_price_forecast(
+		None,
+		TftOfficialGlobalPanelForecastAssetConfig(horizon_hours=1, max_epochs=2, max_steps=5),
+		training_frame,
+	)
+
+	assert nbeatsx.select("model_name").to_series().unique().to_list() == [
+		"nbeatsx_official_global_panel_poland_lag24_experimental_v1"
+	]
+	assert tft.select("model_name").to_series().unique().to_list() == [
+		"tft_official_global_panel_poland_lag24_experimental_v1"
+	]
 
 
 def test_official_global_panel_nbeatsx_asset_uses_global_panel_contract(monkeypatch) -> None:

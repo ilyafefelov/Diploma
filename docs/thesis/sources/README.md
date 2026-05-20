@@ -3,6 +3,18 @@
 Цей каталог містить первинні джерела, на які спирається дипломна робота.  
 Нижче — систематизований індекс для наукового керівника.
 
+Поточна перевірка 60 джерел із Розділу 2 зафіксована в
+[literature-review-source-audit-2026-05-20.md](literature-review-source-audit-2026-05-20.md).
+Академічний висновок citation/source pass збережено в
+[literature-review-academic-review-2026-05-20.md](literature-review-academic-review-2026-05-20.md).
+Локальний exact-overlap similarity screen збережено в
+[literature-review-similarity-screen-2026-05-20.md](literature-review-similarity-screen-2026-05-20.md).
+Глибший TF-IDF/vector-style similarity та citation-support audit для розділів
+01-04 збережено в
+[deep-similarity-and-citation-audit-2026-05-20.md](deep-similarity-and-citation-audit-2026-05-20.md).
+Перший Methodology traceability pass після цього аудиту збережено в
+[methodology-traceability-pass-2026-05-20.md](methodology-traceability-pass-2026-05-20.md).
+
 ---
 
 ## 📌 Ключові джерела (цитуються в поточній версії Розділу 2)
@@ -19,7 +31,7 @@
 | 8 | `energies-12-00999-v2.pdf` | Hesse et al., 2019 | **Ageing-aware dispatch** через MILP для ринку арбітражу | 10.3390/en12060999 |
 | 9 | `1-s2.0-S0306261919320471-main.pdf` | Maheshwari et al., 2020 | **Нелінійна деградація LFP** в операційній оптимізації | 10.1016/j.apenergy.2019.114360 |
 | 10 | `batteries-11-00392-v2-Modelling of Battery Energy Storage Systems Under Real-World Applications and Conditions.pdf` | (MDPI Batteries 11, 392) | Моделювання BESS у реальних умовах | MDPI Batteries |
-| 11 | `Journal of Forecasting - 2025 - Jin - Seasonal Decomposition‐Enhanced Deep Learning Architecture for Probabilistic.pdf` | Jin et al., 2025 | **Probabilistic forecasting** з сезонною декомпозицією | J. of Forecasting, 2025 |
+| 11 | `Journal of Forecasting - 2025 - Jin - Seasonal Decomposition‐Enhanced Deep Learning Architecture for Probabilistic.pdf` | Jin & Blanco-Encomienda, 2026 | **Probabilistic forecasting** з сезонною декомпозицією | DOI: 10.1002/for.70065 |
 | 12 | `Deep_Learning_for_Electricity_Price_Forecasting_A_.pdf` | Yu et al., 2026 | **Deep-learning EPF review** — day-ahead, intraday, and balancing electricity-market forecasting taxonomy | arXiv:2602.10071 |
 | 13 | `nrel-2021-storage-futures-technology-modeling-input-data-report.pdf` | Augustine & Blair, 2021 | **NREL Storage Futures** — cost/performance assumptions for deployed storage technologies | NREL/TP-5700-78694 |
 | 14 | `2403.10617v1-depreciation-cost-poor-proxy-grid-storage-optimization.pdf` | Kumtepeli et al., 2024 | **Degradation depreciation as proxy** in rolling-horizon grid-storage optimization | arXiv:2403.10617 / 10.48550/arXiv.2403.10617 |
@@ -195,7 +207,7 @@ These sources support [technical/BASELINE_LP_AND_DATA_PIPELINE.md](../../technic
 - Yi et al. 2025 · Sang et al. 2023 · Persak & Anjos 2024 · Yi, Alghumayjan & Xu 2024 · Elmachtoub & Grigas 2022 · Agrawal et al. 2019 · Amos & Kolter 2017 · Mandi et al. 2024
 
 ### Прогнозування цін на електроенергію
-- Lago et al. 2021 (EPF benchmark) · Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Wang et al. 2024 (TimeXer) · Yu et al. 2026 (deep-learning EPF review) · Jin et al. 2025 · PriceFM 2025 · THieF 2025
+- Lago et al. 2021 (EPF benchmark) · Olivares et al. 2023 (NBEATSx) · Lim et al. 2021 (TFT) · Wang et al. 2024 (TimeXer) · Yu et al. 2026 (deep-learning EPF review) · Jin & Blanco-Encomienda 2026 · PriceFM 2025 · THieF 2025
 
 ### Стратегія батарейного накопичувача / Арбітраж
 - Park et al. 2017 · Grimaldi et al. 2024 · Hesse et al. 2019 · Kumtepeli et al. 2020 (degradation-aware 3D-MILP) · Cao et al. 2020 (DRL with degradation model) · Chen et al. 2021 (Decision Transformer) · Bhargava et al. 2023 (DT/offline RL comparison) · Hugging Face Decision Transformer docs · Madahi et al. 2023 (risk-sensitive distributional RL, watch)

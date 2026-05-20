@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import polars as pl
 
@@ -21,6 +21,8 @@ from smart_arbitrage.forecasting.market_coupling_features import (
 from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
 from smart_arbitrage.forecasting.sota_training import (
     build_official_global_panel_training_frame,
+    build_official_global_panel_poland_lag24_experimental_training_frame,
+    POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS,
 )
 
 
@@ -329,6 +331,70 @@ def test_official_global_panel_training_frame_routes_only_approved_feature_route
     assert panel.select("allowed_external_feature_columns_csv").to_series().item(0) == feature_name
 
 
+def test_poland_lag24_experimental_training_frame_routes_richer_features_without_official_approval() -> None:
+    silver_frame = _tenant_silver_frame(
+        tenant_ids=("client_003_dnipro_factory",),
+        history_hours=20 * 24,
+        forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    )
+    route = _experimental_poland_route_frame()
+    lagged = _poland_lagged_feature_frame(silver_frame)
+
+    panel = build_official_global_panel_poland_lag24_experimental_training_frame(
+        silver_frame,
+        tenant_ids=("client_003_dnipro_factory",),
+        horizon_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+        market_coupling_feature_route_frame=route,
+        entsoe_poland_lagged_feature_candidate_frame=lagged,
+    )
+
+    known_future_csv = panel.select("known_future_feature_columns_csv").to_series().item(0)
+    for column_name in POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS:
+        assert column_name in panel.columns
+        assert column_name in known_future_csv
+        assert panel.select(column_name).null_count().item() == 0
+    assert panel.select("external_feature_training_status").to_series().unique().to_list() == [
+        "experimental_ablation_only"
+    ]
+    assert panel.select("allowed_external_feature_columns_csv").to_series().unique().to_list() == [
+        ""
+    ]
+    assert panel.select("experimental_external_feature_columns_csv").to_series().unique().to_list() == [
+        ",".join(POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS)
+    ]
+
+
+def test_poland_lag24_experimental_training_frame_rejects_unapproved_route() -> None:
+    silver_frame = _tenant_silver_frame(
+        tenant_ids=("client_003_dnipro_factory",),
+        history_hours=20 * 24,
+        forecast_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+    )
+    route = _experimental_poland_route_frame().with_columns(
+        [
+            pl.lit(False).alias("approved_for_experimental_ablation"),
+            pl.lit("blocked_for_experimental_ablation").alias(
+                "experimental_feature_route_status"
+            ),
+        ]
+    )
+
+    try:
+        build_official_global_panel_poland_lag24_experimental_training_frame(
+            silver_frame,
+            tenant_ids=("client_003_dnipro_factory",),
+            horizon_hours=DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
+            market_coupling_feature_route_frame=route,
+            entsoe_poland_lagged_feature_candidate_frame=_poland_lagged_feature_frame(
+                silver_frame
+            ),
+        )
+    except ValueError as error:
+        assert "requires an ablation-ready Poland lag24 route" in str(error)
+    else:
+        raise AssertionError("experimental Poland training must be blocked without route approval.")
+
+
 def _source_backed_entsoe_sample() -> pl.DataFrame:
     query_spec = build_entsoe_neighbor_market_query_spec_frame(
         build_market_coupling_temporal_availability_frame(
@@ -358,6 +424,70 @@ def _source_backed_entsoe_sample() -> pl.DataFrame:
         </Publication_MarketDocument>
         """,
     )
+
+
+def _experimental_poland_route_frame() -> pl.DataFrame:
+    return pl.DataFrame(
+        {
+            "feature_name": ["entsoe_neighbor_lagged_day_ahead_price_context"],
+            "source_name": ["ENTSO_E"],
+            "source_kind": ["neighbor_market_day_ahead_price"],
+            "approved_feature_column": ["entsoe_pl_lag24_day_ahead_price_uah_mwh"],
+            "feature_route_status": ["source_backed_but_governance_blocked"],
+            "experimental_feature_route_status": ["approved_for_experimental_ablation"],
+            "source_backed_row_count": [999],
+            "training_use_allowed": [False],
+            "feature_use_allowed": [False],
+            "approved_for_official_training": [False],
+            "approved_for_experimental_ablation": [True],
+            "training_blockers_csv": ["domain_shift"],
+            "readiness_status": ["blocked_until_domain_shift_validation"],
+            "licensing_status": ["ready"],
+            "timezone_status": ["ready"],
+            "currency_status": ["ready"],
+            "market_rules_status": ["ready"],
+            "temporal_availability_status": ["ready"],
+            "domain_shift_status": ["blocked_pending_validation"],
+            "publication_time_policy": ["lagged_delivery_must_precede_ua_anchor"],
+            "decision_cutoff_policy": ["lagged_poland_delivery_before_ua_anchor"],
+            "external_feature_role": ["experimental_ablation_context"],
+            "claim_scope": ["market_coupling_feature_route_research_gate"],
+            "not_full_dfl": [True],
+            "not_market_execution": [True],
+        }
+    )
+
+
+def _poland_lagged_feature_frame(silver_frame: pl.DataFrame) -> pl.DataFrame:
+    timestamps = (
+        silver_frame
+        .select("timestamp")
+        .unique()
+        .sort("timestamp")
+        .to_series()
+        .to_list()
+    )
+    rows: list[dict[str, object]] = []
+    for index, timestamp in enumerate(timestamps):
+        assert isinstance(timestamp, datetime)
+        price = 3500.0 + float(index % 24) * 20.0
+        rows.append(
+            {
+                "feature_name": "entsoe_neighbor_lagged_day_ahead_price_context",
+                "feature_column": "entsoe_pl_lag24_day_ahead_price_uah_mwh",
+                "delivery_timestamp_utc": timestamp.replace(tzinfo=UTC).isoformat(),
+                "source_backed": True,
+                "coverage_status": "full_lagged_feature_coverage",
+                "entsoe_pl_lag24_day_ahead_price_uah_mwh": price,
+                "entsoe_pl_lag24_delta_1h_uah_mwh": None if index == 0 else 20.0,
+                "entsoe_pl_lag24_delta_24h_uah_mwh": None if index < 24 else 480.0,
+                "entsoe_pl_lag24_daily_spread_uah_mwh": 460.0,
+                "entsoe_pl_lag24_daily_price_rank": float(index % 24) / 23.0,
+                "entsoe_pl_lag24_daily_peak_hour_utc": 23,
+                "entsoe_pl_lag24_daily_trough_hour_utc": 0,
+            }
+        )
+    return pl.DataFrame(rows)
 
 
 def _tenant_silver_frame(

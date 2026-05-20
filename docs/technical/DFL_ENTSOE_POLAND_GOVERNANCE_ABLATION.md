@@ -265,3 +265,206 @@ Interpretation: the route and asset checks now work end to end, but the current
 config does not yet provide the NBU EUR/UAH FX metadata and full governance
 coverage needed to run a Ukrainian-plus-Poland B comparison. This is a valid
 blocked evidence state, not a failed model result.
+
+## Lag-24 + NBU Attempt, 2026-05-20
+
+The token-backed route was rerun as
+`data/research_runs/week3_dfl_entsoe_poland_lag24_nbu_approved_route/`.
+
+- Dagster run id: `5c62678e-d310-4e86-90fc-d0bea701d3aa`;
+- evidence check: `dfl_market_coupling_v2_plus_ablation_evidence` passed;
+- ENTSO-E source window: `2024-12-31T00:00Z` through
+  `2026-04-30T00:00Z`;
+- NBU EUR/UAH metadata: `485` source-backed effective dates from
+  `2024-12-31` to `2026-04-29`;
+- lagged benchmark coverage: `11,638 / 11,638` timestamps;
+- ENTSO-E gap handling: `141` small source gaps were filled by deterministic
+  source-backed interpolation from adjacent ENTSO-E prices, not by Ukrainian
+  target actuals;
+- approved experimental feature column:
+  `entsoe_pl_lag24_day_ahead_price_uah_mwh`;
+- route status: `approved_for_experimental_ablation=true`;
+- official training status: still `approved_for_official_training=false`
+  because `domain_shift` is not validated;
+- ablation status: `approved_route_pending_materialization` for both official
+  global-panel NBEATSx source rows;
+- market-coupled B training runs: `0`;
+- claim boundary: `market_execution_enabled=false`, no European rows in
+  Ukrainian training.
+
+Interpretation: token/source access, full timestamp coverage, publication-time
+mechanics for the lagged feature, timezone/DST mapping, licensing/rule toggles,
+and prior-known NBU EUR/UAH normalization are now sufficient for a controlled
+experimental ablation route. This is not yet a model-result improvement. The
+next materialization must train/evaluate the Ukrainian-plus-Poland B variant and
+can only replace Ukrainian-only V2+ if it beats the frozen V2+ strict LP/oracle
+gate without median or rolling-robustness degradation.
+
+## Lag-24 B-Variant Comparison, 2026-05-20
+
+The controlled Ukrainian-plus-Poland B variant was then materialized as
+`data/research_runs/week3_dfl_entsoe_poland_lag24_b_variant_comparison/`.
+
+- Dagster run id: `a32de660-a3be-4e04-b907-fbdf96a9b45b`;
+- evidence check: `dfl_market_coupling_v2_plus_ablation_evidence` passed;
+- approved experimental feature column:
+  `entsoe_pl_lag24_day_ahead_price_uah_mwh`;
+- B variant: `dfl_market_coupled_schedule_value_learner_v2_plus_*`;
+- ablation status: `comparison_complete` for both official global-panel
+  NBEATSx source rows;
+- calibrated source result: Ukrainian-only V2+ mean regret `174.77` UAH,
+  Ukrainian-plus-Poland B mean regret `174.77` UAH;
+- raw source result: Ukrainian-only V2+ mean regret `193.36` UAH,
+  Ukrainian-plus-Poland B mean regret `193.36` UAH;
+- rolling robustness: B preserved `4 / 4` windows because it fell back to
+  Ukrainian-only V2+;
+- ablation passed: `false`;
+- blocker: `mean_not_improved`;
+- claim boundary: `market_execution_enabled=false`, no European rows in
+  Ukrainian training.
+
+Interpretation: the Poland lag-24 feature route is now executable as a
+controlled exogenous ablation, but the current prior-only market-coupled
+selector did not find a safe improvement over frozen Ukrainian-only V2+. The
+result should be treated as useful negative evidence: source/governance access
+is no longer the blocker for this lane, but the lagged Poland context did not
+yet add decision value under the unchanged strict LP/oracle gate.
+
+## Rich Prior-Safe Poland Regime Features, 2026-05-20
+
+The next Poland ablation expanded the lagged feature panel beyond a single
+price level. The upstream `entsoe_poland_lagged_feature_candidate_frame` now
+emits prior-safe regime diagnostics derived only from the lagged ENTSO-E Poland
+source series and prior-known NBU EUR/UAH metadata:
+
+- `entsoe_pl_lag24_day_ahead_price_uah_mwh`;
+- `entsoe_pl_lag24_delta_1h_uah_mwh`;
+- `entsoe_pl_lag24_delta_24h_uah_mwh`;
+- `entsoe_pl_lag24_daily_spread_uah_mwh`;
+- `entsoe_pl_lag24_daily_price_rank`;
+- `entsoe_pl_lag24_daily_peak_hour_utc`;
+- `entsoe_pl_lag24_daily_trough_hour_utc`.
+
+These fields are not European training rows. They are deterministic
+point-in-time transformations of the same lagged Poland feature lane. The
+experimental selector may use them only inside the controlled B ablation, while
+official training remains blocked until domain-shift validation passes.
+
+The richer B comparison is stored locally as
+`data/research_runs/week3_dfl_entsoe_poland_rich_prior_safe_b_variant_comparison/`.
+
+- Dagster run id: `3fe654b3-43e3-471d-9b36-2be5baf16477`;
+- evidence check: `dfl_market_coupling_v2_plus_ablation_evidence` passed;
+- lagged frame shape: `11,638` rows and `49` columns;
+- primary lagged coverage: `full_lagged_feature_coverage`, `source_backed=true`;
+- approved experimental feature column:
+  `entsoe_pl_lag24_day_ahead_price_uah_mwh`;
+- richer selector profiles tested on prior/train anchors:
+  `lag24_level`, `lag24_daily_spread`, `lag24_delta_1h`,
+  `lag24_peak_timing`, and `lag24_level_spread`;
+- B selector fallback rows: `10 / 10` tenant/source rows;
+- calibrated source result: Ukrainian-only V2+ mean regret `174.77` UAH,
+  Ukrainian-plus-Poland B mean regret `174.77` UAH;
+- raw source result: Ukrainian-only V2+ mean regret `193.36` UAH,
+  Ukrainian-plus-Poland B mean regret `193.36` UAH;
+- rolling robustness: B preserved `4 / 4` windows by falling back to
+  Ukrainian-only V2+;
+- ablation passed: `false`;
+- blocker: `mean_not_improved`;
+- claim boundary: `market_execution_enabled=false`, no European rows in
+  Ukrainian training.
+
+Interpretation: richer Poland spreads, deltas, ranks, and peak/trough timing
+features are now available as prior-safe experimental context. However, the
+train/prior evidence showed that the market-coupled candidate choices were
+worse than frozen Ukrainian-only V2+ for every tenant/source row. The fallback
+therefore behaved correctly. This result narrows the next market-coupling
+problem: the route is no longer blocked by source access or timestamp mechanics,
+but this Poland-only lagged regime signal is not yet strong enough to improve
+strict LP/oracle regret.
+
+Source capture:
+[entsoe-poland-lag24-nbu-source-capture-2026-05-20.md](../sources/entsoe-poland-lag24-nbu-source-capture-2026-05-20.md).
+
+## Experimental NBEATSx/TFT Training Route, 2026-05-20
+
+The richer Poland feature lane can now be used by official global-panel
+NBEATSx and TFT as experimental known-future covariates. This does not change
+the thesis headline route. The new assets are additive and explicitly labelled
+as experimental ablation evidence:
+
+- `official_global_panel_poland_lag24_experimental_training_frame`;
+- `nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast`;
+- `tft_official_global_panel_poland_lag24_experimental_price_forecast`.
+
+The training frame carries the seven prior-safe Poland columns in
+`known_future_feature_columns_csv`:
+
+- `entsoe_pl_lag24_day_ahead_price_uah_mwh`;
+- `entsoe_pl_lag24_delta_1h_uah_mwh`;
+- `entsoe_pl_lag24_delta_24h_uah_mwh`;
+- `entsoe_pl_lag24_daily_spread_uah_mwh`;
+- `entsoe_pl_lag24_daily_price_rank`;
+- `entsoe_pl_lag24_daily_peak_hour_utc`;
+- `entsoe_pl_lag24_daily_trough_hour_utc`.
+
+NBEATSx receives these columns through the existing NeuralForecast
+`futr_exog_list` path. TFT receives the same columns through the existing
+PyTorch Forecasting `time_varying_known_reals` path. In both cases the model
+outputs are renamed to separate research candidates:
+`nbeatsx_official_global_panel_poland_lag24_experimental_v1` and
+`tft_official_global_panel_poland_lag24_experimental_v1`.
+
+Tracked screen config:
+[real_data_official_global_panel_poland_lag24_experimental_forecast_week3.yaml](../../configs/real_data_official_global_panel_poland_lag24_experimental_forecast_week3.yaml).
+
+Manual materialization:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,forecast_afe_feature_catalog_frame,market_coupling_temporal_availability_frame,entsoe_neighbor_market_query_spec_frame,entsoe_neighbor_market_feature_candidate_frame,nbu_eur_uah_fx_metadata_frame,poland_neighbor_market_snapshot_bronze,poland_neighbor_market_snapshot_feature_candidate_frame,entsoe_poland_lagged_feature_candidate_frame,entsoe_poland_feature_governance_frame,official_forecast_exogenous_governance_frame,official_forecast_exogenous_feature_route_frame,official_global_panel_poland_lag24_experimental_training_frame,nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast,tft_official_global_panel_poland_lag24_experimental_price_forecast -c configs/real_data_official_global_panel_poland_lag24_experimental_forecast_week3.yaml
+```
+
+Interpretation boundary: this route tests whether the lagged Poland regime
+signal can improve the calibrated NBEATSx/TFT predictors before schedule/value
+selection. It is not official headline training because domain-shift validation
+is still pending. Any resulting schedules must still pass the frozen
+Ukrainian-only V2+ comparator and the strict LP/oracle gate before they can be
+used as thesis headline evidence.
+
+Smoke materialization evidence:
+
+- Dagster run id: `9ca621e7-9959-4b65-99fe-68ff4a2d7a15`;
+- status: `RUN_SUCCESS`;
+- scope: feature route, experimental global-panel training frame, NBEATSx
+  experimental forecast, and TFT experimental forecast;
+- runtime note: local host CUDA was available and used by the TFT screen;
+- interpretation: adapter/training wiring is functional. This is not yet a
+  strict LP/oracle schedule-value result and does not alter the V2+ headline.
+
+Downstream strict LP/oracle schedule-value evidence is now captured in local
+packet
+`data/research_runs/week3_poland_lag24_experimental_schedule_value_near_miss/`.
+The packet uses persisted rows from generated timestamp
+`2026-05-20T12:10:06.716775+00:00` and compares the experimental forecast model
+names against frozen Ukrainian-only calibrated V2+:
+
+| Schedule/value row | Mean regret, UAH | Median regret, UAH | Interpretation |
+|---|---:|---:|---|
+| Frozen Ukrainian-only V2+ | `174.77` | `67.30` | headline comparator |
+| Poland lag-24 NBEATSx V2+ | `184.66` | `65.16` | near miss; mean is `9.89` UAH worse |
+| Poland lag-24 TFT V2+ | `218.12` | `105.50` | worse than headline comparator |
+
+Both experimental schedule/value rows still beat `strict_similar_day`, but the
+unchanged acceptance rule is stricter: a new route must beat frozen V2+ without
+weakening the LP/oracle gate. The blocker is therefore
+`mean_not_improved_vs_frozen_v2_plus`. This keeps the Poland lag-24 route as
+source-backed experimental evidence, not as promoted thesis headline evidence.
+
+Reusable export:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_poland_lag24_experimental_schedule_value_packet.py `
+  --comparison-frame-pickle .tmp_runtime\poland_lag24_experimental_schedule_value_export\comparison.pkl `
+  --raw-strict-frame-pickle .tmp_runtime\poland_lag24_experimental_schedule_value_export\raw_strict.pkl `
+  --run-slug week3_poland_lag24_experimental_schedule_value_near_miss
+```

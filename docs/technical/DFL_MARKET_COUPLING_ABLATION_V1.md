@@ -308,6 +308,75 @@ official NBEATSx source rows. No market-coupled B model was trained. The blocker
 list is now precise:
 `currency,domain_shift,licensing,market_rules,prior_eur_uah_fx_rate,publication_time,temporal_availability,timezone`.
 
+The second 2026-05-20 lag-24 materialization,
+`week3_dfl_entsoe_poland_lag24_nbu_approved_route`, closed the route mechanics:
+
+- Dagster run id: `5c62678e-d310-4e86-90fc-d0bea701d3aa`;
+- NBU EUR/UAH metadata: `485 / 485` source-backed effective dates;
+- lagged ENTSO-E coverage: `11,638 / 11,638` Ukrainian benchmark timestamps;
+- deterministic ENTSO-E gap interpolation: `141` small hourly gaps, using only
+  adjacent ENTSO-E source prices available before the Ukrainian timestamp;
+- route column: `entsoe_pl_lag24_day_ahead_price_uah_mwh`;
+- route status: `approved_for_experimental_ablation=true`;
+- official training status: `approved_for_official_training=false`;
+- remaining ENTSO-E blocker: `domain_shift`;
+- ablation status: `approved_route_pending_materialization`;
+- market-coupled B training: not run yet.
+
+This means the Poland feature is now ready for a controlled ablation, not for a
+headline claim. The next B run must compare Ukrainian-only V2+ against
+Ukrainian-plus-lagged-Poland V2+ under the same strict LP/oracle gate.
+
+The B comparison was then materialized as
+`week3_dfl_entsoe_poland_lag24_b_variant_comparison` with Dagster run
+`a32de660-a3be-4e04-b907-fbdf96a9b45b`. The ablation evidence check passed and
+the status moved to `comparison_complete` for both official NBEATSx source rows,
+but the route did not beat the frozen Ukrainian-only V2+ comparator:
+
+- calibrated source: baseline `174.77` UAH mean regret, B `174.77` UAH;
+- raw source: baseline `193.36` UAH mean regret, B `193.36` UAH;
+- rolling robustness: B preserved `4 / 4` windows by falling back to V2+;
+- ablation passed: `false`;
+- blocker: `mean_not_improved`;
+- claim boundary: `market_execution_enabled=false`.
+
+This closes the first token-backed Poland lag-24 ablation as neutral/negative
+evidence. The feature route is executable and governed, but the current lagged
+Poland selector does not improve strict LP/oracle regret versus Ukrainian-only
+V2+. Future market-coupling work therefore needs either richer point-in-time
+neighbor context, stronger domain-shift evidence, or a better selector objective
+before it can challenge V2+.
+
+The richer prior-safe Poland feature follow-up was materialized as
+`week3_dfl_entsoe_poland_rich_prior_safe_b_variant_comparison` with Dagster run
+`3fe654b3-43e3-471d-9b36-2be5baf16477`. It extended the lagged panel with
+delta, daily spread, daily rank, and peak/trough timing fields:
+
+- `entsoe_pl_lag24_day_ahead_price_uah_mwh`;
+- `entsoe_pl_lag24_delta_1h_uah_mwh`;
+- `entsoe_pl_lag24_delta_24h_uah_mwh`;
+- `entsoe_pl_lag24_daily_spread_uah_mwh`;
+- `entsoe_pl_lag24_daily_price_rank`;
+- `entsoe_pl_lag24_daily_peak_hour_utc`;
+- `entsoe_pl_lag24_daily_trough_hour_utc`.
+
+The materialized lagged frame has `11,638` rows, full primary lagged coverage,
+and source-backed Poland rows. The market-coupled selector evaluated richer
+prior-only regime profiles, but all `10 / 10` tenant/source rows fell back to
+Ukrainian-only V2+ because the train/prior candidate evidence did not predict a
+non-degrading improvement. The strict comparison therefore stayed neutral:
+
+- calibrated source: baseline `174.77` UAH mean regret, B `174.77` UAH;
+- raw source: baseline `193.36` UAH mean regret, B `193.36` UAH;
+- rolling robustness: B preserved `4 / 4` windows by fallback;
+- ablation passed: `false`, blocker `mean_not_improved`;
+- `market_execution_enabled=false`.
+
+This closes the richer Poland-regime test as negative evidence rather than a
+new headline result. The next external-feature improvement must either add
+stronger governed context than lagged Poland price regimes or change the
+decision objective; the current V2+ headline remains Ukrainian-only.
+
 ## No-Token Poland Snapshot Route
 
 If an ENTSO-E token is unavailable, the project now has a source-neutral local

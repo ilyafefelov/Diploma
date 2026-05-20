@@ -18,10 +18,14 @@ from smart_arbitrage.strategy.official_global_panel import (
     OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATION_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_TFT_QUANTILE_CALIBRATED_MODEL_NAME,
     OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND,
+    POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+    POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
+    POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
     build_official_global_panel_nbeatsx_horizon_calibration_frame,
     build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_nbeatsx_strict_lp_benchmark_frame,
+    build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame,
     build_official_global_panel_tft_horizon_quantile_calibration_frame,
     build_official_global_panel_tft_rolling_strict_lp_benchmark_frame,
@@ -331,6 +335,81 @@ def test_global_panel_tft_rolling_benchmark_trains_once_per_anchor_across_tenant
     }
 
 
+def test_poland_lag24_experimental_rolling_benchmark_scores_both_sources() -> None:
+    silver_frame = _silver_frame(tenant_ids=(TENANT_ID, SECOND_TENANT_ID), day_count=14)
+    training_calls: list[pl.DataFrame] = []
+
+    def fake_training_builder(
+        silver_frame: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        training_calls.append(silver_frame)
+        assert kwargs["entsoe_poland_lagged_feature_candidate_frame"].height == 1
+        assert kwargs["market_coupling_feature_route_frame"].height == 1
+        anchor_timestamp = kwargs["anchor_timestamp"]
+        assert isinstance(anchor_timestamp, datetime)
+        return _experimental_training_frame(
+            tenant_ids=kwargs["tenant_ids"],
+            anchor_timestamp=anchor_timestamp,
+        )
+
+    def fake_nbeatsx_builder(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        forecast_rows = training_frame.filter(pl.col("is_forecast")).select(["unique_id", "ds"])
+        return _global_panel_point_forecast_from_rows(
+            forecast_rows,
+            model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+            model_family="NBEATSx",
+        )
+
+    def fake_tft_builder(training_frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        forecast_rows = training_frame.filter(pl.col("is_forecast")).select(["unique_id", "ds"])
+        return _global_panel_tft_forecast_from_rows(
+            forecast_rows,
+            model_name=POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+        )
+
+    result = build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame(
+        silver_frame,
+        tenant_ids=(TENANT_ID, SECOND_TENANT_ID),
+        entsoe_poland_lagged_feature_candidate_frame=pl.DataFrame(
+            {"delivery_timestamp_utc": ["2026-01-01T00:00:00+00:00"]}
+        ),
+        market_coupling_feature_route_frame=pl.DataFrame(
+            {"route_status": ["approved_route_pending_materialization"]}
+        ),
+        max_eval_windows=2,
+        horizon_hours=24,
+        nbeatsx_max_steps=1,
+        tft_max_epochs=2,
+        tft_max_steps=7,
+        generated_at=GENERATED_AT,
+        training_frame_builder=fake_training_builder,
+        nbeatsx_builder=fake_nbeatsx_builder,
+        tft_builder=fake_tft_builder,
+    )
+
+    assert len(training_calls) == 2
+    assert result.select("anchor_timestamp").n_unique() == 2
+    assert set(result["strategy_kind"].to_list()) == {
+        POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND
+    }
+    assert set(result["forecast_model_name"].to_list()) == {
+        "strict_similar_day",
+        POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+        POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+    }
+    experimental_payload = result.filter(
+        pl.col("forecast_model_name") == POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME
+    ).row(0, named=True)["evaluation_payload"]
+    assert experimental_payload["source_forecast_model_name"] == (
+        POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME
+    )
+    assert experimental_payload["claim_scope"] == (
+        "official_global_panel_poland_lag24_experimental_rolling_strict_lp_not_full_dfl"
+    )
+    assert experimental_payload["not_market_execution"] is True
+
+
 def test_global_panel_tft_quantile_calibration_uses_prior_anchors_only() -> None:
     first_anchor = datetime(2026, 1, 10, 23)
     source_rows = []
@@ -537,6 +616,36 @@ def _global_panel_forecast_frame(*, anchor_timestamp: datetime) -> pl.DataFrame:
     )
 
 
+def _global_panel_point_forecast_from_rows(
+    forecast_rows: pl.DataFrame,
+    *,
+    model_name: str,
+    model_family: str,
+) -> pl.DataFrame:
+    row_count = forecast_rows.height
+    return pl.DataFrame(
+        {
+            "model_name": [model_name] * row_count,
+            "model_family": [model_family] * row_count,
+            "backend_name": ["neuralforecast"] * row_count,
+            "backend_status": ["trained"] * row_count,
+            "unique_id": forecast_rows["unique_id"].to_list(),
+            "forecast_timestamp": forecast_rows["ds"].to_list(),
+            "predicted_price_uah_mwh": [1100.0] * row_count,
+            "predicted_price_p10_uah_mwh": [None] * row_count,
+            "predicted_price_p50_uah_mwh": [1100.0] * row_count,
+            "predicted_price_p90_uah_mwh": [None] * row_count,
+            "prediction_interval_kind": ["point"] * row_count,
+            "training_rows": [200] * row_count,
+            "horizon_rows": [24] * row_count,
+            "adapter_scope": [
+                "experimental_poland_lag24_forecast_candidate_not_live_strategy"
+            ]
+            * row_count,
+        }
+    )
+
+
 def _global_panel_tft_forecast_frame(*, anchor_timestamp: datetime) -> pl.DataFrame:
     timestamps = [anchor_timestamp + timedelta(hours=index + 1) for index in range(24)]
     return pl.DataFrame(
@@ -559,11 +668,15 @@ def _global_panel_tft_forecast_frame(*, anchor_timestamp: datetime) -> pl.DataFr
     )
 
 
-def _global_panel_tft_forecast_from_rows(forecast_rows: pl.DataFrame) -> pl.DataFrame:
+def _global_panel_tft_forecast_from_rows(
+    forecast_rows: pl.DataFrame,
+    *,
+    model_name: str = OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME,
+) -> pl.DataFrame:
     row_count = forecast_rows.height
     return pl.DataFrame(
         {
-            "model_name": [OFFICIAL_GLOBAL_PANEL_TFT_MODEL_NAME] * row_count,
+            "model_name": [model_name] * row_count,
             "model_family": ["TFT"] * row_count,
             "backend_name": ["pytorch_forecasting"] * row_count,
             "backend_status": ["trained"] * row_count,
@@ -579,6 +692,32 @@ def _global_panel_tft_forecast_from_rows(forecast_rows: pl.DataFrame) -> pl.Data
             "adapter_scope": ["official_backend_forecast_candidate_not_live_strategy"] * row_count,
         }
     )
+
+
+def _experimental_training_frame(
+    *,
+    tenant_ids: object,
+    anchor_timestamp: datetime,
+) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for tenant_id in tenant_ids:
+        for hour_offset in range(-48, 25):
+            timestamp = anchor_timestamp + timedelta(hours=hour_offset)
+            rows.append(
+                {
+                    "unique_id": f"{tenant_id}:DAM",
+                    "ds": timestamp,
+                    "y": None if hour_offset > 0 else 1000.0,
+                    "is_train": hour_offset <= 0,
+                    "is_forecast": hour_offset > 0,
+                    "entsoe_pl_lag24_day_ahead_price_uah_mwh": 900.0,
+                    "training_panel_kind": (
+                        "official_global_panel_poland_lag24_experimental"
+                    ),
+                    "not_market_execution": True,
+                }
+            )
+    return pl.DataFrame(rows)
 
 
 def _evaluation_row(

@@ -233,6 +233,22 @@ def test_v2_plus_dfl_dt_bridge_packet_cli_exports_negative_evidence() -> None:
     assert "negative_evidence" in export_script
 
 
+def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:
+    export_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_poland_lag24_experimental_schedule_value_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--comparison-frame-pickle" in export_script
+    assert "--raw-strict-frame-pickle" in export_script
+    assert "--run-slug" in export_script
+    assert "--dagster-run-id" in export_script
+    assert "build_poland_lag24_experimental_schedule_value_packet" in export_script
+    assert "write_poland_lag24_experimental_schedule_value_packet" in export_script
+    assert "promotes_over_frozen_v2_plus" in export_script
+
+
 def test_tft_quantile_screen_packet_cli_exports_blocked_screen_evidence() -> None:
     export_script = (
         PROJECT_ROOT / "scripts" / "materialize_tft_quantile_screen_packet.py"

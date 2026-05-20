@@ -19,12 +19,17 @@ from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
 from smart_arbitrage.forecasting.official_adapters import (
 	build_official_global_panel_nbeatsx_forecast,
+	build_official_global_panel_tft_forecast,
 	build_official_nbeatsx_forecast,
 	build_official_tft_forecast,
 	inspect_official_forecast_backends,
 )
 from smart_arbitrage.forecasting.sota_training import build_sota_forecast_training_frame
-from smart_arbitrage.forecasting.sota_training import build_official_global_panel_training_frame
+from smart_arbitrage.forecasting.sota_training import (
+	POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS,
+	build_official_global_panel_poland_lag24_experimental_training_frame as build_poland_lag24_experimental_training_frame,
+	build_official_global_panel_training_frame,
+)
 from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.resources.forecast_store import get_forecast_store
 
@@ -35,6 +40,12 @@ MLFLOW_FORECAST_MODEL_REGISTRY_NAMES = {
 	"nbeatsx_official_v0": "smart-arbitrage-nbeatsx-official",
 	"tft_official_v0": "smart-arbitrage-tft-official",
 }
+NBEATSX_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME = (
+	"nbeatsx_official_global_panel_poland_lag24_experimental_v1"
+)
+TFT_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME = (
+	"tft_official_global_panel_poland_lag24_experimental_v1"
+)
 
 
 class NbeatsxOfficialForecastAssetConfig(dg.Config):
@@ -54,6 +65,20 @@ class TftOfficialForecastAssetConfig(dg.Config):
 	learning_rate: float = 0.01
 	hidden_size: int = 8
 	hidden_continuous_size: int = 4
+
+
+class TftOfficialGlobalPanelForecastAssetConfig(dg.Config):
+	"""Official global-panel TFT controls for additive research candidates."""
+
+	horizon_hours: int = 24
+	max_epochs: int = 15
+	max_steps: int = -1
+	batch_size: int = 16
+	learning_rate: float = 0.005
+	hidden_size: int = 12
+	hidden_continuous_size: int = 6
+	accelerator: str = "auto"
+	devices: str = "auto"
 
 
 class OfficialGlobalPanelTrainingAssetConfig(dg.Config):
@@ -262,6 +287,63 @@ def official_global_panel_training_frame(
 
 
 @dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_FEATURES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="feature_engineering",
+		evidence_scope="research_only",
+		backend="official_forecast_adapters",
+		market_venue="DAM",
+	),
+)
+def official_global_panel_poland_lag24_experimental_training_frame(
+	context,
+	config: OfficialGlobalPanelTrainingAssetConfig,
+	real_data_benchmark_silver_feature_frame: pl.DataFrame,
+	official_forecast_exogenous_feature_route_frame: pl.DataFrame,
+	entsoe_poland_lagged_feature_candidate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Experimental global-panel frame with governed lagged Poland covariates.
+
+	The output is intentionally not the official training contract. It tests
+	point-in-time Poland features under the experimental ablation route while
+	keeping headline evidence on the Ukrainian-only V2+ comparator.
+	"""
+
+	tenant_ids = _tenant_ids_from_csv(config.tenant_ids_csv, real_data_benchmark_silver_feature_frame)
+	frame = build_poland_lag24_experimental_training_frame(
+		real_data_benchmark_silver_feature_frame,
+		tenant_ids=tenant_ids,
+		horizon_hours=config.horizon_hours,
+		temporal_scaler_type=config.temporal_scaler_type,
+		market_coupling_feature_route_frame=official_forecast_exogenous_feature_route_frame,
+		entsoe_poland_lagged_feature_candidate_frame=(
+			entsoe_poland_lagged_feature_candidate_frame
+		),
+	)
+	_add_metadata(
+		context,
+		{
+			"rows": frame.height,
+			"tenant_count": frame.select("tenant_id").n_unique() if frame.height else 0,
+			"unique_id_count": frame.select("unique_id").n_unique() if frame.height else 0,
+			"train_rows": frame.filter(pl.col("split") == "train").height,
+			"forecast_rows": frame.filter(pl.col("split") == "forecast").height,
+			"schema_version": frame.select("sota_schema_version").to_series().item(0) if frame.height else "empty",
+			"temporal_scaler_type": config.temporal_scaler_type,
+			"external_feature_training_status": frame.select("external_feature_training_status").to_series().item(0) if frame.height else "empty",
+			"experimental_feature_count": len(POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS),
+			"experimental_external_feature_columns_csv": frame.select("experimental_external_feature_columns_csv").to_series().item(0) if frame.height else "",
+			"market_execution_enabled": False,
+			"scope": "official_global_panel_poland_lag24_experimental_feature_contract_not_headline_training",
+		},
+	)
+	return frame
+
+
+@dg.asset(
 	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
 	tags=taxonomy.asset_tags(
 		medallion="silver",
@@ -450,6 +532,150 @@ def nbeatsx_official_global_panel_price_forecast(
 		elt_stage="transform",
 		ml_stage="forecasting",
 		evidence_scope="research_only",
+		backend="neuralforecast",
+		market_venue="DAM",
+	),
+)
+def nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast(
+	context,
+	config: NbeatsxOfficialForecastAssetConfig,
+	official_global_panel_poland_lag24_experimental_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Experimental NBEATSx candidate using prior-safe lagged Poland covariates."""
+
+	raw_forecast = build_official_global_panel_nbeatsx_forecast(
+		official_global_panel_poland_lag24_experimental_training_frame,
+		horizon_hours=config.horizon_hours,
+		max_steps=config.max_steps,
+		random_seed=config.random_seed,
+	)
+	forecast = _with_forecast_model_name(
+		raw_forecast,
+		NBEATSX_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME,
+	)
+	forecast_run_id = (
+		_persist_forecast_run(
+			model_name=NBEATSX_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME,
+			forecast=forecast,
+			point_prediction_column="predicted_price_uah_mwh",
+		)
+		if forecast.height
+		else "not_materialized"
+	)
+	backend_status = inspect_official_forecast_backends()["neuralforecast"]
+	_add_metadata(
+		context,
+		{
+			"model_name": NBEATSX_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME,
+			"forecast_run_id": forecast_run_id,
+			"forecast_rows": forecast.height,
+			"unique_id_count": forecast.select("unique_id").n_unique() if forecast.height else 0,
+			"horizon_hours": config.horizon_hours,
+			"max_steps": config.max_steps,
+			"random_seed": config.random_seed,
+			"backend_available": backend_status.available,
+			"backend_status": backend_status.reason,
+			"experimental_external_feature_columns_csv": (
+				official_global_panel_poland_lag24_experimental_training_frame
+				.select("experimental_external_feature_columns_csv")
+				.to_series()
+				.item(0)
+			)
+			if official_global_panel_poland_lag24_experimental_training_frame.height
+			else "",
+			"market_execution_enabled": False,
+			"scope": "experimental_poland_lag24_nbeatsx_forecast_not_headline_training",
+		},
+	)
+	return forecast
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
+		backend="pytorch_forecasting",
+		market_venue="DAM",
+	),
+)
+def tft_official_global_panel_poland_lag24_experimental_price_forecast(
+	context,
+	config: TftOfficialGlobalPanelForecastAssetConfig,
+	official_global_panel_poland_lag24_experimental_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+	"""Experimental global-panel TFT candidate with lagged Poland covariates."""
+
+	raw_forecast = build_official_global_panel_tft_forecast(
+		official_global_panel_poland_lag24_experimental_training_frame,
+		horizon_hours=config.horizon_hours,
+		max_epochs=config.max_epochs,
+		max_steps=config.max_steps,
+		batch_size=config.batch_size,
+		learning_rate=config.learning_rate,
+		hidden_size=config.hidden_size,
+		hidden_continuous_size=config.hidden_continuous_size,
+		accelerator=config.accelerator,
+		devices=config.devices,
+	)
+	forecast = _with_forecast_model_name(
+		raw_forecast,
+		TFT_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME,
+	)
+	forecast_run_id = (
+		_persist_forecast_run(
+			model_name=TFT_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME,
+			forecast=forecast,
+			point_prediction_column="predicted_price_uah_mwh",
+		)
+		if forecast.height
+		else "not_materialized"
+	)
+	backend_status = inspect_official_forecast_backends()
+	_add_metadata(
+		context,
+		{
+			"model_name": TFT_OFFICIAL_GLOBAL_PANEL_POLAND_LAG24_EXPERIMENTAL_MODEL_NAME,
+			"forecast_run_id": forecast_run_id,
+			"forecast_rows": forecast.height,
+			"unique_id_count": forecast.select("unique_id").n_unique() if forecast.height else 0,
+			"horizon_hours": config.horizon_hours,
+			"max_epochs": config.max_epochs,
+			"max_steps": config.max_steps,
+			"batch_size": config.batch_size,
+			"learning_rate": config.learning_rate,
+			"hidden_size": config.hidden_size,
+			"hidden_continuous_size": config.hidden_continuous_size,
+			"pytorch_forecasting_available": backend_status["pytorch_forecasting"].available,
+			"lightning_available": backend_status["lightning"].available,
+			"pytorch_forecasting_status": backend_status["pytorch_forecasting"].reason,
+			"lightning_status": backend_status["lightning"].reason,
+			"experimental_external_feature_columns_csv": (
+				official_global_panel_poland_lag24_experimental_training_frame
+				.select("experimental_external_feature_columns_csv")
+				.to_series()
+				.item(0)
+			)
+			if official_global_panel_poland_lag24_experimental_training_frame.height
+			else "",
+			"market_execution_enabled": False,
+			"scope": "experimental_poland_lag24_tft_forecast_not_headline_training",
+		},
+	)
+	return forecast
+
+
+@dg.asset(
+	group_name=taxonomy.SILVER_FORECAST_CANDIDATES,
+	tags=taxonomy.asset_tags(
+		medallion="silver",
+		domain="forecasting",
+		elt_stage="transform",
+		ml_stage="forecasting",
+		evidence_scope="research_only",
 		backend="pytorch_forecasting",
 		market_venue="DAM",
 	),
@@ -508,10 +734,13 @@ NEURAL_FORECAST_SILVER_ASSETS = [
 	official_forecast_exogenous_governance_frame,
 	official_forecast_exogenous_feature_route_frame,
 	official_global_panel_training_frame,
+	official_global_panel_poland_lag24_experimental_training_frame,
 	nbeatsx_price_forecast,
 	tft_price_forecast,
 	nbeatsx_official_price_forecast,
 	nbeatsx_official_global_panel_price_forecast,
+	nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast,
+	tft_official_global_panel_poland_lag24_experimental_price_forecast,
 	tft_official_price_forecast,
 ]
 
@@ -531,6 +760,19 @@ def _tenant_ids_from_csv(value: str, frame: pl.DataFrame) -> tuple[str, ...]:
 	if not discovered:
 		raise ValueError("official global panel requires at least one tenant_id.")
 	return discovered
+
+
+def _with_forecast_model_name(forecast: pl.DataFrame, model_name: str) -> pl.DataFrame:
+	if forecast.is_empty():
+		return forecast
+	return forecast.with_columns(
+		[
+			pl.lit(model_name).alias("model_name"),
+			pl.lit("experimental_market_coupling_forecast_not_live_strategy").alias(
+				"adapter_scope"
+			),
+		]
+	)
 
 
 def _persist_forecast_run(*, model_name: str, forecast: pl.DataFrame, point_prediction_column: str) -> str:

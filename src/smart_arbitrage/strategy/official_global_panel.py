@@ -23,6 +23,7 @@ from smart_arbitrage.forecasting.official_adapters import (
 )
 from smart_arbitrage.forecasting.sota_training import (
     build_official_global_panel_training_frame,
+    build_official_global_panel_poland_lag24_experimental_training_frame,
 )
 
 OFFICIAL_GLOBAL_PANEL_NBEATSX_STRATEGY_KIND: Final[str] = (
@@ -82,6 +83,22 @@ OFFICIAL_GLOBAL_PANEL_TFT_CLAIM_SCOPE: Final[str] = (
 )
 OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_CLAIM_SCOPE: Final[str] = (
     "official_global_panel_tft_quantile_rolling_strict_lp_not_full_dfl"
+)
+POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME: Final[str] = (
+    "nbeatsx_official_global_panel_poland_lag24_experimental_v1"
+)
+POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME: Final[str] = (
+    "tft_official_global_panel_poland_lag24_experimental_v1"
+)
+POLAND_LAG24_EXPERIMENTAL_SOURCE_MODEL_NAMES: Final[tuple[str, ...]] = (
+    POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+    POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+)
+POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND: Final[str] = (
+    "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark"
+)
+POLAND_LAG24_EXPERIMENTAL_ROLLING_CLAIM_SCOPE: Final[str] = (
+    "official_global_panel_poland_lag24_experimental_rolling_strict_lp_not_full_dfl"
 )
 
 
@@ -184,7 +201,7 @@ def build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
     )
     resolved_generated_at = generated_at or datetime.now(UTC)
     frames: list[pl.DataFrame] = []
-    for anchor_timestamp in anchors:
+    for rolling_window_index, anchor_timestamp in enumerate(anchors):
         training_frame = build_official_global_panel_training_frame(
             real_data_benchmark_silver_feature_frame,
             tenant_ids=tenant_ids,
@@ -208,7 +225,7 @@ def build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame(
             _with_rolling_metadata(
                 benchmark,
                 rolling_anchor_timestamp=anchor_timestamp,
-                rolling_window_index=len(frames),
+                rolling_window_index=rolling_window_index,
             )
         )
     if not frames:
@@ -344,7 +361,7 @@ def build_official_global_panel_tft_rolling_strict_lp_benchmark_frame(
     )
     resolved_generated_at = generated_at or datetime.now(UTC)
     frames: list[pl.DataFrame] = []
-    for anchor_timestamp in anchors:
+    for rolling_window_index, anchor_timestamp in enumerate(anchors):
         training_frame = build_official_global_panel_training_frame(
             real_data_benchmark_silver_feature_frame,
             tenant_ids=tenant_ids,
@@ -374,9 +391,153 @@ def build_official_global_panel_tft_rolling_strict_lp_benchmark_frame(
             _with_tft_rolling_metadata(
                 benchmark,
                 rolling_anchor_timestamp=anchor_timestamp,
-                rolling_window_index=len(frames),
+                rolling_window_index=rolling_window_index,
             )
         )
+    if not frames:
+        return pl.DataFrame()
+    return pl.concat(frames, how="diagonal_relaxed").sort(
+        ["anchor_timestamp", "tenant_id", "rank_by_regret", "forecast_model_name"]
+    )
+
+
+def build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame(
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    entsoe_poland_lagged_feature_candidate_frame: pl.DataFrame,
+    market_coupling_feature_route_frame: pl.DataFrame,
+    max_eval_windows: int,
+    horizon_hours: int = 24,
+    enabled_forecast_model_names: tuple[str, ...] = (
+        POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+        POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+    ),
+    nbeatsx_max_steps: int = 25,
+    nbeatsx_random_seed: int = 20260520,
+    tft_max_epochs: int = 15,
+    tft_max_steps: int = -1,
+    tft_batch_size: int = 16,
+    tft_learning_rate: float = 0.005,
+    tft_hidden_size: int = 12,
+    tft_hidden_continuous_size: int = 6,
+    tft_accelerator: str = "auto",
+    tft_devices: int | str = "auto",
+    anchor_batch_order: str = "latest_first",
+    anchor_batch_start_index: int = 0,
+    anchor_batch_size: int = 0,
+    generated_at: datetime | None = None,
+    training_frame_builder: Callable[..., pl.DataFrame] = (
+        build_official_global_panel_poland_lag24_experimental_training_frame
+    ),
+    nbeatsx_builder: Callable[..., pl.DataFrame] = (
+        build_official_global_panel_nbeatsx_forecast
+    ),
+    tft_builder: Callable[..., pl.DataFrame] = build_official_global_panel_tft_forecast,
+) -> pl.DataFrame:
+    """Strict-score Poland lag-24 experimental NBEATSx/TFT rolling forecasts.
+
+    The output is intentionally a research-only strict LP/oracle frame. It
+    admits only the explicitly enabled experimental source names and keeps the
+    same no-market-execution boundary as the frozen Ukrainian-only V2+ evidence.
+    """
+
+    if not tenant_ids:
+        raise ValueError("tenant_ids must contain at least one tenant.")
+    if max_eval_windows <= 0:
+        raise ValueError("max_eval_windows must be positive.")
+    if horizon_hours <= 0:
+        raise ValueError("horizon_hours must be positive.")
+    if not enabled_forecast_model_names:
+        raise ValueError("enabled_forecast_model_names must contain at least one model.")
+    unsupported_model_names = sorted(
+        set(enabled_forecast_model_names).difference(
+            POLAND_LAG24_EXPERIMENTAL_SOURCE_MODEL_NAMES
+        )
+    )
+    if unsupported_model_names:
+        raise ValueError(
+            "unsupported Poland lag24 experimental forecast model names: "
+            f"{unsupported_model_names}"
+        )
+    if (
+        POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME in enabled_forecast_model_names
+        and tft_max_epochs <= 0
+    ):
+        raise ValueError("tft_max_epochs must be positive.")
+
+    anchors = _eligible_global_panel_anchors(
+        real_data_benchmark_silver_feature_frame,
+        tenant_ids=tenant_ids,
+        horizon_hours=horizon_hours,
+        max_eval_windows=max_eval_windows,
+        anchor_batch_order=anchor_batch_order,
+    )
+    anchors = _slice_anchor_batch(
+        anchors,
+        anchor_batch_start_index=anchor_batch_start_index,
+        anchor_batch_size=anchor_batch_size,
+    )
+    resolved_generated_at = generated_at or datetime.now(UTC)
+    frames: list[pl.DataFrame] = []
+    for rolling_window_index, anchor_timestamp in enumerate(anchors):
+        training_frame = training_frame_builder(
+            real_data_benchmark_silver_feature_frame,
+            tenant_ids=tenant_ids,
+            entsoe_poland_lagged_feature_candidate_frame=(
+                entsoe_poland_lagged_feature_candidate_frame
+            ),
+            market_coupling_feature_route_frame=market_coupling_feature_route_frame,
+            horizon_hours=horizon_hours,
+            anchor_timestamp=anchor_timestamp,
+        )
+        if POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME in enabled_forecast_model_names:
+            nbeatsx_forecast = nbeatsx_builder(
+                training_frame,
+                horizon_hours=horizon_hours,
+                max_steps=nbeatsx_max_steps,
+                random_seed=nbeatsx_random_seed,
+            )
+            frames.append(
+                _with_poland_lag24_experimental_rolling_metadata(
+                    _build_point_forecast_strict_lp_benchmark_frame(
+                        real_data_benchmark_silver_feature_frame,
+                        nbeatsx_forecast,
+                        tenant_ids=tenant_ids,
+                        forecast_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
+                        forecast_family="NBEATSx",
+                        generated_at=resolved_generated_at,
+                    ),
+                    rolling_anchor_timestamp=anchor_timestamp,
+                    rolling_window_index=rolling_window_index,
+                )
+            )
+        if POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME in enabled_forecast_model_names:
+            tft_forecast = tft_builder(
+                training_frame,
+                horizon_hours=horizon_hours,
+                max_epochs=tft_max_epochs,
+                max_steps=tft_max_steps,
+                batch_size=tft_batch_size,
+                learning_rate=tft_learning_rate,
+                hidden_size=tft_hidden_size,
+                hidden_continuous_size=tft_hidden_continuous_size,
+                accelerator=tft_accelerator,
+                devices=tft_devices,
+            )
+            frames.append(
+                _with_poland_lag24_experimental_rolling_metadata(
+                    _build_tft_p50_forecast_strict_lp_benchmark_frame(
+                        real_data_benchmark_silver_feature_frame,
+                        tft_forecast,
+                        tenant_ids=tenant_ids,
+                        forecast_model_name=POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,
+                        generated_at=resolved_generated_at,
+                    ),
+                    rolling_anchor_timestamp=anchor_timestamp,
+                    rolling_window_index=rolling_window_index,
+                )
+            )
     if not frames:
         return pl.DataFrame()
     return pl.concat(frames, how="diagonal_relaxed").sort(
@@ -771,6 +932,131 @@ def build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchm
     )
 
 
+def _build_point_forecast_strict_lp_benchmark_frame(
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    forecast_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    forecast_model_name: str,
+    forecast_family: str,
+    generated_at: datetime,
+) -> pl.DataFrame:
+    rows: list[pl.DataFrame] = []
+    for tenant_id in tenant_ids:
+        tenant_forecast = _tenant_forecast(forecast_frame, tenant_id=tenant_id)
+        anchor_timestamp = _anchor_from_forecast(tenant_forecast)
+        price_history = _tenant_price_history(
+            real_data_benchmark_silver_feature_frame,
+            tenant_id=tenant_id,
+        )
+        defaults = tenant_battery_defaults_from_registry(tenant_id)
+        strict_forecast = _strict_forecast_frame(
+            price_history,
+            anchor_timestamp=anchor_timestamp,
+        )
+        evaluation = evaluate_forecast_candidates_against_oracle(
+            price_history=price_history,
+            tenant_id=tenant_id,
+            battery_metrics=defaults.metrics,
+            starting_soc_fraction=defaults.initial_soc_fraction,
+            starting_soc_source="tenant_default",
+            anchor_timestamp=anchor_timestamp,
+            candidates=[
+                ForecastCandidate(
+                    model_name="strict_similar_day",
+                    forecast_frame=strict_forecast,
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+                ForecastCandidate(
+                    model_name=forecast_model_name,
+                    forecast_frame=tenant_forecast,
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+            ],
+            evaluation_id=(
+                f"{tenant_id}:poland-lag24-experimental-{forecast_family.lower()}:"
+                f"{anchor_timestamp:%Y%m%dT%H%M}"
+            ),
+            generated_at=generated_at,
+        )
+        rows.append(
+            _with_poland_lag24_experimental_metadata(
+                evaluation,
+                tenant_id=tenant_id,
+                anchor_timestamp=anchor_timestamp,
+                price_history=price_history,
+                source_forecast_model_name=forecast_model_name,
+                source_forecast_family=forecast_family,
+                source_quantile="point",
+            )
+        )
+    return pl.concat(rows, how="diagonal_relaxed")
+
+
+def _build_tft_p50_forecast_strict_lp_benchmark_frame(
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    forecast_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    forecast_model_name: str,
+    generated_at: datetime,
+) -> pl.DataFrame:
+    rows: list[pl.DataFrame] = []
+    for tenant_id in tenant_ids:
+        tenant_forecast = _tenant_tft_quantile_forecast(forecast_frame, tenant_id=tenant_id)
+        candidate_forecast = _tft_quantile_candidate_forecast(
+            tenant_forecast,
+            source_column="predicted_price_p50_uah_mwh",
+        )
+        anchor_timestamp = _anchor_from_forecast(candidate_forecast)
+        price_history = _tenant_price_history(
+            real_data_benchmark_silver_feature_frame,
+            tenant_id=tenant_id,
+        )
+        defaults = tenant_battery_defaults_from_registry(tenant_id)
+        strict_forecast = _strict_forecast_frame(
+            price_history,
+            anchor_timestamp=anchor_timestamp,
+        )
+        evaluation = evaluate_forecast_candidates_against_oracle(
+            price_history=price_history,
+            tenant_id=tenant_id,
+            battery_metrics=defaults.metrics,
+            starting_soc_fraction=defaults.initial_soc_fraction,
+            starting_soc_source="tenant_default",
+            anchor_timestamp=anchor_timestamp,
+            candidates=[
+                ForecastCandidate(
+                    model_name="strict_similar_day",
+                    forecast_frame=strict_forecast,
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+                ForecastCandidate(
+                    model_name=forecast_model_name,
+                    forecast_frame=candidate_forecast,
+                    point_prediction_column="predicted_price_uah_mwh",
+                ),
+            ],
+            evaluation_id=(
+                f"{tenant_id}:poland-lag24-experimental-tft:"
+                f"{anchor_timestamp:%Y%m%dT%H%M}"
+            ),
+            generated_at=generated_at,
+        )
+        rows.append(
+            _with_poland_lag24_experimental_metadata(
+                evaluation,
+                tenant_id=tenant_id,
+                anchor_timestamp=anchor_timestamp,
+                price_history=price_history,
+                source_forecast_model_name=forecast_model_name,
+                source_forecast_family="TFT",
+                source_quantile="p50",
+            )
+        )
+    return pl.concat(rows, how="diagonal_relaxed")
+
+
 def _tenant_forecast(forecast_frame: pl.DataFrame, *, tenant_id: str) -> pl.DataFrame:
     required_columns = {"unique_id", "forecast_timestamp", "predicted_price_uah_mwh"}
     missing_columns = required_columns.difference(forecast_frame.columns)
@@ -957,6 +1243,49 @@ def _with_tft_global_panel_metadata(
     )
 
 
+def _with_poland_lag24_experimental_metadata(
+    evaluation: pl.DataFrame,
+    *,
+    tenant_id: str,
+    anchor_timestamp: datetime,
+    price_history: pl.DataFrame,
+    source_forecast_model_name: str,
+    source_forecast_family: str,
+    source_quantile: str,
+) -> pl.DataFrame:
+    payloads: list[dict[str, Any]] = []
+    data_quality_tier = _data_quality_tier(price_history)
+    observed_coverage_ratio = _observed_coverage_ratio(price_history)
+    for row in evaluation.iter_rows(named=True):
+        payload = dict(row["evaluation_payload"])
+        payload.update(
+            {
+                "claim_scope": POLAND_LAG24_EXPERIMENTAL_ROLLING_CLAIM_SCOPE,
+                "benchmark_kind": POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
+                "data_quality_tier": data_quality_tier,
+                "observed_coverage_ratio": observed_coverage_ratio,
+                "tenant_id": tenant_id,
+                "anchor_timestamp": anchor_timestamp.isoformat(),
+                "source_forecast_model_name": source_forecast_model_name,
+                "source_forecast_family": source_forecast_family,
+                "source_quantile": source_quantile,
+                "external_feature_route": "entsoe_poland_lag24_experimental",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        )
+        payloads.append(payload)
+    return evaluation.with_columns(
+        [
+            pl.lit(POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND).alias(
+                "strategy_kind"
+            ),
+            pl.Series("source_model_name", [source_forecast_model_name] * evaluation.height),
+            pl.Series("evaluation_payload", payloads),
+        ]
+    )
+
+
 def _tft_source_quantile(model_name: str) -> str:
     if model_name == OFFICIAL_GLOBAL_PANEL_TFT_P10_MODEL_NAME:
         return "p10"
@@ -1093,6 +1422,36 @@ def _with_tft_rolling_metadata(
     return benchmark.with_columns(
         [
             pl.lit(OFFICIAL_GLOBAL_PANEL_TFT_ROLLING_STRATEGY_KIND).alias(
+                "strategy_kind"
+            ),
+            pl.Series("evaluation_payload", payloads),
+        ]
+    )
+
+
+def _with_poland_lag24_experimental_rolling_metadata(
+    benchmark: pl.DataFrame,
+    *,
+    rolling_anchor_timestamp: datetime,
+    rolling_window_index: int,
+) -> pl.DataFrame:
+    payloads: list[dict[str, Any]] = []
+    for row in benchmark.iter_rows(named=True):
+        payload = dict(row["evaluation_payload"])
+        payload.update(
+            {
+                "claim_scope": POLAND_LAG24_EXPERIMENTAL_ROLLING_CLAIM_SCOPE,
+                "benchmark_kind": POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
+                "rolling_anchor_timestamp": rolling_anchor_timestamp.isoformat(),
+                "rolling_window_index": rolling_window_index,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        )
+        payloads.append(payload)
+    return benchmark.with_columns(
+        [
+            pl.lit(POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND).alias(
                 "strategy_kind"
             ),
             pl.Series("evaluation_payload", payloads),

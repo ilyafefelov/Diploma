@@ -4,7 +4,7 @@ This folder stores the core research references currently used to ground the Lev
 
 ## Downloaded PDFs
 
-- `2505.01551-predict-then-bid.pdf` — A Decision-Focused Predict-then-Bid Framework for Energy Storage Arbitrage
+- `2505.01551-predict-then-bid.pdf` — A Decision-Focused Predict-then-Bid Framework for Strategic Energy Storage
 - `2104.05522-nbeatsx.pdf` — Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx
 
 The broader thesis source archive is maintained in
@@ -56,7 +56,7 @@ Recommended additional bibliography entries to keep in the thesis source map:
 - Maheshwari et al. (2020), "Optimizing the operation of energy storage using a non-linear lithium-ion battery degradation model", DOI `10.1016/j.apenergy.2019.114360`.
 - Elmachtoub and Grigas (2022), "Smart Predict, then Optimize", DOI `10.1287/mnsc.2020.3922`.
 - Sang et al. (2023), "Electricity Price Prediction for Energy Storage System Arbitrage: A Decision-Focused Approach", arXiv `2305.00362`.
-- Persak and Anjos (2024), "Decision-Focused Forecasting: Decision Losses for Multistage Optimisation", arXiv `2405.14719`.
+- Persak and Anjos (2024), "Decision-Focused Forecasting: A Differentiable Multistage Optimisation Architecture", arXiv `2405.14719`.
 - Yi, Alghumayjan, and Xu (2024), "Perturbed Decision-Focused Learning for Modeling Strategic Energy Storage", arXiv `2406.17085`.
 - Olivares et al. (2023), "Neural basis expansion analysis with exogenous variables: Forecasting electricity prices with NBEATSx", DOI `10.1016/j.ijforecast.2022.03.001`.
 - Lim et al. (2021), "Temporal Fusion Transformers for Interpretable Multi-horizon Time Series Forecasting", DOI `10.1016/j.ijforecast.2021.03.012`.
