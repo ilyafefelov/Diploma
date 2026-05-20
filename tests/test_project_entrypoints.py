@@ -142,6 +142,25 @@ def test_tft_quantile_gate_batch_runner_writes_calibrated_schedule_config() -> N
     assert 'forecast_model_names_csv: "$calibratedTftModels"' in runner_script
 
 
+def test_poland_lag24_calibrated_batch_runner_writes_resumable_veto_config() -> None:
+    runner_script = (
+        PROJECT_ROOT / "scripts" / "run-poland-lag24-calibrated-batches.ps1"
+    ).read_text(encoding="utf-8")
+
+    assert "attempt_manifest.json" in runner_script
+    assert '"--attempt-kind", "official_global_panel_backfill"' in runner_script
+    assert "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame" in runner_script
+    assert "max_eval_windows: $TotalAnchors" in runner_script
+    assert "anchor_batch_start_index: $anchorIndex" in runner_script
+    assert "anchor_batch_size: $BatchSize" in runner_script
+    assert 'resume_generated_at_iso: "$GeneratedAtIso"' in runner_script
+    assert "merge_persisted_batches: true" in runner_script
+    assert "official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame" in runner_script
+    assert "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame" in runner_script
+    assert "dfl_poland_lag24_prior_tail_risk_veto_frame" in runner_script
+    assert "market_execution_enabled: true" not in runner_script.lower()
+
+
 def test_official_attempt_resume_summary_script_uses_manifest_contract() -> None:
     resume_script = (
         PROJECT_ROOT / "scripts" / "summarize_official_evidence_attempt_resume.py"

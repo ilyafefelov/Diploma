@@ -90,6 +90,52 @@ Coverage boundary:
 - a 365-anchor claim requires a larger Poland-enhanced official evidence run
   first, not only re-exporting this selector.
 
+## Larger Evidence Runner
+
+The Poland-enhanced forecast path is now resumable in the same style as the
+official global-panel backfill runs. The runner fixes one `generated_at`
+timestamp, persists every batch to Postgres, and materializes downstream
+calibration/schedule-value/veto assets against the merged persisted rows.
+
+Example full run:
+
+```powershell
+.\scripts\run-poland-lag24-calibrated-batches.ps1 `
+  -TotalAnchors 365 `
+  -BatchSize 2 `
+  -AnchorBatchOrder chronological `
+  -LocalMode host `
+  -NbeatsxMaxSteps 20 `
+  -TftMaxEpochs 5 `
+  -TftMaxSteps 8 `
+  -BatchTimeoutSeconds 10800
+```
+
+Resume from a monitor-reported index with the same timestamp:
+
+```powershell
+.\scripts\run-poland-lag24-calibrated-batches.ps1 `
+  -TotalAnchors 365 `
+  -BatchSize 2 `
+  -StartAnchorIndex <next_anchor_index> `
+  -GeneratedAtIso <same_generated_at_iso> `
+  -AnchorBatchOrder chronological `
+  -LocalMode host
+```
+
+Monitor the persisted raw forecast rows, not only `run.log`:
+
+```powershell
+.\scripts\monitor-official-evidence-attempt.ps1 `
+  -ManifestPath .tmp_runtime\poland_lag24_calibrated_batches\<run>\attempt_manifest.json `
+  -StrategyKind official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark `
+  -OutputPath .tmp_runtime\poland_lag24_calibrated_batches\<run>\resume-summary.json
+```
+
+This runner still writes Offline Strategy Promotion evidence only. It does not
+enable live dispatch, does not switch dashboard/API defaults, and does not admit
+European rows as Ukrainian training rows.
+
 Tenant-level effect:
 
 | Tenant | Mean delta vs V2+ | Poland rows selected | Interpretation |

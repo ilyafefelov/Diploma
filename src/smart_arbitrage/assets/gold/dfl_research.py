@@ -987,6 +987,8 @@ class DflPolandLag24ExperimentalRollingStrictAssetConfig(dg.Config):
     anchor_batch_start_index: int = 0
     anchor_batch_size: int = 0
     generated_at_iso: str = ""
+    resume_generated_at_iso: str = ""
+    merge_persisted_batches: bool = False
 
 
 class DflPolandLag24ExperimentalCalibrationAssetConfig(dg.Config):
@@ -3542,6 +3544,7 @@ def official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_
         config.enabled_forecast_model_names_csv,
         field_name="enabled_forecast_model_names_csv",
     )
+    generated_at_iso = config.resume_generated_at_iso or config.generated_at_iso
     strict_frame = (
         build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame(
             real_data_benchmark_silver_feature_frame,
@@ -3568,10 +3571,19 @@ def official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_
             anchor_batch_order=config.anchor_batch_order,
             anchor_batch_start_index=config.anchor_batch_start_index,
             anchor_batch_size=config.anchor_batch_size,
-            generated_at=_optional_datetime_config(config.generated_at_iso),
+            generated_at=_optional_datetime_config(generated_at_iso),
         )
     )
-    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    store = get_strategy_evaluation_store()
+    store.upsert_evaluation_frame(strict_frame)
+    generated_at = _optional_datetime_config(generated_at_iso)
+    if config.merge_persisted_batches and generated_at is not None:
+        persisted_frame = store.strategy_kind_frame_for_generated_at(
+            strategy_kind=POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
+            generated_at=generated_at,
+        )
+        if persisted_frame.height:
+            strict_frame = persisted_frame
     _add_metadata(
         context,
         {
@@ -3582,6 +3594,9 @@ def official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_
             "anchor_count": strict_frame.select("anchor_timestamp").n_unique()
             if strict_frame.height
             else 0,
+            "anchor_batch_start_index": config.anchor_batch_start_index,
+            "anchor_batch_size": config.anchor_batch_size,
+            "merge_persisted_batches": config.merge_persisted_batches,
             "source_model_names": source_model_names,
             "strategy_kind": POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
             "scope": (

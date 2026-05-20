@@ -253,6 +253,10 @@ median regret from `67.30` to `55.97` UAH while selecting Poland schedules on
 `4.41%`, below the conservative `5%` replacement rule, and the current evidence
 coverage is only `18` anchors per tenant. A 365-anchor claim requires
 materializing a larger Poland-enhanced official schedule/value run first.
+That larger path is now scripted as
+`scripts/run-poland-lag24-calibrated-batches.ps1`; it uses fixed-timestamp
+resumable batches, Postgres row merging, and the same downstream
+calibration/schedule-value/veto gate before any stronger claim is allowed.
 
 ## Academic And Source Basis
 

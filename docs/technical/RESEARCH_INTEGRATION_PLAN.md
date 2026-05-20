@@ -3033,3 +3033,13 @@ screen, but it remains below the `5%` replacement threshold (`4.41%`) and the
 current row-level overlap is only `18` anchors per tenant. Therefore it is not
 the thesis headline without a larger Poland-enhanced official evidence run and
 rolling robustness evidence.
+
+The follow-up implementation adds
+`scripts/run-poland-lag24-calibrated-batches.ps1` for that larger run. It writes
+an `attempt_manifest.json`, preserves a fixed `generated_at`, persists raw
+Poland-enhanced official NBEATSx/TFT rows by batch, merges persisted rows before
+downstream calibration, and then runs the calibrated schedule/value comparison
+plus `dfl_poland_lag24_prior_tail_risk_veto_frame`. This is the correct path
+for testing the veto on rolling/365 evidence. The claim boundary is unchanged:
+Offline Strategy Promotion only, `market_execution_enabled=false`, no
+dashboard/API default switch, and no European rows as Ukrainian training rows.

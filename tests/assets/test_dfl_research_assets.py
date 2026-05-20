@@ -10,6 +10,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflForecastDflV1AssetConfig,
     DflForecastPipelineTruthAuditAssetConfig,
     DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig,
+    DflPolandLag24ExperimentalRollingStrictAssetConfig,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
@@ -65,6 +66,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     offline_dfl_decision_target_strict_lp_benchmark_frame,
     offline_dfl_panel_experiment_frame,
     offline_dfl_panel_strict_lp_benchmark_frame,
+    official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     dfl_training_example_frame,
     real_data_value_aware_ensemble_frame,
     regret_weighted_forecast_calibration_frame,
@@ -79,6 +81,9 @@ from smart_arbitrage.dfl.promotion_gate import PromotionGateResult
 from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
 from smart_arbitrage.resources.strategy_evaluation_store import (
     InMemoryStrategyEvaluationStore,
+)
+from smart_arbitrage.strategy.official_global_panel import (
+    POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
 )
 
 
@@ -208,6 +213,68 @@ def test_global_panel_schedule_value_production_gate_uses_full_promotion_thresho
     assert config.min_validation_tenant_anchor_count_per_source_model == 90
     assert config.min_rolling_window_count == 4
     assert config.min_rolling_strict_pass_windows == 3
+
+
+def test_poland_lag24_rolling_asset_merges_persisted_batches(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 21, 12)
+
+    def poland_row(*, evaluation_id: str, anchor_hour: int) -> dict[str, object]:
+        return {
+            "evaluation_id": evaluation_id,
+            "tenant_id": "client_003_dnipro_factory",
+            "forecast_model_name": (
+                "nbeatsx_official_global_panel_poland_lag24_experimental_v1"
+            ),
+            "strategy_kind": POLAND_LAG24_EXPERIMENTAL_ROLLING_STRATEGY_KIND,
+            "anchor_timestamp": datetime(2026, 4, 2, anchor_hour),
+            "generated_at": generated_at,
+            "rank_by_regret": 1,
+            "regret_uah": 10.0,
+        }
+
+    store.upsert_evaluation_frame(
+        pl.DataFrame([poland_row(evaluation_id="batch-0", anchor_hour=1)])
+    )
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert real_data_benchmark_silver_feature_frame.height == 1
+        assert kwargs["tenant_ids"] == ("client_003_dnipro_factory",)
+        assert kwargs["anchor_batch_start_index"] == 4
+        assert kwargs["anchor_batch_size"] == 4
+        assert kwargs["generated_at"] == generated_at
+        return pl.DataFrame([poland_row(evaluation_id="batch-4", anchor_hour=2)])
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.dfl_research.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.dfl_research."
+        "build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame(
+        None,
+        DflPolandLag24ExperimentalRollingStrictAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_eval_windows=365,
+            anchor_batch_start_index=4,
+            anchor_batch_size=4,
+            anchor_batch_order="chronological",
+            resume_generated_at_iso=generated_at.isoformat(),
+            merge_persisted_batches=True,
+        ),
+        pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
+        pl.DataFrame({"feature_name": ["entsoe_pl_lag24_day_ahead_price_uah_mwh"]}),
+        pl.DataFrame({"feature_name": ["entsoe_pl_lag24_day_ahead_price_uah_mwh"]}),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["batch-0", "batch-4"]
 
 
 def test_dfl_research_assets_are_registered() -> None:
