@@ -45,6 +45,21 @@ The reusable export command is:
   --run-slug week3_poland_lag24_prior_tail_risk_veto
 ```
 
+The same logic is now available as a Dagster asset:
+
+- `dfl_poland_lag24_prior_tail_risk_veto_frame`
+
+Materialization command:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_poland_lag24_prior_tail_risk_veto_frame `
+  -c configs/real_data_official_global_panel_poland_lag24_calibrated_schedule_value_week3.yaml
+```
+
+Latest Dagster evidence run: `cb60e2d9-1b52-43b9-bd57-bfa7fa155e7d`.
+
 ## Result
 
 The local packet is:
@@ -64,6 +79,16 @@ The veto is a real improvement over frozen V2+ on this 90-row screen, but it is
 not a headline replacement because the conservative promotion rule requires at
 least `5%` mean-regret improvement plus no median degradation and rolling
 robustness evidence. The blocker is `improvement_below_5_percent`.
+
+Coverage boundary:
+
+- current overlap: `18` anchors per tenant, `90` tenant-anchor rows;
+- current upstream Poland schedule/value config: `48` forecast anchors total,
+  then `18` final validation anchors per tenant;
+- current status: `insufficient_for_365_anchor_claim` and
+  `insufficient_for_4x18_rolling_windows`;
+- a 365-anchor claim requires a larger Poland-enhanced official evidence run
+  first, not only re-exporting this selector.
 
 Tenant-level effect:
 
@@ -100,11 +125,14 @@ So the fix is not "add Poland everywhere and trust the model." The fix is:
 
 The next valid branch is to turn this 90-row screen into robustness evidence:
 
-1. run the same prior-only veto across larger rolling windows;
-2. require at least `5%` mean-regret improvement versus frozen V2+;
-3. require no median degradation;
-4. require rolling robustness;
-5. keep `market_execution_enabled=false`.
+1. materialize more Poland-enhanced official forecast/schedule-value rows;
+   for a 365-anchor final window, the config needs roughly `365` final anchors
+   plus enough prior anchors for calibration/selection;
+2. run the same prior-only veto across larger rolling windows;
+3. require at least `5%` mean-regret improvement versus frozen V2+;
+4. require no median degradation;
+5. require rolling robustness;
+6. keep `market_execution_enabled=false`.
 
 If the 365-anchor route stays below `5%`, keep V2+ as the thesis headline and
 describe the Poland lane as useful but not yet robust enough for replacement.

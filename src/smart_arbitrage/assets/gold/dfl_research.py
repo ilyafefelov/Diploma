@@ -264,6 +264,13 @@ from smart_arbitrage.dfl.market_coupled_v2_plus import (
     build_dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame,
     build_dfl_market_coupled_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
 )
+from smart_arbitrage.dfl.poland_lag24_prior_veto import (
+    build_poland_lag24_prior_veto_frame,
+    build_poland_lag24_prior_veto_packet,
+)
+from smart_arbitrage.dfl.poland_lag24_tail_risk_audit import (
+    build_poland_lag24_tail_risk_audit_frame,
+)
 from smart_arbitrage.strategy.official_global_panel import (
     POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
     POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
@@ -4079,6 +4086,99 @@ def dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame(
         },
     )
     return comparison_rows
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_prior_tail_risk_veto_frame(
+    context,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Prior-only veto for using Poland-enhanced TFT schedules over frozen V2+."""
+
+    baseline_model_name = (
+        f"dfl_schedule_value_learner_v2_plus_{FROZEN_V2_PLUS_BASELINE_MODEL_NAME}"
+    )
+    challenger_model_name = (
+        "dfl_schedule_value_learner_v2_plus_"
+        f"{POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME}"
+    )
+    audit_frame = build_poland_lag24_tail_risk_audit_frame(
+        baseline_frame=(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+        challenger_frame=(
+            dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+        baseline_model_name=baseline_model_name,
+        challenger_model_name=challenger_model_name,
+    )
+    veto_frame = build_poland_lag24_prior_veto_frame(audit_frame)
+    packet = build_poland_lag24_prior_veto_packet(
+        run_slug="dagster_poland_lag24_prior_tail_risk_veto",
+        veto_frame=veto_frame,
+        dagster_run_id=context.run_id if context is not None else None,
+        materialization_command=(
+            "dagster asset materialize --select "
+            "dfl_poland_lag24_prior_tail_risk_veto_frame"
+        ),
+    )
+    summary = packet["summary"]
+    gate = packet["gate"]
+    anchor_count = int(summary["anchor_count"])
+    coverage_status = (
+        "full_365_ready"
+        if anchor_count >= 365
+        else "insufficient_for_365_anchor_claim"
+    )
+    rolling_coverage_status = (
+        "rolling_ready"
+        if anchor_count >= 72
+        else "insufficient_for_4x18_rolling_windows"
+    )
+    veto_frame = veto_frame.with_columns(
+        pl.lit(coverage_status).alias("coverage_status"),
+        pl.lit(rolling_coverage_status).alias("rolling_coverage_status"),
+        pl.lit(False).alias("market_execution_enabled"),
+        pl.lit(True).alias("not_market_execution"),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": veto_frame.height,
+            "tenant_count": summary["tenant_count"],
+            "anchor_count": anchor_count,
+            "selected_challenger_rows": summary["selected_challenger_rows"],
+            "selected_mean_regret_uah": summary["selected_mean_regret_uah"],
+            "baseline_mean_regret_uah": summary["baseline_mean_regret_uah"],
+            "mean_regret_improvement_ratio_vs_baseline": (
+                summary["mean_regret_improvement_ratio_vs_baseline"]
+            ),
+            "coverage_status": coverage_status,
+            "rolling_coverage_status": rolling_coverage_status,
+            "gate_blocker": gate["blocker"],
+            "promotes_over_frozen_v2_plus": gate["promotes_over_frozen_v2_plus"],
+            "market_execution_enabled": False,
+            "scope": "dfl_poland_lag24_prior_tail_risk_veto_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return veto_frame
 
 
 @dg.asset(
@@ -9986,6 +10086,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_frame,
     dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
     dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame,
+    dfl_poland_lag24_prior_tail_risk_veto_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_v2_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_v2_plus_frame,

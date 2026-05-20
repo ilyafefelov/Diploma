@@ -3020,12 +3020,16 @@ research branch is a prior-only tail-risk veto/fallback for Poland-enhanced
 schedules, evaluated against the unchanged V2+ gate.
 
 That veto was then implemented as
-`scripts/materialize_poland_lag24_prior_veto_packet.py` and exported to
+`scripts/materialize_poland_lag24_prior_veto_packet.py`, then wired into Dagster
+as `dfl_poland_lag24_prior_tail_risk_veto_frame` and materialized in run
+`cb60e2d9-1b52-43b9-bd57-bfa7fa155e7d`. The local evidence packet is
 `data/research_runs/week3_poland_lag24_prior_tail_risk_veto/`. It uses a small
 deterministic ridge scorer trained only on earlier anchors and pre-anchor
 schedule/forecast/candidate metadata. On the matched 90-row screen it selects
 Poland schedules on `34 / 90` rows and improves mean regret from `174.77` to
 `167.05` UAH, with median regret improving from `67.30` to `55.97` UAH. This is
 the first Poland-enhanced selector to beat frozen V2+ on mean and median in the
-screen, but it remains below the `5%` replacement threshold (`4.41%`), so it is
-not the new thesis headline without larger rolling robustness evidence.
+screen, but it remains below the `5%` replacement threshold (`4.41%`) and the
+current row-level overlap is only `18` anchors per tenant. Therefore it is not
+the thesis headline without a larger Poland-enhanced official evidence run and
+rolling robustness evidence.
