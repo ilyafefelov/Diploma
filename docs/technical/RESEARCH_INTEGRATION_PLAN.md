@@ -3007,3 +3007,14 @@ not beat `174.77` UAH. The next Poland branch should not be a full 365-anchor
 rerun of the same representation; it needs either better domain features,
 stronger schedule/value use of the low-median TFT signal, or DT/LAVA-style
 teacher/candidate supervision.
+
+The tail-risk autopsy in
+`data/research_runs/week3_poland_lag24_richer_tail_risk_audit/` shows why this
+near miss is not noise. The calibrated Poland TFT V2+ row wins `48` matched
+tenant-anchor rows, loses `32`, and ties `10`, while its median regret improves
+from `67.30` to `39.46` UAH. The mean still worsens by `2.58` UAH because seven
+tail-loss rows contribute `2074.75` UAH of positive regret delta. An
+oracle-only row switcher would achieve `143.80` UAH mean regret, but that is a
+diagnostic upper bound only because it uses final outcomes. The practical next
+research branch is a prior-only tail-risk veto/fallback for Poland-enhanced
+schedules, evaluated against the unchanged V2+ gate.

@@ -249,6 +249,20 @@ def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss()
     assert "promotes_over_frozen_v2_plus" in export_script
 
 
+def test_poland_lag24_tail_risk_audit_cli_exports_near_miss_autopsy() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_poland_lag24_tail_risk_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--baseline-strict-rows-csv" in export_script
+    assert "--challenger-strict-rows-csv" in export_script
+    assert "--generated-at-iso" in export_script
+    assert "--challenger-model-name" in export_script
+    assert "build_poland_lag24_tail_risk_audit_frame" in export_script
+    assert "write_poland_lag24_tail_risk_packet" in export_script
+    assert "oracle_loss_avoidance_is_diagnostic_only" in export_script
+
+
 def test_poland_lag24_calibrated_schedule_value_config_routes_new_model_names() -> None:
     run_config = (
         PROJECT_ROOT

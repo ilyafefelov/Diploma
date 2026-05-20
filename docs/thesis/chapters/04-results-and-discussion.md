@@ -441,6 +441,20 @@ claim це означає: Poland features already work technically and improve 
 near-miss after calibration, but they are not headline evidence until they beat
 V2+ under the same strict LP/oracle gate.
 
+Наступний tail-risk audit пояснив, чому цей результат настільки близький, але
+все одно не проходить. У matched comparison calibrated Poland TFT V2+ мав
+`48` локальних виграшів, `32` програші і `10` ties проти frozen Ukrainian-only
+V2+. Median regret покращився з `67.30` до `39.46` UAH, тобто Poland route
+справді часто дає корисні schedules. Але mean regret погіршився на `2.58` UAH,
+бо `7` tail-loss rows дали `2074.75` UAH додаткового regret. Oracle-only
+diagnostic, який завжди бере Poland schedule тільки там, де він уже після факту
+кращий, дав би `143.80` UAH mean regret. Це сильний доказ потенціалу, але не
+promotion evidence, бо такий вибір використовує final outcomes і був би leakage.
+Тому висновок для диплома такий: Poland features мають complementary decision
+value, але поточний prior-only selector ще не вміє безпечно відсікати
+tail-risk випадки. Наступний коректний крок - prior-only tail-risk veto/fallback
+перед повним повтором gate.
+
 Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
 DFL, tiny offline Decision Transformer, behavior cloning і fallback
 порівнювалися не лише зі `strict_similar_day`, а з поточним українським V2+
@@ -690,6 +704,14 @@ UAH гірший за V2+. Тому thesis headline не змінюється. �
 strict LP/oracle promotion rule, тож залишається research-only evidence with
 `market_execution_enabled=false`.
 
+Tail-risk audit для цього near-miss показав, що проблема не в повній
+непотрібності Poland features. Challenger виграв `48` matched rows, програв
+`32`, і мав `10` ties. Але `7` tail losses дали `2074.75` UAH додаткового
+regret і зламали mean-regret gate. Це означає, що наступна ML-задача має бути
+не "додати ще одну TFT модель", а навчити prior-only veto: коли Poland-enhanced
+schedule виглядає небезпечно до початку window, система повинна лишатися на
+V2+ fallback.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -708,6 +730,9 @@ rows:
   official global-panel TFT quantile negative evidence packet;
 - `data/research_runs/week3_poland_lag24_richer_calibrated_experimental_schedule_value/` -
   richer Poland-enhanced calibrated forecast near-miss packet;
+- `data/research_runs/week3_poland_lag24_richer_tail_risk_audit/` -
+  tail-risk autopsy showing why the Poland near-miss lowers median regret but
+  fails mean-regret promotion;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

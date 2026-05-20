@@ -231,6 +231,17 @@ UAH median regret. This improves the previous calibrated Poland TFT near-miss
 mean regret (`174.77` UAH). The route remains research-only and
 `market_execution_enabled=false`.
 
+The follow-up tail-risk packet
+`data/research_runs/week3_poland_lag24_richer_tail_risk_audit/` explains the
+near miss. The calibrated Poland TFT V2+ row wins more matched tenant-anchors
+than it loses (`48 / 32 / 10` wins/losses/ties) and lowers median regret, but
+seven high-regret tail losses contribute `2074.75` UAH of positive regret delta
+and block the mean-regret gate. An oracle-only loss-avoidance diagnostic would
+reach `143.80` UAH mean regret, which proves useful complementary schedules
+exist, but that diagnostic is not admissible because it uses final outcomes to
+avoid bad Poland rows. The next safe improvement is a prior-only tail-risk veto,
+not blind admission of every Poland-enhanced schedule.
+
 ## Academic And Source Basis
 
 - Nixtla NeuralForecast supports static, historic, and future exogenous

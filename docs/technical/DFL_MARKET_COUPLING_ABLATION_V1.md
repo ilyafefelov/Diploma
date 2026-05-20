@@ -396,6 +396,18 @@ and `39.46` UAH median regret. This is the closest Poland result so far, but it
 still misses frozen Ukrainian-only V2+ mean regret (`174.77` UAH) by `2.58`
 UAH, so the blocker remains `mean_not_improved_vs_frozen_v2_plus`.
 
+The tail-risk autopsy packet
+`week3_poland_lag24_richer_tail_risk_audit` explains that blocker. The
+Poland-enhanced calibrated TFT V2+ row wins `48` matched tenant-anchor rows,
+loses `32`, and ties `10`; the median improves, but seven high-regret tail
+losses add `2074.75` UAH of positive regret delta. Kharkiv Hospital is the main
+net harmed tenant (`+34.46` UAH mean delta), while Lviv Office and Dnipro
+Factory are net helped. An oracle-only row switcher would reach `143.80` UAH
+mean regret by using Poland schedules only where they help, but this is not
+admissible because it uses final outcomes. The next valid branch is therefore a
+prior-only tail-risk veto/fallback around the Poland route, not blind promotion
+of all Poland-enhanced schedules.
+
 ## No-Token Poland Snapshot Route
 
 If an ENTSO-E token is unavailable, the project now has a source-neutral local
