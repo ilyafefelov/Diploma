@@ -202,6 +202,16 @@ is useful negative evidence: the route is now mechanically usable by
 NBEATSx/TFT, but the current prior-safe Poland feature representation is not
 strong enough to replace the Ukrainian-only V2+ schedule/value result.
 
+The next feature representation branch adds prior-safe cross-market pressure
+columns to that same route:
+`entsoe_pl_lag24_ua_spread_uah_mwh`,
+`entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh`, and
+`entsoe_pl_lag24_ua_spread_ratio`. These compare the lagged Poland day-ahead
+price to the Ukrainian observed DAM price at the same lagged timestamp. They
+are designed for the next experimental NBEATSx/TFT run because the failed
+lag-24 level-only screen suggests that absolute Poland prices are less useful
+than relative neighbor-versus-UA regimes.
+
 ## Academic And Source Basis
 
 - Nixtla NeuralForecast supports static, historic, and future exogenous

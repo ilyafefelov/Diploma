@@ -59,6 +59,15 @@ POLAND_LAG24_DAILY_PEAK_HOUR_FEATURE_COLUMN: Final[str] = (
 POLAND_LAG24_DAILY_TROUGH_HOUR_FEATURE_COLUMN: Final[str] = (
     "entsoe_pl_lag24_daily_trough_hour_utc"
 )
+POLAND_LAG24_UA_SPREAD_FEATURE_COLUMN: Final[str] = (
+    "entsoe_pl_lag24_ua_spread_uah_mwh"
+)
+POLAND_LAG24_UA_SPREAD_DELTA_24H_FEATURE_COLUMN: Final[str] = (
+    "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh"
+)
+POLAND_LAG24_UA_SPREAD_RATIO_FEATURE_COLUMN: Final[str] = (
+    "entsoe_pl_lag24_ua_spread_ratio"
+)
 RICH_POLAND_SELECTOR_PROFILE_NAME: Final[str] = (
     "poland_lag24_rich_regime_selector"
 )
@@ -207,6 +216,9 @@ def build_dfl_market_coupled_schedule_value_learner_v2_plus_frame(
                         "entsoe_pl_lag24_daily_price_rank",
                         "poland_lag24_peak_index",
                         "poland_lag24_trough_index",
+                        "entsoe_pl_lag24_ua_spread_uah_mwh",
+                        "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh",
+                        "entsoe_pl_lag24_ua_spread_ratio",
                     ],
                     "selected_feature_weights": {
                         "selection_rule": (
@@ -661,6 +673,8 @@ def _fit_poland_regime_selector(
             "lag24_delta_1h",
             "lag24_peak_timing",
             "lag24_level_spread",
+            "lag24_cross_market_spread",
+            "lag24_cross_market_ratio",
         )
     ]
     scored_selectors = []
@@ -721,6 +735,12 @@ def _regime_thresholds(anchor_stats: dict[datetime, dict[str, Any]]) -> dict[str
         ),
         "delta_1h": median(
             [float(stats["delta_1h_mean"]) for stats in anchor_stats.values()]
+        ),
+        "cross_market_spread": median(
+            [float(stats["cross_market_spread_mean"]) for stats in anchor_stats.values()]
+        ),
+        "cross_market_ratio": median(
+            [float(stats["cross_market_spread_ratio_mean"]) for stats in anchor_stats.values()]
         ),
     }
 
@@ -906,6 +926,9 @@ def _anchor_feature_stats_for_rows(
         delta_24h_values: list[float] = []
         daily_spread_values: list[float] = []
         daily_rank_values: list[float] = []
+        cross_market_spread_values: list[float] = []
+        cross_market_spread_delta_values: list[float] = []
+        cross_market_spread_ratio_values: list[float] = []
         for offset in range(horizon_hours):
             timestamp = anchor + timedelta(hours=offset)
             try:
@@ -924,6 +947,15 @@ def _anchor_feature_stats_for_rows(
             daily_rank_values.append(
                 feature_row[POLAND_LAG24_DAILY_PRICE_RANK_FEATURE_COLUMN]
             )
+            cross_market_spread_values.append(
+                feature_row[POLAND_LAG24_UA_SPREAD_FEATURE_COLUMN]
+            )
+            cross_market_spread_delta_values.append(
+                feature_row[POLAND_LAG24_UA_SPREAD_DELTA_24H_FEATURE_COLUMN]
+            )
+            cross_market_spread_ratio_values.append(
+                feature_row[POLAND_LAG24_UA_SPREAD_RATIO_FEATURE_COLUMN]
+            )
         stats[anchor] = {
             "values": values,
             "mean": mean(values),
@@ -932,6 +964,13 @@ def _anchor_feature_stats_for_rows(
             "delta_24h_mean": mean(delta_24h_values),
             "daily_spread_mean": mean(daily_spread_values),
             "daily_price_rank_mean": mean(daily_rank_values),
+            "cross_market_spread_mean": mean(cross_market_spread_values),
+            "cross_market_spread_delta_24h_mean": mean(
+                cross_market_spread_delta_values
+            ),
+            "cross_market_spread_ratio_mean": mean(
+                cross_market_spread_ratio_values
+            ),
             "peak_index": _arg_extreme(values, largest=True),
             "trough_index": _arg_extreme(values, largest=False),
         }
@@ -990,6 +1029,20 @@ def _regime(
             else "low_spread"
         )
         return f"{level}_poland_lag24_{spread}"
+    if profile_name == "lag24_cross_market_spread":
+        return (
+            "positive_pl_ua_lag24_spread"
+            if float(stats["cross_market_spread_mean"])
+            >= thresholds["cross_market_spread"]
+            else "negative_pl_ua_lag24_spread"
+        )
+    if profile_name == "lag24_cross_market_ratio":
+        return (
+            "wide_pl_ua_lag24_spread_ratio"
+            if float(stats["cross_market_spread_ratio_mean"])
+            >= thresholds["cross_market_ratio"]
+            else "narrow_pl_ua_lag24_spread_ratio"
+        )
     return (
         "high_poland_lag24"
         if float(stats["mean"]) >= thresholds["mean"]
@@ -1069,6 +1122,21 @@ def _feature_values_by_timestamp(frame: pl.DataFrame) -> dict[datetime, dict[str
             POLAND_LAG24_DAILY_TROUGH_HOUR_FEATURE_COLUMN: _row_float(
                 row,
                 POLAND_LAG24_DAILY_TROUGH_HOUR_FEATURE_COLUMN,
+                default=0.0,
+            ),
+            POLAND_LAG24_UA_SPREAD_FEATURE_COLUMN: _row_float(
+                row,
+                POLAND_LAG24_UA_SPREAD_FEATURE_COLUMN,
+                default=0.0,
+            ),
+            POLAND_LAG24_UA_SPREAD_DELTA_24H_FEATURE_COLUMN: _row_float(
+                row,
+                POLAND_LAG24_UA_SPREAD_DELTA_24H_FEATURE_COLUMN,
+                default=0.0,
+            ),
+            POLAND_LAG24_UA_SPREAD_RATIO_FEATURE_COLUMN: _row_float(
+                row,
+                POLAND_LAG24_UA_SPREAD_RATIO_FEATURE_COLUMN,
                 default=0.0,
             ),
         }

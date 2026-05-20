@@ -182,6 +182,8 @@ def test_market_coupled_b_variant_uses_rich_poland_regime_features_when_prior_sa
     selected_features = b_model.row(0, named=True)["selected_feature_names"]
     assert "entsoe_pl_lag24_delta_1h_uah_mwh" in selected_features
     assert "entsoe_pl_lag24_daily_spread_uah_mwh" in selected_features
+    assert "entsoe_pl_lag24_ua_spread_uah_mwh" in selected_features
+    assert "entsoe_pl_lag24_ua_spread_ratio" in selected_features
     assert b_model["selected_train_mean_regret_uah"].max() < b_model[
         "ukrainian_v2_plus_train_mean_regret_uah"
     ].min()
@@ -642,6 +644,11 @@ def _rich_lagged_poland_feature_frame(library: pl.DataFrame) -> pl.DataFrame:
                 "entsoe_pl_lag24_daily_price_rank": 0.8 if high_regime else 0.2,
                 "entsoe_pl_lag24_daily_peak_hour_utc": 20 if high_regime else 8,
                 "entsoe_pl_lag24_daily_trough_hour_utc": 3,
+                "entsoe_pl_lag24_ua_spread_uah_mwh": (
+                    900.0 if high_regime else -900.0
+                ),
+                "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh": delta,
+                "entsoe_pl_lag24_ua_spread_ratio": 0.3 if high_regime else -0.3,
                 "training_use_allowed": False,
                 "feature_use_allowed": True,
                 "not_full_dfl": True,

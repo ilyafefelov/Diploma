@@ -98,6 +98,11 @@ def _poland_lagged_feature_frame(silver_frame: pl.DataFrame) -> pl.DataFrame:
 				"entsoe_pl_lag24_daily_price_rank": float(index % 24) / 23.0,
 				"entsoe_pl_lag24_daily_peak_hour_utc": 23,
 				"entsoe_pl_lag24_daily_trough_hour_utc": 0,
+				"entsoe_pl_lag24_ua_spread_uah_mwh": price - 3000.0,
+				"entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh": (
+					None if index < 24 else 100.0
+				),
+				"entsoe_pl_lag24_ua_spread_ratio": (price - 3000.0) / 3000.0,
 			}
 		)
 	return pl.DataFrame(rows)

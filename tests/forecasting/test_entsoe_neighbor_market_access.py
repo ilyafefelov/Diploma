@@ -378,6 +378,52 @@ def test_entsoe_poland_lag24_emits_prior_safe_delta_spread_peak_trough_features(
     assert lagged["feature_use_allowed"].unique().to_list() == [False]
 
 
+def test_entsoe_poland_lag24_emits_cross_market_spread_features() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 1, hour),
+                "price_uah_mwh": 3000.0 + 25.0 * hour,
+            }
+            for hour in range(3)
+        ]
+        + [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+                "price_uah_mwh": 4000.0 + 10.0 * hour,
+            }
+            for hour in range(3)
+        ]
+    )
+
+    lagged = build_entsoe_poland_lagged_feature_candidate_frame(
+        benchmark,
+        _source_backed_poland_candidates(),
+        lag_hours=24,
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+    ).filter(pl.col("delivery_timestamp_utc").str.starts_with("2026-01-02"))
+
+    assert lagged["entsoe_pl_lag24_ua_spread_uah_mwh"].to_list() == [
+        1612.5,
+        1970.0,
+        2372.5,
+    ]
+    assert lagged["entsoe_pl_lag24_ua_spread_ratio"].to_list() == [
+        1612.5 / 3000.0,
+        1970.0 / 3025.0,
+        2372.5 / 3050.0,
+    ]
+    assert lagged["entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh"].to_list() == [
+        None,
+        None,
+        None,
+    ]
+
+
 def test_nbu_fx_metadata_frame_fetches_lagged_source_dates_from_official_range() -> None:
     benchmark = pl.DataFrame(
         [

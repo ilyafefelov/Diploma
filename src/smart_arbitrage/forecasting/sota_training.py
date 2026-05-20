@@ -33,6 +33,9 @@ POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "entsoe_pl_lag24_daily_price_rank",
     "entsoe_pl_lag24_daily_peak_hour_utc",
     "entsoe_pl_lag24_daily_trough_hour_utc",
+    "entsoe_pl_lag24_ua_spread_uah_mwh",
+    "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh",
+    "entsoe_pl_lag24_ua_spread_ratio",
 )
 
 KNOWN_FUTURE_FEATURE_COLUMNS: Final[tuple[str, ...]] = (

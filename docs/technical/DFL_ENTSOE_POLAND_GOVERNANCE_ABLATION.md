@@ -460,6 +460,23 @@ weakening the LP/oracle gate. The blocker is therefore
 `mean_not_improved_vs_frozen_v2_plus`. This keeps the Poland lag-24 route as
 source-backed experimental evidence, not as promoted thesis headline evidence.
 
+The follow-up feature-representation branch keeps the same governance boundary
+but adds cross-market prior-safe features to the Poland lag-24 panel:
+
+- `entsoe_pl_lag24_ua_spread_uah_mwh` - Poland lag-24 price minus observed
+  Ukrainian DAM price at the same lagged timestamp;
+- `entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh` - change in that cross-market
+  spread versus the prior lagged day;
+- `entsoe_pl_lag24_ua_spread_ratio` - spread scaled by the lagged Ukrainian
+  DAM price.
+
+These features are closer to the market-coupling hypothesis than Poland price
+level alone because they describe relative pressure between the neighbor market
+and the Ukrainian observed market state. They are still computed only from
+timestamp `t - 24h` and earlier data, so they remain prior-safe for Ukrainian
+timestamp `t`. They are not a promotion result until a fresh NBEATSx/TFT
+forecast run and downstream schedule/value gate beat frozen Ukrainian-only V2+.
+
 Reusable export:
 
 ```powershell

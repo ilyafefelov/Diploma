@@ -583,6 +583,7 @@ def build_entsoe_poland_lagged_feature_candidate_frame(
     source_candidates = _poland_source_candidates_by_delivery_timestamp(
         entsoe_neighbor_market_feature_candidate_frame
     )
+    ukrainian_price_by_timestamp = _benchmark_price_by_timestamp(benchmark_frame)
     benchmark_timestamps = (
         benchmark_frame.select("timestamp").unique().sort("timestamp").to_series().to_list()
     )
@@ -595,6 +596,7 @@ def build_entsoe_poland_lagged_feature_candidate_frame(
                 source_candidates,
             ),
             source_candidates=source_candidates,
+            ukrainian_price_by_timestamp=ukrainian_price_by_timestamp,
             prior_eur_uah_fx_rate=prior_eur_uah_fx_rate,
             fx_timestamp=fx_timestamp,
             fx_rate_source=fx_rate_source,
@@ -1404,6 +1406,40 @@ def _prior_safe_lagged_poland_features(
     }
 
 
+def _prior_safe_cross_market_features(
+    source_timestamp: datetime,
+    *,
+    price_uah: float | None,
+    source_candidates: dict[datetime, dict[str, object]],
+    ukrainian_price_by_timestamp: dict[datetime, float],
+    effective_fx_rate: float,
+    currency_ready: bool,
+) -> dict[str, float | None]:
+    ukrainian_lagged_price = ukrainian_price_by_timestamp.get(source_timestamp)
+    spread = _delta(price_uah, ukrainian_lagged_price)
+    previous_poland_price = _source_price_uah(
+        source_timestamp - timedelta(hours=24),
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    previous_ukrainian_price = ukrainian_price_by_timestamp.get(
+        source_timestamp - timedelta(hours=24)
+    )
+    previous_spread = _delta(previous_poland_price, previous_ukrainian_price)
+    return {
+        "entsoe_pl_lag24_ua_spread_uah_mwh": spread,
+        "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh": _delta(
+            spread,
+            previous_spread,
+        ),
+        "entsoe_pl_lag24_ua_spread_ratio": _safe_ratio(
+            spread,
+            ukrainian_lagged_price,
+        ),
+    }
+
+
 def _source_price_uah(
     source_timestamp: datetime,
     *,
@@ -1439,6 +1475,33 @@ def _daily_source_prices_uah(
     return sorted(values, key=lambda item: item[0])
 
 
+def _benchmark_price_by_timestamp(benchmark_frame: pl.DataFrame) -> dict[datetime, float]:
+    price_column = next(
+        (
+            column_name
+            for column_name in (
+                "price_uah_mwh",
+                "target_price_uah_mwh",
+                "market_price_uah_mwh",
+            )
+            if column_name in benchmark_frame.columns
+        ),
+        None,
+    )
+    if price_column is None:
+        return {}
+    price_frame = (
+        benchmark_frame.select(["timestamp", price_column])
+        .drop_nulls(subset=["timestamp", price_column])
+        .group_by("timestamp")
+        .agg(pl.mean(price_column).alias("ukrainian_price_uah_mwh"))
+    )
+    return {
+        _timestamp_naive_utc(row["timestamp"]): float(row["ukrainian_price_uah_mwh"])
+        for row in price_frame.iter_rows(named=True)
+    }
+
+
 def _price_rank(price: float | None, daily_values: list[float]) -> float | None:
     if price is None or not daily_values:
         return None
@@ -1454,12 +1517,19 @@ def _delta(current: float | None, previous: float | None) -> float | None:
     return current - previous
 
 
+def _safe_ratio(numerator: float | None, denominator: float | None) -> float | None:
+    if numerator is None or denominator is None or abs(denominator) < 1e-9:
+        return None
+    return numerator / abs(denominator)
+
+
 def _lagged_feature_candidate_row(
     *,
     timestamp: datetime,
     lag_hours: int,
     source_candidate: dict[str, object] | None,
     source_candidates: dict[datetime, dict[str, object]],
+    ukrainian_price_by_timestamp: dict[datetime, float],
     prior_eur_uah_fx_rate: float,
     fx_timestamp: datetime | None,
     fx_rate_source: str,
@@ -1503,6 +1573,14 @@ def _lagged_feature_candidate_row(
         effective_fx_rate=effective_fx_rate,
         currency_ready=currency_ready,
     )
+    cross_market_features = _prior_safe_cross_market_features(
+        source_timestamp,
+        price_uah=price_uah,
+        source_candidates=source_candidates,
+        ukrainian_price_by_timestamp=ukrainian_price_by_timestamp,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
     source_backed = source_candidate is not None
     source_delivery_timestamp_utc = source_timestamp.replace(tzinfo=UTC).isoformat()
     source_fetch_status = (
@@ -1532,6 +1610,7 @@ def _lagged_feature_candidate_row(
         "neighbor_market_price_uah_mwh": price_uah,
         "entsoe_pl_lag24_day_ahead_price_uah_mwh": price_uah,
         **prior_safe_features,
+        **cross_market_features,
         "source_backed": source_backed,
         "fetch_enabled": bool(source_candidate.get("fetch_enabled", False))
         if source_candidate is not None
