@@ -358,6 +358,19 @@ evidence claim. Це джерельно спирається на Chen et al. і
 (джерело 8 та Розділ 2 джерело [32]) і реалізаційно на
 [DFL_V2_PLUS_DFL_DT_BRIDGE](../../technical/DFL_V2_PLUS_DFL_DT_BRIDGE.md).
 
+Після негативного compact/official DT bridge результату методологія була
+уточнена: наступний DT/LAVA target не має імітувати raw hourly BUY/SELL/HOLD
+actions. Натомість він спочатку вчиться на feasible schedule-neighbor labels:
+`schedule_candidate_index`, candidate family/block, safe-switch confidence і
+V2+ fallback. Для цього додано
+[DFL_LAVA_TAIL_RISK_TARGET](../../technical/DFL_LAVA_TAIL_RISK_TARGET.md).
+Цей шар використовує попередній LAVA bridge як diagnostic data, позначає
+safe-neighbor і tail-risk perturbation schedules, а потім перевіряє, чи існує
+prior-safe rule для відступу від V2+. Перший safe-switch scorer не знайшов
+candidate family без prior tail-risk losses і тому повторив V2+ через fallback;
+це означає, що DT/LAVA має навчатися уникати tail-risk neighbors перед
+генерацією послідовної policy.
+
 ## 3.6. Метрики оцінювання і роль regret
 
 Метрики в роботі поділяються на діагностичні, decision-value та обмежувальні

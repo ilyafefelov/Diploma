@@ -36,6 +36,8 @@ strict LP/oracle evaluator.
 | `dfl_lava_tail_risk_diagnostic_frame` | Classifies LAVA candidates as V2+ default, safe neighbor, weak neighbor, oracle-only diagnostic, or tail-risk perturbation loss. |
 | `dfl_lava_tail_risk_aware_target_frame` | Builds candidate-index targets from prior diagnostics and blocks families with prior tail losses. |
 | `dfl_lava_tail_risk_aware_strict_lp_benchmark_frame` | Strict-scores the redesigned target against `strict_similar_day` and frozen V2+. |
+| `dfl_lava_tail_risk_safe_switch_scorer_frame` | Trains a prior-profile safe-switch scorer over approved challenger sources, while requiring family-level tail-risk safety. |
+| `dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame` | Strict-scores the safe-switch scorer with per-anchor V2+ fallback. |
 
 Tracked config:
 
@@ -123,12 +125,39 @@ V2+. The next DT/LAVA step should train on the diagnostic class distribution
 and learn a confidence model for rare safe-switch cases, while preserving V2+
 as the default action.
 
+## Safe-Switch Scorer Result
+
+The next ML step implemented a conservative safe-switch scorer on top of the
+same diagnostic data. The important correction is that the scorer may only
+switch to approved challenger sources and, by default, requires the entire
+candidate family to be free of prior tail-risk losses. A narrower profile-only
+screen was too permissive, so the tracked config keeps the family-level veto.
+
+Dagster run:
+
+- safe-switch strict benchmark: `ac432cb6-93b6-476b-a914-baca350aa14e`.
+
+Materialized result:
+
+| Row | Tenant-anchor rows | Mean regret, UAH | Median regret, UAH | Status |
+|---|---:|---:|---:|---|
+| Safe-switch scorer | `90` | `174.77` | `67.30` | full V2+ fallback, not promoted |
+| Frozen calibrated V2+ | `90` | `174.77` | `67.30` | headline comparator |
+| Frozen raw V2+ | `90` | `193.36` | `68.89` | reference |
+| `strict_similar_day` | `90` | `310.58` | `198.39` | control |
+
+The scorer selected no allowed risk profiles in the current evidence packet:
+each tenant used `18 / 18` V2+ fallback anchors. That is the correct conservative
+outcome for this slice. It shows that the current Poland/TFT candidate space
+contains local wins, but not a prior-safe switch rule that can beat V2+ without
+tail-risk exposure.
+
 ## Materialization
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame `
+  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_scorer_frame,dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame `
   -c configs/real_data_dfl_lava_tail_risk_target_week3.yaml
 ```
 

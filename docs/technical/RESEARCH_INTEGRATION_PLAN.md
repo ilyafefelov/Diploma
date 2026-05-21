@@ -51,6 +51,10 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
    - Train a conservative candidate-level LAVA scorer before attempting another
      DT run. The model may use train/prior labels only and must fall back to V2+
      when prior evidence is weak.
+   - The tail-risk-aware safe-switch scorer is now materialized. It found no
+     candidate family that is both locally useful and free of prior tail-risk
+     losses, so it fell back to V2+ on all `90` final tenant-anchors and matched
+     `174.77` UAH mean regret. This is diagnostic evidence, not promotion.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

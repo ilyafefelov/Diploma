@@ -55,6 +55,8 @@ The implementation is additive and keeps existing V2+/Poland assets unchanged.
 | `dfl_lava_tail_risk_diagnostic_frame` | Uses the failed bridge rows to identify perturbation families that create tail-risk regret. |
 | `dfl_lava_tail_risk_aware_target_frame` | Converts the diagnostic into schedule-candidate-index targets and blocks risky families before any DT/LAVA training. |
 | `dfl_lava_tail_risk_aware_strict_lp_benchmark_frame` | Strict-scores the redesigned target against frozen V2+ without raw hourly action imitation. |
+| `dfl_lava_tail_risk_safe_switch_scorer_frame` | Trains a conservative prior-profile safe-switch scorer over approved challenger sources with a family-level tail-risk veto. |
+| `dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame` | Strict-scores the safe-switch scorer and uses exact frozen V2+ rows for per-anchor fallback. |
 
 Tracked config:
 
@@ -144,6 +146,16 @@ First tail-risk target result: the redesigned strict benchmark materialized in
 Dagster run `60f19630-3469-4d07-9576-14c62c356011`. It hard-blocked risky
 perturbation families and fell back to calibrated V2+ for all tenants, matching
 the frozen comparator at `174.77` UAH mean regret and `67.30` UAH median regret.
+
+Safe-switch follow-up result: Dagster run `ac432cb6-93b6-476b-a914-baca350aa14e`
+trained the prior-profile safe-switch scorer and strict-scored it against the
+same frozen comparator. With `poland_shadow_candidate` as the only approved
+switch source and a family-level tail-risk veto, no risk profile was allowed.
+All five tenants used `18 / 18` V2+ fallback anchors, so the result again
+matched frozen calibrated V2+ at `174.77` UAH mean regret and `67.30` UAH median
+regret. This is not a new promoted strategy; it is diagnostic evidence that the
+next DT/LAVA target must learn better safe-switch labels before generating a
+policy.
 That is a safe diagnostic closure, not a promotion over V2+.
 
 ## Materialization
@@ -162,7 +174,7 @@ Tail-risk target materialization:
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame `
+  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_scorer_frame,dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame `
   -c configs/real_data_dfl_lava_tail_risk_target_week3.yaml
 ```
 

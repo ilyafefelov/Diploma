@@ -13,11 +13,16 @@ from smart_arbitrage.dfl.lava_schedule_neighbor_bridge import (
     evaluate_dfl_lava_candidate_value_gate,
 )
 from smart_arbitrage.dfl.lava_tail_risk_target import (
+    DFL_LAVA_SAFE_SWITCH_SELECTION_ROLE,
+    DFL_LAVA_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_TAIL_RISK_AWARE_SELECTION_ROLE,
     DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_lava_tail_risk_safe_switch_scorer_frame,
+    build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame,
     build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,
     build_dfl_lava_tail_risk_aware_target_frame,
     build_dfl_lava_tail_risk_diagnostic_frame,
+    evaluate_dfl_lava_tail_risk_safe_switch_gate,
     evaluate_dfl_lava_tail_risk_aware_gate,
 )
 
@@ -437,6 +442,150 @@ def test_tail_risk_target_falls_back_to_v2_plus_when_only_tail_risk_exists() -> 
     assert "mean_not_improved_vs_v2_plus" in gate.description
 
 
+def test_safe_switch_scorer_uses_prior_profiles_and_per_anchor_fallback() -> None:
+    baseline = _v2_plus_strict_frame(v2_regrets=(120.0, 120.0))
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+            safe_final_dispatch_by_anchor={
+                3: (0.2, -0.2),
+                4: (0.7, -0.7),
+            },
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+
+    scorer = build_dfl_lava_tail_risk_safe_switch_scorer_frame(
+        candidates,
+        diagnostic,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+    )
+    strict = build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame(
+        candidates,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+    gate = evaluate_dfl_lava_tail_risk_safe_switch_gate(
+        strict,
+        min_validation_tenant_anchor_count=len(TENANTS) * 2,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+    )
+    selected = strict.filter(pl.col("selection_role") == DFL_LAVA_SAFE_SWITCH_SELECTION_ROLE)
+
+    assert scorer["target_label_space"].to_list() == [
+        "schedule_candidate_index",
+        "schedule_candidate_index",
+    ]
+    assert set(scorer["raw_hourly_action_imitation"].to_list()) == {False}
+    assert scorer["selected_final_candidate_source_counts"].to_list() == [
+        {"poland_shadow_candidate": 1, "frozen_v2_plus_fallback": 1},
+        {"poland_shadow_candidate": 1, "frozen_v2_plus_fallback": 1},
+    ]
+    assert "strict_fallback" not in set(selected["selected_strategy_source"].to_list())
+    assert selected["selected_candidate_family"].to_list() == [
+        "poland_safe_value_candidate",
+        "frozen_v2_plus_fallback",
+        "poland_safe_value_candidate",
+        "frozen_v2_plus_fallback",
+    ]
+    assert selected["regret_uah"].to_list() == [80.0, 120.0, 80.0, 120.0]
+    assert set(strict["strategy_kind"].unique().to_list()) == {
+        DFL_LAVA_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND
+    }
+    assert gate.passed is True
+    assert gate.metrics["market_execution_enabled"] is False
+
+
+def test_safe_switch_selection_is_unchanged_when_final_labels_mutate() -> None:
+    baseline = _v2_plus_strict_frame(v2_regrets=(120.0, 120.0))
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    mutated_candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=900.0,
+            tail_train_regret=420.0,
+            tail_final_regret=1000.0,
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    mutated_diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        mutated_candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+
+    scorer = build_dfl_lava_tail_risk_safe_switch_scorer_frame(
+        candidates,
+        diagnostic,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+    )
+    mutated_scorer = build_dfl_lava_tail_risk_safe_switch_scorer_frame(
+        mutated_candidates,
+        mutated_diagnostic,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+    )
+    strict = build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame(
+        candidates,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+    mutated_strict = build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame(
+        mutated_candidates,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+
+    assert scorer["selected_final_candidate_keys"].to_list() == (
+        mutated_scorer["selected_final_candidate_keys"].to_list()
+    )
+    assert strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SAFE_SWITCH_SELECTION_ROLE
+    )["regret_uah"].to_list() != mutated_strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SAFE_SWITCH_SELECTION_ROLE
+    )[
+        "regret_uah"
+    ].to_list()
+
+
 def _v2_plus_strict_frame(*, v2_regrets: tuple[float, float]) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     for tenant_id in TENANTS:
@@ -596,6 +745,7 @@ def _poland_tail_risk_candidate_library(
     safe_final_regret: float,
     tail_train_regret: float,
     tail_final_regret: float,
+    safe_final_dispatch_by_anchor: dict[int, tuple[float, float]] | None = None,
 ) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     for tenant_id in TENANTS:
@@ -604,6 +754,14 @@ def _poland_tail_risk_candidate_library(
             anchor = FIRST_ANCHOR + timedelta(days=anchor_index)
             safe_regret = (
                 safe_train_regret if split_name == "train_selection" else safe_final_regret
+            )
+            safe_dispatch = (
+                (0.2, -0.2)
+                if split_name == "train_selection"
+                else (safe_final_dispatch_by_anchor or {}).get(
+                    anchor_index,
+                    (0.2, -0.2),
+                )
             )
             tail_regret = (
                 tail_train_regret if split_name == "train_selection" else tail_final_regret
@@ -618,7 +776,7 @@ def _poland_tail_risk_candidate_library(
                         anchor=anchor,
                         split_name=split_name,
                         regret=safe_regret,
-                        dispatch=(0.2, -0.2),
+                        dispatch=safe_dispatch,
                     ),
                     _candidate_row(
                         tenant_id=tenant_id,

@@ -535,6 +535,18 @@ calibrated frozen V2+ strict row, target отримав `174.77` UAH mean regret
 імітувати raw hourly actions або агресивні perturbation schedules; вона має
 спершу навчитися confidence/risk rule, коли безпечно відступати від V2+.
 
+Наступний safe-switch scorer перевірив саме цю confidence/risk rule. Він
+дозволяв перемикатися тільки на approved challenger source
+`poland_shadow_candidate` і вимагав, щоб candidate family не мала prior
+tail-risk losses. Матеріалізований run
+`ac432cb6-93b6-476b-a914-baca350aa14e` не знайшов жодного allowed risk profile:
+кожен tenant використав `18 / 18` V2+ fallback anchors. Строге оцінювання
+повторило frozen V2+ (`174.77` UAH mean regret, `67.30` UAH median regret) і
+не стало promotion result. Інтерпретація така: Poland/TFT schedules справді
+містять локальні виграші, але в поточному feature/candidate просторі ще немає
+prior-safe switch rule, який можна чесно використати проти V2+ без tail-risk
+втрат.
+
 Додатковий failure audit для official bridge сформував 720 analysis-only rows.
 Найбільший клас помилок - `candidate_family_collapse`: 351 rows, або 48.75%.
 Це означає, що residual DFL / offline DT / fallback часто вибирали одну й ту
@@ -847,6 +859,9 @@ rows:
 - `docs/technical/DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md` -
   V2+-anchored teacher-label and feasible-neighbor bridge that prepares DT/LAVA
   without promoting raw hourly actions;
+- `docs/technical/DFL_LAVA_TAIL_RISK_TARGET.md` -
+  tail-risk diagnostic and safe-switch target layer showing that current
+  Poland/TFT neighbors are not yet prior-safe enough to replace V2+;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,
