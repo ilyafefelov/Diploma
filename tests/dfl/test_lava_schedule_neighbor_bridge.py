@@ -17,8 +17,13 @@ from smart_arbitrage.dfl.lava_tail_risk_target import (
     DFL_LAVA_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_SAFE_SWITCH_V2_SELECTION_ROLE,
     DFL_LAVA_SAFE_SWITCH_V2_STRICT_LP_STRATEGY_KIND,
+    DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE,
+    DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_TAIL_RISK_AWARE_SELECTION_ROLE,
     DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_lava_tail_risk_avoidance_label_frame,
+    build_dfl_lava_tail_risk_avoidance_scorer_v3_frame,
+    build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame,
     build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,
     build_dfl_lava_tail_risk_safe_switch_scorer_v2_frame,
     build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame,
@@ -27,6 +32,7 @@ from smart_arbitrage.dfl.lava_tail_risk_target import (
     build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,
     build_dfl_lava_tail_risk_aware_target_frame,
     build_dfl_lava_tail_risk_diagnostic_frame,
+    evaluate_dfl_lava_tail_risk_avoidance_v3_gate,
     evaluate_dfl_lava_tail_risk_safe_switch_v2_gate,
     evaluate_dfl_lava_tail_risk_safe_switch_gate,
     evaluate_dfl_lava_tail_risk_aware_gate,
@@ -789,6 +795,184 @@ def test_safe_switch_v2_selection_is_unchanged_when_final_labels_mutate() -> Non
     )[
         "regret_uah"
     ].to_list()
+
+
+def test_tail_risk_avoidance_label_frame_marks_safe_and_risky_switches() -> None:
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+        ),
+        _v2_plus_strict_frame(v2_regrets=(120.0, 120.0)),
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        candidates,
+        diagnostic,
+        _lagged_poland_feature_frame_with_null_context(),
+    )
+
+    labels = build_dfl_lava_tail_risk_avoidance_label_frame(
+        feature_panel,
+        tail_risk_delta_uah=150.0,
+    )
+
+    assert {
+        "v2_plus_default",
+        "safe_switch_win",
+        "tail_risk_switch",
+    }.issubset(set(labels["tail_risk_avoidance_class"].to_list()))
+    assert set(labels["label_tail_risk_switch"].unique().to_list()) == {False, True}
+    assert set(labels["raw_hourly_action_imitation"].unique().to_list()) == {False}
+    assert set(labels["market_execution_enabled"].unique().to_list()) == {False}
+
+
+def test_tail_risk_avoidance_v3_blocks_profiles_with_prior_tail_losses() -> None:
+    baseline = _v2_plus_strict_frame(v2_regrets=(120.0, 120.0))
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        candidates,
+        diagnostic,
+        _lagged_poland_feature_frame_with_null_context(),
+    )
+    first_anchor = FIRST_ANCHOR
+    feature_panel = feature_panel.with_columns(
+        pl.when(
+            (pl.col("candidate_family") == "poland_safe_value_candidate")
+            & (pl.col("anchor_timestamp") == first_anchor)
+        )
+        .then(pl.lit(300.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah")
+    )
+    labels = build_dfl_lava_tail_risk_avoidance_label_frame(
+        feature_panel,
+        tail_risk_delta_uah=150.0,
+    )
+
+    scorer = build_dfl_lava_tail_risk_avoidance_scorer_v3_frame(
+        labels,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        max_prior_tail_loss_count=99,
+        min_prior_precision=0.0,
+        max_predicted_tail_risk_probability=0.0,
+    )
+    strict = build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame(
+        labels,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+    selected = strict.filter(
+        pl.col("selection_role") == DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE
+    )
+
+    assert scorer["selector_gate_blocker"].to_list() == [
+        "no_candidate_after_tail_risk_probability_filter",
+        "no_candidate_after_tail_risk_probability_filter",
+    ]
+    assert set(selected["selected_candidate_family"].to_list()) == {
+        "frozen_v2_plus_fallback"
+    }
+    assert selected["regret_uah"].to_list() == [120.0, 120.0, 120.0, 120.0]
+
+
+def test_tail_risk_avoidance_v3_can_pass_when_safe_candidates_are_prior_supported() -> None:
+    baseline = _v2_plus_strict_frame(v2_regrets=(120.0, 120.0))
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        candidates,
+        diagnostic,
+        _lagged_poland_feature_frame_with_null_context(),
+    )
+    labels = build_dfl_lava_tail_risk_avoidance_label_frame(
+        feature_panel,
+        tail_risk_delta_uah=150.0,
+    )
+
+    scorer = build_dfl_lava_tail_risk_avoidance_scorer_v3_frame(
+        labels,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+        max_predicted_tail_risk_probability=0.35,
+    )
+    strict = build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame(
+        labels,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+    strict_with_many_references = (
+        build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame(
+            labels,
+            scorer,
+            pl.concat([baseline] * 60),
+            generated_at=GENERATED_AT,
+        )
+    )
+    gate = evaluate_dfl_lava_tail_risk_avoidance_v3_gate(
+        strict,
+        min_validation_tenant_anchor_count=len(TENANTS) * 2,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+    )
+    selected = strict.filter(
+        pl.col("selection_role") == DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE
+    )
+
+    assert selected["selected_candidate_family"].to_list() == [
+        "poland_safe_value_candidate",
+        "poland_safe_value_candidate",
+        "poland_safe_value_candidate",
+        "poland_safe_value_candidate",
+    ]
+    assert set(strict["strategy_kind"].unique().to_list()) == {
+        DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND
+    }
+    assert "selected_candidate_family" in strict_with_many_references.columns
+    assert gate.passed is True
 
 
 def _v2_plus_strict_frame(*, v2_regrets: tuple[float, float]) -> pl.DataFrame:

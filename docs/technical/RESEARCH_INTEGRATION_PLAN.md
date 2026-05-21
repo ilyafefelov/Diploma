@@ -55,6 +55,18 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      candidate family that is both locally useful and free of prior tail-risk
      losses, so it fell back to V2+ on all `90` final tenant-anchors and matched
      `174.77` UAH mean regret. This is diagnostic evidence, not promotion.
+   - Safe-Switch v2 then consumed repaired rich Poland context and selected
+     Poland shadow schedules on `21 / 90` final rows, but worsened mean regret
+     to `219.37` UAH. The next additive target is Tail-Risk Avoidance v3: train
+     separate prior-only regret-delta and tail-risk scorers, then switch only
+     when predicted improvement is strong and predicted tail-risk probability is
+     below the configured veto.
+   - Tail-Risk Avoidance v3 is now materialized as diagnostic evidence. It
+     selected Poland shadow schedules on `8 / 90` rows, improved over
+     Safe-Switch v2, but still failed to beat frozen calibrated V2+
+     (`185.65` UAH mean regret versus `174.77` UAH). This closes the current
+     tabular safe-switch branch and turns the v3 label frame into teacher data
+     for future DT/LAVA work.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

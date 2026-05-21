@@ -397,6 +397,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame",
         "dfl_lava_tail_risk_safe_switch_scorer_v2_frame",
         "dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame",
+        "dfl_lava_tail_risk_avoidance_label_frame",
+        "dfl_lava_tail_risk_avoidance_scorer_v3_frame",
+        "dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame",
         "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame",
         "dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame",
         "dfl_poland_lag24_experimental_schedule_candidate_library_frame",
@@ -778,6 +781,18 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         groups_by_key["dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_lava_tail_risk_avoidance_label_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_lava_tail_risk_avoidance_scorer_v3_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
     )
     assert (
@@ -1396,6 +1411,12 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["afl_forecast_error_audit_frame"]["evidence_scope"]
         == "not_market_execution"
     )
@@ -1760,6 +1781,17 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame"] == {
         "dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame",
         "dfl_lava_tail_risk_safe_switch_scorer_v2_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_lava_tail_risk_avoidance_label_frame"] == {
+        "dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame",
+    }
+    assert deps_by_key["dfl_lava_tail_risk_avoidance_scorer_v3_frame"] == {
+        "dfl_lava_tail_risk_avoidance_label_frame",
+    }
+    assert deps_by_key["dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame"] == {
+        "dfl_lava_tail_risk_avoidance_label_frame",
+        "dfl_lava_tail_risk_avoidance_scorer_v3_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
     assert deps_by_key["dfl_market_coupled_schedule_value_learner_v2_plus_frame"] == {

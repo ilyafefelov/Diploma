@@ -849,6 +849,25 @@ values. Selector уже не був повним fallback: він вибрав P
 що next target має вчитись уникати tail-risk switch cases, а не копіювати
 hourly BUY/SELL/HOLD actions.
 
+Наступний additive target формулюється як Tail-Risk Avoidance v3. Він не додає
+ще один raw-action DT, а розділяє два prior-only прогнози на рівні schedule
+candidate: очікуваний regret delta проти V2+ і ймовірність tail-risk switch.
+Кандидат може замінити V2+ тільки якщо одночасно прогнозує достатнє покращення
+і низьку tail-risk probability; інакше активується V2+ fallback. Це робить
+майбутній DT/LAVA branch більш коректним: він має вчитись вибирати або
+відхиляти feasible schedule neighbors, а не просто імітувати погодинні
+BUY/SELL/HOLD дії.
+
+Матеріалізований Tail-Risk Avoidance v3 зменшив overreach, але також не став
+новим headline. Він вибрав Poland shadow schedules лише на `8 / 90` final rows
+і повернувся до V2+ на `82 / 90`, тому mean regret знизився від `219.37` UAH у
+Safe-Switch v2 до `185.65` UAH. Проте це все ще гірше за frozen calibrated V2+
+з `174.77` UAH mean regret і `67.30` UAH median regret; v3 median також гірший
+(`76.32` UAH). Висновок: tail-risk veto працює як діагностичний safeguard, але
+ще не дає достатньої robust upside. Для DT/LAVA це означає, що v3 label frame
+можна використовувати як teacher data про безпечні та ризикові schedule
+neighbors, але не як promoted policy.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

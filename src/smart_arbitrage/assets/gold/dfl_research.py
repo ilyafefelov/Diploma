@@ -291,7 +291,11 @@ from smart_arbitrage.dfl.lava_schedule_neighbor_bridge import (
 from smart_arbitrage.dfl.lava_tail_risk_target import (
     DFL_LAVA_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_SAFE_SWITCH_V2_STRICT_LP_STRATEGY_KIND,
+    DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_lava_tail_risk_avoidance_label_frame,
+    build_dfl_lava_tail_risk_avoidance_scorer_v3_frame,
+    build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame,
     build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,
     build_dfl_lava_tail_risk_safe_switch_scorer_v2_frame,
     build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame,
@@ -300,6 +304,7 @@ from smart_arbitrage.dfl.lava_tail_risk_target import (
     build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,
     build_dfl_lava_tail_risk_aware_target_frame,
     build_dfl_lava_tail_risk_diagnostic_frame,
+    evaluate_dfl_lava_tail_risk_avoidance_v3_gate,
     evaluate_dfl_lava_tail_risk_safe_switch_v2_gate,
     evaluate_dfl_lava_tail_risk_safe_switch_gate,
     evaluate_dfl_lava_tail_risk_aware_gate,
@@ -1252,6 +1257,7 @@ class DflLavaTailRiskTargetAssetConfig(DflLavaScheduleNeighborBridgeAssetConfig)
     min_prior_precision: float = 0.75
     min_prior_mean_improvement_uah: float = 1.0
     min_predicted_improvement_uah: float = 1.0
+    max_predicted_tail_risk_probability: float = 0.25
     safe_switch_candidate_sources_csv: str = "poland_shadow_candidate"
     require_family_tail_loss_free: bool = True
     hard_blocked_candidate_families_csv: str = "rank_extrema_perturbation_v2_plus"
@@ -5156,6 +5162,182 @@ def dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_lava_tail_risk_safe_switch_v2_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_tail_risk_avoidance_v3",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_tail_risk_avoidance_label_frame(
+    context,
+    config: DflLavaTailRiskTargetAssetConfig,
+    dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build explicit safe-switch/tail-risk labels for the v3 LAVA bridge."""
+
+    label_frame = build_dfl_lava_tail_risk_avoidance_label_frame(
+        dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,
+        tail_risk_delta_uah=config.tail_risk_delta_uah,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": label_frame.height,
+            "tail_risk_rows": label_frame.filter(
+                pl.col("label_tail_risk_switch")
+            ).height
+            if label_frame.height
+            else 0,
+            "safe_switch_rows": label_frame.filter(
+                pl.col("label_safe_switch_win")
+            ).height
+            if label_frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "scope": "dfl_lava_tail_risk_avoidance_v3_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return label_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_tail_risk_avoidance_v3",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_tail_risk_avoidance_scorer_v3_frame(
+    context,
+    config: DflLavaTailRiskTargetAssetConfig,
+    dfl_lava_tail_risk_avoidance_label_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Train the v3 LAVA scorer with an explicit predicted tail-risk veto."""
+
+    scorer_frame = build_dfl_lava_tail_risk_avoidance_scorer_v3_frame(
+        dfl_lava_tail_risk_avoidance_label_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        max_prior_tail_loss_count=config.max_prior_tail_loss_count,
+        min_prior_precision=config.min_prior_precision,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.safe_switch_candidate_sources_csv,
+            field_name="safe_switch_candidate_sources_csv",
+        ),
+        hard_blocked_candidate_families=_csv_values(
+            config.hard_blocked_candidate_families_csv,
+            field_name="hard_blocked_candidate_families_csv",
+        ),
+        ridge_l2=config.ridge_l2,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": scorer_frame.height,
+            "selector_gate_blockers": sorted(
+                scorer_frame["selector_gate_blocker"].unique().to_list()
+            )
+            if scorer_frame.height
+            else [],
+            "uses_v2_plus_anchor_fallback_rows": scorer_frame.filter(
+                pl.col("uses_v2_plus_anchor_fallback")
+            ).height
+            if scorer_frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "scope": "dfl_lava_tail_risk_avoidance_v3_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return scorer_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_tail_risk_avoidance_v3",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame(
+    context,
+    config: DflLavaTailRiskTargetAssetConfig,
+    dfl_lava_tail_risk_avoidance_label_frame: pl.DataFrame,
+    dfl_lava_tail_risk_avoidance_scorer_v3_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict-score the v3 tail-risk avoidance scorer against V2+."""
+
+    strict_frame = build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame(
+        dfl_lava_tail_risk_avoidance_label_frame,
+        dfl_lava_tail_risk_avoidance_scorer_v3_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_lava_tail_risk_avoidance_v3_gate(
+        strict_frame,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_replacement_passed": gate.metrics.get(
+                "offline_strategy_challenger_passed",
+                False,
+            ),
+            "production_promote": False,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_lava_tail_risk_avoidance_v3_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -11198,6 +11380,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,
     dfl_lava_tail_risk_safe_switch_scorer_v2_frame,
     dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame,
+    dfl_lava_tail_risk_avoidance_label_frame,
+    dfl_lava_tail_risk_avoidance_scorer_v3_frame,
+    dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame,
     dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame,
     dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_frame,

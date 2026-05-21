@@ -80,6 +80,21 @@ DFL_LAVA_SAFE_SWITCH_V2_MODEL_NAME: Final[str] = (
 DFL_LAVA_SAFE_SWITCH_V2_SELECTION_ROLE: Final[str] = (
     "lava_tail_risk_safe_switch_v2"
 )
+DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_CLAIM_SCOPE: Final[str] = (
+    "dfl_lava_tail_risk_avoidance_v3_not_full_dfl"
+)
+DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_CLAIM_SCOPE: Final[str] = (
+    "dfl_lava_tail_risk_avoidance_v3_strict_lp_gate_not_full_dfl"
+)
+DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND: Final[str] = (
+    "dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark"
+)
+DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_MODEL_NAME: Final[str] = (
+    "dfl_lava_tail_risk_avoidance_v3"
+)
+DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE: Final[str] = (
+    "lava_tail_risk_avoidance_v3"
+)
 
 _SAFE_SWITCH_V2_BASE_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "selector_feature_schedule_distance_from_v2_plus",
@@ -443,7 +458,7 @@ def build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame(
                     generated_at=resolved_generated_at,
                 )
             )
-    return pl.DataFrame(output_rows).sort(
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
         ["tenant_id", "anchor_timestamp", "selection_role", "forecast_model_name"]
     )
 
@@ -987,7 +1002,7 @@ def build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame(
                     generated_at=resolved_generated_at,
                 )
             )
-    return pl.DataFrame(output_rows).sort(
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
         ["tenant_id", "anchor_timestamp", "selection_role", "forecast_model_name"]
     )
 
@@ -1075,7 +1090,374 @@ def build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame(
                     generated_at=resolved_generated_at,
                 )
             )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["tenant_id", "anchor_timestamp", "selection_role", "forecast_model_name"]
+    )
+
+
+def build_dfl_lava_tail_risk_avoidance_label_frame(
+    lava_tail_risk_safe_switch_feature_panel_v2_frame: pl.DataFrame,
+    *,
+    tail_risk_delta_uah: float = 150.0,
+) -> pl.DataFrame:
+    """Convert the v2 feature panel into explicit tail-risk avoidance labels."""
+
+    _validate_safe_switch_v2_feature_panel(lava_tail_risk_safe_switch_feature_panel_v2_frame)
+    if tail_risk_delta_uah <= 0.0:
+        raise ValueError("tail_risk_delta_uah must be positive.")
+    output_rows: list[dict[str, Any]] = []
+    for row in lava_tail_risk_safe_switch_feature_panel_v2_frame.iter_rows(named=True):
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        candidate_source = str(row["candidate_source"])
+        eligible = bool(row["eligible_for_final_selection"])
+        if candidate_source == "v2_plus_default":
+            avoidance_class = "v2_plus_default"
+        elif not eligible:
+            avoidance_class = "oracle_only_train_diagnostic"
+        elif delta >= tail_risk_delta_uah:
+            avoidance_class = "tail_risk_switch"
+        elif delta < 0.0:
+            avoidance_class = "safe_switch_win"
+        else:
+            avoidance_class = "neutral_or_weak_switch"
+        copied = dict(row)
+        copied.update(
+            {
+                "tail_risk_avoidance_class": avoidance_class,
+                "label_tail_risk_switch": avoidance_class == "tail_risk_switch",
+                "label_safe_switch_win": avoidance_class == "safe_switch_win",
+                "tail_risk_delta_uah": tail_risk_delta_uah,
+                "target_label_space": "schedule_candidate_index",
+                "raw_hourly_action_imitation": False,
+                "claim_scope": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        output_rows.append(copied)
     return pl.DataFrame(output_rows).sort(
+        [
+            "tenant_id",
+            "anchor_timestamp",
+            "split_name",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+
+
+def build_dfl_lava_tail_risk_avoidance_scorer_v3_frame(
+    lava_tail_risk_avoidance_label_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    min_prior_safe_win_count: int = 1,
+    max_prior_tail_loss_count: int = 0,
+    min_prior_precision: float = 0.75,
+    min_prior_mean_improvement_uah: float = 1.0,
+    min_predicted_improvement_uah: float = 1.0,
+    max_predicted_tail_risk_probability: float = 0.25,
+    allowed_candidate_sources: tuple[str, ...] = ("poland_shadow_candidate",),
+    hard_blocked_candidate_families: tuple[str, ...] = (
+        "rank_extrema_perturbation_v2_plus",
+    ),
+    ridge_l2: float = 10.0,
+) -> pl.DataFrame:
+    """Train a prior-only switch scorer with an explicit tail-risk veto."""
+
+    _validate_tail_risk_avoidance_label_frame(lava_tail_risk_avoidance_label_frame)
+    if not tenant_ids:
+        raise ValueError("tenant_ids must not be empty.")
+    if min_prior_safe_win_count < 1:
+        raise ValueError("min_prior_safe_win_count must be at least 1.")
+    if max_prior_tail_loss_count < 0:
+        raise ValueError("max_prior_tail_loss_count must not be negative.")
+    if not 0.0 <= min_prior_precision <= 1.0:
+        raise ValueError("min_prior_precision must be between 0 and 1.")
+    if min_prior_mean_improvement_uah < 0.0:
+        raise ValueError("min_prior_mean_improvement_uah must not be negative.")
+    if min_predicted_improvement_uah < 0.0:
+        raise ValueError("min_predicted_improvement_uah must not be negative.")
+    if not 0.0 <= max_predicted_tail_risk_probability <= 1.0:
+        raise ValueError(
+            "max_predicted_tail_risk_probability must be between 0 and 1."
+        )
+    if not allowed_candidate_sources:
+        raise ValueError("allowed_candidate_sources must not be empty.")
+
+    rows = list(lava_tail_risk_avoidance_label_frame.iter_rows(named=True))
+    allowed_sources = set(allowed_candidate_sources)
+    hard_blocked = set(hard_blocked_candidate_families)
+    output_rows: list[dict[str, Any]] = []
+    for tenant_id in tenant_ids:
+        tenant_rows = [row for row in rows if str(row["tenant_id"]) == tenant_id]
+        train_rows = [
+            row
+            for row in tenant_rows
+            if str(row["split_name"]) != "final_holdout"
+            and bool(row["eligible_for_final_selection"])
+        ]
+        final_rows = [
+            row
+            for row in tenant_rows
+            if str(row["split_name"]) == "final_holdout"
+            and bool(row["eligible_for_final_selection"])
+        ]
+        if not train_rows:
+            raise ValueError(f"{tenant_id} tail-risk avoidance v3 needs train rows.")
+        if not final_rows:
+            raise ValueError(f"{tenant_id} tail-risk avoidance v3 needs final rows.")
+        allowed_train_rows = [
+            row for row in train_rows if str(row["candidate_source"]) in allowed_sources
+        ]
+        challenger_train_rows = [
+            row
+            for row in allowed_train_rows
+            if str(row["candidate_family"]) not in hard_blocked
+        ]
+        if not allowed_train_rows:
+            raise ValueError(
+                f"{tenant_id} tail-risk avoidance v3 needs allowed train rows."
+            )
+        if not challenger_train_rows:
+            raise ValueError(
+                f"{tenant_id} tail-risk avoidance v3 needs challenger train rows."
+            )
+        regret_scorer = _fit_safe_switch_v2_scorer(
+            challenger_train_rows,
+            ridge_l2=ridge_l2,
+        )
+        tail_risk_train_rows = [
+            {
+                **row,
+                "label_tail_risk_probability_target": (
+                    1.0 if bool(row["label_tail_risk_switch"]) else 0.0
+                ),
+            }
+            for row in allowed_train_rows
+        ]
+        tail_risk_scorer = _fit_safe_switch_v2_scorer(
+            tail_risk_train_rows,
+            ridge_l2=ridge_l2,
+            target_column="label_tail_risk_probability_target",
+        )
+        profile_stats = _safe_switch_v2_profile_stats(
+            allowed_train_rows,
+            hard_blocked_candidate_families=hard_blocked,
+            allowed_candidate_sources=allowed_sources,
+        )
+        allowed_profiles = sorted(
+            profile
+            for profile, stats in profile_stats.items()
+            if int(stats["safe_win_count"]) >= min_prior_safe_win_count
+            and int(stats["tail_loss_count"]) <= max_prior_tail_loss_count
+            and float(stats["safe_precision"]) >= min_prior_precision
+            and float(stats["mean_prior_delta_uah"]) <= -min_prior_mean_improvement_uah
+            and not bool(stats["hard_blocked"])
+        )
+        selected_final: list[dict[str, Any]] = []
+        fallback_anchor_keys: list[str] = []
+        predicted_final_rows: list[dict[str, Any]] = []
+        for anchor, anchor_rows in sorted(_rows_by_anchor(final_rows).items()):
+            eligible = [
+                row
+                for row in anchor_rows
+                if str(row["candidate_source"]) in allowed_sources
+                and str(row["candidate_family"]) not in hard_blocked
+                and _safe_switch_v2_profile_key(row) in allowed_profiles
+            ]
+            scored: list[tuple[dict[str, Any], float, float]] = []
+            for row in eligible:
+                predicted_delta = _predict_safe_switch_v2_delta(
+                    row,
+                    scorer=regret_scorer,
+                )
+                predicted_tail_risk = _clamped_probability(
+                    _predict_safe_switch_v2_delta(row, scorer=tail_risk_scorer)
+                )
+                predicted = dict(row)
+                predicted["predicted_regret_delta_vs_v2_plus_uah"] = predicted_delta
+                predicted["predicted_tail_risk_probability"] = predicted_tail_risk
+                predicted_final_rows.append(predicted)
+                scored.append((row, predicted_delta, predicted_tail_risk))
+            switchable = [
+                (row, predicted_delta, predicted_tail_risk)
+                for row, predicted_delta, predicted_tail_risk in scored
+                if predicted_delta <= -min_predicted_improvement_uah
+                and predicted_tail_risk <= max_predicted_tail_risk_probability
+            ]
+            if not switchable:
+                fallback_anchor_keys.append(_anchor_key_from_parts(tenant_id, anchor[1]))
+                continue
+            selected_final.append(
+                min(
+                    switchable,
+                    key=lambda item: (
+                        item[2],
+                        item[1],
+                        abs(float(item[0]["selector_feature_total_throughput_delta_mwh"])),
+                        float(item[0]["selector_feature_schedule_distance_from_v2_plus"]),
+                        str(item[0]["candidate_family"]),
+                        str(item[0]["candidate_model_name"]),
+                    ),
+                )[0]
+            )
+        fallback_count = len(fallback_anchor_keys)
+        selected_counts = _source_counts(selected_final)
+        if fallback_count:
+            selected_counts["frozen_v2_plus_fallback"] = fallback_count
+        selected_family_counts = _family_counts(selected_final)
+        if fallback_count:
+            selected_family_counts["frozen_v2_plus_fallback"] = fallback_count
+        if selected_final:
+            blocker = "tail_risk_avoidance_v3_candidate_selected"
+        elif not allowed_profiles:
+            blocker = "no_prior_safe_profile_after_tail_risk_avoidance"
+        else:
+            blocker = "no_candidate_after_tail_risk_probability_filter"
+        output_rows.append(
+            {
+                "tenant_id": tenant_id,
+                "learner_model_name": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_MODEL_NAME,
+                "target_label_space": "schedule_candidate_index",
+                "raw_hourly_action_imitation": False,
+                "selected_scorer_type": "tabular_tail_risk_avoidance_v3",
+                "selected_feature_names": list(_SAFE_SWITCH_V2_FEATURE_COLUMNS),
+                "selected_feature_weights": dict(regret_scorer["weights"]),
+                "selected_tail_risk_feature_weights": dict(tail_risk_scorer["weights"]),
+                "selected_feature_means": dict(regret_scorer["feature_means"]),
+                "selected_feature_scales": dict(regret_scorer["feature_scales"]),
+                "allowed_risk_profiles": allowed_profiles,
+                "blocked_risk_profiles": sorted(
+                    profile
+                    for profile, stats in profile_stats.items()
+                    if profile not in allowed_profiles or bool(stats["hard_blocked"])
+                ),
+                "risk_profile_prior_stats": profile_stats,
+                "fallback_to_v2_plus": not selected_final,
+                "uses_v2_plus_anchor_fallback": bool(fallback_anchor_keys),
+                "selector_gate_blocker": blocker,
+                "hard_blocked_candidate_families": sorted(hard_blocked),
+                "allowed_candidate_sources": sorted(allowed_sources),
+                "min_predicted_improvement_uah": min_predicted_improvement_uah,
+                "max_predicted_tail_risk_probability": (
+                    max_predicted_tail_risk_probability
+                ),
+                "train_anchor_count": _anchor_count(train_rows),
+                "final_holdout_anchor_count": _anchor_count(final_rows),
+                "fallback_final_anchor_keys": fallback_anchor_keys,
+                "selected_final_candidate_keys": [
+                    _candidate_key(row) for row in selected_final
+                ],
+                "selected_final_profile_keys": [
+                    _safe_switch_v2_profile_key(row) for row in selected_final
+                ],
+                "selected_final_family_counts": selected_family_counts,
+                "selected_final_candidate_source_counts": selected_counts,
+                "predicted_final_candidate_deltas": {
+                    _candidate_key(row): float(
+                        row["predicted_regret_delta_vs_v2_plus_uah"]
+                    )
+                    for row in predicted_final_rows
+                },
+                "predicted_final_tail_risk_probabilities": {
+                    _candidate_key(row): float(row["predicted_tail_risk_probability"])
+                    for row in predicted_final_rows
+                },
+                "claim_scope": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+    return pl.DataFrame(output_rows).sort(["tenant_id"])
+
+
+def build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame(
+    lava_tail_risk_avoidance_label_frame: pl.DataFrame,
+    lava_tail_risk_avoidance_scorer_v3_frame: pl.DataFrame,
+    frozen_v2_plus_strict_frame: pl.DataFrame,
+    *,
+    baseline_source_model_name: str = FROZEN_V2_PLUS_BASELINE_MODEL_NAME,
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Strict-score the tail-risk avoidance v3 scorer against frozen V2+."""
+
+    _validate_tail_risk_avoidance_label_frame(lava_tail_risk_avoidance_label_frame)
+    _require_columns(
+        lava_tail_risk_avoidance_scorer_v3_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "selected_final_candidate_keys",
+                "fallback_final_anchor_keys",
+                "selected_final_candidate_source_counts",
+                "raw_hourly_action_imitation",
+                "market_execution_enabled",
+                "predicted_final_candidate_deltas",
+                "predicted_final_tail_risk_probabilities",
+            }
+        ),
+        frame_name="lava_tail_risk_avoidance_scorer_v3_frame",
+    )
+    _require_columns(
+        frozen_v2_plus_strict_frame,
+        _REQUIRED_STRICT_COLUMNS,
+        frame_name="frozen_v2_plus_strict_frame",
+    )
+    resolved_generated_at = generated_at or _latest_generated_at(
+        lava_tail_risk_avoidance_label_frame
+    )
+    candidate_rows = list(lava_tail_risk_avoidance_label_frame.iter_rows(named=True))
+    candidate_by_key = {_candidate_key(row): row for row in candidate_rows}
+    v2_reference_by_anchor: dict[str, dict[str, Any]] = {}
+    output_rows: list[dict[str, Any]] = []
+    for row in frozen_v2_plus_strict_frame.iter_rows(named=True):
+        if str(row["selection_role"]) not in {
+            "strict_reference",
+            "schedule_value_learner_v2_plus",
+        }:
+            continue
+        role = (
+            STRICT_REFERENCE_ROLE
+            if str(row["selection_role"]) == "strict_reference"
+            else V2_PLUS_REFERENCE_ROLE
+        )
+        if (
+            role == V2_PLUS_REFERENCE_ROLE
+            and str(row["source_model_name"]) == baseline_source_model_name
+        ):
+            v2_reference_by_anchor[_anchor_key(row)] = row
+        output_rows.append(
+            _tail_risk_avoidance_v3_reference_row(
+                row,
+                selection_role=role,
+                generated_at=resolved_generated_at,
+            )
+        )
+    for scorer_row in lava_tail_risk_avoidance_scorer_v3_frame.iter_rows(named=True):
+        for key in scorer_row["selected_final_candidate_keys"]:
+            selected = candidate_by_key[str(key)]
+            output_rows.append(
+                _tail_risk_avoidance_v3_candidate_row(
+                    selected,
+                    scorer_row=scorer_row,
+                    generated_at=resolved_generated_at,
+                )
+            )
+        for anchor_key in scorer_row["fallback_final_anchor_keys"]:
+            fallback = v2_reference_by_anchor.get(str(anchor_key))
+            if fallback is None:
+                raise ValueError(f"Missing frozen V2+ fallback row for {anchor_key}.")
+            output_rows.append(
+                _tail_risk_avoidance_v3_fallback_row(
+                    fallback,
+                    scorer_row=scorer_row,
+                    generated_at=resolved_generated_at,
+                )
+            )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
         ["tenant_id", "anchor_timestamp", "selection_role", "forecast_model_name"]
     )
 
@@ -1260,6 +1642,47 @@ def evaluate_dfl_lava_tail_risk_safe_switch_v2_gate(
     )
 
 
+def evaluate_dfl_lava_tail_risk_avoidance_v3_gate(
+    strict_frame: pl.DataFrame,
+    *,
+    min_validation_tenant_anchor_count: int = 90,
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.0,
+    min_mean_regret_improvement_ratio_vs_strict: float = (
+        DEFAULT_MIN_MEAN_REGRET_IMPROVEMENT_RATIO
+    ),
+) -> PromotionGateResult:
+    """Gate the tail-risk avoidance v3 scorer against frozen V2+."""
+
+    _require_columns(
+        strict_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "selection_role",
+                "anchor_timestamp",
+                "regret_uah",
+                "not_market_execution",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="tail-risk avoidance v3 strict frame",
+    )
+    return _evaluate_against_v2_plus(
+        strict_frame,
+        selected_role=DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE,
+        min_validation_tenant_anchor_count=min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            min_mean_regret_improvement_ratio_vs_strict
+        ),
+        success_description=(
+            "Tail-risk avoidance v3 scorer beats V2+ under strict LP/oracle evidence"
+        ),
+    )
+
+
 def _evaluate_against_v2_plus(
     strict_frame: pl.DataFrame,
     *,
@@ -1363,6 +1786,27 @@ def _validate_safe_switch_v2_feature_panel(frame: pl.DataFrame) -> None:
         raise ValueError(f"safe switch v2 feature panel has null features: {null_columns}")
 
 
+def _validate_tail_risk_avoidance_label_frame(frame: pl.DataFrame) -> None:
+    _validate_safe_switch_v2_feature_panel(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "tail_risk_avoidance_class",
+                "label_tail_risk_switch",
+                "label_safe_switch_win",
+                "raw_hourly_action_imitation",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="tail-risk avoidance label frame",
+    )
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("tail-risk avoidance label frame refuses market execution.")
+    if frame.select(pl.col("raw_hourly_action_imitation").any()).item():
+        raise ValueError("tail-risk avoidance v3 does not imitate raw hourly actions.")
+
+
 def _poland_lag24_features_by_anchor(frame: pl.DataFrame) -> dict[datetime, dict[str, Any]]:
     if frame.is_empty():
         raise ValueError("entsoe_poland_lagged_feature_candidate_frame must not be empty.")
@@ -1399,6 +1843,7 @@ def _fit_safe_switch_v2_scorer(
     train_rows: list[dict[str, Any]],
     *,
     ridge_l2: float,
+    target_column: str = "label_regret_delta_vs_v2_plus_uah",
 ) -> dict[str, Any]:
     feature_means: dict[str, float] = {}
     feature_scales: dict[str, float] = {}
@@ -1425,7 +1870,7 @@ def _fit_safe_switch_v2_scorer(
         )
         for row in train_rows
     ]
-    targets = [float(row["label_regret_delta_vs_v2_plus_uah"]) for row in train_rows]
+    targets = [float(row[target_column]) for row in train_rows]
     coefficients = v3._fit_ridge_coefficients(
         feature_matrix,
         targets,
@@ -1446,6 +1891,12 @@ def _fit_safe_switch_v2_scorer(
         "family_columns": family_columns,
         "source_columns": source_columns,
     }
+
+
+def _clamped_probability(value: float) -> float:
+    if math.isnan(value) or math.isinf(value):
+        return 1.0
+    return min(1.0, max(0.0, value))
 
 
 def _safe_switch_v2_feature_vector(
@@ -2074,6 +2525,116 @@ def _safe_switch_v2_candidate_row(
     }
 
 
+def _tail_risk_avoidance_v3_reference_row(
+    row: dict[str, Any],
+    *,
+    selection_role: str,
+    generated_at: datetime,
+) -> dict[str, Any]:
+    copied = _safe_switch_v2_reference_row(
+        row,
+        selection_role=selection_role,
+        generated_at=generated_at,
+    )
+    copied.update(
+        {
+            "evaluation_id": (
+                f"{row['tenant_id']}:lava_tail_risk_avoidance_v3:{selection_role}:"
+                f"{_datetime_value(row['anchor_timestamp']):%Y%m%dT%H%M}"
+            ),
+            "strategy_kind": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND,
+            "claim_scope": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_CLAIM_SCOPE,
+        }
+    )
+    return copied
+
+
+def _tail_risk_avoidance_v3_fallback_row(
+    row: dict[str, Any],
+    *,
+    scorer_row: dict[str, Any],
+    generated_at: datetime,
+) -> dict[str, Any]:
+    copied = _safe_switch_v2_fallback_row(
+        row,
+        scorer_row=scorer_row,
+        generated_at=generated_at,
+    )
+    payload = _payload(copied)
+    payload.update(
+        {
+            "selector_role": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE,
+            "max_predicted_tail_risk_probability": float(
+                scorer_row["max_predicted_tail_risk_probability"]
+            ),
+            "predicted_tail_risk_probability": None,
+            "market_execution_enabled": False,
+        }
+    )
+    copied.update(
+        {
+            "evaluation_id": (
+                f"{row['tenant_id']}:lava_tail_risk_avoidance_v3:"
+                f"{DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE}:"
+                f"{_datetime_value(row['anchor_timestamp']):%Y%m%dT%H%M}"
+            ),
+            "source_model_name": "lava_tail_risk_avoidance_bridge_v3",
+            "forecast_model_name": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_MODEL_NAME,
+            "strategy_kind": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND,
+            "selection_role": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE,
+            "evaluation_payload": payload,
+            "claim_scope": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_CLAIM_SCOPE,
+        }
+    )
+    return copied
+
+
+def _tail_risk_avoidance_v3_candidate_row(
+    row: dict[str, Any],
+    *,
+    scorer_row: dict[str, Any],
+    generated_at: datetime,
+) -> dict[str, Any]:
+    copied = _safe_switch_v2_candidate_row(
+        row,
+        scorer_row=scorer_row,
+        generated_at=generated_at,
+    )
+    selected_key = _candidate_key(row)
+    tail_risk_probabilities = dict(scorer_row["predicted_final_tail_risk_probabilities"])
+    payload = _payload(copied)
+    payload.update(
+        {
+            "selector_role": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE,
+            "max_predicted_tail_risk_probability": float(
+                scorer_row["max_predicted_tail_risk_probability"]
+            ),
+            "predicted_tail_risk_probability": tail_risk_probabilities.get(
+                selected_key,
+                None,
+            ),
+            "market_execution_enabled": False,
+        }
+    )
+    copied.update(
+        {
+            "evaluation_id": (
+                f"{row['tenant_id']}:lava_tail_risk_avoidance_v3:"
+                f"{DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE}:"
+                f"{_datetime_value(row['anchor_timestamp']):%Y%m%dT%H%M}"
+            ),
+            "source_model_name": "lava_tail_risk_avoidance_bridge_v3",
+            "forecast_model_name": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_MODEL_NAME,
+            "strategy_kind": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND,
+            "selection_role": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE,
+            "starting_soc_source": "lava_tail_risk_avoidance_bridge_v3",
+            "evaluation_payload": payload,
+            "claim_scope": DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_CLAIM_SCOPE,
+        }
+    )
+    return copied
+
+
 def _strict_fallback_reference_row(
     row: dict[str, Any],
     *,
@@ -2326,8 +2887,13 @@ __all__ = [
     "DFL_LAVA_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND",
     "DFL_LAVA_SAFE_SWITCH_V2_SELECTION_ROLE",
     "DFL_LAVA_SAFE_SWITCH_V2_STRICT_LP_STRATEGY_KIND",
+    "DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE",
+    "DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND",
     "DFL_LAVA_TAIL_RISK_AWARE_SELECTION_ROLE",
     "DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND",
+    "build_dfl_lava_tail_risk_avoidance_label_frame",
+    "build_dfl_lava_tail_risk_avoidance_scorer_v3_frame",
+    "build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame",
     "build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame",
     "build_dfl_lava_tail_risk_safe_switch_scorer_v2_frame",
     "build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame",
@@ -2336,6 +2902,7 @@ __all__ = [
     "build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame",
     "build_dfl_lava_tail_risk_aware_target_frame",
     "build_dfl_lava_tail_risk_diagnostic_frame",
+    "evaluate_dfl_lava_tail_risk_avoidance_v3_gate",
     "evaluate_dfl_lava_tail_risk_safe_switch_v2_gate",
     "evaluate_dfl_lava_tail_risk_safe_switch_gate",
     "evaluate_dfl_lava_tail_risk_aware_gate",
