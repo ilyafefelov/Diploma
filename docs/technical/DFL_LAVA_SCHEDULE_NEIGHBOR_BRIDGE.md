@@ -52,14 +52,19 @@ The implementation is additive and keeps existing V2+/Poland assets unchanged.
 | `dfl_lava_schedule_neighbor_candidate_frame` | Builds feasible schedule-neighbor candidates from V2+, strict fallback, Poland/TFT near-miss schedules, and train-only oracle-neighborhood diagnostics. |
 | `dfl_lava_candidate_value_scorer_frame` | Trains a conservative prior-only candidate-level delta scorer and falls back to V2+ when prior evidence is weak. |
 | `dfl_lava_candidate_value_strict_lp_benchmark_frame` | Strict-scores `strict_similar_day`, frozen V2+, behavior cloning, and the LAVA scorer under the unchanged LP/oracle evaluator. |
+| `dfl_lava_tail_risk_diagnostic_frame` | Uses the failed bridge rows to identify perturbation families that create tail-risk regret. |
+| `dfl_lava_tail_risk_aware_target_frame` | Converts the diagnostic into schedule-candidate-index targets and blocks risky families before any DT/LAVA training. |
+| `dfl_lava_tail_risk_aware_strict_lp_benchmark_frame` | Strict-scores the redesigned target against frozen V2+ without raw hourly action imitation. |
 
 Tracked config:
 
 - [configs/real_data_dfl_lava_schedule_neighbor_week3.yaml](../../configs/real_data_dfl_lava_schedule_neighbor_week3.yaml)
+- [configs/real_data_dfl_lava_tail_risk_target_week3.yaml](../../configs/real_data_dfl_lava_tail_risk_target_week3.yaml)
 
 Core implementation:
 
 - `src/smart_arbitrage/dfl/lava_schedule_neighbor_bridge.py`
+- `src/smart_arbitrage/dfl/lava_tail_risk_target.py`
 
 ## No-Leakage Rules
 
@@ -112,6 +117,35 @@ large tail losses. This confirms the main lesson from the Poland ranker: the
 current schedule-neighbor feature space is useful for labels and diagnostics,
 but not yet strong enough to replace V2+ safely.
 
+## Tail-Risk Target Redesign
+
+The follow-up target uses that negative bridge result directly. Instead of
+training DT/LAVA to imitate raw hourly BUY/SELL/HOLD actions, the new target
+asks a safer question:
+
+```text
+Which feasible schedule candidate or schedule family should be selected, and
+when should the system fall back to frozen V2+?
+```
+
+The new diagnostic labels candidate rows as `safe_neighbor_candidate`,
+`tail_risk_perturbation_loss`, `neutral_or_weak_neighbor`,
+`oracle_only_train_diagnostic`, or `v2_plus_default`. The target then blocks
+families with prior tail-risk losses and hard-blocks known risky perturbation
+families such as `rank_extrema_perturbation_v2_plus`. It emits
+`schedule_candidate_index` supervision for future DT/LAVA work. Final-holdout
+realized prices may change the strict score, but they do not change the blocked
+family list or target selection rules.
+
+Technical spec:
+[DFL_LAVA_TAIL_RISK_TARGET.md](DFL_LAVA_TAIL_RISK_TARGET.md).
+
+First tail-risk target result: the redesigned strict benchmark materialized in
+Dagster run `60f19630-3469-4d07-9576-14c62c356011`. It hard-blocked risky
+perturbation families and fell back to calibrated V2+ for all tenants, matching
+the frozen comparator at `174.77` UAH mean regret and `67.30` UAH median regret.
+That is a safe diagnostic closure, not a promotion over V2+.
+
 ## Materialization
 
 After upstream V2+ and Poland evidence rows are available:
@@ -121,6 +155,15 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
   --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame `
   -c configs/real_data_dfl_lava_schedule_neighbor_week3.yaml
+```
+
+Tail-risk target materialization:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame `
+  -c configs/real_data_dfl_lava_tail_risk_target_week3.yaml
 ```
 
 Claim boundary remains unchanged: Offline Strategy Promotion/read-model

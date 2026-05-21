@@ -2610,8 +2610,29 @@ negative evidence: the LAVA scorer reached `501.25` UAH mean regret and
 therefore becomes a label/audit layer for the next DT/LAVA design, not a
 replacement for V2+.
 
+Follow-up implementation: the tail-risk-aware target layer consumes that failed
+bridge as diagnostic data. It adds `dfl_lava_tail_risk_diagnostic_frame`,
+`dfl_lava_tail_risk_aware_target_frame`, and
+`dfl_lava_tail_risk_aware_strict_lp_benchmark_frame`. The target label space is
+`schedule_candidate_index`, not raw hourly BUY/SELL/HOLD. Candidate families
+with prior tail-risk losses are blocked, safe neighbor families can be used only
+when prior diagnostics support them, and V2+ remains the fallback. This is the
+correct bridge into later DT/LAVA work because the model must learn to avoid
+tail-risk perturbation schedules before it is allowed to imitate or generate
+full policy trajectories.
+
+Materialized closure: Dagster run
+`60f19630-3469-4d07-9576-14c62c356011` refreshed the strict benchmark after
+fixing fallback to use the calibrated V2+ source row rather than the old
+candidate-library proxy. The target fell back to V2+ for all 90 tenant-anchor
+rows and matched `174.77` / `67.30` UAH mean/median regret. This is not a new
+headline result; it closes the unsafe-overreach failure mode and provides
+teacher-label diagnostics for the next DT/LAVA confidence model.
+
 Technical spec:
 [DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md](DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md).
+Tail-risk target spec:
+[DFL_LAVA_TAIL_RISK_TARGET.md](DFL_LAVA_TAIL_RISK_TARGET.md).
 
 ## V2+-Anchored DFL/DT Bridge Evidence
 

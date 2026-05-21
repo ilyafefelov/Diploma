@@ -511,6 +511,30 @@ residual/DT challenger дав 328.51 UAH. Behavior cloning також залиш
 багатшого teacher/candidate design, а не простого tiny DT поверх наявних
 траєкторій.
 
+Після цього LAVA schedule-neighbor bridge було використано як diagnostic data
+для нового target design. Попередній LAVA scorer програв V2+, бо допускав
+tail-risk perturbation schedules: невелика кількість rank/extrema perturbation
+кандидатів створювала дуже великі regret losses. Тому DT/LAVA target було
+переформульовано з raw hourly action imitation у `schedule_candidate_index`
+supervision. Новий `dfl_lava_tail_risk_diagnostic_frame` позначає candidates як
+`safe_neighbor_candidate`, `tail_risk_perturbation_loss`,
+`neutral_or_weak_neighbor`, `oracle_only_train_diagnostic` або `v2_plus_default`.
+Потім `dfl_lava_tail_risk_aware_target_frame` блокує candidate families з
+prior tail-risk losses і залишає V2+ fallback. Це не новий live controller і не
+promotion claim; це правильніший teacher-label layer для майбутнього DT/LAVA,
+який має навчитися уникати risky feasible neighbors перед тим, як генерувати
+послідовну policy.
+
+Матеріалізований tail-risk-aware target закрив саме safety частину цієї
+проблеми. Diagnostic frame знайшов `4,358` safe-neighbor rows, але майже таку
+саму кількість tail-risk rows (`4,351`), тому всі candidate families із prior
+tail losses були заблоковані. Після виправлення fallback, щоб він посилався на
+calibrated frozen V2+ strict row, target отримав `174.77` UAH mean regret і
+`67.30` UAH median regret - тобто рівно повторив V2+. Це не новий promoted
+результат, але важливий висновок для DT/LAVA: модель не повинна вчитись
+імітувати raw hourly actions або агресивні perturbation schedules; вона має
+спершу навчитися confidence/risk rule, коли безпечно відступати від V2+.
+
 Додатковий failure audit для official bridge сформував 720 analysis-only rows.
 Найбільший клас помилок - `candidate_family_collapse`: 351 rows, або 48.75%.
 Це означає, що residual DFL / offline DT / fallback часто вибирали одну й ту

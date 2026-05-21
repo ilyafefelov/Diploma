@@ -1,0 +1,47 @@
+# Tail-risk-aware LAVA/DT target redesign.
+#
+# This config assumes the V2+-anchored LAVA schedule-neighbor bridge has been
+# materialized. It uses that bridge as diagnostic data, blocks risky
+# perturbation schedule families, and emits candidate-index targets for a future
+# DT/LAVA branch. Outputs remain Offline Strategy Promotion evidence only:
+# market_execution_enabled=false, no live dispatch, no dashboard/API switch.
+ops:
+  dfl_v2_plus_schedule_neighbor_teacher_label_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      baseline_source_model_name: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      poland_source_model_names_csv: "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1,tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1"
+      tail_risk_delta_uah: 150.0
+  dfl_lava_schedule_neighbor_candidate_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      baseline_source_model_name: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      poland_source_model_names_csv: "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1,tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1"
+      include_oracle_train_diagnostics: true
+  dfl_lava_candidate_value_scorer_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      min_prior_mean_improvement_ratio_vs_v2_plus: 0.05
+      ridge_l2: 10.0
+  dfl_lava_candidate_value_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      min_validation_tenant_anchor_count: 90
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.0
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_lava_tail_risk_diagnostic_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      tail_risk_delta_uah: 150.0
+  dfl_lava_tail_risk_aware_target_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      min_prior_safe_win_count: 1
+      max_prior_tail_loss_count: 0
+      hard_blocked_candidate_families_csv: "rank_extrema_perturbation_v2_plus"
+  dfl_lava_tail_risk_aware_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      min_validation_tenant_anchor_count: 90
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.0
+      min_mean_regret_improvement_ratio_vs_strict: 0.05

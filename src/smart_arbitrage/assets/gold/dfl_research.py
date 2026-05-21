@@ -288,6 +288,13 @@ from smart_arbitrage.dfl.lava_schedule_neighbor_bridge import (
     build_dfl_v2_plus_schedule_neighbor_teacher_label_frame,
     evaluate_dfl_lava_candidate_value_gate,
 )
+from smart_arbitrage.dfl.lava_tail_risk_target import (
+    DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,
+    build_dfl_lava_tail_risk_aware_target_frame,
+    build_dfl_lava_tail_risk_diagnostic_frame,
+    evaluate_dfl_lava_tail_risk_aware_gate,
+)
 from smart_arbitrage.strategy.official_global_panel import (
     POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
     POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
@@ -1226,6 +1233,14 @@ class DflLavaScheduleNeighborBridgeAssetConfig(dg.Config):
     min_mean_regret_improvement_ratio_vs_strict: float = 0.05
     ridge_l2: float = 10.0
     include_oracle_train_diagnostics: bool = True
+
+
+class DflLavaTailRiskTargetAssetConfig(DflLavaScheduleNeighborBridgeAssetConfig):
+    """Tail-risk-aware LAVA/DT candidate-index target scope."""
+
+    min_prior_safe_win_count: int = 1
+    max_prior_tail_loss_count: int = 0
+    hard_blocked_candidate_families_csv: str = "rank_extrema_perturbation_v2_plus"
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -4664,6 +4679,171 @@ def dfl_lava_candidate_value_strict_lp_benchmark_frame(
             "production_promote": False,
             "market_execution_enabled": False,
             "scope": "dfl_lava_candidate_value_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_tail_risk_target",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_tail_risk_diagnostic_frame(
+    context,
+    config: DflLavaTailRiskTargetAssetConfig,
+    dfl_lava_schedule_neighbor_candidate_frame: pl.DataFrame,
+    dfl_lava_candidate_value_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Use the failed LAVA bridge as diagnostic data for tail-risk targets."""
+
+    diagnostic_frame = build_dfl_lava_tail_risk_diagnostic_frame(
+        dfl_lava_schedule_neighbor_candidate_frame,
+        dfl_lava_candidate_value_strict_lp_benchmark_frame,
+        tail_risk_delta_uah=config.tail_risk_delta_uah,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": diagnostic_frame.height,
+            "diagnostic_classes": sorted(
+                diagnostic_frame["tail_risk_diagnostic_class"].unique().to_list()
+            )
+            if diagnostic_frame.height
+            else [],
+            "target_recommendations": sorted(
+                diagnostic_frame["target_recommendation"].unique().to_list()
+            )
+            if diagnostic_frame.height
+            else [],
+            "scope": "dfl_lava_tail_risk_diagnostic_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return diagnostic_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_tail_risk_target",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_tail_risk_aware_target_frame(
+    context,
+    config: DflLavaTailRiskTargetAssetConfig,
+    dfl_lava_schedule_neighbor_candidate_frame: pl.DataFrame,
+    dfl_lava_tail_risk_diagnostic_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build candidate-index DT/LAVA targets that avoid tail-risk perturbations."""
+
+    target_frame = build_dfl_lava_tail_risk_aware_target_frame(
+        dfl_lava_schedule_neighbor_candidate_frame,
+        dfl_lava_tail_risk_diagnostic_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        max_prior_tail_loss_count=config.max_prior_tail_loss_count,
+        hard_blocked_candidate_families=_csv_values(
+            config.hard_blocked_candidate_families_csv,
+            field_name="hard_blocked_candidate_families_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": target_frame.height,
+            "fallback_rows": target_frame.filter(pl.col("fallback_to_v2_plus")).height
+            if target_frame.height
+            else 0,
+            "selector_gate_blockers": sorted(
+                target_frame["selector_gate_blocker"].unique().to_list()
+            )
+            if target_frame.height
+            else [],
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "scope": "dfl_lava_tail_risk_aware_target_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return target_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_tail_risk_target",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_tail_risk_aware_strict_lp_benchmark_frame(
+    context,
+    config: DflLavaTailRiskTargetAssetConfig,
+    dfl_lava_schedule_neighbor_candidate_frame: pl.DataFrame,
+    dfl_lava_tail_risk_aware_target_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict-score the tail-risk-aware target against frozen V2+."""
+
+    strict_frame = build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame(
+        dfl_lava_schedule_neighbor_candidate_frame,
+        dfl_lava_tail_risk_aware_target_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_lava_tail_risk_aware_gate(
+        strict_frame,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_replacement_passed": gate.metrics.get(
+                "offline_strategy_challenger_passed",
+                False,
+            ),
+            "production_promote": False,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_lava_tail_risk_aware_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -10698,6 +10878,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_lava_schedule_neighbor_candidate_frame,
     dfl_lava_candidate_value_scorer_frame,
     dfl_lava_candidate_value_strict_lp_benchmark_frame,
+    dfl_lava_tail_risk_diagnostic_frame,
+    dfl_lava_tail_risk_aware_target_frame,
+    dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,
     dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame,
     dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_frame,
