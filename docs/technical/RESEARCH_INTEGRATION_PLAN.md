@@ -3138,7 +3138,21 @@ Materialized outcome:
 Interpretation: Poland is positive shadow evidence, not a promoted strategy.
 The data is useful enough to keep, and it does appear in the official training
 contract, but it is not yet robust enough to replace frozen Ukrainian-only V2+.
-The next ML step is not DT immediately. First repair the blocked spread-feature
-coverage, improve the causal feature representation, and add a simple tabular
-candidate-value model over schedule candidates. DT/LAVA should start after
-better teacher/value labels exist.
+The next ML step is not DT immediately. The follow-up Safe-Switch v2 path repairs
+the seven null-blocked Poland context features into explicit selector features,
+adds richer causal lag-24 Poland context to the LAVA schedule-neighbor candidates,
+and trains a small tabular safe-switch scorer before any raw-action DT attempt.
+The gate remains frozen Ukrainian-only V2+ first: a challenger must beat `174.77`
+UAH mean regret, preserve median/rolling robustness, and keep
+`market_execution_enabled=false`.
+
+Safe-Switch v2 was then materialized in Dagster run
+`5de285c0-91b6-4cba-8916-e816658a7838`. It confirms the feature route is wired:
+the feature panel has `13,885` rows, `3,810` rows record explicit repaired
+Poland-context values, and the selector switched to Poland shadow schedules on
+`21 / 90` final rows. The result still failed the V2+ gate: Safe-Switch v2 had
+`219.37` UAH mean regret and `96.02` UAH median regret versus frozen calibrated
+V2+ at `174.77` / `67.30` UAH. This is negative-but-useful evidence. Poland
+features can enter the decision layer, but the current tabular switcher still
+over-selects risky schedules. DT/LAVA should use this as tail-risk teacher-label
+data rather than imitate raw hourly actions.

@@ -829,6 +829,26 @@ strict LP/oracle gate перед будь-яким thesis headline update.
 teacher-label і feasible-neighbor шар, який показує, де наступний DT/LAVA
 об'єктив має уникати tail-risk perturbation schedules.
 
+Наступний LAVA крок тому зроблено не як ще один raw-action DT, а як
+Safe-Switch v2 diagnostic layer. Він ремонтує сім null-blocked Poland context
+features у явні prior-only selector features, додає багатший lag-24 Poland
+context до schedule candidates і навчає малий tabular scorer прогнозувати
+regret delta проти V2+. Перемикання дозволене лише тоді, коли train/prior
+anchors показують безпечний risk profile; інакше система повертається до V2+.
+Це зберігає головну методологічну межу: Poland/TFT можуть бути shadow
+challenger evidence, але thesis headline змінюється тільки після перемоги над
+`174.77` UAH V2+ mean regret, без median/rolling degradation і без live market
+execution claim.
+
+Матеріалізований Safe-Switch v2 підтвердив цю межу. Feature panel мав `13,885`
+candidate rows, з них `3,810` rows явно зафіксували repaired Poland-context
+values. Selector уже не був повним fallback: він вибрав Poland shadow schedules
+на `21 / 90` final rows, але це погіршило результат до `219.37` UAH mean regret
+і `96.02` UAH median regret. Отже, технічно Польща входить у decision layer,
+але поточний tabular switcher усе ще занадто ризиковий. Для DT/LAVA це означає,
+що next target має вчитись уникати tail-risk switch cases, а не копіювати
+hourly BUY/SELL/HOLD actions.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

@@ -38,6 +38,9 @@ strict LP/oracle evaluator.
 | `dfl_lava_tail_risk_aware_strict_lp_benchmark_frame` | Strict-scores the redesigned target against `strict_similar_day` and frozen V2+. |
 | `dfl_lava_tail_risk_safe_switch_scorer_frame` | Trains a prior-profile safe-switch scorer over approved challenger sources, while requiring family-level tail-risk safety. |
 | `dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame` | Strict-scores the safe-switch scorer with per-anchor V2+ fallback. |
+| `dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame` | Repairs the seven null-blocked Poland context columns into explicit prior-safe selector features and keeps repair counts visible. |
+| `dfl_lava_tail_risk_safe_switch_scorer_v2_frame` | Trains a small tabular rich-context safe-switch scorer over schedule, risk, and Poland lag-24 features. |
+| `dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame` | Strict-scores the richer safe-switch v2 selector against frozen V2+, `strict_similar_day`, and the same LP/oracle gate. |
 
 Tracked config:
 
@@ -152,12 +155,57 @@ outcome for this slice. It shows that the current Poland/TFT candidate space
 contains local wins, but not a prior-safe switch rule that can beat V2+ without
 tail-risk exposure.
 
+## Safe-Switch v2: Rich Prior Context
+
+Safe-Switch v2 keeps the same conservative claim boundary but fixes the next
+diagnostic gap: the previous selector did not consume the richer Poland feature
+representation. The new feature panel attaches prior-only schedule/risk features
+and all lag-24 Poland context columns to every LAVA schedule candidate. If a
+Poland column is missing or non-finite for a tenant-anchor, the value is repaired
+to `0.0` and the row records `selector_feature_repaired_null_count` plus the
+exact repaired column names. That makes the repair explicit instead of silently
+dropping the signal in a scaler or model input.
+
+The scorer is still deliberately small: a deterministic ridge-style tabular
+model predicts candidate regret delta versus frozen V2+ from prior/train
+anchors only. It may switch away from V2+ only when:
+
+- the candidate source is an approved shadow challenger;
+- the candidate family is not hard-blocked by prior tail-risk evidence;
+- the candidate's risk profile has enough prior safe wins and no excess prior
+  tail losses;
+- the predicted regret delta is better than the configured minimum improvement.
+
+This is not a deployed DT/LAVA controller. It is a teacher-label and
+safe-switch diagnostic layer. If v2 still falls back to V2+, the interpretation
+is not that Poland features are useless; it means the currently available
+pre-anchor features still cannot identify the rare Poland/TFT wins with enough
+safety to replace V2+ under the unchanged strict LP/oracle gate.
+
+Materialized v2 result:
+
+- Dagster run: `5de285c0-91b6-4cba-8916-e816658a7838`;
+- feature panel rows: `13,885`;
+- rows with explicit Poland-context repairs: `3,810`;
+- repaired selector feature values: `133,350`;
+- selected Poland shadow schedules: `21 / 90`;
+- V2+ fallback schedules: `69 / 90`;
+- Safe-Switch v2 mean regret: `219.37` UAH;
+- Safe-Switch v2 median regret: `96.02` UAH;
+- frozen calibrated V2+ comparator: `174.77` UAH mean, `67.30` UAH median;
+- status: failed versus V2+, diagnostic only.
+
+The result is intentionally not promoted. The richer feature route is wired and
+the selector can switch, but the switched schedules are still too tail-risky on
+the final holdout. The next DT/LAVA target should therefore learn to avoid
+tail-risk perturbation switches before learning any raw hourly actions.
+
 ## Materialization
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_scorer_frame,dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame `
+  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_scorer_frame,dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,dfl_lava_tail_risk_safe_switch_scorer_v2_frame,dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame `
   -c configs/real_data_dfl_lava_tail_risk_target_week3.yaml
 ```
 

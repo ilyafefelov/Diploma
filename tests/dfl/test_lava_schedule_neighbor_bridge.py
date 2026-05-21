@@ -15,13 +15,19 @@ from smart_arbitrage.dfl.lava_schedule_neighbor_bridge import (
 from smart_arbitrage.dfl.lava_tail_risk_target import (
     DFL_LAVA_SAFE_SWITCH_SELECTION_ROLE,
     DFL_LAVA_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
+    DFL_LAVA_SAFE_SWITCH_V2_SELECTION_ROLE,
+    DFL_LAVA_SAFE_SWITCH_V2_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_TAIL_RISK_AWARE_SELECTION_ROLE,
     DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,
+    build_dfl_lava_tail_risk_safe_switch_scorer_v2_frame,
+    build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame,
     build_dfl_lava_tail_risk_safe_switch_scorer_frame,
     build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame,
     build_dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,
     build_dfl_lava_tail_risk_aware_target_frame,
     build_dfl_lava_tail_risk_diagnostic_frame,
+    evaluate_dfl_lava_tail_risk_safe_switch_v2_gate,
     evaluate_dfl_lava_tail_risk_safe_switch_gate,
     evaluate_dfl_lava_tail_risk_aware_gate,
 )
@@ -586,6 +592,205 @@ def test_safe_switch_selection_is_unchanged_when_final_labels_mutate() -> None:
     ].to_list()
 
 
+def test_safe_switch_v2_repairs_null_poland_context_features() -> None:
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+        ),
+        _v2_plus_strict_frame(v2_regrets=(120.0, 120.0)),
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    lagged_features = _lagged_poland_feature_frame_with_null_context()
+
+    feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        candidates,
+        diagnostic,
+        lagged_features,
+    )
+
+    rich_columns = [
+        column
+        for column in feature_panel.columns
+        if column.startswith("selector_feature_poland_lag24_")
+    ]
+    assert rich_columns
+    assert feature_panel.select(pl.sum_horizontal(pl.col(rich_columns).null_count())).item() == 0
+    assert set(feature_panel["feature_repair_status"].unique().to_list()) == {
+        "repaired_prior_safe_neutral_context"
+    }
+    assert feature_panel["selector_feature_repaired_null_count"].max() > 0
+    assert set(feature_panel["market_execution_enabled"].unique().to_list()) == {False}
+
+
+def test_safe_switch_v2_uses_rich_prior_context_and_anchor_fallback() -> None:
+    baseline = _v2_plus_strict_frame(v2_regrets=(120.0, 120.0))
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+            safe_final_dispatch_by_anchor={
+                3: (0.2, -0.2),
+                4: (0.7, -0.7),
+            },
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        candidates,
+        diagnostic,
+        _lagged_poland_feature_frame_with_null_context(),
+    )
+
+    scorer = build_dfl_lava_tail_risk_safe_switch_scorer_v2_frame(
+        feature_panel,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+        min_predicted_improvement_uah=1.0,
+    )
+    strict = build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame(
+        feature_panel,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+    gate = evaluate_dfl_lava_tail_risk_safe_switch_v2_gate(
+        strict,
+        min_validation_tenant_anchor_count=len(TENANTS) * 2,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+    )
+    selected = strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SAFE_SWITCH_V2_SELECTION_ROLE
+    )
+
+    assert scorer["selected_scorer_type"].to_list() == [
+        "tabular_rich_prior_safe_switch_v2",
+        "tabular_rich_prior_safe_switch_v2",
+    ]
+    assert "selector_feature_poland_lag24_ua_spread_ratio" in (
+        scorer.row(0, named=True)["selected_feature_names"]
+    )
+    assert scorer["selected_final_candidate_source_counts"].to_list() == [
+        {"poland_shadow_candidate": 1, "frozen_v2_plus_fallback": 1},
+        {"poland_shadow_candidate": 1, "frozen_v2_plus_fallback": 1},
+    ]
+    assert selected["selected_candidate_family"].to_list() == [
+        "poland_safe_value_candidate",
+        "frozen_v2_plus_fallback",
+        "poland_safe_value_candidate",
+        "frozen_v2_plus_fallback",
+    ]
+    assert selected["regret_uah"].to_list() == [80.0, 120.0, 80.0, 120.0]
+    assert set(strict["strategy_kind"].unique().to_list()) == {
+        DFL_LAVA_SAFE_SWITCH_V2_STRICT_LP_STRATEGY_KIND
+    }
+    assert gate.passed is True
+
+
+def test_safe_switch_v2_selection_is_unchanged_when_final_labels_mutate() -> None:
+    baseline = _v2_plus_strict_frame(v2_regrets=(120.0, 120.0))
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=80.0,
+            tail_train_regret=420.0,
+            tail_final_regret=600.0,
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    mutated_candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=70.0,
+            safe_final_regret=900.0,
+            tail_train_regret=420.0,
+            tail_final_regret=1000.0,
+        ),
+        baseline,
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    mutated_diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        mutated_candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        candidates,
+        diagnostic,
+        _lagged_poland_feature_frame_with_null_context(),
+    )
+    mutated_feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        mutated_candidates,
+        mutated_diagnostic,
+        _lagged_poland_feature_frame_with_null_context(),
+    )
+
+    scorer = build_dfl_lava_tail_risk_safe_switch_scorer_v2_frame(
+        feature_panel,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+    )
+    mutated_scorer = build_dfl_lava_tail_risk_safe_switch_scorer_v2_frame(
+        mutated_feature_panel,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+    )
+    strict = build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame(
+        feature_panel,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+    mutated_strict = build_dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_v2_frame(
+        mutated_feature_panel,
+        scorer,
+        baseline,
+        generated_at=GENERATED_AT,
+    )
+
+    assert scorer["selected_final_candidate_keys"].to_list() == (
+        mutated_scorer["selected_final_candidate_keys"].to_list()
+    )
+    assert strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SAFE_SWITCH_V2_SELECTION_ROLE
+    )["regret_uah"].to_list() != mutated_strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SAFE_SWITCH_V2_SELECTION_ROLE
+    )[
+        "regret_uah"
+    ].to_list()
+
+
 def _v2_plus_strict_frame(*, v2_regrets: tuple[float, float]) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     for tenant_id in TENANTS:
@@ -835,6 +1040,34 @@ def _failed_lava_tail_risk_strict_frame() -> pl.DataFrame:
                     candidate_family="rank_extrema_perturbation_v2_plus",
                 )
             )
+    return pl.DataFrame(rows)
+
+
+def _lagged_poland_feature_frame_with_null_context() -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for anchor_index in range(5):
+        anchor = FIRST_ANCHOR + timedelta(days=anchor_index)
+        rows.append(
+            {
+                "delivery_timestamp_utc": anchor.isoformat() + "+00:00",
+                "coverage_status": "full_lagged_feature_coverage",
+                "source_backed": True,
+                "entsoe_pl_lag24_ua_spread_uah_mwh": 200.0 + anchor_index * 5.0,
+                "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh": None
+                if anchor_index == 0
+                else 5.0,
+                "entsoe_pl_lag24_ua_spread_ratio": None if anchor_index == 1 else 0.2,
+                "entsoe_pl_lag24_ua_rank_disagreement": 0.1,
+                "entsoe_pl_lag24_ua_peak_hour_delta": 2.0,
+                "entsoe_pl_lag24_ua_trough_hour_delta": 1.0,
+                "entsoe_pl_lag24_ua_spread_momentum_sign": None
+                if anchor_index == 2
+                else 1.0,
+                "entsoe_pl_lag24_evening_morning_spread_uah_mwh": 400.0,
+                "entsoe_pl_lag24_price_rank_centered": 0.25,
+                "entsoe_pl_lag24_peak_trough_span_hours": 18.0,
+            }
+        )
     return pl.DataFrame(rows)
 
 
