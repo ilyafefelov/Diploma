@@ -121,3 +121,17 @@ ops:
       final_validation_anchor_count_per_tenant: 18
       min_validation_tenant_anchor_count_per_source_model: 90
       min_prior_mean_improvement_ratio_vs_v2: 0.01
+  dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1,tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      min_robust_passing_windows: 3
+      min_validation_tenant_anchor_count_per_source_model: 90
+      min_prior_mean_improvement_ratio_vs_v2: 0.01
+  dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame:
+    config:
+      min_mean_regret_improvement_ratio_vs_frozen_v2_plus: 0.05
+      min_passing_windows: 3

@@ -306,6 +306,8 @@ def test_poland_lag24_calibrated_schedule_value_config_routes_new_model_names() 
     assert "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame" in run_config
     assert "official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame" in run_config
     assert "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame" in run_config
+    assert "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame" in run_config
+    assert "dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame" in run_config
     assert "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1" in run_config
     assert "tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1" in run_config
     assert "market_execution_enabled: true" not in run_config.lower()

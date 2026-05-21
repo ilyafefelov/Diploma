@@ -1637,6 +1637,11 @@ h2 {
   background: linear-gradient(180deg, rgba(255, 237, 213, 0.92), rgba(255, 255, 255, 0.96));
 }
 
+.latest-experiment-card--shadow {
+  border-color: rgba(245, 158, 11, 0.32);
+  background: linear-gradient(180deg, rgba(254, 243, 199, 0.94), rgba(255, 255, 255, 0.96));
+}
+
 .latest-experiment-card--blocked {
   border-color: rgba(148, 163, 184, 0.3);
   background: linear-gradient(180deg, rgba(226, 232, 240, 0.92), rgba(255, 255, 255, 0.96));

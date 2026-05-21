@@ -6,6 +6,7 @@ import {
   CURRENT_BILINGUAL_STRATEGY_EXPLAINER,
   CURRENT_DASHBOARD_EXPERIMENTS,
   CURRENT_DT_LAVA_NEXT_STEPS,
+  CURRENT_POLAND_LAG24_SHADOW_CHALLENGER,
   CURRENT_REGRET_LADDER,
   CURRENT_TFT_SAFE_SELECTION_EXPLAINER,
   CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
@@ -235,9 +236,21 @@ describe('defense dataset summaries', () => {
     expect(CURRENT_DASHBOARD_EXPERIMENTS.map(experiment => experiment.label)).toEqual([
       'Headline',
       'TFT portfolio',
-      'Market coupling',
+      'Poland shadow',
       'Next branch'
     ])
+    expect(CURRENT_POLAND_LAG24_SHADOW_CHALLENGER).toMatchObject({
+      latestHoldoutMeanRegretUah: 169.24,
+      frozenV2PlusMeanRegretUah: 174.77,
+      passingFeatureCount: 17,
+      featureCount: 24,
+      rollingPassCount: 1,
+      rollingWindowCount: 4,
+      status: 'positive_not_promoted'
+    })
+    expect(CURRENT_DASHBOARD_EXPERIMENTS.find(experiment => experiment.label === 'Poland shadow')?.meta).toContain(
+      'not promoted'
+    )
 
     expect(CURRENT_REGRET_LADDER.map(point => point.label)).toEqual([
       'strict_similar_day',

@@ -268,6 +268,10 @@ from smart_arbitrage.dfl.poland_lag24_prior_veto import (
     build_poland_lag24_prior_veto_frame,
     build_poland_lag24_prior_veto_packet,
 )
+from smart_arbitrage.dfl.poland_lag24_feature_audit import (
+    build_poland_lag24_feature_consumption_audit_frame,
+    build_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame,
+)
 from smart_arbitrage.dfl.poland_lag24_tail_risk_audit import (
     build_poland_lag24_tail_risk_audit_frame,
 )
@@ -1155,6 +1159,24 @@ class DflOfficialGlobalPanelScheduleValueLearnerV2PlusRobustnessAssetConfig(dg.C
     min_robust_passing_windows: int = 3
     min_validation_tenant_anchor_count_per_source_model: int = 90
     min_prior_mean_improvement_ratio_vs_v2: float = 0.01
+
+
+class DflPolandLag24CalibratedRobustnessAssetConfig(
+    DflOfficialGlobalPanelScheduleValueLearnerV2PlusRobustnessAssetConfig
+):
+    """Rolling robustness scope for calibrated Poland-enhanced V2+ schedules."""
+
+    forecast_model_names_csv: str = (
+        "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1,"
+        "tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1"
+    )
+
+
+class DflPolandLag24RollingVsFrozenGateAssetConfig(dg.Config):
+    """Gate calibrated Poland rolling windows against frozen Ukrainian V2+."""
+
+    min_mean_regret_improvement_ratio_vs_frozen_v2_plus: float = 0.05
+    min_passing_windows: int = 3
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -4194,6 +4216,163 @@ def dfl_poland_lag24_prior_tail_risk_veto_frame(
         },
     )
     return veto_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_experimental",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_feature_consumption_audit_frame(
+    context,
+    entsoe_poland_lagged_feature_candidate_frame: pl.DataFrame,
+    official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Audit Poland feature routing before treating the lane as ML signal."""
+
+    audit_frame = build_poland_lag24_feature_consumption_audit_frame(
+        entsoe_poland_lagged_feature_candidate_frame,
+        strict_benchmark_frame=(
+            official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "passing_feature_count": audit_frame.filter(
+                pl.col("consumption_status") == "passes_training_consumption_audit"
+            ).height,
+            "feature_count": audit_frame.select("feature_column").n_unique(),
+            "scope": "poland_lag24_feature_consumption_audit_not_market_execution",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame(
+    context,
+    config: DflPolandLag24CalibratedRobustnessAssetConfig,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Replay calibrated Poland-enhanced V2+ over rolling windows."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    robustness_frame = build_dfl_schedule_value_learner_v2_plus_robustness_frame(
+        dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=source_model_names,
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        min_robust_passing_windows=config.min_robust_passing_windows,
+        min_validation_tenant_anchor_count_per_source_model=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+        min_prior_mean_improvement_ratio_vs_v2=(
+            config.min_prior_mean_improvement_ratio_vs_v2
+        ),
+    ).with_columns(
+        pl.lit(False).alias("market_execution_enabled"),
+        pl.lit(True).alias("not_market_execution"),
+    )
+    gate = evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate(
+        robustness_frame,
+        source_model_names=source_model_names,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": robustness_frame.height,
+            "source_model_count": len(source_model_names),
+            "validation_window_count": config.validation_window_count,
+            "validation_anchor_count": config.validation_anchor_count,
+            "robust_source_model_names": gate.metrics.get(
+                "robust_source_model_names",
+                [],
+            ),
+            "decision": gate.decision,
+            "market_execution_enabled": False,
+            "scope": (
+                "dfl_poland_lag24_calibrated_schedule_value_v2_plus_"
+                "rolling_robustness_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return robustness_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_poland_lag24_calibrated",
+        market_venue="DAM",
+    ),
+)
+def dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame(
+    context,
+    config: DflPolandLag24RollingVsFrozenGateAssetConfig,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Compare Poland rolling windows with the frozen Ukrainian-only V2+ gate."""
+
+    gate_frame = build_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame(
+        dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame,
+        min_mean_regret_improvement_ratio_vs_frozen_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_frozen_v2_plus
+        ),
+        min_passing_windows=config.min_passing_windows,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": gate_frame.height,
+            "passing_windows": gate_frame.filter(pl.col("poland_window_passed")).height,
+            "source_model_count": gate_frame.select("source_model_name").n_unique(),
+            "gate_statuses": gate_frame.select(
+                "rolling_gate_status"
+            ).to_series().unique().sort().to_list(),
+            "market_execution_enabled": False,
+            "scope": "poland_lag24_rolling_vs_frozen_v2_plus_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return gate_frame
 
 
 @dg.asset(
@@ -10102,6 +10281,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
     dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame,
     dfl_poland_lag24_prior_tail_risk_veto_frame,
+    dfl_poland_lag24_feature_consumption_audit_frame,
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame,
+    dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_v2_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_v2_plus_frame,

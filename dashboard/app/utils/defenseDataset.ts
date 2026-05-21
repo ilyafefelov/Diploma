@@ -66,7 +66,21 @@ export interface DashboardExperimentCard {
   label: string
   value: string
   meta: string
-  status: 'headline' | 'closed' | 'blocked' | 'next'
+  status: 'headline' | 'closed' | 'shadow' | 'blocked' | 'next'
+}
+
+export interface PolandLag24ShadowChallengerHeadline {
+  label: string
+  latestHoldoutImprovementVsV2Plus: number
+  latestHoldoutMeanRegretUah: number
+  frozenV2PlusMeanRegretUah: number
+  passingFeatureCount: number
+  featureCount: number
+  blockedFeatureCount: number
+  rollingPassCount: number
+  rollingWindowCount: number
+  status: 'positive_not_promoted'
+  interpretation: string
 }
 
 export interface DefenseRegretLadderPoint {
@@ -148,6 +162,20 @@ export const CURRENT_TFT_PORTFOLIO_CLOSURE: TftPortfolioClosureHeadline = {
   interpretation: 'TFT offered local candidate diversity, but the prior-only selector could not exploit it robustly.'
 }
 
+export const CURRENT_POLAND_LAG24_SHADOW_CHALLENGER: PolandLag24ShadowChallengerHeadline = {
+  label: 'Poland lag-24 TFT shadow challenger',
+  latestHoldoutImprovementVsV2Plus: 0.0316,
+  latestHoldoutMeanRegretUah: 169.24,
+  frozenV2PlusMeanRegretUah: 174.77,
+  passingFeatureCount: 17,
+  featureCount: 24,
+  blockedFeatureCount: 7,
+  rollingPassCount: 1,
+  rollingWindowCount: 4,
+  status: 'positive_not_promoted',
+  interpretation: 'Poland/TFT improved the latest holdout by 3.16%, but rolling robustness was only 1/4 versus frozen V2+, so it remains a shadow challenger.'
+}
+
 export const CURRENT_DASHBOARD_EXPERIMENTS: DashboardExperimentCard[] = [
   {
     label: 'Headline',
@@ -162,15 +190,15 @@ export const CURRENT_DASHBOARD_EXPERIMENTS: DashboardExperimentCard[] = [
     status: 'closed'
   },
   {
-    label: 'Market coupling',
-    value: 'blocked',
-    meta: 'ENTSO-E/Poland remains governance-only, not training input',
-    status: 'blocked'
+    label: 'Poland shadow',
+    value: '+3.16% latest',
+    meta: '17/24 features consumed; 1/4 rolling vs frozen V2+; not promoted',
+    status: 'shadow'
   },
   {
     label: 'Next branch',
-    value: 'DT/LAVA',
-    meta: 'candidate/value or schedule-neighbor supervision against V2+',
+    value: 'feature/value first',
+    meta: 'repair Poland coverage, richer causal features, then DT/LAVA teacher labels',
     status: 'next'
   }
 ]

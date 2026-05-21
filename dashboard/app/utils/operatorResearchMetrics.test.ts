@@ -122,6 +122,15 @@ describe('operator research metrics', () => {
         tooltipFormula: 'portfolio_rows=120380; fallback=90/90'
       },
       {
+        label: 'Poland shadow',
+        value: '3% latest',
+        meta: '1/4 rolling vs V2+',
+        tone: 'orange',
+        tooltipTitle: 'Poland/TFT shadow challenger',
+        tooltipBody: 'Poland/TFT improved the latest holdout by 3.16%, but rolling robustness was only 1/4 versus frozen V2+, so it remains a shadow challenger.',
+        tooltipFormula: 'features=17/24; blocked=7; mean=169.24 vs 174.77'
+      },
+      {
         label: 'Grid risk',
         value: '71%',
         meta: 'tenant region affected',
@@ -145,7 +154,7 @@ describe('operator research metrics', () => {
         meta: 'market_execution_enabled=false',
         tone: 'lime',
         tooltipTitle: 'Research claim boundary',
-        tooltipBody: 'Keeps V2+, TFT portfolio, and DT/LAVA evidence in offline/read-model scope. Nothing on this screen is live market execution.',
+        tooltipBody: 'Keeps V2+, TFT portfolio, Poland shadow, and DT/LAVA evidence in offline/read-model scope. Nothing on this screen is live market execution.',
         tooltipFormula: 'boundary = academic_scope / provenance flags from backend read models'
       }
     ])

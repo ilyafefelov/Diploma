@@ -3043,3 +3043,27 @@ plus `dfl_poland_lag24_prior_tail_risk_veto_frame`. This is the correct path
 for testing the veto on rolling/365 evidence. The claim boundary is unchanged:
 Offline Strategy Promotion only, `market_execution_enabled=false`, no
 dashboard/API default switch, and no European rows as Ukrainian training rows.
+
+The larger Poland-enhanced 365-anchor evidence run then closed the next decision
+point. The feature-consumption audit and rolling gate are documented in
+[DFL_POLAND_LAG24_FEATURE_AUDIT_AND_ROLLING_GATE.md](DFL_POLAND_LAG24_FEATURE_AUDIT_AND_ROLLING_GATE.md)
+and exported locally to
+`data/research_runs/week3_poland_lag24_feature_audit_rolling_gate/`.
+
+Materialized outcome:
+
+- feature columns audited: `24`;
+- feature columns that pass the training-consumption audit: `17`;
+- blocked feature columns: `7`, all blocked by null coverage;
+- timestamp alignment: `lagged_24h_prior_safe`;
+- best latest-holdout Poland/TFT row improved frozen V2+ by `3.16%`;
+- rolling gate against frozen Ukrainian-only V2+: `1 / 4` windows per Poland
+  source row.
+
+Interpretation: Poland is positive shadow evidence, not a promoted strategy.
+The data is useful enough to keep, and it does appear in the official training
+contract, but it is not yet robust enough to replace frozen Ukrainian-only V2+.
+The next ML step is not DT immediately. First repair the blocked spread-feature
+coverage, improve the causal feature representation, and add a simple tabular
+candidate-value model over schedule candidates. DT/LAVA should start after
+better teacher/value labels exist.

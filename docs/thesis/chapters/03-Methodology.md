@@ -108,6 +108,12 @@ timestamp `t` використовує польську day-ahead price з `t - 
 експериментальну official global-panel training frame для NBEATSx/TFT: рівень,
 дельти, spread, rank і peak/trough timing додаються як prior-safe known-future
 covariates. Це окремий research screen, а не заміна українського V2+ evidence.
+Перед інтерпретацією результату цей route проходить feature-consumption audit:
+перевіряється, що кожна Poland column справді входить у NeuralForecast training
+contract, має variance, не губиться scaler route, має full timestamp coverage і
+залишається `lagged_24h_prior_safe`. Якщо feature має null coverage або
+недостатню temporal availability, вона не може бути підставою для promotion
+claim навіть тоді, коли latest holdout виглядає позитивно.
 
 ## 3.3. Rolling-origin протокол
 

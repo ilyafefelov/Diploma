@@ -381,6 +381,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_poland_lag24_calibrated_vs_v2_plus_comparison_frame",
         "dfl_poland_lag24_prior_tail_risk_veto_frame",
+        "dfl_poland_lag24_feature_consumption_audit_frame",
+        "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame",
+        "dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame",
         "dfl_poland_lag24_experimental_schedule_candidate_library_frame",
         "dfl_poland_lag24_experimental_schedule_candidate_library_v2_frame",
         "dfl_poland_lag24_experimental_schedule_candidate_library_v2_plus_frame",
@@ -696,6 +699,20 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         groups_by_key["dfl_poland_lag24_prior_tail_risk_veto_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_poland_lag24_feature_consumption_audit_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key[
+            "dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame"
+        ]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame"]
         == "gold_dfl_training"
     )
     assert (

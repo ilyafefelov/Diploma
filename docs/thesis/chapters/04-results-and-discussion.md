@@ -725,6 +725,32 @@ regret і зламали mean-regret gate. Це означає, що насту�
 schedule виглядає небезпечно до початку window, система повинна лишатися на
 V2+ fallback.
 
+Повний 365-anchor Poland-enhanced run уточнив цей висновок. Після
+матеріалізації official global-panel Poland-lag24 rows було додано окремий
+feature-consumption audit: із `24` Poland feature columns `17` пройшли training
+contract, variance, scaler-retention і timestamp-alignment checks, а `7`
+залишилися blocked by null coverage. Усі перевірені rows мали
+`lagged_24h_prior_safe` timestamp alignment, тобто route є point-in-time, але ще
+не повністю покритий для всіх richer PL-vs-UA spread features.
+
+Найкращий latest-holdout результат став позитивним, але все ще не promotional:
+calibrated Poland TFT V2+ мав `169.24` UAH mean regret проти frozen
+Ukrainian-only V2+ `174.77` UAH, тобто покращення `3.16%`. Це важливо:
+додаткові польські дані не є марними. Проте conservative gate вимагає не просто
+"краще за strict", а краще за поточний найсильніший V2+ baseline, без median
+degradation і з rolling robustness. У rolling comparison Poland-enhanced rows
+пройшли лише `1 / 4` windows проти frozen V2+. Тому фінальний статус цього
+етапу: `positive_not_promoted`. Poland/TFT залишається shadow challenger, а не
+обрана стратегія.
+
+Це також пояснює, чому наступний крок не має бути одразу Decision Transformer.
+Спочатку потрібно покращити teacher/value labels: виправити null coverage для
+PL-vs-UA spread features, додати сильніші causal features
+(spread delta, peak/trough disagreement, volatility regime, morning/evening
+blocks) і навчити простий tabular candidate-value model над schedule candidates.
+DT/LAVA має сенс запускати після того, як candidate/value layer дасть кращі
+teacher schedules або чіткіші failure labels.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -749,6 +775,9 @@ rows:
 - `data/research_runs/week3_poland_lag24_prior_tail_risk_veto/` -
   prior-only Poland veto screen that improves V2+ mean/median but stays below
   the `5%` replacement threshold;
+- `data/research_runs/week3_poland_lag24_feature_audit_rolling_gate/` -
+  Poland lag-24 feature-consumption audit and rolling comparison versus frozen
+  Ukrainian-only V2+; status `positive_not_promoted`;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

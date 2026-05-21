@@ -6,6 +6,7 @@ import type {
 import type { DefenseModelRow, ResearchReadinessRow } from './defenseDataset'
 import {
   CURRENT_OFFLINE_STRATEGY_PROMOTION_HEADLINE,
+  CURRENT_POLAND_LAG24_SHADOW_CHALLENGER,
   CURRENT_TFT_PORTFOLIO_CLOSURE,
   formatPercent,
   formatUah,
@@ -65,6 +66,15 @@ export const buildOperatorResearchMetrics = (input: {
       tooltipFormula: `portfolio_rows=${CURRENT_TFT_PORTFOLIO_CLOSURE.candidatePortfolioRows}; fallback=${CURRENT_TFT_PORTFOLIO_CLOSURE.selectorFallbackCount}/${CURRENT_TFT_PORTFOLIO_CLOSURE.latestTenantAnchors}`
     },
     {
+      label: 'Poland shadow',
+      value: `${formatPercent(CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.latestHoldoutImprovementVsV2Plus)} latest`,
+      meta: `${CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.rollingPassCount}/${CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.rollingWindowCount} rolling vs V2+`,
+      tone: 'orange',
+      tooltipTitle: 'Poland/TFT shadow challenger',
+      tooltipBody: CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.interpretation,
+      tooltipFormula: `features=${CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.passingFeatureCount}/${CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.featureCount}; blocked=${CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.blockedFeatureCount}; mean=${CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.latestHoldoutMeanRegretUah} vs ${CURRENT_POLAND_LAG24_SHADOW_CHALLENGER.frozenV2PlusMeanRegretUah}`
+    },
+    {
       label: 'Grid risk',
       value: typeof gridRisk === 'number' ? formatPercent(gridRisk) : 'unavailable',
       meta: input.exogenousSignals?.tenant_region_affected ? 'tenant region affected' : 'tenant region clear or unknown',
@@ -88,7 +98,7 @@ export const buildOperatorResearchMetrics = (input: {
       meta: boundaryRowsLoaded > 0 ? 'market_execution_enabled=false' : 'research rows pending',
       tone: 'lime',
       tooltipTitle: 'Research claim boundary',
-      tooltipBody: 'Keeps V2+, TFT portfolio, and DT/LAVA evidence in offline/read-model scope. Nothing on this screen is live market execution.',
+      tooltipBody: 'Keeps V2+, TFT portfolio, Poland shadow, and DT/LAVA evidence in offline/read-model scope. Nothing on this screen is live market execution.',
       tooltipFormula: 'boundary = academic_scope / provenance flags from backend read models'
     }
   ]
