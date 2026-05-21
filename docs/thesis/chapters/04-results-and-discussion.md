@@ -771,6 +771,28 @@ blocks) і навчити простий tabular candidate-value model над sc
 DT/LAVA має сенс запускати після того, як candidate/value layer дасть кращі
 teacher schedules або чіткіші failure labels.
 
+Перший такий tabular ranker уже дав негативний, але корисний результат:
+calibrated NBEATSx Poland ranker мав `334.02` UAH mean regret, а calibrated TFT
+Poland ranker мав `445.75` UAH mean regret проти frozen V2+ `174.77` UAH. Це
+означає, що Poland features технічно доступні, але простий selector занадто
+агресивно перемикався на risky schedules. Тому наступний DT/LAVA крок у thesis
+pipeline формулюється як teacher-label bridge, а не як raw-action DT: він
+позначає rows як `v2_plus_best`, `poland_safe_win`,
+`poland_tail_risk_loss`, `selector_overreach` або train-only
+`oracle_only_train_diagnostic`, будує feasible schedule-neighbor candidates і
+залишає V2+ fallback, якщо prior evidence не показує безпечного покращення.
+Цей bridge також не є live controller; він має перевершити V2+ під тим самим
+strict LP/oracle gate перед будь-яким thesis headline update.
+
+Після матеріалізації LAVA schedule-neighbor bridge результат залишився
+негативним щодо headline replacement: LAVA scorer мав `501.25` UAH mean regret
+і `221.77` UAH median regret, тоді як frozen calibrated V2+ лишився на
+`174.77` / `67.30` UAH. Behavior-cloning reference збігся зі strict control
+(`310.58` / `198.39` UAH). Отже, цей bridge не є новою виграшною стратегією.
+Його цінність у тому, що він перетворив Poland/TFT/V2+ evidence на
+teacher-label і feasible-neighbor шар, який показує, де наступний DT/LAVA
+об'єктив має уникати tail-risk perturbation schedules.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -798,6 +820,9 @@ rows:
 - `data/research_runs/week3_poland_lag24_feature_audit_rolling_gate/` -
   Poland lag-24 feature-consumption audit and rolling comparison versus frozen
   Ukrainian-only V2+; status `positive_not_promoted`;
+- `docs/technical/DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md` -
+  V2+-anchored teacher-label and feasible-neighbor bridge that prepares DT/LAVA
+  without promoting raw hourly actions;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

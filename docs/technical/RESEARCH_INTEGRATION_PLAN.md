@@ -40,16 +40,17 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
    - Add Decision-Focused Learning only after the benchmark has stable real-data evidence.
    - Evaluate DFL by regret and net value against the same oracle/baseline protocol.
 
-6. **Poland-enhanced candidate-value bridge before DT/LAVA**
+6. **V2+-anchored LAVA teacher-label bridge before raw-action DT**
    - Treat frozen Ukrainian-only V2+ as the comparator until a stronger
      candidate beats it under the same strict LP/oracle gate.
-   - Repair lag-24 Poland feature nulls with prior-safe neutral values, then
-     add causal context features such as PL-UA spread dynamics, peak/trough
-     disagreement, and morning/evening block regimes.
-   - Train a small tabular candidate-value/ranking model over feasible schedule
-     candidates before attempting another DT/LAVA run. The model may use
-     train/prior labels only and must fall back to V2+ when prior evidence is
-     weak.
+   - Keep the Poland ranker result as negative evidence: Poland features work
+     technically, but the simple ranker overreached on risky schedules.
+   - Build teacher labels and feasible schedule-neighbor candidates first:
+     V2+ fallback, strict fallback, Poland/TFT near-miss schedules, and
+     train-only oracle-neighborhood diagnostics.
+   - Train a conservative candidate-level LAVA scorer before attempting another
+     DT run. The model may use train/prior labels only and must fall back to V2+
+     when prior evidence is weak.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 
@@ -2575,6 +2576,42 @@ for the next attempt. It records a receipt, runs the exact asset selection,
 copies the Dagster-stored ablation frame, and exports the local packet. This
 keeps the next token-backed source sample auditable without manual Docker copy
 or free-form log inspection.
+
+## V2+-Anchored LAVA Schedule-Neighbor Bridge
+
+The Poland ranker result changed the next DT/LAVA step. It is not enough to
+train another small ranker, and it is too early to train a raw hourly-action DT.
+The new bridge adds teacher labels and feasible schedule-neighbor candidates
+around the current strongest evidence:
+
+- `dfl_v2_plus_schedule_neighbor_teacher_label_frame` classifies current rows
+  as `v2_plus_best`, `poland_safe_win`, `poland_tail_risk_loss`,
+  `selector_overreach`, or train-only `oracle_only_train_diagnostic`.
+- `dfl_lava_schedule_neighbor_candidate_frame` combines frozen V2+, strict
+  fallback, Poland/TFT near-miss schedules, and train-only oracle-neighborhood
+  diagnostics.
+- `dfl_lava_candidate_value_scorer_frame` trains a conservative prior-only
+  scorer over full schedule candidates.
+- `dfl_lava_candidate_value_strict_lp_benchmark_frame` compares
+  `strict_similar_day`, frozen V2+, behavior cloning, and the LAVA scorer under
+  the unchanged strict LP/oracle evaluator.
+
+This is still a research bridge. It can replace V2+ only if it beats
+`174.77` UAH mean regret, avoids median degradation against `67.30` UAH,
+passes rolling robustness before headline replacement, and keeps
+`market_execution_enabled=false`.
+
+First materialized result: Dagster run
+`30742a14-2712-4640-9ec8-1aff155f52d1` completed the four bridge assets and
+persisted `dfl_lava_candidate_value_strict_lp_benchmark`. The result is
+negative evidence: the LAVA scorer reached `501.25` UAH mean regret and
+`221.77` UAH median regret versus frozen calibrated V2+ at `174.77` /
+`67.30`. Behavior cloning matched strict at `310.58` / `198.39`. The bridge
+therefore becomes a label/audit layer for the next DT/LAVA design, not a
+replacement for V2+.
+
+Technical spec:
+[DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md](DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md).
 
 ## V2+-Anchored DFL/DT Bridge Evidence
 

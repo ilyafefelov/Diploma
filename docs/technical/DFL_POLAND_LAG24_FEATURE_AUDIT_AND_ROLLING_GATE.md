@@ -146,6 +146,18 @@ does not safely exploit the Poland near-miss. DT/LAVA should therefore use this
 label panel as failure evidence and should not imitate the same objective
 unchanged.
 
+The next implemented bridge is
+[DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE](DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md).
+It does not promote Poland. It converts the V2+/Poland/veto/ranker evidence
+into teacher-label rows, keeps feasible schedule-neighbor candidates, and
+trains a conservative candidate-level scorer before any raw-action DT attempt.
+The additive assets are:
+
+- `dfl_v2_plus_schedule_neighbor_teacher_label_frame`;
+- `dfl_lava_schedule_neighbor_candidate_frame`;
+- `dfl_lava_candidate_value_scorer_frame`;
+- `dfl_lava_candidate_value_strict_lp_benchmark_frame`.
+
 Claim boundary remains unchanged: Offline Strategy Promotion evidence only,
 `market_execution_enabled=false`, no live dispatch, no dashboard/API default
 switch, and no European rows as Ukrainian training rows.

@@ -121,11 +121,12 @@ defaults. Наприклад, перший 1h delta або ранній 24h PL-v
 отримує значення `0.0`, яке означає "ще немає prior comparison", а не
 "використати майбутній день". Додано також richer causal features:
 morning/evening block means, centered rank, peak/trough disagreement, spread
-momentum і окремі PL/UA daily spreads. Наступний selector перед DT/LAVA є
-candidate-level tabular ranker: він бачить prior context + full schedule
-features, вчиться передбачати schedule-level regret на train/prior anchors, і
-повертається до frozen V2+ fallback, якщо очікуване покращення недостатньо
-надійне.
+momentum і окремі PL/UA daily spreads. Перший candidate-level tabular ranker
+показав, що простий selector може overreach-ити на risky Poland schedules.
+Тому наступний крок перед DT/LAVA є V2+-anchored teacher-label bridge: він
+кодує `poland_safe_win`, `poland_tail_risk_loss`, `selector_overreach` і
+`v2_plus_best` labels, будує feasible schedule-neighbor candidates і
+повертається до frozen V2+ fallback, якщо prior evidence недостатньо надійний.
 
 ## 3.3. Rolling-origin протокол
 
@@ -218,6 +219,7 @@ Mandi et al. і Decision Transformer Chen et al. (джерела 5 і 8).
 | DFL forecast decision loss v1 | Навчання forecast correction за downstream decision loss замість лише forecast error | Prior-only horizon-bias correction with relaxed decision loss and strict final scoring | DFL-shaped corrected forecast rows і negative evidence | DFL-readiness evidence; current result stable but not improved over strict gate. |
 | Schedule/Value Learner V2/V2+ | Decision-aware selection між already feasible LP-scored schedules | Prior-only selector over candidate schedules; V2+ adds richer candidate families and robustness gate | Selected schedule family, strict/raw/V2/V2+ benchmark rows, mean/median regret | Основне підтверджене offline/read-model evidence; не є контролером виконання в реальному часі. |
 | Candidate-Value DFL v3/V4/V5 | Schedule-level value scoring, failure-mode redesign і point-in-time context repair | Ridge-style candidate scorer, plateau/failure audit, stronger candidate libraries, context-conditioned selector features | Candidate value scores, failure labels, context blockers, blocked/pass gate diagnostics | Дослідницький challenger; не замінює V2+, доки не перевершить його під незмінним gate. |
+| LAVA schedule-neighbor bridge | Teacher-label layer before raw-action DT | `dfl_v2_plus_schedule_neighbor_teacher_label_frame`, feasible-neighbor candidates, conservative candidate-value scorer | Safe-switch labels, feasible neighbor schedules, behavior-cloning and V2+ comparison rows | Підготовка DT/LAVA; не замінює V2+ і не є live controller, доки не пройде той самий strict gate. |
 | Decision Transformer | Return-conditioned sequence modeling for offline policy approximation | Offline trajectory dataset, policy-preview rows, V2+-anchored bridge, deterministic projection of raw action | Projected policy-preview actions, value gap, readiness flags | Future/offline policy surface; не є розгорнутим DT-control і не є market execution. |
 
 Calibration у цій роботі є окремим методологічним шаром між raw forecast і

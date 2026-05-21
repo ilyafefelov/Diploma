@@ -280,6 +280,14 @@ from smart_arbitrage.dfl.poland_lag24_candidate_value_ranker import (
     build_poland_lag24_candidate_value_ranker_frame,
     build_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame,
 )
+from smart_arbitrage.dfl.lava_schedule_neighbor_bridge import (
+    DFL_LAVA_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_lava_candidate_value_scorer_frame,
+    build_dfl_lava_candidate_value_strict_lp_benchmark_frame,
+    build_dfl_lava_schedule_neighbor_candidate_frame,
+    build_dfl_v2_plus_schedule_neighbor_teacher_label_frame,
+    evaluate_dfl_lava_candidate_value_gate,
+)
 from smart_arbitrage.strategy.official_global_panel import (
     POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
     POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
@@ -1197,6 +1205,27 @@ class DflPolandLag24CandidateValueRankerAssetConfig(dg.Config):
     )
     min_prior_mean_improvement_ratio_vs_frozen_proxy: float = 0.01
     ridge_l2: float = 1.0
+
+
+class DflLavaScheduleNeighborBridgeAssetConfig(dg.Config):
+    """V2+-anchored LAVA schedule-neighbor teacher-label bridge scope."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    baseline_source_model_name: str = FROZEN_V2_PLUS_BASELINE_MODEL_NAME
+    poland_source_model_names_csv: str = (
+        "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1,"
+        "tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1"
+    )
+    tail_risk_delta_uah: float = 150.0
+    min_prior_mean_improvement_ratio_vs_v2_plus: float = 0.05
+    min_validation_tenant_anchor_count: int = 90
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.0
+    min_mean_regret_improvement_ratio_vs_strict: float = 0.05
+    ridge_l2: float = 10.0
+    include_oracle_train_diagnostics: bool = True
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -4408,6 +4437,233 @@ def dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame(
             else 0,
             "market_execution_enabled": False,
             "scope": "dfl_poland_lag24_candidate_value_ranker_strict_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_schedule_neighbor",
+        market_venue="DAM",
+    ),
+)
+def dfl_v2_plus_schedule_neighbor_teacher_label_frame(
+    context,
+    config: DflLavaScheduleNeighborBridgeAssetConfig,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_poland_lag24_prior_tail_risk_veto_frame: pl.DataFrame,
+    dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Classify V2+/Poland evidence into prior-safe teacher labels for LAVA."""
+
+    poland_source_model_names = _forecast_model_names(
+        config.poland_source_model_names_csv
+    )
+    label_frame = build_dfl_v2_plus_schedule_neighbor_teacher_label_frame(
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        dfl_poland_lag24_prior_tail_risk_veto_frame,
+        dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        poland_source_model_names=poland_source_model_names,
+        tail_risk_delta_uah=config.tail_risk_delta_uah,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": label_frame.height,
+            "teacher_class_count": label_frame.select("teacher_class").n_unique()
+            if label_frame.height
+            else 0,
+            "teacher_classes": sorted(label_frame["teacher_class"].unique().to_list())
+            if label_frame.height
+            else [],
+            "poland_source_model_names": poland_source_model_names,
+            "scope": "dfl_v2_plus_schedule_neighbor_teacher_labels_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return label_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_schedule_neighbor",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_schedule_neighbor_candidate_frame(
+    context,
+    config: DflLavaScheduleNeighborBridgeAssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Build feasible V2+/strict/Poland schedule-neighbor candidates for LAVA."""
+
+    poland_source_model_names = _forecast_model_names(
+        config.poland_source_model_names_csv
+    )
+    candidate_frame = build_dfl_lava_schedule_neighbor_candidate_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+        dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        poland_source_model_names=poland_source_model_names,
+        include_oracle_train_diagnostics=config.include_oracle_train_diagnostics,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": candidate_frame.height,
+            "candidate_source_count": candidate_frame.select(
+                "candidate_source"
+            ).n_unique()
+            if candidate_frame.height
+            else 0,
+            "candidate_sources": sorted(
+                candidate_frame["candidate_source"].unique().to_list()
+            )
+            if candidate_frame.height
+            else [],
+            "oracle_train_diagnostic_rows": candidate_frame.filter(
+                pl.col("candidate_source") == "oracle_neighbor_train_diagnostic"
+            ).height
+            if candidate_frame.height
+            else 0,
+            "scope": "dfl_lava_schedule_neighbor_candidates_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return candidate_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_schedule_neighbor",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_candidate_value_scorer_frame(
+    context,
+    config: DflLavaScheduleNeighborBridgeAssetConfig,
+    dfl_lava_schedule_neighbor_candidate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Train a conservative prior-only schedule-neighbor scorer before DT."""
+
+    scorer_frame = build_dfl_lava_candidate_value_scorer_frame(
+        dfl_lava_schedule_neighbor_candidate_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        min_prior_mean_improvement_ratio_vs_v2_plus=(
+            config.min_prior_mean_improvement_ratio_vs_v2_plus
+        ),
+        ridge_l2=config.ridge_l2,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": scorer_frame.height,
+            "fallback_rows": scorer_frame.filter(pl.col("fallback_to_v2_plus")).height
+            if scorer_frame.height
+            else 0,
+            "selector_gate_blockers": sorted(
+                scorer_frame["selector_gate_blocker"].unique().to_list()
+            )
+            if scorer_frame.height
+            else [],
+            "scope": "dfl_lava_candidate_value_scorer_not_full_dfl",
+            "market_execution_enabled": False,
+            "not_market_execution": True,
+        },
+    )
+    return scorer_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_lava_schedule_neighbor",
+        market_venue="DAM",
+    ),
+)
+def dfl_lava_candidate_value_strict_lp_benchmark_frame(
+    context,
+    config: DflLavaScheduleNeighborBridgeAssetConfig,
+    dfl_lava_schedule_neighbor_candidate_frame: pl.DataFrame,
+    dfl_lava_candidate_value_scorer_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Strict-score LAVA schedule-neighbor scorer against frozen V2+."""
+
+    strict_frame = build_dfl_lava_candidate_value_strict_lp_benchmark_frame(
+        dfl_lava_schedule_neighbor_candidate_frame,
+        dfl_lava_candidate_value_scorer_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_lava_candidate_value_gate(
+        strict_frame,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": DFL_LAVA_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "offline_strategy_replacement_passed": gate.metrics.get(
+                "offline_strategy_replacement_passed",
+                False,
+            ),
+            "production_promote": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_lava_candidate_value_strict_lp_gate_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -10438,6 +10694,10 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_poland_lag24_candidate_value_label_panel_frame,
     dfl_poland_lag24_candidate_value_ranker_frame,
     dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame,
+    dfl_v2_plus_schedule_neighbor_teacher_label_frame,
+    dfl_lava_schedule_neighbor_candidate_frame,
+    dfl_lava_candidate_value_scorer_frame,
+    dfl_lava_candidate_value_strict_lp_benchmark_frame,
     dfl_poland_lag24_calibrated_schedule_value_learner_v2_plus_robustness_frame,
     dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame,
     dfl_poland_lag24_experimental_schedule_candidate_library_frame,
