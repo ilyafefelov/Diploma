@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import polars as pl
+import pytest
 
 from smart_arbitrage.forecasting.entsoe_neighbor_access import (
     build_entsoe_poland_lagged_feature_candidate_frame,
@@ -397,7 +398,7 @@ def test_entsoe_poland_lag24_emits_prior_safe_delta_spread_peak_trough_features(
         5422.5,
     ]
     assert lagged["entsoe_pl_lag24_delta_1h_uah_mwh"].to_list() == [
-        None,
+        0.0,
         382.5,
         427.5,
     ]
@@ -451,9 +452,9 @@ def test_entsoe_poland_lag24_emits_cross_market_spread_features() -> None:
         2372.5 / 3050.0,
     ]
     assert lagged["entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh"].to_list() == [
-        None,
-        None,
-        None,
+        0.0,
+        0.0,
+        0.0,
     ]
 
 
@@ -497,8 +498,48 @@ def test_entsoe_poland_lag24_emits_richer_prior_safe_regime_features() -> None:
     assert row["entsoe_pl_lag24_ua_spread_abs_ratio"] == abs(
         row["entsoe_pl_lag24_ua_spread_ratio"]
     )
+    assert row["entsoe_pl_lag24_morning_block_mean_uah_mwh"] == 1085.0
+    assert row["entsoe_pl_lag24_evening_block_mean_uah_mwh"] == 1195.0
+    assert row["entsoe_pl_lag24_evening_morning_spread_uah_mwh"] == 110.0
+    assert row["entsoe_pl_lag24_price_rank_centered"] == pytest.approx(
+        (5.0 / 23.0) - 0.5
+    )
+    assert row["entsoe_pl_lag24_peak_trough_span_hours"] == 23.0
+    assert row["entsoe_pl_lag24_ua_rank_disagreement"] == 0.0
+    assert row["entsoe_pl_lag24_ua_peak_hour_delta"] == 0.0
+    assert row["entsoe_pl_lag24_ua_trough_hour_delta"] == 0.0
+    assert row["entsoe_pl_lag24_ua_spread_momentum_sign"] == 0.0
     assert row["training_use_allowed"] is False
     assert row["feature_use_allowed"] is False
+
+
+def test_entsoe_poland_lag24_repairs_all_experimental_features_without_future_fill() -> None:
+    benchmark = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_001_kyiv_mall",
+                "timestamp": datetime(2026, 1, 2, hour),
+                "price_uah_mwh": 3000.0 + 25.0 * hour,
+            }
+            for hour in range(3)
+        ]
+    )
+
+    lagged = build_entsoe_poland_lagged_feature_candidate_frame(
+        benchmark,
+        _source_backed_poland_candidates(),
+        lag_hours=24,
+        prior_eur_uah_fx_rate=45.0,
+        prior_eur_uah_fx_timestamp_utc="2026-01-01T23:30:00+00:00",
+        fx_rate_source="NBUStatService EUR/UAH",
+    )
+    feature_columns = [
+        column for column in lagged.columns if column.startswith("entsoe_pl_lag24_")
+    ]
+
+    assert feature_columns
+    assert lagged.select(pl.sum_horizontal(pl.col(feature_columns).null_count())).item() == 0
+    assert lagged["coverage_status"].unique().to_list() == ["full_lagged_feature_coverage"]
 
 
 def test_nbu_fx_metadata_frame_fetches_lagged_source_dates_from_official_range() -> None:

@@ -40,6 +40,19 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
    - Add Decision-Focused Learning only after the benchmark has stable real-data evidence.
    - Evaluate DFL by regret and net value against the same oracle/baseline protocol.
 
+6. **Poland-enhanced candidate-value bridge before DT/LAVA**
+   - Treat frozen Ukrainian-only V2+ as the comparator until a stronger
+     candidate beats it under the same strict LP/oracle gate.
+   - Repair lag-24 Poland feature nulls with prior-safe neutral values, then
+     add causal context features such as PL-UA spread dynamics, peak/trough
+     disagreement, and morning/evening block regimes.
+   - Train a small tabular candidate-value/ranking model over feasible schedule
+     candidates before attempting another DT/LAVA run. The model may use
+     train/prior labels only and must fall back to V2+ when prior evidence is
+     weak.
+   - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
+     an exogenous feature lane with `market_execution_enabled=false`.
+
 ## Current Regulatory And Cost Anchors
 
 These values should become effective-dated assumptions rather than timeless constants:

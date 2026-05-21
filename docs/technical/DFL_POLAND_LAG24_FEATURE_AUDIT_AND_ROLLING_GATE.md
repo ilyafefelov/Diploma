@@ -106,13 +106,45 @@ passes the same strict LP/oracle promotion rule.
 
 ## Next Work
 
-1. Repair null coverage for the blocked PL-vs-UA spread features.
-2. Keep richer causal features: spread, spread delta, peak/trough disagreement,
-   volatility regime, and morning/evening block context.
-3. Add a simple tabular candidate-value model over schedule candidates before
-   starting another DT run.
-4. Start DT/LAVA only after better teacher/value labels exist from the
-   V2+/Poland/TFT candidate layer.
+The next implementation branch has started and is intentionally placed before
+DT/LAVA:
+
+1. Repair the null-blocked Poland columns with prior-safe neutral values instead
+   of future-filled values. Missing first deltas and missing early PL-vs-UA
+   spread deltas now become explicit `0.0` neutral context, so downstream
+   feature-contract tests can distinguish "no prior comparison yet" from a
+   dropped feature.
+2. Add richer causal Poland context: morning/evening block means, evening-vs-
+   morning spread, centered daily rank, PL peak/trough span, PL-vs-UA
+   rank/peak/trough disagreement, spread momentum sign, and separate PL/UA
+   daily spreads. These remain lag-24, point-in-time exogenous columns.
+3. Add a small tabular candidate-value/ranking model over feasible schedule
+   candidates. It trains on train/prior anchors, uses schedule features plus
+   repaired Poland context, predicts schedule-level regret, and falls back to
+   frozen V2+ unless prior evidence is strong.
+4. Start DT/LAVA only after this candidate-value layer produces better teacher
+   labels or explains why the Poland/TFT opportunity remains unsafe to exploit.
+
+Additive assets for this branch:
+
+- `dfl_poland_lag24_candidate_value_label_panel_frame`;
+- `dfl_poland_lag24_candidate_value_ranker_frame`;
+- `dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame`.
+
+Materialized result for the first ranker pass:
+
+| Row | Final rows | Mean regret, UAH | Median regret, UAH | Status |
+|---|---:|---:|---:|---|
+| Frozen Ukrainian-only V2+ reference | `90` | `174.77` | `67.30` | headline comparator |
+| Poland lag-24 candidate-value ranker, calibrated NBEATSx source | `90` | `334.02` | `223.15` | negative evidence |
+| Poland lag-24 candidate-value ranker, calibrated TFT source | `90` | `445.75` | `358.19` | negative evidence |
+
+The ranker used train/prior rows and did not use final-holdout actuals for
+feature construction, but it selected Poland candidates too aggressively. This
+is useful evidence: a naive tabular value ranker over the current feature space
+does not safely exploit the Poland near-miss. DT/LAVA should therefore use this
+label panel as failure evidence and should not imitate the same objective
+unchanged.
 
 Claim boundary remains unchanged: Offline Strategy Promotion evidence only,
 `market_execution_enabled=false`, no live dispatch, no dashboard/API default

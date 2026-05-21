@@ -115,6 +115,18 @@ contract, має variance, не губиться scaler route, має full times
 недостатню temporal availability, вона не може бути підставою для promotion
 claim навіть тоді, коли latest holdout виглядає позитивно.
 
+Після near-miss Poland result методологія була уточнена: null-blocked features
+не заповнюються майбутніми значеннями, а ремонтуються prior-safe neutral
+defaults. Наприклад, перший 1h delta або ранній 24h PL-vs-UA spread delta
+отримує значення `0.0`, яке означає "ще немає prior comparison", а не
+"використати майбутній день". Додано також richer causal features:
+morning/evening block means, centered rank, peak/trough disagreement, spread
+momentum і окремі PL/UA daily spreads. Наступний selector перед DT/LAVA є
+candidate-level tabular ranker: він бачить prior context + full schedule
+features, вчиться передбачати schedule-level regret на train/prior anchors, і
+повертається до frozen V2+ fallback, якщо очікуване покращення недостатньо
+надійне.
+
 ## 3.3. Rolling-origin протокол
 
 Оцінювання виконується як temporal rolling-origin protocol. Для кожного anchor

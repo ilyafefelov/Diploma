@@ -50,6 +50,17 @@ POLAND_LAG24_EXPERIMENTAL_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "entsoe_pl_lag24_ua_spread_rolling_24h_mean_uah_mwh",
     "entsoe_pl_lag24_ua_spread_vs_rolling_24h_mean_uah_mwh",
     "entsoe_pl_lag24_ua_spread_abs_ratio",
+    "entsoe_pl_lag24_morning_block_mean_uah_mwh",
+    "entsoe_pl_lag24_evening_block_mean_uah_mwh",
+    "entsoe_pl_lag24_evening_morning_spread_uah_mwh",
+    "entsoe_pl_lag24_price_rank_centered",
+    "entsoe_pl_lag24_peak_trough_span_hours",
+    "entsoe_pl_lag24_ua_rank_disagreement",
+    "entsoe_pl_lag24_ua_peak_hour_delta",
+    "entsoe_pl_lag24_ua_trough_hour_delta",
+    "entsoe_pl_lag24_ua_spread_momentum_sign",
+    "entsoe_pl_lag24_pl_daily_spread_uah_mwh",
+    "entsoe_pl_lag24_ua_daily_spread_uah_mwh",
 )
 
 KNOWN_FUTURE_FEATURE_COLUMNS: Final[tuple[str, ...]] = (

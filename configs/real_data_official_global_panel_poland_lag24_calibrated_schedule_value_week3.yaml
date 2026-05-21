@@ -135,3 +135,9 @@ ops:
     config:
       min_mean_regret_improvement_ratio_vs_frozen_v2_plus: 0.05
       min_passing_windows: 3
+  dfl_poland_lag24_candidate_value_ranker_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "nbeatsx_official_global_panel_poland_lag24_horizon_calibrated_v1,tft_official_global_panel_poland_lag24_horizon_quantile_calibrated_v1"
+      min_prior_mean_improvement_ratio_vs_frozen_proxy: 0.01
+      ridge_l2: 1.0

@@ -1396,6 +1396,12 @@ def _prior_safe_lagged_poland_features(
         peak_hour = None
         trough_hour = None
         rank = None
+    morning_block_mean = _mean_or_none(
+        [value for timestamp, value in daily_prices if 7 <= timestamp.hour <= 10]
+    )
+    evening_block_mean = _mean_or_none(
+        [value for timestamp, value in daily_prices if 18 <= timestamp.hour <= 21]
+    )
     rolling_24h_values = _rolling_source_prices_uah(
         source_timestamp,
         window_hours=24,
@@ -1412,47 +1418,70 @@ def _prior_safe_lagged_poland_features(
     )
     rolling_24h_mean = _mean_or_none(rolling_24h_values)
     return {
-        "entsoe_pl_lag24_delta_1h_uah_mwh": _delta(price_uah, previous_1h_uah),
-        "entsoe_pl_lag24_delta_24h_uah_mwh": _delta(price_uah, previous_24h_uah),
-        "entsoe_pl_lag24_daily_spread_uah_mwh": spread,
-        "entsoe_pl_lag24_daily_price_rank": rank,
-        "entsoe_pl_lag24_daily_peak_hour_utc": peak_hour,
-        "entsoe_pl_lag24_daily_trough_hour_utc": trough_hour,
-        "entsoe_pl_lag24_rolling_24h_mean_uah_mwh": rolling_24h_mean,
-        "entsoe_pl_lag24_rolling_24h_min_uah_mwh": _min_or_none(
-            rolling_24h_values
+        "entsoe_pl_lag24_delta_1h_uah_mwh": _neutral_float(
+            _delta(price_uah, previous_1h_uah)
         ),
-        "entsoe_pl_lag24_rolling_24h_max_uah_mwh": _max_or_none(
-            rolling_24h_values
+        "entsoe_pl_lag24_delta_24h_uah_mwh": _neutral_float(
+            _delta(price_uah, previous_24h_uah)
         ),
-        "entsoe_pl_lag24_rolling_24h_spread_uah_mwh": _spread_or_none(
-            rolling_24h_values
+        "entsoe_pl_lag24_daily_spread_uah_mwh": _neutral_float(spread),
+        "entsoe_pl_lag24_daily_price_rank": _neutral_float(rank),
+        "entsoe_pl_lag24_daily_peak_hour_utc": _neutral_float(peak_hour),
+        "entsoe_pl_lag24_daily_trough_hour_utc": _neutral_float(trough_hour),
+        "entsoe_pl_lag24_rolling_24h_mean_uah_mwh": _neutral_float(
+            rolling_24h_mean,
+            fallback=price_uah,
         ),
-        "entsoe_pl_lag24_rolling_168h_mean_uah_mwh": _mean_or_none(
-            rolling_168h_values
+        "entsoe_pl_lag24_rolling_24h_min_uah_mwh": _neutral_float(
+            _min_or_none(rolling_24h_values),
+            fallback=price_uah,
         ),
-        "entsoe_pl_lag24_rolling_168h_spread_uah_mwh": _spread_or_none(
-            rolling_168h_values
+        "entsoe_pl_lag24_rolling_24h_max_uah_mwh": _neutral_float(
+            _max_or_none(rolling_24h_values),
+            fallback=price_uah,
         ),
-        "entsoe_pl_lag24_price_vs_rolling_24h_mean_uah_mwh": _delta(
+        "entsoe_pl_lag24_rolling_24h_spread_uah_mwh": _neutral_float(
+            _spread_or_none(rolling_24h_values)
+        ),
+        "entsoe_pl_lag24_rolling_168h_mean_uah_mwh": _neutral_float(
+            _mean_or_none(rolling_168h_values),
+            fallback=price_uah,
+        ),
+        "entsoe_pl_lag24_rolling_168h_spread_uah_mwh": _neutral_float(
+            _spread_or_none(rolling_168h_values)
+        ),
+        "entsoe_pl_lag24_price_vs_rolling_24h_mean_uah_mwh": _neutral_float(_delta(
             price_uah,
             rolling_24h_mean,
-        ),
-        "entsoe_pl_lag24_peak_distance_hours": _hour_distance(
+        )),
+        "entsoe_pl_lag24_peak_distance_hours": _neutral_float(_hour_distance(
             source_timestamp.hour,
             peak_hour,
-        ),
-        "entsoe_pl_lag24_trough_distance_hours": _hour_distance(
+        )),
+        "entsoe_pl_lag24_trough_distance_hours": _neutral_float(_hour_distance(
             source_timestamp.hour,
             trough_hour,
-        ),
-        "entsoe_pl_lag24_is_daily_peak_hour": _hour_indicator(
+        )),
+        "entsoe_pl_lag24_is_daily_peak_hour": _neutral_float(_hour_indicator(
             source_timestamp.hour,
             peak_hour,
-        ),
-        "entsoe_pl_lag24_is_daily_trough_hour": _hour_indicator(
+        )),
+        "entsoe_pl_lag24_is_daily_trough_hour": _neutral_float(_hour_indicator(
             source_timestamp.hour,
             trough_hour,
+        )),
+        "entsoe_pl_lag24_morning_block_mean_uah_mwh": _neutral_float(
+            morning_block_mean
+        ),
+        "entsoe_pl_lag24_evening_block_mean_uah_mwh": _neutral_float(
+            evening_block_mean
+        ),
+        "entsoe_pl_lag24_evening_morning_spread_uah_mwh": _neutral_float(
+            _delta(evening_block_mean, morning_block_mean)
+        ),
+        "entsoe_pl_lag24_price_rank_centered": _neutral_float(rank) - 0.5,
+        "entsoe_pl_lag24_peak_trough_span_hours": _neutral_float(
+            _hour_distance(peak_hour, trough_hour)
         ),
     }
 
@@ -1487,27 +1516,96 @@ def _prior_safe_cross_market_features(
         window_hours=24,
     )
     rolling_spread_mean = _mean_or_none(rolling_spreads)
+    poland_daily_prices = _daily_source_prices_uah(
+        source_timestamp,
+        source_candidates=source_candidates,
+        effective_fx_rate=effective_fx_rate,
+        currency_ready=currency_ready,
+    )
+    ukrainian_daily_prices = _daily_ukrainian_prices(
+        source_timestamp,
+        ukrainian_price_by_timestamp=ukrainian_price_by_timestamp,
+    )
+    poland_values = [value for _, value in poland_daily_prices]
+    ukrainian_values = [value for _, value in ukrainian_daily_prices]
+    poland_peak_hour, poland_trough_hour, poland_rank = _daily_extrema_features(
+        source_timestamp,
+        price_uah,
+        poland_daily_prices,
+    )
+    ua_peak_hour, ua_trough_hour, ua_rank = _daily_extrema_features(
+        source_timestamp,
+        ukrainian_lagged_price,
+        ukrainian_daily_prices,
+    )
+    spread_delta_24h = _delta(spread, previous_spread)
     return {
-        "entsoe_pl_lag24_ua_spread_uah_mwh": spread,
-        "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh": _delta(
-            spread,
-            previous_spread,
+        "entsoe_pl_lag24_ua_spread_uah_mwh": _neutral_float(spread),
+        "entsoe_pl_lag24_ua_spread_delta_24h_uah_mwh": _neutral_float(
+            spread_delta_24h
         ),
-        "entsoe_pl_lag24_ua_spread_ratio": _safe_ratio(
+        "entsoe_pl_lag24_ua_spread_ratio": _neutral_float(_safe_ratio(
             spread,
             ukrainian_lagged_price,
-        ),
+        )),
         "entsoe_pl_lag24_ua_spread_rolling_24h_mean_uah_mwh": (
-            rolling_spread_mean
+            _neutral_float(rolling_spread_mean, fallback=spread)
         ),
-        "entsoe_pl_lag24_ua_spread_vs_rolling_24h_mean_uah_mwh": _delta(
+        "entsoe_pl_lag24_ua_spread_vs_rolling_24h_mean_uah_mwh": _neutral_float(_delta(
             spread,
             rolling_spread_mean,
-        ),
-        "entsoe_pl_lag24_ua_spread_abs_ratio": _abs_or_none(
+        )),
+        "entsoe_pl_lag24_ua_spread_abs_ratio": _neutral_float(_abs_or_none(
             _safe_ratio(spread, ukrainian_lagged_price)
+        )),
+        "entsoe_pl_lag24_ua_rank_disagreement": _neutral_float(
+            _delta(poland_rank, ua_rank)
+        ),
+        "entsoe_pl_lag24_ua_peak_hour_delta": _neutral_float(
+            _hour_distance(poland_peak_hour, ua_peak_hour)
+        ),
+        "entsoe_pl_lag24_ua_trough_hour_delta": _neutral_float(
+            _hour_distance(poland_trough_hour, ua_trough_hour)
+        ),
+        "entsoe_pl_lag24_ua_spread_momentum_sign": _sign_or_zero(
+            spread_delta_24h
+        ),
+        "entsoe_pl_lag24_pl_daily_spread_uah_mwh": _neutral_float(
+            _spread_or_none(poland_values)
+        ),
+        "entsoe_pl_lag24_ua_daily_spread_uah_mwh": _neutral_float(
+            _spread_or_none(ukrainian_values)
         ),
     }
+
+
+def _daily_ukrainian_prices(
+    source_timestamp: datetime,
+    *,
+    ukrainian_price_by_timestamp: dict[datetime, float],
+) -> list[tuple[datetime, float]]:
+    return [
+        (timestamp, float(value))
+        for timestamp, value in sorted(ukrainian_price_by_timestamp.items())
+        if timestamp.date() == source_timestamp.date()
+    ]
+
+
+def _daily_extrema_features(
+    source_timestamp: datetime,
+    current_value: float | None,
+    daily_prices: list[tuple[datetime, float]],
+) -> tuple[int | None, int | None, float | None]:
+    values = [value for _, value in daily_prices]
+    if not values:
+        return None, None, None
+    peak_timestamp, _ = max(daily_prices, key=lambda item: (item[1], -item[0].hour))
+    trough_timestamp, _ = min(daily_prices, key=lambda item: (item[1], item[0].hour))
+    return (
+        peak_timestamp.hour,
+        trough_timestamp.hour,
+        _price_rank(current_value, values),
+    )
 
 
 def _rolling_source_prices_uah(
@@ -1668,8 +1766,8 @@ def _spread_or_none(values: list[float]) -> float | None:
     return max(values) - min(values)
 
 
-def _hour_distance(current_hour: int, target_hour: int | None) -> float | None:
-    if target_hour is None:
+def _hour_distance(current_hour: int | None, target_hour: int | None) -> float | None:
+    if current_hour is None or target_hour is None:
         return None
     return float(abs(current_hour - target_hour))
 
@@ -1682,6 +1780,20 @@ def _hour_indicator(current_hour: int, target_hour: int | None) -> float | None:
 
 def _abs_or_none(value: float | None) -> float | None:
     return abs(value) if value is not None else None
+
+
+def _neutral_float(value: float | int | None, *, fallback: float | None = None) -> float:
+    if value is not None:
+        return float(value)
+    if fallback is not None:
+        return float(fallback)
+    return 0.0
+
+
+def _sign_or_zero(value: float | None) -> float:
+    if value is None or abs(value) <= 1e-9:
+        return 0.0
+    return 1.0 if value > 0.0 else -1.0
 
 
 def _lagged_feature_candidate_row(

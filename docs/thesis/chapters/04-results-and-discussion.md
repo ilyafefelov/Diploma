@@ -468,6 +468,26 @@ schedules у `34 / 90` rows, mean regret зменшився з `174.77` до `16
 а Poland prior-veto стає найперспективнішим next candidate для ширшого
 rolling-window rerun.
 
+Після rolling-gate перевірки наступний ML крок не переходить одразу до
+DT/LAVA. Спочатку було додано ремонт feature contract і tabular
+candidate-value branch. Сім null-blocked Poland-derived feature gaps
+перетворюються на explicit prior-safe neutral context, richer lag-24 causal
+features додають PL-UA spread/rank/peak-trough disagreement, а новий ranker
+оцінює повні feasible schedules на рівні candidate value. Це ще не новий
+результат promotion: цей branch має бути матеріалізований і порівняний із
+frozen Ukrainian-only V2+ під тим самим strict LP/oracle gate.
+
+Перший materialized результат цього branch є негативним, але корисним. У
+`dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame` frozen
+Ukrainian-only V2+ reference має `174.77` UAH mean regret і `67.30` UAH median
+regret. Poland lag-24 candidate-value ranker для calibrated NBEATSx source дав
+`334.02` / `223.15` UAH, а для calibrated TFT source - `445.75` / `358.19` UAH.
+Отже, простий tabular ranker не вирішив tail-risk проблему: він навчився
+вибирати Poland candidates занадто агресивно і програв V2+. Це не послаблює
+позитивний Poland near-miss, але показує, що наступний DT/LAVA branch не має
+імітувати цей самий candidate-ranker objective без сильнішого value label,
+rolling safety condition або explicit V2+ fallback gate.
+
 Після цього також зафіксовано compact DFL/DT bridge result. У ньому residual
 DFL, tiny offline Decision Transformer, behavior cloning і fallback
 порівнювалися не лише зі `strict_similar_day`, а з поточним українським V2+
