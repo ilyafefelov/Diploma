@@ -10,6 +10,7 @@ from smart_arbitrage.dfl.schedule_value_learner import (
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus import (
     DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND,
     build_dfl_schedule_candidate_library_v2_plus_frame,
+    build_dfl_schedule_value_learner_v2_plus_oracle_gap_audit_frame,
     build_dfl_schedule_value_regret_decomposition_frame,
     build_dfl_schedule_value_learner_v2_plus_frame,
     build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
@@ -141,6 +142,87 @@ def test_v2_plus_selector_falls_back_to_v2_without_prior_confidence() -> None:
 
     assert set(v2_plus_model["fallback_to_v2"].to_list()) == {True}
     assert set(v2_plus_model["selected_final_mean_regret_uah"].to_list()) == {200.0}
+
+
+def test_v2_plus_final_selection_does_not_depend_on_final_regret_tie_breaker() -> None:
+    base_library = _candidate_library_with_equal_prior_v2_plus_candidates(
+        rank_final_regret=180.0,
+        robust_final_regret=120.0,
+    )
+    mutated_library = _candidate_library_with_equal_prior_v2_plus_candidates(
+        rank_final_regret=120.0,
+        robust_final_regret=180.0,
+    )
+    base_v2_model = build_dfl_schedule_value_learner_v2_frame(
+        base_library,
+        tenant_ids=TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+    )
+    mutated_v2_model = build_dfl_schedule_value_learner_v2_frame(
+        mutated_library,
+        tenant_ids=TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+    )
+
+    base_v2_plus_model = build_dfl_schedule_value_learner_v2_plus_frame(
+        base_library,
+        base_v2_model,
+        tenant_ids=TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+    )
+    mutated_v2_plus_model = build_dfl_schedule_value_learner_v2_plus_frame(
+        mutated_library,
+        mutated_v2_model,
+        tenant_ids=TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+    )
+
+    assert base_v2_plus_model.select("selected_final_family_counts").to_dicts() == (
+        mutated_v2_plus_model.select("selected_final_family_counts").to_dicts()
+    )
+    assert set(base_v2_plus_model["fallback_to_v2"].to_list()) == {False}
+
+
+def test_v2_plus_oracle_gap_audit_finds_better_candidate_missed_by_selector() -> None:
+    library = _candidate_library_with_equal_prior_v2_plus_candidates(
+        rank_final_regret=180.0,
+        robust_final_regret=120.0,
+    )
+    v2_model = build_dfl_schedule_value_learner_v2_frame(
+        library,
+        tenant_ids=TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+    )
+    v2_plus_model = build_dfl_schedule_value_learner_v2_plus_frame(
+        library,
+        v2_model,
+        tenant_ids=TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+    )
+    strict_frame = build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
+        library,
+        v2_plus_model,
+        v2_model,
+        generated_at=GENERATED_AT,
+    )
+
+    audit = build_dfl_schedule_value_learner_v2_plus_oracle_gap_audit_frame(
+        library,
+        strict_frame,
+    )
+
+    assert audit.height == len(TENANTS) * len(SOURCE_MODELS) * 18
+    assert set(audit["oracle_gap_class"].to_list()) == {
+        "candidate_available_but_not_selected"
+    }
+    assert set(audit["selected_candidate_family"].to_list()) == {
+        "rank_extrema_perturbation_v2_plus"
+    }
+    assert set(audit["best_candidate_family"].to_list()) == {
+        "robust_spread_penalty_v2_plus"
+    }
+    assert set(audit["oracle_gap_to_best_candidate_uah"].to_list()) == {60.0}
+    assert set(audit["not_market_execution"].to_list()) == {True}
 
 
 def test_v2_plus_strict_benchmark_gate_passes_only_when_beating_v2_and_strict() -> None:
@@ -288,6 +370,102 @@ def _candidate_library_from_regrets(
                             ),
                             forecast_prices=(700.0, 7000.0),
                             prior_family_mean_regret=v2_plus_train_regret,
+                        ),
+                    ]
+                )
+    return pl.DataFrame(rows)
+
+
+def _candidate_library_with_equal_prior_v2_plus_candidates(
+    *,
+    rank_final_regret: float,
+    robust_final_regret: float,
+) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    train_anchor_count = 3
+    final_anchor_count = 18
+    for tenant_id in TENANTS:
+        for source_model_name in SOURCE_MODELS:
+            for anchor_index in range(train_anchor_count + final_anchor_count):
+                anchor = FIRST_ANCHOR + timedelta(days=anchor_index)
+                split_name = (
+                    "final_holdout"
+                    if anchor_index >= train_anchor_count
+                    else "train_selection"
+                )
+                rows.extend(
+                    [
+                        _candidate_row(
+                            tenant_id=tenant_id,
+                            source_model_name=source_model_name,
+                            candidate_family="strict_control",
+                            candidate_model_name="strict_similar_day",
+                            anchor=anchor,
+                            split_name=split_name,
+                            regret=300.0,
+                            forecast_prices=(1000.0, 5000.0),
+                            prior_family_mean_regret=300.0,
+                        ),
+                        _candidate_row(
+                            tenant_id=tenant_id,
+                            source_model_name=source_model_name,
+                            candidate_family="raw_source",
+                            candidate_model_name=source_model_name,
+                            anchor=anchor,
+                            split_name=split_name,
+                            regret=700.0,
+                            forecast_prices=(5000.0, 1000.0),
+                            prior_family_mean_regret=700.0,
+                        ),
+                        _candidate_row(
+                            tenant_id=tenant_id,
+                            source_model_name=source_model_name,
+                            candidate_family="strict_prior_residual_v2",
+                            candidate_model_name=(
+                                "dfl_schedule_library_v2_prior_residual_"
+                                f"{source_model_name}"
+                            ),
+                            anchor=anchor,
+                            split_name=split_name,
+                            regret=220.0 if split_name == "final_holdout" else 80.0,
+                            forecast_prices=(900.0, 6500.0),
+                            prior_family_mean_regret=80.0,
+                        ),
+                        _candidate_row(
+                            tenant_id=tenant_id,
+                            source_model_name=source_model_name,
+                            candidate_family="rank_extrema_perturbation_v2_plus",
+                            candidate_model_name=(
+                                "dfl_schedule_library_v2_plus_rank_extrema_"
+                                f"{source_model_name}"
+                            ),
+                            anchor=anchor,
+                            split_name=split_name,
+                            regret=(
+                                rank_final_regret
+                                if split_name == "final_holdout"
+                                else 30.0
+                            ),
+                            forecast_prices=(700.0, 7000.0),
+                            prior_family_mean_regret=30.0,
+                        ),
+                        _candidate_row(
+                            tenant_id=tenant_id,
+                            source_model_name=source_model_name,
+                            candidate_family="robust_spread_penalty_v2_plus",
+                            candidate_model_name=(
+                                "dfl_schedule_library_v2_plus_robust_spread_"
+                                f"{source_model_name}"
+                            ),
+                            anchor=anchor,
+                            split_name=split_name,
+                            regret=(
+                                robust_final_regret
+                                if split_name == "final_holdout"
+                                else 30.0
+                            ),
+                            forecast_prices=(750.0, 6900.0),
+                            prior_family_mean_regret=30.0,
                         ),
                     ]
                 )

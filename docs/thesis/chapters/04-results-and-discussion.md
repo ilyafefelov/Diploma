@@ -684,6 +684,27 @@ V5 повторив V2+ mean regret `193.36` UAH і median regret `68.89` UAH. �
 tenant/source rows активували V2+ fallback, тому improvement проти V2+ дорівнює
 `0.00%`.
 
+Після цього було виконано targeted leakage audit для самого V2+ comparator.
+Підозрілий шлях був простий: якщо два candidates мали однакове prior-family
+evidence, final selection не повинен використовувати final-holdout `regret_uah`
+як tie-breaker. Код було виправлено так, щоб tie-break залежав лише від
+prior-family regret і стабільного candidate identity; regression test змінює
+final regret labels і підтверджує, що selected candidate не змінюється.
+Повторний strict LP/oracle run `8f93c0fe-d954-4690-84bf-e3c3f0ed8aa6` залишив
+headline result незмінним: calibrated V2+ `174.77` UAH mean regret і `67.30`
+UAH median regret. Це означає, що поточне плато не пояснюється цим leakage
+bug-ом; V2+ лишається чесним comparator-ом для наступних challenger моделей.
+
+Новий oracle-gap audit `b72ca4a0-3892-4291-9bf7-037f04837d7a` уточнив, де саме
+залишається value. Для calibrated source V2+ already selected the best available
+candidate на `71 / 90` final rows, а на `19 / 90` існував кращий candidate, який
+selector не міг безпечно обрати за prior evidence. Для raw source відповідні
+числа становлять `59 / 90` і `31 / 90`. Це пояснює, чому просте додавання
+Poland/TFT schedules або маленький DT не дали стабільного прориву: існують
+локальні win-candidates, але без prior-safe signal вони перетворюються на
+tail-risk losses. Наступний DT/LAVA branch має навчатися safe-switch /
+candidate-index targets з V2+ fallback, а не імітувати raw hourly actions.
+
 Цей результат уточнює висновок про плато. Поточний point-in-time context panel
 показав `3,650` rows з `missing_weather_load_context`, `3,650` rows з
 `missing_calendar_event_context` і `3,650` rows з `missing_publication_time`.

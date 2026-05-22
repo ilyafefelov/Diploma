@@ -30,6 +30,9 @@ DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_CLAIM_SCOPE: Final[str] = (
 DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_CLAIM_SCOPE: Final[str] = (
     "dfl_schedule_value_learner_v2_plus_strict_lp_gate_not_full_dfl"
 )
+DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_ORACLE_GAP_AUDIT_CLAIM_SCOPE: Final[str] = (
+    "dfl_schedule_value_learner_v2_plus_oracle_gap_audit_not_full_dfl"
+)
 DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_schedule_value_learner_v2_plus_strict_lp_benchmark"
 )
@@ -112,6 +115,22 @@ REQUIRED_STRICT_COLUMNS: Final[frozenset[str]] = frozenset(
         "regret_uah",
         "selection_role",
         "evaluation_payload",
+    }
+)
+REQUIRED_ORACLE_GAP_AUDIT_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "selected_candidate_family",
+        "best_candidate_family",
+        "selected_regret_uah",
+        "best_candidate_regret_uah",
+        "oracle_gap_to_best_candidate_uah",
+        "oracle_gap_class",
+        "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
     }
 )
 
@@ -438,11 +457,10 @@ def build_dfl_schedule_value_learner_v2_plus_frame(
                     "selected_weight_profile_name": DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_PROFILE_NAME,
                     "selected_feature_names": [
                         "prior_family_mean_regret_uah",
-                        "regret_uah",
                         "candidate_family",
                     ],
                     "selected_feature_weights": {
-                        "selection_rule": "lowest_prior_regret_candidate_with_v2_fallback",
+                        "selection_rule": "lowest_prior_family_regret_candidate_with_v2_fallback",
                         "min_prior_mean_improvement_ratio_vs_v2": (
                             min_prior_mean_improvement_ratio_vs_v2
                         ),
@@ -584,6 +602,116 @@ def build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
         return pl.DataFrame()
     return pl.DataFrame(rows).sort(
         ["tenant_id", "source_model_name", "anchor_timestamp", "selection_role"]
+    )
+
+
+def build_dfl_schedule_value_learner_v2_plus_oracle_gap_audit_frame(
+    schedule_candidate_library_frame: pl.DataFrame,
+    strict_frame: pl.DataFrame,
+    *,
+    source_model_names: tuple[str, ...] | None = None,
+) -> pl.DataFrame:
+    """Diagnose whether the candidate library contains schedules better than V2+.
+
+    Realized final regrets are used only as audit labels. The selected V2+ rows
+    are already fixed by the prior-only selector before this diagnostic runs.
+    """
+
+    v2._validate_library_frame(schedule_candidate_library_frame)
+    missing_columns = sorted(REQUIRED_STRICT_COLUMNS.difference(strict_frame.columns))
+    if missing_columns:
+        raise ValueError(
+            "schedule/value learner v2+ strict frame is missing required "
+            f"columns: {missing_columns}"
+        )
+    selected_rows = [
+        row
+        for row in strict_frame.iter_rows(named=True)
+        if str(row["selection_role"]) == "schedule_value_learner_v2_plus"
+    ]
+    if source_model_names is not None:
+        source_set = set(source_model_names)
+        selected_rows = [
+            row for row in selected_rows if str(row["source_model_name"]) in source_set
+        ]
+    if not selected_rows:
+        return pl.DataFrame()
+    library_by_key = _rows_by_tenant_source_anchor(schedule_candidate_library_frame)
+    rows: list[dict[str, Any]] = []
+    for selected_row in sorted(
+        selected_rows,
+        key=lambda row: (
+            str(row["source_model_name"]),
+            str(row["tenant_id"]),
+            v2._datetime_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+        ),
+    ):
+        key = (
+            str(selected_row["tenant_id"]),
+            str(selected_row["source_model_name"]),
+            v2._datetime_value(
+                selected_row["anchor_timestamp"], field_name="anchor_timestamp"
+            ),
+        )
+        candidate_rows = library_by_key.get(key)
+        if not candidate_rows:
+            raise ValueError(
+                "missing V2+ candidate rows for "
+                f"{key[0]}/{key[1]}/{key[2].isoformat()}"
+            )
+        payload = v2._payload(selected_row)
+        selected_family = str(payload.get("selector_row_candidate_family", ""))
+        selected_model = str(payload.get("selector_row_candidate_model_name", ""))
+        selected_regret = float(selected_row["regret_uah"])
+        best_row = min(
+            candidate_rows,
+            key=lambda row: (
+                float(row["regret_uah"]),
+                v2._family_sort_index(str(row["candidate_family"])),
+                str(row["candidate_model_name"]),
+            ),
+        )
+        best_regret = float(best_row["regret_uah"])
+        oracle_gap = max(0.0, selected_regret - best_regret)
+        rows.append(
+            {
+                "tenant_id": key[0],
+                "source_model_name": key[1],
+                "anchor_timestamp": key[2],
+                "split_name": "final_holdout",
+                "selected_candidate_family": selected_family,
+                "selected_candidate_model_name": selected_model,
+                "selected_regret_uah": selected_regret,
+                "best_candidate_family": str(best_row["candidate_family"]),
+                "best_candidate_model_name": str(best_row["candidate_model_name"]),
+                "best_candidate_regret_uah": best_regret,
+                "oracle_gap_to_best_candidate_uah": oracle_gap,
+                "oracle_gap_class": _v2_plus_oracle_gap_class(
+                    selected_family=selected_family,
+                    selected_model=selected_model,
+                    selected_regret=selected_regret,
+                    best_row=best_row,
+                    best_regret=best_regret,
+                ),
+                "candidate_family_count": len(
+                    {str(row["candidate_family"]) for row in candidate_rows}
+                ),
+                "fallback_to_v2": bool(payload.get("fallback_to_v2", False)),
+                "selected_feature_names": list(payload.get("selected_feature_names", [])),
+                "selection_rule": str(
+                    dict(payload.get("selected_feature_weights", {})).get(
+                        "selection_rule", ""
+                    )
+                ),
+                "claim_scope": (
+                    DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_ORACLE_GAP_AUDIT_CLAIM_SCOPE
+                ),
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        )
+    return pl.DataFrame(rows).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp"]
     )
 
 
@@ -893,7 +1021,6 @@ def _best_plus_or_v2_rows(
                 [fallback_row, *plus_rows],
                 key=lambda row: (
                     float(row["prior_family_mean_regret_uah"]),
-                    float(row["regret_uah"]),
                     str(row["candidate_family"]),
                     str(row["candidate_model_name"]),
                 ),
@@ -1195,10 +1322,29 @@ def _selection_role(row: dict[str, Any]) -> str:
     return str(payload.get("selection_role", ""))
 
 
+def _v2_plus_oracle_gap_class(
+    *,
+    selected_family: str,
+    selected_model: str,
+    selected_regret: float,
+    best_row: dict[str, Any],
+    best_regret: float,
+) -> str:
+    if best_regret < selected_regret - 1e-9:
+        return "candidate_available_but_not_selected"
+    if (
+        str(best_row["candidate_family"]) == selected_family
+        and str(best_row["candidate_model_name"]) == selected_model
+    ):
+        return "v2_plus_selected_best_available"
+    return "candidate_library_no_better_schedule"
+
+
 __all__ = [
     "DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND",
     "build_dfl_schedule_candidate_library_v2_plus_frame",
     "build_dfl_schedule_value_learner_v2_plus_frame",
+    "build_dfl_schedule_value_learner_v2_plus_oracle_gap_audit_frame",
     "build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     "build_dfl_schedule_value_regret_decomposition_frame",
     "evaluate_dfl_schedule_value_learner_v2_plus_gate",

@@ -809,6 +809,24 @@ train/prior anchors показують non-degrading improvement. Якщо та�
 межу. Final-holdout realized prices і oracle schedules залишаються scoring-only
 інформацією. Вони не використовуються для створення candidate, вибору profile
 або рішення про fallback.
+
+Після plateau review було додано окрему перевірку leakage у V2+: final-holdout
+`regret_uah` більше не використовується як tie-breaker у final selection.
+Selection rule тепер спирається на `prior_family_mean_regret_uah` і стабільний
+`candidate_family` / `candidate_model_name` порядок, а regression test змінює
+final-holdout regret labels і перевіряє, що selected candidate не змінюється.
+Повторна матеріалізація показала, що corrected V2+ зберіг headline результат
+`174.77` UAH mean regret і `67.30` UAH median regret для calibrated official
+NBEATSx. Отже, поточний comparator не був завищений цим конкретним leakage
+шляхом.
+
+Додатковий oracle-gap audit відповідає на питання, що саме має вчити майбутній
+DT/LAVA branch. Для calibrated V2+ selector уже обрав best available schedule на
+`71 / 90` final tenant-anchor rows; на `19 / 90` існував кращий candidate, але
+його можна побачити лише після final scoring. Для raw source відповідні числа
+становлять `59 / 90` і `31 / 90`. Тому наступний DT/LAVA target має бути
+prior-only safe-switch / candidate-index модель, яка прогнозує, коли безпечно
+відійти від V2+, а не raw hourly BUY/SELL/HOLD imitation.
 Це робить V2+ conservative extension, а не новим live controller; код і asset
 registration знаходяться у `src/smart_arbitrage/dfl/schedule_value_learner_v2_plus.py`
 та `src/smart_arbitrage/assets/gold/dfl_research.py`.

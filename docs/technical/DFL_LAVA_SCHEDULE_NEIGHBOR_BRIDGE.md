@@ -158,6 +158,15 @@ next DT/LAVA target must learn better safe-switch labels before generating a
 policy.
 That is a safe diagnostic closure, not a promotion over V2+.
 
+Baseline leakage audit: on 2026-05-22 the V2+ tie-breaker was corrected so final
+selection no longer uses final-holdout `regret_uah`. Corrected V2+ still
+materialized at `174.77` / `67.30` UAH mean/median regret for the calibrated
+source. The oracle-gap audit then found that calibrated V2+ selected the best
+available candidate on `71 / 90` final tenant-anchor rows and missed a better
+candidate on `19 / 90` rows. This is now the target shape for DT/LAVA: learn a
+prior-only safe switch for the missed-candidate minority, with fallback to the
+corrected V2+ comparator.
+
 ## Materialization
 
 After upstream V2+ and Poland evidence rows are available:

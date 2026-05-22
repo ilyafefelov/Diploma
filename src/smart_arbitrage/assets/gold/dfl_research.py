@@ -180,6 +180,7 @@ from smart_arbitrage.dfl.schedule_value_learner_v2_plus import (
     DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND,
     build_dfl_schedule_candidate_library_v2_plus_frame,
     build_dfl_schedule_value_learner_v2_plus_frame,
+    build_dfl_schedule_value_learner_v2_plus_oracle_gap_audit_frame,
     build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
     build_dfl_schedule_value_regret_decomposition_frame,
     evaluate_dfl_schedule_value_learner_v2_plus_gate,
@@ -3630,6 +3631,54 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark
         },
     )
     return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame(
+    context,
+    config: DflOfficialGlobalPanelScheduleValueLearnerV2PlusAssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit where V2+ has no better candidate versus misses a better schedule."""
+
+    source_model_names = _forecast_model_names(config.forecast_model_names_csv)
+    audit_frame = build_dfl_schedule_value_learner_v2_plus_oracle_gap_audit_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        source_model_names=source_model_names,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": audit_frame.height,
+            "oracle_gap_classes": sorted(audit_frame["oracle_gap_class"].unique().to_list())
+            if audit_frame.height
+            else [],
+            "positive_oracle_gap_rows": audit_frame.filter(
+                pl.col("oracle_gap_to_best_candidate_uah") > 0.0
+            ).height
+            if audit_frame.height
+            else 0,
+            "scope": (
+                "dfl_official_global_panel_schedule_value_v2_plus_oracle_gap_"
+                "audit_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return audit_frame
 
 
 @dg.asset(
@@ -11529,6 +11578,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,

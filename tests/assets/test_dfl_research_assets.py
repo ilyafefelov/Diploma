@@ -368,6 +368,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
         "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame",
@@ -1767,6 +1768,12 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_lava_schedule_neighbor_candidate_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
         "dfl_poland_lag24_calibrated_schedule_candidate_library_v2_plus_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key[
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame"
+    ] == {
+        "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
     assert deps_by_key["dfl_lava_candidate_value_scorer_frame"] == {

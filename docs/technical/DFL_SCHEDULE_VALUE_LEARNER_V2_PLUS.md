@@ -35,6 +35,7 @@ than raw forecast MAE or hourly action accuracy.
 | `dfl_schedule_value_learner_v2_plus_frame` | Selects among V2 and V2+ candidates using train/prior anchors only, with frozen V2 as the default fallback. |
 | `dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame` | Emits strict/raw/V2/V2+ rows for unchanged strict LP/oracle scoring. |
 | `dfl_schedule_value_learner_v2_plus_evidence` | Dagster asset check for coverage, provenance, and claim-boundary validity. |
+| `dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame` | Diagnoses whether final-holdout V2+ had no better candidate available, selected the best available candidate, or missed a better candidate that only the oracle/scoring layer can see after the fact. |
 | `dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame` | Replays V2+ across four rolling 18-anchor validation windows using prior-only selection. |
 | `dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_evidence` | Dagster asset check for V2+ rolling-window evidence validity. |
 | `dfl_official_global_panel_schedule_*_v2_plus_*` | Official global-panel mirrors for the 365-anchor NBEATSx evidence lane. |
@@ -164,6 +165,40 @@ The calibrated source has the best latest-holdout mean regret, so it is the
 preferred thesis-facing V2+ source. Both sources remain offline/read-model
 evidence only: `market_execution_enabled=false`, no dashboard/API default switch,
 and no live market execution claim.
+
+## Leakage and Oracle-Gap Audit
+
+On 2026-05-22 the V2+ selector was audited for a specific leakage risk: using
+final-holdout `regret_uah` as a tie-breaker between candidates with identical
+prior evidence. The selector now breaks ties only by prior-family regret and
+stable candidate identity (`candidate_family`, `candidate_model_name`). A
+regression test mutates final-holdout `regret_uah` while holding prior evidence
+fixed and verifies that selected V2+ candidates do not change.
+
+Corrected materialization run `8f93c0fe-d954-4690-84bf-e3c3f0ed8aa6` passed the
+V2+ evidence check. The headline metrics did not move:
+
+| Source | Corrected V2+ mean regret | Corrected V2+ median regret | Interpretation |
+|---|---:|---:|---|
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 174.77 | 67.30 | unchanged headline baseline |
+| `nbeatsx_official_global_panel_v1` | 193.36 | 68.89 | unchanged raw-source reference |
+
+The follow-up oracle-gap audit run
+`b72ca4a0-3892-4291-9bf7-037f04837d7a` materialized
+`dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame`.
+It uses final realized regret only as diagnostic label evidence, never as a
+selection feature:
+
+| Source | V2+ selected best available | Better candidate existed but was not selected | Mean missed-candidate gap |
+|---|---:|---:|---:|
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 71 / 90 | 19 / 90 | 101.83 UAH |
+| `nbeatsx_official_global_panel_v1` | 59 / 90 | 31 / 90 | 93.25 UAH |
+
+This supports the current research direction. V2+ is not obviously inflated by
+the audited tie-breaker, but there is still oracle-visible value in a minority
+of anchors. The next DT/LAVA target should therefore be a prior-only safe-switch
+or candidate-index model that learns when those better schedules are safe before
+the anchor, with V2+ fallback when the signal is weak.
 
 ## Market-Coupling Ablation Baseline
 

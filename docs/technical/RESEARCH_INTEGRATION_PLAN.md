@@ -3181,3 +3181,16 @@ V2+ at `174.77` / `67.30` UAH. This is negative-but-useful evidence. Poland
 features can enter the decision layer, but the current tabular switcher still
 over-selects risky schedules. DT/LAVA should use this as tail-risk teacher-label
 data rather than imitate raw hourly actions.
+
+Before starting another DT/LAVA iteration, V2+ itself was audited for final-label
+leakage. The selector no longer uses final-holdout `regret_uah` as a tie-breaker
+between candidates with equal prior evidence; a regression test mutates final
+regret labels and verifies that selected candidates are unchanged. Corrected
+Dagster run `8f93c0fe-d954-4690-84bf-e3c3f0ed8aa6` kept the calibrated V2+
+headline unchanged at `174.77` UAH mean regret and `67.30` UAH median regret.
+The follow-up oracle-gap audit run `b72ca4a0-3892-4291-9bf7-037f04837d7a` showed
+the actual remaining target: calibrated V2+ selected the best available schedule
+on `71 / 90` final rows and missed a better candidate on `19 / 90` rows; raw
+V2+ selected best on `59 / 90` and missed better on `31 / 90`. This makes the
+next DT/LAVA task a prior-only safe-switch / candidate-index problem anchored to
+corrected V2+, not a raw hourly action imitation task.
