@@ -5,14 +5,20 @@ from datetime import datetime, timedelta
 import polars as pl
 
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
+    REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
     REGRET_SURROGATE_SELECTION_ROLE,
     STRICT_REFERENCE_ROLE,
     V2_PLUS_REFERENCE_ROLE,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+    build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
+    build_dfl_regret_surrogate_contextual_rolling_robustness_frame,
+    build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame,
+    build_dfl_regret_surrogate_safe_switch_context_audit_frame,
     build_dfl_regret_surrogate_candidate_value_v1_frame,
     build_dfl_regret_surrogate_forecast_correction_v1_frame,
     build_dfl_regret_surrogate_rolling_robustness_frame,
     build_dfl_regret_surrogate_strict_lp_benchmark_frame,
+    build_dfl_regret_surrogate_teacher_label_panel_v2_frame,
     build_dfl_v2_plus_learning_limit_audit_frame,
     evaluate_dfl_regret_surrogate_gate,
 )
@@ -181,10 +187,156 @@ def test_regret_surrogate_rolling_uses_prior_windows_only() -> None:
     assert set(rolling["market_execution_enabled"].to_list()) == {False}
 
 
+def test_safe_switch_context_audit_reports_missing_prior_context() -> None:
+    panel = _final_context_shifted_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    teacher = _teacher_panel(panel)
+
+    audit = build_dfl_regret_surrogate_safe_switch_context_audit_frame(teacher)
+
+    final = audit.filter(pl.col("split_name") == "final_holdout")
+    assert set(final["safe_switch_context_failure_mode"].to_list()) == {
+        "context_without_prior_support"
+    }
+    assert set(final["recommended_next_branch"].to_list()) == {
+        "data_context_backfill"
+    }
+    assert set(final["material_safe_switch_available"].to_list()) == {True}
+    assert set(final["market_execution_enabled"].to_list()) == {False}
+
+
+def test_teacher_panel_v2_keeps_final_context_features_prior_only() -> None:
+    base_panel = _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    mutated_panel = _candidate_panel(train_alt_regret=80.0, final_alt_regret=360.0)
+
+    base_v2 = _teacher_panel_v2(base_panel)
+    mutated_v2 = _teacher_panel_v2(mutated_panel)
+    feature_columns = sorted(
+        column for column in base_v2.columns if column.startswith("selector_feature_")
+    )
+
+    assert feature_columns
+    assert base_v2.select(feature_columns).to_dicts() == mutated_v2.select(
+        feature_columns
+    ).to_dicts()
+    assert base_v2.select("label_context_material_safe_switch").to_dicts() != (
+        mutated_v2.select("label_context_material_safe_switch").to_dicts()
+    )
+    assert base_v2.filter(pl.col("split_name") == "final_holdout").select(
+        pl.col("is_training_row").any()
+    ).item() is False
+
+
+def test_contextual_regret_surrogate_selects_prior_supported_safe_candidate() -> None:
+    panel = _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    teacher_v2 = _teacher_panel_v2(panel)
+
+    candidate_value = build_dfl_regret_surrogate_contextual_candidate_value_v2_frame(
+        teacher_v2,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        min_context_prior_support_count=1,
+        min_context_prior_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_context_tail_risk_probability=0.30,
+    )
+    strict = build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
+        teacher_v2,
+        candidate_value,
+        generated_at=GENERATED_AT,
+    )
+
+    assert set(candidate_value["selected_final_candidate_count"].to_list()) == {2}
+    assert strict.filter(
+        pl.col("selection_role") == REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE
+    )["regret_uah"].to_list() == [80.0] * (len(TENANTS) * 2)
+    assert (
+        strict.filter(pl.col("selection_role") == REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE)[
+            "regret_uah"
+        ].mean()
+        < strict.filter(pl.col("selection_role") == V2_PLUS_REFERENCE_ROLE)[
+            "regret_uah"
+        ].mean()
+    )
+
+
+def test_contextual_regret_surrogate_falls_back_without_prior_context_support() -> None:
+    panel = _final_context_shifted_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    teacher_v2 = _teacher_panel_v2(panel)
+
+    candidate_value = build_dfl_regret_surrogate_contextual_candidate_value_v2_frame(
+        teacher_v2,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        min_context_prior_support_count=1,
+        min_context_prior_safe_win_count=1,
+    )
+    strict = build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
+        teacher_v2,
+        candidate_value,
+        generated_at=GENERATED_AT,
+    )
+
+    assert set(candidate_value["selected_final_candidate_count"].to_list()) == {0}
+    assert strict.filter(
+        pl.col("selection_role") == REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE
+    )["regret_uah"].to_list() == [120.0] * (len(TENANTS) * 2)
+
+
+def test_contextual_regret_surrogate_rolling_uses_prior_context_only() -> None:
+    panel = _candidate_panel(
+        train_alt_regret=80.0,
+        final_alt_regret=80.0,
+        train_anchor_count=4,
+        final_anchor_count=4,
+    )
+    teacher = _teacher_panel(panel)
+
+    rolling = build_dfl_regret_surrogate_contextual_rolling_robustness_frame(
+        teacher,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        validation_window_count=2,
+        validation_anchor_count=2,
+        min_prior_anchors_before_window=2,
+        min_context_prior_support_count=1,
+        min_context_prior_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_context_tail_risk_probability=0.30,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+    )
+
+    assert rolling.height == 2
+    assert set(rolling["rolling_window_passed"].to_list()) == {True}
+    assert rolling["minimum_prior_anchor_count_before_window"].min() >= 2
+    assert set(rolling["market_execution_enabled"].to_list()) == {False}
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
         build_dfl_v2_plus_learning_limit_audit_frame(panel),
+    )
+
+
+def _teacher_panel_v2(panel: pl.DataFrame) -> pl.DataFrame:
+    teacher = _teacher_panel(panel)
+    audit = build_dfl_regret_surrogate_safe_switch_context_audit_frame(teacher)
+    return build_dfl_regret_surrogate_teacher_label_panel_v2_frame(teacher, audit)
+
+
+def _final_context_shifted_panel(
+    *,
+    train_alt_regret: float,
+    final_alt_regret: float,
+) -> pl.DataFrame:
+    return _candidate_panel(
+        train_alt_regret=train_alt_regret,
+        final_alt_regret=final_alt_regret,
+    ).with_columns(
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(0.0)
+        .otherwise(pl.col("selector_feature_grid_event_context_ready"))
+        .alias("selector_feature_grid_event_context_ready")
     )
 
 

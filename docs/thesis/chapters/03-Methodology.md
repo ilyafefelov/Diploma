@@ -984,6 +984,16 @@ Traceability:
 [DFL_REGRET_SURROGATE_V1](../../technical/DFL_REGRET_SURROGATE_V1.md) та
 `configs/real_data_dfl_regret_surrogate_v1_week3.yaml`.
 
+Context V2 уточнює цю межу. Він будує safe-switch context profile з prior
+features: candidate source/family, weekend flag, grid-event context, high V2+
+regret bucket, high forecast-spread bucket і material schedule-distance bucket.
+Матеріальний switch визначається як candidate regret щонайменше на `25` UAH
+нижчий за V2+. У latest holdout таких rows було `5 / 90`, але всі вони мали
+`context_without_prior_support`, тому contextual selector не мав права
+перемикатися без leakage. Це не є failure of DT/LAVA; це означає, що наступна
+sequence policy має отримати більше prior-supported teacher contexts або нові
+candidate families, а не імітувати final-holdout oracle choices.
+
 ## 3.10. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний технічний entrypoint:

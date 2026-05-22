@@ -223,6 +223,9 @@ def test_regret_surrogate_v1_config_keeps_v2_plus_gate_and_shadow_sources() -> N
         "nbeatsx_official_global_panel_horizon_calibrated_v1"
     )
     assert config.min_oracle_improvement_ratio_vs_v2_plus == 0.05
+    assert config.material_switch_delta_uah == 25.0
+    assert config.high_v2_regret_uah == 500.0
+    assert config.min_context_prior_support_count == 1
     assert "poland_shadow_candidate" in config.allowed_candidate_sources_csv
     assert config.use_cuda_if_available is True
 
@@ -400,6 +403,11 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_regret_surrogate_candidate_value_v1_frame",
         "dfl_regret_surrogate_strict_lp_benchmark_frame",
         "dfl_regret_surrogate_rolling_robustness_frame",
+        "dfl_regret_surrogate_safe_switch_context_audit_frame",
+        "dfl_regret_surrogate_teacher_label_panel_v2_frame",
+        "dfl_regret_surrogate_contextual_candidate_value_v2_frame",
+        "dfl_regret_surrogate_contextual_strict_lp_benchmark_frame",
+        "dfl_regret_surrogate_contextual_rolling_robustness_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
         "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame",

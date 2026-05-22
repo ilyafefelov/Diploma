@@ -39,6 +39,21 @@ REGRET_SURROGATE_STRICT_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_ROBUSTNESS_CLAIM_SCOPE: Final[str] = (
     "dfl_regret_surrogate_rolling_robustness_not_full_dfl"
 )
+REGRET_SURROGATE_CONTEXT_AUDIT_CLAIM_SCOPE: Final[str] = (
+    "dfl_regret_surrogate_safe_switch_context_audit_not_full_dfl"
+)
+REGRET_SURROGATE_TEACHER_V2_CLAIM_SCOPE: Final[str] = (
+    "dfl_regret_surrogate_teacher_context_v2_not_full_dfl"
+)
+REGRET_SURROGATE_CONTEXTUAL_CANDIDATE_VALUE_CLAIM_SCOPE: Final[str] = (
+    "dfl_regret_surrogate_contextual_candidate_value_v2_not_full_dfl"
+)
+REGRET_SURROGATE_CONTEXTUAL_STRICT_CLAIM_SCOPE: Final[str] = (
+    "dfl_regret_surrogate_contextual_strict_lp_gate_not_full_dfl"
+)
+REGRET_SURROGATE_CONTEXTUAL_ROBUSTNESS_CLAIM_SCOPE: Final[str] = (
+    "dfl_regret_surrogate_contextual_rolling_robustness_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -46,7 +61,16 @@ REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
 REGRET_SURROGATE_MODEL_NAME: Final[str] = (
     "dfl_regret_surrogate_candidate_value_v1"
 )
+REGRET_SURROGATE_CONTEXTUAL_MODEL_NAME: Final[str] = (
+    "dfl_regret_surrogate_contextual_candidate_value_v2"
+)
 REGRET_SURROGATE_SELECTION_ROLE: Final[str] = "regret_surrogate_candidate_value"
+REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE: Final[str] = (
+    "regret_surrogate_contextual_candidate_value"
+)
+REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND: Final[str] = (
+    "dfl_regret_surrogate_contextual_strict_lp_benchmark"
+)
 V2_PLUS_REFERENCE_ROLE: Final[str] = "schedule_value_learner_v2_plus_reference"
 STRICT_REFERENCE_ROLE: Final[str] = "strict_reference"
 
@@ -595,6 +619,544 @@ def build_dfl_regret_surrogate_rolling_robustness_frame(
     )
 
 
+def build_dfl_regret_surrogate_safe_switch_context_audit_frame(
+    expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    high_v2_regret_uah: float = 500.0,
+    high_forecast_spread_uah_mwh: float = 10_000.0,
+    min_material_schedule_distance: float = 0.02,
+    min_context_prior_safe_win_count: int = 1,
+    min_context_prior_mean_improvement_uah: float = 1.0,
+    max_context_tail_risk_probability: float = 0.25,
+) -> pl.DataFrame:
+    """Audit whether final safe switches have prior-supported contexts."""
+
+    _validate_teacher_panel(expanded_schedule_value_teacher_label_panel_v1_frame)
+    _validate_context_config(
+        material_switch_delta_uah=material_switch_delta_uah,
+        high_v2_regret_uah=high_v2_regret_uah,
+        high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+        min_material_schedule_distance=min_material_schedule_distance,
+        min_context_prior_safe_win_count=min_context_prior_safe_win_count,
+        min_context_prior_mean_improvement_uah=min_context_prior_mean_improvement_uah,
+        max_context_tail_risk_probability=max_context_tail_risk_probability,
+    )
+    rows = list(
+        expanded_schedule_value_teacher_label_panel_v1_frame.iter_rows(named=True)
+    )
+    context_stats = _context_profile_stats(
+        [
+            row
+            for row in rows
+            if bool(row["is_training_row"])
+            and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+        ],
+        high_v2_regret_uah=high_v2_regret_uah,
+        high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+        min_material_schedule_distance=min_material_schedule_distance,
+    )
+    output_rows: list[dict[str, Any]] = []
+    for anchor_key, anchor_rows in sorted(_group_by_anchor(rows).items()):
+        baseline = _baseline_row(anchor_rows, anchor_key=anchor_key)
+        material_candidates = [
+            row
+            for row in _eligible_challengers(anchor_rows)
+            if float(row["label_regret_delta_vs_v2_plus_uah"])
+            <= -material_switch_delta_uah
+        ]
+        best = (
+            min(
+                material_candidates,
+                key=lambda row: (
+                    float(row["regret_uah"]),
+                    str(row["candidate_source"]),
+                    str(row["candidate_family"]),
+                    str(row["candidate_model_name"]),
+                ),
+            )
+            if material_candidates
+            else None
+        )
+        profile = (
+            _safe_switch_context_profile_key(
+                best,
+                high_v2_regret_uah=high_v2_regret_uah,
+                high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+                min_material_schedule_distance=min_material_schedule_distance,
+            )
+            if best is not None
+            else ""
+        )
+        stats = context_stats.get(profile, {})
+        failure_mode = _safe_switch_context_failure_mode(
+            material_safe_switch_available=best is not None,
+            stats=stats,
+            min_context_prior_safe_win_count=min_context_prior_safe_win_count,
+            min_context_prior_mean_improvement_uah=(
+                min_context_prior_mean_improvement_uah
+            ),
+            max_context_tail_risk_probability=max_context_tail_risk_probability,
+        )
+        output_rows.append(
+            {
+                "tenant_id": anchor_key[0],
+                "source_model_name": anchor_key[1],
+                "anchor_timestamp": anchor_key[2],
+                "split_name": str(baseline["split_name"]),
+                "v2_plus_regret_uah": float(baseline["regret_uah"]),
+                "material_safe_switch_available": best is not None,
+                "material_safe_switch_candidate_count": len(material_candidates),
+                "best_material_candidate_key": _candidate_key(best)
+                if best is not None
+                else "",
+                "best_material_candidate_source": str(best["candidate_source"])
+                if best is not None
+                else "",
+                "best_material_candidate_family": str(best["candidate_family"])
+                if best is not None
+                else "",
+                "best_material_candidate_model_name": str(best["candidate_model_name"])
+                if best is not None
+                else "",
+                "best_material_candidate_regret_uah": float(best["regret_uah"])
+                if best is not None
+                else float(baseline["regret_uah"]),
+                "best_material_delta_vs_v2_plus_uah": float(
+                    best["label_regret_delta_vs_v2_plus_uah"]
+                )
+                if best is not None
+                else 0.0,
+                "safe_switch_context_profile_key": profile,
+                "prior_context_support_count": int(stats.get("row_count", 0)),
+                "prior_context_safe_win_count": int(stats.get("safe_win_count", 0)),
+                "prior_context_tail_loss_count": int(stats.get("tail_loss_count", 0)),
+                "prior_context_mean_delta_uah": float(
+                    stats.get("mean_delta_uah", 0.0)
+                ),
+                "prior_context_tail_risk_probability": float(
+                    stats.get("tail_risk_probability", 0.0)
+                ),
+                "safe_switch_context_failure_mode": failure_mode,
+                "recommended_next_branch": _context_recommended_next_branch(
+                    failure_mode
+                ),
+                "claim_scope": REGRET_SURROGATE_CONTEXT_AUDIT_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp"]
+    )
+
+
+def build_dfl_regret_surrogate_teacher_label_panel_v2_frame(
+    expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+    regret_surrogate_safe_switch_context_audit_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    high_v2_regret_uah: float = 500.0,
+    high_forecast_spread_uah_mwh: float = 10_000.0,
+    min_material_schedule_distance: float = 0.02,
+) -> pl.DataFrame:
+    """Enrich V1 teacher rows with prior-supported safe-switch context labels."""
+
+    _validate_teacher_panel(expanded_schedule_value_teacher_label_panel_v1_frame)
+    _require_columns(
+        regret_surrogate_safe_switch_context_audit_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "safe_switch_context_failure_mode",
+                "recommended_next_branch",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="regret_surrogate_safe_switch_context_audit_frame",
+    )
+    if regret_surrogate_safe_switch_context_audit_frame.select(
+        pl.col("market_execution_enabled").any()
+    ).item():
+        raise ValueError("safe-switch context audit refuses market execution.")
+    rows = list(
+        expanded_schedule_value_teacher_label_panel_v1_frame.iter_rows(named=True)
+    )
+    context_stats = _context_profile_stats(
+        [
+            row
+            for row in rows
+            if bool(row["is_training_row"])
+            and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+        ],
+        high_v2_regret_uah=high_v2_regret_uah,
+        high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+        min_material_schedule_distance=min_material_schedule_distance,
+    )
+    audit_by_anchor = {
+        _anchor_key(row): row
+        for row in regret_surrogate_safe_switch_context_audit_frame.iter_rows(
+            named=True
+        )
+    }
+    output_rows: list[dict[str, Any]] = []
+    for row in rows:
+        key = _anchor_key(row)
+        audit = audit_by_anchor.get(key)
+        if audit is None:
+            raise ValueError(f"missing safe-switch context audit row for {key}.")
+        profile = _safe_switch_context_profile_key(
+            row,
+            high_v2_regret_uah=high_v2_regret_uah,
+            high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+            min_material_schedule_distance=min_material_schedule_distance,
+        )
+        stats = context_stats.get(profile, {})
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        material_safe = (
+            str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+            and delta <= -material_switch_delta_uah
+        )
+        copied = dict(row)
+        copied.update(
+            {
+                "teacher_panel_version": "safe_switch_context_teacher_v2",
+                "safe_switch_context_profile_key": profile,
+                "selector_feature_context_prior_support_count": float(
+                    stats.get("row_count", 0)
+                ),
+                "selector_feature_context_prior_safe_win_rate": float(
+                    stats.get("safe_win_probability", 0.0)
+                ),
+                "selector_feature_context_prior_tail_risk_probability": float(
+                    stats.get("tail_risk_probability", 0.0)
+                ),
+                "selector_feature_context_prior_mean_delta_uah": float(
+                    stats.get("mean_delta_uah", 0.0)
+                ),
+                "label_context_material_safe_switch": material_safe,
+                "label_context_tail_risk_loss": bool(row["label_tail_risk_loss"]),
+                "label_context_switch_class": _context_switch_class(
+                    material_safe=material_safe,
+                    tail_loss=bool(row["label_tail_risk_loss"]),
+                ),
+                "diagnostic_anchor_safe_switch_context_failure_mode": str(
+                    audit["safe_switch_context_failure_mode"]
+                ),
+                "diagnostic_anchor_recommended_next_branch": str(
+                    audit["recommended_next_branch"]
+                ),
+                "diagnostic_prior_context_support_count": int(
+                    stats.get("row_count", 0)
+                ),
+                "diagnostic_prior_context_safe_win_count": int(
+                    stats.get("safe_win_count", 0)
+                ),
+                "diagnostic_prior_context_tail_loss_count": int(
+                    stats.get("tail_loss_count", 0)
+                ),
+                "claim_scope": REGRET_SURROGATE_TEACHER_V2_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        output_rows.append(copied)
+    panel = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_context_teacher_panel(panel)
+    return panel
+
+
+def build_dfl_regret_surrogate_contextual_candidate_value_v2_frame(
+    regret_surrogate_teacher_label_panel_v2_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    min_context_prior_support_count: int = 1,
+    min_context_prior_safe_win_count: int = 1,
+    min_context_prior_mean_improvement_uah: float = 1.0,
+    min_predicted_improvement_uah: float = 1.0,
+    max_context_tail_risk_probability: float = 0.25,
+    allowed_candidate_sources: tuple[str, ...] = _DEFAULT_ALLOWED_CANDIDATE_SOURCES,
+) -> pl.DataFrame:
+    """Select final candidates only from prior-supported safe-switch contexts."""
+
+    _validate_context_teacher_panel(regret_surrogate_teacher_label_panel_v2_frame)
+    _validate_contextual_selector_config(
+        tenant_ids=tenant_ids,
+        source_model_names=source_model_names,
+        min_context_prior_support_count=min_context_prior_support_count,
+        min_context_prior_safe_win_count=min_context_prior_safe_win_count,
+        min_context_prior_mean_improvement_uah=(
+            min_context_prior_mean_improvement_uah
+        ),
+        min_predicted_improvement_uah=min_predicted_improvement_uah,
+        max_context_tail_risk_probability=max_context_tail_risk_probability,
+        allowed_candidate_sources=allowed_candidate_sources,
+    )
+    rows = list(regret_surrogate_teacher_label_panel_v2_frame.iter_rows(named=True))
+    output_rows: list[dict[str, Any]] = []
+    for tenant_id in tenant_ids:
+        for source_model_name in source_model_names:
+            scope_rows = [
+                row
+                for row in rows
+                if str(row["tenant_id"]) == tenant_id
+                and str(row["source_model_name"]) == source_model_name
+            ]
+            output_rows.append(
+                _fit_scope_contextual_surrogate(
+                    scope_rows,
+                    tenant_id=tenant_id,
+                    source_model_name=source_model_name,
+                    min_context_prior_support_count=min_context_prior_support_count,
+                    min_context_prior_safe_win_count=min_context_prior_safe_win_count,
+                    min_context_prior_mean_improvement_uah=(
+                        min_context_prior_mean_improvement_uah
+                    ),
+                    min_predicted_improvement_uah=min_predicted_improvement_uah,
+                    max_context_tail_risk_probability=(
+                        max_context_tail_risk_probability
+                    ),
+                    allowed_candidate_sources=set(allowed_candidate_sources),
+                )
+            )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id"]
+    )
+
+
+def build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
+    regret_surrogate_teacher_label_panel_v2_frame: pl.DataFrame,
+    regret_surrogate_contextual_candidate_value_v2_frame: pl.DataFrame,
+    *,
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Strict-score contextual regret-surrogate V2 against frozen V2+."""
+
+    _validate_context_teacher_panel(regret_surrogate_teacher_label_panel_v2_frame)
+    _require_columns(
+        regret_surrogate_contextual_candidate_value_v2_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "selected_final_candidate_keys",
+                "fallback_final_anchor_keys",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="regret_surrogate_contextual_candidate_value_v2_frame",
+    )
+    resolved_generated_at = generated_at or _latest_generated_at(
+        regret_surrogate_teacher_label_panel_v2_frame
+    )
+    panel_rows = list(regret_surrogate_teacher_label_panel_v2_frame.iter_rows(named=True))
+    candidate_by_key = {_candidate_key(row): row for row in panel_rows}
+    v2_by_anchor: dict[str, dict[str, Any]] = {}
+    output_rows: list[dict[str, Any]] = []
+    for row in panel_rows:
+        if str(row["split_name"]) != "final_holdout":
+            continue
+        source = str(row["candidate_source"])
+        if source == _STRICT_CANDIDATE_SOURCE:
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=STRICT_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
+                    challenger_model_name=REGRET_SURROGATE_CONTEXTUAL_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_CONTEXTUAL_STRICT_CLAIM_SCOPE,
+                )
+            )
+        elif source == _V2_PLUS_CANDIDATE_SOURCE:
+            v2_by_anchor[_anchor_key_string(row)] = row
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=V2_PLUS_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
+                    challenger_model_name=REGRET_SURROGATE_CONTEXTUAL_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_CONTEXTUAL_STRICT_CLAIM_SCOPE,
+                )
+            )
+    for scorer_row in regret_surrogate_contextual_candidate_value_v2_frame.iter_rows(
+        named=True
+    ):
+        for candidate_key in scorer_row["selected_final_candidate_keys"]:
+            output_rows.append(
+                _benchmark_row(
+                    candidate_by_key[str(candidate_key)],
+                    selection_role=REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
+                    challenger_model_name=REGRET_SURROGATE_CONTEXTUAL_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_CONTEXTUAL_STRICT_CLAIM_SCOPE,
+                )
+            )
+        for anchor_key in scorer_row["fallback_final_anchor_keys"]:
+            fallback = v2_by_anchor.get(str(anchor_key))
+            if fallback is None:
+                raise ValueError(f"missing V2+ fallback row for {anchor_key}.")
+            output_rows.append(
+                _benchmark_row(
+                    fallback,
+                    selection_role=REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
+                    challenger_model_name=REGRET_SURROGATE_CONTEXTUAL_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_CONTEXTUAL_STRICT_CLAIM_SCOPE,
+                )
+            )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp", "selection_role"]
+    )
+
+
+def build_dfl_regret_surrogate_contextual_rolling_robustness_frame(
+    expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    validation_window_count: int = 4,
+    validation_anchor_count: int = 18,
+    min_prior_anchors_before_window: int = 30,
+    material_switch_delta_uah: float = 25.0,
+    high_v2_regret_uah: float = 500.0,
+    high_forecast_spread_uah_mwh: float = 10_000.0,
+    min_material_schedule_distance: float = 0.02,
+    min_context_prior_support_count: int = 1,
+    min_context_prior_safe_win_count: int = 1,
+    min_context_prior_mean_improvement_uah: float = 1.0,
+    min_predicted_improvement_uah: float = 1.0,
+    max_context_tail_risk_probability: float = 0.25,
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = (
+        DEFAULT_MIN_MEAN_REGRET_IMPROVEMENT_RATIO
+    ),
+    allowed_candidate_sources: tuple[str, ...] = _DEFAULT_ALLOWED_CANDIDATE_SOURCES,
+) -> pl.DataFrame:
+    """Replay contextual safe-switch selection over prior-only windows."""
+
+    _validate_teacher_panel(expanded_schedule_value_teacher_label_panel_v1_frame)
+    if validation_window_count <= 0:
+        raise ValueError("validation_window_count must be positive.")
+    if validation_anchor_count <= 0:
+        raise ValueError("validation_anchor_count must be positive.")
+    rows = list(
+        expanded_schedule_value_teacher_label_panel_v1_frame.iter_rows(named=True)
+    )
+    output_rows: list[dict[str, Any]] = []
+    for source_model_name in source_model_names:
+        anchors = sorted(
+            {
+                _datetime_value(row["anchor_timestamp"])
+                for row in rows
+                if str(row["source_model_name"]) == source_model_name
+            }
+        )
+        source_window_rows: list[dict[str, Any]] = []
+        for window_index in range(validation_window_count):
+            end = len(anchors) - window_index * validation_anchor_count
+            start = end - validation_anchor_count
+            if start < 0:
+                break
+            validation_anchors = tuple(anchors[start:end])
+            prior_anchors = tuple(anchors[:start])
+            if len(prior_anchors) < min_prior_anchors_before_window:
+                continue
+            window_frame = _window_teacher_panel(
+                rows,
+                source_model_name=source_model_name,
+                prior_anchors=set(prior_anchors),
+                validation_anchors=set(validation_anchors),
+            )
+            audit = build_dfl_regret_surrogate_safe_switch_context_audit_frame(
+                window_frame,
+                material_switch_delta_uah=material_switch_delta_uah,
+                high_v2_regret_uah=high_v2_regret_uah,
+                high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+                min_material_schedule_distance=min_material_schedule_distance,
+                min_context_prior_safe_win_count=min_context_prior_safe_win_count,
+                min_context_prior_mean_improvement_uah=(
+                    min_context_prior_mean_improvement_uah
+                ),
+                max_context_tail_risk_probability=max_context_tail_risk_probability,
+            )
+            teacher_v2 = build_dfl_regret_surrogate_teacher_label_panel_v2_frame(
+                window_frame,
+                audit,
+                material_switch_delta_uah=material_switch_delta_uah,
+                high_v2_regret_uah=high_v2_regret_uah,
+                high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+                min_material_schedule_distance=min_material_schedule_distance,
+            )
+            candidate_value = (
+                build_dfl_regret_surrogate_contextual_candidate_value_v2_frame(
+                    teacher_v2,
+                    tenant_ids=tenant_ids,
+                    source_model_names=(source_model_name,),
+                    min_context_prior_support_count=min_context_prior_support_count,
+                    min_context_prior_safe_win_count=min_context_prior_safe_win_count,
+                    min_context_prior_mean_improvement_uah=(
+                        min_context_prior_mean_improvement_uah
+                    ),
+                    min_predicted_improvement_uah=min_predicted_improvement_uah,
+                    max_context_tail_risk_probability=(
+                        max_context_tail_risk_probability
+                    ),
+                    allowed_candidate_sources=allowed_candidate_sources,
+                )
+            )
+            row = _rolling_summary_row(
+                teacher_v2,
+                candidate_value,
+                source_model_name=source_model_name,
+                window_index=window_index,
+                validation_anchors=validation_anchors,
+                prior_anchors=prior_anchors,
+                min_mean_regret_improvement_ratio_vs_v2_plus=(
+                    min_mean_regret_improvement_ratio_vs_v2_plus
+                ),
+            )
+            row["claim_scope"] = REGRET_SURROGATE_CONTEXTUAL_ROBUSTNESS_CLAIM_SCOPE
+            source_window_rows.append(row)
+        pass_count = sum(
+            1 for row in source_window_rows if bool(row["rolling_window_passed"])
+        )
+        diagnostic_count = sum(
+            1 for row in source_window_rows if bool(row["diagnostic_window_passed"])
+        )
+        for row in source_window_rows:
+            row["passing_window_count_for_source"] = pass_count
+            row["diagnostic_window_count_for_source"] = diagnostic_count
+            row["robust_regret_surrogate_challenger"] = (
+                pass_count >= validation_window_count
+            )
+            row["diagnostic_signal_learnable"] = diagnostic_count >= min(
+                validation_window_count,
+                3,
+            )
+            row["production_promote"] = False
+        output_rows.extend(source_window_rows)
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "window_index"]
+    )
+
+
 def evaluate_dfl_regret_surrogate_gate(
     strict_frame: pl.DataFrame,
     *,
@@ -787,6 +1349,160 @@ def _fit_scope_surrogate(
     }
 
 
+def _fit_scope_contextual_surrogate(
+    rows: list[dict[str, Any]],
+    *,
+    tenant_id: str,
+    source_model_name: str,
+    min_context_prior_support_count: int,
+    min_context_prior_safe_win_count: int,
+    min_context_prior_mean_improvement_uah: float,
+    min_predicted_improvement_uah: float,
+    max_context_tail_risk_probability: float,
+    allowed_candidate_sources: set[str],
+) -> dict[str, Any]:
+    if not rows:
+        raise ValueError(f"{tenant_id}/{source_model_name} has no context teacher rows.")
+    train_rows = [
+        row
+        for row in rows
+        if bool(row["is_training_row"])
+        and bool(row["eligible_for_final_selection"])
+        and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+    ]
+    final_rows = [
+        row
+        for row in rows
+        if str(row["split_name"]) == "final_holdout"
+        and bool(row["eligible_for_final_selection"])
+    ]
+    if not train_rows:
+        raise ValueError(
+            f"{tenant_id}/{source_model_name} contextual surrogate needs train rows."
+        )
+    if not final_rows:
+        raise ValueError(
+            f"{tenant_id}/{source_model_name} contextual surrogate needs final rows."
+        )
+    context_stats = _context_profile_stats_from_v2(train_rows)
+    selected_final, fallback_keys, predicted_delta, predicted_tail = (
+        _select_final_contextual_candidates(
+            final_rows,
+            context_stats=context_stats,
+            allowed_candidate_sources=allowed_candidate_sources,
+            min_context_prior_support_count=min_context_prior_support_count,
+            min_context_prior_safe_win_count=min_context_prior_safe_win_count,
+            min_context_prior_mean_improvement_uah=(
+                min_context_prior_mean_improvement_uah
+            ),
+            min_predicted_improvement_uah=min_predicted_improvement_uah,
+            max_context_tail_risk_probability=max_context_tail_risk_probability,
+        )
+    )
+    return {
+        "tenant_id": tenant_id,
+        "source_model_name": source_model_name,
+        "learner_model_name": REGRET_SURROGATE_CONTEXTUAL_MODEL_NAME,
+        "target_label_space": "schedule_candidate_contextual_value_delta",
+        "allowed_candidate_sources": sorted(allowed_candidate_sources),
+        "context_profile_prior_stats": context_stats,
+        "min_context_prior_support_count": min_context_prior_support_count,
+        "min_context_prior_safe_win_count": min_context_prior_safe_win_count,
+        "min_predicted_improvement_uah": min_predicted_improvement_uah,
+        "max_context_tail_risk_probability": max_context_tail_risk_probability,
+        "fallback_to_v2_plus": not selected_final,
+        "uses_v2_plus_anchor_fallback": bool(fallback_keys),
+        "selector_gate_blocker": (
+            "contextual_regret_surrogate_candidate_selected"
+            if selected_final
+            else "no_prior_supported_safe_switch_context"
+        ),
+        "train_anchor_count": _anchor_count(train_rows),
+        "final_holdout_anchor_count": _anchor_count(final_rows),
+        "selected_final_candidate_keys": [_candidate_key(row) for row in selected_final],
+        "fallback_final_anchor_keys": fallback_keys,
+        "selected_final_candidate_count": len(selected_final),
+        "fallback_final_anchor_count": len(fallback_keys),
+        "selected_final_family_counts": _family_counts(selected_final),
+        "selected_final_candidate_source_counts": _source_counts(selected_final),
+        "predicted_final_candidate_deltas": predicted_delta,
+        "predicted_final_tail_risk_probabilities": predicted_tail,
+        "claim_scope": REGRET_SURROGATE_CONTEXTUAL_CANDIDATE_VALUE_CLAIM_SCOPE,
+        "not_full_dfl": True,
+        "not_market_execution": True,
+        "market_execution_enabled": False,
+        "raw_hourly_action_imitation": False,
+    }
+
+
+def _select_final_contextual_candidates(
+    final_rows: list[dict[str, Any]],
+    *,
+    context_stats: dict[str, dict[str, Any]],
+    allowed_candidate_sources: set[str],
+    min_context_prior_support_count: int,
+    min_context_prior_safe_win_count: int,
+    min_context_prior_mean_improvement_uah: float,
+    min_predicted_improvement_uah: float,
+    max_context_tail_risk_probability: float,
+) -> tuple[list[dict[str, Any]], list[str], dict[str, float], dict[str, float]]:
+    selected: list[dict[str, Any]] = []
+    fallback_keys: list[str] = []
+    predicted_delta: dict[str, float] = {}
+    predicted_tail: dict[str, float] = {}
+    for anchor, anchor_rows in sorted(_rows_by_datetime_anchor(final_rows).items()):
+        candidates: list[tuple[dict[str, Any], float, float]] = []
+        for row in anchor_rows:
+            source = str(row["candidate_source"])
+            if source not in allowed_candidate_sources:
+                continue
+            profile = str(row["safe_switch_context_profile_key"])
+            stats = context_stats.get(profile)
+            if stats is None:
+                continue
+            support = int(stats["row_count"])
+            safe_wins = int(stats["safe_win_count"])
+            delta = float(stats["mean_delta_uah"])
+            tail = float(stats["tail_risk_probability"])
+            predicted_delta[_candidate_key(row)] = delta
+            predicted_tail[_candidate_key(row)] = tail
+            if (
+                support >= min_context_prior_support_count
+                and safe_wins >= min_context_prior_safe_win_count
+                and delta <= -min_context_prior_mean_improvement_uah
+                and delta <= -min_predicted_improvement_uah
+                and tail <= max_context_tail_risk_probability
+            ):
+                candidates.append((row, delta, tail))
+        if not candidates:
+            first = anchor_rows[0]
+            fallback_keys.append(
+                _anchor_key_from_parts(
+                    str(first["tenant_id"]),
+                    str(first["source_model_name"]),
+                    anchor,
+                )
+            )
+            continue
+        selected.append(
+            min(
+                candidates,
+                key=lambda item: (
+                    item[2],
+                    item[1],
+                    float(
+                        item[0].get(
+                            "selector_feature_schedule_distance_from_v2_plus", 0.0
+                        )
+                    ),
+                    str(item[0]["candidate_family"]),
+                    str(item[0]["candidate_model_name"]),
+                ),
+            )[0]
+        )
+    return selected, fallback_keys, predicted_delta, predicted_tail
+
+
 def _select_final_candidates(
     final_rows: list[dict[str, Any]],
     *,
@@ -974,6 +1690,9 @@ def _benchmark_row(
     *,
     selection_role: str,
     generated_at: datetime,
+    strategy_kind: str = REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND,
+    challenger_model_name: str = REGRET_SURROGATE_MODEL_NAME,
+    claim_scope: str = REGRET_SURROGATE_STRICT_CLAIM_SCOPE,
 ) -> dict[str, Any]:
     payload = dict(row["evaluation_payload"])
     payload.update(
@@ -991,9 +1710,13 @@ def _benchmark_row(
         ),
         "tenant_id": str(row["tenant_id"]),
         "source_model_name": str(row["source_model_name"]),
-        "forecast_model_name": _forecast_model_name_for_role(row, selection_role),
+        "forecast_model_name": _forecast_model_name_for_role(
+            row,
+            selection_role,
+            challenger_model_name=challenger_model_name,
+        ),
         "selection_role": selection_role,
-        "strategy_kind": REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND,
+        "strategy_kind": strategy_kind,
         "market_venue": "DAM",
         "anchor_timestamp": _datetime_value(row["anchor_timestamp"]),
         "generated_at": generated_at,
@@ -1012,16 +1735,24 @@ def _benchmark_row(
         "rank_by_regret": 1,
         "safety_violation_count": int(row["safety_violation_count"]),
         "evaluation_payload": payload,
-        "claim_scope": REGRET_SURROGATE_STRICT_CLAIM_SCOPE,
+        "claim_scope": claim_scope,
         "not_full_dfl": True,
         "not_market_execution": True,
         "market_execution_enabled": False,
     }
 
 
-def _forecast_model_name_for_role(row: dict[str, Any], selection_role: str) -> str:
-    if selection_role == REGRET_SURROGATE_SELECTION_ROLE:
-        return REGRET_SURROGATE_MODEL_NAME
+def _forecast_model_name_for_role(
+    row: dict[str, Any],
+    selection_role: str,
+    *,
+    challenger_model_name: str,
+) -> str:
+    if selection_role in {
+        REGRET_SURROGATE_SELECTION_ROLE,
+        REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
+    }:
+        return challenger_model_name
     if selection_role == V2_PLUS_REFERENCE_ROLE:
         return "schedule_value_learner_v2_plus_reference"
     if selection_role == STRICT_REFERENCE_ROLE:
@@ -1076,6 +1807,142 @@ def _profile_stats(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             "safe_win_probability": safe_count / len(profile_rows),
         }
     return stats
+
+
+def _context_profile_stats(
+    rows: list[dict[str, Any]],
+    *,
+    high_v2_regret_uah: float,
+    high_forecast_spread_uah_mwh: float,
+    min_material_schedule_distance: float,
+) -> dict[str, dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        if str(row["candidate_source"]) in _REFERENCE_CANDIDATE_SOURCES:
+            continue
+        grouped.setdefault(
+            _safe_switch_context_profile_key(
+                row,
+                high_v2_regret_uah=high_v2_regret_uah,
+                high_forecast_spread_uah_mwh=high_forecast_spread_uah_mwh,
+                min_material_schedule_distance=min_material_schedule_distance,
+            ),
+            [],
+        ).append(row)
+    return _stats_for_grouped_context_rows(grouped)
+
+
+def _context_profile_stats_from_v2(
+    rows: list[dict[str, Any]],
+) -> dict[str, dict[str, Any]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        if str(row["candidate_source"]) in _REFERENCE_CANDIDATE_SOURCES:
+            continue
+        grouped.setdefault(str(row["safe_switch_context_profile_key"]), []).append(row)
+    return _stats_for_grouped_context_rows(grouped)
+
+
+def _stats_for_grouped_context_rows(
+    grouped: dict[str, list[dict[str, Any]]],
+) -> dict[str, dict[str, Any]]:
+    stats: dict[str, dict[str, Any]] = {}
+    for profile, profile_rows in grouped.items():
+        deltas = [float(row["label_regret_delta_vs_v2_plus_uah"]) for row in profile_rows]
+        tail_count = sum(1 for row in profile_rows if bool(row["label_tail_risk_loss"]))
+        safe_count = sum(1 for row in profile_rows if bool(row["label_safe_switch_win"]))
+        stats[profile] = {
+            "candidate_source": str(profile_rows[0]["candidate_source"]),
+            "candidate_family": str(profile_rows[0]["candidate_family"]),
+            "row_count": len(profile_rows),
+            "safe_win_count": safe_count,
+            "tail_loss_count": tail_count,
+            "mean_delta_uah": mean(deltas),
+            "median_delta_uah": median(deltas),
+            "tail_risk_probability": tail_count / len(profile_rows),
+            "safe_win_probability": safe_count / len(profile_rows),
+        }
+    return stats
+
+
+def _safe_switch_context_profile_key(
+    row: dict[str, Any],
+    *,
+    high_v2_regret_uah: float,
+    high_forecast_spread_uah_mwh: float,
+    min_material_schedule_distance: float,
+) -> str:
+    weekend = int(round(_numeric_feature(row, "selector_feature_anchor_is_weekend", "selector_feature_weekend")))
+    grid_ready = int(round(_numeric_feature(row, "selector_feature_grid_event_context_ready")))
+    high_v2 = int(float(row.get("v2_plus_baseline_regret_uah", 0.0)) >= high_v2_regret_uah)
+    high_spread = int(
+        _numeric_feature(row, "selector_feature_forecast_spread_uah_mwh")
+        >= high_forecast_spread_uah_mwh
+    )
+    material_distance = int(
+        _numeric_feature(row, "selector_feature_schedule_distance_from_v2_plus")
+        >= min_material_schedule_distance
+    )
+    return "|".join(
+        [
+            str(row["candidate_source"]),
+            str(row["candidate_family"]),
+            f"weekend={weekend}",
+            f"grid={grid_ready}",
+            f"high_v2={high_v2}",
+            f"high_spread={high_spread}",
+            f"material_distance={material_distance}",
+        ]
+    )
+
+
+def _numeric_feature(row: dict[str, Any], *names: str) -> float:
+    for name in names:
+        value = row.get(name)
+        if value is not None:
+            return float(value)
+    return 0.0
+
+
+def _safe_switch_context_failure_mode(
+    *,
+    material_safe_switch_available: bool,
+    stats: dict[str, Any],
+    min_context_prior_safe_win_count: int,
+    min_context_prior_mean_improvement_uah: float,
+    max_context_tail_risk_probability: float,
+) -> str:
+    if not material_safe_switch_available:
+        return "no_material_safe_switch"
+    if not stats or int(stats.get("row_count", 0)) <= 0:
+        return "context_without_prior_support"
+    if float(stats.get("tail_risk_probability", 1.0)) > max_context_tail_risk_probability:
+        return "context_prior_tail_risk"
+    if int(stats.get("safe_win_count", 0)) < min_context_prior_safe_win_count:
+        return "context_prior_weak_support"
+    if float(stats.get("mean_delta_uah", 0.0)) > -min_context_prior_mean_improvement_uah:
+        return "context_prior_weak_improvement"
+    return "context_supported_safe_switch"
+
+
+def _context_recommended_next_branch(failure_mode: str) -> str:
+    if failure_mode == "context_supported_safe_switch":
+        return "contextual_regret_surrogate_v2"
+    if failure_mode == "context_without_prior_support":
+        return "data_context_backfill"
+    if failure_mode in {"context_prior_tail_risk", "context_prior_weak_support"}:
+        return "tail_risk_feature_repair"
+    if failure_mode == "context_prior_weak_improvement":
+        return "candidate_value_label_repair"
+    return "keep_v2_plus"
+
+
+def _context_switch_class(*, material_safe: bool, tail_loss: bool) -> str:
+    if tail_loss:
+        return "tail_risk_loss"
+    if material_safe:
+        return "material_safe_switch"
+    return "neutral_or_loss"
 
 
 def _role_summaries(strict_frame: pl.DataFrame) -> dict[str, dict[str, float]]:
@@ -1292,6 +2159,25 @@ def _validate_teacher_panel(frame: pl.DataFrame) -> None:
         raise ValueError("final-holdout rows cannot be training rows.")
 
 
+def _validate_context_teacher_panel(frame: pl.DataFrame) -> None:
+    _validate_teacher_panel(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "safe_switch_context_profile_key",
+                "label_context_material_safe_switch",
+                "diagnostic_anchor_safe_switch_context_failure_mode",
+                "selector_feature_context_prior_support_count",
+                "selector_feature_context_prior_safe_win_rate",
+                "selector_feature_context_prior_tail_risk_probability",
+                "selector_feature_context_prior_mean_delta_uah",
+            }
+        ),
+        frame_name="regret surrogate context teacher panel",
+    )
+
+
 def _validate_scorer_frame(frame: pl.DataFrame) -> None:
     _require_columns(frame, _REQUIRED_SCORER_COLUMNS, frame_name="scorer frame")
     if frame.select(pl.col("market_execution_enabled").any()).item():
@@ -1328,6 +2214,65 @@ def _validate_scorer_config(
         raise ValueError("allowed_candidate_sources must not be empty.")
 
 
+def _validate_context_config(
+    *,
+    material_switch_delta_uah: float,
+    high_v2_regret_uah: float,
+    high_forecast_spread_uah_mwh: float,
+    min_material_schedule_distance: float,
+    min_context_prior_safe_win_count: int,
+    min_context_prior_mean_improvement_uah: float,
+    max_context_tail_risk_probability: float,
+) -> None:
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if high_v2_regret_uah <= 0.0:
+        raise ValueError("high_v2_regret_uah must be positive.")
+    if high_forecast_spread_uah_mwh <= 0.0:
+        raise ValueError("high_forecast_spread_uah_mwh must be positive.")
+    if min_material_schedule_distance < 0.0:
+        raise ValueError("min_material_schedule_distance must not be negative.")
+    if min_context_prior_safe_win_count < 1:
+        raise ValueError("min_context_prior_safe_win_count must be at least 1.")
+    if min_context_prior_mean_improvement_uah < 0.0:
+        raise ValueError(
+            "min_context_prior_mean_improvement_uah must not be negative."
+        )
+    if not 0.0 <= max_context_tail_risk_probability <= 1.0:
+        raise ValueError("max_context_tail_risk_probability must be between 0 and 1.")
+
+
+def _validate_contextual_selector_config(
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    min_context_prior_support_count: int,
+    min_context_prior_safe_win_count: int,
+    min_context_prior_mean_improvement_uah: float,
+    min_predicted_improvement_uah: float,
+    max_context_tail_risk_probability: float,
+    allowed_candidate_sources: tuple[str, ...],
+) -> None:
+    if not tenant_ids:
+        raise ValueError("tenant_ids must not be empty.")
+    if not source_model_names:
+        raise ValueError("source_model_names must not be empty.")
+    if min_context_prior_support_count < 1:
+        raise ValueError("min_context_prior_support_count must be at least 1.")
+    if min_context_prior_safe_win_count < 1:
+        raise ValueError("min_context_prior_safe_win_count must be at least 1.")
+    if min_context_prior_mean_improvement_uah < 0.0:
+        raise ValueError(
+            "min_context_prior_mean_improvement_uah must not be negative."
+        )
+    if min_predicted_improvement_uah < 0.0:
+        raise ValueError("min_predicted_improvement_uah must not be negative.")
+    if not 0.0 <= max_context_tail_risk_probability <= 1.0:
+        raise ValueError("max_context_tail_risk_probability must be between 0 and 1.")
+    if not allowed_candidate_sources:
+        raise ValueError("allowed_candidate_sources must not be empty.")
+
+
 def _require_columns(
     frame: pl.DataFrame,
     required: frozenset[str],
@@ -1340,15 +2285,22 @@ def _require_columns(
 
 
 __all__ = [
+    "REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE",
+    "REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND",
     "REGRET_SURROGATE_SELECTION_ROLE",
     "REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND",
     "STRICT_REFERENCE_ROLE",
     "V2_PLUS_REFERENCE_ROLE",
     "build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame",
+    "build_dfl_regret_surrogate_contextual_candidate_value_v2_frame",
+    "build_dfl_regret_surrogate_contextual_rolling_robustness_frame",
+    "build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame",
     "build_dfl_regret_surrogate_candidate_value_v1_frame",
     "build_dfl_regret_surrogate_forecast_correction_v1_frame",
     "build_dfl_regret_surrogate_rolling_robustness_frame",
+    "build_dfl_regret_surrogate_safe_switch_context_audit_frame",
     "build_dfl_regret_surrogate_strict_lp_benchmark_frame",
+    "build_dfl_regret_surrogate_teacher_label_panel_v2_frame",
     "build_dfl_v2_plus_learning_limit_audit_frame",
     "evaluate_dfl_regret_surrogate_gate",
 ]

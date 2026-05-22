@@ -348,12 +348,19 @@ from smart_arbitrage.dfl.ua_context_lava_dt import (
     evaluate_dfl_ua_context_lava_gate,
 )
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
+    REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
+    REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
     REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+    build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
+    build_dfl_regret_surrogate_contextual_rolling_robustness_frame,
+    build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame,
     build_dfl_regret_surrogate_candidate_value_v1_frame,
     build_dfl_regret_surrogate_forecast_correction_v1_frame,
     build_dfl_regret_surrogate_rolling_robustness_frame,
+    build_dfl_regret_surrogate_safe_switch_context_audit_frame,
     build_dfl_regret_surrogate_strict_lp_benchmark_frame,
+    build_dfl_regret_surrogate_teacher_label_panel_v2_frame,
     build_dfl_v2_plus_learning_limit_audit_frame,
     evaluate_dfl_regret_surrogate_gate,
 )
@@ -1366,6 +1373,14 @@ class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
         "ua_context_candidate,lava_candidate"
     )
     min_oracle_improvement_ratio_vs_v2_plus: float = 0.05
+    material_switch_delta_uah: float = 25.0
+    high_v2_regret_uah: float = 500.0
+    high_forecast_spread_uah_mwh: float = 10_000.0
+    min_material_schedule_distance: float = 0.02
+    min_context_prior_support_count: int = 1
+    min_context_prior_safe_win_count: int = 1
+    min_context_prior_mean_improvement_uah: float = 1.0
+    max_context_tail_risk_probability: float = 0.25
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -5058,6 +5073,298 @@ def dfl_regret_surrogate_rolling_robustness_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_regret_surrogate_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_context_v2",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_safe_switch_context_audit_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit whether rare safe-switch opportunities have prior context support."""
+
+    frame = build_dfl_regret_surrogate_safe_switch_context_audit_frame(
+        dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        high_v2_regret_uah=config.high_v2_regret_uah,
+        high_forecast_spread_uah_mwh=config.high_forecast_spread_uah_mwh,
+        min_material_schedule_distance=config.min_material_schedule_distance,
+        min_context_prior_safe_win_count=config.min_context_prior_safe_win_count,
+        min_context_prior_mean_improvement_uah=(
+            config.min_context_prior_mean_improvement_uah
+        ),
+        max_context_tail_risk_probability=config.max_context_tail_risk_probability,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": frame.filter(
+                pl.col("material_safe_switch_available")
+            ).height
+            if frame.height
+            else 0,
+            "context_failure_modes": sorted(
+                frame["safe_switch_context_failure_mode"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_safe_switch_context_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_context_v2",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_teacher_label_panel_v2_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+    dfl_regret_surrogate_safe_switch_context_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Add prior-supported safe-switch context labels to Regret-Surrogate teachers."""
+
+    frame = build_dfl_regret_surrogate_teacher_label_panel_v2_frame(
+        dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+        dfl_regret_surrogate_safe_switch_context_audit_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        high_v2_regret_uah=config.high_v2_regret_uah,
+        high_forecast_spread_uah_mwh=config.high_forecast_spread_uah_mwh,
+        min_material_schedule_distance=config.min_material_schedule_distance,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": frame.filter(
+                pl.col("label_context_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_contextual_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_teacher_context_v2_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_context_v2",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_contextual_candidate_value_v2_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_regret_surrogate_teacher_label_panel_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Select candidates only when the safe-switch context has prior support."""
+
+    frame = build_dfl_regret_surrogate_contextual_candidate_value_v2_frame(
+        dfl_regret_surrogate_teacher_label_panel_v2_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        min_context_prior_support_count=config.min_context_prior_support_count,
+        min_context_prior_safe_win_count=config.min_context_prior_safe_win_count,
+        min_context_prior_mean_improvement_uah=(
+            config.min_context_prior_mean_improvement_uah
+        ),
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_context_tail_risk_probability=config.max_context_tail_risk_probability,
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selected_final_candidate_count": int(
+                frame["selected_final_candidate_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "fallback_final_anchor_count": int(
+                frame["fallback_final_anchor_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_contextual_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": (
+                "dfl_regret_surrogate_contextual_candidate_value_v2_not_full_dfl"
+            ),
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_context_v2",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_regret_surrogate_teacher_label_panel_v2_frame: pl.DataFrame,
+    dfl_regret_surrogate_contextual_candidate_value_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score contextual Regret-Surrogate V2 against frozen V2+."""
+
+    strict_frame = build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
+        dfl_regret_surrogate_teacher_label_panel_v2_frame,
+        dfl_regret_surrogate_contextual_candidate_value_v2_frame,
+        generated_at=_latest_generated_at(dfl_regret_surrogate_teacher_label_panel_v2_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_regret_surrogate_gate(
+        strict_frame.with_columns(
+            pl.when(
+                pl.col("selection_role") == REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE
+            )
+            .then(pl.lit("regret_surrogate_candidate_value"))
+            .otherwise(pl.col("selection_role"))
+            .alias("selection_role")
+        ),
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "diagnostic_signal_passed": gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "production_promote": False,
+            "target_label_space": "schedule_candidate_contextual_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_contextual_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_context_v2",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_contextual_rolling_robustness_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling prior-only robustness for contextual Regret-Surrogate V2."""
+
+    frame = build_dfl_regret_surrogate_contextual_rolling_robustness_frame(
+        dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        high_v2_regret_uah=config.high_v2_regret_uah,
+        high_forecast_spread_uah_mwh=config.high_forecast_spread_uah_mwh,
+        min_material_schedule_distance=config.min_material_schedule_distance,
+        min_context_prior_support_count=config.min_context_prior_support_count,
+        min_context_prior_safe_win_count=config.min_context_prior_safe_win_count,
+        min_context_prior_mean_improvement_uah=(
+            config.min_context_prior_mean_improvement_uah
+        ),
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_context_tail_risk_probability=config.max_context_tail_risk_probability,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "rolling_pass_windows": frame.filter(pl.col("rolling_window_passed")).height
+            if frame.height
+            else 0,
+            "diagnostic_signal_windows": frame.filter(
+                pl.col("diagnostic_window_passed")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_contextual_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_contextual_rolling_robustness_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -12986,6 +13293,11 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_regret_surrogate_candidate_value_v1_frame,
     dfl_regret_surrogate_strict_lp_benchmark_frame,
     dfl_regret_surrogate_rolling_robustness_frame,
+    dfl_regret_surrogate_safe_switch_context_audit_frame,
+    dfl_regret_surrogate_teacher_label_panel_v2_frame,
+    dfl_regret_surrogate_contextual_candidate_value_v2_frame,
+    dfl_regret_surrogate_contextual_strict_lp_benchmark_frame,
+    dfl_regret_surrogate_contextual_rolling_robustness_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,

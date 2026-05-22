@@ -78,6 +78,14 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      at `174.77` / `67.30` UAH, and produced `0 / 4` rolling challenger
      windows. This says the next DT/LAVA work needs stronger teacher labels or
      candidate/context repair, not another sequence model over the same labels.
+   - Regret-Surrogate context V2 is now materialized as the first teacher-label
+     repair. It narrowed the latest holdout to material safe-switch rows
+     (`>=25` UAH better than V2+) and found only `5 / 90` such rows; all five
+     had `context_without_prior_support`. The contextual selector therefore
+     selected `0 / 90` non-V2+ final rows, matched V2+, and produced `0 / 4`
+     rolling windows. Next work should collect/backfill comparable Ukrainian
+     context events or generate candidate families with prior-supported wins
+     before another DT/LAVA attempt.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

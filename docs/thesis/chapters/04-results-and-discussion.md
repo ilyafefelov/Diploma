@@ -982,6 +982,19 @@ Rolling robustness також не показав challenger signal: `0 / 4` rob
 Final evaluator не змінюється: strict LP/oracle regret, V2+ fallback,
 `market_execution_enabled=false`, без live dispatch claim.
 
+Після цього було додано context V2 teacher-label repair. Він відокремлює
+будь-який oracle-switch upside від матеріально корисного safe-switch upside:
+для latest final holdout material threshold `25` UAH залишив тільки `5 / 90`
+tenant-anchor rows. Усі ці `5 / 90` material opportunities отримали клас
+`context_without_prior_support`: у train/prior anchors не було такого самого
+контексту candidate family/source + weekend + grid-event context + high V2+
+regret + high forecast spread + material schedule distance. Contextual
+Regret-Surrogate V2 тому вибрав `0 / 90` non-V2+ final rows і знову повторив
+V2+ (`174.77` / `67.30` UAH). Rolling robustness лишився негативним (`0 / 4`),
+а в старіших rolling windows rule навіть погіршував mean regret приблизно на
+`1.34%`-`2.37%`. Це пояснює, чому `8 / 90` "кращих" opportunities не можна
+просто використати: без prior support це було б leakage з final holdout.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

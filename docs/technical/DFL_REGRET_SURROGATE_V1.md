@@ -20,7 +20,7 @@ The path is offline/read-model evidence only: no live dispatch, no market
 execution, no dashboard/API default switch, and no EU rows as Ukrainian target
 rows.
 
-Materialized outcome from Dagster run
+Materialized V1 outcome from Dagster run
 `eec564f0-7437-4372-95fa-5c6e74745c18`:
 
 - learning-limit audit rows: `1,825` tenant-anchor rows;
@@ -42,6 +42,51 @@ Interpretation: the candidate universe has enough oracle-switch upside to
 justify better teacher/value-label work, but the current prior-only surrogate
 does not learn a safe switch. The bottleneck is not "no possible better
 schedule"; it is sparse and tail-risk dominated switch identification.
+
+The follow-up context V2 path adds that teacher-label repair directly:
+
+- `dfl_regret_surrogate_safe_switch_context_audit_frame` groups rare
+  switch opportunities by prior context: candidate source/family, weekend,
+  grid-event context, high V2+ regret, high forecast spread, and material
+  schedule distance from V2+;
+- `dfl_regret_surrogate_teacher_label_panel_v2_frame` adds context-support
+  labels and prior-only support statistics without using final-holdout labels
+  as selector features;
+- `dfl_regret_surrogate_contextual_candidate_value_v2_frame` selects a
+  challenger only if the same context profile has prior support, prior safe
+  wins, low tail-risk probability, and expected improvement;
+- `dfl_regret_surrogate_contextual_strict_lp_benchmark_frame` and
+  `dfl_regret_surrogate_contextual_rolling_robustness_frame` keep the same
+  strict LP/oracle evaluator and V2+ fallback.
+
+This path is expected to be conservative. If the final safe-switch contexts
+have no prior support, the correct result is a documented data/context
+backfill blocker, not a forced switch.
+
+Materialized context V2 outcome from Dagster run
+`25c97839-d6b4-4eff-a5a3-843d88440a2b`:
+
+- context audit rows: `1,825`;
+- material safe-switch threshold: at least `25` UAH better than V2+;
+- latest final holdout material opportunities: `5 / 90` tenant-anchor rows;
+- all `5 / 90` final material opportunities were
+  `context_without_prior_support`;
+- contextual selector selected `0 / 90` non-V2+ final rows and fell back to
+  V2+ on all latest-holdout rows;
+- latest-holdout strict result matched V2+: `174.77` UAH mean regret and
+  `67.30` UAH median regret;
+- rolling robustness remained negative: `0 / 4` robust windows and `0 / 4`
+  diagnostic windows; in older rolling windows the contextual rule attempted
+  some switches and worsened mean regret by roughly `1.34%` to `2.37%`;
+- promotion status: `not_promoted`, with `market_execution_enabled=false`.
+
+This closes the immediate "why not use the 8/90 opportunities?" question. The
+non-material audit counted any positive oracle switch (`8 / 90`), while context
+V2 counts only material switches (`5 / 90`). Those five material rows all occur
+in contexts not represented by prior train anchors, so using them would require
+final-holdout hindsight. The model must either get more Ukrainian/context
+history with comparable events or create safer candidate families that win in
+contexts already covered by prior anchors.
 
 ## Source Basis
 
@@ -67,6 +112,11 @@ The implementation follows the decision-focused direction from:
 | `dfl_regret_surrogate_candidate_value_v1_frame` | Resolves final candidate choices from the scorer and V2+ fallback keys. |
 | `dfl_regret_surrogate_strict_lp_benchmark_frame` | Scores strict, V2+, and Regret-Surrogate rows under the unchanged strict LP/oracle evaluator. |
 | `dfl_regret_surrogate_rolling_robustness_frame` | Replays prior-only validation windows and checks whether the challenger can become robust evidence. |
+| `dfl_regret_surrogate_safe_switch_context_audit_frame` | Explains whether rare material safe-switch rows have prior support in comparable contexts. |
+| `dfl_regret_surrogate_teacher_label_panel_v2_frame` | Adds context-support labels and prior-only support statistics for the next safe-switch learner. |
+| `dfl_regret_surrogate_contextual_candidate_value_v2_frame` | Selects candidates only from prior-supported safe-switch contexts. |
+| `dfl_regret_surrogate_contextual_strict_lp_benchmark_frame` | Scores contextual V2 against strict and frozen V2+ under the same evaluator. |
+| `dfl_regret_surrogate_contextual_rolling_robustness_frame` | Replays contextual V2 over rolling prior-only windows. |
 
 Tracked config:
 
@@ -105,7 +155,7 @@ new candidate generation, not another model over the same rows.
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_v2_plus_learning_limit_audit_frame,dfl_expanded_schedule_value_teacher_label_panel_v1_frame,dfl_regret_surrogate_forecast_correction_v1_frame,dfl_regret_surrogate_candidate_value_v1_frame,dfl_regret_surrogate_strict_lp_benchmark_frame,dfl_regret_surrogate_rolling_robustness_frame `
+  --select dfl_v2_plus_learning_limit_audit_frame,dfl_expanded_schedule_value_teacher_label_panel_v1_frame,dfl_regret_surrogate_forecast_correction_v1_frame,dfl_regret_surrogate_candidate_value_v1_frame,dfl_regret_surrogate_strict_lp_benchmark_frame,dfl_regret_surrogate_rolling_robustness_frame,dfl_regret_surrogate_safe_switch_context_audit_frame,dfl_regret_surrogate_teacher_label_panel_v2_frame,dfl_regret_surrogate_contextual_candidate_value_v2_frame,dfl_regret_surrogate_contextual_strict_lp_benchmark_frame,dfl_regret_surrogate_contextual_rolling_robustness_frame `
   -c configs/real_data_dfl_regret_surrogate_v1_week3.yaml
 ```
 
