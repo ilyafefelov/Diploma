@@ -54,6 +54,27 @@ REGRET_SURROGATE_CONTEXTUAL_STRICT_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_CONTEXTUAL_ROBUSTNESS_CLAIM_SCOPE: Final[str] = (
     "dfl_regret_surrogate_contextual_rolling_robustness_not_full_dfl"
 )
+REGRET_SURROGATE_SPARSE_FEATURE_CONTRACT_CLAIM_SCOPE: Final[str] = (
+    "dfl_sparse_safe_switch_feature_contract_not_full_dfl"
+)
+REGRET_SURROGATE_SPARSE_OPPORTUNITY_AUDIT_CLAIM_SCOPE: Final[str] = (
+    "dfl_sparse_safe_switch_opportunity_audit_not_full_dfl"
+)
+REGRET_SURROGATE_SPARSE_CANDIDATE_LIBRARY_CLAIM_SCOPE: Final[str] = (
+    "dfl_sparse_safe_switch_candidate_library_v6_not_full_dfl"
+)
+REGRET_SURROGATE_SPARSE_TEACHER_CLAIM_SCOPE: Final[str] = (
+    "dfl_sparse_safe_switch_teacher_v6_not_full_dfl"
+)
+REGRET_SURROGATE_SPARSE_MODEL_CLAIM_SCOPE: Final[str] = (
+    "dfl_sparse_safe_switch_abstention_model_v6_not_full_dfl"
+)
+REGRET_SURROGATE_SPARSE_STRICT_CLAIM_SCOPE: Final[str] = (
+    "dfl_sparse_safe_switch_strict_lp_gate_not_full_dfl"
+)
+REGRET_SURROGATE_SPARSE_ROBUSTNESS_CLAIM_SCOPE: Final[str] = (
+    "dfl_sparse_safe_switch_rolling_robustness_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -70,6 +91,15 @@ REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE: Final[str] = (
 )
 REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_contextual_strict_lp_benchmark"
+)
+REGRET_SURROGATE_SPARSE_SAFE_SWITCH_MODEL_NAME: Final[str] = (
+    "dfl_sparse_safe_switch_abstention_model_v6"
+)
+REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE: Final[str] = (
+    "sparse_safe_switch_abstention_v6"
+)
+REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND: Final[str] = (
+    "dfl_sparse_safe_switch_strict_lp_benchmark"
 )
 V2_PLUS_REFERENCE_ROLE: Final[str] = "schedule_value_learner_v2_plus_reference"
 STRICT_REFERENCE_ROLE: Final[str] = "strict_reference"
@@ -1157,6 +1187,603 @@ def build_dfl_regret_surrogate_contextual_rolling_robustness_frame(
     )
 
 
+def build_dfl_sparse_safe_switch_feature_contract_audit_frame(
+    frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit that selector features are prior-only inputs, not realized labels."""
+
+    selector_features = _selector_feature_columns(frame)
+    blocked = [
+        column
+        for column in selector_features
+        if _selector_feature_name_is_blocked(column)
+    ]
+    selected_feature_names: list[str] = []
+    if "selected_feature_names" in frame.columns and not frame.is_empty():
+        for value in frame["selected_feature_names"].to_list():
+            if isinstance(value, list):
+                selected_feature_names.extend(str(item) for item in value)
+    blocked_selected = [
+        name
+        for name in sorted(set(selected_feature_names))
+        if _selector_feature_name_is_blocked(name)
+    ]
+    return pl.DataFrame(
+        [
+            {
+                "feature_contract_passed": not blocked and not blocked_selected,
+                "selector_feature_count": len(selector_features),
+                "blocked_selector_feature_names": blocked,
+                "blocked_selected_feature_names": blocked_selected,
+                "claim_scope": REGRET_SURROGATE_SPARSE_FEATURE_CONTRACT_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        ],
+        infer_schema_length=None,
+    )
+
+
+def build_dfl_sparse_safe_switch_candidate_library_v6_frame(
+    regret_surrogate_teacher_label_panel_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prepare V6 schedule candidates without fabricating final-holdout labels."""
+
+    _validate_context_teacher_panel(regret_surrogate_teacher_label_panel_v2_frame)
+    feature_contract = build_dfl_sparse_safe_switch_feature_contract_audit_frame(
+        regret_surrogate_teacher_label_panel_v2_frame
+    )
+    if not bool(feature_contract["feature_contract_passed"].item()):
+        raise ValueError(
+            "sparse safe-switch candidate library refuses selector-feature leakage."
+        )
+    rows: list[dict[str, Any]] = []
+    for row in regret_surrogate_teacher_label_panel_v2_frame.iter_rows(named=True):
+        source = str(row["candidate_source"])
+        copied = dict(row)
+        copied.update(
+            {
+                "candidate_library_version": "sparse_safe_switch_v6",
+                "candidate_schedule_class": _sparse_candidate_schedule_class(row),
+                "oracle_neighborhood_train_only": (
+                    source == "oracle_gap_candidate"
+                    and str(row["split_name"]) == "train_selection"
+                ),
+                "eligible_for_final_selection_v6": bool(
+                    row["eligible_for_final_selection"]
+                )
+                and not (
+                    source == "oracle_gap_candidate"
+                    and str(row["split_name"]) == "final_holdout"
+                ),
+                "claim_scope": REGRET_SURROGATE_SPARSE_CANDIDATE_LIBRARY_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        rows.append(copied)
+    frame = pl.DataFrame(rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_sparse_candidate_library(frame)
+    return frame
+
+
+def build_dfl_sparse_safe_switch_opportunity_audit_frame(
+    sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    min_neighbor_safe_win_count: int = 1,
+    max_neighbor_tail_risk_probability: float = 0.25,
+    nearest_neighbor_count: int = 5,
+) -> pl.DataFrame:
+    """Classify sparse safe-switch opportunities using nearest prior anchors."""
+
+    _validate_sparse_candidate_library(sparse_safe_switch_candidate_library_v6_frame)
+    _validate_sparse_neighbor_config(
+        material_switch_delta_uah=material_switch_delta_uah,
+        max_prior_neighbor_distance=max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+        max_neighbor_tail_risk_probability=max_neighbor_tail_risk_probability,
+        nearest_neighbor_count=nearest_neighbor_count,
+    )
+    rows = list(sparse_safe_switch_candidate_library_v6_frame.iter_rows(named=True))
+    prior_rows = _sparse_prior_candidate_rows(rows)
+    feature_names = _sparse_distance_feature_names(
+        sparse_safe_switch_candidate_library_v6_frame
+    )
+    output_rows: list[dict[str, Any]] = []
+    for anchor_key, anchor_rows in sorted(_group_by_anchor(rows).items()):
+        baseline = _baseline_row(anchor_rows, anchor_key=anchor_key)
+        challengers = _sparse_eligible_challengers(anchor_rows)
+        material_candidates = [
+            row
+            for row in challengers
+            if float(row["label_regret_delta_vs_v2_plus_uah"])
+            <= -material_switch_delta_uah
+        ]
+        tail_candidates = [row for row in challengers if bool(row["label_tail_risk_loss"])]
+        best = (
+            min(
+                material_candidates,
+                key=lambda row: (
+                    float(row["regret_uah"]),
+                    str(row["candidate_source"]),
+                    str(row["candidate_family"]),
+                    str(row["candidate_model_name"]),
+                ),
+            )
+            if material_candidates
+            else None
+        )
+        neighbor_stats = (
+            _nearest_prior_neighbor_stats(
+                best,
+                prior_rows=prior_rows,
+                feature_names=feature_names,
+                nearest_neighbor_count=nearest_neighbor_count,
+            )
+            if best is not None
+            else _empty_neighbor_stats()
+        )
+        opportunity_class = _sparse_opportunity_class(
+            material_candidate_available=best is not None,
+            tail_risk_candidate_count=len(tail_candidates),
+            neighbor_stats=neighbor_stats,
+            max_prior_neighbor_distance=max_prior_neighbor_distance,
+            min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+            max_neighbor_tail_risk_probability=max_neighbor_tail_risk_probability,
+        )
+        output_rows.append(
+            {
+                "tenant_id": anchor_key[0],
+                "source_model_name": anchor_key[1],
+                "anchor_timestamp": anchor_key[2],
+                "split_name": str(baseline["split_name"]),
+                "v2_plus_regret_uah": float(baseline["regret_uah"]),
+                "material_switch_delta_uah": material_switch_delta_uah,
+                "material_candidate_available": best is not None,
+                "material_candidate_count": len(material_candidates),
+                "tail_risk_candidate_count": len(tail_candidates),
+                "best_material_candidate_key": _candidate_key(best)
+                if best is not None
+                else "",
+                "best_material_candidate_source": str(best["candidate_source"])
+                if best is not None
+                else "",
+                "best_material_candidate_family": str(best["candidate_family"])
+                if best is not None
+                else "",
+                "best_material_candidate_regret_uah": float(best["regret_uah"])
+                if best is not None
+                else float(baseline["regret_uah"]),
+                "best_material_delta_vs_v2_plus_uah": float(
+                    best["label_regret_delta_vs_v2_plus_uah"]
+                )
+                if best is not None
+                else 0.0,
+                "nearest_prior_safe_switch_distance": float(
+                    neighbor_stats["nearest_safe_distance"]
+                ),
+                "nearest_prior_any_candidate_distance": float(
+                    neighbor_stats["nearest_any_distance"]
+                ),
+                "neighbor_support_count": int(neighbor_stats["neighbor_count"]),
+                "neighbor_safe_win_count": int(neighbor_stats["safe_win_count"]),
+                "neighbor_tail_risk_count": int(neighbor_stats["tail_risk_count"]),
+                "neighbor_tail_risk_probability": float(
+                    neighbor_stats["tail_risk_probability"]
+                ),
+                "neighbor_mean_delta_uah": float(neighbor_stats["mean_delta_uah"]),
+                "sparse_opportunity_class": opportunity_class,
+                "recommended_next_branch": _sparse_recommended_next_branch(
+                    opportunity_class
+                ),
+                "claim_scope": REGRET_SURROGATE_SPARSE_OPPORTUNITY_AUDIT_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp"]
+    )
+
+
+def build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+    sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    sparse_safe_switch_opportunity_audit_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    nearest_neighbor_count: int = 5,
+) -> pl.DataFrame:
+    """Attach distance-based prior support labels for the V6 abstaining selector."""
+
+    _validate_sparse_candidate_library(sparse_safe_switch_candidate_library_v6_frame)
+    _require_columns(
+        sparse_safe_switch_opportunity_audit_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "sparse_opportunity_class",
+                "recommended_next_branch",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="sparse_safe_switch_opportunity_audit_frame",
+    )
+    if sparse_safe_switch_opportunity_audit_frame.select(
+        pl.col("market_execution_enabled").any()
+    ).item():
+        raise ValueError("sparse safe-switch opportunity audit refuses market execution.")
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if max_prior_neighbor_distance < 0.0:
+        raise ValueError("max_prior_neighbor_distance must not be negative.")
+    if nearest_neighbor_count < 1:
+        raise ValueError("nearest_neighbor_count must be at least 1.")
+
+    rows = list(sparse_safe_switch_candidate_library_v6_frame.iter_rows(named=True))
+    prior_rows = _sparse_prior_candidate_rows(rows)
+    feature_names = _sparse_distance_feature_names(
+        sparse_safe_switch_candidate_library_v6_frame
+    )
+    audit_by_anchor = {
+        _anchor_key(row): row
+        for row in sparse_safe_switch_opportunity_audit_frame.iter_rows(named=True)
+    }
+    output_rows: list[dict[str, Any]] = []
+    for row in rows:
+        audit = audit_by_anchor.get(_anchor_key(row))
+        if audit is None:
+            raise ValueError(f"missing sparse opportunity audit row for {_anchor_key(row)}.")
+        neighbor_stats = (
+            _nearest_prior_neighbor_stats(
+                row,
+                prior_rows=prior_rows,
+                feature_names=feature_names,
+                nearest_neighbor_count=nearest_neighbor_count,
+            )
+            if str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+            else _empty_neighbor_stats()
+        )
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        material_safe = (
+            str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+            and delta <= -material_switch_delta_uah
+        )
+        copied = dict(row)
+        feature_list = list(copied.get("selected_feature_names", []))
+        for feature_name in (
+            "selector_feature_nearest_prior_safe_switch_distance",
+            "selector_feature_neighbor_safe_win_count",
+            "selector_feature_neighbor_tail_risk_probability",
+            "selector_feature_neighbor_mean_delta_uah",
+        ):
+            if feature_name not in feature_list:
+                feature_list.append(feature_name)
+        copied.update(
+            {
+                "teacher_panel_version": "sparse_safe_switch_teacher_v6",
+                "selected_feature_names": sorted(feature_list),
+                "selector_feature_nearest_prior_safe_switch_distance": float(
+                    neighbor_stats["nearest_safe_distance"]
+                ),
+                "selector_feature_nearest_prior_any_candidate_distance": float(
+                    neighbor_stats["nearest_any_distance"]
+                ),
+                "selector_feature_neighbor_support_count": float(
+                    neighbor_stats["neighbor_count"]
+                ),
+                "selector_feature_neighbor_safe_win_count": float(
+                    neighbor_stats["safe_win_count"]
+                ),
+                "selector_feature_neighbor_tail_risk_probability": float(
+                    neighbor_stats["tail_risk_probability"]
+                ),
+                "selector_feature_neighbor_mean_delta_uah": float(
+                    neighbor_stats["mean_delta_uah"]
+                ),
+                "selector_feature_has_prior_neighbor_support": float(
+                    float(neighbor_stats["nearest_safe_distance"])
+                    <= max_prior_neighbor_distance
+                ),
+                "label_sparse_material_safe_switch": material_safe,
+                "label_sparse_tail_risk_loss": bool(row["label_tail_risk_loss"]),
+                "label_sparse_opportunity_class": str(
+                    audit["sparse_opportunity_class"]
+                ),
+                "diagnostic_sparse_recommended_next_branch": str(
+                    audit["recommended_next_branch"]
+                ),
+                "claim_scope": REGRET_SURROGATE_SPARSE_TEACHER_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_sparse_teacher_panel(frame)
+    return frame
+
+
+def build_dfl_sparse_safe_switch_abstention_model_v6_frame(
+    sparse_safe_switch_teacher_label_panel_v6_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    max_prior_neighbor_distance: float = 1.5,
+    min_neighbor_safe_win_count: int = 1,
+    min_predicted_improvement_uah: float = 1.0,
+    max_neighbor_tail_risk_probability: float = 0.25,
+    allowed_candidate_sources: tuple[str, ...] = _DEFAULT_ALLOWED_CANDIDATE_SOURCES,
+) -> pl.DataFrame:
+    """Select distance-supported candidates; abstain to V2+ when evidence is weak."""
+
+    _validate_sparse_teacher_panel(sparse_safe_switch_teacher_label_panel_v6_frame)
+    _validate_sparse_selector_config(
+        tenant_ids=tenant_ids,
+        source_model_names=source_model_names,
+        max_prior_neighbor_distance=max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=max_neighbor_tail_risk_probability,
+        allowed_candidate_sources=allowed_candidate_sources,
+    )
+    rows = list(sparse_safe_switch_teacher_label_panel_v6_frame.iter_rows(named=True))
+    output_rows: list[dict[str, Any]] = []
+    for tenant_id in tenant_ids:
+        for source_model_name in source_model_names:
+            scope_rows = [
+                row
+                for row in rows
+                if str(row["tenant_id"]) == tenant_id
+                and str(row["source_model_name"]) == source_model_name
+            ]
+            output_rows.append(
+                _fit_scope_sparse_safe_switch(
+                    scope_rows,
+                    tenant_id=tenant_id,
+                    source_model_name=source_model_name,
+                    max_prior_neighbor_distance=max_prior_neighbor_distance,
+                    min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+                    min_predicted_improvement_uah=min_predicted_improvement_uah,
+                    max_neighbor_tail_risk_probability=(
+                        max_neighbor_tail_risk_probability
+                    ),
+                    allowed_candidate_sources=set(allowed_candidate_sources),
+                )
+            )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id"]
+    )
+
+
+def build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
+    sparse_safe_switch_teacher_label_panel_v6_frame: pl.DataFrame,
+    sparse_safe_switch_abstention_model_v6_frame: pl.DataFrame,
+    *,
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Strict-score V6 sparse safe-switch selections against V2+."""
+
+    _validate_sparse_teacher_panel(sparse_safe_switch_teacher_label_panel_v6_frame)
+    _validate_scorer_frame(sparse_safe_switch_abstention_model_v6_frame)
+    resolved_generated_at = generated_at or _latest_generated_at(
+        sparse_safe_switch_teacher_label_panel_v6_frame
+    )
+    panel_rows = list(sparse_safe_switch_teacher_label_panel_v6_frame.iter_rows(named=True))
+    candidate_by_key = {_candidate_key(row): row for row in panel_rows}
+    v2_by_anchor: dict[str, dict[str, Any]] = {}
+    output_rows: list[dict[str, Any]] = []
+    for row in panel_rows:
+        if str(row["split_name"]) != "final_holdout":
+            continue
+        source = str(row["candidate_source"])
+        if source == _STRICT_CANDIDATE_SOURCE:
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=STRICT_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_SPARSE_SAFE_SWITCH_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_SPARSE_STRICT_CLAIM_SCOPE,
+                )
+            )
+        elif source == _V2_PLUS_CANDIDATE_SOURCE:
+            v2_by_anchor[_anchor_key_string(row)] = row
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=V2_PLUS_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_SPARSE_SAFE_SWITCH_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_SPARSE_STRICT_CLAIM_SCOPE,
+                )
+            )
+    for scorer_row in sparse_safe_switch_abstention_model_v6_frame.iter_rows(
+        named=True
+    ):
+        for candidate_key in scorer_row["selected_final_candidate_keys"]:
+            output_rows.append(
+                _benchmark_row(
+                    candidate_by_key[str(candidate_key)],
+                    selection_role=REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_SPARSE_SAFE_SWITCH_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_SPARSE_STRICT_CLAIM_SCOPE,
+                )
+            )
+        for anchor_key in scorer_row["fallback_final_anchor_keys"]:
+            fallback = v2_by_anchor.get(str(anchor_key))
+            if fallback is None:
+                raise ValueError(f"missing V2+ fallback row for {anchor_key}.")
+            output_rows.append(
+                _benchmark_row(
+                    fallback,
+                    selection_role=REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_SPARSE_SAFE_SWITCH_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_SPARSE_STRICT_CLAIM_SCOPE,
+                )
+            )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp", "selection_role"]
+    )
+
+
+def build_dfl_sparse_safe_switch_rolling_robustness_frame(
+    sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    validation_window_count: int = 4,
+    validation_anchor_count: int = 18,
+    min_prior_anchors_before_window: int = 30,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    min_neighbor_safe_win_count: int = 1,
+    min_predicted_improvement_uah: float = 1.0,
+    max_neighbor_tail_risk_probability: float = 0.25,
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = (
+        DEFAULT_MIN_MEAN_REGRET_IMPROVEMENT_RATIO
+    ),
+    allowed_candidate_sources: tuple[str, ...] = _DEFAULT_ALLOWED_CANDIDATE_SOURCES,
+) -> pl.DataFrame:
+    """Replay V6 sparse safe-switch selection over prior-only rolling windows."""
+
+    _validate_sparse_candidate_library(sparse_safe_switch_candidate_library_v6_frame)
+    if validation_window_count <= 0:
+        raise ValueError("validation_window_count must be positive.")
+    if validation_anchor_count <= 0:
+        raise ValueError("validation_anchor_count must be positive.")
+    rows = list(sparse_safe_switch_candidate_library_v6_frame.iter_rows(named=True))
+    output_rows: list[dict[str, Any]] = []
+    for source_model_name in source_model_names:
+        anchors = sorted(
+            {
+                _datetime_value(row["anchor_timestamp"])
+                for row in rows
+                if str(row["source_model_name"]) == source_model_name
+            }
+        )
+        source_window_rows: list[dict[str, Any]] = []
+        for window_index in range(validation_window_count):
+            end = len(anchors) - window_index * validation_anchor_count
+            start = end - validation_anchor_count
+            if start < 0:
+                break
+            validation_anchors = tuple(anchors[start:end])
+            prior_anchors = tuple(anchors[:start])
+            if len(prior_anchors) < min_prior_anchors_before_window:
+                continue
+            window_frame = _window_teacher_panel(
+                rows,
+                source_model_name=source_model_name,
+                prior_anchors=set(prior_anchors),
+                validation_anchors=set(validation_anchors),
+            )
+            library = build_dfl_sparse_safe_switch_candidate_library_v6_frame(
+                window_frame
+            )
+            audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+                library,
+                material_switch_delta_uah=material_switch_delta_uah,
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+                min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+                max_neighbor_tail_risk_probability=(
+                    max_neighbor_tail_risk_probability
+                ),
+            )
+            teacher_v6 = build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+                library,
+                audit,
+                material_switch_delta_uah=material_switch_delta_uah,
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+            )
+            model = build_dfl_sparse_safe_switch_abstention_model_v6_frame(
+                teacher_v6,
+                tenant_ids=tenant_ids,
+                source_model_names=(source_model_name,),
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+                min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+                min_predicted_improvement_uah=min_predicted_improvement_uah,
+                max_neighbor_tail_risk_probability=(
+                    max_neighbor_tail_risk_probability
+                ),
+                allowed_candidate_sources=allowed_candidate_sources,
+            )
+            source_window_rows.append(
+                _sparse_rolling_summary_row(
+                    teacher_v6,
+                    model,
+                    source_model_name=source_model_name,
+                    window_index=window_index,
+                    validation_anchors=validation_anchors,
+                    prior_anchors=prior_anchors,
+                    min_mean_regret_improvement_ratio_vs_v2_plus=(
+                        min_mean_regret_improvement_ratio_vs_v2_plus
+                    ),
+                )
+            )
+        pass_count = sum(
+            1 for row in source_window_rows if bool(row["rolling_window_passed"])
+        )
+        diagnostic_count = sum(
+            1 for row in source_window_rows if bool(row["diagnostic_window_passed"])
+        )
+        for row in source_window_rows:
+            row["passing_window_count_for_source"] = pass_count
+            row["diagnostic_window_count_for_source"] = diagnostic_count
+            row["robust_sparse_safe_switch_challenger"] = (
+                pass_count >= validation_window_count
+            )
+            row["diagnostic_signal_learnable"] = diagnostic_count >= min(
+                validation_window_count,
+                3,
+            )
+            row["production_promote"] = False
+        output_rows.extend(source_window_rows)
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "window_index"]
+    )
+
+
 def evaluate_dfl_regret_surrogate_gate(
     strict_frame: pl.DataFrame,
     *,
@@ -1751,6 +2378,7 @@ def _forecast_model_name_for_role(
     if selection_role in {
         REGRET_SURROGATE_SELECTION_ROLE,
         REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
+        REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
     }:
         return challenger_model_name
     if selection_role == V2_PLUS_REFERENCE_ROLE:
@@ -1943,6 +2571,365 @@ def _context_switch_class(*, material_safe: bool, tail_loss: bool) -> str:
     if material_safe:
         return "material_safe_switch"
     return "neutral_or_loss"
+
+
+def _selector_feature_name_is_blocked(name: str) -> bool:
+    lowered = name.lower()
+    blocked_terms = (
+        "actual",
+        "diagnostic",
+        "final_regret",
+        "label",
+        "oracle",
+        "post_anchor",
+        "realized",
+    )
+    return any(term in lowered for term in blocked_terms)
+
+
+def _sparse_candidate_schedule_class(row: dict[str, Any]) -> str:
+    source = str(row["candidate_source"])
+    family = str(row["candidate_family"]).lower()
+    if source == _V2_PLUS_CANDIDATE_SOURCE:
+        return "v2_plus_fallback"
+    if source == _STRICT_CANDIDATE_SOURCE:
+        return "strict_control"
+    if source == "oracle_gap_candidate":
+        return "oracle_neighborhood_train_diagnostic"
+    if "terminal" in family or "reserve" in family:
+        return "soc_terminal_reserve"
+    if "tft" in source or "quantile" in family:
+        return "tft_poland_risk_reduced"
+    if "poland" in source:
+        return "poland_disagreement_risk_reduced"
+    if "peak" in family or "trough" in family or "shift" in family:
+        return "v2_plus_peak_trough_neighborhood"
+    if "degradation" in family or "throughput" in family:
+        return "throughput_degradation_sweep"
+    return "candidate_value_neighbor"
+
+
+def _sparse_prior_candidate_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in rows
+        if bool(row.get("is_training_row", False))
+        and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+        and bool(row.get("eligible_for_final_selection_v6", True))
+    ]
+
+
+def _sparse_eligible_challengers(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in rows
+        if bool(row.get("eligible_for_final_selection_v6", row["eligible_for_final_selection"]))
+        and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+    ]
+
+
+def _sparse_distance_feature_names(frame: pl.DataFrame) -> tuple[str, ...]:
+    preferred = [
+        "selector_feature_schedule_distance_from_v2_plus",
+        "selector_feature_total_throughput_delta_mwh",
+        "selector_feature_terminal_soc_delta_fraction",
+        "selector_feature_forecast_spread_uah_mwh",
+        "selector_feature_total_degradation_penalty_uah",
+        "selector_feature_poland_shadow_candidate",
+        "selector_feature_tft_shadow_candidate",
+        "selector_feature_weather_load_context_ready",
+        "selector_feature_calendar_publication_context_ready",
+        "selector_feature_grid_event_context_ready",
+        "selector_feature_hour_of_day",
+        "selector_feature_weekend",
+    ]
+    names = [
+        name
+        for name in preferred
+        if name in frame.columns and not _selector_feature_name_is_blocked(name)
+    ]
+    if not names:
+        names = [
+            name
+            for name in _selector_feature_columns(frame)
+            if not _selector_feature_name_is_blocked(name)
+        ]
+    return tuple(names)
+
+
+def _nearest_prior_neighbor_stats(
+    row: dict[str, Any],
+    *,
+    prior_rows: list[dict[str, Any]],
+    feature_names: tuple[str, ...],
+    nearest_neighbor_count: int,
+) -> dict[str, Any]:
+    candidates = [
+        prior
+        for prior in prior_rows
+        if str(prior["source_model_name"]) == str(row["source_model_name"])
+        and str(prior["candidate_source"]) == str(row["candidate_source"])
+        and str(prior["candidate_family"]) == str(row["candidate_family"])
+    ]
+    if not candidates or not feature_names:
+        return _empty_neighbor_stats()
+    distances = sorted(
+        (
+            _sparse_feature_distance(row, prior, feature_names),
+            _candidate_key(prior),
+            prior,
+        )
+        for prior in candidates
+    )
+    nearest = [prior for _, _, prior in distances[:nearest_neighbor_count]]
+    safe_distances = [
+        distance
+        for distance, _, prior in distances
+        if bool(prior.get("label_context_material_safe_switch", False))
+        or bool(prior.get("label_sparse_material_safe_switch", False))
+        or bool(prior.get("label_safe_switch_win", False))
+    ]
+    deltas = [float(prior["label_regret_delta_vs_v2_plus_uah"]) for prior in nearest]
+    tail_count = sum(1 for prior in nearest if bool(prior["label_tail_risk_loss"]))
+    safe_count = sum(
+        1
+        for prior in nearest
+        if bool(prior.get("label_context_material_safe_switch", False))
+        or bool(prior.get("label_sparse_material_safe_switch", False))
+        or bool(prior.get("label_safe_switch_win", False))
+    )
+    return {
+        "nearest_any_distance": float(distances[0][0]),
+        "nearest_safe_distance": float(safe_distances[0])
+        if safe_distances
+        else float("inf"),
+        "neighbor_count": len(nearest),
+        "safe_win_count": safe_count,
+        "tail_risk_count": tail_count,
+        "tail_risk_probability": tail_count / len(nearest),
+        "mean_delta_uah": mean(deltas),
+        "median_delta_uah": median(deltas),
+    }
+
+
+def _empty_neighbor_stats() -> dict[str, Any]:
+    return {
+        "nearest_any_distance": float("inf"),
+        "nearest_safe_distance": float("inf"),
+        "neighbor_count": 0,
+        "safe_win_count": 0,
+        "tail_risk_count": 0,
+        "tail_risk_probability": 1.0,
+        "mean_delta_uah": 0.0,
+        "median_delta_uah": 0.0,
+    }
+
+
+def _sparse_feature_distance(
+    left: dict[str, Any],
+    right: dict[str, Any],
+    feature_names: tuple[str, ...],
+) -> float:
+    squared = 0.0
+    for name in feature_names:
+        left_value = _scaled_sparse_feature_value(left, name)
+        right_value = _scaled_sparse_feature_value(right, name)
+        squared += (left_value - right_value) ** 2
+    return squared**0.5
+
+
+def _scaled_sparse_feature_value(row: dict[str, Any], name: str) -> float:
+    value = _numeric_feature(row, name)
+    if name.endswith("hour_of_day"):
+        return value / 24.0
+    if "forecast_spread" in name:
+        return value / 10_000.0
+    if "degradation_penalty" in name:
+        return value / 1_000.0
+    return value
+
+
+def _sparse_opportunity_class(
+    *,
+    material_candidate_available: bool,
+    tail_risk_candidate_count: int,
+    neighbor_stats: dict[str, Any],
+    max_prior_neighbor_distance: float,
+    min_neighbor_safe_win_count: int,
+    max_neighbor_tail_risk_probability: float,
+) -> str:
+    if not material_candidate_available:
+        if tail_risk_candidate_count > 0:
+            return "tail_risk_dominated"
+        return "no_material_candidate"
+    if (
+        float(neighbor_stats["nearest_safe_distance"]) <= max_prior_neighbor_distance
+        and int(neighbor_stats["safe_win_count"]) >= min_neighbor_safe_win_count
+        and float(neighbor_stats["tail_risk_probability"])
+        <= max_neighbor_tail_risk_probability
+    ):
+        return "material_candidate_prior_supported"
+    return "material_candidate_no_prior_neighbor"
+
+
+def _sparse_recommended_next_branch(opportunity_class: str) -> str:
+    if opportunity_class == "material_candidate_prior_supported":
+        return "abstaining_safe_switch_v6"
+    if opportunity_class == "material_candidate_no_prior_neighbor":
+        return "ukrainian_context_backfill"
+    if opportunity_class == "tail_risk_dominated":
+        return "tail_risk_candidate_repair"
+    return "keep_v2_plus"
+
+
+def _fit_scope_sparse_safe_switch(
+    scope_rows: list[dict[str, Any]],
+    *,
+    tenant_id: str,
+    source_model_name: str,
+    max_prior_neighbor_distance: float,
+    min_neighbor_safe_win_count: int,
+    min_predicted_improvement_uah: float,
+    max_neighbor_tail_risk_probability: float,
+    allowed_candidate_sources: set[str],
+) -> dict[str, Any]:
+    final_rows = [row for row in scope_rows if str(row["split_name"]) == "final_holdout"]
+    selected, fallback_keys, predicted_delta, predicted_tail = (
+        _select_sparse_final_candidates(
+            final_rows,
+            max_prior_neighbor_distance=max_prior_neighbor_distance,
+            min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+            min_predicted_improvement_uah=min_predicted_improvement_uah,
+            max_neighbor_tail_risk_probability=max_neighbor_tail_risk_probability,
+            allowed_candidate_sources=allowed_candidate_sources,
+        )
+    )
+    material_final_count = sum(
+        1
+        for row in final_rows
+        if str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+        and float(row["label_regret_delta_vs_v2_plus_uah"]) < 0.0
+    )
+    if selected:
+        abstention_reason = "selected_prior_supported_candidates"
+    elif material_final_count > 0:
+        abstention_reason = "no_prior_neighbor_support"
+    else:
+        abstention_reason = "no_material_candidate"
+    selected_keys = [_candidate_key(row) for row in selected]
+    return {
+        "tenant_id": tenant_id,
+        "source_model_name": source_model_name,
+        "learner_model_name": REGRET_SURROGATE_SPARSE_SAFE_SWITCH_MODEL_NAME,
+        "target_label_space": "schedule_candidate_index",
+        "selected_final_candidate_keys": selected_keys,
+        "fallback_final_anchor_keys": fallback_keys,
+        "selected_final_candidate_count": len(selected_keys),
+        "fallback_final_anchor_count": len(fallback_keys),
+        "selected_final_family_counts": _family_counts(selected),
+        "selected_final_candidate_source_counts": _source_counts(selected),
+        "predicted_final_candidate_deltas": predicted_delta,
+        "predicted_final_tail_risk_probabilities": predicted_tail,
+        "fallback_to_v2_plus": len(selected_keys) == 0,
+        "uses_v2_plus_anchor_fallback": bool(fallback_keys),
+        "abstention_reason": abstention_reason,
+        "selection_policy": "nearest_prior_abstaining_safe_switch_v6",
+        "claim_scope": REGRET_SURROGATE_SPARSE_MODEL_CLAIM_SCOPE,
+        "not_full_dfl": True,
+        "not_market_execution": True,
+        "market_execution_enabled": False,
+        "raw_hourly_action_imitation": False,
+    }
+
+
+def _select_sparse_final_candidates(
+    final_rows: list[dict[str, Any]],
+    *,
+    max_prior_neighbor_distance: float,
+    min_neighbor_safe_win_count: int,
+    min_predicted_improvement_uah: float,
+    max_neighbor_tail_risk_probability: float,
+    allowed_candidate_sources: set[str],
+) -> tuple[list[dict[str, Any]], list[str], dict[str, float], dict[str, float]]:
+    selected: list[dict[str, Any]] = []
+    fallback_keys: list[str] = []
+    predicted_delta: dict[str, float] = {}
+    predicted_tail: dict[str, float] = {}
+    for anchor, anchor_rows in sorted(_rows_by_datetime_anchor(final_rows).items()):
+        candidates: list[tuple[dict[str, Any], float, float, float]] = []
+        for row in anchor_rows:
+            source = str(row["candidate_source"])
+            if source not in allowed_candidate_sources:
+                continue
+            if not bool(row.get("eligible_for_final_selection_v6", True)):
+                continue
+            nearest = float(
+                row.get("selector_feature_nearest_prior_safe_switch_distance", float("inf"))
+            )
+            safe_count = int(
+                float(row.get("selector_feature_neighbor_safe_win_count", 0.0))
+            )
+            tail = float(
+                row.get("selector_feature_neighbor_tail_risk_probability", 1.0)
+            )
+            delta = float(row.get("selector_feature_neighbor_mean_delta_uah", 0.0))
+            predicted_delta[_candidate_key(row)] = delta
+            predicted_tail[_candidate_key(row)] = tail
+            if (
+                nearest <= max_prior_neighbor_distance
+                and safe_count >= min_neighbor_safe_win_count
+                and tail <= max_neighbor_tail_risk_probability
+                and delta <= -min_predicted_improvement_uah
+            ):
+                candidates.append((row, delta, tail, nearest))
+        if not candidates:
+            first = anchor_rows[0]
+            fallback_keys.append(
+                _anchor_key_from_parts(
+                    str(first["tenant_id"]),
+                    str(first["source_model_name"]),
+                    anchor,
+                )
+            )
+            continue
+        selected.append(
+            min(
+                candidates,
+                key=lambda item: (
+                    item[2],
+                    item[1],
+                    item[3],
+                    str(item[0]["candidate_family"]),
+                    str(item[0]["candidate_model_name"]),
+                ),
+            )[0]
+        )
+    return selected, fallback_keys, predicted_delta, predicted_tail
+
+
+def _sparse_rolling_summary_row(
+    window_frame: pl.DataFrame,
+    model_frame: pl.DataFrame,
+    *,
+    source_model_name: str,
+    window_index: int,
+    validation_anchors: tuple[datetime, ...],
+    prior_anchors: tuple[datetime, ...],
+    min_mean_regret_improvement_ratio_vs_v2_plus: float,
+) -> dict[str, Any]:
+    row = _rolling_summary_row(
+        window_frame,
+        model_frame,
+        source_model_name=source_model_name,
+        window_index=window_index,
+        validation_anchors=validation_anchors,
+        prior_anchors=prior_anchors,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+    )
+    row["claim_scope"] = REGRET_SURROGATE_SPARSE_ROBUSTNESS_CLAIM_SCOPE
+    return row
 
 
 def _role_summaries(strict_frame: pl.DataFrame) -> dict[str, dict[str, float]]:
@@ -2178,6 +3165,42 @@ def _validate_context_teacher_panel(frame: pl.DataFrame) -> None:
     )
 
 
+def _validate_sparse_candidate_library(frame: pl.DataFrame) -> None:
+    _validate_context_teacher_panel(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "candidate_library_version",
+                "candidate_schedule_class",
+                "eligible_for_final_selection_v6",
+                "oracle_neighborhood_train_only",
+            }
+        ),
+        frame_name="sparse safe-switch candidate library",
+    )
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("sparse safe-switch candidate library refuses market execution.")
+
+
+def _validate_sparse_teacher_panel(frame: pl.DataFrame) -> None:
+    _validate_sparse_candidate_library(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "label_sparse_material_safe_switch",
+                "label_sparse_opportunity_class",
+                "selector_feature_nearest_prior_safe_switch_distance",
+                "selector_feature_neighbor_safe_win_count",
+                "selector_feature_neighbor_tail_risk_probability",
+                "selector_feature_neighbor_mean_delta_uah",
+            }
+        ),
+        frame_name="sparse safe-switch teacher panel",
+    )
+
+
 def _validate_scorer_frame(frame: pl.DataFrame) -> None:
     _require_columns(frame, _REQUIRED_SCORER_COLUMNS, frame_name="scorer frame")
     if frame.select(pl.col("market_execution_enabled").any()).item():
@@ -2210,6 +3233,52 @@ def _validate_scorer_config(
         raise ValueError(
             "max_predicted_tail_risk_probability must be between 0 and 1."
         )
+    if not allowed_candidate_sources:
+        raise ValueError("allowed_candidate_sources must not be empty.")
+
+
+def _validate_sparse_neighbor_config(
+    *,
+    material_switch_delta_uah: float,
+    max_prior_neighbor_distance: float,
+    min_neighbor_safe_win_count: int,
+    max_neighbor_tail_risk_probability: float,
+    nearest_neighbor_count: int,
+) -> None:
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if max_prior_neighbor_distance < 0.0:
+        raise ValueError("max_prior_neighbor_distance must not be negative.")
+    if min_neighbor_safe_win_count < 1:
+        raise ValueError("min_neighbor_safe_win_count must be at least 1.")
+    if not 0.0 <= max_neighbor_tail_risk_probability <= 1.0:
+        raise ValueError("max_neighbor_tail_risk_probability must be between 0 and 1.")
+    if nearest_neighbor_count < 1:
+        raise ValueError("nearest_neighbor_count must be at least 1.")
+
+
+def _validate_sparse_selector_config(
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    max_prior_neighbor_distance: float,
+    min_neighbor_safe_win_count: int,
+    min_predicted_improvement_uah: float,
+    max_neighbor_tail_risk_probability: float,
+    allowed_candidate_sources: tuple[str, ...],
+) -> None:
+    if not tenant_ids:
+        raise ValueError("tenant_ids must not be empty.")
+    if not source_model_names:
+        raise ValueError("source_model_names must not be empty.")
+    if max_prior_neighbor_distance < 0.0:
+        raise ValueError("max_prior_neighbor_distance must not be negative.")
+    if min_neighbor_safe_win_count < 1:
+        raise ValueError("min_neighbor_safe_win_count must be at least 1.")
+    if min_predicted_improvement_uah < 0.0:
+        raise ValueError("min_predicted_improvement_uah must not be negative.")
+    if not 0.0 <= max_neighbor_tail_risk_probability <= 1.0:
+        raise ValueError("max_neighbor_tail_risk_probability must be between 0 and 1.")
     if not allowed_candidate_sources:
         raise ValueError("allowed_candidate_sources must not be empty.")
 
@@ -2287,6 +3356,8 @@ def _require_columns(
 __all__ = [
     "REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE",
     "REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND",
+    "REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE",
+    "REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND",
     "REGRET_SURROGATE_SELECTION_ROLE",
     "REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND",
     "STRICT_REFERENCE_ROLE",
@@ -2302,5 +3373,12 @@ __all__ = [
     "build_dfl_regret_surrogate_strict_lp_benchmark_frame",
     "build_dfl_regret_surrogate_teacher_label_panel_v2_frame",
     "build_dfl_v2_plus_learning_limit_audit_frame",
+    "build_dfl_sparse_safe_switch_abstention_model_v6_frame",
+    "build_dfl_sparse_safe_switch_candidate_library_v6_frame",
+    "build_dfl_sparse_safe_switch_feature_contract_audit_frame",
+    "build_dfl_sparse_safe_switch_opportunity_audit_frame",
+    "build_dfl_sparse_safe_switch_rolling_robustness_frame",
+    "build_dfl_sparse_safe_switch_strict_lp_benchmark_frame",
+    "build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame",
     "evaluate_dfl_regret_surrogate_gate",
 ]

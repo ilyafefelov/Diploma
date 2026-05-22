@@ -6,6 +6,7 @@ import polars as pl
 
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
     REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
+    REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
     REGRET_SURROGATE_SELECTION_ROLE,
     STRICT_REFERENCE_ROLE,
     V2_PLUS_REFERENCE_ROLE,
@@ -20,6 +21,13 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_regret_surrogate_strict_lp_benchmark_frame,
     build_dfl_regret_surrogate_teacher_label_panel_v2_frame,
     build_dfl_v2_plus_learning_limit_audit_frame,
+    build_dfl_sparse_safe_switch_abstention_model_v6_frame,
+    build_dfl_sparse_safe_switch_candidate_library_v6_frame,
+    build_dfl_sparse_safe_switch_feature_contract_audit_frame,
+    build_dfl_sparse_safe_switch_opportunity_audit_frame,
+    build_dfl_sparse_safe_switch_rolling_robustness_frame,
+    build_dfl_sparse_safe_switch_strict_lp_benchmark_frame,
+    build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
     evaluate_dfl_regret_surrogate_gate,
 )
 
@@ -311,6 +319,196 @@ def test_contextual_regret_surrogate_rolling_uses_prior_context_only() -> None:
     assert set(rolling["market_execution_enabled"].to_list()) == {False}
 
 
+def test_sparse_safe_switch_feature_contract_blocks_label_leakage() -> None:
+    teacher_v2 = _teacher_panel_v2(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    leaked = teacher_v2.with_columns(
+        pl.col("label_regret_delta_vs_v2_plus_uah").alias(
+            "selector_feature_final_regret_uah"
+        )
+    )
+
+    audit = build_dfl_sparse_safe_switch_feature_contract_audit_frame(leaked)
+
+    assert audit.height == 1
+    assert audit["feature_contract_passed"].item() is False
+    assert "selector_feature_final_regret_uah" in audit[
+        "blocked_selector_feature_names"
+    ].item()
+    assert audit["market_execution_enabled"].item() is False
+
+
+def test_sparse_safe_switch_audit_uses_distance_not_exact_context_profile() -> None:
+    teacher_v2 = _teacher_panel_v2(
+        _final_context_shifted_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    library = build_dfl_sparse_safe_switch_candidate_library_v6_frame(teacher_v2)
+
+    audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+        library,
+        max_prior_neighbor_distance=2.0,
+    )
+
+    final = audit.filter(pl.col("split_name") == "final_holdout")
+    assert set(final["sparse_opportunity_class"].to_list()) == {
+        "material_candidate_prior_supported"
+    }
+    assert final["nearest_prior_safe_switch_distance"].max() > 0.0
+    assert set(final["market_execution_enabled"].to_list()) == {False}
+
+
+def test_sparse_safe_switch_v6_selects_distance_supported_candidate() -> None:
+    teacher_v2 = _teacher_panel_v2(
+        _final_context_shifted_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    library = build_dfl_sparse_safe_switch_candidate_library_v6_frame(teacher_v2)
+    audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+        library,
+        max_prior_neighbor_distance=2.0,
+    )
+    teacher_v6 = build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+        library,
+        audit,
+        max_prior_neighbor_distance=2.0,
+    )
+
+    model = build_dfl_sparse_safe_switch_abstention_model_v6_frame(
+        teacher_v6,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+    )
+    strict = build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
+        teacher_v6,
+        model,
+        generated_at=GENERATED_AT,
+    )
+
+    assert set(model["selected_final_candidate_count"].to_list()) == {2}
+    assert strict.filter(
+        pl.col("selection_role") == REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE
+    )["regret_uah"].to_list() == [80.0] * (len(TENANTS) * 2)
+
+
+def test_sparse_safe_switch_v6_abstains_without_prior_neighbor() -> None:
+    teacher_v2 = _teacher_panel_v2(
+        _final_context_shifted_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    library = build_dfl_sparse_safe_switch_candidate_library_v6_frame(teacher_v2)
+    audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+        library,
+        max_prior_neighbor_distance=0.20,
+    )
+    teacher_v6 = build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+        library,
+        audit,
+        max_prior_neighbor_distance=0.20,
+    )
+
+    model = build_dfl_sparse_safe_switch_abstention_model_v6_frame(
+        teacher_v6,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=0.20,
+        min_neighbor_safe_win_count=1,
+    )
+    strict = build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
+        teacher_v6,
+        model,
+        generated_at=GENERATED_AT,
+    )
+
+    assert set(model["selected_final_candidate_count"].to_list()) == {0}
+    assert set(model["abstention_reason"].to_list()) == {"no_prior_neighbor_support"}
+    assert strict.filter(
+        pl.col("selection_role") == REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE
+    )["regret_uah"].to_list() == [120.0] * (len(TENANTS) * 2)
+
+
+def test_sparse_safe_switch_final_label_mutation_changes_scores_not_selection() -> None:
+    base_v2 = _teacher_panel_v2(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    mutated_v2 = _teacher_panel_v2(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=360.0)
+    )
+
+    base_model = _sparse_safe_switch_model(base_v2)
+    mutated_model = _sparse_safe_switch_model(mutated_v2)
+    base_strict = build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
+        build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+            build_dfl_sparse_safe_switch_candidate_library_v6_frame(base_v2),
+            build_dfl_sparse_safe_switch_opportunity_audit_frame(
+                build_dfl_sparse_safe_switch_candidate_library_v6_frame(base_v2),
+                max_prior_neighbor_distance=2.0,
+            ),
+            max_prior_neighbor_distance=2.0,
+        ),
+        base_model,
+        generated_at=GENERATED_AT,
+    )
+    mutated_strict = build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
+        build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+            build_dfl_sparse_safe_switch_candidate_library_v6_frame(mutated_v2),
+            build_dfl_sparse_safe_switch_opportunity_audit_frame(
+                build_dfl_sparse_safe_switch_candidate_library_v6_frame(mutated_v2),
+                max_prior_neighbor_distance=2.0,
+            ),
+            max_prior_neighbor_distance=2.0,
+        ),
+        mutated_model,
+        generated_at=GENERATED_AT,
+    )
+
+    assert base_model["selected_final_candidate_keys"].to_list() == (
+        mutated_model["selected_final_candidate_keys"].to_list()
+    )
+    base_selected = base_strict.filter(
+        pl.col("selection_role") == REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE
+    )
+    mutated_selected = mutated_strict.filter(
+        pl.col("selection_role") == REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE
+    )
+    assert base_selected["regret_uah"].to_list() != mutated_selected[
+        "regret_uah"
+    ].to_list()
+
+
+def test_sparse_safe_switch_rolling_uses_prior_neighbors_only() -> None:
+    teacher = _teacher_panel_v2(
+        _candidate_panel(
+            train_alt_regret=80.0,
+            final_alt_regret=80.0,
+            train_anchor_count=4,
+            final_anchor_count=4,
+        )
+    )
+    library = build_dfl_sparse_safe_switch_candidate_library_v6_frame(teacher)
+
+    rolling = build_dfl_sparse_safe_switch_rolling_robustness_frame(
+        library,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        validation_window_count=2,
+        validation_anchor_count=2,
+        min_prior_anchors_before_window=2,
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+    )
+
+    assert rolling.height == 2
+    assert set(rolling["rolling_window_passed"].to_list()) == {True}
+    assert rolling["minimum_prior_anchor_count_before_window"].min() >= 2
+    assert set(rolling["market_execution_enabled"].to_list()) == {False}
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
@@ -322,6 +520,28 @@ def _teacher_panel_v2(panel: pl.DataFrame) -> pl.DataFrame:
     teacher = _teacher_panel(panel)
     audit = build_dfl_regret_surrogate_safe_switch_context_audit_frame(teacher)
     return build_dfl_regret_surrogate_teacher_label_panel_v2_frame(teacher, audit)
+
+
+def _sparse_safe_switch_model(teacher_v2: pl.DataFrame) -> pl.DataFrame:
+    library = build_dfl_sparse_safe_switch_candidate_library_v6_frame(teacher_v2)
+    audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+        library,
+        max_prior_neighbor_distance=2.0,
+    )
+    teacher_v6 = build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+        library,
+        audit,
+        max_prior_neighbor_distance=2.0,
+    )
+    return build_dfl_sparse_safe_switch_abstention_model_v6_frame(
+        teacher_v6,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+    )
 
 
 def _final_context_shifted_panel(
