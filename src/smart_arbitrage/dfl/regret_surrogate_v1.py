@@ -1932,12 +1932,10 @@ def build_dfl_v2_plus_opportunity_backfill_requirements_frame(
         audit = audit_by_anchor.get(anchor_key)
         if audit is None:
             raise ValueError(f"missing sparse opportunity audit row for {anchor_key}.")
-        strict_rows = [
-            row
-            for row in anchor_rows
-            if str(row["candidate_source"]) == _STRICT_CANDIDATE_SOURCE
-        ]
-        strict_best = min(strict_rows, key=lambda row: float(row["regret_uah"]))
+        strict_best, strict_reference_available = _strict_reference_row(
+            anchor_rows,
+            baseline=baseline,
+        )
         strict_delta = float(strict_best["regret_uah"]) - float(baseline["regret_uah"])
         strict_material_win = strict_delta <= -material_switch_delta_uah
         challengers = _sparse_eligible_challengers(anchor_rows)
@@ -2005,6 +2003,7 @@ def build_dfl_v2_plus_opportunity_backfill_requirements_frame(
                 "split_name": str(baseline["split_name"]),
                 "v2_plus_regret_uah": float(baseline["regret_uah"]),
                 "strict_control_best_regret_uah": float(strict_best["regret_uah"]),
+                "strict_control_reference_available": strict_reference_available,
                 "strict_control_delta_vs_v2_plus_uah": strict_delta,
                 "material_switch_delta_uah": material_switch_delta_uah,
                 "material_non_reference_candidate_count": material_candidate_count,
@@ -2161,14 +2160,7 @@ def build_dfl_feasible_schedule_candidate_library_v7_frame(
             )
             output_rows.append(copied)
         v2_row = _baseline_row(anchor_rows, anchor_key=anchor_key)
-        strict_row = min(
-            [
-                row
-                for row in anchor_rows
-                if str(row["candidate_source"]) == _STRICT_CANDIDATE_SOURCE
-            ],
-            key=lambda row: float(row["regret_uah"]),
-        )
+        strict_row, _ = _strict_reference_row(anchor_rows, baseline=v2_row)
         generated_specs = _v7_generated_candidate_specs(
             v2_row=v2_row,
             strict_row=strict_row,
@@ -3163,6 +3155,13 @@ def _window_teacher_panel(
             copied = dict(row)
             copied["split_name"] = "final_holdout"
             copied["is_training_row"] = False
+            if (
+                str(copied["candidate_source"]) == "oracle_gap_candidate"
+                or bool(copied.get("oracle_neighborhood_train_only", False))
+            ):
+                copied["eligible_for_final_selection"] = False
+                copied["eligible_for_final_selection_v6"] = False
+                copied["eligible_for_final_selection_v7"] = False
             output_rows.append(copied)
     return pl.DataFrame(output_rows, infer_schema_length=None)
 
@@ -4071,6 +4070,24 @@ def _baseline_row(
     if not matches:
         raise ValueError(f"missing V2+ fallback row for {anchor_key}.")
     return min(matches, key=lambda row: float(row["regret_uah"]))
+
+
+def _strict_reference_row(
+    rows: list[dict[str, Any]],
+    *,
+    baseline: dict[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    matches = [
+        row for row in rows if str(row["candidate_source"]) == _STRICT_CANDIDATE_SOURCE
+    ]
+    if matches:
+        return min(matches, key=lambda row: float(row["regret_uah"])), True
+    strict_model_matches = [
+        row for row in rows if str(row["candidate_model_name"]) == "strict_similar_day"
+    ]
+    if strict_model_matches:
+        return min(strict_model_matches, key=lambda row: float(row["regret_uah"])), True
+    return baseline, False
 
 
 def _anchor_key(row: dict[str, Any]) -> tuple[str, str, datetime]:

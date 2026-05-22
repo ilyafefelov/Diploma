@@ -552,6 +552,34 @@ def test_v2_plus_backfill_requirements_find_strict_guarded_rescue_need() -> None
     assert set(final["market_execution_enabled"].to_list()) == {False}
 
 
+def test_v2_plus_backfill_requirements_tolerate_missing_anchor_strict_row() -> None:
+    library, audit = _v6_library_and_audit(
+        _teacher_panel_v2(_candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0))
+    )
+    target_anchor = FIRST_ANCHOR + timedelta(hours=3)
+    library = library.filter(
+        ~(
+            (pl.col("tenant_id") == TENANTS[0])
+            & (pl.col("anchor_timestamp") == target_anchor)
+            & (pl.col("candidate_source") == "strict_fallback")
+        )
+    )
+
+    requirements = build_dfl_v2_plus_opportunity_backfill_requirements_frame(
+        library,
+        audit,
+        material_switch_delta_uah=25.0,
+    )
+
+    target = requirements.filter(
+        (pl.col("tenant_id") == TENANTS[0])
+        & (pl.col("anchor_timestamp") == target_anchor)
+    ).row(0, named=True)
+    assert target["strict_control_best_regret_uah"] == target["v2_plus_regret_uah"]
+    assert target["strict_control_reference_available"] is False
+    assert target["diagnostic_strict_control_material_local_win"] is False
+
+
 def test_v7_candidate_library_adds_feasible_strict_guarded_rescue_variants() -> None:
     library, audit = _v6_library_and_audit(
         _teacher_panel_v2(
@@ -733,6 +761,47 @@ def test_v7_rolling_uses_prior_backfilled_neighbors_only() -> None:
     assert rolling.height == 2
     assert set(rolling["rolling_window_passed"].to_list()) == {True}
     assert rolling["minimum_prior_anchor_count_before_window"].min() >= 2
+    assert set(rolling["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v7_rolling_keeps_train_only_oracle_diagnostics_out_of_validation() -> None:
+    v7_library, _ = _v7_library_and_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+            train_anchor_count=8,
+            final_anchor_count=0,
+            train_strict_regret=80.0,
+        )
+    )
+    v7_library = v7_library.with_columns(
+        pl.when(pl.col("candidate_source") == "tft_shadow_candidate")
+        .then(pl.lit("oracle_gap_candidate"))
+        .otherwise(pl.col("candidate_source"))
+        .alias("candidate_source"),
+        pl.when(pl.col("candidate_source") == "tft_shadow_candidate")
+        .then(True)
+        .otherwise(pl.col("oracle_neighborhood_train_only"))
+        .alias("oracle_neighborhood_train_only"),
+    )
+
+    rolling = build_dfl_candidate_value_v7_rolling_robustness_frame(
+        v7_library,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        validation_window_count=2,
+        validation_anchor_count=2,
+        min_prior_anchors_before_window=2,
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+        allowed_candidate_sources=("v7_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+
+    assert rolling.height == 2
     assert set(rolling["market_execution_enabled"].to_list()) == {False}
 
 
