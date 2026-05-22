@@ -68,6 +68,45 @@ switches worsened both mean and median regret versus V2+. The conclusion is that
 the strict-rescored V8 candidates create local opportunities but not a robust
 prior-only replacement for V2+.
 
+False-positive/tail-risk follow-up:
+
+- new audit asset: `dfl_v8_false_positive_tail_risk_audit_frame`;
+- new action-plan asset: `dfl_v8_pruned_candidate_family_plan_frame`;
+- purpose: classify selected V8 switches as true safe switches, weak false
+  positives, or tail-risk false positives, then decide whether the next branch
+  should prune a risky candidate family or backfill stronger Ukrainian
+  prior-known context;
+- prior-risk pruning is separated from final-holdout diagnostics. Prior fields
+  such as `prior_tail_risk_probability` and
+  `prior_pruned_for_next_training` can inform the next training contract, while
+  final selected losses remain diagnostic evidence only;
+- claim boundary remains `market_execution_enabled=false`, no dashboard/API
+  default switch, and no live dispatch.
+
+Materialized false-positive/tail-risk status:
+
+- audit Dagster run id: `b1f30c86-f523-4534-9878-922dc8254ab6`;
+- pruned-plan Dagster run id: `f9582698-c7ff-46bc-b2d4-3ddf0ca8b438`;
+- pruned-library Dagster run id: `b03aa03b-56e8-4a81-aff3-e06d53c154cf`;
+- audit rows: `146` (`140` candidate-family rows plus `6` selected-switch
+  rows);
+- selected switches: all `6` came from `v7_generated_candidate /
+  strict_guarded_rescue_v7`;
+- selected-switch classes: `2` tail-risk false positives, `1` weak false
+  positive, and `3` neutral/small-delta switches;
+- family plan: `115 / 140` tenant/source/family rows are blocked for the next
+  selector because prior tail risk dominates safe wins; `25 / 140` are allowed
+  as monitored candidate families;
+- next action: prune the prior-tail-risk families before another selector or
+  DT/LAVA target. The follow-up frame
+  `dfl_v8_pruned_candidate_library_frame` is the concrete pruned candidate
+  universe for future work. It keeps `12,520` rows: `1,570` strict fallback,
+  `1,825` V2+ default, and `9,125` monitored V7 generated rows. It removes the
+  blocked V8 generated, oracle/Poland/TFT shadow, and V7 strict-guarded rescue
+  profiles from the next selector/DT target. If that universe becomes too
+  sparse, the next branch is Ukrainian prior-context backfill, not a larger
+  model.
+
 ## Asset Path
 
 | Asset | Purpose |
@@ -77,6 +116,9 @@ prior-only replacement for V2+.
 | `dfl_candidate_value_regret_surrogate_v8_frame` | Fits a conservative prior-only selector over strict-rescored V8 labels and keeps V2+ fallback when prior support is weak. |
 | `dfl_candidate_value_v8_strict_lp_benchmark_frame` | Compares the selected V8 candidate-value row against frozen V2+ and strict control under the unchanged LP/oracle evaluator. |
 | `dfl_candidate_value_v8_rolling_robustness_frame` | Replays four rolling windows with prior-only fitting before each validation window. |
+| `dfl_v8_false_positive_tail_risk_audit_frame` | Diagnoses whether V8 accepted switches were true safe switches, weak losses, or tail-risk false positives, and summarizes prior/final risk by candidate family. |
+| `dfl_v8_pruned_candidate_family_plan_frame` | Converts the audit into a next-step plan: keep/monitor safe families, prune prior-tail-risk families, or require stronger Ukrainian prior context before training another selector or DT target. |
+| `dfl_v8_pruned_candidate_library_frame` | Applies the plan by removing blocked prior-tail-risk candidate-family profiles while always preserving V2+ and strict fallback rows. This is diagnostic training data for a later branch, not a promoted strategy. |
 
 Tracked config:
 
@@ -129,12 +171,22 @@ DT/LAVA teacher target. A future DT/LAVA run should learn candidate-index or
 schedule-family selection with explicit tail-risk abstention, not raw hourly
 BUY/SELL/HOLD imitation.
 
+The false-positive/tail-risk audit is the immediate decision point:
+
+- if a family has high prior tail-risk probability, prune that family before
+  training another selector;
+- if final selected losses occur without prior-risk evidence, do not prune from
+  final labels. Backfill stronger Ukrainian prior context so the future model
+  can recognize that failure mode before the anchor;
+- if a family has prior safe wins and low prior tail risk, it can remain a
+  monitored candidate source for a later V9 or DT/LAVA teacher-label branch.
+
 ## Run
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_ua_context_backfilled_feature_panel_v8_frame,dfl_ua_context_feasible_schedule_candidate_library_v8_frame,dfl_ua_context_candidate_v8_strict_rescore_frame,dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,dfl_candidate_value_regret_surrogate_v8_frame,dfl_candidate_value_v8_strict_lp_benchmark_frame,dfl_candidate_value_v8_rolling_robustness_frame `
+  --select dfl_ua_context_backfilled_feature_panel_v8_frame,dfl_ua_context_feasible_schedule_candidate_library_v8_frame,dfl_ua_context_candidate_v8_strict_rescore_frame,dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,dfl_candidate_value_regret_surrogate_v8_frame,dfl_candidate_value_v8_strict_lp_benchmark_frame,dfl_candidate_value_v8_rolling_robustness_frame,dfl_v8_false_positive_tail_risk_audit_frame,dfl_v8_pruned_candidate_family_plan_frame,dfl_v8_pruned_candidate_library_frame `
   -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
 ```
 

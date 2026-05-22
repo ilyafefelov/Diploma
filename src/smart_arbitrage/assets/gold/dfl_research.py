@@ -365,6 +365,9 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_candidate_value_v7_strict_lp_benchmark_frame,
     build_dfl_candidate_value_v8_rolling_robustness_frame,
     build_dfl_candidate_value_v8_strict_lp_benchmark_frame,
+    build_dfl_v8_false_positive_tail_risk_audit_frame,
+    build_dfl_v8_pruned_candidate_library_frame,
+    build_dfl_v8_pruned_candidate_family_plan_frame,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
     build_dfl_feasible_schedule_candidate_library_v7_frame,
     build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
@@ -6318,6 +6321,163 @@ def dfl_candidate_value_v8_rolling_robustness_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_candidate_value_v8_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v8",
+        market_venue="DAM",
+    ),
+)
+def dfl_v8_false_positive_tail_risk_audit_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_ua_context_candidate_value_teacher_label_panel_v8_frame: pl.DataFrame,
+    dfl_candidate_value_regret_surrogate_v8_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit V8 selected switches for false positives and tail-risk families."""
+
+    frame = build_dfl_v8_false_positive_tail_risk_audit_frame(
+        dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
+        dfl_candidate_value_regret_surrogate_v8_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        tail_risk_delta_uah=config.tail_risk_delta_uah,
+    )
+    family_rows = frame.filter(pl.col("audit_row_type") == "candidate_family")
+    selected_rows = frame.filter(pl.col("audit_row_type") == "selected_switch")
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_family_rows": family_rows.height,
+            "selected_switch_rows": selected_rows.height,
+            "selected_false_positive_rows": selected_rows.filter(
+                pl.col("false_positive_class").str.starts_with("v8_false_positive")
+            ).height
+            if selected_rows.height
+            else 0,
+            "prior_pruned_family_rows": family_rows.filter(
+                pl.col("prior_pruned_for_next_training")
+            ).height
+            if family_rows.height
+            else 0,
+            "backfill_required_rows": frame.filter(
+                pl.col("diagnostic_backfill_required")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v8",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_v8_false_positive_tail_risk_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v8",
+        market_venue="DAM",
+    ),
+)
+def dfl_v8_pruned_candidate_family_plan_frame(
+    context,
+    dfl_v8_false_positive_tail_risk_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Emit the next V8 action: prune prior-risk families or backfill context."""
+
+    frame = build_dfl_v8_pruned_candidate_family_plan_frame(
+        dfl_v8_false_positive_tail_risk_audit_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "allowed_family_rows": frame.filter(
+                pl.col("allowed_for_next_selector_training")
+            ).height
+            if frame.height
+            else 0,
+            "pruned_family_rows": frame.filter(
+                pl.col("recommended_next_action") == "prune_candidate_family"
+            ).height
+            if frame.height
+            else 0,
+            "backfill_required_family_rows": frame.filter(
+                pl.col("recommended_next_action")
+                == "backfill_ukrainian_prior_context"
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v8",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_v8_pruned_candidate_family_plan_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v8",
+        market_venue="DAM",
+    ),
+)
+def dfl_v8_pruned_candidate_library_frame(
+    context,
+    dfl_ua_context_candidate_value_teacher_label_panel_v8_frame: pl.DataFrame,
+    dfl_v8_pruned_candidate_family_plan_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Candidate library after prior-tail-risk family pruning for future work."""
+
+    frame = build_dfl_v8_pruned_candidate_library_frame(
+        dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
+        dfl_v8_pruned_candidate_family_plan_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_sources": sorted(set(frame["candidate_source"].to_list()))
+            if frame.height
+            else [],
+            "non_reference_rows": frame.filter(
+                ~pl.col("candidate_source").is_in(
+                    ["v2_plus_default", "strict_fallback"]
+                )
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v8",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_v8_pruned_candidate_library_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -14490,6 +14650,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_candidate_value_regret_surrogate_v8_frame,
     dfl_candidate_value_v8_strict_lp_benchmark_frame,
     dfl_candidate_value_v8_rolling_robustness_frame,
+    dfl_v8_false_positive_tail_risk_audit_frame,
+    dfl_v8_pruned_candidate_family_plan_frame,
+    dfl_v8_pruned_candidate_library_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

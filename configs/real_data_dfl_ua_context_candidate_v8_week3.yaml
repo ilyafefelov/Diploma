@@ -60,6 +60,10 @@ ops:
       allowed_candidate_sources_csv: "ua_context_v8_generated_candidate,v7_generated_candidate,oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
       min_prior_material_safe_switch_examples_for_dt: 20
       min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+  dfl_v8_false_positive_tail_risk_audit_frame:
+    config:
+      material_switch_delta_uah: 25.0
+      tail_risk_delta_uah: 150.0
   dfl_candidate_value_regret_surrogate_v7_frame:
     config:
       tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"

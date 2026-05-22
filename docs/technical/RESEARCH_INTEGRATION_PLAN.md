@@ -129,6 +129,20 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      windows and `0 / 4` diagnostic windows. This closes the V8 selector branch
      as negative evidence and points to stronger Ukrainian context backfill or
      safer candidate generation before any DT/LAVA target.
+   - V8 now has a false-positive/tail-risk audit and candidate-family plan. The
+     audit separates prior-risk pruning from final-holdout diagnostics: high
+     prior tail-risk can prune a family before the next selector, while selected
+     final losses without prior-risk evidence require stronger Ukrainian
+     prior-known context rather than using final labels as training features.
+     The materialized plan blocked `115 / 140` family rows because prior tail
+     risk dominated safe wins; the six selected V8 switches all came from
+     `strict_guarded_rescue_v7`, including two tail-risk false positives and one
+     weak false positive. The next ML branch should prune those risky families
+     before training again. The pruned candidate-library frame keeps V2+ and
+     strict fallback rows, removes blocked family profiles, and materialized as
+     `12,520` rows (`1,570` strict fallback, `1,825` V2+ default, `9,125`
+     monitored V7 generated candidates). Backfill Ukrainian prior context only
+     if that pruned universe is too sparse.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

@@ -117,6 +117,15 @@ REGRET_SURROGATE_STRICT_V8_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_ROBUSTNESS_V8_CLAIM_SCOPE: Final[str] = (
     "dfl_candidate_value_v8_rolling_robustness_not_full_dfl"
 )
+REGRET_SURROGATE_V8_FALSE_POSITIVE_AUDIT_CLAIM_SCOPE: Final[str] = (
+    "dfl_v8_false_positive_tail_risk_audit_not_full_dfl"
+)
+REGRET_SURROGATE_V8_PRUNED_FAMILY_PLAN_CLAIM_SCOPE: Final[str] = (
+    "dfl_v8_pruned_candidate_family_plan_not_full_dfl"
+)
+REGRET_SURROGATE_V8_PRUNED_CANDIDATE_LIBRARY_CLAIM_SCOPE: Final[str] = (
+    "dfl_v8_pruned_candidate_library_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -2723,6 +2732,334 @@ def build_dfl_candidate_value_v8_strict_lp_benchmark_frame(
     )
 
 
+def build_dfl_v8_false_positive_tail_risk_audit_frame(
+    candidate_value_teacher_label_panel_v8_frame: pl.DataFrame,
+    candidate_value_regret_surrogate_v8_frame: pl.DataFrame,
+    *,
+    false_positive_delta_uah: float = 0.0,
+    material_switch_delta_uah: float = 25.0,
+    tail_risk_delta_uah: float = 150.0,
+    prune_tail_risk_probability_threshold: float = 0.50,
+) -> pl.DataFrame:
+    """Diagnose V8 selected-switch false positives and prior tail-risk families."""
+
+    _validate_v8_teacher_panel(candidate_value_teacher_label_panel_v8_frame)
+    _validate_scorer_frame(candidate_value_regret_surrogate_v8_frame)
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if tail_risk_delta_uah <= 0.0:
+        raise ValueError("tail_risk_delta_uah must be positive.")
+    if not 0.0 <= prune_tail_risk_probability_threshold <= 1.0:
+        raise ValueError("prune_tail_risk_probability_threshold must be in [0, 1].")
+
+    selected_keys: set[str] = set()
+    predicted_delta: dict[str, float] = {}
+    predicted_tail: dict[str, float] = {}
+    for scorer_row in candidate_value_regret_surrogate_v8_frame.iter_rows(named=True):
+        selected_keys.update(str(key) for key in scorer_row["selected_final_candidate_keys"])
+        predicted_delta.update(
+            {
+                str(key): float(value)
+                for key, value in dict(
+                    scorer_row["predicted_final_candidate_deltas"]
+                ).items()
+                if value is not None
+            }
+        )
+        predicted_tail.update(
+            {
+                str(key): float(value)
+                for key, value in dict(
+                    scorer_row["predicted_final_tail_risk_probabilities"]
+                ).items()
+                if value is not None
+            }
+        )
+
+    panel_rows = list(
+        candidate_value_teacher_label_panel_v8_frame.iter_rows(named=True)
+    )
+    candidate_rows = [
+        row
+        for row in panel_rows
+        if str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+    ]
+    candidate_by_key = {_candidate_key(row): row for row in candidate_rows}
+    missing_selected = sorted(key for key in selected_keys if key not in candidate_by_key)
+    if missing_selected:
+        raise ValueError(
+            "V8 false-positive audit missing selected candidate rows: "
+            + ", ".join(missing_selected[:3])
+        )
+
+    groups: dict[tuple[str, str, str, str, str], list[dict[str, Any]]] = {}
+    for row in candidate_rows:
+        groups.setdefault(_v8_family_group_key(row), []).append(row)
+
+    audit_rows: list[dict[str, Any]] = []
+    group_summaries: dict[tuple[str, str, str, str, str], dict[str, Any]] = {}
+    for key, rows in sorted(groups.items()):
+        summary = _v8_candidate_family_audit_row(
+            key,
+            rows,
+            selected_keys=selected_keys,
+            false_positive_delta_uah=false_positive_delta_uah,
+            material_switch_delta_uah=material_switch_delta_uah,
+            tail_risk_delta_uah=tail_risk_delta_uah,
+            prune_tail_risk_probability_threshold=(
+                prune_tail_risk_probability_threshold
+            ),
+        )
+        group_summaries[key] = summary
+        audit_rows.append(summary)
+
+    for candidate_key in sorted(selected_keys):
+        row = candidate_by_key[candidate_key]
+        group_key = _v8_family_group_key(row)
+        family_summary = group_summaries[group_key]
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        false_positive_class = _v8_false_positive_class(
+            row,
+            false_positive_delta_uah=false_positive_delta_uah,
+            material_switch_delta_uah=material_switch_delta_uah,
+            tail_risk_delta_uah=tail_risk_delta_uah,
+        )
+        selected_action = _v8_selected_switch_next_action(
+            false_positive_class,
+            prior_pruned=bool(family_summary["prior_pruned_for_next_training"]),
+        )
+        audit_rows.append(
+            {
+                **_v8_audit_boundary_fields(
+                    claim_scope=REGRET_SURROGATE_V8_FALSE_POSITIVE_AUDIT_CLAIM_SCOPE
+                ),
+                "audit_row_type": "selected_switch",
+                "tenant_id": str(row["tenant_id"]),
+                "source_model_name": str(row["source_model_name"]),
+                "anchor_timestamp": _datetime_value(row["anchor_timestamp"]),
+                "candidate_source": str(row["candidate_source"]),
+                "candidate_family": str(row["candidate_family"]),
+                "candidate_model_name": str(row["candidate_model_name"]),
+                "candidate_key": candidate_key,
+                "false_positive_class": false_positive_class,
+                "recommended_next_action": selected_action,
+                "prior_candidate_count": int(family_summary["prior_candidate_count"]),
+                "prior_safe_win_count": int(family_summary["prior_safe_win_count"]),
+                "prior_tail_risk_loss_count": int(
+                    family_summary["prior_tail_risk_loss_count"]
+                ),
+                "prior_tail_risk_probability": float(
+                    family_summary["prior_tail_risk_probability"]
+                ),
+                "prior_mean_delta_uah": float(family_summary["prior_mean_delta_uah"]),
+                "final_candidate_count": int(family_summary["final_candidate_count"]),
+                "final_safe_win_count": int(family_summary["final_safe_win_count"]),
+                "final_tail_risk_loss_count": int(
+                    family_summary["final_tail_risk_loss_count"]
+                ),
+                "selected_final_count": int(family_summary["selected_final_count"]),
+                "selected_false_positive_count": int(
+                    family_summary["selected_false_positive_count"]
+                ),
+                "selected_tail_risk_loss_count": int(
+                    family_summary["selected_tail_risk_loss_count"]
+                ),
+                "selected_mean_delta_uah": float(
+                    family_summary["selected_mean_delta_uah"]
+                ),
+                "selected_candidate_delta_uah": delta,
+                "selected_predicted_delta_uah": predicted_delta.get(candidate_key, 0.0),
+                "selected_predicted_tail_risk_probability": predicted_tail.get(
+                    candidate_key, 1.0
+                ),
+                "prior_pruned_for_next_training": bool(
+                    family_summary["prior_pruned_for_next_training"]
+                ),
+                "diagnostic_backfill_required": (
+                    selected_action == "backfill_ukrainian_prior_context"
+                ),
+            }
+        )
+
+    return pl.DataFrame(audit_rows, infer_schema_length=None).sort(
+        [
+            "audit_row_type",
+            "source_model_name",
+            "tenant_id",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+            "anchor_timestamp",
+        ]
+    )
+
+
+def build_dfl_v8_pruned_candidate_family_plan_frame(
+    v8_false_positive_tail_risk_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Convert the V8 audit into a leakage-safe prune/backfill plan."""
+
+    _require_columns(
+        v8_false_positive_tail_risk_audit_frame,
+        frozenset(
+            {
+                "audit_row_type",
+                "tenant_id",
+                "source_model_name",
+                "candidate_source",
+                "candidate_family",
+                "candidate_model_name",
+                "prior_pruned_for_next_training",
+                "recommended_next_action",
+                "prior_tail_risk_probability",
+                "selected_false_positive_count",
+                "selected_tail_risk_loss_count",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="V8 false-positive tail-risk audit frame",
+    )
+    if v8_false_positive_tail_risk_audit_frame.select(
+        pl.col("market_execution_enabled").any()
+    ).item():
+        raise ValueError("V8 pruned family plan refuses market execution rows.")
+
+    rows: list[dict[str, Any]] = []
+    family_rows = v8_false_positive_tail_risk_audit_frame.filter(
+        pl.col("audit_row_type") == "candidate_family"
+    )
+    for row in family_rows.iter_rows(named=True):
+        prior_pruned = bool(row["prior_pruned_for_next_training"])
+        recommended_action = str(row["recommended_next_action"])
+        allowed = recommended_action in {
+            "keep_candidate_family",
+            "monitor_candidate_family",
+        }
+        if prior_pruned:
+            if int(row["prior_tail_risk_loss_count"]) > int(row["prior_safe_win_count"]):
+                blocked_reason = "prior_tail_risk_dominates_safe_wins"
+            else:
+                blocked_reason = "prior_tail_risk_probability_exceeds_threshold"
+        elif recommended_action == "backfill_ukrainian_prior_context":
+            blocked_reason = "needs_stronger_prior_context_before_training"
+        else:
+            blocked_reason = "none"
+        rows.append(
+            {
+                **_v8_audit_boundary_fields(
+                    claim_scope=REGRET_SURROGATE_V8_PRUNED_FAMILY_PLAN_CLAIM_SCOPE
+                ),
+                "tenant_id": str(row["tenant_id"]),
+                "source_model_name": str(row["source_model_name"]),
+                "candidate_source": str(row["candidate_source"]),
+                "candidate_family": str(row["candidate_family"]),
+                "candidate_model_name": str(row["candidate_model_name"]),
+                "allowed_for_next_selector_training": allowed,
+                "prior_pruned_for_next_training": prior_pruned,
+                "recommended_next_action": recommended_action,
+                "blocked_reason": blocked_reason,
+                "prior_candidate_count": int(row["prior_candidate_count"]),
+                "prior_safe_win_count": int(row["prior_safe_win_count"]),
+                "prior_tail_risk_loss_count": int(row["prior_tail_risk_loss_count"]),
+                "prior_tail_risk_probability": float(
+                    row["prior_tail_risk_probability"]
+                ),
+                "selected_false_positive_count": int(
+                    row["selected_false_positive_count"]
+                ),
+                "selected_tail_risk_loss_count": int(
+                    row["selected_tail_risk_loss_count"]
+                ),
+                "diagnostic_backfill_required": (
+                    recommended_action == "backfill_ukrainian_prior_context"
+                ),
+            }
+        )
+    return pl.DataFrame(rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+
+
+def build_dfl_v8_pruned_candidate_library_frame(
+    candidate_value_teacher_label_panel_v8_frame: pl.DataFrame,
+    v8_pruned_candidate_family_plan_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Remove prior-risk candidate families while preserving strict/V2+ fallback rows."""
+
+    _validate_v8_teacher_panel(candidate_value_teacher_label_panel_v8_frame)
+    _require_columns(
+        v8_pruned_candidate_family_plan_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "candidate_source",
+                "candidate_family",
+                "candidate_model_name",
+                "allowed_for_next_selector_training",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="V8 pruned candidate family plan frame",
+    )
+    if v8_pruned_candidate_family_plan_frame.select(
+        pl.col("market_execution_enabled").any()
+    ).item():
+        raise ValueError("V8 pruned candidate library refuses market execution rows.")
+
+    blocked_profiles = {
+        (
+            str(row["tenant_id"]),
+            str(row["source_model_name"]),
+            str(row["candidate_source"]),
+            str(row["candidate_family"]),
+            str(row["candidate_model_name"]),
+        )
+        for row in v8_pruned_candidate_family_plan_frame.iter_rows(named=True)
+        if not bool(row["allowed_for_next_selector_training"])
+    }
+    kept_rows: list[dict[str, Any]] = []
+    for row in candidate_value_teacher_label_panel_v8_frame.iter_rows(named=True):
+        copied = dict(row)
+        source = str(copied["candidate_source"])
+        if (
+            source not in _REFERENCE_CANDIDATE_SOURCES
+            and _v8_family_group_key(copied) in blocked_profiles
+        ):
+            continue
+        copied.update(
+            {
+                "candidate_family_pruned_for_next_selector": False,
+                "v8_pruned_candidate_library_version": "v8_tail_risk_pruned_v1",
+                "claim_scope": REGRET_SURROGATE_V8_PRUNED_CANDIDATE_LIBRARY_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+                "raw_hourly_action_imitation": False,
+            }
+        )
+        kept_rows.append(copied)
+
+    frame = pl.DataFrame(kept_rows, infer_schema_length=None)
+    _validate_v8_teacher_panel(frame)
+    return frame.sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+
+
 def build_dfl_candidate_value_v8_rolling_robustness_frame(
     ua_context_candidate_v8_strict_rescore_frame: pl.DataFrame,
     v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
@@ -5308,6 +5645,205 @@ def _profile_key(row: dict[str, Any]) -> str:
     )
 
 
+def _v8_family_group_key(row: dict[str, Any]) -> tuple[str, str, str, str, str]:
+    return (
+        str(row["tenant_id"]),
+        str(row["source_model_name"]),
+        str(row["candidate_source"]),
+        str(row["candidate_family"]),
+        str(row["candidate_model_name"]),
+    )
+
+
+def _v8_audit_boundary_fields(*, claim_scope: str) -> dict[str, Any]:
+    return {
+        "claim_scope": claim_scope,
+        "target_label_space": "schedule_candidate_value_v8",
+        "not_full_dfl": True,
+        "not_market_execution": True,
+        "market_execution_enabled": False,
+        "raw_hourly_action_imitation": False,
+    }
+
+
+def _v8_candidate_family_audit_row(
+    group_key: tuple[str, str, str, str, str],
+    rows: list[dict[str, Any]],
+    *,
+    selected_keys: set[str],
+    false_positive_delta_uah: float,
+    material_switch_delta_uah: float,
+    tail_risk_delta_uah: float,
+    prune_tail_risk_probability_threshold: float,
+) -> dict[str, Any]:
+    tenant_id, source_model_name, candidate_source, candidate_family, model_name = (
+        group_key
+    )
+    prior_rows = [row for row in rows if str(row["split_name"]) != "final_holdout"]
+    final_rows = [row for row in rows if str(row["split_name"]) == "final_holdout"]
+    selected_rows = [row for row in rows if _candidate_key(row) in selected_keys]
+    prior_safe = sum(
+        1
+        for row in prior_rows
+        if _v8_is_material_safe_switch(
+            row, material_switch_delta_uah=material_switch_delta_uah
+        )
+    )
+    prior_tail = sum(
+        1
+        for row in prior_rows
+        if _v8_is_tail_risk_loss(row, tail_risk_delta_uah=tail_risk_delta_uah)
+    )
+    final_safe = sum(
+        1
+        for row in final_rows
+        if _v8_is_material_safe_switch(
+            row, material_switch_delta_uah=material_switch_delta_uah
+        )
+    )
+    final_tail = sum(
+        1
+        for row in final_rows
+        if _v8_is_tail_risk_loss(row, tail_risk_delta_uah=tail_risk_delta_uah)
+    )
+    selected_false_positive = sum(
+        1
+        for row in selected_rows
+        if float(row["label_regret_delta_vs_v2_plus_uah"]) > false_positive_delta_uah
+    )
+    selected_tail = sum(
+        1
+        for row in selected_rows
+        if _v8_is_tail_risk_loss(row, tail_risk_delta_uah=tail_risk_delta_uah)
+    )
+    prior_tail_probability = (
+        float(prior_tail) / float(len(prior_rows)) if prior_rows else 0.0
+    )
+    prior_pruned = bool(
+        prior_rows
+        and (
+            prior_tail_probability >= prune_tail_risk_probability_threshold
+            or (prior_tail > prior_safe and prior_tail > 0)
+        )
+    )
+    selected_deltas = [
+        float(row["label_regret_delta_vs_v2_plus_uah"]) for row in selected_rows
+    ]
+    prior_deltas = [float(row["label_regret_delta_vs_v2_plus_uah"]) for row in prior_rows]
+    recommended_action = _v8_family_next_action(
+        prior_pruned=prior_pruned,
+        selected_false_positive_count=selected_false_positive,
+        selected_tail_risk_loss_count=selected_tail,
+        final_safe_win_count=final_safe,
+        prior_safe_win_count=prior_safe,
+    )
+    return {
+        **_v8_audit_boundary_fields(
+            claim_scope=REGRET_SURROGATE_V8_FALSE_POSITIVE_AUDIT_CLAIM_SCOPE
+        ),
+        "audit_row_type": "candidate_family",
+        "tenant_id": tenant_id,
+        "source_model_name": source_model_name,
+        "anchor_timestamp": None,
+        "candidate_source": candidate_source,
+        "candidate_family": candidate_family,
+        "candidate_model_name": model_name,
+        "candidate_key": "",
+        "false_positive_class": "candidate_family_summary",
+        "recommended_next_action": recommended_action,
+        "prior_candidate_count": len(prior_rows),
+        "prior_safe_win_count": prior_safe,
+        "prior_tail_risk_loss_count": prior_tail,
+        "prior_tail_risk_probability": prior_tail_probability,
+        "prior_mean_delta_uah": mean(prior_deltas) if prior_deltas else 0.0,
+        "final_candidate_count": len(final_rows),
+        "final_safe_win_count": final_safe,
+        "final_tail_risk_loss_count": final_tail,
+        "selected_final_count": len(selected_rows),
+        "selected_false_positive_count": selected_false_positive,
+        "selected_tail_risk_loss_count": selected_tail,
+        "selected_mean_delta_uah": mean(selected_deltas) if selected_deltas else 0.0,
+        "selected_candidate_delta_uah": 0.0,
+        "selected_predicted_delta_uah": 0.0,
+        "selected_predicted_tail_risk_probability": 0.0,
+        "prior_pruned_for_next_training": prior_pruned,
+        "diagnostic_backfill_required": (
+            recommended_action == "backfill_ukrainian_prior_context"
+        ),
+    }
+
+
+def _v8_is_material_safe_switch(
+    row: dict[str, Any],
+    *,
+    material_switch_delta_uah: float,
+) -> bool:
+    return bool(row.get("label_v8_material_safe_switch", False)) or (
+        float(row["label_regret_delta_vs_v2_plus_uah"])
+        <= -material_switch_delta_uah
+    )
+
+
+def _v8_is_tail_risk_loss(
+    row: dict[str, Any],
+    *,
+    tail_risk_delta_uah: float,
+) -> bool:
+    return bool(row.get("label_v8_tail_risk_loss", False)) or (
+        float(row["label_regret_delta_vs_v2_plus_uah"]) >= tail_risk_delta_uah
+    )
+
+
+def _v8_false_positive_class(
+    row: dict[str, Any],
+    *,
+    false_positive_delta_uah: float,
+    material_switch_delta_uah: float,
+    tail_risk_delta_uah: float,
+) -> str:
+    delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+    if delta > false_positive_delta_uah:
+        if _v8_is_tail_risk_loss(row, tail_risk_delta_uah=tail_risk_delta_uah):
+            return "v8_false_positive_tail_risk_loss"
+        return "v8_false_positive_weak_loss"
+    if delta <= -material_switch_delta_uah:
+        return "v8_true_positive_safe_switch"
+    return "v8_neutral_or_small_delta_switch"
+
+
+def _v8_family_next_action(
+    *,
+    prior_pruned: bool,
+    selected_false_positive_count: int,
+    selected_tail_risk_loss_count: int,
+    final_safe_win_count: int,
+    prior_safe_win_count: int,
+) -> str:
+    if prior_pruned:
+        return "prune_candidate_family"
+    if selected_false_positive_count > 0 or selected_tail_risk_loss_count > 0:
+        return "backfill_ukrainian_prior_context"
+    if final_safe_win_count > 0 and prior_safe_win_count == 0:
+        return "backfill_ukrainian_prior_context"
+    if prior_safe_win_count > 0:
+        return "keep_candidate_family"
+    return "monitor_candidate_family"
+
+
+def _v8_selected_switch_next_action(
+    false_positive_class: str,
+    *,
+    prior_pruned: bool,
+) -> str:
+    if prior_pruned:
+        return "prune_candidate_family"
+    if false_positive_class.startswith("v8_false_positive"):
+        return "backfill_ukrainian_prior_context"
+    if false_positive_class == "v8_true_positive_safe_switch":
+        return "keep_candidate_family"
+    return "monitor_candidate_family"
+
+
 def _selector_feature_columns(frame: pl.DataFrame) -> list[str]:
     return sorted(
         column for column in frame.columns if column.startswith("selector_feature_")
@@ -5833,6 +6369,9 @@ __all__ = [
     "build_dfl_candidate_value_v7_strict_lp_benchmark_frame",
     "build_dfl_candidate_value_v8_rolling_robustness_frame",
     "build_dfl_candidate_value_v8_strict_lp_benchmark_frame",
+    "build_dfl_v8_false_positive_tail_risk_audit_frame",
+    "build_dfl_v8_pruned_candidate_library_frame",
+    "build_dfl_v8_pruned_candidate_family_plan_frame",
     "build_dfl_sparse_safe_switch_abstention_model_v6_frame",
     "build_dfl_sparse_safe_switch_candidate_library_v6_frame",
     "build_dfl_sparse_safe_switch_feature_contract_audit_frame",

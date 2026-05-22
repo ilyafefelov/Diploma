@@ -33,6 +33,9 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_candidate_value_v7_strict_lp_benchmark_frame,
     build_dfl_candidate_value_v8_rolling_robustness_frame,
     build_dfl_candidate_value_v8_strict_lp_benchmark_frame,
+    build_dfl_v8_false_positive_tail_risk_audit_frame,
+    build_dfl_v8_pruned_candidate_library_frame,
+    build_dfl_v8_pruned_candidate_family_plan_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
     build_dfl_ua_context_candidate_v8_strict_rescore_frame,
     build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
@@ -1068,6 +1071,224 @@ def test_v8_final_label_mutation_changes_scores_not_selected_candidates() -> Non
     assert base_strict.filter(selected_role)["regret_uah"].to_list() != (
         mutated_strict.filter(selected_role)["regret_uah"].to_list()
     )
+
+
+def test_v8_false_positive_tail_risk_audit_separates_final_loss_from_prior_risk() -> None:
+    base_teacher = _v8_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    model = build_dfl_candidate_value_regret_surrogate_v8_frame(
+        base_teacher,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        allowed_candidate_sources=("ua_context_v8_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+    selected_keys = {
+        key
+        for keys in model["selected_final_candidate_keys"].to_list()
+        for key in keys
+    }
+    mutated_teacher = base_teacher.with_columns(
+        pl.when(
+            pl.struct(
+                [
+                    "tenant_id",
+                    "source_model_name",
+                    "anchor_timestamp",
+                    "candidate_source",
+                    "candidate_family",
+                    "candidate_model_name",
+                ]
+            )
+            .map_elements(
+                lambda row: (
+                    f"{row['tenant_id']}|{row['source_model_name']}|"
+                    f"{row['anchor_timestamp'].isoformat()}|"
+                    f"{row['candidate_source']}|"
+                    f"{row['candidate_family']}|"
+                    f"{row['candidate_model_name']}"
+                )
+                in selected_keys,
+                return_dtype=pl.Boolean,
+            )
+        )
+        .then(pl.col("regret_uah") + 250.0)
+        .otherwise(pl.col("regret_uah"))
+        .alias("regret_uah"),
+        pl.when(
+            pl.struct(
+                [
+                    "tenant_id",
+                    "source_model_name",
+                    "anchor_timestamp",
+                    "candidate_source",
+                    "candidate_family",
+                    "candidate_model_name",
+                ]
+            )
+            .map_elements(
+                lambda row: (
+                    f"{row['tenant_id']}|{row['source_model_name']}|"
+                    f"{row['anchor_timestamp'].isoformat()}|"
+                    f"{row['candidate_source']}|"
+                    f"{row['candidate_family']}|"
+                    f"{row['candidate_model_name']}"
+                )
+                in selected_keys,
+                return_dtype=pl.Boolean,
+            )
+        )
+        .then(pl.col("label_regret_delta_vs_v2_plus_uah") + 250.0)
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+    )
+
+    base_audit = build_dfl_v8_false_positive_tail_risk_audit_frame(
+        base_teacher,
+        model,
+        tail_risk_delta_uah=150.0,
+    )
+    mutated_audit = build_dfl_v8_false_positive_tail_risk_audit_frame(
+        mutated_teacher,
+        model,
+        tail_risk_delta_uah=150.0,
+    )
+
+    selected = mutated_audit.filter(pl.col("audit_row_type") == "selected_switch")
+    assert selected.height == len(selected_keys)
+    assert set(selected["false_positive_class"].to_list()) == {
+        "v8_false_positive_tail_risk_loss"
+    }
+    assert set(selected["recommended_next_action"].to_list()) == {
+        "backfill_ukrainian_prior_context"
+    }
+    assert set(selected["market_execution_enabled"].to_list()) == {False}
+
+    prior_columns = [
+        "candidate_source",
+        "candidate_family",
+        "prior_candidate_count",
+        "prior_safe_win_count",
+        "prior_tail_risk_loss_count",
+        "prior_tail_risk_probability",
+        "prior_pruned_for_next_training",
+    ]
+    base_family = base_audit.filter(pl.col("audit_row_type") == "candidate_family")
+    mutated_family = mutated_audit.filter(pl.col("audit_row_type") == "candidate_family")
+    assert base_family.select(prior_columns).sort(prior_columns[:2]).to_dicts() == (
+        mutated_family.select(prior_columns).sort(prior_columns[:2]).to_dicts()
+    )
+
+
+def test_v8_pruned_candidate_family_plan_blocks_prior_tail_risk_families() -> None:
+    teacher_v8 = _v8_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    ).with_columns(
+        pl.when(
+            (pl.col("split_name") != "final_holdout")
+            & (pl.col("candidate_source") == "ua_context_v8_generated_candidate")
+        )
+        .then(pl.lit(240.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(
+            (pl.col("split_name") != "final_holdout")
+            & (pl.col("candidate_source") == "ua_context_v8_generated_candidate")
+        )
+        .then(pl.lit(True))
+        .otherwise(pl.col("label_v8_tail_risk_loss"))
+        .alias("label_v8_tail_risk_loss"),
+    )
+    model = build_dfl_candidate_value_regret_surrogate_v8_frame(
+        teacher_v8,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        allowed_candidate_sources=("ua_context_v8_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+
+    audit = build_dfl_v8_false_positive_tail_risk_audit_frame(
+        teacher_v8,
+        model,
+        prune_tail_risk_probability_threshold=0.50,
+    )
+    plan = build_dfl_v8_pruned_candidate_family_plan_frame(audit)
+
+    generated_plan = plan.filter(
+        pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+    )
+    assert generated_plan.height > 0
+    assert set(generated_plan["allowed_for_next_selector_training"].to_list()) == {False}
+    assert set(generated_plan["recommended_next_action"].to_list()) == {
+        "prune_candidate_family"
+    }
+    assert set(generated_plan["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v8_pruned_candidate_library_removes_prior_risk_families_but_keeps_fallbacks() -> None:
+    teacher_v8 = _v8_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    ).with_columns(
+        pl.when(
+            (pl.col("split_name") != "final_holdout")
+            & (pl.col("candidate_source") == "ua_context_v8_generated_candidate")
+        )
+        .then(pl.lit(240.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(
+            (pl.col("split_name") != "final_holdout")
+            & (pl.col("candidate_source") == "ua_context_v8_generated_candidate")
+        )
+        .then(pl.lit(True))
+        .otherwise(pl.col("label_v8_tail_risk_loss"))
+        .alias("label_v8_tail_risk_loss"),
+    )
+    model = build_dfl_candidate_value_regret_surrogate_v8_frame(
+        teacher_v8,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        allowed_candidate_sources=("ua_context_v8_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+    plan = build_dfl_v8_pruned_candidate_family_plan_frame(
+        build_dfl_v8_false_positive_tail_risk_audit_frame(teacher_v8, model)
+    )
+
+    pruned = build_dfl_v8_pruned_candidate_library_frame(teacher_v8, plan)
+
+    assert "ua_context_v8_generated_candidate" not in set(
+        pruned["candidate_source"].to_list()
+    )
+    assert {"v2_plus_default", "strict_fallback"}.issubset(
+        set(pruned["candidate_source"].to_list())
+    )
+    assert set(pruned["candidate_family_pruned_for_next_selector"].to_list()) == {
+        False
+    }
+    assert set(pruned["market_execution_enabled"].to_list()) == {False}
 
 
 def test_v8_rolling_uses_prior_rescored_neighbors_only() -> None:
