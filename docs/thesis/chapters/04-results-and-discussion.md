@@ -1042,6 +1042,23 @@ readiness especially sparse.
 tail-risk. Тому наступний model step має бути conservative V8 selector з V2+
 fallback, а не raw DT imitation.
 
+Conservative V8 selector також уже перевірено. Він прийняв тільки `6 / 90`
+non-V2+ final switches, тобто fallback rule залишився активним. Однак ці шість
+перемикань все одно погіршили результат: V8 selector отримав `188.42` UAH mean
+regret і `76.32` UAH median regret, тоді як frozen calibrated V2+ залишився на
+`174.77` / `67.30` UAH. Rolling robustness також негативний: `0 / 4`
+promotion windows і `0 / 4` diagnostic windows. Отже, V8 є валідним
+negative-result slice: candidate generation створило локальні можливості, але
+поточні prior-only features не відрізняють безпечні switches від tail-risk
+losses достатньо стабільно.
+
+Практичний висновок: V2+ залишається thesis headline. Наступна ML робота має
+або зібрати/відновити більш сильний prior-known Ukrainian context, або
+переробити candidate generator так, щоб ризикові V8 families не домінували
+teacher labels. DT/LAVA після цього має вчитись candidate-index або
+schedule-family target з explicit abstention до V2+, а не raw hourly action
+imitation.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -1085,8 +1102,8 @@ rows:
   (`0 / 90` selected, `0 / 4` rolling) і V7 opportunity-backfill gate для
   перевірки, чи є enough prior-supported teacher labels before DT/LAVA;
 - `docs/technical/DFL_UA_CONTEXT_CANDIDATE_V8.md` - український context
-  backfill і нові feasible schedules, які мають бути strict-rescored перед
-  будь-якою candidate-value або DT/LAVA промоцією;
+  backfill, strict-rescored V8 candidates і conservative V8 selector negative
+  result (`6 / 90` selected, `188.42` / `76.32` UAH, `0 / 4` rolling);
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

@@ -52,12 +52,31 @@ with mean regret `339.57` UAH, but it is still not a promoted result. The next
 selector must learn when these rare safe schedules are prior-supported and must
 fall back to V2+ otherwise.
 
+Selector-gate status:
+
+- selector/strict Dagster run id: `f3521419-c8a5-4eb4-897e-71dae83d2433`;
+- rolling Dagster run id: `5774b502-e67b-403f-a1e7-d72103a46b1f`;
+- final V8 switches selected: `6 / 90`;
+- V8 selector mean / median regret: `188.42` / `76.32` UAH;
+- frozen calibrated V2+ mean / median regret: `174.77` / `67.30` UAH;
+- rolling robustness: `0 / 4` promotion windows and `0 / 4` diagnostic windows;
+- `market_execution_enabled=false`.
+
+This closes V8 as negative-but-useful evidence. The stricter selector did not
+leak final labels and did not over-select broadly, but even six accepted
+switches worsened both mean and median regret versus V2+. The conclusion is that
+the strict-rescored V8 candidates create local opportunities but not a robust
+prior-only replacement for V2+.
+
 ## Asset Path
 
 | Asset | Purpose |
 |---|---|
 | `dfl_ua_context_backfilled_feature_panel_v8_frame` | Merges source-backed Ukrainian prior context from the UA context safe-switch layer onto V7 schedule candidates. New inputs stay under `selector_feature_*`; realized outcomes remain `label_*` or `diagnostic_*`. |
 | `dfl_ua_context_feasible_schedule_candidate_library_v8_frame` | Adds Ukrainian-context feasible schedule families around V2+ miss modes. These rows are marked `candidate_value_label_status=pending_strict_rescore` and are not promotable until the unchanged strict LP/oracle evaluator scores them. |
+| `dfl_candidate_value_regret_surrogate_v8_frame` | Fits a conservative prior-only selector over strict-rescored V8 labels and keeps V2+ fallback when prior support is weak. |
+| `dfl_candidate_value_v8_strict_lp_benchmark_frame` | Compares the selected V8 candidate-value row against frozen V2+ and strict control under the unchanged LP/oracle evaluator. |
+| `dfl_candidate_value_v8_rolling_robustness_frame` | Replays four rolling windows with prior-only fitting before each validation window. |
 
 Tracked config:
 
@@ -86,33 +105,36 @@ existing feasible schedules. They are not final-holdout oracle copies.
 - `selector_feature_*` columns are prior inputs only.
 - Realized regret, oracle gaps, and candidate deltas remain `label_*` or
   `diagnostic_*`.
-- V8 generated candidates are `pending_strict_rescore`; their label fields are
-  placeholders until strict LP/oracle scoring runs.
+- V8 generated candidates start as `pending_strict_rescore`; after rescore,
+  selector fitting may use train/prior labels, while final-holdout labels remain
+  scoring and diagnostic only.
 - Poland/TFT may remain shadow/context evidence elsewhere, but no European rows
   become Ukrainian target rows in this slice.
 - No dashboard/API default switch and no live market execution claim.
 
-## Next Gate
+## Interpretation And Next Gate
 
-The next slice is a conservative V8 selector gate:
+The conservative V8 selector gate is now materialized and failed the promotion
+rule:
 
-1. train a conservative selector only if V8 creates prior-supported material
-   safe-switch examples;
-2. compare against frozen V2+ with the same promotion rule: mean regret at least
-   `5%` better, median not worse than `67.30` UAH, `4 / 4` rolling windows, zero
-   safety violations, and `market_execution_enabled=false`.
+1. it did not beat V2+ mean regret;
+2. it worsened median regret;
+3. it produced `0 / 4` rolling promotion windows;
+4. it preserved `market_execution_enabled=false`.
 
-If V8 still cannot create prior-supported wins, the thesis conclusion should be
-that the current Ukrainian-only evidence is candidate/data limited. DT/LAVA
-then needs new teacher/value labels from data acquisition or strict-rescored
-schedule neighborhoods, not another raw hourly action imitation run.
+The next ML step should therefore not be another selector over the same rows.
+Either acquire/backfill stronger prior-known Ukrainian context, or redesign the
+candidate generator to avoid the high-regret V8 families before fitting a new
+DT/LAVA teacher target. A future DT/LAVA run should learn candidate-index or
+schedule-family selection with explicit tail-risk abstention, not raw hourly
+BUY/SELL/HOLD imitation.
 
 ## Run
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_ua_context_backfilled_feature_panel_v8_frame,dfl_ua_context_feasible_schedule_candidate_library_v8_frame `
+  --select dfl_ua_context_backfilled_feature_panel_v8_frame,dfl_ua_context_feasible_schedule_candidate_library_v8_frame,dfl_ua_context_candidate_v8_strict_rescore_frame,dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,dfl_candidate_value_regret_surrogate_v8_frame,dfl_candidate_value_v8_strict_lp_benchmark_frame,dfl_candidate_value_v8_rolling_robustness_frame `
   -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
 ```
 

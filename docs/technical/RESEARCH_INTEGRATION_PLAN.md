@@ -122,6 +122,13 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      enough to justify a conservative V8 selector experiment, but not enough to
      promote V8 directly because most generated candidates remain high-regret
      tail-risk schedules.
+   - The conservative V8 selector experiment is also materialized. It selected
+     only `6 / 90` final switches, but those switches worsened regret versus
+     frozen calibrated V2+: `188.42` UAH mean and `76.32` UAH median versus
+     V2+ at `174.77` / `67.30` UAH. Rolling robustness was `0 / 4` promotion
+     windows and `0 / 4` diagnostic windows. This closes the V8 selector branch
+     as negative evidence and points to stronger Ukrainian context backfill or
+     safer candidate generation before any DT/LAVA target.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

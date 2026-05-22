@@ -28,6 +28,38 @@ ops:
       material_switch_delta_uah: 25.0
       max_prior_neighbor_distance: 1.5
       nearest_neighbor_count: 5
+  dfl_candidate_value_regret_surrogate_v8_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      max_prior_neighbor_distance: 1.5
+      min_neighbor_safe_win_count: 1
+      min_predicted_improvement_uah: 1.0
+      max_neighbor_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "ua_context_v8_generated_candidate,v7_generated_candidate,oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+      min_prior_material_safe_switch_examples_for_dt: 20
+  dfl_candidate_value_v8_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_validation_tenant_anchor_count: 90
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_candidate_value_v8_rolling_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      material_switch_delta_uah: 25.0
+      max_prior_neighbor_distance: 1.5
+      min_neighbor_safe_win_count: 1
+      min_predicted_improvement_uah: 1.0
+      max_neighbor_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "ua_context_v8_generated_candidate,v7_generated_candidate,oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+      min_prior_material_safe_switch_examples_for_dt: 20
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
   dfl_candidate_value_regret_surrogate_v7_frame:
     config:
       tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"

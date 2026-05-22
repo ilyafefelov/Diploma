@@ -1035,6 +1035,19 @@ candidate-value labels. Це все ще offline evidence: labels можуть �
 майбутній conservative selector, але final-holdout labels не можуть впливати на
 generation або threshold selection.
 
+Після rescore перевірено власне conservative V8 selector:
+`dfl_candidate_value_regret_surrogate_v8_frame` тренує prior-only rule на
+strict-scored train/prior labels, `dfl_candidate_value_v8_strict_lp_benchmark_frame`
+порівнює вибраний schedule з frozen V2+ і strict control, а
+`dfl_candidate_value_v8_rolling_robustness_frame` повторює gate у чотирьох
+rolling windows. Методологічно це важливо як guardrail: модель може відійти від
+V2+ лише коли prior support і predicted delta показують достатню безпечність;
+інакше вона abstain-иться до V2+. Матеріалізований V8 selector вибрав `6 / 90`
+final switches, але погіршив mean/median regret (`188.42` / `76.32` UAH проти
+V2+ `174.77` / `67.30` UAH) і мав `0 / 4` rolling windows. Тому V8 не стає
+новим policy; це negative evidence, що поточні нові candidates мають занадто
+високий tail-risk для prior-only safe switching.
+
 ## 3.10. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний технічний entrypoint:
