@@ -378,6 +378,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_sparse_safe_switch_rolling_robustness_frame,
     build_dfl_sparse_safe_switch_strict_lp_benchmark_frame,
     build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
+    build_dfl_ua_context_backfilled_feature_panel_v8_frame,
+    build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame,
     build_dfl_v2_plus_learning_limit_audit_frame,
     build_dfl_v2_plus_opportunity_backfill_requirements_frame,
     evaluate_dfl_regret_surrogate_gate,
@@ -5910,6 +5912,109 @@ def dfl_feasible_schedule_candidate_library_v7_frame(
             else 0,
             "market_execution_enabled": False,
             "scope": "dfl_feasible_schedule_candidate_library_v7_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v8",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_backfilled_feature_panel_v8_frame(
+    context,
+    dfl_feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+    dfl_v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach source-backed Ukrainian context to V7 candidates for V8 generation."""
+
+    frame = build_dfl_ua_context_backfilled_feature_panel_v8_frame(
+        dfl_feasible_schedule_candidate_library_v7_frame,
+        dfl_ua_context_oracle_gap_feature_panel_frame,
+        dfl_v2_plus_opportunity_backfill_requirements_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selector_feature_prefix": "selector_feature_*",
+            "context_ready_rows": frame.filter(
+                pl.col("selector_feature_ua_context_ready") >= 1.0
+            ).height
+            if frame.height
+            else 0,
+            "context_blockers": sorted(
+                {
+                    str(blocker)
+                    for blockers in frame["diagnostic_ua_context_blockers"].to_list()
+                    for blocker in (blockers if isinstance(blockers, list) else [])
+                }
+            )
+            if frame.height
+            else [],
+            "training_source_scope": "ukrainian_only_oree_open_meteo_tenant_grid",
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_backfilled_feature_panel_v8_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v8",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_feasible_schedule_candidate_library_v8_frame(
+    context,
+    dfl_ua_context_backfilled_feature_panel_v8_frame: pl.DataFrame,
+    dfl_v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Add V8 feasible schedule variants that must be strict-rescored later."""
+
+    frame = build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame(
+        dfl_ua_context_backfilled_feature_panel_v8_frame,
+        dfl_v2_plus_opportunity_backfill_requirements_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_schedule_classes": sorted(
+                frame["candidate_schedule_class"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "v8_generated_candidate_rows": frame.filter(
+                pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+            ).height
+            if frame.height
+            else 0,
+            "pending_strict_rescore_rows": frame.filter(
+                pl.col("candidate_value_label_status") == "pending_strict_rescore"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_feasible_candidate_library_v8_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -14075,6 +14180,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_v2_plus_opportunity_backfill_requirements_frame,
     dfl_backfilled_context_feature_panel_v7_frame,
     dfl_feasible_schedule_candidate_library_v7_frame,
+    dfl_ua_context_backfilled_feature_panel_v8_frame,
+    dfl_ua_context_feasible_schedule_candidate_library_v8_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

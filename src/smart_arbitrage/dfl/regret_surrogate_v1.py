@@ -96,6 +96,12 @@ REGRET_SURROGATE_STRICT_V7_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_ROBUSTNESS_V7_CLAIM_SCOPE: Final[str] = (
     "dfl_candidate_value_v7_rolling_robustness_not_full_dfl"
 )
+REGRET_SURROGATE_UA_CONTEXT_BACKFILL_V8_CLAIM_SCOPE: Final[str] = (
+    "dfl_ua_context_backfilled_feature_panel_v8_not_full_dfl"
+)
+REGRET_SURROGATE_UA_CANDIDATE_LIBRARY_V8_CLAIM_SCOPE: Final[str] = (
+    "dfl_ua_context_feasible_candidate_library_v8_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -149,6 +155,7 @@ _V7_ALLOWED_CANDIDATE_SOURCES: Final[tuple[str, ...]] = (
     _V7_GENERATED_CANDIDATE_SOURCE,
     *_DEFAULT_ALLOWED_CANDIDATE_SOURCES,
 )
+_V8_GENERATED_CANDIDATE_SOURCE: Final[str] = "ua_context_v8_generated_candidate"
 
 _REQUIRED_CANDIDATE_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -2181,6 +2188,172 @@ def build_dfl_feasible_schedule_candidate_library_v7_frame(
     return frame
 
 
+def build_dfl_ua_context_backfilled_feature_panel_v8_frame(
+    feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
+    ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+    v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Merge source-backed Ukrainian prior context onto V7 schedule candidates."""
+
+    _validate_v7_candidate_library(feasible_schedule_candidate_library_v7_frame)
+    _validate_v7_backfill_requirements_frame(
+        v2_plus_opportunity_backfill_requirements_frame
+    )
+    _require_columns(
+        ua_context_oracle_gap_feature_panel_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="UA context feature panel",
+    )
+    if ua_context_oracle_gap_feature_panel_frame.select(
+        pl.col("market_execution_enabled").any()
+    ).item():
+        raise ValueError("V8 UA context backfill refuses market execution.")
+
+    context_by_anchor: dict[tuple[str, str, datetime], dict[str, Any]] = {}
+    for context_row in ua_context_oracle_gap_feature_panel_frame.iter_rows(named=True):
+        key = _anchor_key(context_row)
+        context_by_anchor.setdefault(key, context_row)
+    requirements_by_anchor = {
+        _anchor_key(row): row
+        for row in v2_plus_opportunity_backfill_requirements_frame.iter_rows(named=True)
+    }
+
+    output_rows: list[dict[str, Any]] = []
+    for row in feasible_schedule_candidate_library_v7_frame.iter_rows(named=True):
+        key = _anchor_key(row)
+        requirement = requirements_by_anchor.get(key)
+        if requirement is None:
+            raise ValueError(f"missing V8 backfill requirement row for {key}.")
+        matching_context_row: dict[str, Any] | None = context_by_anchor.get(key)
+        forecast = _float_vector(row["forecast_price_uah_mwh_vector"])
+        peak_index, trough_index = _peak_trough_indices(forecast)
+        blockers = _ua_context_blockers(matching_context_row, requirement)
+        copied = dict(row)
+        copied.update(
+            {
+                "feature_panel_version": "ua_context_backfill_v8",
+                "selector_feature_ua_publication_context_ready": _context_feature(
+                    matching_context_row,
+                    "selector_feature_publication_time_ready",
+                ),
+                "selector_feature_ua_weather_load_context_ready": _context_feature(
+                    matching_context_row,
+                    "selector_feature_weather_load_context_ready",
+                ),
+                "selector_feature_ua_grid_event_context_ready": _context_feature(
+                    matching_context_row,
+                    "selector_feature_grid_event_context_ready",
+                ),
+                "selector_feature_ua_context_ready": 1.0 if not blockers else 0.0,
+                "selector_feature_ua_peak_hour_index": float(peak_index),
+                "selector_feature_ua_trough_hour_index": float(trough_index),
+                "selector_feature_ua_peak_trough_distance_hours": float(
+                    abs(peak_index - trough_index)
+                ),
+                "selector_feature_ua_forecast_spread_uah_mwh": (
+                    max(forecast) - min(forecast) if forecast else 0.0
+                ),
+                "selector_feature_ua_morning_evening_spread_skew": (
+                    _block_mean(forecast, range(17, 23))
+                    - _block_mean(forecast, range(6, 11))
+                ),
+                "selector_feature_ua_terminal_soc_pressure": float(
+                    bool(requirement["terminal_soc_pressure"])
+                ),
+                "selector_feature_ua_strict_local_rescue_hint": float(
+                    bool(requirement["diagnostic_strict_control_material_local_win"])
+                ),
+                "diagnostic_ua_context_blockers": blockers,
+                "diagnostic_v8_backfill_decision": str(
+                    requirement["opportunity_backfill_decision"]
+                ),
+                "training_source_scope": (
+                    "ukrainian_only_oree_open_meteo_tenant_grid"
+                ),
+                "claim_scope": REGRET_SURROGATE_UA_CONTEXT_BACKFILL_V8_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v8_context_panel(frame)
+    return frame
+
+
+def build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame(
+    ua_context_backfilled_feature_panel_v8_frame: pl.DataFrame,
+    v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Add Ukrainian-context schedule candidates that require later strict rescore."""
+
+    _validate_v8_context_panel(ua_context_backfilled_feature_panel_v8_frame)
+    _validate_v7_backfill_requirements_frame(
+        v2_plus_opportunity_backfill_requirements_frame
+    )
+    requirements_by_anchor = {
+        _anchor_key(row): row
+        for row in v2_plus_opportunity_backfill_requirements_frame.iter_rows(named=True)
+    }
+    output_rows: list[dict[str, Any]] = []
+    grouped = _group_by_anchor(
+        list(ua_context_backfilled_feature_panel_v8_frame.iter_rows(named=True))
+    )
+    for anchor_key, anchor_rows in sorted(grouped.items()):
+        requirement = requirements_by_anchor.get(anchor_key)
+        if requirement is None:
+            raise ValueError(f"missing V8 backfill requirement row for {anchor_key}.")
+        for row in anchor_rows:
+            copied = dict(row)
+            copied["eligible_for_final_selection_v8"] = bool(
+                copied.get("eligible_for_final_selection_v7", True)
+            )
+            copied["candidate_value_label_status"] = copied.get(
+                "candidate_value_label_status",
+                "strict_scored_existing_candidate",
+            )
+            copied["diagnostic_requires_strict_rescore"] = False
+            output_rows.append(copied)
+        v2_row = _baseline_row(anchor_rows, anchor_key=anchor_key)
+        strict_row, _ = _strict_reference_row(anchor_rows, baseline=v2_row)
+        output_rows.extend(
+            _v8_generated_candidate_specs(
+                v2_row=v2_row,
+                strict_row=strict_row,
+                requirement=requirement,
+            )
+        )
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v8_candidate_library(frame)
+    return frame
+
+
 def build_dfl_candidate_value_teacher_label_panel_v7_frame(
     feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
     v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
@@ -3843,6 +4016,268 @@ def _copy_v7_generated_candidate(
     return copied
 
 
+def _v8_generated_candidate_specs(
+    *,
+    v2_row: dict[str, Any],
+    strict_row: dict[str, Any],
+    requirement: dict[str, Any],
+) -> list[dict[str, Any]]:
+    del requirement
+    specs = [
+        (
+            v2_row,
+            "ua_peak_trough_shift_v8",
+            "ua_context_peak_trough_shift_v8",
+            "ua_context_peak_trough_shift",
+            "peak_trough",
+        ),
+        (
+            v2_row,
+            "ua_terminal_reserve_v8",
+            "ua_context_terminal_reserve_v8",
+            "ua_terminal_soc_reserve",
+            "terminal_reserve",
+        ),
+        (
+            v2_row,
+            "ua_morning_evening_block_v8",
+            "ua_context_morning_evening_block_v8",
+            "ua_morning_evening_block",
+            "morning_evening_block",
+        ),
+        (
+            v2_row,
+            "ua_tail_risk_clipped_v8",
+            "ua_context_tail_risk_clipped_v8",
+            "ua_tail_risk_clipped",
+            "tail_risk_clipped",
+        ),
+        (
+            strict_row,
+            "ua_strict_blend_rescue_v8",
+            "ua_context_strict_blend_rescue_v8",
+            "ua_strict_blend_rescue",
+            "strict_blend",
+        ),
+    ]
+    return [
+        _copy_v8_generated_candidate(
+            source_row=row,
+            v2_row=v2_row,
+            candidate_family=family,
+            candidate_model_name=model_name,
+            candidate_schedule_class=schedule_class,
+            schedule_rule=schedule_rule,
+        )
+        for row, family, model_name, schedule_class, schedule_rule in specs
+    ]
+
+
+def _copy_v8_generated_candidate(
+    *,
+    source_row: dict[str, Any],
+    v2_row: dict[str, Any],
+    candidate_family: str,
+    candidate_model_name: str,
+    candidate_schedule_class: str,
+    schedule_rule: str,
+) -> dict[str, Any]:
+    copied = dict(source_row)
+    dispatch = _v8_dispatch_vector(v2_row, source_row=source_row, rule=schedule_rule)
+    soc = _soc_from_dispatch(v2_row, dispatch)
+    throughput = sum(abs(value) for value in dispatch)
+    degradation = float(v2_row.get("total_degradation_penalty_uah", 0.0)) * (
+        throughput / max(sum(abs(value) for value in _float_vector(v2_row["dispatch_mw_vector"])), 1e-9)
+    )
+    payload = dict(copied["evaluation_payload"])
+    payload.update(
+        {
+            "candidate_source": _V8_GENERATED_CANDIDATE_SOURCE,
+            "candidate_family": candidate_family,
+            "candidate_model_name": candidate_model_name,
+            "dispatch_mw": dispatch,
+            "soc_fraction": soc,
+            "generated_from_candidate_source": str(source_row["candidate_source"]),
+            "requires_strict_rescore": True,
+        }
+    )
+    copied.update(
+        {
+            "candidate_source": _V8_GENERATED_CANDIDATE_SOURCE,
+            "candidate_family": candidate_family,
+            "candidate_model_name": candidate_model_name,
+            "candidate_library_version": "ua_context_candidate_value_v8",
+            "candidate_schedule_class": candidate_schedule_class,
+            "eligible_for_final_selection": True,
+            "eligible_for_final_selection_v6": False,
+            "eligible_for_final_selection_v7": False,
+            "eligible_for_final_selection_v8": True,
+            "is_training_row": str(source_row["split_name"]) != "final_holdout",
+            "oracle_neighborhood_train_only": False,
+            "dispatch_mw_vector": dispatch,
+            "soc_fraction_vector": soc,
+            "total_throughput_mwh": throughput,
+            "total_degradation_penalty_uah": degradation,
+            "selector_feature_schedule_distance_from_v2_plus": _schedule_distance(
+                _float_vector(v2_row["dispatch_mw_vector"]),
+                dispatch,
+            ),
+            "selector_feature_total_throughput_delta_mwh": throughput
+            - float(v2_row.get("total_throughput_mwh", throughput)),
+            "selector_feature_terminal_soc_delta_fraction": soc[-1]
+            - _float_vector(v2_row["soc_fraction_vector"])[-1],
+            "candidate_value_label_status": "pending_strict_rescore",
+            "diagnostic_requires_strict_rescore": True,
+            "diagnostic_generated_schedule_rule": schedule_rule,
+            "generated_from_candidate_source": str(source_row["candidate_source"]),
+            "label_regret_delta_vs_v2_plus_uah": 0.0,
+            "label_safe_switch_win": False,
+            "label_tail_risk_loss": False,
+            "label_best_candidate_family": "pending_strict_rescore",
+            "label_best_candidate_model_name": "pending_strict_rescore",
+            "label_is_anchor_best_candidate": False,
+            "evaluation_payload": payload,
+            "target_label_space": "schedule_candidate_value_v8",
+            "raw_hourly_action_imitation": False,
+            "claim_scope": REGRET_SURROGATE_UA_CANDIDATE_LIBRARY_V8_CLAIM_SCOPE,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "market_execution_enabled": False,
+        }
+    )
+    return copied
+
+
+def _v8_dispatch_vector(
+    v2_row: dict[str, Any],
+    *,
+    source_row: dict[str, Any],
+    rule: str,
+) -> list[float]:
+    base = _float_vector(v2_row["dispatch_mw_vector"])
+    strict = _float_vector(source_row["dispatch_mw_vector"])
+    forecast = _float_vector(v2_row["forecast_price_uah_mwh_vector"])
+    if not base:
+        return []
+    limit = max(max(abs(value) for value in base), 0.1)
+    peak_index, trough_index = _peak_trough_indices(forecast)
+    dispatch = list(base)
+    if rule == "peak_trough":
+        dispatch = [0.0 for _ in base]
+        dispatch[trough_index] = -limit
+        dispatch[peak_index] = limit
+    elif rule == "terminal_reserve":
+        midpoint = max(1, len(base) // 2)
+        dispatch = [
+            value * 0.5 if index >= midpoint and value > 0.0 else value
+            for index, value in enumerate(base)
+        ]
+    elif rule == "morning_evening_block":
+        dispatch = [0.0 for _ in base]
+        low_block = _best_block_index(forecast, range(6, 11), prefer_high=False)
+        high_block = _best_block_index(forecast, range(17, 23), prefer_high=True)
+        dispatch[low_block] = -limit
+        dispatch[high_block] = limit
+    elif rule == "tail_risk_clipped":
+        dispatch = [value * 0.5 for value in base]
+    elif rule == "strict_blend":
+        dispatch = [
+            (base_value + strict_value) / 2.0
+            for base_value, strict_value in zip(base, strict, strict=False)
+        ]
+    return [_clip(value, -limit, limit) for value in dispatch]
+
+
+def _soc_from_dispatch(source_row: dict[str, Any], dispatch: list[float]) -> list[float]:
+    source_soc = _float_vector(source_row["soc_fraction_vector"])
+    current = source_soc[0] if source_soc else 0.5
+    soc: list[float] = []
+    for value in dispatch:
+        current = _clip(current - value * 0.05, 0.0, 1.0)
+        soc.append(current)
+    return soc
+
+
+def _peak_trough_indices(values: list[float]) -> tuple[int, int]:
+    if not values:
+        return 0, 0
+    peak_index = max(range(len(values)), key=lambda index: values[index])
+    trough_index = min(range(len(values)), key=lambda index: values[index])
+    return peak_index, trough_index
+
+
+def _best_block_index(
+    values: list[float],
+    hours: range,
+    *,
+    prefer_high: bool,
+) -> int:
+    if not values:
+        return 0
+    candidates = [hour % len(values) for hour in hours if values]
+    if not candidates:
+        candidates = list(range(len(values)))
+    return (
+        max(candidates, key=lambda index: values[index])
+        if prefer_high
+        else min(candidates, key=lambda index: values[index])
+    )
+
+
+def _block_mean(values: list[float], hours: range) -> float:
+    if not values:
+        return 0.0
+    selected = [values[hour % len(values)] for hour in hours]
+    return mean(selected) if selected else 0.0
+
+
+def _schedule_distance(left: list[float], right: list[float]) -> float:
+    if not left or not right:
+        return 0.0
+    width = min(len(left), len(right))
+    return sum(abs(left[index] - right[index]) for index in range(width)) / width
+
+
+def _clip(value: float, lower: float, upper: float) -> float:
+    return min(max(value, lower), upper)
+
+
+def _float_vector(value: Any) -> list[float]:
+    if isinstance(value, list | tuple):
+        return [float(item) for item in value]
+    return []
+
+
+def _context_feature(row: dict[str, Any] | None, name: str) -> float:
+    if row is None:
+        return 0.0
+    return _numeric_feature(row, name)
+
+
+def _ua_context_blockers(
+    context_row: dict[str, Any] | None,
+    requirement: dict[str, Any],
+) -> list[str]:
+    blockers: list[str] = []
+    if context_row is None:
+        blockers.append("missing_ua_context_panel_row")
+    else:
+        raw = context_row.get("diagnostic_context_blockers", [])
+        if isinstance(raw, list | tuple):
+            blockers.extend(str(value) for value in raw)
+        elif raw:
+            blockers.append(str(raw))
+        if _context_feature(context_row, "selector_feature_publication_time_ready") < 1.0:
+            blockers.append("missing_publication_time")
+        if _context_feature(context_row, "selector_feature_weather_load_context_ready") < 1.0:
+            blockers.append("missing_weather_load_context")
+        if _context_feature(context_row, "selector_feature_grid_event_context_ready") < 1.0:
+            blockers.append("missing_grid_event_context")
+    if bool(requirement["missing_prior_context"]):
+        blockers.append("v7_missing_prior_context")
+    return sorted(set(blockers))
+
+
 def _final_anchor_keys(rows: list[dict[str, Any]]) -> list[str]:
     return [
         _anchor_key_from_parts(
@@ -4362,6 +4797,48 @@ def _validate_v7_candidate_library(frame: pl.DataFrame) -> None:
         raise ValueError("V7 oracle-neighborhood diagnostics must be train-only.")
 
 
+def _validate_v8_context_panel(frame: pl.DataFrame) -> None:
+    _validate_v7_candidate_library(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "selector_feature_ua_context_ready",
+                "selector_feature_ua_peak_hour_index",
+                "selector_feature_ua_trough_hour_index",
+                "selector_feature_ua_morning_evening_spread_skew",
+                "diagnostic_ua_context_blockers",
+                "training_source_scope",
+            }
+        ),
+        frame_name="V8 Ukrainian context backfilled feature panel",
+    )
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V8 Ukrainian context backfill refuses market execution.")
+
+
+def _validate_v8_candidate_library(frame: pl.DataFrame) -> None:
+    _validate_v8_context_panel(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "eligible_for_final_selection_v8",
+                "candidate_value_label_status",
+                "diagnostic_requires_strict_rescore",
+            }
+        ),
+        frame_name="V8 Ukrainian feasible schedule candidate library",
+    )
+    if frame.filter(
+        (pl.col("candidate_source") == _V8_GENERATED_CANDIDATE_SOURCE)
+        & (pl.col("candidate_value_label_status") != "pending_strict_rescore")
+    ).height:
+        raise ValueError("V8 generated candidates must wait for strict rescore labels.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V8 Ukrainian candidate library refuses market execution.")
+
+
 def _validate_v7_teacher_panel(frame: pl.DataFrame) -> None:
     _validate_v7_candidate_library(frame)
     _require_columns(
@@ -4552,6 +5029,8 @@ __all__ = [
     "build_dfl_v2_plus_opportunity_backfill_requirements_frame",
     "build_dfl_backfilled_context_feature_panel_v7_frame",
     "build_dfl_feasible_schedule_candidate_library_v7_frame",
+    "build_dfl_ua_context_backfilled_feature_panel_v8_frame",
+    "build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame",
     "build_dfl_candidate_value_teacher_label_panel_v7_frame",
     "build_dfl_candidate_value_regret_surrogate_v7_frame",
     "build_dfl_candidate_value_v7_rolling_robustness_frame",

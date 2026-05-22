@@ -106,6 +106,15 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      morning/evening block, and throughput/degradation sweep candidates. V7 can
      move toward DT/LAVA only if it creates at least `20` prior/train material
      safe-switch examples and clears the unchanged V2+ strict LP/oracle gate.
+   - Ukrainian Context Candidate V8 is the next data/candidate repair layer
+     after V7. It merges source-backed Ukrainian prior context from the
+     UA-context safe-switch path onto V7 candidates, then adds new feasible
+     schedule families (`ua_context_peak_trough_shift_v8`,
+     `ua_context_terminal_reserve_v8`, `ua_context_morning_evening_block_v8`,
+     `ua_context_tail_risk_clipped_v8`, and `ua_context_strict_blend_rescue_v8`).
+     V8 generated rows are marked `pending_strict_rescore`, so they are not
+     promoted or used as live recommendations until the unchanged strict
+     LP/oracle evaluator scores them.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

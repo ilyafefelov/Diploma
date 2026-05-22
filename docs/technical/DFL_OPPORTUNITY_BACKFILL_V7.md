@@ -86,3 +86,9 @@ schedule family, or schedule block targets. A fallback result means the current
 Ukrainian-only evidence is exhausted at the candidate/value layer and the next
 branch should be data/context acquisition rather than another model over the
 same rows.
+
+The follow-up implementation is
+[DFL_UA_CONTEXT_CANDIDATE_V8.md](DFL_UA_CONTEXT_CANDIDATE_V8.md). V8 does not
+train another selector. It attaches source-backed Ukrainian context to the V7
+candidate rows and creates new feasible schedules that are explicitly marked
+`pending_strict_rescore` before any promotion or DT/LAVA work can continue.

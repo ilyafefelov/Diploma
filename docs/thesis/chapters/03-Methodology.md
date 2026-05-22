@@ -1015,6 +1015,18 @@ safe-switch examples, покаже selector-safe oracle upside above `5%` і н�
 провалить rolling robustness через tail risk. Інакше наступний напрямок - не
 більша модель, а backfill/context acquisition.
 
+Після цього додається V8 як суто data/candidate repair layer. Він не тренує
+новий policy і не замінює V2+. `dfl_ua_context_backfilled_feature_panel_v8_frame`
+додає до V7 candidates source-backed Ukrainian context із наявного
+UA-context safe-switch path: publication/calendar readiness, weather/load
+readiness, grid-event readiness, peak/trough timing, spread skew і terminal SOC
+pressure. `dfl_ua_context_feasible_schedule_candidate_library_v8_frame` створює
+нові feasible schedule candidates навколо цих miss modes: peak/trough shift,
+terminal reserve, morning/evening block, tail-risk clipped і strict-blend
+rescue. Усі такі rows позначені `pending_strict_rescore`, тому вони не можуть
+бути thesis headline або live recommendation до проходження того самого strict
+LP/oracle scoring gate.
+
 ## 3.10. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний технічний entrypoint:

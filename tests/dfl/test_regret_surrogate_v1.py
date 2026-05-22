@@ -29,6 +29,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_candidate_value_regret_surrogate_v7_frame,
     build_dfl_candidate_value_v7_rolling_robustness_frame,
     build_dfl_candidate_value_v7_strict_lp_benchmark_frame,
+    build_dfl_ua_context_backfilled_feature_panel_v8_frame,
+    build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame,
     build_dfl_sparse_safe_switch_abstention_model_v6_frame,
     build_dfl_sparse_safe_switch_candidate_library_v6_frame,
     build_dfl_sparse_safe_switch_feature_contract_audit_frame,
@@ -805,6 +807,72 @@ def test_v7_rolling_keeps_train_only_oracle_diagnostics_out_of_validation() -> N
     assert set(rolling["market_execution_enabled"].to_list()) == {False}
 
 
+def test_v8_context_backfill_merges_source_backed_ua_features() -> None:
+    v7_library, _ = _v7_library_and_teacher(
+        _candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0)
+    )
+    requirements = _v7_requirements(v7_library)
+
+    panel = build_dfl_ua_context_backfilled_feature_panel_v8_frame(
+        v7_library,
+        _ua_context_panel(v7_library),
+        requirements,
+    )
+
+    assert panel.height == v7_library.height
+    assert "selector_feature_ua_context_ready" in panel.columns
+    assert "selector_feature_ua_morning_evening_spread_skew" in panel.columns
+    assert "diagnostic_ua_context_blockers" in panel.columns
+    assert set(panel["selector_feature_ua_context_ready"].to_list()) == {1.0}
+    assert set(panel["training_source_scope"].to_list()) == {
+        "ukrainian_only_oree_open_meteo_tenant_grid"
+    }
+    assert set(panel["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v8_candidate_library_adds_new_feasible_ua_context_schedules() -> None:
+    v7_library, _ = _v7_library_and_teacher(
+        _candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0)
+    )
+    requirements = _v7_requirements(v7_library)
+    panel = build_dfl_ua_context_backfilled_feature_panel_v8_frame(
+        v7_library,
+        _ua_context_panel(v7_library),
+        requirements,
+    )
+
+    v8_library = build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame(
+        panel,
+        requirements,
+    )
+
+    generated = v8_library.filter(
+        pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+    )
+    assert generated.height == len(TENANTS) * 5 * 5
+    assert {
+        "ua_peak_trough_shift_v8",
+        "ua_terminal_reserve_v8",
+        "ua_morning_evening_block_v8",
+        "ua_tail_risk_clipped_v8",
+        "ua_strict_blend_rescue_v8",
+    }.issubset(set(generated["candidate_family"].to_list()))
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "pending_strict_rescore"
+    }
+    assert set(generated["eligible_for_final_selection_v8"].to_list()) == {True}
+    assert set(generated["diagnostic_requires_strict_rescore"].to_list()) == {True}
+    assert set(generated["market_execution_enabled"].to_list()) == {False}
+    first_generated = generated.row(0, named=True)
+    baseline = v8_library.filter(
+        (pl.col("tenant_id") == first_generated["tenant_id"])
+        & (pl.col("source_model_name") == first_generated["source_model_name"])
+        & (pl.col("anchor_timestamp") == first_generated["anchor_timestamp"])
+        & (pl.col("candidate_source") == "v2_plus_default")
+    ).row(0, named=True)
+    assert first_generated["dispatch_mw_vector"] != baseline["dispatch_mw_vector"]
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
@@ -871,6 +939,44 @@ def _v7_library_and_teacher(panel: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataF
         max_prior_neighbor_distance=2.0,
     )
     return v7_library, teacher_v7
+
+
+def _v7_requirements(v7_library: pl.DataFrame) -> pl.DataFrame:
+    v6_like = v7_library.filter(
+        pl.col("candidate_source") != "v7_generated_candidate"
+    )
+    audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+        v6_like,
+        max_prior_neighbor_distance=2.0,
+    )
+    return build_dfl_v2_plus_opportunity_backfill_requirements_frame(v6_like, audit)
+
+
+def _ua_context_panel(candidate_library: pl.DataFrame) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for row in candidate_library.select(
+        ["tenant_id", "source_model_name", "anchor_timestamp"]
+    ).unique().iter_rows(named=True):
+        anchor = row["anchor_timestamp"]
+        rows.append(
+            {
+                "tenant_id": row["tenant_id"],
+                "source_model_name": row["source_model_name"],
+                "anchor_timestamp": anchor,
+                "selector_feature_publication_time_ready": 1.0,
+                "selector_feature_weather_load_context_ready": 1.0,
+                "selector_feature_grid_event_context_ready": 1.0,
+                "selector_feature_anchor_hour": float(anchor.hour),
+                "selector_feature_anchor_is_weekend": float(anchor.weekday() >= 5),
+                "selector_feature_weather_temperature_c": 18.0,
+                "selector_feature_net_load_mw": 2.5,
+                "selector_feature_national_grid_risk_score": 0.2,
+                "diagnostic_context_blockers": [],
+                "context_source": "ukrainian_only_oree_open_meteo_tenant_grid",
+                "market_execution_enabled": False,
+            }
+        )
+    return pl.DataFrame(rows, infer_schema_length=None)
 
 
 def _final_context_shifted_panel(

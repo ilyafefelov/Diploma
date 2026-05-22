@@ -1018,6 +1018,22 @@ morning/evening block і throughput/degradation sweeps. Якщо V7 не ств�
 V2+ gate, thesis conclusion лишається: V2+ є headline evidence, а наступна
 реальна робота - data/context acquisition, не ще один DT variant.
 
+Наступний practical repair після V7 - Ukrainian Context Candidate V8. Він
+переводить висновок "потрібен backfill / candidate generation" у конкретні
+нові schedule rows. V8 приєднує prior-only Ukrainian context до candidate
+library і генерує peak/trough shift, terminal reserve, morning/evening block,
+tail-risk clipped та strict-blend rescue schedules. Це ще не покращення regret
+metric: нові schedules мають статус `pending_strict_rescore`. Тобто V8
+закриває питання "що саме треба перерахувати строгим LP/oracle evaluator", але
+не промотує нову стратегію і не змінює headline V2+ result.
+
+V8 materialization created `52,855` candidate-library rows, including `9,125`
+new Ukrainian-context generated schedules. All generated rows are
+`pending_strict_rescore`, so this is evidence of candidate/data repair, not a
+new regret result. The context join also shows why this work is necessary:
+complete UA context readiness is still `0 / 43,730` rows, with grid-event
+readiness especially sparse.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -1060,6 +1076,9 @@ rows:
   `docs/technical/DFL_OPPORTUNITY_BACKFILL_V7.md` - V6 negative evidence
   (`0 / 90` selected, `0 / 4` rolling) і V7 opportunity-backfill gate для
   перевірки, чи є enough prior-supported teacher labels before DT/LAVA;
+- `docs/technical/DFL_UA_CONTEXT_CANDIDATE_V8.md` - український context
+  backfill і нові feasible schedules, які мають бути strict-rescored перед
+  будь-якою candidate-value або DT/LAVA промоцією;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,
