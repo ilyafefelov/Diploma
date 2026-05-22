@@ -315,6 +315,15 @@ from smart_arbitrage.dfl.lava_tail_risk_target import (
     evaluate_dfl_lava_tail_risk_safe_switch_gate,
     evaluate_dfl_lava_tail_risk_aware_gate,
 )
+from smart_arbitrage.dfl.oracle_gap_safe_switch import (
+    ORACLE_GAP_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
+    build_dfl_oracle_gap_safe_switch_feature_panel_frame,
+    build_dfl_oracle_gap_safe_switch_label_frame,
+    build_dfl_oracle_gap_safe_switch_rolling_robustness_frame,
+    build_dfl_oracle_gap_safe_switch_scorer_frame,
+    build_dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame,
+    evaluate_dfl_oracle_gap_safe_switch_gate,
+)
 from smart_arbitrage.strategy.official_global_panel import (
     POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
     POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
@@ -1269,6 +1278,31 @@ class DflLavaTailRiskTargetAssetConfig(DflLavaScheduleNeighborBridgeAssetConfig)
     safe_switch_candidate_sources_csv: str = "poland_shadow_candidate"
     require_family_tail_loss_free: bool = True
     hard_blocked_candidate_families_csv: str = "rank_extrema_perturbation_v2_plus"
+
+
+class DflOracleGapSafeSwitchAssetConfig(dg.Config):
+    """Oracle-gap safe-switch gate before schedule-neighbor DT/LAVA."""
+
+    tenant_ids_csv: str = (
+        "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,"
+        "client_004_kharkiv_hospital,client_005_odesa_hotel"
+    )
+    source_model_names_csv: str = FROZEN_V2_PLUS_BASELINE_MODEL_NAME
+    tail_risk_delta_uah: float = 150.0
+    min_prior_safe_win_count: int = 1
+    min_prior_mean_improvement_uah: float = 1.0
+    min_predicted_improvement_uah: float = 1.0
+    max_predicted_tail_risk_probability: float = 0.25
+    allowed_candidate_sources_csv: str = (
+        "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate"
+    )
+    ridge_l2: float = 10.0
+    min_validation_tenant_anchor_count: int = 90
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.05
+    min_mean_regret_improvement_ratio_vs_strict: float = 0.05
+    validation_window_count: int = 4
+    validation_anchor_count: int = 18
+    min_prior_anchors_before_window: int = 30
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -3679,6 +3713,288 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_fr
         },
     )
     return audit_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_oracle_gap_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_gap_safe_switch_label_frame(
+    context,
+    config: DflOracleGapSafeSwitchAssetConfig,
+    dfl_official_global_panel_schedule_candidate_library_v2_plus_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Teacher labels for oracle-gap safe switches against corrected V2+."""
+
+    source_model_names = _forecast_model_names(config.source_model_names_csv)
+    label_frame = build_dfl_oracle_gap_safe_switch_label_frame(
+        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame,
+        source_model_names=source_model_names,
+        tail_risk_delta_uah=config.tail_risk_delta_uah,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": label_frame.height,
+            "source_model_names": list(source_model_names),
+            "safe_switch_label_rows": label_frame.filter(
+                pl.col("label_safe_switch_win")
+            ).height
+            if label_frame.height
+            else 0,
+            "tail_risk_label_rows": label_frame.filter(
+                pl.col("label_tail_risk_loss")
+            ).height
+            if label_frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_gap_safe_switch_labels_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return label_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_oracle_gap_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_gap_safe_switch_feature_panel_frame(
+    context,
+    dfl_oracle_gap_safe_switch_label_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only selector features for oracle-gap safe switches."""
+
+    feature_panel = build_dfl_oracle_gap_safe_switch_feature_panel_frame(
+        dfl_oracle_gap_safe_switch_label_frame
+    )
+    feature_columns = [
+        column for column in feature_panel.columns if column.startswith("selector_feature_")
+    ]
+    _add_metadata(
+        context,
+        {
+            "rows": feature_panel.height,
+            "selector_feature_columns": feature_columns,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_gap_safe_switch_feature_panel_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return feature_panel
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_oracle_gap_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_gap_safe_switch_scorer_frame(
+    context,
+    config: DflOracleGapSafeSwitchAssetConfig,
+    dfl_oracle_gap_safe_switch_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Train the conservative prior-only oracle-gap safe-switch scorer."""
+
+    scorer_frame = build_dfl_oracle_gap_safe_switch_scorer_frame(
+        dfl_oracle_gap_safe_switch_feature_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=_forecast_model_names(config.source_model_names_csv),
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        ridge_l2=config.ridge_l2,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": scorer_frame.height,
+            "candidate_selected_tenant_sources": scorer_frame.filter(
+                ~pl.col("fallback_to_v2_plus")
+            ).height
+            if scorer_frame.height
+            else 0,
+            "fallback_tenant_sources": scorer_frame.filter(
+                pl.col("fallback_to_v2_plus")
+            ).height
+            if scorer_frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_gap_safe_switch_scorer_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return scorer_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_oracle_gap_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame(
+    context,
+    config: DflOracleGapSafeSwitchAssetConfig,
+    dfl_oracle_gap_safe_switch_feature_panel_frame: pl.DataFrame,
+    dfl_oracle_gap_safe_switch_scorer_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle comparison for oracle-gap safe-switch rows."""
+
+    strict_frame = build_dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame(
+        dfl_oracle_gap_safe_switch_feature_panel_frame,
+        dfl_oracle_gap_safe_switch_scorer_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    )
+    gate = evaluate_dfl_oracle_gap_safe_switch_gate(
+        strict_frame,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": ORACLE_GAP_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "diagnostic_signal_passed": gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "offline_strategy_challenger_passed": gate.metrics.get(
+                "offline_strategy_challenger_passed", False
+            ),
+            "mean_regret_improvement_ratio_vs_v2_plus": gate.metrics.get(
+                "mean_regret_improvement_ratio_vs_v2_plus", 0.0
+            ),
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_gap_safe_switch_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_oracle_gap_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_gap_safe_switch_rolling_robustness_frame(
+    context,
+    config: DflOracleGapSafeSwitchAssetConfig,
+    dfl_oracle_gap_safe_switch_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling prior-only safe-switch robustness against corrected V2+."""
+
+    robustness_frame = build_dfl_oracle_gap_safe_switch_rolling_robustness_frame(
+        dfl_oracle_gap_safe_switch_feature_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=_forecast_model_names(config.source_model_names_csv),
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        ridge_l2=config.ridge_l2,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": robustness_frame.height,
+            "rolling_pass_windows": robustness_frame.filter(
+                pl.col("rolling_window_passed")
+            ).height
+            if robustness_frame.height
+            else 0,
+            "diagnostic_signal_windows": robustness_frame.filter(
+                pl.col("diagnostic_window_passed")
+            ).height
+            if robustness_frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_gap_safe_switch_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return robustness_frame
 
 
 @dg.asset(
@@ -11579,6 +11895,11 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame,
+    dfl_oracle_gap_safe_switch_label_frame,
+    dfl_oracle_gap_safe_switch_feature_panel_frame,
+    dfl_oracle_gap_safe_switch_scorer_frame,
+    dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame,
+    dfl_oracle_gap_safe_switch_rolling_robustness_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,

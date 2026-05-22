@@ -3194,3 +3194,25 @@ on `71 / 90` final rows and missed a better candidate on `19 / 90` rows; raw
 V2+ selected best on `59 / 90` and missed better on `31 / 90`. This makes the
 next DT/LAVA task a prior-only safe-switch / candidate-index problem anchored to
 corrected V2+, not a raw hourly action imitation task.
+
+That safe-switch layer is now implemented as an additive oracle-gap path:
+`dfl_oracle_gap_safe_switch_label_frame`,
+`dfl_oracle_gap_safe_switch_feature_panel_frame`,
+`dfl_oracle_gap_safe_switch_scorer_frame`,
+`dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame`, and
+`dfl_oracle_gap_safe_switch_rolling_robustness_frame`. It uses realized regret
+only for train/prior labels and final-holdout scoring, predicts regret delta and
+tail-risk probability, and falls back to corrected V2+ unless prior evidence
+supports a safe candidate switch. The tracked config is
+`configs/real_data_dfl_oracle_gap_safe_switch_week3.yaml`; the technical note is
+[DFL_ORACLE_GAP_SAFE_SWITCH.md](DFL_ORACLE_GAP_SAFE_SWITCH.md).
+
+The path was materialized in Dagster run
+`d9ca0064-8fc9-4da1-880a-47ae0d62958d`. The label frame reproduced the
+`71 / 90` V2+-best versus `19 / 90` missed-candidate final-holdout split. The
+scorer found no prior-safe switch profile, fell back to corrected calibrated
+V2+ for all `90 / 90` latest holdout rows, matched V2+ at `174.77` UAH mean
+regret and `67.30` UAH median regret, and produced `0 / 4` robust challenger
+windows. This is a useful closure: DT/LAVA should not imitate raw hourly
+actions, but the current prior-only safe-switch features are still not strong
+enough to justify a promoted switch away from V2+.

@@ -167,6 +167,25 @@ candidate on `19 / 90` rows. This is now the target shape for DT/LAVA: learn a
 prior-only safe switch for the missed-candidate minority, with fallback to the
 corrected V2+ comparator.
 
+The additive oracle-gap safe-switch layer is now the immediate bridge before any
+new DT/LAVA policy. It creates `dfl_oracle_gap_safe_switch_label_frame`,
+`dfl_oracle_gap_safe_switch_feature_panel_frame`,
+`dfl_oracle_gap_safe_switch_scorer_frame`,
+`dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame`, and
+`dfl_oracle_gap_safe_switch_rolling_robustness_frame`. The selector predicts
+regret delta and tail-risk probability from prior/train anchors only, switches
+only when the candidate looks safe, and otherwise falls back to corrected V2+.
+See [DFL_ORACLE_GAP_SAFE_SWITCH.md](DFL_ORACLE_GAP_SAFE_SWITCH.md).
+
+Oracle-gap safe-switch materialization result: Dagster run
+`d9ca0064-8fc9-4da1-880a-47ae0d62958d` completed the label, feature, scorer,
+strict benchmark, and rolling robustness assets. The label frame preserved the
+`71 / 90` V2+-best and `19 / 90` missed-candidate split. The scorer found no
+prior-safe switch profile, fell back to corrected calibrated V2+ on `90 / 90`
+latest holdout rows, matched V2+ at `174.77` / `67.30` UAH mean/median regret,
+and produced `0 / 4` robust challenger windows. This closes the current
+safe-switch slice as negative diagnostic evidence, not a promoted result.
+
 ## Materialization
 
 After upstream V2+ and Poland evidence rows are available:
@@ -185,6 +204,15 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
   --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_scorer_frame,dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame `
   -c configs/real_data_dfl_lava_tail_risk_target_week3.yaml
+```
+
+Oracle-gap safe-switch materialization:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_oracle_gap_safe_switch_label_frame,dfl_oracle_gap_safe_switch_feature_panel_frame,dfl_oracle_gap_safe_switch_scorer_frame,dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame,dfl_oracle_gap_safe_switch_rolling_robustness_frame `
+  -c configs/real_data_dfl_oracle_gap_safe_switch_week3.yaml
 ```
 
 Claim boundary remains unchanged: Offline Strategy Promotion/read-model

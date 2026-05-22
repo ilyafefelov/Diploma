@@ -705,6 +705,25 @@ Poland/TFT schedules або маленький DT не дали стабільн
 tail-risk losses. Наступний DT/LAVA branch має навчатися safe-switch /
 candidate-index targets з V2+ fallback, а не імітувати raw hourly actions.
 
+Після цього додано oracle-gap safe-switch gate як проміжний ML-крок перед
+DT/LAVA. Він будує teacher labels для safe switch wins і tail-risk losses,
+публікує prior-only `selector_feature_*` panel, тренує консервативний scorer і
+перевіряє його в strict LP/oracle та rolling robustness frames. Promotion rule
+не змінюється: safe-switch може замінити V2+ лише якщо beat `174.77` UAH mean
+regret щонайменше на `5%`, не погіршить `67.30` UAH median regret і пройде
+rolling windows; інакше це diagnostic evidence для наступного DT/LAVA target.
+
+Цей gate був матеріалізований у Dagster run
+`d9ca0064-8fc9-4da1-880a-47ae0d62958d`. Результат не замінив V2+: safe-switch
+fallback спрацював на всіх `90 / 90` final rows, тому mean/median regret
+залишилися рівно на corrected calibrated V2+ (`174.77` / `67.30` UAH), без
+safety violations і без market execution. Rolling test також не дав
+promotion-сигналу: `0 / 4` robust challenger windows і `0 / 4` diagnostic
+windows. Інтерпретація: oracle gap існує, але поточні prior-only ознаки ще не
+відокремлюють безпечні missed-candidate wins від tail-risk losses. Це означає,
+що наступний DT/LAVA має вчитися на schedule/candidate-value labels і
+tail-risk avoidance, а не просто імітувати hourly BUY/SELL/HOLD.
+
 Цей результат уточнює висновок про плато. Поточний point-in-time context panel
 показав `3,650` rows з `missing_weather_load_context`, `3,650` rows з
 `missing_calendar_event_context` і `3,650` rows з `missing_publication_time`.

@@ -827,9 +827,24 @@ DT/LAVA branch. Для calibrated V2+ selector уже обрав best available 
 становлять `59 / 90` і `31 / 90`. Тому наступний DT/LAVA target має бути
 prior-only safe-switch / candidate-index модель, яка прогнозує, коли безпечно
 відійти від V2+, а не raw hourly BUY/SELL/HOLD imitation.
+Для цього додано окремий oracle-gap safe-switch layer: він формує label frame,
+prior-only `selector_feature_*` panel, scorer, strict benchmark і rolling
+robustness frame. Модель прогнозує очікуваний regret delta та tail-risk
+probability; якщо prior evidence недостатнє, вона повертається до corrected
+V2+. Саме цей шар має показати, чи є learnable signal перед повноцінним DT/LAVA.
 Це робить V2+ conservative extension, а не новим live controller; код і asset
 registration знаходяться у `src/smart_arbitrage/dfl/schedule_value_learner_v2_plus.py`
-та `src/smart_arbitrage/assets/gold/dfl_research.py`.
+`src/smart_arbitrage/dfl/oracle_gap_safe_switch.py` та
+`src/smart_arbitrage/assets/gold/dfl_research.py`.
+
+Матеріалізація цього шару (`d9ca0064-8fc9-4da1-880a-47ae0d62958d`) дала
+негативний, але методологічно важливий результат. Label frame підтвердив
+`71 / 90` rows, де V2+ уже обрав best available candidate, і `19 / 90` rows, де
+кращий candidate існував. Але scorer не знайшов prior-safe switch profile:
+усі `90 / 90` final rows повернулися до corrected calibrated V2+. Отже,
+поточний висновок не "DT має просто бути більшим", а "перед DT потрібні кращі
+teacher/value labels або додатковий point-in-time context, який безпечно
+відрізняє win-candidates від tail-risk schedules".
 
 З практичної точки зору різниця між V2 і V2+ така: V2 оцінює обмежений набір
 strict/raw/blend/residual schedules, тоді як V2+ додає schedules, які спеціально
