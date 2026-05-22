@@ -868,6 +868,20 @@ Safe-Switch v2 до `185.65` UAH. Проте це все ще гірше за fr
 можна використовувати як teacher data про безпечні та ризикові schedule
 neighbors, але не як promoted policy.
 
+Після цього v3 label frame справді використано як teacher data для
+schedule-neighbor DT/LAVA supervision. Новий шар не вчить raw hourly
+BUY/SELL/HOLD actions. Він формує кандидатний target:
+`fallback_v2_plus`, `safe_schedule_neighbor`, `avoid_tail_risk_neighbor`,
+`neutral_schedule_neighbor` або `oracle_neighbor_diagnostic`. Матеріалізований
+run `8b0d59d8-0570-4b6a-bfc4-0a26f0643c9e` створив `13,885` teacher rows,
+з яких `4,358` були safe schedule-neighbor wins і `4,351` були tail-risk
+neighbors. Conservative policy знову вибрав тільки `8 / 90` Poland shadow
+schedules і fallback до V2+ на `82 / 90`, тому результат залишився `185.65`
+UAH mean regret і `76.32` UAH median regret. Behavior cloning reference мав
+`310.58` UAH mean regret. Це підтверджує, що наступний DT має вчитись на
+candidate-index/family/block supervision і tail-risk labels, але для thesis
+headline V2+ лишається сильнішим comparator.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -899,8 +913,9 @@ rows:
   V2+-anchored teacher-label and feasible-neighbor bridge that prepares DT/LAVA
   without promoting raw hourly actions;
 - `docs/technical/DFL_LAVA_TAIL_RISK_TARGET.md` -
-  tail-risk diagnostic and safe-switch target layer showing that current
-  Poland/TFT neighbors are not yet prior-safe enough to replace V2+;
+  tail-risk diagnostic, safe-switch target, and schedule-neighbor DT/LAVA
+  teacher-supervision layer showing that current Poland/TFT neighbors are not
+  yet prior-safe enough to replace V2+;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

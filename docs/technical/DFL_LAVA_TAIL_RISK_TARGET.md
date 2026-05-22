@@ -44,6 +44,9 @@ strict LP/oracle evaluator.
 | `dfl_lava_tail_risk_avoidance_label_frame` | Converts the v2 feature panel into explicit `safe_switch_win`, `tail_risk_switch`, and fallback labels for the next DT/LAVA target. |
 | `dfl_lava_tail_risk_avoidance_scorer_v3_frame` | Trains separate prior-only regret-delta and tail-risk scorers, then switches only when predicted improvement is strong and predicted tail-risk probability is below the configured veto. |
 | `dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame` | Strict-scores the v3 tail-risk avoidance selector against frozen V2+ and `strict_similar_day`. |
+| `dfl_lava_schedule_neighbor_dt_training_frame` | Converts the v3 label frame into DT/LAVA-ready teacher rows over feasible schedule-neighbor candidates. |
+| `dfl_lava_schedule_neighbor_dt_policy_frame` | Trains a conservative schedule-neighbor policy from those teacher rows; the label space is candidate/family/block supervision, not hourly action imitation. |
+| `dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame` | Strict-scores the schedule-neighbor DT/LAVA policy and behavior-cloning reference against frozen V2+. |
 
 Tracked config:
 
@@ -252,12 +255,51 @@ V2+. The next DT/LAVA branch should therefore use this v3 label frame as
 training data for tail-risk-aware schedule-neighbor supervision, not as a
 promoted policy.
 
+## Schedule-Neighbor DT/LAVA Supervision
+
+The next implemented layer uses the v3 label frame as teacher data for a
+Decision-Transformer/LAVA bridge, but it still refuses raw hourly
+BUY/SELL/HOLD imitation. The training target is:
+
+```text
+fallback_v2_plus | safe_schedule_neighbor | avoid_tail_risk_neighbor |
+neutral_schedule_neighbor | oracle_neighbor_diagnostic
+```
+
+The important design point is that return-to-go and tail-risk labels are used
+as train/prior teacher targets. They are not allowed to become final-holdout
+selection features. The policy therefore learns a candidate-index/family
+supervision problem first, and only later should a real DT sequence model learn
+from this dataset.
+
+Materialized result:
+
+- Dagster run: `8b0d59d8-0570-4b6a-bfc4-0a26f0643c9e`;
+- teacher rows: `13,885`;
+- safe schedule-neighbor rows: `4,358`;
+- tail-risk neighbor rows: `4,351`;
+- oracle-neighbor diagnostic rows: `1,735`;
+- selected Poland shadow schedules: `8 / 90`;
+- V2+ fallback schedules: `82 / 90`;
+- Schedule-neighbor DT/LAVA policy mean regret: `185.65` UAH;
+- Schedule-neighbor DT/LAVA policy median regret: `76.32` UAH;
+- behavior-cloning reference mean regret: `310.58` UAH;
+- frozen calibrated V2+ comparator: `174.77` UAH mean, `67.30` UAH median;
+- status: failed versus V2+, diagnostic teacher-supervision evidence only.
+
+This confirms the core DT/LAVA lesson: the current candidate space contains
+real local safe wins, but a policy that switches to them still cannot beat V2+
+robustly from prior information. The next DT/LAVA step should train a sequence
+model on this candidate-index dataset only after adding better teacher/value
+labels or richer point-in-time context. It should not regress to raw hourly
+action imitation.
+
 ## Materialization
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_scorer_frame,dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,dfl_lava_tail_risk_safe_switch_scorer_v2_frame,dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame,dfl_lava_tail_risk_avoidance_label_frame,dfl_lava_tail_risk_avoidance_scorer_v3_frame,dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame `
+  --select dfl_v2_plus_schedule_neighbor_teacher_label_frame,dfl_lava_schedule_neighbor_candidate_frame,dfl_lava_candidate_value_scorer_frame,dfl_lava_candidate_value_strict_lp_benchmark_frame,dfl_lava_tail_risk_diagnostic_frame,dfl_lava_tail_risk_aware_target_frame,dfl_lava_tail_risk_aware_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_scorer_frame,dfl_lava_tail_risk_safe_switch_strict_lp_benchmark_frame,dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame,dfl_lava_tail_risk_safe_switch_scorer_v2_frame,dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame,dfl_lava_tail_risk_avoidance_label_frame,dfl_lava_tail_risk_avoidance_scorer_v3_frame,dfl_lava_tail_risk_avoidance_v3_strict_lp_benchmark_frame,dfl_lava_schedule_neighbor_dt_training_frame,dfl_lava_schedule_neighbor_dt_policy_frame,dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame `
   -c configs/real_data_dfl_lava_tail_risk_target_week3.yaml
 ```
 

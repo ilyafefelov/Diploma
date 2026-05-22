@@ -19,8 +19,13 @@ from smart_arbitrage.dfl.lava_tail_risk_target import (
     DFL_LAVA_SAFE_SWITCH_V2_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_SELECTION_ROLE,
     DFL_LAVA_TAIL_RISK_AVOIDANCE_V3_STRICT_LP_STRATEGY_KIND,
+    DFL_LAVA_SCHEDULE_NEIGHBOR_DT_SELECTION_ROLE,
+    DFL_LAVA_SCHEDULE_NEIGHBOR_DT_STRICT_LP_STRATEGY_KIND,
     DFL_LAVA_TAIL_RISK_AWARE_SELECTION_ROLE,
     DFL_LAVA_TAIL_RISK_AWARE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_lava_schedule_neighbor_dt_policy_frame,
+    build_dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame,
+    build_dfl_lava_schedule_neighbor_dt_training_frame,
     build_dfl_lava_tail_risk_avoidance_label_frame,
     build_dfl_lava_tail_risk_avoidance_scorer_v3_frame,
     build_dfl_lava_tail_risk_avoidance_strict_lp_benchmark_v3_frame,
@@ -975,6 +980,194 @@ def test_tail_risk_avoidance_v3_can_pass_when_safe_candidates_are_prior_supporte
     assert gate.passed is True
 
 
+def test_schedule_neighbor_dt_training_frame_uses_v3_labels_not_hourly_actions() -> None:
+    labels = _tail_risk_avoidance_labels_for_dt(
+        safe_train_regret=70.0,
+        safe_final_regret=80.0,
+        tail_train_regret=420.0,
+        tail_final_regret=600.0,
+    )
+
+    training = build_dfl_lava_schedule_neighbor_dt_training_frame(labels)
+
+    assert {
+        "fallback_v2_plus",
+        "safe_schedule_neighbor",
+        "avoid_tail_risk_neighbor",
+    }.issubset(set(training["teacher_schedule_neighbor_class"].to_list()))
+    assert set(training["target_label_space"].unique().to_list()) == {
+        "schedule_neighbor_candidate_index"
+    }
+    assert set(training["raw_hourly_action_imitation"].unique().to_list()) == {False}
+    assert set(training["market_execution_enabled"].unique().to_list()) == {False}
+    assert training.filter(pl.col("teacher_schedule_neighbor_class") == "safe_schedule_neighbor")[
+        "teacher_return_to_go_delta_uah"
+    ].min() > 0.0
+
+
+def test_schedule_neighbor_dt_policy_is_prior_only_when_final_labels_mutate() -> None:
+    labels = _tail_risk_avoidance_labels_for_dt(
+        safe_train_regret=70.0,
+        safe_final_regret=80.0,
+        tail_train_regret=420.0,
+        tail_final_regret=600.0,
+    )
+    mutated_labels = _tail_risk_avoidance_labels_for_dt(
+        safe_train_regret=70.0,
+        safe_final_regret=900.0,
+        tail_train_regret=420.0,
+        tail_final_regret=1000.0,
+    )
+    training = build_dfl_lava_schedule_neighbor_dt_training_frame(labels)
+    mutated_training = build_dfl_lava_schedule_neighbor_dt_training_frame(mutated_labels)
+
+    policy = build_dfl_lava_schedule_neighbor_dt_policy_frame(
+        training,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+        max_prior_tail_loss_count=0,
+        max_dt_tail_risk_probability=1.0,
+    )
+    mutated_policy = build_dfl_lava_schedule_neighbor_dt_policy_frame(
+        mutated_training,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+        max_prior_tail_loss_count=0,
+        max_dt_tail_risk_probability=1.0,
+    )
+    strict = build_dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame(
+        training,
+        policy,
+        _v2_plus_strict_frame(v2_regrets=(120.0, 120.0)),
+        generated_at=GENERATED_AT,
+    )
+    mutated_strict = build_dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame(
+        mutated_training,
+        policy,
+        _v2_plus_strict_frame(v2_regrets=(120.0, 120.0)),
+        generated_at=GENERATED_AT,
+    )
+
+    assert policy["selected_final_candidate_keys"].to_list() == (
+        mutated_policy["selected_final_candidate_keys"].to_list()
+    )
+    assert set(policy["raw_hourly_action_imitation"].to_list()) == {False}
+    assert strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SCHEDULE_NEIGHBOR_DT_SELECTION_ROLE
+    )["regret_uah"].to_list() != mutated_strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SCHEDULE_NEIGHBOR_DT_SELECTION_ROLE
+    )[
+        "regret_uah"
+    ].to_list()
+
+
+def test_schedule_neighbor_dt_policy_gates_against_v2_plus_not_strict_only() -> None:
+    labels = _tail_risk_avoidance_labels_for_dt(
+        safe_train_regret=70.0,
+        safe_final_regret=80.0,
+        tail_train_regret=420.0,
+        tail_final_regret=600.0,
+    )
+    training = build_dfl_lava_schedule_neighbor_dt_training_frame(labels)
+    policy = build_dfl_lava_schedule_neighbor_dt_policy_frame(
+        training,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.5,
+        max_prior_tail_loss_count=0,
+        max_dt_tail_risk_probability=1.0,
+    )
+    strict = build_dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame(
+        training,
+        policy,
+        _v2_plus_strict_frame(v2_regrets=(120.0, 120.0)),
+        generated_at=GENERATED_AT,
+    )
+
+    selected = strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SCHEDULE_NEIGHBOR_DT_SELECTION_ROLE
+    )
+    assert selected["selected_candidate_family"].to_list() == [
+        "poland_safe_value_candidate",
+        "poland_safe_value_candidate",
+        "poland_safe_value_candidate",
+        "poland_safe_value_candidate",
+    ]
+    assert set(strict["strategy_kind"].unique().to_list()) == {
+        DFL_LAVA_SCHEDULE_NEIGHBOR_DT_STRICT_LP_STRATEGY_KIND
+    }
+    assert selected["regret_uah"].to_list() == [80.0, 80.0, 80.0, 80.0]
+
+
+def test_schedule_neighbor_dt_policy_uses_tail_risk_probability_veto() -> None:
+    labels = _tail_risk_avoidance_labels_for_dt(
+        safe_train_regret=70.0,
+        safe_final_regret=80.0,
+        tail_train_regret=420.0,
+        tail_final_regret=600.0,
+    )
+    first_anchor = FIRST_ANCHOR
+    labels = labels.with_columns(
+        pl.when(
+            (pl.col("candidate_family") == "poland_safe_value_candidate")
+            & (pl.col("anchor_timestamp") == first_anchor)
+        )
+        .then(pl.lit("tail_risk_switch"))
+        .otherwise(pl.col("tail_risk_avoidance_class"))
+        .alias("tail_risk_avoidance_class"),
+        pl.when(
+            (pl.col("candidate_family") == "poland_safe_value_candidate")
+            & (pl.col("anchor_timestamp") == first_anchor)
+        )
+        .then(pl.lit(True))
+        .otherwise(pl.col("label_tail_risk_switch"))
+        .alias("label_tail_risk_switch"),
+        pl.when(
+            (pl.col("candidate_family") == "poland_safe_value_candidate")
+            & (pl.col("anchor_timestamp") == first_anchor)
+        )
+        .then(pl.lit(False))
+        .otherwise(pl.col("label_safe_switch_win"))
+        .alias("label_safe_switch_win"),
+        pl.when(
+            (pl.col("candidate_family") == "poland_safe_value_candidate")
+            & (pl.col("anchor_timestamp") == first_anchor)
+        )
+        .then(pl.lit(300.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+    )
+    training = build_dfl_lava_schedule_neighbor_dt_training_frame(labels)
+
+    policy = build_dfl_lava_schedule_neighbor_dt_policy_frame(
+        training,
+        tenant_ids=TENANTS,
+        min_prior_safe_win_count=1,
+        min_prior_precision=0.0,
+        max_prior_tail_loss_count=99,
+        max_dt_tail_risk_probability=0.0,
+    )
+    strict = build_dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame(
+        training,
+        policy,
+        _v2_plus_strict_frame(v2_regrets=(120.0, 120.0)),
+        generated_at=GENERATED_AT,
+    )
+    selected = strict.filter(
+        pl.col("selection_role") == DFL_LAVA_SCHEDULE_NEIGHBOR_DT_SELECTION_ROLE
+    )
+
+    assert policy["selector_gate_blocker"].to_list() == [
+        "no_candidate_after_schedule_neighbor_tail_risk_filter",
+        "no_candidate_after_schedule_neighbor_tail_risk_filter",
+    ]
+    assert set(selected["selected_candidate_family"].to_list()) == {
+        "frozen_v2_plus_fallback"
+    }
+
+
 def _v2_plus_strict_frame(*, v2_regrets: tuple[float, float]) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     for tenant_id in TENANTS:
@@ -1004,6 +1197,41 @@ def _v2_plus_strict_frame(*, v2_regrets: tuple[float, float]) -> pl.DataFrame:
                 ]
             )
     return pl.DataFrame(rows)
+
+
+def _tail_risk_avoidance_labels_for_dt(
+    *,
+    safe_train_regret: float,
+    safe_final_regret: float,
+    tail_train_regret: float,
+    tail_final_regret: float,
+) -> pl.DataFrame:
+    candidates = build_dfl_lava_schedule_neighbor_candidate_frame(
+        _baseline_candidate_library(train_regret=100.0, final_regret=120.0),
+        _poland_tail_risk_candidate_library(
+            safe_train_regret=safe_train_regret,
+            safe_final_regret=safe_final_regret,
+            tail_train_regret=tail_train_regret,
+            tail_final_regret=tail_final_regret,
+        ),
+        _v2_plus_strict_frame(v2_regrets=(120.0, 120.0)),
+        baseline_source_model_name=BASELINE_SOURCE,
+        poland_source_model_names=(POLAND_SOURCE,),
+    )
+    diagnostic = build_dfl_lava_tail_risk_diagnostic_frame(
+        candidates,
+        _failed_lava_tail_risk_strict_frame(),
+        tail_risk_delta_uah=150.0,
+    )
+    feature_panel = build_dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
+        candidates,
+        diagnostic,
+        _lagged_poland_feature_frame_with_null_context(),
+    )
+    return build_dfl_lava_tail_risk_avoidance_label_frame(
+        feature_panel,
+        tail_risk_delta_uah=150.0,
+    )
 
 
 def _poland_strict_frame(*, regrets: tuple[float, float]) -> pl.DataFrame:

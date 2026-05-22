@@ -2645,6 +2645,19 @@ rows and matched `174.77` / `67.30` UAH mean/median regret. This is not a new
 headline result; it closes the unsafe-overreach failure mode and provides
 teacher-label diagnostics for the next DT/LAVA confidence model.
 
+The next implemented DT/LAVA step uses the v3 label frame directly as
+schedule-neighbor supervision. It adds
+`dfl_lava_schedule_neighbor_dt_training_frame`,
+`dfl_lava_schedule_neighbor_dt_policy_frame`, and
+`dfl_lava_schedule_neighbor_dt_strict_lp_benchmark_frame`. The target space is
+`schedule_neighbor_candidate_index`: a later DT should learn candidate/family
+or block choices, not raw hourly BUY/SELL/HOLD imitation. Dagster run
+`8b0d59d8-0570-4b6a-bfc4-0a26f0643c9e` materialized this path. It produced
+`13,885` teacher rows, selected `8 / 90` Poland shadow schedules, fell back to
+V2+ on `82 / 90` rows, and reached `185.65` / `76.32` UAH mean/median regret.
+Behavior cloning remained at `310.58` / `198.39` UAH. The result is valid
+negative/diagnostic teacher-supervision evidence, not a V2+ replacement.
+
 Technical spec:
 [DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md](DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md).
 Tail-risk target spec:
