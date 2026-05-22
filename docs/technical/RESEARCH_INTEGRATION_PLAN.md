@@ -3216,3 +3216,29 @@ regret and `67.30` UAH median regret, and produced `0 / 4` robust challenger
 windows. This is a useful closure: DT/LAVA should not imitate raw hourly
 actions, but the current prior-only safe-switch features are still not strong
 enough to justify a promoted switch away from V2+.
+
+The next additive branch, UA Context-Aware Safe-Switch, is now materialized. It
+keeps the same oracle-gap target but adds Ukrainian-only prior context:
+calendar/publication metadata, Open-Meteo/weather plus tenant load proxies, and
+Ukrenergo grid-event signals. Technical note:
+[DFL_UA_CONTEXT_SAFE_SWITCH.md](DFL_UA_CONTEXT_SAFE_SWITCH.md).
+
+Materialized outcome:
+
+- full UA context run: `79132fcb-e9dd-40c0-92b8-bb71b0d86087`;
+- corrected strict/rolling replay: `1573267c-9a00-49f7-8947-113ffc7b0c85`;
+- separability audit: `1,641` train safe-switch win candidates versus `15,765`
+  train tail-risk loss candidates;
+- final candidate-level missed opportunities: `82`;
+- sklearn and Torch scorers both used V2+ fallback for all five tenant/source
+  scopes;
+- latest-holdout result matched corrected V2+: `174.77` UAH mean regret and
+  `67.30` UAH median regret;
+- rolling result: `0 / 4` robust challenger windows and `0 / 4`
+  diagnostic-success windows.
+
+Interpretation: Ukrainian context helped expose the shape of the oracle gap, but
+it still did not create a prior-safe switch rule that can replace V2+. DT/LAVA
+should therefore use this context/audit layer as teacher data for
+tail-risk-aware candidate-index or schedule-family supervision, not return to
+raw hourly BUY/SELL/HOLD imitation.

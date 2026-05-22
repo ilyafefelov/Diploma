@@ -846,6 +846,23 @@ registration знаходяться у `src/smart_arbitrage/dfl/schedule_value_l
 teacher/value labels або додатковий point-in-time context, який безпечно
 відрізняє win-candidates від tail-risk schedules".
 
+Наступний методологічний крок тому не запускає DT напряму. Додано
+UA Context-Aware Safe-Switch layer, який зберігає той самий oracle-gap target,
+але додає три українські prior-only context lanes: календар і DAM publication
+metadata, Open-Meteo/weather plus tenant load proxy, а також Ukrenergo/grid-event
+signals. Усі ці ознаки мають префікс `selector_feature_*` і timestamp до
+anchor; realized regret залишається тільки у `label_*`/`diagnostic_*` columns.
+Два bounded scorers - sklearn ridge/logistic-style model і small Torch MLP -
+можуть відійти від V2+ лише тоді, коли очікуваний regret delta достатньо
+негативний, а tail-risk probability нижча за threshold. Матеріалізований
+UA-context gate показав, що поточні українські context features ще не дають
+достатньо безпечного switch rule: обидва scorers активували V2+ fallback на всіх
+`90 / 90` latest-holdout rows, повторили `174.77` UAH mean regret і `67.30` UAH
+median regret, і мали `0 / 4` rolling challenger windows. Тому DT/LAVA target
+має чекати сильніших teacher/value labels або вчитися саме на tail-risk-aware
+candidate-index/schedule-family supervision, а не імітувати raw hourly
+BUY/SELL/HOLD actions.
+
 З практичної точки зору різниця між V2 і V2+ така: V2 оцінює обмежений набір
 strict/raw/blend/residual schedules, тоді як V2+ додає schedules, які спеціально
 перевіряють price-rank, spread-risk, timing, temporal-block і terminal-SOC

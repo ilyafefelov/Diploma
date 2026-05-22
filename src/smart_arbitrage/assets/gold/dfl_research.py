@@ -324,6 +324,20 @@ from smart_arbitrage.dfl.oracle_gap_safe_switch import (
     build_dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame,
     evaluate_dfl_oracle_gap_safe_switch_gate,
 )
+from smart_arbitrage.dfl.ua_context_safe_switch import (
+    UA_CONTEXT_SAFE_SWITCH_SELECTION_ROLE_SKLEARN,
+    UA_CONTEXT_SAFE_SWITCH_SELECTION_ROLE_TORCH,
+    UA_CONTEXT_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
+    build_dfl_ua_calendar_publication_context_frame,
+    build_dfl_ua_context_oracle_gap_feature_panel_frame,
+    build_dfl_ua_context_safe_switch_rolling_robustness_frame,
+    build_dfl_ua_context_safe_switch_scorer_frame,
+    build_dfl_ua_context_safe_switch_separability_audit_frame,
+    build_dfl_ua_context_safe_switch_strict_lp_benchmark_frame,
+    build_dfl_ua_grid_event_context_frame,
+    build_dfl_ua_weather_load_context_frame,
+    evaluate_dfl_ua_context_safe_switch_gate,
+)
 from smart_arbitrage.strategy.official_global_panel import (
     POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
     POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
@@ -1303,6 +1317,15 @@ class DflOracleGapSafeSwitchAssetConfig(dg.Config):
     validation_window_count: int = 4
     validation_anchor_count: int = 18
     min_prior_anchors_before_window: int = 30
+
+
+class DflUaContextSafeSwitchAssetConfig(DflOracleGapSafeSwitchAssetConfig):
+    """Ukrainian-context safe-switch gate before DT/LAVA."""
+
+    scorer_kinds_csv: str = "sklearn,torch"
+    torch_hidden_size: int = 8
+    torch_max_epochs: int = 20
+    use_cuda_if_available: bool = True
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -3995,6 +4018,409 @@ def dfl_oracle_gap_safe_switch_rolling_robustness_frame(
         },
     )
     return robustness_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_calendar_publication_context_frame(
+    context,
+    dfl_oracle_gap_safe_switch_feature_panel_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only Ukrainian calendar and DAM-publication context."""
+
+    frame = build_dfl_ua_calendar_publication_context_frame(
+        dfl_oracle_gap_safe_switch_feature_panel_frame,
+        real_data_benchmark_silver_feature_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("calendar_publication_context_blocker") == "context_ready"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_calendar_publication_context_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_weather_load_context_frame(
+    context,
+    dfl_oracle_gap_safe_switch_feature_panel_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    tenant_historical_net_load_silver: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only Ukrainian Open-Meteo/weather and tenant load context."""
+
+    frame = build_dfl_ua_weather_load_context_frame(
+        dfl_oracle_gap_safe_switch_feature_panel_frame,
+        real_data_benchmark_silver_feature_frame,
+        tenant_historical_net_load_silver,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("weather_load_context_blocker") == "context_ready"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_weather_load_context_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_grid_event_context_frame(
+    context,
+    dfl_oracle_gap_safe_switch_feature_panel_frame: pl.DataFrame,
+    grid_event_signal_silver: pl.DataFrame,
+) -> pl.DataFrame:
+    """Prior-only Ukrainian grid-event/outage context from Ukrenergo signals."""
+
+    frame = build_dfl_ua_grid_event_context_frame(
+        dfl_oracle_gap_safe_switch_feature_panel_frame,
+        grid_event_signal_silver,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("grid_event_context_blocker") == "context_ready"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_grid_event_context_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_oracle_gap_feature_panel_frame(
+    context,
+    dfl_oracle_gap_safe_switch_feature_panel_frame: pl.DataFrame,
+    dfl_ua_calendar_publication_context_frame: pl.DataFrame,
+    dfl_ua_weather_load_context_frame: pl.DataFrame,
+    dfl_ua_grid_event_context_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Merge UA context onto the oracle-gap candidate feature panel."""
+
+    frame = build_dfl_ua_context_oracle_gap_feature_panel_frame(
+        dfl_oracle_gap_safe_switch_feature_panel_frame,
+        dfl_ua_calendar_publication_context_frame,
+        dfl_ua_weather_load_context_frame,
+        dfl_ua_grid_event_context_frame,
+    )
+    selector_features = [
+        column for column in frame.columns if column.startswith("selector_feature_")
+    ]
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selector_feature_columns": selector_features,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_oracle_gap_feature_panel_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_safe_switch_separability_audit_frame(
+    context,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit whether missed V2+ candidate wins are separable before scoring."""
+
+    frame = build_dfl_ua_context_safe_switch_separability_audit_frame(
+        dfl_ua_context_oracle_gap_feature_panel_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "pre_anchor_distinguishable_rows": frame.filter(
+                pl.col("pre_anchor_distinguishable")
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_safe_switch_separability_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_safe_switch_scorer_frame(
+    context,
+    config: DflUaContextSafeSwitchAssetConfig,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Train sklearn and Torch UA-context safe-switch scorers."""
+
+    frame = build_dfl_ua_context_safe_switch_scorer_frame(
+        dfl_ua_context_oracle_gap_feature_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=_forecast_model_names(config.source_model_names_csv),
+        scorer_kinds=_csv_values(config.scorer_kinds_csv, field_name="scorer_kinds_csv"),
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        ridge_l2=config.ridge_l2,
+        torch_hidden_size=config.torch_hidden_size,
+        torch_max_epochs=config.torch_max_epochs,
+        use_cuda_if_available=config.use_cuda_if_available,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "scorer_kinds": sorted(frame["scorer_kind"].unique().to_list())
+            if frame.height
+            else [],
+            "candidate_selected_tenant_sources": frame.filter(
+                ~pl.col("fallback_to_v2_plus")
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_safe_switch_scorer_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_safe_switch_strict_lp_benchmark_frame(
+    context,
+    config: DflUaContextSafeSwitchAssetConfig,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+    dfl_ua_context_safe_switch_scorer_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict LP/oracle comparison for UA-context safe-switch scorers."""
+
+    strict_frame = build_dfl_ua_context_safe_switch_strict_lp_benchmark_frame(
+        dfl_ua_context_oracle_gap_feature_panel_frame,
+        dfl_ua_context_safe_switch_scorer_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    )
+    sklearn_gate = evaluate_dfl_ua_context_safe_switch_gate(
+        strict_frame,
+        selection_role=UA_CONTEXT_SAFE_SWITCH_SELECTION_ROLE_SKLEARN,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    torch_gate = evaluate_dfl_ua_context_safe_switch_gate(
+        strict_frame,
+        selection_role=UA_CONTEXT_SAFE_SWITCH_SELECTION_ROLE_TORCH,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": UA_CONTEXT_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
+            "sklearn_gate_decision": sklearn_gate.decision,
+            "sklearn_gate_description": sklearn_gate.description,
+            "torch_gate_decision": torch_gate.decision,
+            "torch_gate_description": torch_gate.description,
+            "sklearn_diagnostic_signal_passed": sklearn_gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "torch_diagnostic_signal_passed": torch_gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_safe_switch_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="ua_context_safe_switch",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_safe_switch_rolling_robustness_frame(
+    context,
+    config: DflUaContextSafeSwitchAssetConfig,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling prior-only robustness for UA-context safe-switch scorers."""
+
+    frame = build_dfl_ua_context_safe_switch_rolling_robustness_frame(
+        dfl_ua_context_oracle_gap_feature_panel_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        forecast_model_names=_forecast_model_names(config.source_model_names_csv),
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        scorer_kinds=_csv_values(config.scorer_kinds_csv, field_name="scorer_kinds_csv"),
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        ridge_l2=config.ridge_l2,
+        torch_hidden_size=config.torch_hidden_size,
+        torch_max_epochs=config.torch_max_epochs,
+        use_cuda_if_available=config.use_cuda_if_available,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "rolling_pass_windows": frame.filter(pl.col("rolling_window_passed")).height
+            if frame.height
+            else 0,
+            "diagnostic_signal_windows": frame.filter(
+                pl.col("diagnostic_window_passed")
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_safe_switch_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
 
 
 @dg.asset(
@@ -11900,6 +12326,14 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_oracle_gap_safe_switch_scorer_frame,
     dfl_oracle_gap_safe_switch_strict_lp_benchmark_frame,
     dfl_oracle_gap_safe_switch_rolling_robustness_frame,
+    dfl_ua_calendar_publication_context_frame,
+    dfl_ua_weather_load_context_frame,
+    dfl_ua_grid_event_context_frame,
+    dfl_ua_context_oracle_gap_feature_panel_frame,
+    dfl_ua_context_safe_switch_separability_audit_frame,
+    dfl_ua_context_safe_switch_scorer_frame,
+    dfl_ua_context_safe_switch_strict_lp_benchmark_frame,
+    dfl_ua_context_safe_switch_rolling_robustness_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,

@@ -96,3 +96,20 @@ used V2+ fallback, so the safe-switch path produced `0 / 4` robust challenger
 windows and `0 / 4` diagnostic-success windows. This is valid negative
 evidence: the missed-candidate minority exists, but the current prior-only
 features cannot identify those switches safely enough to replace V2+.
+
+## Follow-Up: Ukrainian Context Repair
+
+The follow-up additive slice is
+[DFL_UA_CONTEXT_SAFE_SWITCH](DFL_UA_CONTEXT_SAFE_SWITCH.md). It kept the same
+oracle-gap label target but added source-backed Ukrainian context lanes:
+calendar/publication metadata, Open-Meteo/weather plus tenant load proxies, and
+Ukrenergo grid-event signals.
+
+Materialized runs `79132fcb-e9dd-40c0-92b8-bb71b0d86087` and
+`1573267c-9a00-49f7-8947-113ffc7b0c85` showed that both the sklearn and Torch
+UA-context scorers still fell back to V2+ on all `90 / 90` latest-holdout rows.
+They matched corrected V2+ at `174.77` UAH mean regret and `67.30` UAH median
+regret, with `0 / 4` robust challenger windows. The audit did find candidate
+opportunities, but the safe wins were not cleanly separable from tail-risk
+losses. This keeps V2+ as the thesis headline and turns the UA context layer into
+teacher data for a future tail-risk-aware candidate-index DT/LAVA target.

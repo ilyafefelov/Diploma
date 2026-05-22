@@ -547,6 +547,31 @@ tail-risk losses. Матеріалізований run
 prior-safe switch rule, який можна чесно використати проти V2+ без tail-risk
 втрат.
 
+Тому наступна перевірка ремонтує не DT, а саме context layer для safe-switch.
+UA Context-Aware Safe-Switch додає три українські source-backed feature lanes:
+calendar/publication context, Open-Meteo/weather plus tenant load proxy, і
+Ukrenergo/grid-event context. Мета не в тому, щоб послабити gate, а в тому, щоб
+перевірити, чи `19 / 90` missed-candidate rows стають видимими до scoring
+window. Якщо sklearn або Torch safe-switch scorer зможе дати positive mean
+improvement без median harm і з rolling robustness, це стане аргументом для
+наступного DT/LAVA target. Якщо ні, результат буде означати, що поточний
+Ukrainian-only context ще недостатній для безпечного відступу від V2+.
+
+Матеріалізований UA-context result підтвердив саме другий випадок. Run
+`79132fcb-e9dd-40c0-92b8-bb71b0d86087` створив feature/audit/scorer layers, а
+corrected strict/rolling replay `1573267c-9a00-49f7-8947-113ffc7b0c85` вирівняв
+reference rows до calibrated source. Separability audit знайшов `1,641`
+train safe-switch win candidates і `15,765` train tail-risk loss candidates; на
+final candidate-level audit було `82` missed opportunities. Проте sklearn і
+Torch scorers обрали V2+ fallback у всіх five tenant/source scopes. Latest
+holdout strict LP/oracle result повторив corrected V2+ (`174.77` UAH mean,
+`67.30` UAH median, `0` safety violations), а rolling result дав `0 / 4`
+robust challenger windows і `0 / 4` diagnostic windows. Отже, Ukrainian context
+пояснює частину oracle gap, але ще не перетворює його на prior-safe strategy
+switch. Для DT/LAVA це означає, що наступний target має бути tail-risk-aware
+candidate-index або schedule-family selector з V2+ fallback, а не raw hourly
+action imitation.
+
 Додатковий failure audit для official bridge сформував 720 analysis-only rows.
 Найбільший клас помилок - `candidate_family_collapse`: 351 rows, або 48.75%.
 Це означає, що residual DFL / offline DT / fallback часто вибирали одну й ту

@@ -369,6 +369,14 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame",
+        "dfl_ua_calendar_publication_context_frame",
+        "dfl_ua_weather_load_context_frame",
+        "dfl_ua_grid_event_context_frame",
+        "dfl_ua_context_oracle_gap_feature_panel_frame",
+        "dfl_ua_context_safe_switch_separability_audit_frame",
+        "dfl_ua_context_safe_switch_scorer_frame",
+        "dfl_ua_context_safe_switch_strict_lp_benchmark_frame",
+        "dfl_ua_context_safe_switch_rolling_robustness_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
         "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame",
@@ -819,6 +827,32 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         groups_by_key["dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_calendar_publication_context_frame"]
+        == "gold_dfl_training"
+    )
+    assert groups_by_key["dfl_ua_weather_load_context_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_ua_grid_event_context_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_ua_context_oracle_gap_feature_panel_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_context_safe_switch_separability_audit_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_context_safe_switch_scorer_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_context_safe_switch_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_context_safe_switch_rolling_robustness_frame"]
         == "gold_dfl_training"
     )
     assert (
@@ -1339,6 +1373,20 @@ def test_dfl_research_assets_are_registered() -> None:
         == "training_data"
     )
     assert (
+        tags_by_key["dfl_ua_context_safe_switch_separability_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_oracle_gap_feature_panel_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_safe_switch_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key[
             "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
         ]["evidence_scope"]
@@ -1607,6 +1655,39 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",
         "dfl_point_in_time_context_repair_audit_frame",
         "real_data_benchmark_silver_feature_frame",
+    }
+    assert deps_by_key["dfl_ua_calendar_publication_context_frame"] == {
+        "dfl_oracle_gap_safe_switch_feature_panel_frame",
+        "real_data_benchmark_silver_feature_frame",
+    }
+    assert deps_by_key["dfl_ua_weather_load_context_frame"] == {
+        "dfl_oracle_gap_safe_switch_feature_panel_frame",
+        "real_data_benchmark_silver_feature_frame",
+        "tenant_historical_net_load_silver",
+    }
+    assert deps_by_key["dfl_ua_grid_event_context_frame"] == {
+        "dfl_oracle_gap_safe_switch_feature_panel_frame",
+        "grid_event_signal_silver",
+    }
+    assert deps_by_key["dfl_ua_context_oracle_gap_feature_panel_frame"] == {
+        "dfl_oracle_gap_safe_switch_feature_panel_frame",
+        "dfl_ua_calendar_publication_context_frame",
+        "dfl_ua_weather_load_context_frame",
+        "dfl_ua_grid_event_context_frame",
+    }
+    assert deps_by_key["dfl_ua_context_safe_switch_separability_audit_frame"] == {
+        "dfl_ua_context_oracle_gap_feature_panel_frame"
+    }
+    assert deps_by_key["dfl_ua_context_safe_switch_scorer_frame"] == {
+        "dfl_ua_context_oracle_gap_feature_panel_frame"
+    }
+    assert deps_by_key["dfl_ua_context_safe_switch_strict_lp_benchmark_frame"] == {
+        "dfl_ua_context_oracle_gap_feature_panel_frame",
+        "dfl_ua_context_safe_switch_scorer_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_ua_context_safe_switch_rolling_robustness_frame"] == {
+        "dfl_ua_context_oracle_gap_feature_panel_frame"
     }
     assert deps_by_key["dfl_context_enriched_schedule_candidate_library_v5_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",
