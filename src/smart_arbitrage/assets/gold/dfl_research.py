@@ -350,6 +350,8 @@ from smart_arbitrage.dfl.ua_context_lava_dt import (
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
     REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
     REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
+    REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
+    REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
     REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
     build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
@@ -361,6 +363,13 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_regret_surrogate_safe_switch_context_audit_frame,
     build_dfl_regret_surrogate_strict_lp_benchmark_frame,
     build_dfl_regret_surrogate_teacher_label_panel_v2_frame,
+    build_dfl_sparse_safe_switch_abstention_model_v6_frame,
+    build_dfl_sparse_safe_switch_candidate_library_v6_frame,
+    build_dfl_sparse_safe_switch_feature_contract_audit_frame,
+    build_dfl_sparse_safe_switch_opportunity_audit_frame,
+    build_dfl_sparse_safe_switch_rolling_robustness_frame,
+    build_dfl_sparse_safe_switch_strict_lp_benchmark_frame,
+    build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
     build_dfl_v2_plus_learning_limit_audit_frame,
     evaluate_dfl_regret_surrogate_gate,
 )
@@ -1381,6 +1390,10 @@ class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
     min_context_prior_safe_win_count: int = 1
     min_context_prior_mean_improvement_uah: float = 1.0
     max_context_tail_risk_probability: float = 0.25
+    max_prior_neighbor_distance: float = 1.5
+    min_neighbor_safe_win_count: int = 1
+    max_neighbor_tail_risk_probability: float = 0.25
+    nearest_neighbor_count: int = 5
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -5365,6 +5378,371 @@ def dfl_regret_surrogate_contextual_rolling_robustness_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_regret_surrogate_contextual_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="sparse_safe_switch_v6",
+        market_venue="DAM",
+    ),
+)
+def dfl_sparse_safe_switch_feature_contract_audit_frame(
+    context,
+    dfl_regret_surrogate_teacher_label_panel_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit V6 selector inputs for label/post-anchor leakage."""
+
+    frame = build_dfl_sparse_safe_switch_feature_contract_audit_frame(
+        dfl_regret_surrogate_teacher_label_panel_v2_frame
+    )
+    blocked_selector_features = []
+    if frame.height:
+        blocked_selector_features = list(
+            frame["blocked_selector_feature_names"].to_list()[0]
+        ) + list(frame["blocked_selected_feature_names"].to_list()[0])
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "feature_contract_passed": frame.select(
+                pl.col("feature_contract_passed").all()
+            ).item()
+            if frame.height
+            else False,
+            "blocked_selector_features": blocked_selector_features,
+            "market_execution_enabled": False,
+            "scope": "dfl_sparse_safe_switch_feature_contract_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="sparse_safe_switch_v6",
+        market_venue="DAM",
+    ),
+)
+def dfl_sparse_safe_switch_candidate_library_v6_frame(
+    context,
+    dfl_regret_surrogate_teacher_label_panel_v2_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build V2+-anchored sparse safe-switch candidate schedules."""
+
+    frame = build_dfl_sparse_safe_switch_candidate_library_v6_frame(
+        dfl_regret_surrogate_teacher_label_panel_v2_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_schedule_classes": sorted(
+                frame["candidate_schedule_class"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "train_only_oracle_rows": frame.filter(
+                pl.col("candidate_source") == "oracle_neighborhood_diagnostic"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_sparse_safe_switch_candidate_library_v6_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="sparse_safe_switch_v6",
+        market_venue="DAM",
+    ),
+)
+def dfl_sparse_safe_switch_opportunity_audit_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Classify sparse material switch opportunities using prior-neighbor support."""
+
+    frame = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+        dfl_sparse_safe_switch_candidate_library_v6_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=config.min_neighbor_safe_win_count,
+        max_neighbor_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+        nearest_neighbor_count=config.nearest_neighbor_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "opportunity_classes": sorted(
+                frame["sparse_opportunity_class"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "material_prior_supported_rows": frame.filter(
+                pl.col("sparse_opportunity_class")
+                == "material_candidate_prior_supported"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_sparse_safe_switch_opportunity_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="sparse_safe_switch_v6",
+        market_venue="DAM",
+    ),
+)
+def dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    dfl_sparse_safe_switch_opportunity_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach V6 sparse safe-switch labels while keeping outcomes diagnostic-only."""
+
+    frame = build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
+        dfl_sparse_safe_switch_candidate_library_v6_frame,
+        dfl_sparse_safe_switch_opportunity_audit_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        nearest_neighbor_count=config.nearest_neighbor_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": frame.filter(
+                pl.col("label_sparse_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_sparse_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_sparse_safe_switch_teacher_v6_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="sparse_safe_switch_v6",
+        market_venue="DAM",
+    ),
+)
+def dfl_sparse_safe_switch_abstention_model_v6_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_sparse_safe_switch_teacher_label_panel_v6_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Select sparse safe-switch candidates only when prior-neighbor support exists."""
+
+    frame = build_dfl_sparse_safe_switch_abstention_model_v6_frame(
+        dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=config.min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selected_final_candidate_count": int(
+                frame["selected_final_candidate_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "fallback_final_anchor_count": int(
+                frame["fallback_final_anchor_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_sparse_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_sparse_safe_switch_abstention_model_v6_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="sparse_safe_switch_v6",
+        market_venue="DAM",
+    ),
+)
+def dfl_sparse_safe_switch_strict_lp_benchmark_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_sparse_safe_switch_teacher_label_panel_v6_frame: pl.DataFrame,
+    dfl_sparse_safe_switch_abstention_model_v6_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score sparse safe-switch V6 against frozen V2+."""
+
+    strict_frame = build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
+        dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
+        dfl_sparse_safe_switch_abstention_model_v6_frame,
+        generated_at=_latest_generated_at(dfl_sparse_safe_switch_teacher_label_panel_v6_frame),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_regret_surrogate_gate(
+        strict_frame.with_columns(
+            pl.when(
+                pl.col("selection_role")
+                == REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE
+            )
+            .then(pl.lit("regret_surrogate_candidate_value"))
+            .otherwise(pl.col("selection_role"))
+            .alias("selection_role")
+        ),
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "diagnostic_signal_passed": gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "production_promote": False,
+            "target_label_space": "schedule_candidate_sparse_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_sparse_safe_switch_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="sparse_safe_switch_v6",
+        market_venue="DAM",
+    ),
+)
+def dfl_sparse_safe_switch_rolling_robustness_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling prior-only robustness for sparse safe-switch V6."""
+
+    frame = build_dfl_sparse_safe_switch_rolling_robustness_frame(
+        dfl_sparse_safe_switch_candidate_library_v6_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=config.min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "rolling_pass_windows": frame.filter(pl.col("rolling_window_passed")).height
+            if frame.height
+            else 0,
+            "diagnostic_signal_windows": frame.filter(
+                pl.col("diagnostic_window_passed")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_sparse_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_sparse_safe_switch_rolling_robustness_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -13298,6 +13676,13 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_regret_surrogate_contextual_candidate_value_v2_frame,
     dfl_regret_surrogate_contextual_strict_lp_benchmark_frame,
     dfl_regret_surrogate_contextual_rolling_robustness_frame,
+    dfl_sparse_safe_switch_feature_contract_audit_frame,
+    dfl_sparse_safe_switch_candidate_library_v6_frame,
+    dfl_sparse_safe_switch_opportunity_audit_frame,
+    dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
+    dfl_sparse_safe_switch_abstention_model_v6_frame,
+    dfl_sparse_safe_switch_strict_lp_benchmark_frame,
+    dfl_sparse_safe_switch_rolling_robustness_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,

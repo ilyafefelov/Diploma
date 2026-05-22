@@ -86,6 +86,18 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      rolling windows. Next work should collect/backfill comparable Ukrainian
      context events or generate candidate families with prior-supported wins
      before another DT/LAVA attempt.
+   - Sparse Safe-Switch V6 is now materialized as a stricter follow-up. It
+     replaces exact context-profile matching with nearest-prior support over
+     prior-only `selector_feature_*` columns, then abstains to V2+ unless a
+     candidate has nearby prior anchors, safe prior wins, predicted
+     improvement, and low tail-risk probability. Under the selector-safe
+     candidate contract, latest holdout had `0 / 90` eligible non-reference
+     material opportunities; the broader strict-control diagnostics still show
+     a few local wins, but those remain reference/control rows. V6 selected
+     `0 / 90` non-V2+ rows, matched V2+ at `174.77` / `67.30` UAH, and produced
+     `0 / 4` rolling promotion windows. This closes the current safe-switch
+     classifier branch and points to Ukrainian context backfill or genuinely
+     new feasible candidate schedules before another DT/LAVA target.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

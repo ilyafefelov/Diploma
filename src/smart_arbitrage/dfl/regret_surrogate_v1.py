@@ -1299,6 +1299,11 @@ def build_dfl_sparse_safe_switch_opportunity_audit_frame(
     )
     rows = list(sparse_safe_switch_candidate_library_v6_frame.iter_rows(named=True))
     prior_rows = _sparse_prior_candidate_rows(rows)
+    prior_rows_by_group: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for prior in prior_rows:
+        prior_rows_by_group.setdefault(_sparse_neighbor_group_key(prior), []).append(
+            prior
+        )
     feature_names = _sparse_distance_feature_names(
         sparse_safe_switch_candidate_library_v6_frame
     )
@@ -1327,9 +1332,9 @@ def build_dfl_sparse_safe_switch_opportunity_audit_frame(
             else None
         )
         neighbor_stats = (
-            _nearest_prior_neighbor_stats(
+            _nearest_prior_neighbor_stats_from_candidates(
                 best,
-                prior_rows=prior_rows,
+                prior_rows=prior_rows_by_group.get(_sparse_neighbor_group_key(best), []),
                 feature_names=feature_names,
                 nearest_neighbor_count=nearest_neighbor_count,
             )
@@ -1438,6 +1443,11 @@ def build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
 
     rows = list(sparse_safe_switch_candidate_library_v6_frame.iter_rows(named=True))
     prior_rows = _sparse_prior_candidate_rows(rows)
+    prior_rows_by_group: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for prior in prior_rows:
+        prior_rows_by_group.setdefault(_sparse_neighbor_group_key(prior), []).append(
+            prior
+        )
     feature_names = _sparse_distance_feature_names(
         sparse_safe_switch_candidate_library_v6_frame
     )
@@ -1450,20 +1460,24 @@ def build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
         audit = audit_by_anchor.get(_anchor_key(row))
         if audit is None:
             raise ValueError(f"missing sparse opportunity audit row for {_anchor_key(row)}.")
+        source = str(row["candidate_source"])
         neighbor_stats = (
-            _nearest_prior_neighbor_stats(
+            _nearest_prior_neighbor_stats_from_candidates(
                 row,
-                prior_rows=prior_rows,
+                prior_rows=prior_rows_by_group.get(
+                    _sparse_neighbor_group_key(row), []
+                ),
                 feature_names=feature_names,
                 nearest_neighbor_count=nearest_neighbor_count,
             )
-            if str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+            if str(row["split_name"]) == "final_holdout"
+            and source not in _REFERENCE_CANDIDATE_SOURCES
+            and bool(row.get("eligible_for_final_selection_v6", True))
             else _empty_neighbor_stats()
         )
         delta = float(row["label_regret_delta_vs_v2_plus_uah"])
         material_safe = (
-            str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
-            and delta <= -material_switch_delta_uah
+            source not in _REFERENCE_CANDIDATE_SOURCES and delta <= -material_switch_delta_uah
         )
         copied = dict(row)
         feature_list = list(copied.get("selected_feature_names", []))
@@ -2628,6 +2642,14 @@ def _sparse_eligible_challengers(rows: list[dict[str, Any]]) -> list[dict[str, A
     ]
 
 
+def _sparse_neighbor_group_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row["source_model_name"]),
+        str(row["candidate_source"]),
+        str(row["candidate_family"]),
+    )
+
+
 def _sparse_distance_feature_names(frame: pl.DataFrame) -> tuple[str, ...]:
     preferred = [
         "selector_feature_schedule_distance_from_v2_plus",
@@ -2667,10 +2689,24 @@ def _nearest_prior_neighbor_stats(
     candidates = [
         prior
         for prior in prior_rows
-        if str(prior["source_model_name"]) == str(row["source_model_name"])
-        and str(prior["candidate_source"]) == str(row["candidate_source"])
-        and str(prior["candidate_family"]) == str(row["candidate_family"])
+        if _sparse_neighbor_group_key(prior) == _sparse_neighbor_group_key(row)
     ]
+    return _nearest_prior_neighbor_stats_from_candidates(
+        row,
+        prior_rows=candidates,
+        feature_names=feature_names,
+        nearest_neighbor_count=nearest_neighbor_count,
+    )
+
+
+def _nearest_prior_neighbor_stats_from_candidates(
+    row: dict[str, Any],
+    *,
+    prior_rows: list[dict[str, Any]],
+    feature_names: tuple[str, ...],
+    nearest_neighbor_count: int,
+) -> dict[str, Any]:
+    candidates = prior_rows
     if not candidates or not feature_names:
         return _empty_neighbor_stats()
     distances = sorted(

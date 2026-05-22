@@ -226,6 +226,10 @@ def test_regret_surrogate_v1_config_keeps_v2_plus_gate_and_shadow_sources() -> N
     assert config.material_switch_delta_uah == 25.0
     assert config.high_v2_regret_uah == 500.0
     assert config.min_context_prior_support_count == 1
+    assert config.max_prior_neighbor_distance == 1.5
+    assert config.min_neighbor_safe_win_count == 1
+    assert config.max_neighbor_tail_risk_probability == 0.25
+    assert config.nearest_neighbor_count == 5
     assert "poland_shadow_candidate" in config.allowed_candidate_sources_csv
     assert config.use_cuda_if_available is True
 
@@ -408,6 +412,13 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_regret_surrogate_contextual_candidate_value_v2_frame",
         "dfl_regret_surrogate_contextual_strict_lp_benchmark_frame",
         "dfl_regret_surrogate_contextual_rolling_robustness_frame",
+        "dfl_sparse_safe_switch_feature_contract_audit_frame",
+        "dfl_sparse_safe_switch_candidate_library_v6_frame",
+        "dfl_sparse_safe_switch_opportunity_audit_frame",
+        "dfl_sparse_safe_switch_teacher_label_panel_v6_frame",
+        "dfl_sparse_safe_switch_abstention_model_v6_frame",
+        "dfl_sparse_safe_switch_strict_lp_benchmark_frame",
+        "dfl_sparse_safe_switch_rolling_robustness_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
         "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame",
@@ -927,6 +938,16 @@ def test_dfl_research_assets_are_registered() -> None:
         groups_by_key["dfl_regret_surrogate_rolling_robustness_frame"]
         == "gold_dfl_training"
     )
+    for asset_key in (
+        "dfl_sparse_safe_switch_feature_contract_audit_frame",
+        "dfl_sparse_safe_switch_candidate_library_v6_frame",
+        "dfl_sparse_safe_switch_opportunity_audit_frame",
+        "dfl_sparse_safe_switch_teacher_label_panel_v6_frame",
+        "dfl_sparse_safe_switch_abstention_model_v6_frame",
+        "dfl_sparse_safe_switch_strict_lp_benchmark_frame",
+        "dfl_sparse_safe_switch_rolling_robustness_frame",
+    ):
+        assert groups_by_key[asset_key] == "gold_dfl_training"
     assert (
         groups_by_key["dfl_point_in_time_context_repair_audit_frame"]
         == "gold_dfl_training"
@@ -1495,6 +1516,40 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_sparse_safe_switch_feature_contract_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_sparse_safe_switch_candidate_library_v6_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_sparse_safe_switch_opportunity_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_sparse_safe_switch_teacher_label_panel_v6_frame"][
+            "ml_stage"
+        ]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_sparse_safe_switch_abstention_model_v6_frame"]["ml_stage"]
+        == "selection"
+    )
+    assert (
+        tags_by_key["dfl_sparse_safe_switch_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_sparse_safe_switch_rolling_robustness_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key[
             "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
         ]["evidence_scope"]
@@ -1835,6 +1890,29 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_regret_surrogate_rolling_robustness_frame"] == {
         "dfl_expanded_schedule_value_teacher_label_panel_v1_frame"
+    }
+    assert deps_by_key["dfl_sparse_safe_switch_feature_contract_audit_frame"] == {
+        "dfl_regret_surrogate_teacher_label_panel_v2_frame"
+    }
+    assert deps_by_key["dfl_sparse_safe_switch_candidate_library_v6_frame"] == {
+        "dfl_regret_surrogate_teacher_label_panel_v2_frame"
+    }
+    assert deps_by_key["dfl_sparse_safe_switch_opportunity_audit_frame"] == {
+        "dfl_sparse_safe_switch_candidate_library_v6_frame"
+    }
+    assert deps_by_key["dfl_sparse_safe_switch_teacher_label_panel_v6_frame"] == {
+        "dfl_sparse_safe_switch_candidate_library_v6_frame",
+        "dfl_sparse_safe_switch_opportunity_audit_frame",
+    }
+    assert deps_by_key["dfl_sparse_safe_switch_abstention_model_v6_frame"] == {
+        "dfl_sparse_safe_switch_teacher_label_panel_v6_frame"
+    }
+    assert deps_by_key["dfl_sparse_safe_switch_strict_lp_benchmark_frame"] == {
+        "dfl_sparse_safe_switch_teacher_label_panel_v6_frame",
+        "dfl_sparse_safe_switch_abstention_model_v6_frame",
+    }
+    assert deps_by_key["dfl_sparse_safe_switch_rolling_robustness_frame"] == {
+        "dfl_sparse_safe_switch_candidate_library_v6_frame"
     }
     assert deps_by_key["dfl_context_enriched_schedule_candidate_library_v5_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",

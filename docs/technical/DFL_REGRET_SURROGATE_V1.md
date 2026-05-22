@@ -88,6 +88,35 @@ final-holdout hindsight. The model must either get more Ukrainian/context
 history with comparable events or create safer candidate families that win in
 contexts already covered by prior anchors.
 
+Sparse Safe-Switch V6 is the next additive repair. It replaces exact
+context-profile equality with nearest-prior support over prior-only
+`selector_feature_*` columns. The model still abstains to V2+ unless a candidate
+has nearby prior anchors, prior safe wins, predicted improvement, and low
+tail-risk probability. This is intended to answer whether the sparse `5 / 90`
+material opportunities are learnable without final-holdout leakage.
+
+Materialized Sparse Safe-Switch V6 outcome:
+
+- feature-contract audit passed;
+- latest final holdout had `0 / 90` selector-safe non-reference material
+  opportunities after excluding train-only oracle diagnostics and keeping
+  `strict_similar_day` as a reference/control row;
+- the strict control still had `4` material local wins, which explains why
+  broader diagnostic audits can show money left on the table, but those rows
+  are not learned challenger schedules;
+- V6 selected `0 / 90` non-V2+ final rows and fell back to V2+ everywhere;
+- latest-holdout strict result matched V2+: `174.77` UAH mean regret and
+  `67.30` UAH median regret;
+- rolling robustness remained negative: `0 / 4` promotion windows and `0 / 4`
+  diagnostic windows;
+- promotion status: `not_promoted`, with `market_execution_enabled=false`.
+
+Interpretation: V6 closed the exact-profile-support question and sharpened the
+blocker. The issue is now candidate/data scarcity, not a missing classifier.
+Further DT/LAVA work over the same candidate universe would mostly learn to
+abstain. The next useful ML branch is Ukrainian point-in-time context backfill
+or new feasible candidate generation with prior-supported wins.
+
 ## Source Basis
 
 The implementation follows the decision-focused direction from:
@@ -117,6 +146,13 @@ The implementation follows the decision-focused direction from:
 | `dfl_regret_surrogate_contextual_candidate_value_v2_frame` | Selects candidates only from prior-supported safe-switch contexts. |
 | `dfl_regret_surrogate_contextual_strict_lp_benchmark_frame` | Scores contextual V2 against strict and frozen V2+ under the same evaluator. |
 | `dfl_regret_surrogate_contextual_rolling_robustness_frame` | Replays contextual V2 over rolling prior-only windows. |
+| `dfl_sparse_safe_switch_feature_contract_audit_frame` | Checks that V6 selector inputs do not include final regret labels, oracle gaps, or post-anchor actuals. |
+| `dfl_sparse_safe_switch_candidate_library_v6_frame` | Builds the sparse-opportunity candidate library with V2+ fallback, shadow candidates, and train-only oracle diagnostics. |
+| `dfl_sparse_safe_switch_opportunity_audit_frame` | Classifies material opportunities by nearest-prior support instead of exact context-profile equality. |
+| `dfl_sparse_safe_switch_teacher_label_panel_v6_frame` | Publishes V6 teacher labels while keeping realized outcomes as `label_*` / `diagnostic_*`. |
+| `dfl_sparse_safe_switch_abstention_model_v6_frame` | Selects a non-V2+ candidate only with nearest-prior support and low tail-risk. |
+| `dfl_sparse_safe_switch_strict_lp_benchmark_frame` | Scores V6, frozen V2+, and strict under the unchanged LP/oracle evaluator. |
+| `dfl_sparse_safe_switch_rolling_robustness_frame` | Replays V6 under prior-only rolling windows. |
 
 Tracked config:
 
@@ -156,6 +192,15 @@ new candidate generation, not another model over the same rows.
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
   --select dfl_v2_plus_learning_limit_audit_frame,dfl_expanded_schedule_value_teacher_label_panel_v1_frame,dfl_regret_surrogate_forecast_correction_v1_frame,dfl_regret_surrogate_candidate_value_v1_frame,dfl_regret_surrogate_strict_lp_benchmark_frame,dfl_regret_surrogate_rolling_robustness_frame,dfl_regret_surrogate_safe_switch_context_audit_frame,dfl_regret_surrogate_teacher_label_panel_v2_frame,dfl_regret_surrogate_contextual_candidate_value_v2_frame,dfl_regret_surrogate_contextual_strict_lp_benchmark_frame,dfl_regret_surrogate_contextual_rolling_robustness_frame `
+  -c configs/real_data_dfl_regret_surrogate_v1_week3.yaml
+```
+
+Sparse V6 can be materialized after the context V2 teacher panel:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_sparse_safe_switch_feature_contract_audit_frame,dfl_sparse_safe_switch_candidate_library_v6_frame,dfl_sparse_safe_switch_opportunity_audit_frame,dfl_sparse_safe_switch_teacher_label_panel_v6_frame,dfl_sparse_safe_switch_abstention_model_v6_frame,dfl_sparse_safe_switch_strict_lp_benchmark_frame,dfl_sparse_safe_switch_rolling_robustness_frame `
   -c configs/real_data_dfl_regret_surrogate_v1_week3.yaml
 ```
 
