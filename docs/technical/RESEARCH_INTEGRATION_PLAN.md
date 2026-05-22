@@ -3242,3 +3242,31 @@ it still did not create a prior-safe switch rule that can replace V2+. DT/LAVA
 should therefore use this context/audit layer as teacher data for
 tail-risk-aware candidate-index or schedule-family supervision, not return to
 raw hourly BUY/SELL/HOLD imitation.
+
+The next additive DT/LAVA bridge is now implemented as the UA-context
+candidate-index policy path:
+`dfl_ua_context_lava_teacher_frame`,
+`dfl_ua_context_lava_sequence_training_frame`,
+`dfl_ua_context_lava_candidate_policy_frame`,
+`dfl_ua_context_lava_strict_lp_benchmark_frame`, and
+`dfl_ua_context_lava_rolling_robustness_frame`. It consumes the UA context
+oracle-gap panel plus LAVA tail-risk labels, trains a small deterministic Torch
+candidate policy, emits behavior cloning as a required baseline, and keeps
+corrected calibrated V2+ as fallback. The target is candidate index / schedule
+family selection, not hourly action imitation. The tracked config is
+`configs/real_data_dfl_ua_context_lava_dt_week3.yaml`; the technical note is
+[DFL_UA_CONTEXT_LAVA_DT.md](DFL_UA_CONTEXT_LAVA_DT.md). It can replace V2+ only
+if the same strict LP/oracle gate improves mean regret by at least `5%`, avoids
+median degradation, passes `4 / 4` rolling windows, and preserves
+`market_execution_enabled=false`.
+
+Materialized outcome: Dagster run `e5d19967-2bce-4e0e-aceb-6fce7e8a5e9d`
+completed the five-asset path. The latest-holdout strict LP/oracle benchmark
+matched V2+ for the conservative UA-context LAVA policy (`174.77` UAH mean
+regret, `67.30` UAH median regret), while behavior cloning was much worse
+(`576.52` UAH mean, `245.57` UAH median). Rolling robustness remained
+diagnostic-only: `0 / 4` robust challenger windows and `0 / 4`
+diagnostic-success windows, with V2+ fallback used for all `90 / 90`
+tenant-anchor rows in each validation window. This confirms that the
+candidate-index bridge is safer than behavior cloning but not yet a replacement
+for V2+.

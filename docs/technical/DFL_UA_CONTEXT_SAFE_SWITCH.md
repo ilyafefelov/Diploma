@@ -130,6 +130,12 @@ strict gate. The next DT/LAVA target should therefore use this label/audit layer
 as training signal for tail-risk-aware candidate-index or schedule-family
 selection, not raw hourly action imitation.
 
+The follow-up DT/LAVA target is documented in
+[DFL_UA_CONTEXT_LAVA_DT.md](DFL_UA_CONTEXT_LAVA_DT.md). It consumes this
+UA-context feature/audit layer and predicts a feasible candidate index or
+schedule family with corrected V2+ fallback, rather than emitting raw hourly
+actions.
+
 ## Claim Boundary
 
 This remains offline/read-model evidence only. It is not full DFL, not deployed

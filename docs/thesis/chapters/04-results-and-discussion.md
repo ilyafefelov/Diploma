@@ -572,6 +572,21 @@ switch. Для DT/LAVA це означає, що наступний target ма�
 candidate-index або schedule-family selector з V2+ fallback, а не raw hourly
 action imitation.
 
+На основі цього додано і матеріалізовано UA-context DT/LAVA Candidate-Index
+Policy v1. Модель отримує prior-only `selector_feature_*`, LAVA tail-risk labels
+і candidate schedule features, після чого прогнозує candidate index / schedule
+family / fallback decision. Behavior cloning залишається baseline, corrected
+V2+ - fallback і comparator, а final holdout знову використовується тільки для
+strict LP/oracle scoring. Dagster run
+`e5d19967-2bce-4e0e-aceb-6fce7e8a5e9d` показав, що behavior cloning є
+недостатнім (`576.52` UAH mean regret, `245.57` UAH median), а conservative
+UA-context LAVA policy безпечно повернулась до V2+ (`174.77` / `67.30` UAH).
+Rolling result також залишився diagnostic-only: `0 / 4` robust challenger
+windows і `0 / 4` diagnostic windows, з V2+ fallback на всіх `90 / 90`
+tenant-anchor rows у кожному validation window. Отже, DT/LAVA target вже
+правильно сформульований як candidate-index supervision, але поточний prior
+signal ще не достатній для заміни V2+.
+
 Додатковий failure audit для official bridge сформував 720 analysis-only rows.
 Найбільший клас помилок - `candidate_family_collapse`: 351 rows, або 48.75%.
 Це означає, що residual DFL / offline DT / fallback часто вибирали одну й ту

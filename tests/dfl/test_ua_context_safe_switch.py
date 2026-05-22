@@ -23,6 +23,17 @@ from smart_arbitrage.dfl.ua_context_safe_switch import (
     build_dfl_ua_weather_load_context_frame,
     evaluate_dfl_ua_context_safe_switch_gate,
 )
+from smart_arbitrage.dfl.ua_context_lava_dt import (
+    UA_CONTEXT_LAVA_BEHAVIOR_CLONING_SELECTION_ROLE,
+    UA_CONTEXT_LAVA_SELECTION_ROLE,
+    UA_CONTEXT_LAVA_STRICT_LP_STRATEGY_KIND,
+    build_dfl_ua_context_lava_candidate_policy_frame,
+    build_dfl_ua_context_lava_rolling_robustness_frame,
+    build_dfl_ua_context_lava_sequence_training_frame,
+    build_dfl_ua_context_lava_strict_lp_benchmark_frame,
+    build_dfl_ua_context_lava_teacher_frame,
+    evaluate_dfl_ua_context_lava_gate,
+)
 
 TENANTS: tuple[str, ...] = ("tenant_a", "tenant_b")
 SOURCE = "nbeatsx_official_global_panel_horizon_calibrated_v1"
@@ -163,6 +174,140 @@ def test_ua_context_rolling_robustness_uses_prior_windows() -> None:
         min_predicted_improvement_uah=1.0,
         max_predicted_tail_risk_probability=0.30,
         min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+    )
+
+    assert rolling.height == 2
+    assert set(rolling["rolling_window_passed"].to_list()) == {True}
+    assert rolling["minimum_prior_anchor_count_before_window"].min() >= 2
+    assert set(rolling["market_execution_enabled"].to_list()) == {False}
+
+
+def test_ua_context_lava_teacher_uses_candidate_index_not_raw_actions() -> None:
+    panel = _ua_feature_panel(train_alt_regret=70.0, final_alt_regret=80.0)
+
+    teacher = build_dfl_ua_context_lava_teacher_frame(panel)
+    training = build_dfl_ua_context_lava_sequence_training_frame(teacher)
+
+    assert "teacher_candidate_index" in teacher.columns
+    assert set(teacher["target_label_space"].unique().to_list()) == {
+        "ua_context_schedule_candidate_index"
+    }
+    assert set(teacher["raw_hourly_action_imitation"].unique().to_list()) == {False}
+    assert "safe_schedule_candidate" in set(
+        teacher["teacher_schedule_candidate_class"].to_list()
+    )
+    assert training.filter(pl.col("split_name") == "final_holdout").select(
+        pl.col("is_training_row").any()
+    ).item() is False
+    assert set(training["market_execution_enabled"].unique().to_list()) == {False}
+
+
+def test_ua_context_lava_policy_can_select_safe_candidate_and_emit_bc_baseline() -> None:
+    panel = _ua_feature_panel(train_alt_regret=70.0, final_alt_regret=80.0)
+    training = build_dfl_ua_context_lava_sequence_training_frame(
+        build_dfl_ua_context_lava_teacher_frame(panel)
+    )
+    policy = build_dfl_ua_context_lava_candidate_policy_frame(
+        training,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        min_prior_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_predicted_tail_risk_probability=0.30,
+        torch_max_epochs=16,
+        use_cuda_if_available=False,
+    )
+    strict = build_dfl_ua_context_lava_strict_lp_benchmark_frame(
+        training,
+        policy,
+        _oracle_gap_inputs(train_alt_regret=70.0, final_alt_regret=80.0)[
+            "schedule_value_v2_plus_strict_frame"
+        ],
+        generated_at=GENERATED_AT,
+    )
+    gate = evaluate_dfl_ua_context_lava_gate(
+        strict,
+        min_validation_tenant_anchor_count=len(TENANTS) * 2,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+    )
+
+    selected = strict.filter(pl.col("selection_role") == UA_CONTEXT_LAVA_SELECTION_ROLE)
+    assert set(policy["fallback_to_v2_plus"].to_list()) == {False}
+    assert selected["regret_uah"].to_list() == [80.0] * (len(TENANTS) * 2)
+    assert {
+        UA_CONTEXT_LAVA_SELECTION_ROLE,
+        UA_CONTEXT_LAVA_BEHAVIOR_CLONING_SELECTION_ROLE,
+    }.issubset(set(strict["selection_role"].unique().to_list()))
+    for role in (
+        UA_CONTEXT_LAVA_SELECTION_ROLE,
+        UA_CONTEXT_LAVA_BEHAVIOR_CLONING_SELECTION_ROLE,
+    ):
+        role_payloads = (
+            strict.filter(pl.col("selection_role") == role)["evaluation_payload"]
+            .head(1)
+            .to_list()
+        )
+        assert role_payloads[0]["selection_role"] == role
+        assert role_payloads[0]["ua_context_lava_role"] == role
+    assert set(strict["strategy_kind"].unique().to_list()) == {
+        UA_CONTEXT_LAVA_STRICT_LP_STRATEGY_KIND
+    }
+    assert gate.passed is True
+    assert gate.metrics["market_execution_enabled"] is False
+
+
+def test_ua_context_lava_policy_falls_back_on_tail_risk_or_weak_signal() -> None:
+    panel = _ua_feature_panel(train_alt_regret=290.0, final_alt_regret=20.0)
+    training = build_dfl_ua_context_lava_sequence_training_frame(
+        build_dfl_ua_context_lava_teacher_frame(panel)
+    )
+    policy = build_dfl_ua_context_lava_candidate_policy_frame(
+        training,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        min_prior_safe_win_count=1,
+        max_predicted_tail_risk_probability=0.25,
+        torch_max_epochs=8,
+        use_cuda_if_available=False,
+    )
+    strict = build_dfl_ua_context_lava_strict_lp_benchmark_frame(
+        training,
+        policy,
+        _oracle_gap_inputs(train_alt_regret=290.0, final_alt_regret=20.0)[
+            "schedule_value_v2_plus_strict_frame"
+        ],
+        generated_at=GENERATED_AT,
+    )
+
+    selected = strict.filter(pl.col("selection_role") == UA_CONTEXT_LAVA_SELECTION_ROLE)
+    assert set(policy["fallback_to_v2_plus"].to_list()) == {True}
+    assert selected["regret_uah"].to_list() == [120.0] * (len(TENANTS) * 2)
+
+
+def test_ua_context_lava_rolling_uses_prior_windows_only() -> None:
+    panel = _ua_feature_panel(
+        train_alt_regret=70.0,
+        final_alt_regret=80.0,
+        train_anchor_count=4,
+        final_anchor_count=4,
+    )
+    training = build_dfl_ua_context_lava_sequence_training_frame(
+        build_dfl_ua_context_lava_teacher_frame(panel)
+    )
+
+    rolling = build_dfl_ua_context_lava_rolling_robustness_frame(
+        training,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        validation_window_count=2,
+        validation_anchor_count=2,
+        min_prior_anchors_before_window=2,
+        min_prior_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_predicted_tail_risk_probability=0.30,
+        min_mean_regret_improvement_ratio_vs_v2_plus=0.05,
+        torch_max_epochs=8,
+        use_cuda_if_available=False,
     )
 
     assert rolling.height == 2

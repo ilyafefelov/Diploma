@@ -338,6 +338,15 @@ from smart_arbitrage.dfl.ua_context_safe_switch import (
     build_dfl_ua_weather_load_context_frame,
     evaluate_dfl_ua_context_safe_switch_gate,
 )
+from smart_arbitrage.dfl.ua_context_lava_dt import (
+    UA_CONTEXT_LAVA_STRICT_LP_STRATEGY_KIND,
+    build_dfl_ua_context_lava_candidate_policy_frame,
+    build_dfl_ua_context_lava_rolling_robustness_frame,
+    build_dfl_ua_context_lava_sequence_training_frame,
+    build_dfl_ua_context_lava_strict_lp_benchmark_frame,
+    build_dfl_ua_context_lava_teacher_frame,
+    evaluate_dfl_ua_context_lava_gate,
+)
 from smart_arbitrage.strategy.official_global_panel import (
     POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
     POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
@@ -1326,6 +1335,17 @@ class DflUaContextSafeSwitchAssetConfig(DflOracleGapSafeSwitchAssetConfig):
     torch_hidden_size: int = 8
     torch_max_epochs: int = 20
     use_cuda_if_available: bool = True
+
+
+class DflUaContextLavaDtAssetConfig(DflUaContextSafeSwitchAssetConfig):
+    """UA-context LAVA/DT candidate-index policy gate."""
+
+    max_prior_tail_loss_count: int = 0
+    min_prior_precision: float = 0.75
+    hard_blocked_candidate_families_csv: str = "rank_extrema_perturbation_v2_plus"
+    baseline_source_model_name: str = FROZEN_V2_PLUS_BASELINE_MODEL_NAME
+    random_seed: int = 23
+    torch_max_epochs: int = 25
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -4417,6 +4437,291 @@ def dfl_ua_context_safe_switch_rolling_robustness_frame(
             else 0,
             "market_execution_enabled": False,
             "scope": "dfl_ua_context_safe_switch_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="ua_context_lava_dt",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_lava_teacher_frame(
+    context,
+    config: DflUaContextLavaDtAssetConfig,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+    dfl_lava_tail_risk_avoidance_label_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build UA-context LAVA/DT teacher labels over feasible candidates."""
+
+    frame = build_dfl_ua_context_lava_teacher_frame(
+        dfl_ua_context_oracle_gap_feature_panel_frame,
+        dfl_lava_tail_risk_avoidance_label_frame,
+        tail_risk_delta_uah=config.tail_risk_delta_uah,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "training_rows": frame.filter(pl.col("is_training_row")).height
+            if frame.height
+            else 0,
+            "teacher_classes": sorted(
+                frame["teacher_schedule_candidate_class"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "target_label_space": "ua_context_schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_lava_teacher_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="ua_context_lava_dt",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_lava_sequence_training_frame(
+    context,
+    dfl_ua_context_lava_teacher_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build return-conditioned candidate-index sequence rows."""
+
+    frame = build_dfl_ua_context_lava_sequence_training_frame(
+        dfl_ua_context_lava_teacher_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "training_rows": frame.filter(pl.col("is_training_row")).height
+            if frame.height
+            else 0,
+            "target_label_space": "ua_context_schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_lava_sequence_training_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="ua_context_lava_dt",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_lava_candidate_policy_frame(
+    context,
+    config: DflUaContextLavaDtAssetConfig,
+    dfl_ua_context_lava_sequence_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Train a conservative UA-context candidate-index policy."""
+
+    frame = build_dfl_ua_context_lava_candidate_policy_frame(
+        dfl_ua_context_lava_sequence_training_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        max_prior_tail_loss_count=config.max_prior_tail_loss_count,
+        min_prior_precision=config.min_prior_precision,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        hard_blocked_candidate_families=_csv_values(
+            config.hard_blocked_candidate_families_csv,
+            field_name="hard_blocked_candidate_families_csv",
+        ),
+        torch_hidden_size=config.torch_hidden_size,
+        torch_max_epochs=config.torch_max_epochs,
+        use_cuda_if_available=config.use_cuda_if_available,
+        random_seed=config.random_seed,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_selected_tenant_sources": frame.filter(
+                ~pl.col("fallback_to_v2_plus")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "ua_context_schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_lava_candidate_policy_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="ua_context_lava_dt",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_lava_strict_lp_benchmark_frame(
+    context,
+    config: DflUaContextLavaDtAssetConfig,
+    dfl_ua_context_lava_sequence_training_frame: pl.DataFrame,
+    dfl_ua_context_lava_candidate_policy_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score UA-context DT/LAVA candidate policy against V2+."""
+
+    strict_frame = build_dfl_ua_context_lava_strict_lp_benchmark_frame(
+        dfl_ua_context_lava_sequence_training_frame,
+        dfl_ua_context_lava_candidate_policy_frame,
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+        baseline_source_model_name=config.baseline_source_model_name,
+        generated_at=_latest_generated_at(
+            dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_ua_context_lava_gate(
+        strict_frame,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": UA_CONTEXT_LAVA_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "diagnostic_signal_passed": gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "production_promote": False,
+            "target_label_space": "ua_context_schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_lava_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="ua_context_lava_dt",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_lava_rolling_robustness_frame(
+    context,
+    config: DflUaContextLavaDtAssetConfig,
+    dfl_ua_context_lava_sequence_training_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling prior-only robustness for the UA-context LAVA/DT policy."""
+
+    frame = build_dfl_ua_context_lava_rolling_robustness_frame(
+        dfl_ua_context_lava_sequence_training_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        max_prior_tail_loss_count=config.max_prior_tail_loss_count,
+        min_prior_precision=config.min_prior_precision,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        hard_blocked_candidate_families=_csv_values(
+            config.hard_blocked_candidate_families_csv,
+            field_name="hard_blocked_candidate_families_csv",
+        ),
+        torch_hidden_size=config.torch_hidden_size,
+        torch_max_epochs=config.torch_max_epochs,
+        use_cuda_if_available=config.use_cuda_if_available,
+        random_seed=config.random_seed,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "rolling_pass_windows": frame.filter(pl.col("rolling_window_passed")).height
+            if frame.height
+            else 0,
+            "diagnostic_signal_windows": frame.filter(
+                pl.col("diagnostic_window_passed")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "ua_context_schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_lava_rolling_robustness_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -12334,6 +12639,11 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_ua_context_safe_switch_scorer_frame,
     dfl_ua_context_safe_switch_strict_lp_benchmark_frame,
     dfl_ua_context_safe_switch_rolling_robustness_frame,
+    dfl_ua_context_lava_teacher_frame,
+    dfl_ua_context_lava_sequence_training_frame,
+    dfl_ua_context_lava_candidate_policy_frame,
+    dfl_ua_context_lava_strict_lp_benchmark_frame,
+    dfl_ua_context_lava_rolling_robustness_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,

@@ -377,6 +377,11 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_ua_context_safe_switch_scorer_frame",
         "dfl_ua_context_safe_switch_strict_lp_benchmark_frame",
         "dfl_ua_context_safe_switch_rolling_robustness_frame",
+        "dfl_ua_context_lava_teacher_frame",
+        "dfl_ua_context_lava_sequence_training_frame",
+        "dfl_ua_context_lava_candidate_policy_frame",
+        "dfl_ua_context_lava_strict_lp_benchmark_frame",
+        "dfl_ua_context_lava_rolling_robustness_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
         "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame",
@@ -853,6 +858,23 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         groups_by_key["dfl_ua_context_safe_switch_rolling_robustness_frame"]
+        == "gold_dfl_training"
+    )
+    assert groups_by_key["dfl_ua_context_lava_teacher_frame"] == "gold_dfl_training"
+    assert (
+        groups_by_key["dfl_ua_context_lava_sequence_training_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_context_lava_candidate_policy_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_context_lava_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_ua_context_lava_rolling_robustness_frame"]
         == "gold_dfl_training"
     )
     assert (
@@ -1386,6 +1408,22 @@ def test_dfl_research_assets_are_registered() -> None:
         ]
         == "not_market_execution"
     )
+    assert tags_by_key["dfl_ua_context_lava_teacher_frame"]["ml_stage"] == (
+        "training_data"
+    )
+    assert tags_by_key["dfl_ua_context_lava_candidate_policy_frame"]["ml_stage"] == (
+        "selection"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_lava_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_lava_rolling_robustness_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
     assert (
         tags_by_key[
             "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
@@ -1688,6 +1726,24 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_ua_context_safe_switch_rolling_robustness_frame"] == {
         "dfl_ua_context_oracle_gap_feature_panel_frame"
+    }
+    assert deps_by_key["dfl_ua_context_lava_teacher_frame"] == {
+        "dfl_ua_context_oracle_gap_feature_panel_frame",
+        "dfl_lava_tail_risk_avoidance_label_frame",
+    }
+    assert deps_by_key["dfl_ua_context_lava_sequence_training_frame"] == {
+        "dfl_ua_context_lava_teacher_frame"
+    }
+    assert deps_by_key["dfl_ua_context_lava_candidate_policy_frame"] == {
+        "dfl_ua_context_lava_sequence_training_frame"
+    }
+    assert deps_by_key["dfl_ua_context_lava_strict_lp_benchmark_frame"] == {
+        "dfl_ua_context_lava_sequence_training_frame",
+        "dfl_ua_context_lava_candidate_policy_frame",
+        "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_ua_context_lava_rolling_robustness_frame"] == {
+        "dfl_ua_context_lava_sequence_training_frame"
     }
     assert deps_by_key["dfl_context_enriched_schedule_candidate_library_v5_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",

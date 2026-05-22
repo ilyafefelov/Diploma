@@ -371,6 +371,15 @@ candidate family без prior tail-risk losses і тому повторив V2+ 
 це означає, що DT/LAVA має навчатися уникати tail-risk neighbors перед
 генерацією послідовної policy.
 
+Наступний методологічний крок формалізовано як UA-context DT/LAVA
+candidate-index policy. Він використовує той самий UA-context oracle-gap panel
+і LAVA tail-risk labels, але target змінено на candidate index / schedule family
+/ fallback decision, а не на hourly action. Це зберігає decision-focused
+контракт: train/prior anchors формують teacher labels і confidence rule, final
+holdout використовується лише для strict LP/oracle scoring, а corrected V2+
+лишається fallback. Технічний контракт описаний у
+[DFL_UA_CONTEXT_LAVA_DT](../../technical/DFL_UA_CONTEXT_LAVA_DT.md).
+
 ## 3.6. Метрики оцінювання і роль regret
 
 Метрики в роботі поділяються на діагностичні, decision-value та обмежувальні
