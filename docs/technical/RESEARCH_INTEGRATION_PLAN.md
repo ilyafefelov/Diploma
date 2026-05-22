@@ -98,6 +98,14 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      `0 / 4` rolling promotion windows. This closes the current safe-switch
      classifier branch and points to Ukrainian context backfill or genuinely
      new feasible candidate schedules before another DT/LAVA target.
+   - Opportunity Backfill + Candidate-Value V7 is now the next additive
+     implementation branch. It does not start DT. It first classifies V2+
+     misses as `backfill_needed`, `candidate_generation_needed`, `dt_ready`, or
+     `stop_modeling_current_candidate_space`, then adds feasible V2+
+     neighborhood, strict-guarded rescue, terminal-SOC reserve, spread-robust,
+     morning/evening block, and throughput/degradation sweep candidates. V7 can
+     move toward DT/LAVA only if it creates at least `20` prior/train material
+     safe-switch examples and clears the unchanged V2+ strict LP/oracle gate.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

@@ -994,6 +994,27 @@ regret bucket, high forecast-spread bucket і material schedule-distance bucket.
 sequence policy має отримати більше prior-supported teacher contexts або нові
 candidate families, а не імітувати final-holdout oracle choices.
 
+Sparse Safe-Switch V6 додатково перевіряє цю межу без exact profile equality:
+він використовує distance до найближчих prior anchors за prior-only
+`selector_feature_*`. Feature-contract audit пройшов, але під
+selector-safe candidate contract latest final holdout мав `0 / 90` eligible
+non-reference material switches. V6 тому вибрав `0 / 90` non-V2+ rows,
+повторив V2+ (`174.77` / `67.30` UAH) і мав `0 / 4` rolling windows. Це
+методологічно означає, що проблема не у відсутності ще одного classifier, а у
+candidate/data scarcity.
+
+Наступний slice тому формалізовано як Opportunity Backfill + Candidate-Value
+V7, а не DT. `dfl_v2_plus_opportunity_backfill_requirements_frame` класифікує
+кожний V2+ miss як `backfill_needed`, `candidate_generation_needed`,
+`dt_ready` або `stop_modeling_current_candidate_space`. Потім V7 додає feasible
+schedule candidates: V2+ neighborhood shifts, strict-guarded rescue variants,
+terminal-SOC reserve schedules, spread-volatility robust schedules,
+morning/evening block schedules і throughput/degradation sweeps. Перехід до
+DT/LAVA дозволений лише якщо V7 створить щонайменше `20` prior/train material
+safe-switch examples, покаже selector-safe oracle upside above `5%` і не
+провалить rolling robustness через tail risk. Інакше наступний напрямок - не
+більша модель, а backfill/context acquisition.
+
 ## 3.10. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний технічний entrypoint:

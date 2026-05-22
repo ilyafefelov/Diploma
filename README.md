@@ -213,6 +213,7 @@ Latest full verification: `151 passed`.
 - DFL point-in-time context repair / Candidate-Value DFL V5 gate: `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md`
 - DFL Regret-Surrogate v1/v2 learning-limit gate: `docs/technical/DFL_REGRET_SURROGATE_V1.md`
 - DFL Sparse Safe-Switch V6 abstaining selector: `docs/technical/DFL_SPARSE_SAFE_SWITCH_V6.md`
+- DFL Opportunity Backfill V7 candidate-value gate: `docs/technical/DFL_OPPORTUNITY_BACKFILL_V7.md`
 - DFL schedule/value Offline Strategy Promotion gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
 - Offline Strategy Promotion language contract: `docs/technical/OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md`
 - Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`

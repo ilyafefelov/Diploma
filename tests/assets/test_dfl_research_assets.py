@@ -231,6 +231,8 @@ def test_regret_surrogate_v1_config_keeps_v2_plus_gate_and_shadow_sources() -> N
     assert config.max_neighbor_tail_risk_probability == 0.25
     assert config.nearest_neighbor_count == 5
     assert "poland_shadow_candidate" in config.allowed_candidate_sources_csv
+    assert "v7_generated_candidate" in config.allowed_candidate_sources_csv
+    assert config.min_prior_material_safe_switch_examples_for_dt == 20
     assert config.use_cuda_if_available is True
 
 
@@ -419,6 +421,13 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_sparse_safe_switch_abstention_model_v6_frame",
         "dfl_sparse_safe_switch_strict_lp_benchmark_frame",
         "dfl_sparse_safe_switch_rolling_robustness_frame",
+        "dfl_v2_plus_opportunity_backfill_requirements_frame",
+        "dfl_backfilled_context_feature_panel_v7_frame",
+        "dfl_feasible_schedule_candidate_library_v7_frame",
+        "dfl_candidate_value_teacher_label_panel_v7_frame",
+        "dfl_candidate_value_regret_surrogate_v7_frame",
+        "dfl_candidate_value_v7_strict_lp_benchmark_frame",
+        "dfl_candidate_value_v7_rolling_robustness_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
         "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame",
@@ -786,7 +795,9 @@ def test_dfl_research_assets_are_registered() -> None:
         == "gold_dfl_training"
     )
     assert (
-        groups_by_key["dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame"]
+        groups_by_key[
+            "dfl_poland_lag24_candidate_value_ranker_strict_lp_benchmark_frame"
+        ]
         == "gold_dfl_training"
     )
     assert (
@@ -797,22 +808,13 @@ def test_dfl_research_assets_are_registered() -> None:
         groups_by_key["dfl_lava_schedule_neighbor_candidate_frame"]
         == "gold_dfl_training"
     )
-    assert (
-        groups_by_key["dfl_lava_candidate_value_scorer_frame"]
-        == "gold_dfl_training"
-    )
+    assert groups_by_key["dfl_lava_candidate_value_scorer_frame"] == "gold_dfl_training"
     assert (
         groups_by_key["dfl_lava_candidate_value_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
     )
-    assert (
-        groups_by_key["dfl_lava_tail_risk_diagnostic_frame"]
-        == "gold_dfl_training"
-    )
-    assert (
-        groups_by_key["dfl_lava_tail_risk_aware_target_frame"]
-        == "gold_dfl_training"
-    )
+    assert groups_by_key["dfl_lava_tail_risk_diagnostic_frame"] == "gold_dfl_training"
+    assert groups_by_key["dfl_lava_tail_risk_aware_target_frame"] == "gold_dfl_training"
     assert (
         groups_by_key["dfl_lava_tail_risk_aware_strict_lp_benchmark_frame"]
         == "gold_dfl_training"
@@ -838,8 +840,7 @@ def test_dfl_research_assets_are_registered() -> None:
         == "gold_dfl_training"
     )
     assert (
-        groups_by_key["dfl_lava_tail_risk_avoidance_label_frame"]
-        == "gold_dfl_training"
+        groups_by_key["dfl_lava_tail_risk_avoidance_label_frame"] == "gold_dfl_training"
     )
     assert (
         groups_by_key["dfl_lava_tail_risk_avoidance_scorer_v3_frame"]
@@ -886,8 +887,7 @@ def test_dfl_research_assets_are_registered() -> None:
         == "gold_dfl_training"
     )
     assert (
-        groups_by_key["dfl_ua_context_safe_switch_scorer_frame"]
-        == "gold_dfl_training"
+        groups_by_key["dfl_ua_context_safe_switch_scorer_frame"] == "gold_dfl_training"
     )
     assert (
         groups_by_key["dfl_ua_context_safe_switch_strict_lp_benchmark_frame"]
@@ -915,8 +915,7 @@ def test_dfl_research_assets_are_registered() -> None:
         == "gold_dfl_training"
     )
     assert (
-        groups_by_key["dfl_v2_plus_learning_limit_audit_frame"]
-        == "gold_dfl_training"
+        groups_by_key["dfl_v2_plus_learning_limit_audit_frame"] == "gold_dfl_training"
     )
     assert (
         groups_by_key["dfl_expanded_schedule_value_teacher_label_panel_v1_frame"]
@@ -1486,9 +1485,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "selection"
     )
     assert (
-        tags_by_key["dfl_ua_context_lava_strict_lp_benchmark_frame"][
-            "evidence_scope"
-        ]
+        tags_by_key["dfl_ua_context_lava_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -1510,9 +1507,7 @@ def test_dfl_research_assets_are_registered() -> None:
         == "selection"
     )
     assert (
-        tags_by_key["dfl_regret_surrogate_strict_lp_benchmark_frame"][
-            "evidence_scope"
-        ]
+        tags_by_key["dfl_regret_surrogate_strict_lp_benchmark_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -1528,9 +1523,7 @@ def test_dfl_research_assets_are_registered() -> None:
         == "diagnostics"
     )
     assert (
-        tags_by_key["dfl_sparse_safe_switch_teacher_label_panel_v6_frame"][
-            "ml_stage"
-        ]
+        tags_by_key["dfl_sparse_safe_switch_teacher_label_panel_v6_frame"]["ml_stage"]
         == "training_data"
     )
     assert (
@@ -1544,9 +1537,29 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_sparse_safe_switch_rolling_robustness_frame"][
+        tags_by_key["dfl_sparse_safe_switch_rolling_robustness_frame"]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_v2_plus_opportunity_backfill_requirements_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_feasible_schedule_candidate_library_v7_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_candidate_value_regret_surrogate_v7_frame"]["ml_stage"]
+        == "selection"
+    )
+    assert (
+        tags_by_key["dfl_candidate_value_v7_strict_lp_benchmark_frame"][
             "evidence_scope"
         ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_candidate_value_v7_rolling_robustness_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -1568,9 +1581,9 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
-        tags_by_key[
-            "dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame"
-        ]["evidence_scope"]
+        tags_by_key["dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
         == "not_market_execution"
     )
     assert (
@@ -1594,9 +1607,7 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
-        tags_by_key["dfl_nbeatsx_tft_meta_selector_robustness_frame"][
-            "evidence_scope"
-        ]
+        tags_by_key["dfl_nbeatsx_tft_meta_selector_robustness_frame"]["evidence_scope"]
         == "not_market_execution"
     )
     assert (
@@ -1914,6 +1925,32 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_sparse_safe_switch_rolling_robustness_frame"] == {
         "dfl_sparse_safe_switch_candidate_library_v6_frame"
     }
+    assert deps_by_key["dfl_v2_plus_opportunity_backfill_requirements_frame"] == {
+        "dfl_sparse_safe_switch_candidate_library_v6_frame",
+        "dfl_sparse_safe_switch_opportunity_audit_frame",
+    }
+    assert deps_by_key["dfl_backfilled_context_feature_panel_v7_frame"] == {
+        "dfl_sparse_safe_switch_candidate_library_v6_frame",
+        "dfl_v2_plus_opportunity_backfill_requirements_frame",
+    }
+    assert deps_by_key["dfl_feasible_schedule_candidate_library_v7_frame"] == {
+        "dfl_backfilled_context_feature_panel_v7_frame",
+        "dfl_v2_plus_opportunity_backfill_requirements_frame",
+    }
+    assert deps_by_key["dfl_candidate_value_teacher_label_panel_v7_frame"] == {
+        "dfl_feasible_schedule_candidate_library_v7_frame",
+        "dfl_v2_plus_opportunity_backfill_requirements_frame",
+    }
+    assert deps_by_key["dfl_candidate_value_regret_surrogate_v7_frame"] == {
+        "dfl_candidate_value_teacher_label_panel_v7_frame"
+    }
+    assert deps_by_key["dfl_candidate_value_v7_strict_lp_benchmark_frame"] == {
+        "dfl_candidate_value_teacher_label_panel_v7_frame",
+        "dfl_candidate_value_regret_surrogate_v7_frame",
+    }
+    assert deps_by_key["dfl_candidate_value_v7_rolling_robustness_frame"] == {
+        "dfl_feasible_schedule_candidate_library_v7_frame"
+    }
     assert deps_by_key["dfl_context_enriched_schedule_candidate_library_v5_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",
         "dfl_point_in_time_context_feature_panel_frame",
@@ -2020,7 +2057,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_schedule_value_learner_v2_plus_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
     }
-    assert deps_by_key["dfl_tft_calibrated_quantile_schedule_candidate_library_frame"] == {
+    assert deps_by_key[
+        "dfl_tft_calibrated_quantile_schedule_candidate_library_frame"
+    ] == {
         "tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame"
     }
     assert deps_by_key[
@@ -2120,7 +2159,9 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_lava_tail_risk_safe_switch_scorer_v2_frame"] == {
         "dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame",
     }
-    assert deps_by_key["dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame"] == {
+    assert deps_by_key[
+        "dfl_lava_tail_risk_safe_switch_v2_strict_lp_benchmark_frame"
+    ] == {
         "dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame",
         "dfl_lava_tail_risk_safe_switch_scorer_v2_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
@@ -2163,7 +2204,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_market_coupled_schedule_value_learner_v2_plus_frame",
         "entsoe_poland_lagged_feature_candidate_frame",
     }
-    assert deps_by_key["dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame"] == {
+    assert deps_by_key[
+        "dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame"
+    ] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
         "official_forecast_exogenous_feature_route_frame",
         "entsoe_poland_lagged_feature_candidate_frame",

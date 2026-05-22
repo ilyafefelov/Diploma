@@ -350,10 +350,18 @@ from smart_arbitrage.dfl.ua_context_lava_dt import (
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
     REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
     REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
+    REGRET_SURROGATE_CANDIDATE_VALUE_V7_SELECTION_ROLE,
+    REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND,
     REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
     REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND,
     REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_backfilled_context_feature_panel_v7_frame,
+    build_dfl_candidate_value_regret_surrogate_v7_frame,
+    build_dfl_candidate_value_teacher_label_panel_v7_frame,
+    build_dfl_candidate_value_v7_rolling_robustness_frame,
+    build_dfl_candidate_value_v7_strict_lp_benchmark_frame,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+    build_dfl_feasible_schedule_candidate_library_v7_frame,
     build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
     build_dfl_regret_surrogate_contextual_rolling_robustness_frame,
     build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame,
@@ -371,6 +379,7 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_sparse_safe_switch_strict_lp_benchmark_frame,
     build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
     build_dfl_v2_plus_learning_limit_audit_frame,
+    build_dfl_v2_plus_opportunity_backfill_requirements_frame,
     evaluate_dfl_regret_surrogate_gate,
 )
 from smart_arbitrage.strategy.official_global_panel import (
@@ -1378,8 +1387,8 @@ class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
     """Learning-limit audit plus regret-surrogate candidate-value DFL v1."""
 
     allowed_candidate_sources_csv: str = (
-        "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,"
-        "ua_context_candidate,lava_candidate"
+        "v7_generated_candidate,oracle_gap_candidate,poland_shadow_candidate,"
+        "tft_shadow_candidate,ua_context_candidate,lava_candidate"
     )
     min_oracle_improvement_ratio_vs_v2_plus: float = 0.05
     material_switch_delta_uah: float = 25.0
@@ -1394,6 +1403,7 @@ class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
     min_neighbor_safe_win_count: int = 1
     max_neighbor_tail_risk_probability: float = 0.25
     nearest_neighbor_count: int = 5
+    min_prior_material_safe_switch_examples_for_dt: int = 20
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -1922,7 +1932,9 @@ def entsoe_poland_lagged_feature_candidate_frame(
             "source_backed_rows": lagged_frame.filter(pl.col("source_backed")).height
             if lagged_frame.height
             else 0,
-            "coverage_status": lagged_frame.select("coverage_status").to_series().item(0)
+            "coverage_status": lagged_frame.select("coverage_status")
+            .to_series()
+            .item(0)
             if lagged_frame.height and "coverage_status" in lagged_frame.columns
             else "empty",
             "feature_column": lagged_frame.select("feature_column").to_series().item(0)
@@ -3788,7 +3800,9 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_fr
         context,
         {
             "rows": audit_frame.height,
-            "oracle_gap_classes": sorted(audit_frame["oracle_gap_class"].unique().to_list())
+            "oracle_gap_classes": sorted(
+                audit_frame["oracle_gap_class"].unique().to_list()
+            )
             if audit_frame.height
             else [],
             "positive_oracle_gap_rows": audit_frame.filter(
@@ -3886,7 +3900,9 @@ def dfl_oracle_gap_safe_switch_feature_panel_frame(
         dfl_oracle_gap_safe_switch_label_frame
     )
     feature_columns = [
-        column for column in feature_panel.columns if column.startswith("selector_feature_")
+        column
+        for column in feature_panel.columns
+        if column.startswith("selector_feature_")
     ]
     _add_metadata(
         context,
@@ -4316,7 +4332,9 @@ def dfl_ua_context_safe_switch_scorer_frame(
         dfl_ua_context_oracle_gap_feature_panel_frame,
         tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
         forecast_model_names=_forecast_model_names(config.source_model_names_csv),
-        scorer_kinds=_csv_values(config.scorer_kinds_csv, field_name="scorer_kinds_csv"),
+        scorer_kinds=_csv_values(
+            config.scorer_kinds_csv, field_name="scorer_kinds_csv"
+        ),
         min_prior_safe_win_count=config.min_prior_safe_win_count,
         min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
         min_predicted_improvement_uah=config.min_predicted_improvement_uah,
@@ -4449,7 +4467,9 @@ def dfl_ua_context_safe_switch_rolling_robustness_frame(
         validation_window_count=config.validation_window_count,
         validation_anchor_count=config.validation_anchor_count,
         min_prior_anchors_before_window=config.min_prior_anchors_before_window,
-        scorer_kinds=_csv_values(config.scorer_kinds_csv, field_name="scorer_kinds_csv"),
+        scorer_kinds=_csv_values(
+            config.scorer_kinds_csv, field_name="scorer_kinds_csv"
+        ),
         min_prior_safe_win_count=config.min_prior_safe_win_count,
         min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
         min_predicted_improvement_uah=config.min_predicted_improvement_uah,
@@ -4807,7 +4827,9 @@ def dfl_v2_plus_learning_limit_audit_frame(
         {
             "rows": frame.height,
             "candidate_universe_can_beat_v2_plus_gate": (
-                frame.select(pl.col("candidate_universe_can_beat_v2_plus_gate").any()).item()
+                frame.select(
+                    pl.col("candidate_universe_can_beat_v2_plus_gate").any()
+                ).item()
                 if frame.height
                 else False
             ),
@@ -5276,7 +5298,9 @@ def dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
     strict_frame = build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
         dfl_regret_surrogate_teacher_label_panel_v2_frame,
         dfl_regret_surrogate_contextual_candidate_value_v2_frame,
-        generated_at=_latest_generated_at(dfl_regret_surrogate_teacher_label_panel_v2_frame),
+        generated_at=_latest_generated_at(
+            dfl_regret_surrogate_teacher_label_panel_v2_frame
+        ),
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
     gate = evaluate_dfl_regret_surrogate_gate(
@@ -5646,7 +5670,9 @@ def dfl_sparse_safe_switch_strict_lp_benchmark_frame(
     strict_frame = build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
         dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
         dfl_sparse_safe_switch_abstention_model_v6_frame,
-        generated_at=_latest_generated_at(dfl_sparse_safe_switch_teacher_label_panel_v6_frame),
+        generated_at=_latest_generated_at(
+            dfl_sparse_safe_switch_teacher_label_panel_v6_frame
+        ),
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
     gate = evaluate_dfl_regret_surrogate_gate(
@@ -5755,6 +5781,386 @@ def dfl_sparse_safe_switch_rolling_robustness_frame(
         medallion="gold",
         domain="dfl_research",
         elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v7",
+        market_venue="DAM",
+    ),
+)
+def dfl_v2_plus_opportunity_backfill_requirements_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    dfl_sparse_safe_switch_opportunity_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Classify whether V2+ misses need backfill, new candidates, or DT readiness."""
+
+    frame = build_dfl_v2_plus_opportunity_backfill_requirements_frame(
+        dfl_sparse_safe_switch_candidate_library_v6_frame,
+        dfl_sparse_safe_switch_opportunity_audit_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        min_prior_material_examples_for_dt=(
+            config.min_prior_material_safe_switch_examples_for_dt
+        ),
+        min_oracle_improvement_ratio_vs_v2_plus=(
+            config.min_oracle_improvement_ratio_vs_v2_plus
+        ),
+        high_forecast_spread_uah_mwh=config.high_forecast_spread_uah_mwh,
+        min_material_schedule_distance=config.min_material_schedule_distance,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "backfill_decisions": sorted(
+                frame["opportunity_backfill_decision"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "candidate_generation_needed_rows": frame.filter(
+                pl.col("opportunity_backfill_decision") == "candidate_generation_needed"
+            ).height
+            if frame.height
+            else 0,
+            "dt_ready_rows": frame.filter(
+                pl.col("opportunity_backfill_decision") == "dt_ready"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_v2_plus_opportunity_backfill_requirements_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v7",
+        market_venue="DAM",
+    ),
+)
+def dfl_backfilled_context_feature_panel_v7_frame(
+    context,
+    dfl_sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    dfl_v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach prior-only context backfill features for V7."""
+
+    frame = build_dfl_backfilled_context_feature_panel_v7_frame(
+        dfl_sparse_safe_switch_candidate_library_v6_frame,
+        dfl_v2_plus_opportunity_backfill_requirements_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selector_feature_prefix": "selector_feature_*",
+            "market_execution_enabled": False,
+            "scope": "dfl_backfilled_context_feature_panel_v7_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v7",
+        market_venue="DAM",
+    ),
+)
+def dfl_feasible_schedule_candidate_library_v7_frame(
+    context,
+    dfl_backfilled_context_feature_panel_v7_frame: pl.DataFrame,
+    dfl_v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Add V7 feasible schedule variants around V2+ misses."""
+
+    frame = build_dfl_feasible_schedule_candidate_library_v7_frame(
+        dfl_backfilled_context_feature_panel_v7_frame,
+        dfl_v2_plus_opportunity_backfill_requirements_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_schedule_classes": sorted(
+                frame["candidate_schedule_class"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "v7_generated_candidate_rows": frame.filter(
+                pl.col("candidate_source") == "v7_generated_candidate"
+            ).height
+            if frame.height
+            else 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_feasible_schedule_candidate_library_v7_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v7",
+        market_venue="DAM",
+    ),
+)
+def dfl_candidate_value_teacher_label_panel_v7_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
+    dfl_v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach V7 candidate-value labels with realized outcomes kept diagnostic."""
+
+    frame = build_dfl_candidate_value_teacher_label_panel_v7_frame(
+        dfl_feasible_schedule_candidate_library_v7_frame,
+        dfl_v2_plus_opportunity_backfill_requirements_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        nearest_neighbor_count=config.nearest_neighbor_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": frame.filter(
+                pl.col("label_v7_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v7",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_candidate_value_teacher_v7_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v7",
+        market_venue="DAM",
+    ),
+)
+def dfl_candidate_value_regret_surrogate_v7_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_candidate_value_teacher_label_panel_v7_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Select V7 candidates only when prior support clears the abstention gate."""
+
+    frame = build_dfl_candidate_value_regret_surrogate_v7_frame(
+        dfl_candidate_value_teacher_label_panel_v7_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=config.min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        min_prior_material_safe_switch_examples_for_dt=(
+            config.min_prior_material_safe_switch_examples_for_dt
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selected_final_candidate_count": int(
+                frame["selected_final_candidate_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "fallback_final_anchor_count": int(
+                frame["fallback_final_anchor_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "dt_lava_ready_rows": frame.filter(pl.col("dt_lava_ready")).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v7",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_candidate_value_regret_surrogate_v7_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v7",
+        market_venue="DAM",
+    ),
+)
+def dfl_candidate_value_v7_strict_lp_benchmark_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_candidate_value_teacher_label_panel_v7_frame: pl.DataFrame,
+    dfl_candidate_value_regret_surrogate_v7_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V7 candidate-value selections against corrected V2+."""
+
+    strict_frame = build_dfl_candidate_value_v7_strict_lp_benchmark_frame(
+        dfl_candidate_value_teacher_label_panel_v7_frame,
+        dfl_candidate_value_regret_surrogate_v7_frame,
+        generated_at=_latest_generated_at(
+            dfl_candidate_value_teacher_label_panel_v7_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_regret_surrogate_gate(
+        strict_frame.with_columns(
+            pl.when(
+                pl.col("selection_role")
+                == REGRET_SURROGATE_CANDIDATE_VALUE_V7_SELECTION_ROLE
+            )
+            .then(pl.lit("regret_surrogate_candidate_value"))
+            .otherwise(pl.col("selection_role"))
+            .alias("selection_role")
+        ),
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "diagnostic_signal_passed": gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "production_promote": False,
+            "target_label_space": "schedule_candidate_value_v7",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_candidate_value_v7_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v7",
+        market_venue="DAM",
+    ),
+)
+def dfl_candidate_value_v7_rolling_robustness_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling prior-only robustness for V7 candidate-value selection."""
+
+    frame = build_dfl_candidate_value_v7_rolling_robustness_frame(
+        dfl_feasible_schedule_candidate_library_v7_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=config.min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        min_prior_material_safe_switch_examples_for_dt=(
+            config.min_prior_material_safe_switch_examples_for_dt
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "rolling_pass_windows": frame.filter(pl.col("rolling_window_passed")).height
+            if frame.height
+            else 0,
+            "diagnostic_signal_windows": frame.filter(
+                pl.col("diagnostic_window_passed")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v7",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_candidate_value_v7_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
         ml_stage="evaluation",
         evidence_scope="not_market_execution",
         backend="official_global_panel_poland_lag24_experimental",
@@ -5775,34 +6181,32 @@ def official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_
         field_name="enabled_forecast_model_names_csv",
     )
     generated_at_iso = config.resume_generated_at_iso or config.generated_at_iso
-    strict_frame = (
-        build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame(
-            real_data_benchmark_silver_feature_frame,
-            tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
-            entsoe_poland_lagged_feature_candidate_frame=(
-                entsoe_poland_lagged_feature_candidate_frame
-            ),
-            market_coupling_feature_route_frame=(
-                official_forecast_exogenous_feature_route_frame
-            ),
-            enabled_forecast_model_names=source_model_names,
-            max_eval_windows=config.max_eval_windows,
-            horizon_hours=config.horizon_hours,
-            nbeatsx_max_steps=config.nbeatsx_max_steps,
-            nbeatsx_random_seed=config.nbeatsx_random_seed,
-            tft_max_epochs=config.tft_max_epochs,
-            tft_max_steps=config.tft_max_steps,
-            tft_batch_size=config.tft_batch_size,
-            tft_learning_rate=config.tft_learning_rate,
-            tft_hidden_size=config.tft_hidden_size,
-            tft_hidden_continuous_size=config.tft_hidden_continuous_size,
-            tft_accelerator=config.tft_accelerator,
-            tft_devices=config.tft_devices,
-            anchor_batch_order=config.anchor_batch_order,
-            anchor_batch_start_index=config.anchor_batch_start_index,
-            anchor_batch_size=config.anchor_batch_size,
-            generated_at=_optional_datetime_config(generated_at_iso),
-        )
+    strict_frame = build_official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame(
+        real_data_benchmark_silver_feature_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        entsoe_poland_lagged_feature_candidate_frame=(
+            entsoe_poland_lagged_feature_candidate_frame
+        ),
+        market_coupling_feature_route_frame=(
+            official_forecast_exogenous_feature_route_frame
+        ),
+        enabled_forecast_model_names=source_model_names,
+        max_eval_windows=config.max_eval_windows,
+        horizon_hours=config.horizon_hours,
+        nbeatsx_max_steps=config.nbeatsx_max_steps,
+        nbeatsx_random_seed=config.nbeatsx_random_seed,
+        tft_max_epochs=config.tft_max_epochs,
+        tft_max_steps=config.tft_max_steps,
+        tft_batch_size=config.tft_batch_size,
+        tft_learning_rate=config.tft_learning_rate,
+        tft_hidden_size=config.tft_hidden_size,
+        tft_hidden_continuous_size=config.tft_hidden_continuous_size,
+        tft_accelerator=config.tft_accelerator,
+        tft_devices=config.tft_devices,
+        anchor_batch_order=config.anchor_batch_order,
+        anchor_batch_start_index=config.anchor_batch_start_index,
+        anchor_batch_size=config.anchor_batch_size,
+        generated_at=_optional_datetime_config(generated_at_iso),
     )
     store = get_strategy_evaluation_store()
     store.upsert_evaluation_frame(strict_frame)
@@ -5864,9 +6268,7 @@ def official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_
     calibration_frame = build_official_global_panel_nbeatsx_horizon_calibration_frame(
         official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
         min_prior_anchors=config.min_prior_anchors,
-        rolling_calibration_window_anchors=(
-            config.rolling_calibration_window_anchors
-        ),
+        rolling_calibration_window_anchors=(config.rolling_calibration_window_anchors),
         source_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_MODEL_NAME,
         corrected_model_name=POLAND_LAG24_EXPERIMENTAL_NBEATSX_CALIBRATED_MODEL_NAME,
     )
@@ -5910,19 +6312,13 @@ def official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibra
 ) -> pl.DataFrame:
     """Prior-only p50 horizon/quantile calibration for Poland-enhanced TFT rows."""
 
-    calibration_frame = (
-        build_official_global_panel_tft_horizon_quantile_calibration_frame(
-            official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
-            min_prior_anchors=config.min_prior_anchors,
-            rolling_calibration_window_anchors=(
-                config.rolling_calibration_window_anchors
-            ),
-            source_model_names=(POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,),
-            corrected_model_names=(
-                POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,
-            ),
-            source_quantiles=("p50",),
-        )
+    calibration_frame = build_official_global_panel_tft_horizon_quantile_calibration_frame(
+        official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
+        min_prior_anchors=config.min_prior_anchors,
+        rolling_calibration_window_anchors=(config.rolling_calibration_window_anchors),
+        source_model_names=(POLAND_LAG24_EXPERIMENTAL_TFT_MODEL_NAME,),
+        corrected_model_names=(POLAND_LAG24_EXPERIMENTAL_TFT_CALIBRATED_MODEL_NAME,),
+        source_quantiles=("p50",),
     )
     _add_metadata(
         context,
@@ -5970,12 +6366,10 @@ def official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp
 ) -> pl.DataFrame:
     """Strict LP/oracle rows for raw and calibrated Poland-enhanced forecasts."""
 
-    strict_frame = (
-        build_official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame(
-            official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
-            official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
-            official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,
-        )
+    strict_frame = build_official_global_panel_poland_lag24_experimental_horizon_calibrated_strict_lp_benchmark_frame(
+        official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
+        official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
+        official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
     _add_metadata(
@@ -6387,9 +6781,7 @@ def dfl_poland_lag24_prior_tail_risk_veto_frame(
     gate = packet["gate"]
     anchor_count = int(summary["anchor_count"])
     coverage_status = (
-        "full_365_ready"
-        if anchor_count >= 365
-        else "insufficient_for_365_anchor_claim"
+        "full_365_ready" if anchor_count >= 365 else "insufficient_for_365_anchor_claim"
     )
     rolling_coverage_status = (
         "rolling_ready"
@@ -6497,7 +6889,11 @@ def dfl_poland_lag24_candidate_value_label_panel_frame(
         {
             "rows": label_frame.height,
             "selector_feature_count": len(
-                [column for column in label_frame.columns if column.startswith("selector_feature_")]
+                [
+                    column
+                    for column in label_frame.columns
+                    if column.startswith("selector_feature_")
+                ]
             ),
             "source_model_count": label_frame.select("source_model_name").n_unique()
             if label_frame.height
@@ -7156,7 +7552,11 @@ def dfl_lava_tail_risk_safe_switch_feature_panel_v2_frame(
             if feature_panel.height
             else 0,
             "selector_feature_count": len(
-                [column for column in feature_panel.columns if column.startswith("selector_feature_")]
+                [
+                    column
+                    for column in feature_panel.columns
+                    if column.startswith("selector_feature_")
+                ]
             ),
             "scope": "dfl_lava_tail_risk_safe_switch_v2_not_full_dfl",
             "market_execution_enabled": False,
@@ -7741,9 +8141,11 @@ def dfl_poland_lag24_rolling_vs_frozen_v2_plus_gate_frame(
             "rows": gate_frame.height,
             "passing_windows": gate_frame.filter(pl.col("poland_window_passed")).height,
             "source_model_count": gate_frame.select("source_model_name").n_unique(),
-            "gate_statuses": gate_frame.select(
-                "rolling_gate_status"
-            ).to_series().unique().sort().to_list(),
+            "gate_statuses": gate_frame.select("rolling_gate_status")
+            .to_series()
+            .unique()
+            .sort()
+            .to_list(),
             "market_execution_enabled": False,
             "scope": "poland_lag24_rolling_vs_frozen_v2_plus_gate_not_full_dfl",
             "not_market_execution": True,
@@ -8065,12 +8467,8 @@ def dfl_poland_lag24_experimental_vs_v2_plus_comparison_frame(
 ) -> pl.DataFrame:
     """Compare experimental Poland-lag24 schedule/value rows with frozen V2+."""
 
-    experimental_frame = (
-        dfl_poland_lag24_experimental_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
-    )
-    baseline_frame = (
-        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
-    )
+    experimental_frame = dfl_poland_lag24_experimental_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+    baseline_frame = dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
     comparison_rows = _summarize_poland_lag24_vs_v2_plus(
         experimental_frame,
         baseline_frame,
@@ -8283,9 +8681,7 @@ def dfl_tft_combined_v2_plus_strict_lp_benchmark_frame(
             "combined_mean_regret_uah": gate.metrics.get("combined_mean_regret_uah"),
             "baseline_mean_regret_uah": gate.metrics.get("baseline_mean_regret_uah"),
             "selected_tft_count": gate.metrics.get("selected_tft_count"),
-            "fallback_to_v2_plus_count": gate.metrics.get(
-                "fallback_to_v2_plus_count"
-            ),
+            "fallback_to_v2_plus_count": gate.metrics.get("fallback_to_v2_plus_count"),
             "market_execution_enabled": False,
             "scope": "dfl_tft_combined_v2_plus_gate_not_full_dfl",
             "not_market_execution": True,
@@ -8489,9 +8885,7 @@ def dfl_tft_calibrated_combined_v2_plus_strict_lp_benchmark_frame(
             "combined_mean_regret_uah": gate.metrics.get("combined_mean_regret_uah"),
             "baseline_mean_regret_uah": gate.metrics.get("baseline_mean_regret_uah"),
             "selected_tft_count": gate.metrics.get("selected_tft_count"),
-            "fallback_to_v2_plus_count": gate.metrics.get(
-                "fallback_to_v2_plus_count"
-            ),
+            "fallback_to_v2_plus_count": gate.metrics.get("fallback_to_v2_plus_count"),
             "market_execution_enabled": False,
             "scope": "dfl_tft_calibrated_combined_v2_plus_gate_not_full_dfl",
             "not_market_execution": True,
@@ -8724,9 +9118,7 @@ def dfl_nbeatsx_tft_meta_selector_strict_lp_benchmark_frame(
             "offline_strategy_replacement_passed": gate.passed,
             "v2_plus_mean_regret_uah": gate.metrics.get("v2_plus_mean_regret_uah"),
             "selected_mean_regret_uah": gate.metrics.get("selected_mean_regret_uah"),
-            "fallback_to_v2_plus_count": gate.metrics.get(
-                "fallback_to_v2_plus_count"
-            ),
+            "fallback_to_v2_plus_count": gate.metrics.get("fallback_to_v2_plus_count"),
             "combined_source_model_name": config.combined_source_model_name,
             "market_execution_enabled": False,
             "scope": "dfl_nbeatsx_tft_meta_selector_strict_lp_gate_not_full_dfl",
@@ -8757,25 +9149,27 @@ def dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame(
     """True rolling strict LP/oracle benchmark for the portfolio selector."""
 
     tft_source_model_names = _forecast_model_names(config.tft_source_model_names_csv)
-    strict_frame = build_dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame(
-        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
-        dfl_tft_calibrated_quantile_schedule_candidate_library_frame,
-        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
-        baseline_source_model_name=config.baseline_source_model_name,
-        tft_source_model_names=tft_source_model_names,
-        combined_source_model_name=config.combined_source_model_name,
-        validation_window_count=config.validation_window_count,
-        validation_anchor_count=config.validation_anchor_count,
-        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
-        min_prior_mean_improvement_ratio_vs_v2_plus=(
-            config.min_prior_mean_improvement_ratio_vs_v2_plus
-        ),
-        max_tft_candidates_per_anchor_source_family=(
-            config.max_tft_candidates_per_anchor_source_family
-        ),
-        generated_at=_latest_generated_at(
-            dfl_official_global_panel_schedule_candidate_library_v2_plus_frame
-        ),
+    strict_frame = (
+        build_dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame(
+            dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+            dfl_tft_calibrated_quantile_schedule_candidate_library_frame,
+            tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+            baseline_source_model_name=config.baseline_source_model_name,
+            tft_source_model_names=tft_source_model_names,
+            combined_source_model_name=config.combined_source_model_name,
+            validation_window_count=config.validation_window_count,
+            validation_anchor_count=config.validation_anchor_count,
+            min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+            min_prior_mean_improvement_ratio_vs_v2_plus=(
+                config.min_prior_mean_improvement_ratio_vs_v2_plus
+            ),
+            max_tft_candidates_per_anchor_source_family=(
+                config.max_tft_candidates_per_anchor_source_family
+            ),
+            generated_at=_latest_generated_at(
+                dfl_official_global_panel_schedule_candidate_library_v2_plus_frame
+            ),
+        )
     )
     get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
     gate = evaluate_dfl_nbeatsx_tft_meta_selector_gate(
@@ -8783,8 +9177,7 @@ def dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame(
         baseline_source_model_name=config.baseline_source_model_name,
         combined_source_model_name=config.combined_source_model_name,
         min_validation_tenant_anchor_count=(
-            config.min_validation_tenant_anchor_count
-            * config.validation_window_count
+            config.min_validation_tenant_anchor_count * config.validation_window_count
         ),
         min_mean_regret_improvement_ratio_vs_v2_plus=(
             config.min_mean_regret_improvement_ratio_vs_v2_plus
@@ -8803,9 +9196,7 @@ def dfl_nbeatsx_tft_meta_selector_rolling_strict_lp_benchmark_frame(
             "offline_strategy_replacement_passed": gate.passed,
             "v2_plus_mean_regret_uah": gate.metrics.get("v2_plus_mean_regret_uah"),
             "selected_mean_regret_uah": gate.metrics.get("selected_mean_regret_uah"),
-            "fallback_to_v2_plus_count": gate.metrics.get(
-                "fallback_to_v2_plus_count"
-            ),
+            "fallback_to_v2_plus_count": gate.metrics.get("fallback_to_v2_plus_count"),
             "validation_window_count": config.validation_window_count,
             "validation_anchor_count": config.validation_anchor_count,
             "min_prior_anchors_before_window": config.min_prior_anchors_before_window,
@@ -8853,9 +9244,7 @@ def dfl_nbeatsx_tft_meta_selector_prior_rolling_robustness_frame(
         context,
         {
             "rows": robustness_frame.height,
-            "rolling_pass_count": robustness_frame.filter(
-                pl.col("rolling_pass")
-            ).height
+            "rolling_pass_count": robustness_frame.filter(pl.col("rolling_pass")).height
             if robustness_frame.height
             else 0,
             "validation_window_count": config.validation_window_count,
@@ -8902,9 +9291,7 @@ def dfl_nbeatsx_tft_meta_selector_robustness_frame(
         context,
         {
             "rows": robustness_frame.height,
-            "rolling_pass_count": robustness_frame.filter(
-                pl.col("rolling_pass")
-            ).height
+            "rolling_pass_count": robustness_frame.filter(pl.col("rolling_pass")).height
             if robustness_frame.height
             else 0,
             "validation_window_count": config.validation_window_count,
@@ -10444,22 +10831,24 @@ def dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame(
     """Rolling robustness rows for the experimental Poland B variant."""
 
     source_model_names = _forecast_model_names(config.forecast_model_names_csv)
-    robustness_frame = build_dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame(
-        dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
-        official_forecast_exogenous_feature_route_frame,
-        entsoe_poland_lagged_feature_candidate_frame,
-        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
-        forecast_model_names=source_model_names,
-        validation_window_count=config.validation_window_count,
-        validation_anchor_count=config.validation_anchor_count,
-        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
-        min_robust_passing_windows=config.min_robust_passing_windows,
-        min_validation_tenant_anchor_count_per_source_model=(
-            config.min_validation_tenant_anchor_count_per_source_model
-        ),
-        min_prior_mean_improvement_ratio_vs_ukrainian_v2_plus=(
-            config.min_prior_mean_improvement_ratio_vs_ukrainian_v2_plus
-        ),
+    robustness_frame = (
+        build_dfl_market_coupled_schedule_value_learner_v2_plus_robustness_frame(
+            dfl_official_global_panel_schedule_candidate_library_v2_plus_frame,
+            official_forecast_exogenous_feature_route_frame,
+            entsoe_poland_lagged_feature_candidate_frame,
+            tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+            forecast_model_names=source_model_names,
+            validation_window_count=config.validation_window_count,
+            validation_anchor_count=config.validation_anchor_count,
+            min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+            min_robust_passing_windows=config.min_robust_passing_windows,
+            min_validation_tenant_anchor_count_per_source_model=(
+                config.min_validation_tenant_anchor_count_per_source_model
+            ),
+            min_prior_mean_improvement_ratio_vs_ukrainian_v2_plus=(
+                config.min_prior_mean_improvement_ratio_vs_ukrainian_v2_plus
+            ),
+        )
     )
     _add_metadata(
         context,
@@ -13683,6 +14072,13 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_sparse_safe_switch_abstention_model_v6_frame,
     dfl_sparse_safe_switch_strict_lp_benchmark_frame,
     dfl_sparse_safe_switch_rolling_robustness_frame,
+    dfl_v2_plus_opportunity_backfill_requirements_frame,
+    dfl_backfilled_context_feature_panel_v7_frame,
+    dfl_feasible_schedule_candidate_library_v7_frame,
+    dfl_candidate_value_teacher_label_panel_v7_frame,
+    dfl_candidate_value_regret_surrogate_v7_frame,
+    dfl_candidate_value_v7_strict_lp_benchmark_frame,
+    dfl_candidate_value_v7_rolling_robustness_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,
@@ -13926,9 +14322,7 @@ def _summarize_poland_lag24_vs_v2_plus(
             "comparison requires learner rows for both Poland-lag24 experimental "
             "and frozen Ukrainian-only V2+ frames."
         )
-    best_baseline_mean = min(
-        float(row["mean_regret_uah"]) for row in baseline_summary
-    )
+    best_baseline_mean = min(float(row["mean_regret_uah"]) for row in baseline_summary)
     best_baseline_name = min(
         baseline_summary,
         key=lambda row: float(row["mean_regret_uah"]),
@@ -13960,7 +14354,12 @@ def _learner_regret_summary_rows(
 ) -> list[dict[str, Any]]:
     if frame.is_empty():
         return []
-    required_columns = {"forecast_model_name", "regret_uah", "tenant_id", "anchor_timestamp"}
+    required_columns = {
+        "forecast_model_name",
+        "regret_uah",
+        "tenant_id",
+        "anchor_timestamp",
+    }
     missing_columns = sorted(required_columns.difference(frame.columns))
     if missing_columns:
         raise ValueError(f"learner regret frame is missing columns: {missing_columns}")

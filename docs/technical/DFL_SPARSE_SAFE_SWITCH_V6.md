@@ -129,3 +129,11 @@ final-holdout switch to learn without leakage. The next model branch should not
 be another selector over this same candidate set. It should either backfill
 more Ukrainian point-in-time context or generate genuinely new feasible
 candidate schedules with prior-supported wins.
+
+That follow-up is implemented as
+[DFL_OPPORTUNITY_BACKFILL_V7](DFL_OPPORTUNITY_BACKFILL_V7.md). V7 first
+classifies the V2+ miss classes into `backfill_needed`,
+`candidate_generation_needed`, `dt_ready`, or
+`stop_modeling_current_candidate_space`, then adds feasible schedule variants
+and a candidate-value gate. DT/LAVA remains a later branch and resumes only if
+V7 produces enough prior-supported teacher labels.

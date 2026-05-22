@@ -995,6 +995,29 @@ V2+ (`174.77` / `67.30` UAH). Rolling robustness лишився негативн
 `1.34%`-`2.37%`. Це пояснює, чому `8 / 90` "кращих" opportunities не можна
 просто використати: без prior support це було б leakage з final holdout.
 
+Sparse Safe-Switch V6 закрив ще одну гіпотезу: можливо, exact context profile
+занадто суворий і треба використовувати distance до nearby prior anchors. Після
+feature-contract audit V6 показав, що selector inputs не містять final regret,
+oracle gap або post-anchor actuals. Але після виключення train-only oracle
+diagnostics і збереження `strict_similar_day` як control/reference, latest
+holdout мав `0 / 90` selector-safe non-reference material opportunities. V6
+тому вибрав `0 / 90` non-V2+ rows, повторив V2+ (`174.77` UAH mean, `67.30`
+UAH median) і мав `0 / 4` rolling promotion windows. Це сильний негативний
+результат: поточний candidate universe не дає безпечної final-holdout
+можливості для ще одного selector.
+
+Тому наступний результатний зріз зафіксований як Opportunity Backfill +
+Candidate-Value V7. Він не запускає DT, а створює перевірку перед DT:
+`dfl_v2_plus_opportunity_backfill_requirements_frame` класифікує miss cases як
+`backfill_needed`, `candidate_generation_needed`, `dt_ready` або
+`stop_modeling_current_candidate_space`. V7 також додає feasible schedule
+families навколо реальних failure modes: V2+ neighborhood shifts,
+strict-guarded rescue, terminal-SOC reserve, spread-volatility robust,
+morning/evening block і throughput/degradation sweeps. Якщо V7 не створить
+щонайменше `20` prior/train material safe-switch examples і не пройде той самий
+V2+ gate, thesis conclusion лишається: V2+ є headline evidence, а наступна
+реальна робота - data/context acquisition, не ще один DT variant.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -1033,6 +1056,10 @@ rows:
   `docs/technical/DFL_REGRET_SURROGATE_V1.md` - негативний UA-context
   candidate-index DT/LAVA результат і наступний regret-surrogate learning-limit
   gate перед будь-яким новим DT/LAVA promotion attempt;
+- `docs/technical/DFL_SPARSE_SAFE_SWITCH_V6.md` і
+  `docs/technical/DFL_OPPORTUNITY_BACKFILL_V7.md` - V6 negative evidence
+  (`0 / 90` selected, `0 / 4` rolling) і V7 opportunity-backfill gate для
+  перевірки, чи є enough prior-supported teacher labels before DT/LAVA;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,

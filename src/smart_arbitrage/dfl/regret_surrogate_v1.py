@@ -75,13 +75,32 @@ REGRET_SURROGATE_SPARSE_STRICT_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_SPARSE_ROBUSTNESS_CLAIM_SCOPE: Final[str] = (
     "dfl_sparse_safe_switch_rolling_robustness_not_full_dfl"
 )
+REGRET_SURROGATE_BACKFILL_REQUIREMENTS_CLAIM_SCOPE: Final[str] = (
+    "dfl_v2_plus_opportunity_backfill_requirements_not_full_dfl"
+)
+REGRET_SURROGATE_BACKFILLED_CONTEXT_V7_CLAIM_SCOPE: Final[str] = (
+    "dfl_backfilled_context_feature_panel_v7_not_full_dfl"
+)
+REGRET_SURROGATE_FEASIBLE_CANDIDATE_LIBRARY_V7_CLAIM_SCOPE: Final[str] = (
+    "dfl_feasible_schedule_candidate_library_v7_not_full_dfl"
+)
+REGRET_SURROGATE_TEACHER_V7_CLAIM_SCOPE: Final[str] = (
+    "dfl_candidate_value_teacher_v7_not_full_dfl"
+)
+REGRET_SURROGATE_MODEL_V7_CLAIM_SCOPE: Final[str] = (
+    "dfl_candidate_value_regret_surrogate_v7_not_full_dfl"
+)
+REGRET_SURROGATE_STRICT_V7_CLAIM_SCOPE: Final[str] = (
+    "dfl_candidate_value_v7_strict_lp_gate_not_full_dfl"
+)
+REGRET_SURROGATE_ROBUSTNESS_V7_CLAIM_SCOPE: Final[str] = (
+    "dfl_candidate_value_v7_rolling_robustness_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
 )
-REGRET_SURROGATE_MODEL_NAME: Final[str] = (
-    "dfl_regret_surrogate_candidate_value_v1"
-)
+REGRET_SURROGATE_MODEL_NAME: Final[str] = "dfl_regret_surrogate_candidate_value_v1"
 REGRET_SURROGATE_CONTEXTUAL_MODEL_NAME: Final[str] = (
     "dfl_regret_surrogate_contextual_candidate_value_v2"
 )
@@ -101,6 +120,15 @@ REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE: Final[str] = (
 REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_sparse_safe_switch_strict_lp_benchmark"
 )
+REGRET_SURROGATE_CANDIDATE_VALUE_V7_MODEL_NAME: Final[str] = (
+    "dfl_candidate_value_regret_surrogate_v7"
+)
+REGRET_SURROGATE_CANDIDATE_VALUE_V7_SELECTION_ROLE: Final[str] = (
+    "candidate_value_regret_surrogate_v7"
+)
+REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND: Final[str] = (
+    "dfl_candidate_value_v7_strict_lp_benchmark"
+)
 V2_PLUS_REFERENCE_ROLE: Final[str] = "schedule_value_learner_v2_plus_reference"
 STRICT_REFERENCE_ROLE: Final[str] = "strict_reference"
 
@@ -115,6 +143,11 @@ _DEFAULT_ALLOWED_CANDIDATE_SOURCES: Final[tuple[str, ...]] = (
     "tft_shadow_candidate",
     "ua_context_candidate",
     "lava_candidate",
+)
+_V7_GENERATED_CANDIDATE_SOURCE: Final[str] = "v7_generated_candidate"
+_V7_ALLOWED_CANDIDATE_SOURCES: Final[tuple[str, ...]] = (
+    _V7_GENERATED_CANDIDATE_SOURCE,
+    *_DEFAULT_ALLOWED_CANDIDATE_SOURCES,
 )
 
 _REQUIRED_CANDIDATE_COLUMNS: Final[frozenset[str]] = frozenset(
@@ -188,7 +221,9 @@ def build_dfl_v2_plus_learning_limit_audit_frame(
 
     _validate_candidate_panel(candidate_feature_panel_frame)
     if min_oracle_improvement_ratio_vs_v2_plus < 0.0:
-        raise ValueError("min_oracle_improvement_ratio_vs_v2_plus must not be negative.")
+        raise ValueError(
+            "min_oracle_improvement_ratio_vs_v2_plus must not be negative."
+        )
     if tail_risk_delta_uah <= 0.0:
         raise ValueError("tail_risk_delta_uah must be positive.")
 
@@ -238,10 +273,16 @@ def build_dfl_v2_plus_learning_limit_audit_frame(
                 "oracle_switch_delta_vs_v2_plus_uah": best_regret - baseline_regret,
                 "better_candidate_available": better_exists,
                 "better_candidate_source_count": len(
-                    [row for row in candidates if float(row["regret_uah"]) < baseline_regret]
+                    [
+                        row
+                        for row in candidates
+                        if float(row["regret_uah"]) < baseline_regret
+                    ]
                 ),
                 "learning_limit_failure_mode": failure_mode,
-                "profile_prior_safe_win_count": int(best_stats.get("safe_win_count", 0)),
+                "profile_prior_safe_win_count": int(
+                    best_stats.get("safe_win_count", 0)
+                ),
                 "profile_prior_tail_loss_count": int(
                     best_stats.get("tail_loss_count", 0)
                 ),
@@ -266,9 +307,7 @@ def build_dfl_v2_plus_learning_limit_audit_frame(
                 ),
                 "candidate_universe_can_beat_v2_plus_gate": can_beat,
                 "recommended_next_branch": (
-                    "regret_surrogate_dfl"
-                    if can_beat
-                    else "data_or_candidate_backfill"
+                    "regret_surrogate_dfl" if can_beat else "data_or_candidate_backfill"
                 ),
                 "claim_scope": LEARNING_LIMIT_AUDIT_CLAIM_SCOPE,
                 "not_full_dfl": True,
@@ -295,7 +334,8 @@ def build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         frame_name="learning_limit_audit_frame",
     )
     audit_by_anchor = {
-        _anchor_key(row): row for row in learning_limit_audit_frame.iter_rows(named=True)
+        _anchor_key(row): row
+        for row in learning_limit_audit_frame.iter_rows(named=True)
     }
     feature_names = _selector_feature_columns(candidate_feature_panel_frame)
     if not feature_names:
@@ -426,7 +466,9 @@ def build_dfl_regret_surrogate_candidate_value_v1_frame(
     for scorer_row in regret_surrogate_forecast_correction_v1_frame.iter_rows(
         named=True
     ):
-        selected_keys = [str(value) for value in scorer_row["selected_final_candidate_keys"]]
+        selected_keys = [
+            str(value) for value in scorer_row["selected_final_candidate_keys"]
+        ]
         selected = [candidate_by_key[key] for key in selected_keys]
         rows.append(
             {
@@ -761,9 +803,7 @@ def build_dfl_regret_surrogate_safe_switch_context_audit_frame(
                 "prior_context_support_count": int(stats.get("row_count", 0)),
                 "prior_context_safe_win_count": int(stats.get("safe_win_count", 0)),
                 "prior_context_tail_loss_count": int(stats.get("tail_loss_count", 0)),
-                "prior_context_mean_delta_uah": float(
-                    stats.get("mean_delta_uah", 0.0)
-                ),
+                "prior_context_mean_delta_uah": float(stats.get("mean_delta_uah", 0.0)),
                 "prior_context_tail_risk_probability": float(
                     stats.get("tail_risk_probability", 0.0)
                 ),
@@ -929,9 +969,7 @@ def build_dfl_regret_surrogate_contextual_candidate_value_v2_frame(
         source_model_names=source_model_names,
         min_context_prior_support_count=min_context_prior_support_count,
         min_context_prior_safe_win_count=min_context_prior_safe_win_count,
-        min_context_prior_mean_improvement_uah=(
-            min_context_prior_mean_improvement_uah
-        ),
+        min_context_prior_mean_improvement_uah=(min_context_prior_mean_improvement_uah),
         min_predicted_improvement_uah=min_predicted_improvement_uah,
         max_context_tail_risk_probability=max_context_tail_risk_probability,
         allowed_candidate_sources=allowed_candidate_sources,
@@ -993,7 +1031,9 @@ def build_dfl_regret_surrogate_contextual_strict_lp_benchmark_frame(
     resolved_generated_at = generated_at or _latest_generated_at(
         regret_surrogate_teacher_label_panel_v2_frame
     )
-    panel_rows = list(regret_surrogate_teacher_label_panel_v2_frame.iter_rows(named=True))
+    panel_rows = list(
+        regret_surrogate_teacher_label_panel_v2_frame.iter_rows(named=True)
+    )
     candidate_by_key = {_candidate_key(row): row for row in panel_rows}
     v2_by_anchor: dict[str, dict[str, Any]] = {}
     output_rows: list[dict[str, Any]] = []
@@ -1317,7 +1357,9 @@ def build_dfl_sparse_safe_switch_opportunity_audit_frame(
             if float(row["label_regret_delta_vs_v2_plus_uah"])
             <= -material_switch_delta_uah
         ]
-        tail_candidates = [row for row in challengers if bool(row["label_tail_risk_loss"])]
+        tail_candidates = [
+            row for row in challengers if bool(row["label_tail_risk_loss"])
+        ]
         best = (
             min(
                 material_candidates,
@@ -1334,7 +1376,9 @@ def build_dfl_sparse_safe_switch_opportunity_audit_frame(
         neighbor_stats = (
             _nearest_prior_neighbor_stats_from_candidates(
                 best,
-                prior_rows=prior_rows_by_group.get(_sparse_neighbor_group_key(best), []),
+                prior_rows=prior_rows_by_group.get(
+                    _sparse_neighbor_group_key(best), []
+                ),
                 feature_names=feature_names,
                 nearest_neighbor_count=nearest_neighbor_count,
             )
@@ -1433,7 +1477,9 @@ def build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
     if sparse_safe_switch_opportunity_audit_frame.select(
         pl.col("market_execution_enabled").any()
     ).item():
-        raise ValueError("sparse safe-switch opportunity audit refuses market execution.")
+        raise ValueError(
+            "sparse safe-switch opportunity audit refuses market execution."
+        )
     if material_switch_delta_uah <= 0.0:
         raise ValueError("material_switch_delta_uah must be positive.")
     if max_prior_neighbor_distance < 0.0:
@@ -1459,14 +1505,14 @@ def build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
     for row in rows:
         audit = audit_by_anchor.get(_anchor_key(row))
         if audit is None:
-            raise ValueError(f"missing sparse opportunity audit row for {_anchor_key(row)}.")
+            raise ValueError(
+                f"missing sparse opportunity audit row for {_anchor_key(row)}."
+            )
         source = str(row["candidate_source"])
         neighbor_stats = (
             _nearest_prior_neighbor_stats_from_candidates(
                 row,
-                prior_rows=prior_rows_by_group.get(
-                    _sparse_neighbor_group_key(row), []
-                ),
+                prior_rows=prior_rows_by_group.get(_sparse_neighbor_group_key(row), []),
                 feature_names=feature_names,
                 nearest_neighbor_count=nearest_neighbor_count,
             )
@@ -1477,7 +1523,8 @@ def build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
         )
         delta = float(row["label_regret_delta_vs_v2_plus_uah"])
         material_safe = (
-            source not in _REFERENCE_CANDIDATE_SOURCES and delta <= -material_switch_delta_uah
+            source not in _REFERENCE_CANDIDATE_SOURCES
+            and delta <= -material_switch_delta_uah
         )
         copied = dict(row)
         feature_list = list(copied.get("selected_feature_names", []))
@@ -1609,7 +1656,9 @@ def build_dfl_sparse_safe_switch_strict_lp_benchmark_frame(
     resolved_generated_at = generated_at or _latest_generated_at(
         sparse_safe_switch_teacher_label_panel_v6_frame
     )
-    panel_rows = list(sparse_safe_switch_teacher_label_panel_v6_frame.iter_rows(named=True))
+    panel_rows = list(
+        sparse_safe_switch_teacher_label_panel_v6_frame.iter_rows(named=True)
+    )
     candidate_by_key = {_candidate_key(row): row for row in panel_rows}
     v2_by_anchor: dict[str, dict[str, Any]] = {}
     output_rows: list[dict[str, Any]] = []
@@ -1740,9 +1789,7 @@ def build_dfl_sparse_safe_switch_rolling_robustness_frame(
                 material_switch_delta_uah=material_switch_delta_uah,
                 max_prior_neighbor_distance=max_prior_neighbor_distance,
                 min_neighbor_safe_win_count=min_neighbor_safe_win_count,
-                max_neighbor_tail_risk_probability=(
-                    max_neighbor_tail_risk_probability
-                ),
+                max_neighbor_tail_risk_probability=(max_neighbor_tail_risk_probability),
             )
             teacher_v6 = build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame(
                 library,
@@ -1757,9 +1804,7 @@ def build_dfl_sparse_safe_switch_rolling_robustness_frame(
                 max_prior_neighbor_distance=max_prior_neighbor_distance,
                 min_neighbor_safe_win_count=min_neighbor_safe_win_count,
                 min_predicted_improvement_uah=min_predicted_improvement_uah,
-                max_neighbor_tail_risk_probability=(
-                    max_neighbor_tail_risk_probability
-                ),
+                max_neighbor_tail_risk_probability=(max_neighbor_tail_risk_probability),
                 allowed_candidate_sources=allowed_candidate_sources,
             )
             source_window_rows.append(
@@ -1785,6 +1830,784 @@ def build_dfl_sparse_safe_switch_rolling_robustness_frame(
             row["passing_window_count_for_source"] = pass_count
             row["diagnostic_window_count_for_source"] = diagnostic_count
             row["robust_sparse_safe_switch_challenger"] = (
+                pass_count >= validation_window_count
+            )
+            row["diagnostic_signal_learnable"] = diagnostic_count >= min(
+                validation_window_count,
+                3,
+            )
+            row["production_promote"] = False
+        output_rows.extend(source_window_rows)
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "window_index"]
+    )
+
+
+def build_dfl_v2_plus_opportunity_backfill_requirements_frame(
+    sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    sparse_safe_switch_opportunity_audit_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    min_prior_material_examples_for_dt: int = 20,
+    min_oracle_improvement_ratio_vs_v2_plus: float = (
+        DEFAULT_MIN_MEAN_REGRET_IMPROVEMENT_RATIO
+    ),
+    high_forecast_spread_uah_mwh: float = 2_000.0,
+    min_material_schedule_distance: float = 0.05,
+) -> pl.DataFrame:
+    """Decide whether V2+ misses need data backfill, candidates, or DT/LAVA."""
+
+    _validate_sparse_candidate_library(sparse_safe_switch_candidate_library_v6_frame)
+    _require_columns(
+        sparse_safe_switch_opportunity_audit_frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "sparse_opportunity_class",
+                "material_candidate_available",
+                "tail_risk_candidate_count",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="sparse_safe_switch_opportunity_audit_frame",
+    )
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if min_prior_material_examples_for_dt < 0:
+        raise ValueError("min_prior_material_examples_for_dt must not be negative.")
+    if min_oracle_improvement_ratio_vs_v2_plus < 0.0:
+        raise ValueError(
+            "min_oracle_improvement_ratio_vs_v2_plus must not be negative."
+        )
+    if high_forecast_spread_uah_mwh <= 0.0:
+        raise ValueError("high_forecast_spread_uah_mwh must be positive.")
+    if min_material_schedule_distance < 0.0:
+        raise ValueError("min_material_schedule_distance must not be negative.")
+    if sparse_safe_switch_opportunity_audit_frame.select(
+        pl.col("market_execution_enabled").any()
+    ).item():
+        raise ValueError("opportunity backfill refuses market-execution evidence.")
+
+    rows = list(sparse_safe_switch_candidate_library_v6_frame.iter_rows(named=True))
+    grouped = _group_by_anchor(rows)
+    audit_by_anchor = {
+        _anchor_key(row): row
+        for row in sparse_safe_switch_opportunity_audit_frame.iter_rows(named=True)
+    }
+    v2_regrets: list[float] = []
+    selector_safe_oracle_regrets: list[float] = []
+    prior_material_example_count = 0
+    for anchor_rows in grouped.values():
+        baseline = _baseline_row(anchor_rows, anchor_key=_anchor_key(anchor_rows[0]))
+        challengers = _sparse_eligible_challengers(anchor_rows)
+        material_challengers = [
+            row
+            for row in challengers
+            if float(row["label_regret_delta_vs_v2_plus_uah"])
+            <= -material_switch_delta_uah
+        ]
+        if str(baseline["split_name"]) != "final_holdout":
+            prior_material_example_count += len(material_challengers)
+        best = min(
+            [baseline, *material_challengers],
+            key=lambda row: (
+                float(row["regret_uah"]),
+                str(row["candidate_source"]),
+                str(row["candidate_family"]),
+                str(row["candidate_model_name"]),
+            ),
+        )
+        v2_regrets.append(float(baseline["regret_uah"]))
+        selector_safe_oracle_regrets.append(float(best["regret_uah"]))
+    oracle_improvement = _improvement_ratio(
+        mean(v2_regrets),
+        mean(selector_safe_oracle_regrets),
+    )
+
+    output_rows: list[dict[str, Any]] = []
+    for anchor_key, anchor_rows in sorted(grouped.items()):
+        baseline = _baseline_row(anchor_rows, anchor_key=anchor_key)
+        audit = audit_by_anchor.get(anchor_key)
+        if audit is None:
+            raise ValueError(f"missing sparse opportunity audit row for {anchor_key}.")
+        strict_rows = [
+            row
+            for row in anchor_rows
+            if str(row["candidate_source"]) == _STRICT_CANDIDATE_SOURCE
+        ]
+        strict_best = min(strict_rows, key=lambda row: float(row["regret_uah"]))
+        strict_delta = float(strict_best["regret_uah"]) - float(baseline["regret_uah"])
+        strict_material_win = strict_delta <= -material_switch_delta_uah
+        challengers = _sparse_eligible_challengers(anchor_rows)
+        material_candidate_count = sum(
+            1
+            for row in challengers
+            if float(row["label_regret_delta_vs_v2_plus_uah"])
+            <= -material_switch_delta_uah
+        )
+        weather_ready = _numeric_feature(
+            baseline,
+            "selector_feature_weather_load_context_ready",
+        )
+        calendar_ready = _numeric_feature(
+            baseline,
+            "selector_feature_calendar_publication_context_ready",
+        )
+        grid_ready = _numeric_feature(
+            baseline,
+            "selector_feature_grid_event_context_ready",
+        )
+        terminal_soc_pressure = (
+            abs(
+                _numeric_feature(
+                    baseline, "selector_feature_terminal_soc_delta_fraction"
+                )
+            )
+            >= min_material_schedule_distance
+        )
+        spread_regime_high = (
+            _numeric_feature(baseline, "selector_feature_forecast_spread_uah_mwh")
+            >= high_forecast_spread_uah_mwh
+        )
+        peak_trough_timing_pressure = any(
+            _numeric_feature(row, "selector_feature_schedule_distance_from_v2_plus")
+            >= min_material_schedule_distance
+            for row in challengers
+        )
+        context_missing = any(
+            value < 1.0 for value in (weather_ready, calendar_ready, grid_ready)
+        )
+        sparse_class = str(audit["sparse_opportunity_class"])
+        tail_risk_dominated = (
+            sparse_class == "tail_risk_dominated"
+            or int(audit["tail_risk_candidate_count"]) > 0
+        )
+        candidate_family_gap = material_candidate_count == 0 and strict_material_win
+        decision = _v7_backfill_decision(
+            sparse_opportunity_class=sparse_class,
+            context_missing=context_missing,
+            candidate_family_gap=candidate_family_gap,
+            strict_material_win=strict_material_win,
+            prior_material_example_count=prior_material_example_count,
+            selector_safe_oracle_improvement_ratio=oracle_improvement,
+            min_prior_material_examples_for_dt=min_prior_material_examples_for_dt,
+            min_oracle_improvement_ratio_vs_v2_plus=(
+                min_oracle_improvement_ratio_vs_v2_plus
+            ),
+        )
+        output_rows.append(
+            {
+                "tenant_id": anchor_key[0],
+                "source_model_name": anchor_key[1],
+                "anchor_timestamp": anchor_key[2],
+                "split_name": str(baseline["split_name"]),
+                "v2_plus_regret_uah": float(baseline["regret_uah"]),
+                "strict_control_best_regret_uah": float(strict_best["regret_uah"]),
+                "strict_control_delta_vs_v2_plus_uah": strict_delta,
+                "material_switch_delta_uah": material_switch_delta_uah,
+                "material_non_reference_candidate_count": material_candidate_count,
+                "diagnostic_strict_control_material_local_win": strict_material_win,
+                "diagnostic_selector_safe_oracle_improvement_ratio_vs_v2_plus": (
+                    oracle_improvement
+                ),
+                "diagnostic_prior_material_safe_switch_examples": (
+                    prior_material_example_count
+                ),
+                "missing_weather_load_context": weather_ready < 1.0,
+                "missing_calendar_event_context": calendar_ready < 1.0,
+                "missing_grid_event_context": grid_ready < 1.0,
+                "missing_prior_context": context_missing,
+                "candidate_family_gap": candidate_family_gap,
+                "terminal_soc_pressure": terminal_soc_pressure,
+                "spread_regime_high": spread_regime_high,
+                "peak_trough_timing_pressure": peak_trough_timing_pressure,
+                "tail_risk_dominance": tail_risk_dominated,
+                "sparse_opportunity_class": sparse_class,
+                "opportunity_backfill_decision": decision,
+                "claim_scope": REGRET_SURROGATE_BACKFILL_REQUIREMENTS_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp"]
+    )
+
+
+def build_dfl_backfilled_context_feature_panel_v7_frame(
+    sparse_safe_switch_candidate_library_v6_frame: pl.DataFrame,
+    v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach prior-only context missingness features for V7 candidate value learning."""
+
+    _validate_sparse_candidate_library(sparse_safe_switch_candidate_library_v6_frame)
+    _validate_v7_backfill_requirements_frame(
+        v2_plus_opportunity_backfill_requirements_frame
+    )
+    requirements_by_anchor = {
+        _anchor_key(row): row
+        for row in v2_plus_opportunity_backfill_requirements_frame.iter_rows(named=True)
+    }
+    output_rows: list[dict[str, Any]] = []
+    for row in sparse_safe_switch_candidate_library_v6_frame.iter_rows(named=True):
+        requirement = requirements_by_anchor.get(_anchor_key(row))
+        if requirement is None:
+            raise ValueError(
+                f"missing V7 backfill requirement row for {_anchor_key(row)}."
+            )
+        weather_ready = _numeric_feature(
+            row,
+            "selector_feature_weather_load_context_ready",
+        )
+        calendar_ready = _numeric_feature(
+            row,
+            "selector_feature_calendar_publication_context_ready",
+        )
+        grid_ready = _numeric_feature(row, "selector_feature_grid_event_context_ready")
+        context_missing_count = sum(
+            1 for value in (weather_ready, calendar_ready, grid_ready) if value < 1.0
+        )
+        feature_list = list(row.get("selected_feature_names", []))
+        for feature_name in (
+            "selector_feature_v7_context_missing_count",
+            "selector_feature_v7_context_ready",
+            "selector_feature_v7_schedule_distance",
+            "selector_feature_v7_terminal_soc_pressure",
+            "selector_feature_v7_spread_regime_high",
+        ):
+            if feature_name not in feature_list:
+                feature_list.append(feature_name)
+        copied = dict(row)
+        copied.update(
+            {
+                "context_feature_panel_version": "backfilled_context_v7",
+                "selected_feature_names": sorted(feature_list),
+                "selector_feature_v7_context_missing_count": float(
+                    context_missing_count
+                ),
+                "selector_feature_v7_context_ready": float(context_missing_count == 0),
+                "selector_feature_v7_schedule_distance": _numeric_feature(
+                    row,
+                    "selector_feature_schedule_distance_from_v2_plus",
+                ),
+                "selector_feature_v7_terminal_soc_pressure": float(
+                    bool(requirement["terminal_soc_pressure"])
+                ),
+                "selector_feature_v7_spread_regime_high": float(
+                    bool(requirement["spread_regime_high"])
+                ),
+                "diagnostic_opportunity_backfill_decision": str(
+                    requirement["opportunity_backfill_decision"]
+                ),
+                "diagnostic_candidate_family_gap": bool(
+                    requirement["candidate_family_gap"]
+                ),
+                "diagnostic_strict_control_material_local_win": bool(
+                    requirement["diagnostic_strict_control_material_local_win"]
+                ),
+                "claim_scope": REGRET_SURROGATE_BACKFILLED_CONTEXT_V7_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_sparse_candidate_library(frame)
+    return frame
+
+
+def build_dfl_feasible_schedule_candidate_library_v7_frame(
+    backfilled_context_feature_panel_v7_frame: pl.DataFrame,
+    v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Create V7 feasible candidates around V2+ misses without using final labels."""
+
+    _validate_sparse_candidate_library(backfilled_context_feature_panel_v7_frame)
+    _validate_v7_backfill_requirements_frame(
+        v2_plus_opportunity_backfill_requirements_frame
+    )
+    requirements_by_anchor = {
+        _anchor_key(row): row
+        for row in v2_plus_opportunity_backfill_requirements_frame.iter_rows(named=True)
+    }
+    output_rows: list[dict[str, Any]] = []
+    grouped = _group_by_anchor(
+        list(backfilled_context_feature_panel_v7_frame.iter_rows(named=True))
+    )
+    for anchor_key, anchor_rows in sorted(grouped.items()):
+        requirement = requirements_by_anchor.get(anchor_key)
+        if requirement is None:
+            raise ValueError(f"missing V7 backfill requirement row for {anchor_key}.")
+        for row in anchor_rows:
+            copied = dict(row)
+            copied["eligible_for_final_selection_v7"] = bool(
+                copied.get("eligible_for_final_selection_v6", True)
+            )
+            copied["claim_scope"] = (
+                REGRET_SURROGATE_FEASIBLE_CANDIDATE_LIBRARY_V7_CLAIM_SCOPE
+            )
+            output_rows.append(copied)
+        v2_row = _baseline_row(anchor_rows, anchor_key=anchor_key)
+        strict_row = min(
+            [
+                row
+                for row in anchor_rows
+                if str(row["candidate_source"]) == _STRICT_CANDIDATE_SOURCE
+            ],
+            key=lambda row: float(row["regret_uah"]),
+        )
+        generated_specs = _v7_generated_candidate_specs(
+            v2_row=v2_row,
+            strict_row=strict_row,
+            requirement=requirement,
+        )
+        output_rows.extend(generated_specs)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v7_candidate_library(frame)
+    return frame
+
+
+def build_dfl_candidate_value_teacher_label_panel_v7_frame(
+    feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
+    v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    nearest_neighbor_count: int = 5,
+) -> pl.DataFrame:
+    """Attach V7 teacher labels and nearest-prior support features."""
+
+    _validate_v7_candidate_library(feasible_schedule_candidate_library_v7_frame)
+    _validate_v7_backfill_requirements_frame(
+        v2_plus_opportunity_backfill_requirements_frame
+    )
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if max_prior_neighbor_distance < 0.0:
+        raise ValueError("max_prior_neighbor_distance must not be negative.")
+    if nearest_neighbor_count < 1:
+        raise ValueError("nearest_neighbor_count must be at least 1.")
+    rows = list(feasible_schedule_candidate_library_v7_frame.iter_rows(named=True))
+    prior_rows = _sparse_prior_candidate_rows(rows)
+    prior_rows_by_group: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for prior in prior_rows:
+        prior_rows_by_group.setdefault(_sparse_neighbor_group_key(prior), []).append(
+            prior
+        )
+    feature_names = _sparse_distance_feature_names(
+        feasible_schedule_candidate_library_v7_frame
+    )
+    requirements_by_anchor = {
+        _anchor_key(row): row
+        for row in v2_plus_opportunity_backfill_requirements_frame.iter_rows(named=True)
+    }
+    output_rows: list[dict[str, Any]] = []
+    for row in rows:
+        requirement = requirements_by_anchor.get(_anchor_key(row))
+        if requirement is None:
+            raise ValueError(
+                f"missing V7 backfill requirement row for {_anchor_key(row)}."
+            )
+        source = str(row["candidate_source"])
+        eligible = bool(row.get("eligible_for_final_selection_v7", True))
+        neighbor_stats = (
+            _nearest_prior_neighbor_stats_from_candidates(
+                row,
+                prior_rows=prior_rows_by_group.get(_sparse_neighbor_group_key(row), []),
+                feature_names=feature_names,
+                nearest_neighbor_count=nearest_neighbor_count,
+            )
+            if str(row["split_name"]) == "final_holdout"
+            and source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            else _empty_neighbor_stats()
+        )
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        material_safe = (
+            source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            and delta <= -material_switch_delta_uah
+        )
+        feature_list = list(row.get("selected_feature_names", []))
+        for feature_name in (
+            "selector_feature_nearest_prior_safe_switch_distance",
+            "selector_feature_neighbor_safe_win_count",
+            "selector_feature_neighbor_tail_risk_probability",
+            "selector_feature_neighbor_mean_delta_uah",
+        ):
+            if feature_name not in feature_list:
+                feature_list.append(feature_name)
+        copied = dict(row)
+        copied.update(
+            {
+                "teacher_panel_version": "candidate_value_teacher_v7",
+                "selected_feature_names": sorted(feature_list),
+                "selector_feature_nearest_prior_safe_switch_distance": float(
+                    neighbor_stats["nearest_safe_distance"]
+                ),
+                "selector_feature_nearest_prior_any_candidate_distance": float(
+                    neighbor_stats["nearest_any_distance"]
+                ),
+                "selector_feature_neighbor_support_count": float(
+                    neighbor_stats["neighbor_count"]
+                ),
+                "selector_feature_neighbor_safe_win_count": float(
+                    neighbor_stats["safe_win_count"]
+                ),
+                "selector_feature_neighbor_tail_risk_probability": float(
+                    neighbor_stats["tail_risk_probability"]
+                ),
+                "selector_feature_neighbor_mean_delta_uah": float(
+                    neighbor_stats["mean_delta_uah"]
+                ),
+                "selector_feature_has_prior_neighbor_support": float(
+                    float(neighbor_stats["nearest_safe_distance"])
+                    <= max_prior_neighbor_distance
+                ),
+                "label_sparse_material_safe_switch": material_safe,
+                "label_sparse_opportunity_class": str(
+                    requirement["opportunity_backfill_decision"]
+                ),
+                "label_v7_material_safe_switch": material_safe,
+                "label_v7_tail_risk_loss": bool(row["label_tail_risk_loss"]),
+                "label_v7_opportunity_backfill_decision": str(
+                    requirement["opportunity_backfill_decision"]
+                ),
+                "diagnostic_v7_candidate_family_gap": bool(
+                    requirement["candidate_family_gap"]
+                ),
+                "diagnostic_v7_strict_control_material_local_win": bool(
+                    requirement["diagnostic_strict_control_material_local_win"]
+                ),
+                "claim_scope": REGRET_SURROGATE_TEACHER_V7_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_sparse_teacher_panel(frame)
+    _validate_v7_teacher_panel(frame)
+    return frame
+
+
+def build_dfl_candidate_value_regret_surrogate_v7_frame(
+    candidate_value_teacher_label_panel_v7_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    max_prior_neighbor_distance: float = 1.5,
+    min_neighbor_safe_win_count: int = 1,
+    min_predicted_improvement_uah: float = 1.0,
+    max_neighbor_tail_risk_probability: float = 0.25,
+    allowed_candidate_sources: tuple[str, ...] = _V7_ALLOWED_CANDIDATE_SOURCES,
+    min_prior_material_safe_switch_examples_for_dt: int = 20,
+) -> pl.DataFrame:
+    """Train a conservative V7 candidate-value selector with V2+ fallback."""
+
+    _validate_v7_teacher_panel(candidate_value_teacher_label_panel_v7_frame)
+    _validate_sparse_selector_config(
+        tenant_ids=tenant_ids,
+        source_model_names=source_model_names,
+        max_prior_neighbor_distance=max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=max_neighbor_tail_risk_probability,
+        allowed_candidate_sources=allowed_candidate_sources,
+    )
+    if min_prior_material_safe_switch_examples_for_dt < 0:
+        raise ValueError(
+            "min_prior_material_safe_switch_examples_for_dt must not be negative."
+        )
+    rows = list(candidate_value_teacher_label_panel_v7_frame.iter_rows(named=True))
+    output_rows: list[dict[str, Any]] = []
+    for tenant_id in tenant_ids:
+        for source_model_name in source_model_names:
+            scope_rows = [
+                row
+                for row in rows
+                if str(row["tenant_id"]) == tenant_id
+                and str(row["source_model_name"]) == source_model_name
+            ]
+            prior_material_count = sum(
+                1
+                for row in scope_rows
+                if bool(row.get("is_training_row", False))
+                and bool(row.get("label_v7_material_safe_switch", False))
+            )
+            fitted = _fit_scope_sparse_safe_switch(
+                scope_rows,
+                tenant_id=tenant_id,
+                source_model_name=source_model_name,
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+                min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+                min_predicted_improvement_uah=min_predicted_improvement_uah,
+                max_neighbor_tail_risk_probability=(max_neighbor_tail_risk_probability),
+                allowed_candidate_sources=set(allowed_candidate_sources),
+            )
+            if prior_material_count < min_prior_material_safe_switch_examples_for_dt:
+                fallback_keys = _final_anchor_keys(scope_rows)
+                fitted.update(
+                    {
+                        "selected_final_candidate_keys": [],
+                        "fallback_final_anchor_keys": fallback_keys,
+                        "selected_final_candidate_count": 0,
+                        "fallback_final_anchor_count": len(fallback_keys),
+                        "selected_final_family_counts": {},
+                        "selected_final_candidate_source_counts": {},
+                        "fallback_to_v2_plus": True,
+                        "uses_v2_plus_anchor_fallback": bool(fallback_keys),
+                        "abstention_reason": "insufficient_prior_material_examples",
+                    }
+                )
+            fitted.update(
+                {
+                    "learner_model_name": REGRET_SURROGATE_CANDIDATE_VALUE_V7_MODEL_NAME,
+                    "selection_policy": ("nearest_prior_candidate_value_backfill_v7"),
+                    "claim_scope": REGRET_SURROGATE_MODEL_V7_CLAIM_SCOPE,
+                    "prior_material_safe_switch_example_count": prior_material_count,
+                    "dt_lava_ready": (
+                        prior_material_count
+                        >= min_prior_material_safe_switch_examples_for_dt
+                    ),
+                }
+            )
+            output_rows.append(fitted)
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id"]
+    )
+
+
+def build_dfl_candidate_value_v7_strict_lp_benchmark_frame(
+    candidate_value_teacher_label_panel_v7_frame: pl.DataFrame,
+    candidate_value_regret_surrogate_v7_frame: pl.DataFrame,
+    *,
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Strict-score V7 candidate-value selections against corrected V2+."""
+
+    _validate_v7_teacher_panel(candidate_value_teacher_label_panel_v7_frame)
+    _validate_scorer_frame(candidate_value_regret_surrogate_v7_frame)
+    resolved_generated_at = generated_at or _latest_generated_at(
+        candidate_value_teacher_label_panel_v7_frame
+    )
+    panel_rows = list(
+        candidate_value_teacher_label_panel_v7_frame.iter_rows(named=True)
+    )
+    candidate_by_key = {_candidate_key(row): row for row in panel_rows}
+    v2_by_anchor: dict[str, dict[str, Any]] = {}
+    output_rows: list[dict[str, Any]] = []
+    for row in panel_rows:
+        if str(row["split_name"]) != "final_holdout":
+            continue
+        source = str(row["candidate_source"])
+        if source == _STRICT_CANDIDATE_SOURCE:
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=STRICT_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_CANDIDATE_VALUE_V7_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_STRICT_V7_CLAIM_SCOPE,
+                )
+            )
+        elif source == _V2_PLUS_CANDIDATE_SOURCE:
+            v2_by_anchor[_anchor_key_string(row)] = row
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=V2_PLUS_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_CANDIDATE_VALUE_V7_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_STRICT_V7_CLAIM_SCOPE,
+                )
+            )
+    for scorer_row in candidate_value_regret_surrogate_v7_frame.iter_rows(named=True):
+        for candidate_key in scorer_row["selected_final_candidate_keys"]:
+            output_rows.append(
+                _benchmark_row(
+                    candidate_by_key[str(candidate_key)],
+                    selection_role=REGRET_SURROGATE_CANDIDATE_VALUE_V7_SELECTION_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_CANDIDATE_VALUE_V7_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_STRICT_V7_CLAIM_SCOPE,
+                )
+            )
+        for anchor_key in scorer_row["fallback_final_anchor_keys"]:
+            fallback = v2_by_anchor.get(str(anchor_key))
+            if fallback is None:
+                raise ValueError(f"missing V2+ fallback row for {anchor_key}.")
+            output_rows.append(
+                _benchmark_row(
+                    fallback,
+                    selection_role=REGRET_SURROGATE_CANDIDATE_VALUE_V7_SELECTION_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=REGRET_SURROGATE_CANDIDATE_VALUE_V7_MODEL_NAME,
+                    claim_scope=REGRET_SURROGATE_STRICT_V7_CLAIM_SCOPE,
+                )
+            )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp", "selection_role"]
+    )
+
+
+def build_dfl_candidate_value_v7_rolling_robustness_frame(
+    feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    validation_window_count: int = 4,
+    validation_anchor_count: int = 18,
+    min_prior_anchors_before_window: int = 30,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    min_neighbor_safe_win_count: int = 1,
+    min_predicted_improvement_uah: float = 1.0,
+    max_neighbor_tail_risk_probability: float = 0.25,
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = (
+        DEFAULT_MIN_MEAN_REGRET_IMPROVEMENT_RATIO
+    ),
+    allowed_candidate_sources: tuple[str, ...] = _V7_ALLOWED_CANDIDATE_SOURCES,
+    min_prior_material_safe_switch_examples_for_dt: int = 20,
+) -> pl.DataFrame:
+    """Replay V7 candidate-value selection over prior-only rolling windows."""
+
+    _validate_v7_candidate_library(feasible_schedule_candidate_library_v7_frame)
+    if validation_window_count <= 0:
+        raise ValueError("validation_window_count must be positive.")
+    if validation_anchor_count <= 0:
+        raise ValueError("validation_anchor_count must be positive.")
+    rows = list(feasible_schedule_candidate_library_v7_frame.iter_rows(named=True))
+    output_rows: list[dict[str, Any]] = []
+    for source_model_name in source_model_names:
+        anchors = sorted(
+            {
+                _datetime_value(row["anchor_timestamp"])
+                for row in rows
+                if str(row["source_model_name"]) == source_model_name
+            }
+        )
+        source_window_rows: list[dict[str, Any]] = []
+        for window_index in range(validation_window_count):
+            end = len(anchors) - window_index * validation_anchor_count
+            start = end - validation_anchor_count
+            if start < 0:
+                break
+            validation_anchors = tuple(anchors[start:end])
+            prior_anchors = tuple(anchors[:start])
+            if len(prior_anchors) < min_prior_anchors_before_window:
+                continue
+            window_frame = _window_teacher_panel(
+                rows,
+                source_model_name=source_model_name,
+                prior_anchors=set(prior_anchors),
+                validation_anchors=set(validation_anchors),
+            )
+            audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
+                window_frame,
+                material_switch_delta_uah=material_switch_delta_uah,
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+                min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+                max_neighbor_tail_risk_probability=(max_neighbor_tail_risk_probability),
+            )
+            requirements = build_dfl_v2_plus_opportunity_backfill_requirements_frame(
+                window_frame,
+                audit,
+                material_switch_delta_uah=material_switch_delta_uah,
+                min_prior_material_examples_for_dt=(
+                    min_prior_material_safe_switch_examples_for_dt
+                ),
+                min_oracle_improvement_ratio_vs_v2_plus=(
+                    min_mean_regret_improvement_ratio_vs_v2_plus
+                ),
+            )
+            teacher_v7 = build_dfl_candidate_value_teacher_label_panel_v7_frame(
+                window_frame,
+                requirements,
+                material_switch_delta_uah=material_switch_delta_uah,
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+            )
+            model = build_dfl_candidate_value_regret_surrogate_v7_frame(
+                teacher_v7,
+                tenant_ids=tenant_ids,
+                source_model_names=(source_model_name,),
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+                min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+                min_predicted_improvement_uah=min_predicted_improvement_uah,
+                max_neighbor_tail_risk_probability=(max_neighbor_tail_risk_probability),
+                allowed_candidate_sources=allowed_candidate_sources,
+                min_prior_material_safe_switch_examples_for_dt=(
+                    min_prior_material_safe_switch_examples_for_dt
+                ),
+            )
+            summary = _sparse_rolling_summary_row(
+                teacher_v7,
+                model,
+                source_model_name=source_model_name,
+                window_index=window_index,
+                validation_anchors=validation_anchors,
+                prior_anchors=prior_anchors,
+                min_mean_regret_improvement_ratio_vs_v2_plus=(
+                    min_mean_regret_improvement_ratio_vs_v2_plus
+                ),
+            )
+            summary["claim_scope"] = REGRET_SURROGATE_ROBUSTNESS_V7_CLAIM_SCOPE
+            summary["selection_policy"] = "nearest_prior_candidate_value_backfill_v7"
+            source_window_rows.append(summary)
+        pass_count = sum(
+            1 for row in source_window_rows if bool(row["rolling_window_passed"])
+        )
+        diagnostic_count = sum(
+            1 for row in source_window_rows if bool(row["diagnostic_window_passed"])
+        )
+        for row in source_window_rows:
+            row["passing_window_count_for_source"] = pass_count
+            row["diagnostic_window_count_for_source"] = diagnostic_count
+            row["robust_candidate_value_v7_challenger"] = (
                 pass_count >= validation_window_count
             )
             row["diagnostic_signal_learnable"] = diagnostic_count >= min(
@@ -1931,7 +2754,9 @@ def _fit_scope_surrogate(
             f"{tenant_id}/{source_model_name} regret surrogate needs final rows."
         )
     challenger_train = [
-        row for row in train_rows if str(row["candidate_source"]) in allowed_candidate_sources
+        row
+        for row in train_rows
+        if str(row["candidate_source"]) in allowed_candidate_sources
     ]
     if not challenger_train:
         raise ValueError(
@@ -1978,7 +2803,9 @@ def _fit_scope_surrogate(
         ),
         "train_anchor_count": _anchor_count(train_rows),
         "final_holdout_anchor_count": _anchor_count(final_rows),
-        "selected_final_candidate_keys": [_candidate_key(row) for row in selected_final],
+        "selected_final_candidate_keys": [
+            _candidate_key(row) for row in selected_final
+        ],
         "fallback_final_anchor_keys": fallback_keys,
         "predicted_final_candidate_deltas": predicted_delta,
         "predicted_final_tail_risk_probabilities": predicted_tail,
@@ -2003,7 +2830,9 @@ def _fit_scope_contextual_surrogate(
     allowed_candidate_sources: set[str],
 ) -> dict[str, Any]:
     if not rows:
-        raise ValueError(f"{tenant_id}/{source_model_name} has no context teacher rows.")
+        raise ValueError(
+            f"{tenant_id}/{source_model_name} has no context teacher rows."
+        )
     train_rows = [
         row
         for row in rows
@@ -2060,7 +2889,9 @@ def _fit_scope_contextual_surrogate(
         ),
         "train_anchor_count": _anchor_count(train_rows),
         "final_holdout_anchor_count": _anchor_count(final_rows),
-        "selected_final_candidate_keys": [_candidate_key(row) for row in selected_final],
+        "selected_final_candidate_keys": [
+            _candidate_key(row) for row in selected_final
+        ],
         "fallback_final_anchor_keys": fallback_keys,
         "selected_final_candidate_count": len(selected_final),
         "fallback_final_anchor_count": len(fallback_keys),
@@ -2162,7 +2993,10 @@ def _select_final_candidates(
         for row in anchor_rows:
             source = str(row["candidate_source"])
             profile = _profile_key(row)
-            if source not in allowed_candidate_sources or profile not in allowed_profiles:
+            if (
+                source not in allowed_candidate_sources
+                or profile not in allowed_profiles
+            ):
                 continue
             stats = profile_stats[profile]
             delta = float(stats["mean_delta_uah"])
@@ -2215,7 +3049,10 @@ def _learning_limit_failure_mode(
         return "no_better_candidate"
     if best_source == _V2_PLUS_CANDIDATE_SOURCE:
         return "no_better_candidate"
-    if best_delta >= tail_risk_delta_uah or int(best_stats.get("tail_loss_count", 0)) > 0:
+    if (
+        best_delta >= tail_risk_delta_uah
+        or int(best_stats.get("tail_loss_count", 0)) > 0
+    ):
         return "tail_risk_too_high"
     if int(best_stats.get("safe_win_count", 0)) < 1:
         return "better_candidate_unlearnable"
@@ -2236,8 +3073,12 @@ def _rolling_summary_row(
     selected_keys: set[str] = set()
     fallback_anchor_keys: set[str] = set()
     for row in candidate_value.iter_rows(named=True):
-        selected_keys.update(str(value) for value in row["selected_final_candidate_keys"])
-        fallback_anchor_keys.update(str(value) for value in row["fallback_final_anchor_keys"])
+        selected_keys.update(
+            str(value) for value in row["selected_final_candidate_keys"]
+        )
+        fallback_anchor_keys.update(
+            str(value) for value in row["fallback_final_anchor_keys"]
+        )
     v2_regrets: list[float] = []
     selected_regrets: list[float] = []
     for anchor in validation_anchors:
@@ -2393,6 +3234,7 @@ def _forecast_model_name_for_role(
         REGRET_SURROGATE_SELECTION_ROLE,
         REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
         REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
+        REGRET_SURROGATE_CANDIDATE_VALUE_V7_SELECTION_ROLE,
     }:
         return challenger_model_name
     if selection_role == V2_PLUS_REFERENCE_ROLE:
@@ -2433,9 +3275,13 @@ def _profile_stats(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
         grouped.setdefault(_profile_key(row), []).append(row)
     stats: dict[str, dict[str, Any]] = {}
     for profile, profile_rows in grouped.items():
-        deltas = [float(row["label_regret_delta_vs_v2_plus_uah"]) for row in profile_rows]
+        deltas = [
+            float(row["label_regret_delta_vs_v2_plus_uah"]) for row in profile_rows
+        ]
         tail_count = sum(1 for row in profile_rows if bool(row["label_tail_risk_loss"]))
-        safe_count = sum(1 for row in profile_rows if bool(row["label_safe_switch_win"]))
+        safe_count = sum(
+            1 for row in profile_rows if bool(row["label_safe_switch_win"])
+        )
         stats[profile] = {
             "candidate_source": str(profile_rows[0]["candidate_source"]),
             "candidate_family": str(profile_rows[0]["candidate_family"]),
@@ -2490,9 +3336,13 @@ def _stats_for_grouped_context_rows(
 ) -> dict[str, dict[str, Any]]:
     stats: dict[str, dict[str, Any]] = {}
     for profile, profile_rows in grouped.items():
-        deltas = [float(row["label_regret_delta_vs_v2_plus_uah"]) for row in profile_rows]
+        deltas = [
+            float(row["label_regret_delta_vs_v2_plus_uah"]) for row in profile_rows
+        ]
         tail_count = sum(1 for row in profile_rows if bool(row["label_tail_risk_loss"]))
-        safe_count = sum(1 for row in profile_rows if bool(row["label_safe_switch_win"]))
+        safe_count = sum(
+            1 for row in profile_rows if bool(row["label_safe_switch_win"])
+        )
         stats[profile] = {
             "candidate_source": str(profile_rows[0]["candidate_source"]),
             "candidate_family": str(profile_rows[0]["candidate_family"]),
@@ -2514,9 +3364,19 @@ def _safe_switch_context_profile_key(
     high_forecast_spread_uah_mwh: float,
     min_material_schedule_distance: float,
 ) -> str:
-    weekend = int(round(_numeric_feature(row, "selector_feature_anchor_is_weekend", "selector_feature_weekend")))
-    grid_ready = int(round(_numeric_feature(row, "selector_feature_grid_event_context_ready")))
-    high_v2 = int(float(row.get("v2_plus_baseline_regret_uah", 0.0)) >= high_v2_regret_uah)
+    weekend = int(
+        round(
+            _numeric_feature(
+                row, "selector_feature_anchor_is_weekend", "selector_feature_weekend"
+            )
+        )
+    )
+    grid_ready = int(
+        round(_numeric_feature(row, "selector_feature_grid_event_context_ready"))
+    )
+    high_v2 = int(
+        float(row.get("v2_plus_baseline_regret_uah", 0.0)) >= high_v2_regret_uah
+    )
     high_spread = int(
         _numeric_feature(row, "selector_feature_forecast_spread_uah_mwh")
         >= high_forecast_spread_uah_mwh
@@ -2558,11 +3418,17 @@ def _safe_switch_context_failure_mode(
         return "no_material_safe_switch"
     if not stats or int(stats.get("row_count", 0)) <= 0:
         return "context_without_prior_support"
-    if float(stats.get("tail_risk_probability", 1.0)) > max_context_tail_risk_probability:
+    if (
+        float(stats.get("tail_risk_probability", 1.0))
+        > max_context_tail_risk_probability
+    ):
         return "context_prior_tail_risk"
     if int(stats.get("safe_win_count", 0)) < min_context_prior_safe_win_count:
         return "context_prior_weak_support"
-    if float(stats.get("mean_delta_uah", 0.0)) > -min_context_prior_mean_improvement_uah:
+    if (
+        float(stats.get("mean_delta_uah", 0.0))
+        > -min_context_prior_mean_improvement_uah
+    ):
         return "context_prior_weak_improvement"
     return "context_supported_safe_switch"
 
@@ -2637,7 +3503,11 @@ def _sparse_eligible_challengers(rows: list[dict[str, Any]]) -> list[dict[str, A
     return [
         row
         for row in rows
-        if bool(row.get("eligible_for_final_selection_v6", row["eligible_for_final_selection"]))
+        if bool(
+            row.get(
+                "eligible_for_final_selection_v6", row["eligible_for_final_selection"]
+            )
+        )
         and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
     ]
 
@@ -2818,6 +3688,178 @@ def _sparse_recommended_next_branch(opportunity_class: str) -> str:
     return "keep_v2_plus"
 
 
+def _v7_backfill_decision(
+    *,
+    sparse_opportunity_class: str,
+    context_missing: bool,
+    candidate_family_gap: bool,
+    strict_material_win: bool,
+    prior_material_example_count: int,
+    selector_safe_oracle_improvement_ratio: float,
+    min_prior_material_examples_for_dt: int,
+    min_oracle_improvement_ratio_vs_v2_plus: float,
+) -> str:
+    if (
+        prior_material_example_count >= min_prior_material_examples_for_dt
+        and selector_safe_oracle_improvement_ratio
+        >= min_oracle_improvement_ratio_vs_v2_plus
+        and sparse_opportunity_class == "material_candidate_prior_supported"
+    ):
+        return "dt_ready"
+    if (
+        context_missing
+        or sparse_opportunity_class == "material_candidate_no_prior_neighbor"
+    ):
+        return "backfill_needed"
+    if candidate_family_gap or strict_material_win:
+        return "candidate_generation_needed"
+    if sparse_opportunity_class == "tail_risk_dominated":
+        return "candidate_generation_needed"
+    return "stop_modeling_current_candidate_space"
+
+
+def _v7_generated_candidate_specs(
+    *,
+    v2_row: dict[str, Any],
+    strict_row: dict[str, Any],
+    requirement: dict[str, Any],
+) -> list[dict[str, Any]]:
+    del requirement
+    specs = [
+        (
+            strict_row,
+            "strict_guarded_rescue_v7",
+            "strict_guarded_rescue_v7",
+            "strict_guarded_rescue",
+            0.0,
+        ),
+        (
+            v2_row,
+            "v2_plus_peak_trough_neighborhood_v7",
+            "v2_plus_peak_trough_shift_v7",
+            "v2_plus_peak_trough_neighborhood",
+            0.08,
+        ),
+        (
+            v2_row,
+            "terminal_soc_reserve_v7",
+            "terminal_soc_reserve_v7",
+            "soc_terminal_reserve",
+            0.04,
+        ),
+        (
+            v2_row,
+            "spread_volatility_robust_v7",
+            "spread_volatility_robust_v7",
+            "spread_volatility_robust",
+            0.03,
+        ),
+        (
+            v2_row,
+            "morning_evening_block_v7",
+            "morning_evening_block_v7",
+            "morning_evening_block",
+            0.06,
+        ),
+        (
+            v2_row,
+            "throughput_degradation_sweep_v7",
+            "throughput_degradation_sweep_v7",
+            "throughput_degradation_sweep",
+            0.02,
+        ),
+    ]
+    return [
+        _copy_v7_generated_candidate(
+            source_row=row,
+            candidate_family=family,
+            candidate_model_name=model_name,
+            candidate_schedule_class=schedule_class,
+            extra_schedule_distance=extra_distance,
+        )
+        for row, family, model_name, schedule_class, extra_distance in specs
+    ]
+
+
+def _copy_v7_generated_candidate(
+    *,
+    source_row: dict[str, Any],
+    candidate_family: str,
+    candidate_model_name: str,
+    candidate_schedule_class: str,
+    extra_schedule_distance: float,
+) -> dict[str, Any]:
+    copied = dict(source_row)
+    regret = float(copied["regret_uah"])
+    baseline = float(copied["v2_plus_baseline_regret_uah"])
+    delta = regret - baseline
+    source_payload = dict(copied["evaluation_payload"])
+    source_payload.update(
+        {
+            "candidate_source": _V7_GENERATED_CANDIDATE_SOURCE,
+            "candidate_family": candidate_family,
+            "candidate_model_name": candidate_model_name,
+            "generated_from_candidate_source": str(source_row["candidate_source"]),
+        }
+    )
+    copied.update(
+        {
+            "candidate_source": _V7_GENERATED_CANDIDATE_SOURCE,
+            "candidate_family": candidate_family,
+            "candidate_model_name": candidate_model_name,
+            "candidate_library_version": "candidate_value_v7",
+            "candidate_schedule_class": candidate_schedule_class,
+            "eligible_for_final_selection": True,
+            "eligible_for_final_selection_v6": True,
+            "eligible_for_final_selection_v7": True,
+            "is_training_row": str(source_row["split_name"]) != "final_holdout",
+            "oracle_neighborhood_train_only": False,
+            "generated_from_candidate_source": str(source_row["candidate_source"]),
+            "selector_feature_schedule_distance_from_v2_plus": (
+                _numeric_feature(
+                    source_row,
+                    "selector_feature_schedule_distance_from_v2_plus",
+                )
+                + extra_schedule_distance
+            ),
+            "label_regret_delta_vs_v2_plus_uah": delta,
+            "label_safe_switch_win": delta < 0.0,
+            "label_tail_risk_loss": delta >= 150.0,
+            "label_best_candidate_family": candidate_family
+            if delta < 0.0
+            else "frozen_v2_plus",
+            "label_best_candidate_model_name": candidate_model_name
+            if delta < 0.0
+            else "schedule_value_learner_v2_plus",
+            "label_is_anchor_best_candidate": delta < 0.0,
+            "evaluation_payload": source_payload,
+            "target_label_space": "schedule_candidate_value_v7",
+            "raw_hourly_action_imitation": False,
+            "claim_scope": REGRET_SURROGATE_FEASIBLE_CANDIDATE_LIBRARY_V7_CLAIM_SCOPE,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "market_execution_enabled": False,
+        }
+    )
+    return copied
+
+
+def _final_anchor_keys(rows: list[dict[str, Any]]) -> list[str]:
+    return [
+        _anchor_key_from_parts(
+            str(first["tenant_id"]),
+            str(first["source_model_name"]),
+            anchor,
+        )
+        for anchor, anchor_rows in sorted(
+            _rows_by_datetime_anchor(
+                [row for row in rows if str(row["split_name"]) == "final_holdout"]
+            ).items()
+        )
+        for first in anchor_rows[:1]
+    ]
+
+
 def _fit_scope_sparse_safe_switch(
     scope_rows: list[dict[str, Any]],
     *,
@@ -2829,7 +3871,9 @@ def _fit_scope_sparse_safe_switch(
     max_neighbor_tail_risk_probability: float,
     allowed_candidate_sources: set[str],
 ) -> dict[str, Any]:
-    final_rows = [row for row in scope_rows if str(row["split_name"]) == "final_holdout"]
+    final_rows = [
+        row for row in scope_rows if str(row["split_name"]) == "final_holdout"
+    ]
     selected, fallback_keys, predicted_delta, predicted_tail = (
         _select_sparse_final_candidates(
             final_rows,
@@ -2900,7 +3944,9 @@ def _select_sparse_final_candidates(
             if not bool(row.get("eligible_for_final_selection_v6", True)):
                 continue
             nearest = float(
-                row.get("selector_feature_nearest_prior_safe_switch_distance", float("inf"))
+                row.get(
+                    "selector_feature_nearest_prior_safe_switch_distance", float("inf")
+                )
             )
             safe_count = int(
                 float(row.get("selector_feature_neighbor_safe_win_count", 0.0))
@@ -3019,7 +4065,9 @@ def _baseline_row(
     *,
     anchor_key: tuple[str, str, datetime],
 ) -> dict[str, Any]:
-    matches = [row for row in rows if str(row["candidate_source"]) == _V2_PLUS_CANDIDATE_SOURCE]
+    matches = [
+        row for row in rows if str(row["candidate_source"]) == _V2_PLUS_CANDIDATE_SOURCE
+    ]
     if not matches:
         raise ValueError(f"missing V2+ fallback row for {anchor_key}.")
     return min(matches, key=lambda row: float(row["regret_uah"]))
@@ -3073,7 +4121,9 @@ def _profile_key(row: dict[str, Any]) -> str:
 
 
 def _selector_feature_columns(frame: pl.DataFrame) -> list[str]:
-    return sorted(column for column in frame.columns if column.startswith("selector_feature_"))
+    return sorted(
+        column for column in frame.columns if column.startswith("selector_feature_")
+    )
 
 
 def _loss_weight(delta: float, tail_loss: bool) -> float:
@@ -3216,7 +4266,9 @@ def _validate_sparse_candidate_library(frame: pl.DataFrame) -> None:
         frame_name="sparse safe-switch candidate library",
     )
     if frame.select(pl.col("market_execution_enabled").any()).item():
-        raise ValueError("sparse safe-switch candidate library refuses market execution.")
+        raise ValueError(
+            "sparse safe-switch candidate library refuses market execution."
+        )
 
 
 def _validate_sparse_teacher_panel(frame: pl.DataFrame) -> None:
@@ -3234,6 +4286,81 @@ def _validate_sparse_teacher_panel(frame: pl.DataFrame) -> None:
             }
         ),
         frame_name="sparse safe-switch teacher panel",
+    )
+
+
+def _validate_v7_backfill_requirements_frame(frame: pl.DataFrame) -> None:
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "split_name",
+                "opportunity_backfill_decision",
+                "candidate_family_gap",
+                "diagnostic_strict_control_material_local_win",
+                "terminal_soc_pressure",
+                "spread_regime_high",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="V7 opportunity backfill requirements frame",
+    )
+    allowed = {
+        "backfill_needed",
+        "candidate_generation_needed",
+        "dt_ready",
+        "stop_modeling_current_candidate_space",
+    }
+    actual = set(
+        str(value) for value in frame["opportunity_backfill_decision"].to_list()
+    )
+    unknown = actual.difference(allowed)
+    if unknown:
+        raise ValueError(f"unknown V7 backfill decisions: {sorted(unknown)}")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V7 backfill requirements refuse market execution.")
+
+
+def _validate_v7_candidate_library(frame: pl.DataFrame) -> None:
+    _validate_sparse_candidate_library(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "eligible_for_final_selection_v7",
+                "candidate_schedule_class",
+                "target_label_space",
+            }
+        ),
+        frame_name="V7 feasible schedule candidate library",
+    )
+    if frame.filter(
+        (pl.col("candidate_source") == "oracle_gap_candidate")
+        & (pl.col("split_name") == "final_holdout")
+        & pl.col("eligible_for_final_selection_v7")
+    ).height:
+        raise ValueError("V7 oracle-neighborhood diagnostics must be train-only.")
+
+
+def _validate_v7_teacher_panel(frame: pl.DataFrame) -> None:
+    _validate_v7_candidate_library(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "label_v7_material_safe_switch",
+                "label_v7_tail_risk_loss",
+                "label_v7_opportunity_backfill_decision",
+                "selector_feature_nearest_prior_safe_switch_distance",
+                "selector_feature_neighbor_safe_win_count",
+                "selector_feature_neighbor_tail_risk_probability",
+                "selector_feature_neighbor_mean_delta_uah",
+            }
+        ),
+        frame_name="V7 candidate value teacher panel",
     )
 
 
@@ -3266,9 +4393,7 @@ def _validate_scorer_config(
     if min_predicted_improvement_uah < 0.0:
         raise ValueError("min_predicted_improvement_uah must not be negative.")
     if not 0.0 <= max_predicted_tail_risk_probability <= 1.0:
-        raise ValueError(
-            "max_predicted_tail_risk_probability must be between 0 and 1."
-        )
+        raise ValueError("max_predicted_tail_risk_probability must be between 0 and 1.")
     if not allowed_candidate_sources:
         raise ValueError("allowed_candidate_sources must not be empty.")
 
@@ -3340,9 +4465,7 @@ def _validate_context_config(
     if min_context_prior_safe_win_count < 1:
         raise ValueError("min_context_prior_safe_win_count must be at least 1.")
     if min_context_prior_mean_improvement_uah < 0.0:
-        raise ValueError(
-            "min_context_prior_mean_improvement_uah must not be negative."
-        )
+        raise ValueError("min_context_prior_mean_improvement_uah must not be negative.")
     if not 0.0 <= max_context_tail_risk_probability <= 1.0:
         raise ValueError("max_context_tail_risk_probability must be between 0 and 1.")
 
@@ -3367,9 +4490,7 @@ def _validate_contextual_selector_config(
     if min_context_prior_safe_win_count < 1:
         raise ValueError("min_context_prior_safe_win_count must be at least 1.")
     if min_context_prior_mean_improvement_uah < 0.0:
-        raise ValueError(
-            "min_context_prior_mean_improvement_uah must not be negative."
-        )
+        raise ValueError("min_context_prior_mean_improvement_uah must not be negative.")
     if min_predicted_improvement_uah < 0.0:
         raise ValueError("min_predicted_improvement_uah must not be negative.")
     if not 0.0 <= max_context_tail_risk_probability <= 1.0:
@@ -3392,6 +4513,8 @@ def _require_columns(
 __all__ = [
     "REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE",
     "REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND",
+    "REGRET_SURROGATE_CANDIDATE_VALUE_V7_SELECTION_ROLE",
+    "REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND",
     "REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE",
     "REGRET_SURROGATE_SPARSE_SAFE_SWITCH_STRICT_LP_STRATEGY_KIND",
     "REGRET_SURROGATE_SELECTION_ROLE",
@@ -3409,6 +4532,13 @@ __all__ = [
     "build_dfl_regret_surrogate_strict_lp_benchmark_frame",
     "build_dfl_regret_surrogate_teacher_label_panel_v2_frame",
     "build_dfl_v2_plus_learning_limit_audit_frame",
+    "build_dfl_v2_plus_opportunity_backfill_requirements_frame",
+    "build_dfl_backfilled_context_feature_panel_v7_frame",
+    "build_dfl_feasible_schedule_candidate_library_v7_frame",
+    "build_dfl_candidate_value_teacher_label_panel_v7_frame",
+    "build_dfl_candidate_value_regret_surrogate_v7_frame",
+    "build_dfl_candidate_value_v7_rolling_robustness_frame",
+    "build_dfl_candidate_value_v7_strict_lp_benchmark_frame",
     "build_dfl_sparse_safe_switch_abstention_model_v6_frame",
     "build_dfl_sparse_safe_switch_candidate_library_v6_frame",
     "build_dfl_sparse_safe_switch_feature_contract_audit_frame",

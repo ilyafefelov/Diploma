@@ -117,6 +117,12 @@ Further DT/LAVA work over the same candidate universe would mostly learn to
 abstain. The next useful ML branch is Ukrainian point-in-time context backfill
 or new feasible candidate generation with prior-supported wins.
 
+Candidate-Value V7 is the thesis-synced follow-up. It adds an opportunity
+backfill requirements frame and feasible schedule variants before any new
+DT/LAVA attempt. V7 can only switch away from V2+ when prior material examples,
+nearest-prior support, predicted improvement, and tail-risk checks all pass.
+Otherwise it remains V2+ fallback evidence.
+
 ## Source Basis
 
 The implementation follows the decision-focused direction from:
@@ -153,10 +159,21 @@ The implementation follows the decision-focused direction from:
 | `dfl_sparse_safe_switch_abstention_model_v6_frame` | Selects a non-V2+ candidate only with nearest-prior support and low tail-risk. |
 | `dfl_sparse_safe_switch_strict_lp_benchmark_frame` | Scores V6, frozen V2+, and strict under the unchanged LP/oracle evaluator. |
 | `dfl_sparse_safe_switch_rolling_robustness_frame` | Replays V6 under prior-only rolling windows. |
+| `dfl_v2_plus_opportunity_backfill_requirements_frame` | Classifies whether V2+ misses need source/context backfill, new feasible candidate families, DT readiness, or a stop-modeling decision for the current candidate space. |
+| `dfl_backfilled_context_feature_panel_v7_frame` | Adds V7 prior-only context readiness/missingness features while keeping realized outcomes diagnostic. |
+| `dfl_feasible_schedule_candidate_library_v7_frame` | Adds V2+ neighborhood, strict-guarded rescue, terminal-SOC reserve, spread-robust, block, and throughput/degradation sweep candidates. |
+| `dfl_candidate_value_teacher_label_panel_v7_frame` | Publishes V7 candidate-value labels and nearest-prior support statistics. |
+| `dfl_candidate_value_regret_surrogate_v7_frame` | Selects a candidate only with prior material support; otherwise falls back to V2+. |
+| `dfl_candidate_value_v7_strict_lp_benchmark_frame` | Scores V7 against V2+ and strict under the unchanged LP/oracle evaluator. |
+| `dfl_candidate_value_v7_rolling_robustness_frame` | Replays V7 over prior-only rolling windows. |
 
 Tracked config:
 
 `configs/real_data_dfl_regret_surrogate_v1_week3.yaml`
+
+V7 config:
+
+`configs/real_data_dfl_opportunity_backfill_v7_week3.yaml`
 
 ## Leakage Boundary
 
@@ -204,6 +221,15 @@ docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -c configs/real_data_dfl_regret_surrogate_v1_week3.yaml
 ```
 
+Candidate-Value V7 can be materialized after V6:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_v2_plus_opportunity_backfill_requirements_frame,dfl_backfilled_context_feature_panel_v7_frame,dfl_feasible_schedule_candidate_library_v7_frame,dfl_candidate_value_teacher_label_panel_v7_frame,dfl_candidate_value_regret_surrogate_v7_frame,dfl_candidate_value_v7_strict_lp_benchmark_frame,dfl_candidate_value_v7_rolling_robustness_frame `
+  -c configs/real_data_dfl_opportunity_backfill_v7_week3.yaml
+```
+
 If upstream UA-context oracle-gap assets are not available in the active
 Dagster IO store, materialize the UA-context safe-switch path first.
 
@@ -216,3 +242,9 @@ become a new offline challenger. The current fail is still useful: it tells the
 thesis that the current feature/candidate universe has sparse upside and strong
 tail risk, so DT/LAVA needs better teacher labels or better context/candidates
 rather than a larger sequence model over the same supervision.
+
+V7 is the next thesis-synced repair: it asks whether the known V2+ miss classes
+need more Ukrainian point-in-time context, new feasible schedules, or enough
+prior-supported labels to resume DT/LAVA. DT/LAVA remains blocked unless V7
+creates at least `20` prior/train material safe-switch examples and clears the
+same strict LP/oracle gate.
