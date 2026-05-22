@@ -347,6 +347,16 @@ from smart_arbitrage.dfl.ua_context_lava_dt import (
     build_dfl_ua_context_lava_teacher_frame,
     evaluate_dfl_ua_context_lava_gate,
 )
+from smart_arbitrage.dfl.regret_surrogate_v1 import (
+    REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND,
+    build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+    build_dfl_regret_surrogate_candidate_value_v1_frame,
+    build_dfl_regret_surrogate_forecast_correction_v1_frame,
+    build_dfl_regret_surrogate_rolling_robustness_frame,
+    build_dfl_regret_surrogate_strict_lp_benchmark_frame,
+    build_dfl_v2_plus_learning_limit_audit_frame,
+    evaluate_dfl_regret_surrogate_gate,
+)
 from smart_arbitrage.strategy.official_global_panel import (
     POLAND_LAG24_EXPERIMENTAL_CALIBRATED_SOURCE_MODEL_NAMES,
     POLAND_LAG24_EXPERIMENTAL_CALIBRATION_STRATEGY_KIND,
@@ -1346,6 +1356,16 @@ class DflUaContextLavaDtAssetConfig(DflUaContextSafeSwitchAssetConfig):
     baseline_source_model_name: str = FROZEN_V2_PLUS_BASELINE_MODEL_NAME
     random_seed: int = 23
     torch_max_epochs: int = 25
+
+
+class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
+    """Learning-limit audit plus regret-surrogate candidate-value DFL v1."""
+
+    allowed_candidate_sources_csv: str = (
+        "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,"
+        "ua_context_candidate,lava_candidate"
+    )
+    min_oracle_improvement_ratio_vs_v2_plus: float = 0.05
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -4722,6 +4742,322 @@ def dfl_ua_context_lava_rolling_robustness_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_ua_context_lava_rolling_robustness_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_v2_plus_learning_limit_audit_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit whether the current candidate universe can beat frozen V2+."""
+
+    frame = build_dfl_v2_plus_learning_limit_audit_frame(
+        dfl_ua_context_oracle_gap_feature_panel_frame,
+        min_oracle_improvement_ratio_vs_v2_plus=(
+            config.min_oracle_improvement_ratio_vs_v2_plus
+        ),
+        tail_risk_delta_uah=config.tail_risk_delta_uah,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_universe_can_beat_v2_plus_gate": (
+                frame.select(pl.col("candidate_universe_can_beat_v2_plus_gate").any()).item()
+                if frame.height
+                else False
+            ),
+            "failure_modes": sorted(
+                frame["learning_limit_failure_mode"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "recommended_next_branches": sorted(
+                frame["recommended_next_branch"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_v2_plus_learning_limit_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
+    context,
+    dfl_ua_context_oracle_gap_feature_panel_frame: pl.DataFrame,
+    dfl_v2_plus_learning_limit_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build expanded schedule/value teacher labels for regret-surrogate DFL."""
+
+    frame = build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
+        dfl_ua_context_oracle_gap_feature_panel_frame,
+        dfl_v2_plus_learning_limit_audit_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "training_rows": frame.filter(pl.col("is_training_row")).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_expanded_schedule_value_teacher_labels_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_forecast_correction_v1_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Fit a conservative regret-surrogate over candidate/value labels."""
+
+    frame = build_dfl_regret_surrogate_forecast_correction_v1_frame(
+        dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        use_cuda_if_available=config.use_cuda_if_available,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "candidate_selected_tenant_sources": frame.filter(
+                ~pl.col("fallback_to_v2_plus")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_forecast_correction_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_candidate_value_v1_frame(
+    context,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+    dfl_regret_surrogate_forecast_correction_v1_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Resolve final candidate choices for regret-surrogate DFL v1."""
+
+    frame = build_dfl_regret_surrogate_candidate_value_v1_frame(
+        dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+        dfl_regret_surrogate_forecast_correction_v1_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selected_final_candidate_count": int(
+                frame["selected_final_candidate_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "fallback_final_anchor_count": int(
+                frame["fallback_final_anchor_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_candidate_value_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_strict_lp_benchmark_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+    dfl_regret_surrogate_candidate_value_v1_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score regret-surrogate DFL v1 against frozen V2+."""
+
+    strict_frame = build_dfl_regret_surrogate_strict_lp_benchmark_frame(
+        dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+        dfl_regret_surrogate_candidate_value_v1_frame,
+        generated_at=_latest_generated_at(
+            dfl_expanded_schedule_value_teacher_label_panel_v1_frame
+        ),
+    )
+    get_strategy_evaluation_store().upsert_evaluation_frame(strict_frame)
+    gate = evaluate_dfl_regret_surrogate_gate(
+        strict_frame,
+        min_validation_tenant_anchor_count=config.min_validation_tenant_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        min_mean_regret_improvement_ratio_vs_strict=(
+            config.min_mean_regret_improvement_ratio_vs_strict
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": strict_frame.height,
+            "strategy_kind": REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND,
+            "gate_decision": gate.decision,
+            "gate_description": gate.description,
+            "diagnostic_signal_passed": gate.metrics.get(
+                "diagnostic_signal_passed", False
+            ),
+            "production_promote": False,
+            "target_label_space": "schedule_candidate_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="regret_surrogate_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_surrogate_rolling_robustness_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rolling prior-only robustness for regret-surrogate DFL v1."""
+
+    frame = build_dfl_regret_surrogate_rolling_robustness_frame(
+        dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        validation_window_count=config.validation_window_count,
+        validation_anchor_count=config.validation_anchor_count,
+        min_prior_anchors_before_window=config.min_prior_anchors_before_window,
+        min_prior_safe_win_count=config.min_prior_safe_win_count,
+        min_prior_mean_improvement_uah=config.min_prior_mean_improvement_uah,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_predicted_tail_risk_probability=(
+            config.max_predicted_tail_risk_probability
+        ),
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        allowed_candidate_sources=_csv_values(
+            config.allowed_candidate_sources_csv,
+            field_name="allowed_candidate_sources_csv",
+        ),
+        use_cuda_if_available=config.use_cuda_if_available,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "rolling_pass_windows": frame.filter(pl.col("rolling_window_passed")).height
+            if frame.height
+            else 0,
+            "diagnostic_signal_windows": frame.filter(
+                pl.col("diagnostic_window_passed")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_delta",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_regret_surrogate_rolling_robustness_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -12644,6 +12980,12 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_ua_context_lava_candidate_policy_frame,
     dfl_ua_context_lava_strict_lp_benchmark_frame,
     dfl_ua_context_lava_rolling_robustness_frame,
+    dfl_v2_plus_learning_limit_audit_frame,
+    dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
+    dfl_regret_surrogate_forecast_correction_v1_frame,
+    dfl_regret_surrogate_candidate_value_v1_frame,
+    dfl_regret_surrogate_strict_lp_benchmark_frame,
+    dfl_regret_surrogate_rolling_robustness_frame,
     official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame,
     official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame,
     official_global_panel_poland_lag24_experimental_tft_horizon_quantile_calibration_frame,

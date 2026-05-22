@@ -119,6 +119,12 @@ keeps the claim boundary, but it still does not beat V2+. It is useful negative
 evidence: behavior cloning is much worse, while the conservative DT/LAVA policy
 falls back to V2+ instead of taking unsafe candidate switches.
 
+The next implemented slice is therefore not another DT variant. It is
+[DFL_REGRET_SURROGATE_V1](DFL_REGRET_SURROGATE_V1.md): first audit whether the
+candidate universe has at least 5% oracle-switch upside versus V2+, then train
+a candidate-level regret-delta/tail-risk scorer only if that upper bound is
+worth learning.
+
 ## Run
 
 ```powershell

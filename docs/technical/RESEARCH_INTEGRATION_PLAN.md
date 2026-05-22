@@ -67,6 +67,17 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      (`185.65` UAH mean regret versus `174.77` UAH). This closes the current
      tabular safe-switch branch and turns the v3 label frame into teacher data
      for future DT/LAVA work.
+   - UA-context LAVA/DT candidate-index v1 then proved that behavior cloning is
+     weak and the conservative candidate-index policy safely falls back to V2+
+     instead of taking risky switches.
+   - Regret-Surrogate DFL v1 is now materialized as learning-limit evidence.
+     The oracle-best candidate universe has latest-holdout upside (`174.77` ->
+     `161.38` UAH mean regret, `7.66%`) and train/prior upside (`252.57` ->
+     `210.47` UAH, `16.67%`), but only `8 / 90` final rows have a better
+     candidate. The surrogate selected `0 / 90` non-V2+ final rows, matched V2+
+     at `174.77` / `67.30` UAH, and produced `0 / 4` rolling challenger
+     windows. This says the next DT/LAVA work needs stronger teacher labels or
+     candidate/context repair, not another sequence model over the same labels.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

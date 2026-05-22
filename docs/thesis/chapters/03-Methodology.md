@@ -959,6 +959,31 @@ schedule diversity, а не як самостійна заміна V2+. Його
 [DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE](../../technical/DFL_TFT_GLOBAL_PANEL_QUANTILE_GATE.md)
 та [DFL_NBEATSX_TFT_COMBINED_PORTFOLIO](../../technical/DFL_NBEATSX_TFT_COMBINED_PORTFOLIO.md).
 
+Після UA-context LAVA/DT negative result методологія перейшла не до ще одного
+sequence-policy experiment, а до Regret-Surrogate DFL v1. Спочатку
+`dfl_v2_plus_learning_limit_audit_frame` перевіряє верхню межу поточного
+candidate universe: чи може oracle-best feasible schedule взагалі зменшити
+mean regret відносно V2+ на `>=5%`. Якщо ні, наступна робота має бути
+data/candidate acquisition, а не більша neural architecture. Якщо так, тоді
+`dfl_expanded_schedule_value_teacher_label_panel_v1_frame` формує prior-only
+`selector_feature_*` inputs та `label_*` regret/value outcomes, а
+Regret-Surrogate scorer прогнозує regret delta і tail-risk probability для
+кожного candidate schedule. Final evaluator лишається незмінним strict
+LP/oracle scoring; модель fallback-иться до V2+ якщо predicted improvement
+слабкий або tail risk високий.
+
+Матеріалізований Regret-Surrogate V1 підтвердив методологічний висновок:
+oracle-best candidate universe має latest-holdout upside (`174.77` -> `161.38`
+UAH, `7.66%`), але safe-switch opportunities є рідкісними (`8 / 90` final
+rows), і prior-only surrogate не вибрав жодного non-V2+ final schedule. Тому
+цей slice не замінює V2+, а документує learning limit: треба покращувати
+teacher labels, context або candidate generation перед наступним DT/LAVA
+attempt. Це напряму відповідає DFL-принципу оптимізувати downstream
+regret/value, а не raw forecast error чи raw hourly BUY/SELL/HOLD imitation.
+Traceability:
+[DFL_REGRET_SURROGATE_V1](../../technical/DFL_REGRET_SURROGATE_V1.md) та
+`configs/real_data_dfl_regret_surrogate_v1_week3.yaml`.
+
 ## 3.10. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний технічний entrypoint:

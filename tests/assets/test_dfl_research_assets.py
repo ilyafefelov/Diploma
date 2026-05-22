@@ -11,6 +11,7 @@ from smart_arbitrage.assets.gold.dfl_research import (
     DflForecastPipelineTruthAuditAssetConfig,
     DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig,
     DflPolandLag24ExperimentalRollingStrictAssetConfig,
+    DflRegretSurrogateV1AssetConfig,
     DflTrainingAssetConfig,
     HorizonRegretWeightedForecastCalibrationAssetConfig,
     OfflineDflActionTargetAssetConfig,
@@ -215,6 +216,17 @@ def test_global_panel_schedule_value_production_gate_uses_full_promotion_thresho
     assert config.min_rolling_strict_pass_windows == 3
 
 
+def test_regret_surrogate_v1_config_keeps_v2_plus_gate_and_shadow_sources() -> None:
+    config = DflRegretSurrogateV1AssetConfig()
+
+    assert config.source_model_names_csv == (
+        "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    )
+    assert config.min_oracle_improvement_ratio_vs_v2_plus == 0.05
+    assert "poland_shadow_candidate" in config.allowed_candidate_sources_csv
+    assert config.use_cuda_if_available is True
+
+
 def test_poland_lag24_rolling_asset_merges_persisted_batches(monkeypatch) -> None:
     store = InMemoryStrategyEvaluationStore()
     generated_at = datetime(2026, 5, 21, 12)
@@ -382,6 +394,12 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_ua_context_lava_candidate_policy_frame",
         "dfl_ua_context_lava_strict_lp_benchmark_frame",
         "dfl_ua_context_lava_rolling_robustness_frame",
+        "dfl_v2_plus_learning_limit_audit_frame",
+        "dfl_expanded_schedule_value_teacher_label_panel_v1_frame",
+        "dfl_regret_surrogate_forecast_correction_v1_frame",
+        "dfl_regret_surrogate_candidate_value_v1_frame",
+        "dfl_regret_surrogate_strict_lp_benchmark_frame",
+        "dfl_regret_surrogate_rolling_robustness_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame",
         "official_global_panel_poland_lag24_experimental_rolling_strict_lp_benchmark_frame",
         "official_global_panel_poland_lag24_experimental_nbeatsx_horizon_calibration_frame",
@@ -875,6 +893,30 @@ def test_dfl_research_assets_are_registered() -> None:
     )
     assert (
         groups_by_key["dfl_ua_context_lava_rolling_robustness_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_v2_plus_learning_limit_audit_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_expanded_schedule_value_teacher_label_panel_v1_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_regret_surrogate_forecast_correction_v1_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_regret_surrogate_candidate_value_v1_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_regret_surrogate_strict_lp_benchmark_frame"]
+        == "gold_dfl_training"
+    )
+    assert (
+        groups_by_key["dfl_regret_surrogate_rolling_robustness_frame"]
         == "gold_dfl_training"
     )
     assert (
@@ -1425,6 +1467,26 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_v2_plus_learning_limit_audit_frame"]["ml_stage"]
+        == "diagnostics"
+    )
+    assert (
+        tags_by_key["dfl_expanded_schedule_value_teacher_label_panel_v1_frame"][
+            "ml_stage"
+        ]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_regret_surrogate_forecast_correction_v1_frame"]["ml_stage"]
+        == "selection"
+    )
+    assert (
+        tags_by_key["dfl_regret_surrogate_strict_lp_benchmark_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key[
             "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
         ]["evidence_scope"]
@@ -1744,6 +1806,27 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_ua_context_lava_rolling_robustness_frame"] == {
         "dfl_ua_context_lava_sequence_training_frame"
+    }
+    assert deps_by_key["dfl_v2_plus_learning_limit_audit_frame"] == {
+        "dfl_ua_context_oracle_gap_feature_panel_frame"
+    }
+    assert deps_by_key["dfl_expanded_schedule_value_teacher_label_panel_v1_frame"] == {
+        "dfl_ua_context_oracle_gap_feature_panel_frame",
+        "dfl_v2_plus_learning_limit_audit_frame",
+    }
+    assert deps_by_key["dfl_regret_surrogate_forecast_correction_v1_frame"] == {
+        "dfl_expanded_schedule_value_teacher_label_panel_v1_frame"
+    }
+    assert deps_by_key["dfl_regret_surrogate_candidate_value_v1_frame"] == {
+        "dfl_expanded_schedule_value_teacher_label_panel_v1_frame",
+        "dfl_regret_surrogate_forecast_correction_v1_frame",
+    }
+    assert deps_by_key["dfl_regret_surrogate_strict_lp_benchmark_frame"] == {
+        "dfl_expanded_schedule_value_teacher_label_panel_v1_frame",
+        "dfl_regret_surrogate_candidate_value_v1_frame",
+    }
+    assert deps_by_key["dfl_regret_surrogate_rolling_robustness_frame"] == {
+        "dfl_expanded_schedule_value_teacher_label_panel_v1_frame"
     }
     assert deps_by_key["dfl_context_enriched_schedule_candidate_library_v5_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v4_frame",

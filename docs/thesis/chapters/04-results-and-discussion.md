@@ -962,6 +962,26 @@ UAH mean regret і `76.32` UAH median regret. Behavior cloning reference мав
 candidate-index/family/block supervision і tail-risk labels, але для thesis
 headline V2+ лишається сильнішим comparator.
 
+Тому наступний ML-зріз був зафіксований як Learning-Limit Audit +
+Regret-Surrogate DFL v1, а не ще один DT. Dagster run
+`eec564f0-7437-4372-95fa-5c6e74745c18` матеріалізував `1,825`
+tenant-anchor audit rows і показав, що candidate universe не є повністю
+вичерпаним: на latest final holdout oracle-best feasible candidate знизив би
+mean regret з V2+ `174.77` UAH до `161.38` UAH, тобто на `7.66%`. Але ці
+можливості рідкісні: кращий candidate існував лише на `8 / 90` final rows.
+На train/prior anchors верхня межа також існує (`252.57` -> `210.47` UAH,
+`16.67%`), але вона супроводжується tail-risk pattern.
+
+Regret-Surrogate V1 не став новим headline result. Він вибрав `0 / 90`
+non-V2+ final rows, fallback до V2+ на всіх final rows і тому повторив V2+
+strict LP/oracle result: `174.77` UAH mean regret і `67.30` UAH median regret.
+Rolling robustness також не показав challenger signal: `0 / 4` robust windows
+і `0 / 4` diagnostic windows. Висновок: проблема не в тому, що кращих
+розкладів взагалі не існує; проблема в тому, що prior-only features поки не
+відрізняють рідкісні safe-switch rows від tail-risk rows достатньо надійно.
+Final evaluator не змінюється: strict LP/oracle regret, V2+ fallback,
+`market_execution_enabled=false`, без live dispatch claim.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -996,6 +1016,10 @@ rows:
   tail-risk diagnostic, safe-switch target, and schedule-neighbor DT/LAVA
   teacher-supervision layer showing that current Poland/TFT neighbors are not
   yet prior-safe enough to replace V2+;
+- `docs/technical/DFL_UA_CONTEXT_LAVA_DT.md` і
+  `docs/technical/DFL_REGRET_SURROGATE_V1.md` - негативний UA-context
+  candidate-index DT/LAVA результат і наступний regret-surrogate learning-limit
+  gate перед будь-яким новим DT/LAVA promotion attempt;
 - `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`,
   `docs/technical/DFL_PLATEAU_BREAKER_V4.md` і
   `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md` - технічні описи V3,
