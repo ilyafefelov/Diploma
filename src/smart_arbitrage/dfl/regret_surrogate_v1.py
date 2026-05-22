@@ -102,6 +102,12 @@ REGRET_SURROGATE_UA_CONTEXT_BACKFILL_V8_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_UA_CANDIDATE_LIBRARY_V8_CLAIM_SCOPE: Final[str] = (
     "dfl_ua_context_feasible_candidate_library_v8_not_full_dfl"
 )
+REGRET_SURROGATE_UA_CANDIDATE_STRICT_RESCORE_V8_CLAIM_SCOPE: Final[str] = (
+    "dfl_ua_context_candidate_v8_strict_rescore_not_full_dfl"
+)
+REGRET_SURROGATE_UA_TEACHER_V8_CLAIM_SCOPE: Final[str] = (
+    "dfl_ua_context_candidate_value_teacher_v8_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -2354,6 +2360,172 @@ def build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame(
     return frame
 
 
+def build_dfl_ua_context_candidate_v8_strict_rescore_frame(
+    ua_context_feasible_schedule_candidate_library_v8_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V8 explicit schedules against actual prices and oracle value."""
+
+    _validate_v8_candidate_library(
+        ua_context_feasible_schedule_candidate_library_v8_frame
+    )
+    output_rows: list[dict[str, Any]] = []
+    for row in ua_context_feasible_schedule_candidate_library_v8_frame.iter_rows(
+        named=True
+    ):
+        if str(row["candidate_source"]) == _V8_GENERATED_CANDIDATE_SOURCE:
+            output_rows.append(_rescore_v8_generated_candidate(row))
+        else:
+            copied = dict(row)
+            copied["candidate_value_label_status"] = copied.get(
+                "candidate_value_label_status",
+                "strict_scored_existing_candidate",
+            )
+            copied["diagnostic_requires_strict_rescore"] = False
+            copied["strict_rescore_version"] = "existing_candidate_score_reused"
+            output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v8_strict_rescore_frame(frame)
+    return frame
+
+
+def build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame(
+    ua_context_candidate_v8_strict_rescore_frame: pl.DataFrame,
+    v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    nearest_neighbor_count: int = 5,
+) -> pl.DataFrame:
+    """Rebuild V8 candidate-value labels after strict schedule rescore."""
+
+    _validate_v8_strict_rescore_frame(ua_context_candidate_v8_strict_rescore_frame)
+    _validate_v7_backfill_requirements_frame(
+        v2_plus_opportunity_backfill_requirements_frame
+    )
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if max_prior_neighbor_distance < 0.0:
+        raise ValueError("max_prior_neighbor_distance must not be negative.")
+    if nearest_neighbor_count < 1:
+        raise ValueError("nearest_neighbor_count must be at least 1.")
+    rows = list(ua_context_candidate_v8_strict_rescore_frame.iter_rows(named=True))
+    prior_rows = _sparse_prior_candidate_rows(rows)
+    prior_rows_by_group: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for prior in prior_rows:
+        prior_rows_by_group.setdefault(_sparse_neighbor_group_key(prior), []).append(
+            prior
+        )
+    feature_names = _sparse_distance_feature_names(
+        ua_context_candidate_v8_strict_rescore_frame
+    )
+    requirements_by_anchor = {
+        _anchor_key(row): row
+        for row in v2_plus_opportunity_backfill_requirements_frame.iter_rows(named=True)
+    }
+    output_rows: list[dict[str, Any]] = []
+    for row in rows:
+        requirement = requirements_by_anchor.get(_anchor_key(row))
+        if requirement is None:
+            raise ValueError(
+                f"missing V8 backfill requirement row for {_anchor_key(row)}."
+            )
+        source = str(row["candidate_source"])
+        eligible = bool(row.get("eligible_for_final_selection_v8", True))
+        neighbor_stats = (
+            _nearest_prior_neighbor_stats_from_candidates(
+                row,
+                prior_rows=prior_rows_by_group.get(_sparse_neighbor_group_key(row), []),
+                feature_names=feature_names,
+                nearest_neighbor_count=nearest_neighbor_count,
+            )
+            if str(row["split_name"]) == "final_holdout"
+            and source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            else _empty_neighbor_stats()
+        )
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        material_safe = (
+            source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            and delta <= -material_switch_delta_uah
+        )
+        feature_list = list(row.get("selected_feature_names", []))
+        for feature_name in (
+            "selector_feature_v8_nearest_prior_safe_switch_distance",
+            "selector_feature_v8_neighbor_safe_win_count",
+            "selector_feature_v8_neighbor_tail_risk_probability",
+            "selector_feature_v8_neighbor_mean_delta_uah",
+        ):
+            if feature_name not in feature_list:
+                feature_list.append(feature_name)
+        copied = dict(row)
+        copied.update(
+            {
+                "teacher_panel_version": "candidate_value_teacher_v8",
+                "selected_feature_names": sorted(feature_list),
+                "selector_feature_v8_nearest_prior_safe_switch_distance": float(
+                    neighbor_stats["nearest_safe_distance"]
+                ),
+                "selector_feature_v8_nearest_prior_any_candidate_distance": float(
+                    neighbor_stats["nearest_any_distance"]
+                ),
+                "selector_feature_v8_neighbor_support_count": float(
+                    neighbor_stats["neighbor_count"]
+                ),
+                "selector_feature_v8_neighbor_safe_win_count": float(
+                    neighbor_stats["safe_win_count"]
+                ),
+                "selector_feature_v8_neighbor_tail_risk_probability": float(
+                    neighbor_stats["tail_risk_probability"]
+                ),
+                "selector_feature_v8_neighbor_mean_delta_uah": float(
+                    neighbor_stats["mean_delta_uah"]
+                ),
+                "selector_feature_v8_has_prior_neighbor_support": float(
+                    float(neighbor_stats["nearest_safe_distance"])
+                    <= max_prior_neighbor_distance
+                ),
+                "label_v8_material_safe_switch": material_safe,
+                "label_v8_tail_risk_loss": bool(row["label_tail_risk_loss"]),
+                "label_v8_opportunity_backfill_decision": str(
+                    requirement["opportunity_backfill_decision"]
+                ),
+                "diagnostic_v8_candidate_family_gap": bool(
+                    requirement["candidate_family_gap"]
+                ),
+                "diagnostic_v8_strict_control_material_local_win": bool(
+                    requirement["diagnostic_strict_control_material_local_win"]
+                ),
+                "claim_scope": REGRET_SURROGATE_UA_TEACHER_V8_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+            }
+        )
+        output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v8_teacher_panel(frame)
+    return frame
+
+
 def build_dfl_candidate_value_teacher_label_panel_v7_frame(
     feasible_schedule_candidate_library_v7_frame: pl.DataFrame,
     v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
@@ -4148,6 +4320,117 @@ def _copy_v8_generated_candidate(
     return copied
 
 
+def _rescore_v8_generated_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    actual_prices = _float_vector(row["actual_price_uah_mwh_vector"])
+    forecast_prices = _float_vector(row["forecast_price_uah_mwh_vector"])
+    dispatch = _float_vector(row["dispatch_mw_vector"])
+    if len(actual_prices) != len(dispatch):
+        raise ValueError("V8 strict rescore needs aligned actual and dispatch vectors.")
+    degradation = float(row["total_degradation_penalty_uah"])
+    decision_value = _schedule_value_uah(
+        prices=actual_prices,
+        dispatch=dispatch,
+        degradation_penalty_uah=degradation,
+    )
+    forecast_objective = _schedule_value_uah(
+        prices=forecast_prices,
+        dispatch=dispatch,
+        degradation_penalty_uah=degradation,
+    )
+    oracle_value = float(row["oracle_value_uah"])
+    regret = max(0.0, oracle_value - decision_value)
+    regret_ratio = regret / abs(oracle_value) if abs(oracle_value) > 1e-9 else 0.0
+    baseline_regret = float(row["v2_plus_baseline_regret_uah"])
+    delta = regret - baseline_regret
+    payload = _v8_rescore_payload(
+        row,
+        decision_value_uah=decision_value,
+        forecast_objective_value_uah=forecast_objective,
+        regret_uah=regret,
+    )
+    copied = dict(row)
+    copied.update(
+        {
+            "decision_value_uah": decision_value,
+            "forecast_objective_value_uah": forecast_objective,
+            "regret_uah": regret,
+            "regret_ratio": regret_ratio,
+            "label_regret_delta_vs_v2_plus_uah": delta,
+            "label_safe_switch_win": delta < 0.0,
+            "label_tail_risk_loss": delta >= 150.0,
+            "label_best_candidate_family": str(row["candidate_family"])
+            if delta < 0.0
+            else "frozen_v2_plus",
+            "label_best_candidate_model_name": str(row["candidate_model_name"])
+            if delta < 0.0
+            else "schedule_value_learner_v2_plus",
+            "label_is_anchor_best_candidate": delta < 0.0,
+            "candidate_value_label_status": "strict_rescored_v8_candidate",
+            "diagnostic_requires_strict_rescore": False,
+            "strict_rescore_version": "ua_context_v8_direct_schedule_score_v1",
+            "evaluation_payload": payload,
+            "claim_scope": REGRET_SURROGATE_UA_CANDIDATE_STRICT_RESCORE_V8_CLAIM_SCOPE,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "market_execution_enabled": False,
+        }
+    )
+    return copied
+
+
+def _schedule_value_uah(
+    *,
+    prices: list[float],
+    dispatch: list[float],
+    degradation_penalty_uah: float,
+) -> float:
+    return sum(price * power for price, power in zip(prices, dispatch, strict=True)) - (
+        degradation_penalty_uah
+    )
+
+
+def _v8_rescore_payload(
+    row: dict[str, Any],
+    *,
+    decision_value_uah: float,
+    forecast_objective_value_uah: float,
+    regret_uah: float,
+) -> dict[str, Any]:
+    payload = (
+        dict(row["evaluation_payload"])
+        if isinstance(row.get("evaluation_payload"), dict)
+        else {}
+    )
+    dispatch = _float_vector(row["dispatch_mw_vector"])
+    soc = _float_vector(row["soc_fraction_vector"])
+    horizon = payload.get("horizon")
+    if isinstance(horizon, list):
+        updated_horizon: list[dict[str, Any]] = []
+        for index, point in enumerate(horizon):
+            updated = dict(point) if isinstance(point, dict) else {}
+            if index < len(dispatch):
+                updated["net_power_mw"] = dispatch[index]
+            if index < len(soc):
+                updated["soc_fraction"] = soc[index]
+            updated_horizon.append(updated)
+        payload["horizon"] = updated_horizon
+    payload.update(
+        {
+            "strict_rescore_version": "ua_context_v8_direct_schedule_score_v1",
+            "candidate_value_label_status": "strict_rescored_v8_candidate",
+            "requires_strict_rescore": False,
+            "decision_value_uah": decision_value_uah,
+            "forecast_objective_value_uah": forecast_objective_value_uah,
+            "regret_uah": regret_uah,
+            "claim_scope": REGRET_SURROGATE_UA_CANDIDATE_STRICT_RESCORE_V8_CLAIM_SCOPE,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "market_execution_enabled": False,
+        }
+    )
+    return payload
+
+
 def _v8_dispatch_vector(
     v2_row: dict[str, Any],
     *,
@@ -4839,6 +5122,61 @@ def _validate_v8_candidate_library(frame: pl.DataFrame) -> None:
         raise ValueError("V8 Ukrainian candidate library refuses market execution.")
 
 
+def _validate_v8_strict_rescore_frame(frame: pl.DataFrame) -> None:
+    _validate_v8_context_panel(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "eligible_for_final_selection_v8",
+                "candidate_value_label_status",
+                "diagnostic_requires_strict_rescore",
+                "strict_rescore_version",
+            }
+        ),
+        frame_name="V8 Ukrainian candidate strict rescore frame",
+    )
+    if frame.filter(
+        (pl.col("candidate_source") == _V8_GENERATED_CANDIDATE_SOURCE)
+        & (pl.col("candidate_value_label_status") != "strict_rescored_v8_candidate")
+    ).height:
+        raise ValueError("V8 generated candidates must be strict-rescored.")
+    if frame.filter(
+        (pl.col("candidate_source") == _V8_GENERATED_CANDIDATE_SOURCE)
+        & pl.col("diagnostic_requires_strict_rescore")
+    ).height:
+        raise ValueError("V8 strict-rescored candidates cannot require rescore.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V8 strict rescore refuses market execution.")
+
+
+def _validate_v8_teacher_panel(frame: pl.DataFrame) -> None:
+    _validate_v8_strict_rescore_frame(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "teacher_panel_version",
+                "label_v8_material_safe_switch",
+                "label_v8_tail_risk_loss",
+                "label_v8_opportunity_backfill_decision",
+                "selector_feature_v8_nearest_prior_safe_switch_distance",
+                "selector_feature_v8_neighbor_safe_win_count",
+                "selector_feature_v8_neighbor_tail_risk_probability",
+                "selector_feature_v8_neighbor_mean_delta_uah",
+            }
+        ),
+        frame_name="V8 Ukrainian candidate-value teacher label panel",
+    )
+    final_training = frame.filter(pl.col("split_name") == "final_holdout").select(
+        pl.col("is_training_row").any()
+    )
+    if final_training.item():
+        raise ValueError("V8 final-holdout rows cannot be training rows.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V8 teacher label panel refuses market execution.")
+
+
 def _validate_v7_teacher_panel(frame: pl.DataFrame) -> None:
     _validate_v7_candidate_library(frame)
     _require_columns(
@@ -5030,6 +5368,8 @@ __all__ = [
     "build_dfl_backfilled_context_feature_panel_v7_frame",
     "build_dfl_feasible_schedule_candidate_library_v7_frame",
     "build_dfl_ua_context_backfilled_feature_panel_v8_frame",
+    "build_dfl_ua_context_candidate_v8_strict_rescore_frame",
+    "build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame",
     "build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame",
     "build_dfl_candidate_value_teacher_label_panel_v7_frame",
     "build_dfl_candidate_value_regret_surrogate_v7_frame",

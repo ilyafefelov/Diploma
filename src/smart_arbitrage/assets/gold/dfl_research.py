@@ -379,6 +379,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_sparse_safe_switch_strict_lp_benchmark_frame,
     build_dfl_sparse_safe_switch_teacher_label_panel_v6_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
+    build_dfl_ua_context_candidate_v8_strict_rescore_frame,
+    build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
     build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame,
     build_dfl_v2_plus_learning_limit_audit_frame,
     build_dfl_v2_plus_opportunity_backfill_requirements_frame,
@@ -6015,6 +6017,107 @@ def dfl_ua_context_feasible_schedule_candidate_library_v8_frame(
             else 0,
             "market_execution_enabled": False,
             "scope": "dfl_ua_context_feasible_candidate_library_v8_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v8",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_candidate_v8_strict_rescore_frame(
+    context,
+    dfl_ua_context_feasible_schedule_candidate_library_v8_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V8 explicit schedules against realized prices and oracle value."""
+
+    frame = build_dfl_ua_context_candidate_v8_strict_rescore_frame(
+        dfl_ua_context_feasible_schedule_candidate_library_v8_frame
+    )
+    generated_frame = frame.filter(
+        pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+    )
+    generated_mean_regret = (
+        generated_frame.select(pl.col("regret_uah").mean()).item()
+        if generated_frame.height
+        else None
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "strict_rescored_v8_candidate_rows": frame.filter(
+                pl.col("candidate_value_label_status") == "strict_rescored_v8_candidate"
+            ).height
+            if frame.height
+            else 0,
+            "mean_generated_v8_regret_uah": generated_mean_regret,
+            "target_label_space": "schedule_candidate_value_v8",
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_candidate_v8_strict_rescore_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v8",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_candidate_value_teacher_label_panel_v8_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_ua_context_candidate_v8_strict_rescore_frame: pl.DataFrame,
+    dfl_v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rebuild V8 candidate-value teacher labels after strict rescore."""
+
+    frame = build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame(
+        dfl_ua_context_candidate_v8_strict_rescore_frame,
+        dfl_v2_plus_opportunity_backfill_requirements_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        nearest_neighbor_count=config.nearest_neighbor_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": frame.filter(
+                pl.col("label_v8_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "final_generated_material_safe_switch_rows": frame.filter(
+                (pl.col("split_name") == "final_holdout")
+                & (pl.col("candidate_source") == "ua_context_v8_generated_candidate")
+                & pl.col("label_v8_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v8",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_candidate_value_teacher_v8_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -14182,6 +14285,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_feasible_schedule_candidate_library_v7_frame,
     dfl_ua_context_backfilled_feature_panel_v8_frame,
     dfl_ua_context_feasible_schedule_candidate_library_v8_frame,
+    dfl_ua_context_candidate_v8_strict_rescore_frame,
+    dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

@@ -115,6 +115,13 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      V8 generated rows are marked `pending_strict_rescore`, so they are not
      promoted or used as live recommendations until the unchanged strict
      LP/oracle evaluator scores them.
+   - V8 strict rescore is now materialized. It scored `9,125` generated
+     schedules and rebuilt `52,855` teacher-label rows. The result created
+     `287` generated schedules better than V2+ overall, `16` final-holdout
+     local wins, and `8` final-holdout material safe-switch labels. This is
+     enough to justify a conservative V8 selector experiment, but not enough to
+     promote V8 directly because most generated candidates remain high-regret
+     tail-risk schedules.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

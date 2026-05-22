@@ -1034,6 +1034,14 @@ new regret result. The context join also shows why this work is necessary:
 complete UA context readiness is still `0 / 43,730` rows, with grid-event
 readiness especially sparse.
 
+Після strict rescore цих V8 schedules той самий LP/oracle evaluator перебудував
+`52,855` teacher-label rows. Серед `9,125` generated schedules тільки `287`
+були кращими за V2+ на відповідних anchors, а на final holdout таких було `16`
+локальних wins і `8` material safe-switch labels. Це показує, що нові schedules
+дійсно створили learnable positives, але вони рідкісні і оточені високим
+tail-risk. Тому наступний model step має бути conservative V8 selector з V2+
+fallback, а не raw DT imitation.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

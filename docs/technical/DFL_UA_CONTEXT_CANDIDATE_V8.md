@@ -34,6 +34,24 @@ The partial means are still useful diagnostics before rescore:
 publication/calendar readiness `0.305`, weather/load readiness `0.305`, and
 grid-event readiness `0.022`.
 
+Strict-rescore status:
+
+- Dagster run id: `53fcd40c-9e7d-4173-b858-7fb0f3a00c9a`;
+- strict-rescored rows: `52,855`;
+- rebuilt teacher-label rows: `52,855`;
+- V8 generated schedules scored: `9,125`;
+- generated schedules better than V2+: `287 / 9,125`;
+- final-holdout generated schedules better than V2+: `16`;
+- final-holdout material safe-switch labels: `8`;
+- `market_execution_enabled=false`.
+
+The rescore shows that new candidates exist, but most generated schedules are
+too aggressive. Mean generated regret is `1471.56` UAH, median generated regret
+is `1177.57` UAH. The least risky V8 family is the strict-blend rescue schedule
+with mean regret `339.57` UAH, but it is still not a promoted result. The next
+selector must learn when these rare safe schedules are prior-supported and must
+fall back to V2+ otherwise.
+
 ## Asset Path
 
 | Asset | Purpose |
@@ -76,13 +94,11 @@ existing feasible schedules. They are not final-holdout oracle copies.
 
 ## Next Gate
 
-The next slice is a strict-rescore V8 gate:
+The next slice is a conservative V8 selector gate:
 
-1. score the V8 generated schedules through the same strict LP/oracle evaluator;
-2. rebuild candidate-value labels after strict rescore;
-3. train a conservative selector only if V8 creates prior-supported material
+1. train a conservative selector only if V8 creates prior-supported material
    safe-switch examples;
-4. compare against frozen V2+ with the same promotion rule: mean regret at least
+2. compare against frozen V2+ with the same promotion rule: mean regret at least
    `5%` better, median not worse than `67.30` UAH, `4 / 4` rolling windows, zero
    safety violations, and `market_execution_enabled=false`.
 

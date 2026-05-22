@@ -1027,6 +1027,14 @@ rescue. Усі такі rows позначені `pending_strict_rescore`, том
 бути thesis headline або live recommendation до проходження того самого strict
 LP/oracle scoring gate.
 
+Наступний V8 методологічний крок - strict rescore explicit schedules:
+`dfl_ua_context_candidate_v8_strict_rescore_frame` оцінює generated dispatch
+vectors проти realized DAM prices і вже наявного oracle value, а
+`dfl_ua_context_candidate_value_teacher_label_panel_v8_frame` перебудовує
+candidate-value labels. Це все ще offline evidence: labels можуть навчати
+майбутній conservative selector, але final-holdout labels не можуть впливати на
+generation або threshold selection.
+
 ## 3.10. Уніфікований запуск evidence-runs: local vs Hugging Face Jobs
 
 Для довгих official evidence runs використовується єдиний технічний entrypoint:

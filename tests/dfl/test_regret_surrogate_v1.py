@@ -30,6 +30,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_candidate_value_v7_rolling_robustness_frame,
     build_dfl_candidate_value_v7_strict_lp_benchmark_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
+    build_dfl_ua_context_candidate_v8_strict_rescore_frame,
+    build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
     build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame,
     build_dfl_sparse_safe_switch_abstention_model_v6_frame,
     build_dfl_sparse_safe_switch_candidate_library_v6_frame,
@@ -873,6 +875,94 @@ def test_v8_candidate_library_adds_new_feasible_ua_context_schedules() -> None:
     assert first_generated["dispatch_mw_vector"] != baseline["dispatch_mw_vector"]
 
 
+def test_v8_strict_rescore_rebuilds_generated_candidate_regret_labels() -> None:
+    v8_library, requirements = _v8_library(
+        _candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0)
+    )
+
+    rescored = build_dfl_ua_context_candidate_v8_strict_rescore_frame(v8_library)
+
+    generated = rescored.filter(
+        pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+    )
+    assert generated.height == len(TENANTS) * 5 * 5
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "strict_rescored_v8_candidate"
+    }
+    assert set(generated["diagnostic_requires_strict_rescore"].to_list()) == {False}
+    assert set(generated["market_execution_enabled"].to_list()) == {False}
+    assert generated["regret_uah"].min() >= 0.0
+    for row in generated.iter_rows(named=True):
+        assert row["label_regret_delta_vs_v2_plus_uah"] == (
+            row["regret_uah"] - row["v2_plus_baseline_regret_uah"]
+        )
+    assert requirements.height == len(TENANTS) * 5
+
+
+def test_v8_final_actual_mutation_changes_rescore_labels_not_candidate_features() -> None:
+    base_library, _ = _v8_library(
+        _candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0)
+    )
+    mutated_library = base_library.with_columns(
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit([5000.0, 1000.0, 4500.0, 900.0]))
+        .otherwise(pl.col("actual_price_uah_mwh_vector"))
+        .alias("actual_price_uah_mwh_vector")
+    )
+
+    base_rescore = build_dfl_ua_context_candidate_v8_strict_rescore_frame(base_library)
+    mutated_rescore = build_dfl_ua_context_candidate_v8_strict_rescore_frame(
+        mutated_library
+    )
+
+    selector_columns = sorted(
+        column
+        for column in base_rescore.columns
+        if column.startswith("selector_feature_")
+    )
+    assert base_rescore.select(selector_columns).to_dicts() == (
+        mutated_rescore.select(selector_columns).to_dicts()
+    )
+    generated_filter = pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+    assert base_rescore.filter(generated_filter).select(
+        ["candidate_model_name", "dispatch_mw_vector"]
+    ).to_dicts() == mutated_rescore.filter(generated_filter).select(
+        ["candidate_model_name", "dispatch_mw_vector"]
+    ).to_dicts()
+    assert base_rescore.filter(generated_filter)["regret_uah"].to_list() != (
+        mutated_rescore.filter(generated_filter)["regret_uah"].to_list()
+    )
+
+
+def test_v8_teacher_label_panel_uses_rescored_candidates() -> None:
+    v8_library, requirements = _v8_library(
+        _candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0)
+    )
+    rescored = build_dfl_ua_context_candidate_v8_strict_rescore_frame(v8_library)
+
+    teacher_v8 = build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame(
+        rescored,
+        requirements,
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+    generated = teacher_v8.filter(
+        pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+    )
+    assert generated.height == len(TENANTS) * 5 * 5
+    assert "label_v8_material_safe_switch" in teacher_v8.columns
+    assert "selector_feature_v8_neighbor_safe_win_count" in teacher_v8.columns
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "strict_rescored_v8_candidate"
+    }
+    assert set(generated["teacher_panel_version"].to_list()) == {
+        "candidate_value_teacher_v8"
+    }
+    assert set(generated["market_execution_enabled"].to_list()) == {False}
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
@@ -939,6 +1029,23 @@ def _v7_library_and_teacher(panel: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataF
         max_prior_neighbor_distance=2.0,
     )
     return v7_library, teacher_v7
+
+
+def _v8_library(candidate_panel: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
+    v7_library, _ = _v7_library_and_teacher(candidate_panel)
+    requirements = _v7_requirements(v7_library)
+    context_panel = build_dfl_ua_context_backfilled_feature_panel_v8_frame(
+        v7_library,
+        _ua_context_panel(v7_library),
+        requirements,
+    )
+    return (
+        build_dfl_ua_context_feasible_schedule_candidate_library_v8_frame(
+            context_panel,
+            requirements,
+        ),
+        requirements,
+    )
 
 
 def _v7_requirements(v7_library: pl.DataFrame) -> pl.DataFrame:
