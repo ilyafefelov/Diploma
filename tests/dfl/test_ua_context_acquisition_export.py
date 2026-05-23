@@ -12,6 +12,10 @@ from smart_arbitrage.dfl.ua_v12_safe_teacher_export import (
     build_dfl_ua_v12_safe_teacher_backfill_packet,
     write_dfl_ua_v12_safe_teacher_backfill_packet,
 )
+from smart_arbitrage.dfl.ua_context_v13_acquisition_export import (
+    build_dfl_ua_context_v13_acquisition_packet,
+    write_dfl_ua_context_v13_acquisition_packet,
+)
 
 
 def test_ua_context_backfill_readiness_packet_exports_blocked_gate(tmp_path) -> None:
@@ -172,3 +176,74 @@ def test_ua_v12_safe_teacher_packet_exports_blocked_readiness(tmp_path) -> None:
     assert (export_dir / "dfl_ua_v12_safe_teacher_summary.md").exists()
     assert (export_dir / "dfl_ua_v12_source_inventory_rows.csv").exists()
     assert (export_dir / "dfl_ua_v12_readiness_decision_rows.csv").exists()
+
+
+def test_ua_context_v13_acquisition_packet_exports_data_acquisition_needed(
+    tmp_path,
+) -> None:
+    source_inventory = pl.DataFrame(
+        [
+            {
+                "source_family": "measured_or_source_backed_tenant_load_pv",
+                "source_status": "blocked_missing_source",
+                "coverage_ratio": 0.0,
+                "required_for_v13_candidate_generation": True,
+                "market_execution_enabled": False,
+            },
+            {
+                "source_family": "v12_safe_teacher_label_support",
+                "source_status": "blocked_insufficient_safe_teacher_labels",
+                "coverage_ratio": 0.35,
+                "required_for_v13_candidate_generation": True,
+                "market_execution_enabled": False,
+            },
+        ]
+    )
+    readiness = pl.DataFrame(
+        [
+            {
+                "tenant_id": "tenant_a",
+                "source_model_name": "model_a",
+                "v13_candidate_generation_ready": False,
+                "readiness_decision": "data_acquisition_needed",
+                "blocking_context_families": (
+                    "measured_or_source_backed_tenant_load_pv:"
+                    "blocked_missing_source"
+                ),
+                "prior_material_safe_switch_example_count": 7,
+                "min_prior_material_safe_switch_examples_for_dt": 20,
+                "dt_lava_ready": False,
+                "target_label_space": "v13_precondition_context_coverage",
+                "raw_hourly_action_imitation": False,
+                "market_execution_enabled": False,
+            }
+        ]
+    )
+
+    packet = build_dfl_ua_context_v13_acquisition_packet(
+        run_slug="test_v13_acquisition",
+        source_inventory_frame=source_inventory,
+        readiness_frame=readiness,
+        acquisition_source_evidence_frame=source_inventory,
+        asset_check_status="passed",
+    )
+    export_dir = write_dfl_ua_context_v13_acquisition_packet(
+        packet,
+        output_root=tmp_path,
+        source_inventory_frame=source_inventory,
+        readiness_frame=readiness,
+        acquisition_source_evidence_frame=source_inventory,
+    )
+
+    assert packet["v13_candidate_generation_ready"] is False
+    assert packet["claim_boundary"]["market_execution_enabled"] is False
+    assert packet["readiness_summary"]["readiness_decisions"] == [
+        "data_acquisition_needed"
+    ]
+    assert (export_dir / "dfl_ua_context_v13_acquisition_summary.json").exists()
+    assert (export_dir / "dfl_ua_context_v13_acquisition_summary.md").exists()
+    assert (
+        export_dir / "dfl_ua_context_v13_source_acquisition_evidence_rows.csv"
+    ).exists()
+    assert (export_dir / "dfl_ua_context_v13_source_inventory_rows.csv").exists()
+    assert (export_dir / "dfl_ua_context_v13_readiness_rows.csv").exists()

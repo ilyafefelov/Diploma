@@ -355,6 +355,11 @@ from smart_arbitrage.dfl.ua_context_acquisition_v1 import (
     build_dfl_ua_grid_event_backfill_frame,
     build_dfl_ua_weather_load_pv_proxy_backfill_frame,
 )
+from smart_arbitrage.dfl.ua_context_v13_acquisition import (
+    build_dfl_ua_context_acquisition_source_evidence_v13_frame,
+    build_dfl_ua_context_acquisition_readiness_v13_frame,
+    build_dfl_ua_context_source_inventory_v13_frame,
+)
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
     REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
     REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
@@ -8264,6 +8269,160 @@ def dfl_ua_v12_dt_lava_readiness_decision_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_ua_v12_dt_lava_readiness_decision_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="source_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v13",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_acquisition_source_evidence_v13_frame(
+    context,
+    dfl_ua_dam_publication_backfill_frame: pl.DataFrame,
+    dfl_ua_weather_load_pv_proxy_backfill_frame: pl.DataFrame,
+    dfl_ua_grid_event_backfill_frame: pl.DataFrame,
+    dfl_ua_context_backfill_coverage_gate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Summarize source-backed UA context acquired before V13 readiness."""
+
+    frame = build_dfl_ua_context_acquisition_source_evidence_v13_frame(
+        dfl_ua_dam_publication_backfill_frame,
+        dfl_ua_weather_load_pv_proxy_backfill_frame,
+        dfl_ua_grid_event_backfill_frame,
+        dfl_ua_context_backfill_coverage_gate_frame,
+    )
+    blocked = frame.filter(
+        pl.col("required_for_v13_candidate_generation")
+        & (pl.col("source_status") != "ready_prior_context")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "blocked_required_source_count": blocked.height,
+            "blocked_required_sources": sorted(blocked["source_family"].to_list())
+            if blocked.height
+            else [],
+            "source_statuses": sorted(
+                str(value) for value in frame["source_status"].unique()
+            )
+            if frame.height
+            else [],
+            "target_label_space": "v13_precondition_context_coverage",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_acquisition_source_evidence_v13_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="source_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v13",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_source_inventory_v13_frame(
+    context,
+    dfl_ua_context_source_expansion_inventory_v12_frame: pl.DataFrame,
+    dfl_ua_v12_dt_lava_readiness_decision_frame: pl.DataFrame,
+    dfl_ua_context_acquisition_source_evidence_v13_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Inventory targeted Ukrainian context still needed before V13 candidates."""
+
+    frame = build_dfl_ua_context_source_inventory_v13_frame(
+        dfl_ua_context_source_expansion_inventory_v12_frame,
+        dfl_ua_v12_dt_lava_readiness_decision_frame,
+        ua_context_acquisition_source_evidence_v13_frame=(
+            dfl_ua_context_acquisition_source_evidence_v13_frame
+        ),
+    )
+    blocked = frame.filter(
+        pl.col("required_for_v13_candidate_generation")
+        & (pl.col("source_status") != "ready_prior_context")
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "blocked_required_source_count": blocked.height,
+            "blocked_required_sources": sorted(blocked["source_family"].to_list())
+            if blocked.height
+            else [],
+            "target_label_space": "v13_precondition_context_coverage",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_source_inventory_v13_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v13",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_acquisition_readiness_v13_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_ua_v12_dt_lava_readiness_decision_frame: pl.DataFrame,
+    dfl_ua_context_source_inventory_v13_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gate V13 candidate generation on source coverage and safe-label support."""
+
+    frame = build_dfl_ua_context_acquisition_readiness_v13_frame(
+        dfl_ua_v12_dt_lava_readiness_decision_frame,
+        dfl_ua_context_source_inventory_v13_frame,
+        min_prior_material_safe_switch_examples_for_dt=(
+            config.min_prior_material_safe_switch_examples_for_dt
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "v13_ready_rows": frame.filter(
+                pl.col("v13_candidate_generation_ready")
+            ).height
+            if frame.height
+            else 0,
+            "readiness_decisions": sorted(
+                str(value) for value in frame["readiness_decision"].unique()
+            )
+            if frame.height
+            else [],
+            "target_label_space": "v13_precondition_context_coverage",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_acquisition_readiness_v13_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -16472,6 +16631,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_ua_low_tail_candidate_library_v12_frame,
     dfl_ua_low_tail_candidate_v12_strict_rescore_frame,
     dfl_ua_v12_dt_lava_readiness_decision_frame,
+    dfl_ua_context_acquisition_source_evidence_v13_frame,
+    dfl_ua_context_source_inventory_v13_frame,
+    dfl_ua_context_acquisition_readiness_v13_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

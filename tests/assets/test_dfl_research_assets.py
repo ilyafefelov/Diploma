@@ -460,6 +460,9 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_ua_low_tail_candidate_library_v12_frame",
         "dfl_ua_low_tail_candidate_v12_strict_rescore_frame",
         "dfl_ua_v12_dt_lava_readiness_decision_frame",
+        "dfl_ua_context_acquisition_source_evidence_v13_frame",
+        "dfl_ua_context_source_inventory_v13_frame",
+        "dfl_ua_context_acquisition_readiness_v13_frame",
         "dfl_candidate_value_teacher_label_panel_v7_frame",
         "dfl_candidate_value_regret_surrogate_v7_frame",
         "dfl_candidate_value_v7_strict_lp_benchmark_frame",
@@ -1749,6 +1752,22 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_ua_context_source_inventory_v13_frame"]["ml_stage"]
+        == "source_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_acquisition_source_evidence_v13_frame"][
+            "ml_stage"
+        ]
+        == "source_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_acquisition_readiness_v13_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key[
             "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
         ]["evidence_scope"]
@@ -2266,6 +2285,21 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_ua_v12_dt_lava_readiness_decision_frame"] == {
         "dfl_ua_low_tail_candidate_v12_strict_rescore_frame"
+    }
+    assert deps_by_key["dfl_ua_context_acquisition_source_evidence_v13_frame"] == {
+        "dfl_ua_context_backfill_coverage_gate_frame",
+        "dfl_ua_dam_publication_backfill_frame",
+        "dfl_ua_grid_event_backfill_frame",
+        "dfl_ua_weather_load_pv_proxy_backfill_frame",
+    }
+    assert deps_by_key["dfl_ua_context_source_inventory_v13_frame"] == {
+        "dfl_ua_context_acquisition_source_evidence_v13_frame",
+        "dfl_ua_context_source_expansion_inventory_v12_frame",
+        "dfl_ua_v12_dt_lava_readiness_decision_frame",
+    }
+    assert deps_by_key["dfl_ua_context_acquisition_readiness_v13_frame"] == {
+        "dfl_ua_context_source_inventory_v13_frame",
+        "dfl_ua_v12_dt_lava_readiness_decision_frame",
     }
     assert deps_by_key["dfl_candidate_value_teacher_label_panel_v7_frame"] == {
         "dfl_feasible_schedule_candidate_library_v7_frame",

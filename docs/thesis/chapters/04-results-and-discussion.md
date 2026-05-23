@@ -1193,6 +1193,20 @@ violations і `market_execution_enabled=false`. Причина не у відс�
 gate вимагає щонайменше `20` перед DT/LAVA training. Отже V11 є валідним
 diagnostic evidence: поточний шлях все ще data/candidate limited.
 
+V12 і V13 закривають це як окремий evidence result, а не як приховану невдачу
+моделі. V12 (`d1712548-a4fa-4eca-955d-183d1c4f258c`) показав, що current UA
+context coverage лишається partial (`0.593`), V12 не згенерував нових low-tail
+candidates, а prior safe examples залишились `2-7 / 20`. V13 тому переводить
+наступний крок у source-acquisition gate: потрібні measured tenant load/PV,
+explicit row-level DAM publication receipts, richer grid/outage archive,
+extended Ukrainian DAM/weather history і достатній safe-label support. Якщо ці
+джерела не готові, статус `data_acquisition_needed` є правильним результатом,
+а не приводом тренувати ще один selector або DT. Поточний V13 distinction також
+пояснює, чому rule-only OREE timing не дорівнює row-level publication receipts,
+а tenant load/PV proxy не треба називати measured telemetry. Headline evidence
+залишається V2+ (`174.77` / `67.30` UAH, `4 / 4` rolling,
+`market_execution_enabled=false`).
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

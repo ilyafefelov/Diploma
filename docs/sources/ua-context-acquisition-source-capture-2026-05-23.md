@@ -8,7 +8,21 @@ v1 from blocked readiness to `context_backfill_ready`.
 | Source | Evidence Used | Repo Usage |
 |---|---|---|
 | OREE DAM/IDM trading procedure, `https://www.oree.com.ua/index.php/web/13245784` | Section 3.7 states that OREE publishes DAM trading results for each trading zone and settlement period no later than 14:00 Kyiv time on the day before delivery, with delayed gate-closure handling described separately. | `dfl_ua_dam_publication_backfill_frame` uses this as source-backed publication-deadline evidence when row-level publication timestamps are absent. |
+| Energy Map DAM indexes, `https://energy-map.info/en/datasets/c6218b35-ce7e-45c2-925e-5c8e6f5eb9fb` | Public DAM index and weighted-average price dataset suitable for source traceability checks around Ukrainian DAM history. | Candidate source for cross-checking OREE DAM history coverage; not a substitute for row-level OREE publication receipts. |
+| Open-Meteo historical archive, `https://open-meteo.com/en/docs/historical-weather-api` | Public historical weather API covering archive weather variables by timestamp and location. | `tenant_historical_weather_bronze` and V13 source evidence treat weather/load/PV context as source-backed proxy context, not measured tenant telemetry. |
 | Ukrenergo public Telegram archive, `https://t.me/s/Ukrenergo` | Public operational posts include timestamps and event text. The updated bronze asset paginates the archive with `?before=<post_id>` until the configured archive start date or page limit. | `ukrenergo_grid_events_bronze` now materializes a historical observed archive; `dfl_ua_grid_event_backfill_frame` treats no-event rows as valid only when the source coverage window spans the anchor. |
+
+## V13 Acquisition Notes
+
+- Explicit DAM publication receipts are still stricter than the market-rule
+  deadline. V13 therefore distinguishes `ready_prior_context` OREE timing from
+  `partial_context_rule_deadline_without_row_receipts` for the row-level receipt
+  target.
+- Tenant load/PV is currently accepted only as measured telemetry if such rows
+  exist or as a source-backed proxy if the weather/config/proxy provenance is
+  present. It must not be described as measured live telemetry by default.
+- Grid/outage context is usable only when the archive provides event or
+  source-backed no-event coverage for the required anchor window.
 
 ## Materialized Evidence
 

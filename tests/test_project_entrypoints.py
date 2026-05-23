@@ -322,6 +322,32 @@ def test_ua_v12_safe_teacher_packet_cli_exports_dt_lava_gate() -> None:
     assert "Offline Strategy Promotion" in doc
 
 
+def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_ua_context_v13_acquisition_packet.py"
+    ).read_text(encoding="utf-8")
+    config = (
+        PROJECT_ROOT
+        / "configs"
+        / "real_data_dfl_ua_context_v13_acquisition_week3.yaml"
+    ).read_text(encoding="utf-8")
+    docs = (
+        PROJECT_ROOT / "docs" / "technical" / "DFL_UA_CONTEXT_ACQUISITION_V13.md"
+    ).read_text(encoding="utf-8")
+
+    assert "build_dfl_ua_context_v13_acquisition_packet" in export_script
+    assert "write_dfl_ua_context_v13_acquisition_packet" in export_script
+    assert "--source-evidence-pickle" in export_script
+    assert "v13_candidate_generation_ready" in export_script
+    assert "dfl_ua_context_acquisition_source_evidence_v13_frame" in config
+    assert "dfl_ua_context_source_inventory_v13_frame" in config
+    assert "dfl_ua_context_acquisition_readiness_v13_frame" in config
+    assert "dfl_ua_context_acquisition_source_evidence_v13_frame" in docs
+    assert "data_acquisition_needed" in docs
+    assert "market_execution_enabled=false" in docs
+    assert "Offline Strategy Promotion" in docs
+
+
 def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:
     export_script = (
         PROJECT_ROOT

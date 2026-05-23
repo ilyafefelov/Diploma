@@ -1170,6 +1170,24 @@ Run-receipt/manifest path описаний у `scripts/build_official_evidence_a
 `scripts/materialize_schedule_value_production_gate_registry.py` і
 `scripts/materialize_schedule_value_v2_plus_comparison.py`.
 
+Останні V11/V12 результати уточнюють порядок руху до DT/LAVA. V11 уже
+згенерував bounded lower-tail-risk schedules і перевірив candidate-value,
+behavior-cloning та candidate-index DT/LAVA policies, але всі вони безпечно
+повернулися до V2+, бо на tenant було лише `2-7` prior material safe-switch
+прикладів замість мінімальних `20`. V12 підтвердив, що проблема не в більшій
+нейромережі, а в source/context coverage: measured load/PV, row-level DAM
+publication receipts і richer grid/outage archive все ще не є повністю
+source-backed. Тому методологічний наступний крок формалізовано як V13
+acquisition gate: він не тренує selector і не будує candidates, а спершу
+вимагає source-backed Ukrainian context і достатню кількість non-tail-risk
+teacher labels. Окремо зафіксовано governance-розмежування: правило OREE про
+deadline публікації РДН є корисним prior-timing evidence, але не замінює
+row-level publication receipts; tenant load/PV може бути measured telemetry або
+source-backed proxy, але не видається за live metering без джерела. Тільки після
+`v13_candidate_generation_ready=true` дозволяється нова candidate library;
+DT/LAVA після цього все одно має target candidate-index/schedule-family, а не
+raw hourly BUY/SELL/HOLD.
+
 ## 3.13. Джерела методологічного обґрунтування
 
 Методологічна позиція розділу спирається на джерела, зафіксовані у
