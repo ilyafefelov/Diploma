@@ -437,6 +437,10 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_v8_pruned_candidate_value_teacher_label_panel_frame",
         "dfl_v8_pruned_candidate_value_selector_frame",
         "dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame",
+        "dfl_ua_prior_context_backfilled_feature_panel_v9_frame",
+        "dfl_ua_non_tail_risk_candidate_library_v9_frame",
+        "dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame",
+        "dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame",
         "dfl_candidate_value_teacher_label_panel_v7_frame",
         "dfl_candidate_value_regret_surrogate_v7_frame",
         "dfl_candidate_value_v7_strict_lp_benchmark_frame",
@@ -1638,6 +1642,28 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_ua_prior_context_backfilled_feature_panel_v9_frame"][
+            "ml_stage"
+        ]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_non_tail_risk_candidate_library_v9_frame"]["ml_stage"]
+        == "training_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame"][
+            "ml_stage"
+        ]
+        == "evaluation"
+    )
+    assert (
+        tags_by_key[
+            "dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame"
+        ]["evidence_scope"]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key[
             "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
         ]["evidence_scope"]
@@ -2065,6 +2091,20 @@ def test_dfl_research_assets_are_registered() -> None:
     ] == {
         "dfl_v8_pruned_candidate_value_teacher_label_panel_frame",
         "dfl_v8_pruned_candidate_value_selector_frame",
+    }
+    assert deps_by_key["dfl_ua_prior_context_backfilled_feature_panel_v9_frame"] == {
+        "dfl_v8_pruned_candidate_value_teacher_label_panel_frame"
+    }
+    assert deps_by_key["dfl_ua_non_tail_risk_candidate_library_v9_frame"] == {
+        "dfl_ua_prior_context_backfilled_feature_panel_v9_frame"
+    }
+    assert deps_by_key["dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame"] == {
+        "dfl_ua_non_tail_risk_candidate_library_v9_frame"
+    }
+    assert deps_by_key[
+        "dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame"
+    ] == {
+        "dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame"
     }
     assert deps_by_key["dfl_candidate_value_teacher_label_panel_v7_frame"] == {
         "dfl_feasible_schedule_candidate_library_v7_frame",

@@ -153,6 +153,23 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      sparse for another selector or DT/LAVA target. The next ML work must
      backfill stronger Ukrainian point-in-time context or generate new feasible
      non-tail-risk candidates before training again.
+   - V9 is the concrete follow-up to that decision. It adds
+     `dfl_ua_prior_context_backfilled_feature_panel_v9_frame`,
+     `dfl_ua_non_tail_risk_candidate_library_v9_frame`,
+     `dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame`, and
+     `dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame`.
+     The new candidate set is deliberately narrower than V8: bounded
+     same-energy peak/trough schedules at full, 75%, and 50% exposure. This
+     creates fresh strict-scored labels without reintroducing the tail-risk
+     perturbation families that made the V8 selector fail. V9 still does not
+     promote a strategy or start DT/LAVA; it rebuilds teacher labels first.
+     The first V9 materialization (`9db07164-2cc8-420a-aa44-d361f834701e`)
+     produced `17,995` rebuilt label rows and `5,475` generated candidate rows.
+     It found only `8` material safe switches, all in train/prior rows, and
+     `0` final-holdout material safe switches. Strict rescore marked `5,440`
+     generated rows as tail-risk and ineligible for a future selector training
+     pass. This is useful negative evidence: bounded peak/trough generation
+     alone still does not create selector-safe final opportunities.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

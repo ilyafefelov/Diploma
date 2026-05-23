@@ -39,6 +39,10 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_v8_pruned_candidate_value_selector_frame,
     build_dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame,
     build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame,
+    build_dfl_ua_non_tail_risk_candidate_library_v9_frame,
+    build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,
+    build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame,
+    build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
     build_dfl_ua_context_candidate_v8_strict_rescore_frame,
     build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
@@ -1423,6 +1427,121 @@ def test_v8_rolling_uses_prior_rescored_neighbors_only() -> None:
     assert set(rolling["market_execution_enabled"].to_list()) == {False}
 
 
+def test_v9_prior_context_backfill_adds_prior_only_support_features() -> None:
+    pruned_teacher = _v8_pruned_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+
+    v9_context = build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame(
+        pruned_teacher,
+        min_prior_context_neighbor_count=1,
+    )
+
+    assert "selector_feature_v9_prior_context_neighbor_count" in v9_context.columns
+    assert "selector_feature_v9_prior_context_safe_win_rate" in v9_context.columns
+    assert "selector_feature_v9_prior_context_tail_risk_rate" in v9_context.columns
+    assert set(v9_context["feature_panel_version"].to_list()) == {
+        "ua_prior_context_backfill_v9"
+    }
+    assert set(v9_context["market_execution_enabled"].to_list()) == {False}
+    final_rows = v9_context.filter(pl.col("split_name") == "final_holdout")
+    assert final_rows["selector_feature_v9_prior_context_neighbor_count"].min() >= 1.0
+
+
+def test_v9_non_tail_risk_candidate_library_generates_bounded_schedules() -> None:
+    pruned_teacher = _v8_pruned_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    v9_context = build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame(
+        pruned_teacher,
+        min_prior_context_neighbor_count=1,
+    )
+
+    library = build_dfl_ua_non_tail_risk_candidate_library_v9_frame(v9_context)
+
+    generated = library.filter(
+        pl.col("candidate_source") == "ua_context_v9_generated_candidate"
+    )
+    assert generated.height == len(TENANTS) * 5 * 3
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "pending_strict_rescore"
+    }
+    assert generated["selector_feature_schedule_distance_from_v2_plus"].max() <= 0.1
+    assert generated["selector_feature_total_throughput_delta_mwh"].max() <= 1e-9
+    assert set(generated["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v9_rebuilt_labels_include_non_tail_risk_material_safe_candidates() -> None:
+    pruned_teacher = _v8_pruned_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    v9_context = build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame(
+        pruned_teacher,
+        min_prior_context_neighbor_count=1,
+    )
+    library = build_dfl_ua_non_tail_risk_candidate_library_v9_frame(v9_context)
+    rescored = build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame(library)
+
+    labels = build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame(
+        rescored,
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+    generated = labels.filter(
+        pl.col("candidate_source") == "ua_context_v9_generated_candidate"
+    )
+    assert set(generated["teacher_panel_version"].to_list()) == {
+        "candidate_value_teacher_v9_non_tail_risk"
+    }
+    assert "selector_feature_v9_neighbor_safe_win_count" in labels.columns
+    assert generated.filter(pl.col("label_v9_material_safe_switch")).height > 0
+    assert set(generated["label_v9_tail_risk_loss"].to_list()) == {False}
+    assert set(labels["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v9_tail_risk_generated_rows_are_ineligible_for_next_selector() -> None:
+    pruned_teacher = _v8_pruned_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        )
+    )
+    v9_context = build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame(
+        pruned_teacher,
+        min_prior_context_neighbor_count=1,
+    )
+    library = build_dfl_ua_non_tail_risk_candidate_library_v9_frame(v9_context)
+    rescored = build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame(library)
+
+    labels = build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame(
+        rescored,
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+    rejected = labels.filter(
+        (pl.col("candidate_source") == "ua_context_v9_generated_candidate")
+        & pl.col("diagnostic_v9_tail_risk_rejected")
+    )
+    assert rejected.height > 0
+    assert set(rejected["eligible_for_next_selector_training_v9"].to_list()) == {
+        False
+    }
+    assert set(labels["market_execution_enabled"].to_list()) == {False}
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
@@ -1514,6 +1633,29 @@ def _v8_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
         build_dfl_ua_context_candidate_v8_strict_rescore_frame(v8_library),
         requirements,
         material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+
+def _v8_pruned_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
+    teacher_v8 = _v8_teacher(candidate_panel)
+    model = build_dfl_candidate_value_regret_surrogate_v8_frame(
+        teacher_v8,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        allowed_candidate_sources=("ua_context_v8_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+    audit = build_dfl_v8_false_positive_tail_risk_audit_frame(teacher_v8, model)
+    plan = build_dfl_v8_pruned_candidate_family_plan_frame(audit)
+    pruned = build_dfl_v8_pruned_candidate_library_frame(teacher_v8, plan)
+    return build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame(
+        pruned,
         max_prior_neighbor_distance=2.0,
         nearest_neighbor_count=3,
     )

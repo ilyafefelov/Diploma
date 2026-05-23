@@ -373,6 +373,10 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_v8_pruned_candidate_value_selector_frame,
     build_dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame,
     build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame,
+    build_dfl_ua_non_tail_risk_candidate_library_v9_frame,
+    build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,
+    build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame,
+    build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
     build_dfl_feasible_schedule_candidate_library_v7_frame,
     build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
@@ -1420,6 +1424,7 @@ class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
     min_neighbor_safe_win_count: int = 1
     max_neighbor_tail_risk_probability: float = 0.25
     nearest_neighbor_count: int = 5
+    min_prior_context_neighbor_count: int = 3
     min_prior_material_safe_switch_examples_for_dt: int = 20
 
 
@@ -6671,6 +6676,224 @@ def dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame(
         },
     )
     return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v9",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_prior_context_backfilled_feature_panel_v9_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_v8_pruned_candidate_value_teacher_label_panel_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach stronger Ukrainian prior-support features before new candidates."""
+
+    frame = build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame(
+        dfl_v8_pruned_candidate_value_teacher_label_panel_frame,
+        min_prior_context_neighbor_count=config.min_prior_context_neighbor_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("selector_feature_v9_prior_context_ready") >= 1.0
+            ).height
+            if frame.height
+            else 0,
+            "context_blockers": sorted(
+                {
+                    str(blocker)
+                    for blockers in frame[
+                        "diagnostic_v9_prior_context_blockers"
+                    ].to_list()
+                    for blocker in (blockers if isinstance(blockers, list) else [])
+                }
+            )
+            if frame.height
+            else [],
+            "training_source_scope": (
+                "ukrainian_only_oree_open_meteo_tenant_grid_prior_context"
+            ),
+            "target_label_space": "schedule_candidate_value_v9",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_prior_context_backfilled_feature_panel_v9_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v9",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_non_tail_risk_candidate_library_v9_frame(
+    context,
+    dfl_ua_prior_context_backfilled_feature_panel_v9_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Generate bounded same-energy candidate schedules after V8 pruning."""
+
+    frame = build_dfl_ua_non_tail_risk_candidate_library_v9_frame(
+        dfl_ua_prior_context_backfilled_feature_panel_v9_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "v9_generated_candidate_rows": frame.filter(
+                pl.col("candidate_source") == "ua_context_v9_generated_candidate"
+            ).height
+            if frame.height
+            else 0,
+            "candidate_schedule_classes": sorted(
+                frame["candidate_schedule_class"].unique().to_list()
+            )
+            if frame.height
+            else [],
+            "pending_strict_rescore_rows": frame.filter(
+                pl.col("candidate_value_label_status") == "pending_strict_rescore"
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v9",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_non_tail_risk_candidate_library_v9_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v9",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame(
+    context,
+    dfl_ua_non_tail_risk_candidate_library_v9_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V9 non-tail-risk candidates with unchanged LP/oracle labels."""
+
+    frame = build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame(
+        dfl_ua_non_tail_risk_candidate_library_v9_frame
+    )
+    generated_frame = frame.filter(
+        pl.col("candidate_source") == "ua_context_v9_generated_candidate"
+    )
+    generated_mean_regret = (
+        generated_frame.select(pl.col("regret_uah").mean()).item()
+        if generated_frame.height
+        else None
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "strict_rescored_v9_candidate_rows": frame.filter(
+                pl.col("candidate_value_label_status") == "strict_rescored_v9_candidate"
+            ).height
+            if frame.height
+            else 0,
+            "mean_generated_v9_regret_uah": generated_mean_regret,
+            "target_label_space": "schedule_candidate_value_v9",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_non_tail_risk_candidate_v9_strict_rescore_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v9",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rebuild teacher labels from strict-scored non-tail-risk V9 candidates."""
+
+    frame = build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame(
+        dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        nearest_neighbor_count=config.nearest_neighbor_count,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": frame.filter(
+                pl.col("label_v9_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "final_generated_material_safe_switch_rows": frame.filter(
+                (pl.col("split_name") == "final_holdout")
+                & (pl.col("candidate_source") == "ua_context_v9_generated_candidate")
+                & pl.col("label_v9_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "tail_risk_generated_rows": frame.filter(
+                (pl.col("candidate_source") == "ua_context_v9_generated_candidate")
+                & pl.col("label_v9_tail_risk_loss")
+            ).height
+            if frame.height
+            else 0,
+            "selector_training_eligible_generated_rows": frame.filter(
+                (pl.col("candidate_source") == "ua_context_v9_generated_candidate")
+                & pl.col("eligible_for_next_selector_training_v9")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v9",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_non_tail_risk_candidate_value_teacher_v9_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
 
 
 @dg.asset(
@@ -14845,6 +15068,10 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_v8_pruned_candidate_value_teacher_label_panel_frame,
     dfl_v8_pruned_candidate_value_selector_frame,
     dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame,
+    dfl_ua_prior_context_backfilled_feature_panel_v9_frame,
+    dfl_ua_non_tail_risk_candidate_library_v9_frame,
+    dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,
+    dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

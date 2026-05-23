@@ -1059,6 +1059,34 @@ teacher labels. DT/LAVA після цього має вчитись candidate-in
 schedule-family target з explicit abstention до V2+, а не raw hourly action
 imitation.
 
+Після V8 було додано pruned teacher-label rebuild. Tail-risk audit показав, що
+частина accepted switches походила з candidate families з поганим prior-risk
+профілем. Після pruning залишилося `12,520` rows, але `0` material safe-switch
+labels; pruned selector обрав `0 / 90` non-V2+ switches і тому точно повторив
+V2+ (`174.77` / `67.30` UAH). Це важливий negative result: коли ризикові
+families прибрати, поточний candidate universe стає занадто sparse для нового
+selector або DT.
+
+Наступний практичний repair тому сформульовано як V9: сильніший Ukrainian
+prior-context backfill плюс нові bounded non-tail-risk candidates. V9 не
+запускає DT і не послаблює gate. Він додає same-energy peak/trough variants
+на 100%, 75% і 50% exposure, strict-score-ить їх тим самим LP/oracle evaluator
+і тільки потім перебудовує candidate-value labels. Якщо після цього з'явиться
+достатньо non-tail-risk safe-switch teacher examples, можна тренувати selector
+або DT/LAVA candidate-index target; якщо ні, висновок буде data/context
+ceiling, а не "потрібна більша нейромережа".
+
+Перша матеріалізація V9 дала саме такий обмежувальний висновок. Було отримано
+`17,995` rebuilt label rows і `5,475` generated V9 candidate rows. Матеріальних
+safe-switch labels було лише `8`, і всі вони належали train/prior rows; на
+final holdout було `0` material safe-switch rows. Strict rescore також позначив
+`5,440` generated rows як tail-risk і зробив їх ineligible для майбутнього
+selector training. Це означає, що bounded peak/trough schedules самі по собі
+ще не створили robust teacher data. Для дипломної логіки це підтримує той самий
+висновок: V2+ залишається headline, а наступний прорив потребує нових
+українських point-in-time даних або принципово іншого candidate-family design,
+не ще одного selector чи DT поверх цих labels.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

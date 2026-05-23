@@ -127,6 +127,46 @@ stronger Ukrainian prior-context/candidate-generation pass that creates
 non-tail-risk opportunities before any new selector or candidate-index DT
 target.
 
+V9 follow-up status:
+
+- new prior-context asset:
+  `dfl_ua_prior_context_backfilled_feature_panel_v9_frame`;
+- new bounded candidate-library asset:
+  `dfl_ua_non_tail_risk_candidate_library_v9_frame`;
+- new strict-rescore asset:
+  `dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame`;
+- new rebuilt-label asset:
+  `dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame`;
+- V9 does not train a selector yet. It first repairs the teacher-label layer by
+  adding distance-based Ukrainian prior-support features and generating bounded
+  same-energy peak/trough schedules that never add throughput over V2+;
+- all V9 candidates still go through the unchanged strict LP/oracle rescore
+  before labels are rebuilt;
+- claim boundary remains `market_execution_enabled=false`, no live dispatch,
+  no dashboard/API default switch, and no raw hourly BUY/SELL/HOLD imitation.
+
+Materialized V9 status:
+
+- Dagster run id: `9db07164-2cc8-420a-aa44-d361f834701e`;
+- rebuilt V9 label rows: `17,995`;
+- generated V9 candidate rows: `5,475`;
+- material safe-switch labels: `8`, all from train/prior rows;
+- final-holdout generated material safe-switch labels: `0`;
+- generated tail-risk rows after strict rescore: `5,440`;
+- generated rows eligible for a future selector training pass after tail-risk
+  rejection: `35`;
+- `market_execution_enabled=false`.
+
+Interpretation: the V9 bounded same-energy candidate design is useful as a
+diagnostic, but it is not a selector-ready breakthrough. The strict LP/oracle
+rescore showed that most generated peak/trough shifts are still tail-risk under
+real Ukrainian anchors, so the label frame now explicitly marks those rows with
+`diagnostic_v9_tail_risk_rejected=true` and
+`eligible_for_next_selector_training_v9=false`. Since final-holdout material
+safe-switch rows are still `0`, DT/LAVA should continue to wait. The next
+research branch is stronger Ukrainian context/data acquisition or a different
+candidate family, not another selector over the same V9 frame.
+
 ## Asset Path
 
 | Asset | Purpose |
@@ -142,6 +182,10 @@ target.
 | `dfl_v8_pruned_candidate_value_teacher_label_panel_frame` | Rebuilds nearest-prior teacher labels after pruning, so the next selector cannot use neighbor support from families removed by the tail-risk audit. |
 | `dfl_v8_pruned_candidate_value_selector_frame` | Trains the conservative selector only on the rebuilt pruned teacher frame and falls back to V2+ when material safe-switch evidence is absent. |
 | `dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame` | Strict-scores the pruned selector versus frozen V2+ and strict control. The current materialization falls back to V2+ on all final anchors. |
+| `dfl_ua_prior_context_backfilled_feature_panel_v9_frame` | Adds stronger distance-based Ukrainian prior-support features on top of the pruned teacher frame. This repairs sparse support without using final-holdout labels for feature generation. |
+| `dfl_ua_non_tail_risk_candidate_library_v9_frame` | Adds bounded same-energy peak/trough variants around V2+. The families are designed to be feasible and low-throughput before strict rescore, not aggressive perturbation schedules. |
+| `dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame` | Re-scores V9 generated schedules against realized prices and oracle value with the same LP/oracle evaluator used by prior gates. |
+| `dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame` | Rebuilds candidate-value labels after V9 strict rescore. This is the input for a later selector only if it creates enough non-tail-risk safe-switch examples. |
 
 Tracked config:
 
@@ -164,6 +208,19 @@ V8 adds schedule candidates that can actually change the BESS dispatch pattern:
 
 These candidates are generated from prior forecast/context features and
 existing feasible schedules. They are not final-holdout oracle copies.
+
+V9 adds a narrower family set after the false-positive audit:
+
+- `ua_context_same_energy_peak_trough_v9` - same total throughput as V2+ but
+  shifted to prior-known forecast trough/peak;
+- `ua_context_peak_trough_guarded_v9` - the same shift at 75% exposure;
+- `ua_context_peak_trough_minimal_v9` - the same shift at 50% exposure.
+
+The V9 design intentionally removes the earlier terminal-guard/soft-clip style
+perturbations from this slice because synthetic strict-rescore tests showed
+they can become tail-risk losses even when they reduce throughput. V9 therefore
+prioritizes non-tail-risk teacher-label creation over another immediate
+selector.
 
 ## Leakage Boundary
 
@@ -216,6 +273,15 @@ until the teacher frame contains enough safe candidate-index labels to learn.
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
   --select dfl_ua_context_backfilled_feature_panel_v8_frame,dfl_ua_context_feasible_schedule_candidate_library_v8_frame,dfl_ua_context_candidate_v8_strict_rescore_frame,dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,dfl_candidate_value_regret_surrogate_v8_frame,dfl_candidate_value_v8_strict_lp_benchmark_frame,dfl_candidate_value_v8_rolling_robustness_frame,dfl_v8_false_positive_tail_risk_audit_frame,dfl_v8_pruned_candidate_family_plan_frame,dfl_v8_pruned_candidate_library_frame,dfl_v8_pruned_candidate_value_teacher_label_panel_frame,dfl_v8_pruned_candidate_value_selector_frame,dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame `
+  -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
+```
+
+V9 label rebuild:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_ua_prior_context_backfilled_feature_panel_v9_frame,dfl_ua_non_tail_risk_candidate_library_v9_frame,dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame `
   -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
 ```
 

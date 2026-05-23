@@ -88,6 +88,16 @@ ops:
       min_validation_tenant_anchor_count: 90
       min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
       min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_ua_prior_context_backfilled_feature_panel_v9_frame:
+    config:
+      min_prior_context_neighbor_count: 3
+  dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      max_prior_neighbor_distance: 1.5
+      nearest_neighbor_count: 5
   dfl_candidate_value_regret_surrogate_v7_frame:
     config:
       tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
