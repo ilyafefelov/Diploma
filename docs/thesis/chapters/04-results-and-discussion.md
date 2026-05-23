@@ -1087,6 +1087,36 @@ selector training. Це означає, що bounded peak/trough schedules са�
 українських point-in-time даних або принципово іншого candidate-family design,
 не ще одного selector чи DT поверх цих labels.
 
+Наступний кандидатний repair у цій логіці позначено як V10. На відміну від
+ще одного selector, V10 не намагається вгадувати кращу дію з нуля. Він бере
+тільки train/prior V9 rows, які вже були strict-scored як material safe switch
+без tail-risk, і перетворює їх на template schedules для наступного
+strict-rescore етапу. Final-holdout labels не можуть створити або ранжувати
+такий template; вони залишаються тільки для подальшого scoring/diagnostics.
+Це зберігає методологічний висновок розділу: перед DT/LAVA треба спершу
+створити достатньо чесних feasible schedule labels, які реально мають шанс
+перевершити V2+ під тим самим LP/oracle gate.
+
+Початкова матеріалізація V10 (`c34fff79-beee-4bd9-93a5-c9164357faa0`) створила
+`19,199` total rows, з них `1,204` generated oracle-template candidates і
+`126` generated candidates на final holdout. Усі ці generated rows мають
+статус `pending_strict_rescore`, а всі template sources походять тільки з
+`train_selection`. Отже, V10 вже розширив candidate universe без leakage, але
+поки не є доказом покращення стратегії; наступний крок - strict-score цих
+templates і перебудувати labels.
+
+Після strict rescore V10 (`e99a3730-9e66-4967-a39e-cb61c872574b`) висновок
+залишився обмежувальним. З `1,204` generated oracle-template candidates було
+отримано `19` material safe-switch labels загалом, але `0` material safe-switch
+labels на final holdout. Усі `126` final-holdout generated V10 candidates були
+tail-risk rows; mean generated V10 regret становив `2,128.94` UAH, median -
+`1,657.75` UAH. Це означає, що train/prior templates можна побудувати без
+leakage, але вони не переносяться безпечно на final holdout. Тому V10 не є
+підставою для promotion або DT/LAVA training; наступний крок має бути не
+більша модель, а новий lower-tail-risk candidate design або сильніший
+український prior context, який пояснить, коли такі templates справді
+переносяться.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

@@ -147,6 +147,15 @@ REGRET_SURROGATE_UA_NON_TAIL_RISK_STRICT_RESCORE_V9_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_UA_NON_TAIL_RISK_TEACHER_V9_CLAIM_SCOPE: Final[str] = (
     "dfl_ua_non_tail_risk_candidate_value_teacher_v9_not_full_dfl"
 )
+REGRET_SURROGATE_ORACLE_TEMPLATE_CANDIDATE_LIBRARY_V10_CLAIM_SCOPE: Final[str] = (
+    "dfl_oracle_template_candidate_library_v10_not_full_dfl"
+)
+REGRET_SURROGATE_ORACLE_TEMPLATE_STRICT_RESCORE_V10_CLAIM_SCOPE: Final[str] = (
+    "dfl_oracle_template_candidate_v10_strict_rescore_not_full_dfl"
+)
+REGRET_SURROGATE_ORACLE_TEMPLATE_TEACHER_V10_CLAIM_SCOPE: Final[str] = (
+    "dfl_oracle_template_candidate_value_teacher_v10_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -225,6 +234,7 @@ _V8_ALLOWED_CANDIDATE_SOURCES: Final[tuple[str, ...]] = (
     *_DEFAULT_ALLOWED_CANDIDATE_SOURCES,
 )
 _V9_GENERATED_CANDIDATE_SOURCE: Final[str] = "ua_context_v9_generated_candidate"
+_V10_GENERATED_CANDIDATE_SOURCE: Final[str] = "oracle_template_v10_generated_candidate"
 
 _REQUIRED_CANDIDATE_COLUMNS: Final[frozenset[str]] = frozenset(
     {
@@ -3677,6 +3687,243 @@ def build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame(
     return frame
 
 
+def build_dfl_oracle_template_candidate_library_v10_frame(
+    ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    min_template_safe_win_count: int = 1,
+    max_template_tail_risk_count: int = 0,
+    max_templates_per_anchor: int = 3,
+) -> pl.DataFrame:
+    """Mine prior safe schedule templates and instantiate V10 candidates.
+
+    The template source is restricted to train/prior rows. Final-holdout realized
+    labels may remain in the frame for scoring diagnostics, but they cannot create
+    or rank templates.
+    """
+
+    _validate_v9_teacher_panel(
+        ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame
+    )
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if min_template_safe_win_count < 1:
+        raise ValueError("min_template_safe_win_count must be at least 1.")
+    if max_template_tail_risk_count < 0:
+        raise ValueError("max_template_tail_risk_count must not be negative.")
+    if max_templates_per_anchor < 1:
+        raise ValueError("max_templates_per_anchor must be at least 1.")
+
+    rows = list(
+        ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame.iter_rows(
+            named=True
+        )
+    )
+    output_rows: list[dict[str, Any]] = []
+    grouped = _group_by_anchor(rows)
+    for anchor_key, anchor_rows in sorted(grouped.items()):
+        for row in anchor_rows:
+            copied = dict(row)
+            copied["eligible_for_final_selection_v10"] = bool(
+                copied.get("eligible_for_final_selection_v9", True)
+            )
+            copied["diagnostic_requires_strict_rescore"] = bool(
+                copied.get("diagnostic_requires_strict_rescore", False)
+            )
+            copied["diagnostic_template_source_anchor_timestamp"] = None
+            copied["diagnostic_template_source_split_name"] = ""
+            copied["diagnostic_template_candidate_key"] = ""
+            copied["diagnostic_template_profile_key"] = ""
+            copied["diagnostic_template_safe_win_count"] = 0
+            copied["diagnostic_template_tail_risk_count"] = 0
+            copied["diagnostic_template_mean_delta_uah"] = 0.0
+            copied["diagnostic_template_best_delta_uah"] = 0.0
+            copied["selector_feature_v10_template_safe_win_count"] = 0.0
+            copied["selector_feature_v10_template_tail_risk_count"] = 0.0
+            copied["selector_feature_v10_template_mean_delta_uah"] = 0.0
+            copied["selector_feature_v10_template_best_delta_uah"] = 0.0
+            output_rows.append(copied)
+        v2_row = _baseline_row(anchor_rows, anchor_key=anchor_key)
+        templates = _v10_template_profiles_for_anchor(
+            rows,
+            v2_row=v2_row,
+            material_switch_delta_uah=material_switch_delta_uah,
+            min_template_safe_win_count=min_template_safe_win_count,
+            max_template_tail_risk_count=max_template_tail_risk_count,
+            max_templates_per_anchor=max_templates_per_anchor,
+        )
+        for rank, template in enumerate(templates, start=1):
+            output_rows.append(_copy_v10_template_candidate(v2_row, template, rank=rank))
+
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v10_candidate_library(frame)
+    return frame
+
+
+def build_dfl_oracle_template_candidate_v10_strict_rescore_frame(
+    oracle_template_candidate_library_v10_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V10 oracle-template candidates with realized prices."""
+
+    _validate_v10_candidate_library(oracle_template_candidate_library_v10_frame)
+    output_rows: list[dict[str, Any]] = []
+    for row in oracle_template_candidate_library_v10_frame.iter_rows(named=True):
+        if str(row["candidate_source"]) == _V10_GENERATED_CANDIDATE_SOURCE:
+            output_rows.append(_rescore_v10_template_candidate(row))
+        else:
+            copied = dict(row)
+            copied["diagnostic_requires_strict_rescore"] = False
+            copied["strict_rescore_version"] = copied.get(
+                "strict_rescore_version",
+                "existing_candidate_score_reused",
+            )
+            output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v10_strict_rescore_frame(frame)
+    return frame
+
+
+def build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame(
+    oracle_template_candidate_v10_strict_rescore_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    nearest_neighbor_count: int = 5,
+) -> pl.DataFrame:
+    """Rebuild teacher labels after V10 strict rescore."""
+
+    _validate_v10_strict_rescore_frame(
+        oracle_template_candidate_v10_strict_rescore_frame
+    )
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if max_prior_neighbor_distance < 0.0:
+        raise ValueError("max_prior_neighbor_distance must not be negative.")
+    if nearest_neighbor_count < 1:
+        raise ValueError("nearest_neighbor_count must be at least 1.")
+
+    rows = list(oracle_template_candidate_v10_strict_rescore_frame.iter_rows(named=True))
+    prior_rows = _v10_prior_candidate_rows(rows)
+    prior_rows_by_group: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for prior in prior_rows:
+        prior_rows_by_group.setdefault(_sparse_neighbor_group_key(prior), []).append(
+            prior
+        )
+    feature_names = _sparse_distance_feature_names(
+        oracle_template_candidate_v10_strict_rescore_frame
+    )
+    output_rows: list[dict[str, Any]] = []
+    for row in rows:
+        source = str(row["candidate_source"])
+        eligible = bool(row.get("eligible_for_final_selection_v10", True))
+        neighbor_stats = (
+            _nearest_prior_neighbor_stats_from_candidates(
+                row,
+                prior_rows=prior_rows_by_group.get(_sparse_neighbor_group_key(row), []),
+                feature_names=feature_names,
+                nearest_neighbor_count=nearest_neighbor_count,
+            )
+            if str(row["split_name"]) == "final_holdout"
+            and source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            else _empty_neighbor_stats()
+        )
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        tail_risk_loss = bool(row["label_tail_risk_loss"])
+        material_safe = (
+            source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            and delta <= -material_switch_delta_uah
+            and not tail_risk_loss
+        )
+        generated_tail_risk_rejected = (
+            source == _V10_GENERATED_CANDIDATE_SOURCE and tail_risk_loss
+        )
+        feature_list = list(row.get("selected_feature_names", []))
+        for feature_name in (
+            "selector_feature_v10_nearest_prior_safe_template_distance",
+            "selector_feature_v10_neighbor_safe_win_count",
+            "selector_feature_v10_neighbor_tail_risk_probability",
+            "selector_feature_v10_neighbor_mean_delta_uah",
+        ):
+            if feature_name not in feature_list:
+                feature_list.append(feature_name)
+        copied = dict(row)
+        copied.update(
+            {
+                "teacher_panel_version": "candidate_value_teacher_v10_oracle_template",
+                "selected_feature_names": sorted(feature_list),
+                "selector_feature_v10_nearest_prior_safe_template_distance": float(
+                    neighbor_stats["nearest_safe_distance"]
+                ),
+                "selector_feature_v10_nearest_prior_any_template_distance": float(
+                    neighbor_stats["nearest_any_distance"]
+                ),
+                "selector_feature_v10_neighbor_support_count": float(
+                    neighbor_stats["neighbor_count"]
+                ),
+                "selector_feature_v10_neighbor_safe_win_count": float(
+                    neighbor_stats["safe_win_count"]
+                ),
+                "selector_feature_v10_neighbor_tail_risk_probability": float(
+                    neighbor_stats["tail_risk_probability"]
+                ),
+                "selector_feature_v10_neighbor_mean_delta_uah": float(
+                    neighbor_stats["mean_delta_uah"]
+                ),
+                "selector_feature_v10_has_prior_neighbor_support": float(
+                    float(neighbor_stats["nearest_safe_distance"])
+                    <= max_prior_neighbor_distance
+                ),
+                "label_v10_material_safe_switch": material_safe,
+                "label_v10_tail_risk_loss": tail_risk_loss,
+                "diagnostic_v10_tail_risk_rejected": generated_tail_risk_rejected,
+                "eligible_for_next_selector_training_v10": (
+                    source not in _REFERENCE_CANDIDATE_SOURCES
+                    and bool(row.get("is_training_row", False))
+                    and eligible
+                    and not tail_risk_loss
+                ),
+                "claim_scope": REGRET_SURROGATE_ORACLE_TEMPLATE_TEACHER_V10_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+                "raw_hourly_action_imitation": False,
+            }
+        )
+        output_rows.append(copied)
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v10_teacher_panel(frame)
+    return frame
+
+
 def build_dfl_candidate_value_v8_rolling_robustness_frame(
     ua_context_candidate_v8_strict_rescore_frame: pl.DataFrame,
     v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
@@ -5986,6 +6233,285 @@ def _rescore_v9_generated_candidate(row: dict[str, Any]) -> dict[str, Any]:
     return copied
 
 
+def _v10_template_profiles_for_anchor(
+    rows: list[dict[str, Any]],
+    *,
+    v2_row: dict[str, Any],
+    material_switch_delta_uah: float,
+    min_template_safe_win_count: int,
+    max_template_tail_risk_count: int,
+    max_templates_per_anchor: int,
+) -> list[dict[str, Any]]:
+    anchor = _datetime_value(v2_row["anchor_timestamp"])
+    tenant_id = str(v2_row["tenant_id"])
+    source_model_name = str(v2_row["source_model_name"])
+    prior_rows = [
+        row
+        for row in rows
+        if bool(row.get("is_training_row", False))
+        and str(row["tenant_id"]) == tenant_id
+        and str(row["source_model_name"]) == source_model_name
+        and _datetime_value(row["anchor_timestamp"]) < anchor
+        and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+        and bool(row.get("eligible_for_final_selection_v9", True))
+        and bool(row.get("eligible_for_next_selector_training_v9", True))
+    ]
+    profiles: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for row in prior_rows:
+        profiles.setdefault(_v10_template_profile_key(row), []).append(row)
+
+    templates: list[dict[str, Any]] = []
+    for profile_rows in profiles.values():
+        safe_rows = [
+            row
+            for row in profile_rows
+            if bool(row.get("label_v9_material_safe_switch", False))
+            and not bool(row.get("label_v9_tail_risk_loss", False))
+            and float(row["label_regret_delta_vs_v2_plus_uah"])
+            <= -material_switch_delta_uah
+        ]
+        tail_risk_count = sum(
+            1 for row in profile_rows if bool(row.get("label_v9_tail_risk_loss", False))
+        )
+        if len(safe_rows) < min_template_safe_win_count:
+            continue
+        if tail_risk_count > max_template_tail_risk_count:
+            continue
+        representative = min(
+            safe_rows,
+            key=lambda row: (
+                float(row["label_regret_delta_vs_v2_plus_uah"]),
+                _datetime_value(row["anchor_timestamp"]),
+                _candidate_key(row),
+            ),
+        )
+        deltas = [float(row["label_regret_delta_vs_v2_plus_uah"]) for row in safe_rows]
+        templates.append(
+            {
+                "representative": representative,
+                "safe_win_count": len(safe_rows),
+                "tail_risk_count": tail_risk_count,
+                "mean_delta_uah": mean(deltas),
+                "best_delta_uah": min(deltas),
+                "profile_key": "|".join(_v10_template_profile_key(representative)),
+            }
+        )
+    return sorted(
+        templates,
+        key=lambda template: (
+            float(template["mean_delta_uah"]),
+            float(template["best_delta_uah"]),
+            str(template["profile_key"]),
+        ),
+    )[:max_templates_per_anchor]
+
+
+def _v10_template_profile_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row["candidate_source"]),
+        str(row["candidate_family"]),
+        str(row["candidate_model_name"]),
+    )
+
+
+def _copy_v10_template_candidate(
+    v2_row: dict[str, Any],
+    template: dict[str, Any],
+    *,
+    rank: int,
+) -> dict[str, Any]:
+    template_row = dict(template["representative"])
+    dispatch = _v10_template_dispatch_vector(v2_row, template_row)
+    soc = _soc_from_dispatch(v2_row, dispatch)
+    throughput = sum(abs(value) for value in dispatch)
+    base_throughput = max(float(v2_row.get("total_throughput_mwh", throughput)), 1e-9)
+    degradation = float(v2_row.get("total_degradation_penalty_uah", 0.0)) * (
+        throughput / base_throughput
+    )
+    family = f"oracle_template_v10_{rank}_{template_row['candidate_family']}"
+    model_name = f"oracle_template_v10_{rank}_{template_row['candidate_model_name']}"
+    feature_list = list(v2_row.get("selected_feature_names", []))
+    for feature_name in (
+        "selector_feature_v10_template_safe_win_count",
+        "selector_feature_v10_template_tail_risk_count",
+        "selector_feature_v10_template_mean_delta_uah",
+        "selector_feature_v10_template_best_delta_uah",
+    ):
+        if feature_name not in feature_list:
+            feature_list.append(feature_name)
+
+    copied = dict(v2_row)
+    payload = (
+        dict(copied["evaluation_payload"])
+        if isinstance(copied.get("evaluation_payload"), dict)
+        else {}
+    )
+    payload.update(
+        {
+            "candidate_source": _V10_GENERATED_CANDIDATE_SOURCE,
+            "candidate_family": family,
+            "candidate_model_name": model_name,
+            "dispatch_mw": dispatch,
+            "soc_fraction": soc,
+            "generated_from_candidate_source": str(template_row["candidate_source"]),
+            "requires_strict_rescore": True,
+            "oracle_template_profile_key": str(template["profile_key"]),
+            "oracle_template_source_anchor_timestamp": _datetime_value(
+                template_row["anchor_timestamp"]
+            ).isoformat(),
+        }
+    )
+    copied.update(
+        {
+            "candidate_source": _V10_GENERATED_CANDIDATE_SOURCE,
+            "candidate_family": family,
+            "candidate_model_name": model_name,
+            "candidate_library_version": "oracle_template_candidate_library_v10",
+            "candidate_schedule_class": "oracle_template_schedule_neighbor_v10",
+            "eligible_for_final_selection": True,
+            "eligible_for_final_selection_v9": False,
+            "eligible_for_final_selection_v10": True,
+            "is_training_row": str(v2_row["split_name"]) != "final_holdout",
+            "oracle_neighborhood_train_only": False,
+            "dispatch_mw_vector": dispatch,
+            "soc_fraction_vector": soc,
+            "total_throughput_mwh": throughput,
+            "total_degradation_penalty_uah": degradation,
+            "selector_feature_schedule_distance_from_v2_plus": _schedule_distance(
+                _float_vector(v2_row["dispatch_mw_vector"]),
+                dispatch,
+            ),
+            "selector_feature_total_throughput_delta_mwh": throughput
+            - float(v2_row.get("total_throughput_mwh", throughput)),
+            "selector_feature_terminal_soc_delta_fraction": soc[-1]
+            - _float_vector(v2_row["soc_fraction_vector"])[-1],
+            "selector_feature_v10_template_safe_win_count": float(
+                template["safe_win_count"]
+            ),
+            "selector_feature_v10_template_tail_risk_count": float(
+                template["tail_risk_count"]
+            ),
+            "selector_feature_v10_template_mean_delta_uah": float(
+                template["mean_delta_uah"]
+            ),
+            "selector_feature_v10_template_best_delta_uah": float(
+                template["best_delta_uah"]
+            ),
+            "selected_feature_names": sorted(feature_list),
+            "candidate_value_label_status": "pending_strict_rescore",
+            "diagnostic_requires_strict_rescore": True,
+            "diagnostic_template_source_anchor_timestamp": _datetime_value(
+                template_row["anchor_timestamp"]
+            ),
+            "diagnostic_template_source_split_name": str(template_row["split_name"]),
+            "diagnostic_template_candidate_key": _candidate_key(template_row),
+            "diagnostic_template_profile_key": str(template["profile_key"]),
+            "diagnostic_template_safe_win_count": int(template["safe_win_count"]),
+            "diagnostic_template_tail_risk_count": int(template["tail_risk_count"]),
+            "diagnostic_template_mean_delta_uah": float(template["mean_delta_uah"]),
+            "diagnostic_template_best_delta_uah": float(template["best_delta_uah"]),
+            "generated_from_candidate_source": str(template_row["candidate_source"]),
+            "label_regret_delta_vs_v2_plus_uah": 0.0,
+            "label_safe_switch_win": False,
+            "label_tail_risk_loss": False,
+            "label_v9_material_safe_switch": False,
+            "label_v9_tail_risk_loss": False,
+            "diagnostic_v9_tail_risk_rejected": False,
+            "eligible_for_next_selector_training_v9": False,
+            "label_best_candidate_family": "pending_strict_rescore",
+            "label_best_candidate_model_name": "pending_strict_rescore",
+            "label_is_anchor_best_candidate": False,
+            "evaluation_payload": payload,
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "claim_scope": (
+                REGRET_SURROGATE_ORACLE_TEMPLATE_CANDIDATE_LIBRARY_V10_CLAIM_SCOPE
+            ),
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "market_execution_enabled": False,
+        }
+    )
+    return copied
+
+
+def _v10_template_dispatch_vector(
+    v2_row: dict[str, Any],
+    template_row: dict[str, Any],
+) -> list[float]:
+    base = _float_vector(v2_row["dispatch_mw_vector"])
+    template = _float_vector(template_row["dispatch_mw_vector"])
+    if not base or not template:
+        return list(base)
+    width = min(len(base), len(template))
+    base = base[:width]
+    template = template[:width]
+    template_throughput = sum(abs(value) for value in template)
+    if template_throughput <= 1e-9:
+        return [0.0 for _ in base]
+    base_throughput = sum(abs(value) for value in base)
+    target_throughput = min(base_throughput, template_throughput)
+    if target_throughput <= 1e-9:
+        return [0.0 for _ in base]
+    limit = max(
+        max(abs(value) for value in base),
+        max(abs(value) for value in template),
+        0.1,
+    )
+    dispatch = [
+        (1.0 if value > 0.0 else -1.0 if value < 0.0 else 0.0)
+        * target_throughput
+        * (abs(value) / template_throughput)
+        for value in template
+    ]
+    return [_clip(value, -limit, limit) for value in dispatch]
+
+
+def _rescore_v10_template_candidate(row: dict[str, Any]) -> dict[str, Any]:
+    copied = _rescore_v8_generated_candidate(row)
+    payload = (
+        dict(copied["evaluation_payload"])
+        if isinstance(copied.get("evaluation_payload"), dict)
+        else {}
+    )
+    payload.update(
+        {
+            "strict_rescore_version": "oracle_template_v10_direct_schedule_score_v1",
+            "candidate_value_label_status": "strict_rescored_v10_candidate",
+            "claim_scope": (
+                REGRET_SURROGATE_ORACLE_TEMPLATE_STRICT_RESCORE_V10_CLAIM_SCOPE
+            ),
+        }
+    )
+    copied.update(
+        {
+            "candidate_value_label_status": "strict_rescored_v10_candidate",
+            "strict_rescore_version": "oracle_template_v10_direct_schedule_score_v1",
+            "diagnostic_requires_strict_rescore": False,
+            "evaluation_payload": payload,
+            "claim_scope": (
+                REGRET_SURROGATE_ORACLE_TEMPLATE_STRICT_RESCORE_V10_CLAIM_SCOPE
+            ),
+            "not_full_dfl": True,
+            "not_market_execution": True,
+            "market_execution_enabled": False,
+        }
+    )
+    return copied
+
+
+def _v10_prior_candidate_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in rows
+        if bool(row.get("is_training_row", False))
+        and str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+        and bool(row.get("eligible_for_final_selection_v10", True))
+        and str(row.get("candidate_value_label_status", ""))
+        == "strict_rescored_v10_candidate"
+    ]
+
+
 def _soc_from_dispatch(source_row: dict[str, Any], dispatch: list[float]) -> list[float]:
     source_soc = _float_vector(source_row["soc_fraction_vector"])
     current = source_soc[0] if source_soc else 0.5
@@ -7295,6 +7821,123 @@ def _validate_v9_teacher_panel(frame: pl.DataFrame) -> None:
         raise ValueError("V9 teacher label panel refuses market execution.")
 
 
+def _validate_v10_candidate_library(frame: pl.DataFrame) -> None:
+    _validate_v9_teacher_panel(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "eligible_for_final_selection_v10",
+                "diagnostic_template_source_anchor_timestamp",
+                "diagnostic_template_source_split_name",
+                "diagnostic_template_safe_win_count",
+                "diagnostic_template_tail_risk_count",
+                "diagnostic_template_mean_delta_uah",
+                "selector_feature_v10_template_safe_win_count",
+                "selector_feature_v10_template_tail_risk_count",
+                "selector_feature_v10_template_mean_delta_uah",
+                "selector_feature_v10_template_best_delta_uah",
+            }
+        ),
+        frame_name="V10 oracle-template candidate library",
+    )
+    generated = frame.filter(pl.col("candidate_source") == _V10_GENERATED_CANDIDATE_SOURCE)
+    if generated.filter(
+        pl.col("candidate_value_label_status") != "pending_strict_rescore"
+    ).height:
+        raise ValueError("V10 generated candidates must start pending strict rescore.")
+    if generated.filter(pl.col("diagnostic_requires_strict_rescore").not_()).height:
+        raise ValueError("V10 generated candidates must be marked for strict rescore.")
+    if generated.filter(pl.col("oracle_neighborhood_train_only")).height:
+        raise ValueError("V10 generated candidates cannot be train-only oracle rows.")
+    if generated.filter(
+        pl.col("diagnostic_template_source_split_name") == "final_holdout"
+    ).height:
+        raise ValueError("V10 templates must be mined from train/prior rows only.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V10 oracle-template candidate library refuses market execution.")
+
+
+def _validate_v10_strict_rescore_frame(frame: pl.DataFrame) -> None:
+    _validate_v10_candidate_library_columns(frame)
+    _require_columns(
+        frame,
+        frozenset({"strict_rescore_version"}),
+        frame_name="V10 oracle-template strict rescore frame",
+    )
+    generated = frame.filter(pl.col("candidate_source") == _V10_GENERATED_CANDIDATE_SOURCE)
+    if generated.filter(
+        pl.col("candidate_value_label_status") != "strict_rescored_v10_candidate"
+    ).height:
+        raise ValueError("V10 generated candidates must be strict-rescored.")
+    if generated.filter(pl.col("diagnostic_requires_strict_rescore")).height:
+        raise ValueError("V10 strict-rescored candidates cannot require rescore.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V10 strict rescore refuses market execution.")
+
+
+def _validate_v10_teacher_panel(frame: pl.DataFrame) -> None:
+    _validate_v10_strict_rescore_frame(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "label_v10_material_safe_switch",
+                "label_v10_tail_risk_loss",
+                "selector_feature_v10_nearest_prior_safe_template_distance",
+                "selector_feature_v10_neighbor_safe_win_count",
+                "selector_feature_v10_neighbor_tail_risk_probability",
+                "selector_feature_v10_neighbor_mean_delta_uah",
+                "diagnostic_v10_tail_risk_rejected",
+                "eligible_for_next_selector_training_v10",
+            }
+        ),
+        frame_name="V10 oracle-template teacher label panel",
+    )
+    if frame.filter(
+        pl.col("teacher_panel_version") != "candidate_value_teacher_v10_oracle_template"
+    ).height:
+        raise ValueError("V10 teacher rows must use the V10 teacher version.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V10 teacher label panel refuses market execution.")
+
+
+def _validate_v10_candidate_library_columns(frame: pl.DataFrame) -> None:
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "label_v9_material_safe_switch",
+                "label_v9_tail_risk_loss",
+                "selector_feature_v9_nearest_prior_safe_switch_distance",
+                "selector_feature_v9_neighbor_safe_win_count",
+                "selector_feature_v9_neighbor_tail_risk_probability",
+                "selector_feature_v9_neighbor_mean_delta_uah",
+                "diagnostic_v9_tail_risk_rejected",
+                "eligible_for_next_selector_training_v9",
+                "eligible_for_final_selection_v10",
+                "diagnostic_template_source_anchor_timestamp",
+                "diagnostic_template_source_split_name",
+                "diagnostic_template_safe_win_count",
+                "diagnostic_template_tail_risk_count",
+                "diagnostic_template_mean_delta_uah",
+                "selector_feature_v10_template_safe_win_count",
+                "selector_feature_v10_template_tail_risk_count",
+                "selector_feature_v10_template_mean_delta_uah",
+                "selector_feature_v10_template_best_delta_uah",
+            }
+        ),
+        frame_name="V10 oracle-template candidate library",
+    )
+    generated = frame.filter(pl.col("candidate_source") == _V10_GENERATED_CANDIDATE_SOURCE)
+    if generated.filter(
+        pl.col("diagnostic_template_source_split_name") == "final_holdout"
+    ).height:
+        raise ValueError("V10 templates must be mined from train/prior rows only.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V10 oracle-template rows refuse market execution.")
+
+
 def _validate_v7_teacher_panel(frame: pl.DataFrame) -> None:
     _validate_v7_candidate_library(frame)
     _require_columns(
@@ -7508,6 +8151,9 @@ __all__ = [
     "build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame",
     "build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame",
     "build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame",
+    "build_dfl_oracle_template_candidate_library_v10_frame",
+    "build_dfl_oracle_template_candidate_v10_strict_rescore_frame",
+    "build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame",
     "build_dfl_sparse_safe_switch_abstention_model_v6_frame",
     "build_dfl_sparse_safe_switch_candidate_library_v6_frame",
     "build_dfl_sparse_safe_switch_feature_contract_audit_frame",

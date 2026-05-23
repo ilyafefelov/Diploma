@@ -43,6 +43,9 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,
     build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame,
     build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame,
+    build_dfl_oracle_template_candidate_library_v10_frame,
+    build_dfl_oracle_template_candidate_v10_strict_rescore_frame,
+    build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
     build_dfl_ua_context_candidate_v8_strict_rescore_frame,
     build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
@@ -1542,6 +1545,305 @@ def test_v9_tail_risk_generated_rows_are_ineligible_for_next_selector() -> None:
     assert set(labels["market_execution_enabled"].to_list()) == {False}
 
 
+def test_v10_oracle_template_candidate_library_mines_train_only_safe_templates() -> None:
+    labels = _v9_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+
+    library = build_dfl_oracle_template_candidate_library_v10_frame(
+        labels,
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+        max_templates_per_anchor=2,
+    )
+
+    generated = library.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    assert generated.height > 0
+    assert generated.filter(pl.col("split_name") == "final_holdout").height > 0
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "pending_strict_rescore"
+    }
+    assert set(generated["diagnostic_template_source_split_name"].to_list()) == {
+        "train_selection"
+    }
+    assert set(generated["oracle_neighborhood_train_only"].to_list()) == {False}
+    assert set(generated["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v10_final_label_mutation_does_not_change_template_candidates() -> None:
+    labels = _v9_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    mutated = labels.with_columns(
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit(9_999.0))
+        .otherwise(pl.col("regret_uah"))
+        .alias("regret_uah"),
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit(9_879.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit(False))
+        .otherwise(pl.col("label_v9_material_safe_switch"))
+        .alias("label_v9_material_safe_switch"),
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit(True))
+        .otherwise(pl.col("label_v9_tail_risk_loss"))
+        .alias("label_v9_tail_risk_loss"),
+    )
+
+    base_library = build_dfl_oracle_template_candidate_library_v10_frame(
+        labels,
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+    )
+    mutated_library = build_dfl_oracle_template_candidate_library_v10_frame(
+        mutated,
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+    )
+
+    columns = [
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "split_name",
+        "candidate_family",
+        "candidate_model_name",
+        "dispatch_mw_vector",
+        "soc_fraction_vector",
+        "selector_feature_schedule_distance_from_v2_plus",
+        "selector_feature_total_throughput_delta_mwh",
+        "selector_feature_terminal_soc_delta_fraction",
+        "diagnostic_template_source_anchor_timestamp",
+    ]
+    base_generated = (
+        base_library.filter(
+            pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+        )
+        .select(columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    mutated_generated = (
+        mutated_library.filter(
+            pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+        )
+        .select(columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    assert base_generated.equals(mutated_generated)
+
+
+def test_v10_refuses_to_mine_final_holdout_only_templates() -> None:
+    labels = _v9_teacher(
+        _candidate_panel(
+            train_alt_regret=400.0,
+            final_alt_regret=40.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    ).with_columns(
+        pl.when(pl.col("split_name") == "train_selection")
+        .then(pl.lit(80.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(pl.col("split_name") == "train_selection")
+        .then(pl.lit(False))
+        .when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit(True))
+        .otherwise(pl.col("label_v9_material_safe_switch"))
+        .alias("label_v9_material_safe_switch"),
+    )
+
+    library = build_dfl_oracle_template_candidate_library_v10_frame(
+        labels,
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+    )
+
+    generated = library.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    assert generated.height == 0
+    assert set(library["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v10_strict_rescore_scores_oracle_template_candidates() -> None:
+    library = build_dfl_oracle_template_candidate_library_v10_frame(
+        _v9_teacher(
+            _candidate_panel(
+                train_alt_regret=130.0,
+                final_alt_regret=130.0,
+            ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+        ),
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+    )
+
+    rescored = build_dfl_oracle_template_candidate_v10_strict_rescore_frame(library)
+
+    generated = rescored.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    assert generated.height > 0
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "strict_rescored_v10_candidate"
+    }
+    assert set(generated["strict_rescore_version"].to_list()) == {
+        "oracle_template_v10_direct_schedule_score_v1"
+    }
+    assert set(generated["diagnostic_requires_strict_rescore"].to_list()) == {False}
+    assert set(generated["market_execution_enabled"].to_list()) == {False}
+    delta_error = (
+        generated["label_regret_delta_vs_v2_plus_uah"]
+        - (generated["regret_uah"] - generated["v2_plus_baseline_regret_uah"])
+    ).abs()
+    assert delta_error.max() <= 1e-9
+
+
+def test_v10_rebuilt_labels_mark_strict_rescored_material_templates() -> None:
+    library = build_dfl_oracle_template_candidate_library_v10_frame(
+        _v9_teacher(
+            _candidate_panel(
+                train_alt_regret=130.0,
+                final_alt_regret=130.0,
+            ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+        ),
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+    )
+    rescored = build_dfl_oracle_template_candidate_v10_strict_rescore_frame(library)
+    forced_safe = rescored.with_columns(
+        pl.when(
+            (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+            & (pl.col("split_name") == "train_selection")
+        )
+        .then(pl.lit(70.0))
+        .otherwise(pl.col("regret_uah"))
+        .alias("regret_uah"),
+        pl.when(
+            (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+            & (pl.col("split_name") == "train_selection")
+        )
+        .then(pl.lit(-50.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(
+            (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+            & (pl.col("split_name") == "train_selection")
+        )
+        .then(pl.lit(False))
+        .otherwise(pl.col("label_tail_risk_loss"))
+        .alias("label_tail_risk_loss"),
+    )
+
+    labels = build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame(
+        forced_safe,
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+    generated = labels.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    assert set(generated["teacher_panel_version"].to_list()) == {
+        "candidate_value_teacher_v10_oracle_template"
+    }
+    assert generated.filter(pl.col("label_v10_material_safe_switch")).height > 0
+    assert "selector_feature_v10_neighbor_safe_win_count" in labels.columns
+    assert set(labels["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v10_strict_rescore_actual_mutation_changes_scores_not_candidate_features() -> None:
+    library = build_dfl_oracle_template_candidate_library_v10_frame(
+        _v9_teacher(
+            _candidate_panel(
+                train_alt_regret=130.0,
+                final_alt_regret=130.0,
+            ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+        ),
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+    )
+    mutated_library = library.with_columns(
+        pl.when(pl.col("split_name") == "final_holdout")
+        .then(pl.lit([10_000.0, 100.0, 100.0, 10_000.0]))
+        .otherwise(pl.col("actual_price_uah_mwh_vector"))
+        .alias("actual_price_uah_mwh_vector")
+    )
+
+    base = build_dfl_oracle_template_candidate_v10_strict_rescore_frame(library)
+    mutated = build_dfl_oracle_template_candidate_v10_strict_rescore_frame(
+        mutated_library
+    )
+
+    feature_columns = [
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "split_name",
+        "candidate_family",
+        "candidate_model_name",
+        "dispatch_mw_vector",
+        "soc_fraction_vector",
+        "selector_feature_schedule_distance_from_v2_plus",
+        "selector_feature_total_throughput_delta_mwh",
+        "selector_feature_terminal_soc_delta_fraction",
+        "diagnostic_template_source_anchor_timestamp",
+    ]
+    base_generated = (
+        base.filter(
+            (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+            & (pl.col("split_name") == "final_holdout")
+        )
+        .select(feature_columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    mutated_generated = (
+        mutated.filter(
+            (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+            & (pl.col("split_name") == "final_holdout")
+        )
+        .select(feature_columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    assert base_generated.equals(mutated_generated)
+
+    score_columns = [
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "candidate_family",
+        "candidate_model_name",
+        "regret_uah",
+    ]
+    base_scores = (
+        base.filter(
+            (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+            & (pl.col("split_name") == "final_holdout")
+        )
+        .select(score_columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    mutated_scores = (
+        mutated.filter(
+            (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+            & (pl.col("split_name") == "final_holdout")
+        )
+        .select(score_columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    assert not base_scores.equals(mutated_scores)
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
@@ -1656,6 +1958,22 @@ def _v8_pruned_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
     pruned = build_dfl_v8_pruned_candidate_library_frame(teacher_v8, plan)
     return build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame(
         pruned,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+
+def _v9_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
+    pruned_teacher = _v8_pruned_teacher(candidate_panel)
+    v9_context = build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame(
+        pruned_teacher,
+        min_prior_context_neighbor_count=1,
+    )
+    library = build_dfl_ua_non_tail_risk_candidate_library_v9_frame(v9_context)
+    rescored = build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame(library)
+    return build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame(
+        rescored,
+        material_switch_delta_uah=25.0,
         max_prior_neighbor_distance=2.0,
         nearest_neighbor_count=3,
     )

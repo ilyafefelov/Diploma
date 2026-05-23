@@ -377,6 +377,9 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,
     build_dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame,
     build_dfl_ua_prior_context_backfilled_feature_panel_v9_frame,
+    build_dfl_oracle_template_candidate_library_v10_frame,
+    build_dfl_oracle_template_candidate_v10_strict_rescore_frame,
+    build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
     build_dfl_feasible_schedule_candidate_library_v7_frame,
     build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
@@ -1426,6 +1429,9 @@ class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
     nearest_neighbor_count: int = 5
     min_prior_context_neighbor_count: int = 3
     min_prior_material_safe_switch_examples_for_dt: int = 20
+    min_template_safe_win_count: int = 1
+    max_template_tail_risk_count: int = 0
+    max_templates_per_anchor: int = 3
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -6890,6 +6896,181 @@ def dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_ua_non_tail_risk_candidate_value_teacher_v9_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v10",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_template_candidate_library_v10_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Instantiate train/prior safe oracle-template schedules for strict rescore."""
+
+    frame = build_dfl_oracle_template_candidate_library_v10_frame(
+        dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        min_template_safe_win_count=config.min_template_safe_win_count,
+        max_template_tail_risk_count=config.max_template_tail_risk_count,
+        max_templates_per_anchor=config.max_templates_per_anchor,
+    )
+    generated = frame.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "v10_generated_candidate_rows": generated.height,
+            "final_v10_generated_candidate_rows": generated.filter(
+                pl.col("split_name") == "final_holdout"
+            ).height
+            if generated.height
+            else 0,
+            "pending_strict_rescore_rows": generated.filter(
+                pl.col("candidate_value_label_status") == "pending_strict_rescore"
+            ).height
+            if generated.height
+            else 0,
+            "template_source_count": generated.select(
+                pl.col("diagnostic_template_candidate_key").n_unique()
+            ).item()
+            if generated.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_template_candidate_library_v10_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v10",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_template_candidate_v10_strict_rescore_frame(
+    context,
+    dfl_oracle_template_candidate_library_v10_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V10 oracle-template candidates with unchanged LP/oracle labels."""
+
+    frame = build_dfl_oracle_template_candidate_v10_strict_rescore_frame(
+        dfl_oracle_template_candidate_library_v10_frame
+    )
+    generated = frame.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "strict_rescored_v10_candidate_rows": generated.filter(
+                pl.col("candidate_value_label_status") == "strict_rescored_v10_candidate"
+            ).height
+            if generated.height
+            else 0,
+            "mean_generated_v10_regret_uah": generated.select(
+                pl.col("regret_uah").mean()
+            ).item()
+            if generated.height
+            else None,
+            "final_generated_v10_candidate_rows": generated.filter(
+                pl.col("split_name") == "final_holdout"
+            ).height
+            if generated.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_template_candidate_v10_strict_rescore_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v10",
+        market_venue="DAM",
+    ),
+)
+def dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_oracle_template_candidate_v10_strict_rescore_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Rebuild V10 candidate-value labels after strict template rescore."""
+
+    frame = build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame(
+        dfl_oracle_template_candidate_v10_strict_rescore_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        nearest_neighbor_count=config.nearest_neighbor_count,
+    )
+    generated = frame.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": frame.filter(
+                pl.col("label_v10_material_safe_switch")
+            ).height
+            if frame.height
+            else 0,
+            "final_generated_material_safe_switch_rows": generated.filter(
+                (pl.col("split_name") == "final_holdout")
+                & pl.col("label_v10_material_safe_switch")
+            ).height
+            if generated.height
+            else 0,
+            "tail_risk_generated_rows": generated.filter(
+                pl.col("label_v10_tail_risk_loss")
+            ).height
+            if generated.height
+            else 0,
+            "selector_training_eligible_generated_rows": generated.filter(
+                pl.col("eligible_for_next_selector_training_v10")
+            ).height
+            if generated.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_oracle_template_candidate_value_teacher_v10_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -15072,6 +15253,9 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_ua_non_tail_risk_candidate_library_v9_frame,
     dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,
     dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame,
+    dfl_oracle_template_candidate_library_v10_frame,
+    dfl_oracle_template_candidate_v10_strict_rescore_frame,
+    dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

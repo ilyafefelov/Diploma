@@ -167,6 +167,56 @@ safe-switch rows are still `0`, DT/LAVA should continue to wait. The next
 research branch is stronger Ukrainian context/data acquisition or a different
 candidate family, not another selector over the same V9 frame.
 
+V10 follow-up status:
+
+- new candidate-library asset:
+  `dfl_oracle_template_candidate_library_v10_frame`;
+- V10 mines templates only from train/prior V9 rows that were strict-scored as
+  material safe switches and not tail-risk losses;
+- V10 then instantiates those templates beside the current V2+ fallback for
+  later strict rescore. The generated rows start as
+  `candidate_value_label_status=pending_strict_rescore`;
+- final-holdout labels cannot create, rank, or select templates. They are
+  scoring/diagnostic only after a later rescore step;
+- V10 still does not train a selector, does not promote a strategy, and keeps
+  `market_execution_enabled=false`.
+
+Materialized V10 candidate-library status:
+
+- Dagster run id: `c34fff79-beee-4bd9-93a5-c9164357faa0`;
+- total V10 library rows: `19,199`;
+- generated V10 oracle-template candidate rows: `1,204`;
+- final-holdout generated V10 candidate rows: `126`;
+- generated rows pending strict rescore: `1,204`;
+- unique template source candidates: `7`;
+- template source splits: `train_selection` only;
+- `market_execution_enabled=false`.
+
+Materialized V10 strict-rescore and label status:
+
+- Dagster run id: `e99a3730-9e66-4967-a39e-cb61c872574b`;
+- strict-rescored V10 rows: `19,199`;
+- strict-rescored generated V10 candidates: `1,204`;
+- final-holdout generated V10 candidates: `126`;
+- mean generated V10 regret: `2,128.94` UAH;
+- median generated V10 regret: `1,657.75` UAH;
+- rebuilt V10 teacher rows: `19,199`;
+- V10 material safe-switch labels: `19`;
+- generated V10 train/prior material safe-switch labels: `11`;
+- generated V10 final-holdout material safe-switch labels: `0`;
+- generated V10 tail-risk rows: `1,179`;
+- generated V10 rows eligible for a later selector training pass: `25`;
+- all final-holdout generated V10 rows were tail-risk under strict rescore;
+- `market_execution_enabled=false`.
+
+Interpretation: V10 proves that train/prior safe templates can be mined without
+leakage, but the templates do not transfer safely to the final holdout. The
+result is therefore not selector-ready and not DT-ready. It strengthens the
+same conclusion as V8/V9: the remaining path to beat V2+ needs either stronger
+Ukrainian point-in-time context that can predict when templates transfer, or a
+new candidate family with lower tail-risk, before another selector or DT/LAVA
+target is justified.
+
 ## Asset Path
 
 | Asset | Purpose |
@@ -186,6 +236,9 @@ candidate family, not another selector over the same V9 frame.
 | `dfl_ua_non_tail_risk_candidate_library_v9_frame` | Adds bounded same-energy peak/trough variants around V2+. The families are designed to be feasible and low-throughput before strict rescore, not aggressive perturbation schedules. |
 | `dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame` | Re-scores V9 generated schedules against realized prices and oracle value with the same LP/oracle evaluator used by prior gates. |
 | `dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame` | Rebuilds candidate-value labels after V9 strict rescore. This is the input for a later selector only if it creates enough non-tail-risk safe-switch examples. |
+| `dfl_oracle_template_candidate_library_v10_frame` | Mines train/prior non-tail-risk safe-switch templates from the V9 label panel and recreates them as pending strict-rescore candidates for each compatible later anchor. This is template-backed candidate generation, not final-holdout oracle copying. |
+| `dfl_oracle_template_candidate_v10_strict_rescore_frame` | Strict-scores V10 generated templates against realized prices and oracle value with the unchanged LP/oracle evaluator. |
+| `dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame` | Rebuilds candidate-value labels after V10 strict rescore, marking material safe switches, tail-risk rows, and next-selector eligibility. |
 
 Tracked config:
 
@@ -221,6 +274,14 @@ perturbations from this slice because synthetic strict-rescore tests showed
 they can become tail-risk losses even when they reduce throughput. V9 therefore
 prioritizes non-tail-risk teacher-label creation over another immediate
 selector.
+
+V10 adds one diagnostic family:
+
+- `oracle_template_schedule_neighbor_v10` - reuses the dispatch shape of a
+  prior train-row candidate that already beat V2+ under strict rescore without
+  tail-risk. The schedule is scaled to the current V2+ throughput envelope and
+  must still pass the unchanged strict LP/oracle rescore before it can become a
+  teacher label.
 
 ## Leakage Boundary
 
@@ -282,6 +343,15 @@ V9 label rebuild:
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
   --select dfl_ua_prior_context_backfilled_feature_panel_v9_frame,dfl_ua_non_tail_risk_candidate_library_v9_frame,dfl_ua_non_tail_risk_candidate_v9_strict_rescore_frame,dfl_ua_non_tail_risk_candidate_value_teacher_label_panel_v9_frame `
+  -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
+```
+
+V10 oracle-template strict rescore and label rebuild:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_oracle_template_candidate_library_v10_frame,dfl_oracle_template_candidate_v10_strict_rescore_frame,dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame `
   -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
 ```
 

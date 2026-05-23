@@ -170,6 +170,25 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      generated rows as tail-risk and ineligible for a future selector training
      pass. This is useful negative evidence: bounded peak/trough generation
      alone still does not create selector-safe final opportunities.
+   - V10 is the next candidate-generation repair, not a selector. It adds
+     `dfl_oracle_template_candidate_library_v10_frame`, which mines only
+     train/prior V9 rows that were strict-scored as material safe switches
+     without tail-risk, then recreates those dispatch shapes as pending
+     strict-rescore candidates for compatible later anchors. Final-holdout
+     labels cannot create or rank templates; the asset is offline evidence only
+     with `market_execution_enabled=false`. The first V10 materialization
+     (`c34fff79-beee-4bd9-93a5-c9164357faa0`) produced `19,199` total rows,
+     `1,204` generated oracle-template candidates, and `126` final-holdout
+     generated candidates. All generated rows remain pending strict rescore and
+     all template sources came from `train_selection`.
+   - V10 strict rescore and label rebuild are now materialized
+     (`e99a3730-9e66-4967-a39e-cb61c872574b`). The rebuilt teacher frame still
+     has `19,199` rows. It found `19` material safe-switch labels overall, but
+     only `11` came from generated train/prior V10 templates and `0` came from
+     generated final-holdout templates. The `126` final-holdout generated V10
+     candidates were all tail-risk. This blocks selector/DT promotion from V10
+     and points the next work back to stronger Ukrainian prior context or a
+     new lower-tail-risk candidate family.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 
