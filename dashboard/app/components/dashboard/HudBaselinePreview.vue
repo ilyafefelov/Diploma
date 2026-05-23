@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-
+import ClientVChart from '~/components/dashboard/ClientVChart.vue'
 import CollapsibleTextCard from '~/components/dashboard/CollapsibleTextCard.vue'
 import type { BaselineLpPreview, OperatorRecommendationResponse } from '~/types/control-plane'
 import { buildBaselineForecastChartOption, buildBaselineScheduleChartOption } from '~/utils/dashboardChartTheme'
-
-use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
   baselinePreview: BaselineLpPreview | null
@@ -336,7 +329,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
         >
           Loading baseline forecast...
         </div>
-        <VChart
+        <ClientVChart
           v-else
           :option="forecastOption"
           autoresize
@@ -366,7 +359,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
         >
           Loading projected state...
         </div>
-        <VChart
+        <ClientVChart
           v-else
           :option="scheduleOption"
           autoresize

@@ -1,15 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
 
+import ClientVChart from '~/components/dashboard/ClientVChart.vue'
 import type { SignalPreview } from '~/types/control-plane'
 import { buildMarketSignalHeroChartOption } from '~/utils/dashboardChartTheme'
-
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
   signalPreview: SignalPreview | null
@@ -221,7 +215,7 @@ const forecastSpread = computed(() => {
       >
         Preparing market signals...
       </div>
-      <VChart
+      <ClientVChart
         v-else
         class="market-signal-hero__chart"
         :option="chartOption"

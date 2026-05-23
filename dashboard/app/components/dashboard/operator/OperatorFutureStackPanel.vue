@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-
+import ClientVChart from '~/components/dashboard/ClientVChart.vue'
 import type {
   BaselineRecommendationPoint,
   DecisionPolicyPreviewResponse,
@@ -27,8 +22,6 @@ import {
   isChartSafeForecastSeries,
   sortFutureForecastSeries
 } from '~/utils/operatorFutureStack'
-
-use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
   futureStack: FutureStackPreviewResponse | null
@@ -565,7 +558,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           </div>
         </div>
         <ClientOnly>
-          <VChart
+          <ClientVChart
             :option="forecastOption"
             autoresize
             class="future-chart"
@@ -622,7 +615,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           </div>
         </div>
         <ClientOnly>
-          <VChart
+          <ClientVChart
             :option="policyOption"
             autoresize
             class="future-chart"

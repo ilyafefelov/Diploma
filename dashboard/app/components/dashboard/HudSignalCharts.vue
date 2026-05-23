@@ -1,17 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-
+import ClientVChart from '~/components/dashboard/ClientVChart.vue'
 import CollapsibleTextCard from '~/components/dashboard/CollapsibleTextCard.vue'
 import type { OperatorRecommendationResponse, SignalPreview } from '~/types/control-plane'
 import { buildMarketPulseChartOption, buildSelectedStrategyDispatchChartOption, formatWeatherSourceLabel } from '~/utils/dashboardChartTheme'
-
-use([CanvasRenderer, LineChart, BarChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
   signalPreview: SignalPreview | null
@@ -91,7 +84,7 @@ const weatherSourceBadge = computed(() => {
       >
         Loading market pulse...
       </div>
-      <VChart
+      <ClientVChart
         v-else
         :option="marketOption"
         autoresize
@@ -213,7 +206,7 @@ const weatherSourceBadge = computed(() => {
       >
         Loading schedule preview...
       </div>
-      <VChart
+      <ClientVChart
         v-else
         :option="dispatchOption"
         autoresize

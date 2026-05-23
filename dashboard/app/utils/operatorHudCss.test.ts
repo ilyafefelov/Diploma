@@ -123,6 +123,23 @@ describe('operator HUD CSS', () => {
     expect(getSelectorBlock(css, '.operator-frame .surface-panel')).toMatch(/overflow:\s*visible/)
   })
 
+  it('keeps operator chart components SSR-safe by routing vue-echarts through a client wrapper', () => {
+    const chartComponentUrls = [
+      '../components/dashboard/HudBaselinePreview.vue',
+      '../components/dashboard/HudSignalCharts.vue',
+      '../components/dashboard/operator/OperatorDecisionEvidencePanel.vue',
+      '../components/dashboard/operator/OperatorFutureStackPanel.vue',
+      '../components/dashboard/operator/OperatorMarketSignalHero.vue'
+    ]
+
+    for (const componentUrl of chartComponentUrls) {
+      const component = readFileSync(fileURLToPath(new URL(componentUrl, import.meta.url)), 'utf8')
+
+      expect(component).not.toContain('vue-echarts')
+      expect(component).toContain('<ClientVChart')
+    }
+  })
+
   it('keeps future-stack policy value copy scoped to DAM delivery review', () => {
     const futurePanel = readFileSync(
       fileURLToPath(new URL('../components/dashboard/operator/OperatorFutureStackPanel.vue', import.meta.url)),

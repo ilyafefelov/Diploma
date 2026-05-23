@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { BarChart, LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-
+import ClientVChart from '~/components/dashboard/ClientVChart.vue'
 import type {
   BaselineLpPreview,
   DashboardBatteryStateResponse,
@@ -23,8 +18,6 @@ import {
   buildOperatorStrategyEvidenceRows,
   buildSensitivityEvidenceRows
 } from '~/utils/operatorDecisionEvidence'
-
-use([CanvasRenderer, BarChart, LineChart, GridComponent, TooltipComponent, LegendComponent])
 
 const props = defineProps<{
   benchmark: RealDataBenchmarkResponse | null
@@ -296,7 +289,7 @@ const sensitivityOption = computed(() => ({
           <span><strong>Mean regret</strong> = average lost UAH versus oracle</span>
           <span><strong>Win rate</strong> = share of anchors ranked best by regret</span>
         </div>
-        <VChart
+        <ClientVChart
           :option="strategyOption"
           autoresize
           class="decision-chart"
@@ -311,7 +304,7 @@ const sensitivityOption = computed(() => ({
           <h3>Strict control regret rate</h3>
           <p>Rolling anchor view of the default comparator against the oracle upper bound.</p>
         </div>
-        <VChart
+        <ClientVChart
           :option="regretTimelineOption"
           autoresize
           class="decision-chart"
@@ -326,7 +319,7 @@ const sensitivityOption = computed(() => ({
           <h3>Where regret risk concentrates</h3>
           <p>These buckets explain historical regret mechanisms for the selected preview context; they are diagnosis, not live dispatch rules.</p>
         </div>
-        <VChart
+        <ClientVChart
           :option="sensitivityOption"
           autoresize
           class="decision-chart decision-chart-compact"

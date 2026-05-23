@@ -1,16 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 
-import { ScatterChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
-
+import ClientVChart from '~/components/dashboard/ClientVChart.vue'
 import type { TenantSummary } from '~/types/control-plane'
 import { buildTenantRegistryChartOption } from '~/utils/dashboardChartTheme'
-
-use([CanvasRenderer, ScatterChart, GridComponent, TooltipComponent])
 
 const props = defineProps<{
   tenants: TenantSummary[]
@@ -23,7 +16,7 @@ const option = computed(() => {
 </script>
 
 <template>
-  <VChart
+  <ClientVChart
     :option="option"
     autoresize
     class="registry-chart"
