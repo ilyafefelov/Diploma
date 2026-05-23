@@ -196,9 +196,9 @@ const selectedRecommendationProjectionSummary = computed(() => {
   const meanValueGap = selectedRecommendationChartRows.value.reduce((total, row) => total + row.valueGapUah, 0) / selectedRecommendationChartRows.value.length
   return [
     {
-      label: 'Selected schedule',
+      label: 'DAM schedule',
       value: `${nonIdleRows}/${selectedRecommendationChartRows.value.length}`,
-      meta: 'non-idle action windows'
+      meta: 'non-idle delivery windows'
     },
     {
       label: 'Mean visible gap',
@@ -263,20 +263,20 @@ const officialPolicyChartSeries = computed(() => officialPolicyForecastSeries.va
   return [baseLine, ...quantileLines]
 }))
 const policyChartTitle = computed(() => isOfficialPolicyMode.value
-  ? 'Safe forecast rows'
+  ? 'Safe DAM forecast rows'
   : usesDecisionPolicyPreview.value
-    ? 'Decision policy preview'
-    : 'Selected strategy schedule')
+    ? 'DAM policy preview'
+    : 'DAM delivery schedule review')
 const policyChartDescription = computed(() => isOfficialPolicyMode.value
   ? 'Forecast-store rows that are inside DAM caps. Hidden raw out-of-cap rows remain diagnostics, not schedule inputs.'
   : usesDecisionPolicyPreview.value
-    ? 'Counterfactual value gap and projected action rows for the selected policy preview.'
-    : 'Bars are the selected preview strategy charge/discharge schedule. Lines show visible value gap and the price context used by the same LP feasibility layer.')
+    ? 'Counterfactual value gap and projected DAM delivery-hour action rows for the selected policy preview; review only, not live dispatch.'
+    : 'Bars are proposed DAM delivery-hour charge/discharge review rows for the selected preview strategy. Lines show visible value gap and DAM price context used by the same LP feasibility layer. Review only: no live IDM bid or market submission.')
 
 const selectedRecommendationChartSeries = computed(() => [
   {
     type: 'bar',
-    name: 'Selected net power',
+    name: 'Selected DAM net power',
     yAxisIndex: 1,
     data: selectedRecommendationChartRows.value.map(row => row.netPowerMw),
     itemStyle: { color: 'rgba(83, 178, 234, 0.8)', borderRadius: [8, 8, 0, 0] }
@@ -291,7 +291,7 @@ const selectedRecommendationChartSeries = computed(() => [
   },
   {
     type: 'line',
-    name: 'Selected price context',
+    name: 'DAM price context',
     smooth: true,
     data: selectedRecommendationChartRows.value.map(row => row.forecastPriceUahMwh),
     lineStyle: { width: 3, color: '#b8ff32', type: 'dashed' },
@@ -546,7 +546,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
             Forecast stack
           </p>
           <h3>Price-model context</h3>
-          <p>Prediction window: <strong>{{ forecastWindowLabel }}</strong>. These are forecast context lines only; the selected strategy schedule is shown in the policy chart and bottom dock.</p>
+          <p>DAM forecast window: <strong>{{ forecastWindowLabel }}</strong>. These are day-ahead forecast context lines only; the DAM delivery review schedule is shown in the policy chart and bottom dock.</p>
           <div class="forecast-quality-strip">
             <span
               v-for="item in forecastQualityItems"
@@ -594,7 +594,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
               @click="setPolicyValueMode('selected')"
             >
               <UIcon name="i-lucide-brain" />
-              <span>Strategy schedule</span>
+              <span>DAM schedule</span>
             </button>
             <button
               type="button"

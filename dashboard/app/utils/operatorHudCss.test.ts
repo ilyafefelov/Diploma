@@ -113,4 +113,18 @@ describe('operator HUD CSS', () => {
     expect(decisionPanel).not.toContain('<ClientOnly>')
     expect(getSelectorBlock(css, '.operator-frame .surface-panel')).toMatch(/overflow:\s*visible/)
   })
+
+  it('keeps future-stack policy value copy scoped to DAM delivery review', () => {
+    const futurePanel = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorFutureStackPanel.vue', import.meta.url)),
+      'utf8'
+    )
+
+    expect(futurePanel).toContain('DAM delivery schedule review')
+    expect(futurePanel).toContain('DAM delivery-hour')
+    expect(futurePanel).toContain('no live IDM bid or market submission')
+    expect(futurePanel).toContain('Selected DAM net power')
+    expect(futurePanel).toContain('DAM price context')
+    expect(futurePanel).not.toContain('Selected strategy schedule')
+  })
 })
