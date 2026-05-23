@@ -362,6 +362,11 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     REGRET_SURROGATE_CANDIDATE_VALUE_V7_STRICT_LP_STRATEGY_KIND,
     REGRET_SURROGATE_CANDIDATE_VALUE_V8_SELECTION_ROLE,
     REGRET_SURROGATE_CANDIDATE_VALUE_V8_STRICT_LP_STRATEGY_KIND,
+    REGRET_SURROGATE_CANDIDATE_VALUE_V11_SELECTION_ROLE,
+    REGRET_SURROGATE_CANDIDATE_VALUE_V11_STRICT_LP_STRATEGY_KIND,
+    REGRET_SURROGATE_V11_BEHAVIOR_CLONING_SELECTION_ROLE,
+    REGRET_SURROGATE_V11_LAVA_DT_COMPARISON_STRATEGY_KIND,
+    REGRET_SURROGATE_V11_LAVA_DT_SELECTION_ROLE,
     REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_SELECTION_ROLE,
     REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND,
     REGRET_SURROGATE_SPARSE_SAFE_SWITCH_SELECTION_ROLE,
@@ -370,7 +375,9 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_backfilled_context_feature_panel_v7_frame,
     build_dfl_candidate_value_regret_surrogate_v7_frame,
     build_dfl_candidate_value_regret_surrogate_v8_frame,
+    build_dfl_candidate_value_regret_surrogate_v11_frame,
     build_dfl_candidate_value_teacher_label_panel_v7_frame,
+    build_dfl_candidate_value_v11_strict_lp_benchmark_frame,
     build_dfl_candidate_value_v7_rolling_robustness_frame,
     build_dfl_candidate_value_v7_strict_lp_benchmark_frame,
     build_dfl_candidate_value_v8_rolling_robustness_frame,
@@ -390,6 +397,11 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
     build_dfl_forecast_extrema_repair_audit_frame,
     build_dfl_ua_context_backfill_requirements_frame,
+    build_dfl_lower_tail_risk_candidate_library_v11_frame,
+    build_dfl_lower_tail_risk_candidate_v11_strict_rescore_frame,
+    build_dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame,
+    build_dfl_v11_lava_dt_candidate_policy_frame,
+    build_dfl_v11_lava_dt_comparison_frame,
     build_dfl_v10_learning_ceiling_decision_frame,
     build_dfl_v10_tail_risk_transfer_audit_frame,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
@@ -6465,8 +6477,7 @@ def dfl_v8_pruned_candidate_family_plan_frame(
             if frame.height
             else 0,
             "backfill_required_family_rows": frame.filter(
-                pl.col("recommended_next_action")
-                == "backfill_ukrainian_prior_context"
+                pl.col("recommended_next_action") == "backfill_ukrainian_prior_context"
             ).height
             if frame.height
             else 0,
@@ -7017,7 +7028,8 @@ def dfl_oracle_template_candidate_v10_strict_rescore_frame(
         {
             "rows": frame.height,
             "strict_rescored_v10_candidate_rows": generated.filter(
-                pl.col("candidate_value_label_status") == "strict_rescored_v10_candidate"
+                pl.col("candidate_value_label_status")
+                == "strict_rescored_v10_candidate"
             ).height
             if generated.height
             else 0,
@@ -7541,8 +7553,7 @@ def dfl_ua_calendar_block_context_backfill_frame(
             if frame.height
             else 0,
             "blocker_values": sorted(
-                str(value)
-                for value in frame["calendar_block_backfill_status"].unique()
+                str(value) for value in frame["calendar_block_backfill_status"].unique()
             )
             if frame.height
             else [],
@@ -7593,13 +7604,366 @@ def dfl_ua_context_backfill_coverage_gate_frame(
             if frame.height
             else 0,
             "gate_decisions": sorted(
-                str(value)
-                for value in frame["context_backfill_gate_decision"].unique()
+                str(value) for value in frame["context_backfill_gate_decision"].unique()
             )
             if frame.height
             else [],
             "market_execution_enabled": False,
             "scope": "dfl_ua_context_backfill_coverage_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v11",
+        market_venue="DAM",
+    ),
+)
+def dfl_lower_tail_risk_candidate_library_v11_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame: pl.DataFrame,
+    dfl_ua_context_backfill_coverage_gate_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Generate source-gated lower-tail-risk V11 candidate schedules."""
+
+    frame = build_dfl_lower_tail_risk_candidate_library_v11_frame(
+        dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
+        dfl_ua_context_backfill_coverage_gate_frame,
+        min_prior_non_tail_risk_support_count=0,
+        max_prior_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+    )
+    generated = frame.filter(
+        pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "generated_candidate_rows": generated.height,
+            "ready_rows": frame.filter(pl.col("v11_candidate_generation_ready")).height
+            if frame.height
+            else 0,
+            "candidate_schedule_classes": sorted(
+                str(value) for value in generated["candidate_schedule_class"].unique()
+            )
+            if generated.height
+            else [],
+            "target_label_space": "schedule_candidate_value_v11",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_lower_tail_risk_candidate_library_v11_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v11",
+        market_venue="DAM",
+    ),
+)
+def dfl_lower_tail_risk_candidate_v11_strict_rescore_frame(
+    context,
+    dfl_lower_tail_risk_candidate_library_v11_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V11 candidates under the unchanged LP/oracle labels."""
+
+    frame = build_dfl_lower_tail_risk_candidate_v11_strict_rescore_frame(
+        dfl_lower_tail_risk_candidate_library_v11_frame
+    )
+    generated = frame.filter(
+        pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "strict_rescored_v11_rows": generated.filter(
+                pl.col("candidate_value_label_status")
+                == "strict_rescored_v11_candidate"
+            ).height
+            if generated.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v11",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_lower_tail_risk_candidate_v11_strict_rescore_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v11",
+        market_venue="DAM",
+    ),
+)
+def dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_lower_tail_risk_candidate_v11_strict_rescore_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Attach V11 candidate-value labels after strict rescore."""
+
+    frame = build_dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame(
+        dfl_lower_tail_risk_candidate_v11_strict_rescore_frame,
+        material_switch_delta_uah=config.material_switch_delta_uah,
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        nearest_neighbor_count=config.nearest_neighbor_count,
+    )
+    generated = frame.filter(
+        pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "material_safe_switch_rows": generated.filter(
+                pl.col("label_v11_material_safe_switch")
+            ).height
+            if generated.height
+            else 0,
+            "tail_risk_rows": generated.filter(
+                pl.col("label_v11_tail_risk_loss")
+            ).height
+            if generated.height
+            else 0,
+            "target_label_space": "schedule_candidate_value_v11",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_lower_tail_risk_candidate_value_teacher_v11_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v11",
+        market_venue="DAM",
+    ),
+)
+def dfl_candidate_value_regret_surrogate_v11_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Fit conservative V11 candidate-value safe-switch policy."""
+
+    frame = build_dfl_candidate_value_regret_surrogate_v11_frame(
+        dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=config.min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+        min_prior_material_safe_switch_examples_for_dt=(
+            config.min_prior_material_safe_switch_examples_for_dt
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selected_final_candidate_count": int(
+                frame["selected_final_candidate_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "fallback_final_anchor_count": int(
+                frame["fallback_final_anchor_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "dt_lava_ready_rows": frame.filter(pl.col("dt_lava_ready")).height
+            if frame.height
+            else 0,
+            "selection_role": REGRET_SURROGATE_CANDIDATE_VALUE_V11_SELECTION_ROLE,
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_candidate_value_regret_surrogate_v11_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v11",
+        market_venue="DAM",
+    ),
+)
+def dfl_candidate_value_v11_strict_lp_benchmark_frame(
+    context,
+    dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame: pl.DataFrame,
+    dfl_candidate_value_regret_surrogate_v11_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Strict-score V11 selector versus strict and frozen V2+ references."""
+
+    frame = build_dfl_candidate_value_v11_strict_lp_benchmark_frame(
+        dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame,
+        dfl_candidate_value_regret_surrogate_v11_frame,
+    )
+    v11_rows = frame.filter(
+        pl.col("selection_role") == REGRET_SURROGATE_CANDIDATE_VALUE_V11_SELECTION_ROLE
+    )
+    v11_mean_regret: Any = v11_rows["regret_uah"].mean() if v11_rows.height else None
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selection_roles": sorted(
+                str(value) for value in frame["selection_role"].unique()
+            )
+            if frame.height
+            else [],
+            "v11_mean_regret_uah": float(v11_mean_regret)
+            if v11_mean_regret is not None
+            else None,
+            "strategy_kind": REGRET_SURROGATE_CANDIDATE_VALUE_V11_STRICT_LP_STRATEGY_KIND,
+            "market_execution_enabled": False,
+            "scope": "dfl_candidate_value_v11_strict_lp_gate_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="lava_dt_v11",
+        market_venue="DAM",
+    ),
+)
+def dfl_v11_lava_dt_candidate_policy_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Train DT/LAVA-style candidate-index policy only when V11 labels are ready."""
+
+    frame = build_dfl_v11_lava_dt_candidate_policy_frame(
+        dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame,
+        tenant_ids=_csv_values(config.tenant_ids_csv, field_name="tenant_ids_csv"),
+        source_model_names=_forecast_model_names(config.source_model_names_csv),
+        max_prior_neighbor_distance=config.max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=config.min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=config.max_neighbor_tail_risk_probability,
+        min_prior_material_safe_switch_examples_for_dt=(
+            config.min_prior_material_safe_switch_examples_for_dt
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "training_statuses": sorted(
+                str(value) for value in frame["dt_lava_training_status"].unique()
+            )
+            if frame.height
+            else [],
+            "selection_role": REGRET_SURROGATE_V11_LAVA_DT_SELECTION_ROLE,
+            "target_label_space": "schedule_candidate_index",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_v11_lava_dt_candidate_policy_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="lava_dt_v11",
+        market_venue="DAM",
+    ),
+)
+def dfl_v11_lava_dt_comparison_frame(
+    context,
+    dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame: pl.DataFrame,
+    dfl_candidate_value_regret_surrogate_v11_frame: pl.DataFrame,
+    dfl_v11_lava_dt_candidate_policy_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Compare V11 selector, behavior cloning, DT/LAVA, V2+, and strict control."""
+
+    frame = build_dfl_v11_lava_dt_comparison_frame(
+        dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame,
+        dfl_candidate_value_regret_surrogate_v11_frame,
+        dfl_v11_lava_dt_candidate_policy_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "selection_roles": sorted(
+                str(value) for value in frame["selection_role"].unique()
+            )
+            if frame.height
+            else [],
+            "dt_lava_rows": frame.filter(
+                pl.col("selection_role") == REGRET_SURROGATE_V11_LAVA_DT_SELECTION_ROLE
+            ).height
+            if frame.height
+            else 0,
+            "behavior_cloning_role": REGRET_SURROGATE_V11_BEHAVIOR_CLONING_SELECTION_ROLE,
+            "strategy_kind": REGRET_SURROGATE_V11_LAVA_DT_COMPARISON_STRATEGY_KIND,
+            "market_execution_enabled": False,
+            "scope": "dfl_v11_lava_dt_comparison_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -15795,6 +16159,13 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_ua_grid_event_backfill_frame,
     dfl_ua_calendar_block_context_backfill_frame,
     dfl_ua_context_backfill_coverage_gate_frame,
+    dfl_lower_tail_risk_candidate_library_v11_frame,
+    dfl_lower_tail_risk_candidate_v11_strict_rescore_frame,
+    dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame,
+    dfl_candidate_value_regret_surrogate_v11_frame,
+    dfl_candidate_value_v11_strict_lp_benchmark_frame,
+    dfl_v11_lava_dt_candidate_policy_frame,
+    dfl_v11_lava_dt_comparison_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,
@@ -16012,9 +16383,7 @@ def _ua_context_grid_event_signal_frame(
     tenant_ids = sorted(
         {
             str(row["tenant_id"])
-            for row in dfl_ua_context_backfill_requirements_frame.iter_rows(
-                named=True
-            )
+            for row in dfl_ua_context_backfill_requirements_frame.iter_rows(named=True)
             if row.get("tenant_id") is not None
         }
     )

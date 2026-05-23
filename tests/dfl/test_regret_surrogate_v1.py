@@ -50,6 +50,13 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_ua_context_backfill_requirements_frame,
     build_dfl_v10_learning_ceiling_decision_frame,
     build_dfl_v10_tail_risk_transfer_audit_frame,
+    build_dfl_lower_tail_risk_candidate_library_v11_frame,
+    build_dfl_lower_tail_risk_candidate_v11_strict_rescore_frame,
+    build_dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame,
+    build_dfl_candidate_value_regret_surrogate_v11_frame,
+    build_dfl_candidate_value_v11_strict_lp_benchmark_frame,
+    build_dfl_v11_lava_dt_candidate_policy_frame,
+    build_dfl_v11_lava_dt_comparison_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
     build_dfl_ua_context_candidate_v8_strict_rescore_frame,
     build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
@@ -579,7 +586,9 @@ def test_v2_plus_backfill_requirements_find_strict_guarded_rescue_need() -> None
 
 def test_v2_plus_backfill_requirements_tolerate_missing_anchor_strict_row() -> None:
     library, audit = _v6_library_and_audit(
-        _teacher_panel_v2(_candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0))
+        _teacher_panel_v2(
+            _candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0)
+        )
     )
     target_anchor = FIRST_ANCHOR + timedelta(hours=3)
     library = library.filter(
@@ -920,7 +929,9 @@ def test_v8_strict_rescore_rebuilds_generated_candidate_regret_labels() -> None:
     assert requirements.height == len(TENANTS) * 5
 
 
-def test_v8_final_actual_mutation_changes_rescore_labels_not_candidate_features() -> None:
+def test_v8_final_actual_mutation_changes_rescore_labels_not_candidate_features() -> (
+    None
+):
     base_library, _ = _v8_library(
         _candidate_panel(train_alt_regret=130.0, final_alt_regret=130.0)
     )
@@ -945,11 +956,14 @@ def test_v8_final_actual_mutation_changes_rescore_labels_not_candidate_features(
         mutated_rescore.select(selector_columns).to_dicts()
     )
     generated_filter = pl.col("candidate_source") == "ua_context_v8_generated_candidate"
-    assert base_rescore.filter(generated_filter).select(
-        ["candidate_model_name", "dispatch_mw_vector"]
-    ).to_dicts() == mutated_rescore.filter(generated_filter).select(
-        ["candidate_model_name", "dispatch_mw_vector"]
-    ).to_dicts()
+    assert (
+        base_rescore.filter(generated_filter)
+        .select(["candidate_model_name", "dispatch_mw_vector"])
+        .to_dicts()
+        == mutated_rescore.filter(generated_filter)
+        .select(["candidate_model_name", "dispatch_mw_vector"])
+        .to_dicts()
+    )
     assert base_rescore.filter(generated_filter)["regret_uah"].to_list() != (
         mutated_rescore.filter(generated_filter)["regret_uah"].to_list()
     )
@@ -1087,7 +1101,9 @@ def test_v8_final_label_mutation_changes_scores_not_selected_candidates() -> Non
     )
 
 
-def test_v8_false_positive_tail_risk_audit_separates_final_loss_from_prior_risk() -> None:
+def test_v8_false_positive_tail_risk_audit_separates_final_loss_from_prior_risk() -> (
+    None
+):
     base_teacher = _v8_teacher(
         _candidate_panel(
             train_alt_regret=130.0,
@@ -1106,9 +1122,7 @@ def test_v8_false_positive_tail_risk_audit_separates_final_loss_from_prior_risk(
         min_prior_material_safe_switch_examples_for_dt=1,
     )
     selected_keys = {
-        key
-        for keys in model["selected_final_candidate_keys"].to_list()
-        for key in keys
+        key for keys in model["selected_final_candidate_keys"].to_list() for key in keys
     }
     mutated_teacher = base_teacher.with_columns(
         pl.when(
@@ -1121,16 +1135,17 @@ def test_v8_false_positive_tail_risk_audit_separates_final_loss_from_prior_risk(
                     "candidate_family",
                     "candidate_model_name",
                 ]
-            )
-            .map_elements(
+            ).map_elements(
                 lambda row: (
-                    f"{row['tenant_id']}|{row['source_model_name']}|"
-                    f"{row['anchor_timestamp'].isoformat()}|"
-                    f"{row['candidate_source']}|"
-                    f"{row['candidate_family']}|"
-                    f"{row['candidate_model_name']}"
-                )
-                in selected_keys,
+                    (
+                        f"{row['tenant_id']}|{row['source_model_name']}|"
+                        f"{row['anchor_timestamp'].isoformat()}|"
+                        f"{row['candidate_source']}|"
+                        f"{row['candidate_family']}|"
+                        f"{row['candidate_model_name']}"
+                    )
+                    in selected_keys
+                ),
                 return_dtype=pl.Boolean,
             )
         )
@@ -1147,16 +1162,17 @@ def test_v8_false_positive_tail_risk_audit_separates_final_loss_from_prior_risk(
                     "candidate_family",
                     "candidate_model_name",
                 ]
-            )
-            .map_elements(
+            ).map_elements(
                 lambda row: (
-                    f"{row['tenant_id']}|{row['source_model_name']}|"
-                    f"{row['anchor_timestamp'].isoformat()}|"
-                    f"{row['candidate_source']}|"
-                    f"{row['candidate_family']}|"
-                    f"{row['candidate_model_name']}"
-                )
-                in selected_keys,
+                    (
+                        f"{row['tenant_id']}|{row['source_model_name']}|"
+                        f"{row['anchor_timestamp'].isoformat()}|"
+                        f"{row['candidate_source']}|"
+                        f"{row['candidate_family']}|"
+                        f"{row['candidate_model_name']}"
+                    )
+                    in selected_keys
+                ),
                 return_dtype=pl.Boolean,
             )
         )
@@ -1196,7 +1212,9 @@ def test_v8_false_positive_tail_risk_audit_separates_final_loss_from_prior_risk(
         "prior_pruned_for_next_training",
     ]
     base_family = base_audit.filter(pl.col("audit_row_type") == "candidate_family")
-    mutated_family = mutated_audit.filter(pl.col("audit_row_type") == "candidate_family")
+    mutated_family = mutated_audit.filter(
+        pl.col("audit_row_type") == "candidate_family"
+    )
     assert base_family.select(prior_columns).sort(prior_columns[:2]).to_dicts() == (
         mutated_family.select(prior_columns).sort(prior_columns[:2]).to_dicts()
     )
@@ -1247,14 +1265,18 @@ def test_v8_pruned_candidate_family_plan_blocks_prior_tail_risk_families() -> No
         pl.col("candidate_source") == "ua_context_v8_generated_candidate"
     )
     assert generated_plan.height > 0
-    assert set(generated_plan["allowed_for_next_selector_training"].to_list()) == {False}
+    assert set(generated_plan["allowed_for_next_selector_training"].to_list()) == {
+        False
+    }
     assert set(generated_plan["recommended_next_action"].to_list()) == {
         "prune_candidate_family"
     }
     assert set(generated_plan["market_execution_enabled"].to_list()) == {False}
 
 
-def test_v8_pruned_candidate_library_removes_prior_risk_families_but_keeps_fallbacks() -> None:
+def test_v8_pruned_candidate_library_removes_prior_risk_families_but_keeps_fallbacks() -> (
+    None
+):
     teacher_v8 = _v8_teacher(
         _candidate_panel(
             train_alt_regret=130.0,
@@ -1299,9 +1321,7 @@ def test_v8_pruned_candidate_library_removes_prior_risk_families_but_keeps_fallb
     assert {"v2_plus_default", "strict_fallback"}.issubset(
         set(pruned["candidate_source"].to_list())
     )
-    assert set(pruned["candidate_family_pruned_for_next_selector"].to_list()) == {
-        False
-    }
+    assert set(pruned["candidate_family_pruned_for_next_selector"].to_list()) == {False}
     assert set(pruned["market_execution_enabled"].to_list()) == {False}
 
 
@@ -1543,13 +1563,13 @@ def test_v9_tail_risk_generated_rows_are_ineligible_for_next_selector() -> None:
         & pl.col("diagnostic_v9_tail_risk_rejected")
     )
     assert rejected.height > 0
-    assert set(rejected["eligible_for_next_selector_training_v9"].to_list()) == {
-        False
-    }
+    assert set(rejected["eligible_for_next_selector_training_v9"].to_list()) == {False}
     assert set(labels["market_execution_enabled"].to_list()) == {False}
 
 
-def test_v10_oracle_template_candidate_library_mines_train_only_safe_templates() -> None:
+def test_v10_oracle_template_candidate_library_mines_train_only_safe_templates() -> (
+    None
+):
     labels = _v9_teacher(
         _candidate_panel(
             train_alt_regret=130.0,
@@ -1766,7 +1786,9 @@ def test_v10_rebuilt_labels_mark_strict_rescored_material_templates() -> None:
     assert set(labels["market_execution_enabled"].to_list()) == {False}
 
 
-def test_v10_strict_rescore_actual_mutation_changes_scores_not_candidate_features() -> None:
+def test_v10_strict_rescore_actual_mutation_changes_scores_not_candidate_features() -> (
+    None
+):
     library = build_dfl_oracle_template_candidate_library_v10_frame(
         _v9_teacher(
             _candidate_panel(
@@ -1864,10 +1886,13 @@ def test_v10_tail_risk_transfer_audit_classifies_generated_candidates() -> None:
     )
     final_audit = audit.filter(pl.col("split_name") == "final_holdout")
     assert audit.height == generated.height
-    assert final_audit.height == generated.filter(
-        pl.col("split_name") == "final_holdout"
-    ).height
-    assert final_audit.filter(pl.col("v10_transfer_failure_class").is_null()).height == 0
+    assert (
+        final_audit.height
+        == generated.filter(pl.col("split_name") == "final_holdout").height
+    )
+    assert (
+        final_audit.filter(pl.col("v10_transfer_failure_class").is_null()).height == 0
+    )
     assert set(final_audit["v10_transfer_failure_class"].to_list()).issubset(
         {
             "template_regime_mismatch",
@@ -1919,11 +1944,13 @@ def test_v10_transfer_audit_label_mutation_preserves_prior_features() -> None:
         .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
     )
     assert base_features.equals(mutated_features)
-    assert not base.filter(pl.col("split_name") == "final_holdout").select(
-        ["candidate_key", "v10_transfer_failure_class", "candidate_regret_uah"]
-    ).equals(
-        mutated_audit.filter(pl.col("split_name") == "final_holdout").select(
-            ["candidate_key", "v10_transfer_failure_class", "candidate_regret_uah"]
+    assert (
+        not base.filter(pl.col("split_name") == "final_holdout")
+        .select(["candidate_key", "v10_transfer_failure_class", "candidate_regret_uah"])
+        .equals(
+            mutated_audit.filter(pl.col("split_name") == "final_holdout").select(
+                ["candidate_key", "v10_transfer_failure_class", "candidate_regret_uah"]
+            )
         )
     )
 
@@ -1964,9 +1991,8 @@ def test_forecast_extrema_repair_audit_keeps_selector_features_prior_only() -> N
         ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
     )
     final_generated = (
-        (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
-        & (pl.col("split_name") == "final_holdout")
-    )
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    ) & (pl.col("split_name") == "final_holdout")
     mutated = labels.with_columns(
         pl.when(final_generated)
         .then(pl.lit([5000.0, 1200.0, 3600.0, 2100.0]))
@@ -2016,7 +2042,9 @@ def test_forecast_extrema_repair_audit_keeps_selector_features_prior_only() -> N
     assert set(base["market_execution_enabled"].to_list()) == {False}
 
 
-def test_ua_context_backfill_requirements_route_v10_failures_to_data_acquisition() -> None:
+def test_ua_context_backfill_requirements_route_v10_failures_to_data_acquisition() -> (
+    None
+):
     labels = _force_final_v10_generated_tail_risk(
         _v10_teacher(
             _candidate_panel(
@@ -2040,9 +2068,13 @@ def test_ua_context_backfill_requirements_route_v10_failures_to_data_acquisition
     )
 
     final = requirements.filter(pl.col("split_name") == "final_holdout")
-    assert final.height == transfer_audit.filter(
-        pl.col("split_name") == "final_holdout"
-    ).select(["tenant_id", "source_model_name", "anchor_timestamp"]).unique().height
+    assert (
+        final.height
+        == transfer_audit.filter(pl.col("split_name") == "final_holdout")
+        .select(["tenant_id", "source_model_name", "anchor_timestamp"])
+        .unique()
+        .height
+    )
     assert set(final["context_backfill_decision"].to_list()) == {
         "data_acquisition_needed"
     }
@@ -2050,6 +2082,169 @@ def test_ua_context_backfill_requirements_route_v10_failures_to_data_acquisition
     assert set(final["requires_new_ukrainian_target_rows"].to_list()) == {False}
     assert set(final["no_eu_rows_as_ukrainian_targets"].to_list()) == {True}
     assert set(final["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v11_lower_tail_risk_library_waits_for_source_backed_context() -> None:
+    labels = _v10_teacher(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    gate = _v11_context_gate(labels, ready=False)
+
+    library = build_dfl_lower_tail_risk_candidate_library_v11_frame(labels, gate)
+
+    assert library.filter(
+        pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    ).is_empty()
+    assert set(library["v11_candidate_generation_ready"].to_list()) == {False}
+    assert set(library["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v11_lower_tail_risk_library_generates_only_bounded_reserve_candidates() -> (
+    None
+):
+    labels = _v10_teacher(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    gate = _v11_context_gate(labels, ready=True)
+
+    library = build_dfl_lower_tail_risk_candidate_library_v11_frame(labels, gate)
+
+    generated = library.filter(
+        pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    )
+    assert generated.height > 0
+    assert set(generated["candidate_schedule_class"].to_list()).issubset(
+        {
+            "v2_terminal_reserve_clip",
+            "v2_volatility_cap_clip",
+            "strict_guard_blend",
+        }
+    )
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "pending_strict_rescore"
+    }
+    assert set(generated["diagnostic_requires_strict_rescore"].to_list()) == {True}
+    assert set(generated["selector_feature_v11_context_gate_ready"].to_list()) == {1.0}
+    assert set(generated["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v11_strict_rescore_and_teacher_labels_are_prior_safe() -> None:
+    labels = _v10_teacher(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    mutated_labels = _force_final_v10_generated_tail_risk(labels)
+    gate = _v11_context_gate(labels, ready=True)
+
+    base_library = build_dfl_lower_tail_risk_candidate_library_v11_frame(labels, gate)
+    mutated_library = build_dfl_lower_tail_risk_candidate_library_v11_frame(
+        mutated_labels, gate
+    )
+    generated_cols = [
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "candidate_family",
+        "candidate_model_name",
+        "dispatch_mw_vector",
+        "selector_feature_v11_context_gate_ready",
+        "selector_feature_v11_prior_non_tail_risk_support_count",
+    ]
+
+    assert (
+        base_library.filter(
+            pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+        )
+        .select(generated_cols)
+        .to_dicts()
+        == mutated_library.filter(
+            pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+        )
+        .select(generated_cols)
+        .to_dicts()
+    )
+
+    rescored = build_dfl_lower_tail_risk_candidate_v11_strict_rescore_frame(
+        base_library
+    )
+    teacher = build_dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame(
+        rescored,
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+    generated = teacher.filter(
+        pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    )
+
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "strict_rescored_v11_candidate"
+    }
+    assert set(
+        teacher.filter(pl.col("split_name") == "final_holdout")[
+            "is_training_row"
+        ].to_list()
+    ) == {False}
+    assert "selector_feature_v11_neighbor_tail_risk_probability" in teacher.columns
+    assert set(teacher["raw_hourly_action_imitation"].to_list()) == {False}
+
+
+def test_v11_selector_and_dt_compare_against_v2_behavior_cloning_and_strict() -> None:
+    labels = _v10_teacher(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    library = build_dfl_lower_tail_risk_candidate_library_v11_frame(
+        labels, _v11_context_gate(labels, ready=True)
+    )
+    teacher = build_dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame(
+        _force_v11_generated_safe(
+            build_dfl_lower_tail_risk_candidate_v11_strict_rescore_frame(library)
+        ),
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+    selector = build_dfl_candidate_value_regret_surrogate_v11_frame(
+        teacher,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+    strict = build_dfl_candidate_value_v11_strict_lp_benchmark_frame(
+        teacher, selector, generated_at=GENERATED_AT
+    )
+    policy = build_dfl_v11_lava_dt_candidate_policy_frame(
+        teacher,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        min_prior_material_safe_switch_examples_for_dt=1,
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+    )
+    comparison = build_dfl_v11_lava_dt_comparison_frame(
+        teacher, selector, policy, generated_at=GENERATED_AT
+    )
+
+    assert set(selector["fallback_to_v2_plus"].to_list()) == {False}
+    assert set(policy["dt_lava_training_status"].to_list()) == {
+        "trained_candidate_index_policy"
+    }
+    assert {
+        STRICT_REFERENCE_ROLE,
+        V2_PLUS_REFERENCE_ROLE,
+        "candidate_value_v11_safe_selector",
+        "v11_behavior_cloning_baseline",
+        "v11_lava_candidate_index_policy",
+    }.issubset(set(comparison["selection_role"].unique().to_list()))
+    assert strict.filter(
+        pl.col("selection_role") == "candidate_value_v11_safe_selector"
+    )["regret_uah"].to_list()
+    assert set(comparison["market_execution_enabled"].to_list()) == {False}
 
 
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
@@ -2205,9 +2400,8 @@ def _v10_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
 
 def _force_final_v10_generated_tail_risk(labels: pl.DataFrame) -> pl.DataFrame:
     final_generated = (
-        (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
-        & (pl.col("split_name") == "final_holdout")
-    )
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    ) & (pl.col("split_name") == "final_holdout")
     return labels.with_columns(
         pl.when(final_generated)
         .then(pl.lit(360.0))
@@ -2232,10 +2426,80 @@ def _force_final_v10_generated_tail_risk(labels: pl.DataFrame) -> pl.DataFrame:
     )
 
 
-def _v7_requirements(v7_library: pl.DataFrame) -> pl.DataFrame:
-    v6_like = v7_library.filter(
-        pl.col("candidate_source") != "v7_generated_candidate"
+def _force_v11_generated_safe(frame: pl.DataFrame) -> pl.DataFrame:
+    generated = pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    return frame.with_columns(
+        pl.when(generated)
+        .then(80.0)
+        .otherwise(pl.col("regret_uah"))
+        .alias("regret_uah"),
+        pl.when(generated)
+        .then(-40.0)
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(generated)
+        .then(True)
+        .otherwise(pl.col("label_safe_switch_win"))
+        .alias("label_safe_switch_win"),
+        pl.when(generated)
+        .then(False)
+        .otherwise(pl.col("label_tail_risk_loss"))
+        .alias("label_tail_risk_loss"),
+        pl.when(generated)
+        .then(pl.lit("lower_tail_risk_v11_safe_for_test"))
+        .otherwise(pl.col("label_best_candidate_family"))
+        .alias("label_best_candidate_family"),
+        pl.when(generated)
+        .then(pl.lit("lower_tail_risk_v11_safe_for_test"))
+        .otherwise(pl.col("label_best_candidate_model_name"))
+        .alias("label_best_candidate_model_name"),
+        pl.when(generated)
+        .then(True)
+        .otherwise(pl.col("label_is_anchor_best_candidate"))
+        .alias("label_is_anchor_best_candidate"),
     )
+
+
+def _v11_context_gate(labels: pl.DataFrame, *, ready: bool) -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    for row in (
+        labels.select(
+            ["tenant_id", "source_model_name", "anchor_timestamp", "split_name"]
+        )
+        .unique()
+        .iter_rows(named=True)
+    ):
+        rows.append(
+            {
+                "tenant_id": row["tenant_id"],
+                "source_model_name": row["source_model_name"],
+                "anchor_timestamp": row["anchor_timestamp"],
+                "split_name": row["split_name"],
+                "required_for_v11_gate": True,
+                "v11_candidate_generation_ready": ready,
+                "context_backfill_gate_decision": (
+                    "context_backfill_ready" if ready else "data_acquisition_needed"
+                ),
+                "blocking_context_families": "none" if ready else "grid_event",
+                "blocked_context_family_count": 0 if ready else 1,
+                "dam_publication_ready": ready,
+                "weather_load_pv_ready": ready,
+                "grid_event_ready": ready,
+                "calendar_block_ready": ready,
+                "dt_lava_ready": False,
+                "target_label_space": "v11_precondition_context_coverage",
+                "raw_hourly_action_imitation": False,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "no_eu_rows_as_ukrainian_targets": True,
+                "market_execution_enabled": False,
+            }
+        )
+    return pl.DataFrame(rows, infer_schema_length=None)
+
+
+def _v7_requirements(v7_library: pl.DataFrame) -> pl.DataFrame:
+    v6_like = v7_library.filter(pl.col("candidate_source") != "v7_generated_candidate")
     audit = build_dfl_sparse_safe_switch_opportunity_audit_frame(
         v6_like,
         max_prior_neighbor_distance=2.0,
@@ -2245,9 +2509,11 @@ def _v7_requirements(v7_library: pl.DataFrame) -> pl.DataFrame:
 
 def _ua_context_panel(candidate_library: pl.DataFrame) -> pl.DataFrame:
     rows: list[dict[str, object]] = []
-    for row in candidate_library.select(
-        ["tenant_id", "source_model_name", "anchor_timestamp"]
-    ).unique().iter_rows(named=True):
+    for row in (
+        candidate_library.select(["tenant_id", "source_model_name", "anchor_timestamp"])
+        .unique()
+        .iter_rows(named=True)
+    ):
         anchor = row["anchor_timestamp"]
         rows.append(
             {

@@ -232,6 +232,25 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      exported packet reports `v11_candidate_generation_ready=true` for
      `860 / 860` gate rows. This only permits the V11 candidate-generation
      slice; it does not promote a new strategy or start DT/LAVA.
+   - V11 implements that permission as lower-tail-risk candidate generation:
+     `dfl_lower_tail_risk_candidate_library_v11_frame` creates only bounded
+     terminal-reserve, volatility-cap, and strict-guard-blend schedules after
+     the Ukrainian context gate is ready. `dfl_lower_tail_risk_candidate_v11_strict_rescore_frame`
+     then rebuilds strict LP/oracle labels before
+     `dfl_candidate_value_regret_surrogate_v11_frame` or
+     `dfl_v11_lava_dt_candidate_policy_frame` can select anything. The DT/LAVA
+     target is candidate index / schedule family, never raw hourly actions, and
+     the comparison still includes behavior cloning, strict control, and frozen
+     V2+ fallback. See
+     [DFL_V11_LOWER_TAIL_RISK_LAVA_DT.md](DFL_V11_LOWER_TAIL_RISK_LAVA_DT.md).
+   - Dagster run `c2cf573c-6da2-42bd-80fe-26500f745a0d` materialized the V11
+     path. It produced `4,300` lower-tail-risk generated rows and rebuilt
+     `23,499` strict-scored teacher rows, but candidate-value V11, behavior
+     cloning, and the DT/LAVA candidate-index policy all fell back to V2+.
+     Result: `174.77` UAH mean regret, `67.30` UAH median regret, zero safety
+     violations, and `market_execution_enabled=false`. The DT/LAVA gate remains
+     blocked because the prior material safe-switch count is only `2-7` per
+     tenant, below the configured `20`.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

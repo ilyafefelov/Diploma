@@ -1170,6 +1170,29 @@ grid-event/no-event coverage і calendar/block context. Якщо хоч одна
 непокрита, результат `data_acquisition_needed` є валідним blocked evidence, а
 V2+ залишається headline.
 
+Після source-backed context gate наступний ML-крок - V11 lower-tail-risk
+candidate family. Він не є "ще одним selector" і не використовує oracle-derived
+final-holdout schedules. V11 генерує тільки bounded feasible schedules:
+terminal-SOC reserve clip, volatility-cap clip і strict-guard blend. Кожен
+generated row спершу має `pending_strict_rescore`, потім проходить той самий
+strict LP/oracle scoring, і лише після rebuild teacher labels може бути
+використаний candidate-value scorer або DT/LAVA candidate-index policy. DT/LAVA
+у цій гілці передбачає candidate index / schedule family, а не hourly
+BUY/SELL/HOLD actions; promotion все ще вимагає beat V2+ mean regret, не
+погіршити median regret, пройти rolling robustness і зберегти
+`market_execution_enabled=false`.
+
+Матеріалізований V11 результат зберіг цей guardrail. Dagster run
+`c2cf573c-6da2-42bd-80fe-26500f745a0d` створив `4,300` V11 lower-tail-risk
+generated rows і перебудував `23,499` strict-scored teacher rows. Проте
+candidate-value V11 selector, behavior cloning baseline і DT/LAVA
+candidate-index policy усі abstain/fallback до V2+, тому результат лишився
+`174.77` UAH mean regret і `67.30` UAH median regret, з нульовими safety
+violations і `market_execution_enabled=false`. Причина не у відсутності більшої
+нейромережі: на tenant є тільки `2-7` prior material safe-switch прикладів, а
+gate вимагає щонайменше `20` перед DT/LAVA training. Отже V11 є валідним
+diagnostic evidence: поточний шлях все ще data/candidate limited.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,

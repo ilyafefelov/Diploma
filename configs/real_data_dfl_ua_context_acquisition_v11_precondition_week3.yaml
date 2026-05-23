@@ -13,6 +13,13 @@
 # - dfl_ua_grid_event_backfill_frame
 # - dfl_ua_calendar_block_context_backfill_frame
 # - dfl_ua_context_backfill_coverage_gate_frame
+# - dfl_lower_tail_risk_candidate_library_v11_frame
+# - dfl_lower_tail_risk_candidate_v11_strict_rescore_frame
+# - dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame
+# - dfl_candidate_value_regret_surrogate_v11_frame
+# - dfl_candidate_value_v11_strict_lp_benchmark_frame
+# - dfl_v11_lava_dt_candidate_policy_frame
+# - dfl_v11_lava_dt_comparison_frame
 ops:
   observed_market_price_history_bronze:
     config:
@@ -72,4 +79,34 @@ ops:
       tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
       source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
       min_oracle_improvement_ratio_vs_v2_plus: 0.05
+      min_prior_material_safe_switch_examples_for_dt: 20
+  dfl_lower_tail_risk_candidate_library_v11_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      max_neighbor_tail_risk_probability: 0.25
+  dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      max_prior_neighbor_distance: 1.5
+      nearest_neighbor_count: 5
+  dfl_candidate_value_regret_surrogate_v11_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      max_prior_neighbor_distance: 1.5
+      min_neighbor_safe_win_count: 1
+      min_predicted_improvement_uah: 1.0
+      max_neighbor_tail_risk_probability: 0.25
+      min_prior_material_safe_switch_examples_for_dt: 20
+  dfl_v11_lava_dt_candidate_policy_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      max_prior_neighbor_distance: 1.5
+      min_neighbor_safe_win_count: 1
+      min_predicted_improvement_uah: 1.0
+      max_neighbor_tail_risk_probability: 0.25
       min_prior_material_safe_switch_examples_for_dt: 20
