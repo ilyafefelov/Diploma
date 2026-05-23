@@ -48,6 +48,10 @@ from smart_arbitrage.dfl.schedule_value_promotion_gate import (
 	STRICT_DEFAULT_FALLBACK,
 )
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
+from smart_arbitrage.gatekeeper.bid_observability import (
+	HOLD_SEMANTICS,
+	NO_BID_SEMANTICS,
+)
 from smart_arbitrage.forecasting.grid_event_signals import (
 	build_grid_event_signal_frame,
 	is_operational_grid_event_row,
@@ -63,6 +67,9 @@ from smart_arbitrage.resources.operator_status_store import (
 	OperatorStatusRecord,
 	get_operator_status_store,
 	utc_now,
+)
+from smart_arbitrage.resources.validation_failure_store import (
+	get_validation_failure_store,
 )
 from smart_arbitrage.resources.battery_telemetry_store import (
 	BatteryStateHourlySnapshot,
@@ -202,6 +209,22 @@ class OperatorStatusResponse(BaseModel):
 	updated_at: str
 	payload: dict[str, Any] | None
 	last_error: str | None
+
+
+class GatekeeperValidationStatusResponse(BaseModel):
+	tenant_id: str
+	status: str
+	validation_stage: str | None = None
+	contract_type: str | None = None
+	canonical_outcome: str | None = None
+	venue: str | None = None
+	interval_start: datetime | None = None
+	duration_minutes: int | None = None
+	failure_reason: str | None = None
+	created_at: datetime | None = None
+	no_bid_semantics: str
+	hold_semantics: str
+	latest_failure_id: str | None = None
 
 
 class ProjectedBatterySchedulePointRequest(BaseModel):
@@ -3737,6 +3760,47 @@ def get_operator_status(
 		raise HTTPException(status_code=404, detail="Operator flow status not found.")
 
 	return _to_operator_status_response(record)
+
+
+@app.get(
+	"/dashboard/gatekeeper-validation-status",
+	response_model=GatekeeperValidationStatusResponse,
+	tags=["weather"],
+	summary="Get Bid Gatekeeper validation status",
+	description=(
+		"Returns the latest Bid Gatekeeper validation-failure read model for the selected tenant. "
+		"`NO_BID` is a market-stage fallback for failed ProposedBid validation; `HOLD` is a "
+		"physical dispatch action after market-stage decisions."
+	),
+)
+def dashboard_gatekeeper_validation_status(
+	tenant_id: str,
+) -> GatekeeperValidationStatusResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	latest_failure = get_validation_failure_store().latest_failure(tenant_id=tenant_id)
+	if latest_failure is None:
+		return GatekeeperValidationStatusResponse(
+			tenant_id=tenant_id,
+			status="no_validation_failures_recorded",
+			no_bid_semantics=NO_BID_SEMANTICS,
+			hold_semantics=HOLD_SEMANTICS,
+		)
+
+	return GatekeeperValidationStatusResponse(
+		tenant_id=tenant_id,
+		status="blocked",
+		validation_stage=latest_failure.validation_stage.value,
+		contract_type=latest_failure.contract_type,
+		canonical_outcome=latest_failure.canonical_outcome,
+		venue=latest_failure.venue,
+		interval_start=latest_failure.interval_start,
+		duration_minutes=latest_failure.duration_minutes,
+		failure_reason=latest_failure.failure_reason,
+		created_at=latest_failure.created_at,
+		no_bid_semantics=NO_BID_SEMANTICS,
+		hold_semantics=HOLD_SEMANTICS,
+		latest_failure_id=latest_failure.failure_id,
+	)
 
 
 @app.post(

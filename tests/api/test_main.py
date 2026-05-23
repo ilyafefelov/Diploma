@@ -11,6 +11,11 @@ from smart_arbitrage.resources.operator_status_store import (
 	OperatorFlowType,
 	OperatorStatusRecord,
 )
+from smart_arbitrage.resources.validation_failure_store import (
+	InMemoryValidationFailureStore,
+	ValidationFailureRecord,
+	ValidationStage,
+)
 from smart_arbitrage.resources.battery_telemetry_store import (
 	BatteryStateHourlySnapshot,
 	BatteryTelemetryObservation,
@@ -49,6 +54,15 @@ def client() -> TestClient:
 def fake_status_store(monkeypatch: pytest.MonkeyPatch) -> _FakeOperatorStatusStore:
 	store = _FakeOperatorStatusStore()
 	monkeypatch.setattr(api_main, "get_operator_status_store", lambda: store)
+	return store
+
+
+@pytest.fixture
+def fake_validation_failure_store(
+	monkeypatch: pytest.MonkeyPatch,
+) -> InMemoryValidationFailureStore:
+	store = InMemoryValidationFailureStore()
+	monkeypatch.setattr(api_main, "get_validation_failure_store", lambda: store)
 	return store
 
 
@@ -1917,6 +1931,49 @@ def test_operator_status_endpoint_returns_404_for_unknown_record(
 	assert response.json() == {"detail": "Operator flow status not found."}
 
 
+def test_gatekeeper_validation_status_endpoint_returns_latest_no_bid_failure(
+	client: TestClient,
+	fake_validation_failure_store: InMemoryValidationFailureStore,
+) -> None:
+	fake_validation_failure_store.append_failure(
+		ValidationFailureRecord(
+			failure_id="failure-001",
+			tenant_id="client_003_dnipro_factory",
+			validation_stage=ValidationStage.PROPOSED_BID,
+			contract_type="ProposedBid",
+			canonical_outcome="NO_BID",
+			venue="DAM",
+			interval_start=datetime(2026, 5, 24, 9, tzinfo=UTC),
+			duration_minutes=60,
+			failure_reason="Bid segment price 16000.0 exceeds the DAM cap of 15000.0.",
+			payload={"venue": "DAM"},
+			created_at=datetime(2026, 5, 23, 12, tzinfo=UTC),
+		)
+	)
+
+	response = client.get(
+		"/dashboard/gatekeeper-validation-status",
+		params={"tenant_id": "client_003_dnipro_factory"},
+	)
+
+	assert response.status_code == 200
+	assert response.json() == {
+		"tenant_id": "client_003_dnipro_factory",
+		"status": "blocked",
+		"validation_stage": "proposed_bid",
+		"contract_type": "ProposedBid",
+		"canonical_outcome": "NO_BID",
+		"venue": "DAM",
+		"interval_start": "2026-05-24T09:00:00Z",
+		"duration_minutes": 60,
+		"failure_reason": "Bid segment price 16000.0 exceeds the DAM cap of 15000.0.",
+		"created_at": "2026-05-23T12:00:00Z",
+		"no_bid_semantics": "market_stage_bid_not_submitted",
+		"hold_semantics": "physical_dispatch_zero_power_after_market_stage",
+		"latest_failure_id": "failure-001",
+	}
+
+
 def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	response = client.get("/openapi.json")
 
@@ -1942,3 +1999,4 @@ def test_openapi_schema_exposes_endpoint_metadata(client: TestClient) -> None:
 	assert schema["paths"]["/dashboard/simulated-live-trading"]["get"]["summary"] == "Get simulated live trading"
 	assert schema["paths"]["/dashboard/future-stack-preview"]["get"]["summary"] == "Get future forecast and policy stack preview"
 	assert schema["paths"]["/dashboard/operator-recommendation"]["get"]["summary"] == "Get operator recommendation"
+	assert schema["paths"]["/dashboard/gatekeeper-validation-status"]["get"]["summary"] == "Get Bid Gatekeeper validation status"

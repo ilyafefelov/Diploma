@@ -26,11 +26,16 @@ from smart_arbitrage.assets.gold.baseline_solver import (
     HourlyDamBaselineSolver,
 )
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics, BatteryTelemetry, DispatchCommand
+from smart_arbitrage.gatekeeper.bid_observability import (
+    record_dispatch_command_validation_failure,
+)
+from smart_arbitrage.resources.validation_failure_store import get_validation_failure_store
 from smart_arbitrage.resources.market_data_store import (
     get_market_data_store,
     market_price_observations_from_frame,
 )
 
+DEMO_GATEKEEPER_TENANT_ID: Final[str] = "client_003_dnipro_factory"
 DEMO_EXPERIMENT_NAME: Final[str] = "mvp-baseline-demo"
 DEMO_HISTORY_HOURS: Final[int] = 15 * 24
 DEMO_HORIZON_HOURS: Final[int] = 24
@@ -334,6 +339,16 @@ def blocked_dispatch_command_demo(
     }
     if failure_reason is not None:
         metadata["failure_reason"] = failure_reason
+        failure_record = record_dispatch_command_validation_failure(
+            tenant_id=DEMO_GATEKEEPER_TENANT_ID,
+            dispatch_command=invalid_command,
+            failure_reason=failure_reason,
+            failure_store=get_validation_failure_store(),
+            created_at=baseline_dispatch_plan.anchor_timestamp,
+        )
+        metadata["validation_stage"] = failure_record.validation_stage.value
+        metadata["canonical_outcome"] = failure_record.canonical_outcome
+        metadata["failure_id"] = failure_record.failure_id
     context.add_output_metadata(metadata)
     return safe_command
 

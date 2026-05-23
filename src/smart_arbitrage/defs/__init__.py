@@ -15,6 +15,10 @@ from smart_arbitrage.assets.gold.forecast_strategy import (
     FORECAST_STRATEGY_GOLD_SCHEDULES,
 )
 from smart_arbitrage.assets.gold.dfl_research import DFL_RESEARCH_GOLD_ASSETS
+from smart_arbitrage.assets.gold.bid_gatekeeper import (
+    BID_GATEKEEPER_ASSET_CHECKS,
+    BID_GATEKEEPER_GOLD_ASSETS,
+)
 from smart_arbitrage.assets.gold.simulated_trades import SIMULATED_TRADE_TRAINING_ASSETS
 from smart_arbitrage.assets.silver import (
     GRID_EVENT_SILVER_ASSETS,
@@ -40,11 +44,12 @@ defs = Definitions(
         *TENANT_LOAD_SILVER_ASSETS,
         *BATTERY_TELEMETRY_ASSETS,
         *FORECAST_STRATEGY_GOLD_ASSETS,
+        *BID_GATEKEEPER_GOLD_ASSETS,
         *DFL_RESEARCH_GOLD_ASSETS,
         *SIMULATED_TRADE_TRAINING_ASSETS,
     ],
     schedules=[*BATTERY_TELEMETRY_SCHEDULES, *FORECAST_STRATEGY_GOLD_SCHEDULES],
-    asset_checks=[*DFL_EVIDENCE_ASSET_CHECKS],
+    asset_checks=[*DFL_EVIDENCE_ASSET_CHECKS, *BID_GATEKEEPER_ASSET_CHECKS],
 )
 
 __all__ = ["defs"]

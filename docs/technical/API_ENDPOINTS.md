@@ -134,6 +134,31 @@ Operational notes:
 - The canonical status set is `idle`, `prepared`, `running`, `completed`, `failed`.
 - Current Slice 1 flow coverage is `weather_control` and `signal_preview`.
 
+### `GET /dashboard/gatekeeper-validation-status`
+
+Returns the latest Bid Gatekeeper validation failure for a tenant.
+
+Request query example:
+
+```text
+/dashboard/gatekeeper-validation-status?tenant_id=client_003_dnipro_factory
+```
+
+Response shape:
+
+- `status`: `blocked` when a validation failure exists, otherwise `no_validation_failures_recorded`.
+- `validation_stage`: current canonical stages are `proposed_bid` and `dispatch_command`.
+- `contract_type`: failed contract name, such as `ProposedBid` or `DispatchCommand`.
+- `canonical_outcome`: `NO_BID` for market-stage bid rejection or `HOLD` for physical dispatch fallback.
+- `venue`, `interval_start`, `duration_minutes`: market interval context when available.
+- `failure_reason`, `created_at`, `latest_failure_id`: audit fields for robustness analysis.
+- `no_bid_semantics`, `hold_semantics`: explicit UI copy anchors. `NO_BID` means the market-stage bid is not submitted; `HOLD` means zero-power physical dispatch after market-stage decisions.
+
+Operational notes:
+
+- The backing durable table is `validation_failures` when `SMART_ARBITRAGE_VALIDATION_FAILURE_DSN` is configured.
+- This endpoint is a read model. It does not submit bids, clear trades, or dispatch equipment.
+
 ### `POST /dashboard/projected-battery-state`
 
 Builds a constrained hourly battery-state preview from a signed MW recommendation schedule.
