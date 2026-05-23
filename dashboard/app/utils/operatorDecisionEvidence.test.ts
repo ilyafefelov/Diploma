@@ -83,6 +83,38 @@ describe('operator decision evidence', () => {
     ])
   })
 
+  it('falls back to frozen thesis evidence when live benchmark rows are unavailable', () => {
+    const recommendation = {
+      selected_strategy_id: 'schedule_value_learner_v2_plus',
+      available_strategies: [
+        {
+          strategy_id: 'schedule_value_learner_v2_plus',
+          label: 'Offline V2+ schedule/value learner',
+          enabled: true,
+          reason: 'frozen comparator',
+          mean_regret_uah: 174.77,
+          win_rate: 1
+        }
+      ],
+      recommendation_schedule: [
+        {
+          interval_start: '2026-05-24T00:00:00',
+          throughput_mwh: 0.2
+        }
+      ]
+    } as unknown as OperatorRecommendationResponse
+
+    const rows = buildOperatorStrategyEvidenceRows([], recommendation)
+
+    expect(rows.length).toBeGreaterThan(1)
+    expect(rows[0]).toEqual(expect.objectContaining({
+      modelName: 'Calibrated V2+',
+      meanRegretUah: 174.77,
+      winRate: 1
+    }))
+    expect(rows.some(row => row.modelName === 'strict_similar_day')).toBe(true)
+  })
+
   it('builds chronological strict-control regret timeline from benchmark rows', () => {
     const benchmark = {
       rows: [
@@ -131,6 +163,23 @@ describe('operator decision evidence', () => {
     ])
   })
 
+  it('keeps a non-empty regret timeline when the live benchmark endpoint is missing', () => {
+    const recommendation = {
+      economics: {
+        total_throughput_mwh: 0.66
+      }
+    } as unknown as OperatorRecommendationResponse
+
+    const rows = buildControlRegretTimeline(null, 24, recommendation)
+
+    expect(rows.length).toBeGreaterThan(1)
+    expect(rows[0]).toEqual(expect.objectContaining({
+      anchorLabel: 'strict_similar_day',
+      regretUah: 310.58
+    }))
+    expect(rows.some(row => row.throughputMwh > 0)).toBe(true)
+  })
+
   it('converts sensitivity buckets into chart-ready rows', () => {
     const sensitivity = {
       bucket_summary: [
@@ -152,6 +201,40 @@ describe('operator decision evidence', () => {
         meanForecastMaeUahMwh: 1200,
         meanDispatchSpreadErrorUahMwh: 230
       }
+    ])
+  })
+
+  it('keeps diagnosis rows visible when forecast sensitivity is not materialized', () => {
+    const recommendation = {
+      recommendation_schedule: [
+        { interval_start: '2026-05-24T00:00:00' },
+        { interval_start: '2026-05-24T18:00:00' }
+      ],
+      forecast_model_series: [
+        {
+          model_name: 'nbeatsx_silver_v0',
+          points: [{}, {}, {}]
+        }
+      ]
+    } as unknown as OperatorRecommendationResponse
+
+    const rows = buildSensitivityEvidenceRows(null, recommendation)
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        bucket: 'strict control',
+        rows: 90,
+        meanRegretUah: 310.58
+      }),
+      expect.objectContaining({
+        bucket: 'selected V2+',
+        rows: 2,
+        meanRegretUah: 174.77
+      }),
+      expect.objectContaining({
+        bucket: 'forecast context',
+        rows: 3
+      })
     ])
   })
 

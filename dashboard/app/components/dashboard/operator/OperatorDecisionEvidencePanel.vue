@@ -30,9 +30,9 @@ const props = defineProps<{
   isLoading: boolean
 }>()
 
-const strategyRows = computed(() => buildOperatorStrategyEvidenceRows(props.modelRows))
-const controlTimeline = computed(() => buildControlRegretTimeline(props.benchmark, 24))
-const sensitivityRows = computed(() => buildSensitivityEvidenceRows(props.sensitivity))
+const strategyRows = computed(() => buildOperatorStrategyEvidenceRows(props.modelRows, props.operatorRecommendation))
+const controlTimeline = computed(() => buildControlRegretTimeline(props.benchmark, 24, props.operatorRecommendation))
+const sensitivityRows = computed(() => buildSensitivityEvidenceRows(props.sensitivity, props.operatorRecommendation))
 const stateCards = computed(() => buildOperatorDecisionStateCards({
   operatorRecommendation: props.operatorRecommendation,
   batteryState: props.batteryState,
