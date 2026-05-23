@@ -1451,6 +1451,14 @@ class DflUaContextAcquisitionV1AssetConfig(dg.Config):
 
     source_window_start: str = "2025-01-01"
     source_window_end: str = "2026-04-30"
+    oree_dam_publication_rule_enabled: bool = True
+    oree_dam_publication_hour_kyiv: int = 14
+    oree_dam_publication_source_url: str = (
+        "https://www.oree.com.ua/index.php/web/13245784"
+    )
+    oree_dam_publication_source_title: str = (
+        "OREE market rules: day-ahead trading results publication"
+    )
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -7325,6 +7333,9 @@ def dfl_ua_context_source_inventory_frame(
         grid_event_signal_frame=grid_event_signal_frame,
         source_window_start=config.source_window_start,
         source_window_end=config.source_window_end,
+        dam_publication_rule_source_url=config.oree_dam_publication_source_url
+        if config.oree_dam_publication_rule_enabled
+        else None,
     )
     _add_metadata(
         context,
@@ -7355,6 +7366,7 @@ def dfl_ua_context_source_inventory_frame(
 )
 def dfl_ua_dam_publication_backfill_frame(
     context,
+    config: DflUaContextAcquisitionV1AssetConfig,
     dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
     observed_market_price_history_bronze: pl.DataFrame,
 ) -> pl.DataFrame:
@@ -7363,6 +7375,15 @@ def dfl_ua_dam_publication_backfill_frame(
     frame = build_dfl_ua_dam_publication_backfill_frame(
         dfl_ua_context_backfill_requirements_frame,
         observed_market_price_history_bronze,
+        publication_rule_hour_kyiv=config.oree_dam_publication_hour_kyiv
+        if config.oree_dam_publication_rule_enabled
+        else None,
+        publication_rule_source_url=config.oree_dam_publication_source_url
+        if config.oree_dam_publication_rule_enabled
+        else None,
+        publication_rule_source_title=config.oree_dam_publication_source_title
+        if config.oree_dam_publication_rule_enabled
+        else None,
     )
     _add_metadata(
         context,
@@ -7380,6 +7401,9 @@ def dfl_ua_dam_publication_backfill_frame(
             if frame.height
             else [],
             "market_execution_enabled": False,
+            "publication_evidence_source_url": config.oree_dam_publication_source_url
+            if config.oree_dam_publication_rule_enabled
+            else "",
             "scope": "dfl_ua_dam_publication_backfill_not_full_dfl",
             "not_market_execution": True,
         },

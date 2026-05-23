@@ -1,6 +1,6 @@
 """Bronze ingestion for public Ukrenergo operational grid-event messages."""
 
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 import html
 import logging
 import re
@@ -65,6 +65,8 @@ _OBLAST_PATTERNS: Final[tuple[tuple[str, tuple[str, ...]], ...]] = (
 
 class UkrenergoGridEventsConfig(dg.Config):
     max_posts: int = 20
+    max_archive_pages: int = 1
+    archive_start_date: str = ""
 
 
 @dg.asset(
@@ -81,8 +83,22 @@ def ukrenergo_grid_events_bronze(context, config: UkrenergoGridEventsConfig) -> 
     """Observed public Ukrenergo Telegram posts with transparent rule-based event tags."""
 
     fetched_at = datetime.now(tz=UTC)
-    raw_html = _fetch_ukrenergo_telegram_html()
-    observations = parse_ukrenergo_telegram_posts(raw_html or "", fetched_at=fetched_at)
+    raw_pages = _fetch_ukrenergo_archive_pages(
+        max_archive_pages=config.max_archive_pages,
+        archive_start_date=config.archive_start_date,
+        fetched_at=fetched_at,
+    )
+    observations_by_id: dict[str, GridEventObservation] = {}
+    for raw_html in raw_pages:
+        for observation in parse_ukrenergo_telegram_posts(
+            raw_html or "",
+            fetched_at=fetched_at,
+        ):
+            observations_by_id[observation.post_id] = observation
+    observations = sorted(
+        observations_by_id.values(),
+        key=lambda item: (item.published_at, item.post_id),
+    )
     if config.max_posts > 0:
         observations = observations[-config.max_posts :]
     get_grid_event_store().upsert_grid_events(observations)
@@ -93,6 +109,9 @@ def ukrenergo_grid_events_bronze(context, config: UkrenergoGridEventsConfig) -> 
                 "rows": frame.height,
                 "source_url": UKRENERGO_TELEGRAM_SOURCE_URL,
                 "source_kind": "observed",
+                "archive_pages_requested": max(1, config.max_archive_pages),
+                "archive_pages_fetched": len(raw_pages),
+                "archive_start_date": config.archive_start_date,
                 "affected_oblast_count": _affected_oblast_count(frame),
             }
         )
@@ -130,11 +149,48 @@ def parse_ukrenergo_telegram_posts(raw_html: str, *, fetched_at: datetime) -> li
     return sorted(observations, key=lambda item: (item.published_at, item.post_id))
 
 
+def _fetch_ukrenergo_archive_pages(
+    *,
+    max_archive_pages: int,
+    archive_start_date: str,
+    fetched_at: datetime,
+) -> list[str]:
+    if max_archive_pages <= 1:
+        raw_html = _fetch_ukrenergo_telegram_html()
+        return [raw_html] if raw_html else []
+
+    start_date = _parse_archive_start_date(archive_start_date)
+    raw_pages: list[str] = []
+    next_url = UKRENERGO_TELEGRAM_SOURCE_URL
+    seen_before_ids: set[int] = set()
+    for _page_index in range(max_archive_pages):
+        raw_html = _fetch_ukrenergo_telegram_page(next_url)
+        if not raw_html:
+            break
+        raw_pages.append(raw_html)
+        if start_date is not None and _page_reaches_archive_start(
+            raw_html,
+            start_date=start_date,
+            fetched_at=fetched_at,
+        ):
+            break
+        before_id = _oldest_post_numeric_id(raw_html)
+        if before_id is None or before_id in seen_before_ids:
+            break
+        seen_before_ids.add(before_id)
+        next_url = f"{UKRENERGO_TELEGRAM_SOURCE_URL}?before={before_id}"
+    return raw_pages
+
+
 def _fetch_ukrenergo_telegram_html() -> str | None:
+    return _fetch_ukrenergo_telegram_page(UKRENERGO_TELEGRAM_SOURCE_URL)
+
+
+def _fetch_ukrenergo_telegram_page(url: str) -> str | None:
     try:
         with httpx.Client(timeout=20.0, follow_redirects=True) as client:
             response = client.get(
-                UKRENERGO_TELEGRAM_SOURCE_URL,
+                url,
                 headers={"User-Agent": "Mozilla/5.0"},
             )
             response.raise_for_status()
@@ -142,6 +198,39 @@ def _fetch_ukrenergo_telegram_html() -> str | None:
     except httpx.HTTPError as error:
         logger.warning("Ukrenergo Telegram fetch failed: %s", error)
         return None
+
+
+def _parse_archive_start_date(raw_date: str) -> date | None:
+    if not raw_date.strip():
+        return None
+    return date.fromisoformat(raw_date.strip())
+
+
+def _page_reaches_archive_start(
+    raw_html: str,
+    *,
+    start_date: date,
+    fetched_at: datetime,
+) -> bool:
+    observations = parse_ukrenergo_telegram_posts(raw_html, fetched_at=fetched_at)
+    if not observations:
+        return False
+    return min(observation.published_at.date() for observation in observations) <= start_date
+
+
+def _oldest_post_numeric_id(raw_html: str) -> int | None:
+    soup = BeautifulSoup(raw_html, "html.parser")
+    post_ids: list[int] = []
+    for message_node in soup.select(".tgme_widget_message"):
+        post_id = _extract_post_id(message_node)
+        if post_id is None:
+            continue
+        match = re.search(r"/(\d+)$", post_id)
+        if match is not None:
+            post_ids.append(int(match.group(1)))
+    if not post_ids:
+        return None
+    return min(post_ids)
 
 
 def _extract_post_id(message_node: object) -> str | None:

@@ -27,9 +27,9 @@ available before each anchor.
 | Asset | Purpose |
 |---|---|
 | `dfl_ua_context_source_inventory_frame` | Lists Ukrainian source families used by the gate: OREE DAM, Open-Meteo archive, tenant load/PV proxy, Ukrenergo/grid-event history, and calendar/block context. |
-| `dfl_ua_dam_publication_backfill_frame` | Requires explicit DAM publication metadata before the anchor; it does not infer publication time from observed prices. |
+| `dfl_ua_dam_publication_backfill_frame` | Requires explicit DAM publication evidence before the anchor. It prefers row-level publication timestamps; when those are absent, it may use the source-backed OREE market-rule deadline that DAM results are published no later than 14:00 Kyiv time on the day before delivery. |
 | `dfl_ua_weather_load_pv_proxy_backfill_frame` | Checks prior Open-Meteo weather plus tenant load/PV proxy rows. |
-| `dfl_ua_grid_event_backfill_frame` | Builds a readiness-specific grid signal from the observed OREE backfill window plus `ukrenergo_grid_events_bronze`. A zero-event row counts only when the Ukrenergo source coverage window spans the anchor; otherwise the blocker is `missing_grid_event_history_source_window`. |
+| `dfl_ua_grid_event_backfill_frame` | Builds a readiness-specific grid signal from the observed OREE backfill window plus `ukrenergo_grid_events_bronze`. A zero-event row counts only when the fetched Ukrenergo archive/source coverage window spans the anchor; otherwise the blocker is `missing_grid_event_history_source_window`. |
 | `dfl_ua_calendar_block_context_backfill_frame` | Adds deterministic calendar/block context while marking DST/calendar gap hours instead of synthesizing them. |
 | `dfl_ua_context_backfill_coverage_gate_frame` | Emits `v11_candidate_generation_ready`; V11 starts only when all required context families are ready. |
 
@@ -47,21 +47,30 @@ the V10 closure selection from `DFL_V10_TAIL_RISK_TRANSFER_AUDIT.md` first.
 
 ## Latest Materialized Status
 
-The refreshed source-repair materialization
-`03ca46ca-e2eb-43e2-ba59-c8d5659cc28a` keeps V11 blocked:
+The source-evidence repair materialization completed in two steps:
 
-- `v11_candidate_generation_ready=false`;
-- OREE DAM price-history coverage is present, but explicit publication-time
-  metadata is still absent for `860 / 860` gate rows;
-- Open-Meteo plus tenant load/PV proxy coverage is now complete:
+- `e6c8c0d6-f04e-40d1-ba6f-93b2d7888179` materialized the updated OREE
+  publication and Ukrenergo archive assets, but the run failed later because
+  Open-Meteo returned a transient `504 Gateway Time-out`;
+- `593aff44-25f1-48a1-ab3b-02a22c20dae0` reused the already materialized
+  weather/load/PV rows and completed the downstream readiness gate.
+
+The exported packet
+`data/research_runs/week3_dfl_ua_context_acquisition_v1/dfl_ua_context_backfill_readiness_summary.json`
+now unlocks V11 candidate generation preconditions:
+
+- `v11_candidate_generation_ready=true`;
+- OREE DAM publication evidence is ready for `860 / 860` rows using the
+  source-backed market-rule deadline from the OREE DAM/IDM trading rules;
+- Open-Meteo plus tenant load/PV proxy coverage is complete:
   `860 / 860` ready rows;
-- calendar/block context remains complete: `860 / 860` ready rows;
-- Ukrenergo grid-event/no-event coverage is not yet historical enough for the
-  benchmark anchors: `0 / 860` ready rows with
-  `missing_grid_event_history_source_window`.
+- Ukrenergo grid-event/no-event coverage is complete: `860 / 860` ready rows;
+- calendar/block context remains complete: `860 / 860` ready rows.
 
-This is the intended conservative result: source coverage can improve without
-unlocking V11 until every required context family is prior-available.
+The materialized Ukrenergo archive contains `943` observed posts, with source
+coverage from `2024-12-24 16:54:15` UTC through the materialization timestamp
+on `2026-05-23`. That window spans every required V11 benchmark anchor, so
+zero-event rows are now source-backed rather than silently synthesized.
 
 Export local packet:
 
@@ -81,7 +90,8 @@ Export local packet:
 `v11_candidate_generation_ready=true` only when every required V10 backfill row
 has prior-available:
 
-- explicit OREE DAM publication metadata;
+- explicit OREE DAM publication evidence through row-level metadata or the
+  source-backed OREE market-rule publication deadline;
 - Open-Meteo weather plus tenant load/PV proxy context;
 - Ukrenergo/grid-event coverage or explicit source-backed no-event coverage;
 - calendar/block context without DST/calendar synthesis.

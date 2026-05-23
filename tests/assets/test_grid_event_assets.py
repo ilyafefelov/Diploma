@@ -99,6 +99,52 @@ def test_ukrenergo_grid_events_bronze_persists_observed_posts(monkeypatch) -> No
 	assert frame.row(0, named=True)["source_kind"] == "observed"
 
 
+def test_ukrenergo_grid_events_bronze_fetches_archive_pages_until_start_date(monkeypatch) -> None:
+	store = InMemoryGridEventStore()
+	requested_urls: list[str] = []
+	first_page = TELEGRAM_FIXTURE
+	second_page = """
+	<section class="tgme_channel_history">
+		<div class="tgme_widget_message js-widget_message" data-post="Ukrenergo/4800">
+			<div class="tgme_widget_message_text js-message_text" dir="auto">
+				СТАН ЕНЕРГОСИСТЕМИ<br/>
+				Споживання електроенергії зросло.
+			</div>
+			<time datetime="2025-01-01T07:00:00+00:00" class="time">07:00</time>
+		</div>
+	</section>
+	"""
+
+	def fake_fetch(url: str) -> str:
+		requested_urls.append(url)
+		if "before=4914" in url:
+			return second_page
+		return first_page
+
+	monkeypatch.setattr("smart_arbitrage.assets.bronze.grid_events.get_grid_event_store", lambda: store)
+	monkeypatch.setattr(
+		"smart_arbitrage.assets.bronze.grid_events._fetch_ukrenergo_telegram_page",
+		fake_fetch,
+	)
+
+	frame = ukrenergo_grid_events_bronze(
+		dg.build_asset_context(),
+		UkrenergoGridEventsConfig(
+			max_posts=0,
+			max_archive_pages=5,
+			archive_start_date="2025-01-01",
+		),
+	)
+
+	assert requested_urls == [
+		UKRENERGO_TELEGRAM_SOURCE_URL,
+		f"{UKRENERGO_TELEGRAM_SOURCE_URL}?before=4914",
+	]
+	assert frame.height == 2
+	assert store.list_grid_event_frame().height == 2
+	assert frame["post_id"].to_list() == ["Ukrenergo/4800", "Ukrenergo/4914"]
+
+
 def test_ukrenergo_grid_event_asset_is_registered() -> None:
 	asset_keys = {asset.key.to_user_string() for asset in GRID_EVENT_BRONZE_ASSETS}
 	registered_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}

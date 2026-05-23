@@ -26,11 +26,23 @@ ops:
       location_config_path: "simulations/tenants.yml"
   ukrenergo_grid_events_bronze:
     config:
-      max_posts: 1000
+      max_posts: 0
+      max_archive_pages: 250
+      archive_start_date: "2025-01-01"
   dfl_ua_context_source_inventory_frame:
     config:
       source_window_start: "2025-01-01"
       source_window_end: "2026-04-30"
+      oree_dam_publication_rule_enabled: true
+      oree_dam_publication_hour_kyiv: 14
+      oree_dam_publication_source_url: "https://www.oree.com.ua/index.php/web/13245784"
+      oree_dam_publication_source_title: "OREE market rules: day-ahead trading results publication"
+  dfl_ua_dam_publication_backfill_frame:
+    config:
+      oree_dam_publication_rule_enabled: true
+      oree_dam_publication_hour_kyiv: 14
+      oree_dam_publication_source_url: "https://www.oree.com.ua/index.php/web/13245784"
+      oree_dam_publication_source_title: "OREE market rules: day-ahead trading results publication"
   dfl_v2_plus_opportunity_backfill_requirements_frame:
     config:
       tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"

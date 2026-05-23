@@ -8,7 +8,7 @@ allowed to start.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Final
 
 import polars as pl
@@ -66,6 +66,7 @@ def build_dfl_ua_context_source_inventory_frame(
     grid_event_signal_frame: pl.DataFrame,
     source_window_start: str,
     source_window_end: str,
+    dam_publication_rule_source_url: str | None = None,
 ) -> pl.DataFrame:
     """Summarize Ukrainian source families used by the acquisition gate."""
 
@@ -87,6 +88,11 @@ def build_dfl_ua_context_source_inventory_frame(
                     "published_at",
                     "available_at",
                 ),
+            )
+            or bool(dam_publication_rule_source_url),
+            source_evidence_url=dam_publication_rule_source_url,
+            source_evidence_mode=(
+                "market_rule_deadline" if dam_publication_rule_source_url else "row_metadata"
             ),
         ),
         _inventory_row(
@@ -97,6 +103,8 @@ def build_dfl_ua_context_source_inventory_frame(
             source_window_start=source_window_start,
             source_window_end=source_window_end,
             publication_metadata_supported=False,
+            source_evidence_url=None,
+            source_evidence_mode="source_rows",
         ),
         _inventory_row(
             source_family="tenant_load_pv_proxy",
@@ -106,6 +114,8 @@ def build_dfl_ua_context_source_inventory_frame(
             source_window_start=source_window_start,
             source_window_end=source_window_end,
             publication_metadata_supported=False,
+            source_evidence_url=None,
+            source_evidence_mode="configured_proxy",
         ),
         _inventory_row(
             source_family="ukrenergo_grid_event_history",
@@ -115,6 +125,8 @@ def build_dfl_ua_context_source_inventory_frame(
             source_window_start=source_window_start,
             source_window_end=source_window_end,
             publication_metadata_supported=False,
+            source_evidence_url=None,
+            source_evidence_mode="observed_archive_or_source_window",
         ),
         _inventory_row(
             source_family="ua_calendar_block_context",
@@ -124,6 +136,8 @@ def build_dfl_ua_context_source_inventory_frame(
             source_window_start=source_window_start,
             source_window_end=source_window_end,
             publication_metadata_supported=True,
+            source_evidence_url=None,
+            source_evidence_mode="deterministic_calendar",
         ),
     ]
     return pl.DataFrame(inventory_rows, infer_schema_length=None).sort("source_family")
@@ -132,15 +146,34 @@ def build_dfl_ua_context_source_inventory_frame(
 def build_dfl_ua_dam_publication_backfill_frame(
     ua_context_backfill_requirements_frame: pl.DataFrame,
     price_context_frame: pl.DataFrame,
+    *,
+    publication_rule_hour_kyiv: int | None = None,
+    publication_rule_source_url: str | None = None,
+    publication_rule_source_title: str | None = None,
 ) -> pl.DataFrame:
     """Check explicit OREE DAM publication metadata for every required anchor."""
 
     _validate_requirements(ua_context_backfill_requirements_frame)
+    if publication_rule_hour_kyiv is not None and not 0 <= publication_rule_hour_kyiv <= 23:
+        raise ValueError("publication_rule_hour_kyiv must be between 0 and 23.")
     rows: list[dict[str, Any]] = []
     for requirement in _requirement_rows(ua_context_backfill_requirements_frame):
         anchor = _datetime_value(requirement["anchor_timestamp"])
         price_row = _latest_row_before_anchor(price_context_frame, anchor_timestamp=anchor)
-        publication_at = _explicit_publication_timestamp(price_row)
+        explicit_publication_at = _explicit_publication_timestamp(price_row)
+        market_rule_publication_at = _market_rule_publication_timestamp(
+            price_row,
+            publication_rule_hour_kyiv=publication_rule_hour_kyiv,
+            publication_rule_source_url=publication_rule_source_url,
+        )
+        publication_at = explicit_publication_at or market_rule_publication_at
+        evidence_mode = (
+            "explicit_source_metadata"
+            if explicit_publication_at is not None
+            else "market_rule_deadline"
+            if market_rule_publication_at is not None
+            else "missing"
+        )
         prior_available = publication_at is not None and publication_at < anchor
         if price_row is None:
             status = "missing_oree_dam_price_history"
@@ -159,13 +192,29 @@ def build_dfl_ua_dam_publication_backfill_frame(
                 "dam_publication_backfill_status": status,
                 "feature_available_timestamp": publication_at,
                 "source_publication_timestamp": publication_at,
+                "publication_evidence_mode": evidence_mode,
+                "publication_evidence_source_url": publication_rule_source_url
+                if evidence_mode == "market_rule_deadline"
+                else _row_string(price_row, ("source_url",)),
+                "publication_evidence_source_title": publication_rule_source_title
+                if evidence_mode == "market_rule_deadline"
+                else _row_string(price_row, ("source_title", "source_name")),
+                "publication_evidence_rule": (
+                    f"dam_results_no_later_than_{publication_rule_hour_kyiv:02d}_kyiv_day_before_delivery"
+                    if evidence_mode == "market_rule_deadline"
+                    else "row_level_publication_timestamp"
+                    if evidence_mode == "explicit_source_metadata"
+                    else "none"
+                ),
                 "selector_feature_dam_publication_ready": float(prior_available),
                 "selector_feature_hours_since_dam_publication": _hours_between(
                     publication_at,
                     anchor,
                     default=999.0,
                 ),
-                "context_source": "oree_dam_publication_metadata",
+                "context_source": "oree_dam_publication_market_rule"
+                if evidence_mode == "market_rule_deadline"
+                else "oree_dam_publication_metadata",
                 "claim_scope": UA_DAM_PUBLICATION_BACKFILL_CLAIM_SCOPE,
                 "not_full_dfl": True,
                 "not_market_execution": True,
@@ -459,6 +508,8 @@ def _inventory_row(
     source_window_start: str,
     source_window_end: str,
     publication_metadata_supported: bool,
+    source_evidence_url: str | None,
+    source_evidence_mode: str,
 ) -> dict[str, Any]:
     return {
         "source_family": source_family,
@@ -469,6 +520,8 @@ def _inventory_row(
         "source_window_start": source_window_start,
         "source_window_end": source_window_end,
         "publication_metadata_supported": publication_metadata_supported,
+        "source_evidence_url": source_evidence_url,
+        "source_evidence_mode": source_evidence_mode,
         "prior_timestamp_supported": "timestamp" in frame.columns
         or source_family == "ua_calendar_block_context",
         "training_use_scope": "prior_only_context_readiness",
@@ -597,6 +650,30 @@ def _explicit_publication_timestamp(row: dict[str, Any] | None) -> datetime | No
     return None
 
 
+def _market_rule_publication_timestamp(
+    row: dict[str, Any] | None,
+    *,
+    publication_rule_hour_kyiv: int | None,
+    publication_rule_source_url: str | None,
+) -> datetime | None:
+    if (
+        row is None
+        or publication_rule_hour_kyiv is None
+        or not publication_rule_source_url
+    ):
+        return None
+    delivery_timestamp = _row_timestamp(row)
+    if delivery_timestamp is None:
+        return None
+    delivery_date = delivery_timestamp.date()
+    return datetime(
+        delivery_date.year,
+        delivery_date.month,
+        delivery_date.day,
+        publication_rule_hour_kyiv,
+    ) - timedelta(days=1)
+
+
 def _row_timestamp(row: dict[str, Any] | None) -> datetime | None:
     if row is None:
         return None
@@ -604,6 +681,16 @@ def _row_timestamp(row: dict[str, Any] | None) -> datetime | None:
         value = row.get(column)
         if value is not None:
             return _datetime_value(value)
+    return None
+
+
+def _row_string(row: dict[str, Any] | None, columns: tuple[str, ...]) -> str | None:
+    if row is None:
+        return None
+    for column in columns:
+        value = row.get(column)
+        if value is not None:
+            return str(value)
     return None
 
 

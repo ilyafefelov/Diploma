@@ -64,6 +64,26 @@ def test_dam_publication_backfill_uses_explicit_prior_publication_metadata() -> 
     assert dam["source_publication_timestamp"].to_list() == [ANCHOR - timedelta(hours=26)]
 
 
+def test_dam_publication_backfill_uses_source_backed_market_rule_deadline() -> None:
+    dam = build_dfl_ua_dam_publication_backfill_frame(
+        _requirements(),
+        _price_context(with_publication=False),
+        publication_rule_hour_kyiv=14,
+        publication_rule_source_url="https://www.oree.com.ua/index.php/web/13245784",
+        publication_rule_source_title="OREE DAM results publication rule",
+    )
+
+    assert dam["dam_publication_backfill_status"].to_list() == ["context_ready"]
+    assert dam["prior_available"].to_list() == [True]
+    assert dam["source_publication_timestamp"].to_list() == [
+        datetime(2026, 4, 28, 14)
+    ]
+    assert dam["publication_evidence_mode"].to_list() == ["market_rule_deadline"]
+    assert dam["publication_evidence_source_url"].to_list() == [
+        "https://www.oree.com.ua/index.php/web/13245784"
+    ]
+
+
 def test_weather_load_pv_backfill_requires_prior_source_backed_rows() -> None:
     future_weather = _weather_context().with_columns(
         pl.lit(ANCHOR + timedelta(hours=1)).alias("timestamp")

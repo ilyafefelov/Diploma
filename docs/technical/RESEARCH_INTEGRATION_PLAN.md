@@ -225,6 +225,13 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      publication, weather/load/PV, grid-event, and calendar/block context.
      Missing source evidence emits `data_acquisition_needed`; it is not filled
      by synthetic context.
+   - The 2026-05-23 source-evidence repair made this precondition ready:
+     OREE DAM publication evidence now uses the official market-rule deadline
+     when row-level timestamps are absent, Ukrenergo archive pagination gives
+     source-backed grid/no-event coverage across the benchmark anchors, and the
+     exported packet reports `v11_candidate_generation_ready=true` for
+     `860 / 860` gate rows. This only permits the V11 candidate-generation
+     slice; it does not promote a new strategy or start DT/LAVA.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 
