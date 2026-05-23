@@ -7305,18 +7305,24 @@ def dfl_ua_context_source_inventory_frame(
     context,
     config: DflUaContextAcquisitionV1AssetConfig,
     dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
-    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    observed_market_price_history_bronze: pl.DataFrame,
+    tenant_historical_weather_bronze: pl.DataFrame,
     tenant_historical_net_load_silver: pl.DataFrame,
-    grid_event_signal_silver: pl.DataFrame,
+    ukrenergo_grid_events_bronze: pl.DataFrame,
 ) -> pl.DataFrame:
     """Inventory source-backed Ukrainian context families for V11 readiness."""
 
+    grid_event_signal_frame = _ua_context_grid_event_signal_frame(
+        observed_market_price_history_bronze,
+        ukrenergo_grid_events_bronze,
+        dfl_ua_context_backfill_requirements_frame,
+    )
     frame = build_dfl_ua_context_source_inventory_frame(
         dfl_ua_context_backfill_requirements_frame,
-        price_context_frame=real_data_benchmark_silver_feature_frame,
-        weather_context_frame=real_data_benchmark_silver_feature_frame,
+        price_context_frame=observed_market_price_history_bronze,
+        weather_context_frame=tenant_historical_weather_bronze,
         tenant_load_frame=tenant_historical_net_load_silver,
-        grid_event_signal_frame=grid_event_signal_silver,
+        grid_event_signal_frame=grid_event_signal_frame,
         source_window_start=config.source_window_start,
         source_window_end=config.source_window_end,
     )
@@ -7350,13 +7356,13 @@ def dfl_ua_context_source_inventory_frame(
 def dfl_ua_dam_publication_backfill_frame(
     context,
     dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
-    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    observed_market_price_history_bronze: pl.DataFrame,
 ) -> pl.DataFrame:
     """Check explicit prior OREE DAM publication metadata for V11 readiness."""
 
     frame = build_dfl_ua_dam_publication_backfill_frame(
         dfl_ua_context_backfill_requirements_frame,
-        real_data_benchmark_silver_feature_frame,
+        observed_market_price_history_bronze,
     )
     _add_metadata(
         context,
@@ -7396,14 +7402,14 @@ def dfl_ua_dam_publication_backfill_frame(
 def dfl_ua_weather_load_pv_proxy_backfill_frame(
     context,
     dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
-    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    tenant_historical_weather_bronze: pl.DataFrame,
     tenant_historical_net_load_silver: pl.DataFrame,
 ) -> pl.DataFrame:
     """Check prior Open-Meteo weather plus tenant load/PV proxy coverage."""
 
     frame = build_dfl_ua_weather_load_pv_proxy_backfill_frame(
         dfl_ua_context_backfill_requirements_frame,
-        real_data_benchmark_silver_feature_frame,
+        tenant_historical_weather_bronze,
         tenant_historical_net_load_silver,
     )
     _add_metadata(
@@ -7444,13 +7450,19 @@ def dfl_ua_weather_load_pv_proxy_backfill_frame(
 def dfl_ua_grid_event_backfill_frame(
     context,
     dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
-    grid_event_signal_silver: pl.DataFrame,
+    observed_market_price_history_bronze: pl.DataFrame,
+    ukrenergo_grid_events_bronze: pl.DataFrame,
 ) -> pl.DataFrame:
     """Check prior Ukrenergo/grid-event coverage for V11 readiness."""
 
+    grid_event_signal_frame = _ua_context_grid_event_signal_frame(
+        observed_market_price_history_bronze,
+        ukrenergo_grid_events_bronze,
+        dfl_ua_context_backfill_requirements_frame,
+    )
     frame = build_dfl_ua_grid_event_backfill_frame(
         dfl_ua_context_backfill_requirements_frame,
-        grid_event_signal_silver,
+        grid_event_signal_frame,
     )
     _add_metadata(
         context,
@@ -15966,6 +15978,76 @@ def _bool_csv_values(raw_value: str, *, field_name: str) -> tuple[bool, ...]:
     if not values:
         raise ValueError(f"{field_name} must contain at least one value.")
     return tuple(values)
+
+
+def _ua_context_grid_event_signal_frame(
+    observed_market_price_history_bronze: pl.DataFrame,
+    ukrenergo_grid_events_bronze: pl.DataFrame,
+    dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    tenant_ids = sorted(
+        {
+            str(row["tenant_id"])
+            for row in dfl_ua_context_backfill_requirements_frame.iter_rows(
+                named=True
+            )
+            if row.get("tenant_id") is not None
+        }
+    )
+    signal_frame = build_grid_event_signal_frame(
+        price_history=observed_market_price_history_bronze,
+        grid_events=ukrenergo_grid_events_bronze,
+        tenant_ids=tenant_ids,
+    )
+    coverage_start, coverage_end = _ukrenergo_source_coverage_window(
+        ukrenergo_grid_events_bronze
+    )
+    source_coverage_status = (
+        "source_covered"
+        if coverage_start is not None and coverage_end is not None
+        else "missing_grid_event_history_source_window"
+    )
+    return signal_frame.with_columns(
+        [
+            pl.lit(coverage_start).alias("source_coverage_start_timestamp"),
+            pl.lit(coverage_end).alias("source_coverage_end_timestamp"),
+            pl.lit(source_coverage_status).alias("source_coverage_status"),
+        ]
+    )
+
+
+def _ukrenergo_source_coverage_window(
+    ukrenergo_grid_events_bronze: pl.DataFrame,
+) -> tuple[datetime | None, datetime | None]:
+    if ukrenergo_grid_events_bronze.height == 0:
+        return None, None
+    published_values = _datetime_column_values(
+        ukrenergo_grid_events_bronze,
+        "published_at",
+    )
+    fetched_values = _datetime_column_values(
+        ukrenergo_grid_events_bronze,
+        "fetched_at",
+    )
+    if not published_values or not fetched_values:
+        return None, None
+    return min(published_values), max(fetched_values)
+
+
+def _datetime_column_values(frame: pl.DataFrame, column_name: str) -> list[datetime]:
+    if column_name not in frame.columns:
+        return []
+    values: list[datetime] = []
+    for value in frame.select(column_name).to_series().to_list():
+        if isinstance(value, datetime):
+            values.append(_naive_datetime(value))
+    return values
+
+
+def _naive_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=None)
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 def _latest_generated_at(frame: pl.DataFrame) -> datetime | None:

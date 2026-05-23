@@ -279,10 +279,21 @@ def build_dfl_ua_grid_event_backfill_frame(
             anchor_timestamp=anchor,
         )
         grid_at = _row_timestamp(grid_row)
+        source_covers_anchor = _grid_source_covers_anchor(grid_row, anchor)
         prior_available = bool(
-            grid_row is not None and grid_at is not None and grid_at < anchor
+            grid_row is not None
+            and grid_at is not None
+            and grid_at < anchor
+            and source_covers_anchor
         )
-        status = "context_ready" if prior_available else "missing_grid_event_history"
+        if grid_row is None:
+            status = "missing_grid_event_history"
+        elif not source_covers_anchor:
+            status = "missing_grid_event_history_source_window"
+        elif not prior_available:
+            status = "grid_event_history_not_prior_to_anchor"
+        else:
+            status = "context_ready"
         rows.append(
             {
                 **_base_row(requirement),
@@ -304,6 +315,14 @@ def build_dfl_ua_grid_event_backfill_frame(
                     grid_row,
                     ("event_source_freshness_hours",),
                     default=999.0,
+                ),
+                "source_coverage_start_timestamp": _row_datetime(
+                    grid_row,
+                    ("source_coverage_start_timestamp",),
+                ),
+                "source_coverage_end_timestamp": _row_datetime(
+                    grid_row,
+                    ("source_coverage_end_timestamp",),
                 ),
                 "context_source": "ukrenergo_grid_event_signal_history",
                 "claim_scope": UA_GRID_EVENT_BACKFILL_CLAIM_SCOPE,
@@ -614,6 +633,28 @@ def _row_float(
         if value is not None:
             return float(value)
     return default
+
+
+def _row_datetime(row: dict[str, Any] | None, columns: tuple[str, ...]) -> datetime | None:
+    if row is None:
+        return None
+    for column in columns:
+        value = row.get(column)
+        if value is not None:
+            return _datetime_value(value)
+    return None
+
+
+def _grid_source_covers_anchor(row: dict[str, Any] | None, anchor: datetime) -> bool:
+    if row is None:
+        return False
+    coverage_start = _row_datetime(row, ("source_coverage_start_timestamp",))
+    coverage_end = _row_datetime(row, ("source_coverage_end_timestamp",))
+    return bool(
+        coverage_start is not None
+        and coverage_end is not None
+        and coverage_start <= anchor <= coverage_end
+    )
 
 
 def _source_kind_is_backed(row: dict[str, Any] | None, columns: tuple[str, ...]) -> bool:

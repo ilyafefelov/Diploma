@@ -29,7 +29,7 @@ available before each anchor.
 | `dfl_ua_context_source_inventory_frame` | Lists Ukrainian source families used by the gate: OREE DAM, Open-Meteo archive, tenant load/PV proxy, Ukrenergo/grid-event history, and calendar/block context. |
 | `dfl_ua_dam_publication_backfill_frame` | Requires explicit DAM publication metadata before the anchor; it does not infer publication time from observed prices. |
 | `dfl_ua_weather_load_pv_proxy_backfill_frame` | Checks prior Open-Meteo weather plus tenant load/PV proxy rows. |
-| `dfl_ua_grid_event_backfill_frame` | Checks prior Ukrenergo/grid-event rows or source-backed no-event coverage. Missing history is a blocker. |
+| `dfl_ua_grid_event_backfill_frame` | Builds a readiness-specific grid signal from the observed OREE backfill window plus `ukrenergo_grid_events_bronze`. A zero-event row counts only when the Ukrenergo source coverage window spans the anchor; otherwise the blocker is `missing_grid_event_history_source_window`. |
 | `dfl_ua_calendar_block_context_backfill_frame` | Adds deterministic calendar/block context while marking DST/calendar gap hours instead of synthesizing them. |
 | `dfl_ua_context_backfill_coverage_gate_frame` | Emits `v11_candidate_generation_ready`; V11 starts only when all required context families are ready. |
 
@@ -38,12 +38,30 @@ available before each anchor.
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_ua_context_source_inventory_frame,dfl_ua_dam_publication_backfill_frame,dfl_ua_weather_load_pv_proxy_backfill_frame,dfl_ua_grid_event_backfill_frame,dfl_ua_calendar_block_context_backfill_frame,dfl_ua_context_backfill_coverage_gate_frame `
+  --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,tenant_consumption_schedule_bronze,tenant_historical_net_load_silver,ukrenergo_grid_events_bronze,dfl_ua_context_source_inventory_frame,dfl_ua_dam_publication_backfill_frame,dfl_ua_weather_load_pv_proxy_backfill_frame,dfl_ua_grid_event_backfill_frame,dfl_ua_calendar_block_context_backfill_frame,dfl_ua_context_backfill_coverage_gate_frame `
   -c configs/real_data_dfl_ua_context_acquisition_v11_precondition_week3.yaml
 ```
 
 If upstream V10 rows are not present in the active Dagster IO store, materialize
 the V10 closure selection from `DFL_V10_TAIL_RISK_TRANSFER_AUDIT.md` first.
+
+## Latest Materialized Status
+
+The refreshed source-repair materialization
+`03ca46ca-e2eb-43e2-ba59-c8d5659cc28a` keeps V11 blocked:
+
+- `v11_candidate_generation_ready=false`;
+- OREE DAM price-history coverage is present, but explicit publication-time
+  metadata is still absent for `860 / 860` gate rows;
+- Open-Meteo plus tenant load/PV proxy coverage is now complete:
+  `860 / 860` ready rows;
+- calendar/block context remains complete: `860 / 860` ready rows;
+- Ukrenergo grid-event/no-event coverage is not yet historical enough for the
+  benchmark anchors: `0 / 860` ready rows with
+  `missing_grid_event_history_source_window`.
+
+This is the intended conservative result: source coverage can improve without
+unlocking V11 until every required context family is prior-available.
 
 Export local packet:
 

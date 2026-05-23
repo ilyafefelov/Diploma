@@ -93,6 +93,25 @@ def test_grid_event_backfill_blocks_missing_historical_grid_coverage() -> None:
     assert grid["prior_available"].to_list() == [False]
 
 
+def test_grid_event_backfill_requires_source_coverage_for_no_event_rows() -> None:
+    grid_signal = _grid_context(include_source_window=False)
+
+    grid = build_dfl_ua_grid_event_backfill_frame(_requirements(), grid_signal)
+
+    assert grid["grid_event_backfill_status"].to_list() == [
+        "missing_grid_event_history_source_window"
+    ]
+    assert grid["prior_available"].to_list() == [False]
+
+
+def test_grid_event_backfill_accepts_source_backed_no_event_coverage() -> None:
+    grid = build_dfl_ua_grid_event_backfill_frame(_requirements(), _grid_context())
+
+    assert grid["grid_event_backfill_status"].to_list() == ["context_ready"]
+    assert grid["prior_available"].to_list() == [True]
+    assert grid["context_source"].to_list() == ["ukrenergo_grid_event_signal_history"]
+
+
 def test_calendar_block_context_marks_dst_gap_without_synthesizing() -> None:
     requirements = _requirements(anchor=datetime(2026, 3, 29, 23))
 
@@ -247,20 +266,21 @@ def _load_context() -> pl.DataFrame:
     )
 
 
-def _grid_context() -> pl.DataFrame:
-    return pl.DataFrame(
-        [
-            {
-                "tenant_id": TENANT,
-                "timestamp": ANCHOR - timedelta(hours=1),
-                "grid_event_count_24h": 0.0,
-                "tenant_region_affected": 0.0,
-                "national_grid_risk_score": 0.0,
-                "days_since_grid_event": 999.0,
-                "outage_flag": 0.0,
-                "saving_request_flag": 0.0,
-                "solar_shift_hint": 0.0,
-                "event_source_freshness_hours": 999.0,
-            }
-        ]
-    )
+def _grid_context(*, include_source_window: bool = True) -> pl.DataFrame:
+    row = {
+        "tenant_id": TENANT,
+        "timestamp": ANCHOR - timedelta(hours=1),
+        "grid_event_count_24h": 0.0,
+        "tenant_region_affected": 0.0,
+        "national_grid_risk_score": 0.0,
+        "days_since_grid_event": 999.0,
+        "outage_flag": 0.0,
+        "saving_request_flag": 0.0,
+        "solar_shift_hint": 0.0,
+        "event_source_freshness_hours": 999.0,
+    }
+    if include_source_window:
+        row["source_coverage_start_timestamp"] = ANCHOR - timedelta(days=14)
+        row["source_coverage_end_timestamp"] = ANCHOR
+        row["source_coverage_status"] = "source_covered"
+    return pl.DataFrame([row])

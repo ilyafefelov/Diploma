@@ -2194,22 +2194,24 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_ua_context_source_inventory_frame"] == {
         "dfl_ua_context_backfill_requirements_frame",
-        "grid_event_signal_silver",
-        "real_data_benchmark_silver_feature_frame",
+        "observed_market_price_history_bronze",
+        "tenant_historical_weather_bronze",
         "tenant_historical_net_load_silver",
+        "ukrenergo_grid_events_bronze",
     }
     assert deps_by_key["dfl_ua_dam_publication_backfill_frame"] == {
         "dfl_ua_context_backfill_requirements_frame",
-        "real_data_benchmark_silver_feature_frame",
+        "observed_market_price_history_bronze",
     }
     assert deps_by_key["dfl_ua_weather_load_pv_proxy_backfill_frame"] == {
         "dfl_ua_context_backfill_requirements_frame",
-        "real_data_benchmark_silver_feature_frame",
+        "tenant_historical_weather_bronze",
         "tenant_historical_net_load_silver",
     }
     assert deps_by_key["dfl_ua_grid_event_backfill_frame"] == {
         "dfl_ua_context_backfill_requirements_frame",
-        "grid_event_signal_silver",
+        "observed_market_price_history_bronze",
+        "ukrenergo_grid_events_bronze",
     }
     assert deps_by_key["dfl_ua_calendar_block_context_backfill_frame"] == {
         "dfl_ua_context_backfill_requirements_frame"

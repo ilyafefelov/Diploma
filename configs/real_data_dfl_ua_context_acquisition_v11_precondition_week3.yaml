@@ -26,7 +26,7 @@ ops:
       location_config_path: "simulations/tenants.yml"
   ukrenergo_grid_events_bronze:
     config:
-      max_posts: 200
+      max_posts: 1000
   dfl_ua_context_source_inventory_frame:
     config:
       source_window_start: "2025-01-01"
