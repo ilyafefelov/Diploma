@@ -21,7 +21,7 @@ import type {
   OperatorWeatherRunConfig
 } from '~/types/operator-dashboard'
 import { buildOperatorBatteryDisplay } from '../utils/operatorBatteryDisplay'
-import { formatSignedMw, powerToTimelineLabel, timelineTooltipBody } from '../utils/operatorTimeline'
+import { formatDamDeliveryLabel, formatSignedMw, powerToTimelineLabel, timelineTooltipBody } from '../utils/operatorTimeline'
 
 interface OperatorDashboardViewModelInput {
   tenants: Readonly<Ref<TenantSummary[]>>
@@ -335,36 +335,12 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     if (schedule.length === 0) {
       return [
         {
-          time: '00:00',
-          label: 'Charge',
-          value: '-60 MW',
-          tone: 'green',
-          tooltipTitle: 'Charge window',
-          tooltipBody: 'Fallback preview slot for importing energy while the market is expected to be cheaper.'
-        },
-        {
-          time: '06:00',
-          label: 'Hold',
-          value: '0 MW',
+          time: 'DAM delivery',
+          label: 'Preview pending',
+          value: 'No schedule loaded',
           tone: 'blue',
-          tooltipTitle: 'Hold window',
-          tooltipBody: 'Fallback preview slot where the battery waits because the value spread is not strong enough.'
-        },
-        {
-          time: '12:00',
-          label: 'Discharge',
-          value: '+80 MW',
-          tone: 'green',
-          tooltipTitle: 'Discharge window',
-          tooltipBody: 'Fallback preview slot for exporting energy when the expected price window is stronger.'
-        },
-        {
-          time: '18:00',
-          label: 'Hold',
-          value: '0 MW',
-          tone: 'blue',
-          tooltipTitle: 'Hold window',
-          tooltipBody: 'Fallback preview slot that protects battery wear while the system waits for a better spread.'
+          tooltipTitle: 'DAM delivery schedule pending',
+          tooltipBody: 'No DAM delivery-hour schedule has loaded yet, so this dock is not showing a bid, ProposedBid, or market instruction.'
         }
       ]
     }
@@ -373,11 +349,11 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       const label = powerToTimelineLabel(point.recommended_net_power_mw)
 
       return {
-        time: point.interval_start.slice(11, 16),
+        time: formatDamDeliveryLabel(point.interval_start),
         label,
         value: formatSignedMw(point.recommended_net_power_mw),
         tone: label === 'Hold' ? 'blue' : 'green',
-        tooltipTitle: `${label} at ${point.interval_start.slice(11, 16)}`,
+        tooltipTitle: `${label} for ${formatDamDeliveryLabel(point.interval_start)}`,
         tooltipBody: timelineTooltipBody(label, point.recommended_net_power_mw)
       }
     })

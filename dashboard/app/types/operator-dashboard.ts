@@ -49,7 +49,7 @@ export interface OperatorGatekeeperAction {
 
 export interface OperatorTimelineSegment {
   time: string
-  label: 'Charge' | 'Discharge' | 'Hold'
+  label: 'Charge' | 'Discharge' | 'Hold' | 'Preview pending'
   value: string
   tone: 'blue' | 'green'
   tooltipTitle: string

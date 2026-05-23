@@ -4,6 +4,37 @@ import { describe, expect, it } from 'vitest'
 import { useOperatorDashboardViewModel } from './useOperatorDashboardViewModel'
 
 describe('useOperatorDashboardViewModel', () => {
+  it('does not show fake fallback charge or discharge proposals when no DAM schedule is loaded', () => {
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      signalPreview: ref(null),
+      baselinePreview: ref(null),
+      operatorRecommendation: ref(null),
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref(''),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.timelineSegments.value).toEqual([
+      expect.objectContaining({
+        time: 'DAM delivery',
+        label: 'Preview pending',
+        value: 'No schedule loaded'
+      })
+    ])
+    expect(viewModel.timelineSegments.value.map(segment => segment.value)).not.toContain('-60 MW')
+    expect(viewModel.timelineSegments.value.map(segment => segment.value)).not.toContain('+80 MW')
+  })
+
   it('drives the schedule dock and headline economics from the selected operator strategy', () => {
     const baselinePreview = ref({
       battery_metrics: {
@@ -63,7 +94,7 @@ describe('useOperatorDashboardViewModel', () => {
 
     expect(viewModel.latestRecommendedPowerLabel.value).toBe('0.0 MW')
     expect(viewModel.timelineSegments.value.map(segment => segment.label)).toEqual(['Discharge', 'Charge'])
-    expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['11:00', '12:00'])
+    expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['DAM 19 May, 11:00', 'DAM 19 May, 12:00'])
     expect(viewModel.headlineMetrics.value[0]).toMatchObject({
       label: 'Net plan value',
       value: '100 UAH',
