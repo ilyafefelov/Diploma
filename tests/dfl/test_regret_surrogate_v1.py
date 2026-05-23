@@ -57,6 +57,12 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_candidate_value_v11_strict_lp_benchmark_frame,
     build_dfl_v11_lava_dt_candidate_policy_frame,
     build_dfl_v11_lava_dt_comparison_frame,
+    build_dfl_ua_context_source_expansion_inventory_v12_frame,
+    build_dfl_ua_expanded_anchor_context_panel_v12_frame,
+    build_dfl_ua_safe_switch_teacher_label_panel_v12_frame,
+    build_dfl_ua_low_tail_candidate_library_v12_frame,
+    build_dfl_ua_low_tail_candidate_v12_strict_rescore_frame,
+    build_dfl_ua_v12_dt_lava_readiness_decision_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
     build_dfl_ua_context_candidate_v8_strict_rescore_frame,
     build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
@@ -2247,6 +2253,129 @@ def test_v11_selector_and_dt_compare_against_v2_behavior_cloning_and_strict() ->
     assert set(comparison["market_execution_enabled"].to_list()) == {False}
 
 
+def test_v12_source_expansion_inventory_blocks_missing_new_ua_sources() -> None:
+    teacher = _v11_teacher(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+
+    inventory = build_dfl_ua_context_source_expansion_inventory_v12_frame(teacher)
+
+    assert {
+        "oree_dam_history",
+        "open_meteo_archive",
+        "tenant_load_pv_proxy",
+        "ukrenergo_grid_event_archive",
+        "calendar_publication_rules",
+        "measured_tenant_load_pv",
+        "explicit_dam_publication_receipts",
+        "richer_grid_outage_archive",
+    }.issubset(set(inventory["source_family"].to_list()))
+    assert set(
+        inventory.filter(pl.col("source_family").str.starts_with("measured_"))[
+            "source_status"
+        ].to_list()
+    ) == {"blocked_missing_source"}
+    assert set(inventory["market_execution_enabled"].to_list()) == {False}
+    assert set(inventory["no_eu_rows_as_ukrainian_targets"].to_list()) == {True}
+
+
+def test_v12_low_tail_candidates_are_prior_safe_and_source_gated() -> None:
+    teacher = _v11_teacher(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    mutated_teacher = _force_final_v11_generated_safe(teacher)
+    inventory = build_dfl_ua_context_source_expansion_inventory_v12_frame(teacher)
+    context_panel = build_dfl_ua_expanded_anchor_context_panel_v12_frame(
+        teacher, inventory
+    )
+    base_labels = build_dfl_ua_safe_switch_teacher_label_panel_v12_frame(
+        teacher, context_panel
+    )
+    mutated_labels = build_dfl_ua_safe_switch_teacher_label_panel_v12_frame(
+        mutated_teacher, context_panel
+    )
+
+    base_library = build_dfl_ua_low_tail_candidate_library_v12_frame(base_labels)
+    mutated_library = build_dfl_ua_low_tail_candidate_library_v12_frame(mutated_labels)
+    generated_cols = [
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "candidate_family",
+        "candidate_schedule_class",
+        "dispatch_mw_vector",
+        "selector_feature_v12_existing_source_context_ready",
+    ]
+
+    assert (
+        base_library.filter(
+            pl.col("candidate_source") == "ua_low_tail_v12_generated_candidate"
+        )
+        .select(generated_cols)
+        .to_dicts()
+        == mutated_library.filter(
+            pl.col("candidate_source") == "ua_low_tail_v12_generated_candidate"
+        )
+        .select(generated_cols)
+        .to_dicts()
+    )
+    generated = base_library.filter(
+        pl.col("candidate_source") == "ua_low_tail_v12_generated_candidate"
+    )
+    assert generated.height > 0
+    assert set(generated["candidate_schedule_class"].to_list()).issubset(
+        {
+            "micro_v2_strict_blend",
+            "terminal_soc_preserve_clip",
+            "low_throughput_cap",
+            "peak_trough_shift_minus_1h",
+            "peak_trough_shift_plus_1h",
+        }
+    )
+    assert set(generated["candidate_value_label_status"].to_list()) == {
+        "pending_strict_rescore"
+    }
+    assert set(generated["raw_hourly_action_imitation"].to_list()) == {False}
+
+
+def test_v12_strict_rescore_and_readiness_gate_block_dt_below_safe_label_floor() -> (
+    None
+):
+    teacher = _v11_teacher(
+        _candidate_panel(train_alt_regret=80.0, final_alt_regret=80.0)
+    )
+    inventory = build_dfl_ua_context_source_expansion_inventory_v12_frame(teacher)
+    context_panel = build_dfl_ua_expanded_anchor_context_panel_v12_frame(
+        teacher, inventory
+    )
+    labels = build_dfl_ua_safe_switch_teacher_label_panel_v12_frame(
+        teacher, context_panel
+    )
+    library = build_dfl_ua_low_tail_candidate_library_v12_frame(labels)
+    rescored = build_dfl_ua_low_tail_candidate_v12_strict_rescore_frame(library)
+    readiness = build_dfl_ua_v12_dt_lava_readiness_decision_frame(
+        rescored,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        min_prior_material_safe_switch_examples_for_dt=20,
+    )
+
+    assert set(
+        rescored.filter(
+            pl.col("candidate_source") == "ua_low_tail_v12_generated_candidate"
+        )["candidate_value_label_status"].to_list()
+    ) == {"strict_rescored_v12_candidate"}
+    assert set(readiness["dt_lava_ready"].to_list()) == {False}
+    assert set(readiness["readiness_decision"].to_list()) == {
+        "blocked_insufficient_prior_safe_switch_examples"
+    }
+    assert set(readiness["target_label_space"].to_list()) == {
+        "schedule_candidate_index"
+    }
+    assert set(readiness["raw_hourly_action_imitation"].to_list()) == {False}
+    assert set(readiness["market_execution_enabled"].to_list()) == {False}
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
@@ -2398,6 +2527,20 @@ def _v10_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def _v11_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
+    labels = _v10_teacher(candidate_panel)
+    library = build_dfl_lower_tail_risk_candidate_library_v11_frame(
+        labels,
+        _v11_context_gate(labels, ready=True),
+    )
+    return build_dfl_lower_tail_risk_candidate_value_teacher_label_panel_v11_frame(
+        build_dfl_lower_tail_risk_candidate_v11_strict_rescore_frame(library),
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+
 def _force_final_v10_generated_tail_risk(labels: pl.DataFrame) -> pl.DataFrame:
     final_generated = (
         pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
@@ -2457,6 +2600,30 @@ def _force_v11_generated_safe(frame: pl.DataFrame) -> pl.DataFrame:
         .then(True)
         .otherwise(pl.col("label_is_anchor_best_candidate"))
         .alias("label_is_anchor_best_candidate"),
+    )
+
+
+def _force_final_v11_generated_safe(frame: pl.DataFrame) -> pl.DataFrame:
+    final_generated = (
+        pl.col("candidate_source") == "lower_tail_risk_v11_generated_candidate"
+    ) & (pl.col("split_name") == "final_holdout")
+    return frame.with_columns(
+        pl.when(final_generated)
+        .then(80.0)
+        .otherwise(pl.col("regret_uah"))
+        .alias("regret_uah"),
+        pl.when(final_generated)
+        .then(-40.0)
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(final_generated)
+        .then(True)
+        .otherwise(pl.col("label_v11_material_safe_switch"))
+        .alias("label_v11_material_safe_switch"),
+        pl.when(final_generated)
+        .then(False)
+        .otherwise(pl.col("label_v11_tail_risk_loss"))
+        .alias("label_v11_tail_risk_loss"),
     )
 
 

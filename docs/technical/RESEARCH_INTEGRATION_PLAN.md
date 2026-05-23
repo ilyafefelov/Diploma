@@ -251,6 +251,29 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      violations, and `market_execution_enabled=false`. The DT/LAVA gate remains
      blocked because the prior material safe-switch count is only `2-7` per
      tenant, below the configured `20`.
+   - V12 is the next safe teacher-label backfill, not another selector. It adds
+     `dfl_ua_context_source_expansion_inventory_v12_frame`,
+     `dfl_ua_expanded_anchor_context_panel_v12_frame`,
+     `dfl_ua_safe_switch_teacher_label_panel_v12_frame`,
+     `dfl_ua_low_tail_candidate_library_v12_frame`,
+     `dfl_ua_low_tail_candidate_v12_strict_rescore_frame`, and
+     `dfl_ua_v12_dt_lava_readiness_decision_frame`. The source inventory keeps
+     missing measured tenant load/PV, explicit row-level DAM publication
+     receipts, and richer grid/outage archives as blockers instead of
+     synthesizing features. Candidate generation is limited to micro V2+/strict
+     blends, terminal-SOC-preserving schedules, low-throughput caps, and
+     prior-supported +/-1 hour peak/trough alternatives. DT/LAVA remains blocked
+     until each tenant/source reaches `20` prior/train non-tail-risk material
+     safe-switch examples. See
+     [DFL_UA_CONTEXT_V12_SAFE_TEACHER_BACKFILL.md](DFL_UA_CONTEXT_V12_SAFE_TEACHER_BACKFILL.md).
+   - V12 materialized as blocked evidence
+     (`d1712548-a4fa-4eca-955d-183d1c4f258c`). Current Ukrainian context
+     sources reached only partial coverage (`0.593`), optional measured-load/PV,
+     explicit DAM-publication receipt, and richer grid/outage hooks remained
+     unavailable, and no new V12 low-tail candidates were generated. The safe
+     example counts stayed at `2-7 / 20`, so `dt_lava_ready=false`. This moves
+     the next real ML work from selector design to Ukrainian data acquisition
+     and source coverage repair.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

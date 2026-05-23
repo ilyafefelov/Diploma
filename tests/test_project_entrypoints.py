@@ -295,6 +295,33 @@ def test_ua_context_backfill_readiness_packet_cli_exports_v11_gate() -> None:
     assert "Offline Strategy Promotion" in doc
 
 
+def test_ua_v12_safe_teacher_packet_cli_exports_dt_lava_gate() -> None:
+    export_script = (
+        PROJECT_ROOT / "scripts" / "materialize_ua_v12_safe_teacher_packet.py"
+    ).read_text(encoding="utf-8")
+    config = (
+        PROJECT_ROOT
+        / "configs"
+        / "real_data_dfl_ua_context_v12_backfill_week3.yaml"
+    ).read_text(encoding="utf-8")
+    doc = (
+        PROJECT_ROOT
+        / "docs"
+        / "technical"
+        / "DFL_UA_CONTEXT_V12_SAFE_TEACHER_BACKFILL.md"
+    ).read_text(encoding="utf-8")
+
+    assert "--source-inventory-pickle" in export_script
+    assert "--readiness-decision-pickle" in export_script
+    assert "--run-slug" in export_script
+    assert "build_dfl_ua_v12_safe_teacher_backfill_packet" in export_script
+    assert "write_dfl_ua_v12_safe_teacher_backfill_packet" in export_script
+    assert "dt_lava_ready" in export_script
+    assert "dfl_ua_context_source_expansion_inventory_v12_frame" in config
+    assert "dfl_ua_v12_dt_lava_readiness_decision_frame" in config
+    assert "Offline Strategy Promotion" in doc
+
+
 def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:
     export_script = (
         PROJECT_ROOT
