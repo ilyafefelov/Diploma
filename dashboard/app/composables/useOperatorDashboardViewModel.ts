@@ -21,7 +21,13 @@ import type {
   OperatorWeatherRunConfig
 } from '~/types/operator-dashboard'
 import { buildOperatorBatteryDisplay } from '../utils/operatorBatteryDisplay'
-import { formatDamDeliveryLabel, formatSignedMw, powerToTimelineLabel, timelineTooltipBody } from '../utils/operatorTimeline'
+import {
+  DAM_REVIEW_ACTION_THRESHOLD_MW,
+  formatDamDeliveryLabel,
+  formatSignedMw,
+  powerToTimelineLabel,
+  timelineTooltipBody
+} from '../utils/operatorTimeline'
 
 interface OperatorDashboardViewModelInput {
   tenants: Readonly<Ref<TenantSummary[]>>
@@ -40,19 +46,19 @@ interface OperatorDashboardViewModelInput {
   signalPreviewLastLoadedLabel: Readonly<Ref<string>>
   registryLastLoadedAt: Readonly<Ref<number | null>>
   isMaterializing: Readonly<Ref<boolean>>
+  readModelErrorCount?: Readonly<Ref<number>>
 }
 
-const TIMELINE_ACTION_THRESHOLD_MW = 0.005
 const TIMELINE_SEGMENT_LIMIT = 5
 
 export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelInput) => {
   const operatorNavItems = computed<OperatorNavItem[]>(() => [
-    { label: 'Overview', icon: 'i-lucide-house', active: true },
-    { label: 'Market', icon: 'i-lucide-chart-no-axes-combined', active: false },
-    { label: 'Battery', icon: 'i-lucide-battery-charging', active: false },
-    { label: 'Gatekeeper', icon: 'i-lucide-shield-check', active: false },
-    { label: 'Baseline', icon: 'i-lucide-chart-column-big', active: false },
-    { label: 'Reports', icon: 'i-lucide-file-text', active: false }
+    { label: 'Overview', icon: 'i-lucide-house', active: true, targetId: 'operator-overview' },
+    { label: 'Market', icon: 'i-lucide-chart-no-axes-combined', active: false, targetId: 'operator-market' },
+    { label: 'Battery', icon: 'i-lucide-battery-charging', active: false, targetId: 'operator-battery' },
+    { label: 'Gatekeeper', icon: 'i-lucide-shield-check', active: false, targetId: 'operator-gatekeeper' },
+    { label: 'Baseline', icon: 'i-lucide-chart-column-big', active: false, targetId: 'operator-baseline' },
+    { label: 'Evidence', icon: 'i-lucide-file-text', active: false, targetId: 'operator-research' }
   ])
 
   const selectedTenantName = computed(() => {
@@ -96,7 +102,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     return `${input.tenants.value.length} live tenants / ${criticalTenantCount.value} critical`
   })
 
-  const activeAlertCount = computed(() => {
+  const surfaceAlertCount = computed(() => {
     return [
       input.registryError.value,
       input.weatherError.value,
@@ -104,6 +110,9 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       input.baselinePreviewError.value
     ].filter(Boolean).length
   })
+
+  const readModelErrorCount = computed(() => Math.max(0, input.readModelErrorCount?.value ?? 0))
+  const activeAlertCount = computed(() => surfaceAlertCount.value + readModelErrorCount.value)
 
   const weatherBiasAverage = computed(() => {
     const values = input.signalPreview.value?.weather_bias || []
@@ -127,8 +136,10 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     ?? input.baselinePreview.value?.economics
     ?? null)
 
+  const selectedTimelineSchedulePoints = computed(() => selectTimelineSchedulePoints(activeRecommendationSchedule.value))
+
   const latestRecommendedPowerMw = computed(() => {
-    const selectedPoint = activeRecommendationSchedule.value[0]
+    const selectedPoint = selectedTimelineSchedulePoints.value[0]
     if (selectedPoint) {
       return selectedPoint.recommended_net_power_mw
     }
@@ -160,6 +171,18 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     }
 
     return input.tenants.value.length > 0 ? 98.7 : 0
+  })
+
+  const readModelHealthMeta = computed(() => {
+    if (readModelErrorCount.value > 0) {
+      return `${readModelErrorCount.value} read-model gap(s)`
+    }
+
+    if (surfaceAlertCount.value > 0) {
+      return `${surfaceAlertCount.value} surface alert(s)`
+    }
+
+    return 'Preview sources loaded'
   })
 
   const equivalentCyclePreview = computed(() => {
@@ -215,41 +238,41 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       tooltipFormula: 'EFC = throughput_mwh / (capacity_mwh * 2)'
     },
     {
-      label: 'Availability',
+      label: 'Read-model health',
       value: `${availabilityPercent.value.toFixed(1)}%`,
-      meta: activeAlertCount.value === 0 ? 'System normal' : `${activeAlertCount.value} alert(s)`,
+      meta: readModelHealthMeta.value,
       icon: 'i-lucide-radio-tower',
       tone: activeAlertCount.value === 0 ? 'green' : 'orange',
-      tooltipTitle: 'Operator availability',
-      tooltipBody: 'A display health signal that combines registry state, materialization status, and visible alert count.',
-      tooltipFormula: 'availability = dashboard_health - active_alert_penalty'
+      tooltipTitle: 'Read-model health',
+      tooltipBody: 'A display health signal for required FastAPI read models and local operator surfaces. Gaps mean review-only evidence may be incomplete.',
+      tooltipFormula: 'health = preview_sources_loaded - read_model_gap_penalty'
     }
   ])
 
   const moodChips = computed<OperatorMoodChip[]>(() => [
     {
-      label: 'Prices',
-      value: input.signalPreview.value ? 'Favorable' : 'Waiting',
-      tone: input.signalPreview.value ? 'green' : 'blue'
+      label: 'Read model',
+      value: activeAlertCount.value > 0 ? 'Gaps' : 'Loaded',
+      tone: activeAlertCount.value > 0 ? 'orange' : 'green'
     },
     {
-      label: 'Spread',
-      value: activeEconomics.value && activeEconomics.value.total_net_value_uah > 0 ? 'Strong' : 'Learning',
+      label: 'Value spread',
+      value: activeEconomics.value && activeEconomics.value.total_net_value_uah > 0 ? 'Positive' : 'Learning',
       tone: 'green'
     },
     {
-      label: 'Volatility',
+      label: 'DAM volatility',
       value: Math.abs(weatherBiasAverage.value) > 15 ? 'High' : 'Moderate',
       tone: Math.abs(weatherBiasAverage.value) > 15 ? 'orange' : 'blue'
     },
     {
-      label: 'Demand',
-      value: criticalTenantCount.value > 0 ? 'Healthy' : 'Quiet',
+      label: 'Tenant data',
+      value: criticalTenantCount.value > 0 ? 'Critical lot' : 'Quiet',
       tone: 'green'
     },
     {
-      label: 'Weather',
-      value: input.runConfig.value || input.materializeResult.value ? 'Good' : 'Staging',
+      label: 'Weather data',
+      value: input.runConfig.value || input.materializeResult.value ? 'Prepared' : 'Staging',
       tone: 'mint'
     }
   ])
@@ -260,21 +283,21 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       icon: 'i-lucide-sun',
       active: activeAlertCount.value === 0,
       tooltipTitle: 'Normal regime',
-      tooltipBody: 'No visible operator errors are active, so the preview can be read as a normal market-watch state.'
+      tooltipBody: 'No visible operator errors are active, so the DAM delivery-day preview can be reviewed as a normal market-watch state.'
     },
     {
       label: 'Low vol',
       icon: 'i-lucide-cloud',
       active: Math.abs(weatherBiasAverage.value) < 8,
       tooltipTitle: 'Low volatility',
-      tooltipBody: 'Weather uplift is small enough that the current preview treats the price path as calmer.'
+      tooltipBody: 'Weather uplift is small enough that the selected DAM window is treated as calmer.'
     },
     {
       label: 'High vol',
       icon: 'i-lucide-activity',
       active: Math.abs(weatherBiasAverage.value) >= 8,
       tooltipTitle: 'High volatility',
-      tooltipBody: 'Weather uplift is large enough to mark the current window as more sensitive for operator review.'
+      tooltipBody: 'Weather uplift is large enough to mark the selected DAM window as more sensitive for operator review.'
     },
     {
       label: 'Recovery',
@@ -288,11 +311,13 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   ])
 
   const preferredGatekeeperAction = computed<OperatorGatekeeperActionLabel>(() => {
-    if (latestRecommendedPowerMw.value > 1) {
+    const previewAction = powerToTimelineLabel(latestRecommendedPowerMw.value)
+
+    if (previewAction === 'Discharge') {
       return 'SELL'
     }
 
-    if (latestRecommendedPowerMw.value < -1) {
+    if (previewAction === 'Charge') {
       return 'BUY'
     }
 
@@ -305,8 +330,8 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       score: preferredGatekeeperAction.value === 'BUY' ? 87 : 32,
       icon: 'i-lucide-download',
       active: preferredGatekeeperAction.value === 'BUY',
-      tooltipTitle: 'Buy score',
-      tooltipBody: 'Higher BUY means the preview sees more value in charging now and reserving energy for a later price window.',
+      tooltipTitle: 'Charge preview score',
+      tooltipBody: 'Higher BUY means the selected DAM delivery hour is a charging preview, reserving energy for a later price window.',
       tooltipFormula: 'score = 50 + charge_bias * 35 - guardrail_penalty; charge_bias comes from negative recommended_net_power_mw'
     },
     {
@@ -314,8 +339,8 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       score: preferredGatekeeperAction.value === 'SELL' ? 87 : 38,
       icon: 'i-lucide-upload',
       active: preferredGatekeeperAction.value === 'SELL',
-      tooltipTitle: 'Sell score',
-      tooltipBody: 'Higher SELL means the preview expects discharge value now, then the gatekeeper still checks SOC and power limits.',
+      tooltipTitle: 'Discharge preview score',
+      tooltipBody: 'Higher SELL means the selected DAM delivery hour is a discharge preview; future bid validation still checks SOC and power limits.',
       tooltipFormula: 'score = 50 + discharge_bias * 35 - guardrail_penalty; discharge_bias comes from positive recommended_net_power_mw'
     },
     {
@@ -323,14 +348,14 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       score: preferredGatekeeperAction.value === 'HOLD' ? 82 : 41,
       icon: 'i-lucide-pause',
       active: preferredGatekeeperAction.value === 'HOLD',
-      tooltipTitle: 'Hold score',
-      tooltipBody: 'Higher HOLD means the current spread is weak or the safer operator action is to wait for a cleaner interval.',
+      tooltipTitle: 'Hold preview score',
+      tooltipBody: 'Higher HOLD means the selected DAM delivery-hour spread is weak or the safer review choice is to wait for a cleaner interval.',
       tooltipFormula: 'score = 50 + idle_bias * 32 + uncertainty_penalty; idle_bias rises when recommended_net_power_mw is near zero'
     }
   ])
 
   const timelineSegments = computed<OperatorTimelineSegment[]>(() => {
-    const schedule = selectTimelineSchedulePoints(activeRecommendationSchedule.value)
+    const schedule = selectedTimelineSchedulePoints.value
 
     if (schedule.length === 0) {
       return [
@@ -375,12 +400,19 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
 
   const dispatchModeLabel = computed(() => input.isMaterializing.value ? 'Refreshing preview' : 'Preview only')
 
-  const batteryStatusLabel = computed(() => latestRecommendedPowerMw.value > 1
-    ? 'Discharging'
-    : latestRecommendedPowerMw.value < -1
-      ? 'Charging'
-      : 'Holding'
-  )
+  const batteryStatusLabel = computed(() => {
+    const action = powerToTimelineLabel(latestRecommendedPowerMw.value)
+
+    if (action === 'Discharge') {
+      return 'DAM discharge preview'
+    }
+
+    if (action === 'Charge') {
+      return 'DAM charge preview'
+    }
+
+    return 'DAM hold preview'
+  })
 
   const latestRecommendedPowerLabel = computed(() => formatSignedMw(latestRecommendedPowerMw.value))
 
@@ -468,7 +500,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
 const formatUah = (value: number): string => `${Math.round(value).toLocaleString('en-GB')} UAH`
 
 const selectTimelineSchedulePoints = <T extends { recommended_net_power_mw: number }>(schedule: T[]): T[] => {
-  const actionPoints = schedule.filter(point => Math.abs(point.recommended_net_power_mw) >= TIMELINE_ACTION_THRESHOLD_MW)
+  const actionPoints = schedule.filter(point => Math.abs(point.recommended_net_power_mw) >= DAM_REVIEW_ACTION_THRESHOLD_MW)
   if (actionPoints.length > 0) {
     return actionPoints.slice(0, TIMELINE_SEGMENT_LIMIT)
   }

@@ -29,6 +29,7 @@ const props = defineProps<{
   operatorRecommendation: OperatorRecommendationResponse | null
   selectedStrategyId: string
   isLoading: boolean
+  activeErrorCount: number
 }>()
 
 const emit = defineEmits<{
@@ -45,6 +46,14 @@ interface SelectedRecommendationChartRow {
 }
 
 const policyValueMode = ref<PolicyValueMode>('selected')
+
+const readModelBadgeLabel = computed(() => {
+  if (props.isLoading) {
+    return 'Refreshing'
+  }
+
+  return props.activeErrorCount > 0 ? `${props.activeErrorCount} read-model gap(s)` : 'FastAPI read model'
+})
 
 const forecastSeries = computed(() => {
   const apiSeries = props.futureStack?.forecast_series?.length
@@ -498,8 +507,8 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
         </label>
         <UBadge
           class="status-badge"
-          :label="isLoading ? 'Refreshing' : 'FastAPI read model'"
-          color="success"
+          :label="readModelBadgeLabel"
+          :color="activeErrorCount > 0 ? 'warning' : 'success'"
           variant="soft"
         />
       </div>
@@ -628,7 +637,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
       <article>
         <span>Forecast source</span>
         <p>
-          Current headline is Ukrainian-only V2+ schedule/value evidence. The price chart is context only: raw
+          Headline evidence is Ukrainian-only V2+ schedule/value evidence. The price chart is context only: raw
           forecast superiority is not the claim, and unsafe out-of-cap rows stay hidden from schedule inputs.
         </p>
       </article>

@@ -1,17 +1,31 @@
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue'
+
+const props = defineProps<{
   clockLabel: string
   isLoading: boolean
+  activeAlertCount: number
   timezoneLabel: string
 }>()
 
 const emit = defineEmits<{
   refresh: []
 }>()
+
+const previewStatusLabel = computed(() => {
+  if (props.isLoading) {
+    return 'Refreshing preview'
+  }
+
+  return props.activeAlertCount > 0 ? 'Preview gaps' : 'Preview ready'
+})
 </script>
 
 <template>
-  <header class="operator-topbar">
+  <header
+    id="operator-overview"
+    class="operator-topbar"
+  >
     <div class="brand-cluster">
       <div
         class="brand-orb"
@@ -31,9 +45,12 @@ const emit = defineEmits<{
 
     <div class="topbar-status">
       <span class="topbar-chip topbar-chip-clock">{{ clockLabel }}</span>
-      <span class="topbar-chip topbar-chip-live">
+      <span
+        class="topbar-chip topbar-chip-live"
+        :class="{ 'topbar-chip-warning': activeAlertCount > 0 && !isLoading }"
+      >
         <span class="status-dot" />
-        {{ isLoading ? 'Refreshing preview' : 'Preview ready' }}
+        {{ previewStatusLabel }}
       </span>
       <span class="topbar-chip">
         <UIcon name="i-lucide-map-pin" />

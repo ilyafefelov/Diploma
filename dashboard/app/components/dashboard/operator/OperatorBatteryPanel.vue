@@ -44,11 +44,14 @@ const safePowerMode = computed(() => {
 </script>
 
 <template>
-  <section class="surface-panel battery-panel">
+  <section
+    id="operator-battery"
+    class="surface-panel battery-panel"
+  >
     <div class="rail-heading">
       <div>
         <p class="eyebrow">
-          Battery status
+          Battery readiness
         </p>
         <h2 class="rail-title">
           {{ statusLabel }}
@@ -117,7 +120,7 @@ const safePowerMode = computed(() => {
       </article>
       <article class="metric-lens-card">
         <div class="metric-lens-card__label-row">
-          <p>Latest power intent</p>
+          <p>First DAM action</p>
           <UIcon
             class="metric-lens-card__icon"
             name="i-lucide-activity"
@@ -125,14 +128,14 @@ const safePowerMode = computed(() => {
         </div>
         <strong>{{ powerLabel }}</strong>
         <small class="metric-lens-card__kicker">{{ safePowerMode }}</small>
-        <span class="battery-stat-grid__meta">Limit ±100 MW</span>
+        <span class="battery-stat-grid__meta">Review only</span>
         <span
           class="metric-lens-card__tooltip"
           role="tooltip"
         >
-          <span class="metric-lens-card__tooltip-title">Intent to dispatch</span>
-          <span>Formula: power_cmd = clamp((price_gap / max_deviation) × max_power_mw, -max_power_mw, +max_power_mw)</span>
-          <span>Interpretation: positive power is export, negative means import/charge intent.</span>
+          <span class="metric-lens-card__tooltip-title">DAM delivery-hour preview</span>
+          <span>Formula: preview_power = selected_schedule.recommended_net_power_mw for the first visible DAM action row.</span>
+          <span>Interpretation: positive power means discharge review, negative means charge review; this is not a dispatch command.</span>
         </span>
       </article>
     </div>

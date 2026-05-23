@@ -1,16 +1,16 @@
 import type { OperatorTimelineSegment } from '~/types/operator-dashboard'
 
-const TIMELINE_ACTION_EPSILON_MW = 0.05
+export const DAM_REVIEW_ACTION_THRESHOLD_MW = 0.05
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 export const formatSignedMw = (value: number): string => `${value > 0 ? '+' : ''}${value.toFixed(1)} MW`
 
 export const powerToTimelineLabel = (powerMw: number): OperatorTimelineSegment['label'] => {
-  if (powerMw > TIMELINE_ACTION_EPSILON_MW) {
+  if (powerMw > DAM_REVIEW_ACTION_THRESHOLD_MW) {
     return 'Discharge'
   }
 
-  if (powerMw < -TIMELINE_ACTION_EPSILON_MW) {
+  if (powerMw < -DAM_REVIEW_ACTION_THRESHOLD_MW) {
     return 'Charge'
   }
 

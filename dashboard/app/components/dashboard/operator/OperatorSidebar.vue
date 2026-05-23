@@ -390,6 +390,7 @@ const weatherSourceLabel = computed(() => {
         :class="{ 'hud-nav__item-active': item.active }"
         :icon="item.icon"
         :label="item.label"
+        :to="`#${item.targetId}`"
         color="info"
         variant="ghost"
         block
@@ -409,7 +410,7 @@ const weatherSourceLabel = computed(() => {
           role="tooltip"
         >
           <span>Formula: connection_health = live_tenants / total_tenants</span>
-          <span>Current values are derived from tenant registry heartbeat and active flow error counters.</span>
+          <span>Values are derived from tenant registry heartbeat and active flow error counters.</span>
         </span>
       </div>
       <div class="sidebar-status-card__mini-grid">
@@ -425,7 +426,7 @@ const weatherSourceLabel = computed(() => {
             role="tooltip"
           >
             <span class="tenant-count-card__title">Mapped lots</span>
-            <span>{{ tenantCount }} tenants are currently loaded in the current registry snapshot.</span>
+            <span>{{ tenantCount }} tenants are loaded in the selected registry snapshot.</span>
           </span>
         </article>
         <article
@@ -453,9 +454,9 @@ const weatherSourceLabel = computed(() => {
 
     <UButton
       class="report-link"
-      to="/week1/interactive_report1"
-      icon="i-lucide-book-open-check"
-      label="Week 1 report"
+      to="/defense"
+      icon="i-lucide-presentation"
+      label="Defense evidence"
       color="info"
       variant="ghost"
       block

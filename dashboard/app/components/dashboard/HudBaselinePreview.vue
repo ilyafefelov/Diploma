@@ -186,7 +186,10 @@ const formatStrategyId = (strategyId: string): string => strategyId
 </script>
 
 <template>
-  <section class="baseline-slab">
+  <section
+    id="operator-baseline"
+    class="baseline-slab"
+  >
     <div class="baseline-slab__header">
       <div>
         <p class="baseline-slab__eyebrow">
@@ -370,13 +373,13 @@ const formatStrategyId = (strategyId: string): string => strategyId
 
     <div class="baseline-explainer-grid">
       <CollapsibleTextCard
-        :title="props.explanationMode === 'mvp' ? 'Where the current baseline forecast comes from' : 'Where the future forecast should come from'"
-        :eyebrow="props.explanationMode === 'mvp' ? 'Current forecast source' : 'Future forecast source'"
+        :title="props.explanationMode === 'mvp' ? 'Where the selected baseline forecast comes from' : 'Where the future forecast should come from'"
+        :eyebrow="props.explanationMode === 'mvp' ? 'Selected forecast source' : 'Future forecast source'"
       >
         <template v-if="props.explanationMode === 'mvp'">
           <p class="baseline-explainer-card__copy">
             The baseline forecast line comes from <strong>HourlyDamBaselineSolver.solve_next_dispatch</strong> in the API.
-            The solver receives tenant-aware DAM price history, current SOC, and battery limits, then returns hourly
+            The solver receives tenant-aware DAM price history, selected starting SOC, and battery limits, then returns hourly
             points from the <strong>forecast</strong> field. When the real-data stack is materialized, that history is
             observed OREE DAM data; any synthetic fallback is demo-grade only.
           </p>
@@ -387,7 +390,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
             This panel is still the baseline LP preview, not an NBEATSx/TFT forecast and not bid intent. Starting SOC source:
             <strong>{{ startingSocSourceLabel }}</strong>; telemetry freshness:
             <strong>{{ telemetryFreshnessLabel }}</strong>.
-            The selected strategy currently shown elsewhere is <strong>{{ selectedStrategyLabel }}</strong>.
+            The selected strategy shown elsewhere is <strong>{{ selectedStrategyLabel }}</strong>.
           </p>
         </template>
         <template v-else>
@@ -409,7 +412,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
 
       <CollapsibleTextCard
         :title="props.explanationMode === 'mvp' ? 'How the feasible plan is built now' : 'How the future decision path should work'"
-        :eyebrow="props.explanationMode === 'mvp' ? 'Current feasible plan logic' : 'Future decision logic'"
+        :eyebrow="props.explanationMode === 'mvp' ? 'Selected feasible plan logic' : 'Future decision logic'"
         tone="accent"
       >
         <template v-if="props.explanationMode === 'mvp'">
@@ -438,7 +441,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
           </p>
           <p class="baseline-explainer-card__copy">
             The SOC line can stay, but its explanation should tie back to the validated policy trajectory rather than the
-            current LP recommendation schedule.
+            selected LP recommendation schedule.
           </p>
         </template>
       </CollapsibleTextCard>

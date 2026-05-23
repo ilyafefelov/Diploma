@@ -94,11 +94,11 @@ const weatherSourceBadge = computed(() => {
       <div class="signal-explainer-grid">
         <CollapsibleTextCard
           v-if="props.explanationMode === 'mvp'"
-          title="How the current price is calculated"
-          eyebrow="Current calculation"
+          title="How the selected DAM context price is calculated"
+          eyebrow="Selected calculation"
         >
           <p class="signal-explainer-card__copy">
-            <strong>Expected price</strong> comes from the current API read model for the selected tenant. The visible
+            <strong>Expected price</strong> comes from the selected tenant API read model. The visible
             V2+ preview adapter can reuse this context, but the thesis result itself was validated offline on the
             365-anchor Ukrainian panel.
           </p>
@@ -107,7 +107,7 @@ const weatherSourceBadge = computed(() => {
           </p>
           <p class="signal-explainer-card__copy">
             <strong>Weather effect</strong> is predicted by a ridge-style calibration model trained on joined
-            price-and-weather history for the selected location. The current features are cloud cover, precipitation,
+            price-and-weather history for the selected location. The visible features are cloud cover, precipitation,
             humidity above 65%, absolute temperature gap from 18C, effective solar, and wind speed.
           </p>
         </CollapsibleTextCard>
@@ -118,7 +118,7 @@ const weatherSourceBadge = computed(() => {
           eyebrow="Research forecast calculation"
         >
           <p class="signal-explainer-card__copy">
-            In the current thesis architecture, raw <strong>NBEATSx</strong> and <strong>TFT</strong> forecasts are useful
+            In the thesis architecture, raw <strong>NBEATSx</strong> and <strong>TFT</strong> forecasts are useful
             only after they become feasible schedules and pass the strict LP/oracle regret gate.
           </p>
           <p class="signal-explainer-card__formula">
@@ -132,8 +132,8 @@ const weatherSourceBadge = computed(() => {
 
         <CollapsibleTextCard
           class="signal-explainer-card-accent"
-          :title="props.explanationMode === 'mvp' ? 'Current market and weather sources' : 'Future forecast evidence'"
-          :eyebrow="props.explanationMode === 'mvp' ? 'Current data sources' : 'Research evidence data sources'"
+          :title="props.explanationMode === 'mvp' ? 'Selected market and weather sources' : 'Future forecast evidence'"
+          :eyebrow="props.explanationMode === 'mvp' ? 'Selected data sources' : 'Research evidence data sources'"
           tone="accent"
         >
           <template v-if="props.explanationMode === 'mvp'">
@@ -146,7 +146,7 @@ const weatherSourceBadge = computed(() => {
               synthetic fallback weather window. The badge above shows which source was used for the visible points.
             </p>
             <p class="signal-explainer-card__copy signal-explainer-card__copy-note">
-              This explanation is specific to the visible preview path. Current thesis evidence is led by V2+
+              This explanation is specific to the visible preview path. Thesis evidence is led by V2+
               schedule/value scoring; the dashboard preview is not live market execution.
             </p>
           </template>
@@ -280,7 +280,7 @@ const weatherSourceBadge = computed(() => {
               Target interpretation: <strong>value_gap = value(best feasible action) - value(chosen action)</strong>
             </p>
             <p class="signal-explainer-card__copy signal-explainer-card__copy-note">
-              That shift makes the explanation consistent with candidate-value learning and avoids carrying today’s heuristic score into a
+              That shift makes the explanation consistent with candidate-value learning and avoids carrying same-hour heuristic score into a
               stronger decision stack.
             </p>
           </template>

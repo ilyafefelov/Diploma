@@ -8,14 +8,17 @@ defineProps<{
 </script>
 
 <template>
-  <section class="surface-panel gatekeeper-panel">
+  <section
+    id="operator-gatekeeper"
+    class="surface-panel gatekeeper-panel"
+  >
     <div class="rail-heading">
       <div>
         <p class="eyebrow">
-          Pydantic gatekeeper
+          Preview scorer
         </p>
         <h2 class="rail-title">
-          Action scores
+          DAM delivery-hour preference
         </h2>
       </div>
       <UIcon
@@ -25,8 +28,8 @@ defineProps<{
     </div>
 
     <p class="gatekeeper-copy">
-      Scores explain the current preview preference. They are not market bids: future Bid Gatekeeper checks Proposed
-      Bids before submission, then dispatch safety checks use live Battery Telemetry.
+      Scores explain the selected DAM delivery-hour preference. They are not market bids or dispatch commands. A future
+      Pydantic Bid Gatekeeper validates ProposedBid payloads before any market submission path exists.
     </p>
 
     <div class="gatekeeper-grid">

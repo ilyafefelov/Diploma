@@ -35,7 +35,7 @@ describe('useOperatorDashboardViewModel', () => {
     expect(viewModel.timelineSegments.value.map(segment => segment.value)).not.toContain('+80 MW')
   })
 
-  it('drives the schedule dock and headline economics from the selected operator strategy', () => {
+  it('keeps the schedule dock, right rail action, and headline economics aligned to the selected DAM preview', () => {
     const baselinePreview = ref({
       battery_metrics: {
         capacity_mwh: 1,
@@ -92,7 +92,12 @@ describe('useOperatorDashboardViewModel', () => {
       isMaterializing: ref(false)
     } as never)
 
-    expect(viewModel.latestRecommendedPowerLabel.value).toBe('0.0 MW')
+    expect(viewModel.latestRecommendedPowerLabel.value).toBe('+0.3 MW')
+    expect(viewModel.batteryStatusLabel.value).toBe('DAM discharge preview')
+    expect(viewModel.gatekeeperActions.value.find(action => action.label === 'SELL')).toMatchObject({
+      active: true,
+      score: 87
+    })
     expect(viewModel.timelineSegments.value.map(segment => segment.label)).toEqual(['Discharge', 'Charge'])
     expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['DAM 19 May, 11:00', 'DAM 19 May, 12:00'])
     expect(viewModel.headlineMetrics.value[0]).toMatchObject({
@@ -101,6 +106,44 @@ describe('useOperatorDashboardViewModel', () => {
       meta: 'schedule_value_learner_v2_plus'
     })
     expect(viewModel.dispatchModeLabel.value).toBe('Preview only')
+  })
+
+  it('counts read-model gaps in the operator health ribbon', () => {
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([
+        {
+          tenant_id: 'tenant_default',
+          name: 'Dnipro Manufacturing Plant',
+          type: 'industrial',
+          latitude: 48.46,
+          longitude: 35.04,
+          timezone: 'Europe/Kyiv'
+        }
+      ]),
+      selectedTenant: ref(null),
+      signalPreview: ref(null),
+      baselinePreview: ref(null),
+      operatorRecommendation: ref(null),
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref(''),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false),
+      readModelErrorCount: ref(3)
+    } as never)
+
+    expect(viewModel.activeAlertCount.value).toBe(3)
+    expect(viewModel.headlineMetrics.value.at(-1)).toMatchObject({
+      label: 'Read-model health',
+      value: '92.4%',
+      meta: '3 read-model gap(s)'
+    })
   })
 })
 

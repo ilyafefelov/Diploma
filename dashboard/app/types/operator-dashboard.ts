@@ -8,6 +8,7 @@ export interface OperatorNavItem {
   label: string
   icon: string
   active: boolean
+  targetId: string
 }
 
 export interface OperatorHeadlineMetric {

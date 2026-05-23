@@ -82,7 +82,11 @@ const {
   loadOperatorRecommendation
 } = useOperatorRecommendation(selectedTenantId, selectedOperatorStrategyId)
 
-const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Current V2+ evidence' : 'Research roadmap')
+const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Selected V2+ evidence' : 'Research roadmap')
+
+const operatorReadModelErrorCount = computed(() => {
+  return defense.activeErrorCount.value + (operatorRecommendationError.value ? 1 : 0)
+})
 
 const {
   activeAlertCount,
@@ -127,7 +131,8 @@ const {
   baselinePreviewError,
   signalPreviewLastLoadedLabel,
   registryLastLoadedAt: lastLoadedAt,
-  isMaterializing
+  isMaterializing,
+  readModelErrorCount: operatorReadModelErrorCount
 })
 
 const primaryBoundaryCopy = computed(() => explanationMode.value === 'mvp'
@@ -245,6 +250,7 @@ onBeforeUnmount(() => {
       <OperatorTopBar
         :clock-label="operatorClockLabel"
         :is-loading="isLoading"
+        :active-alert-count="activeAlertCount"
         :timezone-label="selectedTenant?.timezone || 'Timezone pending'"
         @refresh="refreshRegistry"
       />
@@ -302,6 +308,7 @@ onBeforeUnmount(() => {
             :operator-recommendation="operatorRecommendation"
             :exogenous-signals="defense.exogenousSignals.value"
             :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+            :active-error-count="operatorReadModelErrorCount"
           />
 
           <OperatorFutureStackPanel
@@ -310,6 +317,7 @@ onBeforeUnmount(() => {
             :operator-recommendation="operatorRecommendation"
             :selected-strategy-id="selectedOperatorStrategyId"
             :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+            :active-error-count="operatorReadModelErrorCount"
             @update:selected-strategy-id="value => selectedOperatorStrategyId = value"
           />
 

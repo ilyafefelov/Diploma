@@ -77,7 +77,10 @@ const marketBoundaryItems = computed(() => {
 </script>
 
 <template>
-  <section class="surface-panel market-console">
+  <section
+    id="operator-market"
+    class="surface-panel market-console"
+  >
     <div class="console-heading">
       <div>
         <p class="eyebrow">

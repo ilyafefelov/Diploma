@@ -48,7 +48,10 @@ const emit = defineEmits<{
 
 <template>
   <aside class="operator-right-rail">
-    <OperatorMoodPanel :chips="moodChips" />
+    <OperatorMoodPanel
+      :chips="moodChips"
+      :active-alert-count="activeAlertCount"
+    />
 
     <OperatorBatteryPanel
       :status-label="batteryStatusLabel"

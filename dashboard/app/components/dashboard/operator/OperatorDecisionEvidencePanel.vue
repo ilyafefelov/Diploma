@@ -28,6 +28,7 @@ const props = defineProps<{
   operatorRecommendation: OperatorRecommendationResponse | null
   exogenousSignals: DashboardExogenousSignalsResponse | null
   isLoading: boolean
+  activeErrorCount: number
 }>()
 
 const strategyRows = computed(() => buildOperatorStrategyEvidenceRows(props.modelRows, props.operatorRecommendation))
@@ -46,6 +47,14 @@ const readinessItems = computed(() => buildOperatorDecisionReadinessItems({
   baselinePreview: props.baselinePreview,
   exogenousSignals: props.exogenousSignals
 }))
+
+const readModelBadgeLabel = computed(() => {
+  if (props.isLoading) {
+    return 'Refreshing'
+  }
+
+  return props.activeErrorCount > 0 ? `${props.activeErrorCount} read-model gap(s)` : 'FastAPI read model'
+})
 
 const strategyOption = computed(() => ({
   animationDuration: 650,
@@ -235,8 +244,8 @@ const sensitivityOption = computed(() => ({
       </div>
       <UBadge
         class="status-badge"
-        :label="isLoading ? 'Refreshing' : 'FastAPI read model'"
-        color="success"
+        :label="readModelBadgeLabel"
+        :color="activeErrorCount > 0 ? 'warning' : 'success'"
         variant="soft"
       />
     </div>
@@ -331,7 +340,7 @@ const sensitivityOption = computed(() => ({
       <article>
         <span>Gatekeeper meaning</span>
         <p>
-          Current BUY/SELL/HOLD scores are operator previews. Future Bid Gatekeeper validates Proposed Bids before
+          BUY/SELL/HOLD scores are selected DAM delivery-hour previews. Future Bid Gatekeeper validates Proposed Bids before
           market submission; V2+ remains a read-model schedule preview until Battery Telemetry and bid-gate checks are wired.
         </p>
       </article>
@@ -346,7 +355,7 @@ const sensitivityOption = computed(() => ({
         <span>Business use</span>
         <p>
           Operator should compare physical readiness, expected plan value, regret evidence, and grid risk before treating
-          any schedule as a candidate dispatch review.
+          any schedule as a candidate delivery-day review.
         </p>
       </article>
     </div>

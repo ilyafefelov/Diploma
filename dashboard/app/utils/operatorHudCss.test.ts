@@ -32,9 +32,12 @@ describe('operator HUD CSS', () => {
   it('keeps schedule dock fixed above all operator panels with one-row horizontal schedule scrolling', () => {
     const css = readFileSync(cssPath, 'utf8')
 
+    expect(getSelectorBlock(css, '.operator-shell')).toMatch(/padding-bottom:\s*12rem/)
+    expect(getSelectorBlock(css, '.operator-shell')).toMatch(/overflow-x:\s*clip/)
     expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/position:\s*fixed/)
     expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/bottom:\s*0\.75rem/)
     expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/z-index:\s*250/)
+    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/max-width:\s*calc\(100vw - 2rem\)/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/display:\s*flex/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/overflow-x:\s*auto/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/flex-wrap:\s*nowrap/)
@@ -89,9 +92,22 @@ describe('operator HUD CSS', () => {
       fileURLToPath(new URL('../pages/operator.vue', import.meta.url)),
       'utf8'
     )
+    const batteryPanel = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorBatteryPanel.vue', import.meta.url)),
+      'utf8'
+    )
+    const gatekeeperPanel = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorGatekeeperPanel.vue', import.meta.url)),
+      'utf8'
+    )
+    const moodPanel = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorMoodPanel.vue', import.meta.url)),
+      'utf8'
+    )
 
     expect(topBar).toContain('Operator Preview')
     expect(topBar).not.toContain('BESS Control')
+    expect(topBar).toContain('Preview gaps')
     expect(marketConsole).toContain('DAM hourly planning preview')
     expect(marketConsole).not.toContain('DAM / IDM arbitrage surface')
     expect(marketSignalHero).toContain('DAM hourly')
@@ -107,6 +123,15 @@ describe('operator HUD CSS', () => {
     expect(signalCharts).toContain('Selected schedule and value preview')
     expect(signalCharts).toContain('Review context for selected preview')
     expect(signalCharts).not.toContain('Use now: context for selected preview')
+    expect(batteryPanel).toContain('First DAM action')
+    expect(batteryPanel).toContain('DAM delivery-hour preview')
+    expect(batteryPanel).not.toContain('Intent to dispatch')
+    expect(gatekeeperPanel).toContain('Preview scorer')
+    expect(gatekeeperPanel).toContain('DAM delivery-hour preference')
+    expect(gatekeeperPanel).not.toContain('Pydantic gatekeeper')
+    expect(moodPanel).toContain('Preview posture')
+    expect(moodPanel).not.toContain('Operator mood')
+    expect(moodPanel).not.toContain('Great')
     expect(operatorPage).toContain('DAM delivery-day preview / no ProposedBid / no market submission')
   })
 

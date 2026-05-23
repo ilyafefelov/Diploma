@@ -1,8 +1,11 @@
 /* Shared operator HUD shell extracted from app/pages/operator.vue. */
 .operator-shell {
+  width: 100%;
+  max-width: 100vw;
   min-height: 100vh;
   padding: 0.55rem;
-  padding-bottom: 6.8rem;
+  padding-bottom: 12rem;
+  overflow-x: clip;
 }
 
 .operator-frame {
@@ -173,6 +176,11 @@
   background: var(--plumbob-green);
   box-shadow: 0 0 0 0 rgba(179, 255, 70, 0.28);
   animation: hud-pulse 4.6s ease-out infinite;
+}
+
+.topbar-chip-warning {
+  border-color: rgba(255, 193, 7, 0.56);
+  background: rgba(158, 86, 0, 0.36);
 }
 
 .icon-button {
@@ -1826,7 +1834,8 @@
     var(--operator-left-rail-width)
     minmax(0, 1fr)
     minmax(var(--operator-right-rail-min), var(--operator-right-rail-max));
-  width: min(calc(100vw - 1.1rem), 118rem);
+  width: min(calc(100vw - 2rem), 118rem);
+  max-width: calc(100vw - 2rem);
   transform: translateX(-50%);
   gap: 0.75rem;
   align-items: stretch;
@@ -2080,6 +2089,7 @@
 @media (max-width: 900px) {
   .operator-shell {
     padding: 0.35rem;
+    padding-bottom: 15.5rem;
   }
 
   .operator-topbar,

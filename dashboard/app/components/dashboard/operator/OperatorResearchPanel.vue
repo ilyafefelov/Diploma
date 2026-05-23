@@ -13,7 +13,10 @@ defineProps<{
 </script>
 
 <template>
-  <section class="surface-panel operator-research-panel">
+  <section
+    id="operator-research"
+    class="surface-panel operator-research-panel"
+  >
     <div class="console-heading">
       <div>
         <p class="eyebrow">

@@ -140,7 +140,7 @@ const forecastSpread = computed(() => {
           <span class="hud-mini-stat__tooltip-title">DAM hourly price context</span>
           <span>Formula: P_t = market_price[t]</span>
           <span>Period: {{ latestPricePeriodLabel }}.</span>
-          <span>Definition: hourly DAM planning context used in the current preview; not an IDM bid.</span>
+          <span>Definition: hourly DAM planning context used for the selected delivery-day preview; not an IDM bid.</span>
         </span>
       </article>
       <article

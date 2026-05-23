@@ -1,9 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import type { OperatorMoodChip } from '~/types/operator-dashboard'
 
-defineProps<{
+const props = defineProps<{
   chips: OperatorMoodChip[]
+  activeAlertCount: number
 }>()
+
+const postureLabel = computed(() => props.activeAlertCount > 0 ? 'Gaps' : 'Review')
 </script>
 
 <template>
@@ -11,10 +15,10 @@ defineProps<{
     <div class="rail-heading">
       <div>
         <p class="eyebrow">
-          Operator mood
+          Preview posture
         </p>
         <h2 class="rail-title">
-          Great
+          {{ postureLabel }}
         </h2>
       </div>
       <UIcon
