@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 import ClientVChart from '~/components/dashboard/ClientVChart.vue'
 import CollapsibleTextCard from '~/components/dashboard/CollapsibleTextCard.vue'
@@ -36,6 +36,14 @@ const selectedStrategyValueLabel = computed(() => {
   }
 
   return `${Math.round(props.operatorRecommendation.economics.total_net_value_uah).toLocaleString('en-GB')} UAH`
+})
+
+const isExpanded = ref(false)
+
+const compactPreviewItems = computed(() => {
+  const source = economicsItems.value
+
+  return [source[0], source[2], source[3]].filter((item): item is NonNullable<typeof item> => Boolean(item))
 })
 
 const economicsItems = computed(() => {
@@ -212,6 +220,15 @@ const formatStrategyId = (strategyId: string): string => strategyId
         <p class="baseline-slab__meta baseline-slab__meta-soft">
           Comparator preview only, not selected strategy
         </p>
+        <UButton
+          class="baseline-slab__toggle"
+          :icon="isExpanded ? 'i-lucide-chevron-up' : 'i-lucide-chevron-down'"
+          :label="isExpanded ? 'Collapse baseline' : 'Expand baseline'"
+          color="info"
+          variant="soft"
+          size="xs"
+          @click="isExpanded = !isExpanded"
+        />
       </div>
     </div>
 
@@ -233,248 +250,271 @@ const formatStrategyId = (strategyId: string): string => strategyId
       </article>
     </div>
 
-    <div class="baseline-slab__economics">
-      <article
-        v-for="item in economicsItems"
-        :key="item.label"
-        class="economics-pill economics-pill-interactive"
-        tabindex="0"
-      >
-        <p class="economics-pill__label">
-          {{ item.label }}
-        </p>
-        <p class="economics-pill__value">
-          {{ item.value }}
-        </p>
-
-        <div
-          class="sims-tooltip"
-          role="tooltip"
-        >
-          <div class="sims-tooltip__topline">
-            <span class="sims-tooltip__plumbob" />
-            <p class="sims-tooltip__eyebrow">
-              Metric explainer
-            </p>
-          </div>
-          <p class="sims-tooltip__title">
-            {{ item.tooltipTitle }}
-          </p>
-          <p class="sims-tooltip__body">
-            {{ item.tooltipBody }}
-          </p>
-          <p class="sims-tooltip__formula">
-            {{ item.tooltipFormula }}
-          </p>
-        </div>
-      </article>
-    </div>
-
-    <div class="baseline-feasible-strip">
-      <article
-        v-for="item in feasiblePlanItems"
-        :key="item.label"
-        class="feasible-pill feasible-pill-interactive"
-        tabindex="0"
-      >
-        <p class="feasible-pill__label">
-          {{ item.label }}
-        </p>
-        <p class="feasible-pill__value">
-          {{ item.value }}
-        </p>
-        <p class="feasible-pill__note">
-          {{ item.note }}
-        </p>
-        <div
-          class="sims-tooltip"
-          role="tooltip"
-        >
-          <div class="sims-tooltip__topline">
-            <span class="sims-tooltip__plumbob" />
-            <p class="sims-tooltip__eyebrow">
-              Metric explainer
-            </p>
-          </div>
-          <p class="sims-tooltip__title">
-            {{ item.tooltipTitle }}
-          </p>
-          <p class="sims-tooltip__body">
-            {{ item.tooltipBody }}
-          </p>
-          <p class="sims-tooltip__formula">
-            {{ item.tooltipFormula }}
-          </p>
-        </div>
-      </article>
-    </div>
-
-    <div class="baseline-slab__grid">
-      <section class="baseline-card baseline-card-forecast">
-        <div class="baseline-card__header">
-          <div>
-            <p class="baseline-card__eyebrow">
-              Forecast horizon
-            </p>
-            <h4 class="baseline-card__title">
-              Baseline LP forecast input
-            </h4>
-            <p class="baseline-card__summary">
-              This is the price curve used by the baseline LP comparator, not the selected strategy evidence path. Y-axis
-              values are quoted in <strong>UAH/MWh</strong>.
-            </p>
-          </div>
-        </div>
-
-        <div
-          v-if="isLoading"
-          class="baseline-chart baseline-chart-fallback"
-        >
-          Loading baseline forecast...
-        </div>
-        <ClientVChart
-          v-else
-          :option="forecastOption"
-          autoresize
-          class="baseline-chart"
-        />
-      </section>
-
-      <section class="baseline-card baseline-card-balance">
-        <div class="baseline-card__header">
-          <div>
-            <p class="baseline-card__eyebrow">
-              Feasible plan
-            </p>
-            <h4 class="baseline-card__title">
-              Baseline signed MW schedule and projected SOC
-            </h4>
-            <p class="baseline-card__summary">
-              Bars use signed <strong>MW</strong>; the pink line is projected <strong>SOC %</strong> after each baseline
-              feasible step. Positive MW means discharge, negative MW means charge.
-            </p>
-          </div>
-        </div>
-
-        <div
-          v-if="isLoading"
-          class="baseline-chart baseline-chart-fallback"
-        >
-          Loading projected state...
-        </div>
-        <ClientVChart
-          v-else
-          :option="scheduleOption"
-          autoresize
-          class="baseline-chart"
-        />
-      </section>
-    </div>
-
-    <div class="baseline-explainer-grid">
-      <CollapsibleTextCard
-        :title="props.explanationMode === 'mvp' ? 'Where the selected baseline forecast comes from' : 'Where the future forecast should come from'"
-        :eyebrow="props.explanationMode === 'mvp' ? 'Selected forecast source' : 'Future forecast source'"
-      >
-        <template v-if="props.explanationMode === 'mvp'">
-          <p class="baseline-explainer-card__copy">
-            The baseline forecast line comes from <strong>HourlyDamBaselineSolver.solve_next_dispatch</strong> in the API.
-            The solver receives tenant-aware DAM price history, selected starting SOC, and battery limits, then returns hourly
-            points from the <strong>forecast</strong> field. When the real-data stack is materialized, that history is
-            observed OREE DAM data; any synthetic fallback is demo-grade only.
-          </p>
-          <p class="baseline-explainer-card__formula">
-            Displayed series: <strong>forecast[i] = solve_result.forecast[i].predicted_price_uah_mwh</strong>
-          </p>
-          <p class="baseline-explainer-card__copy">
-            This panel is still the baseline LP preview, not an NBEATSx/TFT forecast and not bid intent. Starting SOC source:
-            <strong>{{ startingSocSourceLabel }}</strong>; telemetry freshness:
-            <strong>{{ telemetryFreshnessLabel }}</strong>.
-            The selected strategy shown elsewhere is <strong>{{ selectedStrategyLabel }}</strong>.
-          </p>
-        </template>
-        <template v-else>
-          <p class="baseline-explainer-card__eyebrow">
-            Future forecast source
-          </p>
-          <p class="baseline-explainer-card__copy">
-            In production, this chart should be fed by the dedicated forecast stack, most likely <strong>NBEATSx</strong>
-            and <strong>TFT</strong>, with richer weather, calendar, and market-state features.
-          </p>
-          <p class="baseline-explainer-card__formula">
-            Target series: <strong>forecast = model(price_history, weather, calendar, market_state)</strong>
-          </p>
-          <p class="baseline-explainer-card__copy">
-            The explanation should move from “solver output” to “forecast model output plus uncertainty and attribution.”
-          </p>
-        </template>
-      </CollapsibleTextCard>
-
-      <CollapsibleTextCard
-        :title="props.explanationMode === 'mvp' ? 'How the feasible plan is built now' : 'How the future decision path should work'"
-        :eyebrow="props.explanationMode === 'mvp' ? 'Selected feasible plan logic' : 'Future decision logic'"
-        tone="accent"
-      >
-        <template v-if="props.explanationMode === 'mvp'">
-          <p class="baseline-explainer-card__copy">
-            The bar chart uses <strong>recommendation_schedule[].recommended_net_power_mw</strong>. The pink line uses
-            <strong>projected_state.trace[].soc_after_fraction</strong> converted to percent after feasibility simulation.
-          </p>
-          <p class="baseline-explainer-card__formula">
-            Displayed SOC: <strong>soc_percent = projected_state.trace[i].soc_after_fraction * 100</strong>
-          </p>
-          <p class="baseline-explainer-card__copy">
-            The plan is feasible because it is run through the projected battery model with capacity, power, SOC limits,
-            efficiency, and degradation cost taken from the battery metrics in the API response.
-          </p>
-        </template>
-        <template v-else>
-          <p class="baseline-explainer-card__eyebrow">
-            Research decision logic
-          </p>
-          <p class="baseline-explainer-card__copy">
-            Future DT/LAVA work must compete against frozen V2+ first. Any learned action path should still be checked by
-            the same deterministic battery and gatekeeper constraints.
-          </p>
-          <p class="baseline-explainer-card__formula">
-            Research flow: <strong>forecast state + battery state + return target -> candidate schedule -> feasibility check</strong>
-          </p>
-          <p class="baseline-explainer-card__copy">
-            The SOC line can stay, but its explanation should tie back to the validated policy trajectory rather than the
-            selected LP recommendation schedule.
-          </p>
-        </template>
-      </CollapsibleTextCard>
-    </div>
-
-    <CollapsibleTextCard
-      class="baseline-boundary"
-      title="Planning boundary"
-      eyebrow="Operator boundary"
-      tone="default"
+    <div
+      v-if="!isExpanded"
+      class="baseline-slab__compact-preview"
     >
-      <template v-if="props.explanationMode === 'mvp'">
-        <p class="baseline-boundary__copy">
-          This surface shows a feasible hourly recommendation derived from the baseline LP comparator and constrained
-          battery state. It is useful for comparison with the selected strategy preview, but it is not the chosen schedule
-          unless the user explicitly selects the baseline strategy.
-        </p>
-        <p class="baseline-boundary__copy baseline-boundary__copy-strong">
-          Feasible plan means the preview already respects the visible power corridor, SOC guardrails, interval grain,
-          and degradation-aware projected state.
-        </p>
-      </template>
-      <template v-else>
-        <p class="baseline-boundary__copy">
-          In the future stack, this panel should become the policy-review surface: forecast output, chosen trajectory,
-          deterministic constraint checks, and operator-readable reasons for the action path.
-        </p>
-        <p class="baseline-boundary__copy baseline-boundary__copy-strong">
-          The LP surface remains useful as a benchmark, but the production explanation should reference the final policy,
-          its counterfactual value, and the safety checks that accepted or rejected it.
-        </p>
-      </template>
-    </CollapsibleTextCard>
+      <article
+        v-for="item in compactPreviewItems"
+        :key="`compact-${item.label}`"
+        class="baseline-compact-pill"
+      >
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
+      </article>
+      <p class="baseline-slab__compact-copy">
+        Compact view keeps baseline value, throughput, and comparator role visible. Open full baseline to inspect forecast
+        shape, feasible SOC path, and method details.
+      </p>
+    </div>
+
+    <div
+      v-if="isExpanded"
+      class="baseline-slab__expanded"
+    >
+      <div class="baseline-slab__economics">
+        <article
+          v-for="item in economicsItems"
+          :key="item.label"
+          class="economics-pill economics-pill-interactive"
+          tabindex="0"
+        >
+          <p class="economics-pill__label">
+            {{ item.label }}
+          </p>
+          <p class="economics-pill__value">
+            {{ item.value }}
+          </p>
+
+          <div
+            class="sims-tooltip"
+            role="tooltip"
+          >
+            <div class="sims-tooltip__topline">
+              <span class="sims-tooltip__plumbob" />
+              <p class="sims-tooltip__eyebrow">
+                Metric explainer
+              </p>
+            </div>
+            <p class="sims-tooltip__title">
+              {{ item.tooltipTitle }}
+            </p>
+            <p class="sims-tooltip__body">
+              {{ item.tooltipBody }}
+            </p>
+            <p class="sims-tooltip__formula">
+              {{ item.tooltipFormula }}
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <div class="baseline-feasible-strip">
+        <article
+          v-for="item in feasiblePlanItems"
+          :key="item.label"
+          class="feasible-pill feasible-pill-interactive"
+          tabindex="0"
+        >
+          <p class="feasible-pill__label">
+            {{ item.label }}
+          </p>
+          <p class="feasible-pill__value">
+            {{ item.value }}
+          </p>
+          <p class="feasible-pill__note">
+            {{ item.note }}
+          </p>
+          <div
+            class="sims-tooltip"
+            role="tooltip"
+          >
+            <div class="sims-tooltip__topline">
+              <span class="sims-tooltip__plumbob" />
+              <p class="sims-tooltip__eyebrow">
+                Metric explainer
+              </p>
+            </div>
+            <p class="sims-tooltip__title">
+              {{ item.tooltipTitle }}
+            </p>
+            <p class="sims-tooltip__body">
+              {{ item.tooltipBody }}
+            </p>
+            <p class="sims-tooltip__formula">
+              {{ item.tooltipFormula }}
+            </p>
+          </div>
+        </article>
+      </div>
+
+      <div class="baseline-slab__grid">
+        <section class="baseline-card baseline-card-forecast">
+          <div class="baseline-card__header">
+            <div>
+              <p class="baseline-card__eyebrow">
+                Forecast horizon
+              </p>
+              <h4 class="baseline-card__title">
+                Baseline LP forecast input
+              </h4>
+              <p class="baseline-card__summary">
+                This is the price curve used by the baseline LP comparator, not the selected strategy evidence path. Y-axis
+                values are quoted in <strong>UAH/MWh</strong>.
+              </p>
+            </div>
+          </div>
+
+          <div
+            v-if="isLoading"
+            class="baseline-chart baseline-chart-fallback"
+          >
+            Loading baseline forecast...
+          </div>
+          <ClientVChart
+            v-else
+            :option="forecastOption"
+            autoresize
+            class="baseline-chart"
+          />
+        </section>
+
+        <section class="baseline-card baseline-card-balance">
+          <div class="baseline-card__header">
+            <div>
+              <p class="baseline-card__eyebrow">
+                Feasible plan
+              </p>
+              <h4 class="baseline-card__title">
+                Baseline signed MW schedule and projected SOC
+              </h4>
+              <p class="baseline-card__summary">
+                Bars use signed <strong>MW</strong>; the pink line is projected <strong>SOC %</strong> after each baseline
+                feasible step. Positive MW means discharge, negative MW means charge.
+              </p>
+            </div>
+          </div>
+
+          <div
+            v-if="isLoading"
+            class="baseline-chart baseline-chart-fallback"
+          >
+            Loading projected state...
+          </div>
+          <ClientVChart
+            v-else
+            :option="scheduleOption"
+            autoresize
+            class="baseline-chart"
+          />
+        </section>
+      </div>
+
+      <div class="baseline-explainer-grid">
+        <CollapsibleTextCard
+          :title="props.explanationMode === 'mvp' ? 'Where the selected baseline forecast comes from' : 'Where the future forecast should come from'"
+          :eyebrow="props.explanationMode === 'mvp' ? 'Selected forecast source' : 'Future forecast source'"
+        >
+          <template v-if="props.explanationMode === 'mvp'">
+            <p class="baseline-explainer-card__copy">
+              The baseline forecast line comes from <strong>HourlyDamBaselineSolver.solve_next_dispatch</strong> in the API.
+              The solver receives tenant-aware DAM price history, selected starting SOC, and battery limits, then returns hourly
+              points from the <strong>forecast</strong> field. When the real-data stack is materialized, that history is
+              observed OREE DAM data; any synthetic fallback is demo-grade only.
+            </p>
+            <p class="baseline-explainer-card__formula">
+              Displayed series: <strong>forecast[i] = solve_result.forecast[i].predicted_price_uah_mwh</strong>
+            </p>
+            <p class="baseline-explainer-card__copy">
+              This panel is still the baseline LP preview, not an NBEATSx/TFT forecast and not bid intent. Starting SOC source:
+              <strong>{{ startingSocSourceLabel }}</strong>; telemetry freshness:
+              <strong>{{ telemetryFreshnessLabel }}</strong>.
+              The selected strategy shown elsewhere is <strong>{{ selectedStrategyLabel }}</strong>.
+            </p>
+          </template>
+          <template v-else>
+            <p class="baseline-explainer-card__eyebrow">
+              Future forecast source
+            </p>
+            <p class="baseline-explainer-card__copy">
+              In production, this chart should be fed by the dedicated forecast stack, most likely <strong>NBEATSx</strong>
+              and <strong>TFT</strong>, with richer weather, calendar, and market-state features.
+            </p>
+            <p class="baseline-explainer-card__formula">
+              Target series: <strong>forecast = model(price_history, weather, calendar, market_state)</strong>
+            </p>
+            <p class="baseline-explainer-card__copy">
+              The explanation should move from “solver output” to “forecast model output plus uncertainty and attribution.”
+            </p>
+          </template>
+        </CollapsibleTextCard>
+
+        <CollapsibleTextCard
+          :title="props.explanationMode === 'mvp' ? 'How the feasible plan is built now' : 'How the future decision path should work'"
+          :eyebrow="props.explanationMode === 'mvp' ? 'Selected feasible plan logic' : 'Future decision logic'"
+          tone="accent"
+        >
+          <template v-if="props.explanationMode === 'mvp'">
+            <p class="baseline-explainer-card__copy">
+              The bar chart uses <strong>recommendation_schedule[].recommended_net_power_mw</strong>. The pink line uses
+              <strong>projected_state.trace[].soc_after_fraction</strong> converted to percent after feasibility simulation.
+            </p>
+            <p class="baseline-explainer-card__formula">
+              Displayed SOC: <strong>soc_percent = projected_state.trace[i].soc_after_fraction * 100</strong>
+            </p>
+            <p class="baseline-explainer-card__copy">
+              The plan is feasible because it is run through the projected battery model with capacity, power, SOC limits,
+              efficiency, and degradation cost taken from the battery metrics in the API response.
+            </p>
+          </template>
+          <template v-else>
+            <p class="baseline-explainer-card__eyebrow">
+              Research decision logic
+            </p>
+            <p class="baseline-explainer-card__copy">
+              Future DT/LAVA work must compete against frozen V2+ first. Any learned action path should still be checked by
+              the same deterministic battery and gatekeeper constraints.
+            </p>
+            <p class="baseline-explainer-card__formula">
+              Research flow: <strong>forecast state + battery state + return target -> candidate schedule -> feasibility check</strong>
+            </p>
+            <p class="baseline-explainer-card__copy">
+              The SOC line can stay, but its explanation should tie back to the validated policy trajectory rather than the
+              selected LP recommendation schedule.
+            </p>
+          </template>
+        </CollapsibleTextCard>
+      </div>
+
+      <CollapsibleTextCard
+        class="baseline-boundary"
+        title="Planning boundary"
+        eyebrow="Operator boundary"
+        tone="default"
+      >
+        <template v-if="props.explanationMode === 'mvp'">
+          <p class="baseline-boundary__copy">
+            This surface shows a feasible hourly recommendation derived from the baseline LP comparator and constrained
+            battery state. It is useful for comparison with the selected strategy preview, but it is not the chosen schedule
+            unless the user explicitly selects the baseline strategy.
+          </p>
+          <p class="baseline-boundary__copy baseline-boundary__copy-strong">
+            Feasible plan means the preview already respects the visible power corridor, SOC guardrails, interval grain,
+            and degradation-aware projected state.
+          </p>
+        </template>
+        <template v-else>
+          <p class="baseline-boundary__copy">
+            In the future stack, this panel should become the policy-review surface: forecast output, chosen trajectory,
+            deterministic constraint checks, and operator-readable reasons for the action path.
+          </p>
+          <p class="baseline-boundary__copy baseline-boundary__copy-strong">
+            The LP surface remains useful as a benchmark, but the production explanation should reference the final policy,
+            its counterfactual value, and the safety checks that accepted or rejected it.
+          </p>
+        </template>
+      </CollapsibleTextCard>
+    </div>
   </section>
 </template>
 
@@ -555,11 +595,21 @@ const formatStrategyId = (strategyId: string): string => strategyId
   color: rgba(229, 249, 255, 0.68);
 }
 
+.baseline-slab__toggle {
+  justify-self: end;
+}
+
 .baseline-slab__economics,
+.baseline-slab__compact-preview,
 .baseline-comparison-strip,
 .baseline-feasible-strip,
 .baseline-slab__grid,
 .baseline-explainer-grid {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.baseline-slab__expanded {
   display: grid;
   gap: 0.9rem;
 }
@@ -607,6 +657,44 @@ const formatStrategyId = (strategyId: string): string => strategyId
   font-size: 0.72rem;
   font-weight: 750;
   line-height: 1.32;
+}
+
+.baseline-slab__compact-preview {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.baseline-compact-pill {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid rgba(202, 249, 255, 0.32);
+  border-radius: 0.7rem;
+  background:
+    radial-gradient(circle at top right, rgba(215, 255, 79, 0.14), transparent 34%),
+    linear-gradient(180deg, rgba(8, 124, 196, 0.78), rgba(3, 80, 142, 0.76));
+  padding: 0.58rem 0.68rem;
+}
+
+.baseline-compact-pill span {
+  color: rgba(215, 255, 79, 0.82);
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.baseline-compact-pill strong {
+  color: #b8ff32;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.baseline-slab__compact-copy {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgba(229, 249, 255, 0.82);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.45;
 }
 
 .economics-pill,
@@ -907,6 +995,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
 }
 
 @media (max-width: 859px) {
+  .baseline-slab__compact-preview,
   .baseline-comparison-strip {
     grid-template-columns: 1fr;
   }

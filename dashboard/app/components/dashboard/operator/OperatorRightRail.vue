@@ -4,6 +4,7 @@ import OperatorGatekeeperPanel from '~/components/dashboard/operator/OperatorGat
 import OperatorMoodPanel from '~/components/dashboard/operator/OperatorMoodPanel.vue'
 import OperatorNotesPanel from '~/components/dashboard/operator/OperatorNotesPanel.vue'
 import OperatorWeatherControlsPanel from '~/components/dashboard/operator/OperatorWeatherControlsPanel.vue'
+import type { GatekeeperValidationStatusResponse } from '~/types/control-plane'
 import type {
   OperatorGatekeeperAction,
   OperatorMoodChip,
@@ -27,6 +28,7 @@ defineProps<{
   batteryTelemetryIngestTooltip: string
   latestRecommendedPowerLabel: string
   gatekeeperActions: OperatorGatekeeperAction[]
+  gatekeeperStatus: GatekeeperValidationStatusResponse | null
   activeAlertCount: number
   statusLabel: string
   isPreparing: boolean
@@ -68,6 +70,7 @@ const emit = defineEmits<{
 
     <OperatorGatekeeperPanel
       :actions="gatekeeperActions"
+      :gatekeeper-status="gatekeeperStatus"
       :active-alert-count="activeAlertCount"
     />
 

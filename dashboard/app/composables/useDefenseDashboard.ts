@@ -9,6 +9,7 @@ import type {
   DflScheduleValueProductionGateResponse,
   ForecastDispatchSensitivityResponse,
   FutureStackPreviewResponse,
+  GatekeeperValidationStatusResponse,
   RealDataBenchmarkResponse,
   SimulatedLiveTradingResponse
 } from '~/types/control-plane'
@@ -31,6 +32,7 @@ type DefenseResourceKey
     | 'futureStack'
     | 'exogenousSignals'
     | 'batteryState'
+    | 'gatekeeperValidationStatus'
 
 type DefenseErrors = Partial<Record<DefenseResourceKey, string>>
 
@@ -47,6 +49,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
   const futureStack = ref<FutureStackPreviewResponse | null>(null)
   const exogenousSignals = ref<DashboardExogenousSignalsResponse | null>(null)
   const batteryState = ref<DashboardBatteryStateResponse | null>(null)
+  const gatekeeperValidationStatus = ref<GatekeeperValidationStatusResponse | null>(null)
   const errors = ref<DefenseErrors>({})
   const isLoading = ref(false)
   const lastLoadedAt = ref<number | null>(null)
@@ -135,7 +138,14 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
       ),
       loadResource('futureStack', futureStack, '/api/control-plane/dashboard/future-stack-preview', {}, true),
       loadResource('exogenousSignals', exogenousSignals, '/api/control-plane/dashboard/exogenous-signals'),
-      loadResource('batteryState', batteryState, '/api/control-plane/dashboard/battery-state')
+      loadResource('batteryState', batteryState, '/api/control-plane/dashboard/battery-state'),
+      loadResource(
+        'gatekeeperValidationStatus',
+        gatekeeperValidationStatus,
+        '/api/control-plane/dashboard/gatekeeper-validation-status',
+        {},
+        true
+      )
     ])
 
     lastLoadedAt.value = Date.now()
@@ -183,6 +193,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     futureStack.value = null
     exogenousSignals.value = null
     batteryState.value = null
+    gatekeeperValidationStatus.value = null
     errors.value = {}
   }
 
@@ -206,6 +217,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     lastLoadedLabel,
     loadDefenseDashboard,
     futureStack,
+    gatekeeperValidationStatus,
     modelRows,
     offlineStrategyPromotion,
     researchReadinessRows,

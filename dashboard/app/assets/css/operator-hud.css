@@ -1926,6 +1926,10 @@
   background: linear-gradient(180deg, #85e63e, #2a9d18);
 }
 
+.schedule-segment--orange {
+  background: linear-gradient(180deg, #f7b955, #c66f12);
+}
+
 .schedule-segment > span:not(.schedule-tooltip),
 .schedule-segment > small {
   font-size: 0.72rem;

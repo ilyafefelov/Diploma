@@ -344,6 +344,7 @@ onBeforeUnmount(() => {
           :battery-telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
           :latest-recommended-power-label="latestRecommendedPowerLabel"
           :gatekeeper-actions="gatekeeperActions"
+          :gatekeeper-status="defense.gatekeeperValidationStatus.value"
           :active-alert-count="activeAlertCount"
           :status-label="statusLabel"
           :is-preparing="isPreparing"

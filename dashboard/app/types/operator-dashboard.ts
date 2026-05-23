@@ -52,7 +52,7 @@ export interface OperatorTimelineSegment {
   time: string
   label: 'Charge' | 'Discharge' | 'Hold' | 'Preview pending'
   value: string
-  tone: 'blue' | 'green'
+  tone: 'blue' | 'green' | 'orange'
   tooltipTitle: string
   tooltipBody: string
 }

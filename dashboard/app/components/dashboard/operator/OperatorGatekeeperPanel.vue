@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { GatekeeperValidationStatusResponse } from '~/types/control-plane'
 import type { OperatorGatekeeperAction } from '~/types/operator-dashboard'
 
 defineProps<{
   actions: OperatorGatekeeperAction[]
   activeAlertCount: number
+  gatekeeperStatus: GatekeeperValidationStatusResponse | null
 }>()
 </script>
 
@@ -31,6 +33,16 @@ defineProps<{
       Scores explain the selected DAM delivery-hour preference. They are not market bids or dispatch commands. A future
       Pydantic Bid Gatekeeper validates ProposedBid payloads before any market submission path exists.
     </p>
+
+    <div class="gatekeeper-status-strip">
+      <span>{{ gatekeeperStatus?.status === 'blocked' ? 'Latest bid validation fallback' : 'Bid validation log' }}</span>
+      <strong>{{ gatekeeperStatus?.canonical_outcome || 'No failures' }}</strong>
+      <small>
+        {{ gatekeeperStatus?.status === 'blocked'
+          ? `${gatekeeperStatus.contract_type || 'Contract'} blocked before submission`
+          : 'No market-stage validation failures recorded' }}
+      </small>
+    </div>
 
     <div class="gatekeeper-grid">
       <UButton
@@ -82,5 +94,37 @@ defineProps<{
   font-size: 0.74rem;
   font-weight: 750;
   line-height: 1.4;
+}
+
+.gatekeeper-status-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.16rem;
+  padding: 0.64rem 0.76rem;
+  border: 1px solid rgba(160, 226, 255, 0.22);
+  border-radius: 0.5rem;
+  background: rgba(0, 56, 106, 0.24);
+  color: rgba(229, 249, 255, 0.86);
+}
+
+.gatekeeper-status-strip span {
+  color: #c9ff3d;
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gatekeeper-status-strip strong {
+  color: #ffffff;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.gatekeeper-status-strip small {
+  color: rgba(229, 249, 255, 0.74);
+  font-size: 0.68rem;
+  font-weight: 760;
+  line-height: 1.25;
 }
 </style>

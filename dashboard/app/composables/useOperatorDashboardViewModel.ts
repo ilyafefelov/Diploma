@@ -377,7 +377,11 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
         time: formatDamDeliveryLabel(point.interval_start),
         label,
         value: formatSignedMw(point.recommended_net_power_mw),
-        tone: label === 'Hold' ? 'blue' : 'green',
+        tone: label === 'Discharge'
+          ? 'green'
+          : label === 'Charge'
+            ? 'orange'
+            : 'blue',
         tooltipTitle: `${label} for ${formatDamDeliveryLabel(point.interval_start)}`,
         tooltipBody: timelineTooltipBody(label, point.recommended_net_power_mw)
       }

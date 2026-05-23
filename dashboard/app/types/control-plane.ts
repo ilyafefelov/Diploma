@@ -601,3 +601,19 @@ export interface OperatorStatus {
   payload: Record<string, unknown> | null
   last_error: string | null
 }
+
+export interface GatekeeperValidationStatusResponse {
+  tenant_id: string
+  status: 'blocked' | 'no_validation_failures_recorded'
+  validation_stage: string | null
+  contract_type: string | null
+  canonical_outcome: 'NO_BID' | 'HOLD' | null
+  venue: string | null
+  interval_start: string | null
+  duration_minutes: number | null
+  failure_reason: string | null
+  created_at: string | null
+  no_bid_semantics: string
+  hold_semantics: string
+  latest_failure_id: string | null
+}

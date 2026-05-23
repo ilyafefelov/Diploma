@@ -99,6 +99,7 @@ describe('useOperatorDashboardViewModel', () => {
       score: 87
     })
     expect(viewModel.timelineSegments.value.map(segment => segment.label)).toEqual(['Discharge', 'Charge'])
+    expect(viewModel.timelineSegments.value.map(segment => segment.tone)).toEqual(['green', 'orange'])
     expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['DAM 19 May, 11:00', 'DAM 19 May, 12:00'])
     expect(viewModel.headlineMetrics.value[0]).toMatchObject({
       label: 'Net plan value',

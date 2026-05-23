@@ -29,6 +29,16 @@ describe('operator HUD CSS', () => {
     expect(baselinePreview).not.toContain('@keyframes slab-sheen')
   })
 
+  it('keeps baseline comparator collapsed by default with explicit expand control', () => {
+    const baselinePreview = readFileSync(baselinePreviewPath, 'utf8')
+
+    expect(baselinePreview).toContain('isExpanded = ref(false)')
+    expect(baselinePreview).toContain('Expand baseline')
+    expect(baselinePreview).toContain('Collapse baseline')
+    expect(baselinePreview).toContain('v-if="!isExpanded"')
+    expect(baselinePreview).toContain('Compact view keeps baseline value')
+  })
+
   it('keeps schedule dock fixed above all operator panels with one-row horizontal schedule scrolling', () => {
     const css = readFileSync(cssPath, 'utf8')
 
@@ -41,6 +51,7 @@ describe('operator HUD CSS', () => {
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/display:\s*flex/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/overflow-x:\s*auto/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/flex-wrap:\s*nowrap/)
+    expect(getSelectorBlock(css, '.schedule-segment--orange')).toMatch(/background:\s*linear-gradient/)
   })
 
   it('renders schedule hover explanation outside the clipped horizontal scroller', () => {
