@@ -217,6 +217,29 @@ Ukrainian point-in-time context that can predict when templates transfer, or a
 new candidate family with lower tail-risk, before another selector or DT/LAVA
 target is justified.
 
+V10 transfer-audit follow-up:
+
+- new assets:
+  `dfl_v10_tail_risk_transfer_audit_frame` and
+  `dfl_v10_learning_ceiling_decision_frame`;
+- the audit classifies every generated V10 candidate into exactly one transfer
+  class: safe transfer, template-regime mismatch, forecast-extrema shift,
+  SOC-path failure, throughput tail-risk, missing prior context, or no
+  selector-safe signal;
+- the learning-ceiling decision blocks `dt_ready` when final generated
+  non-tail-risk safe switches are absent or the non-tail-risk oracle upper bound
+  cannot clear the V2+ gate;
+- materialized run `9e16fa67-566c-41c3-9de4-82a1dfb972a9` produced `1,204`
+  transfer-audit rows. The `126` final-holdout generated V10 candidates split
+  into `56` forecast-extrema-shift rows and `70` missing-prior-context rows;
+  all `126` were tail-risk, final non-tail-risk material safe switches were
+  `0`, and the learning-ceiling decision was
+  `stop_modeling_current_candidate_space`;
+- this is the closure gate before any future DT/LAVA branch. If it emits
+  `stop_modeling_current_candidate_space`, the next branch is thesis/demo
+  closure plus Ukrainian context/data acquisition or a lower-tail-risk
+  candidate family, not another selector over V10.
+
 ## Asset Path
 
 | Asset | Purpose |
@@ -239,6 +262,8 @@ target is justified.
 | `dfl_oracle_template_candidate_library_v10_frame` | Mines train/prior non-tail-risk safe-switch templates from the V9 label panel and recreates them as pending strict-rescore candidates for each compatible later anchor. This is template-backed candidate generation, not final-holdout oracle copying. |
 | `dfl_oracle_template_candidate_v10_strict_rescore_frame` | Strict-scores V10 generated templates against realized prices and oracle value with the unchanged LP/oracle evaluator. |
 | `dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame` | Rebuilds candidate-value labels after V10 strict rescore, marking material safe switches, tail-risk rows, and next-selector eligibility. |
+| `dfl_v10_tail_risk_transfer_audit_frame` | Classifies generated V10 template transfer outcomes and keeps final realized regret in diagnostic fields only. |
+| `dfl_v10_learning_ceiling_decision_frame` | Emits `dt_ready`, `candidate_generation_needed`, `backfill_needed`, or `stop_modeling_current_candidate_space` from prior-supported safe-switch counts and non-tail-risk oracle upside. |
 
 Tracked config:
 
@@ -352,6 +377,15 @@ V10 oracle-template strict rescore and label rebuild:
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
   --select dfl_oracle_template_candidate_library_v10_frame,dfl_oracle_template_candidate_v10_strict_rescore_frame,dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame `
+  -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
+```
+
+V10 transfer audit and learning-ceiling decision:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize `
+  -m smart_arbitrage.defs `
+  --select dfl_v10_tail_risk_transfer_audit_frame,dfl_v10_learning_ceiling_decision_frame `
   -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
 ```
 

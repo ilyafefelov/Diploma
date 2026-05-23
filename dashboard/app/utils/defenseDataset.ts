@@ -287,8 +287,8 @@ export const CURRENT_TFT_USE_DECISION: DefenseTftUseDecision[] = [
   },
   {
     label: 'How to make TFT usable',
-    value: 'future branch',
-    body: 'Train a stronger prior-only portfolio selector or DT/LAVA schedule-neighbor model that predicts when TFT risk schedules beat V2+, then re-score through the same gate.',
+    value: 'teacher signal',
+    body: 'Use TFT-like wins only as teacher/context signal. V10 showed that copied safe-looking templates can become tail-risk on final holdout, so any future selector or DT/LAVA branch must first pass the learning-ceiling audit.',
     status: 'next'
   }
 ]
@@ -330,8 +330,8 @@ export const CURRENT_TFT_SAFE_SELECTION_EXPLAINER: DefenseTftSafeSelectionExplan
     label: 'What next',
     englishTitle: 'Use TFT as a teacher signal, not a shortcut',
     ukrainianTitle: 'TFT треба використати як teacher signal, не shortcut',
-    englishBody: 'Next work is to build stronger prior context and candidate/value or DT/LAVA schedule-neighbor supervision that learns when TFT-like risk schedules help. Promotion still requires beating V2+ before the fact under the same strict gate.',
-    ukrainianBody: 'Наступний крок: сильніший prior context і candidate/value або DT/LAVA schedule-neighbor supervision, який навчиться передбачати, коли TFT-like risk schedules допомагають. Promotion можливий тільки якщо кандидат beat V2+ before the fact under the same strict gate.',
+    englishBody: 'Next work is not to copy the winning TFT rows directly. The V10 transfer audit now checks whether safe-looking templates stay non-tail-risk before DT/LAVA or another selector is allowed to learn from them.',
+    ukrainianBody: 'Наступний крок не в тому, щоб прямо копіювати TFT rows, які виграли post-hoc. V10 transfer audit тепер перевіряє, чи safe-looking templates залишаються non-tail-risk, перш ніж DT/LAVA або інший selector зможе на них навчатися.',
     status: 'next'
   }
 ]
@@ -370,8 +370,8 @@ export const CURRENT_V2_PLUS_IMPROVEMENT_STORY: DefenseV2PlusImprovementPoint[] 
 export const CURRENT_DT_LAVA_NEXT_STEPS: DefenseDtLavaPlanStep[] = [
   {
     label: 'Teacher data',
-    value: 'V2+ + oracle schedules',
-    body: 'Train only on prior/train anchors with V2+, oracle/high-value schedules, and candidate value labels. Final holdout stays scoring-only.',
+    value: 'blocked by V10 gate',
+    body: 'Train only after V10/V-next produces prior-supported, non-tail-risk material safe-switch labels. The latest V10 gate had 0 final safe switches and 126/126 final generated rows marked tail-risk, so final holdout stays scoring-only.',
     status: 'input'
   },
   {
@@ -449,16 +449,16 @@ export const CURRENT_BILINGUAL_STRATEGY_EXPLAINER: DefenseBilingualExplainerSect
   {
     label: 'Path to DT/LAVA',
     englishTitle: 'How V2+ becomes the teacher for DT/LAVA',
-    englishBody: 'The next DT/LAVA branch should not emit raw hourly BUY/SELL/HOLD first. It should learn from V2+, oracle, and high-value feasible schedules, condition on return-to-go, and predict schedule family, schedule block, or candidate index. LAVA-style work uses precomputed LP-feasible neighbors and value labels so the learner sees decision quality without live solver calls inside training.',
+    englishBody: 'The next DT/LAVA branch should not emit raw hourly BUY/SELL/HOLD first, and it should not start until the V10 learning-ceiling gate finds transferable non-tail-risk teacher labels. When that exists, it should learn from V2+, oracle, and high-value feasible schedules, condition on return-to-go, and predict schedule family, schedule block, or candidate index. LAVA-style work uses precomputed LP-feasible neighbors and value labels so the learner sees decision quality without live solver calls inside training.',
     englishBullets: [
-      'Teacher data: V2+ schedules, oracle schedules, and high-value candidate schedules from prior/train anchors.',
+      'Teacher data: V2+ schedules, oracle schedules, and high-value candidate schedules from prior/train anchors after the V10 transfer audit allows them.',
       'Model target: candidate index or schedule block first; raw actions only after the candidate layer works.',
       'Promotion rule: beat 174.77 UAH mean regret, no median degradation, rolling robustness preserved.'
     ],
     ukrainianTitle: 'Як V2+ стає teacher для DT/LAVA',
-    ukrainianBody: 'Наступна DT/LAVA гілка не повинна одразу генерувати raw hourly BUY/SELL/HOLD. Вона має вчитися на V2+, oracle і high-value feasible schedules, conditioning on return-to-go, і прогнозувати schedule family, schedule block або candidate index. LAVA-style робота використовує precomputed LP-feasible neighbors і value labels, щоб модель бачила decision quality без live solver calls усередині training.',
+    ukrainianBody: 'Наступна DT/LAVA гілка не повинна одразу генерувати raw hourly BUY/SELL/HOLD і не повинна стартувати, поки V10 learning-ceiling gate не знайде transferable non-tail-risk teacher labels. Коли вони є, модель має вчитися на V2+, oracle і high-value feasible schedules, conditioning on return-to-go, і прогнозувати schedule family, schedule block або candidate index. LAVA-style робота використовує precomputed LP-feasible neighbors і value labels, щоб модель бачила decision quality без live solver calls усередині training.',
     ukrainianBullets: [
-      'Teacher data: V2+ schedules, oracle schedules і high-value candidate schedules з prior/train anchors.',
+      'Teacher data: V2+ schedules, oracle schedules і high-value candidate schedules з prior/train anchors після V10 transfer audit.',
       'Model target: candidate index або schedule block спочатку; raw actions тільки після робочого candidate layer.',
       'Promotion rule: beat 174.77 UAH mean regret, без median degradation, rolling robustness preserved.'
     ]

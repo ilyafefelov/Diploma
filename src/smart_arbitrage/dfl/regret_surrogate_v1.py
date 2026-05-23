@@ -156,6 +156,12 @@ REGRET_SURROGATE_ORACLE_TEMPLATE_STRICT_RESCORE_V10_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_ORACLE_TEMPLATE_TEACHER_V10_CLAIM_SCOPE: Final[str] = (
     "dfl_oracle_template_candidate_value_teacher_v10_not_full_dfl"
 )
+REGRET_SURROGATE_V10_TAIL_RISK_TRANSFER_AUDIT_CLAIM_SCOPE: Final[str] = (
+    "dfl_v10_tail_risk_transfer_audit_not_full_dfl"
+)
+REGRET_SURROGATE_V10_LEARNING_CEILING_DECISION_CLAIM_SCOPE: Final[str] = (
+    "dfl_v10_learning_ceiling_decision_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -3924,6 +3930,216 @@ def build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame(
     return frame
 
 
+def build_dfl_v10_tail_risk_transfer_audit_frame(
+    oracle_template_candidate_value_teacher_label_panel_v10_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Classify why V10 generated templates do or do not transfer safely."""
+
+    _validate_v10_teacher_panel(oracle_template_candidate_value_teacher_label_panel_v10_frame)
+    output_rows: list[dict[str, Any]] = []
+    for row in oracle_template_candidate_value_teacher_label_panel_v10_frame.iter_rows(
+        named=True
+    ):
+        if str(row["candidate_source"]) != _V10_GENERATED_CANDIDATE_SOURCE:
+            continue
+        failure_class = _v10_transfer_failure_class(row)
+        candidate_regret = float(row["regret_uah"])
+        v2_regret = float(row["v2_plus_baseline_regret_uah"])
+        output_rows.append(
+            {
+                "tenant_id": str(row["tenant_id"]),
+                "source_model_name": str(row["source_model_name"]),
+                "anchor_timestamp": _datetime_value(row["anchor_timestamp"]),
+                "split_name": str(row["split_name"]),
+                "anchor_key": _anchor_key_string(row),
+                "candidate_key": _candidate_key(row),
+                "candidate_source": str(row["candidate_source"]),
+                "candidate_family": str(row["candidate_family"]),
+                "candidate_model_name": str(row["candidate_model_name"]),
+                "candidate_regret_uah": candidate_regret,
+                "v2_plus_regret_uah": v2_regret,
+                "candidate_delta_vs_v2_plus_uah": candidate_regret - v2_regret,
+                "label_v10_material_safe_switch": bool(
+                    row["label_v10_material_safe_switch"]
+                ),
+                "label_v10_tail_risk_loss": bool(row["label_v10_tail_risk_loss"]),
+                "v10_transfer_failure_class": failure_class,
+                "diagnostic_template_source_anchor_timestamp": row[
+                    "diagnostic_template_source_anchor_timestamp"
+                ],
+                "diagnostic_template_source_split_name": str(
+                    row["diagnostic_template_source_split_name"]
+                ),
+                "diagnostic_template_candidate_key": str(
+                    row["diagnostic_template_candidate_key"]
+                ),
+                "diagnostic_template_profile_key": str(
+                    row["diagnostic_template_profile_key"]
+                ),
+                "diagnostic_forecast_extrema_shift": _v10_forecast_extrema_shift(
+                    row
+                ),
+                "diagnostic_missing_prior_context": _v10_missing_prior_context(row),
+                "diagnostic_soc_path_transfer_pressure": (
+                    abs(_numeric_feature(row, "selector_feature_terminal_soc_delta_fraction"))
+                    > 0.05
+                ),
+                "diagnostic_throughput_transfer_pressure": (
+                    abs(_numeric_feature(row, "selector_feature_total_throughput_delta_mwh"))
+                    > 0.15
+                ),
+                "selector_feature_v10_template_safe_win_count": float(
+                    row["selector_feature_v10_template_safe_win_count"]
+                ),
+                "selector_feature_v10_template_tail_risk_count": float(
+                    row["selector_feature_v10_template_tail_risk_count"]
+                ),
+                "selector_feature_v10_template_mean_delta_uah": float(
+                    row["selector_feature_v10_template_mean_delta_uah"]
+                ),
+                "selector_feature_v10_template_best_delta_uah": float(
+                    row["selector_feature_v10_template_best_delta_uah"]
+                ),
+                "selector_feature_v10_nearest_prior_safe_template_distance": float(
+                    row["selector_feature_v10_nearest_prior_safe_template_distance"]
+                ),
+                "selector_feature_v10_neighbor_safe_win_count": float(
+                    row["selector_feature_v10_neighbor_safe_win_count"]
+                ),
+                "selector_feature_v10_neighbor_tail_risk_probability": float(
+                    row["selector_feature_v10_neighbor_tail_risk_probability"]
+                ),
+                "eligible_for_next_selector_training_v10": bool(
+                    row["eligible_for_next_selector_training_v10"]
+                ),
+                "claim_scope": REGRET_SURROGATE_V10_TAIL_RISK_TRANSFER_AUDIT_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+                "raw_hourly_action_imitation": False,
+            }
+        )
+    if not output_rows:
+        raise ValueError("V10 transfer audit requires generated V10 candidates.")
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp", "candidate_key"]
+    )
+    _validate_v10_tail_risk_transfer_audit_frame(frame)
+    return frame
+
+
+def build_dfl_v10_learning_ceiling_decision_frame(
+    v10_tail_risk_transfer_audit_frame: pl.DataFrame,
+    *,
+    min_oracle_improvement_ratio_vs_v2_plus: float = (
+        DEFAULT_MIN_MEAN_REGRET_IMPROVEMENT_RATIO
+    ),
+    min_prior_material_safe_switch_examples_for_dt: int = 20,
+) -> pl.DataFrame:
+    """Decide whether V10 labels are strong enough to justify DT/LAVA."""
+
+    _validate_v10_tail_risk_transfer_audit_frame(v10_tail_risk_transfer_audit_frame)
+    if min_oracle_improvement_ratio_vs_v2_plus < 0.0:
+        raise ValueError(
+            "min_oracle_improvement_ratio_vs_v2_plus must not be negative."
+        )
+    if min_prior_material_safe_switch_examples_for_dt < 0:
+        raise ValueError(
+            "min_prior_material_safe_switch_examples_for_dt must not be negative."
+        )
+
+    output_rows: list[dict[str, Any]] = []
+    rows = list(v10_tail_risk_transfer_audit_frame.iter_rows(named=True))
+    for source_model_name in sorted({str(row["source_model_name"]) for row in rows}):
+        source_rows = [
+            row for row in rows if str(row["source_model_name"]) == source_model_name
+        ]
+        final_rows = [
+            row for row in source_rows if str(row["split_name"]) == "final_holdout"
+        ]
+        prior_rows = [
+            row for row in source_rows if str(row["split_name"]) != "final_holdout"
+        ]
+        final_v2_mean = _mean_by_anchor(final_rows, "v2_plus_regret_uah")
+        final_best_safe_mean = _v10_final_non_tail_risk_oracle_mean(final_rows)
+        upper_bound_improvement = _improvement_ratio(
+            final_v2_mean,
+            final_best_safe_mean,
+        )
+        prior_material = sum(
+            1 for row in prior_rows if bool(row["label_v10_material_safe_switch"])
+        )
+        final_material = sum(
+            1 for row in final_rows if bool(row["label_v10_material_safe_switch"])
+        )
+        final_non_tail_material = sum(
+            1
+            for row in final_rows
+            if bool(row["label_v10_material_safe_switch"])
+            and not bool(row["label_v10_tail_risk_loss"])
+        )
+        final_tail = sum(
+            1 for row in final_rows if bool(row["label_v10_tail_risk_loss"])
+        )
+        final_missing_context = sum(
+            1
+            for row in final_rows
+            if str(row["v10_transfer_failure_class"]) == "missing_prior_context"
+        )
+        decision = _v10_learning_ceiling_decision(
+            final_non_tail_risk_material_safe_switch_count=final_non_tail_material,
+            final_tail_risk_count=final_tail,
+            final_missing_prior_context_count=final_missing_context,
+            prior_material_safe_switch_count=prior_material,
+            oracle_upper_bound_improvement_ratio_vs_v2_plus=upper_bound_improvement,
+            min_prior_material_safe_switch_examples_for_dt=(
+                min_prior_material_safe_switch_examples_for_dt
+            ),
+            min_oracle_improvement_ratio_vs_v2_plus=(
+                min_oracle_improvement_ratio_vs_v2_plus
+            ),
+        )
+        output_rows.append(
+            {
+                "source_model_name": source_model_name,
+                "generated_candidate_count": len(source_rows),
+                "final_generated_candidate_count": len(final_rows),
+                "prior_generated_candidate_count": len(prior_rows),
+                "prior_generated_material_safe_switch_count": prior_material,
+                "final_generated_material_safe_switch_count": final_material,
+                "final_generated_non_tail_risk_material_safe_switch_count": (
+                    final_non_tail_material
+                ),
+                "final_generated_tail_risk_count": final_tail,
+                "final_generated_missing_prior_context_count": final_missing_context,
+                "v2_plus_final_mean_regret_uah": final_v2_mean,
+                "v10_non_tail_risk_oracle_final_mean_regret_uah": final_best_safe_mean,
+                "v10_non_tail_risk_oracle_upper_bound_improvement_ratio_vs_v2_plus": (
+                    upper_bound_improvement
+                ),
+                "min_oracle_improvement_ratio_vs_v2_plus": (
+                    min_oracle_improvement_ratio_vs_v2_plus
+                ),
+                "min_prior_material_safe_switch_examples_for_dt": (
+                    min_prior_material_safe_switch_examples_for_dt
+                ),
+                "v10_learning_ceiling_decision": decision,
+                "dt_lava_ready": decision == "dt_ready",
+                "recommended_next_branch": _v10_recommended_next_branch(decision),
+                "claim_scope": REGRET_SURROGATE_V10_LEARNING_CEILING_DECISION_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+                "raw_hourly_action_imitation": False,
+            }
+        )
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name"]
+    )
+    _validate_v10_learning_ceiling_decision_frame(frame)
+    return frame
+
+
 def build_dfl_candidate_value_v8_rolling_robustness_frame(
     ua_context_candidate_v8_strict_rescore_frame: pl.DataFrame,
     v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
@@ -5615,6 +5831,115 @@ def _sparse_recommended_next_branch(opportunity_class: str) -> str:
     if opportunity_class == "tail_risk_dominated":
         return "tail_risk_candidate_repair"
     return "keep_v2_plus"
+
+
+def _v10_transfer_failure_class(row: dict[str, Any]) -> str:
+    if bool(row["label_v10_material_safe_switch"]) and not bool(
+        row["label_v10_tail_risk_loss"]
+    ):
+        return "safe_switch_transferred"
+    if _v10_missing_prior_context(row):
+        return "missing_prior_context"
+    if bool(row["label_v10_tail_risk_loss"]):
+        if _v10_forecast_extrema_shift(row):
+            return "forecast_extrema_shift"
+        if abs(_numeric_feature(row, "selector_feature_terminal_soc_delta_fraction")) > 0.05:
+            return "soc_path_transfer_failure"
+        if abs(_numeric_feature(row, "selector_feature_total_throughput_delta_mwh")) > 0.15:
+            return "throughput_tail_risk"
+        return "template_regime_mismatch"
+    return "no_selector_safe_signal"
+
+
+def _v10_missing_prior_context(row: dict[str, Any]) -> bool:
+    context_columns = (
+        "selector_feature_weather_load_context_ready",
+        "selector_feature_calendar_publication_context_ready",
+        "selector_feature_grid_event_context_ready",
+        "selector_feature_publication_time_ready",
+    )
+    return any(name in row and _numeric_feature(row, name) < 1.0 for name in context_columns)
+
+
+def _v10_forecast_extrema_shift(row: dict[str, Any]) -> bool:
+    forecast = _float_vector(row["forecast_price_uah_mwh_vector"])
+    dispatch = _float_vector(row["dispatch_mw_vector"])
+    if not forecast or not dispatch:
+        return False
+    peak_index, trough_index = _peak_trough_indices(forecast)
+    width = min(len(forecast), len(dispatch))
+    if peak_index >= width or trough_index >= width:
+        return False
+    return dispatch[peak_index] <= 0.0 or dispatch[trough_index] >= 0.0
+
+
+def _mean_by_anchor(rows: list[dict[str, Any]], field_name: str) -> float:
+    if not rows:
+        return 0.0
+    values_by_anchor: dict[str, float] = {}
+    for row in rows:
+        values_by_anchor.setdefault(str(row["anchor_key"]), float(row[field_name]))
+    return mean(values_by_anchor.values()) if values_by_anchor else 0.0
+
+
+def _v10_final_non_tail_risk_oracle_mean(rows: list[dict[str, Any]]) -> float:
+    if not rows:
+        return 0.0
+    rows_by_anchor: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        rows_by_anchor.setdefault(str(row["anchor_key"]), []).append(row)
+    regrets: list[float] = []
+    for anchor_rows in rows_by_anchor.values():
+        baseline = float(anchor_rows[0]["v2_plus_regret_uah"])
+        safe_regrets = [
+            float(row["candidate_regret_uah"])
+            for row in anchor_rows
+            if not bool(row["label_v10_tail_risk_loss"])
+        ]
+        regrets.append(min([baseline, *safe_regrets]))
+    return mean(regrets) if regrets else 0.0
+
+
+def _v10_learning_ceiling_decision(
+    *,
+    final_non_tail_risk_material_safe_switch_count: int,
+    final_tail_risk_count: int,
+    final_missing_prior_context_count: int,
+    prior_material_safe_switch_count: int,
+    oracle_upper_bound_improvement_ratio_vs_v2_plus: float,
+    min_prior_material_safe_switch_examples_for_dt: int,
+    min_oracle_improvement_ratio_vs_v2_plus: float,
+) -> str:
+    if (
+        final_non_tail_risk_material_safe_switch_count > 0
+        and prior_material_safe_switch_count >= min_prior_material_safe_switch_examples_for_dt
+        and oracle_upper_bound_improvement_ratio_vs_v2_plus
+        >= min_oracle_improvement_ratio_vs_v2_plus
+    ):
+        return "dt_ready"
+    if (
+        final_missing_prior_context_count > 0
+        and oracle_upper_bound_improvement_ratio_vs_v2_plus
+        >= min_oracle_improvement_ratio_vs_v2_plus
+    ):
+        return "backfill_needed"
+    if (
+        final_tail_risk_count > 0
+        and oracle_upper_bound_improvement_ratio_vs_v2_plus
+        >= min_oracle_improvement_ratio_vs_v2_plus
+    ):
+        return "candidate_generation_needed"
+    return "stop_modeling_current_candidate_space"
+
+
+def _v10_recommended_next_branch(decision: str) -> str:
+    if decision == "dt_ready":
+        return "dt_lava_candidate_index_policy"
+    if decision == "backfill_needed":
+        return "ukrainian_prior_context_backfill"
+    if decision == "candidate_generation_needed":
+        return "lower_tail_risk_candidate_generation"
+    return "thesis_ml_closure_and_data_acquisition"
 
 
 def _v7_backfill_decision(
@@ -7902,6 +8227,106 @@ def _validate_v10_teacher_panel(frame: pl.DataFrame) -> None:
         raise ValueError("V10 teacher label panel refuses market execution.")
 
 
+def _validate_v10_tail_risk_transfer_audit_frame(frame: pl.DataFrame) -> None:
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "split_name",
+                "anchor_key",
+                "candidate_key",
+                "candidate_source",
+                "candidate_family",
+                "candidate_model_name",
+                "candidate_regret_uah",
+                "v2_plus_regret_uah",
+                "candidate_delta_vs_v2_plus_uah",
+                "label_v10_material_safe_switch",
+                "label_v10_tail_risk_loss",
+                "v10_transfer_failure_class",
+                "diagnostic_template_source_anchor_timestamp",
+                "diagnostic_template_source_split_name",
+                "diagnostic_template_candidate_key",
+                "diagnostic_template_profile_key",
+                "selector_feature_v10_template_safe_win_count",
+                "selector_feature_v10_template_tail_risk_count",
+                "selector_feature_v10_template_mean_delta_uah",
+                "selector_feature_v10_template_best_delta_uah",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="V10 tail-risk transfer audit frame",
+    )
+    allowed_classes = {
+        "safe_switch_transferred",
+        "template_regime_mismatch",
+        "forecast_extrema_shift",
+        "soc_path_transfer_failure",
+        "throughput_tail_risk",
+        "missing_prior_context",
+        "no_selector_safe_signal",
+    }
+    classes = {str(value) for value in frame["v10_transfer_failure_class"].to_list()}
+    unexpected = classes - allowed_classes
+    if unexpected:
+        raise ValueError(
+            f"V10 transfer audit emitted unknown failure classes: {sorted(unexpected)}."
+        )
+    if frame.select(pl.col("v10_transfer_failure_class").is_null().any()).item():
+        raise ValueError("V10 transfer audit requires one class per generated row.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V10 transfer audit refuses market execution.")
+
+
+def _validate_v10_learning_ceiling_decision_frame(frame: pl.DataFrame) -> None:
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "source_model_name",
+                "generated_candidate_count",
+                "final_generated_candidate_count",
+                "prior_generated_candidate_count",
+                "prior_generated_material_safe_switch_count",
+                "final_generated_material_safe_switch_count",
+                "final_generated_non_tail_risk_material_safe_switch_count",
+                "final_generated_tail_risk_count",
+                "v10_non_tail_risk_oracle_upper_bound_improvement_ratio_vs_v2_plus",
+                "v10_learning_ceiling_decision",
+                "dt_lava_ready",
+                "recommended_next_branch",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="V10 learning-ceiling decision frame",
+    )
+    allowed_decisions = {
+        "dt_ready",
+        "candidate_generation_needed",
+        "backfill_needed",
+        "stop_modeling_current_candidate_space",
+    }
+    decisions = {str(value) for value in frame["v10_learning_ceiling_decision"].to_list()}
+    unexpected = decisions - allowed_decisions
+    if unexpected:
+        raise ValueError(
+            f"V10 learning-ceiling decision emitted unknown decisions: {sorted(unexpected)}."
+        )
+    if frame.filter(
+        (pl.col("dt_lava_ready"))
+        & (
+            pl.col("v10_learning_ceiling_decision")
+            != pl.lit("dt_ready")
+        )
+    ).height:
+        raise ValueError("V10 DT/LAVA readiness must match the dt_ready decision.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V10 learning-ceiling decision refuses market execution.")
+
+
 def _validate_v10_candidate_library_columns(frame: pl.DataFrame) -> None:
     _require_columns(
         frame,
@@ -8154,6 +8579,8 @@ __all__ = [
     "build_dfl_oracle_template_candidate_library_v10_frame",
     "build_dfl_oracle_template_candidate_v10_strict_rescore_frame",
     "build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame",
+    "build_dfl_v10_learning_ceiling_decision_frame",
+    "build_dfl_v10_tail_risk_transfer_audit_frame",
     "build_dfl_sparse_safe_switch_abstention_model_v6_frame",
     "build_dfl_sparse_safe_switch_candidate_library_v6_frame",
     "build_dfl_sparse_safe_switch_feature_contract_audit_frame",

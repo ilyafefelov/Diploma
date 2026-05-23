@@ -380,6 +380,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_oracle_template_candidate_library_v10_frame,
     build_dfl_oracle_template_candidate_v10_strict_rescore_frame,
     build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
+    build_dfl_v10_learning_ceiling_decision_frame,
+    build_dfl_v10_tail_risk_transfer_audit_frame,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
     build_dfl_feasible_schedule_candidate_library_v7_frame,
     build_dfl_regret_surrogate_contextual_candidate_value_v2_frame,
@@ -7071,6 +7073,104 @@ def dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_oracle_template_candidate_value_teacher_v10_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v10",
+        market_venue="DAM",
+    ),
+)
+def dfl_v10_tail_risk_transfer_audit_frame(
+    context,
+    dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Classify why V10 generated templates do or do not transfer safely."""
+
+    frame = build_dfl_v10_tail_risk_transfer_audit_frame(
+        dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame
+    )
+    final_rows = frame.filter(pl.col("split_name") == "final_holdout")
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "final_generated_candidate_rows": final_rows.height,
+            "final_safe_switch_rows": final_rows.filter(
+                pl.col("label_v10_material_safe_switch")
+            ).height
+            if final_rows.height
+            else 0,
+            "final_tail_risk_rows": final_rows.filter(
+                pl.col("label_v10_tail_risk_loss")
+            ).height
+            if final_rows.height
+            else 0,
+            "failure_classes": sorted(
+                str(value) for value in frame["v10_transfer_failure_class"].unique()
+            ),
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_v10_tail_risk_transfer_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v10",
+        market_venue="DAM",
+    ),
+)
+def dfl_v10_learning_ceiling_decision_frame(
+    context,
+    config: DflRegretSurrogateV1AssetConfig,
+    dfl_v10_tail_risk_transfer_audit_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Decide whether V10 generated labels are strong enough for DT/LAVA."""
+
+    frame = build_dfl_v10_learning_ceiling_decision_frame(
+        dfl_v10_tail_risk_transfer_audit_frame,
+        min_oracle_improvement_ratio_vs_v2_plus=(
+            config.min_oracle_improvement_ratio_vs_v2_plus
+        ),
+        min_prior_material_safe_switch_examples_for_dt=(
+            config.min_prior_material_safe_switch_examples_for_dt
+        ),
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "dt_lava_ready_rows": frame.filter(pl.col("dt_lava_ready")).height
+            if frame.height
+            else 0,
+            "decisions": sorted(
+                str(value) for value in frame["v10_learning_ceiling_decision"].unique()
+            ),
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_v10_learning_ceiling_decision_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -15256,6 +15356,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_oracle_template_candidate_library_v10_frame,
     dfl_oracle_template_candidate_v10_strict_rescore_frame,
     dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
+    dfl_v10_tail_risk_transfer_audit_frame,
+    dfl_v10_learning_ceiling_decision_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

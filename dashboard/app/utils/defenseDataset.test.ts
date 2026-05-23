@@ -325,6 +325,9 @@ describe('defense dataset summaries', () => {
     expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Prediction target')?.body).toContain(
       'BUY/SELL/HOLD'
     )
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Teacher data')?.body).toContain(
+      'V10'
+    )
     expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER.map(section => section.label)).toEqual([
       'Offline vs online',
       'V2+ pipeline',
@@ -335,5 +338,6 @@ describe('defense dataset summaries', () => {
     expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[0]?.ukrainianBody).toContain('не автоматичною біржовою заявкою')
     expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[1]?.englishBullets.join(' ')).toContain('174.77 UAH')
     expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[3]?.ukrainianTitle).toContain('DT/LAVA')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[3]?.englishBody).toContain('V10')
   })
 })

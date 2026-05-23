@@ -189,6 +189,21 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      candidates were all tail-risk. This blocks selector/DT promotion from V10
      and points the next work back to stronger Ukrainian prior context or a
      new lower-tail-risk candidate family.
+   - The V10 closure gate adds `dfl_v10_tail_risk_transfer_audit_frame` and
+     `dfl_v10_learning_ceiling_decision_frame`. These assets do not train a
+     model; they classify why generated templates fail to transfer and emit one
+     decision: `dt_ready`, `candidate_generation_needed`, `backfill_needed`, or
+     `stop_modeling_current_candidate_space`. `dt_ready` is forbidden when
+     final generated non-tail-risk safe switches are absent or the non-tail-risk
+     oracle upper bound cannot beat V2+ by the unchanged gate.
+   - The first V10 closure materialization
+     (`9e16fa67-566c-41c3-9de4-82a1dfb972a9`) emitted
+     `stop_modeling_current_candidate_space`: `1,204` generated-template audit
+     rows, `126` final generated candidates, `126` final tail-risk rows, `0`
+     final non-tail-risk material safe switches, and non-tail-risk oracle upper
+     bound improvement `0.0`. The final failure split was `56`
+     forecast-extrema-shift rows and `70` missing-prior-context rows. This
+     blocks DT/LAVA on the current V10 label space.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

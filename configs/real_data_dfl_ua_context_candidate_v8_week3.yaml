@@ -113,6 +113,12 @@ ops:
       material_switch_delta_uah: 25.0
       max_prior_neighbor_distance: 1.5
       nearest_neighbor_count: 5
+  dfl_v10_learning_ceiling_decision_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_oracle_improvement_ratio_vs_v2_plus: 0.05
+      min_prior_material_safe_switch_examples_for_dt: 20
   dfl_candidate_value_regret_surrogate_v7_frame:
     config:
       tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"

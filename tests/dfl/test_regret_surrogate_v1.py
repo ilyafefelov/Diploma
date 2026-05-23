@@ -46,6 +46,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_oracle_template_candidate_library_v10_frame,
     build_dfl_oracle_template_candidate_v10_strict_rescore_frame,
     build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
+    build_dfl_v10_learning_ceiling_decision_frame,
+    build_dfl_v10_tail_risk_transfer_audit_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
     build_dfl_ua_context_candidate_v8_strict_rescore_frame,
     build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
@@ -1844,6 +1846,114 @@ def test_v10_strict_rescore_actual_mutation_changes_scores_not_candidate_feature
     assert not base_scores.equals(mutated_scores)
 
 
+def test_v10_tail_risk_transfer_audit_classifies_generated_candidates() -> None:
+    labels = _v10_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    forced_tail_risk = _force_final_v10_generated_tail_risk(labels)
+
+    audit = build_dfl_v10_tail_risk_transfer_audit_frame(forced_tail_risk)
+
+    generated = forced_tail_risk.filter(
+        pl.col("candidate_source") == "oracle_template_v10_generated_candidate"
+    )
+    final_audit = audit.filter(pl.col("split_name") == "final_holdout")
+    assert audit.height == generated.height
+    assert final_audit.height == generated.filter(
+        pl.col("split_name") == "final_holdout"
+    ).height
+    assert final_audit.filter(pl.col("v10_transfer_failure_class").is_null()).height == 0
+    assert set(final_audit["v10_transfer_failure_class"].to_list()).issubset(
+        {
+            "template_regime_mismatch",
+            "forecast_extrema_shift",
+            "soc_path_transfer_failure",
+            "throughput_tail_risk",
+            "missing_prior_context",
+            "no_selector_safe_signal",
+        }
+    )
+    assert "safe_switch_transferred" not in set(
+        final_audit["v10_transfer_failure_class"].to_list()
+    )
+    assert set(final_audit["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v10_transfer_audit_label_mutation_preserves_prior_features() -> None:
+    labels = _v10_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    mutated = _force_final_v10_generated_tail_risk(labels)
+
+    base = build_dfl_v10_tail_risk_transfer_audit_frame(labels)
+    mutated_audit = build_dfl_v10_tail_risk_transfer_audit_frame(mutated)
+
+    stable_columns = [
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "candidate_family",
+        "candidate_model_name",
+        "diagnostic_template_source_anchor_timestamp",
+        "diagnostic_template_profile_key",
+        "selector_feature_v10_template_safe_win_count",
+        "selector_feature_v10_template_tail_risk_count",
+        "selector_feature_v10_template_mean_delta_uah",
+    ]
+    base_features = (
+        base.filter(pl.col("split_name") == "final_holdout")
+        .select(stable_columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    mutated_features = (
+        mutated_audit.filter(pl.col("split_name") == "final_holdout")
+        .select(stable_columns)
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+    )
+    assert base_features.equals(mutated_features)
+    assert not base.filter(pl.col("split_name") == "final_holdout").select(
+        ["candidate_key", "v10_transfer_failure_class", "candidate_regret_uah"]
+    ).equals(
+        mutated_audit.filter(pl.col("split_name") == "final_holdout").select(
+            ["candidate_key", "v10_transfer_failure_class", "candidate_regret_uah"]
+        )
+    )
+
+
+def test_v10_learning_ceiling_blocks_dt_when_final_safe_switches_are_absent() -> None:
+    labels = _force_final_v10_generated_tail_risk(
+        _v10_teacher(
+            _candidate_panel(
+                train_alt_regret=130.0,
+                final_alt_regret=130.0,
+            ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+        )
+    )
+    audit = build_dfl_v10_tail_risk_transfer_audit_frame(labels)
+
+    decision = build_dfl_v10_learning_ceiling_decision_frame(
+        audit,
+        min_oracle_improvement_ratio_vs_v2_plus=0.05,
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+
+    assert decision.height == 1
+    row = decision.row(0, named=True)
+    assert row["v10_learning_ceiling_decision"] == (
+        "stop_modeling_current_candidate_space"
+    )
+    assert row["dt_lava_ready"] is False
+    assert row["final_generated_material_safe_switch_count"] == 0
+    assert row["final_generated_non_tail_risk_material_safe_switch_count"] == 0
+    assert row["market_execution_enabled"] is False
+
+
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:
     return build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame(
         panel,
@@ -1976,6 +2086,51 @@ def _v9_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
         material_switch_delta_uah=25.0,
         max_prior_neighbor_distance=2.0,
         nearest_neighbor_count=3,
+    )
+
+
+def _v10_teacher(candidate_panel: pl.DataFrame) -> pl.DataFrame:
+    library = build_dfl_oracle_template_candidate_library_v10_frame(
+        _v9_teacher(candidate_panel),
+        material_switch_delta_uah=25.0,
+        min_template_safe_win_count=1,
+        max_templates_per_anchor=2,
+    )
+    rescored = build_dfl_oracle_template_candidate_v10_strict_rescore_frame(library)
+    return build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame(
+        rescored,
+        material_switch_delta_uah=25.0,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+
+def _force_final_v10_generated_tail_risk(labels: pl.DataFrame) -> pl.DataFrame:
+    final_generated = (
+        (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+        & (pl.col("split_name") == "final_holdout")
+    )
+    return labels.with_columns(
+        pl.when(final_generated)
+        .then(pl.lit(360.0))
+        .otherwise(pl.col("regret_uah"))
+        .alias("regret_uah"),
+        pl.when(final_generated)
+        .then(pl.lit(240.0))
+        .otherwise(pl.col("label_regret_delta_vs_v2_plus_uah"))
+        .alias("label_regret_delta_vs_v2_plus_uah"),
+        pl.when(final_generated)
+        .then(pl.lit(False))
+        .otherwise(pl.col("label_v10_material_safe_switch"))
+        .alias("label_v10_material_safe_switch"),
+        pl.when(final_generated)
+        .then(pl.lit(True))
+        .otherwise(pl.col("label_v10_tail_risk_loss"))
+        .alias("label_v10_tail_risk_loss"),
+        pl.when(final_generated)
+        .then(pl.lit(True))
+        .otherwise(pl.col("diagnostic_v10_tail_risk_rejected"))
+        .alias("diagnostic_v10_tail_risk_rejected"),
     )
 
 

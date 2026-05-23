@@ -1117,6 +1117,30 @@ leakage, але вони не переносяться безпечно на fin
 український prior context, який пояснить, коли такі templates справді
 переносяться.
 
+Щоб не перейти до DT/LAVA на слабких teacher labels, після V10 додано окремий
+tail-risk transfer audit. Він не навчає нову модель і не обирає нову
+стратегію; його задача - класифікувати кожен generated V10 candidate як
+безпечний transfer або одну з причин провалу: template-regime mismatch,
+forecast-extrema shift, SOC-path transfer failure, throughput tail-risk,
+missing prior context або no selector-safe signal. Окремий
+learning-ceiling decision блокує `dt_ready`, якщо на final holdout немає
+non-tail-risk material safe-switch labels або якщо non-tail-risk oracle upper
+bound не може перевершити V2+ під тим самим gate. Це узгоджується з
+літературною логікою DFL для storage arbitrage: модель має покращувати
+downstream regret/value, а Decision Transformer має сенс тільки після появи
+достатньо сильних transferable trajectories.
+
+Матеріалізований V10 closure run
+(`9e16fa67-566c-41c3-9de4-82a1dfb972a9`) підтвердив саме це обмеження:
+`1,204` generated-template audit rows, `126` final-holdout generated
+candidates, `126` final tail-risk rows, `0` final non-tail-risk material
+safe-switch labels, non-tail-risk oracle upper bound improvement `0.0`, і
+decision `stop_modeling_current_candidate_space`. Фінальні failure classes
+розділилися на `56` forecast-extrema-shift rows і `70`
+missing-prior-context rows. Отже, поточний V10 label space не дає достатньо
+чесних teacher labels для DT/LAVA; для руху далі потрібні або нові українські
+point-in-time context/backfill дані, або lower-tail-risk candidate family.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
