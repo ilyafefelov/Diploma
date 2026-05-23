@@ -126,6 +126,15 @@ REGRET_SURROGATE_V8_PRUNED_FAMILY_PLAN_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_V8_PRUNED_CANDIDATE_LIBRARY_CLAIM_SCOPE: Final[str] = (
     "dfl_v8_pruned_candidate_library_not_full_dfl"
 )
+REGRET_SURROGATE_V8_PRUNED_TEACHER_CLAIM_SCOPE: Final[str] = (
+    "dfl_v8_pruned_candidate_value_teacher_not_full_dfl"
+)
+REGRET_SURROGATE_V8_PRUNED_SELECTOR_CLAIM_SCOPE: Final[str] = (
+    "dfl_v8_pruned_candidate_value_selector_not_full_dfl"
+)
+REGRET_SURROGATE_V8_PRUNED_STRICT_CLAIM_SCOPE: Final[str] = (
+    "dfl_v8_pruned_candidate_value_strict_lp_gate_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -167,6 +176,15 @@ REGRET_SURROGATE_CANDIDATE_VALUE_V8_SELECTION_ROLE: Final[str] = (
 )
 REGRET_SURROGATE_CANDIDATE_VALUE_V8_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_candidate_value_v8_strict_lp_benchmark"
+)
+REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_MODEL_NAME: Final[str] = (
+    "dfl_v8_pruned_candidate_value_selector"
+)
+REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_SELECTION_ROLE: Final[str] = (
+    "v8_pruned_candidate_value_selector"
+)
+REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND: Final[str] = (
+    "dfl_v8_pruned_candidate_value_strict_lp_benchmark"
 )
 V2_PLUS_REFERENCE_ROLE: Final[str] = "schedule_value_learner_v2_plus_reference"
 STRICT_REFERENCE_ROLE: Final[str] = "strict_reference"
@@ -3060,6 +3078,310 @@ def build_dfl_v8_pruned_candidate_library_frame(
     )
 
 
+def build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame(
+    v8_pruned_candidate_library_frame: pl.DataFrame,
+    *,
+    material_switch_delta_uah: float = 25.0,
+    max_prior_neighbor_distance: float = 1.5,
+    nearest_neighbor_count: int = 5,
+) -> pl.DataFrame:
+    """Rebuild candidate-value labels and neighbor support after V8 family pruning."""
+
+    _validate_v8_teacher_panel(v8_pruned_candidate_library_frame)
+    if material_switch_delta_uah <= 0.0:
+        raise ValueError("material_switch_delta_uah must be positive.")
+    if max_prior_neighbor_distance < 0.0:
+        raise ValueError("max_prior_neighbor_distance must not be negative.")
+    if nearest_neighbor_count < 1:
+        raise ValueError("nearest_neighbor_count must be at least 1.")
+
+    rows = list(v8_pruned_candidate_library_frame.iter_rows(named=True))
+    prior_rows = _v8_prior_candidate_rows(rows)
+    prior_rows_by_group: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    for prior in prior_rows:
+        prior_rows_by_group.setdefault(_sparse_neighbor_group_key(prior), []).append(
+            prior
+        )
+    feature_names = _sparse_distance_feature_names(v8_pruned_candidate_library_frame)
+
+    output_rows: list[dict[str, Any]] = []
+    for row in rows:
+        source = str(row["candidate_source"])
+        eligible = bool(row.get("eligible_for_final_selection_v8", True))
+        neighbor_stats = (
+            _nearest_prior_neighbor_stats_from_candidates(
+                row,
+                prior_rows=prior_rows_by_group.get(_sparse_neighbor_group_key(row), []),
+                feature_names=feature_names,
+                nearest_neighbor_count=nearest_neighbor_count,
+            )
+            if str(row["split_name"]) == "final_holdout"
+            and source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            else _empty_neighbor_stats()
+        )
+        delta = float(row["label_regret_delta_vs_v2_plus_uah"])
+        material_safe = (
+            source not in _REFERENCE_CANDIDATE_SOURCES
+            and eligible
+            and delta <= -material_switch_delta_uah
+        )
+        feature_list = list(row.get("selected_feature_names", []))
+        for feature_name in (
+            "selector_feature_v8_pruned_nearest_prior_safe_switch_distance",
+            "selector_feature_v8_pruned_neighbor_safe_win_count",
+            "selector_feature_v8_pruned_neighbor_tail_risk_probability",
+            "selector_feature_v8_pruned_neighbor_mean_delta_uah",
+        ):
+            if feature_name not in feature_list:
+                feature_list.append(feature_name)
+        copied = dict(row)
+        copied.update(
+            {
+                "teacher_panel_version": "candidate_value_teacher_v8_pruned",
+                "selected_feature_names": sorted(feature_list),
+                "selector_feature_v8_pruned_nearest_prior_safe_switch_distance": float(
+                    neighbor_stats["nearest_safe_distance"]
+                ),
+                "selector_feature_v8_pruned_nearest_prior_any_candidate_distance": float(
+                    neighbor_stats["nearest_any_distance"]
+                ),
+                "selector_feature_v8_pruned_neighbor_support_count": float(
+                    neighbor_stats["neighbor_count"]
+                ),
+                "selector_feature_v8_pruned_neighbor_safe_win_count": float(
+                    neighbor_stats["safe_win_count"]
+                ),
+                "selector_feature_v8_pruned_neighbor_tail_risk_probability": float(
+                    neighbor_stats["tail_risk_probability"]
+                ),
+                "selector_feature_v8_pruned_neighbor_mean_delta_uah": float(
+                    neighbor_stats["mean_delta_uah"]
+                ),
+                "selector_feature_v8_pruned_has_prior_neighbor_support": float(
+                    float(neighbor_stats["nearest_safe_distance"])
+                    <= max_prior_neighbor_distance
+                ),
+                "label_v8_pruned_material_safe_switch": material_safe,
+                "label_v8_pruned_tail_risk_loss": bool(row["label_tail_risk_loss"]),
+                "claim_scope": REGRET_SURROGATE_V8_PRUNED_TEACHER_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+                "raw_hourly_action_imitation": False,
+            }
+        )
+        output_rows.append(copied)
+
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        [
+            "source_model_name",
+            "tenant_id",
+            "anchor_timestamp",
+            "candidate_source",
+            "candidate_family",
+            "candidate_model_name",
+        ]
+    )
+    _validate_v8_pruned_teacher_panel(frame)
+    return frame
+
+
+def build_dfl_v8_pruned_candidate_value_selector_frame(
+    v8_pruned_candidate_value_teacher_label_panel_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_names: tuple[str, ...],
+    max_prior_neighbor_distance: float = 1.5,
+    min_neighbor_safe_win_count: int = 1,
+    min_predicted_improvement_uah: float = 1.0,
+    max_neighbor_tail_risk_probability: float = 0.25,
+    allowed_candidate_sources: tuple[str, ...] = _V8_ALLOWED_CANDIDATE_SOURCES,
+    min_prior_material_safe_switch_examples_for_dt: int = 20,
+) -> pl.DataFrame:
+    """Train a conservative selector only after V8 candidate-family pruning."""
+
+    _validate_v8_pruned_teacher_panel(
+        v8_pruned_candidate_value_teacher_label_panel_frame
+    )
+    _validate_sparse_selector_config(
+        tenant_ids=tenant_ids,
+        source_model_names=source_model_names,
+        max_prior_neighbor_distance=max_prior_neighbor_distance,
+        min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+        min_predicted_improvement_uah=min_predicted_improvement_uah,
+        max_neighbor_tail_risk_probability=max_neighbor_tail_risk_probability,
+        allowed_candidate_sources=allowed_candidate_sources,
+    )
+    if min_prior_material_safe_switch_examples_for_dt < 0:
+        raise ValueError(
+            "min_prior_material_safe_switch_examples_for_dt must not be negative."
+        )
+
+    rows = list(
+        v8_pruned_candidate_value_teacher_label_panel_frame.iter_rows(named=True)
+    )
+    output_rows: list[dict[str, Any]] = []
+    for tenant_id in tenant_ids:
+        for source_model_name in source_model_names:
+            scope_rows = [
+                row
+                for row in rows
+                if str(row["tenant_id"]) == tenant_id
+                and str(row["source_model_name"]) == source_model_name
+            ]
+            prior_material_count = sum(
+                1
+                for row in scope_rows
+                if bool(row.get("is_training_row", False))
+                and bool(row.get("label_v8_pruned_material_safe_switch", False))
+            )
+            fitted = _fit_scope_v8_pruned_candidate_value(
+                scope_rows,
+                tenant_id=tenant_id,
+                source_model_name=source_model_name,
+                max_prior_neighbor_distance=max_prior_neighbor_distance,
+                min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+                min_predicted_improvement_uah=min_predicted_improvement_uah,
+                max_neighbor_tail_risk_probability=(max_neighbor_tail_risk_probability),
+                allowed_candidate_sources=set(allowed_candidate_sources),
+            )
+            if prior_material_count < min_prior_material_safe_switch_examples_for_dt:
+                fallback_keys = _final_anchor_keys(scope_rows)
+                fitted.update(
+                    {
+                        "selected_final_candidate_keys": [],
+                        "fallback_final_anchor_keys": fallback_keys,
+                        "selected_final_candidate_count": 0,
+                        "fallback_final_anchor_count": len(fallback_keys),
+                        "selected_final_family_counts": {},
+                        "selected_final_candidate_source_counts": {},
+                        "fallback_to_v2_plus": True,
+                        "uses_v2_plus_anchor_fallback": bool(fallback_keys),
+                        "abstention_reason": (
+                            "insufficient_prior_material_examples_after_pruning"
+                        ),
+                    }
+                )
+            fitted.update(
+                {
+                    "learner_model_name": (
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_MODEL_NAME
+                    ),
+                    "selection_policy": "nearest_prior_pruned_candidate_value_v8",
+                    "claim_scope": REGRET_SURROGATE_V8_PRUNED_SELECTOR_CLAIM_SCOPE,
+                    "prior_material_safe_switch_example_count": prior_material_count,
+                    "dt_lava_ready": (
+                        prior_material_count
+                        >= min_prior_material_safe_switch_examples_for_dt
+                    ),
+                }
+            )
+            output_rows.append(fitted)
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id"]
+    )
+
+
+def build_dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame(
+    v8_pruned_candidate_value_teacher_label_panel_frame: pl.DataFrame,
+    v8_pruned_candidate_value_selector_frame: pl.DataFrame,
+    *,
+    generated_at: datetime | None = None,
+) -> pl.DataFrame:
+    """Strict-score the pruned V8 selector against corrected V2+."""
+
+    _validate_v8_pruned_teacher_panel(
+        v8_pruned_candidate_value_teacher_label_panel_frame
+    )
+    _validate_scorer_frame(v8_pruned_candidate_value_selector_frame)
+    resolved_generated_at = generated_at or _latest_generated_at(
+        v8_pruned_candidate_value_teacher_label_panel_frame
+    )
+    panel_rows = list(
+        v8_pruned_candidate_value_teacher_label_panel_frame.iter_rows(named=True)
+    )
+    candidate_by_key = {_candidate_key(row): row for row in panel_rows}
+    v2_by_anchor: dict[str, dict[str, Any]] = {}
+    output_rows: list[dict[str, Any]] = []
+    for row in panel_rows:
+        if str(row["split_name"]) != "final_holdout":
+            continue
+        source = str(row["candidate_source"])
+        if source == _STRICT_CANDIDATE_SOURCE:
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=STRICT_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_MODEL_NAME
+                    ),
+                    claim_scope=REGRET_SURROGATE_V8_PRUNED_STRICT_CLAIM_SCOPE,
+                )
+            )
+        elif source == _V2_PLUS_CANDIDATE_SOURCE:
+            v2_by_anchor[_anchor_key_string(row)] = row
+            output_rows.append(
+                _benchmark_row(
+                    row,
+                    selection_role=V2_PLUS_REFERENCE_ROLE,
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_MODEL_NAME
+                    ),
+                    claim_scope=REGRET_SURROGATE_V8_PRUNED_STRICT_CLAIM_SCOPE,
+                )
+            )
+    for scorer_row in v8_pruned_candidate_value_selector_frame.iter_rows(named=True):
+        for candidate_key in scorer_row["selected_final_candidate_keys"]:
+            output_rows.append(
+                _benchmark_row(
+                    candidate_by_key[str(candidate_key)],
+                    selection_role=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_SELECTION_ROLE
+                    ),
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_MODEL_NAME
+                    ),
+                    claim_scope=REGRET_SURROGATE_V8_PRUNED_STRICT_CLAIM_SCOPE,
+                )
+            )
+        for anchor_key in scorer_row["fallback_final_anchor_keys"]:
+            fallback = v2_by_anchor.get(str(anchor_key))
+            if fallback is None:
+                raise ValueError(f"missing V2+ fallback row for {anchor_key}.")
+            output_rows.append(
+                _benchmark_row(
+                    fallback,
+                    selection_role=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_SELECTION_ROLE
+                    ),
+                    generated_at=resolved_generated_at,
+                    strategy_kind=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_STRICT_LP_STRATEGY_KIND
+                    ),
+                    challenger_model_name=(
+                        REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_MODEL_NAME
+                    ),
+                    claim_scope=REGRET_SURROGATE_V8_PRUNED_STRICT_CLAIM_SCOPE,
+                )
+            )
+    return pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp", "selection_role"]
+    )
+
+
 def build_dfl_candidate_value_v8_rolling_robustness_frame(
     ua_context_candidate_v8_strict_rescore_frame: pl.DataFrame,
     v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
@@ -5361,6 +5683,143 @@ def _fit_scope_v8_candidate_value(
     }
 
 
+def _fit_scope_v8_pruned_candidate_value(
+    scope_rows: list[dict[str, Any]],
+    *,
+    tenant_id: str,
+    source_model_name: str,
+    max_prior_neighbor_distance: float,
+    min_neighbor_safe_win_count: int,
+    min_predicted_improvement_uah: float,
+    max_neighbor_tail_risk_probability: float,
+    allowed_candidate_sources: set[str],
+) -> dict[str, Any]:
+    final_rows = [
+        row for row in scope_rows if str(row["split_name"]) == "final_holdout"
+    ]
+    selected, fallback_keys, predicted_delta, predicted_tail = (
+        _select_v8_pruned_final_candidates(
+            final_rows,
+            max_prior_neighbor_distance=max_prior_neighbor_distance,
+            min_neighbor_safe_win_count=min_neighbor_safe_win_count,
+            min_predicted_improvement_uah=min_predicted_improvement_uah,
+            max_neighbor_tail_risk_probability=max_neighbor_tail_risk_probability,
+            allowed_candidate_sources=allowed_candidate_sources,
+        )
+    )
+    material_final_count = sum(
+        1
+        for row in final_rows
+        if str(row["candidate_source"]) not in _REFERENCE_CANDIDATE_SOURCES
+        and bool(row.get("eligible_for_final_selection_v8", True))
+        and float(row["label_regret_delta_vs_v2_plus_uah"]) < 0.0
+    )
+    if selected:
+        abstention_reason = "selected_prior_supported_pruned_v8_candidates"
+    elif material_final_count > 0:
+        abstention_reason = "no_prior_neighbor_support_after_pruning"
+    else:
+        abstention_reason = "no_material_candidate_after_pruning"
+    selected_keys = [_candidate_key(row) for row in selected]
+    return {
+        "tenant_id": tenant_id,
+        "source_model_name": source_model_name,
+        "learner_model_name": REGRET_SURROGATE_V8_PRUNED_CANDIDATE_VALUE_MODEL_NAME,
+        "target_label_space": "schedule_candidate_value_v8_pruned",
+        "selected_final_candidate_keys": selected_keys,
+        "fallback_final_anchor_keys": fallback_keys,
+        "selected_final_candidate_count": len(selected_keys),
+        "fallback_final_anchor_count": len(fallback_keys),
+        "selected_final_family_counts": _family_counts(selected),
+        "selected_final_candidate_source_counts": _source_counts(selected),
+        "predicted_final_candidate_deltas": predicted_delta,
+        "predicted_final_tail_risk_probabilities": predicted_tail,
+        "fallback_to_v2_plus": len(selected_keys) == 0,
+        "uses_v2_plus_anchor_fallback": bool(fallback_keys),
+        "abstention_reason": abstention_reason,
+        "selection_policy": "nearest_prior_pruned_candidate_value_v8",
+        "claim_scope": REGRET_SURROGATE_V8_PRUNED_SELECTOR_CLAIM_SCOPE,
+        "not_full_dfl": True,
+        "not_market_execution": True,
+        "market_execution_enabled": False,
+        "raw_hourly_action_imitation": False,
+    }
+
+
+def _select_v8_pruned_final_candidates(
+    final_rows: list[dict[str, Any]],
+    *,
+    max_prior_neighbor_distance: float,
+    min_neighbor_safe_win_count: int,
+    min_predicted_improvement_uah: float,
+    max_neighbor_tail_risk_probability: float,
+    allowed_candidate_sources: set[str],
+) -> tuple[list[dict[str, Any]], list[str], dict[str, float], dict[str, float]]:
+    selected: list[dict[str, Any]] = []
+    fallback_keys: list[str] = []
+    predicted_delta: dict[str, float] = {}
+    predicted_tail: dict[str, float] = {}
+    for anchor, anchor_rows in sorted(_rows_by_datetime_anchor(final_rows).items()):
+        candidates: list[tuple[dict[str, Any], float, float, float]] = []
+        for row in anchor_rows:
+            source = str(row["candidate_source"])
+            if source not in allowed_candidate_sources:
+                continue
+            if not bool(row.get("eligible_for_final_selection_v8", True)):
+                continue
+            nearest = float(
+                row.get(
+                    "selector_feature_v8_pruned_nearest_prior_safe_switch_distance",
+                    float("inf"),
+                )
+            )
+            safe_count = int(
+                float(
+                    row.get("selector_feature_v8_pruned_neighbor_safe_win_count", 0.0)
+                )
+            )
+            tail = float(
+                row.get(
+                    "selector_feature_v8_pruned_neighbor_tail_risk_probability", 1.0
+                )
+            )
+            delta = float(
+                row.get("selector_feature_v8_pruned_neighbor_mean_delta_uah", 0.0)
+            )
+            predicted_delta[_candidate_key(row)] = delta
+            predicted_tail[_candidate_key(row)] = tail
+            if (
+                nearest <= max_prior_neighbor_distance
+                and safe_count >= min_neighbor_safe_win_count
+                and tail <= max_neighbor_tail_risk_probability
+                and delta <= -min_predicted_improvement_uah
+            ):
+                candidates.append((row, delta, tail, nearest))
+        if not candidates:
+            first = anchor_rows[0]
+            fallback_keys.append(
+                _anchor_key_from_parts(
+                    str(first["tenant_id"]),
+                    str(first["source_model_name"]),
+                    anchor,
+                )
+            )
+            continue
+        selected.append(
+            min(
+                candidates,
+                key=lambda item: (
+                    item[2],
+                    item[1],
+                    item[3],
+                    str(item[0]["candidate_family"]),
+                    str(item[0]["candidate_model_name"]),
+                ),
+            )[0]
+        )
+    return selected, fallback_keys, predicted_delta, predicted_tail
+
+
 def _select_v8_final_candidates(
     final_rows: list[dict[str, Any]],
     *,
@@ -6166,6 +6625,29 @@ def _validate_v8_teacher_panel(frame: pl.DataFrame) -> None:
         raise ValueError("V8 teacher label panel refuses market execution.")
 
 
+def _validate_v8_pruned_teacher_panel(frame: pl.DataFrame) -> None:
+    _validate_v8_teacher_panel(frame)
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "v8_pruned_candidate_library_version",
+                "label_v8_pruned_material_safe_switch",
+                "label_v8_pruned_tail_risk_loss",
+                "selector_feature_v8_pruned_nearest_prior_safe_switch_distance",
+                "selector_feature_v8_pruned_neighbor_safe_win_count",
+                "selector_feature_v8_pruned_neighbor_tail_risk_probability",
+                "selector_feature_v8_pruned_neighbor_mean_delta_uah",
+            }
+        ),
+        frame_name="V8 pruned candidate-value teacher label panel",
+    )
+    if frame.filter(pl.col("teacher_panel_version") != "candidate_value_teacher_v8_pruned").height:
+        raise ValueError("V8 pruned teacher rows must use the pruned teacher version.")
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("V8 pruned teacher label panel refuses market execution.")
+
+
 def _validate_v7_teacher_panel(frame: pl.DataFrame) -> None:
     _validate_v7_candidate_library(frame)
     _require_columns(
@@ -6372,6 +6854,9 @@ __all__ = [
     "build_dfl_v8_false_positive_tail_risk_audit_frame",
     "build_dfl_v8_pruned_candidate_library_frame",
     "build_dfl_v8_pruned_candidate_family_plan_frame",
+    "build_dfl_v8_pruned_candidate_value_selector_frame",
+    "build_dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame",
+    "build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame",
     "build_dfl_sparse_safe_switch_abstention_model_v6_frame",
     "build_dfl_sparse_safe_switch_candidate_library_v6_frame",
     "build_dfl_sparse_safe_switch_feature_contract_audit_frame",

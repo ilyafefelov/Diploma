@@ -36,6 +36,9 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_v8_false_positive_tail_risk_audit_frame,
     build_dfl_v8_pruned_candidate_library_frame,
     build_dfl_v8_pruned_candidate_family_plan_frame,
+    build_dfl_v8_pruned_candidate_value_selector_frame,
+    build_dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame,
+    build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
     build_dfl_ua_context_candidate_v8_strict_rescore_frame,
     build_dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,
@@ -1289,6 +1292,101 @@ def test_v8_pruned_candidate_library_removes_prior_risk_families_but_keeps_fallb
         False
     }
     assert set(pruned["market_execution_enabled"].to_list()) == {False}
+
+
+def test_v8_pruned_teacher_recomputes_neighbor_support_after_pruning() -> None:
+    teacher_v8 = _v8_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    model = build_dfl_candidate_value_regret_surrogate_v8_frame(
+        teacher_v8,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        allowed_candidate_sources=("ua_context_v8_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+    plan = build_dfl_v8_pruned_candidate_family_plan_frame(
+        build_dfl_v8_false_positive_tail_risk_audit_frame(teacher_v8, model)
+    )
+    pruned = build_dfl_v8_pruned_candidate_library_frame(teacher_v8, plan)
+
+    rebuilt = build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame(
+        pruned,
+        max_prior_neighbor_distance=2.0,
+        nearest_neighbor_count=3,
+    )
+
+    assert set(rebuilt["teacher_panel_version"].to_list()) == {
+        "candidate_value_teacher_v8_pruned"
+    }
+    assert "selector_feature_v8_pruned_neighbor_safe_win_count" in rebuilt.columns
+    assert set(rebuilt["market_execution_enabled"].to_list()) == {False}
+    generated = rebuilt.filter(
+        pl.col("candidate_source") == "ua_context_v8_generated_candidate"
+    )
+    assert generated.height > 0
+    assert set(generated["label_v8_pruned_material_safe_switch"].to_list()) == {True}
+
+
+def test_v8_pruned_selector_trains_only_after_rebuilt_pruned_labels() -> None:
+    teacher_v8 = _v8_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+            train_strict_regret=300.0,
+            final_strict_regret=300.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    model = build_dfl_candidate_value_regret_surrogate_v8_frame(
+        teacher_v8,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        allowed_candidate_sources=("ua_context_v8_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+    plan = build_dfl_v8_pruned_candidate_family_plan_frame(
+        build_dfl_v8_false_positive_tail_risk_audit_frame(teacher_v8, model)
+    )
+    pruned_teacher = build_dfl_v8_pruned_candidate_value_teacher_label_panel_frame(
+        build_dfl_v8_pruned_candidate_library_frame(teacher_v8, plan),
+        max_prior_neighbor_distance=2.0,
+    )
+
+    selector = build_dfl_v8_pruned_candidate_value_selector_frame(
+        pruned_teacher,
+        tenant_ids=TENANTS,
+        source_model_names=(SOURCE,),
+        max_prior_neighbor_distance=2.0,
+        min_neighbor_safe_win_count=1,
+        min_predicted_improvement_uah=1.0,
+        max_neighbor_tail_risk_probability=0.30,
+        allowed_candidate_sources=("ua_context_v8_generated_candidate",),
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+    strict = build_dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame(
+        pruned_teacher,
+        selector,
+        generated_at=GENERATED_AT,
+    )
+
+    assert set(selector["selected_final_candidate_count"].to_list()) == {2}
+    assert set(selector["raw_hourly_action_imitation"].to_list()) == {False}
+    selected = strict.filter(
+        pl.col("selection_role") == "v8_pruned_candidate_value_selector"
+    )
+    assert selected["regret_uah"].to_list() == [20.0] * (len(TENANTS) * 2)
+    assert set(selected["market_execution_enabled"].to_list()) == {False}
 
 
 def test_v8_rolling_uses_prior_rescored_neighbors_only() -> None:

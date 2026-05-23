@@ -143,6 +143,16 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      `12,520` rows (`1,570` strict fallback, `1,825` V2+ default, `9,125`
      monitored V7 generated candidates). Backfill Ukrainian prior context only
      if that pruned universe is too sparse.
+   - The pruned teacher-label rebuild and selector are now materialized. The
+     rebuilt pruned teacher frame still has `12,520` rows, but after risky
+     families were removed it contains `0` material safe-switch labels and `0`
+     final-holdout material safe-switch labels. The pruned selector therefore
+     selected `0 / 90`, fell back to frozen V2+ everywhere, and matched V2+
+     exactly at `174.77` / `67.30` UAH with `market_execution_enabled=false`.
+     This answers the V8 decision gate: the current pruned universe is too
+     sparse for another selector or DT/LAVA target. The next ML work must
+     backfill stronger Ukrainian point-in-time context or generate new feasible
+     non-tail-risk candidates before training again.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

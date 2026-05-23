@@ -107,6 +107,26 @@ Materialized false-positive/tail-risk status:
   sparse, the next branch is Ukrainian prior-context backfill, not a larger
   model.
 
+Pruned teacher/selector status:
+
+- pruned teacher/selector/strict Dagster run id:
+  `46137578-b437-4712-a288-3574fd718e0b`;
+- rebuilt pruned teacher rows: `12,520`;
+- material safe-switch labels after pruning: `0`;
+- final-holdout material safe-switch labels after pruning: `0`;
+- pruned selector selected: `0 / 90`;
+- pruned selector mean / median regret: `174.77` / `67.30` UAH, exactly the
+  frozen calibrated V2+ fallback;
+- `dt_lava_ready=false` for all five tenant rows;
+- `market_execution_enabled=false`.
+
+This confirms the decision: pruning removed the risky false-positive families,
+but it also left no material safe-switch teacher labels to learn from. The next
+ML step is not DT/LAVA and not another selector over this pruned frame. It is a
+stronger Ukrainian prior-context/candidate-generation pass that creates
+non-tail-risk opportunities before any new selector or candidate-index DT
+target.
+
 ## Asset Path
 
 | Asset | Purpose |
@@ -119,6 +139,9 @@ Materialized false-positive/tail-risk status:
 | `dfl_v8_false_positive_tail_risk_audit_frame` | Diagnoses whether V8 accepted switches were true safe switches, weak losses, or tail-risk false positives, and summarizes prior/final risk by candidate family. |
 | `dfl_v8_pruned_candidate_family_plan_frame` | Converts the audit into a next-step plan: keep/monitor safe families, prune prior-tail-risk families, or require stronger Ukrainian prior context before training another selector or DT target. |
 | `dfl_v8_pruned_candidate_library_frame` | Applies the plan by removing blocked prior-tail-risk candidate-family profiles while always preserving V2+ and strict fallback rows. This is diagnostic training data for a later branch, not a promoted strategy. |
+| `dfl_v8_pruned_candidate_value_teacher_label_panel_frame` | Rebuilds nearest-prior teacher labels after pruning, so the next selector cannot use neighbor support from families removed by the tail-risk audit. |
+| `dfl_v8_pruned_candidate_value_selector_frame` | Trains the conservative selector only on the rebuilt pruned teacher frame and falls back to V2+ when material safe-switch evidence is absent. |
+| `dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame` | Strict-scores the pruned selector versus frozen V2+ and strict control. The current materialization falls back to V2+ on all final anchors. |
 
 Tracked config:
 
@@ -181,12 +204,18 @@ The false-positive/tail-risk audit is the immediate decision point:
 - if a family has prior safe wins and low prior tail risk, it can remain a
   monitored candidate source for a later V9 or DT/LAVA teacher-label branch.
 
+The pruned selector closed that decision point for the current frame: after
+removing risky profiles, there are no material safe-switch labels left. Future
+work must first backfill stronger Ukrainian point-in-time context or generate
+new feasible schedule families with non-tail-risk upside. DT/LAVA should wait
+until the teacher frame contains enough safe candidate-index labels to learn.
+
 ## Run
 
 ```powershell
 docker compose exec -T dagster-webserver uv run dagster asset materialize `
   -m smart_arbitrage.defs `
-  --select dfl_ua_context_backfilled_feature_panel_v8_frame,dfl_ua_context_feasible_schedule_candidate_library_v8_frame,dfl_ua_context_candidate_v8_strict_rescore_frame,dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,dfl_candidate_value_regret_surrogate_v8_frame,dfl_candidate_value_v8_strict_lp_benchmark_frame,dfl_candidate_value_v8_rolling_robustness_frame,dfl_v8_false_positive_tail_risk_audit_frame,dfl_v8_pruned_candidate_family_plan_frame,dfl_v8_pruned_candidate_library_frame `
+  --select dfl_ua_context_backfilled_feature_panel_v8_frame,dfl_ua_context_feasible_schedule_candidate_library_v8_frame,dfl_ua_context_candidate_v8_strict_rescore_frame,dfl_ua_context_candidate_value_teacher_label_panel_v8_frame,dfl_candidate_value_regret_surrogate_v8_frame,dfl_candidate_value_v8_strict_lp_benchmark_frame,dfl_candidate_value_v8_rolling_robustness_frame,dfl_v8_false_positive_tail_risk_audit_frame,dfl_v8_pruned_candidate_family_plan_frame,dfl_v8_pruned_candidate_library_frame,dfl_v8_pruned_candidate_value_teacher_label_panel_frame,dfl_v8_pruned_candidate_value_selector_frame,dfl_v8_pruned_candidate_value_strict_lp_benchmark_frame `
   -c configs/real_data_dfl_ua_context_candidate_v8_week3.yaml
 ```
 
