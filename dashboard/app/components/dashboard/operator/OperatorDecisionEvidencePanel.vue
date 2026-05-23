@@ -296,13 +296,11 @@ const sensitivityOption = computed(() => ({
           <span><strong>Mean regret</strong> = average lost UAH versus oracle</span>
           <span><strong>Win rate</strong> = share of anchors ranked best by regret</span>
         </div>
-        <ClientOnly>
-          <VChart
-            :option="strategyOption"
-            autoresize
-            class="decision-chart"
-          />
-        </ClientOnly>
+        <VChart
+          :option="strategyOption"
+          autoresize
+          class="decision-chart"
+        />
       </article>
 
       <article class="decision-chart-card">
@@ -313,13 +311,11 @@ const sensitivityOption = computed(() => ({
           <h3>Strict control regret rate</h3>
           <p>Rolling anchor view of the default comparator against the oracle upper bound.</p>
         </div>
-        <ClientOnly>
-          <VChart
-            :option="regretTimelineOption"
-            autoresize
-            class="decision-chart"
-          />
-        </ClientOnly>
+        <VChart
+          :option="regretTimelineOption"
+          autoresize
+          class="decision-chart"
+        />
       </article>
 
       <article class="decision-chart-card decision-chart-card-wide">
@@ -330,13 +326,11 @@ const sensitivityOption = computed(() => ({
           <h3>Where regret risk concentrates</h3>
           <p>These buckets explain historical regret mechanisms for the selected preview context; they are diagnosis, not live dispatch rules.</p>
         </div>
-        <ClientOnly>
-          <VChart
-            :option="sensitivityOption"
-            autoresize
-            class="decision-chart decision-chart-compact"
-          />
-        </ClientOnly>
+        <VChart
+          :option="sensitivityOption"
+          autoresize
+          class="decision-chart decision-chart-compact"
+        />
       </article>
     </div>
 

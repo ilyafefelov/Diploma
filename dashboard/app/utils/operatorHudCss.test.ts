@@ -100,4 +100,17 @@ describe('operator HUD CSS', () => {
     expect(signalCharts).toContain('Review context for selected preview')
     expect(signalCharts).not.toContain('Use now: context for selected preview')
   })
+
+  it('renders decision evidence charts without blank client-only gaps', () => {
+    const decisionPanel = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorDecisionEvidencePanel.vue', import.meta.url)),
+      'utf8'
+    )
+    const css = readFileSync(cssPath, 'utf8')
+
+    expect(decisionPanel).toContain('class="decision-chart"')
+    expect(decisionPanel).toContain('class="decision-chart decision-chart-compact"')
+    expect(decisionPanel).not.toContain('<ClientOnly>')
+    expect(getSelectorBlock(css, '.operator-frame .surface-panel')).toMatch(/overflow:\s*visible/)
+  })
 })
