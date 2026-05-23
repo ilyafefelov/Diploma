@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import HudSignalCharts from '~/components/dashboard/HudSignalCharts.vue'
 import OperatorMarketSignalHero from '~/components/dashboard/operator/OperatorMarketSignalHero.vue'
 import type { OperatorRecommendationResponse, SignalPreview, TenantSummary } from '~/types/control-plane'
 import type { OperatorExplanationMode, OperatorMarketRegimeChip } from '~/types/operator-dashboard'
 
-defineProps<{
+const props = defineProps<{
   tenants: TenantSummary[]
   selectedTenantId: string
   registryEnvelope: string
@@ -21,6 +22,58 @@ defineProps<{
 const emit = defineEmits<{
   'update:explanationMode': [value: OperatorExplanationMode]
 }>()
+
+const formatBoundaryTimestamp = (value: string | null | undefined): string => {
+  if (!value) {
+    return 'not available'
+  }
+
+  return new Date(value).toLocaleString('en-GB', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formatBoundaryStatus = (value: string | null | undefined): string => {
+  if (!value) {
+    return 'not available'
+  }
+
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ')
+}
+
+const marketBoundaryItems = computed(() => {
+  const recommendation = props.operatorRecommendation
+
+  return [
+    {
+      label: 'Scope',
+      value: recommendation?.market_scope === 'dam_hourly_planning_preview'
+        ? 'DAM hourly preview'
+        : formatBoundaryStatus(recommendation?.market_scope)
+    },
+    {
+      label: 'Delivery',
+      value: recommendation?.target_delivery_window_start && recommendation.target_delivery_window_end
+        ? `${formatBoundaryTimestamp(recommendation.target_delivery_window_start)} -> ${formatBoundaryTimestamp(recommendation.target_delivery_window_end)}`
+        : 'loading'
+    },
+    {
+      label: 'Gate',
+      value: formatBoundaryStatus(recommendation?.market_gate_status ?? 'not_evaluated_preview_only')
+    },
+    {
+      label: 'Bid',
+      value: formatBoundaryStatus(recommendation?.proposed_bid_status ?? 'not_emitted_operator_preview')
+    }
+  ]
+})
 </script>
 
 <template>
@@ -28,11 +81,27 @@ const emit = defineEmits<{
     <div class="console-heading">
       <div>
         <p class="eyebrow">
-          Market signals
+          Market scope
         </p>
         <h2 class="section-title">
-          DAM / IDM arbitrage surface
+          DAM hourly planning preview
         </h2>
+        <p class="console-subcopy">
+          No ProposedBid, no market submission, no IDM recommendation mode.
+        </p>
+        <div
+          class="console-boundary-strip"
+          aria-label="Operator preview boundary"
+        >
+          <span
+            v-for="item in marketBoundaryItems"
+            :key="item.label"
+            class="console-boundary-pill"
+          >
+            <strong>{{ item.label }}</strong>
+            {{ item.value }}
+          </span>
+        </div>
       </div>
 
       <div class="console-controls">

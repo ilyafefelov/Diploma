@@ -1012,12 +1012,12 @@ export const buildMarketSignalHeroChartOption = (
 
         return [
           `<strong>${formatTooltipAxisPeriod(tooltipItems[0]?.axisValueLabel || '')}</strong>`,
-          `DAM LMP: ${Math.round(tooltipItems.find(item => item.seriesName === 'DAM LMP')?.value ?? 0)} UAH/MWh`,
-          `IDM price: ${Math.round(tooltipItems.find(item => item.seriesName === 'IDM Price')?.value ?? 0)} UAH/MWh`,
-          `Forecast DAM: ${Math.round(tooltipItems.find(item => item.seriesName === 'Forecast (DAM)')?.value ?? 0)} UAH/MWh`,
-          `Forecast IDM: ${Math.round(tooltipItems.find(item => item.seriesName === 'Forecast (IDM)')?.value ?? 0)} UAH/MWh`,
+          `DAM observed context: ${Math.round(tooltipItems.find(item => item.seriesName === 'DAM observed context')?.value ?? 0)} UAH/MWh`,
+          `Weather-adjusted context: ${Math.round(tooltipItems.find(item => item.seriesName === 'Weather-adjusted context')?.value ?? 0)} UAH/MWh`,
+          `DAM forecast context: ${Math.round(tooltipItems.find(item => item.seriesName === 'DAM forecast context')?.value ?? 0)} UAH/MWh`,
+          `Adjusted forecast context: ${Math.round(tooltipItems.find(item => item.seriesName === 'Adjusted forecast context')?.value ?? 0)} UAH/MWh`,
           `Weather source: ${weatherSource}`,
-          'MVP process: baseline DAM forecast + calibrated weather uplift, then displayed as DAM/IDM operator signal bands.'
+          'MVP process: DAM hourly planning preview. Adjusted context is explanatory only, not IDM bidding.'
         ].join('<br/>')
       }
     },
@@ -1071,7 +1071,7 @@ export const buildMarketSignalHeroChartOption = (
     series: [
       {
         type: 'line',
-        name: 'DAM LMP',
+        name: 'DAM observed context',
         smooth: true,
         data: signal.market_price,
         symbol: 'circle',
@@ -1091,7 +1091,7 @@ export const buildMarketSignalHeroChartOption = (
       },
       {
         type: 'line',
-        name: 'IDM Price',
+        name: 'Weather-adjusted context',
         smooth: true,
         data: adjustedMarketPrice,
         symbol: 'diamond',
@@ -1111,7 +1111,7 @@ export const buildMarketSignalHeroChartOption = (
       },
       {
         type: 'line',
-        name: 'Forecast (DAM)',
+        name: 'DAM forecast context',
         smooth: true,
         data: damForecast,
         symbol: 'none',
@@ -1124,7 +1124,7 @@ export const buildMarketSignalHeroChartOption = (
       },
       {
         type: 'line',
-        name: 'Forecast (IDM)',
+        name: 'Adjusted forecast context',
         smooth: true,
         data: idmForecast,
         symbol: 'none',

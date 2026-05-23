@@ -397,7 +397,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     })
   })
 
-  const dispatchModeLabel = computed(() => input.isMaterializing.value ? 'Running' : 'Auto')
+  const dispatchModeLabel = computed(() => input.isMaterializing.value ? 'Refreshing preview' : 'Preview only')
 
   const batteryStatusLabel = computed(() => latestRecommendedPowerMw.value > 1
     ? 'Discharging'

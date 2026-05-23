@@ -8,6 +8,7 @@ const props = defineProps<{
   timelineSegments: OperatorTimelineSegment[]
   dispatchModeLabel: string
   predictionHeadLabel: string
+  marketBoundaryLabel: string
 }>()
 
 const activeTooltipSegment = ref<OperatorTimelineSegment | null>(null)
@@ -47,6 +48,7 @@ const hideSegmentTooltip = (): void => {
         <p>Schedule timeline</p>
         <span>{{ selectedTenantName }} / {{ selectedTenantBadge }}</span>
         <small>{{ predictionHeadLabel }}</small>
+        <small>{{ marketBoundaryLabel }}</small>
       </div>
     </div>
 
@@ -94,13 +96,13 @@ const hideSegmentTooltip = (): void => {
         />
       </label>
       <label>
-        <span>Dispatch mode</span>
+        <span>Review mode</span>
         <USelect
           class="dock-select"
           :model-value="dispatchModeLabel"
           :items="[
             { label: dispatchModeLabel, value: dispatchModeLabel },
-            { label: 'Manual review', value: 'Manual review' }
+            { label: 'Operator review', value: 'Operator review' }
           ]"
           value-key="value"
           label-key="label"

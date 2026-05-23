@@ -160,6 +160,16 @@ const schedulePredictionHeadLabel = computed(() => {
     : 'Research branch: TFT/DT candidate review'
 })
 
+const scheduleMarketBoundaryLabel = computed(() => {
+  if (!operatorRecommendation.value) {
+    return 'DAM hourly preview / boundary loading'
+  }
+
+  return operatorRecommendation.value.market_execution_enabled
+    ? 'Market execution enabled'
+    : 'DAM hourly preview / no ProposedBid / no market submission'
+})
+
 const formatStrategyId = (strategyId: string): string => strategyId
   .split('_')
   .filter(Boolean)
@@ -348,6 +358,7 @@ onBeforeUnmount(() => {
         :timeline-segments="timelineSegments"
         :dispatch-mode-label="dispatchModeLabel"
         :prediction-head-label="schedulePredictionHeadLabel"
+        :market-boundary-label="scheduleMarketBoundaryLabel"
       />
     </div>
   </main>

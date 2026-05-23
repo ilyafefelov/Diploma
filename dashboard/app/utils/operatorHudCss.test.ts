@@ -63,4 +63,41 @@ describe('operator HUD CSS', () => {
     expect(marketSignalHero).toContain('forecastWindowPeriodLabel')
     expect(marketSignalHero).not.toContain('Latest visible hour')
   })
+
+  it('keeps the operator first viewport scoped to DAM planning preview copy', () => {
+    const topBar = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorTopBar.vue', import.meta.url)),
+      'utf8'
+    )
+    const marketConsole = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorMarketConsole.vue', import.meta.url)),
+      'utf8'
+    )
+    const marketSignalHero = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorMarketSignalHero.vue', import.meta.url)),
+      'utf8'
+    )
+    const scheduleDock = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/operator/OperatorScheduleDock.vue', import.meta.url)),
+      'utf8'
+    )
+    const signalCharts = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/HudSignalCharts.vue', import.meta.url)),
+      'utf8'
+    )
+
+    expect(topBar).toContain('Operator Preview')
+    expect(topBar).not.toContain('BESS Control')
+    expect(marketConsole).toContain('DAM hourly planning preview')
+    expect(marketConsole).not.toContain('DAM / IDM arbitrage surface')
+    expect(marketSignalHero).toContain('DAM hourly')
+    expect(marketSignalHero).toContain('IDM future')
+    expect(marketSignalHero).not.toContain('label="IDM"')
+    expect(marketSignalHero).not.toContain('label="Both"')
+    expect(scheduleDock).toContain('Review mode')
+    expect(scheduleDock).not.toContain('Dispatch mode')
+    expect(signalCharts).toContain('Selected schedule and value preview')
+    expect(signalCharts).toContain('Review context for selected preview')
+    expect(signalCharts).not.toContain('Use now: context for selected preview')
+  })
 })

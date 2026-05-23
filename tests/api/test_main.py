@@ -650,6 +650,34 @@ def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns
 	assert any(strategy["enabled"] is False for strategy in response_payload["available_strategies"] if strategy["strategy_id"] == "decision_transformer")
 
 
+def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: TestClient) -> None:
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "strict_similar_day"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["market_scope"] == "dam_hourly_planning_preview"
+	assert response_payload["market_venue"] == "DAM"
+	assert response_payload["interval_minutes"] == 60
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["read_model_boundary"] == "operator_preview_no_market_submission"
+	assert response_payload["market_gate_status"] == "not_evaluated_preview_only"
+	assert response_payload["bid_eligibility_status"] == "not_applicable_no_proposed_bid"
+	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert response_payload["forecast_generated_at"] is None
+	assert "proposed_bid" not in response_payload
+
+	target_start = datetime.fromisoformat(response_payload["target_delivery_window_start"])
+	target_end = datetime.fromisoformat(response_payload["target_delivery_window_end"])
+	first_interval = datetime.fromisoformat(response_payload["recommendation_schedule"][0]["interval_start"])
+	last_interval = datetime.fromisoformat(response_payload["recommendation_schedule"][-1]["interval_start"])
+	assert target_start == first_interval
+	assert target_end == last_interval + timedelta(hours=1)
+	assert datetime.fromisoformat(response_payload["anchor_timestamp"]) < target_start
+
+
 def test_operator_recommendation_exposes_v2_plus_offline_strategy(
 	client: TestClient,
 ) -> None:
@@ -1202,6 +1230,7 @@ def test_operator_recommendation_routes_selected_official_forecast_into_lp_previ
 	assert response_payload["selected_strategy_id"] == "nbeatsx_official_v0"
 	assert response_payload["policy_mode"] == "forecast_to_lp_preview"
 	assert response_payload["forecast_source"] == "official NBEATSx forecast candidate routed through Level 1 LP preview"
+	assert response_payload["forecast_generated_at"] is not None
 	assert response_payload["recommendation_schedule"][0]["forecast_price_uah_mwh"] == pytest.approx(1800.0)
 	assert response_payload["recommendation_schedule"][1]["forecast_price_uah_mwh"] == pytest.approx(5200.0)
 

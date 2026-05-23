@@ -39,11 +39,11 @@
 ### Slice 3: future-stack evidence surface
 
 Підтверджені операторські кроки:
-- operator recommendation read model with manual strategy switch and selected-policy explanation
+- operator recommendation read model with manual strategy switch, selected-policy explanation, and explicit DAM hourly planning-preview metadata
 - NBEATSx/TFT forecast-stack graph from FastAPI read models
 - DT policy-preview value-gap/action graph when policy rows exist
 - daily value against hold/no-arbitrage baseline
-- explicit policy boundary: preview/read model, not market execution
+- explicit policy boundary: preview/read model, not market execution, not IDM bidding, and not `ProposedBid` generation
 
 Основні технічні опори:
 - [api/main.py](d:/School/GoIT/Courses/Diploma/api/main.py)
@@ -58,6 +58,7 @@
 - `Proposed Bid`
 - `Cleared Trade`
 - `Dispatch Command`
+- IDM/ВДР bid recommendation
 - market execution engine
 - full digital twin battery physics
 - live DT/M3DT market execution
@@ -65,11 +66,12 @@
 
 Поточна demo-ready поверхня повинна описуватися як:
 - operator-facing read model
-- recommendation preview
+- DAM hourly recommendation preview
 - tenant-aware control surface
 - constrained baseline LP analytical surface
 - projected battery state preview
 - forecast-stack and DT-policy evidence surface with deterministic safety boundary
+- `market_execution_enabled=false`, with market gate and bid eligibility marked as preview-only/not-applicable until a future bid path exists
 
 ## Weekly-report-ready artifact links
 

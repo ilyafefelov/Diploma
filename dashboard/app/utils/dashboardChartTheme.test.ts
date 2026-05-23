@@ -32,6 +32,18 @@ describe('dashboard chart theme', () => {
   it('builds selected-strategy dispatch charts from operator recommendations', () => {
     const recommendation: OperatorRecommendationResponse = {
       tenant_id: 'client_003_dnipro_factory',
+      market_scope: 'dam_hourly_planning_preview',
+      market_venue: 'DAM',
+      interval_minutes: 60,
+      anchor_timestamp: '2026-05-19T14:00:00Z',
+      forecast_generated_at: null,
+      target_delivery_window_start: '2026-05-19T15:00:00Z',
+      target_delivery_window_end: '2026-05-19T19:00:00Z',
+      market_execution_enabled: false,
+      read_model_boundary: 'operator_preview_no_market_submission',
+      market_gate_status: 'not_evaluated_preview_only',
+      bid_eligibility_status: 'not_applicable_no_proposed_bid',
+      proposed_bid_status: 'not_emitted_operator_preview',
       selected_strategy_id: 'schedule_value_learner_v2_plus',
       selection_reason: 'manual strategy: Offline V2+ schedule/value learner',
       forecast_source: 'read-model preview adapter',

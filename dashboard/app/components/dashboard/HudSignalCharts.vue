@@ -81,7 +81,7 @@ const weatherSourceBadge = computed(() => {
         <span class="signal-guide-pill">Green bars: extra effect from weather</span>
         <span class="signal-guide-pill">Dashed green: final price after weather</span>
         <span class="signal-guide-pill signal-guide-pill-source">{{ weatherSourceBadge }}</span>
-        <span class="signal-guide-pill signal-guide-pill-source">Use now: context for selected preview</span>
+        <span class="signal-guide-pill signal-guide-pill-source">Review context for selected preview</span>
         <span class="signal-guide-pill">Bottom axis: local time of day</span>
       </div>
 
@@ -182,10 +182,10 @@ const weatherSourceBadge = computed(() => {
       <div class="signal-card__header">
         <div>
           <p class="signal-card__eyebrow">
-            Dispatch balance
+            Schedule balance
           </p>
           <h3 class="signal-card__title">
-            Selected dispatch and value preview
+            Selected schedule and value preview
           </h3>
           <p class="signal-card__summary">
             Blue bars now follow <strong>{{ selectedStrategyLabel }}</strong> from the operator recommendation endpoint.
@@ -211,7 +211,7 @@ const weatherSourceBadge = computed(() => {
         v-if="isLoading"
         class="signal-chart signal-chart-fallback"
       >
-        Loading dispatch preview...
+        Loading schedule preview...
       </div>
       <VChart
         v-else

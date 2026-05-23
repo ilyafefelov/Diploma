@@ -132,6 +132,11 @@ OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS: tuple[str, ...] = (
 )
 FUTURE_STACK_DAM_PRICE_CAP_MIN_UAH_MWH = 10.0
 FUTURE_STACK_DAM_PRICE_CAP_MAX_UAH_MWH = 15_000.0
+OPERATOR_MARKET_SCOPE = "dam_hourly_planning_preview"
+OPERATOR_READ_MODEL_BOUNDARY = "operator_preview_no_market_submission"
+OPERATOR_MARKET_GATE_STATUS = "not_evaluated_preview_only"
+OPERATOR_BID_ELIGIBILITY_STATUS = "not_applicable_no_proposed_bid"
+OPERATOR_PROPOSED_BID_STATUS = "not_emitted_operator_preview"
 
 
 class TenantSummaryResponse(BaseModel):
@@ -720,6 +725,18 @@ class OperatorValueGapPointResponse(BaseModel):
 
 class OperatorRecommendationResponse(BaseModel):
 	tenant_id: str
+	market_scope: str
+	market_venue: str
+	interval_minutes: int
+	anchor_timestamp: datetime
+	forecast_generated_at: datetime | None
+	target_delivery_window_start: datetime | None
+	target_delivery_window_end: datetime | None
+	market_execution_enabled: bool
+	read_model_boundary: str
+	market_gate_status: str
+	bid_eligibility_status: str
+	proposed_bid_status: str
 	selected_strategy_id: str
 	selection_reason: str
 	forecast_source: str
@@ -3292,6 +3309,29 @@ def _operator_value_gap_series(baseline_preview: BaselineLpPreviewResponse) -> l
 	]
 
 
+def _operator_target_delivery_window(
+	recommendation_schedule: list[BaselineRecommendationPointResponse],
+) -> tuple[datetime | None, datetime | None]:
+	if not recommendation_schedule:
+		return None, None
+	window_start = recommendation_schedule[0].interval_start
+	window_end = recommendation_schedule[-1].interval_start + timedelta(minutes=LEVEL1_INTERVAL_MINUTES)
+	return window_start, window_end
+
+
+def _operator_forecast_generated_at(selected_strategy_id: str) -> datetime | None:
+	if selected_strategy_id not in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
+		return None
+	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
+		model_names=[selected_strategy_id],
+		limit_per_model=1,
+	)
+	if forecast_frame.height == 0 or "generated_at" not in forecast_frame.columns:
+		return None
+	value = forecast_frame.select("generated_at").max().item()
+	return _datetime_row_value(value, field_name="generated_at")
+
+
 def _build_operator_recommendation_response(
 	*,
 	tenant_id: str,
@@ -3363,8 +3403,23 @@ def _build_operator_recommendation_response(
 		selected_strategy_id=selected_strategy_id,
 		policy_preview_frame=policy_preview_frame,
 	)
+	target_delivery_window_start, target_delivery_window_end = _operator_target_delivery_window(
+		baseline_preview.recommendation_schedule,
+	)
 	return OperatorRecommendationResponse(
 		tenant_id=tenant_id,
+		market_scope=OPERATOR_MARKET_SCOPE,
+		market_venue=LEVEL1_MARKET_VENUE,
+		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		anchor_timestamp=anchor_timestamp,
+		forecast_generated_at=_operator_forecast_generated_at(selected_strategy_id),
+		target_delivery_window_start=target_delivery_window_start,
+		target_delivery_window_end=target_delivery_window_end,
+		market_execution_enabled=False,
+		read_model_boundary=OPERATOR_READ_MODEL_BOUNDARY,
+		market_gate_status=OPERATOR_MARKET_GATE_STATUS,
+		bid_eligibility_status=OPERATOR_BID_ELIGIBILITY_STATUS,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
 		selected_strategy_id=selected_strategy_id,
 		selection_reason=selection_reason,
 		forecast_source=_operator_forecast_source(selected_strategy_id),

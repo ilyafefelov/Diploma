@@ -537,6 +537,10 @@ Request query example:
 
 Response shape:
 
+- `market_scope`, `market_venue`, `interval_minutes`: explicit current scope. The present operator contract is `dam_hourly_planning_preview`, `DAM`, `60`.
+- `anchor_timestamp`, `forecast_generated_at`, `target_delivery_window_start`, `target_delivery_window_end`: as-of timing and target delivery window metadata for the visible preview. `forecast_generated_at` may be `null` for deterministic strict-similar-day previews that do not come from persisted forecast-store rows.
+- `market_execution_enabled`, `read_model_boundary`: execution boundary. Current value remains `false` with `operator_preview_no_market_submission`.
+- `market_gate_status`, `bid_eligibility_status`, `proposed_bid_status`: explicit non-bid status. Current values are preview-only/not-applicable because this endpoint does not evaluate market gate closure and does not emit `ProposedBid`.
 - `available_strategies`: materialized strategies the operator may inspect; unavailable future policies stay disabled.
 - `selected_strategy_id`, `selected_policy_id`, `policy_mode`, `policy_readiness`: current selection and its safety/readiness boundary.
 - `policy_forecast_context_source`, `policy_forecast_context_row_count`, `policy_forecast_context_coverage_ratio`, `policy_forecast_context_warning`: DT forecast-state coverage copied into the operator read model; non-DT strategies return `not_applicable`.
@@ -547,7 +551,8 @@ Response shape:
 
 Operational notes:
 
-- This endpoint is the main `/operator` read model. It does not submit bids.
+- This endpoint is the main `/operator` read model. It is a DAM-only hourly planning preview and does not submit bids.
+- IDM/ВДР data must not be presented as an active recommendation mode from this endpoint. Until a separate IDM model, validation target, market gate, and `ProposedBid` path exist, IDM belongs only in future-work or read-only context copy.
 - When `strategy_id` is `nbeatsx_official_v0` or `tft_official_v0` and forecast-store rows exist with all visible forecast prices inside the configured DAM caps, the endpoint routes those forecast prices through the deterministic Level 1 LP preview. Out-of-cap official rows remain visible in the forecast graph with `quality_boundary=needs_calibration_before_value_claim`, but the requested official strategy is disabled and the operator response falls back to `strict_similar_day`. The resulting schedule is still a preview, not market execution.
 - DT is exposed only when a policy-preview table has materialized safe rows. Even then, `market_execution_enabled` remains false until a full evaluation promotes it.
 - `strict_similar_day` remains the control comparator and safe fallback.

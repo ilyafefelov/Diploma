@@ -551,6 +551,18 @@ export interface OperatorValueGapPointResponse {
 
 export interface OperatorRecommendationResponse {
   tenant_id: string
+  market_scope: string
+  market_venue: string
+  interval_minutes: number
+  anchor_timestamp: string
+  forecast_generated_at: string | null
+  target_delivery_window_start: string | null
+  target_delivery_window_end: string | null
+  market_execution_enabled: boolean
+  read_model_boundary: string
+  market_gate_status: string
+  bid_eligibility_status: string
+  proposed_bid_status: string
   selected_strategy_id: string
   selection_reason: string
   forecast_source: string

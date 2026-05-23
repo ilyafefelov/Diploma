@@ -21,10 +21,10 @@ const emit = defineEmits<{
       </div>
       <div>
         <p class="brand-kicker">
-          Autonomous BESS
+          BESS read model
         </p>
         <h1 class="brand-title">
-          BESS Control
+          Operator Preview
         </h1>
       </div>
     </div>
@@ -33,7 +33,7 @@ const emit = defineEmits<{
       <span class="topbar-chip topbar-chip-clock">{{ clockLabel }}</span>
       <span class="topbar-chip topbar-chip-live">
         <span class="status-dot" />
-        {{ isLoading ? 'Refreshing registry' : 'System normal' }}
+        {{ isLoading ? 'Refreshing preview' : 'Preview ready' }}
       </span>
       <span class="topbar-chip">
         <UIcon name="i-lucide-map-pin" />

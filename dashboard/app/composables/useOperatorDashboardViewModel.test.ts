@@ -69,6 +69,7 @@ describe('useOperatorDashboardViewModel', () => {
       value: '100 UAH',
       meta: 'schedule_value_learner_v2_plus'
     })
+    expect(viewModel.dispatchModeLabel.value).toBe('Preview only')
   })
 })
 

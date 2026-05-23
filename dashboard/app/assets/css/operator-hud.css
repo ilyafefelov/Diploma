@@ -784,6 +784,39 @@
   font-size: 1.35rem;
 }
 
+.console-subcopy {
+  margin: 0.35rem 0 0;
+  max-width: 34rem;
+  color: rgba(224, 247, 255, 0.78);
+  font-size: 0.78rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.console-boundary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  margin-top: 0.55rem;
+}
+
+.console-boundary-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(202, 249, 255, 0.28);
+  border-radius: 999px;
+  background: rgba(0, 43, 87, 0.32);
+  color: rgba(236, 250, 255, 0.82);
+  font-size: 0.68rem;
+  font-weight: 800;
+  padding: 0.32rem 0.55rem;
+}
+
+.console-boundary-pill strong {
+  color: #d7ff8d;
+}
+
 .rail-title {
   font-size: 1.12rem;
 }
@@ -890,9 +923,12 @@
 }
 
 .market-signal-hero__tab {
+  display: inline-grid;
+  place-items: center;
   min-height: 2rem;
   border: 0;
   border-radius: 0;
+  padding: 0.42rem 0.72rem;
   color: rgba(234, 249, 255, 0.78);
   font-weight: 900;
 }
@@ -901,6 +937,11 @@
 .market-signal-hero__range span:first-child {
   background: linear-gradient(180deg, #46cff7, #087fc5);
   color: white;
+}
+
+.market-signal-hero__tab-muted {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(234, 249, 255, 0.66);
 }
 
 .market-signal-hero__range span {

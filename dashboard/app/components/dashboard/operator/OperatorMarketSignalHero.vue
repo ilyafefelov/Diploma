@@ -106,24 +106,8 @@ const forecastSpread = computed(() => {
   <div class="market-signal-hero">
     <div class="market-signal-hero__toolbar">
       <div class="market-signal-hero__tabs">
-        <UButton
-          label="DAM"
-          color="info"
-          variant="ghost"
-          class="market-signal-hero__tab market-signal-hero__tab-active"
-        />
-        <UButton
-          label="IDM"
-          color="info"
-          variant="ghost"
-          class="market-signal-hero__tab"
-        />
-        <UButton
-          label="Both"
-          color="info"
-          variant="ghost"
-          class="market-signal-hero__tab"
-        />
+        <span class="market-signal-hero__tab market-signal-hero__tab-active">DAM hourly</span>
+        <span class="market-signal-hero__tab market-signal-hero__tab-muted">IDM future</span>
       </div>
 
       <div class="market-signal-hero__range">
@@ -149,7 +133,7 @@ const forecastSpread = computed(() => {
         tabindex="0"
       >
         <p class="hud-mini-stat__label">
-          DAM spot
+          DAM delivery price
         </p>
         <strong>{{ latestMarketPrice == null ? '—' : formatPowerLabel(latestMarketPrice) }}</strong>
         <p class="hud-mini-stat__meta">
@@ -159,10 +143,10 @@ const forecastSpread = computed(() => {
           class="hud-mini-stat__tooltip"
           role="tooltip"
         >
-          <span class="hud-mini-stat__tooltip-title">Latest DAM price</span>
+          <span class="hud-mini-stat__tooltip-title">DAM hourly price context</span>
           <span>Formula: P_t = market_price[t]</span>
           <span>Period: {{ latestPricePeriodLabel }}.</span>
-          <span>Definition: expected settlement level used in the current MVP preview.</span>
+          <span>Definition: hourly DAM planning context used in the current preview; not an IDM bid.</span>
         </span>
       </article>
       <article
@@ -225,7 +209,7 @@ const forecastSpread = computed(() => {
           <span class="hud-mini-stat__tooltip-title">Signal density</span>
           <span>Formula: point_count = len(labels)</span>
           <span>Period: {{ forecastWindowPeriodLabel }}.</span>
-          <span>Interpretation: longer horizon gives smoother visual trend and confidence for dispatch alignment.</span>
+          <span>Interpretation: longer horizon gives smoother visual trend and confidence for schedule review.</span>
         </span>
       </article>
     </div>
