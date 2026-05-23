@@ -380,6 +380,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_oracle_template_candidate_library_v10_frame,
     build_dfl_oracle_template_candidate_v10_strict_rescore_frame,
     build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
+    build_dfl_forecast_extrema_repair_audit_frame,
+    build_dfl_ua_context_backfill_requirements_frame,
     build_dfl_v10_learning_ceiling_decision_frame,
     build_dfl_v10_tail_risk_transfer_audit_frame,
     build_dfl_expanded_schedule_value_teacher_label_panel_v1_frame,
@@ -7171,6 +7173,101 @@ def dfl_v10_learning_ceiling_decision_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_v10_learning_ceiling_decision_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v10",
+        market_venue="DAM",
+    ),
+)
+def dfl_forecast_extrema_repair_audit_frame(
+    context,
+    dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit V10 forecast peak/trough shifts before more selector work."""
+
+    frame = build_dfl_forecast_extrema_repair_audit_frame(
+        dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame
+    )
+    final_rows = frame.filter(pl.col("split_name") == "final_holdout")
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "final_rows": final_rows.height,
+            "final_extrema_shift_rows": final_rows.filter(
+                pl.col("diagnostic_extrema_shift_hours") >= 2.0
+            ).height
+            if final_rows.height
+            else 0,
+            "repair_focus_values": sorted(
+                str(value) for value in frame["forecast_extrema_repair_focus"].unique()
+            ),
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_forecast_extrema_repair_audit_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v10",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_backfill_requirements_frame(
+    context,
+    dfl_v10_tail_risk_transfer_audit_frame: pl.DataFrame,
+    dfl_forecast_extrema_repair_audit_frame: pl.DataFrame,
+    dfl_v10_learning_ceiling_decision_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Convert V10 closure failures into Ukrainian context acquisition needs."""
+
+    frame = build_dfl_ua_context_backfill_requirements_frame(
+        dfl_v10_tail_risk_transfer_audit_frame,
+        dfl_forecast_extrema_repair_audit_frame,
+        dfl_v10_learning_ceiling_decision_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "data_acquisition_needed_rows": frame.filter(
+                pl.col("context_backfill_decision") == "data_acquisition_needed"
+            ).height
+            if frame.height
+            else 0,
+            "dt_lava_ready_rows": frame.filter(pl.col("dt_lava_ready")).height
+            if frame.height
+            else 0,
+            "context_backfill_decisions": sorted(
+                str(value) for value in frame["context_backfill_decision"].unique()
+            ),
+            "target_label_space": "schedule_candidate_value_v10",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_backfill_requirements_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -15358,6 +15455,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
     dfl_v10_tail_risk_transfer_audit_frame,
     dfl_v10_learning_ceiling_decision_frame,
+    dfl_forecast_extrema_repair_audit_frame,
+    dfl_ua_context_backfill_requirements_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

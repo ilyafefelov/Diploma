@@ -252,6 +252,23 @@ def test_v2_plus_dfl_dt_bridge_packet_cli_exports_negative_evidence() -> None:
     assert "negative_evidence" in export_script
 
 
+def test_v10_tail_risk_transfer_closure_packet_cli_exports_negative_evidence() -> None:
+    export_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_v10_tail_risk_transfer_closure_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "--tail-risk-audit-pickle" in export_script
+    assert "--learning-ceiling-pickle" in export_script
+    assert "--run-slug" in export_script
+    assert "--dagster-run-id" in export_script
+    assert "--asset-check-status" in export_script
+    assert "build_dfl_v10_tail_risk_transfer_closure_packet" in export_script
+    assert "write_dfl_v10_tail_risk_transfer_closure_packet" in export_script
+    assert "negative_evidence" in export_script
+
+
 def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:
     export_script = (
         PROJECT_ROOT

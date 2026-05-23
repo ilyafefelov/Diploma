@@ -162,6 +162,12 @@ REGRET_SURROGATE_V10_TAIL_RISK_TRANSFER_AUDIT_CLAIM_SCOPE: Final[str] = (
 REGRET_SURROGATE_V10_LEARNING_CEILING_DECISION_CLAIM_SCOPE: Final[str] = (
     "dfl_v10_learning_ceiling_decision_not_full_dfl"
 )
+REGRET_SURROGATE_FORECAST_EXTREMA_REPAIR_AUDIT_CLAIM_SCOPE: Final[str] = (
+    "dfl_forecast_extrema_repair_audit_not_full_dfl"
+)
+REGRET_SURROGATE_UA_CONTEXT_BACKFILL_REQUIREMENTS_CLAIM_SCOPE: Final[str] = (
+    "dfl_ua_context_backfill_requirements_not_full_dfl"
+)
 
 REGRET_SURROGATE_STRICT_LP_STRATEGY_KIND: Final[str] = (
     "dfl_regret_surrogate_strict_lp_benchmark"
@@ -4140,6 +4146,230 @@ def build_dfl_v10_learning_ceiling_decision_frame(
     return frame
 
 
+def build_dfl_forecast_extrema_repair_audit_frame(
+    oracle_template_candidate_value_teacher_label_panel_v10_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Audit whether V10 failures come from forecast peak/trough transfer shifts."""
+
+    _validate_v10_teacher_panel(oracle_template_candidate_value_teacher_label_panel_v10_frame)
+    output_rows: list[dict[str, Any]] = []
+    for row in oracle_template_candidate_value_teacher_label_panel_v10_frame.iter_rows(
+        named=True
+    ):
+        if str(row["candidate_source"]) != _V10_GENERATED_CANDIDATE_SOURCE:
+            continue
+        forecast = _float_vector(row["forecast_price_uah_mwh_vector"])
+        actual = _float_vector(row["actual_price_uah_mwh_vector"])
+        forecast_peak, forecast_trough = _peak_trough_indices(forecast)
+        realized_peak, realized_trough = _peak_trough_indices(actual)
+        peak_shift = abs(realized_peak - forecast_peak)
+        trough_shift = abs(realized_trough - forecast_trough)
+        forecast_spread = max(forecast) - min(forecast) if forecast else 0.0
+        actual_spread = max(actual) - min(actual) if actual else 0.0
+        repair_focus = _forecast_extrema_repair_focus(
+            row,
+            peak_shift=peak_shift,
+            trough_shift=trough_shift,
+        )
+        output_rows.append(
+            {
+                "tenant_id": str(row["tenant_id"]),
+                "source_model_name": str(row["source_model_name"]),
+                "anchor_timestamp": _datetime_value(row["anchor_timestamp"]),
+                "split_name": str(row["split_name"]),
+                "anchor_key": _anchor_key_string(row),
+                "candidate_key": _candidate_key(row),
+                "candidate_source": str(row["candidate_source"]),
+                "candidate_family": str(row["candidate_family"]),
+                "candidate_model_name": str(row["candidate_model_name"]),
+                "selector_feature_forecast_peak_hour_index": float(forecast_peak),
+                "selector_feature_forecast_trough_hour_index": float(forecast_trough),
+                "selector_feature_forecast_peak_trough_distance_hours": float(
+                    abs(forecast_peak - forecast_trough)
+                ),
+                "selector_feature_forecast_spread_uah_mwh": forecast_spread,
+                "selector_feature_schedule_distance_from_v2_plus": _numeric_feature(
+                    row,
+                    "selector_feature_schedule_distance_from_v2_plus",
+                ),
+                "selector_feature_terminal_soc_delta_fraction": _numeric_feature(
+                    row,
+                    "selector_feature_terminal_soc_delta_fraction",
+                ),
+                "selector_feature_total_throughput_delta_mwh": _numeric_feature(
+                    row,
+                    "selector_feature_total_throughput_delta_mwh",
+                ),
+                "diagnostic_realized_peak_hour_index": float(realized_peak),
+                "diagnostic_realized_trough_hour_index": float(realized_trough),
+                "diagnostic_peak_hour_shift": float(peak_shift),
+                "diagnostic_trough_hour_shift": float(trough_shift),
+                "diagnostic_extrema_shift_hours": float(max(peak_shift, trough_shift)),
+                "diagnostic_actual_spread_uah_mwh": actual_spread,
+                "diagnostic_forecast_extrema_shift": _v10_forecast_extrema_shift(row),
+                "diagnostic_missing_prior_context": _v10_missing_prior_context(row),
+                "diagnostic_candidate_delta_vs_v2_plus_uah": float(
+                    row["label_regret_delta_vs_v2_plus_uah"]
+                ),
+                "label_v10_material_safe_switch": bool(
+                    row["label_v10_material_safe_switch"]
+                ),
+                "label_v10_tail_risk_loss": bool(row["label_v10_tail_risk_loss"]),
+                "forecast_extrema_repair_focus": repair_focus,
+                "claim_scope": REGRET_SURROGATE_FORECAST_EXTREMA_REPAIR_AUDIT_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+                "raw_hourly_action_imitation": False,
+            }
+        )
+    if not output_rows:
+        raise ValueError("forecast-extrema repair audit requires generated V10 rows.")
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp", "candidate_key"]
+    )
+    _validate_forecast_extrema_repair_audit_frame(frame)
+    return frame
+
+
+def build_dfl_ua_context_backfill_requirements_frame(
+    v10_tail_risk_transfer_audit_frame: pl.DataFrame,
+    forecast_extrema_repair_audit_frame: pl.DataFrame,
+    v10_learning_ceiling_decision_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Turn V10 closure failures into source-backed Ukrainian context needs."""
+
+    _validate_v10_tail_risk_transfer_audit_frame(v10_tail_risk_transfer_audit_frame)
+    _validate_forecast_extrema_repair_audit_frame(forecast_extrema_repair_audit_frame)
+    _validate_v10_learning_ceiling_decision_frame(v10_learning_ceiling_decision_frame)
+    decisions_by_source = {
+        str(row["source_model_name"]): row
+        for row in v10_learning_ceiling_decision_frame.iter_rows(named=True)
+    }
+    extrema_by_anchor: dict[tuple[str, str, datetime], list[dict[str, Any]]] = {}
+    for row in forecast_extrema_repair_audit_frame.iter_rows(named=True):
+        extrema_by_anchor.setdefault(_anchor_key(row), []).append(row)
+
+    output_rows: list[dict[str, Any]] = []
+    for anchor_key, anchor_rows in sorted(
+        _group_by_anchor(list(v10_tail_risk_transfer_audit_frame.iter_rows(named=True))).items()
+    ):
+        source_model_name = anchor_key[1]
+        source_decision = decisions_by_source.get(source_model_name)
+        if source_decision is None:
+            raise ValueError(
+                f"missing V10 learning-ceiling decision for {source_model_name}."
+            )
+        extrema_rows = extrema_by_anchor.get(anchor_key, [])
+        if not extrema_rows:
+            raise ValueError(f"missing forecast-extrema audit rows for {anchor_key}.")
+        failure_counts = _v10_failure_counts(anchor_rows)
+        missing_prior = failure_counts.get("missing_prior_context", 0) > 0
+        forecast_shift = (
+            failure_counts.get("forecast_extrema_shift", 0) > 0
+            or any(
+                float(row["diagnostic_extrema_shift_hours"]) >= 2.0
+                for row in extrema_rows
+            )
+        )
+        soc_pressure = any(
+            bool(row["diagnostic_soc_path_transfer_pressure"]) for row in anchor_rows
+        )
+        throughput_pressure = any(
+            bool(row["diagnostic_throughput_transfer_pressure"])
+            for row in anchor_rows
+        )
+        tail_risk_count = sum(
+            1 for row in anchor_rows if bool(row["label_v10_tail_risk_loss"])
+        )
+        safe_switch_count = sum(
+            1
+            for row in anchor_rows
+            if bool(row["label_v10_material_safe_switch"])
+            and not bool(row["label_v10_tail_risk_loss"])
+        )
+        needs = _ua_context_backfill_need_flags(
+            missing_prior=missing_prior,
+            forecast_shift=forecast_shift,
+            soc_pressure=soc_pressure,
+            throughput_pressure=throughput_pressure,
+            tail_risk_count=tail_risk_count,
+            safe_switch_count=safe_switch_count,
+        )
+        decision = _ua_context_backfill_decision(
+            dt_lava_ready=bool(source_decision["dt_lava_ready"]),
+            needs=needs,
+        )
+        first_row = anchor_rows[0]
+        output_rows.append(
+            {
+                "tenant_id": anchor_key[0],
+                "source_model_name": source_model_name,
+                "anchor_timestamp": anchor_key[2],
+                "split_name": str(first_row["split_name"]),
+                "anchor_key": str(first_row["anchor_key"]),
+                "dominant_v10_failure_mode": _dominant_v10_failure_mode(
+                    failure_counts
+                ),
+                "generated_candidate_count": len(anchor_rows),
+                "tail_risk_candidate_count": tail_risk_count,
+                "non_tail_risk_material_safe_switch_count": safe_switch_count,
+                "missing_prior_context_candidate_count": failure_counts.get(
+                    "missing_prior_context",
+                    0,
+                ),
+                "forecast_extrema_shift_candidate_count": failure_counts.get(
+                    "forecast_extrema_shift",
+                    0,
+                ),
+                "max_diagnostic_extrema_shift_hours": max(
+                    float(row["diagnostic_extrema_shift_hours"])
+                    for row in extrema_rows
+                ),
+                "dam_publication_timing_needed": needs[
+                    "dam_publication_timing_needed"
+                ],
+                "weather_load_pv_proxy_needed": needs[
+                    "weather_load_pv_proxy_needed"
+                ],
+                "grid_outage_event_context_needed": needs[
+                    "grid_outage_event_context_needed"
+                ],
+                "calendar_holiday_block_context_needed": needs[
+                    "calendar_holiday_block_context_needed"
+                ],
+                "forecast_extrema_stability_needed": needs[
+                    "forecast_extrema_stability_needed"
+                ],
+                "lower_tail_risk_candidate_family_needed": needs[
+                    "lower_tail_risk_candidate_family_needed"
+                ],
+                "context_backfill_decision": decision,
+                "source_learning_ceiling_decision": str(
+                    source_decision["v10_learning_ceiling_decision"]
+                ),
+                "recommended_next_branch": str(
+                    source_decision["recommended_next_branch"]
+                ),
+                "dt_lava_ready": bool(source_decision["dt_lava_ready"]),
+                "requires_new_ukrainian_context_rows": decision
+                == "data_acquisition_needed",
+                "requires_new_ukrainian_target_rows": False,
+                "no_eu_rows_as_ukrainian_targets": True,
+                "claim_scope": REGRET_SURROGATE_UA_CONTEXT_BACKFILL_REQUIREMENTS_CLAIM_SCOPE,
+                "not_full_dfl": True,
+                "not_market_execution": True,
+                "market_execution_enabled": False,
+                "raw_hourly_action_imitation": False,
+            }
+        )
+    frame = pl.DataFrame(output_rows, infer_schema_length=None).sort(
+        ["source_model_name", "tenant_id", "anchor_timestamp"]
+    )
+    _validate_ua_context_backfill_requirements_frame(frame)
+    return frame
+
+
 def build_dfl_candidate_value_v8_rolling_robustness_frame(
     ua_context_candidate_v8_strict_rescore_frame: pl.DataFrame,
     v2_plus_opportunity_backfill_requirements_frame: pl.DataFrame,
@@ -5871,6 +6101,83 @@ def _v10_forecast_extrema_shift(row: dict[str, Any]) -> bool:
     if peak_index >= width or trough_index >= width:
         return False
     return dispatch[peak_index] <= 0.0 or dispatch[trough_index] >= 0.0
+
+
+def _forecast_extrema_repair_focus(
+    row: dict[str, Any],
+    *,
+    peak_shift: int,
+    trough_shift: int,
+) -> str:
+    if _v10_missing_prior_context(row):
+        return "missing_prior_context"
+    if max(peak_shift, trough_shift) >= 2:
+        return "calibration_extrema_shift"
+    if bool(row["label_v10_tail_risk_loss"]):
+        if abs(_numeric_feature(row, "selector_feature_terminal_soc_delta_fraction")) > 0.05:
+            return "candidate_design_soc_pressure"
+        return "candidate_design_tail_risk"
+    if not bool(row["label_v10_material_safe_switch"]):
+        return "no_safe_switch_signal"
+    return "context_ready_monitor"
+
+
+def _v10_failure_counts(rows: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for row in rows:
+        failure_class = str(row["v10_transfer_failure_class"])
+        counts[failure_class] = counts.get(failure_class, 0) + 1
+    return counts
+
+
+def _dominant_v10_failure_mode(failure_counts: dict[str, int]) -> str:
+    priority = (
+        "missing_prior_context",
+        "forecast_extrema_shift",
+        "soc_path_transfer_failure",
+        "throughput_tail_risk",
+        "template_regime_mismatch",
+        "no_selector_safe_signal",
+        "safe_switch_transferred",
+    )
+    for failure_mode in priority:
+        if failure_counts.get(failure_mode, 0) > 0:
+            return failure_mode
+    return "no_selector_safe_signal"
+
+
+def _ua_context_backfill_need_flags(
+    *,
+    missing_prior: bool,
+    forecast_shift: bool,
+    soc_pressure: bool,
+    throughput_pressure: bool,
+    tail_risk_count: int,
+    safe_switch_count: int,
+) -> dict[str, bool]:
+    tail_risk_without_safe_switch = tail_risk_count > 0 and safe_switch_count == 0
+    return {
+        "dam_publication_timing_needed": missing_prior or tail_risk_without_safe_switch,
+        "weather_load_pv_proxy_needed": missing_prior or forecast_shift,
+        "grid_outage_event_context_needed": missing_prior
+        or soc_pressure
+        or throughput_pressure,
+        "calendar_holiday_block_context_needed": missing_prior or forecast_shift,
+        "forecast_extrema_stability_needed": forecast_shift,
+        "lower_tail_risk_candidate_family_needed": tail_risk_without_safe_switch,
+    }
+
+
+def _ua_context_backfill_decision(
+    *,
+    dt_lava_ready: bool,
+    needs: dict[str, bool],
+) -> str:
+    if dt_lava_ready and not any(needs.values()):
+        return "context_backfill_ready"
+    if any(needs.values()):
+        return "data_acquisition_needed"
+    return "stop_modeling_current_evidence"
 
 
 def _mean_by_anchor(rows: list[dict[str, Any]], field_name: str) -> float:
@@ -8327,6 +8634,98 @@ def _validate_v10_learning_ceiling_decision_frame(frame: pl.DataFrame) -> None:
         raise ValueError("V10 learning-ceiling decision refuses market execution.")
 
 
+def _validate_forecast_extrema_repair_audit_frame(frame: pl.DataFrame) -> None:
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "split_name",
+                "candidate_key",
+                "candidate_source",
+                "candidate_family",
+                "candidate_model_name",
+                "selector_feature_forecast_peak_hour_index",
+                "selector_feature_forecast_trough_hour_index",
+                "selector_feature_forecast_spread_uah_mwh",
+                "diagnostic_realized_peak_hour_index",
+                "diagnostic_realized_trough_hour_index",
+                "diagnostic_peak_hour_shift",
+                "diagnostic_trough_hour_shift",
+                "diagnostic_extrema_shift_hours",
+                "forecast_extrema_repair_focus",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="forecast-extrema repair audit frame",
+    )
+    allowed_focus = {
+        "missing_prior_context",
+        "calibration_extrema_shift",
+        "candidate_design_soc_pressure",
+        "candidate_design_tail_risk",
+        "no_safe_switch_signal",
+        "context_ready_monitor",
+    }
+    unexpected = {
+        str(value) for value in frame["forecast_extrema_repair_focus"].to_list()
+    } - allowed_focus
+    if unexpected:
+        raise ValueError(
+            f"forecast-extrema repair audit emitted unknown focus values: {sorted(unexpected)}."
+        )
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("forecast-extrema repair audit refuses market execution.")
+
+
+def _validate_ua_context_backfill_requirements_frame(frame: pl.DataFrame) -> None:
+    _require_columns(
+        frame,
+        frozenset(
+            {
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "split_name",
+                "dominant_v10_failure_mode",
+                "generated_candidate_count",
+                "tail_risk_candidate_count",
+                "non_tail_risk_material_safe_switch_count",
+                "dam_publication_timing_needed",
+                "weather_load_pv_proxy_needed",
+                "grid_outage_event_context_needed",
+                "calendar_holiday_block_context_needed",
+                "forecast_extrema_stability_needed",
+                "lower_tail_risk_candidate_family_needed",
+                "context_backfill_decision",
+                "source_learning_ceiling_decision",
+                "dt_lava_ready",
+                "requires_new_ukrainian_target_rows",
+                "no_eu_rows_as_ukrainian_targets",
+                "market_execution_enabled",
+            }
+        ),
+        frame_name="Ukrainian context backfill requirements frame",
+    )
+    allowed_decisions = {
+        "context_backfill_ready",
+        "data_acquisition_needed",
+        "stop_modeling_current_evidence",
+    }
+    decisions = {str(value) for value in frame["context_backfill_decision"].to_list()}
+    unexpected = decisions - allowed_decisions
+    if unexpected:
+        raise ValueError(
+            f"unknown Ukrainian context backfill decisions: {sorted(unexpected)}."
+        )
+    if frame.select(pl.col("market_execution_enabled").any()).item():
+        raise ValueError("Ukrainian context backfill refuses market execution.")
+    if frame.filter(~pl.col("no_eu_rows_as_ukrainian_targets")).height:
+        raise ValueError("Ukrainian context backfill cannot admit EU target rows.")
+
+
 def _validate_v10_candidate_library_columns(frame: pl.DataFrame) -> None:
     _require_columns(
         frame,
@@ -8579,6 +8978,8 @@ __all__ = [
     "build_dfl_oracle_template_candidate_library_v10_frame",
     "build_dfl_oracle_template_candidate_v10_strict_rescore_frame",
     "build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame",
+    "build_dfl_forecast_extrema_repair_audit_frame",
+    "build_dfl_ua_context_backfill_requirements_frame",
     "build_dfl_v10_learning_ceiling_decision_frame",
     "build_dfl_v10_tail_risk_transfer_audit_frame",
     "build_dfl_sparse_safe_switch_abstention_model_v6_frame",

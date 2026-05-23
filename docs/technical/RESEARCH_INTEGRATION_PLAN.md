@@ -204,6 +204,15 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      bound improvement `0.0`. The final failure split was `56`
      forecast-extrema-shift rows and `70` missing-prior-context rows. This
      blocks DT/LAVA on the current V10 label space.
+   - The closure follow-up adds a packet exporter plus two diagnostic frames:
+     `dfl_forecast_extrema_repair_audit_frame` and
+     `dfl_ua_context_backfill_requirements_frame`. These do not create a new
+     selector. They convert the two observed V10 failure classes into concrete
+     Ukrainian data/context acquisition needs: DAM publication timing,
+     weather/load/PV proxy coverage, grid/outage/event context,
+     calendar/holiday/block context, forecast-extrema stability, and lower
+     tail-risk candidate design. A negative packet is valid evidence when it
+     preserves `market_execution_enabled=false`.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

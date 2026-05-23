@@ -46,6 +46,8 @@ from smart_arbitrage.dfl.regret_surrogate_v1 import (
     build_dfl_oracle_template_candidate_library_v10_frame,
     build_dfl_oracle_template_candidate_v10_strict_rescore_frame,
     build_dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame,
+    build_dfl_forecast_extrema_repair_audit_frame,
+    build_dfl_ua_context_backfill_requirements_frame,
     build_dfl_v10_learning_ceiling_decision_frame,
     build_dfl_v10_tail_risk_transfer_audit_frame,
     build_dfl_ua_context_backfilled_feature_panel_v8_frame,
@@ -1952,6 +1954,102 @@ def test_v10_learning_ceiling_blocks_dt_when_final_safe_switches_are_absent() ->
     assert row["final_generated_material_safe_switch_count"] == 0
     assert row["final_generated_non_tail_risk_material_safe_switch_count"] == 0
     assert row["market_execution_enabled"] is False
+
+
+def test_forecast_extrema_repair_audit_keeps_selector_features_prior_only() -> None:
+    labels = _v10_teacher(
+        _candidate_panel(
+            train_alt_regret=130.0,
+            final_alt_regret=130.0,
+        ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+    )
+    final_generated = (
+        (pl.col("candidate_source") == "oracle_template_v10_generated_candidate")
+        & (pl.col("split_name") == "final_holdout")
+    )
+    mutated = labels.with_columns(
+        pl.when(final_generated)
+        .then(pl.lit([5000.0, 1200.0, 3600.0, 2100.0]))
+        .otherwise(pl.col("actual_price_uah_mwh_vector"))
+        .alias("actual_price_uah_mwh_vector")
+    )
+
+    base = build_dfl_forecast_extrema_repair_audit_frame(labels)
+    changed = build_dfl_forecast_extrema_repair_audit_frame(mutated)
+
+    selector_columns = sorted(
+        column for column in base.columns if column.startswith("selector_feature_")
+    )
+    assert selector_columns
+    assert (
+        base.filter(pl.col("split_name") == "final_holdout")
+        .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+        .select(selector_columns)
+        .equals(
+            changed.filter(pl.col("split_name") == "final_holdout")
+            .sort(["tenant_id", "anchor_timestamp", "candidate_model_name"])
+            .select(selector_columns)
+        )
+    )
+    assert not (
+        base.filter(pl.col("split_name") == "final_holdout")
+        .select(
+            [
+                "candidate_key",
+                "diagnostic_realized_peak_hour_index",
+                "diagnostic_peak_hour_shift",
+            ]
+        )
+        .sort(["candidate_key"])
+        .equals(
+            changed.filter(pl.col("split_name") == "final_holdout")
+            .select(
+                [
+                    "candidate_key",
+                    "diagnostic_realized_peak_hour_index",
+                    "diagnostic_peak_hour_shift",
+                ]
+            )
+            .sort(["candidate_key"])
+        )
+    )
+    assert set(base["market_execution_enabled"].to_list()) == {False}
+
+
+def test_ua_context_backfill_requirements_route_v10_failures_to_data_acquisition() -> None:
+    labels = _force_final_v10_generated_tail_risk(
+        _v10_teacher(
+            _candidate_panel(
+                train_alt_regret=130.0,
+                final_alt_regret=130.0,
+            ).with_columns(pl.lit(300.0).alias("oracle_value_uah"))
+        )
+    )
+    transfer_audit = build_dfl_v10_tail_risk_transfer_audit_frame(labels)
+    extrema_audit = build_dfl_forecast_extrema_repair_audit_frame(labels)
+    ceiling = build_dfl_v10_learning_ceiling_decision_frame(
+        transfer_audit,
+        min_oracle_improvement_ratio_vs_v2_plus=0.05,
+        min_prior_material_safe_switch_examples_for_dt=1,
+    )
+
+    requirements = build_dfl_ua_context_backfill_requirements_frame(
+        transfer_audit,
+        extrema_audit,
+        ceiling,
+    )
+
+    final = requirements.filter(pl.col("split_name") == "final_holdout")
+    assert final.height == transfer_audit.filter(
+        pl.col("split_name") == "final_holdout"
+    ).select(["tenant_id", "source_model_name", "anchor_timestamp"]).unique().height
+    assert set(final["context_backfill_decision"].to_list()) == {
+        "data_acquisition_needed"
+    }
+    assert set(final["dt_lava_ready"].to_list()) == {False}
+    assert set(final["requires_new_ukrainian_target_rows"].to_list()) == {False}
+    assert set(final["no_eu_rows_as_ukrainian_targets"].to_list()) == {True}
+    assert set(final["market_execution_enabled"].to_list()) == {False}
 
 
 def _teacher_panel(panel: pl.DataFrame) -> pl.DataFrame:

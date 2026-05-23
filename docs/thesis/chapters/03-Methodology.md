@@ -1122,6 +1122,17 @@ LP/oracle gate. Мінімальні умови:
 decision-focused evaluation literature, де downstream decision value є gate,
 а не автоматична нагорода за складнішу модель (джерела 4-6 у 3.13).
 
+Після V10 методологія додає окремий closure rule: якщо generated schedule
+templates не мають final non-tail-risk safe switches, DT/LAVA не запускається.
+Натомість pipeline матеріалізує diagnostic frames, які перетворюють failure
+classes на requirements для українського point-in-time backfill. Forecast
+peak/trough, spread і schedule-distance ознаки можуть бути selector features
+тільки якщо вони відомі до anchor; realized peak/trough, regret delta, oracle
+gap і tail-risk labels залишаються `diagnostic_*` або `label_*`. Так ми
+розділяємо три різні речі: prior inputs для майбутнього model fitting,
+realized outcomes для scoring, і thesis evidence для пояснення, чому більша
+модель зараз не є коректним наступним кроком.
+
 ## 3.12. Відтворюваність і evidence packet
 
 Кожен довгий official run має супроводжуватися run receipt, attempt manifest,

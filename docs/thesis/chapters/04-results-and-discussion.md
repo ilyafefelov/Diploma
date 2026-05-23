@@ -1141,6 +1141,27 @@ missing-prior-context rows. Отже, поточний V10 label space не да
 чесних teacher labels для DT/LAVA; для руху далі потрібні або нові українські
 point-in-time context/backfill дані, або lower-tail-risk candidate family.
 
+Наступний closure slice перетворює цей висновок на конкретний план даних, а
+не на ще одну спробу selector training. `dfl_forecast_extrema_repair_audit_frame`
+вимірює, коли predicted peak/trough години не збігаються з realized price
+extrema; прогнозні peak/trough ознаки залишаються prior-only
+`selector_feature_*`, а realized extrema зберігаються тільки як diagnostics.
+`dfl_ua_context_backfill_requirements_frame` агрегує ці failure rows за tenant,
+source model та anchor і видає `data_acquisition_needed`, коли потрібні
+українські DAM publication timing, weather/load/PV proxy, grid/outage/event,
+calendar/block або forecast-extrema-stability дані. Це закриває ML narrative
+для поточної candidate space: V2+ залишається headline, DT/LAVA чекає на
+нові transferable non-tail-risk teacher labels, а negative evidence packet є
+валідним результатом, бо зберігає `market_execution_enabled=false` і не
+підміняє scoring post-hoc oracle знанням.
+
+Матеріалізований closure follow-up (`a8e34aec-0ac3-4997-8cc2-baacd1d92f71`)
+підтвердив, що це саме data/context branch: forecast-extrema repair audit має
+`1,204` rows, а backfill requirements frame має `860` tenant-anchor rows. Усі
+`90 / 90` final-holdout requirement rows отримали `data_acquisition_needed`,
+тому thesis висновок лишається консервативним: не тренувати DT/LAVA на V10
+labels, поки не з'являться нові prior-supported non-tail-risk safe switches.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -1153,6 +1174,9 @@ rows:
   latest-holdout comparison packet для V2+;
 - `data/research_runs/week3_dfl_entsoe_poland_feature_ablation_v1/` -
   governance-blocked Poland/ENTSO-E feature ablation evidence;
+- `data/research_runs/week3_dfl_v10_tail_risk_transfer_closure/` -
+  V10 negative closure packet with transfer-audit rows, learning-ceiling
+  decision, failure-class summary and claim boundary;
 - `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/` -
   pairwise schedule-value DFL v2 diagnostic packet;
 - `data/research_runs/week3_tft_quantile_365_full_negative_evidence/` -
