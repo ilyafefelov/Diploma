@@ -448,6 +448,12 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_v10_learning_ceiling_decision_frame",
         "dfl_forecast_extrema_repair_audit_frame",
         "dfl_ua_context_backfill_requirements_frame",
+        "dfl_ua_context_source_inventory_frame",
+        "dfl_ua_dam_publication_backfill_frame",
+        "dfl_ua_weather_load_pv_proxy_backfill_frame",
+        "dfl_ua_grid_event_backfill_frame",
+        "dfl_ua_calendar_block_context_backfill_frame",
+        "dfl_ua_context_backfill_coverage_gate_frame",
         "dfl_candidate_value_teacher_label_panel_v7_frame",
         "dfl_candidate_value_regret_surrogate_v7_frame",
         "dfl_candidate_value_v7_strict_lp_benchmark_frame",
@@ -1709,6 +1715,16 @@ def test_dfl_research_assets_are_registered() -> None:
         == "diagnostics"
     )
     assert (
+        tags_by_key["dfl_ua_context_source_inventory_frame"]["ml_stage"]
+        == "source_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_backfill_coverage_gate_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key[
             "dfl_context_enriched_candidate_value_dfl_v5_strict_lp_benchmark_frame"
         ]["evidence_scope"]
@@ -2175,6 +2191,35 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_forecast_extrema_repair_audit_frame",
         "dfl_v10_learning_ceiling_decision_frame",
         "dfl_v10_tail_risk_transfer_audit_frame",
+    }
+    assert deps_by_key["dfl_ua_context_source_inventory_frame"] == {
+        "dfl_ua_context_backfill_requirements_frame",
+        "grid_event_signal_silver",
+        "real_data_benchmark_silver_feature_frame",
+        "tenant_historical_net_load_silver",
+    }
+    assert deps_by_key["dfl_ua_dam_publication_backfill_frame"] == {
+        "dfl_ua_context_backfill_requirements_frame",
+        "real_data_benchmark_silver_feature_frame",
+    }
+    assert deps_by_key["dfl_ua_weather_load_pv_proxy_backfill_frame"] == {
+        "dfl_ua_context_backfill_requirements_frame",
+        "real_data_benchmark_silver_feature_frame",
+        "tenant_historical_net_load_silver",
+    }
+    assert deps_by_key["dfl_ua_grid_event_backfill_frame"] == {
+        "dfl_ua_context_backfill_requirements_frame",
+        "grid_event_signal_silver",
+    }
+    assert deps_by_key["dfl_ua_calendar_block_context_backfill_frame"] == {
+        "dfl_ua_context_backfill_requirements_frame"
+    }
+    assert deps_by_key["dfl_ua_context_backfill_coverage_gate_frame"] == {
+        "dfl_ua_calendar_block_context_backfill_frame",
+        "dfl_ua_context_backfill_requirements_frame",
+        "dfl_ua_dam_publication_backfill_frame",
+        "dfl_ua_grid_event_backfill_frame",
+        "dfl_ua_weather_load_pv_proxy_backfill_frame",
     }
     assert deps_by_key["dfl_candidate_value_teacher_label_panel_v7_frame"] == {
         "dfl_feasible_schedule_candidate_library_v7_frame",

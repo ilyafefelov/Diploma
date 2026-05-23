@@ -347,6 +347,14 @@ from smart_arbitrage.dfl.ua_context_lava_dt import (
     build_dfl_ua_context_lava_teacher_frame,
     evaluate_dfl_ua_context_lava_gate,
 )
+from smart_arbitrage.dfl.ua_context_acquisition_v1 import (
+    build_dfl_ua_calendar_block_context_backfill_frame,
+    build_dfl_ua_context_backfill_coverage_gate_frame,
+    build_dfl_ua_context_source_inventory_frame,
+    build_dfl_ua_dam_publication_backfill_frame,
+    build_dfl_ua_grid_event_backfill_frame,
+    build_dfl_ua_weather_load_pv_proxy_backfill_frame,
+)
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
     REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
     REGRET_SURROGATE_CONTEXTUAL_STRICT_LP_STRATEGY_KIND,
@@ -1436,6 +1444,13 @@ class DflRegretSurrogateV1AssetConfig(DflUaContextSafeSwitchAssetConfig):
     min_template_safe_win_count: int = 1
     max_template_tail_risk_count: int = 0
     max_templates_per_anchor: int = 3
+
+
+class DflUaContextAcquisitionV1AssetConfig(dg.Config):
+    """Source-backed Ukrainian context acquisition readiness for V11."""
+
+    source_window_start: str = "2025-01-01"
+    source_window_end: str = "2026-04-30"
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -7268,6 +7283,287 @@ def dfl_ua_context_backfill_requirements_frame(
             "raw_hourly_action_imitation": False,
             "market_execution_enabled": False,
             "scope": "dfl_ua_context_backfill_requirements_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="source_data",
+        evidence_scope="not_market_execution",
+        backend="ua_context_acquisition_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_source_inventory_frame(
+    context,
+    config: DflUaContextAcquisitionV1AssetConfig,
+    dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    tenant_historical_net_load_silver: pl.DataFrame,
+    grid_event_signal_silver: pl.DataFrame,
+) -> pl.DataFrame:
+    """Inventory source-backed Ukrainian context families for V11 readiness."""
+
+    frame = build_dfl_ua_context_source_inventory_frame(
+        dfl_ua_context_backfill_requirements_frame,
+        price_context_frame=real_data_benchmark_silver_feature_frame,
+        weather_context_frame=real_data_benchmark_silver_feature_frame,
+        tenant_load_frame=tenant_historical_net_load_silver,
+        grid_event_signal_frame=grid_event_signal_silver,
+        source_window_start=config.source_window_start,
+        source_window_end=config.source_window_end,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "source_families": sorted(frame["source_family"].to_list())
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_source_inventory_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="ua_context_acquisition_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_dam_publication_backfill_frame(
+    context,
+    dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Check explicit prior OREE DAM publication metadata for V11 readiness."""
+
+    frame = build_dfl_ua_dam_publication_backfill_frame(
+        dfl_ua_context_backfill_requirements_frame,
+        real_data_benchmark_silver_feature_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("dam_publication_backfill_status") == "context_ready"
+            ).height
+            if frame.height
+            else 0,
+            "blocker_values": sorted(
+                str(value)
+                for value in frame["dam_publication_backfill_status"].unique()
+            )
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_dam_publication_backfill_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="ua_context_acquisition_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_weather_load_pv_proxy_backfill_frame(
+    context,
+    dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
+    real_data_benchmark_silver_feature_frame: pl.DataFrame,
+    tenant_historical_net_load_silver: pl.DataFrame,
+) -> pl.DataFrame:
+    """Check prior Open-Meteo weather plus tenant load/PV proxy coverage."""
+
+    frame = build_dfl_ua_weather_load_pv_proxy_backfill_frame(
+        dfl_ua_context_backfill_requirements_frame,
+        real_data_benchmark_silver_feature_frame,
+        tenant_historical_net_load_silver,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("weather_load_pv_backfill_status") == "context_ready"
+            ).height
+            if frame.height
+            else 0,
+            "blocker_values": sorted(
+                str(value)
+                for value in frame["weather_load_pv_backfill_status"].unique()
+            )
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_weather_load_pv_proxy_backfill_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="ua_context_acquisition_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_grid_event_backfill_frame(
+    context,
+    dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
+    grid_event_signal_silver: pl.DataFrame,
+) -> pl.DataFrame:
+    """Check prior Ukrenergo/grid-event coverage for V11 readiness."""
+
+    frame = build_dfl_ua_grid_event_backfill_frame(
+        dfl_ua_context_backfill_requirements_frame,
+        grid_event_signal_silver,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("grid_event_backfill_status") == "context_ready"
+            ).height
+            if frame.height
+            else 0,
+            "blocker_values": sorted(
+                str(value) for value in frame["grid_event_backfill_status"].unique()
+            )
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_grid_event_backfill_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="feature_engineering",
+        evidence_scope="not_market_execution",
+        backend="ua_context_acquisition_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_calendar_block_context_backfill_frame(
+    context,
+    dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Build prior-safe calendar/block context and preserve DST exclusions."""
+
+    frame = build_dfl_ua_calendar_block_context_backfill_frame(
+        dfl_ua_context_backfill_requirements_frame
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "context_ready_rows": frame.filter(
+                pl.col("calendar_block_backfill_status") == "context_ready"
+            ).height
+            if frame.height
+            else 0,
+            "blocker_values": sorted(
+                str(value)
+                for value in frame["calendar_block_backfill_status"].unique()
+            )
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_calendar_block_context_backfill_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="ua_context_acquisition_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_backfill_coverage_gate_frame(
+    context,
+    dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
+    dfl_ua_dam_publication_backfill_frame: pl.DataFrame,
+    dfl_ua_weather_load_pv_proxy_backfill_frame: pl.DataFrame,
+    dfl_ua_grid_event_backfill_frame: pl.DataFrame,
+    dfl_ua_calendar_block_context_backfill_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Gate whether V11 candidate generation is allowed to start."""
+
+    frame = build_dfl_ua_context_backfill_coverage_gate_frame(
+        dfl_ua_context_backfill_requirements_frame,
+        dfl_ua_dam_publication_backfill_frame,
+        dfl_ua_weather_load_pv_proxy_backfill_frame,
+        dfl_ua_grid_event_backfill_frame,
+        dfl_ua_calendar_block_context_backfill_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "v11_ready_rows": frame.filter(
+                pl.col("v11_candidate_generation_ready")
+            ).height
+            if frame.height
+            else 0,
+            "gate_decisions": sorted(
+                str(value)
+                for value in frame["context_backfill_gate_decision"].unique()
+            )
+            if frame.height
+            else [],
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_backfill_coverage_gate_not_full_dfl",
             "not_market_execution": True,
         },
     )
@@ -15457,6 +15753,12 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_v10_learning_ceiling_decision_frame,
     dfl_forecast_extrema_repair_audit_frame,
     dfl_ua_context_backfill_requirements_frame,
+    dfl_ua_context_source_inventory_frame,
+    dfl_ua_dam_publication_backfill_frame,
+    dfl_ua_weather_load_pv_proxy_backfill_frame,
+    dfl_ua_grid_event_backfill_frame,
+    dfl_ua_calendar_block_context_backfill_frame,
+    dfl_ua_context_backfill_coverage_gate_frame,
     dfl_candidate_value_teacher_label_panel_v7_frame,
     dfl_candidate_value_regret_surrogate_v7_frame,
     dfl_candidate_value_v7_strict_lp_benchmark_frame,

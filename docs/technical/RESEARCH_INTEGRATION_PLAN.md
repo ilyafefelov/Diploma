@@ -213,6 +213,18 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      calendar/holiday/block context, forecast-extrema stability, and lower
      tail-risk candidate design. A negative packet is valid evidence when it
      preserves `market_execution_enabled=false`.
+   - The next source-backed gate is UA Context Acquisition v1:
+     `dfl_ua_context_source_inventory_frame`,
+     `dfl_ua_dam_publication_backfill_frame`,
+     `dfl_ua_weather_load_pv_proxy_backfill_frame`,
+     `dfl_ua_grid_event_backfill_frame`,
+     `dfl_ua_calendar_block_context_backfill_frame`, and
+     `dfl_ua_context_backfill_coverage_gate_frame`. It checks the
+     2025-01-01..2026-04-30 Ukrainian source window and allows V11 candidate
+     generation only when every V10-required anchor has prior-available
+     publication, weather/load/PV, grid-event, and calendar/block context.
+     Missing source evidence emits `data_acquisition_needed`; it is not filled
+     by synthetic context.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

@@ -1133,6 +1133,16 @@ gap і tail-risk labels залишаються `diagnostic_*` або `label_*`. 
 realized outcomes для scoring, і thesis evidence для пояснення, чому більша
 модель зараз не є коректним наступним кроком.
 
+UA Context Acquisition v1 робить наступний методологічний крок перед V11: не
+генерує нові schedules, а перевіряє, чи потрібні V10 context rows реально
+покриті source-backed українськими даними до anchor. Gate складається з OREE DAM
+publication metadata, Open-Meteo/weather + tenant load/PV proxy, Ukrenergo/grid
+event history і deterministic calendar/block context. Якщо publication time,
+weather/load/PV, grid history або DST/calendar coverage відсутні, pipeline
+повертає `data_acquisition_needed` і не дозволяє V11 candidate generation.
+Це зберігає point-in-time discipline: readiness може відкрити V11 тільки через
+джерельне prior evidence, а не через synthetic context або final-holdout labels.
+
 ## 3.12. Відтворюваність і evidence packet
 
 Кожен довгий official run має супроводжуватися run receipt, attempt manifest,

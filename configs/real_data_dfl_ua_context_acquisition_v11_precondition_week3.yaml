@@ -1,0 +1,63 @@
+# Ukrainian source-backed context acquisition readiness before V11 candidate generation.
+#
+# This config widens Ukrainian OREE/Open-Meteo source coverage to the proven
+# 2025-01-01..2026-04-30 backfill window and checks whether V10 context
+# requirements have prior-available source evidence. It does not train a
+# selector, create V11 candidates, switch dashboard/API defaults, or enable
+# market execution.
+#
+# Target assets:
+# - dfl_ua_context_source_inventory_frame
+# - dfl_ua_dam_publication_backfill_frame
+# - dfl_ua_weather_load_pv_proxy_backfill_frame
+# - dfl_ua_grid_event_backfill_frame
+# - dfl_ua_calendar_block_context_backfill_frame
+# - dfl_ua_context_backfill_coverage_gate_frame
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2025-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2025-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  ukrenergo_grid_events_bronze:
+    config:
+      max_posts: 200
+  dfl_ua_context_source_inventory_frame:
+    config:
+      source_window_start: "2025-01-01"
+      source_window_end: "2026-04-30"
+  dfl_v2_plus_opportunity_backfill_requirements_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      min_oracle_improvement_ratio_vs_v2_plus: 0.05
+      high_forecast_spread_uah_mwh: 10000.0
+      min_material_schedule_distance: 0.02
+      min_prior_material_safe_switch_examples_for_dt: 20
+  dfl_oracle_template_candidate_library_v10_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      min_template_safe_win_count: 1
+      max_template_tail_risk_count: 0
+      max_templates_per_anchor: 3
+  dfl_oracle_template_candidate_value_teacher_label_panel_v10_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      max_prior_neighbor_distance: 1.5
+      nearest_neighbor_count: 5
+  dfl_v10_learning_ceiling_decision_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_oracle_improvement_ratio_vs_v2_plus: 0.05
+      min_prior_material_safe_switch_examples_for_dt: 20

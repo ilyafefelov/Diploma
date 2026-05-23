@@ -1162,6 +1162,14 @@ calendar/block або forecast-extrema-stability дані. Це закриває
 тому thesis висновок лишається консервативним: не тренувати DT/LAVA на V10
 labels, поки не з'являться нові prior-supported non-tail-risk safe switches.
 
+Наступний результат має оцінювати не нову модель, а UA Context Acquisition v1.
+Його критерій простий: `dfl_ua_context_backfill_coverage_gate_frame` може
+дозволити V11 candidate generation тільки якщо V10-required anchors мають
+prior-available DAM publication evidence, Open-Meteo/weather + load/PV proxy,
+grid-event/no-event coverage і calendar/block context. Якщо хоч одна сім'я
+непокрита, результат `data_acquisition_needed` є валідним blocked evidence, а
+V2+ залишається headline.
+
 ## 4.13. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
@@ -1177,6 +1185,8 @@ rows:
 - `data/research_runs/week3_dfl_v10_tail_risk_transfer_closure/` -
   V10 negative closure packet with transfer-audit rows, learning-ceiling
   decision, failure-class summary and claim boundary;
+- `data/research_runs/week3_dfl_ua_context_acquisition_v1/` -
+  planned UA context acquisition readiness packet for the V11 precondition gate;
 - `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/` -
   pairwise schedule-value DFL v2 diagnostic packet;
 - `data/research_runs/week3_tft_quantile_365_full_negative_evidence/` -

@@ -269,6 +269,32 @@ def test_v10_tail_risk_transfer_closure_packet_cli_exports_negative_evidence() -
     assert "negative_evidence" in export_script
 
 
+def test_ua_context_backfill_readiness_packet_cli_exports_v11_gate() -> None:
+    export_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_ua_context_backfill_readiness_packet.py"
+    ).read_text(encoding="utf-8")
+    config = (
+        PROJECT_ROOT
+        / "configs"
+        / "real_data_dfl_ua_context_acquisition_v11_precondition_week3.yaml"
+    ).read_text(encoding="utf-8")
+    doc = (
+        PROJECT_ROOT / "docs" / "technical" / "DFL_UA_CONTEXT_ACQUISITION_V1.md"
+    ).read_text(encoding="utf-8")
+
+    assert "--source-inventory-pickle" in export_script
+    assert "--coverage-gate-pickle" in export_script
+    assert "--run-slug" in export_script
+    assert "build_dfl_ua_context_backfill_readiness_packet" in export_script
+    assert "write_dfl_ua_context_backfill_readiness_packet" in export_script
+    assert "v11_candidate_generation_ready" in export_script
+    assert "dfl_ua_context_source_inventory_frame" in config
+    assert "dfl_ua_context_backfill_coverage_gate_frame" in config
+    assert "Offline Strategy Promotion" in doc
+
+
 def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:
     export_script = (
         PROJECT_ROOT
