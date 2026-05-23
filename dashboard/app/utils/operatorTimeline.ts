@@ -39,12 +39,12 @@ export const formatDamDeliveryLabel = (intervalStart: string): string => {
 
 export const timelineTooltipBody = (label: OperatorTimelineSegment['label'], powerMw: number): string => {
   if (label === 'Charge') {
-    return `Recommended net power is ${formatSignedMw(powerMw)}, so the selected preview is filling the battery for a later market window.`
+    return `Recommended net power is ${formatSignedMw(powerMw)}, so the selected DAM delivery hour charges the battery inside a review-only schedule; not a live dispatch command.`
   }
 
   if (label === 'Discharge') {
-    return `Recommended net power is ${formatSignedMw(powerMw)}, so the selected preview is selling stored energy into this interval.`
+    return `Recommended net power is ${formatSignedMw(powerMw)}, so the selected DAM delivery hour discharges stored energy inside a review-only schedule; not a submitted market bid.`
   }
 
-  return `Recommended net power is ${formatSignedMw(powerMw)}, so the preview keeps the battery idle and avoids unnecessary cycling.`
+  return `Recommended net power is ${formatSignedMw(powerMw)}, so the DAM delivery-hour preview keeps the battery idle and avoids unnecessary cycling.`
 }

@@ -107,7 +107,7 @@ const forecastSpread = computed(() => {
     <div class="market-signal-hero__toolbar">
       <div class="market-signal-hero__tabs">
         <span class="market-signal-hero__tab market-signal-hero__tab-active">DAM hourly</span>
-        <span class="market-signal-hero__tab market-signal-hero__tab-muted">IDM future</span>
+        <span class="market-signal-hero__tab market-signal-hero__tab-muted">IDM disabled</span>
       </div>
 
       <div class="market-signal-hero__range">
@@ -133,7 +133,7 @@ const forecastSpread = computed(() => {
         tabindex="0"
       >
         <p class="hud-mini-stat__label">
-          DAM delivery price
+          DAM context price
         </p>
         <strong>{{ latestMarketPrice == null ? '—' : formatPowerLabel(latestMarketPrice) }}</strong>
         <p class="hud-mini-stat__meta">

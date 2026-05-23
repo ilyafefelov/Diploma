@@ -85,20 +85,29 @@ describe('operator HUD CSS', () => {
       fileURLToPath(new URL('../components/dashboard/HudSignalCharts.vue', import.meta.url)),
       'utf8'
     )
+    const operatorPage = readFileSync(
+      fileURLToPath(new URL('../pages/operator.vue', import.meta.url)),
+      'utf8'
+    )
 
     expect(topBar).toContain('Operator Preview')
     expect(topBar).not.toContain('BESS Control')
     expect(marketConsole).toContain('DAM hourly planning preview')
     expect(marketConsole).not.toContain('DAM / IDM arbitrage surface')
     expect(marketSignalHero).toContain('DAM hourly')
-    expect(marketSignalHero).toContain('IDM future')
+    expect(marketSignalHero).toContain('IDM disabled')
+    expect(marketSignalHero).toContain('DAM context price')
+    expect(marketSignalHero).not.toContain('DAM delivery price')
     expect(marketSignalHero).not.toContain('label="IDM"')
     expect(marketSignalHero).not.toContain('label="Both"')
+    expect(scheduleDock).toContain('DAM delivery day review')
     expect(scheduleDock).toContain('Review mode')
+    expect(scheduleDock).not.toContain('Schedule timeline')
     expect(scheduleDock).not.toContain('Dispatch mode')
     expect(signalCharts).toContain('Selected schedule and value preview')
     expect(signalCharts).toContain('Review context for selected preview')
     expect(signalCharts).not.toContain('Use now: context for selected preview')
+    expect(operatorPage).toContain('DAM delivery-day preview / no ProposedBid / no market submission')
   })
 
   it('renders decision evidence charts without blank client-only gaps', () => {

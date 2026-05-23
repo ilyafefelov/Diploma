@@ -1436,6 +1436,16 @@ def _resolve_baseline_anchor(price_history: pl.DataFrame) -> datetime:
 	return latest_timestamp - timedelta(hours=24)
 
 
+def _operator_dam_delivery_anchor(anchor_timestamp: datetime) -> datetime:
+	delivery_start = (anchor_timestamp + timedelta(days=1)).replace(
+		hour=0,
+		minute=0,
+		second=0,
+		microsecond=0,
+	)
+	return delivery_start - timedelta(hours=1)
+
+
 def _historical_prices_for_anchor(price_history: pl.DataFrame, anchor_timestamp: datetime) -> pl.DataFrame:
 	historical_prices = price_history.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN) <= anchor_timestamp)
 	if historical_prices.height < 168:
@@ -3342,8 +3352,9 @@ def _build_operator_recommendation_response(
 	battery_metrics = battery_defaults.metrics
 	price_history = _build_tenant_aware_price_history(resolved_location)
 	anchor_timestamp = _resolve_baseline_anchor(price_history)
+	delivery_anchor_timestamp = _operator_dam_delivery_anchor(anchor_timestamp)
 	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
-	load_frame = _operator_load_frame(tenant_id=tenant_id, anchor_timestamp=anchor_timestamp)
+	load_frame = _operator_load_frame(tenant_id=tenant_id, anchor_timestamp=delivery_anchor_timestamp)
 	soc_resolution = _resolve_operator_soc(
 		tenant_id=tenant_id,
 		battery_defaults=battery_defaults,
@@ -3360,7 +3371,7 @@ def _build_operator_recommendation_response(
 			historical_prices,
 			battery_metrics=battery_metrics,
 			current_soc_fraction=soc_resolution.starting_soc_fraction,
-			anchor_timestamp=anchor_timestamp,
+			anchor_timestamp=delivery_anchor_timestamp,
 		)
 		solve_result = _operator_solve_result_for_strategy(
 			selected_strategy_id=selected_strategy_id,
@@ -3368,7 +3379,7 @@ def _build_operator_recommendation_response(
 			baseline_solve_result=baseline_solve_result,
 			battery_metrics=battery_metrics,
 			current_soc_fraction=soc_resolution.starting_soc_fraction,
-			anchor_timestamp=anchor_timestamp,
+			anchor_timestamp=delivery_anchor_timestamp,
 		)
 	except (RuntimeError, ValueError) as error:
 		raise HTTPException(status_code=500, detail=str(error)) from error

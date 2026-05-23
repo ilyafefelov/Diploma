@@ -45,7 +45,7 @@ const hideSegmentTooltip = (): void => {
     <div class="schedule-dock__heading">
       <UIcon name="i-lucide-clock-3" />
       <div>
-        <p>Schedule timeline</p>
+        <p>DAM delivery day review</p>
         <span>{{ selectedTenantName }} / {{ selectedTenantBadge }}</span>
         <small>{{ predictionHeadLabel }}</small>
         <small>{{ marketBoundaryLabel }}</small>

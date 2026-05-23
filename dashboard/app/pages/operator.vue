@@ -167,7 +167,7 @@ const scheduleMarketBoundaryLabel = computed(() => {
 
   return operatorRecommendation.value.market_execution_enabled
     ? 'Market execution enabled'
-    : 'DAM hourly preview / no ProposedBid / no market submission'
+    : 'DAM delivery-day preview / no ProposedBid / no market submission'
 })
 
 const formatStrategyId = (strategyId: string): string => strategyId

@@ -671,11 +671,20 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 
 	target_start = datetime.fromisoformat(response_payload["target_delivery_window_start"])
 	target_end = datetime.fromisoformat(response_payload["target_delivery_window_end"])
+	anchor_timestamp = datetime.fromisoformat(response_payload["anchor_timestamp"])
 	first_interval = datetime.fromisoformat(response_payload["recommendation_schedule"][0]["interval_start"])
 	last_interval = datetime.fromisoformat(response_payload["recommendation_schedule"][-1]["interval_start"])
 	assert target_start == first_interval
 	assert target_end == last_interval + timedelta(hours=1)
-	assert datetime.fromisoformat(response_payload["anchor_timestamp"]) < target_start
+	assert anchor_timestamp < target_start
+	assert target_start.date() == (anchor_timestamp + timedelta(days=1)).date()
+	assert target_start.hour == 0
+	assert target_start.minute == 0
+	assert target_start.second == 0
+	assert {
+		datetime.fromisoformat(point["interval_start"]).date()
+		for point in response_payload["recommendation_schedule"]
+	} == {target_start.date()}
 
 
 def test_operator_recommendation_exposes_v2_plus_offline_strategy(
