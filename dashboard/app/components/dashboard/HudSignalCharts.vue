@@ -391,6 +391,7 @@ const weatherSourceBadge = computed(() => {
 }
 
 .signal-chart {
+  height: 21rem;
   min-height: 21rem;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 0.72rem;

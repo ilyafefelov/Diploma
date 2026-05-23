@@ -140,6 +140,44 @@ describe('operator HUD CSS', () => {
     }
   })
 
+  it('keeps chart sizing classes on the client chart DOM root', () => {
+    const clientChart = readFileSync(
+      fileURLToPath(new URL('../components/dashboard/ClientVChart.vue', import.meta.url)),
+      'utf8'
+    )
+
+    expect(clientChart).toContain('class="client-v-chart-shell"')
+    expect(clientChart).toContain('v-bind="$attrs"')
+    expect(clientChart.indexOf('v-bind="$attrs"')).toBeLessThan(clientChart.indexOf('<ClientOnly>'))
+  })
+
+  it('gives every operator ECharts surface an explicit rendered height', () => {
+    const chartSurfaces = [
+      {
+        componentUrl: '../components/dashboard/HudBaselinePreview.vue',
+        selector: '.baseline-chart'
+      },
+      {
+        componentUrl: '../components/dashboard/HudSignalCharts.vue',
+        selector: '.signal-chart'
+      },
+      {
+        componentUrl: '../components/dashboard/operator/OperatorDecisionEvidencePanel.vue',
+        selector: '.decision-chart'
+      },
+      {
+        componentUrl: '../components/dashboard/operator/OperatorFutureStackPanel.vue',
+        selector: '.future-chart'
+      }
+    ]
+
+    for (const chartSurface of chartSurfaces) {
+      const component = readFileSync(fileURLToPath(new URL(chartSurface.componentUrl, import.meta.url)), 'utf8')
+
+      expect(getSelectorBlock(component, chartSurface.selector)).toMatch(/(?:^|\n)\s*height:\s*(?:clamp|[0-9.]+rem)/)
+    }
+  })
+
   it('keeps future-stack policy value copy scoped to DAM delivery review', () => {
     const futurePanel = readFileSync(
       fileURLToPath(new URL('../components/dashboard/operator/OperatorFutureStackPanel.vue', import.meta.url)),

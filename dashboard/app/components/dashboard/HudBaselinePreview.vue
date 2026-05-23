@@ -860,6 +860,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
 }
 
 .baseline-chart {
+  height: 19rem;
   min-height: 19rem;
   border: 1px solid rgba(255, 255, 255, 0.36);
   border-radius: 0.72rem;

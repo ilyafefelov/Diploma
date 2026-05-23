@@ -874,6 +874,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 }
 
 .future-chart {
+  height: 20rem;
   min-height: 20rem;
 }
 

@@ -543,10 +543,12 @@ const sensitivityOption = computed(() => ({
 }
 
 .decision-chart {
+  height: 18rem;
   min-height: 18rem;
 }
 
 .decision-chart-compact {
+  height: 15rem;
   min-height: 15rem;
 }
 
