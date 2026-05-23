@@ -409,6 +409,35 @@ const statusCards = computed(() => [
 ])
 
 const backendStatusItems = computed(() => Object.entries(props.futureStack?.backend_status ?? {}))
+const decisionSourceFacts = computed(() => {
+  const facts = [
+    `Strategy: ${selectedStrategyLabel.value}`,
+    `Forecast context: ${policyForecastContextLabel.value}`,
+    'Boundary: review candidate only, no live IDM bid or market submission.'
+  ]
+
+  if (props.operatorRecommendation?.selection_reason) {
+    facts.unshift(`Selection reason: ${props.operatorRecommendation.selection_reason}`)
+  }
+
+  if (props.operatorRecommendation?.policy_explanation) {
+    facts.push(`Policy note: ${props.operatorRecommendation.policy_explanation}`)
+  }
+
+  if (props.decisionPolicy?.policy_value_interpretation) {
+    facts.push(`Value note: ${props.decisionPolicy.policy_value_interpretation}`)
+  }
+
+  return facts
+})
+const backendStatusFacts = computed(() => {
+  const items = backendStatusItems.value.length > 0
+    ? backendStatusItems.value.map(([name, status]) => `${name}: ${status}`)
+    : ['Official backend status not loaded yet.']
+
+  items.push(`Runtime: ${formatRuntimeAccelerationLabel(props.futureStack?.runtime_acceleration)}.`)
+  return items
+})
 const forecastWindowLabel = computed(() => formatForecastWindowLabel(
   props.futureStack?.forecast_window_start,
   props.futureStack?.forecast_window_end
@@ -636,27 +665,39 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
     <div class="future-explainer-grid">
       <article>
         <span>Forecast source</span>
-        <p>
-          Headline evidence is Ukrainian-only V2+ schedule/value evidence. The price chart is context only: raw
-          forecast superiority is not the claim, and unsafe out-of-cap rows stay hidden from schedule inputs.
+        <p class="future-explainer-lead">
+          Headline evidence is Ukrainian-only V2+ schedule/value evidence.
         </p>
+        <div class="future-explainer-facts">
+          <span>The price chart is context, not a bidding command.</span>
+          <span>Unsafe out-of-cap forecast rows are filtered out from schedule inputs.</span>
+          <span>Selected policy rows stay in DAM delivery-hour review mode.</span>
+        </div>
       </article>
       <article>
         <span>Decision source</span>
-        <p>
-          Selected strategy preview comes from the operator recommendation endpoint. V2+ uses a read-model adapter
-          and the same battery feasibility LP; the raw schedule is still only a review candidate.
-          Forecast context: {{ policyForecastContextLabel }}.
-          {{ operatorRecommendation?.policy_explanation || '' }}
-          {{ decisionPolicy?.policy_value_interpretation || '' }}
+        <p class="future-explainer-lead">
+          Selected strategy preview comes from the operator recommendation endpoint and is re-checked by the same
+          battery feasibility LP layer.
         </p>
+        <div class="future-explainer-facts">
+          <span
+            v-for="fact in decisionSourceFacts"
+            :key="fact"
+          >{{ fact }}</span>
+        </div>
       </article>
       <article>
         <span>Backend status</span>
-        <p>
-          {{ backendStatusItems.length > 0 ? backendStatusItems.map(([name, status]) => `${name}: ${status}`).join(' / ') : 'Official backend status not loaded yet.' }}
-          Runtime: {{ formatRuntimeAccelerationLabel(futureStack?.runtime_acceleration) }}.
+        <p class="future-explainer-lead">
+          Current read-model and runtime health signals.
         </p>
+        <div class="future-explainer-facts">
+          <span
+            v-for="item in backendStatusFacts"
+            :key="item"
+          >{{ item }}</span>
+        </div>
       </article>
     </div>
   </section>
@@ -890,6 +931,29 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 .future-explainer-grid article {
   display: grid;
   gap: 0.35rem;
+}
+
+.future-explainer-lead {
+  margin: 0;
+}
+
+.future-explainer-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.36rem;
+}
+
+.future-explainer-facts span {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(202, 249, 255, 0.3);
+  border-radius: 999px;
+  background: rgba(4, 67, 119, 0.66);
+  color: rgba(236, 250, 255, 0.9);
+  padding: 0.2rem 0.45rem;
+  font-size: 0.67rem;
+  font-weight: 820;
+  line-height: 1.35;
 }
 
 @media (max-width: 1320px) {

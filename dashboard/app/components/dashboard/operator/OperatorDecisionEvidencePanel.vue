@@ -56,6 +56,72 @@ const readModelBadgeLabel = computed(() => {
   return props.activeErrorCount > 0 ? `${props.activeErrorCount} read-model gap(s)` : 'FastAPI read model'
 })
 
+const comparatorGuideItems = computed(() => [
+  {
+    label: 'X-axis',
+    detail: 'each model candidate'
+  },
+  {
+    label: 'Blue bars',
+    detail: 'average lost value in UAH (lower is better)'
+  },
+  {
+    label: 'Green line',
+    detail: 'win share across anchors in % (higher is better)'
+  },
+  {
+    label: 'Read together',
+    detail: 'best model usually has low bars and high line'
+  }
+])
+
+const comparatorWinNarrative = computed(() => {
+  const rows = strategyRows.value
+  if (rows.length === 0) {
+    return null
+  }
+
+  const winner = rows[0]
+  if (!winner) {
+    return null
+  }
+
+  const runnerUp = rows[1]
+  const control = rows.find(row => row.modelName === 'strict_similar_day')
+  const winnerLabel = formatModelLabel(winner.modelName)
+  const winnerWinRate = Math.round(winner.winRate * 100)
+  const winnerRegret = Math.round(winner.meanRegretUah).toLocaleString('en-GB')
+  const detailParts: string[] = [`Mean regret ${winnerRegret} UAH`]
+
+  if (runnerUp) {
+    const runnerUpDelta = Math.round(runnerUp.meanRegretUah - winner.meanRegretUah)
+    const runnerUpLabel = formatModelLabel(runnerUp.modelName)
+    if (runnerUpDelta > 0) {
+      detailParts.push(`${runnerUpDelta.toLocaleString('en-GB')} UAH better than ${runnerUpLabel}`)
+    } else if (runnerUpDelta < 0) {
+      detailParts.push(`${Math.abs(runnerUpDelta).toLocaleString('en-GB')} UAH worse than ${runnerUpLabel}`)
+    } else {
+      detailParts.push(`same regret as ${runnerUpLabel}`)
+    }
+  }
+
+  if (control && control.modelName !== winner.modelName) {
+    const controlDelta = Math.round(control.meanRegretUah - winner.meanRegretUah)
+    if (controlDelta > 0) {
+      detailParts.push(`${controlDelta.toLocaleString('en-GB')} UAH better than strict control`)
+    } else if (controlDelta < 0) {
+      detailParts.push(`${Math.abs(controlDelta).toLocaleString('en-GB')} UAH worse than strict control`)
+    } else {
+      detailParts.push('same regret as strict control')
+    }
+  }
+
+  return {
+    headline: `${winnerLabel} wins ${winnerWinRate}% of anchors`,
+    detail: `${detailParts.join('; ')}. Win rate counts how often a model is rank-1 on each anchor.`
+  }
+})
+
 const strategyOption = computed(() => ({
   animationDuration: 650,
   backgroundColor: 'transparent',
@@ -229,6 +295,18 @@ const sensitivityOption = computed(() => ({
     }
   ]
 }))
+
+const formatModelLabel = (modelName: string): string => {
+  if (modelName.includes(' ') || modelName.includes('/')) {
+    return modelName
+  }
+
+  return modelName
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ')
+}
 </script>
 
 <template>
@@ -291,18 +369,28 @@ const sensitivityOption = computed(() => ({
             Comparator graph
           </p>
           <h3>Mean regret and win rate</h3>
-          <p>Lower regret is better. Win rate means rank-1 share within returned benchmark rows.</p>
+          <p>Blue bars show average regret in UAH. Green line shows how often each model was best on anchor-by-anchor ranking.</p>
         </div>
         <div class="decision-chart-guide">
-          <span><strong>Model</strong> = forecast/control candidate name</span>
-          <span><strong>Mean regret</strong> = average lost UAH versus oracle</span>
-          <span><strong>Win rate</strong> = share of anchors ranked best by regret</span>
+          <span
+            v-for="item in comparatorGuideItems"
+            :key="item.label"
+          >
+            <strong>{{ item.label }}</strong>: {{ item.detail }}
+          </span>
         </div>
         <ClientVChart
           :option="strategyOption"
           autoresize
           class="decision-chart"
         />
+        <div
+          v-if="comparatorWinNarrative"
+          class="decision-win-reason"
+        >
+          <strong>{{ comparatorWinNarrative.headline }}</strong>
+          <p>{{ comparatorWinNarrative.detail }}</p>
+        </div>
       </article>
 
       <article class="decision-chart-card">
@@ -511,7 +599,7 @@ const sensitivityOption = computed(() => ({
 
 .decision-chart-guide {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
   gap: 0.35rem;
 }
 
@@ -528,6 +616,30 @@ const sensitivityOption = computed(() => ({
 
 .decision-chart-guide strong {
   color: #d7ff4f;
+}
+
+.decision-win-reason {
+  display: grid;
+  gap: 0.24rem;
+  border: 1px solid rgba(202, 249, 255, 0.3);
+  border-radius: 0.55rem;
+  background: rgba(0, 61, 119, 0.28);
+  padding: 0.48rem 0.55rem;
+}
+
+.decision-win-reason strong {
+  color: #d7ff4f;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.decision-win-reason p {
+  margin: 0;
+  color: rgba(229, 249, 255, 0.88);
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.35;
 }
 
 .decision-chart-grid {

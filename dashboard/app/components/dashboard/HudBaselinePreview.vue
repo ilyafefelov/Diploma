@@ -362,6 +362,10 @@ const formatStrategyId = (strategyId: string): string => strategyId
                 This is the price curve used by the baseline LP comparator, not the selected strategy evidence path. Y-axis
                 values are quoted in <strong>UAH/MWh</strong>.
               </p>
+              <p class="baseline-card__note">
+                Why the shape can differ from the market-signal chart: this line is the LP input after DAM-window alignment and
+                cap-safe filtering. It is planning context, not a live observed market trace.
+              </p>
             </div>
           </div>
 
@@ -948,6 +952,15 @@ const formatStrategyId = (strategyId: string): string => strategyId
   font-size: 0.88rem;
   line-height: 1.5;
   color: rgba(229, 249, 255, 0.76);
+}
+
+.baseline-card__note {
+  margin-top: 0.12rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(229, 249, 255, 0.84);
+  border-left: 2px solid rgba(202, 249, 255, 0.38);
+  padding-left: 0.52rem;
 }
 
 .baseline-chart {
