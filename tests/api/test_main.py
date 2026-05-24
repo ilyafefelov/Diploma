@@ -687,6 +687,31 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 	assert response_payload["v13_readiness"]["missing_safe_switch_examples"] == 77
 	assert "oree_dam_publication_receipts_csv_path" in response_payload["v13_readiness"]["missing_required_inputs"]
 	assert "explicit_dam_publication_receipts" in response_payload["v13_readiness"]["top_priority_blocker"]
+	assert response_payload["v13_readiness"]["receipt_source_audit_probe_count"] == 5
+	assert response_payload["v13_readiness"]["receipt_source_audit_months_probed"] == [
+		"01.2026",
+		"02.2026",
+		"03.2026",
+		"04.2026",
+		"05.2026",
+	]
+	assert response_payload["v13_readiness"]["receipt_source_audit_candidate_found"] is False
+	assert response_payload["v13_readiness"]["receipt_source_audit_csv_generated"] is False
+	assert response_payload["v13_readiness"]["receipt_source_audit_all_probes_insufficient"] is True
+	assert response_payload["v13_readiness"]["safe_switch_target_tenant_source_count"] == 5
+	assert response_payload["v13_readiness"]["safe_switch_max_new_examples_required"] == 18
+	assert response_payload["v13_readiness"]["safe_switch_acquisition_targets"][0] == {
+		"acquisition_priority_rank": 1,
+		"tenant_id": "client_004_kharkiv_hospital",
+		"source_model_name": "nbeatsx_official_global_panel_horizon_calibrated_v1",
+		"current_prior_material_safe_switch_examples": 2,
+		"required_prior_material_safe_switch_examples": 20,
+		"target_new_prior_material_safe_switch_examples": 18,
+		"required_evidence_kind": "train_prior_non_tail_risk_material_safe_switch_rows",
+		"recommended_next_step": "acquire_ukrainian_context_and_backfill_safe_labels",
+		"target_is_precondition_only": True,
+		"market_execution_enabled": False,
+	}
 	assert response_payload["forecast_generated_at"] is None
 	assert "proposed_bid" not in response_payload
 

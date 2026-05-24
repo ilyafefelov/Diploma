@@ -193,6 +193,33 @@ describe('operator future stack display helpers', () => {
         'ua_context_safe_switch_examples_csv_path'
       ],
       top_priority_blocker: 'explicit_dam_publication_receipts',
+      receipt_source_audit_probe_count: 5,
+      receipt_source_audit_months_probed: [
+        '01.2026',
+        '02.2026',
+        '03.2026',
+        '04.2026',
+        '05.2026'
+      ],
+      receipt_source_audit_candidate_found: false,
+      receipt_source_audit_csv_generated: false,
+      receipt_source_audit_all_probes_insufficient: true,
+      safe_switch_target_tenant_source_count: 5,
+      safe_switch_max_new_examples_required: 18,
+      safe_switch_acquisition_targets: [
+        {
+          acquisition_priority_rank: 1,
+          tenant_id: 'client_004_kharkiv_hospital',
+          source_model_name: 'nbeatsx_official_global_panel_horizon_calibrated_v1',
+          current_prior_material_safe_switch_examples: 2,
+          required_prior_material_safe_switch_examples: 20,
+          target_new_prior_material_safe_switch_examples: 18,
+          required_evidence_kind: 'train_prior_non_tail_risk_material_safe_switch_rows',
+          recommended_next_step: 'acquire_ukrainian_context_and_backfill_safe_labels',
+          target_is_precondition_only: true,
+          market_execution_enabled: false
+        }
+      ],
       market_execution_enabled: false,
       boundary_doc: 'docs/technical/CURRENT_GOAL_BOUNDARY_V13.md',
       source_packet_path: 'data/research_runs/week3_dfl_ua_context_acquisition_v13/dfl_ua_context_v13_acquisition_summary.json'
@@ -207,13 +234,13 @@ describe('operator future stack display helpers', () => {
         label: 'DAM receipts',
         value: 'blocked',
         status: 'blocked',
-        reason: 'missing oree_dam_publication_receipts_csv_path'
+        reason: 'missing oree_dam_publication_receipts_csv_path; 5 months probed through 05.2026; no receipt CSV generated'
       },
       {
         label: 'Safe-switch evidence',
         value: '77 missing',
         status: 'blocked',
-        reason: '20 prior/train non-tail-risk material examples per tenant/source required'
+        reason: '20 prior/train non-tail-risk material examples per tenant/source required; top target client_004_kharkiv_hospital needs 18'
       },
       {
         label: 'Execution boundary',

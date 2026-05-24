@@ -83,9 +83,9 @@ create receipt rows:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\audit_oree_dam_publication_receipt_sources.py `
-  --months 01.2026,02.2026,03.2026,04.2026 `
+  --months 01.2026,02.2026,03.2026,04.2026,05.2026 `
   --probe-output-dir .tmp_runtime\oree_receipt_probe `
-  --output .tmp_runtime\oree_receipt_probe\oree_dam_publication_receipt_source_audit_2026_q1_q2.json
+  --output .tmp_runtime\oree_receipt_probe\oree_dam_publication_receipt_source_audit_2026_q1_q2_may.json
 ```
 
 `all_probes_insufficient_for_v13_receipts=true` means the checked OREE source
@@ -94,7 +94,7 @@ only identifies a candidate receipt source for manual validation; it still does
 not mark V13 ready until a validated CSV is supplied through
 `oree_dam_publication_receipts_csv_path`.
 
-The 2026-05-24 batch audit of `01.2026` through `04.2026` found
+The 2026-05-24 batch audit of `01.2026` through `05.2026` found
 `all_probes_insufficient_for_v13_receipts=true` and
 `candidate_receipt_source_found=false`; see
 `docs/sources/oree-dam-publication-receipt-source-audit-2026-05-24.md`.
@@ -296,7 +296,7 @@ packet-summary code changes:
   --source-evidence-csv data\research_runs\week3_dfl_ua_context_acquisition_v13\dfl_ua_context_v13_source_acquisition_evidence_rows.csv `
   --source-inventory-csv data\research_runs\week3_dfl_ua_context_acquisition_v13\dfl_ua_context_v13_source_inventory_rows.csv `
   --readiness-csv data\research_runs\week3_dfl_ua_context_acquisition_v13\dfl_ua_context_v13_readiness_rows.csv `
-  --receipt-source-audit-json .tmp_runtime\oree_receipt_probe\oree_dam_publication_receipt_source_audit_2026_q1_q2.json `
+  --receipt-source-audit-json .tmp_runtime\oree_receipt_probe\oree_dam_publication_receipt_source_audit_2026_q1_q2_may.json `
   --acquisition-input-preflight-json .tmp_runtime\v13_acquisition_inputs_preflight.json `
   --run-slug week3_dfl_ua_context_acquisition_v13
 ```

@@ -167,7 +167,24 @@ export const buildV13ReadinessItems = (
     ]
   }
 
-  const receiptInputMissing = readiness.missing_required_inputs.includes('oree_dam_publication_receipts_csv_path')
+  const receiptInputMissing = readiness.missing_required_inputs.includes(
+    'oree_dam_publication_receipts_csv_path'
+  )
+  const receiptProbeMonths = readiness.receipt_source_audit_months_probed
+  const latestReceiptProbeMonth = receiptProbeMonths[receiptProbeMonths.length - 1]
+  const receiptAuditSummary = readiness.receipt_source_audit_probe_count > 0
+    ? [
+        `${readiness.receipt_source_audit_probe_count.toLocaleString('en-GB')} months probed`
+        + `${latestReceiptProbeMonth ? ` through ${latestReceiptProbeMonth}` : ''}`,
+        readiness.receipt_source_audit_csv_generated
+          ? 'receipt CSV generated'
+          : 'no receipt CSV generated'
+      ].join('; ')
+    : 'no receipt source audit attached'
+  const topSafeSwitchTarget = readiness.safe_switch_acquisition_targets[0]
+  const safeSwitchTargetSummary = topSafeSwitchTarget
+    ? `; top target ${topSafeSwitchTarget.tenant_id} needs ${topSafeSwitchTarget.target_new_prior_material_safe_switch_examples.toLocaleString('en-GB')}`
+    : ''
   const sourceFamilyCount = `${readiness.ready_rows}/${readiness.readiness_rows}`
   return [
     {
@@ -181,8 +198,8 @@ export const buildV13ReadinessItems = (
       value: receiptInputMissing ? 'blocked' : 'ready',
       status: receiptInputMissing ? 'blocked' : 'ready',
       reason: receiptInputMissing
-        ? 'missing oree_dam_publication_receipts_csv_path'
-        : 'explicit source publication receipts attached'
+        ? `missing oree_dam_publication_receipts_csv_path; ${receiptAuditSummary}`
+        : `explicit source publication receipts attached; ${receiptAuditSummary}`
     },
     {
       label: 'Safe-switch evidence',
@@ -190,7 +207,7 @@ export const buildV13ReadinessItems = (
         ? `${readiness.missing_safe_switch_examples.toLocaleString('en-GB')} missing`
         : 'ready',
       status: readiness.missing_safe_switch_examples > 0 ? 'blocked' : 'ready',
-      reason: '20 prior/train non-tail-risk material examples per tenant/source required'
+      reason: `20 prior/train non-tail-risk material examples per tenant/source required${safeSwitchTargetSummary}`
     },
     {
       label: 'Execution boundary',

@@ -558,9 +558,30 @@ export interface OperatorV13ReadinessResponse {
   missing_safe_switch_examples: number
   missing_required_inputs: string[]
   top_priority_blocker: string
+  receipt_source_audit_probe_count: number
+  receipt_source_audit_months_probed: string[]
+  receipt_source_audit_candidate_found: boolean
+  receipt_source_audit_csv_generated: boolean
+  receipt_source_audit_all_probes_insufficient: boolean
+  safe_switch_target_tenant_source_count: number
+  safe_switch_max_new_examples_required: number
+  safe_switch_acquisition_targets: OperatorV13SafeSwitchTargetResponse[]
   market_execution_enabled: boolean
   boundary_doc: string
   source_packet_path: string | null
+}
+
+export interface OperatorV13SafeSwitchTargetResponse {
+  acquisition_priority_rank: number
+  tenant_id: string
+  source_model_name: string
+  current_prior_material_safe_switch_examples: number
+  required_prior_material_safe_switch_examples: number
+  target_new_prior_material_safe_switch_examples: number
+  required_evidence_kind: string
+  recommended_next_step: string
+  target_is_precondition_only: boolean
+  market_execution_enabled: boolean
 }
 
 export interface OperatorRecommendationResponse {

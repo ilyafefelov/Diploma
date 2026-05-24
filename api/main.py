@@ -755,6 +755,19 @@ class OperatorValueGapPointResponse(BaseModel):
 	metric_source: str
 
 
+class OperatorV13SafeSwitchTargetResponse(BaseModel):
+	acquisition_priority_rank: int
+	tenant_id: str
+	source_model_name: str
+	current_prior_material_safe_switch_examples: int
+	required_prior_material_safe_switch_examples: int
+	target_new_prior_material_safe_switch_examples: int
+	required_evidence_kind: str
+	recommended_next_step: str
+	target_is_precondition_only: bool
+	market_execution_enabled: bool
+
+
 class OperatorV13ReadinessResponse(BaseModel):
 	gate_status: str
 	v13_candidate_generation_ready: bool
@@ -764,6 +777,14 @@ class OperatorV13ReadinessResponse(BaseModel):
 	missing_safe_switch_examples: int
 	missing_required_inputs: list[str]
 	top_priority_blocker: str
+	receipt_source_audit_probe_count: int
+	receipt_source_audit_months_probed: list[str]
+	receipt_source_audit_candidate_found: bool
+	receipt_source_audit_csv_generated: bool
+	receipt_source_audit_all_probes_insufficient: bool
+	safe_switch_target_tenant_source_count: int
+	safe_switch_max_new_examples_required: int
+	safe_switch_acquisition_targets: list[OperatorV13SafeSwitchTargetResponse]
 	market_execution_enabled: bool
 	boundary_doc: str
 	source_packet_path: str | None
@@ -2945,6 +2966,8 @@ def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
 	safe_switch = _mapping_value(packet.get("safe_switch_deficit_summary"))
 	backlog = _mapping_value(packet.get("source_acquisition_backlog_summary"))
 	preflight = _mapping_value(packet.get("acquisition_input_preflight_summary"))
+	receipt_audit = _mapping_value(packet.get("receipt_source_audit_summary"))
+	safe_switch_targets = _mapping_value(packet.get("safe_switch_acquisition_target_summary"))
 	claim_boundary = _mapping_value(packet.get("claim_boundary"))
 	readiness_decisions = _string_list_value(readiness.get("readiness_decisions"))
 	v13_candidate_generation_ready = bool(
@@ -2972,6 +2995,28 @@ def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
 		missing_safe_switch_examples=_int_value(safe_switch.get("total_missing_examples")),
 		missing_required_inputs=_string_list_value(preflight.get("missing_required_inputs")),
 		top_priority_blocker=str(backlog.get("top_priority_blocker", "unknown")),
+		receipt_source_audit_probe_count=_int_value(receipt_audit.get("probe_count")),
+		receipt_source_audit_months_probed=_string_list_value(
+			receipt_audit.get("months_probed")
+		),
+		receipt_source_audit_candidate_found=bool(
+			receipt_audit.get("candidate_receipt_source_found", False)
+		),
+		receipt_source_audit_csv_generated=bool(
+			receipt_audit.get("receipt_csv_generated", False)
+		),
+		receipt_source_audit_all_probes_insufficient=bool(
+			receipt_audit.get("all_probes_insufficient_for_v13_receipts", False)
+		),
+		safe_switch_target_tenant_source_count=_int_value(
+			safe_switch_targets.get("target_tenant_source_count")
+		),
+		safe_switch_max_new_examples_required=_int_value(
+			safe_switch_targets.get("max_new_prior_material_safe_switch_examples_required")
+		),
+		safe_switch_acquisition_targets=_operator_v13_safe_switch_targets(
+			safe_switch_targets.get("target_rows")
+		),
 		market_execution_enabled=market_execution_enabled,
 		boundary_doc=V13_GOAL_BOUNDARY_DOC,
 		source_packet_path=str(packet_path),
@@ -2998,10 +3043,50 @@ def _operator_v13_readiness_fallback(
 		missing_safe_switch_examples=0,
 		missing_required_inputs=[],
 		top_priority_blocker=top_priority_blocker,
+		receipt_source_audit_probe_count=0,
+		receipt_source_audit_months_probed=[],
+		receipt_source_audit_candidate_found=False,
+		receipt_source_audit_csv_generated=False,
+		receipt_source_audit_all_probes_insufficient=False,
+		safe_switch_target_tenant_source_count=0,
+		safe_switch_max_new_examples_required=0,
+		safe_switch_acquisition_targets=[],
 		market_execution_enabled=False,
 		boundary_doc=V13_GOAL_BOUNDARY_DOC,
 		source_packet_path=source_packet_path,
 	)
+
+
+def _operator_v13_safe_switch_targets(
+	value: object,
+) -> list[OperatorV13SafeSwitchTargetResponse]:
+	if not isinstance(value, list):
+		return []
+	targets: list[OperatorV13SafeSwitchTargetResponse] = []
+	for row in value:
+		if not isinstance(row, dict):
+			continue
+		targets.append(
+			OperatorV13SafeSwitchTargetResponse(
+				acquisition_priority_rank=_int_value(row.get("acquisition_priority_rank")),
+				tenant_id=str(row.get("tenant_id", "")),
+				source_model_name=str(row.get("source_model_name", "")),
+				current_prior_material_safe_switch_examples=_int_value(
+					row.get("current_prior_material_safe_switch_examples")
+				),
+				required_prior_material_safe_switch_examples=_int_value(
+					row.get("required_prior_material_safe_switch_examples")
+				),
+				target_new_prior_material_safe_switch_examples=_int_value(
+					row.get("target_new_prior_material_safe_switch_examples")
+				),
+				required_evidence_kind=str(row.get("required_evidence_kind", "")),
+				recommended_next_step=str(row.get("recommended_next_step", "")),
+				target_is_precondition_only=bool(row.get("target_is_precondition_only", False)),
+				market_execution_enabled=bool(row.get("market_execution_enabled", False)),
+			)
+		)
+	return targets
 
 
 def _operator_v13_gate_status(

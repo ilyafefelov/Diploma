@@ -42,9 +42,16 @@ recommendation schedule
 | `market_gate_status` | `not_evaluated_preview_only` |
 | `bid_eligibility_status` | `not_applicable_no_proposed_bid` |
 | `proposed_bid_status` | `not_emitted_operator_preview` |
-| `v13_readiness` | Current V13 acquisition/source-readiness summary from the local V13 packet: gate status, ready rows, missing safe-switch examples, missing configured inputs, top blocker, and `market_execution_enabled=false` |
+| `v13_readiness` | Current V13 acquisition/source-readiness summary from the local V13 packet: gate status, ready rows, missing safe-switch examples, missing configured inputs, top blocker, receipt-source audit freshness, and `market_execution_enabled=false` |
 
 These fields are intentionally explicit even when the value is negative. A missing gate or bid path should be visible to the UI and thesis narrative instead of being inferred from absent fields.
+
+The receipt-source audit fields are negative/positive source-readiness evidence
+only. They expose how many OREE DAM publication receipt source months were
+probed, which months were checked, whether a candidate receipt source was found,
+and whether a normalized receipt CSV was generated. They do not satisfy the
+explicit receipt blocker unless source-backed receipt rows are configured in the
+V13 acquisition packet.
 
 ## V13 / DT Boundary
 

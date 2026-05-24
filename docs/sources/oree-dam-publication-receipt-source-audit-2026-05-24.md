@@ -9,9 +9,9 @@ Command:
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\audit_oree_dam_publication_receipt_sources.py `
-  --months 01.2026,02.2026,03.2026,04.2026 `
+  --months 01.2026,02.2026,03.2026,04.2026,05.2026 `
   --probe-output-dir .tmp_runtime\oree_receipt_probe `
-  --output .tmp_runtime\oree_receipt_probe\oree_dam_publication_receipt_source_audit_2026_q1_q2.json
+  --output .tmp_runtime\oree_receipt_probe\oree_dam_publication_receipt_source_audit_2026_q1_q2_may.json
 ```
 
 Source URL probed for each month:
@@ -20,12 +20,12 @@ Source URL probed for each month:
 
 Observed result:
 
-- `probe_count`: `4`
-- `months_probed`: `01.2026`, `02.2026`, `03.2026`, `04.2026`
+- `probe_count`: `5`
+- `months_probed`: `01.2026`, `02.2026`, `03.2026`, `04.2026`, `05.2026`
 - `all_probes_insufficient_for_v13_receipts`: `true`
 - `candidate_receipt_source_found`: `false`
 - `candidate_receipt_months`: `[]`
-- `insufficient_months`: `01.2026`, `02.2026`, `03.2026`, `04.2026`
+- `insufficient_months`: `01.2026`, `02.2026`, `03.2026`, `04.2026`, `05.2026`
 - `receipt_csv_generated`: `false`
 - `market_execution_enabled`: `false`
 

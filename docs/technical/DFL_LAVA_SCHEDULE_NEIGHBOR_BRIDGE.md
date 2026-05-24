@@ -78,6 +78,44 @@ Core implementation:
   Ukrainian target rows.
 - `market_execution_enabled=false` is fixed in benchmark rows.
 
+## Tiny NPZ Smoke Contract
+
+Future solver-free LAVA-style smoke runs may use a small deterministic NPZ
+sourced from the existing schedule-neighbor candidate frame, but the NPZ is
+only a research artifact contract. It does not permit candidate promotion,
+DT/LAVA training, dashboard defaults, or market execution.
+
+Build a tiny artifact from a persisted candidate-frame pickle:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_lava_npz_smoke_artifact.py `
+  --candidate-frame-pickle <dfl_lava_schedule_neighbor_candidate_frame.pkl> `
+  --output-npz .tmp_runtime\lava_npz_smoke\candidate_lava_smoke.npz `
+  --summary-json .tmp_runtime\lava_npz_smoke\candidate_lava_smoke_summary.json `
+  --max-instances 8 `
+  --max-neighbors 4
+```
+
+Validate any such artifact before use:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\validate_lava_npz_smoke_contract.py `
+  --input <candidate-lava-smoke.npz> `
+  --output .tmp_runtime\lava_npz_smoke_summary.json
+```
+
+The materializer only uses `train_selection` rows where
+`eligible_for_final_selection=true`; final-holdout rows and ineligible oracle
+diagnostics are not exported into the smoke artifact. The NPZ must include
+`feature_matrix`, `cost_vector_matrix`,
+`optimal_vertex_matrix`, `adjacent_vertex_tensor`, `adjacent_mask`, and scalar
+boundary fields: `claim_scope`, `v13_candidate_generation_ready`,
+`dt_lava_ready`, `permits_model_training`, `raw_hourly_action_imitation`, and
+`market_execution_enabled`. The validator rejects shape mismatches, empty
+neighbor masks, `raw_hourly_action_imitation=true`,
+`market_execution_enabled=true`, and premature `permits_model_training=true`
+unless V13 and DT/LAVA readiness are both true.
+
 ## Gate
 
 The LAVA scorer can become a stronger Offline Strategy Promotion challenger
