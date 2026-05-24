@@ -31,6 +31,17 @@ ops:
       oree_dam_publication_hour_kyiv: 14
       oree_dam_publication_source_url: "https://www.oree.com.ua/index.php/web/13245784"
       oree_dam_publication_source_title: "OREE market rules: day-ahead trading results publication"
+  dfl_ua_dam_publication_receipts_overlay_frame:
+    config:
+      # Empty by default: V13 remains blocked until explicit row-level DAM
+      # receipt metadata is supplied through a source-backed CSV.
+      oree_dam_publication_receipts_csv_path: ""
+  dfl_ua_context_safe_switch_examples_v13_frame:
+    config:
+      # Empty by default: V13 keeps the current V12 safe-switch counts
+      # (2-7/20). Supply only incremental source-backed train_selection
+      # non-tail-risk material safe-switch examples not already counted by V12.
+      ua_context_safe_switch_examples_csv_path: ""
   dfl_ua_dam_publication_backfill_frame:
     config:
       oree_dam_publication_rule_enabled: true

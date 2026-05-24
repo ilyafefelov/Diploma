@@ -274,6 +274,35 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      example counts stayed at `2-7 / 20`, so `dt_lava_ready=false`. This moves
      the next real ML work from selector design to Ukrainian data acquisition
      and source coverage repair.
+   - V13 is the acquisition gate for that repair, not a modeling slice. The
+     current packet (`28740367-26ba-40fb-9a68-88dc7e707c8b`) reports
+     `ready_rows=0/5`, `data_acquisition_needed`, max prior safe-switch support
+     `7 / 20`, and `market_execution_enabled=false`. The first blocker is
+     explicit row-level OREE DAM publication receipts. The optional
+     `dfl_ua_dam_publication_receipts_overlay_frame` reads
+     `oree_dam_publication_receipts_csv_path` and only marks
+     `explicit_dam_publication_receipts` ready when source-backed receipt
+     metadata exists; an empty path preserves the blocked result.
+     `dfl_ua_context_safe_switch_examples_v13_frame` similarly reads
+     `ua_context_safe_switch_examples_csv_path` for incremental source-backed
+     `train_selection` non-tail-risk material safe-switch examples. Empty path
+     preserves the current `2-7 / 20` counts; supplied rows can only satisfy the
+     V13 count precondition through
+     `dfl_ua_context_safe_switch_readiness_overlay_v13_frame` and still keep
+     `dt_lava_ready=false`, `permits_model_training=false`, and
+     `market_execution_enabled=false`.
+     The 2026-05-24 OREE `data_view` audit across `01.2026` through `04.2026`
+     found `candidate_receipt_source_found=false`, so it is negative source
+     evidence and must not be converted into receipt rows.
+     The packet now also exports
+     `dfl_ua_context_v13_source_acquisition_backlog.csv`, which combines the
+     explicit receipt blocker, safe-switch example deficits, and source-family
+     readiness rows into one acquisition checklist with
+     `permits_model_training=false` and `market_execution_enabled=false`.
+     It can also attach the config-level acquisition preflight as
+     `dfl_ua_context_v13_acquisition_input_preflight.json` and
+     `acquisition_input_preflight_summary`; this records missing configured
+     DAM receipt and safe-switch CSV inputs, not model-training permission.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

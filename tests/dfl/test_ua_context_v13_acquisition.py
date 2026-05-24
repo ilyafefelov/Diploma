@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+import subprocess
+import sys
+
 import polars as pl
 
 from smart_arbitrage.dfl.ua_context_v13_acquisition import (
     build_dfl_ua_context_acquisition_source_evidence_v13_frame,
     build_dfl_ua_context_acquisition_readiness_v13_frame,
+    build_dfl_ua_context_safe_switch_readiness_overlay_v13_frame,
     build_dfl_ua_context_source_inventory_v13_frame,
+    normalize_dfl_ua_context_safe_switch_examples_v13_frame,
 )
 
 
@@ -144,6 +151,218 @@ def test_v13_readiness_can_open_candidate_generation_when_context_is_ready() -> 
     assert readiness["recommended_next_step"].to_list() == [
         "build_v13_lower_tail_risk_candidates"
     ]
+    assert readiness["dt_lava_ready"].to_list() == [False]
+
+
+def test_v13_safe_switch_backfill_overlay_can_clear_count_precondition() -> None:
+    receipts = normalize_dfl_ua_context_safe_switch_examples_v13_frame(
+        _safe_switch_example_receipts(count=13)
+    )
+    overlay = build_dfl_ua_context_safe_switch_readiness_overlay_v13_frame(
+        _v12_readiness(prior_examples=7),
+        receipts,
+    )
+    evidence = build_dfl_ua_context_acquisition_source_evidence_v13_frame(
+        _dam_backfill(mode="explicit_source_metadata"),
+        _weather_load_backfill(status="context_ready"),
+        _grid_backfill(status="context_ready"),
+        _coverage_gate(ready=True),
+    )
+    inventory = build_dfl_ua_context_source_inventory_v13_frame(
+        _v12_source_inventory(all_ready=True),
+        overlay,
+        ua_context_acquisition_source_evidence_v13_frame=evidence,
+    )
+
+    readiness = build_dfl_ua_context_acquisition_readiness_v13_frame(
+        overlay,
+        inventory,
+        min_prior_material_safe_switch_examples_for_dt=20,
+    )
+
+    assert overlay["v13_safe_switch_backfill_example_count"].to_list() == [13]
+    assert overlay["prior_material_safe_switch_example_count"].to_list() == [20]
+    assert overlay["dt_lava_ready"].to_list() == [False]
+    assert readiness["v13_candidate_generation_ready"].to_list() == [True]
+    assert readiness["dt_lava_ready"].to_list() == [False]
+    assert readiness["market_execution_enabled"].to_list() == [False]
+
+
+def test_v13_safe_switch_backfill_empty_frame_preserves_counts() -> None:
+    overlay = build_dfl_ua_context_safe_switch_readiness_overlay_v13_frame(
+        _v12_readiness(prior_examples=7),
+        pl.DataFrame(),
+    )
+
+    assert overlay["prior_material_safe_switch_example_count"].to_list() == [7]
+    assert overlay["v13_safe_switch_backfill_example_count"].to_list() == [0]
+    assert overlay["dt_lava_ready"].to_list() == [False]
+
+
+def test_v13_safe_switch_backfill_rejects_final_holdout_examples() -> None:
+    receipts = _safe_switch_example_receipts(count=1).with_columns(
+        pl.lit("final_holdout").alias("split_name")
+    )
+
+    try:
+        normalize_dfl_ua_context_safe_switch_examples_v13_frame(receipts)
+    except ValueError as exc:
+        assert "train_selection" in str(exc)
+    else:
+        raise AssertionError("final holdout safe-switch receipt was accepted")
+
+
+def test_v13_safe_switch_backfill_rejects_tail_risk_or_non_material_rows() -> None:
+    receipts = _safe_switch_example_receipts(count=1).with_columns(
+        pl.lit(True).alias("label_v13_tail_risk_loss")
+    )
+
+    try:
+        normalize_dfl_ua_context_safe_switch_examples_v13_frame(receipts)
+    except ValueError as exc:
+        assert "non-tail-risk material" in str(exc)
+    else:
+        raise AssertionError("tail-risk safe-switch receipt was accepted")
+
+
+def test_v13_safe_switch_backfill_rejects_duplicate_examples() -> None:
+    receipts = pl.concat(
+        [
+            _safe_switch_example_receipts(count=1),
+            _safe_switch_example_receipts(count=1),
+        ]
+    )
+
+    try:
+        normalize_dfl_ua_context_safe_switch_examples_v13_frame(receipts)
+    except ValueError as exc:
+        assert "duplicate" in str(exc)
+    else:
+        raise AssertionError("duplicate safe-switch receipt was accepted")
+
+
+def test_v13_safe_switch_examples_cli_writes_normalized_csv(
+    tmp_path: Path,
+) -> None:
+    input_path = tmp_path / "safe_switch_examples_raw.csv"
+    output_path = tmp_path / "safe_switch_examples_v13.csv"
+    _safe_switch_example_receipts(count=2).write_csv(input_path)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_ua_context_safe_switch_examples_v13.py",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    summary = json.loads(result.stdout)
+    normalized = pl.read_csv(output_path, try_parse_dates=True)
+
+    assert summary["claim_boundary"] == "v13_source_readiness_only_not_market_execution"
+    assert summary["safe_switch_example_rows"] == 2
+    assert summary["tenant_source_count"] == 1
+    assert summary["permits_model_training"] is False
+    assert summary["dt_lava_ready"] is False
+    assert summary["market_execution_enabled"] is False
+    assert normalized["split_name"].to_list() == ["train_selection", "train_selection"]
+    assert normalized["label_v13_material_safe_switch"].to_list() == [True, True]
+    assert normalized["label_v13_tail_risk_loss"].to_list() == [False, False]
+
+
+def test_v13_acquisition_input_preflight_reports_default_missing_inputs() -> None:
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/preflight_ua_context_v13_acquisition_inputs.py",
+            "--config",
+            "configs/real_data_dfl_ua_context_v13_acquisition_week3.yaml",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    summary = json.loads(result.stdout)
+
+    assert summary["claim_boundary"] == "v13_source_readiness_only_not_market_execution"
+    assert summary["data_acquisition_needed"] is True
+    assert summary["v13_candidate_generation_ready"] is False
+    assert summary["dt_lava_ready"] is False
+    assert summary["permits_model_training"] is False
+    assert summary["market_execution_enabled"] is False
+    assert summary["missing_required_inputs"] == [
+        "oree_dam_publication_receipts_csv_path",
+        "ua_context_safe_switch_examples_csv_path",
+    ]
+    assert summary["dam_publication_receipts"]["status"] == "missing_config_path"
+    assert summary["safe_switch_examples"]["status"] == "missing_config_path"
+
+
+def test_v13_acquisition_input_preflight_validates_configured_csvs(
+    tmp_path: Path,
+) -> None:
+    receipts_path = tmp_path / "dam_receipts.csv"
+    safe_switch_path = tmp_path / "safe_switch_examples.csv"
+    config_path = tmp_path / "v13_inputs.yaml"
+    pl.DataFrame(
+        [
+            {
+                "timestamp": "2026-04-29T22:00:00",
+                "source_publication_timestamp": "2026-04-28T14:00:00",
+                "source_url": "https://www.oree.com.ua/example",
+                "source_title": "OREE receipt",
+                "receipt_id": "receipt-001",
+            }
+        ]
+    ).write_csv(receipts_path)
+    _safe_switch_example_receipts(count=2).write_csv(safe_switch_path)
+    config_path.write_text(
+        "\n".join(
+            [
+                "ops:",
+                "  dfl_ua_dam_publication_receipts_overlay_frame:",
+                "    config:",
+                f'      oree_dam_publication_receipts_csv_path: "{receipts_path.as_posix()}"',
+                "  dfl_ua_context_safe_switch_examples_v13_frame:",
+                "    config:",
+                f'      ua_context_safe_switch_examples_csv_path: "{safe_switch_path.as_posix()}"',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/preflight_ua_context_v13_acquisition_inputs.py",
+            "--config",
+            str(config_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    summary = json.loads(result.stdout)
+
+    assert summary["missing_required_inputs"] == []
+    assert summary["data_acquisition_needed"] is False
+    assert summary["v13_candidate_generation_ready"] is False
+    assert summary["dt_lava_ready"] is False
+    assert summary["dam_publication_receipts"]["status"] == "validated"
+    assert summary["dam_publication_receipts"]["receipt_rows"] == 1
+    assert summary["safe_switch_examples"]["status"] == "validated"
+    assert summary["safe_switch_examples"]["safe_switch_example_rows"] == 2
+    assert summary["safe_switch_examples"]["tenant_source_count"] == 1
+    assert summary["market_execution_enabled"] is False
 
 
 def test_v13_readiness_ignores_final_holdout_label_mutation() -> None:
@@ -368,5 +587,25 @@ def _coverage_gate(*, ready: bool) -> pl.DataFrame:
                 ),
                 "market_execution_enabled": False,
             }
+        ]
+    )
+
+
+def _safe_switch_example_receipts(*, count: int) -> pl.DataFrame:
+    return pl.DataFrame(
+        [
+            {
+                "tenant_id": TENANT,
+                "source_model_name": SOURCE,
+                "anchor_timestamp": f"2026-04-{index + 1:02d}T23:00:00",
+                "split_name": "train_selection",
+                "source_evidence_timestamp": f"2026-05-{index + 1:02d}T12:00:00",
+                "label_v13_material_safe_switch": True,
+                "label_v13_tail_risk_loss": False,
+                "source_url": f"https://example.test/safe-switch/{index + 1}",
+                "source_title": "Source-backed safe-switch example",
+                "receipt_id": f"safe-switch-{index + 1:03d}",
+            }
+            for index in range(count)
         ]
     )

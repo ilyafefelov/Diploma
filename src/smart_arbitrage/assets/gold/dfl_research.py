@@ -1,5 +1,6 @@
 from datetime import UTC, datetime
 import os
+from pathlib import Path
 from typing import Any
 
 import dagster as dg
@@ -352,13 +353,16 @@ from smart_arbitrage.dfl.ua_context_acquisition_v1 import (
     build_dfl_ua_context_backfill_coverage_gate_frame,
     build_dfl_ua_context_source_inventory_frame,
     build_dfl_ua_dam_publication_backfill_frame,
+    build_dfl_ua_dam_publication_receipts_overlay_frame,
     build_dfl_ua_grid_event_backfill_frame,
     build_dfl_ua_weather_load_pv_proxy_backfill_frame,
 )
 from smart_arbitrage.dfl.ua_context_v13_acquisition import (
     build_dfl_ua_context_acquisition_source_evidence_v13_frame,
     build_dfl_ua_context_acquisition_readiness_v13_frame,
+    build_dfl_ua_context_safe_switch_readiness_overlay_v13_frame,
     build_dfl_ua_context_source_inventory_v13_frame,
+    normalize_dfl_ua_context_safe_switch_examples_v13_frame,
 )
 from smart_arbitrage.dfl.regret_surrogate_v1 import (
     REGRET_SURROGATE_CONTEXTUAL_SELECTION_ROLE,
@@ -1482,6 +1486,8 @@ class DflUaContextAcquisitionV1AssetConfig(dg.Config):
     oree_dam_publication_source_title: str = (
         "OREE market rules: day-ahead trading results publication"
     )
+    oree_dam_publication_receipts_csv_path: str = ""
+    ua_context_safe_switch_examples_csv_path: str = ""
 
 
 class DflOfficialGlobalPanelScheduleValueProductionGateAssetConfig(dg.Config):
@@ -7391,13 +7397,13 @@ def dfl_ua_dam_publication_backfill_frame(
     context,
     config: DflUaContextAcquisitionV1AssetConfig,
     dfl_ua_context_backfill_requirements_frame: pl.DataFrame,
-    observed_market_price_history_bronze: pl.DataFrame,
+    dfl_ua_dam_publication_receipts_overlay_frame: pl.DataFrame,
 ) -> pl.DataFrame:
     """Check explicit prior OREE DAM publication metadata for V11 readiness."""
 
     frame = build_dfl_ua_dam_publication_backfill_frame(
         dfl_ua_context_backfill_requirements_frame,
-        observed_market_price_history_bronze,
+        dfl_ua_dam_publication_receipts_overlay_frame,
         publication_rule_hour_kyiv=config.oree_dam_publication_hour_kyiv
         if config.oree_dam_publication_rule_enabled
         else None,
@@ -7987,6 +7993,56 @@ def dfl_v11_lava_dt_comparison_frame(
         medallion="gold",
         domain="dfl_research",
         elt_stage="publish",
+        ml_stage="source_data",
+        evidence_scope="not_market_execution",
+        backend="ua_context_acquisition_v1",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_dam_publication_receipts_overlay_frame(
+    context,
+    config: DflUaContextAcquisitionV1AssetConfig,
+    observed_market_price_history_bronze: pl.DataFrame,
+) -> pl.DataFrame:
+    """Overlay explicit row-level OREE DAM publication receipts when provided."""
+
+    receipts = _read_optional_dam_publication_receipts_csv(
+        config.oree_dam_publication_receipts_csv_path
+    )
+    frame = build_dfl_ua_dam_publication_receipts_overlay_frame(
+        observed_market_price_history_bronze,
+        receipts,
+    )
+    explicit_receipt_rows = (
+        frame.filter(pl.col("source_publication_timestamp").is_not_null()).height
+        if "source_publication_timestamp" in frame.columns
+        else 0
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "receipt_rows": receipts.height,
+            "explicit_receipt_rows": explicit_receipt_rows,
+            "receipt_csv_configured": bool(
+                config.oree_dam_publication_receipts_csv_path.strip()
+            ),
+            "target_label_space": "v13_precondition_context_coverage",
+            "raw_hourly_action_imitation": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_dam_publication_receipts_overlay_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
         ml_stage="diagnostics",
         evidence_scope="not_market_execution",
         backend="candidate_value_v12",
@@ -8287,6 +8343,105 @@ def dfl_ua_v12_dt_lava_readiness_decision_frame(
         market_venue="DAM",
     ),
 )
+def dfl_ua_context_safe_switch_examples_v13_frame(
+    context,
+    config: DflUaContextAcquisitionV1AssetConfig,
+) -> pl.DataFrame:
+    """Load optional source-backed safe-switch examples for the V13 gate."""
+
+    raw_examples = _read_optional_v13_safe_switch_examples_csv(
+        config.ua_context_safe_switch_examples_csv_path
+    )
+    frame = normalize_dfl_ua_context_safe_switch_examples_v13_frame(raw_examples)
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "example_csv_configured": bool(
+                config.ua_context_safe_switch_examples_csv_path.strip()
+            ),
+            "tenant_source_count": frame.select(
+                ["tenant_id", "source_model_name"]
+            ).unique().height
+            if frame.height
+            else 0,
+            "target_label_space": "v13_precondition_context_coverage",
+            "raw_hourly_action_imitation": False,
+            "permits_model_training": False,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_safe_switch_examples_v13_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v13",
+        market_venue="DAM",
+    ),
+)
+def dfl_ua_context_safe_switch_readiness_overlay_v13_frame(
+    context,
+    dfl_ua_v12_dt_lava_readiness_decision_frame: pl.DataFrame,
+    dfl_ua_context_safe_switch_examples_v13_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Overlay explicit safe-switch example counts before V13 readiness."""
+
+    frame = build_dfl_ua_context_safe_switch_readiness_overlay_v13_frame(
+        dfl_ua_v12_dt_lava_readiness_decision_frame,
+        dfl_ua_context_safe_switch_examples_v13_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "safe_switch_backfill_example_count": _metadata_int(
+                frame["v13_safe_switch_backfill_example_count"].sum()
+            )
+            if frame.height
+            else 0,
+            "max_prior_material_safe_switch_examples": _metadata_int(
+                frame["prior_material_safe_switch_example_count"].max()
+            )
+            if frame.height
+            else 0,
+            "readiness_decisions": sorted(
+                str(value) for value in frame["readiness_decision"].unique()
+            )
+            if frame.height
+            else [],
+            "target_label_space": "v13_precondition_context_coverage",
+            "raw_hourly_action_imitation": False,
+            "permits_model_training": False,
+            "dt_lava_ready_rows": 0,
+            "market_execution_enabled": False,
+            "scope": "dfl_ua_context_safe_switch_readiness_overlay_v13_not_full_dfl",
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="source_data",
+        evidence_scope="not_market_execution",
+        backend="candidate_value_v13",
+        market_venue="DAM",
+    ),
+)
 def dfl_ua_context_acquisition_source_evidence_v13_frame(
     context,
     dfl_ua_dam_publication_backfill_frame: pl.DataFrame,
@@ -8344,14 +8499,14 @@ def dfl_ua_context_acquisition_source_evidence_v13_frame(
 def dfl_ua_context_source_inventory_v13_frame(
     context,
     dfl_ua_context_source_expansion_inventory_v12_frame: pl.DataFrame,
-    dfl_ua_v12_dt_lava_readiness_decision_frame: pl.DataFrame,
+    dfl_ua_context_safe_switch_readiness_overlay_v13_frame: pl.DataFrame,
     dfl_ua_context_acquisition_source_evidence_v13_frame: pl.DataFrame,
 ) -> pl.DataFrame:
     """Inventory targeted Ukrainian context still needed before V13 candidates."""
 
     frame = build_dfl_ua_context_source_inventory_v13_frame(
         dfl_ua_context_source_expansion_inventory_v12_frame,
-        dfl_ua_v12_dt_lava_readiness_decision_frame,
+        dfl_ua_context_safe_switch_readiness_overlay_v13_frame,
         ua_context_acquisition_source_evidence_v13_frame=(
             dfl_ua_context_acquisition_source_evidence_v13_frame
         ),
@@ -8393,13 +8548,13 @@ def dfl_ua_context_source_inventory_v13_frame(
 def dfl_ua_context_acquisition_readiness_v13_frame(
     context,
     config: DflRegretSurrogateV1AssetConfig,
-    dfl_ua_v12_dt_lava_readiness_decision_frame: pl.DataFrame,
+    dfl_ua_context_safe_switch_readiness_overlay_v13_frame: pl.DataFrame,
     dfl_ua_context_source_inventory_v13_frame: pl.DataFrame,
 ) -> pl.DataFrame:
     """Gate V13 candidate generation on source coverage and safe-label support."""
 
     frame = build_dfl_ua_context_acquisition_readiness_v13_frame(
-        dfl_ua_v12_dt_lava_readiness_decision_frame,
+        dfl_ua_context_safe_switch_readiness_overlay_v13_frame,
         dfl_ua_context_source_inventory_v13_frame,
         min_prior_material_safe_switch_examples_for_dt=(
             config.min_prior_material_safe_switch_examples_for_dt
@@ -16613,6 +16768,7 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_forecast_extrema_repair_audit_frame,
     dfl_ua_context_backfill_requirements_frame,
     dfl_ua_context_source_inventory_frame,
+    dfl_ua_dam_publication_receipts_overlay_frame,
     dfl_ua_dam_publication_backfill_frame,
     dfl_ua_weather_load_pv_proxy_backfill_frame,
     dfl_ua_grid_event_backfill_frame,
@@ -16631,6 +16787,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_ua_low_tail_candidate_library_v12_frame,
     dfl_ua_low_tail_candidate_v12_strict_rescore_frame,
     dfl_ua_v12_dt_lava_readiness_decision_frame,
+    dfl_ua_context_safe_switch_examples_v13_frame,
+    dfl_ua_context_safe_switch_readiness_overlay_v13_frame,
     dfl_ua_context_acquisition_source_evidence_v13_frame,
     dfl_ua_context_source_inventory_v13_frame,
     dfl_ua_context_acquisition_readiness_v13_frame,
@@ -16756,6 +16914,38 @@ def _normalize_asset_metadata(value: Any) -> Any:
 
 def _forecast_model_names(raw_value: str) -> tuple[str, ...]:
     return _csv_values(raw_value, field_name="forecast_model_names_csv")
+
+
+def _read_optional_dam_publication_receipts_csv(csv_path: str) -> pl.DataFrame:
+    cleaned_path = csv_path.strip()
+    if not cleaned_path:
+        return pl.DataFrame()
+    path = Path(cleaned_path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"DAM publication receipts CSV does not exist: {path}"
+        )
+    return pl.read_csv(path, try_parse_dates=True)
+
+
+def _read_optional_v13_safe_switch_examples_csv(csv_path: str) -> pl.DataFrame:
+    cleaned_path = csv_path.strip()
+    if not cleaned_path:
+        return pl.DataFrame()
+    path = Path(cleaned_path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"V13 safe-switch examples CSV does not exist: {path}"
+        )
+    return pl.read_csv(path, try_parse_dates=True)
+
+
+def _metadata_int(value: object) -> int:
+    if value is None:
+        return 0
+    if isinstance(value, (int, float)):
+        return int(value)
+    return int(str(value))
 
 
 def _csv_values(raw_value: str, *, field_name: str) -> tuple[str, ...]:

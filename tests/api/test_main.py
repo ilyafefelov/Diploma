@@ -680,6 +680,13 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 	assert response_payload["market_gate_status"] == "not_evaluated_preview_only"
 	assert response_payload["bid_eligibility_status"] == "not_applicable_no_proposed_bid"
 	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert response_payload["v13_readiness"]["gate_status"] == "data_acquisition_needed"
+	assert response_payload["v13_readiness"]["v13_candidate_generation_ready"] is False
+	assert response_payload["v13_readiness"]["dt_lava_ready"] is False
+	assert response_payload["v13_readiness"]["market_execution_enabled"] is False
+	assert response_payload["v13_readiness"]["missing_safe_switch_examples"] == 77
+	assert "oree_dam_publication_receipts_csv_path" in response_payload["v13_readiness"]["missing_required_inputs"]
+	assert "explicit_dam_publication_receipts" in response_payload["v13_readiness"]["top_priority_blocker"]
 	assert response_payload["forecast_generated_at"] is None
 	assert "proposed_bid" not in response_payload
 
@@ -781,18 +788,18 @@ def test_operator_recommendation_reports_dt_forecast_context_when_selected(
 
 	assert response.status_code == 200
 	response_payload = response.json()
-	assert response_payload["selected_strategy_id"] == "decision_transformer"
-	assert response_payload["policy_mode"] == "decision_transformer_preview"
-	assert response_payload["selected_policy_id"] == "dt-run-001"
-	assert response_payload["policy_forecast_context_source"] == "nbeatsx_tft_forecast_context"
-	assert response_payload["policy_forecast_context_row_count"] == 2
-	assert response_payload["policy_forecast_context_coverage_ratio"] == pytest.approx(1.0)
-	assert response_payload["policy_forecast_context_warning"] is None
-	assert any(
-		strategy["enabled"] is True
+	assert response_payload["selected_strategy_id"] == "strict_similar_day"
+	assert response_payload["policy_mode"] == "baseline_lp_preview"
+	assert response_payload["v13_readiness"]["dt_lava_ready"] is False
+	assert response_payload["v13_readiness"]["gate_status"] == "data_acquisition_needed"
+	dt_option = next(
+		strategy
 		for strategy in response_payload["available_strategies"]
 		if strategy["strategy_id"] == "decision_transformer"
 	)
+	assert dt_option["enabled"] is False
+	assert "V13 acquisition/source-readiness gate" in dt_option["reason"]
+	assert any("Requested strategy decision_transformer is unavailable" in warning for warning in response_payload["readiness_warnings"])
 
 
 def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(

@@ -449,6 +449,7 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_forecast_extrema_repair_audit_frame",
         "dfl_ua_context_backfill_requirements_frame",
         "dfl_ua_context_source_inventory_frame",
+        "dfl_ua_dam_publication_receipts_overlay_frame",
         "dfl_ua_dam_publication_backfill_frame",
         "dfl_ua_weather_load_pv_proxy_backfill_frame",
         "dfl_ua_grid_event_backfill_frame",
@@ -460,6 +461,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_ua_low_tail_candidate_library_v12_frame",
         "dfl_ua_low_tail_candidate_v12_strict_rescore_frame",
         "dfl_ua_v12_dt_lava_readiness_decision_frame",
+        "dfl_ua_context_safe_switch_examples_v13_frame",
+        "dfl_ua_context_safe_switch_readiness_overlay_v13_frame",
         "dfl_ua_context_acquisition_source_evidence_v13_frame",
         "dfl_ua_context_source_inventory_v13_frame",
         "dfl_ua_context_acquisition_readiness_v13_frame",
@@ -1752,8 +1755,24 @@ def test_dfl_research_assets_are_registered() -> None:
         == "not_market_execution"
     )
     assert (
+        tags_by_key["dfl_ua_dam_publication_receipts_overlay_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
+    )
+    assert (
         tags_by_key["dfl_ua_context_source_inventory_v13_frame"]["ml_stage"]
         == "source_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_safe_switch_examples_v13_frame"]["ml_stage"]
+        == "source_data"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_safe_switch_readiness_overlay_v13_frame"][
+            "evidence_scope"
+        ]
+        == "not_market_execution"
     )
     assert (
         tags_by_key["dfl_ua_context_acquisition_source_evidence_v13_frame"][
@@ -2242,9 +2261,12 @@ def test_dfl_research_assets_are_registered() -> None:
         "tenant_historical_net_load_silver",
         "ukrenergo_grid_events_bronze",
     }
+    assert deps_by_key["dfl_ua_dam_publication_receipts_overlay_frame"] == {
+        "observed_market_price_history_bronze"
+    }
     assert deps_by_key["dfl_ua_dam_publication_backfill_frame"] == {
         "dfl_ua_context_backfill_requirements_frame",
-        "observed_market_price_history_bronze",
+        "dfl_ua_dam_publication_receipts_overlay_frame",
     }
     assert deps_by_key["dfl_ua_weather_load_pv_proxy_backfill_frame"] == {
         "dfl_ua_context_backfill_requirements_frame",
@@ -2286,6 +2308,11 @@ def test_dfl_research_assets_are_registered() -> None:
     assert deps_by_key["dfl_ua_v12_dt_lava_readiness_decision_frame"] == {
         "dfl_ua_low_tail_candidate_v12_strict_rescore_frame"
     }
+    assert deps_by_key["dfl_ua_context_safe_switch_examples_v13_frame"] == set()
+    assert deps_by_key["dfl_ua_context_safe_switch_readiness_overlay_v13_frame"] == {
+        "dfl_ua_context_safe_switch_examples_v13_frame",
+        "dfl_ua_v12_dt_lava_readiness_decision_frame",
+    }
     assert deps_by_key["dfl_ua_context_acquisition_source_evidence_v13_frame"] == {
         "dfl_ua_context_backfill_coverage_gate_frame",
         "dfl_ua_dam_publication_backfill_frame",
@@ -2294,12 +2321,12 @@ def test_dfl_research_assets_are_registered() -> None:
     }
     assert deps_by_key["dfl_ua_context_source_inventory_v13_frame"] == {
         "dfl_ua_context_acquisition_source_evidence_v13_frame",
+        "dfl_ua_context_safe_switch_readiness_overlay_v13_frame",
         "dfl_ua_context_source_expansion_inventory_v12_frame",
-        "dfl_ua_v12_dt_lava_readiness_decision_frame",
     }
     assert deps_by_key["dfl_ua_context_acquisition_readiness_v13_frame"] == {
+        "dfl_ua_context_safe_switch_readiness_overlay_v13_frame",
         "dfl_ua_context_source_inventory_v13_frame",
-        "dfl_ua_v12_dt_lava_readiness_decision_frame",
     }
     assert deps_by_key["dfl_candidate_value_teacher_label_panel_v7_frame"] == {
         "dfl_feasible_schedule_candidate_library_v7_frame",

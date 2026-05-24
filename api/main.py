@@ -6,6 +6,7 @@ from functools import cache
 import json
 import math
 import os
+from pathlib import Path
 from typing import Any
 
 import dagster as dg
@@ -144,6 +145,14 @@ OPERATOR_READ_MODEL_BOUNDARY = "operator_preview_no_market_submission"
 OPERATOR_MARKET_GATE_STATUS = "not_evaluated_preview_only"
 OPERATOR_BID_ELIGIBILITY_STATUS = "not_applicable_no_proposed_bid"
 OPERATOR_PROPOSED_BID_STATUS = "not_emitted_operator_preview"
+V13_ACQUISITION_PACKET_JSON_ENV = "SMART_ARBITRAGE_V13_ACQUISITION_PACKET_JSON"
+V13_ACQUISITION_PACKET_JSON_DEFAULT = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dfl_ua_context_acquisition_v13"
+	/ "dfl_ua_context_v13_acquisition_summary.json"
+)
+V13_GOAL_BOUNDARY_DOC = "docs/technical/CURRENT_GOAL_BOUNDARY_V13.md"
 
 
 class TenantSummaryResponse(BaseModel):
@@ -746,6 +755,20 @@ class OperatorValueGapPointResponse(BaseModel):
 	metric_source: str
 
 
+class OperatorV13ReadinessResponse(BaseModel):
+	gate_status: str
+	v13_candidate_generation_ready: bool
+	dt_lava_ready: bool
+	ready_rows: int
+	readiness_rows: int
+	missing_safe_switch_examples: int
+	missing_required_inputs: list[str]
+	top_priority_blocker: str
+	market_execution_enabled: bool
+	boundary_doc: str
+	source_packet_path: str | None
+
+
 class OperatorRecommendationResponse(BaseModel):
 	tenant_id: str
 	market_scope: str
@@ -760,6 +783,7 @@ class OperatorRecommendationResponse(BaseModel):
 	market_gate_status: str
 	bid_eligibility_status: str
 	proposed_bid_status: str
+	v13_readiness: OperatorV13ReadinessResponse
 	selected_strategy_id: str
 	selection_reason: str
 	forecast_source: str
@@ -2894,7 +2918,126 @@ def _operator_load_frame(
 	return load_frame.filter(pl.col("tenant_id") == tenant_id)
 
 
-def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOptionResponse]:
+def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
+	packet_path = _operator_v13_packet_path()
+	if not packet_path.exists():
+		return _operator_v13_readiness_fallback(
+			gate_status="missing_v13_acquisition_packet",
+			source_packet_path=str(packet_path),
+			top_priority_blocker="v13_acquisition_packet",
+		)
+	try:
+		packet = json.loads(packet_path.read_text(encoding="utf-8"))
+	except (OSError, json.JSONDecodeError):
+		return _operator_v13_readiness_fallback(
+			gate_status="unreadable_v13_acquisition_packet",
+			source_packet_path=str(packet_path),
+			top_priority_blocker="v13_acquisition_packet",
+		)
+	if not isinstance(packet, dict):
+		return _operator_v13_readiness_fallback(
+			gate_status="invalid_v13_acquisition_packet",
+			source_packet_path=str(packet_path),
+			top_priority_blocker="v13_acquisition_packet",
+		)
+
+	readiness = _mapping_value(packet.get("readiness_summary"))
+	safe_switch = _mapping_value(packet.get("safe_switch_deficit_summary"))
+	backlog = _mapping_value(packet.get("source_acquisition_backlog_summary"))
+	preflight = _mapping_value(packet.get("acquisition_input_preflight_summary"))
+	claim_boundary = _mapping_value(packet.get("claim_boundary"))
+	readiness_decisions = _string_list_value(readiness.get("readiness_decisions"))
+	v13_candidate_generation_ready = bool(
+		packet.get(
+			"v13_candidate_generation_ready",
+			readiness.get("v13_candidate_generation_ready", False),
+		)
+	)
+	market_execution_enabled = bool(claim_boundary.get("market_execution_enabled", False))
+	dt_lava_ready = (
+		v13_candidate_generation_ready
+		and not bool(claim_boundary.get("dt_lava_still_gated", True))
+		and not market_execution_enabled
+	)
+	return OperatorV13ReadinessResponse(
+		gate_status=_operator_v13_gate_status(
+			readiness_decisions=readiness_decisions,
+			v13_candidate_generation_ready=v13_candidate_generation_ready,
+			dt_lava_ready=dt_lava_ready,
+		),
+		v13_candidate_generation_ready=v13_candidate_generation_ready,
+		dt_lava_ready=dt_lava_ready,
+		ready_rows=_int_value(readiness.get("ready_rows")),
+		readiness_rows=_int_value(readiness.get("readiness_rows")),
+		missing_safe_switch_examples=_int_value(safe_switch.get("total_missing_examples")),
+		missing_required_inputs=_string_list_value(preflight.get("missing_required_inputs")),
+		top_priority_blocker=str(backlog.get("top_priority_blocker", "unknown")),
+		market_execution_enabled=market_execution_enabled,
+		boundary_doc=V13_GOAL_BOUNDARY_DOC,
+		source_packet_path=str(packet_path),
+	)
+
+
+def _operator_v13_packet_path() -> Path:
+	raw_path = os.getenv(V13_ACQUISITION_PACKET_JSON_ENV, "").strip()
+	return Path(raw_path) if raw_path else V13_ACQUISITION_PACKET_JSON_DEFAULT
+
+
+def _operator_v13_readiness_fallback(
+	*,
+	gate_status: str,
+	source_packet_path: str | None,
+	top_priority_blocker: str,
+) -> OperatorV13ReadinessResponse:
+	return OperatorV13ReadinessResponse(
+		gate_status=gate_status,
+		v13_candidate_generation_ready=False,
+		dt_lava_ready=False,
+		ready_rows=0,
+		readiness_rows=0,
+		missing_safe_switch_examples=0,
+		missing_required_inputs=[],
+		top_priority_blocker=top_priority_blocker,
+		market_execution_enabled=False,
+		boundary_doc=V13_GOAL_BOUNDARY_DOC,
+		source_packet_path=source_packet_path,
+	)
+
+
+def _operator_v13_gate_status(
+	*,
+	readiness_decisions: list[str],
+	v13_candidate_generation_ready: bool,
+	dt_lava_ready: bool,
+) -> str:
+	if v13_candidate_generation_ready and dt_lava_ready:
+		return "v13_dt_lava_ready"
+	if readiness_decisions:
+		return readiness_decisions[0]
+	return "data_acquisition_needed"
+
+
+def _mapping_value(value: object) -> dict[str, Any]:
+	return value if isinstance(value, dict) else {}
+
+
+def _string_list_value(value: object) -> list[str]:
+	return [str(item) for item in value] if isinstance(value, list) else []
+
+
+def _int_value(value: object) -> int:
+	if value is None:
+		return 0
+	if isinstance(value, (int, float, str)):
+		return int(value)
+	raise TypeError(f"Cannot convert {type(value).__name__} to int.")
+
+
+def _operator_strategy_options(
+	*,
+	tenant_id: str,
+	v13_readiness: OperatorV13ReadinessResponse,
+) -> list[OperatorStrategyOptionResponse]:
 	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
 	metrics_by_model = _operator_strategy_metrics_by_model(benchmark_frame)
 	forecast_store_cap_counts = _available_forecast_store_model_cap_counts()
@@ -2903,6 +3046,7 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 		limit=24,
 	)
 	policy_ready = _decision_policy_preview_is_ready(policy_preview_frame)
+	dt_enabled = policy_ready and v13_readiness.dt_lava_ready and not v13_readiness.market_execution_enabled
 	options = [
 		_operator_strategy_option(
 			strategy_id="strict_similar_day",
@@ -2958,15 +3102,34 @@ def _operator_strategy_options(*, tenant_id: str) -> list[OperatorStrategyOption
 		OperatorStrategyOptionResponse(
 			strategy_id="decision_transformer",
 			label="Decision Transformer",
-			enabled=policy_ready,
-			reason="ready live preview; market execution disabled" if policy_ready else "offline policy preview missing or failed safety projection",
-			mean_regret_uah=_policy_mean_value_gap(policy_preview_frame) if policy_ready else None,
-			win_rate=1.0 if policy_ready else None,
+			enabled=dt_enabled,
+			reason=_operator_dt_option_reason(
+				policy_ready=policy_ready,
+				v13_readiness=v13_readiness,
+			),
+			mean_regret_uah=_policy_mean_value_gap(policy_preview_frame) if dt_enabled else None,
+			win_rate=1.0 if dt_enabled else None,
 		),
 	]
 	if not metrics_by_model:
 		options[0] = options[0].model_copy(update={"enabled": True, "mean_regret_uah": None, "win_rate": None})
 	return options
+
+
+def _operator_dt_option_reason(
+	*,
+	policy_ready: bool,
+	v13_readiness: OperatorV13ReadinessResponse,
+) -> str:
+	if not policy_ready:
+		return "offline policy preview missing or failed safety projection"
+	if not v13_readiness.dt_lava_ready or v13_readiness.market_execution_enabled:
+		return (
+			"blocked by V13 acquisition/source-readiness gate: "
+			f"{v13_readiness.gate_status}; top blocker {v13_readiness.top_priority_blocker}; "
+			f"missing safe-switch examples {v13_readiness.missing_safe_switch_examples}"
+		)
+	return "ready offline preview; market execution disabled"
 
 
 def _available_forecast_store_model_cap_counts() -> dict[str, int]:
@@ -3383,7 +3546,11 @@ def _build_operator_recommendation_response(
 		battery_defaults=battery_defaults,
 		load_frame=load_frame,
 	)
-	available_strategies = _operator_strategy_options(tenant_id=tenant_id)
+	v13_readiness = _operator_v13_readiness()
+	available_strategies = _operator_strategy_options(
+		tenant_id=tenant_id,
+		v13_readiness=v13_readiness,
+	)
 	selected_strategy_id, selection_reason, selection_warnings = _select_operator_strategy(
 		requested_strategy_id=strategy_id,
 		options=available_strategies,
@@ -3454,6 +3621,7 @@ def _build_operator_recommendation_response(
 		market_gate_status=OPERATOR_MARKET_GATE_STATUS,
 		bid_eligibility_status=OPERATOR_BID_ELIGIBILITY_STATUS,
 		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+		v13_readiness=v13_readiness,
 		selected_strategy_id=selected_strategy_id,
 		selection_reason=selection_reason,
 		forecast_source=_operator_forecast_source(selected_strategy_id),

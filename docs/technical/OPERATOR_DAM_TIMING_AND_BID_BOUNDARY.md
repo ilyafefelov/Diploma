@@ -42,8 +42,20 @@ recommendation schedule
 | `market_gate_status` | `not_evaluated_preview_only` |
 | `bid_eligibility_status` | `not_applicable_no_proposed_bid` |
 | `proposed_bid_status` | `not_emitted_operator_preview` |
+| `v13_readiness` | Current V13 acquisition/source-readiness summary from the local V13 packet: gate status, ready rows, missing safe-switch examples, missing configured inputs, top blocker, and `market_execution_enabled=false` |
 
 These fields are intentionally explicit even when the value is negative. A missing gate or bid path should be visible to the UI and thesis narrative instead of being inferred from absent fields.
+
+## V13 / DT Boundary
+
+The operator strategy list must not enable `decision_transformer` solely because
+offline DT preview rows exist. DT/LAVA selection is gated by
+`v13_readiness.dt_lava_ready=true`, which currently requires the V13 packet to
+clear explicit DAM publication receipts, every required source family, and the
+`20` prior/train non-tail-risk material safe-switch example floor for every
+tenant/source. While the V13 packet reports `data_acquisition_needed`, a
+requested `decision_transformer` strategy falls back to strict similar-day
+control and remains a research diagnostic only.
 
 ## UI Boundary
 

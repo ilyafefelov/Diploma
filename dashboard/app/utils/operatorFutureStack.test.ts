@@ -4,6 +4,7 @@ import {
   buildRecommendationStrategySelectItems,
   filterOfficialPolicyValueSeries,
   buildPolicyForecastContextPoints,
+  buildV13ReadinessItems,
   buildStrategyReadinessItems,
   buildStrategySelectItems,
   formatForecastQualityLabel,
@@ -175,6 +176,50 @@ describe('operator future stack display helpers', () => {
         label: 'Compact NBEATSx',
         status: 'ready',
         reason: '481 UAH mean regret'
+      }
+    ])
+  })
+
+  it('builds V13 source-readiness chips without implying DT or execution readiness', () => {
+    expect(buildV13ReadinessItems({
+      gate_status: 'data_acquisition_needed',
+      v13_candidate_generation_ready: false,
+      dt_lava_ready: false,
+      ready_rows: 0,
+      readiness_rows: 5,
+      missing_safe_switch_examples: 77,
+      missing_required_inputs: [
+        'oree_dam_publication_receipts_csv_path',
+        'ua_context_safe_switch_examples_csv_path'
+      ],
+      top_priority_blocker: 'explicit_dam_publication_receipts',
+      market_execution_enabled: false,
+      boundary_doc: 'docs/technical/CURRENT_GOAL_BOUNDARY_V13.md',
+      source_packet_path: 'data/research_runs/week3_dfl_ua_context_acquisition_v13/dfl_ua_context_v13_acquisition_summary.json'
+    })).toEqual([
+      {
+        label: 'V13 gate',
+        value: 'data acquisition needed',
+        status: 'blocked',
+        reason: '0/5 source families ready; top blocker explicit_dam_publication_receipts'
+      },
+      {
+        label: 'DAM receipts',
+        value: 'blocked',
+        status: 'blocked',
+        reason: 'missing oree_dam_publication_receipts_csv_path'
+      },
+      {
+        label: 'Safe-switch evidence',
+        value: '77 missing',
+        status: 'blocked',
+        reason: '20 prior/train non-tail-risk material examples per tenant/source required'
+      },
+      {
+        label: 'Execution boundary',
+        value: 'preview only',
+        status: 'ready',
+        reason: 'market_execution_enabled=false; DT/LAVA blocked'
       }
     ])
   })

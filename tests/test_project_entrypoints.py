@@ -326,6 +326,21 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     export_script = (
         PROJECT_ROOT / "scripts" / "materialize_ua_context_v13_acquisition_packet.py"
     ).read_text(encoding="utf-8")
+    receipt_validator_script = (
+        PROJECT_ROOT / "scripts" / "validate_oree_dam_publication_receipts.py"
+    ).read_text(encoding="utf-8")
+    safe_switch_validator_script = (
+        PROJECT_ROOT / "scripts" / "validate_ua_context_safe_switch_examples_v13.py"
+    ).read_text(encoding="utf-8")
+    input_preflight_script = (
+        PROJECT_ROOT / "scripts" / "preflight_ua_context_v13_acquisition_inputs.py"
+    ).read_text(encoding="utf-8")
+    receipt_probe_script = (
+        PROJECT_ROOT / "scripts" / "probe_oree_dam_publication_receipts.py"
+    ).read_text(encoding="utf-8")
+    receipt_audit_script = (
+        PROJECT_ROOT / "scripts" / "audit_oree_dam_publication_receipt_sources.py"
+    ).read_text(encoding="utf-8")
     config = (
         PROJECT_ROOT
         / "configs"
@@ -338,14 +353,116 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "build_dfl_ua_context_v13_acquisition_packet" in export_script
     assert "write_dfl_ua_context_v13_acquisition_packet" in export_script
     assert "--source-evidence-pickle" in export_script
+    assert "--source-evidence-csv" in export_script
+    assert "--source-inventory-csv" in export_script
+    assert "--readiness-csv" in export_script
+    assert "--receipt-source-audit-json" in export_script
+    assert "--acquisition-input-preflight-json" in export_script
     assert "v13_candidate_generation_ready" in export_script
+    assert "normalize_dfl_ua_dam_publication_receipts_frame" in receipt_validator_script
+    assert "--input" in receipt_validator_script
+    assert "--output" in receipt_validator_script
+    assert (
+        "normalize_dfl_ua_context_safe_switch_examples_v13_frame"
+        in safe_switch_validator_script
+    )
+    assert "--input" in safe_switch_validator_script
+    assert "--output" in safe_switch_validator_script
+    assert "permits_model_training" in safe_switch_validator_script
+    assert "validate_v13_acquisition_inputs" in input_preflight_script
+    assert "oree_dam_publication_receipts_csv_path" in input_preflight_script
+    assert "ua_context_safe_switch_examples_csv_path" in input_preflight_script
+    assert "data_acquisition_needed" in input_preflight_script
+    assert "build_oree_dam_publication_receipt_probe" in receipt_probe_script
+    assert "--month" in receipt_probe_script
+    assert "--output" in receipt_probe_script
+    assert "build_oree_dam_publication_receipt_source_audit" in receipt_audit_script
+    assert "--months" in receipt_audit_script
+    assert "--probe-json" in receipt_audit_script
+    assert "--probe-output-dir" in receipt_audit_script
+    assert "dfl_ua_dam_publication_receipts_overlay_frame" in config
+    assert "oree_dam_publication_receipts_csv_path" in config
     assert "dfl_ua_context_acquisition_source_evidence_v13_frame" in config
     assert "dfl_ua_context_source_inventory_v13_frame" in config
     assert "dfl_ua_context_acquisition_readiness_v13_frame" in config
+    assert "dfl_ua_dam_publication_receipts_overlay_frame" in docs
+    assert "source_publication_timestamp" in docs
+    assert "oree_dam_publication_receipts_csv_path" in docs
+    assert "probe_oree_dam_publication_receipts.py" in docs
+    assert "audit_oree_dam_publication_receipt_sources.py" in docs
+    assert "not_sufficient_for_v13_receipts" in docs
     assert "dfl_ua_context_acquisition_source_evidence_v13_frame" in docs
     assert "data_acquisition_needed" in docs
+    assert "Safe-Switch Support Deficit" in docs
+    assert "safe_switch_deficit_summary" in export_script
+    assert "safe_switch_acquisition_target_summary" in export_script
+    assert "source_acquisition_backlog_summary" in export_script
+    assert "UA_CONTEXT_V13_SOURCE_ACQUISITION_BACKLOG_CSV_ARTIFACT_NAME" in export_script
+    assert "primary_blocking_source_family" in export_script
+    assert "receipt_source_audit_summary" in export_script
+    assert "UA_CONTEXT_V13_RECEIPT_SOURCE_AUDIT_JSON_ARTIFACT_NAME" in export_script
+    assert "acquisition_input_preflight_summary" in export_script
+    assert (
+        "UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME"
+        in export_script
+    )
+    assert "Safe-Switch Acquisition Targets" in docs
+    assert "Safe-Switch Example Backfill Input" in docs
+    assert "ua_context_safe_switch_examples_csv_path" in docs
+    assert "validate_ua_context_safe_switch_examples_v13.py" in docs
+    assert "preflight_ua_context_v13_acquisition_inputs.py" in docs
+    assert "Source Acquisition Backlog" in docs
+    assert "Acquisition Input Preflight" in docs
+    assert "primary_blocking_source_family" in docs
+    assert "receipt_source_audit_summary" in docs
+    assert "acquisition_input_preflight_summary" in docs
     assert "market_execution_enabled=false" in docs
     assert "Offline Strategy Promotion" in docs
+
+
+def test_agents_md_preserves_v13_claim_boundary() -> None:
+    agents = (PROJECT_ROOT / "AGENTS.md").read_text(encoding="utf-8")
+
+    assert "DAM delivery-day recommendation preview" in agents
+    assert "V13 є gate для acquisition/source-readiness" in agents
+    assert "щонайменше `20` prior/train non-tail-risk material safe-switch examples" in agents
+    assert "explicit DAM publication receipts" in agents
+    assert "ua_context_safe_switch_examples_csv_path" in agents
+    assert "validate_ua_context_safe_switch_examples_v13.py" in agents
+    assert "preflight_ua_context_v13_acquisition_inputs.py" in agents
+    assert "`permits_model_training=false`" in agents
+    assert "`market_execution_enabled=false` залишається обов'язковим" in agents
+    assert "не генерують market-submittable `ProposedBid`" in agents
+    assert "не є deployed DT controller" in agents
+    assert "full differentiable DFL controller" in agents
+    assert "генерує оптимальні заявки (ProposedBid)" not in agents
+    assert "зменшує регрет на **67%**" not in agents
+    assert "черги команд BUY/SELL/HOLD" not in agents
+    assert "ProposedTrade" not in agents
+
+
+def test_current_goal_boundary_doc_preserves_v13_scope() -> None:
+    boundary_path = (
+        PROJECT_ROOT / "docs" / "technical" / "CURRENT_GOAL_BOUNDARY_V13.md"
+    )
+    boundary = boundary_path.read_text(encoding="utf-8")
+    readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    context = (PROJECT_ROOT / "CONTEXT.md").read_text(encoding="utf-8")
+
+    assert "DAM delivery-day recommendation preview" in boundary
+    assert "not market-submittable DAM/IDM bids" in boundary
+    assert "no deployed Decision Transformer control" in boundary
+    assert "no full differentiable DFL claim" in boundary
+    assert "`market_execution_enabled=false`" in boundary
+    assert "`20` prior/train non-tail-risk material safe-switch examples" in boundary
+    assert "explicit DAM publication receipts" in boundary
+    assert "`ready_rows=0/5`" in boundary
+    assert "`77` safe-switch examples" in boundary
+    assert "Yi et al. 2025" in boundary
+    assert "Sang et al." in boundary
+    assert "Decision Transformer" in boundary
+    assert "CURRENT_GOAL_BOUNDARY_V13.md" in readme
+    assert "CURRENT_GOAL_BOUNDARY_V13.md" in context
 
 
 def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:

@@ -4,6 +4,10 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 
 ## Current Status
 
+- Current goal boundary: [docs/technical/CURRENT_GOAL_BOUNDARY_V13.md](docs/technical/CURRENT_GOAL_BOUNDARY_V13.md)
+  is the concise reference for the V13 scope: DAM delivery-day recommendation
+  preview and offline/read-model strategy evidence only, with
+  `market_execution_enabled=false`.
 - Real-data benchmark: observed OREE DAM prices plus tenant Open-Meteo weather.
 - Tenants: 5 simulated BESS tenants from `simulations/tenants.yml`.
 - Main control: `strict_similar_day`.

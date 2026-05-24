@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
+import json
+from pathlib import Path
+import subprocess
+import sys
 
 import polars as pl
 
@@ -9,8 +13,10 @@ from smart_arbitrage.dfl.ua_context_acquisition_v1 import (
     build_dfl_ua_context_backfill_coverage_gate_frame,
     build_dfl_ua_context_source_inventory_frame,
     build_dfl_ua_dam_publication_backfill_frame,
+    build_dfl_ua_dam_publication_receipts_overlay_frame,
     build_dfl_ua_grid_event_backfill_frame,
     build_dfl_ua_weather_load_pv_proxy_backfill_frame,
+    normalize_dfl_ua_dam_publication_receipts_frame,
 )
 
 TENANT = "client_003_dnipro_factory"
@@ -62,6 +68,117 @@ def test_dam_publication_backfill_uses_explicit_prior_publication_metadata() -> 
     assert dam["dam_publication_backfill_status"].to_list() == ["context_ready"]
     assert dam["prior_available"].to_list() == [True]
     assert dam["source_publication_timestamp"].to_list() == [ANCHOR - timedelta(hours=26)]
+
+
+def test_dam_publication_receipts_overlay_adds_explicit_metadata() -> None:
+    overlay = build_dfl_ua_dam_publication_receipts_overlay_frame(
+        _price_context(with_publication=False),
+        _receipt_context(),
+    )
+
+    assert overlay["source_publication_timestamp"].to_list() == [
+        ANCHOR - timedelta(hours=26)
+    ]
+    assert overlay["source_url"].to_list() == [
+        "https://www.oree.com.ua/index.php/receipt/test"
+    ]
+    assert overlay["source_title"].to_list() == ["OREE row publication receipt"]
+    assert overlay["publication_receipt_id"].to_list() == ["receipt-001"]
+    assert overlay["market_execution_enabled"].to_list() == [False]
+
+
+def test_dam_publication_receipts_normalizer_emits_safe_csv_schema() -> None:
+    normalized = normalize_dfl_ua_dam_publication_receipts_frame(
+        _receipt_context().with_columns(
+            pl.col("timestamp").dt.strftime("%Y-%m-%dT%H:%M:%S"),
+            pl.col("source_publication_timestamp").dt.strftime("%Y-%m-%dT%H:%M:%S"),
+        )
+    )
+
+    assert normalized.columns == [
+        "timestamp",
+        "source_publication_timestamp",
+        "source_url",
+        "source_title",
+        "receipt_id",
+        "market_execution_enabled",
+    ]
+    assert normalized["timestamp"].to_list() == [ANCHOR - timedelta(hours=1)]
+    assert normalized["source_publication_timestamp"].to_list() == [
+        ANCHOR - timedelta(hours=26)
+    ]
+    assert normalized["market_execution_enabled"].to_list() == [False]
+
+
+def test_dam_publication_receipts_cli_writes_normalized_csv(tmp_path: Path) -> None:
+    input_path = tmp_path / "receipts.csv"
+    output_path = tmp_path / "normalized_receipts.csv"
+    _receipt_context().write_csv(input_path)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/validate_oree_dam_publication_receipts.py",
+            "--input",
+            str(input_path),
+            "--output",
+            str(output_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    summary = json.loads(result.stdout)
+    normalized = pl.read_csv(output_path, try_parse_dates=True)
+
+    assert summary["receipt_rows"] == 1
+    assert summary["market_execution_enabled"] is False
+    assert summary["claim_boundary"] == "v13_source_readiness_only_not_market_execution"
+    assert normalized["source_publication_timestamp"].to_list() == [
+        ANCHOR - timedelta(hours=26)
+    ]
+    assert normalized["market_execution_enabled"].to_list() == [False]
+
+
+def test_dam_publication_receipts_overlay_rejects_missing_timestamp() -> None:
+    receipts = _receipt_context().drop("source_publication_timestamp")
+
+    try:
+        build_dfl_ua_dam_publication_receipts_overlay_frame(
+            _price_context(with_publication=False),
+            receipts,
+        )
+    except ValueError as exc:
+        assert "source_publication_timestamp" in str(exc)
+    else:
+        raise AssertionError("missing receipt publication timestamp was accepted")
+
+
+def test_dam_publication_receipts_overlay_rejects_duplicate_timestamps() -> None:
+    receipts = pl.concat([_receipt_context(), _receipt_context()])
+
+    try:
+        build_dfl_ua_dam_publication_receipts_overlay_frame(
+            _price_context(with_publication=False),
+            receipts,
+        )
+    except ValueError as exc:
+        assert "duplicate" in str(exc)
+    else:
+        raise AssertionError("duplicate receipt timestamp was accepted")
+
+
+def test_dam_publication_receipts_overlay_empty_frame_preserves_backfill_behavior() -> None:
+    overlay = build_dfl_ua_dam_publication_receipts_overlay_frame(
+        _price_context(with_publication=False),
+        pl.DataFrame(),
+    )
+    dam = build_dfl_ua_dam_publication_backfill_frame(_requirements(), overlay)
+
+    assert dam["dam_publication_backfill_status"].to_list() == [
+        "missing_publication_time"
+    ]
 
 
 def test_dam_publication_backfill_uses_source_backed_market_rule_deadline() -> None:
@@ -250,10 +367,25 @@ def _price_context(*, with_publication: bool) -> pl.DataFrame:
         "timestamp": ANCHOR - timedelta(hours=1),
         "price_uah_mwh": 4200.0,
         "source_kind": "observed_oree",
+        "market_execution_enabled": False,
     }
     if with_publication:
         row["source_publication_timestamp"] = ANCHOR - timedelta(hours=26)
     return pl.DataFrame([row])
+
+
+def _receipt_context() -> pl.DataFrame:
+    return pl.DataFrame(
+        [
+            {
+                "timestamp": ANCHOR - timedelta(hours=1),
+                "source_publication_timestamp": ANCHOR - timedelta(hours=26),
+                "source_url": "https://www.oree.com.ua/index.php/receipt/test",
+                "source_title": "OREE row publication receipt",
+                "receipt_id": "receipt-001",
+            }
+        ]
+    )
 
 
 def _weather_context() -> pl.DataFrame:

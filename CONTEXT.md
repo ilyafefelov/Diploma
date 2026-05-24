@@ -2,6 +2,12 @@
 
 Цей контекст описує домен автономного енергоарбітражу для BESS на ринках України 2026. Він фіксує канонічну мову для ринкових намірів, результатів клірингу та фізичного виконання, щоб модель, оркестрація і gatekeeper не змішували різні стадії одного процесу.
 
+Поточна межа цілі V13 зафіксована в
+[docs/technical/CURRENT_GOAL_BOUNDARY_V13.md](docs/technical/CURRENT_GOAL_BOUNDARY_V13.md):
+DAM delivery-day recommendation preview та offline/read-model strategy evidence
+only, `market_execution_enabled=false`, без market-submittable bids, deployed
+Decision Transformer control або full differentiable DFL claim.
+
 ## Language
 
 **Proposed Bid**:

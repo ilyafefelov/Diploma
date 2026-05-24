@@ -49,6 +49,12 @@ _REQUIREMENT_COLUMNS: Final[frozenset[str]] = frozenset(
         "market_execution_enabled",
     }
 )
+_DAM_RECEIPT_REQUIRED_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "timestamp",
+        "source_publication_timestamp",
+    }
+)
 _DST_CALENDAR_GAP_HOURS: Final[frozenset[datetime]] = frozenset(
     {
         datetime(2025, 3, 30, 23),
@@ -222,6 +228,100 @@ def build_dfl_ua_dam_publication_backfill_frame(
             }
         )
     return _sort_context_frame(rows)
+
+
+def build_dfl_ua_dam_publication_receipts_overlay_frame(
+    price_context_frame: pl.DataFrame,
+    dam_publication_receipts_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Overlay source-backed row-level DAM publication receipts by delivery hour."""
+
+    _refuse_market_execution_column(
+        price_context_frame,
+        frame_name="price context frame",
+    )
+    _refuse_market_execution_column(
+        dam_publication_receipts_frame,
+        frame_name="DAM publication receipts frame",
+    )
+    if dam_publication_receipts_frame.height == 0:
+        return price_context_frame
+    _validate_dam_publication_receipts_frame(dam_publication_receipts_frame)
+    if "timestamp" not in price_context_frame.columns:
+        raise ValueError("price context frame is missing required column: timestamp")
+
+    price_frame = _normalize_datetime_column(
+        price_context_frame,
+        "timestamp",
+        frame_name="price context frame",
+    )
+    receipts = _normalize_dam_publication_receipts_frame(
+        dam_publication_receipts_frame
+    )
+    joined = price_frame.join(receipts, on="timestamp", how="left")
+    joined = joined.with_columns(
+        [
+            _coalesce_joined_column(
+                joined,
+                "_receipt_source_publication_timestamp",
+                "source_publication_timestamp",
+            ).alias("source_publication_timestamp"),
+            _coalesce_joined_column(
+                joined,
+                "_receipt_source_url",
+                "source_url",
+            ).alias("source_url"),
+            _coalesce_joined_column(
+                joined,
+                "_receipt_source_title",
+                "source_title",
+            ).alias("source_title"),
+            _coalesce_joined_column(
+                joined,
+                "_receipt_id",
+                "publication_receipt_id",
+            ).alias("publication_receipt_id"),
+            pl.lit(False).alias("market_execution_enabled"),
+        ]
+    )
+    return joined.drop(
+        [
+            "_receipt_source_publication_timestamp",
+            "_receipt_source_url",
+            "_receipt_source_title",
+            "_receipt_id",
+        ]
+    )
+
+
+def normalize_dfl_ua_dam_publication_receipts_frame(frame: pl.DataFrame) -> pl.DataFrame:
+    """Validate and normalize source-backed DAM publication receipt CSV rows."""
+
+    _refuse_market_execution_column(
+        frame,
+        frame_name="DAM publication receipts frame",
+    )
+    _validate_dam_publication_receipts_frame(frame)
+    normalized = _normalize_datetime_column(
+        frame,
+        "timestamp",
+        frame_name="DAM publication receipts frame",
+    )
+    normalized = _normalize_datetime_column(
+        normalized,
+        "source_publication_timestamp",
+        frame_name="DAM publication receipts frame",
+    )
+    return normalized.select(
+        [
+            pl.col("timestamp"),
+            pl.col("source_publication_timestamp"),
+            _optional_receipt_column(normalized, "source_url").alias("source_url"),
+            _optional_receipt_column(normalized, "source_title").alias("source_title"),
+            _optional_receipt_column(normalized, "receipt_id").alias("receipt_id"),
+            pl.lit(False).alias("market_execution_enabled"),
+        ]
+    ).sort("timestamp")
 
 
 def build_dfl_ua_weather_load_pv_proxy_backfill_frame(
@@ -544,6 +644,99 @@ def _validate_requirements(frame: pl.DataFrame) -> None:
         raise ValueError("UA context acquisition requires market_execution_enabled=false.")
 
 
+def _validate_dam_publication_receipts_frame(frame: pl.DataFrame) -> None:
+    missing_columns = _DAM_RECEIPT_REQUIRED_COLUMNS.difference(frame.columns)
+    if missing_columns:
+        raise ValueError(
+            "DAM publication receipts frame is missing required columns: "
+            f"{sorted(missing_columns)}"
+        )
+    normalized = _normalize_datetime_column(
+        frame,
+        "timestamp",
+        frame_name="DAM publication receipts frame",
+    )
+    normalized = _normalize_datetime_column(
+        normalized,
+        "source_publication_timestamp",
+        frame_name="DAM publication receipts frame",
+    )
+    if normalized.filter(
+        pl.col("timestamp").is_null()
+        | pl.col("source_publication_timestamp").is_null()
+    ).height:
+        raise ValueError("DAM publication receipts frame contains missing timestamps.")
+    duplicate_rows = (
+        normalized.group_by("timestamp")
+        .len()
+        .filter(pl.col("len") > 1)
+    )
+    if duplicate_rows.height:
+        raise ValueError("DAM publication receipts frame contains duplicate timestamps.")
+
+
+def _normalize_dam_publication_receipts_frame(frame: pl.DataFrame) -> pl.DataFrame:
+    normalized = normalize_dfl_ua_dam_publication_receipts_frame(frame)
+    return normalized.select(
+        [
+            pl.col("timestamp"),
+            pl.col("source_publication_timestamp").alias(
+                "_receipt_source_publication_timestamp"
+            ),
+            _optional_receipt_column(normalized, "source_url").alias(
+                "_receipt_source_url"
+            ),
+            _optional_receipt_column(normalized, "source_title").alias(
+                "_receipt_source_title"
+            ),
+            _optional_receipt_column(normalized, "receipt_id").alias("_receipt_id"),
+        ]
+    )
+
+
+def _optional_receipt_column(frame: pl.DataFrame, column_name: str) -> pl.Expr:
+    if column_name in frame.columns:
+        return pl.col(column_name)
+    return pl.lit(None, dtype=pl.Utf8)
+
+
+def _coalesce_joined_column(
+    frame: pl.DataFrame,
+    receipt_column: str,
+    fallback_column: str,
+) -> pl.Expr:
+    columns = [pl.col(receipt_column)]
+    if fallback_column in frame.columns:
+        columns.append(pl.col(fallback_column))
+    return pl.coalesce(columns)
+
+
+def _normalize_datetime_column(
+    frame: pl.DataFrame,
+    column_name: str,
+    *,
+    frame_name: str,
+) -> pl.DataFrame:
+    if column_name not in frame.columns:
+        raise ValueError(f"{frame_name} is missing required column: {column_name}")
+    return frame.with_columns(
+        pl.col(column_name)
+        .map_elements(
+            lambda value: _datetime_value(value) if value is not None else None,
+            return_dtype=pl.Datetime,
+        )
+        .alias(column_name)
+    )
+
+
+def _refuse_market_execution_column(frame: pl.DataFrame, *, frame_name: str) -> None:
+    if (
+        "market_execution_enabled" in frame.columns
+        and frame.filter(pl.col("market_execution_enabled")).height
+    ):
+        raise ValueError(f"{frame_name} contains market execution rows.")
+
+
 def _requirement_rows(frame: pl.DataFrame) -> list[dict[str, Any]]:
     return list(frame.iter_rows(named=True))
 
@@ -786,6 +979,8 @@ __all__ = [
     "build_dfl_ua_context_backfill_coverage_gate_frame",
     "build_dfl_ua_context_source_inventory_frame",
     "build_dfl_ua_dam_publication_backfill_frame",
+    "build_dfl_ua_dam_publication_receipts_overlay_frame",
     "build_dfl_ua_grid_event_backfill_frame",
     "build_dfl_ua_weather_load_pv_proxy_backfill_frame",
+    "normalize_dfl_ua_dam_publication_receipts_frame",
 ]

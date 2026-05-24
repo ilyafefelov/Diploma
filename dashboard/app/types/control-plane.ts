@@ -549,6 +549,20 @@ export interface OperatorValueGapPointResponse {
   metric_source: string
 }
 
+export interface OperatorV13ReadinessResponse {
+  gate_status: string
+  v13_candidate_generation_ready: boolean
+  dt_lava_ready: boolean
+  ready_rows: number
+  readiness_rows: number
+  missing_safe_switch_examples: number
+  missing_required_inputs: string[]
+  top_priority_blocker: string
+  market_execution_enabled: boolean
+  boundary_doc: string
+  source_packet_path: string | null
+}
+
 export interface OperatorRecommendationResponse {
   tenant_id: string
   market_scope: string
@@ -563,6 +577,7 @@ export interface OperatorRecommendationResponse {
   market_gate_status: string
   bid_eligibility_status: string
   proposed_bid_status: string
+  v13_readiness: OperatorV13ReadinessResponse
   selected_strategy_id: string
   selection_reason: string
   forecast_source: string

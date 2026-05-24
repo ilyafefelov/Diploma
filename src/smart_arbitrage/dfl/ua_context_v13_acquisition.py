@@ -6,6 +6,7 @@ candidate schedules, train selectors, or start DT/LAVA.
 
 from __future__ import annotations
 
+from datetime import date, datetime
 from typing import Any, Final
 
 import polars as pl
@@ -55,6 +56,17 @@ _V13_SOURCE_EVIDENCE_REQUIRED_COLUMNS: Final[frozenset[str]] = frozenset(
         "market_execution_enabled",
     }
 )
+_V13_SAFE_SWITCH_EXAMPLE_REQUIRED_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "split_name",
+        "source_evidence_timestamp",
+        "label_v13_material_safe_switch",
+        "label_v13_tail_risk_loss",
+    }
+)
 _CURRENT_SOURCE_FAMILIES: Final[frozenset[str]] = frozenset(
     {
         "oree_dam_history",
@@ -64,6 +76,7 @@ _CURRENT_SOURCE_FAMILIES: Final[frozenset[str]] = frozenset(
         "calendar_publication_rules",
     }
 )
+_TRAIN_SELECTION_SPLIT: Final[str] = "train_selection"
 _TARGETED_ACQUISITION_FAMILIES: Final[tuple[tuple[str, str], ...]] = (
     (
         "measured_or_source_backed_tenant_load_pv",
@@ -462,6 +475,138 @@ def build_dfl_ua_context_acquisition_readiness_v13_frame(
     )
 
 
+def normalize_dfl_ua_context_safe_switch_examples_v13_frame(
+    frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Validate source-backed incremental V13 safe-switch example rows.
+
+    Rows are acquisition evidence only. They can satisfy the V13 precondition
+    count, but they do not create raw hourly actions or start DT/LAVA.
+    """
+
+    if frame.height == 0:
+        return _empty_v13_safe_switch_examples_frame()
+    _require_columns(
+        frame,
+        _V13_SAFE_SWITCH_EXAMPLE_REQUIRED_COLUMNS,
+        frame_name="V13 safe-switch example backfill frame",
+    )
+    _refuse_market_execution_column(
+        frame,
+        frame_name="V13 safe-switch example backfill frame",
+    )
+    if "raw_hourly_action_imitation" in frame.columns:
+        raw_hourly = frame.with_columns(
+            pl.col("raw_hourly_action_imitation")
+            .map_elements(_bool_value, return_dtype=pl.Boolean)
+            .alias("raw_hourly_action_imitation")
+        )
+        if raw_hourly.filter(pl.col("raw_hourly_action_imitation")).height:
+            raise ValueError(
+                "V13 safe-switch example backfill refuses raw hourly action "
+                "imitation rows."
+            )
+
+    normalized = frame.with_columns(
+        pl.col("anchor_timestamp")
+        .map_elements(_datetime_value, return_dtype=pl.Datetime)
+        .alias("anchor_timestamp"),
+        pl.col("source_evidence_timestamp")
+        .map_elements(_datetime_value, return_dtype=pl.Datetime)
+        .alias("source_evidence_timestamp"),
+        pl.col("label_v13_material_safe_switch")
+        .map_elements(_bool_value, return_dtype=pl.Boolean)
+        .alias("label_v13_material_safe_switch"),
+        pl.col("label_v13_tail_risk_loss")
+        .map_elements(_bool_value, return_dtype=pl.Boolean)
+        .alias("label_v13_tail_risk_loss"),
+    ).select(
+        [
+            pl.col("tenant_id").cast(pl.Utf8),
+            pl.col("source_model_name").cast(pl.Utf8),
+            pl.col("anchor_timestamp"),
+            pl.col("split_name").cast(pl.Utf8),
+            pl.col("source_evidence_timestamp"),
+            pl.col("label_v13_material_safe_switch"),
+            pl.col("label_v13_tail_risk_loss"),
+            _optional_string_column(frame, "source_url").alias("source_url"),
+            _optional_string_column(frame, "source_title").alias("source_title"),
+            _optional_string_column(frame, "receipt_id").alias("receipt_id"),
+            pl.lit(False).alias("market_execution_enabled"),
+        ]
+    )
+    _validate_safe_switch_example_backfill_rows(normalized)
+    return normalized.sort(["source_model_name", "tenant_id", "anchor_timestamp"])
+
+
+def build_dfl_ua_context_safe_switch_readiness_overlay_v13_frame(
+    ua_v12_dt_lava_readiness_decision_frame: pl.DataFrame,
+    ua_context_safe_switch_examples_v13_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Overlay explicit V13 safe-switch example counts onto the V12 gate rows."""
+
+    _validate_v12_readiness(ua_v12_dt_lava_readiness_decision_frame)
+    examples = normalize_dfl_ua_context_safe_switch_examples_v13_frame(
+        ua_context_safe_switch_examples_v13_frame
+    )
+    if examples.height:
+        counts = examples.group_by(["tenant_id", "source_model_name"]).agg(
+            pl.len().alias("_v13_safe_switch_backfill_example_count")
+        )
+    else:
+        counts = pl.DataFrame(
+            schema={
+                "tenant_id": pl.Utf8,
+                "source_model_name": pl.Utf8,
+                "_v13_safe_switch_backfill_example_count": pl.Int64,
+            }
+        )
+    joined = ua_v12_dt_lava_readiness_decision_frame.join(
+        counts,
+        on=["tenant_id", "source_model_name"],
+        how="left",
+    )
+    overlaid = (
+        joined.with_columns(
+            pl.col("_v13_safe_switch_backfill_example_count")
+            .fill_null(0)
+            .cast(pl.Int64)
+            .alias("v13_safe_switch_backfill_example_count"),
+            pl.col("prior_material_safe_switch_example_count")
+            .cast(pl.Int64)
+            .alias(
+                "v13_original_prior_material_safe_switch_example_count"
+            ),
+        )
+        .with_columns(
+            (
+                pl.col("v13_original_prior_material_safe_switch_example_count")
+                + pl.col("v13_safe_switch_backfill_example_count")
+            ).alias("prior_material_safe_switch_example_count"),
+            pl.lit(False).alias("dt_lava_ready"),
+            pl.lit(False).alias("market_execution_enabled"),
+        )
+        .with_columns(
+            pl.when(
+                (pl.col("v13_safe_switch_backfill_example_count") > 0)
+                & (
+                    pl.col("prior_material_safe_switch_example_count")
+                    >= pl.col("min_prior_material_safe_switch_examples_for_dt")
+                )
+            )
+            .then(pl.lit("v13_safe_switch_backfill_floor_met"))
+            .when(pl.col("v13_safe_switch_backfill_example_count") > 0)
+            .then(pl.lit("v13_safe_switch_backfill_partial"))
+            .otherwise(pl.col("readiness_decision"))
+            .alias("readiness_decision")
+        )
+        .drop("_v13_safe_switch_backfill_example_count")
+        .sort(["source_model_name", "tenant_id"])
+    )
+    _validate_v12_readiness(overlaid)
+    return overlaid
+
+
 def _safe_label_support_row(v12_readiness_frame: pl.DataFrame) -> dict[str, Any]:
     prior_counts = v12_readiness_frame["prior_material_safe_switch_example_count"]
     required_counts = v12_readiness_frame["min_prior_material_safe_switch_examples_for_dt"]
@@ -653,6 +798,42 @@ def _validate_v13_source_evidence(frame: pl.DataFrame) -> None:
     )
 
 
+def _validate_safe_switch_example_backfill_rows(frame: pl.DataFrame) -> None:
+    missing_identity = frame.filter(
+        pl.any_horizontal(
+            [
+                pl.col("tenant_id").is_null() | (pl.col("tenant_id").str.len_chars() == 0),
+                pl.col("source_model_name").is_null()
+                | (pl.col("source_model_name").str.len_chars() == 0),
+                pl.col("anchor_timestamp").is_null(),
+                pl.col("source_evidence_timestamp").is_null(),
+            ]
+        )
+    )
+    if missing_identity.height:
+        raise ValueError("V13 safe-switch example backfill contains missing identities.")
+    bad_split = frame.filter(pl.col("split_name") != _TRAIN_SELECTION_SPLIT)
+    if bad_split.height:
+        raise ValueError(
+            "V13 safe-switch example backfill only accepts train_selection rows."
+        )
+    bad_label = frame.filter(
+        (~pl.col("label_v13_material_safe_switch"))
+        | pl.col("label_v13_tail_risk_loss")
+    )
+    if bad_label.height:
+        raise ValueError(
+            "V13 safe-switch example backfill only accepts non-tail-risk material "
+            "safe-switch rows."
+        )
+    duplicate_rows = frame.filter(
+        pl.struct(["tenant_id", "source_model_name", "anchor_timestamp"])
+        .is_duplicated()
+    )
+    if duplicate_rows.height:
+        raise ValueError("V13 safe-switch example backfill contains duplicate rows.")
+
+
 def _require_columns(
     frame: pl.DataFrame,
     columns: frozenset[str],
@@ -667,6 +848,42 @@ def _require_columns(
 def _refuse_market_execution(frame: pl.DataFrame, *, frame_name: str) -> None:
     if frame.filter(pl.col("market_execution_enabled")).height:
         raise ValueError(f"{frame_name} contains market execution rows.")
+
+
+def _refuse_market_execution_column(frame: pl.DataFrame, *, frame_name: str) -> None:
+    if "market_execution_enabled" not in frame.columns:
+        return
+    normalized = frame.with_columns(
+        pl.col("market_execution_enabled")
+        .map_elements(_bool_value, return_dtype=pl.Boolean)
+        .alias("market_execution_enabled")
+    )
+    if normalized.filter(pl.col("market_execution_enabled")).height:
+        raise ValueError(f"{frame_name} contains market execution rows.")
+
+
+def _empty_v13_safe_switch_examples_frame() -> pl.DataFrame:
+    return pl.DataFrame(
+        schema={
+            "tenant_id": pl.Utf8,
+            "source_model_name": pl.Utf8,
+            "anchor_timestamp": pl.Datetime,
+            "split_name": pl.Utf8,
+            "source_evidence_timestamp": pl.Datetime,
+            "label_v13_material_safe_switch": pl.Boolean,
+            "label_v13_tail_risk_loss": pl.Boolean,
+            "source_url": pl.Utf8,
+            "source_title": pl.Utf8,
+            "receipt_id": pl.Utf8,
+            "market_execution_enabled": pl.Boolean,
+        }
+    )
+
+
+def _optional_string_column(frame: pl.DataFrame, column_name: str) -> pl.Expr:
+    if column_name in frame.columns:
+        return pl.col(column_name).cast(pl.Utf8)
+    return pl.lit(None, dtype=pl.Utf8)
 
 
 def _safe_float(value: object) -> float:
@@ -685,10 +902,37 @@ def _safe_int(value: object) -> int:
     raise TypeError(f"Cannot convert {type(value).__name__} to int.")
 
 
+def _datetime_value(value: Any) -> datetime:
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
+    if isinstance(value, str):
+        return datetime.fromisoformat(value)
+    raise TypeError(f"Cannot convert {type(value).__name__} to datetime.")
+
+
+def _bool_value(value: Any) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        if value in {0, 1}:
+            return bool(value)
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes"}:
+            return True
+        if normalized in {"false", "0", "no"}:
+            return False
+    raise TypeError(f"Cannot convert {type(value).__name__} to bool.")
+
+
 __all__ = [
     "UA_CONTEXT_ACQUISITION_READINESS_V13_CLAIM_SCOPE",
     "UA_CONTEXT_SOURCE_INVENTORY_V13_CLAIM_SCOPE",
     "build_dfl_ua_context_acquisition_source_evidence_v13_frame",
     "build_dfl_ua_context_acquisition_readiness_v13_frame",
+    "build_dfl_ua_context_safe_switch_readiness_overlay_v13_frame",
     "build_dfl_ua_context_source_inventory_v13_frame",
+    "normalize_dfl_ua_context_safe_switch_examples_v13_frame",
 ]

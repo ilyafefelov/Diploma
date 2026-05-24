@@ -13,6 +13,7 @@ import {
   buildPolicyForecastContextPoints,
   buildRecommendationStrategySelectItems,
   buildStrategyReadinessItems,
+  buildV13ReadinessItems,
   filterOfficialPolicyValueSeries,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
@@ -448,6 +449,9 @@ const strategySelectItems = computed(() => buildRecommendationStrategySelectItem
 const strategyReadinessItems = computed(() => buildStrategyReadinessItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))
+const v13ReadinessItems = computed(() => buildV13ReadinessItems(
+  props.operatorRecommendation?.v13_readiness
+))
 
 const updateSelectedStrategy = (value: string | number | boolean | Record<string, unknown>): void => {
   if (typeof value === 'string') {
@@ -566,6 +570,18 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
       >
         <span>{{ item.label }}</span>
         <strong>{{ item.status }}</strong>
+        <small>{{ item.reason }}</small>
+      </article>
+    </div>
+
+    <div class="v13-readiness-strip">
+      <article
+        v-for="item in v13ReadinessItems"
+        :key="item.label"
+        :class="{ 'v13-readiness-strip__item--blocked': item.status === 'blocked' }"
+      >
+        <span>{{ item.label }}</span>
+        <strong>{{ item.value }}</strong>
         <small>{{ item.reason }}</small>
       </article>
     </div>
@@ -714,6 +730,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 
 .future-status-grid,
 .strategy-readiness-strip,
+.v13-readiness-strip,
 .future-chart-grid,
 .future-explainer-grid {
   display: grid;
@@ -726,6 +743,10 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 
 .strategy-readiness-strip {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.v13-readiness-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .future-control-stack {
@@ -766,6 +787,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 
 .future-status-card,
 .strategy-readiness-strip article,
+.v13-readiness-strip article,
 .future-chart-card,
 .future-explainer-grid article {
   border: 1px solid rgba(255, 255, 255, 0.28);
@@ -787,7 +809,20 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   min-width: 0;
 }
 
+.v13-readiness-strip article {
+  display: grid;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
 .strategy-readiness-strip__item--blocked {
+  border-color: rgba(255, 191, 82, 0.66) !important;
+  background:
+    radial-gradient(circle at top right, rgba(255, 191, 82, 0.18), transparent 30%),
+    linear-gradient(180deg, rgba(183, 100, 17, 0.78), rgba(119, 65, 9, 0.82)) !important;
+}
+
+.v13-readiness-strip__item--blocked {
   border-color: rgba(255, 191, 82, 0.66) !important;
   background:
     radial-gradient(circle at top right, rgba(255, 191, 82, 0.18), transparent 30%),
@@ -802,6 +837,14 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.v13-readiness-strip span {
+  color: rgba(215, 255, 79, 0.84);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
@@ -820,8 +863,17 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   text-transform: capitalize;
 }
 
+.v13-readiness-strip strong {
+  overflow-wrap: anywhere;
+  color: #f2fbff;
+  font-size: 1rem;
+  line-height: 1.08;
+  text-transform: none;
+}
+
 .future-status-card small,
 .strategy-readiness-strip small,
+.v13-readiness-strip small,
 .future-chart-card p,
 .future-explainer-grid p {
   color: rgba(229, 249, 255, 0.84);
@@ -831,6 +883,10 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 }
 
 .strategy-readiness-strip small {
+  overflow-wrap: anywhere;
+}
+
+.v13-readiness-strip small {
   overflow-wrap: anywhere;
 }
 
@@ -959,6 +1015,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 @media (max-width: 1320px) {
   .future-status-grid,
   .strategy-readiness-strip,
+  .v13-readiness-strip,
   .future-chart-grid,
   .future-explainer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -978,6 +1035,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 
   .future-status-grid,
   .strategy-readiness-strip,
+  .v13-readiness-strip,
   .future-chart-grid,
   .future-explainer-grid {
     grid-template-columns: 1fr;

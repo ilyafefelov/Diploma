@@ -4,7 +4,8 @@ import type {
   FutureForecastSeriesResponse,
   OperatorRecommendationResponse,
   RuntimeAccelerationResponse,
-  OperatorStrategyOptionResponse
+  OperatorStrategyOptionResponse,
+  OperatorV13ReadinessResponse
 } from '~/types/control-plane'
 
 const SOURCE_PRIORITY: Record<string, number> = {
@@ -29,6 +30,13 @@ const OFFLINE_V2_PLUS_STRATEGY_ID = 'schedule_value_learner_v2_plus'
 export interface StrategyReadinessItem {
   strategyId: string
   label: string
+  status: 'ready' | 'blocked'
+  reason: string
+}
+
+export interface V13ReadinessItem {
+  label: string
+  value: string
   status: 'ready' | 'blocked'
   reason: string
 }
@@ -145,6 +153,56 @@ export const buildStrategyReadinessItems = (
       : strategy.reason
   }))
 
+export const buildV13ReadinessItems = (
+  readiness: OperatorV13ReadinessResponse | null | undefined
+): V13ReadinessItem[] => {
+  if (!readiness) {
+    return [
+      {
+        label: 'V13 gate',
+        value: 'packet pending',
+        status: 'blocked',
+        reason: 'operator recommendation has not loaded V13 source-readiness'
+      }
+    ]
+  }
+
+  const receiptInputMissing = readiness.missing_required_inputs.includes('oree_dam_publication_receipts_csv_path')
+  const sourceFamilyCount = `${readiness.ready_rows}/${readiness.readiness_rows}`
+  return [
+    {
+      label: 'V13 gate',
+      value: formatBoundaryValue(readiness.gate_status),
+      status: readiness.v13_candidate_generation_ready ? 'ready' : 'blocked',
+      reason: `${sourceFamilyCount} source families ready; top blocker ${readiness.top_priority_blocker}`
+    },
+    {
+      label: 'DAM receipts',
+      value: receiptInputMissing ? 'blocked' : 'ready',
+      status: receiptInputMissing ? 'blocked' : 'ready',
+      reason: receiptInputMissing
+        ? 'missing oree_dam_publication_receipts_csv_path'
+        : 'explicit source publication receipts attached'
+    },
+    {
+      label: 'Safe-switch evidence',
+      value: readiness.missing_safe_switch_examples > 0
+        ? `${readiness.missing_safe_switch_examples.toLocaleString('en-GB')} missing`
+        : 'ready',
+      status: readiness.missing_safe_switch_examples > 0 ? 'blocked' : 'ready',
+      reason: '20 prior/train non-tail-risk material examples per tenant/source required'
+    },
+    {
+      label: 'Execution boundary',
+      value: readiness.market_execution_enabled ? 'market enabled' : 'preview only',
+      status: readiness.market_execution_enabled ? 'blocked' : 'ready',
+      reason: readiness.market_execution_enabled
+        ? 'V13 unexpectedly reports market_execution_enabled=true'
+        : `market_execution_enabled=false; DT/LAVA ${readiness.dt_lava_ready ? 'ready' : 'blocked'}`
+    }
+  ]
+}
+
 export const isChartSafeForecastSeries = (series: FutureForecastSeriesResponse): boolean => {
   const normalizedBoundary = series.quality_boundary.toLowerCase()
 
@@ -253,6 +311,8 @@ const formatRecommendationStrategyLabel = (strategy: OperatorStrategyOptionRespo
 
   return `${strategy.label} · ${Math.round(strategy.mean_regret_uah).toLocaleString('en-GB')} UAH`
 }
+
+const formatBoundaryValue = (value: string): string => value.replaceAll('_', ' ')
 
 const formatWindowTimestamp = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {
   day: '2-digit',
