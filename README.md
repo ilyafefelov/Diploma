@@ -187,13 +187,27 @@ The switch changes compute location; it does not enable live market execution.
 ```powershell
 uv run ruff check .
 uv run mypy .
-uv run pytest
+uv run pytest -p no:cacheprovider tests
 uv run dg check defs
 uv run dg list defs --json
 docker compose config --quiet
 ```
 
-Latest full verification: `151 passed`.
+Current closure snapshot, 2026-05-25:
+
+| Command | Status |
+|---|---|
+| `uv run ruff check .` | passed |
+| `uv run mypy .` | passed: 247 source files |
+| `uv run pytest -p no:cacheprovider tests` | passed: 945 tests in 616.85s |
+| `uv run dg check defs` | passed |
+| `uv run dg list defs --json` | passed |
+| `docker compose config --quiet` | passed |
+| `npm run typecheck` in `dashboard` | passed |
+| `npm exec -- vitest run` in `dashboard` | passed: 12 files, 66 tests |
+
+The `/operator` dock occlusion fix is verified by Browser/Playwright evidence in
+`docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/`.
 
 ## Research Artifacts
 

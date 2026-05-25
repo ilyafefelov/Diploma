@@ -8,9 +8,7 @@ from statistics import mean, median
 from typing import Any, Final
 
 import polars as pl
-import torch
 
-from smart_arbitrage.decision_transformer.policy import DecisionTransformerPolicy
 from smart_arbitrage.dfl.promotion_gate import CONTROL_MODEL_NAME
 from smart_arbitrage.dfl.strict_challenger import (
     CANDIDATE_FAMILY_STRICT,
@@ -96,8 +94,8 @@ def build_dfl_offline_dt_candidate_frame(
         max_epochs=max_epochs,
     )
     _validate_trajectory_frame(trajectory_frame)
-    torch.manual_seed(random_seed)
-    policy = DecisionTransformerPolicy(
+    _manual_seed_torch(random_seed)
+    policy = _build_decision_transformer_policy(
         state_dim=8,
         action_dim=1,
         hidden_dim=hidden_dim,
@@ -185,6 +183,18 @@ def build_dfl_offline_dt_candidate_frame(
                 }
             )
     return pl.DataFrame(rows).sort(["tenant_id", "source_model_name"])
+
+
+def _manual_seed_torch(seed: int) -> None:
+    import torch
+
+    torch.manual_seed(seed)
+
+
+def _build_decision_transformer_policy(**kwargs: Any) -> Any:
+    from smart_arbitrage.decision_transformer.policy import DecisionTransformerPolicy
+
+    return DecisionTransformerPolicy(**kwargs)
 
 
 def build_dfl_offline_dt_candidate_strict_lp_benchmark_frame(

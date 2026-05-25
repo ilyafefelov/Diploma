@@ -4,8 +4,6 @@ import dagster as dg
 import polars as pl
 
 from smart_arbitrage.assets import taxonomy
-from smart_arbitrage.decision_transformer.trajectories import build_decision_transformer_trajectory_frame
-from smart_arbitrage.decision_transformer.policy_training import build_decision_transformer_policy_preview_frame
 from smart_arbitrage.live.paper_trading import build_simulated_live_trading_frame
 from smart_arbitrage.resources.simulated_trade_store import get_simulated_trade_store
 from smart_arbitrage.training.simulated_trades import (
@@ -256,6 +254,24 @@ def _tenant_ids_from_csv(value: str) -> list[str] | None:
     if not tenant_ids:
         return None
     return tenant_ids
+
+
+def build_decision_transformer_trajectory_frame(frame: pl.DataFrame) -> pl.DataFrame:
+    """Import DT trajectory construction only while the asset executes."""
+    from smart_arbitrage.decision_transformer.trajectories import (
+        build_decision_transformer_trajectory_frame as _build,
+    )
+
+    return _build(frame)
+
+
+def build_decision_transformer_policy_preview_frame(frame: pl.DataFrame) -> pl.DataFrame:
+    """Import torch-backed DT preview only while the asset executes."""
+    from smart_arbitrage.decision_transformer.policy_training import (
+        build_decision_transformer_policy_preview_frame as _build,
+    )
+
+    return _build(frame)
 
 
 def _add_metadata(context: dg.AssetExecutionContext | None, metadata: dict[str, Any]) -> None:

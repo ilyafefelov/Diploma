@@ -110,9 +110,15 @@ describe('useOperatorDashboardViewModel', () => {
     expect(viewModel.timelineSegments.value.map(segment => segment.tone)).toEqual(['green', 'orange'])
     expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['DAM 19 May, 11:00', 'DAM 19 May, 12:00'])
     expect(viewModel.timelineSegments.value[0]).toMatchObject({
+      value: '+0.25 MW / 0.25 MWh (25% cap)',
       indicativePriceLabel: '4,200 UAH/MWh',
       marketBoundaryLabel: 'No market payload'
     })
+    expect(viewModel.timelineSegments.value[1]).toMatchObject({
+      value: '-0.40 MW / 0.40 MWh (40% cap)'
+    })
+    expect(viewModel.batteryAssetLabel.value).toBe('1.00 MWh / 1.00 MW max')
+    expect(viewModel.batteryCapacityContextLabel.value).toContain('Battery: 1.00 MWh usable preview / 1.00 MW max')
     expect(viewModel.timelineSegments.value[0]?.tooltipBody).toContain('non-submittable DAM SELL preview')
     expect(viewModel.timelineSegments.value[0]?.tooltipBody).toContain('no ProposedBid')
     expect(viewModel.headlineMetrics.value[0]).toMatchObject({
@@ -121,6 +127,74 @@ describe('useOperatorDashboardViewModel', () => {
       meta: 'schedule_value_learner_v2_plus'
     })
     expect(viewModel.dispatchModeLabel.value).toBe('Preview only')
+  })
+
+  it('does not borrow baseline dock cards for a selected blocked shadow preview', () => {
+    const baselinePreview = ref({
+      battery_metrics: {
+        capacity_mwh: 1,
+        max_power_mw: 1,
+        round_trip_efficiency: 0.9,
+        degradation_cost_per_cycle_uah: 1,
+        soc_min_fraction: 0.05,
+        soc_max_fraction: 0.95
+      },
+      recommendation_schedule: [
+        schedulePoint('2026-05-26T08:00:00', 0.4)
+      ],
+      economics: {
+        total_gross_market_value_uah: 10,
+        total_degradation_penalty_uah: 1,
+        total_net_value_uah: 9,
+        total_throughput_mwh: 0.1
+      },
+      bid_recommendation_preview: [
+        bidPreviewPoint('2026-05-26T08:00:00', 'SELL', 'discharge', 0.4, 5000)
+      ]
+    })
+    const operatorRecommendation = ref({
+      selected_strategy_id: 'v13_dt_lava_promoted_training',
+      target_delivery_window_start: '2026-05-26T00:00:00',
+      target_delivery_window_end: '2026-05-27T00:00:00',
+      recommendation_schedule: [],
+      bid_recommendation_preview: [],
+      economics: {
+        total_gross_market_value_uah: 0,
+        total_degradation_penalty_uah: 0,
+        total_net_value_uah: 0,
+        total_throughput_mwh: 0
+      }
+    })
+
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      signalPreview: ref(null),
+      baselinePreview,
+      operatorRecommendation,
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref(''),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.timelineSegments.value).toEqual([
+      expect.objectContaining({
+        time: 'DAM delivery',
+        label: 'Preview pending',
+        value: 'No schedule loaded'
+      })
+    ])
+    expect(viewModel.timelineSegments.value.map(segment => segment.time)).not.toContain('DAM 26 May, 08:00')
+    expect(viewModel.latestRecommendedPowerLabel.value).toBe('0.0 MW')
+    expect(viewModel.deliveryWindowLabel.value).toBe('Delivery window: DAM 26 May, 00:00 -> DAM 27 May, 00:00')
   })
 
   it('counts read-model gaps in the operator health ribbon', () => {

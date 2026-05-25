@@ -1188,6 +1188,45 @@ source-backed proxy, але не видається за live metering без д
 DT/LAVA після цього все одно має target candidate-index/schedule-family, а не
 raw hourly BUY/SELL/HOLD.
 
+### 3.12.1. Credentialless Academic MVP and DT research-shadow protocol
+
+Після V13 source-acquisition висновку методологія розділяє дві різні
+готовності. Market-submission-grade readiness залишається заблокованою через
+відсутність explicit row-level DAM publication receipts і SCMO credential
+access. Натомість дипломний MVP може бути валідним без SCMO: він показує DAM
+delivery-day recommendation preview для оператора, не формує `ProposedBid`, не
+створює market-order payload і фіксує `market_execution_enabled=false`.
+
+Credentialless Academic MVP packet складається з чотирьох research-safe шарів:
+
+- operator preview gate: 24 hourly DAM recommendation-preview rows with fixed
+  non-submittable boundary;
+- LAVA NPZ CI-smoke and packet-validation gates: shape/metric evidence only,
+  `permits_model_training=false`;
+- V13-gated teacher contract: candidate-index / schedule-family label space,
+  but `0` permitted model-training rows while source-readiness receipts are
+  blocked;
+- DT research-shadow packet: chronological delivery-time sequences built from
+  forecast context, SOC/battery context, tenant context, candidate value/regret
+  context and gate context.
+
+DT research-shadow не замінює V13. Він дозволяє академічно чесно перевірити,
+чи працює sequence-model substrate перед повним source-ready DT/LAVA training.
+State vector має 20 ознак, action target є `candidate_index_or_schedule_family`,
+return-to-go target є negative regret delta versus V2+/strict reference, а
+evaluation порівнює DT проти V2+ fallback, strict LP/oracle reference і
+behavior-cloning control. Raw hourly BUY/SELL/HOLD imitation заборонена.
+
+Для Hugging Face implementation smoke використовується optional dependency
+extra `dt`, що додає `transformers>=4.53,<5` і дає доступ до
+`DecisionTransformerModel`. Якщо цей extra не встановлено, packet явно пише
+local DT-compatible fallback; якщо встановлено і `--model-backbone hf`
+запитано, evidence має містити
+`model_backbone=huggingface_decision_transformer_model`. В обох випадках
+promotion flags лишаються false: `research_shadow_not_promotable=true`,
+`promotable_v13_permitted_training_rows=0`,
+`publication_receipt_verified=false` і `market_execution_enabled=false`.
+
 ## 3.13. Джерела методологічного обґрунтування
 
 Методологічна позиція розділу спирається на джерела, зафіксовані у
@@ -1240,6 +1279,10 @@ forecast, calibration, LP, DFL і DT методів особливо релев�
     probabilistic/quantile forecast framing. У цій роботі quantiles
     використовуються як schedule candidates і calibration evidence, а не як
     самостійна гарантія trading performance.
+12. Hugging Face Transformers documentation - DecisionTransformerModel,
+    <https://huggingface.co/docs/transformers/main/model_doc/decision_transformer>.
+    Це implementation reference для offline DT smoke, а не джерело claim про
+    deployed controller або market execution.
 
 Для implementation claims у цьому розділі основним джерелом є не зовнішня
 стаття, а відтворюваний repo artifact. Тому traceability читається так:
@@ -1252,5 +1295,6 @@ forecast, calibration, LP, DFL і DT методів особливо релев�
 | Schedule/Value Learner V2/V2+ evidence | [DFL_SCHEDULE_VALUE_LEARNER_V2](../../technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md), [DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS](../../technical/DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md), `src/smart_arbitrage/dfl/schedule_value_learner_v2_plus.py` |
 | Candidate-Value DFL and point-in-time context repair | [DFL_CANDIDATE_VALUE_DFL_V3](../../technical/DFL_CANDIDATE_VALUE_DFL_V3.md), [DFL_PLATEAU_BREAKER_V4](../../technical/DFL_PLATEAU_BREAKER_V4.md), [DFL_POINT_IN_TIME_CONTEXT_REPAIR](../../technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md) |
 | Market-coupling/ENTSO-E governance boundary | [MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE](../../technical/MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md), [ENTSOE_NEIGHBOR_MARKET_ACCESS_GATE](../../technical/ENTSOE_NEIGHBOR_MARKET_ACCESS_GATE.md), [DFL_MARKET_COUPLING_ABLATION_V1](../../technical/DFL_MARKET_COUPLING_ABLATION_V1.md) |
+| Credentialless Academic MVP and DT research-shadow | [DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE](../../technical/DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md), `scripts/materialize_dt_research_shadow_packet.py`, `scripts/materialize_credentialless_academic_mvp_readiness_packet.py`, `data/research_runs/week3_dt_research_shadow_current/`, `data/research_runs/week3_credentialless_academic_mvp_current/` |
 | Operator-facing read model, not execution | [api-read-model-specification](../appendices/api-read-model-specification.md), [API_ENDPOINTS](../../technical/API_ENDPOINTS.md), `api/main.py` |
 | Evidence receipts and reproducibility | [OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE](../../technical/OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md), `scripts/build_official_evidence_attempt_manifest.py`, `scripts/materialize_schedule_value_production_gate_registry.py` |

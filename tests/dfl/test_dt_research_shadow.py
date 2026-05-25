@@ -262,6 +262,9 @@ def test_dt_research_shadow_smoke_trains_transformer_and_reports_regret_controls
     evaluation_validation = json.loads(
         smoke["evaluation_validation_json"].read_text(encoding="utf-8")
     )
+    selected_preview = json.loads(
+        smoke["selected_preview_json"].read_text(encoding="utf-8")
+    )
 
     assert summary["claim_scope"] == (
         "dt_research_shadow_transformer_smoke_not_promotable_not_market_execution"
@@ -322,6 +325,20 @@ def test_dt_research_shadow_smoke_trains_transformer_and_reports_regret_controls
     assert summary["attached_artifacts"]["evaluation_summary_json"] == (
         "dt_research_shadow_evaluation_summary.json"
     )
+    assert summary["attached_artifacts"]["selected_preview_json"] == (
+        "dt_research_shadow_selected_schedule_preview.json"
+    )
+    assert selected_preview["claim_scope"] == (
+        "dt_research_shadow_selected_schedule_preview_not_promotable_not_market_execution"
+    )
+    assert selected_preview["action_target"] == "candidate_index_or_schedule_family"
+    assert selected_preview["raw_hourly_buy_sell_hold_action_target"] is False
+    assert selected_preview["market_execution_enabled"] is False
+    assert selected_preview["dt_promotion_gate_passed"] is False
+    assert selected_preview["research_shadow_not_promotable"] is True
+    assert selected_preview["preview_rows"][0]["selected_candidate_id"]
+    assert selected_preview["preview_rows"][0]["selected_schedule_family"]
+    assert selected_preview["preview_rows"][0]["market_execution_enabled"] is False
     assert evaluation["claim_scope"] == (
         "dt_research_shadow_evaluation_packet_not_promotable_not_market_execution"
     )
@@ -518,6 +535,11 @@ def test_dt_research_shadow_cli_merges_candidate_library_context(tmp_path) -> No
             encoding="utf-8"
         )
     )
+    selected_preview = json.loads(
+        (output_dir / "dt_research_shadow_selected_schedule_preview.json").read_text(
+            encoding="utf-8"
+        )
+    )
     evaluation_validation = json.loads(
         (output_dir / "dt_research_shadow_evaluation_validation.json").read_text(
             encoding="utf-8"
@@ -536,6 +558,9 @@ def test_dt_research_shadow_cli_merges_candidate_library_context(tmp_path) -> No
         "regret_value_vs_strict_v2_plus_behavior"
     )
     assert evaluation_summary["market_execution_enabled"] is False
+    assert selected_preview["market_execution_enabled"] is False
+    assert selected_preview["preview_rows"]
+    assert selected_preview["preview_rows"][0]["selected_candidate_id"]
     assert evaluation_validation["passed"] is True
     assert evaluation_validation["market_execution_enabled"] is False
 

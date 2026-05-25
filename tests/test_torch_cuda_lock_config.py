@@ -36,3 +36,19 @@ def test_lockfile_resolves_torch_from_cuda_126_index() -> None:
     assert torch_package["source"] == {
         "registry": "https://download.pytorch.org/whl/cu126"
     }
+
+
+def test_dt_extra_provides_hugging_face_transformers_without_changing_torch_pin() -> None:
+    pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    lockfile = tomllib.loads((ROOT / "uv.lock").read_text(encoding="utf-8"))
+    packages = {package["name"]: package for package in lockfile["package"]}
+
+    assert "dt" in pyproject["project"]["optional-dependencies"]
+    assert "transformers>=4.53,<5" in pyproject["project"]["optional-dependencies"]["dt"]
+    assert packages["transformers"]["version"] >= "4.53"
+
+    torch_package = packages["torch"]
+    assert torch_package["version"] == "2.9.1+cu126"
+    assert torch_package["source"] == {
+        "registry": "https://download.pytorch.org/whl/cu126"
+    }

@@ -16,7 +16,11 @@ import {
   formatUah,
   summarizeScheduleValuePromotionReadModel
 } from '~/utils/defenseDataset'
-import { formatRuntimeAccelerationLabel } from '~/utils/operatorFutureStack'
+import {
+  buildAcademicMvpDtShadowComparisonRows,
+  buildAcademicMvpGatePassportItems,
+  formatRuntimeAccelerationLabel
+} from '~/utils/operatorFutureStack'
 
 const preferredTenantId = 'client_003_dnipro_factory'
 const selectedTenantId = ref(preferredTenantId)
@@ -86,6 +90,74 @@ const latestBatterySoc = computed(() => {
   }
 
   return 'unavailable'
+})
+
+const academicMvpReadiness = computed(() => defense.academicMvpReadiness.value)
+
+const academicMvpGatePassportRows = computed(() => (
+  buildAcademicMvpGatePassportItems(academicMvpReadiness.value)
+))
+
+const dtShadowComparisonRows = computed(() => (
+  buildAcademicMvpDtShadowComparisonRows(academicMvpReadiness.value)
+))
+
+const dtShadowGate = computed(() => (
+  asDefenseRecord(academicMvpReadiness.value?.dt_research_shadow_gate)
+))
+
+const dtShadowStatusRows = computed(() => [
+  {
+    label: 'Backbone',
+    value: formatStatusText(dtShadowGate.value.model_backbone),
+    note: formatStatusText(dtShadowGate.value.model_backbone_selection_reason)
+  },
+  {
+    label: 'Research rows',
+    value: formatCount(dtShadowGate.value.research_shadow_training_rows),
+    note: `${formatCount(dtShadowGate.value.promotable_v13_permitted_training_rows)} promotable rows`
+  },
+  {
+    label: 'Split',
+    value: formatStatusText(dtShadowGate.value.split_strategy),
+    note: dtShadowGate.value.chronological_split_passed === true ? 'chronological split passed' : 'chronological split pending'
+  },
+  {
+    label: 'Receipt gate',
+    value: dtShadowGate.value.publication_receipt_verified === true ? 'verified' : 'blocked',
+    note: formatStatusText(dtShadowGate.value.promotion_blocker, 'publication receipt not verified')
+  }
+])
+
+const academicMvpPhaseRows = computed(() => {
+  const readiness = asDefenseRecord(academicMvpReadiness.value?.prototype_phase_readiness)
+  return [
+    {
+      label: 'Phase 0',
+      value: formatStatusText(asDefenseRecord(readiness.phase_0_v13_source_readiness).status),
+      note: 'V13 source readiness'
+    },
+    {
+      label: 'Phase 1',
+      value: formatStatusText(asDefenseRecord(readiness.phase_1_lava_npz_smoke).status),
+      note: 'LAVA NPZ smoke'
+    },
+    {
+      label: 'Phase 2',
+      value: formatStatusText(asDefenseRecord(readiness.phase_2_v13_gated_teacher_contract).status),
+      note: 'teacher contract'
+    },
+    {
+      label: 'Phase 3',
+      value: formatStatusText(asDefenseRecord(readiness.phase_3_offline_challenger).status),
+      note: 'offline challenger'
+    },
+    {
+      label: 'Phase 4',
+      value: formatStatusText(asDefenseRecord(readiness.phase_4_full_schedule_dfl).status),
+      note: 'full schedule-level DFL'
+    }
+  ]
 })
 
 const thesisEvidence = computed(() => [
@@ -203,6 +275,26 @@ const formatDateTime = (value: string | null | undefined): string => {
     minute: '2-digit'
   })
 }
+
+const asDefenseRecord = (value: unknown): Record<string, unknown> => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return {}
+  }
+
+  return value as Record<string, unknown>
+}
+
+const formatStatusText = (value: unknown, fallback = 'pending'): string => {
+  if (typeof value !== 'string' || value.length === 0) {
+    return fallback
+  }
+
+  return value.replaceAll('_', ' ')
+}
+
+const formatCount = (value: unknown): string => (
+  typeof value === 'number' ? value.toLocaleString('en-GB') : '0'
+)
 
 const refresh = async (): Promise<void> => {
   await defense.loadDefenseDashboard()
@@ -658,6 +750,105 @@ useHead({
           <small>{{ experiment.meta }}</small>
         </article>
       </div>
+    </section>
+
+    <section
+      id="dt-shadow"
+      class="dt-shadow-defense-panel"
+    >
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">
+            DT Shadow / Academic MVP
+          </p>
+          <h2>Credentialless prototype evidence, not a promoted controller</h2>
+          <p class="section-explainer">
+            The Academic MVP packet proves a DAM recommendation preview, LAVA/DT prototype contracts, chronological
+            DT shadow training, and no-market-execution safety. Publication receipts remain blocked for market
+            submission, so the transformer stays research-shadow only.
+          </p>
+        </div>
+        <span class="source-pill">
+          {{ academicMvpReadiness?.academic_mvp_gate_passed ? 'Academic MVP passed' : 'Academic MVP pending' }}
+        </span>
+      </div>
+
+      <div
+        v-if="academicMvpReadiness"
+        class="dt-shadow-layout"
+      >
+        <div class="dt-shadow-left">
+          <div class="dt-shadow-status-grid">
+            <article
+              v-for="row in dtShadowStatusRows"
+              :key="row.label"
+              class="dt-shadow-status-card"
+            >
+              <span>{{ row.label }}</span>
+              <strong>{{ row.value }}</strong>
+              <small>{{ row.note }}</small>
+            </article>
+          </div>
+
+          <div
+            v-if="dtShadowComparisonRows.length > 0"
+            class="dt-shadow-comparison"
+          >
+            <article
+              v-for="row in dtShadowComparisonRows"
+              :key="row.label"
+              :class="`dt-shadow-comparison-row dt-shadow-comparison-row--${row.status}`"
+            >
+              <div>
+                <span>{{ row.label }}</span>
+                <small>{{ row.note }}</small>
+              </div>
+              <div class="dt-shadow-bar-track">
+                <span :style="{ width: `${row.regretBarWidthPercent}%` }" />
+              </div>
+              <strong>{{ formatUah(row.meanRegretUah) }}</strong>
+              <em>{{ formatUah(row.meanValueUah) }} value</em>
+            </article>
+          </div>
+          <p
+            v-else
+            class="empty-state"
+          >
+            DT shadow regret/value metrics are not loaded yet.
+          </p>
+        </div>
+
+        <aside class="dt-shadow-right">
+          <div class="dt-shadow-phase-list">
+            <article
+              v-for="phase in academicMvpPhaseRows"
+              :key="phase.label"
+            >
+              <span>{{ phase.label }}</span>
+              <strong>{{ phase.value }}</strong>
+              <small>{{ phase.note }}</small>
+            </article>
+          </div>
+          <div class="dt-shadow-passport-list">
+            <article
+              v-for="item in academicMvpGatePassportRows.slice(0, 7)"
+              :key="item.label"
+              :class="`dt-shadow-passport-row dt-shadow-passport-row--${item.status}`"
+            >
+              <span>{{ item.label }}</span>
+              <strong>{{ item.value }}</strong>
+              <small>{{ item.reason }}</small>
+            </article>
+          </div>
+        </aside>
+      </div>
+
+      <p
+        v-else
+        class="empty-state"
+      >
+        Academic MVP readiness packet is not available from the control-plane read model.
+      </p>
     </section>
 
     <section class="section-grid">
@@ -1123,6 +1314,7 @@ useHead({
 .narrative-band,
 .pipeline-visual-panel,
 .evidence-chart-panel,
+.dt-shadow-defense-panel,
 .section-grid {
   max-width: 1380px;
   margin: 0 auto 1rem;
@@ -1650,6 +1842,161 @@ h2 {
 .latest-experiment-card--next {
   border-color: rgba(14, 165, 233, 0.3);
   background: linear-gradient(180deg, rgba(224, 242, 254, 0.92), rgba(255, 255, 255, 0.96));
+}
+
+.dt-shadow-defense-panel {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.75rem;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 249, 0.92));
+  padding: 1rem;
+}
+
+.dt-shadow-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.24fr) minmax(320px, 0.76fr);
+  gap: 1rem;
+}
+
+.dt-shadow-left,
+.dt-shadow-right {
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+}
+
+.dt-shadow-status-grid,
+.dt-shadow-phase-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.dt-shadow-status-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dt-shadow-phase-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dt-shadow-status-card,
+.dt-shadow-phase-list article,
+.dt-shadow-passport-row,
+.dt-shadow-comparison-row {
+  border: 1px solid rgba(20, 32, 51, 0.12);
+  border-radius: 0.5rem;
+  background: rgba(255, 255, 255, 0.92);
+  min-width: 0;
+}
+
+.dt-shadow-status-card,
+.dt-shadow-phase-list article,
+.dt-shadow-passport-row {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.8rem;
+}
+
+.dt-shadow-status-card span,
+.dt-shadow-phase-list span,
+.dt-shadow-passport-row span,
+.dt-shadow-comparison-row span {
+  color: #475569;
+  font-size: 0.73rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.dt-shadow-status-card strong,
+.dt-shadow-phase-list strong,
+.dt-shadow-passport-row strong {
+  color: #142033;
+  font-size: 0.96rem;
+  line-height: 1.2;
+}
+
+.dt-shadow-status-card small,
+.dt-shadow-phase-list small,
+.dt-shadow-passport-row small,
+.dt-shadow-comparison-row small,
+.dt-shadow-comparison-row em {
+  color: #617084;
+  font-style: normal;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
+.dt-shadow-comparison {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.dt-shadow-comparison-row {
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) minmax(10rem, 0.58fr) 7rem 7.5rem;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.78rem;
+}
+
+.dt-shadow-comparison-row > div {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.dt-shadow-bar-track {
+  height: 0.68rem;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  overflow: hidden;
+}
+
+.dt-shadow-bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0284c7;
+}
+
+.dt-shadow-comparison-row--research-shadow .dt-shadow-bar-track span {
+  background: #7c3aed;
+}
+
+.dt-shadow-comparison-row--fallback .dt-shadow-bar-track span {
+  background: #0284c7;
+}
+
+.dt-shadow-comparison-row--reference .dt-shadow-bar-track span {
+  background: #16a34a;
+}
+
+.dt-shadow-comparison-row--control .dt-shadow-bar-track span {
+  background: #f97316;
+}
+
+.dt-shadow-comparison-row strong {
+  color: #142033;
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.dt-shadow-comparison-row em {
+  text-align: right;
+}
+
+.dt-shadow-passport-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.dt-shadow-passport-row--ready {
+  border-color: rgba(34, 197, 94, 0.24);
+}
+
+.dt-shadow-passport-row--blocked {
+  border-color: rgba(249, 115, 22, 0.28);
 }
 
 .evidence-chart-panel {
@@ -2281,7 +2628,8 @@ td {
   .pipeline-visual-panel,
   .language-columns,
   .chart-grid,
-  .offline-promotion-panel {
+  .offline-promotion-panel,
+  .dt-shadow-layout {
     grid-template-columns: 1fr;
   }
 
@@ -2290,7 +2638,8 @@ td {
   .context-grid,
   .latest-experiment-grid,
   .v2-plus-improvement-grid,
-  .future-stack-grid {
+  .future-stack-grid,
+  .dt-shadow-status-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -2333,6 +2682,8 @@ td {
   .latest-experiment-grid,
   .v2-plus-improvement-grid,
   .future-stack-grid,
+  .dt-shadow-status-grid,
+  .dt-shadow-phase-list,
   .offline-promotion-rows,
   .tft-use-grid,
   .tft-safe-language-row,
@@ -2340,11 +2691,14 @@ td {
     grid-template-columns: 1fr;
   }
 
-  .regret-row {
+  .regret-row,
+  .dt-shadow-comparison-row {
     grid-template-columns: 1fr;
   }
 
-  .regret-row strong {
+  .regret-row strong,
+  .dt-shadow-comparison-row strong,
+  .dt-shadow-comparison-row em {
     text-align: left;
   }
 

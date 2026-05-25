@@ -582,8 +582,58 @@ Operational notes:
 - This endpoint is the main `/operator` read model. It is a DAM-only hourly planning preview and does not submit bids.
 - IDM/ВДР data must not be presented as an active recommendation mode from this endpoint. Until a separate IDM model, validation target, market gate, and `ProposedBid` path exist, IDM belongs only in future-work or read-only context copy.
 - When `strategy_id` is `nbeatsx_official_v0` or `tft_official_v0` and forecast-store rows exist with all visible forecast prices inside the configured DAM caps, the endpoint routes those forecast prices through the deterministic Level 1 LP preview. Out-of-cap official rows remain visible in the forecast graph with `quality_boundary=needs_calibration_before_value_claim`, but the requested official strategy is disabled and the operator response falls back to `strict_similar_day`. The resulting schedule is still a preview, not market execution.
-- DT is exposed only when a policy-preview table has materialized safe rows. Even then, `market_execution_enabled` remains false until a full evaluation promotes it.
+- This endpoint remains the default production-facing recommendation source. Manual DT/Poland/DFL shadow inspection is exposed through `GET /dashboard/shadow-recommendation-preview`, not by promoting those sources into the default selection path.
 - `strict_similar_day` remains the control comparator and safe fallback.
+
+### `GET /dashboard/shadow-recommendation-preview`
+
+Returns a manually selected shadow/diagnostic recommendation preview for the
+operator dashboard. The dashboard uses it only when the operator selects a
+non-default preview source such as `dt_shadow`, `poland_tft_shadow`,
+`dfl_diagnostics`, or `v13_dt_lava_promoted_training`.
+
+Request query example:
+
+```text
+/dashboard/shadow-recommendation-preview?tenant_id=client_003_dnipro_factory&preview_source=dt_shadow
+```
+
+Response shape:
+
+- `preview_source_id`, `preview_source_label`, `preview_status`: selected manual
+  preview source and its boundary label. Current statuses include
+  `research_shadow_not_promoted`, `positive_not_promoted`, `diagnostic_only`,
+  and `blocked_source_readiness_roadmap`.
+- `default_strategy_id`: the honest default/fallback strategy that remains
+  selected when the operator is not viewing a manual shadow source; current
+  value is `schedule_value_learner_v2_plus`.
+- `selected_candidate_id`, `selected_schedule_family`: candidate-index or
+  schedule-family target selected by the shadow artifact when available.
+- `recommendation_schedule`: expanded hourly schedule rows with timestamp,
+  charge/discharge/hold action, signed MW, SOC before/after when available,
+  candidate id, schedule family, expected value, regret/value versus V2+ and
+  strict reference, and gate/safety status.
+- `comparison_metrics`: regret/value metrics for DT/shadow versus V2+,
+  strict/oracle reference, and behavior-cloning controls when present.
+- `available_preview_sources`: dashboard strategy-switch options.
+- `boundary_labels` and `readiness_warnings`: display labels such as
+  `DT Shadow`, `Not promoted`, `Preview only`, `No market execution`, and
+  `V2+ remains default/fallback`.
+- `market_execution_enabled=false`, `market_order_payload_emitted=false`, and
+  `proposed_bid_status=not_emitted_operator_preview`.
+
+Operational notes:
+
+- This endpoint is read-model only. It does not emit `ProposedBid`, market
+  order payloads, settlement identifiers, or dispatch commands.
+- DT Shadow is rendered even when it loses to V2+ or strict/oracle; negative
+  evidence is useful diagnostic evidence and not a rendering failure.
+- `v13_dt_lava_promoted_training` intentionally returns blocked roadmap
+  evidence while explicit DAM publication receipts/source-readiness gates are
+  blocked.
+- This endpoint does not change the default strategy selected by
+  `GET /dashboard/operator-recommendation`; V2+ remains teacher, comparator,
+  and fallback until a future strict LP/oracle promotion gate passes.
 
 ### `GET /dashboard/academic-mvp-readiness`
 
@@ -651,8 +701,8 @@ Current expected packet state:
   credentialless research-shadow context while keeping promotion blocked.
   The gate also exposes DT smoke backbone metadata such as `model_backbone`,
   `model_backbone_selection_reason`, and `hf_decision_transformer_available`;
-  the current packet records the local DT-compatible fallback because
-  `transformers` is not installed in the active `.venv`.
+  the current packet records `huggingface_decision_transformer_model` with
+  `hf_decision_transformer_available=true`.
   It additionally surfaces `state_contract_passed`, `reward_contract_passed`,
   `state_context_groups`, and `return_to_go_target`, so API consumers can
   verify the DT shadow substrate without treating it as promotion-ready.
@@ -760,6 +810,7 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - For risk-adjusted selector evidence, the dashboard can call `GET /dashboard/risk-adjusted-value-gate` to show median/tail/win-rate gate decisions. Current results are diagnostic only and do not replace the strict control.
 - For forecast-to-dispatch explainability, the dashboard can call `GET /dashboard/forecast-dispatch-sensitivity` to show whether high regret is mostly forecast error, spread mismatch, or LP dispatch sensitivity.
 - For the live operator product surface, the dashboard should call `GET /dashboard/operator-recommendation` to render selected strategy, SOC/load/PV context, daily value against hold, forecast model series, and value-gap series.
+- For manual non-default strategy inspection, the dashboard can call `GET /dashboard/shadow-recommendation-preview` and switch the same charts/tables to a DT, Poland/TFT, DFL diagnostic, or blocked V13/DT/LAVA roadmap preview. This is a diagnostic display path only; the default recommendation remains `GET /dashboard/operator-recommendation`.
 - For NBEATSx/TFT forecast graphs, the dashboard can call `GET /dashboard/future-stack-preview`; this keeps forecast evidence separate from dispatch commands.
 - For DT policy preview graphs, the dashboard can call `GET /dashboard/decision-policy-preview`; this remains preview-only unless the backend explicitly enables market execution after full evaluation.
 - The returned `resolved_location` should be displayed explicitly in the UI, because it is part of the operational truth for a location-aware weather run.
@@ -776,5 +827,6 @@ dg launch --assets weather_forecast_bronze --config-file simulations/run-configs
 - The forecast-dispatch sensitivity endpoint is explainability evidence only; it does not create or validate physical dispatch actions.
 - The exogenous-signal endpoint is context only; it should be described as state awareness until benchmark evidence shows decision value.
 - The operator recommendation endpoint is a product read model; it may show selected strategy and value previews, but it still does not emit market contracts.
+- The shadow recommendation preview endpoint is a manual diagnostic read model. It may show DT-selected hourly actions as evidence, but it is not promotion, execution, or market submission.
 - The future-stack endpoint is forecast evidence only. Full NeuralForecast NBEATSx / PyTorch-Forecasting TFT claims require official-adapter materialization and benchmark results.
 - The DT policy-preview endpoint is an offline policy surface. It is not a live policy while `live_policy_claim=false` and `market_execution_enabled=false`.

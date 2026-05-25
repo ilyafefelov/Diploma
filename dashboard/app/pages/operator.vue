@@ -18,9 +18,19 @@ import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
 import { useOperatorRecommendation } from '~/composables/useOperatorRecommendation'
+import { useShadowRecommendationComparison } from '~/composables/useShadowRecommendationComparison'
+import { useShadowRecommendationPreview } from '~/composables/useShadowRecommendationPreview'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
 import { buildOperatorResearchMetrics } from '~/utils/operatorResearchMetrics'
+import {
+  adaptShadowPreviewToOperatorRecommendation,
+  buildOperatorHourlyRecommendationRows,
+  buildShadowHourlyRecommendationRows,
+  previewModeLabel,
+  shouldLoadShadowPreview,
+  type OperatorPreviewSourceId
+} from '~/utils/operatorShadowPreview'
 
 const {
   tenants,
@@ -73,6 +83,7 @@ const {
 const includePriceHistory = ref(true)
 const explanationMode = ref<'mvp' | 'future'>('mvp')
 const selectedOperatorStrategyId = ref('schedule_value_learner_v2_plus')
+const selectedPreviewSourceId = ref<OperatorPreviewSourceId>('best_valid')
 
 const {
   operatorRecommendation,
@@ -81,16 +92,78 @@ const {
   clearError: clearOperatorRecommendationError,
   loadOperatorRecommendation
 } = useOperatorRecommendation(selectedTenantId, selectedOperatorStrategyId)
+const shadowDeliveryWindowStart = computed(() => operatorRecommendation.value?.target_delivery_window_start ?? null)
+
+const {
+  shadowPreview,
+  isLoading: isShadowPreviewLoading,
+  error: shadowPreviewError,
+  clearError: clearShadowPreviewError,
+  lastLoadedLabel: shadowPreviewLastLoadedLabel,
+  loadShadowRecommendationPreview
+} = useShadowRecommendationPreview(selectedTenantId, selectedPreviewSourceId, shadowDeliveryWindowStart)
+const {
+  shadowComparisonPreviews,
+  isLoading: isShadowComparisonLoading,
+  error: shadowComparisonError,
+  clearError: clearShadowComparisonError,
+  loadShadowComparisonPreviews
+} = useShadowRecommendationComparison(selectedTenantId, shadowDeliveryWindowStart)
+
+const visibleOperatorRecommendation = computed(() => adaptShadowPreviewToOperatorRecommendation(
+  operatorRecommendation.value,
+  shadowPreview.value,
+  selectedPreviewSourceId.value
+))
+const selectedPreviewSourceLabel = computed(() => previewModeLabel(selectedPreviewSourceId.value, shadowPreview.value))
+const hourlyRecommendationRows = computed(() => {
+  const batteryCapacityMwh = baselinePreview.value?.battery_metrics.capacity_mwh ?? null
+  if (selectedPreviewSourceId.value === 'best_valid') {
+    return buildOperatorHourlyRecommendationRows(visibleOperatorRecommendation.value, batteryCapacityMwh)
+  }
+
+  return buildShadowHourlyRecommendationRows(
+    shadowPreview.value,
+    batteryCapacityMwh,
+    shadowPreview.value?.interval_minutes ?? visibleOperatorRecommendation.value?.interval_minutes ?? 60
+  )
+})
+const hourlyRecommendationEmptyMessage = computed(() => {
+  if (selectedPreviewSourceId.value === 'v13_dt_lava_promoted_training') {
+    return 'Blocked by V13 source-readiness; no promoted schedule exists; V2+ remains fallback/default.'
+  }
+  if (selectedPreviewSourceId.value === 'best_valid') {
+    return 'Best-valid recommendation schedule is not loaded yet. Refresh the preview read model.'
+  }
+  return 'Selected shadow source has no hourly schedule rows. It remains roadmap evidence only.'
+})
 
 const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Selected V2+ evidence' : 'Research roadmap')
 
 const operatorReadModelErrorCount = computed(() => {
-  return defense.activeErrorCount.value + (operatorRecommendationError.value ? 1 : 0)
+  return defense.activeErrorCount.value
+    + (operatorRecommendationError.value ? 1 : 0)
+    + (shadowPreviewError.value ? 1 : 0)
+    + (shadowComparisonError.value ? 1 : 0)
 })
+const defenseBenchmark = computed(() => defense.benchmark.value ?? null)
+const defenseModelRows = computed(() => defense.modelRows.value)
+const defenseSensitivity = computed(() => defense.sensitivity.value ?? null)
+const defenseBatteryState = computed(() => defense.batteryState.value ?? null)
+const defenseExogenousSignals = computed(() => defense.exogenousSignals.value ?? null)
+const defenseFutureStack = computed(() => defense.futureStack.value ?? null)
+const defenseDecisionPolicyPreview = computed(() => defense.dtPolicyPreview.value ?? null)
+const defenseAcademicMvpReadiness = computed(() => defense.academicMvpReadiness.value ?? null)
+const defenseGatekeeperValidationStatus = computed(() => defense.gatekeeperValidationStatus.value ?? null)
+const defenseIsLoading = computed(() => defense.isLoading.value)
+const defenseLastLoadedLabel = computed(() => defense.lastLoadedLabel.value)
+const defenseActiveErrorCount = computed(() => defense.activeErrorCount.value)
 
 const {
   activeAlertCount,
   activeRegistrySummary,
+  batteryAssetLabel,
+  batteryCapacityContextLabel,
   batterySocFormula,
   batterySocPercent,
   batterySocSourceLabel,
@@ -101,6 +174,7 @@ const {
   batteryTelemetryIngestLabel,
   batteryTelemetryIngestTooltip,
   dispatchModeLabel,
+  deliveryWindowLabel,
   gatekeeperActions,
   headlineMetrics,
   latestRecommendedPowerLabel,
@@ -120,7 +194,7 @@ const {
   selectedTenant,
   signalPreview,
   baselinePreview,
-  operatorRecommendation,
+  operatorRecommendation: visibleOperatorRecommendation,
   batteryState: defense.batteryState,
   runConfig,
   materializeResult,
@@ -154,23 +228,23 @@ const nextStepsItems = computed(() => explanationMode.value === 'mvp'
 )
 
 const schedulePredictionHeadLabel = computed(() => {
-  if (operatorRecommendation.value) {
-    const selectedOption = operatorRecommendation.value.available_strategies.find((strategy) => {
-      return strategy.strategy_id === operatorRecommendation.value?.selected_strategy_id
+  if (visibleOperatorRecommendation.value) {
+    const selectedOption = visibleOperatorRecommendation.value.available_strategies.find((strategy) => {
+      return strategy.strategy_id === visibleOperatorRecommendation.value?.selected_strategy_id
     })
-    return `Strategy preview: ${selectedOption?.label || formatStrategyId(operatorRecommendation.value.selected_strategy_id)}`
+    return `Schedule source: ${selectedOption?.label || selectedPreviewSourceLabel.value || formatStrategyId(visibleOperatorRecommendation.value.selected_strategy_id)}`
   }
   return explanationMode.value === 'mvp'
-    ? 'Strategy preview: strict_similar_day fallback'
+    ? 'Schedule source: strict_similar_day fallback'
     : 'Research branch: TFT/DT candidate review'
 })
 
 const scheduleMarketBoundaryLabel = computed(() => {
-  if (!operatorRecommendation.value) {
+  if (!visibleOperatorRecommendation.value) {
     return 'DAM hourly preview / boundary loading'
   }
 
-  return operatorRecommendation.value.market_execution_enabled
+  return visibleOperatorRecommendation.value.market_execution_enabled
     ? 'Market execution enabled'
     : 'DAM delivery-day preview / no ProposedBid / no market submission'
 })
@@ -215,10 +289,20 @@ const dismissSurfaceErrors = (): void => {
   clearSignalPreviewError()
   clearBaselinePreviewError()
   clearOperatorRecommendationError()
+  clearShadowPreviewError()
+  clearShadowComparisonError()
 }
 
 const setSelectedTenantId = (tenantId: string): void => {
   selectedTenantId.value = tenantId
+}
+
+const refreshVisibleRecommendation = async (): Promise<void> => {
+  await loadOperatorRecommendation()
+  await loadShadowComparisonPreviews()
+  if (shouldLoadShadowPreview(selectedPreviewSourceId.value)) {
+    await loadShadowRecommendationPreview()
+  }
 }
 
 watch(selectedTenantId, () => {
@@ -234,6 +318,8 @@ onMounted(async () => {
   await loadSignalPreview()
   await loadBaselinePreview()
   await loadOperatorRecommendation()
+  await loadShadowComparisonPreviews()
+  await loadShadowRecommendationPreview()
   await defense.loadDefenseDashboard()
   await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
@@ -258,8 +344,8 @@ onBeforeUnmount(() => {
       <OperatorMetricRibbon :metrics="headlineMetrics" />
 
       <OperatorAlertBanner
-        v-if="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError"
-        :message="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError"
+        v-if="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError || shadowPreviewError || shadowComparisonError"
+        :message="error || weatherError || signalPreviewError || baselinePreviewError || operatorRecommendationError || shadowPreviewError || shadowComparisonError"
         @dismiss="dismissSurfaceErrors"
       />
 
@@ -269,6 +355,7 @@ onBeforeUnmount(() => {
           :selected-tenant-id="selectedTenantId"
           :nav-items="operatorNavItems"
           :active-registry-summary="activeRegistrySummary"
+          :battery-asset-label="batteryAssetLabel"
           :signal-preview="signalPreview"
           :baseline-preview="baselinePreview"
           @update:selected-tenant-id="setSelectedTenantId"
@@ -283,7 +370,7 @@ onBeforeUnmount(() => {
             :explanation-mode-label="explanationModeLabel"
             :market-regime-chips="marketRegimeChips"
             :signal-preview="signalPreview"
-            :operator-recommendation="operatorRecommendation"
+            :operator-recommendation="visibleOperatorRecommendation"
             :is-registry-loading="isLoading"
             :is-signal-preview-loading="isSignalPreviewLoading"
             :signal-preview-last-loaded-label="signalPreviewLastLoadedLabel"
@@ -292,7 +379,7 @@ onBeforeUnmount(() => {
 
           <OperatorBaselineConsole
             :baseline-preview="baselinePreview"
-            :operator-recommendation="operatorRecommendation"
+            :operator-recommendation="visibleOperatorRecommendation"
             :selected-strategy-id="selectedOperatorStrategyId"
             :is-loading="isBaselinePreviewLoading"
             :last-loaded-label="baselinePreviewLastLoadedLabel"
@@ -300,34 +387,41 @@ onBeforeUnmount(() => {
           />
 
           <OperatorDecisionEvidencePanel
-            :benchmark="defense.benchmark.value"
-            :model-rows="defense.modelRows.value"
-            :sensitivity="defense.sensitivity.value"
-            :battery-state="defense.batteryState.value"
+            :benchmark="defenseBenchmark"
+            :model-rows="defenseModelRows"
+            :sensitivity="defenseSensitivity"
+            :battery-state="defenseBatteryState"
             :baseline-preview="baselinePreview"
-            :operator-recommendation="operatorRecommendation"
-            :exogenous-signals="defense.exogenousSignals.value"
-            :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+            :operator-recommendation="visibleOperatorRecommendation"
+            :exogenous-signals="defenseExogenousSignals"
+            :is-loading="defenseIsLoading || isOperatorRecommendationLoading"
             :active-error-count="operatorReadModelErrorCount"
           />
 
           <OperatorFutureStackPanel
-            :future-stack="defense.futureStack.value"
-            :decision-policy="defense.dtPolicyPreview.value"
-            :operator-recommendation="operatorRecommendation"
-            :academic-mvp-readiness="defense.academicMvpReadiness.value"
+            :future-stack="defenseFutureStack"
+            :decision-policy="defenseDecisionPolicyPreview"
+            :operator-recommendation="visibleOperatorRecommendation"
+            :best-valid-recommendation="operatorRecommendation"
+            :shadow-preview="shadowPreview"
+            :shadow-comparison-previews="shadowComparisonPreviews"
+            :academic-mvp-readiness="defenseAcademicMvpReadiness"
             :selected-strategy-id="selectedOperatorStrategyId"
-            :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
+            :selected-preview-source-id="selectedPreviewSourceId"
+            :is-loading="defenseIsLoading || isOperatorRecommendationLoading || isShadowPreviewLoading || isShadowComparisonLoading"
+            :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
             :active-error-count="operatorReadModelErrorCount"
             @update:selected-strategy-id="value => selectedOperatorStrategyId = value"
+            @update:selected-preview-source-id="value => selectedPreviewSourceId = value"
+            @refresh:shadow-preview="refreshVisibleRecommendation"
           />
 
           <OperatorResearchPanel
             :metrics="operatorResearchMetrics"
-            :sensitivity="defense.sensitivity.value"
-            :is-loading="defense.isLoading.value"
-            :last-loaded-label="defense.lastLoadedLabel.value"
-            :active-error-count="defense.activeErrorCount.value"
+            :sensitivity="defenseSensitivity"
+            :is-loading="defenseIsLoading"
+            :last-loaded-label="defenseLastLoadedLabel"
+            :active-error-count="defenseActiveErrorCount"
           />
         </section>
 
@@ -345,7 +439,7 @@ onBeforeUnmount(() => {
           :battery-telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
           :latest-recommended-power-label="latestRecommendedPowerLabel"
           :gatekeeper-actions="gatekeeperActions"
-          :gatekeeper-status="defense.gatekeeperValidationStatus.value"
+          :gatekeeper-status="defenseGatekeeperValidationStatus"
           :active-alert-count="activeAlertCount"
           :status-label="statusLabel"
           :is-preparing="isPreparing"
@@ -369,6 +463,13 @@ onBeforeUnmount(() => {
         :dispatch-mode-label="dispatchModeLabel"
         :prediction-head-label="schedulePredictionHeadLabel"
         :market-boundary-label="scheduleMarketBoundaryLabel"
+        :battery-capacity-context-label="batteryCapacityContextLabel"
+        :delivery-window-label="deliveryWindowLabel"
+        :selected-preview-source-label="selectedPreviewSourceLabel"
+        :is-shadow-preview-mode="selectedPreviewSourceId !== 'best_valid'"
+        :hourly-recommendation-rows="hourlyRecommendationRows"
+        :hourly-empty-message="hourlyRecommendationEmptyMessage"
+        :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
       />
     </div>
   </main>

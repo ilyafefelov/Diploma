@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import datetime
 import math
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import polars as pl
-import torch
 
-from smart_arbitrage.dfl.relaxed_dispatch import _relaxed_dispatch_layer
+if TYPE_CHECKING:
+    import torch
+
 
 EXPERIMENT_NAME: Final[str] = "offline_horizon_bias_dfl_v0"
 CLAIM_SCOPE: Final[str] = "offline_dfl_experiment_not_full_dfl"
@@ -32,6 +33,26 @@ REQUIRED_EVALUATION_COLUMNS: Final[frozenset[str]] = frozenset(
         "evaluation_payload",
     }
 )
+
+
+class _LazyTorchModule:
+    def __getattr__(self, name: str) -> Any:
+        import torch as torch_module
+
+        return getattr(torch_module, name)
+
+
+if not TYPE_CHECKING:
+    torch = _LazyTorchModule()
+
+
+def _relaxed_dispatch_layer(*args: Any, **kwargs: Any) -> Any:
+    """Resolve cvxpylayers/torch-backed dispatch only while executing experiments."""
+    from smart_arbitrage.dfl.relaxed_dispatch import (
+        _relaxed_dispatch_layer as build_relaxed_dispatch_layer,
+    )
+
+    return build_relaxed_dispatch_layer(*args, **kwargs)
 
 
 def build_offline_dfl_experiment_frame(

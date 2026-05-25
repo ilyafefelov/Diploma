@@ -50,6 +50,9 @@ sota = [
     "pytorch-forecasting",     # Official Temporal Fusion Transformer adapter path
     "lightning",               # PyTorch Forecasting trainer runtime
 ]
+dt = [
+    "transformers>=4.53,<5",    # Hugging Face DecisionTransformerModel for research-shadow DT smoke
+]
 
 [tool.uv.sources]
 torch = [

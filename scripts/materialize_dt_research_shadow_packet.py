@@ -115,6 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "evaluation_validation_json": str(
                 smoke_paths["evaluation_validation_json"]
             ),
+            "selected_preview_json": str(smoke_paths["selected_preview_json"]),
             "research_shadow_training_rows": packet["dataset_summary"][
                 "research_shadow_training_rows"
             ],

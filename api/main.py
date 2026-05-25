@@ -164,6 +164,24 @@ ACADEMIC_MVP_VALIDATION_JSON_NAME = "credentialless_academic_mvp_readiness_valid
 ACADEMIC_MVP_VALIDATION_CLAIM_SCOPE = (
 	"credentialless_academic_mvp_readiness_validation_not_market_execution"
 )
+DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_research_shadow_current"
+	/ "dt_research_shadow_selected_schedule_preview.json"
+)
+DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_v13_dt_lava_teacher_dataset_safe_switch_only"
+	/ "dfl_v13_dt_lava_teacher_rows.csv"
+)
+TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_tft_quantile_365_full_negative_evidence"
+	/ "tft_augmented_gate_rows.csv"
+)
 ACADEMIC_MVP_REQUIRED_PASSPORT_GATES = frozenset(
 	{
 		"operator_preview_gate",
@@ -939,6 +957,74 @@ class OperatorRecommendationResponse(BaseModel):
 	hold_baseline_value_uah: float
 	value_vs_hold_uah: float
 	economics: BaselinePreviewEconomicsResponse
+
+
+class ShadowPreviewSourceOptionResponse(BaseModel):
+	preview_source_id: str
+	label: str
+	status: str
+	is_default_strategy: bool
+	is_promoted_strategy: bool
+	market_execution_enabled: bool
+	reason: str
+
+
+class ShadowRecommendationSchedulePointResponse(BaseModel):
+	step_index: int
+	interval_start: datetime
+	action: str
+	quantity_mw: float
+	recommended_net_power_mw: float
+	forecast_price_uah_mwh: float
+	soc_before_fraction: float | None
+	soc_after_fraction: float | None
+	selected_candidate_id: str
+	schedule_family: str
+	expected_value_uah: float
+	regret_uah: float
+	regret_vs_v2_plus_uah: float | None
+	regret_vs_strict_uah: float | None
+	value_vs_v2_plus_uah: float | None
+	value_vs_strict_uah: float | None
+	gate_status: str
+	safety_status: str
+	market_execution_enabled: bool
+	market_order_payload_emitted: bool
+	proposed_bid_status: str
+
+
+class ShadowRecommendationPreviewResponse(BaseModel):
+	tenant_id: str
+	preview_source_id: str
+	preview_source_label: str
+	preview_status: str
+	preview_only: bool
+	is_default_strategy: bool
+	is_promoted_strategy: bool
+	research_shadow_not_promotable: bool
+	default_strategy_id: str
+	default_strategy_label: str
+	selected_candidate_id: str | None
+	selected_schedule_family: str | None
+	selected_candidate_index: int | None
+	market_scope: str
+	market_venue: str
+	interval_minutes: int
+	anchor_timestamp: datetime | None
+	target_delivery_window_start: datetime | None
+	target_delivery_window_end: datetime | None
+	market_execution_enabled: bool
+	proposed_bid_status: str
+	market_order_payload_emitted: bool
+	promotion_gate_passed: bool
+	dt_lava_ready: bool
+	source_readiness_gate_passed: bool
+	comparison_metrics: dict[str, float]
+	available_preview_sources: list[ShadowPreviewSourceOptionResponse]
+	recommendation_schedule: list[ShadowRecommendationSchedulePointResponse]
+	boundary_labels: list[str]
+	readiness_warnings: list[str]
+	artifact_paths: dict[str, str]
 
 
 class AcademicMvpReadinessResponse(BaseModel):
@@ -4215,6 +4301,763 @@ def _operator_target_delivery_window(
 	return window_start, window_end
 
 
+def _operator_shadow_preview_sources() -> list[ShadowPreviewSourceOptionResponse]:
+	return [
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="best_valid",
+			label="Best valid recommendation",
+			status="default_v2_plus_fallback",
+			is_default_strategy=True,
+			is_promoted_strategy=True,
+			market_execution_enabled=False,
+			reason="Uses the existing gate-passed operator recommendation; V2+ remains default/fallback.",
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="dt_shadow",
+			label="DT Shadow",
+			status="research_shadow_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason="HF/local DT smoke over candidate-id or schedule-family targets; diagnostic preview only.",
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="poland_tft_shadow",
+			label="Poland/TFT Shadow",
+			status="positive_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason="Shadow challenger evidence; not default because rolling robustness is not sufficient.",
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="dfl_diagnostics",
+			label="DFL diagnostics",
+			status="diagnostic_only",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason="Candidate-value diagnostics for explaining regret/value behavior; not production strategy.",
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="v13_dt_lava_promoted_training",
+			label="V13/DT/LAVA blocked",
+			status="blocked_source_readiness_roadmap",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason="Blocked until V13 source-readiness and receipt gates pass.",
+		),
+	]
+
+
+def _operator_shadow_recommendation_preview_response(
+	*,
+	tenant_id: str,
+	preview_source: str,
+	target_delivery_window_start: datetime | None = None,
+) -> ShadowRecommendationPreviewResponse:
+	response: ShadowRecommendationPreviewResponse
+	if preview_source == "dt_shadow":
+		response = _operator_dt_shadow_recommendation_preview_response(tenant_id=tenant_id)
+	elif preview_source == "v13_dt_lava_promoted_training":
+		response = _blocked_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label="V13/DT/LAVA blocked",
+			status="blocked_source_readiness_roadmap",
+			warning=(
+				"V13/DT/LAVA remains blocked by source-readiness, "
+				"explicit DAM receipt, and promotion gates."
+			),
+		)
+	elif preview_source in {"poland_tft_shadow", "dfl_diagnostics"}:
+		response = _operator_artifact_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source=preview_source,
+		)
+	else:
+		raise HTTPException(status_code=404, detail=f"Unknown shadow preview source: {preview_source}")
+	return _project_shadow_preview_to_delivery_window(
+		response=response,
+		target_delivery_window_start=target_delivery_window_start,
+	)
+
+
+def _project_shadow_preview_to_delivery_window(
+	*,
+	response: ShadowRecommendationPreviewResponse,
+	target_delivery_window_start: datetime | None,
+) -> ShadowRecommendationPreviewResponse:
+	if target_delivery_window_start is None or not response.recommendation_schedule:
+		return response
+
+	projected_schedule = [
+		point.model_copy(
+			update={
+				"step_index": index,
+				"interval_start": target_delivery_window_start
+				+ timedelta(minutes=response.interval_minutes * index),
+			}
+		)
+		for index, point in enumerate(response.recommendation_schedule)
+	]
+	target_delivery_window_end = target_delivery_window_start + timedelta(
+		minutes=response.interval_minutes * len(projected_schedule)
+	)
+	return response.model_copy(
+		update={
+			"target_delivery_window_start": target_delivery_window_start,
+			"target_delivery_window_end": target_delivery_window_end,
+			"recommendation_schedule": projected_schedule,
+			"boundary_labels": [
+				*response.boundary_labels,
+				"Projected onto requested delivery-day window",
+			],
+			"readiness_warnings": [
+				*response.readiness_warnings,
+				"Shadow artifact actions are timestamp-projected onto the requested DAM delivery day for preview; "
+				"the artifact anchor remains unchanged and this is not market execution.",
+			],
+		}
+	)
+
+
+def _blocked_shadow_recommendation_preview_response(
+	*,
+	tenant_id: str,
+	preview_source_id: str,
+	label: str,
+	status: str,
+	warning: str,
+) -> ShadowRecommendationPreviewResponse:
+	return ShadowRecommendationPreviewResponse(
+		tenant_id=tenant_id,
+		preview_source_id=preview_source_id,
+		preview_source_label=label,
+		preview_status=status,
+		preview_only=True,
+		is_default_strategy=False,
+		is_promoted_strategy=False,
+		research_shadow_not_promotable=True,
+		default_strategy_id=OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
+		default_strategy_label=OFFLINE_V2_PLUS_LABEL,
+		selected_candidate_id=None,
+		selected_schedule_family=None,
+		selected_candidate_index=None,
+		market_scope=OPERATOR_MARKET_SCOPE,
+		market_venue=LEVEL1_MARKET_VENUE,
+		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		anchor_timestamp=None,
+		target_delivery_window_start=None,
+		target_delivery_window_end=None,
+		market_execution_enabled=False,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+		market_order_payload_emitted=False,
+		promotion_gate_passed=False,
+		dt_lava_ready=False,
+		source_readiness_gate_passed=False,
+		comparison_metrics={},
+		available_preview_sources=_operator_shadow_preview_sources(),
+		recommendation_schedule=[],
+		boundary_labels=[
+			"Preview only",
+			"Not promoted",
+			"No market execution",
+			"V2+ remains default/fallback",
+		],
+		readiness_warnings=[warning],
+		artifact_paths={},
+	)
+
+
+def _operator_dt_shadow_recommendation_preview_response(
+	*,
+	tenant_id: str,
+) -> ShadowRecommendationPreviewResponse:
+	packet_path = DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH
+	teacher_rows_path = DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH
+	packet = _read_json_object(
+		packet_path,
+		not_found_detail="DT shadow selected schedule preview artifact not found.",
+	)
+	if _json_contains_market_execution_enabled_true(packet):
+		raise HTTPException(
+			status_code=500,
+			detail="DT shadow selected schedule preview must keep market_execution_enabled=false.",
+		)
+	rows = packet.get("preview_rows")
+	if not isinstance(rows, list):
+		raise HTTPException(status_code=500, detail="DT shadow preview artifact missing preview_rows.")
+	tenant_rows = [
+		row for row in rows if isinstance(row, dict) and str(row.get("tenant_id", tenant_id)) == tenant_id
+	]
+	if not tenant_rows:
+		raise HTTPException(status_code=404, detail=f"DT shadow preview rows not found for tenant {tenant_id}.")
+	selection = max(
+		tenant_rows,
+		key=lambda row: _datetime_payload_value(row.get("anchor_timestamp"), field_name="anchor_timestamp"),
+	)
+	selected_candidate_id = str(selection.get("selected_candidate_id", "")).strip()
+	if not selected_candidate_id:
+		raise HTTPException(status_code=500, detail="DT shadow preview row missing selected_candidate_id.")
+	candidate_row = _dt_shadow_teacher_candidate_row(
+		teacher_rows_path=teacher_rows_path,
+		tenant_id=tenant_id,
+		selected_candidate_id=selected_candidate_id,
+	)
+	schedule = _shadow_schedule_rows_from_candidate(
+		candidate_row=candidate_row,
+		selection=selection,
+		selected_candidate_id=selected_candidate_id,
+		selected_schedule_family=str(selection.get("selected_schedule_family") or candidate_row.get("dt_schedule_family_target", "")),
+	)
+	target_start = schedule[0].interval_start if schedule else None
+	target_end = schedule[-1].interval_start + timedelta(minutes=LEVEL1_INTERVAL_MINUTES) if schedule else None
+	return ShadowRecommendationPreviewResponse(
+		tenant_id=tenant_id,
+		preview_source_id="dt_shadow",
+		preview_source_label="DT Shadow",
+		preview_status="research_shadow_not_promoted",
+		preview_only=True,
+		is_default_strategy=False,
+		is_promoted_strategy=False,
+		research_shadow_not_promotable=True,
+		default_strategy_id=OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
+		default_strategy_label=OFFLINE_V2_PLUS_LABEL,
+		selected_candidate_id=selected_candidate_id,
+		selected_schedule_family=str(selection.get("selected_schedule_family") or candidate_row.get("dt_schedule_family_target", "")),
+		selected_candidate_index=_optional_int(selection.get("selected_candidate_index")),
+		market_scope=OPERATOR_MARKET_SCOPE,
+		market_venue=LEVEL1_MARKET_VENUE,
+		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		anchor_timestamp=_datetime_payload_value(selection.get("anchor_timestamp"), field_name="anchor_timestamp"),
+		target_delivery_window_start=target_start,
+		target_delivery_window_end=target_end,
+		market_execution_enabled=False,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+		market_order_payload_emitted=False,
+		promotion_gate_passed=False,
+		dt_lava_ready=False,
+		source_readiness_gate_passed=False,
+		comparison_metrics=_dt_shadow_comparison_metrics(selection=selection, packet=packet),
+		available_preview_sources=_operator_shadow_preview_sources(),
+		recommendation_schedule=schedule,
+		boundary_labels=[
+			"DT Shadow",
+			"Not promoted",
+			"Preview only",
+			"No market execution",
+			"V2+ remains default/fallback",
+		],
+		readiness_warnings=[
+			"DT shadow is diagnostic evidence only and is rendered even when it loses to V2+ or strict/oracle.",
+			"V13 explicit DAM publication receipts remain blocked for market-submission claims.",
+		],
+		artifact_paths={
+			"selected_preview_json": str(packet_path),
+			"teacher_rows_csv": str(teacher_rows_path),
+		},
+	)
+
+
+def _operator_artifact_shadow_recommendation_preview_response(
+	*,
+	tenant_id: str,
+	preview_source: str,
+) -> ShadowRecommendationPreviewResponse:
+	label = "Poland/TFT Shadow" if preview_source == "poland_tft_shadow" else "DFL diagnostics"
+	status = "positive_not_promoted" if preview_source == "poland_tft_shadow" else "diagnostic_only"
+	if not TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH.exists():
+		return _blocked_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label=label,
+			status=status,
+			warning=f"{label} artifact rows are not available in the local read model.",
+		)
+	try:
+		frame = pl.read_csv(TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH, try_parse_dates=True)
+	except (OSError, pl.exceptions.PolarsError) as error:
+		raise HTTPException(status_code=500, detail=f"{label} artifact rows are unreadable.") from error
+	if frame.height == 0:
+		return _blocked_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label=label,
+			status=status,
+			warning=f"{label} artifact rows are empty.",
+		)
+	tenant_frame = frame.filter(pl.col("tenant_id") == tenant_id)
+	if preview_source == "poland_tft_shadow" and "source_model_name" in tenant_frame.columns:
+		tenant_frame = tenant_frame.filter(pl.col("source_model_name").str.contains("tft"))
+	if tenant_frame.height == 0:
+		return _blocked_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label=label,
+			status=status,
+			warning=f"{label} has no schedule rows for tenant {tenant_id}.",
+		)
+	row = tenant_frame.sort(["anchor_timestamp", "regret_uah"]).tail(1).row(0, named=True)
+	selection = {
+		"anchor_timestamp": row["anchor_timestamp"],
+		"selected_candidate_id": str(row.get("evaluation_id", "")),
+		"selected_schedule_family": str(row.get("selection_role", preview_source)),
+		"selected_candidate_index": None,
+		"dt_selected_regret_uah": float(row.get("regret_uah", 0.0)),
+		"dt_selected_value_uah": float(row.get("decision_value_uah", 0.0)),
+		"v2_plus_regret_uah": OFFLINE_V2_PLUS_MEAN_REGRET_UAH,
+		"v2_plus_value_uah": float(row.get("decision_value_uah", 0.0)),
+		"strict_regret_uah": float(row.get("regret_uah", 0.0)),
+		"strict_value_uah": float(row.get("oracle_value_uah", row.get("decision_value_uah", 0.0))),
+	}
+	schedule = _shadow_schedule_rows_from_augmented_gate_row(row=row, selection=selection)
+	target_start = schedule[0].interval_start if schedule else None
+	target_end = schedule[-1].interval_start + timedelta(minutes=LEVEL1_INTERVAL_MINUTES) if schedule else None
+	return ShadowRecommendationPreviewResponse(
+		tenant_id=tenant_id,
+		preview_source_id=preview_source,
+		preview_source_label=label,
+		preview_status=status,
+		preview_only=True,
+		is_default_strategy=False,
+		is_promoted_strategy=False,
+		research_shadow_not_promotable=True,
+		default_strategy_id=OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
+		default_strategy_label=OFFLINE_V2_PLUS_LABEL,
+		selected_candidate_id=str(selection["selected_candidate_id"]),
+		selected_schedule_family=str(selection["selected_schedule_family"]),
+		selected_candidate_index=None,
+		market_scope=OPERATOR_MARKET_SCOPE,
+		market_venue=LEVEL1_MARKET_VENUE,
+		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		anchor_timestamp=_datetime_row_value(row["anchor_timestamp"], field_name="anchor_timestamp"),
+		target_delivery_window_start=target_start,
+		target_delivery_window_end=target_end,
+		market_execution_enabled=False,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+		market_order_payload_emitted=False,
+		promotion_gate_passed=False,
+		dt_lava_ready=False,
+		source_readiness_gate_passed=False,
+		comparison_metrics=_dt_shadow_comparison_metrics(selection=selection, packet={}),
+		available_preview_sources=_operator_shadow_preview_sources(),
+		recommendation_schedule=schedule,
+		boundary_labels=[
+			label,
+			status,
+			"Preview only",
+			"No market execution",
+			"V2+ remains default/fallback",
+		],
+		readiness_warnings=[
+			f"{label} is manually selectable diagnostic evidence and is not the production default.",
+		],
+		artifact_paths={"augmented_gate_rows_csv": str(TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH)},
+	)
+
+
+def _read_json_object(path: Path, *, not_found_detail: str) -> dict[str, Any]:
+	if not path.exists():
+		raise HTTPException(status_code=404, detail=f"{not_found_detail} Path: {path}")
+	try:
+		value = json.loads(path.read_text(encoding="utf-8"))
+	except (OSError, json.JSONDecodeError) as error:
+		raise HTTPException(status_code=500, detail=f"JSON artifact is unreadable: {path}") from error
+	if not isinstance(value, dict):
+		raise HTTPException(status_code=500, detail=f"JSON artifact must be an object: {path}")
+	return value
+
+
+def _dt_shadow_teacher_candidate_row(
+	*,
+	teacher_rows_path: Path,
+	tenant_id: str,
+	selected_candidate_id: str,
+) -> dict[str, Any]:
+	if not teacher_rows_path.exists():
+		raise HTTPException(status_code=404, detail=f"DT shadow teacher rows not found: {teacher_rows_path}")
+	try:
+		frame = pl.read_csv(teacher_rows_path, try_parse_dates=True)
+	except (OSError, pl.exceptions.PolarsError) as error:
+		raise HTTPException(status_code=500, detail=f"DT shadow teacher rows are unreadable: {teacher_rows_path}") from error
+	if frame.height == 0:
+		raise HTTPException(status_code=404, detail="DT shadow teacher rows are empty.")
+	if "market_execution_enabled" in frame.columns and frame.select(pl.col("market_execution_enabled").any()).item():
+		raise HTTPException(status_code=500, detail="DT shadow teacher rows must keep market_execution_enabled=false.")
+	candidate_columns = [
+		column
+		for column in ("dt_candidate_id_target", "teacher_candidate_key", "candidate_model_name")
+		if column in frame.columns
+	]
+	if not candidate_columns:
+		raise HTTPException(status_code=500, detail="DT shadow teacher rows have no candidate id columns.")
+	filter_expr = pl.col("tenant_id").cast(pl.String) == tenant_id
+	candidate_expr = pl.lit(False)
+	for column in candidate_columns:
+		candidate_expr = candidate_expr | (pl.col(column).cast(pl.String) == selected_candidate_id)
+	filtered = frame.filter(filter_expr & candidate_expr)
+	if filtered.height == 0:
+		raise HTTPException(
+			status_code=404,
+			detail=f"DT shadow selected candidate not found in teacher rows: {selected_candidate_id}",
+		)
+	return filtered.sort("anchor_timestamp").tail(1).row(0, named=True)
+
+
+def _shadow_schedule_rows_from_candidate(
+	*,
+	candidate_row: dict[str, Any],
+	selection: dict[str, Any],
+	selected_candidate_id: str,
+	selected_schedule_family: str,
+) -> list[ShadowRecommendationSchedulePointResponse]:
+	forecast_prices = _number_vector(candidate_row.get("forecast_price_uah_mwh_vector"))
+	dispatch_values = _number_vector(candidate_row.get("dispatch_mw_vector"))
+	soc_values = _number_vector(candidate_row.get("soc_fraction_vector"))
+	horizon_rows = _candidate_horizon_rows(candidate_row)
+	step_count = min(len(dispatch_values), len(forecast_prices))
+	if step_count == 0 and horizon_rows:
+		step_count = len(horizon_rows)
+	if step_count == 0:
+		raise HTTPException(status_code=500, detail="DT shadow selected candidate has no hourly schedule rows.")
+	anchor_timestamp = _datetime_row_value(candidate_row["anchor_timestamp"], field_name="anchor_timestamp")
+	schedule_inputs: list[dict[str, Any]] = [
+		{
+			"step_index": step_index,
+			"interval_start": _shadow_interval_start(
+				anchor_timestamp=anchor_timestamp,
+				step_index=step_index,
+				horizon_rows=horizon_rows,
+			),
+			"net_power_mw": _horizon_or_vector_value(
+				horizon_rows=horizon_rows,
+				step_index=step_index,
+				horizon_key="net_power_mw",
+				vector=dispatch_values,
+			),
+			"forecast_price_uah_mwh": _horizon_or_vector_value(
+				horizon_rows=horizon_rows,
+				step_index=step_index,
+				horizon_key="forecast_price_uah_mwh",
+				vector=forecast_prices,
+			),
+		}
+		for step_index in range(step_count)
+	]
+	soc_pairs = _shadow_schedule_soc_pairs(
+		tenant_id=str(candidate_row.get("tenant_id", "")),
+		schedule_inputs=schedule_inputs,
+		soc_values=soc_values,
+	)
+	return [
+		_shadow_schedule_point(
+			step_index=int(schedule_input["step_index"]),
+			interval_start=schedule_input["interval_start"],
+			net_power_mw=float(schedule_input["net_power_mw"]),
+			forecast_price_uah_mwh=float(schedule_input["forecast_price_uah_mwh"]),
+			soc_before=soc_pairs[index][0],
+			soc_after=soc_pairs[index][1],
+			selected_candidate_id=selected_candidate_id,
+			selected_schedule_family=selected_schedule_family,
+			selection=selection,
+			candidate_row=candidate_row,
+		)
+		for index, schedule_input in enumerate(schedule_inputs)
+	]
+
+
+def _shadow_schedule_rows_from_augmented_gate_row(
+	*,
+	row: dict[str, Any],
+	selection: dict[str, Any],
+) -> list[ShadowRecommendationSchedulePointResponse]:
+	payload = _json_mapping_value(row.get("evaluation_payload"))
+	horizon = payload.get("horizon")
+	if not isinstance(horizon, list) or not horizon:
+		anchor_timestamp = _datetime_row_value(row["anchor_timestamp"], field_name="anchor_timestamp")
+		horizon = [
+			{
+				"interval_start": anchor_timestamp + timedelta(hours=1),
+				"net_power_mw": float(row.get("committed_power_mw", 0.0)),
+				"forecast_price_uah_mwh": 0.0,
+				"step_index": 0,
+			}
+		]
+	schedule_inputs: list[dict[str, Any]] = [
+		{
+			"step_index": int(item.get("step_index", index)) if isinstance(item, dict) else index,
+			"interval_start": _datetime_payload_value(
+				item.get("interval_start") if isinstance(item, dict) else None,
+				field_name="interval_start",
+			),
+			"net_power_mw": float(item.get("net_power_mw", 0.0)) if isinstance(item, dict) else 0.0,
+			"forecast_price_uah_mwh": float(item.get("forecast_price_uah_mwh", 0.0)) if isinstance(item, dict) else 0.0,
+		}
+		for index, item in enumerate(horizon)
+	]
+	soc_pairs = _shadow_schedule_soc_pairs(
+		tenant_id=str(row.get("tenant_id", "")),
+		schedule_inputs=schedule_inputs,
+		soc_values=[],
+	)
+	return [
+		_shadow_schedule_point(
+			step_index=int(schedule_input["step_index"]),
+			interval_start=schedule_input["interval_start"],
+			net_power_mw=float(schedule_input["net_power_mw"]),
+			forecast_price_uah_mwh=float(schedule_input["forecast_price_uah_mwh"]),
+			soc_before=soc_pairs[index][0],
+			soc_after=soc_pairs[index][1],
+			selected_candidate_id=str(selection["selected_candidate_id"]),
+			selected_schedule_family=str(selection["selected_schedule_family"]),
+			selection=selection,
+			candidate_row=row,
+		)
+		for index, schedule_input in enumerate(schedule_inputs)
+	]
+
+
+def _shadow_schedule_point(
+	*,
+	step_index: int,
+	interval_start: datetime,
+	net_power_mw: float,
+	forecast_price_uah_mwh: float,
+	soc_before: float | None,
+	soc_after: float | None,
+	selected_candidate_id: str,
+	selected_schedule_family: str,
+	selection: dict[str, Any],
+	candidate_row: dict[str, Any],
+) -> ShadowRecommendationSchedulePointResponse:
+	selected_regret = _float_payload_value(selection.get("dt_selected_regret_uah", candidate_row.get("regret_uah", 0.0)))
+	selected_value = _float_payload_value(
+		selection.get("dt_selected_value_uah", candidate_row.get("schedule_value_uah", candidate_row.get("decision_value_uah", 0.0)))
+	)
+	v2_regret = _optional_float(selection.get("v2_plus_regret_uah"))
+	strict_regret = _optional_float(selection.get("strict_regret_uah"))
+	v2_value = _optional_float(selection.get("v2_plus_value_uah"))
+	strict_value = _optional_float(selection.get("strict_value_uah"))
+	safety_violation_count = _int_value(candidate_row.get("safety_violation_count", 0))
+	return ShadowRecommendationSchedulePointResponse(
+		step_index=step_index,
+		interval_start=interval_start,
+		action=_shadow_action_label(net_power_mw),
+		quantity_mw=abs(net_power_mw),
+		recommended_net_power_mw=net_power_mw,
+		forecast_price_uah_mwh=forecast_price_uah_mwh,
+		soc_before_fraction=soc_before,
+		soc_after_fraction=soc_after,
+		selected_candidate_id=selected_candidate_id,
+		schedule_family=selected_schedule_family,
+		expected_value_uah=selected_value,
+		regret_uah=selected_regret,
+		regret_vs_v2_plus_uah=None if v2_regret is None else selected_regret - v2_regret,
+		regret_vs_strict_uah=None if strict_regret is None else selected_regret - strict_regret,
+		value_vs_v2_plus_uah=None if v2_value is None else selected_value - v2_value,
+		value_vs_strict_uah=None if strict_value is None else selected_value - strict_value,
+		gate_status="accepted_shadow_preview" if safety_violation_count == 0 else "blocked_shadow_preview",
+		safety_status="no_safety_violations_recorded"
+		if safety_violation_count == 0
+		else f"{safety_violation_count}_safety_violation(s)",
+		market_execution_enabled=False,
+		market_order_payload_emitted=False,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+	)
+
+
+def _dt_shadow_comparison_metrics(
+	*,
+	selection: dict[str, Any],
+	packet: dict[str, Any],
+) -> dict[str, float]:
+	packet_metrics = packet.get("evaluation_metrics")
+	metrics = {}
+	if isinstance(packet_metrics, dict):
+		metrics = {
+			str(key): float(value)
+			for key, value in packet_metrics.items()
+			if isinstance(value, (int, float))
+		}
+	metric_aliases = {
+		"dt_selected_mean_regret_uah": "dt_selected_regret_uah",
+		"dt_selected_mean_value_uah": "dt_selected_value_uah",
+		"v2_plus_mean_regret_uah": "v2_plus_regret_uah",
+		"v2_plus_mean_value_uah": "v2_plus_value_uah",
+		"strict_mean_regret_uah": "strict_regret_uah",
+		"strict_mean_value_uah": "strict_value_uah",
+		"behavior_cloning_mean_regret_uah": "behavior_cloning_regret_uah",
+		"behavior_cloning_mean_value_uah": "behavior_cloning_value_uah",
+	}
+	for metric_name, selection_name in metric_aliases.items():
+		if metric_name not in metrics and isinstance(selection.get(selection_name), (int, float)):
+			metrics[metric_name] = float(selection[selection_name])
+	if "dt_selected_mean_regret_uah" in metrics and "v2_plus_mean_regret_uah" in metrics:
+		metrics["dt_minus_v2_plus_regret_uah"] = (
+			metrics["dt_selected_mean_regret_uah"] - metrics["v2_plus_mean_regret_uah"]
+		)
+	if "dt_selected_mean_value_uah" in metrics and "v2_plus_mean_value_uah" in metrics:
+		metrics["dt_minus_v2_plus_value_uah"] = (
+			metrics["dt_selected_mean_value_uah"] - metrics["v2_plus_mean_value_uah"]
+		)
+	if "dt_selected_mean_regret_uah" in metrics and "strict_mean_regret_uah" in metrics:
+		metrics["dt_minus_strict_regret_uah"] = (
+			metrics["dt_selected_mean_regret_uah"] - metrics["strict_mean_regret_uah"]
+		)
+	if "dt_selected_mean_value_uah" in metrics and "strict_mean_value_uah" in metrics:
+		metrics["dt_minus_strict_value_uah"] = (
+			metrics["dt_selected_mean_value_uah"] - metrics["strict_mean_value_uah"]
+		)
+	return metrics
+
+
+def _candidate_horizon_rows(candidate_row: dict[str, Any]) -> list[dict[str, Any]]:
+	payload = _json_mapping_value(candidate_row.get("evaluation_payload"))
+	horizon = payload.get("horizon")
+	if not isinstance(horizon, list):
+		return []
+	return [item for item in horizon if isinstance(item, dict)]
+
+
+def _shadow_interval_start(
+	*,
+	anchor_timestamp: datetime,
+	step_index: int,
+	horizon_rows: list[dict[str, Any]],
+) -> datetime:
+	if step_index < len(horizon_rows) and horizon_rows[step_index].get("interval_start") is not None:
+		return _datetime_payload_value(horizon_rows[step_index]["interval_start"], field_name="interval_start")
+	return anchor_timestamp + timedelta(minutes=LEVEL1_INTERVAL_MINUTES * (step_index + 1))
+
+
+def _horizon_or_vector_value(
+	*,
+	horizon_rows: list[dict[str, Any]],
+	step_index: int,
+	horizon_key: str,
+	vector: list[float],
+) -> float:
+	if step_index < len(horizon_rows) and horizon_rows[step_index].get(horizon_key) is not None:
+		return float(horizon_rows[step_index][horizon_key])
+	if step_index < len(vector):
+		return float(vector[step_index])
+	return 0.0
+
+
+def _shadow_schedule_soc_pairs(
+	*,
+	tenant_id: str,
+	schedule_inputs: list[dict[str, Any]],
+	soc_values: list[float],
+) -> list[tuple[float | None, float | None]]:
+	explicit_pairs = [
+		(_soc_before(soc_values, step_index), _soc_after(soc_values, step_index))
+		for step_index in range(len(schedule_inputs))
+	]
+	if not _should_project_shadow_soc(schedule_inputs=schedule_inputs, explicit_pairs=explicit_pairs, soc_values=soc_values):
+		return explicit_pairs
+	if not tenant_id:
+		return explicit_pairs
+
+	starting_soc = explicit_pairs[0][0] if explicit_pairs and explicit_pairs[0][0] is not None else 0.5
+	starting_soc = max(0.0, min(1.0, float(starting_soc)))
+	try:
+		battery_metrics = _resolve_tenant_battery_defaults(tenant_id=tenant_id).metrics
+		projection = simulate_projected_battery_state(
+			schedule=[
+				ScheduledPowerPoint(
+					interval_start=schedule_input["interval_start"],
+					net_power_mw=float(schedule_input["net_power_mw"]),
+				)
+				for schedule_input in schedule_inputs
+			],
+			battery_metrics=battery_metrics,
+			starting_soc_fraction=starting_soc,
+			interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		)
+	except (HTTPException, ValueError, TypeError):
+		return explicit_pairs
+
+	return [
+		(trace_point.soc_before_fraction, trace_point.soc_after_fraction)
+		for trace_point in projection.trace
+	]
+
+
+def _should_project_shadow_soc(
+	*,
+	schedule_inputs: list[dict[str, Any]],
+	explicit_pairs: list[tuple[float | None, float | None]],
+	soc_values: list[float],
+) -> bool:
+	non_idle_schedule = any(abs(float(schedule_input.get("net_power_mw", 0.0))) >= 0.005 for schedule_input in schedule_inputs)
+	if not non_idle_schedule:
+		return False
+	if len(soc_values) < len(schedule_inputs) + 1:
+		return True
+	if any(before is None or after is None for before, after in explicit_pairs):
+		return True
+	complete_pairs = [
+		(before, after)
+		for before, after in explicit_pairs
+		if before is not None and after is not None
+	]
+	return all(
+		abs(after - before) <= 1e-6
+		for before, after in complete_pairs
+	)
+
+
+def _number_vector(value: Any) -> list[float]:
+	if isinstance(value, str):
+		try:
+			decoded = json.loads(value)
+		except json.JSONDecodeError as error:
+			raise HTTPException(status_code=500, detail="Schedule vector must be JSON encoded.") from error
+		return _number_vector(decoded)
+	if isinstance(value, list | tuple):
+		return [float(item) for item in value]
+	if isinstance(value, pl.Series):
+		return [float(item) for item in value.to_list()]
+	return []
+
+
+def _soc_before(soc_values: list[float], step_index: int) -> float | None:
+	if step_index < len(soc_values):
+		return float(soc_values[step_index])
+	return None
+
+
+def _soc_after(soc_values: list[float], step_index: int) -> float | None:
+	if step_index + 1 < len(soc_values):
+		return float(soc_values[step_index + 1])
+	if step_index < len(soc_values):
+		return float(soc_values[step_index])
+	return None
+
+
+def _shadow_action_label(net_power_mw: float) -> str:
+	if net_power_mw > 0.005:
+		return "discharge"
+	if net_power_mw < -0.005:
+		return "charge"
+	return "hold"
+
+
+def _float_payload_value(value: Any) -> float:
+	if isinstance(value, (int, float, str)):
+		return float(value)
+	return 0.0
+
+
+def _optional_int(value: Any) -> int | None:
+	if value is None:
+		return None
+	return int(value)
+
+
 def _operator_forecast_generated_at(selected_strategy_id: str) -> datetime | None:
 	if selected_strategy_id not in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
 		return None
@@ -5056,6 +5899,30 @@ def dashboard_operator_recommendation(
 		payload=response.model_dump(mode="json"),
 	)
 	return response
+
+
+@app.get(
+	"/dashboard/shadow-recommendation-preview",
+	response_model=ShadowRecommendationPreviewResponse,
+	tags=["weather"],
+	summary="Get shadow recommendation preview",
+	description=(
+		"Returns a manually selected shadow/diagnostic recommendation preview for the operator dashboard. "
+		"These previews are read-model evidence only: no ProposedBid, no market order payload, no DT/LAVA "
+		"promotion, and market_execution_enabled remains false."
+	),
+)
+def dashboard_shadow_recommendation_preview(
+	tenant_id: str,
+	preview_source: str = "dt_shadow",
+	target_delivery_window_start: datetime | None = None,
+) -> ShadowRecommendationPreviewResponse:
+	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	return _operator_shadow_recommendation_preview_response(
+		tenant_id=tenant_id,
+		preview_source=preview_source,
+		target_delivery_window_start=target_delivery_window_start,
+	)
 
 
 @app.get(

@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
 import {
+  buildAcademicMvpDtShadowComparisonRows,
   buildAcademicMvpGatePassportItems,
+  buildRecommendationInputSignalRows,
   buildRecommendationStrategySelectItems,
   filterOfficialPolicyValueSeries,
   buildPolicyForecastContextPoints,
   buildV13ReadinessItems,
   buildStrategyReadinessItems,
   buildStrategySelectItems,
+  selectOperatorForecastChartSource,
   formatForecastQualityLabel,
   formatForecastWindowLabel,
   formatOperatorPolicyForecastContextLabel,
@@ -17,7 +20,11 @@ import {
   sortFutureForecastSeries
 } from './operatorFutureStack'
 
-import type { FutureForecastSeriesResponse, OperatorStrategyOptionResponse } from '~/types/control-plane'
+import type {
+  AcademicMvpReadinessResponse,
+  FutureForecastSeriesResponse,
+  OperatorStrategyOptionResponse
+} from '~/types/control-plane'
 
 const emptySeries = (modelName: string, sourceStatus: string): FutureForecastSeriesResponse => ({
   model_name: modelName,
@@ -69,6 +76,152 @@ describe('operator future stack display helpers', () => {
       'tft_official_v0',
       'nbeatsx_silver_v0',
       'tft_silver_v0'
+    ])
+  })
+
+  it('selects delivery-day recommendation forecast rows before short future-stack context rows for the operator chart', () => {
+    const deliverySeries = {
+      ...emptySeries('nbeatsx_silver_v0', 'compact_fallback_from_lp_preview'),
+      points: [
+        {
+          step_index: 0,
+          interval_start: '2026-05-26T00:00:00',
+          forecast_price_uah_mwh: 1828,
+          actual_price_uah_mwh: null,
+          p10_price_uah_mwh: null,
+          p50_price_uah_mwh: 1828,
+          p90_price_uah_mwh: null,
+          net_power_mw: null,
+          value_gap_uah: null,
+          price_cap_status: 'inside_dam_cap'
+        },
+        {
+          step_index: 23,
+          interval_start: '2026-05-26T23:00:00',
+          forecast_price_uah_mwh: 2642,
+          actual_price_uah_mwh: null,
+          p10_price_uah_mwh: null,
+          p50_price_uah_mwh: 2642,
+          p90_price_uah_mwh: null,
+          net_power_mw: null,
+          value_gap_uah: null,
+          price_cap_status: 'inside_dam_cap'
+        }
+      ]
+    }
+    const futureStackSeries = {
+      ...emptySeries('nbeatsx_official_v0', 'official'),
+      points: [
+        {
+          step_index: 0,
+          interval_start: '2026-05-25T19:00:00',
+          forecast_price_uah_mwh: 4100,
+          actual_price_uah_mwh: null,
+          p10_price_uah_mwh: null,
+          p50_price_uah_mwh: 4100,
+          p90_price_uah_mwh: null,
+          net_power_mw: null,
+          value_gap_uah: null,
+          price_cap_status: 'inside_dam_cap'
+        }
+      ]
+    }
+
+    const source = selectOperatorForecastChartSource({
+      futureStack: {
+        forecast_window_start: '2026-05-25T19:00:00',
+        forecast_window_end: '2026-05-26T00:00:00',
+        forecast_series: [futureStackSeries]
+      },
+      operatorRecommendation: {
+        target_delivery_window_start: '2026-05-26T00:00:00',
+        target_delivery_window_end: '2026-05-27T00:00:00',
+        forecast_model_series: [deliverySeries]
+      }
+    })
+
+    expect(source.kind).toBe('operator_delivery_day')
+    expect(source.windowStart).toBe('2026-05-26T00:00:00')
+    expect(source.windowEnd).toBe('2026-05-27T00:00:00')
+    expect(source.series[0]?.points.map(point => point.interval_start)).toEqual([
+      '2026-05-26T00:00:00',
+      '2026-05-26T23:00:00'
+    ])
+  })
+
+  it('builds recommendation input signal rows from the selected delivery-day schedule instead of duplicate model lines', () => {
+    expect(buildRecommendationInputSignalRows(
+      [
+        {
+          step_index: 0,
+          interval_start: '2026-05-26T00:00:00',
+          forecast_price_uah_mwh: 1542.84,
+          recommended_net_power_mw: -0.234,
+          projected_soc_before_fraction: 0.5,
+          projected_soc_after_fraction: 0.95,
+          throughput_mwh: 0.234,
+          degradation_penalty_uah: 197.5,
+          gross_market_value_uah: -361.9,
+          net_value_uah: -559.4
+        },
+        {
+          step_index: 1,
+          interval_start: '2026-05-26T01:00:00',
+          forecast_price_uah_mwh: 4908.36,
+          recommended_net_power_mw: 0.25,
+          projected_soc_before_fraction: 0.95,
+          projected_soc_after_fraction: 0.47,
+          throughput_mwh: 0.25,
+          degradation_penalty_uah: 0,
+          gross_market_value_uah: 1227,
+          net_value_uah: 1227
+        }
+      ],
+      [
+        {
+          timestamp: '2026-05-26T00:00:00',
+          physical_soc: null,
+          estimated_soc: 0.5,
+          planning_soc: 0.95,
+          soc_source: 'tenant_default',
+          confidence: 'low'
+        },
+        {
+          timestamp: '2026-05-26T01:00:00',
+          physical_soc: null,
+          estimated_soc: 0.5,
+          planning_soc: 0.47,
+          soc_source: 'tenant_default',
+          confidence: 'low'
+        }
+      ],
+      [
+        {
+          timestamp: '2026-05-26T00:00:00Z',
+          load_mw: 0.31,
+          pv_estimate_mw: 0.02,
+          net_load_mw: 0.29,
+          btm_battery_power_mw: 0.03,
+          source_kind: 'configured',
+          weather_source_kind: 'schedule_estimate',
+          reason_code: 'off_hours'
+        }
+      ]
+    )).toEqual([
+      {
+        label: '26 May, 00:00',
+        forecastPriceUahMwh: 1543,
+        selectedNetPowerMw: -0.234,
+        projectedSocPercent: 95,
+        siteNetLoadMw: 0.29
+      },
+      {
+        label: '26 May, 01:00',
+        forecastPriceUahMwh: 4908,
+        selectedNetPowerMw: 0.25,
+        projectedSocPercent: 47,
+        siteNetLoadMw: null
+      }
     ])
   })
 
@@ -496,6 +649,58 @@ describe('operator future stack display helpers', () => {
         reason: 'market_execution_enabled=false'
       }
     ])
+  })
+
+  it('builds DT shadow regret/value comparison rows for the defense dashboard', () => {
+    expect(buildAcademicMvpDtShadowComparisonRows({
+      dt_research_shadow_gate: {
+        evaluation_metrics: {
+          dt_selected_mean_regret_uah: 507.898,
+          dt_selected_mean_value_uah: 3403.586,
+          v2_plus_mean_regret_uah: 510.818,
+          v2_plus_mean_value_uah: 3400.667,
+          strict_mean_regret_uah: 431.703,
+          strict_mean_value_uah: 3479.781,
+          behavior_cloning_mean_regret_uah: 510.818,
+          behavior_cloning_mean_value_uah: 3400.667
+        }
+      }
+    } as unknown as AcademicMvpReadinessResponse)).toEqual([
+      {
+        label: 'DT shadow',
+        meanRegretUah: 507.898,
+        meanValueUah: 3403.586,
+        regretBarWidthPercent: 99,
+        status: 'research-shadow',
+        note: 'HF/local transformer candidate-index policy'
+      },
+      {
+        label: 'V2+ fallback',
+        meanRegretUah: 510.818,
+        meanValueUah: 3400.667,
+        regretBarWidthPercent: 100,
+        status: 'fallback',
+        note: 'teacher / comparator / fallback'
+      },
+      {
+        label: 'Strict reference',
+        meanRegretUah: 431.703,
+        meanValueUah: 3479.781,
+        regretBarWidthPercent: 85,
+        status: 'reference',
+        note: 'strict LP/oracle reference'
+      },
+      {
+        label: 'Behavior cloning',
+        meanRegretUah: 510.818,
+        meanValueUah: 3400.667,
+        regretBarWidthPercent: 100,
+        status: 'control',
+        note: 'imitation control, accuracy secondary'
+      }
+    ])
+
+    expect(buildAcademicMvpDtShadowComparisonRows(null)).toEqual([])
   })
 
   it('formats runtime acceleration for SOTA and DT status cards', () => {

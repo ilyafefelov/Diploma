@@ -15,7 +15,6 @@ from smart_arbitrage.forecasting.market_coupling_availability import (
 from smart_arbitrage.forecasting.market_coupling_features import (
 	build_market_coupling_feature_route_frame,
 )
-from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import build_neural_forecast_feature_frame
 from smart_arbitrage.forecasting.official_adapters import (
 	build_official_global_panel_nbeatsx_forecast,
@@ -30,7 +29,6 @@ from smart_arbitrage.forecasting.sota_training import (
 	build_official_global_panel_poland_lag24_experimental_training_frame as build_poland_lag24_experimental_training_frame,
 	build_official_global_panel_training_frame,
 )
-from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.resources.forecast_store import get_forecast_store
 
 MLFLOW_FORECAST_EXPERIMENT_NAME = "smart-arbitrage-forecast-research"
@@ -360,7 +358,7 @@ def nbeatsx_price_forecast(
 ) -> pl.DataFrame:
 	"""NBEATSx-style DAM price forecast candidate for research comparison."""
 
-	forecast = build_nbeatsx_forecast(neural_forecast_feature_frame)
+	forecast = _build_nbeatsx_forecast(neural_forecast_feature_frame)
 	forecast_run_id = _persist_forecast_run(
 		model_name="nbeatsx_silver_v0",
 		forecast=forecast,
@@ -396,7 +394,7 @@ def tft_price_forecast(
 ) -> pl.DataFrame:
 	"""TFT-style interpretable DAM price forecast candidate for research comparison."""
 
-	forecast = build_tft_forecast(neural_forecast_feature_frame)
+	forecast = _build_tft_forecast(neural_forecast_feature_frame)
 	forecast_run_id = _persist_forecast_run(
 		model_name="tft_silver_v0",
 		forecast=forecast,
@@ -748,6 +746,22 @@ NEURAL_FORECAST_SILVER_ASSETS = [
 def _add_metadata(context: dg.AssetExecutionContext | None, metadata: dict[str, Any]) -> None:
 	if context is not None:
 		context.add_output_metadata(metadata)
+
+
+def _build_nbeatsx_forecast(feature_frame: pl.DataFrame) -> pl.DataFrame:
+	"""Import compact torch forecast code only when this asset executes."""
+
+	from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
+
+	return build_nbeatsx_forecast(feature_frame)
+
+
+def _build_tft_forecast(feature_frame: pl.DataFrame) -> pl.DataFrame:
+	"""Import compact torch forecast code only when this asset executes."""
+
+	from smart_arbitrage.forecasting.tft import build_tft_forecast
+
+	return build_tft_forecast(feature_frame)
 
 
 def _tenant_ids_from_csv(value: str, frame: pl.DataFrame) -> tuple[str, ...]:

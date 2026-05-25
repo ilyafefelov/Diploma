@@ -58,7 +58,7 @@
     <rect width="572" height="230" rx="12" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"/>
     <text x="28" y="44" font-family="Arial, sans-serif" font-size="24" font-weight="700" fill="#0f172a">Verification</text>
     <text x="28" y="84" font-family="Arial, sans-serif" font-size="17" fill="#0f172a">Ruff and Mypy passed</text>
-    <text x="28" y="122" font-family="Arial, sans-serif" font-size="17" fill="#0f172a">Pytest: 151 passed</text>
+    <text x="28" y="122" font-family="Arial, sans-serif" font-size="17" fill="#0f172a">Historical pytest: 151 passed</text>
     <text x="28" y="154" font-family="Arial, sans-serif" font-size="17" fill="#0f172a">Dagster definitions loaded</text>
     <text x="28" y="192" font-family="Arial, sans-serif" font-size="17" fill="#0f172a">Compose config valid</text>
   </g>

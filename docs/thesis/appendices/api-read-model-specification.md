@@ -36,9 +36,18 @@ configuration sources.
 | `GET /dashboard/decision-policy-preview`            | `tenant_id`, optional `limit`                                         | Persisted offline DT policy-preview rows                                                       | Projected actions, safety projection, value gap and policy context                            | Simulated trade store, `decision_transformer_policy_steps`            | DT policy-preview diagnostics                                  | Лише preview; не є ринковим виконанням.                                    |
 | `GET /dashboard/simulated-live-trading`             | `tenant_id`, optional `limit`                                         | Persisted simulated replay rows                                                                | Simulated replay timeline and outcomes                                                        | Simulated trade store, `simulated_live_trading_rows`                  | Future execution-surface rehearsal                             | Лише simulated rows; немає реальних settlement identifiers.                |
 | `GET /dashboard/operator-recommendation`            | `tenant_id`, optional `strategy_id`                                   | Battery state, tenant load/PV context, strategy availability, forecast/read stores, LP preview, V13 acquisition packet | DAM hourly scope metadata, anchor/forecast timing, selected strategy, V13 readiness with receipt-source audit freshness, forecast series, value-gap series, feasible schedule | Battery telemetry store, strategy/forecast stores, LP preview helpers, V13 packet export | Продуктовий read model для операторського перегляду             | DAM-only recommendation preview; `market_execution_enabled=false`; no `ProposedBid`, no IDM bid recommendation, no market submission; DT/LAVA strategy selection remains blocked while `v13_readiness.dt_lava_ready=false`. |
+| `GET /dashboard/shadow-recommendation-preview`      | `tenant_id`, `preview_source`                                         | DT shadow selected-schedule packet, V2+/TFT/DFL candidate artifacts, V13 readiness blockers    | Manual shadow preview source, expanded hourly schedule rows, candidate/schedule family, regret/value versus V2+ and strict reference, non-promotion labels | DT research-shadow packet, candidate schedule artifacts               | Defense/operator diagnostic strategy switch                    | Manual preview only; default remains V2+; `market_execution_enabled=false`; no `ProposedBid`; no market order payload; blocked V13/DT/LAVA training remains roadmap evidence. |
 
 Ці endpoint-и слід трактувати як групи read-model
 контрактів. Детальні параметри та response fields важливі для інженерної
 відтворюваності, але методологічний висновок залишається незмінним: якість
 ML/DFL-кандидатів визначається rolling-origin LP/oracle evaluation та promotion
 gates, а не самим фактом наявності API endpoint-а.
+
+Операторський dashboard тому має два різні режими читання. За замовчуванням
+використовується `GET /dashboard/operator-recommendation`, де V2+ залишається
+teacher/comparator/fallback і default honest strategy. Manual switch у UI може
+завантажувати `GET /dashboard/shadow-recommendation-preview`, щоб показати DT
+Shadow, Poland/TFT Shadow або DFL diagnostics як власні hourly recommendation
+tables. Цей другий режим не змінює production/default selection і не є
+ринковою заявкою.

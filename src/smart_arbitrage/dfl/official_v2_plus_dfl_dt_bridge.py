@@ -7,8 +7,6 @@ from statistics import mean, pstdev
 from typing import Any, Final
 
 import polars as pl
-
-from smart_arbitrage.dfl.offline_dt_candidate import build_dfl_offline_dt_candidate_frame
 from smart_arbitrage.dfl.residual_schedule_value import (
     build_dfl_residual_dt_fallback_strict_lp_benchmark_frame,
     build_dfl_residual_schedule_value_model_frame,
@@ -249,6 +247,40 @@ def build_dfl_official_global_panel_v2_plus_offline_dt_candidate_frame(
     random_seed: int = 2026,
 ) -> pl.DataFrame:
     """Build the official V2+-teacher tiny offline DT candidate card."""
+
+    return _build_dfl_offline_dt_candidate_frame(
+        trajectory_frame,
+        tenant_ids=tenant_ids,
+        forecast_model_names=forecast_model_names,
+        final_validation_anchor_count_per_tenant=final_validation_anchor_count_per_tenant,
+        high_value_quantile=high_value_quantile,
+        context_length=context_length,
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        max_epochs=max_epochs,
+        random_seed=random_seed,
+    )
+
+
+def _build_dfl_offline_dt_candidate_frame(
+    trajectory_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    forecast_model_names: tuple[str, ...],
+    final_validation_anchor_count_per_tenant: int,
+    high_value_quantile: float,
+    context_length: int,
+    hidden_dim: int,
+    num_layers: int,
+    num_heads: int,
+    max_epochs: int,
+    random_seed: int,
+) -> pl.DataFrame:
+    """Import torch-backed DT code only when the candidate card executes."""
+    from smart_arbitrage.dfl.offline_dt_candidate import (
+        build_dfl_offline_dt_candidate_frame,
+    )
 
     return build_dfl_offline_dt_candidate_frame(
         trajectory_frame,

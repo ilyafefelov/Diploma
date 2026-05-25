@@ -209,6 +209,18 @@ def _write_lava_npz(
         adjacent_mask=adjacent_mask
         if adjacent_mask is not None
         else np.array([[True, True], [True, False]], dtype=bool),
+        tenant_id_vector=np.array(
+            ["client_001_kyiv_mall", "client_002_lviv_office"]
+        ),
+        source_model_name_vector=np.array(
+            ["lava_schedule_neighbor_bridge_v1", "lava_schedule_neighbor_bridge_v1"]
+        ),
+        anchor_timestamp_vector=np.array(
+            ["2026-01-01T23:00:00", "2026-01-02T23:00:00"]
+        ),
+        selected_candidate_model_name_vector=np.array(
+            ["safe_train_candidate_a", "safe_train_candidate_a"]
+        ),
         v13_candidate_generation_ready=np.array(False),
         dt_lava_ready=np.array(False),
         permits_model_training=np.array(permits_model_training),

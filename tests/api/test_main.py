@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any
 from datetime import UTC, datetime, timedelta
 
@@ -764,6 +765,351 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 		datetime.fromisoformat(point["interval_start"]).date()
 		for point in response_payload["recommendation_schedule"]
 	} == {target_start.date()}
+
+
+def test_operator_default_remains_v2_plus_when_dt_shadow_preview_exists(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_shadow_preview_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "schedule_value_learner_v2_plus",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["selected_strategy_id"] == "schedule_value_learner_v2_plus"
+	assert response_payload["policy_mode"] == "offline_strategy_promotion_preview"
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
+def test_dt_shadow_recommendation_preview_expands_selected_candidate_without_promotion(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_shadow_preview_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={"tenant_id": "client_003_dnipro_factory", "preview_source": "dt_shadow"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["preview_source_id"] == "dt_shadow"
+	assert response_payload["preview_status"] == "research_shadow_not_promoted"
+	assert response_payload["selected_candidate_id"] == "dt-candidate-worse-than-v2"
+	assert response_payload["selected_schedule_family"] == "dt_tail_risk_aware_schedule"
+	assert response_payload["is_default_strategy"] is False
+	assert response_payload["is_promoted_strategy"] is False
+	assert response_payload["research_shadow_not_promotable"] is True
+	assert response_payload["default_strategy_id"] == "schedule_value_learner_v2_plus"
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert response_payload["market_order_payload_emitted"] is False
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+	assert response_payload["comparison_metrics"]["dt_selected_mean_regret_uah"] > response_payload[
+		"comparison_metrics"
+	]["v2_plus_mean_regret_uah"]
+	assert response_payload["comparison_metrics"]["dt_minus_v2_plus_regret_uah"] == pytest.approx(45.0)
+	assert response_payload["recommendation_schedule"][0] == {
+		"step_index": 0,
+		"interval_start": "2026-05-06T00:00:00Z",
+		"action": "discharge",
+		"quantity_mw": 0.12,
+		"recommended_net_power_mw": 0.12,
+		"forecast_price_uah_mwh": 4300.0,
+		"soc_before_fraction": 0.52,
+		"soc_after_fraction": 0.47,
+		"selected_candidate_id": "dt-candidate-worse-than-v2",
+		"schedule_family": "dt_tail_risk_aware_schedule",
+		"expected_value_uah": 700.0,
+		"regret_uah": 245.0,
+		"regret_vs_v2_plus_uah": 45.0,
+		"regret_vs_strict_uah": 80.0,
+		"value_vs_v2_plus_uah": -45.0,
+		"value_vs_strict_uah": -80.0,
+		"gate_status": "accepted_shadow_preview",
+		"safety_status": "no_safety_violations_recorded",
+		"market_execution_enabled": False,
+		"market_order_payload_emitted": False,
+		"proposed_bid_status": "not_emitted_operator_preview",
+	}
+
+
+def test_dt_shadow_recommendation_preview_projects_placeholder_soc(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_shadow_preview_fixture(
+		tmp_path,
+		soc_fraction_vector=[0.5, 0.5, 0.5, 0.5],
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={"tenant_id": "client_003_dnipro_factory", "preview_source": "dt_shadow"},
+	)
+
+	assert response.status_code == 200
+	schedule = response.json()["recommendation_schedule"]
+	assert schedule[0]["soc_before_fraction"] == pytest.approx(0.5)
+	assert schedule[0]["soc_after_fraction"] < 0.5
+	assert schedule[1]["soc_before_fraction"] == pytest.approx(schedule[0]["soc_after_fraction"])
+	assert schedule[1]["soc_after_fraction"] > schedule[1]["soc_before_fraction"]
+	assert schedule[2]["soc_before_fraction"] == pytest.approx(schedule[2]["soc_after_fraction"])
+
+
+def test_dt_shadow_recommendation_preview_can_project_to_requested_delivery_window(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_shadow_preview_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "dt_shadow",
+			"target_delivery_window_start": "2026-05-26T00:00:00",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	schedule = response_payload["recommendation_schedule"]
+	assert response_payload["target_delivery_window_start"] == "2026-05-26T00:00:00"
+	assert response_payload["target_delivery_window_end"] == "2026-05-26T03:00:00"
+	assert [point["interval_start"] for point in schedule] == [
+		"2026-05-26T00:00:00",
+		"2026-05-26T01:00:00",
+		"2026-05-26T02:00:00",
+	]
+	assert response_payload["anchor_timestamp"] == "2026-05-05T23:00:00Z"
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["market_order_payload_emitted"] is False
+	assert "Projected onto requested delivery-day window" in response_payload["boundary_labels"]
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
+def test_poland_tft_shadow_recommendation_preview_projects_soc_when_artifact_omits_it(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_shadow_augmented_gate_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH",
+		tmp_path / "tft_augmented_gate_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={"tenant_id": "client_003_dnipro_factory", "preview_source": "poland_tft_shadow"},
+	)
+
+	assert response.status_code == 200
+	schedule = response.json()["recommendation_schedule"]
+	assert schedule[0]["soc_before_fraction"] == pytest.approx(0.5)
+	assert schedule[0]["soc_after_fraction"] < 0.5
+	assert schedule[1]["soc_before_fraction"] == pytest.approx(schedule[0]["soc_after_fraction"])
+	assert schedule[1]["soc_after_fraction"] > schedule[1]["soc_before_fraction"]
+	assert response.json()["market_execution_enabled"] is False
+	assert "proposed_bid" not in response.json()
+	assert "market_order_payload" not in response.json()
+
+
+def test_blocked_v13_dt_lava_promoted_training_preview_stays_roadmap_only(
+	client: TestClient,
+) -> None:
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "v13_dt_lava_promoted_training",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["preview_source_id"] == "v13_dt_lava_promoted_training"
+	assert response_payload["preview_status"] == "blocked_source_readiness_roadmap"
+	assert response_payload["recommendation_schedule"] == []
+	assert response_payload["is_promoted_strategy"] is False
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["market_order_payload_emitted"] is False
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
+def _write_dt_shadow_preview_fixture(
+	tmp_path: Path,
+	*,
+	soc_fraction_vector: list[float] | None = None,
+) -> None:
+	selected_candidate_id = "dt-candidate-worse-than-v2"
+	soc_values = soc_fraction_vector or [0.52, 0.47, 0.51, 0.51]
+	(tmp_path / "dt_selected_preview.json").write_text(
+		json.dumps(
+			{
+				"claim_scope": "dt_research_shadow_selected_schedule_preview_not_promotable_not_market_execution",
+				"preview_rows": [
+					{
+						"tenant_id": "client_003_dnipro_factory",
+						"anchor_timestamp": "2026-05-05T23:00:00+00:00",
+						"selected_candidate_id": selected_candidate_id,
+						"selected_schedule_family": "dt_tail_risk_aware_schedule",
+						"selected_candidate_index": 7,
+						"dt_selected_regret_uah": 245.0,
+						"dt_selected_value_uah": 700.0,
+						"v2_plus_regret_uah": 200.0,
+						"v2_plus_value_uah": 745.0,
+						"strict_regret_uah": 165.0,
+						"strict_value_uah": 780.0,
+						"behavior_cloning_regret_uah": 250.0,
+						"behavior_cloning_value_uah": 695.0,
+						"market_execution_enabled": False,
+						"dt_promotion_gate_passed": False,
+						"research_shadow_not_promotable": True,
+					}
+				],
+				"evaluation_metrics": {
+					"dt_selected_mean_regret_uah": 245.0,
+					"dt_selected_mean_value_uah": 700.0,
+					"v2_plus_mean_regret_uah": 200.0,
+					"v2_plus_mean_value_uah": 745.0,
+					"strict_mean_regret_uah": 165.0,
+					"strict_mean_value_uah": 780.0,
+					"behavior_cloning_mean_regret_uah": 250.0,
+					"behavior_cloning_mean_value_uah": 695.0,
+				},
+				"market_execution_enabled": False,
+				"dt_promotion_gate_passed": False,
+				"research_shadow_not_promotable": True,
+			}
+		),
+		encoding="utf-8",
+	)
+	pl.DataFrame(
+		{
+			"tenant_id": ["client_003_dnipro_factory"],
+			"anchor_timestamp": [datetime(2026, 5, 5, 23, tzinfo=UTC)],
+			"dt_candidate_id_target": [selected_candidate_id],
+			"dt_schedule_family_target": ["dt_tail_risk_aware_schedule"],
+			"candidate_model_name": ["dt_shadow_candidate_tail_risk_aware"],
+			"horizon_hours": [3],
+			"forecast_price_uah_mwh_vector": [json.dumps([4300.0, 1400.0, 2400.0])],
+			"dispatch_mw_vector": [json.dumps([0.12, -0.05, 0.0])],
+			"soc_fraction_vector": [json.dumps(soc_values)],
+			"schedule_value_uah": [700.0],
+			"decision_value_uah": [700.0],
+			"regret_uah": [245.0],
+			"regret_delta_vs_v2_plus_uah": [45.0],
+			"oracle_value_uah": [945.0],
+			"safety_violation_count": [0],
+			"market_execution_enabled": [False],
+			"market_execution_gate_passed": [False],
+			"promotion_gate_passed": [False],
+			"not_market_execution": [True],
+			"not_deployed_dt_control": [True],
+		}
+	).write_csv(tmp_path / "teacher_rows.csv")
+
+
+def _write_shadow_augmented_gate_fixture(tmp_path: Path) -> None:
+	pl.DataFrame(
+		{
+			"tenant_id": ["client_003_dnipro_factory"],
+			"source_model_name": ["tft_official_global_panel_v1_horizon_quantile_calibrated_v1"],
+			"anchor_timestamp": [datetime(2026, 4, 29, 23, tzinfo=UTC)],
+			"evaluation_id": ["poland-shadow-diagnostic-candidate"],
+			"selection_role": ["positive_not_promoted"],
+			"regret_uah": [245.0],
+			"decision_value_uah": [700.0],
+			"oracle_value_uah": [945.0],
+			"evaluation_payload": [
+				json.dumps(
+					{
+						"horizon": [
+							{
+								"step_index": 0,
+								"interval_start": "2026-04-30T00:00:00Z",
+								"net_power_mw": 0.12,
+								"forecast_price_uah_mwh": 4300.0,
+							},
+							{
+								"step_index": 1,
+								"interval_start": "2026-04-30T01:00:00Z",
+								"net_power_mw": -0.05,
+								"forecast_price_uah_mwh": 1400.0,
+							},
+							{
+								"step_index": 2,
+								"interval_start": "2026-04-30T02:00:00Z",
+								"net_power_mw": 0.0,
+								"forecast_price_uah_mwh": 2400.0,
+							},
+						]
+					}
+				)
+			],
+		}
+	).write_csv(tmp_path / "tft_augmented_gate_rows.csv")
 
 
 def _academic_mvp_readiness_packet() -> dict[str, Any]:

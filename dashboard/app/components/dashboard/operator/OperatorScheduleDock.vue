@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { OperatorTimelineSegment } from '~/types/operator-dashboard'
+import type { ShadowHourlyRecommendationRow } from '~/utils/operatorShadowPreview'
 
 const props = defineProps<{
   selectedTenantName: string
@@ -9,6 +10,13 @@ const props = defineProps<{
   dispatchModeLabel: string
   predictionHeadLabel: string
   marketBoundaryLabel: string
+  batteryCapacityContextLabel: string
+  deliveryWindowLabel: string
+  selectedPreviewSourceLabel: string
+  isShadowPreviewMode: boolean
+  hourlyRecommendationRows: ShadowHourlyRecommendationRow[]
+  hourlyEmptyMessage: string
+  shadowPreviewLastLoadedLabel: string
 }>()
 
 const activeTooltipSegment = ref<OperatorTimelineSegment | null>(null)
@@ -45,10 +53,19 @@ const hideSegmentTooltip = (): void => {
     <div class="schedule-dock__heading">
       <UIcon name="i-lucide-clock-3" />
       <div>
-        <p>DAM delivery day review</p>
+        <p>{{ isShadowPreviewMode ? 'Shadow delivery-day preview' : 'DAM delivery day review' }}</p>
         <span>{{ selectedTenantName }} / {{ selectedTenantBadge }}</span>
+        <strong class="schedule-dock__battery-context">
+          <UIcon name="i-lucide-battery-charging" />
+          {{ batteryCapacityContextLabel }}
+        </strong>
+        <small>{{ deliveryWindowLabel }}</small>
         <small>{{ predictionHeadLabel }}</small>
+        <small>Schedule shown: {{ selectedPreviewSourceLabel }}</small>
         <small>{{ marketBoundaryLabel }}</small>
+        <small v-if="isShadowPreviewMode">
+          DT/shadow loaded {{ shadowPreviewLastLoadedLabel }} / projected preview / manual refresh only
+        </small>
       </div>
     </div>
 
@@ -82,36 +99,48 @@ const hideSegmentTooltip = (): void => {
       <span class="schedule-tooltip__boundary">{{ activeTooltipSegment.marketBoundaryLabel }}</span>
     </div>
 
+    <div
+      class="shadow-hourly-table"
+      aria-label="Hourly recommendation table"
+    >
+      <div class="shadow-hourly-table__head">
+        <span>Timestamp</span>
+        <span>Action</span>
+        <span>MW / MWh / capacity</span>
+        <span>SOC</span>
+        <span>Candidate / family</span>
+        <span>Value</span>
+        <span>Regret / value gap</span>
+        <span>Gate</span>
+      </div>
+      <div
+        v-for="row in hourlyRecommendationRows"
+        :key="`${row.timestamp}-${row.candidateLabel}`"
+        class="shadow-hourly-table__row"
+      >
+        <span>{{ row.timestamp }}</span>
+        <strong>{{ row.action }}</strong>
+        <span>{{ row.quantityLabel }}</span>
+        <span>{{ row.socPathLabel }}</span>
+        <span>{{ row.candidateLabel }} / {{ row.scheduleFamily }}</span>
+        <span>{{ row.expectedValueLabel }}</span>
+        <span>{{ row.regretVsV2Label }}; {{ row.regretVsStrictLabel }}</span>
+        <span>{{ row.gateStatus }}</span>
+      </div>
+      <p v-if="hourlyRecommendationRows.length === 0">
+        {{ hourlyEmptyMessage }}
+      </p>
+    </div>
+
     <div class="dock-selectors">
-      <label>
+      <div class="dock-status-pill">
         <span>Selected strategy</span>
-        <USelect
-          class="dock-select"
-          :model-value="predictionHeadLabel"
-          :items="[
-            { label: predictionHeadLabel, value: predictionHeadLabel }
-          ]"
-          value-key="value"
-          label-key="label"
-          variant="none"
-          color="info"
-        />
-      </label>
-      <label>
+        <strong>{{ predictionHeadLabel }}</strong>
+      </div>
+      <div class="dock-status-pill">
         <span>Review mode</span>
-        <USelect
-          class="dock-select"
-          :model-value="dispatchModeLabel"
-          :items="[
-            { label: dispatchModeLabel, value: dispatchModeLabel },
-            { label: 'Operator review', value: 'Operator review' }
-          ]"
-          value-key="value"
-          label-key="label"
-          variant="none"
-          color="info"
-        />
-      </label>
+        <strong>{{ dispatchModeLabel }}</strong>
+      </div>
     </div>
   </footer>
 </template>

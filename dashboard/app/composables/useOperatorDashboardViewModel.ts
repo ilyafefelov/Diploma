@@ -125,21 +125,37 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   })
 
   const activeRecommendationSchedule = computed(() => {
-    const selectedSchedule = input.operatorRecommendation?.value?.recommendation_schedule ?? []
-    if (selectedSchedule.length > 0) {
-      return selectedSchedule
+    if (input.operatorRecommendation?.value) {
+      return input.operatorRecommendation.value.recommendation_schedule ?? []
     }
 
     return input.baselinePreview.value?.recommendation_schedule ?? []
   })
 
   const activeBidRecommendationPreview = computed(() => {
-    const selectedPreview = input.operatorRecommendation?.value?.bid_recommendation_preview ?? []
-    if (selectedPreview.length > 0) {
-      return selectedPreview
+    if (input.operatorRecommendation?.value) {
+      return input.operatorRecommendation.value.bid_recommendation_preview ?? []
     }
 
     return input.baselinePreview.value?.bid_recommendation_preview ?? []
+  })
+  const activeIntervalMinutes = computed(() => input.operatorRecommendation?.value?.interval_minutes
+    ?? input.baselinePreview.value?.interval_minutes
+    ?? 60)
+  const batteryCapacityMwh = computed(() => input.baselinePreview.value?.battery_metrics.capacity_mwh ?? null)
+  const deliveryWindowLabel = computed(() => {
+    const windowStart = input.operatorRecommendation?.value?.target_delivery_window_start
+      ?? input.baselinePreview.value?.target_delivery_window_start
+      ?? null
+    const windowEnd = input.operatorRecommendation?.value?.target_delivery_window_end
+      ?? input.baselinePreview.value?.target_delivery_window_end
+      ?? null
+
+    if (!windowStart || !windowEnd) {
+      return 'Delivery window: pending'
+    }
+
+    return `Delivery window: ${formatDamDeliveryLabel(windowStart)} -> ${formatDamDeliveryLabel(windowEnd)}`
   })
 
   const activeEconomics = computed(() => input.operatorRecommendation?.value?.economics
@@ -207,6 +223,24 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     }
 
     return `${(throughput / (metrics.capacity_mwh * 2)).toFixed(2)} EFC`
+  })
+
+  const batteryAssetLabel = computed(() => {
+    const metrics = input.baselinePreview.value?.battery_metrics
+    if (!metrics) {
+      return 'Battery size loading'
+    }
+
+    return `${formatBatteryMetric(metrics.capacity_mwh)} MWh / ${formatBatteryMetric(metrics.max_power_mw)} MW max`
+  })
+
+  const batteryCapacityContextLabel = computed(() => {
+    const metrics = input.baselinePreview.value?.battery_metrics
+    if (!metrics) {
+      return 'Capacity pending'
+    }
+
+    return `Battery: ${formatBatteryMetric(metrics.capacity_mwh)} MWh usable preview / ${formatBatteryMetric(metrics.max_power_mw)} MW max. For 1h DAM rows, MW is approximately MWh.`
   })
 
   const headlineMetrics = computed<OperatorHeadlineMetric[]>(() => [
@@ -396,11 +430,16 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
       const marketBoundaryLabel = bidPreview?.market_order_payload_emitted === false
         ? 'No market payload'
         : 'Preview only'
+      const quantityLabel = formatPowerEnergyCapacityLabel(
+        point.recommended_net_power_mw,
+        activeIntervalMinutes.value,
+        batteryCapacityMwh.value
+      )
 
       return {
         time: formatDamDeliveryLabel(point.interval_start),
         label,
-        value: formatSignedMw(point.recommended_net_power_mw),
+        value: quantityLabel,
         marketSideLabel,
         indicativePriceLabel,
         marketBoundaryLabel,
@@ -413,6 +452,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
         tooltipBody: formatTimelineTooltipBody(
           label,
           point.recommended_net_power_mw,
+          quantityLabel,
           bidPreview,
           marketSideLabel,
           indicativePriceLabel,
@@ -507,6 +547,8 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   return {
     activeAlertCount,
     activeRegistrySummary,
+    batteryAssetLabel,
+    batteryCapacityContextLabel,
     batterySocFormula,
     batterySocPercent,
     batterySocSourceLabel,
@@ -517,6 +559,7 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     batteryTelemetryIngestLabel,
     batteryTelemetryIngestTooltip,
     dispatchModeLabel,
+    deliveryWindowLabel,
     gatekeeperActions,
     headlineMetrics,
     latestRecommendedPowerLabel,
@@ -536,6 +579,26 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
 }
 
 const formatUah = (value: number): string => `${Math.round(value).toLocaleString('en-GB')} UAH`
+const formatBatteryMetric = (value: number): string => value.toLocaleString('en-GB', {
+  maximumFractionDigits: 2,
+  minimumFractionDigits: value < 10 ? 2 : 0
+})
+
+const formatPowerEnergyCapacityLabel = (
+  powerMw: number,
+  intervalMinutes: number,
+  capacityMwh: number | null
+): string => {
+  const intervalHours = intervalMinutes / 60
+  const energyMwh = Math.abs(powerMw) * intervalHours
+  const baseLabel = `${powerMw > 0 ? '+' : ''}${powerMw.toFixed(2)} MW / ${energyMwh.toFixed(2)} MWh`
+
+  if (!capacityMwh || capacityMwh <= 0) {
+    return baseLabel
+  }
+
+  return `${baseLabel} (${Math.round(energyMwh / capacityMwh * 100)}% cap)`
+}
 
 const marketSideFromTimelineLabel = (
   label: OperatorTimelineSegment['label']
@@ -558,12 +621,13 @@ const marketSideFromTimelineLabel = (
 const formatTimelineTooltipBody = (
   label: OperatorTimelineSegment['label'],
   powerMw: number,
+  quantityLabel: string,
   bidPreview: BidRecommendationPreviewPoint | undefined,
   marketSideLabel: OperatorTimelineSegment['marketSideLabel'],
   indicativePriceLabel: string,
   marketBoundaryLabel: string
 ): string => {
-  const scheduleBody = timelineTooltipBody(label, powerMw)
+  const scheduleBody = `${timelineTooltipBody(label, powerMw)} Hourly quantity: ${quantityLabel}.`
   if (!bidPreview || marketSideLabel === 'PENDING') {
     return scheduleBody
   }

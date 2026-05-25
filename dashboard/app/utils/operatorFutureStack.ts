@@ -1,9 +1,13 @@
 import type {
   AcademicMvpReadinessResponse,
+  BaselineRecommendationPoint,
   DecisionPolicyPreviewPointResponse,
   DecisionPolicyPreviewResponse,
+  FutureStackPreviewResponse,
   FutureForecastSeriesResponse,
+  OperatorLoadForecastPointResponse,
   OperatorRecommendationResponse,
+  OperatorSocProjectionPointResponse,
   RuntimeAccelerationResponse,
   OperatorStrategyOptionResponse,
   OperatorV13ReadinessResponse
@@ -44,12 +48,36 @@ export interface V13ReadinessItem {
 
 export type AcademicMvpGatePassportItem = V13ReadinessItem
 
+export interface AcademicMvpDtShadowComparisonRow {
+  label: string
+  meanRegretUah: number
+  meanValueUah: number
+  regretBarWidthPercent: number
+  status: 'research-shadow' | 'fallback' | 'reference' | 'control'
+  note: string
+}
+
 export interface PolicyForecastContextPoint {
   label: string
   nbeatsxForecastUahMwh: number
   tftForecastUahMwh: number
   forecastUncertaintyUahMwh: number
   forecastSpreadUahMwh: number
+}
+
+export interface OperatorForecastChartSource {
+  kind: 'operator_delivery_day' | 'future_stack_context' | 'empty'
+  series: FutureForecastSeriesResponse[]
+  windowStart: string | null | undefined
+  windowEnd: string | null | undefined
+}
+
+export interface RecommendationInputSignalPoint {
+  label: string
+  forecastPriceUahMwh: number
+  selectedNetPowerMw: number
+  projectedSocPercent: number | null
+  siteNetLoadMw: number | null
 }
 
 type PolicyForecastContextRow = Pick<
@@ -62,6 +90,17 @@ type PolicyForecastContextRow = Pick<
   | 'state_forecast_spread_uah_mwh'
 >
 
+type OperatorForecastChartSourceInput = {
+  futureStack: Pick<
+    FutureStackPreviewResponse,
+    'forecast_series' | 'forecast_window_start' | 'forecast_window_end'
+  > | null | undefined
+  operatorRecommendation: Pick<
+    OperatorRecommendationResponse,
+    'forecast_model_series' | 'target_delivery_window_start' | 'target_delivery_window_end'
+  > | null | undefined
+}
+
 export const formatForecastWindowLabel = (
   forecastWindowStart: string | null | undefined,
   forecastWindowEnd: string | null | undefined
@@ -72,6 +111,57 @@ export const formatForecastWindowLabel = (
 
   return `${formatWindowTimestamp(forecastWindowStart)} -> ${formatWindowTimestamp(forecastWindowEnd)}`
 }
+
+export const selectOperatorForecastChartSource = (
+  input: OperatorForecastChartSourceInput
+): OperatorForecastChartSource => {
+  const deliverySeries = input.operatorRecommendation?.forecast_model_series ?? []
+  if (hasForecastRows(deliverySeries)) {
+    return {
+      kind: 'operator_delivery_day',
+      series: deliverySeries,
+      windowStart: input.operatorRecommendation?.target_delivery_window_start,
+      windowEnd: input.operatorRecommendation?.target_delivery_window_end
+    }
+  }
+
+  const futureStackSeries = input.futureStack?.forecast_series ?? []
+  if (hasForecastRows(futureStackSeries)) {
+    return {
+      kind: 'future_stack_context',
+      series: futureStackSeries,
+      windowStart: input.futureStack?.forecast_window_start,
+      windowEnd: input.futureStack?.forecast_window_end
+    }
+  }
+
+  return {
+    kind: 'empty',
+    series: [],
+    windowStart: null,
+    windowEnd: null
+  }
+}
+
+export const buildRecommendationInputSignalRows = (
+  scheduleRows: BaselineRecommendationPoint[],
+  socProjectionRows: OperatorSocProjectionPointResponse[] = [],
+  loadForecastRows: OperatorLoadForecastPointResponse[] = []
+): RecommendationInputSignalPoint[] => scheduleRows.map((row, index) => {
+  const socProjection = socProjectionRows[index]
+  const loadForecast = loadForecastRows[index]
+  return {
+    label: formatWindowTimestamp(row.interval_start),
+    forecastPriceUahMwh: Math.round(row.forecast_price_uah_mwh),
+    selectedNetPowerMw: Number(row.recommended_net_power_mw.toFixed(3)),
+    projectedSocPercent: roundSocPercent(
+      socProjection?.planning_soc ?? row.projected_soc_after_fraction
+    ),
+    siteNetLoadMw: typeof loadForecast?.net_load_mw === 'number'
+      ? Number(loadForecast.net_load_mw.toFixed(3))
+      : null
+  }
+})
 
 export const sortFutureForecastSeries = (
   series: FutureForecastSeriesResponse[]
@@ -402,6 +492,58 @@ export const buildAcademicMvpGatePassportItems = (
   ]
 }
 
+export const buildAcademicMvpDtShadowComparisonRows = (
+  readiness: AcademicMvpReadinessResponse | null | undefined
+): AcademicMvpDtShadowComparisonRow[] => {
+  const gate = asRecord(readiness?.dt_research_shadow_gate)
+  const metrics = asRecord(gate.evaluation_metrics)
+  const candidateRows: AcademicMvpDtShadowComparisonRow[] = [
+    {
+      label: 'DT shadow',
+      meanRegretUah: numericMetric(metrics.dt_selected_mean_regret_uah),
+      meanValueUah: numericMetric(metrics.dt_selected_mean_value_uah),
+      regretBarWidthPercent: 0,
+      status: 'research-shadow',
+      note: 'HF/local transformer candidate-index policy'
+    },
+    {
+      label: 'V2+ fallback',
+      meanRegretUah: numericMetric(metrics.v2_plus_mean_regret_uah),
+      meanValueUah: numericMetric(metrics.v2_plus_mean_value_uah),
+      regretBarWidthPercent: 0,
+      status: 'fallback',
+      note: 'teacher / comparator / fallback'
+    },
+    {
+      label: 'Strict reference',
+      meanRegretUah: numericMetric(metrics.strict_mean_regret_uah),
+      meanValueUah: numericMetric(metrics.strict_mean_value_uah),
+      regretBarWidthPercent: 0,
+      status: 'reference',
+      note: 'strict LP/oracle reference'
+    },
+    {
+      label: 'Behavior cloning',
+      meanRegretUah: numericMetric(metrics.behavior_cloning_mean_regret_uah),
+      meanValueUah: numericMetric(metrics.behavior_cloning_mean_value_uah),
+      regretBarWidthPercent: 0,
+      status: 'control',
+      note: 'imitation control, accuracy secondary'
+    }
+  ]
+  const rows = candidateRows.filter(row => Number.isFinite(row.meanRegretUah) && Number.isFinite(row.meanValueUah))
+  const maxRegret = Math.max(...rows.map(row => row.meanRegretUah), 0)
+
+  if (maxRegret <= 0) {
+    return []
+  }
+
+  return rows.map(row => ({
+    ...row,
+    regretBarWidthPercent: Math.max(6, Math.round((row.meanRegretUah / maxRegret) * 100))
+  }))
+}
+
 export const isChartSafeForecastSeries = (series: FutureForecastSeriesResponse): boolean => {
   const normalizedBoundary = series.quality_boundary.toLowerCase()
 
@@ -503,6 +645,10 @@ const modelPriority = (modelName: string): number => {
   return 99
 }
 
+const hasForecastRows = (series: FutureForecastSeriesResponse[]): boolean => (
+  series.some(candidate => candidate.points.length > 0)
+)
+
 const formatRecommendationStrategyLabel = (strategy: OperatorStrategyOptionResponse): string => {
   if (typeof strategy.mean_regret_uah !== 'number') {
     return strategy.label
@@ -543,6 +689,18 @@ const formatUnknownStatus = (value: unknown): string => (
 const formatCount = (value: unknown): string => (
   typeof value === 'number' ? value.toLocaleString('en-GB') : '0'
 )
+
+const numericMetric = (value: unknown): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : Number.NaN
+)
+
+const roundSocPercent = (value: number | null | undefined): number | null => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null
+  }
+
+  return Math.round(value * 100)
+}
 
 const formatWindowTimestamp = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {
   day: '2-digit',

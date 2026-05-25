@@ -52,15 +52,16 @@ describe('operator HUD CSS', () => {
     expect(baselinePreview).toContain('No market execution')
   })
 
-  it('keeps schedule dock fixed above all operator panels with one-row horizontal schedule scrolling', () => {
+  it('keeps schedule dock in normal flow with one-row horizontal schedule scrolling', () => {
     const css = readFileSync(cssPath, 'utf8')
 
-    expect(getSelectorBlock(css, '.operator-shell')).toMatch(/padding-bottom:\s*12rem/)
+    expect(getSelectorBlock(css, '.operator-shell')).not.toMatch(/padding-bottom:\s*(?:12|15\.5)rem/)
     expect(getSelectorBlock(css, '.operator-shell')).toMatch(/overflow-x:\s*clip/)
-    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/position:\s*fixed/)
-    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/bottom:\s*0\.75rem/)
-    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/z-index:\s*250/)
-    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/max-width:\s*calc\(100vw - 2rem\)/)
+    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/position:\s*relative/)
+    expect(getSelectorBlock(css, '.schedule-dock')).not.toMatch(/bottom:\s*0\.75rem/)
+    expect(getSelectorBlock(css, '.schedule-dock')).not.toMatch(/transform:\s*translateX/)
+    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/width:\s*100%/)
+    expect(getSelectorBlock(css, '.schedule-dock')).toMatch(/max-width:\s*100%/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/display:\s*flex/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/overflow-x:\s*auto/)
     expect(getSelectorBlock(css, '.schedule-track')).toMatch(/flex-wrap:\s*nowrap/)

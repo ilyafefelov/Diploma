@@ -17,6 +17,8 @@ if os.name == "nt":
     _processor = os.environ.get("PROCESSOR_IDENTIFIER")
 
     if _machine:
-        platform.machine = lambda: _machine  # type: ignore[assignment]
+        _machine_value = _machine
+        platform.machine = lambda: _machine_value
     if _processor:
-        platform.processor = lambda: _processor  # type: ignore[assignment]
+        _processor_value = _processor
+        platform.processor = lambda: _processor_value

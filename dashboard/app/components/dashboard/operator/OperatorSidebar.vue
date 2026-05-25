@@ -9,6 +9,7 @@ const props = defineProps<{
   selectedTenantId: string
   navItems: OperatorNavItem[]
   activeRegistrySummary: string
+  batteryAssetLabel: string
   signalPreview?: SignalPreview | null
   baselinePreview?: BaselineLpPreview | null
 }>()
@@ -249,6 +250,17 @@ const weatherSourceLabel = computed(() => {
         />
         <div class="tenant-card__meta">
           <span>{{ tenantMeta }}</span>
+          <UTooltip
+            text="Battery energy capacity and max charge/discharge power from the existing preview read model."
+            :delay-duration="0"
+          >
+            <span
+              class="tenant-card__meta-item"
+              tabindex="0"
+            >
+              {{ batteryAssetLabel }}
+            </span>
+          </UTooltip>
           <UTooltip
             text="Coordinate pair in decimal degrees from the selected tenant record."
             :delay-duration="0"

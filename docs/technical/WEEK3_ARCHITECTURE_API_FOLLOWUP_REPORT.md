@@ -94,7 +94,7 @@ docker compose config --quiet
 Results:
 
 - Focused resource/API tests: `34 passed`.
-- Full verification: `151 passed`.
+- Historical full verification at report time: `151 passed`.
 - Ruff: passed.
 - Mypy: passed.
 - Dagster definitions: loaded successfully.

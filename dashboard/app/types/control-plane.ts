@@ -657,6 +657,74 @@ export interface OperatorRecommendationResponse {
   economics: BaselinePreviewEconomics
 }
 
+export interface ShadowPreviewSourceOptionResponse {
+  preview_source_id: string
+  label: string
+  status: string
+  is_default_strategy: boolean
+  is_promoted_strategy: boolean
+  market_execution_enabled: boolean
+  reason: string
+}
+
+export interface ShadowRecommendationSchedulePointResponse {
+  step_index: number
+  interval_start: string
+  action: 'charge' | 'discharge' | 'hold' | string
+  quantity_mw: number
+  recommended_net_power_mw: number
+  forecast_price_uah_mwh: number
+  soc_before_fraction: number | null
+  soc_after_fraction: number | null
+  selected_candidate_id: string
+  schedule_family: string
+  expected_value_uah: number
+  regret_uah: number
+  regret_vs_v2_plus_uah: number | null
+  regret_vs_strict_uah: number | null
+  value_vs_v2_plus_uah: number | null
+  value_vs_strict_uah: number | null
+  gate_status: string
+  safety_status: string
+  market_execution_enabled: boolean
+  market_order_payload_emitted: boolean
+  proposed_bid_status: string
+}
+
+export interface ShadowRecommendationPreviewResponse {
+  tenant_id: string
+  preview_source_id: string
+  preview_source_label: string
+  preview_status: string
+  preview_only: boolean
+  is_default_strategy: boolean
+  is_promoted_strategy: boolean
+  research_shadow_not_promotable: boolean
+  default_strategy_id: string
+  default_strategy_label: string
+  selected_candidate_id: string | null
+  selected_schedule_family: string | null
+  selected_candidate_index: number | null
+  market_scope: string
+  market_venue: string
+  interval_minutes: number
+  anchor_timestamp: string | null
+  target_delivery_window_start: string | null
+  target_delivery_window_end: string | null
+  market_execution_enabled: boolean
+  proposed_bid_status: string
+  market_order_payload_emitted: boolean
+  promotion_gate_passed: boolean
+  dt_lava_ready: boolean
+  source_readiness_gate_passed: boolean
+  comparison_metrics: Record<string, number>
+  available_preview_sources: ShadowPreviewSourceOptionResponse[]
+  recommendation_schedule: ShadowRecommendationSchedulePointResponse[]
+  boundary_labels: string[]
+  readiness_warnings: string[]
+  artifact_paths: Record<string, string>
+}
+
 export interface AcademicMvpReadinessResponse {
   claim_scope: string
   generated_at: string | null

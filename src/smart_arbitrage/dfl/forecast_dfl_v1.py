@@ -4,15 +4,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from math import ceil, isfinite
-from typing import Any, Final
+from typing import TYPE_CHECKING, Any, Final
 
 import polars as pl
-import torch
 
-from smart_arbitrage.dfl.decision_loss import (
-    DecisionLossWeights,
-    compute_decision_loss_v1,
-)
 from smart_arbitrage.dfl.decision_targeting import (
     _datetime_value,
     _final_holdout_rows,
@@ -29,12 +24,16 @@ from smart_arbitrage.dfl.offline_experiment import (
     _realized_values,
     _single_starting_soc,
 )
-from smart_arbitrage.dfl.relaxed_dispatch import solve_relaxed_dispatch_tensor
 from smart_arbitrage.strategy.forecast_strategy_evaluation import (
     ForecastCandidate,
     evaluate_forecast_candidates_against_oracle,
     tenant_battery_defaults_from_registry,
 )
+
+if TYPE_CHECKING:
+    import torch
+
+    from smart_arbitrage.dfl.decision_loss import DecisionLossWeights
 
 DFL_FORECAST_DFL_V1_EXPERIMENT_NAME: Final[str] = "dfl_forecast_decision_loss_v1"
 DFL_FORECAST_DFL_V1_CLAIM_SCOPE: Final[str] = "dfl_forecast_decision_loss_v1_not_full_dfl"
@@ -72,6 +71,31 @@ REQUIRED_DFL_PANEL_COLUMNS: Final[frozenset[str]] = frozenset(
         "not_market_execution",
     }
 )
+
+
+class _LazyTorchModule:
+    def __getattr__(self, name: str) -> Any:
+        import torch as torch_module
+
+        return getattr(torch_module, name)
+
+
+if not TYPE_CHECKING:
+    torch = _LazyTorchModule()
+
+
+def compute_decision_loss_v1(**kwargs: Any) -> Any:
+    """Import torch-backed decision loss only when DFL v1 training executes."""
+    from smart_arbitrage.dfl.decision_loss import compute_decision_loss_v1 as _compute
+
+    return _compute(**kwargs)
+
+
+def solve_relaxed_dispatch_tensor(**kwargs: Any) -> Any:
+    """Import cvxpylayers/torch-backed dispatch only while scoring DFL v1."""
+    from smart_arbitrage.dfl.relaxed_dispatch import solve_relaxed_dispatch_tensor as _solve
+
+    return _solve(**kwargs)
 
 
 def dfl_forecast_dfl_v1_model_name(source_model_name: str) -> str:

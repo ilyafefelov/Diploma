@@ -5,7 +5,7 @@ import { formatUah } from '~/utils/defenseDataset'
 
 defineProps<{
   metrics: OperatorResearchMetric[]
-  sensitivity: ForecastDispatchSensitivityResponse | null
+  sensitivity?: ForecastDispatchSensitivityResponse | null
   isLoading: boolean
   lastLoadedLabel: string
   activeErrorCount: number

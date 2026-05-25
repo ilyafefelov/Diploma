@@ -20,32 +20,32 @@ import {
 } from '~/utils/operatorDecisionEvidence'
 
 const props = defineProps<{
-  benchmark: RealDataBenchmarkResponse | null
+  benchmark?: RealDataBenchmarkResponse | null
   modelRows: DefenseModelRow[]
-  sensitivity: ForecastDispatchSensitivityResponse | null
-  batteryState: DashboardBatteryStateResponse | null
+  sensitivity?: ForecastDispatchSensitivityResponse | null
+  batteryState?: DashboardBatteryStateResponse | null
   baselinePreview: BaselineLpPreview | null
   operatorRecommendation: OperatorRecommendationResponse | null
-  exogenousSignals: DashboardExogenousSignalsResponse | null
+  exogenousSignals?: DashboardExogenousSignalsResponse | null
   isLoading: boolean
   activeErrorCount: number
 }>()
 
 const strategyRows = computed(() => buildOperatorStrategyEvidenceRows(props.modelRows, props.operatorRecommendation))
-const controlTimeline = computed(() => buildControlRegretTimeline(props.benchmark, 24, props.operatorRecommendation))
-const sensitivityRows = computed(() => buildSensitivityEvidenceRows(props.sensitivity, props.operatorRecommendation))
+const controlTimeline = computed(() => buildControlRegretTimeline(props.benchmark ?? null, 24, props.operatorRecommendation))
+const sensitivityRows = computed(() => buildSensitivityEvidenceRows(props.sensitivity ?? null, props.operatorRecommendation))
 const stateCards = computed(() => buildOperatorDecisionStateCards({
   operatorRecommendation: props.operatorRecommendation,
-  batteryState: props.batteryState,
+  batteryState: props.batteryState ?? null,
   baselinePreview: props.baselinePreview,
-  exogenousSignals: props.exogenousSignals,
+  exogenousSignals: props.exogenousSignals ?? null,
   modelRows: props.modelRows
 }))
 const readinessItems = computed(() => buildOperatorDecisionReadinessItems({
   operatorRecommendation: props.operatorRecommendation,
-  batteryState: props.batteryState,
+  batteryState: props.batteryState ?? null,
   baselinePreview: props.baselinePreview,
-  exogenousSignals: props.exogenousSignals
+  exogenousSignals: props.exogenousSignals ?? null
 }))
 
 const readModelBadgeLabel = computed(() => {
@@ -72,6 +72,20 @@ const comparatorGuideItems = computed(() => [
   {
     label: 'Read together',
     detail: 'best model usually has low bars and high line'
+  }
+])
+const sensitivityGuideItems = computed(() => [
+  {
+    label: 'Strict control',
+    detail: 'manual baseline regret against oracle'
+  },
+  {
+    label: 'Selected V2+',
+    detail: 'current schedule/value learner evidence'
+  },
+  {
+    label: 'Forecast context',
+    detail: 'price-model contribution to regret'
   }
 ])
 
@@ -279,13 +293,13 @@ const sensitivityOption = computed(() => ({
   series: [
     {
       type: 'bar',
-      name: 'Mean regret',
+      name: 'Mean regret (UAH)',
       data: sensitivityRows.value.map(row => Math.round(row.meanRegretUah)),
       itemStyle: { color: '#f5a623', borderRadius: [8, 8, 0, 0] }
     },
     {
       type: 'line',
-      name: 'Rows',
+      name: 'Evidence rows',
       yAxisIndex: 1,
       data: sensitivityRows.value.map(row => row.rows),
       symbol: 'diamond',
@@ -411,10 +425,18 @@ const formatModelLabel = (modelName: string): string => {
       <article class="decision-chart-card decision-chart-card-wide">
         <div>
           <p class="decision-chart-card__eyebrow">
-            Diagnosis graph
+            Regret attribution
           </p>
-          <h3>Where regret risk concentrates</h3>
-          <p>These buckets explain historical regret mechanisms for the selected preview context; they are diagnosis, not live dispatch rules.</p>
+          <h3>Why the selected schedule loses value</h3>
+          <p>This diagnostic chart compares mean regret across the strict baseline, selected V2+ schedule evidence, and forecast context buckets. It explains evidence quality, not live dispatch commands.</p>
+        </div>
+        <div class="decision-chart-guide">
+          <span
+            v-for="item in sensitivityGuideItems"
+            :key="item.label"
+          >
+            <strong>{{ item.label }}</strong>: {{ item.detail }}
+          </span>
         </div>
         <ClientVChart
           :option="sensitivityOption"

@@ -607,6 +607,65 @@ def test_credentialless_academic_mvp_exposes_dt_research_shadow_gate() -> None:
     assert validation["gate_results"]["dt_research_shadow_gate"]["passed"] is True
 
 
+def test_credentialless_academic_mvp_exposes_hf_dt_research_shadow_gate() -> None:
+    sequence_summary = _dt_research_shadow_sequence_summary()
+    dataset_summary = sequence_summary["dataset_summary"]
+    assert isinstance(dataset_summary, dict)
+    dataset_summary["forecast_context_present_families"] = ["nbeatsx", "tft"]
+    dataset_summary["forecast_context_missing_families"] = []
+    dataset_summary["forecast_context_coverage_passed"] = True
+    dataset_summary["forecast_context_coverage_status"] = "complete_nbeatsx_tft"
+    smoke_summary = _dt_research_shadow_smoke_summary()
+    smoke_summary["requested_model_backbone"] = "hf"
+    smoke_summary["model_backbone"] = "huggingface_decision_transformer_model"
+    smoke_summary["model_backbone_selection_reason"] = "hf_requested"
+    smoke_summary["hf_transformers_available"] = True
+    smoke_summary["hf_decision_transformer_available"] = True
+    smoke_summary["hf_decision_transformer_status"] = (
+        "hf_decision_transformer_importable"
+    )
+
+    summary = build_credentialless_academic_mvp_readiness_summary(
+        operator_preview=_operator_preview(),
+        v13_acquisition_summary=_v13_receipt_blocked_safe_switch_ready_summary(),
+        dt_lava_prototype_readiness=_dt_lava_prototype_readiness(),
+        teacher_summary=_teacher_summary(),
+        teacher_validation=_teacher_validation(),
+        offline_challenger_summary=_offline_challenger_summary(),
+        offline_challenger_validation=_offline_challenger_validation(),
+        dt_research_shadow_sequence_summary=sequence_summary,
+        dt_research_shadow_smoke_summary=smoke_summary,
+        dt_research_shadow_evaluation_validation=(
+            _dt_research_shadow_evaluation_validation()
+        ),
+    )
+
+    gate = summary["dt_research_shadow_gate"]
+    passport_gate = summary["gate_passport"]["dt_research_shadow_smoke_gate"]
+    validation = validate_credentialless_academic_mvp_readiness_summary(summary)
+
+    assert gate["passed_for_academic_mvp"] is True
+    assert gate["requested_model_backbone"] == "hf"
+    assert gate["model_backbone"] == "huggingface_decision_transformer_model"
+    assert gate["model_backbone_selection_reason"] == "hf_requested"
+    assert gate["hf_decision_transformer_available"] is True
+    assert gate["hf_decision_transformer_status"] == (
+        "hf_decision_transformer_importable"
+    )
+    assert gate["forecast_context_coverage_passed"] is True
+    assert gate["forecast_context_coverage_status"] == "complete_nbeatsx_tft"
+    assert gate["promotable_v13_permitted_training_rows"] == 0
+    assert gate["publication_receipt_verified"] is False
+    assert gate["research_shadow_not_promotable"] is True
+    assert gate["dt_promotion_gate_passed"] is False
+    assert gate["market_execution_enabled"] is False
+    assert passport_gate["model_backbone"] == "huggingface_decision_transformer_model"
+    assert passport_gate["model_backbone_selection_reason"] == "hf_requested"
+    assert passport_gate["market_execution_enabled"] is False
+    assert validation["passed"] is True
+    assert validation["gate_results"]["dt_research_shadow_gate"]["passed"] is True
+
+
 def test_credentialless_academic_mvp_rejects_failed_dt_evaluation_validation() -> None:
     evaluation_validation = _dt_research_shadow_evaluation_validation()
     evaluation_validation["passed"] = False

@@ -7,13 +7,20 @@ import type {
   BaselineRecommendationPoint,
   DecisionPolicyPreviewResponse,
   FutureStackPreviewResponse,
+  OperatorRecommendationResponse,
   OperatorValueGapPointResponse,
-  OperatorRecommendationResponse
+  ShadowRecommendationPreviewResponse
 } from '~/types/control-plane'
 import {
+  buildStrategyComparisonRows,
+  previewSourceDisplayLabel,
+  type OperatorPreviewSourceId,
+  type StrategyComparisonRow
+} from '~/utils/operatorShadowPreview'
+import {
   buildAcademicMvpGatePassportItems,
+  buildRecommendationInputSignalRows,
   buildPolicyForecastContextPoints,
-  buildRecommendationStrategySelectItems,
   buildStrategyReadinessItems,
   buildV13ReadinessItems,
   filterOfficialPolicyValueSeries,
@@ -23,6 +30,7 @@ import {
   formatPolicyForecastContextLabel,
   formatRuntimeAccelerationLabel,
   isChartSafeForecastSeries,
+  selectOperatorForecastChartSource,
   sortFutureForecastSeries
 } from '~/utils/operatorFutureStack'
 
@@ -30,14 +38,21 @@ const props = defineProps<{
   futureStack: FutureStackPreviewResponse | null
   decisionPolicy: DecisionPolicyPreviewResponse | null
   operatorRecommendation: OperatorRecommendationResponse | null
+  bestValidRecommendation: OperatorRecommendationResponse | null
+  shadowPreview: ShadowRecommendationPreviewResponse | null
+  shadowComparisonPreviews: ShadowRecommendationPreviewResponse[]
   academicMvpReadiness: AcademicMvpReadinessResponse | null
   selectedStrategyId: string
+  selectedPreviewSourceId: OperatorPreviewSourceId
   isLoading: boolean
+  shadowPreviewLastLoadedLabel: string
   activeErrorCount: number
 }>()
 
 const emit = defineEmits<{
   'update:selectedStrategyId': [value: string]
+  'update:selectedPreviewSourceId': [value: OperatorPreviewSourceId]
+  'refresh:shadowPreview': []
 }>()
 
 type PolicyValueMode = 'selected' | 'official'
@@ -59,13 +74,14 @@ const readModelBadgeLabel = computed(() => {
   return props.activeErrorCount > 0 ? `${props.activeErrorCount} read-model gap(s)` : 'FastAPI read model'
 })
 
-const forecastSeries = computed(() => {
-  const apiSeries = props.futureStack?.forecast_series?.length
-    ? props.futureStack.forecast_series
-    : props.operatorRecommendation?.forecast_model_series ?? []
+const forecastChartSource = computed(() => selectOperatorForecastChartSource({
+  futureStack: props.futureStack,
+  operatorRecommendation: props.operatorRecommendation
+}))
 
+const forecastSeries = computed(() => {
   return sortFutureForecastSeries(
-    apiSeries
+    forecastChartSource.value.series
       .filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
       .filter(isChartSafeForecastSeries)
   )
@@ -74,11 +90,11 @@ const forecastSeries = computed(() => {
 const forecastChartSeries = computed(() => forecastSeries.value.slice(0, 3))
 
 const hiddenUnsafeForecastItems = computed(() => {
-  const apiSeries = props.futureStack?.forecast_series?.length
-    ? props.futureStack.forecast_series
-    : props.operatorRecommendation?.forecast_model_series ?? []
+  if (hasRecommendationInputSignalRows.value) {
+    return []
+  }
 
-  return apiSeries
+  return forecastChartSource.value.series
     .filter(series => series.model_name.includes('nbeatsx') || series.model_name.includes('tft'))
     .filter(series => !isChartSafeForecastSeries(series))
     .map(series => ({
@@ -102,6 +118,99 @@ const forecastQualityItems = computed(() => forecastSeries.value.map(series => (
   needsCalibration: series.out_of_dam_cap_rows > 0
 })))
 
+const recommendationInputSignalRows = computed(() => buildRecommendationInputSignalRows(
+  recommendationScheduleRows.value,
+  props.operatorRecommendation?.soc_projection ?? [],
+  props.operatorRecommendation?.load_forecast ?? []
+))
+
+const hasRecommendationInputSignalRows = computed(() => recommendationInputSignalRows.value.length > 0)
+
+const recommendationInputSummaryItems = computed(() => {
+  if (!hasRecommendationInputSignalRows.value) {
+    return forecastQualityItems.value
+  }
+
+  const modelFallbackCount = (props.operatorRecommendation?.forecast_model_series ?? [])
+    .filter(series => series.source_status.includes('compact_fallback')).length
+  const items = [
+    {
+      modelName: 'price_source',
+      label: `price source: ${props.operatorRecommendation?.forecast_source || 'operator recommendation'}`,
+      needsCalibration: false
+    },
+    {
+      modelName: 'schedule_source',
+      label: `schedule source: ${selectedStrategyLabel.value}`,
+      needsCalibration: false
+    },
+    {
+      modelName: 'soc_source',
+      label: `SOC source: ${props.operatorRecommendation?.soc_source || 'not reported'}`,
+      needsCalibration: props.operatorRecommendation?.soc_source !== 'telemetry'
+    },
+    {
+      modelName: 'rows',
+      label: `${recommendationInputSignalRows.value.length} delivery-hour rows`,
+      needsCalibration: false
+    }
+  ]
+
+  if (modelFallbackCount > 0) {
+    items.push({
+      modelName: 'compact_fallback_note',
+      label: 'compact NBEATSx/TFT rows are source context, not independent model proof',
+      needsCalibration: true
+    })
+  }
+
+  return items
+})
+
+const recommendationInputChartSeries = computed(() => {
+  const rows = recommendationInputSignalRows.value
+  const series: Array<Record<string, unknown>> = [
+    {
+      type: 'line',
+      name: 'Recommendation price context (UAH/MWh)',
+      smooth: true,
+      data: rows.map(row => row.forecastPriceUahMwh),
+      lineStyle: { width: 3, color: '#b8ff32' },
+      itemStyle: { color: '#b8ff32' }
+    },
+    {
+      type: 'bar',
+      name: 'Selected battery net power (MW)',
+      yAxisIndex: 1,
+      data: rows.map(row => row.selectedNetPowerMw),
+      itemStyle: { color: 'rgba(83, 178, 234, 0.78)', borderRadius: [7, 7, 0, 0] }
+    },
+    {
+      type: 'line',
+      name: 'Projected SOC (%)',
+      yAxisIndex: 2,
+      smooth: true,
+      data: rows.map(row => row.projectedSocPercent),
+      lineStyle: { width: 3, color: '#ff6fae' },
+      itemStyle: { color: '#ff6fae' }
+    }
+  ]
+
+  if (rows.some(row => row.siteNetLoadMw != null)) {
+    series.push({
+      type: 'line',
+      name: 'Site net load estimate (MW)',
+      yAxisIndex: 1,
+      smooth: true,
+      data: rows.map(row => row.siteNetLoadMw),
+      lineStyle: { width: 2.5, color: '#f5a623', type: 'dashed' },
+      itemStyle: { color: '#f5a623' }
+    })
+  }
+
+  return series
+})
+
 const forecastOption = computed(() => ({
   animationDuration: 500,
   backgroundColor: 'transparent',
@@ -112,38 +221,77 @@ const forecastOption = computed(() => ({
     borderWidth: 2,
     textStyle: { color: '#f0fbff' },
     formatter: (params: Array<{ marker?: string, seriesName?: string, value?: number, axisValue?: string }>) => {
-      const lines = params.map(item => `${item.marker || ''}${item.seriesName}: ${Math.round(item.value ?? 0).toLocaleString('en-GB')} UAH/MWh`)
-      return [`<strong>${params[0]?.axisValue || 'hour'}</strong>`, ...lines, 'Price context only; selected strategy is shown in the schedule chart.'].join('<br/>')
+      const lines = params.map((item) => {
+        const value = hasRecommendationInputSignalRows.value
+          ? formatInputSignalTooltipValue(item.seriesName, item.value)
+          : `${Math.round(item.value ?? 0).toLocaleString('en-GB')} UAH/MWh`
+        return `${item.marker || ''}${item.seriesName}: ${value}`
+      })
+      const footer = hasRecommendationInputSignalRows.value
+        ? 'These are the selected recommendation inputs: price context, battery action, SOC path, and site-load estimate where available.'
+        : 'Forecast context only; selected strategy is shown in the schedule chart.'
+      return [`<strong>${params[0]?.axisValue || 'hour'}</strong>`, ...lines, footer].join('<br/>')
     }
   },
   legend: {
     top: 0,
     textStyle: { color: 'rgba(236, 250, 255, 0.88)', fontWeight: 800 }
   },
-  grid: { left: 58, right: 36, top: 44, bottom: 42, containLabel: true },
+  grid: {
+    left: 58,
+    right: hasRecommendationInputSignalRows.value ? 78 : 36,
+    top: 44,
+    bottom: 42,
+    containLabel: true
+  },
   xAxis: {
     type: 'category',
-    data: forecastLabels.value,
+    data: hasRecommendationInputSignalRows.value
+      ? recommendationInputSignalRows.value.map(row => row.label)
+      : forecastLabels.value,
     axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
   },
-  yAxis: {
-    type: 'value',
-    name: 'UAH/MWh',
-    axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
-  },
-  series: forecastChartSeries.value.map(series => ({
-    type: 'line',
-    name: formatForecastSeriesLabel(series.model_name),
-    smooth: true,
-    symbol: series.model_family === 'TFT' ? 'diamond' : 'circle',
-    symbolSize: 7,
-    lineStyle: {
-      width: 3,
-      color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32'
-    },
-    itemStyle: { color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32' },
-    data: series.points.map(point => Math.round(point.p50_price_uah_mwh ?? point.forecast_price_uah_mwh))
-  }))
+  yAxis: hasRecommendationInputSignalRows.value
+    ? [
+        {
+          type: 'value',
+          name: 'UAH/MWh',
+          axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+        },
+        {
+          type: 'value',
+          name: 'MW',
+          axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+        },
+        {
+          type: 'value',
+          name: 'SOC %',
+          offset: 46,
+          min: 0,
+          max: 100,
+          axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+        }
+      ]
+    : {
+        type: 'value',
+        name: 'UAH/MWh',
+        axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+      },
+  series: hasRecommendationInputSignalRows.value
+    ? recommendationInputChartSeries.value
+    : forecastChartSeries.value.map(series => ({
+        type: 'line',
+        name: formatForecastSeriesLabel(series.model_name),
+        smooth: true,
+        symbol: series.model_family === 'TFT' ? 'diamond' : 'circle',
+        symbolSize: 7,
+        lineStyle: {
+          width: 3,
+          color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32'
+        },
+        itemStyle: { color: series.model_family === 'TFT' ? '#ff6fae' : '#b8ff32' },
+        data: series.points.map(point => Math.round(point.p50_price_uah_mwh ?? point.forecast_price_uah_mwh))
+      }))
 }))
 
 const policyRows = computed(() => props.decisionPolicy?.rows ?? [])
@@ -159,6 +307,46 @@ const selectedStrategyLabel = computed(() => {
   return option?.label || selectedStrategyId || 'strict_similar_day'
 })
 const usesDecisionPolicyPreview = computed(() => selectedStrategyKey.value === 'decision_transformer' && policyRows.value.length > 0)
+const forecastWindowLabel = computed(() => formatForecastWindowLabel(
+  forecastChartSource.value.windowStart,
+  forecastChartSource.value.windowEnd
+))
+const isShadowRecommendationMode = computed(() => props.selectedPreviewSourceId !== 'best_valid')
+const selectedScheduleWindowLabel = computed(() => formatForecastWindowLabel(
+  props.operatorRecommendation?.target_delivery_window_start,
+  props.operatorRecommendation?.target_delivery_window_end
+))
+const shadowPreviewLabel = computed(() => previewSourceDisplayLabel(
+  props.selectedPreviewSourceId,
+  props.shadowPreview?.preview_source_label
+))
+const forecastChartTitle = computed(() => {
+  if (hasRecommendationInputSignalRows.value) {
+    return 'Recommendation input signals'
+  }
+  if (forecastChartSource.value.kind === 'operator_delivery_day') {
+    return 'Delivery-day price context'
+  }
+  if (forecastChartSource.value.kind === 'future_stack_context') {
+    return 'Live forecast context'
+  }
+  return 'Price context pending'
+})
+const forecastStackDescription = computed(() => {
+  if (hasRecommendationInputSignalRows.value) {
+    return `Shows the selected delivery-day recommendation inputs for ${selectedScheduleWindowLabel.value}: price context, selected battery net power, projected SOC, and configured site-load estimate where available. Compact fallback NBEATSx/TFT rows are not plotted as independent model evidence.`
+  }
+
+  if (forecastChartSource.value.kind === 'operator_delivery_day') {
+    return `Delivery-day price/model window: ${forecastWindowLabel.value}. This is the same DAM horizon used by the selected schedule chart and bottom dock.`
+  }
+
+  if (isShadowRecommendationMode.value) {
+    return `Current forecast context remains the live read-model window: ${forecastWindowLabel.value}. The selected ${shadowPreviewLabel.value} action pattern is projected onto ${selectedScheduleWindowLabel.value} for diagnostic delivery-day preview.`
+  }
+
+  return `DAM forecast window: ${forecastWindowLabel.value}. These are day-ahead forecast context lines only; the DAM delivery review schedule is shown in the policy chart and bottom dock.`
+})
 const policyForecastContextRows = computed(() => buildPolicyForecastContextPoints(policyRows.value))
 const policyForecastContextLabel = computed(() => props.decisionPolicy
   ? formatPolicyForecastContextLabel(props.decisionPolicy)
@@ -199,17 +387,41 @@ const selectedRecommendationProjectionSummary = computed(() => {
   }
 
   const nonIdleRows = selectedRecommendationChartRows.value.filter(row => Math.abs(row.netPowerMw) >= 0.005).length
-  const meanValueGap = selectedRecommendationChartRows.value.reduce((total, row) => total + row.valueGapUah, 0) / selectedRecommendationChartRows.value.length
+  const meanStrictShortfall = selectedRecommendationChartRows.value.reduce((total, row) => total + row.valueGapUah, 0) / selectedRecommendationChartRows.value.length
   return [
     {
-      label: 'DAM schedule',
+      label: isShadowRecommendationMode.value ? 'Shadow preview' : 'DAM schedule',
       value: `${nonIdleRows}/${selectedRecommendationChartRows.value.length}`,
-      meta: 'non-idle delivery windows'
+      meta: isShadowRecommendationMode.value ? 'projected diagnostic windows' : 'non-idle delivery windows'
     },
     {
-      label: 'Mean visible gap',
-      value: `${Math.round(meanValueGap).toLocaleString('en-GB')} UAH`,
-      meta: selectedStrategyLabel.value
+      label: 'Mean shortfall vs strict',
+      value: `${Math.round(meanStrictShortfall).toLocaleString('en-GB')} UAH`,
+      meta: `${selectedStrategyLabel.value}; strict LP/reference value`
+    }
+  ]
+})
+const selectedRecommendationGuideItems = computed(() => {
+  if (isOfficialPolicyMode.value || usesDecisionPolicyPreview.value) {
+    return []
+  }
+
+  return [
+    {
+      label: isShadowRecommendationMode.value ? 'Blue bars' : 'Blue bars',
+      detail: isShadowRecommendationMode.value
+        ? 'selected shadow schedule MW; positive is discharge/sell, negative is charge/buy'
+        : 'selected best-valid schedule MW; positive is discharge/sell, negative is charge/buy'
+    },
+    {
+      label: 'Orange line',
+      detail: 'value shortfall vs strict LP/reference = max(0, strict value - selected value), UAH'
+    },
+    {
+      label: 'Green line',
+      detail: isShadowRecommendationMode.value
+        ? 'artifact forecast price context, UAH/MWh; not a value metric'
+        : 'DAM forecast price context, UAH/MWh; not a value metric'
     }
   ]
 })
@@ -272,24 +484,31 @@ const policyChartTitle = computed(() => isOfficialPolicyMode.value
   ? 'Safe DAM forecast rows'
   : usesDecisionPolicyPreview.value
     ? 'DAM policy preview'
-    : 'DAM delivery schedule review')
+    : isShadowRecommendationMode.value
+      ? `${shadowPreviewLabel.value} projected schedule preview`
+      : 'DAM delivery schedule review')
 const policyChartDescription = computed(() => isOfficialPolicyMode.value
   ? 'Forecast-store rows that are inside DAM caps. Hidden raw out-of-cap rows remain diagnostics, not schedule inputs.'
   : usesDecisionPolicyPreview.value
     ? 'Counterfactual value gap and projected DAM delivery-hour action rows for the selected policy preview; review only, not live dispatch.'
-    : 'Bars are proposed DAM delivery-hour charge/discharge review rows for the selected preview strategy. Lines show visible value gap and DAM price context used by the same LP feasibility layer. Review only: no live IDM bid or market submission.')
+    : isShadowRecommendationMode.value
+      ? `Bars show the manually selected ${shadowPreviewLabel.value} action pattern projected onto ${selectedScheduleWindowLabel.value}. The orange line is value shortfall versus strict LP/reference, not promotion and not market execution.`
+      : 'Bars are proposed DAM delivery-hour charge/discharge review rows for the selected preview strategy. The orange line is value shortfall versus strict LP/reference; the green line is DAM price context. Review only: no live IDM bid or market submission.')
 
+const selectedNetPowerSeriesLabel = computed(() => isShadowRecommendationMode.value ? 'Selected shadow net power (MW)' : 'Selected DAM net power (MW)')
+const selectedValueGapSeriesLabel = computed(() => 'Value shortfall vs strict (UAH)')
+const selectedPriceContextSeriesLabel = computed(() => isShadowRecommendationMode.value ? 'Artifact forecast price (UAH/MWh)' : 'DAM forecast price (UAH/MWh)')
 const selectedRecommendationChartSeries = computed(() => [
   {
     type: 'bar',
-    name: 'Selected DAM net power',
+    name: selectedNetPowerSeriesLabel.value,
     yAxisIndex: 1,
     data: selectedRecommendationChartRows.value.map(row => row.netPowerMw),
     itemStyle: { color: 'rgba(83, 178, 234, 0.8)', borderRadius: [8, 8, 0, 0] }
   },
   {
     type: 'line',
-    name: 'Visible value gap',
+    name: selectedValueGapSeriesLabel.value,
     smooth: true,
     data: selectedRecommendationChartRows.value.map(row => row.valueGapUah),
     lineStyle: { width: 4, color: '#f5a623' },
@@ -297,13 +516,101 @@ const selectedRecommendationChartSeries = computed(() => [
   },
   {
     type: 'line',
-    name: 'DAM price context',
+    name: selectedPriceContextSeriesLabel.value,
     smooth: true,
     data: selectedRecommendationChartRows.value.map(row => row.forecastPriceUahMwh),
     lineStyle: { width: 3, color: '#b8ff32', type: 'dashed' },
     itemStyle: { color: '#b8ff32' }
   }
 ])
+const strategyComparisonRows = computed(() => buildStrategyComparisonRows(
+  props.bestValidRecommendation,
+  props.shadowComparisonPreviews
+))
+const strategyComparisonLabels = computed(() => strategyComparisonRows.value.map(row => shortStrategyLabel(row)))
+const strategyComparisonSummary = computed(() => strategyComparisonRows.value.map(row => ({
+  label: row.label,
+  value: row.isBlocked
+    ? 'blocked'
+    : `${formatEnergy(row.totalChargeMwh)} charge / ${formatEnergy(row.totalDischargeMwh)} discharge`,
+  meta: `${row.status}; ${row.scheduleRows} row${row.scheduleRows === 1 ? '' : 's'}; ${formatOptionalUah(row.meanRegretVsStrictUah)} vs strict`
+})))
+const strategyComparisonOption = computed(() => ({
+  animationDuration: 500,
+  backgroundColor: 'transparent',
+  tooltip: {
+    trigger: 'axis',
+    backgroundColor: 'rgba(0, 50, 104, 0.98)',
+    borderColor: 'rgba(202, 249, 255, 0.9)',
+    borderWidth: 2,
+    textStyle: { color: '#f0fbff' },
+    formatter: (params: Array<{ marker?: string, seriesName?: string, value?: number | null, axisValue?: string }>) => {
+      const lines = params.map((item) => {
+        const value = item.value == null
+          ? 'n/a'
+          : item.seriesName?.includes('regret')
+            ? `${Math.round(item.value).toLocaleString('en-GB')} UAH`
+            : `${Number(item.value).toFixed(2)} MWh`
+        return `${item.marker || ''}${item.seriesName}: ${value}`
+      })
+      return [`<strong>${params[0]?.axisValue || 'strategy'}</strong>`, ...lines, 'All entries are preview-only; market execution remains false.'].join('<br/>')
+    }
+  },
+  legend: {
+    top: 0,
+    textStyle: { color: 'rgba(236, 250, 255, 0.88)', fontWeight: 800 }
+  },
+  grid: { left: 58, right: 54, top: 48, bottom: 54, containLabel: true },
+  xAxis: {
+    type: 'category',
+    data: strategyComparisonLabels.value,
+    axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+  },
+  yAxis: [
+    {
+      type: 'value',
+      name: 'MWh',
+      axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+    },
+    {
+      type: 'value',
+      name: 'UAH regret',
+      axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+    }
+  ],
+  series: [
+    {
+      type: 'bar',
+      name: 'Charge MWh',
+      data: strategyComparisonRows.value.map(row => row.totalChargeMwh),
+      itemStyle: { color: 'rgba(245, 166, 35, 0.82)', borderRadius: [7, 7, 0, 0] }
+    },
+    {
+      type: 'bar',
+      name: 'Discharge MWh',
+      data: strategyComparisonRows.value.map(row => row.totalDischargeMwh),
+      itemStyle: { color: 'rgba(83, 234, 141, 0.82)', borderRadius: [7, 7, 0, 0] }
+    },
+    {
+      type: 'line',
+      name: 'Mean regret vs strict',
+      yAxisIndex: 1,
+      smooth: true,
+      data: strategyComparisonRows.value.map(row => row.meanRegretVsStrictUah),
+      lineStyle: { width: 4, color: '#ff6fae' },
+      itemStyle: { color: '#ff6fae' }
+    },
+    {
+      type: 'line',
+      name: 'Mean regret vs V2+',
+      yAxisIndex: 1,
+      smooth: true,
+      data: strategyComparisonRows.value.map(row => row.meanRegretVsV2Uah),
+      lineStyle: { width: 3, color: '#b8ff32', type: 'dashed' },
+      itemStyle: { color: '#b8ff32' }
+    }
+  ]
+}))
 
 const decisionPolicyChartSeries = computed(() => [
   {
@@ -347,7 +654,25 @@ const policyOption = computed(() => ({
     backgroundColor: 'rgba(0, 50, 104, 0.98)',
     borderColor: 'rgba(202, 249, 255, 0.9)',
     borderWidth: 2,
-    textStyle: { color: '#f0fbff' }
+    textStyle: { color: '#f0fbff' },
+    formatter: (params: Array<{ marker?: string, seriesName?: string, value?: number | null, axisValue?: string }>) => {
+      const lines = params.map((item) => {
+        const value = formatPolicyTooltipValue(item.seriesName, item.value, isOfficialPolicyMode.value)
+        return `${item.marker || ''}${item.seriesName}: ${value}`
+      })
+      if (isOfficialPolicyMode.value) {
+        return [`<strong>${params[0]?.axisValue || 'hour'}</strong>`, ...lines, 'Forecast rows only; no schedule command.'].join('<br/>')
+      }
+      if (usesDecisionPolicyPreview.value) {
+        return [`<strong>${params[0]?.axisValue || 'hour'}</strong>`, ...lines, 'Policy value gap is oracle-normalized diagnostic evidence.'].join('<br/>')
+      }
+      return [
+        `<strong>${params[0]?.axisValue || 'hour'}</strong>`,
+        ...lines,
+        'Orange = max(0, strict LP/reference value - selected schedule value).',
+        'High shortfall means the selected preview is worse than strict for that hour; it is not market execution.'
+      ].join('<br/>')
+    }
   },
   legend: {
     top: 0,
@@ -391,7 +716,7 @@ const statusCards = computed(() => [
     meta: '174.77 UAH mean regret / 4 of 4 rolling windows'
   },
   {
-    label: 'Strategy preview',
+    label: 'Shown schedule',
     value: selectedStrategyLabel.value,
     meta: props.operatorRecommendation?.selection_reason || 'strict fallback/control'
   },
@@ -442,13 +767,62 @@ const backendStatusFacts = computed(() => {
   items.push(`Runtime: ${formatRuntimeAccelerationLabel(props.futureStack?.runtime_acceleration)}.`)
   return items
 })
-const forecastWindowLabel = computed(() => formatForecastWindowLabel(
-  props.futureStack?.forecast_window_start,
-  props.futureStack?.forecast_window_end
-))
-const strategySelectItems = computed(() => buildRecommendationStrategySelectItems(
-  props.operatorRecommendation?.available_strategies ?? []
-))
+const previewSourceSelectItems = computed(() => {
+  const sourceOptions = props.shadowPreview?.available_preview_sources
+  const options = sourceOptions?.length
+    ? sourceOptions
+    : [
+        {
+          preview_source_id: 'best_valid',
+          label: 'Best valid recommendation',
+          status: 'default_v2_plus_fallback',
+          reason: 'V2+ remains default/fallback.',
+          is_default_strategy: true,
+          is_promoted_strategy: true,
+          market_execution_enabled: false
+        },
+        {
+          preview_source_id: 'dt_shadow',
+          label: 'DT Shadow',
+          status: 'research_shadow_not_promoted',
+          reason: 'Preview only.',
+          is_default_strategy: false,
+          is_promoted_strategy: false,
+          market_execution_enabled: false
+        },
+        {
+          preview_source_id: 'poland_tft_shadow',
+          label: 'Poland-TFT Shadow',
+          status: 'positive_not_promoted',
+          reason: 'Shadow challenger.',
+          is_default_strategy: false,
+          is_promoted_strategy: false,
+          market_execution_enabled: false
+        },
+        {
+          preview_source_id: 'dfl_diagnostics',
+          label: 'DFL diagnostics',
+          status: 'diagnostic_only',
+          reason: 'Diagnostic only.',
+          is_default_strategy: false,
+          is_promoted_strategy: false,
+          market_execution_enabled: false
+        },
+        {
+          preview_source_id: 'v13_dt_lava_promoted_training',
+          label: 'V13/DT/LAVA blocked',
+          status: 'blocked_source_readiness_roadmap',
+          reason: 'Blocked roadmap.',
+          is_default_strategy: false,
+          is_promoted_strategy: false,
+          market_execution_enabled: false
+        }
+      ]
+  return options.map(option => ({
+    label: formatPreviewSourceOptionLabel(option.preview_source_id, option.status, option.label),
+    value: option.preview_source_id
+  }))
+})
 const strategyReadinessItems = computed(() => buildStrategyReadinessItems(
   props.operatorRecommendation?.available_strategies ?? []
 ))
@@ -459,14 +833,14 @@ const academicMvpGatePassportItems = computed(() => buildAcademicMvpGatePassport
   props.academicMvpReadiness
 ))
 
-const updateSelectedStrategy = (value: string | number | boolean | Record<string, unknown>): void => {
+const updateSelectedPreviewSource = (value: string | number | boolean | Record<string, unknown>): void => {
   if (typeof value === 'string') {
-    emit('update:selectedStrategyId', value)
+    emit('update:selectedPreviewSourceId', value as OperatorPreviewSourceId)
     return
   }
 
   if (typeof value === 'object' && value !== null && typeof value.value === 'string') {
-    emit('update:selectedStrategyId', value.value)
+    emit('update:selectedPreviewSourceId', value.value as OperatorPreviewSourceId)
   }
 }
 
@@ -491,6 +865,95 @@ function buildSelectedRecommendationChartRows(
       valueGapUah: Math.round(gapRow?.value_gap_uah ?? 0)
     }
   })
+}
+
+function formatPreviewSourceOptionLabel(
+  previewSourceId: string,
+  status: string,
+  fallbackLabel: string
+): string {
+  if (previewSourceId === 'best_valid') {
+    return 'Best valid schedule (V2+ default/fallback)'
+  }
+  if (previewSourceId === 'dt_shadow') {
+    return 'DT Shadow preview (not promoted)'
+  }
+  if (previewSourceId === 'poland_tft_shadow') {
+    return 'Poland/TFT shadow (positive, not promoted)'
+  }
+  if (previewSourceId === 'dfl_diagnostics') {
+    return 'DFL diagnostics (not production)'
+  }
+  if (previewSourceId === 'v13_dt_lava_promoted_training') {
+    return 'V13/DT/LAVA blocked (no schedule)'
+  }
+  return `${previewSourceDisplayLabel(previewSourceId, fallbackLabel)} / ${status}`
+}
+
+function formatInputSignalTooltipValue(
+  seriesName: string | undefined,
+  value: number | null | undefined
+): string {
+  if (value == null) {
+    return 'n/a'
+  }
+
+  const normalizedSeriesName = seriesName?.toLowerCase() ?? ''
+  if (normalizedSeriesName.includes('soc')) {
+    return `${Math.round(value).toLocaleString('en-GB')}%`
+  }
+  if (normalizedSeriesName.includes('mw')) {
+    return `${Number(value).toFixed(3)} MW`
+  }
+  if (normalizedSeriesName.includes('price') || normalizedSeriesName.includes('uah/mwh')) {
+    return `${Math.round(value).toLocaleString('en-GB')} UAH/MWh`
+  }
+  return Math.round(value).toLocaleString('en-GB')
+}
+
+function formatPolicyTooltipValue(
+  seriesName: string | undefined,
+  value: number | null | undefined,
+  forcePriceUnit = false
+): string {
+  if (value == null) {
+    return 'n/a'
+  }
+  const normalizedSeriesName = seriesName?.toLowerCase() ?? ''
+  if (normalizedSeriesName.includes('mw') || normalizedSeriesName.includes('action')) {
+    return `${Number(value).toFixed(3)} MW`
+  }
+  if (forcePriceUnit || normalizedSeriesName.includes('price') || normalizedSeriesName.includes('forecast')) {
+    return `${Math.round(value).toLocaleString('en-GB')} UAH/MWh`
+  }
+  return `${Math.round(value).toLocaleString('en-GB')} UAH`
+}
+
+function shortStrategyLabel(row: StrategyComparisonRow): string {
+  if (row.sourceId === 'best_valid') {
+    return 'Best valid'
+  }
+  if (row.sourceId === 'dt_shadow') {
+    return 'DT Shadow'
+  }
+  if (row.sourceId === 'poland_tft_shadow') {
+    return 'Poland/TFT'
+  }
+  if (row.sourceId === 'dfl_diagnostics') {
+    return 'DFL diag'
+  }
+  return 'V13 blocked'
+}
+
+function formatEnergy(value: number): string {
+  return `${value.toFixed(2)} MWh`
+}
+
+function formatOptionalUah(value: number | null): string {
+  if (value == null) {
+    return 'n/a'
+  }
+  return `${Math.round(value).toLocaleString('en-GB')} UAH`
 }
 
 function formatForecastSeriesLabel(modelName: string): string {
@@ -527,23 +990,48 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           Forecast evidence / read model
         </p>
         <h2 class="section-title">
-          V2+ schedule evidence, TFT portfolio, and strategy preview
+          Delivery-day schedule preview and evidence gates
         </h2>
       </div>
       <div class="future-control-stack">
-        <label>
-          <span>Strategy preview</span>
+        <label class="future-schedule-source-control">
+          <span>Schedule shown</span>
           <USelect
             class="future-strategy-select"
-            :model-value="selectedStrategyId"
-            :items="strategySelectItems"
+            :model-value="selectedPreviewSourceId"
+            :items="previewSourceSelectItems"
             value-key="value"
             label-key="label"
             color="info"
             variant="none"
-            @update:model-value="updateSelectedStrategy"
+            @update:model-value="updateSelectedPreviewSource"
           />
         </label>
+        <div
+          class="future-baseline-context"
+          aria-label="Default comparator context"
+        >
+          <span>Comparator baseline</span>
+          <strong>Strict similar-day baseline</strong>
+          <small>Frozen LP/oracle regret reference; not a second selector.</small>
+        </div>
+        <div
+          class="future-baseline-context future-baseline-context--default"
+          aria-label="Default fallback context"
+        >
+          <span>Default/fallback</span>
+          <strong>V2+ schedule/value learner</strong>
+          <small>DT and diagnostics stay manual preview only.</small>
+        </div>
+        <UButton
+          class="future-refresh-button"
+          icon="i-lucide-refresh-cw"
+          :label="`Loaded ${shadowPreviewLastLoadedLabel}`"
+          color="info"
+          variant="soft"
+          size="xs"
+          @click="emit('refresh:shadowPreview')"
+        />
         <UBadge
           class="status-badge"
           :label="readModelBadgeLabel"
@@ -551,6 +1039,17 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           variant="soft"
         />
       </div>
+    </div>
+
+    <div
+      v-if="selectedPreviewSourceId !== 'best_valid'"
+      class="shadow-preview-boundary-strip"
+    >
+      <span>Manual preview: {{ shadowPreviewLabel }}</span>
+      <span>{{ shadowPreview?.preview_status || 'loading shadow packet' }}</span>
+      <span>Not promoted</span>
+      <span>No market execution</span>
+      <span>V2+ remains default/fallback</span>
     </div>
 
     <div class="future-status-grid">
@@ -610,15 +1109,15 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           <p class="decision-chart-card__eyebrow">
             Forecast stack
           </p>
-          <h3>Price-model context</h3>
-          <p>DAM forecast window: <strong>{{ forecastWindowLabel }}</strong>. These are day-ahead forecast context lines only; the DAM delivery review schedule is shown in the policy chart and bottom dock.</p>
+          <h3>{{ forecastChartTitle }}</h3>
+          <p>{{ forecastStackDescription }}</p>
           <div class="forecast-quality-strip">
             <span
-              v-for="item in forecastQualityItems"
+              v-for="item in recommendationInputSummaryItems"
               :key="item.modelName"
               :class="{ 'forecast-quality-strip__item--warn': item.needsCalibration }"
             >
-              {{ item.modelName }}: {{ item.label }}
+              {{ item.label }}
             </span>
             <span
               v-for="item in hiddenUnsafeForecastItems"
@@ -659,7 +1158,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
               @click="setPolicyValueMode('selected')"
             >
               <UIcon name="i-lucide-brain" />
-              <span>DAM schedule</span>
+              <span>{{ isShadowRecommendationMode ? 'Shadow preview' : 'DAM schedule' }}</span>
             </button>
             <button
               type="button"
@@ -685,10 +1184,53 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
               {{ item.label }}: {{ item.value }} / {{ item.meta }}
             </span>
           </div>
+          <div
+            v-if="selectedRecommendationGuideItems.length"
+            class="policy-chart-guide"
+          >
+            <span
+              v-for="item in selectedRecommendationGuideItems"
+              :key="item.label"
+            >
+              <strong>{{ item.label }}</strong>: {{ item.detail }}
+            </span>
+          </div>
         </div>
         <ClientOnly>
           <ClientVChart
             :option="policyOption"
+            autoresize
+            class="future-chart"
+          />
+        </ClientOnly>
+      </article>
+
+      <article class="future-chart-card future-chart-card--wide">
+        <div>
+          <p class="decision-chart-card__eyebrow">
+            Strategy comparison
+          </p>
+          <h3>Five-strategy delivery-day comparison</h3>
+          <p>
+            Charge/discharge totals and regret metrics are shown for the selected DAM delivery window
+            {{ selectedScheduleWindowLabel }}. Shadow and diagnostic strategies stay preview-only; blocked V13/DT/LAVA
+            remains visible as gate evidence with no schedule rows.
+          </p>
+          <div
+            v-if="strategyComparisonSummary.length"
+            class="forecast-quality-strip"
+          >
+            <span
+              v-for="item in strategyComparisonSummary"
+              :key="item.label"
+            >
+              {{ item.label }}: {{ item.value }} / {{ item.meta }}
+            </span>
+          </div>
+        </div>
+        <ClientOnly>
+          <ClientVChart
+            :option="strategyComparisonOption"
             autoresize
             class="future-chart"
           />
@@ -774,6 +1316,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 
 .future-control-stack {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: flex-end;
   gap: 0.55rem;
@@ -783,7 +1326,44 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
 .future-control-stack label {
   display: grid;
   gap: 0.22rem;
-  min-width: 18rem;
+  min-width: min(18rem, 100%);
+}
+
+.future-schedule-source-control {
+  border: 4px solid rgba(255, 255, 255, 0.86);
+  border-radius: 14px;
+  color: #fff;
+  font-weight: 600;
+  padding: 4px 0.45rem 0.42rem 7px;
+}
+
+.future-baseline-context {
+  display: grid;
+  gap: 0.12rem;
+  min-width: min(13.5rem, 100%);
+  border: 1px solid rgba(202, 249, 255, 0.28);
+  border-radius: 0.55rem;
+  background: rgba(4, 67, 119, 0.58);
+  padding: 0.42rem 0.55rem;
+}
+
+.future-baseline-context--default {
+  border-color: rgba(215, 255, 79, 0.32);
+}
+
+.future-baseline-context strong {
+  overflow-wrap: anywhere;
+  color: #f2fbff;
+  font-size: 0.76rem;
+  font-weight: 900;
+  line-height: 1.15;
+}
+
+.future-baseline-context small {
+  color: rgba(229, 249, 255, 0.76);
+  font-size: 0.62rem;
+  font-weight: 760;
+  line-height: 1.24;
 }
 
 .future-control-stack span {
@@ -793,15 +1373,88 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   text-transform: uppercase;
 }
 
+.future-schedule-source-control > span {
+  color: #fff;
+  font-weight: 600;
+}
+
 .future-strategy-select {
   min-height: 2.4rem;
   border: 1px solid rgba(202, 249, 255, 0.34);
   border-radius: 0.55rem;
   background: rgba(4, 67, 119, 0.84);
+  color: #fff;
+  font-size: clamp(1.25rem, 2vw, 2rem);
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.future-schedule-source-control :deep(.future-strategy-select) {
+  min-height: 2.4rem;
+  border: 1px solid rgba(202, 249, 255, 0.34);
+  border-radius: 0.55rem;
+  background: rgba(4, 67, 119, 0.84);
+  color: #fff !important;
+  font-size: clamp(1.25rem, 2vw, 2rem) !important;
+  font-weight: 900 !important;
+  line-height: 1.05;
+}
+
+.future-strategy-select :deep([data-slot="value"]) {
+  color: #fff;
+  font-size: inherit;
+  font-weight: 900;
+  line-height: inherit;
+}
+
+.future-schedule-source-control :deep(.future-strategy-select [data-slot="value"]) {
+  color: #fff !important;
+  font-size: inherit;
+  font-weight: 900 !important;
+  line-height: inherit;
+}
+
+.future-refresh-button {
+  min-height: 2.4rem;
+  border: 2px solid #fff !important;
+  border-radius: 3px !important;
+  color: #f2f2f2 !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1rem;
+  font-weight: 900;
+  padding: 4px !important;
+  white-space: nowrap;
+}
+
+.future-refresh-button :deep(.truncate) {
+  color: #f2f2f2;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.shadow-preview-boundary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.38rem;
+}
+
+.shadow-preview-boundary-strip span {
+  border: 1px solid rgba(255, 191, 82, 0.58);
+  border-radius: 999px;
+  background: rgba(119, 65, 9, 0.58);
+  color: #fff0c7;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 900;
 }
 
 .future-chart-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.future-chart-card--wide {
+  grid-column: 1 / -1;
 }
 
 .future-explainer-grid {
@@ -1037,6 +1690,27 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   color: #fff0c7 !important;
 }
 
+.policy-chart-guide {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 0.45rem;
+}
+
+.policy-chart-guide span {
+  display: block;
+  border-left: 2px solid rgba(215, 255, 79, 0.54);
+  padding-left: 0.45rem;
+  color: rgba(229, 249, 255, 0.86);
+  font-size: 0.68rem;
+  font-weight: 760;
+  line-height: 1.32;
+}
+
+.policy-chart-guide strong {
+  color: #d7ff4f;
+  font-weight: 950;
+}
+
 .future-chart {
   height: 20rem;
   min-height: 20rem;
@@ -1089,6 +1763,10 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   }
 
   .future-control-stack label {
+    min-width: 0;
+  }
+
+  .future-baseline-context {
     min-width: 0;
   }
 

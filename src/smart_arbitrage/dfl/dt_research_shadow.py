@@ -38,6 +38,9 @@ SEQUENCE_NPZ_NAME: Final[str] = "dt_research_shadow_sequences.npz"
 SEQUENCE_SUMMARY_JSON_NAME: Final[str] = "dt_research_shadow_sequence_summary.json"
 SEQUENCE_VALIDATION_JSON_NAME: Final[str] = "dt_research_shadow_sequence_validation.json"
 SMOKE_SUMMARY_JSON_NAME: Final[str] = "dt_research_shadow_smoke_summary.json"
+SELECTED_PREVIEW_JSON_NAME: Final[str] = (
+    "dt_research_shadow_selected_schedule_preview.json"
+)
 EVALUATION_SUMMARY_JSON_NAME: Final[str] = (
     "dt_research_shadow_evaluation_summary.json"
 )
@@ -703,6 +706,12 @@ def run_dt_research_shadow_smoke(
         eval_logits=eval_logits.detach().cpu().numpy(),
     )
     metrics["eval_cross_entropy_loss"] = float(eval_loss.detach().item())
+    selected_preview_packet = _dt_research_shadow_selected_preview_packet(
+        npz=npz,
+        eval_indices=eval_indices,
+        eval_logits=eval_logits.detach().cpu().numpy(),
+        metrics=metrics,
+    )
     summary = {
         "claim_scope": DT_RESEARCH_SHADOW_SMOKE_CLAIM_SCOPE,
         "requested_model_backbone": model_backbone,
@@ -774,12 +783,14 @@ def run_dt_research_shadow_smoke(
     summary["attached_artifacts"] = {
         "smoke_summary_json": SMOKE_SUMMARY_JSON_NAME,
         "evaluation_summary_json": EVALUATION_SUMMARY_JSON_NAME,
+        "selected_preview_json": SELECTED_PREVIEW_JSON_NAME,
     }
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
     summary_path = output_path / SMOKE_SUMMARY_JSON_NAME
     evaluation_path = output_path / EVALUATION_SUMMARY_JSON_NAME
     evaluation_validation_path = output_path / EVALUATION_VALIDATION_JSON_NAME
+    selected_preview_path = output_path / SELECTED_PREVIEW_JSON_NAME
     summary_path.write_text(
         json.dumps(_jsonable(summary), indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -797,10 +808,16 @@ def run_dt_research_shadow_smoke(
         + "\n",
         encoding="utf-8",
     )
+    selected_preview_path.write_text(
+        json.dumps(_jsonable(selected_preview_packet), indent=2, sort_keys=True)
+        + "\n",
+        encoding="utf-8",
+    )
     return {
         "summary_json": summary_path,
         "evaluation_summary_json": evaluation_path,
         "evaluation_validation_json": evaluation_validation_path,
+        "selected_preview_json": selected_preview_path,
     }
 
 
@@ -1514,6 +1531,119 @@ def _evaluation_metrics(
         "infeasible_action_prediction_count": float(infeasible_predictions),
         "accuracy_secondary": float(correct / total) if total else 0.0,
     }
+
+
+def _dt_research_shadow_selected_preview_packet(
+    *,
+    npz: np.lib.npyio.NpzFile,
+    eval_indices: np.ndarray,
+    eval_logits: np.ndarray,
+    metrics: Mapping[str, float],
+) -> dict[str, Any]:
+    return {
+        "claim_scope": (
+            "dt_research_shadow_selected_schedule_preview_not_promotable_not_market_execution"
+        ),
+        "selection_method": (
+            "highest_feasible_dt_candidate_logit_over_evaluation_sequence_candidates"
+        ),
+        "preview_rows": _dt_research_shadow_selected_preview_rows(
+            npz=npz,
+            eval_indices=eval_indices,
+            eval_logits=eval_logits,
+        ),
+        "evaluation_metrics": dict(metrics),
+        "action_target": "candidate_index_or_schedule_family",
+        "raw_hourly_buy_sell_hold_action_target": False,
+        "publication_receipt_verified": False,
+        "research_shadow_not_promotable": True,
+        "dt_promotion_gate_passed": False,
+        "market_execution_enabled": False,
+    }
+
+
+def _dt_research_shadow_selected_preview_rows(
+    *,
+    npz: np.lib.npyio.NpzFile,
+    eval_indices: np.ndarray,
+    eval_logits: np.ndarray,
+) -> list[dict[str, Any]]:
+    action_labels = npz["actions"][eval_indices]
+    candidate_mask = npz["candidate_mask"][eval_indices]
+    candidate_ids = npz["candidate_id_targets"][eval_indices].astype(str)
+    schedule_families = npz["schedule_family_targets"][eval_indices].astype(str)
+    candidate_regret = npz["candidate_regret_uah"][eval_indices]
+    candidate_value = npz["candidate_value_uah"][eval_indices]
+    candidate_safety = npz["candidate_safety_violation_count"][eval_indices]
+    anchor_timestamps = npz["anchor_timestamps"].astype(str)
+    is_v2_plus = npz["is_v2_plus_reference"][eval_indices]
+    is_strict = npz["is_strict_reference"][eval_indices]
+    rows: list[dict[str, Any]] = []
+    for local_index, sequence_index in enumerate(eval_indices):
+        valid_positions = np.flatnonzero(candidate_mask[local_index])
+        if len(valid_positions) == 0:
+            continue
+        candidate_scores = [
+            eval_logits[local_index, position, int(action_labels[local_index, position])]
+            for position in valid_positions
+            if int(action_labels[local_index, position]) >= 0
+        ]
+        if not candidate_scores:
+            continue
+        selected_position = int(valid_positions[int(np.argmax(candidate_scores))])
+        selected_candidate_id = str(candidate_ids[local_index, selected_position])
+        selected_regret = float(candidate_regret[local_index, selected_position])
+        selected_value = float(candidate_value[local_index, selected_position])
+        v2_regret = _reference_regret(
+            candidate_regret[local_index],
+            is_v2_plus[local_index],
+        )
+        v2_value = _reference_value(candidate_value[local_index], is_v2_plus[local_index])
+        strict_regret = _reference_regret(
+            candidate_regret[local_index],
+            is_strict[local_index],
+        )
+        strict_value = _reference_value(candidate_value[local_index], is_strict[local_index])
+        rows.append(
+            {
+                "tenant_id": _candidate_id_part(selected_candidate_id, 0),
+                "source_model_name": _candidate_id_part(selected_candidate_id, 1),
+                "anchor_timestamp": str(anchor_timestamps[sequence_index]),
+                "selected_candidate_id": selected_candidate_id,
+                "selected_schedule_family": str(
+                    schedule_families[local_index, selected_position]
+                ),
+                "selected_candidate_index": int(
+                    action_labels[local_index, selected_position]
+                ),
+                "selected_candidate_position": selected_position,
+                "dt_selected_regret_uah": selected_regret,
+                "dt_selected_value_uah": selected_value,
+                "v2_plus_regret_uah": v2_regret,
+                "v2_plus_value_uah": v2_value,
+                "strict_regret_uah": strict_regret,
+                "strict_value_uah": strict_value,
+                "regret_vs_v2_plus_uah": selected_regret - v2_regret,
+                "regret_vs_strict_uah": selected_regret - strict_regret,
+                "value_vs_v2_plus_uah": selected_value - v2_value,
+                "value_vs_strict_uah": selected_value - strict_value,
+                "candidate_safety_violation_count": int(
+                    candidate_safety[local_index, selected_position]
+                ),
+                "publication_receipt_verified": False,
+                "research_shadow_not_promotable": True,
+                "dt_promotion_gate_passed": False,
+                "market_execution_enabled": False,
+            }
+        )
+    return rows
+
+
+def _candidate_id_part(candidate_id: str, index: int) -> str:
+    parts = candidate_id.split("|")
+    if index < len(parts):
+        return parts[index]
+    return ""
 
 
 def _majority_family_id(family_ids: np.ndarray) -> int:

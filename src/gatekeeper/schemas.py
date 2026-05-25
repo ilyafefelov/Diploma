@@ -1,3 +1,10 @@
+"""OBSOLETE legacy schema duplicate.
+
+Do not import this module for active code. Canonical gatekeeper contracts live in
+``smart_arbitrage.gatekeeper.schemas``. This file is retained only as historical
+draft material and may contain stale market constants.
+"""
+
 # 
 # 🛡️ Крок 1: Safety Contracts (/src/contracts/schemas.py)
 # Цей модуль є першою лінією оборони. Він гарантує, що жодна команда від ШІ-агента не нашкодить обладнанню, навіть якщо градієнти в Decision Transformer «галюцинують»

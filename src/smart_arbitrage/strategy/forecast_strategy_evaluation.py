@@ -18,12 +18,10 @@ from smart_arbitrage.assets.gold.baseline_solver import (
     BaselineSolveResult,
     HourlyDamBaselineSolver,
 )
-from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
 from smart_arbitrage.forecasting.neural_features import (
     DEFAULT_NEURAL_FORECAST_HORIZON_HOURS,
     build_neural_forecast_feature_frame,
 )
-from smart_arbitrage.forecasting.tft import build_tft_forecast
 from smart_arbitrage.assets.mvp_demo import (
     DEMO_BATTERY_CAPEX_USD_PER_KWH,
     DEMO_BATTERY_CYCLES_PER_DAY,
@@ -362,8 +360,8 @@ def _rolling_origin_candidates(
         price_history,
         future_weather_mode="forecast_only",
     )
-    nbeatsx_forecast = build_nbeatsx_forecast(feature_frame)
-    tft_forecast = build_tft_forecast(feature_frame)
+    nbeatsx_forecast = _build_nbeatsx_forecast(feature_frame)
+    tft_forecast = _build_tft_forecast(feature_frame)
     return [
         ForecastCandidate(
             model_name="strict_similar_day",
@@ -381,6 +379,22 @@ def _rolling_origin_candidates(
             point_prediction_column="predicted_price_p50_uah_mwh",
         ),
     ]
+
+
+def _build_nbeatsx_forecast(feature_frame: pl.DataFrame) -> pl.DataFrame:
+    """Import compact torch forecast code only when the benchmark executes."""
+
+    from smart_arbitrage.forecasting.nbeatsx import build_nbeatsx_forecast
+
+    return build_nbeatsx_forecast(feature_frame)
+
+
+def _build_tft_forecast(feature_frame: pl.DataFrame) -> pl.DataFrame:
+    """Import compact torch forecast code only when the benchmark executes."""
+
+    from smart_arbitrage.forecasting.tft import build_tft_forecast
+
+    return build_tft_forecast(feature_frame)
 
 
 def _with_benchmark_metadata(

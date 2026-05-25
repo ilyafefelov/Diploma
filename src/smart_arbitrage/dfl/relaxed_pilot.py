@@ -6,8 +6,6 @@ from typing import Any, Final
 
 import polars as pl
 
-from smart_arbitrage.dfl.relaxed_dispatch import solve_relaxed_dispatch
-
 REQUIRED_EVALUATION_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "evaluation_id",
@@ -128,3 +126,10 @@ def _realized_value(
             for price, charge, discharge in zip(actual_prices, charge_mw, discharge_mw, strict=True)
         )
     )
+
+
+def solve_relaxed_dispatch(**kwargs: Any) -> Any:
+    """Import differentiable LP dependencies only when the pilot executes."""
+    from smart_arbitrage.dfl.relaxed_dispatch import solve_relaxed_dispatch as _solve
+
+    return _solve(**kwargs)

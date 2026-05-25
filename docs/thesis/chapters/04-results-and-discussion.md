@@ -203,12 +203,13 @@ Strategy Promotion, без ринкового виконання в реальн
 перемикання dashboard/API на нову стратегію і без твердження, що raw neural
 forecasting сам по собі є кращим за `strict_similar_day`.
 
-![Порівняння mean regret для strict control, frozen V2, V2+ та пізніших V3-V5 gates](assets/chapter4-v2plus-regret-comparison.svg)
+![Порівняння mean regret для strict control, frozen V2, V2+ та пізніших diagnostic gates](assets/chapter4-v2plus-regret-comparison.svg)
 
 Рисунок 4.1 узагальнює головний числовий результат: V2+ знижує mean regret
 до `174.77` UAH і залишається найсильнішим підтвердженим offline/read-model
-результатом. Пізніші V3/V4/V5 експерименти не погіршили результат, але й не
-створили нового headline, оскільки активували V2+ fallback.
+результатом. Пізніші diagnostic gates не створили нового headline; V4/V5
+формулювання нижче залишені як draft/pending-evidence, доки локальні packet
+paths не будуть прив'язані до відповідних run IDs.
 
 ## 4.8. Інтерпретація результату
 
@@ -439,7 +440,10 @@ Ukrainian-only calibrated V2+ лишається кращим за mean regret (
 тому blocker лишається `mean_not_improved_vs_frozen_v2_plus`. Для дипломного
 claim це означає: Poland features already work technically and improve a TFT
 near-miss after calibration, but they are not headline evidence until they beat
-V2+ under the same strict LP/oracle gate.
+V2+ under the same strict LP/oracle gate. Evidence manifest entry:
+`docs/thesis/appendices/evidence-manifest.md`, packet
+`data/research_runs/week3_poland_lag24_richer_calibrated_experimental_schedule_value/poland_lag24_experimental_schedule_value_summary.json`,
+Dagster run `58e38050-9db1-4f34-9215-bc3e99644f46`.
 
 Наступний tail-risk audit пояснив, чому цей результат настільки близький, але
 все одно не проходить. У matched comparison calibrated Poland TFT V2+ мав
@@ -466,7 +470,10 @@ schedules у `34 / 90` rows, mean regret зменшився з `174.77` до `16
 покращення mean дорівнює `4.41%`, а conservative replacement rule вимагає
 мінімум `5%` і rolling robustness. Тому V2+ все ще лишається thesis headline,
 а Poland prior-veto стає найперспективнішим next candidate для ширшого
-rolling-window rerun.
+rolling-window rerun. Evidence manifest entry:
+`docs/thesis/appendices/evidence-manifest.md`, packet
+`data/research_runs/week3_poland_lag24_prior_tail_risk_veto/poland_lag24_prior_veto_summary.json`,
+Dagster run `cb60e2d9-1b52-43b9-bd57-bfa7fa155e7d`.
 
 Після rolling-gate перевірки наступний ML крок не переходить одразу до
 DT/LAVA. Спочатку було додано ремонт feature contract і tabular
@@ -675,25 +682,20 @@ V2+ (`174.77` UAH), а train/prior signal є надто слабким для
 terminal SOC reserve, spread-volatility robust, tenant-specific
 degradation/throughput sweep і train-only oracle-neighborhood diagnostics.
 
-Матеріалізований V4 run `0c57f795-3b5b-4106-ad9d-0776294a1eb4` пройшов
-label-panel і strict-benchmark evidence checks, але також не замінив V2+. У
-strict LP/oracle benchmark було `720` rows: для calibrated official NBEATSx V4
-повторив V2+ mean regret `174.77` UAH, а для raw official NBEATSx повторив V2+
-mean regret `193.36` UAH. Отже, improvement проти V2+ знову дорівнював
-`0.00%`.
+Draft/pending-evidence note: попередня чернетка прив'язувала V4 до run
+`0c57f795-3b5b-4106-ad9d-0776294a1eb4`, але поточний локальний scan
+`data/research_runs/` не знайшов packet path для цього run ID. Тому точні V4
+числа не використовуються як defended thesis result у цій ревізії. До
+відновлення packet path V4 описується лише як diagnostic design branch, а
+підтвердженим headline лишається V2+.
 
-Новий внесок V4 полягає в кращій діагностиці плато. Autopsy показав, що для
-calibrated NBEATSx `71 / 90` final-holdout tenant-anchor rows мають причину
-`candidate_not_better`, а `19 / 90` - `fallback_too_conservative`. Для raw
-NBEATSx відповідні числа становлять `48 / 90` і `42 / 90`. Pre-fallback raw
-candidate scoring міг знизити mean regret до `190.59` UAH проти raw V2+
-`193.36` UAH, але цей результат усе ще гірший за calibrated V2+ `174.77` UAH і
-не мав достатнього prior/train evidence для promotion. Data-quality audit також
-показав, що Ukrainian DAM history і regret-cluster alignment готові, але
-weather/load context, calendar/event context і publication-time availability
-мають прогалини. Тому V2+ залишається основним результатом диплома, а наступне покращення має
-починатися з point-in-time context і нових schedule shapes, не з більшого DT
-над тим самим objective.
+Очікуваний внесок V4 полягає в кращій діагностиці плато: чи проблема в
+candidate schedules, у scorer/fallback rule, або в missing point-in-time
+context. Без локального packet path цей підрозділ не заявляє конкретних V4
+метрик, а тільки фіксує наступний research direction. Тому V2+ залишається
+основним результатом диплома, а наступне покращення має починатися з
+point-in-time context і нових schedule shapes, не з більшого DT над тим самим
+objective.
 
 Після цього реалізовано окремий Point-in-Time Context Repair + Candidate-Value
 DFL V5 етап. Його роль полягає не в тому, щоб послабити gate або додати
@@ -715,14 +717,13 @@ rolling robustness і залишить `market_execution_enabled=false`. До т
 strict LP/oracle результату V2+ залишається основним Offline Strategy
 Promotion evidence.
 
-Матеріалізований V5 run `11a3effb-ffb5-4e1a-97e2-878b00106381` пройшов
-evidence check, але не замінив V2+. Було отримано `14,600` context-audit rows,
-`3,650` prior-only context-feature rows, `10` learner rows і `720` strict
-LP/oracle benchmark rows. Для calibrated official NBEATSx V5 повторив V2+
-mean regret `174.77` UAH і median regret `67.30` UAH; для raw official NBEATSx
-V5 повторив V2+ mean regret `193.36` UAH і median regret `68.89` UAH. Усі
-tenant/source rows активували V2+ fallback, тому improvement проти V2+ дорівнює
-`0.00%`.
+Draft/pending-evidence note: попередня чернетка прив'язувала V5 до run
+`11a3effb-ffb5-4e1a-97e2-878b00106381`, але поточний локальний scan
+`data/research_runs/` не знайшов packet path для цього run ID. Тому точні V5
+числа не використовуються як defended thesis result у цій ревізії. До
+відновлення packet path V5 описується як context-repair design branch, який має
+бути оцінений тим самим strict LP/oracle comparator перед будь-якою
+promotion-claim.
 
 Після цього було виконано targeted leakage audit для самого V2+ comparator.
 Підозрілий шлях був простий: якщо два candidates мали однакове prior-family
@@ -1207,7 +1208,73 @@ extended Ukrainian DAM/weather history і достатній safe-label support.
 залишається V2+ (`174.77` / `67.30` UAH, `4 / 4` rolling,
 `market_execution_enabled=false`).
 
-## 4.13. Доказові артефакти
+## 4.13. Credentialless Academic MVP and HF DT shadow
+
+Після зміни межі дипломного MVP з market-submission на operator-preview було
+матеріалізовано credentialless Academic MVP packet. Його результат:
+`academic_mvp_gate_passed=true`, але тільки для DAM delivery-day recommendation
+preview і offline research evidence. Market-submission receipt gate лишається
+`blocked_external_access`, `permits_model_training=false`,
+`promotion_gate_passed=false`, `market_execution_gate_passed=false` і
+`market_execution_enabled=false`. Це означає, що SCMO credentials не потрібні
+для дипломної демонстрації, але потрібні для будь-якого майбутнього
+market-submittable receipt claim.
+
+Operator-preview частина packet показує 24 hourly DAM recommendation-preview
+rows: 1 BUY row, 2 SELL rows і 21 HOLD rows. Це не `ProposedBid` і не market
+order payload; це read-model schedule preview для оператора. Gate passport
+також підтверджує LAVA NPZ CI-smoke validation, V13-gated teacher-contract
+shape, offline challenger non-promotion gate і no-market-execution safety gate.
+Teacher contract має `3,921` rows і `3,741` train-selection rows, але
+`0` permitted model-training rows, бо explicit publication receipt readiness
+не пройдена.
+
+Окремо було оновлено DT research-shadow packet з Hugging Face
+`DecisionTransformerModel` через optional `dt` extra. Sequence dataset має
+`102,471` available teacher rows, `97,431` research-shadow training rows,
+`0` promotable V13-permitted training rows, `7,300` sequences, chronological
+delivery-time split, state dimension `20` і complete NBEATSx/TFT forecast
+context. Smoke run мав `6,940` train sequences і `360` evaluation sequences,
+`model_backbone=huggingface_decision_transformer_model`,
+`model_backbone_selection_reason=hf_requested` і
+`hf_decision_transformer_available=true`.
+
+Evaluation є корисною саме як прототип, а не як promotion. DT shadow отримав
+mean regret `507.90` UAH і mean value `3,403.59` UAH. V2+ teacher/fallback і
+behavior-cloning control мали `510.82` UAH mean regret і `3,400.67` UAH mean
+value. Strict LP/oracle reference залишився кращим: `431.70` UAH mean regret і
+`3,479.78` UAH mean value. Infeasible action prediction count дорівнює `0`, а
+accuracy лишається secondary metric (`0.3636`). Отже, HF DT smoke доводить, що
+candidate-index sequence-model pipeline працює і безпечно оцінюється, але не
+доводить DT promotion: DT трохи покращив V2+/behavior-cloning на цьому eval
+slice, проте все ще гірший за strict reference і заблокований V13 source
+readiness.
+
+Найважливіший академічний висновок цього slice: негативна/не-promoted DT
+оцінка не є невдачею. Вона закриває thesis gap між "DT/LAVA ще не можна
+просувати" і "ми маємо працюючий transformer prototype". Поточний чесний claim:
+credentialless Academic MVP passed for thesis demo; HF Decision Transformer
+research-shadow smoke passed as non-promotable evidence; market submission,
+full DFL і deployed DT control не заявляються.
+
+Operator dashboard тепер розділяє default strategy і manual shadow preview.
+Default `/operator` view лишається на V2+ / `schedule_value_learner_v2_plus`,
+тобто на best-valid/fallback recommendation. Ручний перемикач може завантажити
+DT Shadow, Poland/TFT Shadow і DFL diagnostics через read-model endpoint
+`/dashboard/shadow-recommendation-preview`; ці режими показують власні hourly
+schedule recommendations, charts і comparison metrics, але не стають production
+default selection і не створюють market order payload.
+
+Наступний strict LP/oracle promotion path залишається offline: тренувати
+candidate-id або schedule-family challenger на chronological delivery-time
+splits, оцінювати його проти V2+, strict reference і behavior-cloning control,
+а promotion розглядати лише після lower mean regret than V2+, no median
+degradation, `4 / 4` rolling robustness, zero safety violations і незмінного
+`market_execution_enabled=false`. SCMO credentials для цього credentialless
+academic promotion attempt не потрібні; вони блокують тільки market-submission
+receipt readiness.
+
+## 4.14. Доказові артефакти
 
 Основні доказові артефакти розділу розміщені у технічних evidence packets,
 research-run каталогах і документах, які можна відтворити з Dagster/Postgres
@@ -1254,6 +1321,12 @@ rows:
   `docs/technical/DFL_OPPORTUNITY_BACKFILL_V7.md` - V6 negative evidence
   (`0 / 90` selected, `0 / 4` rolling) і V7 opportunity-backfill gate для
   перевірки, чи є enough prior-supported teacher labels before DT/LAVA;
+- `data/research_runs/week3_dt_research_shadow_current/` - chronological
+  DT research-shadow sequence dataset, HF DecisionTransformer smoke summary,
+  regret/value evaluation summary and validation sidecar;
+- `data/research_runs/week3_credentialless_academic_mvp_current/` -
+  credentialless Academic MVP readiness summary, Markdown report and standalone
+  validation packet;
 - `docs/technical/DFL_UA_CONTEXT_CANDIDATE_V8.md` - український context
   backfill, strict-rescored V8 candidates і conservative V8 selector negative
   result (`6 / 90` selected, `188.42` / `76.32` UAH, `0 / 4` rolling);

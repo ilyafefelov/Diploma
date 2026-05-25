@@ -1,0 +1,39 @@
+# Thesis Evidence Manifest
+
+Date: 2026-05-25
+
+Purpose: map major thesis/result claims to local artifacts, commands, dates, status, and claim boundaries. This is a defense-support manifest, not a market-execution artifact.
+
+Global boundary:
+
+- Product surface: DAM delivery-day operator recommendation preview.
+- Market execution: disabled.
+- Full DFL controller: not claimed.
+- Deployed Decision Transformer controller: not claimed.
+- LAVA promotion: not claimed.
+- V13: source-readiness/acquisition gate, not a modeling slice.
+
+## Evidence Table
+
+| Claim | Status | Artifact | Run or command | Date | Hash / verification | Claim boundary |
+|---|---|---|---|---|---|---|
+| V2+ is the current thesis headline offline research challenger | Confirmed | `data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/dfl_schedule_value_learner_v2_plus_comparison.md` | Dagster run `b09194b2-8bf7-42fb-bcc7-1567ca47037c` | Packet generated before 2026-05-25 review | SHA256 `1D5B9AD115719D43E415D295377466B2BCE1F3A2CB555E357C367C031B2EC098` | Offline Strategy Promotion only; `market_execution_enabled=false`; not full DFL; not DT control |
+| V2+ result uses 5 tenants, 90 tenant-anchors, strict LP/oracle comparator, and 4/4 rolling robustness | Confirmed | Same V2+ packet | Same V2+ packet | Packet generated before 2026-05-25 review | Strict mean `310.58` UAH; V2 mean `206.37` UAH; V2+ mean `174.77` UAH; improvement vs frozen V2 `15.31%` | Read-model evidence only |
+| TFT quantile/global-panel lane is valid evidence but not a headline replacement | Confirmed as non-promoted/negative evidence | `data/research_runs/week3_tft_quantile_365_full_negative_evidence/dfl_tft_quantile_screen_summary.json` | Artifact summary JSON | Packet generated before 2026-05-25 review | SHA256 `61DB17A881B2F877098BE578604882FCAB9C6EBA5BDDAC99ECC06F755C113644` | Forecast adapter/research lane; not promoted over V2+ |
+| Richer Poland lag-24 calibrated route is technically valid but does not replace Ukrainian-only V2+ on mean regret | Confirmed as non-promoted near-miss | `data/research_runs/week3_poland_lag24_richer_calibrated_experimental_schedule_value/poland_lag24_experimental_schedule_value_summary.json` | Dagster run `58e38050-9db1-4f34-9215-bc3e99644f46` | 2026-05-20 | SHA256 `5789D9E6C51F8919F0C49BDE6A1AAE3A58E0BD62EE7DA4690B3BD52F71988723`; best experimental mean `177.34` UAH; median `39.46` UAH | Poland is point-in-time exogenous context only; no European training rows; not market execution |
+| Poland prior-only tail-risk veto improves mean/median but fails the 5% replacement threshold | Confirmed as not promoted | `data/research_runs/week3_poland_lag24_prior_tail_risk_veto/poland_lag24_prior_veto_summary.json` | Dagster run `cb60e2d9-1b52-43b9-bd57-bfa7fa155e7d` | 2026-05-20 | SHA256 `7E02661F66668A068726EAAF8310B0768F3B3D18810396C2BE2E3A5F91750C2E`; selected mean `167.05` UAH; improvement ratio `4.41%`; threshold `5%` | Prior-only selector; not dashboard/API default switch; not market execution |
+| DT shadow is an offline candidate-index/schedule-family research lane, not a deployed controller | Confirmed as not promotable | `data/research_runs/week3_dt_research_shadow_current/dt_research_shadow_smoke_summary.json` | Artifact summary JSON | Packet generated before 2026-05-25 review | SHA256 `2AF90E8454F9CF5BB2433794C5D53301A5F199DD23D2C42D1809D6DAE5C87162`; `dt_promotion_gate_passed=false`; `promotable_v13_permitted_training_rows=0` | Shadow research only; no raw hourly BUY/SELL/HOLD control |
+| LAVA NPZ smoke validates a prototype contract but is not promoted | Confirmed as smoke-only | `data/research_runs/week3_dt_lava_lava_npz_smoke_current/candidate_lava_margin_metrics.json` | Artifact summary JSON | Packet generated before 2026-05-25 review | SHA256 `6C7100A6F5FA4A6BFC4EC4377BD2804496B856599E73422F8175F51EF3F637B7`; `promotion_gate=false`; `dt_lava_ready=false` | CI/prototype smoke; not full DFL; not market execution |
+| V13 remains blocked by missing explicit DAM publication receipts and missing configured safe-switch examples | Confirmed current blocker | `.tmp_runtime/v13_acquisition_inputs_preflight.json` and `docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/v13_acquisition_inputs_preflight_2026-05-25.json` | `.\.venv\Scripts\python.exe scripts\preflight_ua_context_v13_acquisition_inputs.py --config configs\real_data_dfl_ua_context_v13_acquisition_week3.yaml --output .tmp_runtime\v13_acquisition_inputs_preflight.json` | 2026-05-25 | SHA256 `6759403AD4D59C8D0EF24FC8A42F5CFE45125D954AF4B92E652EDB212905BE12`; `data_acquisition_needed=true`; `market_execution_enabled=false`; `dt_lava_ready=false`; `permits_model_training=false` | Source-readiness gate only; full V13 gate not evaluated |
+| V13 acquisition packet documents blocked required source family and safe-switch counts | Confirmed historical packet | `data/research_runs/week3_dfl_ua_context_acquisition_v13/dfl_ua_context_v13_acquisition_summary.json` | Run slug `week3_dfl_ua_context_acquisition_v13` | 2026-05-24 | SHA256 `76F743D9C2D28651954F9DE25D945CBC92A87107E4EE5D6A9085E1F75ED6566D`; ready rows `0`; blocked rows `5`; max prior safe examples `7`; required `20` | V13 stops before candidate generation |
+| V4 materialized run `0c57f795-3b5b-4106-ad9d-0776294a1eb4` and exact V4 metrics in Chapter 4 | Softened to draft/pending-evidence | `docs/thesis/chapters/04-results-and-discussion.md` now says the local packet path is missing and does not defend exact V4 numeric claims | `rg -n "0c57f795" data\research_runs -g "*.md" -g "*.json" -g "*.csv"` returned no matches | 2026-05-25 search and Chapter 4 hardening | Missing local packet path in current repo scan | Add exact artifact path later if the V4 packet exists outside `data/research_runs` |
+| V5 materialized run `11a3effb-ffb5-4e1a-97e2-878b00106381` and exact V5 metrics in Chapter 4 | Softened to draft/pending-evidence | `docs/thesis/chapters/04-results-and-discussion.md` now says the local packet path is missing and does not defend exact V5 numeric claims | `rg -n "11a3effb" data\research_runs -g "*.md" -g "*.json" -g "*.csv"` returned no matches | 2026-05-25 search and Chapter 4 hardening | Missing local packet path in current repo scan | Add exact artifact path later if the V5 packet exists outside `data/research_runs` |
+
+## Next Hardening Steps
+
+1. Add exact local artifact paths for V4/V5 if those packets exist outside `data/research_runs`.
+2. Keep Poland claims split into:
+   - richer calibrated near-miss, not promoted;
+   - prior-only veto, improves mean/median but below 5% threshold;
+   - no European rows as Ukrainian training targets.
+3. Keep V13 claims blocker-oriented until explicit DAM publication receipts and safe-switch examples are source-backed and configured.

@@ -4,7 +4,6 @@
   max-width: 100vw;
   min-height: 100vh;
   padding: 0.55rem;
-  padding-bottom: 12rem;
   overflow-x: clip;
 }
 
@@ -1824,19 +1823,16 @@
 }
 
 .schedule-dock {
-  position: fixed;
-  right: auto;
-  bottom: 0.75rem;
-  left: 50%;
-  z-index: 250;
+  position: relative;
+  z-index: 3;
   display: grid;
   grid-template-columns:
     var(--operator-left-rail-width)
     minmax(0, 1fr)
     minmax(var(--operator-right-rail-min), var(--operator-right-rail-max));
-  width: min(calc(100vw - 2rem), 118rem);
-  max-width: calc(100vw - 2rem);
-  transform: translateX(-50%);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   gap: 0.75rem;
   align-items: stretch;
   overflow: visible;
@@ -1879,6 +1875,30 @@
   font-weight: 850;
   line-height: 1.25;
   text-transform: uppercase;
+}
+
+.schedule-dock__battery-context {
+  display: flex;
+  align-items: center;
+  gap: 0.34rem;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 0.28rem;
+  border: 1px solid rgba(215, 255, 79, 0.42);
+  border-radius: 0.45rem;
+  background: rgba(0, 43, 96, 0.34);
+  padding: 0.28rem 0.38rem;
+  color: #d7ff4f;
+  font-size: 0.65rem;
+  font-weight: 950;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.schedule-dock__battery-context .icon {
+  width: 0.86rem;
+  height: 0.86rem;
+  flex: 0 0 auto;
 }
 
 .schedule-track {
@@ -1934,6 +1954,8 @@
 .schedule-segment > small {
   font-size: 0.72rem;
   font-weight: 800;
+  line-height: 1.18;
+  text-align: center;
 }
 
 .schedule-segment > em {
@@ -2000,13 +2022,31 @@
   gap: 0.5rem;
 }
 
-.dock-selectors label {
+.dock-selectors label,
+.dock-status-pill {
   display: grid;
   gap: 0.3rem;
 }
 
 .dock-selectors span {
   color: rgba(229, 249, 255, 0.74);
+}
+
+.dock-status-pill {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.55rem;
+  background: rgba(0, 61, 119, 0.34);
+  padding: 0.58rem;
+}
+
+.dock-status-pill strong {
+  color: white;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
 }
 
 .dock-select {
@@ -2018,6 +2058,62 @@
   padding: 0.58rem;
   color: white;
   font-weight: 800;
+}
+
+.shadow-hourly-table {
+  grid-column: 2 / 4;
+  display: grid;
+  max-height: 14rem;
+  overflow: auto;
+  gap: 0.2rem;
+  border: 1px solid rgba(255, 191, 82, 0.45);
+  border-radius: 0.65rem;
+  background: rgba(0, 61, 119, 0.5);
+  padding: 0.42rem;
+}
+
+.shadow-hourly-table__head,
+.shadow-hourly-table__row {
+  display: grid;
+  grid-template-columns: minmax(7.8rem, 1.1fr) minmax(4.5rem, 0.55fr) minmax(4.5rem, 0.55fr) minmax(5.8rem, 0.7fr) minmax(12rem, 1.7fr) minmax(5.5rem, 0.6fr) minmax(10rem, 1.3fr) minmax(10rem, 1.2fr);
+  gap: 0.38rem;
+  align-items: center;
+  min-width: 72rem;
+}
+
+.shadow-hourly-table__head {
+  color: rgba(215, 255, 79, 0.88);
+  font-size: 0.62rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.shadow-hourly-table__row {
+  border: 1px solid rgba(202, 249, 255, 0.22);
+  border-radius: 0.48rem;
+  background: rgba(4, 91, 157, 0.62);
+  padding: 0.32rem 0.38rem;
+  color: rgba(246, 255, 255, 0.9);
+  font-size: 0.66rem;
+  font-weight: 760;
+}
+
+.shadow-hourly-table__row span,
+.shadow-hourly-table__row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.shadow-hourly-table__row strong {
+  color: #d7ff4f;
+  text-transform: uppercase;
+}
+
+.shadow-hourly-table p {
+  margin: 0;
+  color: #fff0c7;
+  font-size: 0.72rem;
+  font-weight: 850;
 }
 
 .sr-only {
@@ -2106,12 +2202,15 @@
   .dock-selectors {
     grid-column: 1 / -1;
   }
+
+  .shadow-hourly-table {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 900px) {
   .operator-shell {
     padding: 0.35rem;
-    padding-bottom: 15.5rem;
   }
 
   .operator-topbar,
@@ -2158,6 +2257,10 @@
     border-right: 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     padding: 0 0 0.55rem;
+  }
+
+  .shadow-hourly-table {
+    grid-column: 1;
   }
 }
 

@@ -264,13 +264,53 @@ can now adapt TFT candidate-library rows as research-shadow context with
 `forecast_context_coverage_status=complete_nbeatsx_tft`, while every adapted
 row remains non-promotable with `publication_receipt_verified=false` and
 `market_execution_enabled=false`.
-The transformer smoke now records the backbone decision explicitly. Use
-`--model-backbone auto` for the current path: it selects Hugging Face
-`DecisionTransformerModel` only when `transformers` is importable; otherwise it
-uses the local DT-compatible classifier and writes
-`model_backbone_selection_reason=transformers_not_installed`. The current
-Windows `.venv` takes that local fallback, which is valid smoke evidence but
-not a claim of HF-backed training or DT promotion.
+
+## Operator Shadow Preview Switch
+
+The operator dashboard keeps `schedule_value_learner_v2_plus` / best valid
+gate-passed recommendation as the default preview source. Shadow sources are
+manual diagnostics only:
+
+- `DT Shadow`: research-shadow, not promoted, preview only, no market execution.
+- `Poland-TFT Shadow`: `positive_not_promoted`, useful challenger evidence but
+  not robust enough for the default strategy.
+- `DFL diagnostics`: diagnostic only, used to explain candidate-value evidence.
+- `V13/DT/LAVA promoted training`: blocked roadmap evidence until source
+  readiness and receipt gates pass.
+
+The dashboard switch expands a selected shadow candidate into the same hourly
+recommendation read model used by the default charts and final schedule table.
+Rows carry timestamp, charge/discharge/hold, quantity, SOC path when available,
+candidate id or schedule family, expected value, regret/value versus V2+ and
+strict reference, and gate/safety status. This intentionally renders negative
+DT evidence too: if DT is worse than V2+, the chart/table still display the DT
+schedule and labels it as not promoted.
+
+Hourly auto-refresh is intentionally not enabled for this demo slice. The
+backend artifacts are materialized batch evidence, not an hourly live market
+feed, so a timer would mostly reload the same files while making the dashboard
+look more real-time than the source pipeline supports. The UI instead exposes
+`last loaded` plus a manual refresh control for the currently selected preview
+source. That refresh is read-model only and cannot change the default strategy,
+emit `ProposedBid`, create market order payloads, unblock V13 receipts, promote
+DT/LAVA, or set `market_execution_enabled=true`.
+
+The transformer smoke records the backbone decision explicitly. Install the
+research DT extra before the HF-backed defense run:
+
+```powershell
+uv sync --extra dev --extra dt
+```
+
+Then use `--model-backbone hf` when the artifact must prove Hugging Face
+`DecisionTransformerModel` import and forward/train/eval execution. The packet
+must write `model_backbone=huggingface_decision_transformer_model`,
+`model_backbone_selection_reason=hf_requested`, and
+`hf_decision_transformer_available=true`. Use `--model-backbone auto` for a
+portable smoke path: it selects Hugging Face only when `transformers` is
+importable; otherwise it uses the local DT-compatible classifier and writes
+`model_backbone_selection_reason=transformers_not_installed`. Both paths remain
+non-promotable and non-executable evidence, not DT promotion.
 The sequence packet also records the DT substrate as contracts:
 `dt_state_feature_contract` proves that forecast, battery/SOC, tenant,
 candidate value/regret, and gate context groups are present; and
