@@ -1,6 +1,7 @@
 # V13 F2 Acquisition Backlog
 
 Date: 2026-05-25
+Updated: 2026-05-26
 
 Backlog item: F2 - Document acquisition backlog.
 
@@ -9,6 +10,8 @@ Source evidence:
 - `v13-f1-preflight-evidence.md`
 - `assets/v13_acquisition_inputs_preflight_2026-05-25.json`
 - `data/research_runs/week3_dfl_ua_context_acquisition_v13/dfl_ua_context_v13_acquisition_summary.json`
+- `v13-f3-acquisition-sprint-2026-05-26.md`
+- `data/research_runs/week3_dfl_ua_context_acquisition_v13_2026_05_26/dfl_ua_context_v13_acquisition_summary.json`
 
 ## Current V13 State
 
@@ -21,10 +24,12 @@ V13 remains blocked before candidate generation:
 - `market_execution_enabled=false`
 - `full_v13_gate_evaluated=false`
 
-Missing configured inputs:
+Current configured input state:
 
-- `oree_dam_publication_receipts_csv_path`
-- `ua_context_safe_switch_examples_csv_path`
+- Canonical tracked config still leaves `oree_dam_publication_receipts_csv_path` empty.
+- Canonical tracked config still leaves `ua_context_safe_switch_examples_csv_path` empty until a full source-input config is ready.
+- A staged safe-switch-only input config validates `ua_context_safe_switch_examples_csv_path` against `data/external_sources/v13/safe_switch_examples_v13_combined_lava_backfill_validated.csv`.
+- The staged input preflight still reports missing `oree_dam_publication_receipts_csv_path`.
 
 ## Required Input 1 - OREE DAM Publication Receipts
 
@@ -51,6 +56,9 @@ Acceptance:
 Current blocker:
 
 - Preflight status is `missing_config_path`.
+- Refreshed 2026-05-26 OREE `data_view` source audit across `01.2026` through `05.2026` found no row-level receipt source and generated no receipt CSV.
+- Refreshed OREE PXS observation rows for delivery date `2026-05-26` remain observation evidence only because they lack a source-provided `source_publication_timestamp`.
+- SCMO remains blocked by missing WS-Security credential material.
 
 ## Required Input 2 - V13 Safe-Switch Examples
 
@@ -84,16 +92,17 @@ Acceptance:
 
 Current blocker:
 
-- Preflight status is `missing_config_path`.
-- Historical V13 summary had ready rows `0`, blocked rows `5`, max prior material safe-switch examples `7`, required `20`.
+- Canonical tracked config remains empty, but the staged safe-switch-only input preflight validates the local safe-switch CSV.
+- Refreshed V13 packet reports max prior material safe-switch examples `20`, required `20`, safe-switch deficit `0`, and safe-switch target count `0`.
+- This closes the safe-switch deficit only as a source-readiness precondition. It does not permit DT/LAVA training or market execution while DAM receipts are still missing.
 
 ## Required Sequence
 
 1. Acquire source-backed OREE DAM publication receipt rows.
 2. Validate receipt rows with `validate_oree_dam_publication_receipts.py`.
-3. Acquire source-backed safe-switch examples.
-4. Validate safe-switch rows with `validate_ua_context_safe_switch_examples_v13.py`.
-5. Set both validated CSV paths in `configs/real_data_dfl_ua_context_v13_acquisition_week3.yaml`.
+3. Keep the validated safe-switch CSV available as staged source evidence.
+4. When DAM receipts are acquired, validate receipt rows and rerun the staged safe-switch preflight.
+5. Set both validated CSV paths in `configs/real_data_dfl_ua_context_v13_acquisition_week3.yaml` only after the DAM receipt CSV exists and validates.
 6. Re-run:
 
 ```powershell
@@ -115,5 +124,4 @@ Until both source families are ready:
 
 ## F2 Verdict
 
-F2 is complete as a documented backlog. Actual V13 readiness remains incomplete because it depends on external/source-backed receipt and safe-switch data.
-
+F2 remains complete as a documented backlog. The 2026-05-26 sprint narrows the active blocker: safe-switch support is locally validated, but actual V13 readiness remains incomplete because explicit source-backed DAM receipt rows are still missing.
