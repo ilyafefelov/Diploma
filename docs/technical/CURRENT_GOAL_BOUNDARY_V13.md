@@ -14,14 +14,21 @@ The current V13 acquisition packet remains blocked:
 
 - readiness rows: `ready_rows=0/5`;
 - decision: `data_acquisition_needed`;
-- missing configured inputs: `oree_dam_publication_receipts_csv_path` and
-  `ua_context_safe_switch_examples_csv_path`;
+- missing configured input: `oree_dam_publication_receipts_csv_path`;
 - top source blocker: `explicit DAM publication receipts`;
-- missing support: `77` safe-switch examples across five tenant/source rows;
+- staged safe-switch support: `77` safe-switch examples across five
+  tenant/source pairs, meeting the `20 / 20` prior/train example floor as
+  precondition evidence;
 - execution boundary: `market_execution_enabled=false`.
 
 This is a valid source-readiness result. It is not a failed model run and not a
-reason to train another selector over the same evidence.
+reason to promote another selector over the same evidence.
+
+Direct DT Candidate Shadow now answers a narrower engineering question: the repo
+can train a HF DecisionTransformer over candidate-index/schedule-family teacher
+targets without LAVA promotion. That run is research-shadow evidence only: it
+ties V2+ on the direct packet, remains worse than strict/oracle, and is exposed
+only as a manual dashboard preview source.
 
 ## Promotion Rules
 
@@ -30,6 +37,11 @@ evidence for operator planning. It must not be described as a market order, bid
 submission, or clearing path.
 
 DT/LAVA remains blocked until every tenant/source has at least `20` prior/train non-tail-risk material safe-switch examples and every required V13 source family, including explicit DAM publication receipts, is ready.
+
+Research-shadow DT training is allowed only when it stays clearly labeled as
+non-promoted, does not use market execution semantics, does not change the
+dashboard/API default strategy, and keeps `promotable_v13_permitted_training_rows=0`
+until V13 source-readiness passes.
 
 Full differentiable DFL requires a separately gated stack that covers price
 prediction, storage optimization, and market-clearing or settlement assumptions.

@@ -868,6 +868,59 @@ def test_dt_shadow_recommendation_preview_expands_selected_candidate_without_pro
 	}
 
 
+def test_direct_dt_shadow_recommendation_preview_uses_direct_candidate_artifacts(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_shadow_preview_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"DT_DIRECT_CANDIDATE_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_DIRECT_CANDIDATE_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "dt_direct_candidate_shadow",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["preview_source_id"] == "dt_direct_candidate_shadow"
+	assert response_payload["preview_source_label"] == "Direct DT Shadow"
+	assert response_payload["preview_status"] == "direct_candidate_shadow_not_promoted"
+	assert response_payload["selected_candidate_id"] == "dt-candidate-worse-than-v2"
+	assert response_payload["selected_schedule_family"] == "dt_tail_risk_aware_schedule"
+	assert response_payload["is_default_strategy"] is False
+	assert response_payload["is_promoted_strategy"] is False
+	assert response_payload["research_shadow_not_promotable"] is True
+	assert response_payload["default_strategy_id"] == "schedule_value_learner_v2_plus"
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert response_payload["market_order_payload_emitted"] is False
+	assert response_payload["promotion_gate_passed"] is False
+	assert response_payload["dt_lava_ready"] is False
+	assert response_payload["source_readiness_gate_passed"] is False
+	assert "Direct DT Shadow" in response_payload["boundary_labels"]
+	assert any(
+		source["preview_source_id"] == "dt_direct_candidate_shadow"
+		and source["is_promoted_strategy"] is False
+		and source["market_execution_enabled"] is False
+		for source in response_payload["available_preview_sources"]
+	)
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
 def test_dt_shadow_recommendation_preview_projects_placeholder_soc(
 	client: TestClient,
 	monkeypatch: pytest.MonkeyPatch,

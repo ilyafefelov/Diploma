@@ -18,6 +18,14 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - TFT improvement branch: `tft_official_global_panel_rolling_strict_lp_benchmark_frame` and `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame` give TFT a fair global-panel, quantile-aware schedule/value gate. TFT is evaluated as a contributor to lower strict LP/oracle regret, not as a raw forecast promotion; it must beat frozen Ukrainian-only V2+ before changing the thesis headline.
 - Market-coupling status: ENTSO-E/neighbor-market signals are prepared as governed exogenous feature columns only. They are not part of the current V2+ result, and the ablation path must emit `blocked_by_governance` until source-backed coverage, publication time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule mapping, and domain-shift checks pass.
 - New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
+- Direct DT candidate shadow: `scripts/materialize_dt_research_shadow_packet.py`
+  now has a fresh HF DecisionTransformer run at
+  `data/research_runs/week3_dt_direct_candidate_shadow_current/`. It trains on
+  candidate-index/schedule-family teacher targets without LAVA promotion, ties
+  V2+ on the direct packet (`627.04` UAH mean regret), remains worse than
+  strict/oracle (`310.58` UAH), and is manually selectable in the dashboard as
+  `dt_direct_candidate_shadow` only. It does not change the default strategy or
+  `market_execution_enabled=false`.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
 ## Pipeline And LP Baseline
@@ -150,6 +158,7 @@ Useful local URLs:
 - DT policy preview API: `http://localhost:8001/dashboard/decision-policy-preview?tenant_id=client_003_dnipro_factory`
 - Future stack forecast API: `http://localhost:8001/dashboard/future-stack-preview?tenant_id=client_003_dnipro_factory`
 - Operator recommendation API: `http://localhost:8001/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory`
+- Shadow recommendation preview API: `http://localhost:8001/dashboard/shadow-recommendation-preview?tenant_id=client_003_dnipro_factory&preview_source=dt_direct_candidate_shadow`
 - Simulated live-trading API: `http://localhost:8001/dashboard/simulated-live-trading?tenant_id=client_003_dnipro_factory`
 - Dagster UI: `http://localhost:3001`
 - MLflow UI: `http://localhost:5000`

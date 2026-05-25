@@ -17,6 +17,9 @@ Week 5 сфокусовано на фіналізації доказового �
 - Оновлено локальні Methodology/Results chapters і Google Docs thesis draft,
   щоб full-project review, V13 F3 status і V4/V5 pending-evidence boundary були
   відображені без unsupported promotion claims.
+- Навчено direct DT candidate-index shadow без LAVA promotion:
+  `3,741` research-shadow rows, `1,735` train sequences, `90` eval sequences,
+  HF `DecisionTransformerModel`, `market_execution_enabled=false`.
 
 ## 3. Поточний MVP та V13 статус
 
@@ -38,6 +41,16 @@ V13 acquisition status:
 | Market execution | Disabled | `market_execution_enabled=false` |
 
 Safe-switch support alone does not unlock V13. Explicit source-backed DAM publication receipts are still required before any candidate generation, DT/LAVA training permission, or stronger source-readiness claim.
+
+Direct DT Shadow status:
+
+| Lane | Status | Evidence |
+|---|---|---|
+| Research-shadow DT training | Completed | `data/research_runs/week3_dt_direct_candidate_shadow_current/` |
+| Training substrate | Valid | HF DecisionTransformer over candidate-index/schedule-family targets |
+| Result vs V2+ | Tie | DT mean regret `627.04` UAH; V2+ mean regret `627.04` UAH |
+| Result vs strict/oracle | Worse | strict/oracle mean regret `310.58` UAH |
+| Dashboard/API | Manual preview only | `preview_source=dt_direct_candidate_shadow`; V2+ remains default/fallback |
 
 ## 4. Тестування та перевірки
 
@@ -98,6 +111,7 @@ Optional:
 - Closure matrix: [fix-plan-closure-matrix.md](../../../technical/deep-research-reports/2026-05-25-full-project-review/fix-plan-closure-matrix.md)
 - V13 sprint: [v13-f3-acquisition-sprint-2026-05-26.md](../../../technical/deep-research-reports/2026-05-25-full-project-review/v13-f3-acquisition-sprint-2026-05-26.md)
 - Evidence manifest: [evidence-manifest.md](../../appendices/evidence-manifest.md)
+- Direct DT Shadow note: [DT_DIRECT_CANDIDATE_SHADOW.md](../../../technical/DT_DIRECT_CANDIDATE_SHADOW.md)
 - Operator boundary: [OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md](../../../technical/OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md)
 - Methodology draft: [03-Methodology.md](../../chapters/03-Methodology.md)
 - Results draft: [04-results-and-discussion.md](../../chapters/04-results-and-discussion.md)
@@ -112,6 +126,7 @@ Optional:
 | OREE PXS observation rows можуть бути сприйняті як publication receipts | Observation time не є source publication timestamp | Введено SCMO handoff rule: не деривити `source_publication_timestamp` |
 | SCMO credentials можуть змішатися з diploma MVP | SCMO потрібні для stronger market-submission-grade receipt proof, не для credentialless MVP | MVP описано як defendable без SCMO |
 | DT/LAVA smoke artifacts можуть виглядати як deployment | Це research-only evidence | `dt_lava_ready=false`, `permits_model_training=false`, no `ProposedBid` |
+| Direct DT Shadow може виглядати як promotion | Він лише повторює V2+ і програє strict/oracle | Документовано як manual preview, not promoted, no default switch |
 
 ## 8. План на наступний тиждень
 

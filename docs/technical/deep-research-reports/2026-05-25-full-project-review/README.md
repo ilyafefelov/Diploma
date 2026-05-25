@@ -43,6 +43,13 @@ Artifacts in this packet:
 
 Current fix-plan progress also closed the README stale-verification cleanup, classified the Week 3 verification artifacts as historical, hardened Chapter 4 V4/V5/Poland claim traceability, and marked the stale `src/gatekeeper/` duplicate schema as obsolete while active imports use the canonical package path.
 
+2026-05-26 addendum: Direct DT Candidate Shadow is now trained and documented
+as a non-promoted research preview. It uses the existing candidate-index /
+schedule-family teacher target contract, writes artifacts under
+`data/research_runs/week3_dt_direct_candidate_shadow_current/`, ties V2+ on the
+direct packet, remains worse than strict/oracle, and keeps
+`market_execution_enabled=false`.
+
 Thesis support artifact:
 
 - [docs/thesis/appendices/evidence-manifest.md](../../../thesis/appendices/evidence-manifest.md) - Claim-to-artifact manifest for major thesis evidence.

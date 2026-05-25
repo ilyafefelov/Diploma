@@ -176,6 +176,13 @@ DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH = (
 	/ "week3_v13_dt_lava_teacher_dataset_safe_switch_only"
 	/ "dfl_v13_dt_lava_teacher_rows.csv"
 )
+DT_DIRECT_CANDIDATE_SHADOW_SELECTED_PREVIEW_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_direct_candidate_shadow_current"
+	/ "dt_research_shadow_selected_schedule_preview.json"
+)
+DT_DIRECT_CANDIDATE_SHADOW_TEACHER_ROWS_CSV_PATH = DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH
 TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH = (
 	Path("data")
 	/ "research_runs"
@@ -4322,6 +4329,18 @@ def _operator_shadow_preview_sources() -> list[ShadowPreviewSourceOptionResponse
 			reason="HF/local DT smoke over candidate-id or schedule-family targets; diagnostic preview only.",
 		),
 		ShadowPreviewSourceOptionResponse(
+			preview_source_id="dt_direct_candidate_shadow",
+			label="Direct DT Shadow",
+			status="direct_candidate_shadow_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"Direct DT trained on V2+/strict/oracle candidate-index and schedule-family teacher targets; "
+				"manual preview only."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
 			preview_source_id="poland_tft_shadow",
 			label="Poland/TFT Shadow",
 			status="positive_not_promoted",
@@ -4360,6 +4379,15 @@ def _operator_shadow_recommendation_preview_response(
 	response: ShadowRecommendationPreviewResponse
 	if preview_source == "dt_shadow":
 		response = _operator_dt_shadow_recommendation_preview_response(tenant_id=tenant_id)
+	elif preview_source == "dt_direct_candidate_shadow":
+		response = _operator_dt_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label="Direct DT Shadow",
+			status="direct_candidate_shadow_not_promoted",
+			selected_preview_path=DT_DIRECT_CANDIDATE_SHADOW_SELECTED_PREVIEW_JSON_PATH,
+			teacher_rows_path=DT_DIRECT_CANDIDATE_SHADOW_TEACHER_ROWS_CSV_PATH,
+		)
 	elif preview_source == "v13_dt_lava_promoted_training":
 		response = _blocked_shadow_recommendation_preview_response(
 			tenant_id=tenant_id,
@@ -4474,35 +4502,40 @@ def _blocked_shadow_recommendation_preview_response(
 def _operator_dt_shadow_recommendation_preview_response(
 	*,
 	tenant_id: str,
+	preview_source_id: str = "dt_shadow",
+	label: str = "DT Shadow",
+	status: str = "research_shadow_not_promoted",
+	selected_preview_path: Path | None = None,
+	teacher_rows_path: Path | None = None,
 ) -> ShadowRecommendationPreviewResponse:
-	packet_path = DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH
-	teacher_rows_path = DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH
+	packet_path = selected_preview_path or DT_RESEARCH_SHADOW_SELECTED_PREVIEW_JSON_PATH
+	resolved_teacher_rows_path = teacher_rows_path or DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH
 	packet = _read_json_object(
 		packet_path,
-		not_found_detail="DT shadow selected schedule preview artifact not found.",
+		not_found_detail=f"{label} selected schedule preview artifact not found.",
 	)
 	if _json_contains_market_execution_enabled_true(packet):
 		raise HTTPException(
 			status_code=500,
-			detail="DT shadow selected schedule preview must keep market_execution_enabled=false.",
+			detail=f"{label} selected schedule preview must keep market_execution_enabled=false.",
 		)
 	rows = packet.get("preview_rows")
 	if not isinstance(rows, list):
-		raise HTTPException(status_code=500, detail="DT shadow preview artifact missing preview_rows.")
+		raise HTTPException(status_code=500, detail=f"{label} preview artifact missing preview_rows.")
 	tenant_rows = [
 		row for row in rows if isinstance(row, dict) and str(row.get("tenant_id", tenant_id)) == tenant_id
 	]
 	if not tenant_rows:
-		raise HTTPException(status_code=404, detail=f"DT shadow preview rows not found for tenant {tenant_id}.")
+		raise HTTPException(status_code=404, detail=f"{label} preview rows not found for tenant {tenant_id}.")
 	selection = max(
 		tenant_rows,
 		key=lambda row: _datetime_payload_value(row.get("anchor_timestamp"), field_name="anchor_timestamp"),
 	)
 	selected_candidate_id = str(selection.get("selected_candidate_id", "")).strip()
 	if not selected_candidate_id:
-		raise HTTPException(status_code=500, detail="DT shadow preview row missing selected_candidate_id.")
+		raise HTTPException(status_code=500, detail=f"{label} preview row missing selected_candidate_id.")
 	candidate_row = _dt_shadow_teacher_candidate_row(
-		teacher_rows_path=teacher_rows_path,
+		teacher_rows_path=resolved_teacher_rows_path,
 		tenant_id=tenant_id,
 		selected_candidate_id=selected_candidate_id,
 	)
@@ -4516,9 +4549,9 @@ def _operator_dt_shadow_recommendation_preview_response(
 	target_end = schedule[-1].interval_start + timedelta(minutes=LEVEL1_INTERVAL_MINUTES) if schedule else None
 	return ShadowRecommendationPreviewResponse(
 		tenant_id=tenant_id,
-		preview_source_id="dt_shadow",
-		preview_source_label="DT Shadow",
-		preview_status="research_shadow_not_promoted",
+		preview_source_id=preview_source_id,
+		preview_source_label=label,
+		preview_status=status,
 		preview_only=True,
 		is_default_strategy=False,
 		is_promoted_strategy=False,
@@ -4544,19 +4577,19 @@ def _operator_dt_shadow_recommendation_preview_response(
 		available_preview_sources=_operator_shadow_preview_sources(),
 		recommendation_schedule=schedule,
 		boundary_labels=[
-			"DT Shadow",
+			label,
 			"Not promoted",
 			"Preview only",
 			"No market execution",
 			"V2+ remains default/fallback",
 		],
 		readiness_warnings=[
-			"DT shadow is diagnostic evidence only and is rendered even when it loses to V2+ or strict/oracle.",
+			f"{label} is diagnostic evidence only and is rendered even when it loses to V2+ or strict/oracle.",
 			"V13 explicit DAM publication receipts remain blocked for market-submission claims.",
 		],
 		artifact_paths={
 			"selected_preview_json": str(packet_path),
-			"teacher_rows_csv": str(teacher_rows_path),
+			"teacher_rows_csv": str(resolved_teacher_rows_path),
 		},
 	)
 

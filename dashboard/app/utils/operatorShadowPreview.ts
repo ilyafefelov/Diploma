@@ -9,12 +9,14 @@ import type {
 export type OperatorPreviewSourceId
   = | 'best_valid'
     | 'dt_shadow'
+    | 'dt_direct_candidate_shadow'
     | 'poland_tft_shadow'
     | 'dfl_diagnostics'
     | 'v13_dt_lava_promoted_training'
 
 export const SHADOW_PREVIEW_SOURCE_IDS: OperatorPreviewSourceId[] = [
   'dt_shadow',
+  'dt_direct_candidate_shadow',
   'poland_tft_shadow',
   'dfl_diagnostics',
   'v13_dt_lava_promoted_training'

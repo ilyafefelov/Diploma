@@ -9,6 +9,7 @@ import {
   buildOperatorHourlyRecommendationRows,
   buildShadowHourlyRecommendationRows,
   buildStrategyComparisonRows,
+  previewSourceDisplayLabel,
   previewModeLabel,
   shouldLoadShadowPreview
 } from './operatorShadowPreview'
@@ -64,6 +65,23 @@ describe('operator shadow preview source switching', () => {
       market_order_payload_emitted: false,
       proposed_bid_status: 'not_emitted_operator_preview'
     }))
+  })
+
+  it('maps direct DT candidate-index shadow rows without promoting them', () => {
+    const visible = adaptShadowPreviewToOperatorRecommendation(
+      baseRecommendation(),
+      directDtShadowPreview(),
+      'dt_direct_candidate_shadow'
+    )
+
+    expect(shouldLoadShadowPreview('dt_direct_candidate_shadow')).toBe(true)
+    expect(previewSourceDisplayLabel('dt_direct_candidate_shadow', 'Direct DT Shadow')).toBe('Direct DT Shadow')
+    expect(visible?.selected_strategy_id).toBe('dt_direct_candidate_shadow')
+    expect(visible?.selection_reason).toContain('direct_candidate_shadow_not_promoted')
+    expect(visible?.market_execution_enabled).toBe(false)
+    expect(visible?.policy_mode).toBe('dt_direct_candidate_shadow_preview')
+    expect(visible?.policy_explanation).toContain('never emits ProposedBid')
+    expect(visible?.readiness_warnings.join(' ')).toContain('V2+ remains default/fallback')
   })
 
   it('builds hourly table rows with candidate, value, regret, and safety labels', () => {
@@ -130,8 +148,9 @@ describe('operator shadow preview source switching', () => {
     expect(visible?.policy_readiness).toBe('blocked_source_readiness_roadmap')
   })
 
-  it('builds a five-strategy comparison surface including worse and blocked previews', () => {
+  it('builds a comparison surface including direct DT, worse DT, and blocked previews', () => {
     const rows = buildStrategyComparisonRows(baseRecommendationWithSchedule(), [
+      directDtShadowPreview(),
       dtShadowPreview(),
       {
         ...dtShadowPreview(),
@@ -144,6 +163,7 @@ describe('operator shadow preview source switching', () => {
 
     expect(rows.map(row => row.sourceId)).toEqual([
       'best_valid',
+      'dt_direct_candidate_shadow',
       'dt_shadow',
       'v13_dt_lava_promoted_training'
     ])
@@ -157,6 +177,15 @@ describe('operator shadow preview source switching', () => {
       marketExecutionEnabled: false
     }))
     expect(rows[1]).toEqual(expect.objectContaining({
+      label: 'Direct DT Shadow',
+      status: 'direct_candidate_shadow_not_promoted',
+      scheduleRows: 1,
+      totalDischargeMwh: 0.12,
+      meanRegretVsV2Uah: 45,
+      meanRegretVsStrictUah: 80,
+      marketExecutionEnabled: false
+    }))
+    expect(rows[2]).toEqual(expect.objectContaining({
       label: 'DT Shadow',
       status: 'research_shadow_not_promoted',
       scheduleRows: 1,
@@ -165,7 +194,7 @@ describe('operator shadow preview source switching', () => {
       meanRegretVsStrictUah: 80,
       marketExecutionEnabled: false
     }))
-    expect(rows[2]).toEqual(expect.objectContaining({
+    expect(rows[3]).toEqual(expect.objectContaining({
       label: 'V13/DT/LAVA blocked',
       status: 'blocked_source_readiness_roadmap',
       scheduleRows: 0,
@@ -406,5 +435,16 @@ function dtShadowPreview(): ShadowRecommendationPreviewResponse {
     boundary_labels: ['DT Shadow', 'Not promoted', 'Preview only', 'No market execution'],
     readiness_warnings: ['DT shadow is diagnostic evidence only.'],
     artifact_paths: {}
+  }
+}
+
+function directDtShadowPreview(): ShadowRecommendationPreviewResponse {
+  return {
+    ...dtShadowPreview(),
+    preview_source_id: 'dt_direct_candidate_shadow',
+    preview_source_label: 'Direct DT Shadow',
+    preview_status: 'direct_candidate_shadow_not_promoted',
+    boundary_labels: ['Direct DT Shadow', 'Not promoted', 'Preview only', 'No market execution'],
+    readiness_warnings: ['Direct DT shadow is diagnostic evidence only.']
   }
 }

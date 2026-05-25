@@ -1268,17 +1268,34 @@ candidate-index sequence-model pipeline працює і безпечно оці�
 slice, проте все ще гірший за strict reference і заблокований V13 source
 readiness.
 
+Після цього додано ще вужчий direct DT candidate-index shadow run без LAVA
+promotion і без candidate-library adapter rows:
+`week3_dt_direct_candidate_shadow_current`. Він використовує ті самі
+V13-gated teacher rows, але трактує їх як research-shadow substrate:
+`3,921` teacher rows available, `3,741` research-shadow training rows,
+`1,735` train sequences, `90` evaluation sequences, context length `4` і
+`model_backbone=huggingface_decision_transformer_model`. Результат є
+консервативним: DT mean regret `627.04` UAH точно повторив V2+ mean regret
+`627.04` UAH, behavior cloning також дорівнює `627.04` UAH, а strict/oracle
+reference лишився значно кращим із `310.58` UAH. Для Dnipro operator preview
+Direct DT Shadow вибирає frozen V2+ fallback candidate і показує 24 hourly rows
+через `/dashboard/shadow-recommendation-preview?preview_source=dt_direct_candidate_shadow`.
+Це підтверджує, що DT можна тренувати як research-shadow model без V13
+promotion, але не змінює headline: `promotable_v13_permitted_training_rows=0`,
+`dt_promotion_gate_passed=false`, `dt_lava_ready=false` і
+`market_execution_enabled=false`.
+
 Найважливіший академічний висновок цього slice: негативна/не-promoted DT
 оцінка не є невдачею. Вона закриває thesis gap між "DT/LAVA ще не можна
 просувати" і "ми маємо працюючий transformer prototype". Поточний чесний claim:
 credentialless Academic MVP passed for thesis demo; HF Decision Transformer
-research-shadow smoke passed as non-promotable evidence; market submission,
-full DFL і deployed DT control не заявляються.
+research-shadow and direct candidate-index shadow passed as non-promotable
+evidence; market submission, full DFL і deployed DT control не заявляються.
 
 Operator dashboard тепер розділяє default strategy і manual shadow preview.
 Default `/operator` view лишається на V2+ / `schedule_value_learner_v2_plus`,
 тобто на best-valid/fallback recommendation. Ручний перемикач може завантажити
-DT Shadow, Poland/TFT Shadow і DFL diagnostics через read-model endpoint
+DT Shadow, Direct DT Shadow, Poland/TFT Shadow і DFL diagnostics через read-model endpoint
 `/dashboard/shadow-recommendation-preview`; ці режими показують власні hourly
 schedule recommendations, charts і comparison metrics, але не стають production
 default selection і не створюють market order payload.
@@ -1348,6 +1365,10 @@ rows:
 - `data/research_runs/week3_dt_research_shadow_current/` - chronological
   DT research-shadow sequence dataset, HF DecisionTransformer smoke summary,
   regret/value evaluation summary and validation sidecar;
+- `data/research_runs/week3_dt_direct_candidate_shadow_current/` і
+  `docs/technical/DT_DIRECT_CANDIDATE_SHADOW.md` - direct HF DT
+  candidate-index/schedule-family shadow run, dashboard preview source,
+  metrics, hashes and non-promotion boundary;
 - `data/research_runs/week3_credentialless_academic_mvp_current/` -
   credentialless Academic MVP readiness summary, Markdown report and standalone
   validation packet;

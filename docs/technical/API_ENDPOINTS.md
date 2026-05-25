@@ -589,8 +589,9 @@ Operational notes:
 
 Returns a manually selected shadow/diagnostic recommendation preview for the
 operator dashboard. The dashboard uses it only when the operator selects a
-non-default preview source such as `dt_shadow`, `poland_tft_shadow`,
-`dfl_diagnostics`, or `v13_dt_lava_promoted_training`.
+non-default preview source such as `dt_shadow`,
+`dt_direct_candidate_shadow`, `poland_tft_shadow`, `dfl_diagnostics`, or
+`v13_dt_lava_promoted_training`.
 
 Request query example:
 
@@ -602,8 +603,9 @@ Response shape:
 
 - `preview_source_id`, `preview_source_label`, `preview_status`: selected manual
   preview source and its boundary label. Current statuses include
-  `research_shadow_not_promoted`, `positive_not_promoted`, `diagnostic_only`,
-  and `blocked_source_readiness_roadmap`.
+  `research_shadow_not_promoted`, `direct_candidate_shadow_not_promoted`,
+  `positive_not_promoted`, `diagnostic_only`, and
+  `blocked_source_readiness_roadmap`.
 - `default_strategy_id`: the honest default/fallback strategy that remains
   selected when the operator is not viewing a manual shadow source; current
   value is `schedule_value_learner_v2_plus`.
@@ -628,6 +630,10 @@ Operational notes:
   order payloads, settlement identifiers, or dispatch commands.
 - DT Shadow is rendered even when it loses to V2+ or strict/oracle; negative
   evidence is useful diagnostic evidence and not a rendering failure.
+- Direct DT Shadow is a trained HF DecisionTransformer preview over
+  candidate-index/schedule-family teacher targets. It is manually selectable as
+  `preview_source=dt_direct_candidate_shadow`, ties V2+ on the current direct
+  packet, remains worse than strict/oracle, and stays non-promoted.
 - `v13_dt_lava_promoted_training` intentionally returns blocked roadmap
   evidence while explicit DAM publication receipts/source-readiness gates are
   blocked.

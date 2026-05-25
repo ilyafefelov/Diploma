@@ -1232,6 +1232,14 @@ return-to-go target є negative regret delta versus V2+/strict reference, а
 evaluation порівнює DT проти V2+ fallback, strict LP/oracle reference і
 behavior-cloning control. Raw hourly BUY/SELL/HOLD imitation заборонена.
 
+Direct DT Shadow є практичною варіацією цього protocol: trainer бере тільки
+V13-gated teacher CSV, без LAVA promotion і без adapted candidate-library rows,
+навчає HF DecisionTransformer на candidate-index/schedule-family targets і
+експортує manual dashboard preview source
+`dt_direct_candidate_shadow`. Методологічна межа не змінюється: такий run може
+довести, що sequence-model substrate працює, але не доводить source-readiness,
+promotion або market execution.
+
 SCMO credentials у цій методології не є передумовою credentialless MVP. Вони
 потрібні тільки для сильнішого market-submission-grade receipt proof. Якщо
 такий proof з'явиться, він має пройти sanitized preflight і дати source-backed

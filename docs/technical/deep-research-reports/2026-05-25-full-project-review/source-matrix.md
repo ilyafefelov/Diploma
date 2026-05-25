@@ -7,6 +7,7 @@
 | V2+ headline packet | Mean regret, strict comparator, V2 comparator, rolling robustness | `data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/dfl_schedule_value_learner_v2_plus_comparison.md` |
 | V13 blocked state | Missing DAM receipts and safe-switch rows, candidate generation not ready | `data/research_runs/week3_dfl_ua_context_acquisition_v13/dfl_ua_context_v13_acquisition_summary.json` |
 | DT shadow | HF DT available, 97,431 research rows, 7,300 sequences, not promotable | `data/research_runs/week3_dt_research_shadow_current/dt_research_shadow_smoke_summary.json` |
+| Direct DT shadow | HF DT trained directly on candidate-index/schedule-family teacher targets; ties V2+, worse than strict/oracle, not promoted | `data/research_runs/week3_dt_direct_candidate_shadow_current/dt_research_shadow_smoke_summary.json`; `docs/technical/DT_DIRECT_CANDIDATE_SHADOW.md` |
 | LAVA smoke | 8-instance NPZ smoke, promotion false, V13 blocked | `data/research_runs/week3_dt_lava_lava_npz_smoke_current/candidate_lava_margin_metrics.json` |
 | Poland feature audit | 17 passing features, 7 null-blocked, positive not promoted | `data/research_runs/week3_poland_lag24_feature_audit_rolling_gate/poland_lag24_feature_audit_rolling_gate_summary.json` |
 | Market rules | NEURC 621 regime and caps | `configs/market_rules_ua.yaml` |
