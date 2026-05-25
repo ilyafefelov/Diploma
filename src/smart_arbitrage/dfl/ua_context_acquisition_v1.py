@@ -55,6 +55,18 @@ _DAM_RECEIPT_REQUIRED_COLUMNS: Final[frozenset[str]] = frozenset(
         "source_publication_timestamp",
     }
 )
+_DAM_RECEIPT_FORBIDDEN_OBSERVATION_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "source_observed_at_utc",
+        "download_http_date_utc",
+        "hdata_http_date_utc",
+        "retrieved_at",
+        "downloaded_at",
+        "source_last_modified_utc",
+        "workbook_summary_created_at",
+        "workbook_summary_last_saved_at",
+    }
+)
 _DST_CALENDAR_GAP_HOURS: Final[frozenset[datetime]] = frozenset(
     {
         datetime(2025, 3, 30, 23),
@@ -651,6 +663,15 @@ def _validate_dam_publication_receipts_frame(frame: pl.DataFrame) -> None:
             "DAM publication receipts frame is missing required columns: "
             f"{sorted(missing_columns)}"
         )
+    forbidden_columns = _DAM_RECEIPT_FORBIDDEN_OBSERVATION_COLUMNS.intersection(
+        frame.columns
+    )
+    if forbidden_columns:
+        raise ValueError(
+            "DAM publication receipts frame contains observation/download metadata "
+            "columns that are not explicit publication receipts: "
+            f"{sorted(forbidden_columns)}"
+        )
     normalized = _normalize_datetime_column(
         frame,
         "timestamp",
@@ -666,6 +687,13 @@ def _validate_dam_publication_receipts_frame(frame: pl.DataFrame) -> None:
         | pl.col("source_publication_timestamp").is_null()
     ).height:
         raise ValueError("DAM publication receipts frame contains missing timestamps.")
+    if normalized.filter(
+        pl.col("source_publication_timestamp") >= pl.col("timestamp")
+    ).height:
+        raise ValueError(
+            "DAM publication receipts frame requires source_publication_timestamp "
+            "to be prior to delivery timestamp."
+        )
     duplicate_rows = (
         normalized.group_by("timestamp")
         .len()

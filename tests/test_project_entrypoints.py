@@ -54,6 +54,111 @@ def test_verify_wrapper_uses_project_mypy_file_set() -> None:
     ) in verify_script
 
 
+def test_verify_wrapper_can_run_optional_lava_npz_margin_smoke() -> None:
+    verify_script = (PROJECT_ROOT / "scripts" / "verify.ps1").read_text(
+        encoding="utf-8"
+    )
+    smoke_script = (
+        PROJECT_ROOT / "scripts" / "materialize_lava_npz_margin_smoke_packet.py"
+    ).read_text(encoding="utf-8")
+
+    assert "SMART_ARBITRAGE_VERIFY_LAVA_NPZ_CANDIDATE_FRAME_PICKLE" in verify_script
+    assert "Invoke-OptionalLavaNpzMarginSmoke" in verify_script
+    assert "materialize_lava_npz_margin_smoke_packet.py" in verify_script
+    assert "validate_lava_npz_margin_smoke_packet.py" in verify_script
+    assert "sys.path.insert" in smoke_script
+    assert (
+        "data\\research_runs\\week3_dfl_ua_context_acquisition_v13_safe_switch_only"
+        in verify_script
+    )
+    assert "dfl_ua_context_v13_acquisition_summary.json" in verify_script
+    assert ".tmp_runtime\\verify_lava_npz_margin_smoke" in verify_script
+    assert "candidate frame is not configured" in verify_script
+    assert "market_execution_enabled=false" in verify_script
+    assert "promotion_gate=false" in verify_script
+    assert "permits_model_training=false" in verify_script
+    assert "market_execution_enabled: true" not in verify_script.lower()
+
+
+def test_dt_lava_prototype_readiness_packet_entrypoint_is_documented() -> None:
+    script_path = PROJECT_ROOT / "scripts" / "materialize_dt_lava_prototype_readiness_packet.py"
+    academic_mvp_script_path = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_credentialless_academic_mvp_readiness_packet.py"
+    )
+    academic_mvp_validation_script_path = (
+        PROJECT_ROOT
+        / "scripts"
+        / "validate_credentialless_academic_mvp_readiness_packet.py"
+    )
+    dt_research_shadow_script_path = (
+        PROJECT_ROOT / "scripts" / "materialize_dt_research_shadow_packet.py"
+    )
+    bridge_doc_path = PROJECT_ROOT / "docs" / "technical" / "DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md"
+
+    assert script_path.exists()
+    assert academic_mvp_script_path.exists()
+    assert academic_mvp_validation_script_path.exists()
+    assert dt_research_shadow_script_path.exists()
+
+    script = script_path.read_text(encoding="utf-8")
+    academic_mvp_script = academic_mvp_script_path.read_text(encoding="utf-8")
+    academic_mvp_validation_script = academic_mvp_validation_script_path.read_text(
+        encoding="utf-8"
+    )
+    bridge_doc = bridge_doc_path.read_text(encoding="utf-8")
+    verify_script = (PROJECT_ROOT / "scripts" / "verify.ps1").read_text(
+        encoding="utf-8"
+    )
+    api_main = (PROJECT_ROOT / "api" / "main.py").read_text(encoding="utf-8")
+    dashboard_academic_mvp_proxy = (
+        PROJECT_ROOT
+        / "dashboard"
+        / "server"
+        / "api"
+        / "control-plane"
+        / "dashboard"
+        / "academic-mvp-readiness.get.ts"
+    ).read_text(encoding="utf-8")
+
+    assert "SUMMARY_JSON_NAME" in script
+    assert "SUMMARY_MARKDOWN_NAME" in script
+    assert "--lava-npz-smoke-validation-json" in script
+    assert "candidate_frame_pickle_missing" in script
+    assert "market_execution_enabled" in script
+    assert "materialize_dt_lava_prototype_readiness_packet.py" in bridge_doc
+    assert "--lava-npz-smoke-validation-json" in bridge_doc
+    assert "materialize_credentialless_academic_mvp_readiness_packet.py" in bridge_doc
+    assert "validate_credentialless_academic_mvp_readiness_packet.py" in bridge_doc
+    assert "materialize_dt_research_shadow_packet.py" in bridge_doc
+    assert "--dt-research-shadow-sequence-summary-json" in bridge_doc
+    assert (
+        "source_publication_timestamp is not required for offline "
+        "research-shadow DT prototype"
+        in bridge_doc
+    )
+    assert "SCMO credentials are not required for the diploma MVP" in bridge_doc
+    assert "market_submission_ready=false" in bridge_doc
+    assert "--operator-preview-json" in academic_mvp_script
+    assert "--tenant-id" in academic_mvp_script
+    assert "--teacher-validation-json" in academic_mvp_script
+    assert "--teacher-validation-json" in bridge_doc
+    assert "--offline-challenger-validation-json" in academic_mvp_script
+    assert "--offline-challenger-validation-json" in bridge_doc
+    assert "ProposedBid" in academic_mvp_script
+    assert "/dashboard/academic-mvp-readiness" in api_main
+    assert "/dashboard/academic-mvp-readiness" in dashboard_academic_mvp_proxy
+    assert "AcademicMvpReadinessResponse" in dashboard_academic_mvp_proxy
+    assert "validate_credentialless_academic_mvp_readiness_summary" in (
+        academic_mvp_validation_script
+    )
+    assert "materialize_dt_lava_prototype_readiness_packet.py" in verify_script
+    assert "--lava-npz-smoke-validation-json" in verify_script
+    assert "market_execution_enabled: true" not in script.lower()
+    assert "market_execution_enabled: true" not in academic_mvp_script.lower()
+
+
 def test_official_batch_runner_refreshes_exit_code_after_wait_process() -> None:
     runner_script = (
         PROJECT_ROOT / "scripts" / "run-official-schedule-value-batches.ps1"
@@ -326,20 +431,67 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     export_script = (
         PROJECT_ROOT / "scripts" / "materialize_ua_context_v13_acquisition_packet.py"
     ).read_text(encoding="utf-8")
+    teacher_packet_script = (
+        PROJECT_ROOT / "scripts" / "materialize_v13_dt_lava_teacher_packet.py"
+    ).read_text(encoding="utf-8")
     receipt_validator_script = (
         PROJECT_ROOT / "scripts" / "validate_oree_dam_publication_receipts.py"
     ).read_text(encoding="utf-8")
     safe_switch_validator_script = (
         PROJECT_ROOT / "scripts" / "validate_ua_context_safe_switch_examples_v13.py"
     ).read_text(encoding="utf-8")
+    safe_switch_candidate_audit_script = (
+        PROJECT_ROOT / "scripts" / "audit_ua_context_safe_switch_candidates_v13.py"
+    ).read_text(encoding="utf-8")
+    safe_switch_review_backlog_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "export_ua_context_v13_safe_switch_review_backlog.py"
+    ).read_text(encoding="utf-8")
+    safe_switch_curation_worksheet_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "export_ua_context_v13_safe_switch_curation_worksheet.py"
+    ).read_text(encoding="utf-8")
+    safe_switch_curation_extract_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "extract_ua_context_v13_safe_switch_examples_from_curation.py"
+    ).read_text(encoding="utf-8")
     input_preflight_script = (
         PROJECT_ROOT / "scripts" / "preflight_ua_context_v13_acquisition_inputs.py"
+    ).read_text(encoding="utf-8")
+    input_config_builder_script = (
+        PROJECT_ROOT / "scripts" / "build_v13_acquisition_input_config.py"
     ).read_text(encoding="utf-8")
     receipt_probe_script = (
         PROJECT_ROOT / "scripts" / "probe_oree_dam_publication_receipts.py"
     ).read_text(encoding="utf-8")
     receipt_audit_script = (
         PROJECT_ROOT / "scripts" / "audit_oree_dam_publication_receipt_sources.py"
+    ).read_text(encoding="utf-8")
+    receipt_lead_audit_script = (
+        PROJECT_ROOT / "scripts" / "audit_v13_dam_receipt_source_leads.py"
+    ).read_text(encoding="utf-8")
+    energy_map_metadata_probe_script = (
+        PROJECT_ROOT / "scripts" / "probe_energy_map_dam_receipt_metadata.py"
+    ).read_text(encoding="utf-8")
+    scmo_soap_download_probe_script = (
+        PROJECT_ROOT / "scripts" / "probe_scmo_dam_soap_download.py"
+    ).read_text(encoding="utf-8")
+    scmo_ws_security_preflight_script = (
+        PROJECT_ROOT / "scripts" / "preflight_scmo_dam_ws_security_credentials.py"
+    ).read_text(encoding="utf-8")
+    scmo_receipt_normalizer_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "normalize_scmo_dam_publication_receipt_export.py"
+    ).read_text(encoding="utf-8")
+    scmo_receipt_fetch_script = (
+        PROJECT_ROOT / "scripts" / "fetch_scmo_dam_publication_receipt_export.py"
+    ).read_text(encoding="utf-8")
+    receipt_observation_script = (
+        PROJECT_ROOT / "scripts" / "capture_oree_dam_publication_observations.py"
     ).read_text(encoding="utf-8")
     config = (
         PROJECT_ROOT
@@ -352,12 +504,19 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
 
     assert "build_dfl_ua_context_v13_acquisition_packet" in export_script
     assert "write_dfl_ua_context_v13_acquisition_packet" in export_script
+    assert "build_dfl_v13_dt_lava_teacher_packet" in teacher_packet_script
+    assert "write_dfl_v13_dt_lava_teacher_packet" in teacher_packet_script
+    assert "--teacher-contract-pickle" in teacher_packet_script
+    assert "market_execution_enabled" in teacher_packet_script
     assert "--source-evidence-pickle" in export_script
     assert "--source-evidence-csv" in export_script
     assert "--source-inventory-csv" in export_script
     assert "--readiness-csv" in export_script
     assert "--receipt-source-audit-json" in export_script
+    assert "--receipt-source-lead-audit-json" in export_script
+    assert "--safe-switch-candidate-audit-json" in export_script
     assert "--acquisition-input-preflight-json" in export_script
+    assert "--scmo-ws-security-preflight-json" in export_script
     assert "v13_candidate_generation_ready" in export_script
     assert "normalize_dfl_ua_dam_publication_receipts_frame" in receipt_validator_script
     assert "--input" in receipt_validator_script
@@ -369,10 +528,44 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "--input" in safe_switch_validator_script
     assert "--output" in safe_switch_validator_script
     assert "permits_model_training" in safe_switch_validator_script
+    assert (
+        "audit_dfl_ua_context_safe_switch_candidate_source_v13_frame"
+        in safe_switch_candidate_audit_script
+    )
+    assert "--material-label-column" in safe_switch_candidate_audit_script
+    assert "--tail-risk-label-column" in safe_switch_candidate_audit_script
+    assert "market execution" in safe_switch_candidate_audit_script
+    assert (
+        "build_dfl_ua_context_safe_switch_review_backlog_v13_frame"
+        in safe_switch_review_backlog_script
+    )
+    assert "--candidate-rows-csv" in safe_switch_review_backlog_script
+    assert "--acquisition-targets-csv" in safe_switch_review_backlog_script
+    assert "candidate_can_satisfy_v13_without_validation" in safe_switch_review_backlog_script
+    assert "market execution" in safe_switch_review_backlog_script
+    assert (
+        "build_dfl_ua_context_safe_switch_curation_worksheet_v13_frame"
+        in safe_switch_curation_worksheet_script
+    )
+    assert "--review-backlog-csv" in safe_switch_curation_worksheet_script
+    assert "pending worksheet rows do not satisfy V13".lower() in (
+        safe_switch_curation_worksheet_script.lower()
+    )
+    assert (
+        "extract_dfl_ua_context_safe_switch_examples_from_curation_v13_frame"
+        in safe_switch_curation_extract_script
+    )
+    assert "--curation-worksheet-csv" in safe_switch_curation_extract_script
+    assert "market execution" in safe_switch_curation_extract_script
     assert "validate_v13_acquisition_inputs" in input_preflight_script
     assert "oree_dam_publication_receipts_csv_path" in input_preflight_script
     assert "ua_context_safe_switch_examples_csv_path" in input_preflight_script
     assert "data_acquisition_needed" in input_preflight_script
+    assert "build_v13_acquisition_input_config" in input_config_builder_script
+    assert "--dam-receipts-csv" in input_config_builder_script
+    assert "--safe-switch-csv" in input_config_builder_script
+    assert "validate_v13_acquisition_inputs" in input_config_builder_script
+    assert "market_execution_enabled" in input_config_builder_script
     assert "build_oree_dam_publication_receipt_probe" in receipt_probe_script
     assert "--month" in receipt_probe_script
     assert "--output" in receipt_probe_script
@@ -380,16 +573,105 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "--months" in receipt_audit_script
     assert "--probe-json" in receipt_audit_script
     assert "--probe-output-dir" in receipt_audit_script
+    assert (
+        "audit_dfl_ua_context_dam_receipt_source_leads_v13_frame"
+        in receipt_lead_audit_script
+    )
+    assert "--input" in receipt_lead_audit_script
+    assert "--output" in receipt_lead_audit_script
+    assert "does not emit receipt rows" in receipt_lead_audit_script
+    assert "build_energy_map_dam_receipt_metadata_leads_v13_frame" in (
+        energy_map_metadata_probe_script
+    )
+    assert "--dataset-id" in energy_map_metadata_probe_script
+    assert "--input-json" in energy_map_metadata_probe_script
+    assert "file_level_publication_metadata_only" in energy_map_metadata_probe_script
+    assert "market execution" in energy_map_metadata_probe_script
+    assert "build_scmo_dam_soap_download_probe" in scmo_soap_download_probe_script
+    assert "--soap-action" in scmo_soap_download_probe_script
+    assert "--credential-mode" in scmo_soap_download_probe_script
+    assert "preflight-gated-mtls-username-token" in scmo_soap_download_probe_script
+    assert "sanitize_scmo_soap_request_for_artifact" in scmo_soap_download_probe_script
+    assert "--normalized-output" in scmo_soap_download_probe_script
+    assert "candidate DownloadResponse/ISOTEDATA" in scmo_soap_download_probe_script
+    assert "build_scmo_ws_security_credential_preflight" in (
+        scmo_ws_security_preflight_script
+    )
+    assert "SCMO_CLIENT_CERT_PEM" in scmo_ws_security_preflight_script
+    assert "SCMO_CLIENT_KEY_PEM" in scmo_ws_security_preflight_script
+    assert "SCMO_CLIENT_KEY_PASSWORD" in scmo_ws_security_preflight_script
+    assert "SCMO_CLIENT_P12" in scmo_ws_security_preflight_script
+    assert "SCMO_CLIENT_P12_PASSWORD" in scmo_ws_security_preflight_script
+    assert "credential_file_pair_valid" in scmo_ws_security_preflight_script
+    assert "never writes secret values" in scmo_ws_security_preflight_script
+    assert "normalize_scmo_dam_publication_receipt_export_frame" in (
+        scmo_receipt_normalizer_script
+    )
+    assert "--input-format" in scmo_receipt_normalizer_script
+    assert '"zip"' in scmo_receipt_normalizer_script
+    assert '"zip"' in scmo_receipt_fetch_script
+    assert '"zip"' in scmo_soap_download_probe_script
+    assert '"html"' in scmo_receipt_normalizer_script
+    assert '"html"' in scmo_receipt_fetch_script
+    assert '"html"' in scmo_soap_download_probe_script
+    assert "--source-publication-timestamp-column" in scmo_receipt_normalizer_script
+    assert "--v13-base-config" in scmo_receipt_normalizer_script
+    assert "--v13-safe-switch-csv" in scmo_receipt_normalizer_script
+    assert "--v13-output-config" in scmo_receipt_normalizer_script
+    assert "--v13-preflight-output" in scmo_receipt_normalizer_script
+    assert "market_execution_enabled" in scmo_receipt_normalizer_script
+    assert "fetch_result_from_scmo_export_response" in scmo_receipt_fetch_script
+    assert "SCMO_COOKIE" in scmo_receipt_fetch_script
+    assert "--normalized-output" in scmo_receipt_fetch_script
+    assert "--v13-base-config" in scmo_receipt_fetch_script
+    assert "--v13-preflight-output" in scmo_receipt_fetch_script
+    assert "build_oree_dam_publication_observation_frame" in receipt_observation_script
+    assert "--delivery-date" in receipt_observation_script
+    assert "--output-csv" in receipt_observation_script
+    assert "without creating V13 receipt rows" in receipt_observation_script
     assert "dfl_ua_dam_publication_receipts_overlay_frame" in config
     assert "oree_dam_publication_receipts_csv_path" in config
     assert "dfl_ua_context_acquisition_source_evidence_v13_frame" in config
     assert "dfl_ua_context_source_inventory_v13_frame" in config
     assert "dfl_ua_context_acquisition_readiness_v13_frame" in config
     assert "dfl_ua_dam_publication_receipts_overlay_frame" in docs
+    assert "materialize_v13_dt_lava_teacher_packet.py" in docs
+    assert "dfl_v13_dt_lava_teacher_summary.json" in docs
+    assert "candidate id" in docs
+    assert "schedule-family targets" in docs
     assert "source_publication_timestamp" in docs
     assert "oree_dam_publication_receipts_csv_path" in docs
     assert "probe_oree_dam_publication_receipts.py" in docs
     assert "audit_oree_dam_publication_receipt_sources.py" in docs
+    assert "audit_v13_dam_receipt_source_leads.py" in docs
+    assert "probe_energy_map_dam_receipt_metadata.py" in docs
+    assert "probe_scmo_dam_soap_download.py" in docs
+    assert "preflight-gated-mtls-username-token" in docs
+    assert "ws_security_signature_applied=false" in docs
+    assert "preflight-gated-signed-ws-security" in docs
+    assert "xml_signature_builder_available" in docs
+    assert "preflight_scmo_dam_ws_security_credentials.py" in docs
+    assert "--scmo-ws-security-preflight-json" in docs
+    assert "SCMO_CLIENT_CERT_PEM" in docs
+    assert "SCMO_CLIENT_P12" in docs
+    assert "SCMO_CLIENT_KEY_PASSWORD" in docs
+    assert "credential_file_pair_valid=true" in docs
+    assert "secret values" in docs
+    assert "normalize_scmo_dam_publication_receipt_export.py" in docs
+    assert "fetch_scmo_dam_publication_receipt_export.py" in docs
+    assert "ISOTEDATA" in docs
+    assert "HTML table" in docs
+    assert "--v13-base-config" in docs
+    assert "--v13-preflight-output" in docs
+    assert "source_publication_timestamp" in docs
+    assert "wsdl_response_returned_signed_download_required" in docs
+    assert "file_level_publication_metadata_only" in docs
+    assert "capture_oree_dam_publication_observations.py" in docs
+    assert "source_observed_at_utc" in docs
+    assert "--attempt-log-json" in receipt_observation_script
+    assert "--max-attempts" in receipt_observation_script
+    assert "can_satisfy_v13_explicit_receipts=false" in docs
+    assert "dataset-level" in docs
     assert "not_sufficient_for_v13_receipts" in docs
     assert "dfl_ua_context_acquisition_source_evidence_v13_frame" in docs
     assert "data_acquisition_needed" in docs
@@ -401,21 +683,46 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "primary_blocking_source_family" in export_script
     assert "receipt_source_audit_summary" in export_script
     assert "UA_CONTEXT_V13_RECEIPT_SOURCE_AUDIT_JSON_ARTIFACT_NAME" in export_script
+    assert "receipt_source_lead_audit_summary" in export_script
+    assert (
+        "UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME"
+        in export_script
+    )
+    assert "safe_switch_candidate_audit_summary" in export_script
+    assert (
+        "UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME"
+        in export_script
+    )
     assert "acquisition_input_preflight_summary" in export_script
     assert (
         "UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME"
+        in export_script
+    )
+    assert "scmo_ws_security_preflight_summary" in export_script
+    assert (
+        "UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME"
         in export_script
     )
     assert "Safe-Switch Acquisition Targets" in docs
     assert "Safe-Switch Example Backfill Input" in docs
     assert "ua_context_safe_switch_examples_csv_path" in docs
     assert "validate_ua_context_safe_switch_examples_v13.py" in docs
+    assert "audit_ua_context_safe_switch_candidates_v13.py" in docs
+    assert "export_ua_context_v13_safe_switch_review_backlog.py" in docs
+    assert "export_ua_context_v13_safe_switch_curation_worksheet.py" in docs
+    assert "extract_ua_context_v13_safe_switch_examples_from_curation.py" in docs
+    assert "candidate_can_satisfy_v13_without_validation=false" in docs
+    assert "normalized_safe_switch_csv_ready=false" in docs
     assert "preflight_ua_context_v13_acquisition_inputs.py" in docs
+    assert "build_v13_acquisition_input_config.py" in docs
     assert "Source Acquisition Backlog" in docs
     assert "Acquisition Input Preflight" in docs
     assert "primary_blocking_source_family" in docs
     assert "receipt_source_audit_summary" in docs
+    assert "receipt_source_lead_audit_summary" in docs
+    assert "safe_switch_candidate_audit_summary" in docs
     assert "acquisition_input_preflight_summary" in docs
+    assert "scmo_ws_security_preflight_summary" in docs
     assert "market_execution_enabled=false" in docs
     assert "Offline Strategy Promotion" in docs
 
@@ -429,7 +736,52 @@ def test_agents_md_preserves_v13_claim_boundary() -> None:
     assert "explicit DAM publication receipts" in agents
     assert "ua_context_safe_switch_examples_csv_path" in agents
     assert "validate_ua_context_safe_switch_examples_v13.py" in agents
+    assert "audit_ua_context_safe_switch_candidates_v13.py" in agents
+    assert "export_ua_context_v13_safe_switch_review_backlog.py" in agents
+    assert "export_ua_context_v13_safe_switch_curation_worksheet.py" in agents
+    assert "extract_ua_context_v13_safe_switch_examples_from_curation.py" in agents
+    assert "candidate_can_satisfy_v13_without_validation=false" in agents
+    assert "audit_v13_dam_receipt_source_leads.py" in agents
+    assert "probe_scmo_dam_soap_download.py" in agents
+    assert "preflight-gated-mtls-username-token" in agents
+    assert "ws_security_signature_applied=false" in agents
+    assert "preflight-gated-signed-ws-security" in agents
+    assert "xml_signature_builder_available" in agents
+    assert "preflight_scmo_dam_ws_security_credentials.py" in agents
+    assert "--scmo-ws-security-preflight-json" in agents
+    assert "SCMO_CLIENT_CERT_PEM" in agents
+    assert "SCMO_CLIENT_P12" in agents
+    assert "SCMO_CLIENT_KEY_PASSWORD" in agents
+    assert "cert/key loadability" in agents
+    assert "never writes secret values" in agents
+    assert "normalize_scmo_dam_publication_receipt_export.py" in agents
+    assert "fetch_scmo_dam_publication_receipt_export.py" in agents
+    assert "SCMO credentials are not required for the diploma MVP" in agents
+    assert (
+        "source_publication_timestamp is not required for offline "
+        "research-shadow DT prototype"
+        in agents
+    )
+    assert "Do not run SCMO credential/probe work by default" in agents
+    assert "materialize_credentialless_academic_mvp_readiness_packet.py" in agents
+    assert "materialize_dt_research_shadow_packet.py" in agents
+    assert "--dt-research-shadow-sequence-summary-json" in agents
+    assert "--teacher-validation-json" in agents
+    assert "--offline-challenger-validation-json" in agents
+    assert "ISOTEDATA" in agents
+    assert "HTML table" in agents
+    assert "--v13-base-config" in agents
+    assert "full_v13_gate_evaluated=false" in agents
+    assert "source_publication_timestamp" in agents
+    assert "wsdl_response_returned_signed_download_required" in agents
+    assert "capture_oree_dam_publication_observations.py" in agents
+    assert "source_observed_at_utc" in agents
+    assert "--attempt-log-json" in agents
+    assert "source_probe_status=hdata_not_found" in agents
     assert "preflight_ua_context_v13_acquisition_inputs.py" in agents
+    assert "build_v13_acquisition_input_config.py" in agents
+    assert "materialize_v13_dt_lava_teacher_packet.py" in agents
+    assert "SMART_ARBITRAGE_VERIFY_LAVA_NPZ_CANDIDATE_FRAME_PICKLE" in agents
     assert "`permits_model_training=false`" in agents
     assert "`market_execution_enabled=false` залишається обов'язковим" in agents
     assert "не генерують market-submittable `ProposedBid`" in agents
@@ -463,6 +815,98 @@ def test_current_goal_boundary_doc_preserves_v13_scope() -> None:
     assert "Decision Transformer" in boundary
     assert "CURRENT_GOAL_BOUNDARY_V13.md" in readme
     assert "CURRENT_GOAL_BOUNDARY_V13.md" in context
+
+
+def test_lava_npz_margin_smoke_packet_cli_preserves_research_boundary() -> None:
+    packet_script = (
+        PROJECT_ROOT / "scripts" / "materialize_lava_npz_margin_smoke_packet.py"
+    ).read_text(encoding="utf-8")
+    teacher_contract_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_v13_dt_lava_teacher_contract_from_candidate_frame.py"
+    ).read_text(encoding="utf-8")
+    validator_script = (
+        PROJECT_ROOT / "scripts" / "validate_lava_npz_margin_smoke_packet.py"
+    ).read_text(encoding="utf-8")
+    aggregate_script = (
+        PROJECT_ROOT / "scripts" / "aggregate_dt_lava_research_metrics.py"
+    ).read_text(encoding="utf-8")
+    bridge_doc = (
+        PROJECT_ROOT / "docs" / "technical" / "DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md"
+    ).read_text(encoding="utf-8")
+    pulse_doc = (
+        PROJECT_ROOT
+        / "docs"
+        / "technical"
+        / "pulse"
+        / "5-24"
+        / "11-dt-lava-fast-honest-path-analysis.md"
+    ).read_text(encoding="utf-8")
+
+    assert "PACKET_CLAIM_SCOPE" in packet_script
+    assert "write_lava_npz_smoke_artifact_from_candidate_frame" in packet_script
+    assert "run_lava_npz_margin_smoke" in packet_script
+    assert "aggregate_dt_lava_research_metrics_payloads" in packet_script
+    assert "dt_lava_research_metrics_aggregate.json" in packet_script
+    assert "lava_npz_margin_smoke_packet_validation.json" in packet_script
+    assert "--v13-acquisition-summary-json" in packet_script
+    assert "v13_acquisition_summary_json" in packet_script
+    assert "artifact_sha256" in packet_script
+    assert "ci_smoke_only" in packet_script
+    assert "promotion_gate" in packet_script
+    assert "raw_hourly_action_imitation" in packet_script
+    assert "market_execution_enabled" in packet_script
+    assert (
+        "build_dfl_v13_gated_dt_lava_teacher_contract_frame"
+        in teacher_contract_script
+    )
+    assert "--readiness-csv" in teacher_contract_script
+    assert "DT_ACTION_TARGET_CONTRACT" in teacher_contract_script
+    assert "V2_PLUS_ROLE" in teacher_contract_script
+    assert "market_execution_enabled" in teacher_contract_script
+    assert "VALIDATION_CLAIM_SCOPE" in validator_script
+    assert "artifact_sha256" in validator_script
+    assert "SHA256 mismatch" in validator_script
+    assert "v13_acquisition_summary_json" in validator_script
+    assert "v13_max_prior_material_safe_switch_examples" in validator_script
+    assert "v13_min_safe_examples_required" in validator_script
+    assert "v13_candidate_generation_ready does not match" in validator_script
+    assert "does not match validated packet artifacts" in validator_script
+    assert "market_execution_enabled" in validator_script
+    assert "aggregate_dt_lava_research_metrics_payloads" in aggregate_script
+    assert "materialize_lava_npz_margin_smoke_packet.py" in bridge_doc
+    assert "validate_lava_npz_margin_smoke_packet.py" in bridge_doc
+    assert "aggregate_dt_lava_research_metrics.py" in bridge_doc
+    assert "dt_lava_research_metrics_aggregate.json" in bridge_doc
+    assert "lava_npz_margin_smoke_packet_validation.json" in bridge_doc
+    assert "SMART_ARBITRAGE_VERIFY_LAVA_NPZ_CANDIDATE_FRAME_PICKLE" in bridge_doc
+    assert ".\\scripts\\verify.ps1" in bridge_doc
+    assert ".tmp_runtime\\verify_lava_npz_margin_smoke" in bridge_doc
+    assert "--v13-acquisition-summary-json" in bridge_doc
+    assert "dfl_ua_context_v13_acquisition_summary.json" in bridge_doc
+    assert "max_prior_material_safe_switch_examples" in bridge_doc
+    assert "min_safe_examples_required" in bridge_doc
+    assert "contradictory V13 readiness claim" in bridge_doc
+    assert "Manifest summary counters" in bridge_doc
+    assert "SHA256" in bridge_doc
+    assert "lava_npz_margin_smoke_manifest.json" in bridge_doc
+    assert "materialize_v13_dt_lava_teacher_contract_from_candidate_frame.py" in (
+        bridge_doc
+    )
+    assert "materialize_v13_dt_lava_teacher_packet.py" in bridge_doc
+    assert "dfl_v13_gated_dt_lava_teacher_contract_frame_safe_switch_only.pkl" in (
+        bridge_doc
+    )
+    assert "0 permitted" in bridge_doc
+    assert "candidate_id_or_schedule_family" in bridge_doc
+    assert "teacher_comparator_fallback" in bridge_doc
+    assert "CI-fast" in bridge_doc
+    assert "not training, not full DFL, not DT deployment, and not market" in bridge_doc
+    assert "not a 4-window promotion gate" in bridge_doc
+    assert "without making it a promotion gate" in pulse_doc
+    assert "aggregate JSON" in pulse_doc
+    assert "validation summary" in pulse_doc
 
 
 def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:

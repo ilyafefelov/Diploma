@@ -16,20 +16,18 @@ dependencies = [
     "psycopg[binary]",         # Lightweight Postgres gateway for operator-facing read models
     "pyyaml",                  # YAML-backed tenant and location config loading
     "uvicorn",                 # ASGI server for the FastAPI control plane
-    
     # Обробка даних та Валідація
     "polars",                  # Швидка обробка в Silver-шарі [7, 8]
     "pydantic>=2.0",           # Детермінований Gatekeeper [9, 10]
-    
     # AI та Диференційована Оптимізація
     "torch==2.9.1",            # CUDA 12.6 wheel for local/HF official training stability [11, 12]
     "cvxpylayers",             # Реалізація теореми про неявну функцію [13, 14]
     "cvxpy",                   # Опис задач оптимізації [13, 14]
     "optuna",                  # Гіперпараметрична оптимізація стратегій [15-17]
-    
     # IoT та Інтеграція
     "paho-mqtt",               # Зв'язок з Victron/Huawei через MQTT [18, 19]
     "httpx",                   # Асинхронні запити до API Укренерго [20]
+    "signxml>=4.4.0",          # WS-Security SignedParts XML signatures for SCMO receipt probing
 ]
 
 [build-system]

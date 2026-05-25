@@ -294,6 +294,7 @@ Response shape:
 
 - `forecast`: hourly strict-similar-day price forecast in UAH/MWh
 - `recommendation_schedule`: hourly signed MW recommendation trace with projected SOC and per-slot economics
+- `bid_recommendation_preview`: non-submittable DAM BUY/SELL/HOLD preview derived from the recommendation schedule; each row keeps `preview_only=true`, `market_order_payload_emitted=false`, and `market_execution_enabled=false`
 - `projected_state`: projected SOC/throughput/degradation trace derived from the feasible schedule
 - `economics`: aggregated gross market value, degradation penalty, net value, and throughput in canonical UAH/MWh units
 - `starting_soc_source`: `telemetry_hourly` when a fresh hourly telemetry snapshot is available, otherwise `tenant_default`
@@ -566,11 +567,13 @@ Response shape:
 - `anchor_timestamp`, `forecast_generated_at`, `target_delivery_window_start`, `target_delivery_window_end`: as-of timing and target delivery window metadata for the visible preview. `forecast_generated_at` may be `null` for deterministic strict-similar-day previews that do not come from persisted forecast-store rows.
 - `market_execution_enabled`, `read_model_boundary`: execution boundary. Current value remains `false` with `operator_preview_no_market_submission`.
 - `market_gate_status`, `bid_eligibility_status`, `proposed_bid_status`: explicit non-bid status. Current values are preview-only/not-applicable because this endpoint does not evaluate market gate closure and does not emit `ProposedBid`.
+- `v13_readiness.source_governance_status`, `source_governance_label`, and `market_submission_receipt_gate_status`: source-governance status for the visible operator preview. Current value is `receipt_gated_for_market_submission` / `receipt-gated for market submission` with `blocked_external_access`; SCMO credentials are not required for the diploma MVP but remain relevant to market-submission-grade receipt proof.
 - `available_strategies`: materialized strategies the operator may inspect; unavailable future policies stay disabled.
 - `selected_strategy_id`, `selected_policy_id`, `policy_mode`, `policy_readiness`: current selection and its safety/readiness boundary.
 - `policy_forecast_context_source`, `policy_forecast_context_row_count`, `policy_forecast_context_coverage_ratio`, `policy_forecast_context_warning`: DT forecast-state coverage copied into the operator read model; non-DT strategies return `not_applicable`.
 - `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when available, including per-series `out_of_dam_cap_rows` and `quality_boundary` so the operator can see whether an official forecast row is smoke-ready or needs calibration before value claims.
 - `value_gap_series`: per-hour counterfactual value-gap preview for the selected schedule.
+- `bid_recommendation_preview`: operator-facing DAM BUY/SELL/HOLD recommendation preview derived from the feasible schedule. It is not a `ProposedBid`, does not include market-order payload fields, and repeats the non-execution boundary per row.
 - `load_forecast`, `pv_forecast`, `projected_soc`: tenant schedule, PV, and SOC context.
 - `daily_value_uah`, `hold_value_uah`, `value_vs_hold_uah`: operator economics against a no-arbitrage hold baseline.
 
@@ -581,6 +584,95 @@ Operational notes:
 - When `strategy_id` is `nbeatsx_official_v0` or `tft_official_v0` and forecast-store rows exist with all visible forecast prices inside the configured DAM caps, the endpoint routes those forecast prices through the deterministic Level 1 LP preview. Out-of-cap official rows remain visible in the forecast graph with `quality_boundary=needs_calibration_before_value_claim`, but the requested official strategy is disabled and the operator response falls back to `strict_similar_day`. The resulting schedule is still a preview, not market execution.
 - DT is exposed only when a policy-preview table has materialized safe rows. Even then, `market_execution_enabled` remains false until a full evaluation promotes it.
 - `strict_similar_day` remains the control comparator and safe fallback.
+
+### `GET /dashboard/academic-mvp-readiness`
+
+Returns the materialized credentialless academic MVP readiness packet as a
+read-only dashboard/thesis artifact. This endpoint is for showing that the DAM
+operator preview and DT/LAVA prototype evidence gates have passed without OREE
+or SCMO credentials.
+
+Current expected packet state:
+
+- `academic_mvp_gate_passed=true`.
+- `operator_preview_gate.passed=true`.
+- `dt_lava_prototype_gate.passed_for_academic_mvp=true`.
+- `dt_lava_prototype_gate.lava_npz_smoke_validation.validation_passed=true`;
+  the sibling validation artifact also requires a passed
+  `lava_npz_smoke_packet_validation` gate.
+- `dt_lava_teacher_contract_gate.permitted_model_training_rows=0` while the
+  V13 receipt gate is blocked.
+- `dt_lava_teacher_contract_gate.teacher_packet_validation.passed=true`; the
+  endpoint's sibling validation artifact also requires a passed
+  `teacher_packet_validation` gate.
+- `offline_challenger_gate.passed_for_academic_mvp=true`, with promotion still
+  blocked.
+- `offline_challenger_gate.offline_challenger_packet_validation.passed=true`;
+  the sibling validation artifact also requires an
+  `offline_challenger_packet_validation` gate.
+- `gate_passport`: single API/thesis gate map. It marks the operator preview,
+  non-submittable DAM bid preview, LAVA NPZ CI smoke, the separate LAVA NPZ
+  packet-validation gate, V13-gated teacher contract, offline challenger
+  non-promotion evidence, prototype evidence scorecard, and no-market-execution
+  safety as passed. It also marks market-submission receipts as
+  `blocked_external_access`, DT/LAVA training promotion as
+  `blocked_until_v13_source_readiness`, and market execution as `out_of_scope`.
+- `prototype_phase_readiness`: compact Phase 0-4 DFL/DT roadmap for the
+  credentialless MVP. It shows V13 source readiness as
+  `blocked_market_submission_receipts`, LAVA NPZ smoke as
+  `passed_ci_smoke_not_promotion`, the V13-gated teacher contract as
+  `passed_contract_training_rows_gated`, the offline challenger as
+  `passed_non_promotion_evidence`, and full schedule-level DFL as
+  `future_work_not_started`.
+- `prototype_evidence_scorecard`: compact thesis/dashboard scorecard derived
+  from the same packet sections. It exposes DAM bid-preview row count, LAVA NPZ
+  validation status, V13-gated teacher row counts with `0` permitted model
+  training rows, strict/V2+/behavior-cloning control coverage, deterministic
+  safety projection, and the fixed non-execution flags. The same fields are
+  also exposed as `gate_passport.prototype_evidence_scorecard_gate` so API and
+  dashboard consumers can fail closed on a missing or unpassed scorecard gate.
+- `dt_research_shadow_gate`: required credentialless DT prototype evidence
+  for the academic MVP packet. It must use chronological delivery-time splits
+  over existing candidate/value teacher rows, with
+  `publication_receipt_verified=false`,
+  `source_publication_timestamp_available=false`,
+  `market_availability_claim=false`,
+  `research_shadow_not_promotable=true`, and
+  `promotable_v13_permitted_training_rows=0`; promotion remains blocked by
+  missing explicit DAM publication receipts. Its `evaluation_metrics` report
+  regret and value metrics for the DT shadow selection, strict LP/oracle
+  reference, V2+ teacher/comparator/fallback, and behavior-cloning baseline;
+  `accuracy_secondary` stays secondary evidence. Its forecast-family coverage
+  fields (`forecast_context_present_families`,
+  `forecast_context_missing_families`, and
+  `forecast_context_coverage_status`) make the NBEATSx/TFT state-contract
+  status explicit; the current refreshed packet reports
+  `complete_nbeatsx_tft` by adapting TFT candidate-library rows as
+  credentialless research-shadow context while keeping promotion blocked.
+  The gate also exposes DT smoke backbone metadata such as `model_backbone`,
+  `model_backbone_selection_reason`, and `hf_decision_transformer_available`;
+  the current packet records the local DT-compatible fallback because
+  `transformers` is not installed in the active `.venv`.
+  It additionally surfaces `state_contract_passed`, `reward_contract_passed`,
+  `state_context_groups`, and `return_to_go_target`, so API consumers can
+  verify the DT shadow substrate without treating it as promotion-ready.
+  `evaluation_packet_claim_scope` and `evaluation_packet_primary_metric`
+  summarize the sidecar `dt_research_shadow_evaluation_summary.json`, whose
+  metrics compare DT against strict, V2+, and behavior-cloning controls.
+  `evaluation_packet_validation_passed=true` indicates the sibling
+  `dt_research_shadow_evaluation_validation.json` passed its non-promotion and
+  no-market-execution checks. Current materialization loads that sidecar rather
+  than relying only on embedded smoke-summary metadata.
+- `artifact_validation` and `artifact_validation_packet_path`: standalone
+  validator evidence loaded from the sibling
+  `credentialless_academic_mvp_readiness_validation.json` file, or from
+  `SMART_ARBITRAGE_ACADEMIC_MVP_VALIDATION_JSON` when overridden. The endpoint
+  fails closed if this artifact is missing, failed, reports validation
+  failures, or contains any nested `market_execution_enabled=true`. The
+  credentialless MVP packet materializer writes this sibling validation file
+  in the same output directory.
+- `market_submission_ready=false`, `permits_model_training=false`,
+  `promotion_gate_passed=false`, and `market_execution_enabled=false`.
 
 ### `GET /dashboard/future-stack-preview`
 

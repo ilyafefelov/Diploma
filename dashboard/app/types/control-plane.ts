@@ -46,6 +46,21 @@ export interface BaselineRecommendationPoint {
   net_value_uah: number
 }
 
+export interface BidRecommendationPreviewPoint {
+  step_index: number
+  interval_start: string
+  market_venue: string
+  side: 'BUY' | 'SELL' | 'HOLD'
+  operator_action: 'charge' | 'discharge' | 'hold'
+  quantity_mw: number
+  indicative_limit_price_uah_mwh: number
+  preview_only: boolean
+  market_execution_enabled: boolean
+  market_order_payload_emitted: boolean
+  proposed_bid_status: string
+  read_model_boundary: string
+}
+
 export interface ProjectedBatteryTracePoint {
   step_index: number
   interval_start: string
@@ -84,7 +99,17 @@ export interface BaselinePreviewEconomics {
 export interface BaselineLpPreview {
   tenant_id: string
   market_venue: string
+  market_scope: string
   interval_minutes: number
+  anchor_timestamp: string
+  forecast_generated_at: string | null
+  target_delivery_window_start: string | null
+  target_delivery_window_end: string | null
+  market_execution_enabled: boolean
+  read_model_boundary: string
+  market_gate_status: string
+  bid_eligibility_status: string
+  proposed_bid_status: string
   starting_soc_fraction: number
   starting_soc_source?: string
   telemetry_freshness?: Record<string, unknown> | null
@@ -96,6 +121,7 @@ export interface BaselineLpPreview {
   }
   forecast: BaselineForecastPoint[]
   recommendation_schedule: BaselineRecommendationPoint[]
+  bid_recommendation_preview: BidRecommendationPreviewPoint[]
   projected_state: ProjectedBatteryStatePreview
   economics: BaselinePreviewEconomics
 }
@@ -563,6 +589,11 @@ export interface OperatorV13ReadinessResponse {
   receipt_source_audit_candidate_found: boolean
   receipt_source_audit_csv_generated: boolean
   receipt_source_audit_all_probes_insufficient: boolean
+  source_governance_status: string
+  source_governance_label: string
+  market_submission_receipt_gate_status: string
+  scmo_credentials_required_for_diploma_mvp: boolean
+  scmo_credentials_required_for_market_submission_grade_receipts: boolean
   safe_switch_target_tenant_source_count: number
   safe_switch_max_new_examples_required: number
   safe_switch_acquisition_targets: OperatorV13SafeSwitchTargetResponse[]
@@ -619,10 +650,37 @@ export interface OperatorRecommendationResponse {
   load_forecast: OperatorLoadForecastPointResponse[]
   soc_projection: OperatorSocProjectionPointResponse[]
   recommendation_schedule: BaselineRecommendationPoint[]
+  bid_recommendation_preview: BidRecommendationPreviewPoint[]
   daily_value_uah: number
   hold_baseline_value_uah: number
   value_vs_hold_uah: number
   economics: BaselinePreviewEconomics
+}
+
+export interface AcademicMvpReadinessResponse {
+  claim_scope: string
+  generated_at: string | null
+  academic_mvp_gate_passed: boolean
+  operator_preview_gate: Record<string, unknown>
+  source_governance: Record<string, unknown>
+  dt_lava_prototype_gate: Record<string, unknown>
+  dt_lava_teacher_contract_gate: Record<string, unknown>
+  offline_challenger_gate: Record<string, unknown>
+  dt_research_shadow_gate: Record<string, unknown>
+  prototype_contract: Record<string, unknown>
+  prototype_evidence_scorecard: Record<string, unknown>
+  prototype_phase_readiness: Record<string, unknown>
+  gate_passport: Record<string, unknown>
+  market_submission_ready: boolean
+  market_execution_gate_passed: boolean
+  promotion_gate_passed: boolean
+  permits_model_training: boolean
+  market_execution_enabled: boolean
+  no_market_execution_safety_gate_passed: boolean
+  next_gate: string
+  artifact_validation: Record<string, unknown>
+  source_packet_path: string
+  artifact_validation_packet_path: string
 }
 
 export type OperatorFlowType = 'weather_control' | 'signal_preview' | 'baseline_lp' | 'gatekeeper' | 'dispatch_execution'

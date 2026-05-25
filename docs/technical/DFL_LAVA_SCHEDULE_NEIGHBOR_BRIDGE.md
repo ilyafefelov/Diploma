@@ -85,7 +85,404 @@ sourced from the existing schedule-neighbor candidate frame, but the NPZ is
 only a research artifact contract. It does not permit candidate promotion,
 DT/LAVA training, dashboard defaults, or market execution.
 
-Build a tiny artifact from a persisted candidate-frame pickle:
+Before citing or running the smoke, write the readiness packet that separates
+the three relevant gates:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_dt_lava_prototype_readiness_packet.py `
+  --v13-acquisition-summary-json data\research_runs\week3_dfl_ua_context_acquisition_v13_safe_switch_only\dfl_ua_context_v13_acquisition_summary.json `
+  --offline-strategy-promotion-registry-json data\research_runs\week3_official_global_panel_365_strategy_promotion\dfl_schedule_value_production_gate_registry.json `
+  --lava-npz-smoke-validation-json <lava_npz_margin_smoke_packet_validation.json> `
+  --output-dir .tmp_runtime\dt_lava_prototype_readiness
+```
+
+If a real `dfl_lava_schedule_neighbor_candidate_frame.pkl` exists, pass it with
+`--candidate-frame-pickle`. If a materialization attempt failed because an
+upstream Dagster asset was absent, add one `--materialization-blocker <asset>`
+argument per missing input. The optional
+`--offline-strategy-promotion-registry-json` attachment records the already
+passed schedule/value offline strategy gate separately from the DT/LAVA gate.
+The `--lava-npz-smoke-validation-json` attachment is required for a passed
+prototype CI-smoke gate; omitting it writes a blocker packet with
+`lava_npz_smoke_validation_missing`.
+The packet writes
+`dt_lava_prototype_readiness_summary.json` and
+`dt_lava_prototype_readiness_summary.md`. It can report CI-smoke readiness
+and upstream offline strategy promotion separately from V13 training
+permission. It also emits a `gate_passport` that can honestly mark the
+DT/LAVA prototype CI-smoke gate, upstream offline strategy promotion gate, and
+no-market-execution safety gate as passed while leaving V13 training permission,
+DT/LAVA training promotion, and market execution blocked. The packet always
+keeps `market_execution_enabled=false`, `promotion_gate_passed=false`, and
+`market_execution_gate_passed=false` until a real DT/LAVA benchmark/promotion
+gate and a separate execution contract are implemented and passed.
+
+## Credentialless Academic MVP Packet
+
+SCMO credentials are not required for the diploma MVP. Missing SCMO
+username/password/cert/P12 material blocks only market-submission-grade DAM
+receipt readiness, not the credentialless operator-preview demo or the
+research-only DT/LAVA prototype evidence. Keep the V13
+`explicit_dam_publication_receipts` gate blocked for market-submission/source
+readiness claims; attach the public OREE/SCMO negative evidence and
+credential-gated status as source-governance evidence instead of synthesizing
+receipts.
+
+After the operator preview, V13 packet, LAVA NPZ readiness packet, V13-gated
+teacher packet, and offline challenger packet exist, first materialize the
+credentialless DT research-shadow packet. `source_publication_timestamp is not required for offline research-shadow DT prototype`; it is required only for
+market-submission-grade receipt readiness and promotable V13 source-ready DT
+training. This DT packet still records `publication_receipt_verified=false`,
+`source_publication_timestamp_available=false`, `market_availability_claim=false`,
+`research_shadow_not_promotable=true`, and `market_execution_enabled=false`.
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_dt_research_shadow_packet.py `
+  --teacher-rows-csv data\research_runs\week3_v13_dt_lava_teacher_dataset_safe_switch_only\dfl_v13_dt_lava_teacher_rows.csv `
+  --candidate-library-csv data\research_runs\week3_tft_quantile_365_full_negative_evidence\tft_candidate_library_rows.csv `
+  --output-dir data\research_runs\week3_dt_research_shadow_current `
+  --run-slug week3_dt_research_shadow_current `
+  --context-length 3 `
+  --max-sequences 7300 `
+  --max-epochs 1 `
+  --model-backbone auto
+```
+
+Then write the thesis-facing credentialless MVP packet:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_credentialless_academic_mvp_readiness_packet.py `
+  --tenant-id client_004_kharkiv_hospital `
+  --v13-acquisition-summary-json data\research_runs\week3_dfl_ua_context_acquisition_v13_safe_switch_only\dfl_ua_context_v13_acquisition_summary.json `
+  --dt-lava-prototype-readiness-json data\research_runs\week3_dt_lava_prototype_readiness_current\dt_lava_prototype_readiness_summary.json `
+  --teacher-summary-json data\research_runs\week3_v13_dt_lava_teacher_dataset_safe_switch_only\dfl_v13_dt_lava_teacher_summary.json `
+  --teacher-validation-json data\research_runs\week3_v13_dt_lava_teacher_dataset_safe_switch_only\dfl_v13_dt_lava_teacher_validation.json `
+  --offline-challenger-summary-json data\research_runs\week3_v13_dt_lava_offline_challenger_gate_safe_switch_only\dfl_v13_dt_lava_offline_challenger_summary.json `
+  --offline-challenger-validation-json data\research_runs\week3_v13_dt_lava_offline_challenger_gate_safe_switch_only\dfl_v13_dt_lava_offline_challenger_validation.json `
+  --dt-research-shadow-sequence-summary-json data\research_runs\week3_dt_research_shadow_current\dt_research_shadow_sequence_summary.json `
+  --dt-research-shadow-smoke-summary-json data\research_runs\week3_dt_research_shadow_current\dt_research_shadow_smoke_summary.json `
+  --output-dir data\research_runs\week3_credentialless_academic_mvp_current
+```
+
+Then validate the packet as a standalone thesis/demo artifact:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\validate_credentialless_academic_mvp_readiness_packet.py `
+  --input data\research_runs\week3_credentialless_academic_mvp_current\credentialless_academic_mvp_readiness_summary.json `
+  --output data\research_runs\week3_credentialless_academic_mvp_current\credentialless_academic_mvp_readiness_validation.json
+```
+
+The materializer also writes the sibling
+`credentialless_academic_mvp_readiness_validation.json` artifact required by
+the API/dashboard endpoint. The standalone validator command above remains the
+explicit revalidation path when the summary was copied, edited, or produced by
+an older run.
+The MVP validator re-checks the DT/LAVA readiness packet's embedded
+`lava_npz_smoke_validation` fields and emits a separate
+`lava_npz_smoke_packet_validation` validation gate plus
+`gate_passport.lava_npz_smoke_packet_validation_gate`, so a shape-only or
+tampered NPZ smoke summary cannot pass the credentialless MVP packet or the
+API/dashboard surface.
+The `--teacher-validation-json` input is the Phase 2
+`dfl_v13_dt_lava_teacher_validation.json` artifact; the MVP packet refuses to
+pass the V13-gated teacher-contract gate if that validation is missing, failed,
+or enables market execution.
+The `--offline-challenger-validation-json` input is the Phase 3
+`dfl_v13_dt_lava_offline_challenger_validation.json` artifact; the MVP packet
+refuses to pass the offline challenger non-promotion gate if strict controls,
+deterministic safety projection, non-promotion/execution boundaries, or
+no-market-execution validation fail.
+
+Use `--operator-preview-json <operator-preview.json>` instead of `--tenant-id`
+when the operator preview payload has already been exported. The packet passes
+only the academic MVP gates: DAM delivery-day recommendation preview,
+LAVA NPZ CI-smoke validation, V13-gated teacher-contract shape with `0`
+permitted training rows while receipts are blocked, offline challenger
+non-promotion evidence, and no-market-execution safety. It still reports
+`market_submission_ready=false`, `promotion_gate_passed=false`,
+`permits_model_training=false`, and `market_execution_enabled=false`.
+The summary now also includes `gate_passport`, which is the compact
+defense-facing map of passed and blocked gates: operator preview,
+non-submittable DAM bid preview, LAVA NPZ CI smoke, LAVA NPZ packet validation,
+V13-gated teacher contract, offline challenger non-promotion, and
+no-market-execution safety pass for the credentialless MVP; market-submission
+receipts stay `blocked_external_access`, DT/LAVA training promotion stays
+`blocked_until_v13_source_readiness`, and market execution remains
+`out_of_scope`.
+The operator-preview section also carries `bid_preview_summary` with BUY/SELL
+row counts, total preview MWh, indicative notional value, and fixed
+`market_execution_enabled=false` / `proposed_bid_emitted=false` flags so the
+thesis packet proves a DAM delivery-day schedule recommendation exists without
+turning it into a market-order payload.
+The offline challenger section carries `control_comparison_summary` from the
+Phase 3 packet: strict-reference, frozen V2+, and filtered behavior-cloning
+controls must be present; validation tenant-anchor coverage is exposed; and
+per-source regret summaries show why DT/LAVA remains non-promoted. This is the
+credentialless DT/LAVA prototype evidence surface, not training permission and
+not deployed control.
+The packet also emits `prototype_contract`, which is the machine-readable
+academic proof of the DFL/DT prototype boundary: DFL inputs are calibrated
+forecast context plus tenant/SOC/context and feasible candidate schedules, DFL
+targets are schedule value / regret value against V2+, DT input is the
+V13-gated sequence contract, the DT action target is candidate id or schedule
+family, and evaluation is strict LP/oracle regret/value against V2+ with
+strict-reference and behavior-cloning controls. The paired
+`dfl_dt_prototype_contract_gate` may pass for the credentialless MVP while
+market-submission receipts, DT/LAVA promotion, and market execution remain
+blocked.
+It also emits `prototype_evidence_scorecard`, a compact dashboard/thesis object
+derived from the operator preview, LAVA validation, teacher packet, and offline
+challenger packet. The scorecard is not new evidence; it summarizes the already
+validated evidence as bid-preview rows, LAVA NPZ validation, teacher row counts,
+`0` permitted model-training rows, strict/V2+/behavior-cloning controls,
+deterministic safety projection, and fixed non-execution flags.
+The same summary is mirrored into
+`gate_passport.prototype_evidence_scorecard_gate`, which must pass before the
+API/dashboard treat the credentialless prototype packet as demo-ready.
+The packet also emits `prototype_phase_readiness`, a compact Phase 0-4 matrix
+for defense/demo use: Phase 0 V13 source readiness stays
+`blocked_market_submission_receipts`, Phase 1 LAVA NPZ smoke is
+`passed_ci_smoke_not_promotion`, Phase 2 teacher contract is
+`passed_contract_training_rows_gated`, Phase 3 offline challenger is
+`passed_non_promotion_evidence`, and Phase 4 full schedule-level DFL remains
+`future_work_not_started`. This matrix is also checked by the sibling
+validation artifact and keeps `market_execution_enabled=false`.
+The DT research-shadow path now materializes a separate chronological sequence
+dataset and local transformer smoke from the existing candidate/value teacher
+rows. This is the fast DT prototype path: `research_shadow_training_rows` may be
+positive for academic evaluation, while
+`promotable_v13_permitted_training_rows=0`,
+`publication_receipt_verified=false`, and `market_availability_claim=false`
+keep V13 promotion and market submission blocked. Its smoke packet reports
+regret and value metrics for DT, strict LP/oracle, V2+
+teacher/comparator/fallback, and behavior-cloning controls; imitation accuracy
+is retained only as secondary evidence. The sequence packet also reports
+forecast-family coverage for the NBEATSx/TFT state contract. The current V13
+safe-switch teacher artifact is NBEATSx-only, but the credentialless DT packet
+can now adapt TFT candidate-library rows as research-shadow context with
+`--candidate-library-csv`. The refreshed packet reports
+`forecast_context_coverage_status=complete_nbeatsx_tft`, while every adapted
+row remains non-promotable with `publication_receipt_verified=false` and
+`market_execution_enabled=false`.
+The transformer smoke now records the backbone decision explicitly. Use
+`--model-backbone auto` for the current path: it selects Hugging Face
+`DecisionTransformerModel` only when `transformers` is importable; otherwise it
+uses the local DT-compatible classifier and writes
+`model_backbone_selection_reason=transformers_not_installed`. The current
+Windows `.venv` takes that local fallback, which is valid smoke evidence but
+not a claim of HF-backed training or DT promotion.
+The sequence packet also records the DT substrate as contracts:
+`dt_state_feature_contract` proves that forecast, battery/SOC, tenant,
+candidate value/regret, and gate context groups are present; and
+`dt_reward_target_contract` fixes the return-to-go target as negative regret
+delta versus V2+/strict reference while preserving schedule-value metrics. Both
+contracts keep `market_execution_enabled=false`.
+The smoke run now writes sidecars
+`dt_research_shadow_evaluation_summary.json` and
+`dt_research_shadow_evaluation_validation.json`. Use them as the formal
+evaluation packet for thesis/API evidence: they compare the DT shadow
+challenger against strict LP/oracle, V2+ teacher/comparator/fallback, and
+behavior-cloning controls with regret/value deltas before imitation accuracy.
+The validation sidecar fails closed on missing metrics, missing controls,
+promotion, or market execution.
+Credentialless academic MVP materialization loads this validation sidecar. When
+the smoke summary path is configured, the materializer infers the sibling
+`dt_research_shadow_evaluation_validation.json` unless an explicit validation
+path is supplied, and the top-level MVP gate depends on that DT shadow
+validation passing.
+The validator checks the same boundary without requiring FastAPI: academic MVP
+and DFL/DT prototype gates pass, market-submission receipt/training/execution
+gates are explicitly non-required and unpassed, and every nested
+`market_execution_enabled` flag remains false.
+
+For normal verification, write the NPZ, summary, margin metrics, and manifest
+as one packet from a persisted candidate-frame pickle:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_lava_npz_margin_smoke_packet.py `
+  --candidate-frame-pickle <dfl_lava_schedule_neighbor_candidate_frame.pkl> `
+  --output-dir .tmp_runtime\lava_npz_smoke `
+  --v13-acquisition-summary-json data\research_runs\week3_dfl_ua_context_acquisition_v13_safe_switch_only\dfl_ua_context_v13_acquisition_summary.json `
+  --seed 0 `
+  --window-id lava_npz_smoke_window `
+  --max-instances 8 `
+  --max-neighbors 4
+```
+
+The packet writes `candidate_lava_smoke.npz`,
+`candidate_lava_smoke_summary.json`, `candidate_lava_margin_metrics.json`,
+`dt_lava_research_metrics_aggregate.json`, and
+`lava_npz_margin_smoke_manifest.json`, then validates the packet and writes
+`lava_npz_margin_smoke_packet_validation.json`. The manifest records the
+aggregate and validation paths. When `--v13-acquisition-summary-json` is
+provided, it also records the attached
+`dfl_ua_context_v13_acquisition_summary.json` path, a compact V13 readiness
+summary, and a SHA256 hash for that source-readiness packet. This keeps the
+solver-free smoke tied to the current V13 blocker state instead of relying on a
+manually typed gate label. The manifest repeats the boundary flags:
+`v13_candidate_generation_ready=false`, `dt_lava_ready=false`,
+`permits_model_training=false`, `raw_hourly_action_imitation=false`,
+`ci_smoke_only=true`, `promotion_gate=false`, and
+`market_execution_enabled=false`. The manifest also records SHA256 hashes for
+the candidate-frame pickle, NPZ, summary JSON, metrics JSON, and aggregate JSON
+so a later thesis packet can prove which exact research artifacts were
+evaluated. Do not pass a ready V13 gate status to this packet unless the NPZ
+contract itself reports
+`v13_candidate_generation_ready=true`; the current smoke rejects that mismatch.
+The NPZ contract now validates identity vectors as well as numeric arrays:
+`tenant_id_vector`, `source_model_name_vector`, `anchor_timestamp_vector`, and
+`selected_candidate_model_name_vector` must all match the feature row count.
+The packet metrics also include `baseline_comparison`, computed from the same
+source candidate frame, comparing selected smoke candidates against
+`strict_control` and `frozen_v2_plus_fallback` rows. The validator now requires
+`baseline_comparison_ready=true`: every selected NPZ smoke instance must have
+both strict-control and frozen V2+ fallback coverage, with zero missing fallback
+anchors. This is diagnostic evidence only: `promotion_gate=false`,
+`permits_model_training=false`, and `market_execution_enabled=false` remain
+mandatory even when the smoke candidate beats strict or V2+ on the tiny packet.
+
+Revalidate a completed packet before citing it in a thesis evidence bundle or
+after moving artifacts between directories:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\validate_lava_npz_margin_smoke_packet.py `
+  --manifest .tmp_runtime\lava_npz_smoke\lava_npz_margin_smoke_manifest.json `
+  --output .tmp_runtime\lava_npz_smoke\lava_npz_margin_smoke_packet_validation.json
+```
+
+The packet validator, also run by the packet materializer, recomputes SHA256
+hashes, revalidates the NPZ contract, revalidates DT/LAVA metrics, recomputes
+the one-metric aggregate, verifies complete strict/V2+ fallback baseline
+coverage, and writes a validation summary with attached V13 blocker counts such
+as `ready_rows`, `readiness_rows`,
+`max_prior_material_safe_switch_examples`, and
+`min_safe_examples_required`, plus
+`promotion_gate=false`,
+`permits_model_training=false`, and `market_execution_enabled=false`. A hash
+mismatch is a hard failure, not a warning. A contradictory V13 readiness claim
+between the manifest, NPZ contract, or attached V13 summary is also a hard
+failure. The validator also checks that the manifest baseline comparison exactly
+matches the metrics JSON and does not claim promotion, training permission, or
+execution. It emits `baseline_comparison_valid`,
+`baseline_comparison_ready`, `baseline_selected_instance_count`,
+`strict_fallback_anchor_count`, and `v2_plus_anchor_count` in
+`lava_npz_margin_smoke_packet_validation.json`. Manifest summary counters such
+as `npz_instance_count`,
+`npz_valid_neighbor_count`, `lava_adjacent_pair_count`, and
+`aggregate_metric_count` are cross-checked against the validated artifacts, so
+the manifest cannot overstate the size of the research smoke evidence.
+
+`.\scripts\verify.ps1` can run the same packet as an optional verification hook
+when a real candidate-frame pickle is available:
+
+```powershell
+$env:SMART_ARBITRAGE_VERIFY_LAVA_NPZ_CANDIDATE_FRAME_PICKLE = "<dfl_lava_schedule_neighbor_candidate_frame.pkl>"
+.\scripts\verify.ps1
+```
+
+If that environment variable is unset, the wrapper skips the LAVA NPZ margin
+smoke with a status message. If it is set, the wrapper writes the packet under
+`.tmp_runtime\verify_lava_npz_margin_smoke`, attaches
+`data\research_runs\week3_dfl_ua_context_acquisition_v13_safe_switch_only\dfl_ua_context_v13_acquisition_summary.json`
+when that file exists, attaches the passed schedule/value promotion registry to
+the DT/LAVA readiness packet when available, and re-runs
+`scripts\validate_lava_npz_margin_smoke_packet.py`. A failure in that optional
+packet fails verification, but a passing packet is still CI smoke evidence only:
+`promotion_gate=false`, `permits_model_training=false`, and
+`market_execution_enabled=false`. When the validation JSON exists, the readiness
+packet attaches it through `--lava-npz-smoke-validation-json` and exposes a
+separate `lava_npz_smoke_packet_validation_gate` in the gate passport.
+
+For the Phase 2 candidate-index / schedule-family teacher handoff, build a
+V13-gated teacher contract from the same candidate-frame pickle and the current
+V13 readiness CSV:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_v13_dt_lava_teacher_contract_from_candidate_frame.py `
+  --candidate-frame-pickle .tmp_runtime\dt_lava_prototype\dfl_lava_schedule_neighbor_candidate_frame.pkl `
+  --readiness-csv .tmp_runtime\v13\dfl_ua_context_v13_readiness_rows_safe_switch_only.csv `
+  --output-pickle .tmp_runtime\dt_lava_teacher\dfl_v13_gated_dt_lava_teacher_contract_frame_safe_switch_only.pkl `
+  --summary-json .tmp_runtime\dt_lava_teacher\dfl_v13_gated_dt_lava_teacher_contract_summary_safe_switch_only.json
+```
+
+Then export the thesis-facing packet:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_v13_dt_lava_teacher_packet.py `
+  --teacher-contract-pickle .tmp_runtime\dt_lava_teacher\dfl_v13_gated_dt_lava_teacher_contract_frame_safe_switch_only.pkl `
+  --output-root data\research_runs `
+  --run-slug week3_v13_dt_lava_teacher_dataset_safe_switch_only `
+  --materialization-command "local materialize_v13_dt_lava_teacher_contract_from_candidate_frame.py from V13-tracked LAVA candidate rows plus safe-switch-only V13 readiness; DAM receipts still missing" `
+  --asset-check-status blocked_v13_explicit_dam_publication_receipts
+```
+
+The current safe-switch-only export filters 70,945 candidate rows to 3,921
+V13-tracked rows and contains 3,741 `train_selection` rows, but has 0 permitted
+model-training rows because explicit DAM publication receipts still block the
+V13 training permission gate. It now reports the safe-switch floor separately:
+`safe_switch_covered_tenant_source_count=5`,
+`safe_switch_required_tenant_source_count=5`,
+`safe_switch_min_observed_prior_material_examples=20`, and
+`safe_switch_coverage_gate_passed=true`. This means the safe-switch count
+precondition is closed, while explicit DAM publication receipts still block
+training permission. The packet passes only the teacher dataset and safe-switch
+coverage contract gates:
+`dt_action_target_contract=candidate_id_or_schedule_family`,
+`v2_plus_role=teacher_comparator_fallback`,
+`dt_lava_training_dataset_ready=false`,
+`promotion_gate_passed=false`, and `market_execution_enabled=false`.
+It also writes `dfl_v13_dt_lava_teacher_validation.json`, which revalidates
+the candidate-id / schedule-family teacher contract, training-permission
+consistency, blocked promotion/execution status, and no-market-execution
+boundary for the packet itself.
+The teacher packet now writes the architecture recommendation directly into
+`feature_contract.architecture_recommendation`: DFL consumes calibrated
+NBEATSx/TFT forecasts plus tenant/SOC/context and feasible candidate schedules;
+DFL targets best candidate / schedule value / regret delta versus V2+; DT
+consumes V13-passing teacher sequences with forecast, battery, tenant,
+candidate/value, return-to-go, and regret fields; DT predicts candidate id or
+schedule family; V2+ remains teacher, comparator, and fallback.
+
+The lower-level artifact step remains useful when debugging a single NPZ:
+
+## Phase 3 Offline Challenger Gate Packet
+
+After a V13 teacher packet exists and a V2+-anchored bridge strict frame exists,
+export the Phase 3 offline challenger gate packet:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_v13_dt_lava_offline_challenger_packet.py `
+  --teacher-summary-json data\research_runs\week3_v13_dt_lava_teacher_dataset_safe_switch_only\dfl_v13_dt_lava_teacher_summary.json `
+  --bridge-frame-pickle .tmp_runtime\v2_plus_bridge_export\dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame.pkl `
+  --output-root data\research_runs `
+  --run-slug week3_v13_dt_lava_offline_challenger_gate_safe_switch_only `
+  --asset-check-status blocked_v13_explicit_dam_publication_receipts `
+  --infer-deterministic-safety-projection-from-zero-violations
+```
+
+The `--infer-deterministic-safety-projection-from-zero-violations` switch is
+only for legacy bridge frames that predate the explicit
+`deterministic_safety_projection_passed` column. It overlays the same
+deterministic rule used by current bridge rows:
+`safety_violation_count == 0`.
+
+The 2026-05-25 packet at
+`data/research_runs/week3_v13_dt_lava_offline_challenger_gate_safe_switch_only/`
+is correctly blocked and writes
+`dfl_v13_dt_lava_offline_challenger_validation.json`:
+
+- `safe_switch_coverage_gate_passed=true`;
+- `deterministic_safety_projection_passed=true` for `1080` bridge rows;
+- `v13_training_permission_gate_passed=false`;
+- `teacher_permitted_model_training_rows=0`;
+- `bridge_gate_passed=false`;
+- `offline_dt_lava_challenger_gate_passed=false`;
+- `market_execution_enabled=false`.
+
+This is progress toward Phase 3 infrastructure, not a DT/LAVA promotion. It
+turns the offline challenger gate into a repeatable artifact and keeps the
+current blockers explicit: missing explicit DAM receipts and no residual/DT
+challenger beating V2+ under strict LP/oracle evidence.
 
 ```powershell
 .\.venv\Scripts\python.exe scripts\materialize_lava_npz_smoke_artifact.py `
@@ -104,6 +501,16 @@ Validate any such artifact before use:
   --output .tmp_runtime\lava_npz_smoke_summary.json
 ```
 
+Run the CI-fast adjacent-margin diagnostic:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_lava_npz_margin_smoke.py `
+  --input .tmp_runtime\lava_npz_smoke\candidate_lava_smoke.npz `
+  --output .tmp_runtime\lava_npz_smoke\candidate_lava_margin_metrics.json `
+  --seed 0 `
+  --window-id lava_npz_smoke_window
+```
+
 The materializer only uses `train_selection` rows where
 `eligible_for_final_selection=true`; final-holdout rows and ineligible oracle
 diagnostics are not exported into the smoke artifact. The NPZ must include
@@ -116,11 +523,35 @@ neighbor masks, `raw_hourly_action_imitation=true`,
 `market_execution_enabled=true`, and premature `permits_model_training=true`
 unless V13 and DT/LAVA readiness are both true.
 
+The margin-smoke command computes deterministic hinge-style adjacent-vertex
+violations and writes normalized DT/LAVA research metrics JSON. It is a CI
+diagnostic, not training, not full DFL, not DT deployment, and not market
+execution.
+
+The packet command already writes a one-metric aggregate. To combine several
+windows or seeds, aggregate one or more metrics files into a CI evidence
+summary:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\aggregate_dt_lava_research_metrics.py `
+  --input-dir .tmp_runtime\lava_npz_smoke `
+  --output .tmp_runtime\lava_npz_smoke\dt_lava_research_metrics_aggregate.json
+```
+
+The aggregate validates each metrics JSON first and repeats
+`ci_smoke_only=true`, `promotion_gate=false`, `permits_model_training=false`,
+and `market_execution_enabled=false`. It summarizes research smoke evidence
+only; it is not a 4-window promotion gate and cannot start DT/LAVA training.
+
 ## Gate
 
 The LAVA scorer can become a stronger Offline Strategy Promotion challenger
 only if it:
 
+- has a V13-ready teacher packet with final-holdout scoring rows;
+- passes the teacher-packet safe-switch coverage gate;
+- carries an explicit deterministic safety projection pass for every strict
+  LP/oracle comparison row;
 - beats frozen V2+ mean regret;
 - does not worsen median regret versus V2+;
 - still beats `strict_similar_day` by at least `5%`;

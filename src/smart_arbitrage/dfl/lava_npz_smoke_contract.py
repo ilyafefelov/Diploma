@@ -21,6 +21,10 @@ REQUIRED_LAVA_NPZ_SMOKE_ARRAYS: Final[frozenset[str]] = frozenset(
         "optimal_vertex_matrix",
         "adjacent_vertex_tensor",
         "adjacent_mask",
+        "tenant_id_vector",
+        "source_model_name_vector",
+        "anchor_timestamp_vector",
+        "selected_candidate_model_name_vector",
         "v13_candidate_generation_ready",
         "dt_lava_ready",
         "permits_model_training",
@@ -40,6 +44,7 @@ LAVA_NPZ_SMOKE_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
 _REQUIRED_LAVA_NPZ_SOURCE_COLUMNS: Final[frozenset[str]] = frozenset(
     {
         "tenant_id",
+        "source_model_name",
         "anchor_timestamp",
         "split_name",
         "eligible_for_final_selection",
@@ -97,12 +102,18 @@ def build_lava_npz_smoke_artifact_arrays_from_candidate_frame(
     source_rows = [
         row
         for row in candidate_frame.sort(
-            ["tenant_id", "anchor_timestamp", "candidate_family", "candidate_model_name"]
+            [
+                "tenant_id",
+                "source_model_name",
+                "anchor_timestamp",
+                "candidate_family",
+                "candidate_model_name",
+            ]
         ).iter_rows(named=True)
         if str(row["split_name"]) == "train_selection"
         and bool(row["eligible_for_final_selection"])
     ]
-    rows_by_anchor: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    rows_by_anchor: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for row in source_rows:
         rows_by_anchor.setdefault(_anchor_key(row), []).append(row)
 
@@ -112,6 +123,7 @@ def build_lava_npz_smoke_artifact_arrays_from_candidate_frame(
     adjacent_rows: list[list[list[float]]] = []
     adjacent_mask_rows: list[list[bool]] = []
     tenant_ids: list[str] = []
+    source_model_names: list[str] = []
     anchor_timestamps: list[str] = []
     selected_candidate_names: list[str] = []
     decision_dimension: int | None = None
@@ -156,7 +168,8 @@ def build_lava_npz_smoke_artifact_arrays_from_candidate_frame(
         adjacent_rows.append(padded_neighbors)
         adjacent_mask_rows.append(padded_mask)
         tenant_ids.append(anchor_key[0])
-        anchor_timestamps.append(anchor_key[1])
+        source_model_names.append(anchor_key[1])
+        anchor_timestamps.append(anchor_key[2])
         selected_candidate_names.append(str(best["candidate_model_name"]))
         if len(feature_rows) >= max_instances:
             break
@@ -174,6 +187,7 @@ def build_lava_npz_smoke_artifact_arrays_from_candidate_frame(
         "adjacent_vertex_tensor": np.array(adjacent_rows, dtype=float),
         "adjacent_mask": np.array(adjacent_mask_rows, dtype=bool),
         "tenant_id_vector": np.array(tenant_ids),
+        "source_model_name_vector": np.array(source_model_names),
         "anchor_timestamp_vector": np.array(anchor_timestamps),
         "selected_candidate_model_name_vector": np.array(selected_candidate_names),
         "v13_candidate_generation_ready": np.array(False),
@@ -214,6 +228,22 @@ def validate_lava_npz_smoke_contract(npz_path: str | Path) -> dict[str, Any]:
             "adjacent_vertex_tensor",
         )
         adjacent_mask = _bool_array_2d(artifact["adjacent_mask"], "adjacent_mask")
+        tenant_id_vector = _string_array_1d(
+            artifact["tenant_id_vector"],
+            "tenant_id_vector",
+        )
+        source_model_name_vector = _string_array_1d(
+            artifact["source_model_name_vector"],
+            "source_model_name_vector",
+        )
+        anchor_timestamp_vector = _string_array_1d(
+            artifact["anchor_timestamp_vector"],
+            "anchor_timestamp_vector",
+        )
+        selected_candidate_model_name_vector = _string_array_1d(
+            artifact["selected_candidate_model_name_vector"],
+            "selected_candidate_model_name_vector",
+        )
 
         v13_candidate_generation_ready = _bool_scalar(
             artifact["v13_candidate_generation_ready"],
@@ -251,6 +281,17 @@ def validate_lava_npz_smoke_contract(npz_path: str | Path) -> dict[str, Any]:
         )
     if adjacent_mask.shape != adjacent_vertex_tensor.shape[:2]:
         raise ValueError("adjacent_mask shape must match adjacent_vertex_tensor first axes.")
+    for vector_name, vector in (
+        ("tenant_id_vector", tenant_id_vector),
+        ("source_model_name_vector", source_model_name_vector),
+        ("anchor_timestamp_vector", anchor_timestamp_vector),
+        (
+            "selected_candidate_model_name_vector",
+            selected_candidate_model_name_vector,
+        ),
+    ):
+        if vector.shape != (instance_count,):
+            raise ValueError(f"{vector_name} length must match feature_matrix rows.")
 
     valid_neighbor_count = int(np.count_nonzero(adjacent_mask))
     if valid_neighbor_count < 1:
@@ -336,14 +377,32 @@ def _string_scalar(value: np.ndarray, name: str) -> str:
     return scalar.strip()
 
 
+def _string_array_1d(value: np.ndarray, name: str) -> np.ndarray:
+    array = np.asarray(value)
+    if array.ndim != 1:
+        raise ValueError(f"{name} must be a 1D string array.")
+    if not np.issubdtype(array.dtype, np.str_) and not np.issubdtype(
+        array.dtype,
+        np.bytes_,
+    ):
+        raise ValueError(f"{name} must be a string array.")
+    if any(not str(item).strip() for item in array.tolist()):
+        raise ValueError(f"{name} must not contain empty strings.")
+    return array
+
+
 def _require_source_columns(frame: pl.DataFrame) -> None:
     missing = sorted(_REQUIRED_LAVA_NPZ_SOURCE_COLUMNS.difference(frame.columns))
     if missing:
         raise ValueError(f"LAVA NPZ smoke source frame is missing columns: {missing}")
 
 
-def _anchor_key(row: dict[str, Any]) -> tuple[str, str]:
-    return (str(row["tenant_id"]), str(row["anchor_timestamp"]))
+def _anchor_key(row: dict[str, Any]) -> tuple[str, str, str]:
+    return (
+        str(row["tenant_id"]),
+        str(row["source_model_name"]),
+        str(row["anchor_timestamp"]),
+    )
 
 
 def _candidate_sort_key(row: dict[str, Any]) -> tuple[float, str, str]:

@@ -315,6 +315,7 @@ onBeforeUnmount(() => {
             :future-stack="defense.futureStack.value"
             :decision-policy="defense.dtPolicyPreview.value"
             :operator-recommendation="operatorRecommendation"
+            :academic-mvp-readiness="defense.academicMvpReadiness.value"
             :selected-strategy-id="selectedOperatorStrategyId"
             :is-loading="defense.isLoading.value || isOperatorRecommendationLoading"
             :active-error-count="operatorReadModelErrorCount"

@@ -29,6 +29,28 @@ export const proxyControlPlane = async <T>(
   }
 }
 
+export const proxyOptionalControlPlane = async <T>(
+  event: H3Event,
+  endpoint: string,
+  failureMessage: string
+): Promise<T | null> => {
+  const query = getQuery(event) as ControlPlaneQuery
+
+  try {
+    return await fetchControlPlane<T>(endpoint, { query })
+  } catch (error) {
+    if (isControlPlaneNotFound(error)) {
+      return null
+    }
+
+    throw createError({
+      statusCode: 502,
+      statusMessage: failureMessage,
+      data: error
+    })
+  }
+}
+
 export const fetchControlPlane = async <T>(
   endpoint: string,
   options: ControlPlaneFetchOptions = {}
@@ -61,6 +83,11 @@ export const resolveControlPlaneApiBases = (): string[] => {
   ])]
 }
 
+export const isControlPlaneNotFound = (error: unknown): boolean => {
+  const statusCode = controlPlaneStatusCode(error)
+  return statusCode === 404
+}
+
 const fetchFromControlPlaneBase = async <T>(
   apiBase: string,
   endpoint: string,
@@ -88,9 +115,24 @@ const fetchFromControlPlaneBase = async <T>(
 }
 
 const shouldTryNextControlPlaneBase = (error: unknown): boolean => {
-  const statusCode = typeof error === 'object' && error !== null && 'statusCode' in error
-    ? Number((error as { statusCode?: number }).statusCode)
-    : null
+  const statusCode = controlPlaneStatusCode(error)
 
   return statusCode === null || Number.isNaN(statusCode) || statusCode >= 500
+}
+
+const controlPlaneStatusCode = (error: unknown): number | null => {
+  if (typeof error !== 'object' || error === null) {
+    return null
+  }
+
+  if ('statusCode' in error) {
+    return Number((error as { statusCode?: number }).statusCode)
+  }
+
+  if ('response' in error) {
+    const response = (error as { response?: { status?: number } }).response
+    return typeof response?.status === 'number' ? response.status : null
+  }
+
+  return null
 }

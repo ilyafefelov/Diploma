@@ -52,6 +52,9 @@ export interface OperatorTimelineSegment {
   time: string
   label: 'Charge' | 'Discharge' | 'Hold' | 'Preview pending'
   value: string
+  marketSideLabel: 'BUY' | 'SELL' | 'HOLD' | 'PENDING'
+  indicativePriceLabel: string
+  marketBoundaryLabel: string
   tone: 'blue' | 'green' | 'orange'
   tooltipTitle: string
   tooltipBody: string

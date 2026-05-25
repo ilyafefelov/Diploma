@@ -1,3 +1,4 @@
+import json
 from typing import Any
 from datetime import UTC, datetime, timedelta
 
@@ -698,6 +699,16 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 	assert response_payload["v13_readiness"]["receipt_source_audit_candidate_found"] is False
 	assert response_payload["v13_readiness"]["receipt_source_audit_csv_generated"] is False
 	assert response_payload["v13_readiness"]["receipt_source_audit_all_probes_insufficient"] is True
+	assert response_payload["v13_readiness"]["source_governance_status"] == "receipt_gated_for_market_submission"
+	assert response_payload["v13_readiness"]["source_governance_label"] == "receipt-gated for market submission"
+	assert response_payload["v13_readiness"]["market_submission_receipt_gate_status"] == "blocked_external_access"
+	assert response_payload["v13_readiness"]["scmo_credentials_required_for_diploma_mvp"] is False
+	assert (
+		response_payload["v13_readiness"][
+			"scmo_credentials_required_for_market_submission_grade_receipts"
+		]
+		is True
+	)
 	assert response_payload["v13_readiness"]["safe_switch_target_tenant_source_count"] == 5
 	assert response_payload["v13_readiness"]["safe_switch_max_new_examples_required"] == 18
 	assert response_payload["v13_readiness"]["safe_switch_acquisition_targets"][0] == {
@@ -714,6 +725,28 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 	}
 	assert response_payload["forecast_generated_at"] is None
 	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+	assert len(response_payload["bid_recommendation_preview"]) == len(
+		response_payload["recommendation_schedule"]
+	)
+	first_preview_bid = response_payload["bid_recommendation_preview"][0]
+	first_schedule_point = response_payload["recommendation_schedule"][0]
+	assert first_preview_bid["interval_start"] == first_schedule_point["interval_start"]
+	assert first_preview_bid["market_venue"] == "DAM"
+	assert first_preview_bid["preview_only"] is True
+	assert first_preview_bid["market_execution_enabled"] is False
+	assert first_preview_bid["market_order_payload_emitted"] is False
+	assert first_preview_bid["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert first_preview_bid["read_model_boundary"] == "operator_preview_no_market_submission"
+	assert first_preview_bid["side"] in {"BUY", "SELL", "HOLD"}
+	assert first_preview_bid["quantity_mw"] == pytest.approx(
+		abs(first_schedule_point["recommended_net_power_mw"])
+	)
+	assert first_preview_bid["indicative_limit_price_uah_mwh"] == pytest.approx(
+		first_schedule_point["forecast_price_uah_mwh"]
+	)
+	assert "proposed_bid" not in first_preview_bid
+	assert "market_order_payload" not in first_preview_bid
 
 	target_start = datetime.fromisoformat(response_payload["target_delivery_window_start"])
 	target_end = datetime.fromisoformat(response_payload["target_delivery_window_end"])
@@ -731,6 +764,624 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 		datetime.fromisoformat(point["interval_start"]).date()
 		for point in response_payload["recommendation_schedule"]
 	} == {target_start.date()}
+
+
+def _academic_mvp_readiness_packet() -> dict[str, Any]:
+	return {
+		"claim_scope": "credentialless_academic_mvp_readiness_not_market_execution",
+		"generated_at": "2026-05-25T02:36:18+00:00",
+		"academic_mvp_gate_passed": True,
+		"operator_preview_gate": {
+			"passed": True,
+			"source_governance_label": "receipt-gated for market submission",
+			"market_execution_enabled": False,
+		},
+		"source_governance": {
+			"academic_mvp_source_governance_passed": True,
+			"source_governance_evidence_status": (
+				"public_credentialless_source_observed_receipt_not_verified"
+			),
+			"public_credentialless_source_observed": True,
+			"credentialless_observation_count": 6,
+			"candidate_receipt_source_found": False,
+			"receipt_csv_generated": False,
+			"publication_receipt_verified": False,
+			"source_publication_timestamp_available": False,
+			"market_availability_claim": False,
+			"market_submission_receipt_gate_status": "blocked_external_access",
+			"scmo_credentials_required_for_diploma_mvp": False,
+			"market_execution_enabled": False,
+		},
+		"dt_lava_prototype_gate": {
+			"passed_for_academic_mvp": True,
+			"dt_lava_training_ready": False,
+			"lava_npz_smoke_validation": {
+				"configured": True,
+				"claim_scope": "lava_npz_margin_smoke_packet_validation_not_market_execution",
+				"validation_passed": True,
+				"artifact_hashes_valid": True,
+				"metrics_valid": True,
+				"aggregate_valid": True,
+				"npz_contract_valid": True,
+				"baseline_comparison_valid": True,
+				"baseline_comparison_ready": True,
+				"promotion_gate": False,
+				"permits_model_training": False,
+				"market_execution_enabled": False,
+			},
+			"market_execution_enabled": False,
+		},
+		"dt_lava_teacher_contract_gate": {
+			"passed_for_academic_mvp": True,
+			"permitted_model_training_rows": 0,
+			"target_label_space": "candidate_index_or_schedule_family",
+			"teacher_packet_validation": {
+				"configured": True,
+				"claim_scope": "v13_dt_lava_teacher_packet_validation_not_market_execution",
+				"passed": True,
+				"candidate_schedule_teacher_contract_passed": True,
+				"training_permission_consistency_passed": True,
+				"promotion_execution_blocked_passed": True,
+				"no_market_execution_passed": True,
+				"market_execution_enabled": False,
+			},
+			"market_execution_enabled": False,
+		},
+		"offline_challenger_gate": {
+			"passed_for_academic_mvp": True,
+			"promotion_gate_passed": False,
+			"offline_challenger_packet_validation": {
+				"configured": True,
+				"claim_scope": (
+					"v13_dt_lava_offline_challenger_packet_validation_not_market_execution"
+				),
+				"passed": True,
+				"strict_control_comparison_passed": True,
+				"deterministic_safety_projection_passed": True,
+				"non_promotion_execution_boundary_passed": True,
+				"no_market_execution_passed": True,
+				"market_execution_enabled": False,
+			},
+			"market_execution_enabled": False,
+		},
+		"dt_research_shadow_gate": {
+			"passed_for_academic_mvp": True,
+			"status": "passed_research_shadow_not_promotable",
+			"claim_scope": "dt_research_shadow_not_promotable_not_market_execution",
+			"available_teacher_rows": 3921,
+			"train_selection_rows": 3741,
+			"research_shadow_training_rows": 3741,
+			"promotable_v13_permitted_training_rows": 0,
+			"split_strategy": "chronological_delivery_timestamp",
+			"chronological_split_passed": True,
+			"publication_receipt_verified": False,
+			"source_publication_timestamp_available": False,
+			"market_availability_claim": False,
+			"research_shadow_not_promotable": True,
+			"dt_promotion_gate_passed": False,
+			"market_execution_enabled": False,
+		},
+		"prototype_contract": {
+			"claim_scope": "credentialless_dfl_dt_prototype_contract_not_market_execution",
+			"product_boundary": "dam_delivery_day_operator_recommendation_preview",
+			"dt_action_target_contract": "candidate_id_or_schedule_family",
+			"v2_plus_role": "teacher_comparator_fallback",
+			"raw_hourly_action_imitation": False,
+			"evaluation_contract": {
+				"required_controls_present": True,
+				"behavior_cloning_control_present": True,
+				"deterministic_safety_projection_passed": True,
+				"market_execution_enabled": False,
+			},
+			"prototype_contract_gate_passed": True,
+			"market_execution_enabled": False,
+		},
+		"prototype_evidence_scorecard": {
+			"claim_scope": "credentialless_dfl_dt_prototype_evidence_scorecard_not_market_execution",
+			"scorecard_passed_for_academic_mvp": True,
+			"operator_bid_preview_rows": 24,
+			"operator_bid_preview_has_buy_or_sell": True,
+			"lava_npz_validation_passed": True,
+			"lava_npz_baseline_comparison_ready": True,
+			"teacher_rows": 3921,
+			"teacher_train_selection_rows": 3741,
+			"teacher_permitted_model_training_rows": 0,
+			"dt_action_target_contract": "candidate_id_or_schedule_family",
+			"offline_challenger_evidence_passed": True,
+			"offline_challenger_promotion_gate_passed": False,
+			"offline_challenger_decision": "blocked",
+			"strict_v2_plus_behavior_cloning_controls_present": True,
+			"deterministic_safety_projection_passed": True,
+			"validation_tenant_anchor_count": 90,
+			"best_observed_challenger_role": "offline_dt_reference",
+			"best_observed_mean_regret_improvement_ratio_vs_v2_plus": 0.0,
+			"v2_plus_role": "teacher_comparator_fallback",
+			"market_submission_ready": False,
+			"permits_model_training": False,
+			"promotion_gate_passed": False,
+			"market_execution_enabled": False,
+		},
+		"prototype_phase_readiness": {
+			"claim_scope": "credentialless_dfl_dt_prototype_phase_readiness_not_market_execution",
+			"phase_0_v13_source_readiness": {
+				"status": "blocked_market_submission_receipts",
+				"explicit_receipts_gate_passed": False,
+				"safe_switch_floor_passed": True,
+				"ready_for_training": False,
+				"required_for_academic_mvp": False,
+				"market_execution_enabled": False,
+			},
+			"phase_1_lava_npz_smoke": {
+				"status": "passed_ci_smoke_not_promotion",
+				"gate_passed": True,
+				"market_execution_enabled": False,
+			},
+			"phase_2_v13_gated_teacher_contract": {
+				"status": "passed_contract_training_rows_gated",
+				"gate_passed": True,
+				"permitted_model_training_rows": 0,
+				"market_execution_enabled": False,
+			},
+			"phase_3_offline_challenger": {
+				"status": "passed_non_promotion_evidence",
+				"gate_passed_for_academic_mvp": True,
+				"promotion_gate_passed": False,
+				"market_execution_enabled": False,
+			},
+			"phase_4_full_schedule_dfl": {
+				"status": "future_work_not_started",
+				"gate_passed": False,
+				"market_execution_enabled": False,
+			},
+			"market_execution_enabled": False,
+		},
+		"gate_passport": {
+			"operator_preview_gate": {
+				"passed": True,
+				"status": "passed",
+				"market_execution_enabled": False,
+			},
+			"dam_bid_recommendation_preview_gate": {
+				"passed": True,
+				"status": "passed",
+				"market_execution_enabled": False,
+			},
+			"academic_source_governance_gate": {
+				"passed": True,
+				"status": "passed",
+				"market_execution_enabled": False,
+			},
+			"market_submission_receipt_gate": {
+				"passed": False,
+				"status": "blocked_external_access",
+				"required_for_academic_mvp": False,
+				"market_execution_enabled": False,
+			},
+			"dt_lava_prototype_ci_smoke_gate": {
+				"passed": True,
+				"status": "passed",
+				"market_execution_enabled": False,
+			},
+			"lava_npz_smoke_packet_validation_gate": {
+				"passed": True,
+				"status": "passed",
+				"claim_scope": "lava_npz_margin_smoke_packet_validation_not_market_execution",
+				"artifact_hashes_valid": True,
+				"metrics_valid": True,
+				"aggregate_valid": True,
+				"npz_contract_valid": True,
+				"baseline_comparison_valid": True,
+				"permits_model_training": False,
+				"promotion_gate_passed": False,
+				"market_execution_enabled": False,
+			},
+			"dfl_dt_prototype_contract_gate": {
+				"passed": True,
+				"status": "passed",
+				"market_execution_enabled": False,
+			},
+			"v13_gated_teacher_contract_gate": {
+				"passed": True,
+				"status": "passed",
+				"teacher_packet_validation_passed": True,
+				"permitted_model_training_rows": 0,
+				"market_execution_enabled": False,
+			},
+			"offline_challenger_non_promotion_gate": {
+				"passed": True,
+				"status": "passed",
+				"offline_challenger_packet_validation_passed": True,
+				"promotion_gate_passed": False,
+				"market_execution_enabled": False,
+			},
+			"dt_research_shadow_smoke_gate": {
+				"passed": True,
+				"status": "passed_research_shadow_not_promotable",
+				"claim_scope": "dt_research_shadow_not_promotable_not_market_execution",
+				"research_shadow_training_rows": 3741,
+				"promotable_v13_permitted_training_rows": 0,
+				"promotion_gate_passed": False,
+				"market_execution_enabled": False,
+			},
+			"prototype_evidence_scorecard_gate": {
+				"passed": True,
+				"status": "passed",
+				"claim_scope": "credentialless_dfl_dt_prototype_evidence_scorecard_not_market_execution",
+				"operator_bid_preview_rows": 24,
+				"teacher_train_selection_rows": 3741,
+				"validation_tenant_anchor_count": 90,
+				"permits_model_training": False,
+				"promotion_gate_passed": False,
+				"market_execution_enabled": False,
+			},
+			"dt_lava_training_promotion_gate": {
+				"passed": False,
+				"status": "blocked_until_v13_source_readiness",
+				"required_for_academic_mvp": False,
+				"market_execution_enabled": False,
+			},
+			"market_execution_safety_gate": {
+				"passed": True,
+				"status": "passed",
+				"market_execution_enabled": False,
+			},
+			"market_execution_gate": {
+				"passed": False,
+				"status": "out_of_scope",
+				"required_for_academic_mvp": False,
+				"market_execution_enabled": False,
+			},
+		},
+		"market_submission_ready": False,
+		"market_execution_gate_passed": False,
+		"promotion_gate_passed": False,
+		"permits_model_training": False,
+		"market_execution_enabled": False,
+		"no_market_execution_safety_gate_passed": True,
+		"next_gate": "credentialless_academic_mvp_ready_for_thesis_demo",
+	}
+
+
+def _academic_mvp_readiness_validation_packet() -> dict[str, Any]:
+	return {
+		"claim_scope": "credentialless_academic_mvp_readiness_validation_not_market_execution",
+		"validated_at": "2026-05-25T04:39:48+00:00",
+		"passed": True,
+		"failures": [],
+		"gate_results": {
+			"academic_mvp_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"operator_preview_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"dam_bid_recommendation_preview_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"academic_source_governance_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"dt_lava_prototype_ci_smoke_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"dfl_dt_prototype_contract_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"v13_gated_teacher_contract_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"offline_challenger_non_promotion_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"prototype_evidence_scorecard_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"dt_research_shadow_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"market_execution_safety_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"market_submission_receipt_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"dt_lava_training_promotion_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"market_execution_gate": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"prototype_contract": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"prototype_phase_readiness": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"prototype_evidence_scorecard": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"lava_npz_smoke_packet_validation": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"teacher_packet_validation": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+			"offline_challenger_packet_validation": {
+				"passed": True,
+				"failures": [],
+				"market_execution_enabled": False,
+			},
+		},
+		"prototype_contract": {
+			"claim_scope": "credentialless_dfl_dt_prototype_contract_not_market_execution",
+			"dt_action_target_contract": "candidate_id_or_schedule_family",
+			"prototype_contract_gate_passed": True,
+			"market_execution_enabled": False,
+		},
+		"prototype_phase_readiness": {
+			"claim_scope": "credentialless_dfl_dt_prototype_phase_readiness_not_market_execution",
+			"phase_0_status": "blocked_market_submission_receipts",
+			"phase_1_status": "passed_ci_smoke_not_promotion",
+			"phase_2_status": "passed_contract_training_rows_gated",
+			"phase_3_status": "passed_non_promotion_evidence",
+			"phase_4_status": "future_work_not_started",
+			"market_execution_enabled": False,
+		},
+		"prototype_evidence_scorecard": {
+			"claim_scope": "credentialless_dfl_dt_prototype_evidence_scorecard_not_market_execution",
+			"scorecard_passed_for_academic_mvp": True,
+			"market_execution_enabled": False,
+		},
+		"market_execution_enabled": False,
+	}
+
+
+def test_academic_mvp_readiness_endpoint_exposes_non_execution_packet(
+	client: TestClient,
+	tmp_path,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	packet_path = tmp_path / "credentialless_academic_mvp_readiness_summary.json"
+	packet_path.write_text(json.dumps(_academic_mvp_readiness_packet()), encoding="utf-8")
+	validation_path = tmp_path / "credentialless_academic_mvp_readiness_validation.json"
+	validation_path.write_text(
+		json.dumps(_academic_mvp_readiness_validation_packet()),
+		encoding="utf-8",
+	)
+	monkeypatch.setenv(api_main.ACADEMIC_MVP_PACKET_JSON_ENV, str(packet_path))
+
+	response = client.get("/dashboard/academic-mvp-readiness")
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["academic_mvp_gate_passed"] is True
+	assert response_payload["market_submission_ready"] is False
+	assert response_payload["permits_model_training"] is False
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["operator_preview_gate"]["source_governance_label"] == (
+		"receipt-gated for market submission"
+	)
+	assert response_payload["source_governance"]["market_submission_receipt_gate_status"] == (
+		"blocked_external_access"
+	)
+	assert response_payload["source_governance"][
+		"public_credentialless_source_observed"
+	] is True
+	assert response_payload["source_governance"]["publication_receipt_verified"] is False
+	assert response_payload["source_governance"][
+		"source_publication_timestamp_available"
+	] is False
+	assert response_payload["source_governance"]["market_availability_claim"] is False
+	assert response_payload["dt_lava_teacher_contract_gate"]["permitted_model_training_rows"] == 0
+	assert response_payload["prototype_contract"]["dt_action_target_contract"] == (
+		"candidate_id_or_schedule_family"
+	)
+	assert response_payload["prototype_evidence_scorecard"][
+		"scorecard_passed_for_academic_mvp"
+	] is True
+	assert response_payload["prototype_evidence_scorecard"][
+		"teacher_permitted_model_training_rows"
+	] == 0
+	assert response_payload["prototype_phase_readiness"]["phase_0_v13_source_readiness"][
+		"status"
+	] == "blocked_market_submission_receipts"
+	assert response_payload["prototype_phase_readiness"]["phase_3_offline_challenger"][
+		"status"
+	] == "passed_non_promotion_evidence"
+	assert response_payload["prototype_phase_readiness"]["phase_4_full_schedule_dfl"][
+		"status"
+	] == "future_work_not_started"
+	assert response_payload["gate_passport"]["dt_lava_prototype_ci_smoke_gate"]["passed"] is True
+	assert response_payload["gate_passport"]["lava_npz_smoke_packet_validation_gate"][
+		"passed"
+	] is True
+	assert response_payload["gate_passport"]["lava_npz_smoke_packet_validation_gate"][
+		"permits_model_training"
+	] is False
+	assert response_payload["gate_passport"]["dfl_dt_prototype_contract_gate"]["passed"] is True
+	assert response_payload["gate_passport"]["prototype_evidence_scorecard_gate"][
+		"passed"
+	] is True
+	assert response_payload["gate_passport"]["prototype_evidence_scorecard_gate"][
+		"teacher_train_selection_rows"
+	] == 3741
+	assert response_payload["dt_research_shadow_gate"]["research_shadow_training_rows"] == 3741
+	assert response_payload["dt_research_shadow_gate"][
+		"promotable_v13_permitted_training_rows"
+	] == 0
+	assert response_payload["dt_research_shadow_gate"]["split_strategy"] == (
+		"chronological_delivery_timestamp"
+	)
+	assert response_payload["dt_research_shadow_gate"]["publication_receipt_verified"] is False
+	assert response_payload["dt_research_shadow_gate"]["market_availability_claim"] is False
+	assert response_payload["dt_research_shadow_gate"]["market_execution_enabled"] is False
+	assert response_payload["gate_passport"]["dt_research_shadow_smoke_gate"]["passed"] is True
+	assert response_payload["gate_passport"]["dt_research_shadow_smoke_gate"][
+		"promotable_v13_permitted_training_rows"
+	] == 0
+	assert response_payload["gate_passport"]["market_execution_safety_gate"]["passed"] is True
+	assert response_payload["gate_passport"]["market_submission_receipt_gate"]["status"] == (
+		"blocked_external_access"
+	)
+	assert response_payload["gate_passport"]["market_submission_receipt_gate"][
+		"required_for_academic_mvp"
+	] is False
+	assert response_payload["gate_passport"]["dt_lava_training_promotion_gate"]["status"] == (
+		"blocked_until_v13_source_readiness"
+	)
+	assert response_payload["artifact_validation"]["passed"] is True
+	assert response_payload["artifact_validation"]["gate_results"][
+		"dfl_dt_prototype_contract_gate"
+	]["passed"] is True
+	assert response_payload["artifact_validation"]["gate_results"]["market_execution_gate"]["passed"] is True
+	assert response_payload["artifact_validation"]["gate_results"][
+		"prototype_phase_readiness"
+	]["passed"] is True
+	assert response_payload["artifact_validation"]["gate_results"][
+		"prototype_evidence_scorecard"
+	]["passed"] is True
+	assert response_payload["artifact_validation"]["market_execution_enabled"] is False
+	assert response_payload["artifact_validation_packet_path"] == str(validation_path)
+	assert response_payload["source_packet_path"] == str(packet_path)
+
+
+def test_academic_mvp_readiness_endpoint_rejects_failed_artifact_validation(
+	client: TestClient,
+	tmp_path,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	packet_path = tmp_path / "credentialless_academic_mvp_readiness_summary.json"
+	packet_path.write_text(json.dumps(_academic_mvp_readiness_packet()), encoding="utf-8")
+	validation_packet = _academic_mvp_readiness_validation_packet()
+	validation_packet["passed"] = False
+	validation_packet["failures"] = ["dfl_dt_prototype_contract_gate:not_passed"]
+	validation_path = tmp_path / "credentialless_academic_mvp_readiness_validation.json"
+	validation_path.write_text(json.dumps(validation_packet), encoding="utf-8")
+	monkeypatch.setenv(api_main.ACADEMIC_MVP_PACKET_JSON_ENV, str(packet_path))
+
+	response = client.get("/dashboard/academic-mvp-readiness")
+
+	assert response.status_code == 500
+	assert "validation artifact" in response.json()["detail"]
+
+
+def test_academic_mvp_readiness_endpoint_rejects_missing_phase_validation_gate(
+	client: TestClient,
+	tmp_path,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	packet_path = tmp_path / "credentialless_academic_mvp_readiness_summary.json"
+	packet_path.write_text(json.dumps(_academic_mvp_readiness_packet()), encoding="utf-8")
+	validation_packet = _academic_mvp_readiness_validation_packet()
+	validation_packet["gate_results"].pop("prototype_phase_readiness")
+	validation_path = tmp_path / "credentialless_academic_mvp_readiness_validation.json"
+	validation_path.write_text(json.dumps(validation_packet), encoding="utf-8")
+	monkeypatch.setenv(api_main.ACADEMIC_MVP_PACKET_JSON_ENV, str(packet_path))
+
+	response = client.get("/dashboard/academic-mvp-readiness")
+
+	assert response.status_code == 500
+	assert "prototype_phase_readiness" in response.json()["detail"]
+
+
+def test_academic_mvp_readiness_endpoint_rejects_failed_required_passport_gate(
+	client: TestClient,
+	tmp_path,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	packet = _academic_mvp_readiness_packet()
+	packet["gate_passport"]["v13_gated_teacher_contract_gate"]["passed"] = False
+	packet_path = tmp_path / "credentialless_academic_mvp_readiness_summary.json"
+	packet_path.write_text(json.dumps(packet), encoding="utf-8")
+	monkeypatch.setenv(api_main.ACADEMIC_MVP_PACKET_JSON_ENV, str(packet_path))
+
+	response = client.get("/dashboard/academic-mvp-readiness")
+
+	assert response.status_code == 500
+	assert "v13_gated_teacher_contract_gate" in response.json()["detail"]
+
+
+def test_academic_mvp_readiness_endpoint_rejects_missing_scorecard_passport_gate(
+	client: TestClient,
+	tmp_path,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	packet = _academic_mvp_readiness_packet()
+	packet["gate_passport"].pop("prototype_evidence_scorecard_gate")
+	packet_path = tmp_path / "credentialless_academic_mvp_readiness_summary.json"
+	packet_path.write_text(json.dumps(packet), encoding="utf-8")
+	validation_path = tmp_path / "credentialless_academic_mvp_readiness_validation.json"
+	validation_path.write_text(
+		json.dumps(_academic_mvp_readiness_validation_packet()),
+		encoding="utf-8",
+	)
+	monkeypatch.setenv(api_main.ACADEMIC_MVP_PACKET_JSON_ENV, str(packet_path))
+
+	response = client.get("/dashboard/academic-mvp-readiness")
+
+	assert response.status_code == 500
+	assert "prototype_evidence_scorecard_gate" in response.json()["detail"]
+
+
+def test_academic_mvp_readiness_endpoint_rejects_missing_dt_shadow_gate(
+	client: TestClient,
+	tmp_path,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	packet = _academic_mvp_readiness_packet()
+	packet.pop("dt_research_shadow_gate")
+	packet["gate_passport"].pop("dt_research_shadow_smoke_gate")
+	packet_path = tmp_path / "credentialless_academic_mvp_readiness_summary.json"
+	packet_path.write_text(json.dumps(packet), encoding="utf-8")
+	validation_path = tmp_path / "credentialless_academic_mvp_readiness_validation.json"
+	validation_path.write_text(
+		json.dumps(_academic_mvp_readiness_validation_packet()),
+		encoding="utf-8",
+	)
+	monkeypatch.setenv(api_main.ACADEMIC_MVP_PACKET_JSON_ENV, str(packet_path))
+
+	response = client.get("/dashboard/academic-mvp-readiness")
+
+	assert response.status_code == 500
+	assert "dt_research_shadow" in response.json()["detail"]
 
 
 def test_operator_recommendation_exposes_v2_plus_offline_strategy(
@@ -843,6 +1494,12 @@ def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(
 	assert response_payload["tenant_id"] == "client_003_dnipro_factory"
 	assert response_payload["market_venue"] == "DAM"
 	assert response_payload["interval_minutes"] == 60
+	assert response_payload["market_scope"] == "dam_hourly_planning_preview"
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["read_model_boundary"] == "operator_preview_no_market_submission"
+	assert response_payload["market_gate_status"] == "not_evaluated_preview_only"
+	assert response_payload["bid_eligibility_status"] == "not_applicable_no_proposed_bid"
+	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
 	assert response_payload["starting_soc_fraction"] == pytest.approx(0.5)
 	assert response_payload["starting_soc_source"] == "tenant_default"
 	assert response_payload["battery_metrics"]["capacity_mwh"] == pytest.approx(0.5)
@@ -852,6 +1509,23 @@ def test_baseline_lp_preview_returns_tenant_aware_recommendation_read_model(
 	assert len(response_payload["projected_state"]["trace"]) == 24
 	assert "committed_dispatch" not in response_payload
 	assert "proposed_bid" not in response_payload
+	target_start = datetime.fromisoformat(response_payload["target_delivery_window_start"])
+	target_end = datetime.fromisoformat(response_payload["target_delivery_window_end"])
+	anchor_timestamp = datetime.fromisoformat(response_payload["anchor_timestamp"])
+	first_interval = datetime.fromisoformat(response_payload["recommendation_schedule"][0]["interval_start"])
+	last_interval = datetime.fromisoformat(response_payload["recommendation_schedule"][-1]["interval_start"])
+	assert response_payload["forecast_generated_at"] is None
+	assert target_start == first_interval
+	assert target_end == last_interval + timedelta(hours=1)
+	assert anchor_timestamp < target_start
+	assert target_start.date() == (anchor_timestamp + timedelta(days=1)).date()
+	assert target_start.hour == 0
+	assert target_start.minute == 0
+	assert target_start.second == 0
+	assert {
+		datetime.fromisoformat(point["interval_start"]).date()
+		for point in response_payload["recommendation_schedule"]
+	} == {target_start.date()}
 	assert response_payload["economics"]["total_degradation_penalty_uah"] >= 0.0
 	assert response_payload["economics"]["total_gross_market_value_uah"] != 0.0
 	assert max(

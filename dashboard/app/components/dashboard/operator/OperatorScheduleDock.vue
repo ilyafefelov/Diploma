@@ -67,6 +67,7 @@ const hideSegmentTooltip = (): void => {
         <span>{{ segment.time }}</span>
         <strong>{{ segment.label }}</strong>
         <small>{{ segment.value }}</small>
+        <em>{{ segment.marketSideLabel }} / {{ segment.indicativePriceLabel }}</em>
       </article>
     </div>
 
@@ -78,6 +79,7 @@ const hideSegmentTooltip = (): void => {
     >
       <span class="schedule-tooltip__title">{{ activeTooltipSegment.tooltipTitle }}</span>
       <span class="schedule-tooltip__body">{{ activeTooltipSegment.tooltipBody }}</span>
+      <span class="schedule-tooltip__boundary">{{ activeTooltipSegment.marketBoundaryLabel }}</span>
     </div>
 
     <div class="dock-selectors">

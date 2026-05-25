@@ -29,14 +29,23 @@ UA_CONTEXT_V13_READINESS_CSV_ARTIFACT_NAME: Final[str] = (
 UA_CONTEXT_V13_SAFE_SWITCH_ACQUISITION_TARGETS_CSV_ARTIFACT_NAME: Final[str] = (
     "dfl_ua_context_v13_safe_switch_acquisition_targets.csv"
 )
+UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME: Final[str] = (
+    "dfl_ua_context_v13_safe_switch_candidate_audits.json"
+)
 UA_CONTEXT_V13_SOURCE_ACQUISITION_BACKLOG_CSV_ARTIFACT_NAME: Final[str] = (
     "dfl_ua_context_v13_source_acquisition_backlog.csv"
 )
 UA_CONTEXT_V13_RECEIPT_SOURCE_AUDIT_JSON_ARTIFACT_NAME: Final[str] = (
     "dfl_ua_context_v13_receipt_source_audit.json"
 )
+UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME: Final[str] = (
+    "dfl_ua_context_v13_receipt_source_lead_audit.json"
+)
 UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME: Final[str] = (
     "dfl_ua_context_v13_acquisition_input_preflight.json"
+)
+UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME: Final[str] = (
+    "dfl_ua_context_v13_scmo_ws_security_preflight.json"
 )
 
 
@@ -47,7 +56,10 @@ def build_dfl_ua_context_v13_acquisition_packet(
     readiness_frame: pl.DataFrame,
     acquisition_source_evidence_frame: pl.DataFrame | None = None,
     receipt_source_audit: Mapping[str, Any] | None = None,
+    receipt_source_lead_audit: Mapping[str, Any] | None = None,
+    safe_switch_candidate_audits: list[Mapping[str, Any]] | None = None,
     acquisition_input_preflight: Mapping[str, Any] | None = None,
+    scmo_ws_security_preflight: Mapping[str, Any] | None = None,
     dagster_run_id: str | None = None,
     materialization_command: str | None = None,
     asset_check_status: str | None = None,
@@ -59,7 +71,10 @@ def build_dfl_ua_context_v13_acquisition_packet(
         readiness_frame=readiness_frame,
         acquisition_source_evidence_frame=acquisition_source_evidence_frame,
         receipt_source_audit=receipt_source_audit,
+        receipt_source_lead_audit=receipt_source_lead_audit,
+        safe_switch_candidate_audits=safe_switch_candidate_audits,
         acquisition_input_preflight=acquisition_input_preflight,
+        scmo_ws_security_preflight=scmo_ws_security_preflight,
     )
     readiness_summary = _readiness_summary(readiness_frame)
     safe_switch_acquisition_target_summary = (
@@ -68,6 +83,7 @@ def build_dfl_ua_context_v13_acquisition_packet(
     source_acquisition_backlog_summary = _source_acquisition_backlog_summary(
         source_inventory_frame,
         safe_switch_acquisition_target_summary,
+        receipt_source_lead_audit,
     )
     attached_artifacts = {
         "summary_json": UA_CONTEXT_V13_JSON_ARTIFACT_NAME,
@@ -86,9 +102,21 @@ def build_dfl_ua_context_v13_acquisition_packet(
         attached_artifacts["receipt_source_audit_json"] = (
             UA_CONTEXT_V13_RECEIPT_SOURCE_AUDIT_JSON_ARTIFACT_NAME
         )
+    if receipt_source_lead_audit is not None:
+        attached_artifacts["receipt_source_lead_audit_json"] = (
+            UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME
+        )
+    if safe_switch_candidate_audits is not None:
+        attached_artifacts["safe_switch_candidate_audits_json"] = (
+            UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME
+        )
     if acquisition_input_preflight is not None:
         attached_artifacts["acquisition_input_preflight_json"] = (
             UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME
+        )
+    if scmo_ws_security_preflight is not None:
+        attached_artifacts["scmo_ws_security_preflight_json"] = (
+            UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME
         )
     return {
         "run_slug": run_slug,
@@ -131,8 +159,17 @@ def build_dfl_ua_context_v13_acquisition_packet(
         "receipt_source_audit_summary": _receipt_source_audit_summary(
             receipt_source_audit
         ),
+        "receipt_source_lead_audit_summary": _receipt_source_lead_audit_summary(
+            receipt_source_lead_audit
+        ),
+        "safe_switch_candidate_audit_summary": (
+            _safe_switch_candidate_audit_summary(safe_switch_candidate_audits)
+        ),
         "acquisition_input_preflight_summary": _acquisition_input_preflight_summary(
             acquisition_input_preflight
+        ),
+        "scmo_ws_security_preflight_summary": _scmo_ws_security_preflight_summary(
+            scmo_ws_security_preflight
         ),
         "attached_artifacts": attached_artifacts,
     }
@@ -146,7 +183,10 @@ def write_dfl_ua_context_v13_acquisition_packet(
     readiness_frame: pl.DataFrame,
     acquisition_source_evidence_frame: pl.DataFrame | None = None,
     receipt_source_audit: Mapping[str, Any] | None = None,
+    receipt_source_lead_audit: Mapping[str, Any] | None = None,
+    safe_switch_candidate_audits: list[Mapping[str, Any]] | None = None,
     acquisition_input_preflight: Mapping[str, Any] | None = None,
+    scmo_ws_security_preflight: Mapping[str, Any] | None = None,
 ) -> Path:
     """Write local JSON, Markdown, and CSV V13 acquisition artifacts."""
 
@@ -173,6 +213,7 @@ def write_dfl_ua_context_v13_acquisition_packet(
         _source_acquisition_backlog_frame(
             packet,
             source_inventory_frame=source_inventory_frame,
+            receipt_source_lead_audit=receipt_source_lead_audit,
         ),
         export_dir / UA_CONTEXT_V13_SOURCE_ACQUISITION_BACKLOG_CSV_ARTIFACT_NAME,
     )
@@ -181,12 +222,46 @@ def write_dfl_ua_context_v13_acquisition_packet(
             json.dumps(_jsonable(dict(receipt_source_audit)), indent=2, sort_keys=True),
             encoding="utf-8",
         )
+    if receipt_source_lead_audit is not None:
+        (
+            export_dir / UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME
+        ).write_text(
+            json.dumps(
+                _jsonable(dict(receipt_source_lead_audit)),
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+    if safe_switch_candidate_audits is not None:
+        (
+            export_dir / UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME
+        ).write_text(
+            json.dumps(
+                _jsonable([dict(audit) for audit in safe_switch_candidate_audits]),
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
     if acquisition_input_preflight is not None:
         (
             export_dir / UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME
         ).write_text(
             json.dumps(
                 _jsonable(dict(acquisition_input_preflight)),
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+    if scmo_ws_security_preflight is not None:
+        (
+            export_dir
+            / UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME
+        ).write_text(
+            json.dumps(
+                _jsonable(dict(scmo_ws_security_preflight)),
                 indent=2,
                 sort_keys=True,
             ),
@@ -209,7 +284,10 @@ def _validate_packet_inputs(
     readiness_frame: pl.DataFrame,
     acquisition_source_evidence_frame: pl.DataFrame | None,
     receipt_source_audit: Mapping[str, Any] | None,
+    receipt_source_lead_audit: Mapping[str, Any] | None,
+    safe_switch_candidate_audits: list[Mapping[str, Any]] | None,
     acquisition_input_preflight: Mapping[str, Any] | None,
+    scmo_ws_security_preflight: Mapping[str, Any] | None,
 ) -> None:
     _require_columns(
         source_inventory_frame,
@@ -269,8 +347,14 @@ def _validate_packet_inputs(
         and bool(receipt_source_audit.get("market_execution_enabled", False))
     ):
         raise ValueError("V13 packet refuses receipt audit market execution rows.")
+    if receipt_source_lead_audit is not None:
+        _validate_receipt_source_lead_audit(receipt_source_lead_audit)
+    if safe_switch_candidate_audits is not None:
+        _validate_safe_switch_candidate_audits(safe_switch_candidate_audits)
     if acquisition_input_preflight is not None:
         _validate_acquisition_input_preflight(acquisition_input_preflight)
+    if scmo_ws_security_preflight is not None:
+        _validate_scmo_ws_security_preflight(scmo_ws_security_preflight)
 
 
 def _source_inventory_summary(frame: pl.DataFrame) -> dict[str, Any]:
@@ -426,7 +510,10 @@ def _packet_markdown(packet: dict[str, Any]) -> str:
     safe_switch_targets = packet["safe_switch_acquisition_target_summary"]
     source_backlog = packet["source_acquisition_backlog_summary"]
     acquisition_input_preflight = packet.get("acquisition_input_preflight_summary")
+    scmo_ws_security_preflight = packet.get("scmo_ws_security_preflight_summary")
     receipt_source_audit = packet.get("receipt_source_audit_summary")
+    receipt_source_lead_audit = packet.get("receipt_source_lead_audit_summary")
+    safe_switch_candidate_audit = packet.get("safe_switch_candidate_audit_summary")
     status = (
         "V13 Candidate Generation Ready"
         if packet["v13_candidate_generation_ready"]
@@ -534,7 +621,10 @@ def _packet_markdown(packet: dict[str, Any]) -> str:
             "or market execution.",
             "",
             *_acquisition_input_preflight_markdown(acquisition_input_preflight),
+            *_scmo_ws_security_preflight_markdown(scmo_ws_security_preflight),
             *_receipt_source_audit_markdown(receipt_source_audit),
+            *_receipt_source_lead_audit_markdown(receipt_source_lead_audit),
+            *_safe_switch_candidate_audit_markdown(safe_switch_candidate_audit),
         ]
     )
 
@@ -567,10 +657,12 @@ def _safe_switch_acquisition_target_frame(packet: dict[str, Any]) -> pl.DataFram
 def _source_acquisition_backlog_summary(
     source_inventory_frame: pl.DataFrame,
     safe_switch_acquisition_target_summary: dict[str, Any],
+    receipt_source_lead_audit: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     frame = _build_source_acquisition_backlog_frame(
         source_inventory_frame=source_inventory_frame,
         safe_switch_acquisition_target_summary=safe_switch_acquisition_target_summary,
+        receipt_source_lead_audit=receipt_source_lead_audit,
     )
     if frame.height == 0:
         top_priority_blocker = "none"
@@ -580,6 +672,9 @@ def _source_acquisition_backlog_summary(
         "backlog_item_count": frame.height,
         "source_family_blocker_count": frame.filter(
             pl.col("backlog_item_type") == "source_family_blocker"
+        ).height,
+        "receipt_source_lead_count": frame.filter(
+            pl.col("backlog_item_type") == "receipt_source_lead"
         ).height,
         "safe_switch_target_count": frame.filter(
             pl.col("backlog_item_type") == "safe_switch_target"
@@ -594,12 +689,14 @@ def _source_acquisition_backlog_frame(
     packet: dict[str, Any],
     *,
     source_inventory_frame: pl.DataFrame,
+    receipt_source_lead_audit: Mapping[str, Any] | None,
 ) -> pl.DataFrame:
     return _build_source_acquisition_backlog_frame(
         source_inventory_frame=source_inventory_frame,
         safe_switch_acquisition_target_summary=packet[
             "safe_switch_acquisition_target_summary"
         ],
+        receipt_source_lead_audit=receipt_source_lead_audit,
     )
 
 
@@ -607,6 +704,7 @@ def _build_source_acquisition_backlog_frame(
     *,
     source_inventory_frame: pl.DataFrame,
     safe_switch_acquisition_target_summary: dict[str, Any],
+    receipt_source_lead_audit: Mapping[str, Any] | None,
 ) -> pl.DataFrame:
     target_rows = safe_switch_acquisition_target_summary["target_rows"]
     primary_blockers = {
@@ -644,6 +742,10 @@ def _build_source_acquisition_backlog_frame(
                     source_family
                 ),
                 "acceptance_evidence": _source_acceptance_evidence(source_family),
+                "source_url": None,
+                "source_title": None,
+                "source_lead_id": None,
+                "source_lead_blocking_reasons": None,
                 "recommended_next_step": _source_recommended_next_step(
                     source_family,
                     source_status,
@@ -657,6 +759,12 @@ def _build_source_acquisition_backlog_frame(
                 "market_execution_enabled": False,
             }
         )
+    rows.extend(
+        _receipt_source_lead_backlog_rows(
+            receipt_source_lead_audit,
+            top_primary_blocker=top_primary_blocker,
+        )
+    )
     for row in target_rows:
         missing_examples = _safe_int(
             row["target_new_prior_material_safe_switch_examples"]
@@ -687,6 +795,10 @@ def _build_source_acquisition_backlog_frame(
                     "validated train/prior non-tail-risk material safe-switch "
                     "rows reach the configured tenant/source threshold"
                 ),
+                "source_url": None,
+                "source_title": None,
+                "source_lead_id": None,
+                "source_lead_blocking_reasons": None,
                 "recommended_next_step": str(row["recommended_next_step"]),
                 "source_readiness_required_before_dt_lava": True,
                 "target_is_precondition_only": True,
@@ -703,6 +815,7 @@ def _build_source_acquisition_backlog_frame(
                 "sort_stage",
                 "sort_missing_examples",
                 "blocking_source_family",
+                "source_lead_id",
                 "tenant_id",
                 "source_model_name",
             ],
@@ -729,6 +842,10 @@ def _empty_source_acquisition_backlog_frame() -> pl.DataFrame:
             "target_new_prior_material_safe_switch_examples": pl.Int64,
             "required_evidence_kind": pl.String,
             "acceptance_evidence": pl.String,
+            "source_url": pl.String,
+            "source_title": pl.String,
+            "source_lead_id": pl.String,
+            "source_lead_blocking_reasons": pl.String,
             "recommended_next_step": pl.String,
             "source_readiness_required_before_dt_lava": pl.Boolean,
             "target_is_precondition_only": pl.Boolean,
@@ -736,6 +853,77 @@ def _empty_source_acquisition_backlog_frame() -> pl.DataFrame:
             "market_execution_enabled": pl.Boolean,
         }
     )
+
+
+def _receipt_source_lead_backlog_rows(
+    receipt_source_lead_audit: Mapping[str, Any] | None,
+    *,
+    top_primary_blocker: str,
+) -> list[dict[str, Any]]:
+    if receipt_source_lead_audit is None:
+        return []
+    lead_rows = receipt_source_lead_audit.get("lead_rows", [])
+    if not isinstance(lead_rows, list):
+        return []
+    sort_stage = 1 if top_primary_blocker == "explicit_dam_publication_receipts" else 3
+    rows: list[dict[str, Any]] = []
+    for raw_lead in lead_rows:
+        if not isinstance(raw_lead, Mapping):
+            continue
+        lead_id = str(raw_lead.get("lead_id", "unknown_receipt_source_lead"))
+        lead_status = str(raw_lead.get("lead_status", "unknown_lead_status"))
+        blocking_reasons = _string_list(raw_lead.get("blocking_reasons", []))
+        rows.append(
+            {
+                "sort_stage": sort_stage,
+                "sort_missing_examples": 0,
+                "backlog_item_id": f"receipt_lead:{lead_id}",
+                "backlog_item_type": "receipt_source_lead",
+                "blocking_source_family": "explicit_dam_publication_receipts",
+                "source_status": lead_status,
+                "coverage_ratio": None,
+                "tenant_id": None,
+                "source_model_name": None,
+                "current_prior_material_safe_switch_examples": None,
+                "required_prior_material_safe_switch_examples": None,
+                "target_new_prior_material_safe_switch_examples": None,
+                "required_evidence_kind": (
+                    "row_level_dam_publication_receipt_export_from_source_lead"
+                ),
+                "acceptance_evidence": (
+                    "source lead yields a validated CSV with timestamp and "
+                    "source_publication_timestamp and no market execution rows"
+                ),
+                "source_url": str(raw_lead.get("source_url", "")),
+                "source_title": str(raw_lead.get("source_title", "")),
+                "source_lead_id": lead_id,
+                "source_lead_blocking_reasons": ",".join(blocking_reasons),
+                "recommended_next_step": _receipt_source_lead_recommended_next_step(
+                    lead_status,
+                    blocking_reasons,
+                ),
+                "source_readiness_required_before_dt_lava": True,
+                "target_is_precondition_only": True,
+                "permits_model_training": False,
+                "market_execution_enabled": False,
+            }
+        )
+    return rows
+
+
+def _receipt_source_lead_recommended_next_step(
+    lead_status: str,
+    blocking_reasons: list[str],
+) -> str:
+    if "download_auth_required" in blocking_reasons:
+        return "obtain_authorized_export_then_validate_receipts"
+    if "dataset_level_metadata_only" in blocking_reasons:
+        return "locate_row_level_publication_timestamps_or_reject_lead"
+    if "source_probe_not_sufficient_for_v13_receipts" in blocking_reasons:
+        return "do_not_convert_negative_probe_to_receipts"
+    if lead_status == "candidate_row_level_receipt_source":
+        return "validate_candidate_receipt_export"
+    return "resolve_receipt_source_lead_before_v13_config"
 
 
 def _required_source_evidence_kind(source_family: str) -> str:
@@ -835,6 +1023,97 @@ def _receipt_source_audit_summary(
     }
 
 
+def _receipt_source_lead_audit_summary(
+    receipt_source_lead_audit: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    if receipt_source_lead_audit is None:
+        return None
+    return {
+        "auth_blocked_count": _safe_int(
+            receipt_source_lead_audit.get("auth_blocked_count", 0)
+        ),
+        "candidate_receipt_lead_count": _safe_int(
+            receipt_source_lead_audit.get("candidate_receipt_lead_count", 0)
+        ),
+        "candidate_receipt_lead_ids": _string_list(
+            receipt_source_lead_audit.get("candidate_receipt_lead_ids", [])
+        ),
+        "candidate_receipt_source_found": bool(
+            receipt_source_lead_audit.get("candidate_receipt_source_found", False)
+        ),
+        "claim_scope": str(receipt_source_lead_audit.get("claim_scope", "")),
+        "dataset_level_metadata_only_count": _safe_int(
+            receipt_source_lead_audit.get("dataset_level_metadata_only_count", 0)
+        ),
+        "lead_count": _safe_int(receipt_source_lead_audit.get("lead_count", 0)),
+        "market_execution_enabled": False,
+        "permits_model_training": False,
+        "probe_negative_count": _safe_int(
+            receipt_source_lead_audit.get("probe_negative_count", 0)
+        ),
+        "receipt_csv_generated": False,
+        "validated_receipt_csv_ready": False,
+    }
+
+
+def _safe_switch_candidate_audit_summary(
+    safe_switch_candidate_audits: list[Mapping[str, Any]] | None,
+) -> dict[str, Any] | None:
+    if safe_switch_candidate_audits is None:
+        return None
+    total_accepted_candidate_rows = sum(
+        _safe_int(audit.get("accepted_candidate_rows", 0))
+        for audit in safe_switch_candidate_audits
+    )
+    total_source_rows = sum(
+        _safe_int(audit.get("source_rows", 0)) for audit in safe_switch_candidate_audits
+    )
+    total_weak_safe_switch_win_rows = sum(
+        _safe_int(audit.get("weak_safe_switch_win_rows", 0))
+        for audit in safe_switch_candidate_audits
+    )
+    audit_rows = [
+        {
+            "accepted_candidate_rows": _safe_int(
+                audit.get("accepted_candidate_rows", 0)
+            ),
+            "blocking_reasons": _string_list(audit.get("blocking_reasons", [])),
+            "duplicate_accepted_rows": _safe_int(
+                audit.get("duplicate_accepted_rows", 0)
+            ),
+            "material_label_column": str(audit.get("material_label_column", "")),
+            "normalized_safe_switch_csv_ready": bool(
+                audit.get("normalized_safe_switch_csv_ready", False)
+            ),
+            "source_rows": _safe_int(audit.get("source_rows", 0)),
+            "uses_canonical_v13_labels": bool(
+                audit.get("uses_canonical_v13_labels", False)
+            ),
+            "weak_safe_switch_win_rows": _safe_int(
+                audit.get("weak_safe_switch_win_rows", 0)
+            ),
+        }
+        for audit in safe_switch_candidate_audits
+    ]
+    return {
+        "accepted_tenant_source_count": sum(
+            _safe_int(audit.get("accepted_tenant_source_count", 0))
+            for audit in safe_switch_candidate_audits
+        ),
+        "audit_count": len(safe_switch_candidate_audits),
+        "audit_rows": audit_rows,
+        "dt_lava_ready": False,
+        "market_execution_enabled": False,
+        "normalized_safe_switch_csv_ready_count": sum(
+            1 for row in audit_rows if row["normalized_safe_switch_csv_ready"]
+        ),
+        "permits_model_training": False,
+        "total_accepted_candidate_rows": total_accepted_candidate_rows,
+        "total_source_rows": total_source_rows,
+        "total_weak_safe_switch_win_rows": total_weak_safe_switch_win_rows,
+    }
+
+
 def _acquisition_input_preflight_summary(
     acquisition_input_preflight: Mapping[str, Any] | None,
 ) -> dict[str, Any] | None:
@@ -864,6 +1143,84 @@ def _acquisition_input_preflight_summary(
     }
 
 
+def _scmo_ws_security_preflight_summary(
+    scmo_ws_security_preflight: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    if scmo_ws_security_preflight is None:
+        return None
+    return {
+        "claim_scope": str(scmo_ws_security_preflight.get("claim_scope", "")),
+        "client_cert_path_present": bool(
+            scmo_ws_security_preflight.get("client_cert_path_present", False)
+        ),
+        "client_key_path_present": bool(
+            scmo_ws_security_preflight.get("client_key_path_present", False)
+        ),
+        "client_p12_path_present": bool(
+            scmo_ws_security_preflight.get("client_p12_path_present", False)
+        ),
+        "client_p12_password_present": bool(
+            scmo_ws_security_preflight.get("client_p12_password_present", False)
+        ),
+        "credential_material_ready": bool(
+            scmo_ws_security_preflight.get("credential_material_ready", False)
+        ),
+        "credential_material_format": str(
+            scmo_ws_security_preflight.get("credential_material_format", "missing")
+        ),
+        "credential_material_present": bool(
+            scmo_ws_security_preflight.get("credential_material_present", False)
+        ),
+        "credential_file_pair_valid": bool(
+            scmo_ws_security_preflight.get("credential_file_pair_valid", False)
+        ),
+        "credential_material_validation_status": str(
+            scmo_ws_security_preflight.get(
+                "credential_material_validation_status", ""
+            )
+        ),
+        "dt_lava_ready": False,
+        "market_execution_enabled": False,
+        "missing_env_vars": _string_list(
+            scmo_ws_security_preflight.get("missing_env_vars", [])
+        ),
+        "missing_files": _string_list(
+            scmo_ws_security_preflight.get("missing_files", [])
+        ),
+        "mtls_client_cert_ready": bool(
+            scmo_ws_security_preflight.get("mtls_client_cert_ready", False)
+        ),
+        "password_present": bool(
+            scmo_ws_security_preflight.get("password_present", False)
+        ),
+        "client_key_password_present": bool(
+            scmo_ws_security_preflight.get("client_key_password_present", False)
+        ),
+        "pem_cert_key_pair_present": bool(
+            scmo_ws_security_preflight.get("pem_cert_key_pair_present", False)
+        ),
+        "pkcs12_bundle_present": bool(
+            scmo_ws_security_preflight.get("pkcs12_bundle_present", False)
+        ),
+        "permits_model_training": False,
+        "receipt_csv_generated": False,
+        "secret_values_written": False,
+        "signed_download_request_ready": bool(
+            scmo_ws_security_preflight.get("signed_download_request_ready", False)
+        ),
+        "username_present": bool(
+            scmo_ws_security_preflight.get("username_present", False)
+        ),
+        "validated_receipt_csv_ready": False,
+        "ws_security_signature_status": str(
+            scmo_ws_security_preflight.get("ws_security_signature_status", "")
+        ),
+        "ws_security_signature_supported": bool(
+            scmo_ws_security_preflight.get("ws_security_signature_supported", False)
+        ),
+    }
+
+
 def _validate_acquisition_input_preflight(
     acquisition_input_preflight: Mapping[str, Any],
 ) -> None:
@@ -880,6 +1237,60 @@ def _validate_acquisition_input_preflight(
                 "V13 packet refuses acquisition input preflight with "
                 f"{field_name}=true."
             )
+
+
+def _validate_scmo_ws_security_preflight(
+    scmo_ws_security_preflight: Mapping[str, Any],
+) -> None:
+    unsafe_true_fields = (
+        "dt_lava_ready",
+        "market_execution_enabled",
+        "permits_model_training",
+        "receipt_csv_generated",
+        "secret_values_written",
+        "validated_receipt_csv_ready",
+    )
+    for field_name in unsafe_true_fields:
+        if bool(scmo_ws_security_preflight.get(field_name, False)):
+            raise ValueError(
+                "V13 packet refuses SCMO WS-Security preflight with "
+                f"{field_name}=true."
+            )
+
+
+def _validate_receipt_source_lead_audit(
+    receipt_source_lead_audit: Mapping[str, Any],
+) -> None:
+    unsafe_true_fields = (
+        "dt_lava_ready",
+        "market_execution_enabled",
+        "permits_model_training",
+        "receipt_csv_generated",
+        "validated_receipt_csv_ready",
+    )
+    for field_name in unsafe_true_fields:
+        if bool(receipt_source_lead_audit.get(field_name, False)):
+            raise ValueError(
+                "V13 packet refuses receipt source-lead audit with "
+                f"{field_name}=true."
+            )
+
+
+def _validate_safe_switch_candidate_audits(
+    safe_switch_candidate_audits: list[Mapping[str, Any]],
+) -> None:
+    unsafe_true_fields = (
+        "dt_lava_ready",
+        "market_execution_enabled",
+        "permits_model_training",
+    )
+    for audit in safe_switch_candidate_audits:
+        for field_name in unsafe_true_fields:
+            if bool(audit.get(field_name, False)):
+                raise ValueError(
+                    "V13 packet refuses safe-switch candidate audit with "
+                    f"{field_name}=true."
+                )
 
 
 def _section_status(value: object) -> str:
@@ -920,6 +1331,51 @@ def _acquisition_input_preflight_markdown(
     ]
 
 
+def _scmo_ws_security_preflight_markdown(
+    scmo_ws_security_preflight: dict[str, Any] | None,
+) -> list[str]:
+    if scmo_ws_security_preflight is None:
+        return []
+    missing_env_vars = scmo_ws_security_preflight["missing_env_vars"]
+    missing_files = scmo_ws_security_preflight["missing_files"]
+    missing_env_text = ", ".join(missing_env_vars) if missing_env_vars else ""
+    missing_file_text = ", ".join(missing_files) if missing_files else ""
+    return [
+        "## SCMO WS-Security Preflight",
+        "",
+        (
+            "- Credential material ready: "
+            f"`{scmo_ws_security_preflight['credential_material_ready']}`."
+        ),
+        (
+            "- Credential file pair valid: "
+            f"`{scmo_ws_security_preflight['credential_file_pair_valid']}` "
+            f"(`{scmo_ws_security_preflight['credential_material_validation_status']}`)."
+        ),
+        (
+            "- Signed SOAP Download request ready: "
+            f"`{scmo_ws_security_preflight['signed_download_request_ready']}` "
+            f"(`{scmo_ws_security_preflight['ws_security_signature_status']}`)."
+        ),
+        (
+            "- Missing environment variables: "
+            f"`{missing_env_text}`."
+        ),
+        (
+            "- Missing credential files: "
+            f"`{missing_file_text}`."
+        ),
+        (
+            "- Validated receipt CSV ready: "
+            f"`{scmo_ws_security_preflight['validated_receipt_csv_ready']}`."
+        ),
+        "- This preflight is sanitized credential-source evidence only; it does "
+        "not write secret values, generate receipt rows, permit DT/LAVA "
+        "training, or change `market_execution_enabled=false`.",
+        "",
+    ]
+
+
 def _receipt_source_audit_markdown(
     receipt_source_audit: dict[str, Any] | None,
 ) -> list[str]:
@@ -942,6 +1398,70 @@ def _receipt_source_audit_markdown(
         ),
         "- The audit is negative source evidence only; it does not generate "
         "receipt rows or change `market_execution_enabled=false`.",
+        "",
+    ]
+
+
+def _receipt_source_lead_audit_markdown(
+    receipt_source_lead_audit: dict[str, Any] | None,
+) -> list[str]:
+    if receipt_source_lead_audit is None:
+        return []
+    candidate_ids = receipt_source_lead_audit["candidate_receipt_lead_ids"]
+    candidate_text = ", ".join(candidate_ids) if candidate_ids else ""
+    return [
+        "## Receipt Source Lead Audit",
+        "",
+        (
+            "- Candidate row-level receipt source leads found: "
+            f"`{receipt_source_lead_audit['candidate_receipt_source_found']}`."
+        ),
+        (
+            "- Lead count: "
+            f"`{receipt_source_lead_audit['lead_count']}` "
+            f"(`{receipt_source_lead_audit['dataset_level_metadata_only_count']}` "
+            "dataset-level only, "
+            f"`{receipt_source_lead_audit['auth_blocked_count']}` auth-blocked, "
+            f"`{receipt_source_lead_audit['probe_negative_count']}` negative probes)."
+        ),
+        (
+            "- Candidate lead ids: "
+            f"`{candidate_text}`."
+        ),
+        "- The lead audit is acquisition targeting only; it does not generate "
+        "receipt rows, validate a receipt CSV, permit DT/LAVA training, or "
+        "change `market_execution_enabled=false`.",
+        "",
+    ]
+
+
+def _safe_switch_candidate_audit_markdown(
+    safe_switch_candidate_audit: dict[str, Any] | None,
+) -> list[str]:
+    if safe_switch_candidate_audit is None:
+        return []
+    return [
+        "## Safe-Switch Candidate Audits",
+        "",
+        (
+            "- Candidate audit count: "
+            f"`{safe_switch_candidate_audit['audit_count']}`."
+        ),
+        (
+            "- Accepted investigative candidate rows: "
+            f"`{safe_switch_candidate_audit['total_accepted_candidate_rows']}`."
+        ),
+        (
+            "- Weak safe-switch diagnostics: "
+            f"`{safe_switch_candidate_audit['total_weak_safe_switch_win_rows']}`."
+        ),
+        (
+            "- Normalized V13 CSV-ready audits: "
+            f"`{safe_switch_candidate_audit['normalized_safe_switch_csv_ready_count']}`."
+        ),
+        "- These audits are source-discovery evidence only; noncanonical labels "
+        "and duplicate anchors do not satisfy the V13 safe-switch CSV contract "
+        "and do not permit DT/LAVA training or market execution.",
         "",
     ]
 
@@ -1023,6 +1543,8 @@ __all__ = [
     "UA_CONTEXT_V13_MARKDOWN_ARTIFACT_NAME",
     "UA_CONTEXT_V13_READINESS_CSV_ARTIFACT_NAME",
     "UA_CONTEXT_V13_RECEIPT_SOURCE_AUDIT_JSON_ARTIFACT_NAME",
+    "UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME",
+    "UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME",
     "UA_CONTEXT_V13_SOURCE_ACQUISITION_BACKLOG_CSV_ARTIFACT_NAME",
     "UA_CONTEXT_V13_SOURCE_EVIDENCE_CSV_ARTIFACT_NAME",
     "UA_CONTEXT_V13_SOURCE_INVENTORY_CSV_ARTIFACT_NAME",

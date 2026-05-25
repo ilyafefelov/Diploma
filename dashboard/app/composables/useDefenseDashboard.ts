@@ -1,6 +1,7 @@
 import { computed, ref, type Ref, watch } from 'vue'
 
 import type {
+  AcademicMvpReadinessResponse,
   DashboardBatteryStateResponse,
   DashboardExogenousSignalsResponse,
   DecisionPolicyPreviewResponse,
@@ -30,6 +31,7 @@ type DefenseResourceKey
     | 'dtPolicyPreview'
     | 'simulatedLiveTrading'
     | 'futureStack'
+    | 'academicMvpReadiness'
     | 'exogenousSignals'
     | 'batteryState'
     | 'gatekeeperValidationStatus'
@@ -47,6 +49,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
   const dtPolicyPreview = ref<DecisionPolicyPreviewResponse | null>(null)
   const simulatedLiveTrading = ref<SimulatedLiveTradingResponse | null>(null)
   const futureStack = ref<FutureStackPreviewResponse | null>(null)
+  const academicMvpReadiness = ref<AcademicMvpReadinessResponse | null>(null)
   const exogenousSignals = ref<DashboardExogenousSignalsResponse | null>(null)
   const batteryState = ref<DashboardBatteryStateResponse | null>(null)
   const gatekeeperValidationStatus = ref<GatekeeperValidationStatusResponse | null>(null)
@@ -137,6 +140,13 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
         true
       ),
       loadResource('futureStack', futureStack, '/api/control-plane/dashboard/future-stack-preview', {}, true),
+      loadResource(
+        'academicMvpReadiness',
+        academicMvpReadiness,
+        '/api/control-plane/dashboard/academic-mvp-readiness',
+        {},
+        true
+      ),
       loadResource('exogenousSignals', exogenousSignals, '/api/control-plane/dashboard/exogenous-signals'),
       loadResource('batteryState', batteryState, '/api/control-plane/dashboard/battery-state'),
       loadResource(
@@ -191,6 +201,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
     dtPolicyPreview.value = null
     simulatedLiveTrading.value = null
     futureStack.value = null
+    academicMvpReadiness.value = null
     exogenousSignals.value = null
     batteryState.value = null
     gatekeeperValidationStatus.value = null
@@ -203,6 +214,7 @@ export const useDefenseDashboard = (selectedTenantId: Readonly<Ref<string>>) => 
 
   return {
     activeErrorCount,
+    academicMvpReadiness,
     batteryState,
     benchmark,
     benchmarkSummary,

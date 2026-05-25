@@ -8,7 +8,8 @@ actually permits it.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections import defaultdict
+from collections.abc import Mapping, Sequence
 from typing import Any, Final
 
 REQUIRED_DT_LAVA_RESEARCH_METRIC_FIELDS: Final[frozenset[str]] = frozenset(
@@ -29,6 +30,63 @@ REQUIRED_DT_LAVA_RESEARCH_METRIC_FIELDS: Final[frozenset[str]] = frozenset(
         "market_execution_enabled",
     }
 )
+
+
+def aggregate_dt_lava_research_metrics_payloads(
+    payloads: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    """Aggregate validated DT/LAVA research metrics without promotion semantics."""
+
+    if not payloads:
+        raise ValueError("DT/LAVA research metrics aggregate requires at least one payload.")
+
+    normalized_payloads = [
+        validate_dt_lava_research_metrics_payload(payload) for payload in payloads
+    ]
+    for payload in normalized_payloads:
+        if payload["market_execution_enabled"]:
+            raise ValueError("DT/LAVA aggregate requires market_execution_enabled=false.")
+        if payload["permits_model_training"]:
+            raise ValueError("DT/LAVA aggregate requires permits_model_training=false.")
+        if payload["dt_lava_ready"]:
+            raise ValueError("DT/LAVA aggregate requires dt_lava_ready=false.")
+
+    by_window_payloads: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for payload in normalized_payloads:
+        by_window_payloads[str(payload["window_id"])].append(payload)
+
+    mean_regret = _mean(
+        [float(payload["mean_regret_uah"]) for payload in normalized_payloads]
+    )
+    baseline_mean_regret = _mean(
+        [float(payload["baseline_mean_regret_uah"]) for payload in normalized_payloads]
+    )
+
+    return {
+        "claim_scope": "dt_lava_research_metrics_aggregate_not_market_execution",
+        "metric_count": len(normalized_payloads),
+        "window_count": len(by_window_payloads),
+        "seed_count": len({int(payload["seed"]) for payload in normalized_payloads}),
+        "mean_regret_uah": mean_regret,
+        "baseline_mean_regret_uah": baseline_mean_regret,
+        "value_delta_vs_baseline_uah": baseline_mean_regret - mean_regret,
+        "v13_gate_statuses": sorted(
+            {str(payload["v13_gate_status"]) for payload in normalized_payloads}
+        ),
+        "v13_candidate_generation_ready": all(
+            bool(payload["v13_candidate_generation_ready"])
+            for payload in normalized_payloads
+        ),
+        "dt_lava_ready": False,
+        "permits_model_training": False,
+        "ci_smoke_only": True,
+        "promotion_gate": False,
+        "market_execution_enabled": False,
+        "by_window": {
+            window_id: _aggregate_window_payloads(window_payloads)
+            for window_id, window_payloads in sorted(by_window_payloads.items())
+        },
+    }
 
 
 def validate_dt_lava_research_metrics_payload(
@@ -111,7 +169,28 @@ def _required_float(payload: Mapping[str, Any], key: str) -> float:
     return float(value)
 
 
+def _aggregate_window_payloads(payloads: list[dict[str, Any]]) -> dict[str, Any]:
+    mean_regret = _mean([float(payload["mean_regret_uah"]) for payload in payloads])
+    baseline_mean_regret = _mean(
+        [float(payload["baseline_mean_regret_uah"]) for payload in payloads]
+    )
+    return {
+        "metric_count": len(payloads),
+        "seed_count": len({int(payload["seed"]) for payload in payloads}),
+        "mean_regret_uah": mean_regret,
+        "baseline_mean_regret_uah": baseline_mean_regret,
+        "value_delta_vs_baseline_uah": baseline_mean_regret - mean_regret,
+        "market_execution_enabled": False,
+        "promotion_gate": False,
+    }
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values)
+
+
 __all__ = [
     "REQUIRED_DT_LAVA_RESEARCH_METRIC_FIELDS",
+    "aggregate_dt_lava_research_metrics_payloads",
     "validate_dt_lava_research_metrics_payload",
 ]

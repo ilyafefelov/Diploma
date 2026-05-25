@@ -146,6 +146,9 @@ from smart_arbitrage.dfl.v2_plus_dfl_dt_bridge import (
     build_dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame,
     evaluate_dfl_v2_plus_dfl_dt_bridge_gate,
 )
+from smart_arbitrage.dfl.v13_dt_lava_challenger_gate import (
+    evaluate_v13_dt_lava_offline_challenger_gate,
+)
 from smart_arbitrage.dfl.official_v2_plus_dfl_dt_bridge import (
     DFL_OFFICIAL_GLOBAL_PANEL_V2_PLUS_DFL_DT_BRIDGE_STRICT_LP_STRATEGY_KIND,
     OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS,
@@ -347,6 +350,12 @@ from smart_arbitrage.dfl.ua_context_lava_dt import (
     build_dfl_ua_context_lava_strict_lp_benchmark_frame,
     build_dfl_ua_context_lava_teacher_frame,
     evaluate_dfl_ua_context_lava_gate,
+)
+from smart_arbitrage.dfl.v13_dt_lava_teacher_contract import (
+    build_dfl_v13_gated_dt_lava_teacher_contract_frame,
+)
+from smart_arbitrage.dfl.v13_dt_lava_teacher_export import (
+    build_dfl_v13_dt_lava_teacher_packet,
 )
 from smart_arbitrage.dfl.ua_context_acquisition_v1 import (
     build_dfl_ua_calendar_block_context_backfill_frame,
@@ -933,6 +942,16 @@ class DflOfficialGlobalPanelV2PlusDflDtBridgeAssetConfig(dg.Config):
     random_seed: int = 2026
     min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.0
     min_mean_regret_improvement_ratio_vs_strict: float = 0.05
+
+
+class DflV13DtLavaOfflineChallengerGateAssetConfig(dg.Config):
+    """V13-gated offline DT/LAVA challenger gate scope."""
+
+    source_model_names_csv: str = ",".join(
+        OFFICIAL_GLOBAL_PANEL_V2_PLUS_SOURCE_MODELS
+    )
+    min_tenant_count: int = 5
+    min_validation_tenant_anchor_count_per_source_model: int = 90
 
 
 class DflSourceSpecificResearchChallengerAssetConfig(dg.Config):
@@ -7984,6 +8003,147 @@ def dfl_v11_lava_dt_comparison_frame(
             "not_market_execution": True,
         },
     )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="training_data",
+        evidence_scope="not_market_execution",
+        backend="ua_context_lava_dt",
+        market_venue="DAM",
+    ),
+)
+def dfl_v13_gated_dt_lava_teacher_contract_frame(
+    context,
+    dfl_ua_context_lava_sequence_training_frame: pl.DataFrame,
+    dfl_ua_context_acquisition_readiness_v13_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Apply V13 source-readiness permission to DT/LAVA teacher rows."""
+
+    frame = build_dfl_v13_gated_dt_lava_teacher_contract_frame(
+        dfl_ua_context_lava_sequence_training_frame,
+        dfl_ua_context_acquisition_readiness_v13_frame,
+    )
+    _add_metadata(
+        context,
+        {
+            "rows": frame.height,
+            "permitted_model_training_rows": frame.filter(
+                pl.col("permitted_model_training_row")
+            ).height
+            if frame.height
+            else 0,
+            "v13_training_permission_gate_passed_rows": frame.filter(
+                pl.col("v13_training_permission_gate_passed")
+            ).height
+            if frame.height
+            else 0,
+            "target_label_space": "ua_context_schedule_candidate_index",
+            "dt_action_target_contract": "candidate_id_or_schedule_family",
+            "v2_plus_role": "teacher_comparator_fallback",
+            "promotion_gate_passed": False,
+            "market_execution_enabled": False,
+            "scope": (
+                "v13_gated_dt_lava_teacher_contract_not_training_until_source_ready"
+            ),
+            "not_deployed_dt_control": True,
+            "not_market_execution": True,
+        },
+    )
+    return frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="evaluation",
+        evidence_scope="not_market_execution",
+        backend="v13_dt_lava",
+        market_venue="DAM",
+    ),
+)
+def dfl_v13_dt_lava_offline_challenger_gate_frame(
+    context,
+    config: DflV13DtLavaOfflineChallengerGateAssetConfig,
+    dfl_v13_gated_dt_lava_teacher_contract_frame: pl.DataFrame,
+    dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+) -> pl.DataFrame:
+    """Gate V13 teacher rows plus strict V2+ bridge into an offline DT/LAVA claim."""
+
+    source_model_names = _forecast_model_names(config.source_model_names_csv)
+    teacher_packet = build_dfl_v13_dt_lava_teacher_packet(
+        run_slug="dagster_v13_dt_lava_teacher_dataset",
+        teacher_contract_frame=dfl_v13_gated_dt_lava_teacher_contract_frame,
+        dagster_run_id=getattr(context, "run_id", None) if context is not None else None,
+    )
+    gate = evaluate_v13_dt_lava_offline_challenger_gate(
+        teacher_packet=teacher_packet,
+        bridge_strict_frame=(
+            dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame
+        ),
+        source_model_names=source_model_names,
+        min_tenant_count=config.min_tenant_count,
+        min_validation_tenant_anchor_count=(
+            config.min_validation_tenant_anchor_count_per_source_model
+        ),
+    )
+    row = {
+        "generated_at": datetime.now(tz=UTC),
+        "gate_passed": gate.passed,
+        "gate_decision": gate.decision,
+        "gate_description": gate.description,
+        "teacher_dataset_ready": bool(gate.metrics["teacher_dataset_ready"]),
+        "v13_training_permission_gate_passed": bool(
+            gate.metrics["v13_training_permission_gate_passed"]
+        ),
+        "teacher_permitted_model_training_rows": int(
+            gate.metrics["teacher_permitted_model_training_rows"]
+        ),
+        "bridge_evidence_passed": bool(gate.metrics["bridge_evidence_passed"]),
+        "bridge_gate_passed": bool(gate.metrics["bridge_gate_passed"]),
+        "required_control_roles_present": bool(
+            gate.metrics["required_control_roles_present"]
+        ),
+        "behavior_cloning_control_present": bool(
+            gate.metrics["behavior_cloning_control_present"]
+        ),
+        "best_challenger_role": str(gate.metrics.get("best_challenger_role") or ""),
+        "best_source_model_name": str(gate.metrics.get("best_source_model_name") or ""),
+        "best_mean_regret_improvement_ratio_vs_v2_plus": float(
+            gate.metrics.get("best_mean_regret_improvement_ratio_vs_v2_plus", 0.0)
+        ),
+        "best_mean_regret_improvement_ratio_vs_strict": float(
+            gate.metrics.get("best_mean_regret_improvement_ratio_vs_strict", 0.0)
+        ),
+        "validation_tenant_anchor_count": int(
+            gate.metrics.get("validation_tenant_anchor_count", 0)
+        ),
+        "source_model_names_csv": config.source_model_names_csv,
+        "claim_scope": str(gate.metrics["claim_scope"]),
+        "offline_dt_lava_challenger_gate_passed": bool(
+            gate.metrics["offline_dt_lava_challenger_gate_passed"]
+        ),
+        "permits_model_training": bool(gate.metrics["permits_model_training"]),
+        "production_promote": False,
+        "not_full_dfl": True,
+        "not_deployed_decision_transformer_control": True,
+        "not_market_execution": True,
+        "market_execution_enabled": False,
+        "market_execution_gate_passed": False,
+        "no_dashboard_api_default_switch": True,
+    }
+    frame = pl.DataFrame([row])
+    _add_metadata(context, row)
     return frame
 
 
@@ -16719,6 +16879,8 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_ua_context_safe_switch_rolling_robustness_frame,
     dfl_ua_context_lava_teacher_frame,
     dfl_ua_context_lava_sequence_training_frame,
+    dfl_v13_gated_dt_lava_teacher_contract_frame,
+    dfl_v13_dt_lava_offline_challenger_gate_frame,
     dfl_ua_context_lava_candidate_policy_frame,
     dfl_ua_context_lava_strict_lp_benchmark_frame,
     dfl_ua_context_lava_rolling_robustness_frame,

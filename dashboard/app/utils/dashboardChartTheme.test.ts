@@ -67,6 +67,11 @@ describe('dashboard chart theme', () => {
         receipt_source_audit_candidate_found: false,
         receipt_source_audit_csv_generated: false,
         receipt_source_audit_all_probes_insufficient: true,
+        source_governance_status: 'receipt_gated_for_market_submission',
+        source_governance_label: 'receipt-gated for market submission',
+        market_submission_receipt_gate_status: 'blocked_external_access',
+        scmo_credentials_required_for_diploma_mvp: false,
+        scmo_credentials_required_for_market_submission_grade_receipts: true,
         safe_switch_target_tenant_source_count: 5,
         safe_switch_max_new_examples_required: 18,
         safe_switch_acquisition_targets: [
@@ -156,6 +161,36 @@ describe('dashboard chart theme', () => {
           degradation_penalty_uah: 4,
           gross_market_value_uah: -70,
           net_value_uah: -74
+        }
+      ],
+      bid_recommendation_preview: [
+        {
+          step_index: 0,
+          interval_start: '2026-05-19T15:00:00Z',
+          market_venue: 'DAM',
+          side: 'SELL',
+          operator_action: 'discharge',
+          quantity_mw: 0.2,
+          indicative_limit_price_uah_mwh: 4200,
+          preview_only: true,
+          market_execution_enabled: false,
+          market_order_payload_emitted: false,
+          proposed_bid_status: 'not_emitted_operator_preview',
+          read_model_boundary: 'operator_preview_no_market_submission'
+        },
+        {
+          step_index: 1,
+          interval_start: '2026-05-19T18:00:00Z',
+          market_venue: 'DAM',
+          side: 'BUY',
+          operator_action: 'charge',
+          quantity_mw: 0.2,
+          indicative_limit_price_uah_mwh: 3100,
+          preview_only: true,
+          market_execution_enabled: false,
+          market_order_payload_emitted: false,
+          proposed_bid_status: 'not_emitted_operator_preview',
+          read_model_boundary: 'operator_preview_no_market_submission'
         }
       ],
       daily_value_uah: 61,

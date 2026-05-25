@@ -70,7 +70,14 @@ describe('useOperatorDashboardViewModel', () => {
         total_degradation_penalty_uah: 20,
         total_net_value_uah: 100,
         total_throughput_mwh: 0.8
-      }
+      },
+      bid_recommendation_preview: [
+        bidPreviewPoint('2026-05-19T08:00:00Z', 'HOLD', 'hold', 0, 1500),
+        bidPreviewPoint('2026-05-19T09:00:00Z', 'HOLD', 'hold', 0, 1500),
+        bidPreviewPoint('2026-05-19T11:00:00Z', 'SELL', 'discharge', 0.25, 4200),
+        bidPreviewPoint('2026-05-19T12:00:00Z', 'BUY', 'charge', 0.4, 900),
+        bidPreviewPoint('2026-05-19T13:00:00Z', 'HOLD', 'hold', 0, 1500)
+      ]
     })
 
     const viewModel = useOperatorDashboardViewModel({
@@ -99,8 +106,15 @@ describe('useOperatorDashboardViewModel', () => {
       score: 87
     })
     expect(viewModel.timelineSegments.value.map(segment => segment.label)).toEqual(['Discharge', 'Charge'])
+    expect(viewModel.timelineSegments.value.map(segment => segment.marketSideLabel)).toEqual(['SELL', 'BUY'])
     expect(viewModel.timelineSegments.value.map(segment => segment.tone)).toEqual(['green', 'orange'])
     expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['DAM 19 May, 11:00', 'DAM 19 May, 12:00'])
+    expect(viewModel.timelineSegments.value[0]).toMatchObject({
+      indicativePriceLabel: '4,200 UAH/MWh',
+      marketBoundaryLabel: 'No market payload'
+    })
+    expect(viewModel.timelineSegments.value[0]?.tooltipBody).toContain('non-submittable DAM SELL preview')
+    expect(viewModel.timelineSegments.value[0]?.tooltipBody).toContain('no ProposedBid')
     expect(viewModel.headlineMetrics.value[0]).toMatchObject({
       label: 'Net plan value',
       value: '100 UAH',
@@ -159,4 +173,25 @@ const schedulePoint = (intervalStart: string, recommendedNetPowerMw: number) => 
   degradation_penalty_uah: 0,
   gross_market_value_uah: 0,
   net_value_uah: 0
+})
+
+const bidPreviewPoint = (
+  intervalStart: string,
+  side: 'BUY' | 'SELL' | 'HOLD',
+  operatorAction: 'charge' | 'discharge' | 'hold',
+  quantityMw: number,
+  indicativeLimitPriceUahMwh: number
+) => ({
+  step_index: 0,
+  interval_start: intervalStart,
+  market_venue: 'DAM',
+  side,
+  operator_action: operatorAction,
+  quantity_mw: quantityMw,
+  indicative_limit_price_uah_mwh: indicativeLimitPriceUahMwh,
+  preview_only: true,
+  market_execution_enabled: false,
+  market_order_payload_emitted: false,
+  proposed_bid_status: 'not_emitted_operator_preview',
+  read_model_boundary: 'operator_preview_no_market_submission'
 })

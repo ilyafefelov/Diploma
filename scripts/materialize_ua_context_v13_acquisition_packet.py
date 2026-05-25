@@ -5,12 +5,16 @@ import json
 from pathlib import Path
 import pickle
 import sys
+from typing import Any, Mapping
 
 import polars as pl
 
 from smart_arbitrage.dfl.ua_context_v13_acquisition_export import (
     UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME,
     UA_CONTEXT_V13_RECEIPT_SOURCE_AUDIT_JSON_ARTIFACT_NAME,
+    UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME,
+    UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME,
+    UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME,
     UA_CONTEXT_V13_SOURCE_ACQUISITION_BACKLOG_CSV_ARTIFACT_NAME,
     build_dfl_ua_context_v13_acquisition_packet,
     write_dfl_ua_context_v13_acquisition_packet,
@@ -30,7 +34,15 @@ def main() -> None:
     parser.add_argument("--readiness-pickle", type=Path, default=None)
     parser.add_argument("--readiness-csv", type=Path, default=None)
     parser.add_argument("--receipt-source-audit-json", type=Path, default=None)
+    parser.add_argument("--receipt-source-lead-audit-json", type=Path, default=None)
+    parser.add_argument(
+        "--safe-switch-candidate-audit-json",
+        action="append",
+        default=[],
+        type=Path,
+    )
     parser.add_argument("--acquisition-input-preflight-json", type=Path, default=None)
+    parser.add_argument("--scmo-ws-security-preflight-json", type=Path, default=None)
     parser.add_argument("--output-root", type=Path, default=Path("data") / "research_runs")
     parser.add_argument("--run-slug", default=DEFAULT_RUN_SLUG)
     parser.add_argument("--dagster-run-id", default=None)
@@ -56,8 +68,17 @@ def main() -> None:
         frame_name="readiness",
     )
     receipt_source_audit = _load_optional_json(args.receipt_source_audit_json)
+    receipt_source_lead_audit = _load_optional_json(
+        args.receipt_source_lead_audit_json
+    )
+    safe_switch_candidate_audits = _load_json_list(
+        args.safe_switch_candidate_audit_json
+    )
     acquisition_input_preflight = _load_optional_json(
         args.acquisition_input_preflight_json
+    )
+    scmo_ws_security_preflight = _load_optional_json(
+        args.scmo_ws_security_preflight_json
     )
     packet = build_dfl_ua_context_v13_acquisition_packet(
         run_slug=args.run_slug,
@@ -65,7 +86,10 @@ def main() -> None:
         readiness_frame=readiness,
         acquisition_source_evidence_frame=source_evidence,
         receipt_source_audit=receipt_source_audit,
+        receipt_source_lead_audit=receipt_source_lead_audit,
+        safe_switch_candidate_audits=safe_switch_candidate_audits,
         acquisition_input_preflight=acquisition_input_preflight,
+        scmo_ws_security_preflight=scmo_ws_security_preflight,
         dagster_run_id=args.dagster_run_id,
         materialization_command=args.materialization_command,
         asset_check_status=args.asset_check_status,
@@ -77,7 +101,10 @@ def main() -> None:
         readiness_frame=readiness,
         acquisition_source_evidence_frame=source_evidence,
         receipt_source_audit=receipt_source_audit,
+        receipt_source_lead_audit=receipt_source_lead_audit,
+        safe_switch_candidate_audits=safe_switch_candidate_audits,
         acquisition_input_preflight=acquisition_input_preflight,
+        scmo_ws_security_preflight=scmo_ws_security_preflight,
     )
     json.dump(
         {
@@ -118,6 +145,24 @@ def main() -> None:
             )
             if receipt_source_audit is not None
             else None,
+            "receipt_source_lead_audit_summary": packet[
+                "receipt_source_lead_audit_summary"
+            ],
+            "receipt_source_lead_audit_json": str(
+                export_dir
+                / UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME
+            )
+            if receipt_source_lead_audit is not None
+            else None,
+            "safe_switch_candidate_audit_summary": packet[
+                "safe_switch_candidate_audit_summary"
+            ],
+            "safe_switch_candidate_audits_json": str(
+                export_dir
+                / UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME
+            )
+            if safe_switch_candidate_audits is not None
+            else None,
             "acquisition_input_preflight_summary": packet[
                 "acquisition_input_preflight_summary"
             ],
@@ -126,6 +171,15 @@ def main() -> None:
                 / UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME
             )
             if acquisition_input_preflight is not None
+            else None,
+            "scmo_ws_security_preflight_summary": packet[
+                "scmo_ws_security_preflight_summary"
+            ],
+            "scmo_ws_security_preflight_json": str(
+                export_dir
+                / UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME
+            )
+            if scmo_ws_security_preflight is not None
             else None,
             "market_execution_enabled": packet["claim_boundary"][
                 "market_execution_enabled"
@@ -179,6 +233,19 @@ def _load_required_frame(
 def _load_optional_json(path: Path | None) -> dict[str, object] | None:
     if path is None:
         return None
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise TypeError(f"{path} must contain a JSON object.")
+    return {str(key): item for key, item in value.items()}
+
+
+def _load_json_list(paths: list[Path]) -> list[Mapping[str, Any]] | None:
+    if not paths:
+        return None
+    return [_load_required_json(path) for path in paths]
+
+
+def _load_required_json(path: Path) -> dict[str, object]:
     value = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(value, dict):
         raise TypeError(f"{path} must contain a JSON object.")

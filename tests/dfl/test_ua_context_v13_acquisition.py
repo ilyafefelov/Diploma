@@ -365,6 +365,138 @@ def test_v13_acquisition_input_preflight_validates_configured_csvs(
     assert summary["market_execution_enabled"] is False
 
 
+def test_v13_acquisition_input_config_builder_writes_validated_config(
+    tmp_path: Path,
+) -> None:
+    base_config_path = tmp_path / "base_v13.yaml"
+    receipts_path = tmp_path / "dam_receipts.csv"
+    safe_switch_path = tmp_path / "safe_switch_examples.csv"
+    output_config_path = tmp_path / "ready_inputs.yaml"
+    preflight_path = tmp_path / "ready_inputs_preflight.json"
+    base_config_path.write_text(
+        "\n".join(
+            [
+                "ops:",
+                "  dfl_ua_dam_publication_receipts_overlay_frame:",
+                "    config:",
+                '      oree_dam_publication_receipts_csv_path: ""',
+                "  dfl_ua_context_safe_switch_examples_v13_frame:",
+                "    config:",
+                '      ua_context_safe_switch_examples_csv_path: ""',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    pl.DataFrame(
+        [
+            {
+                "timestamp": "2026-04-29T22:00:00",
+                "source_publication_timestamp": "2026-04-28T14:00:00",
+            }
+        ]
+    ).write_csv(receipts_path)
+    _safe_switch_example_receipts(count=2).write_csv(safe_switch_path)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/build_v13_acquisition_input_config.py",
+            "--base-config",
+            str(base_config_path),
+            "--dam-receipts-csv",
+            str(receipts_path),
+            "--safe-switch-csv",
+            str(safe_switch_path),
+            "--output-config",
+            str(output_config_path),
+            "--preflight-output",
+            str(preflight_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    summary = json.loads(result.stdout)
+    preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+    config = output_config_path.read_text(encoding="utf-8")
+
+    assert summary["claim_boundary"] == "v13_source_readiness_only_not_market_execution"
+    assert summary["input_config_validated"] is True
+    assert summary["receipt_rows"] == 1
+    assert summary["safe_switch_example_rows"] == 2
+    assert summary["data_acquisition_needed"] is False
+    assert summary["v13_candidate_generation_ready"] is False
+    assert summary["permits_model_training"] is False
+    assert summary["market_execution_enabled"] is False
+    assert preflight["missing_required_inputs"] == []
+    assert "oree_dam_publication_receipts_csv_path" in config
+    assert str(receipts_path) in config
+    assert str(safe_switch_path) in config
+
+
+def test_v13_acquisition_input_config_builder_can_configure_safe_switch_only(
+    tmp_path: Path,
+) -> None:
+    base_config_path = tmp_path / "base_v13.yaml"
+    safe_switch_path = tmp_path / "safe_switch_examples.csv"
+    output_config_path = tmp_path / "safe_switch_only_inputs.yaml"
+    preflight_path = tmp_path / "safe_switch_only_inputs_preflight.json"
+    base_config_path.write_text(
+        "\n".join(
+            [
+                "ops:",
+                "  dfl_ua_dam_publication_receipts_overlay_frame:",
+                "    config:",
+                '      oree_dam_publication_receipts_csv_path: ""',
+                "  dfl_ua_context_safe_switch_examples_v13_frame:",
+                "    config:",
+                '      ua_context_safe_switch_examples_csv_path: ""',
+                "",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    _safe_switch_example_receipts(count=2).write_csv(safe_switch_path)
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            "scripts/build_v13_acquisition_input_config.py",
+            "--base-config",
+            str(base_config_path),
+            "--safe-switch-csv",
+            str(safe_switch_path),
+            "--output-config",
+            str(output_config_path),
+            "--preflight-output",
+            str(preflight_path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    summary = json.loads(result.stdout)
+    preflight = json.loads(preflight_path.read_text(encoding="utf-8"))
+    config = output_config_path.read_text(encoding="utf-8")
+
+    assert summary["input_config_validated"] is False
+    assert summary["data_acquisition_needed"] is True
+    assert summary["receipt_rows"] == 0
+    assert summary["safe_switch_example_rows"] == 2
+    assert preflight["missing_required_inputs"] == [
+        "oree_dam_publication_receipts_csv_path"
+    ]
+    assert preflight["safe_switch_examples"]["status"] == "validated"
+    assert preflight["dam_publication_receipts"]["status"] == "missing_config_path"
+    assert "oree_dam_publication_receipts_csv_path:" in config
+    assert str(safe_switch_path) in config
+    assert summary["permits_model_training"] is False
+    assert summary["market_execution_enabled"] is False
+
+
 def test_v13_readiness_ignores_final_holdout_label_mutation() -> None:
     base_v12 = _v12_readiness(prior_examples=24).with_columns(
         pl.lit(123.0).alias("label_final_holdout_regret_uah")

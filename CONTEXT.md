@@ -146,6 +146,18 @@ _Avoid_: automatic deployment, dashboard default switch, forecast-only leaderboa
 Thesis-facing claim state where a forecast, selector, schedule/value, or DFL-style challenger has passed the **Promotion Gate** for offline/read-model strategy evidence while `market_execution_enabled=false`, **Strict Similar-Day Rule** remains the fallback, and no live bids, cleared trades, or inverter commands are generated.
 _Avoid_: production promotion, live market execution, dashboard default switch, deployed controller
 
+**DT/LAVA Prototype Gate**:
+Research-only readiness gate showing that a DT/LAVA-adjacent artifact, such as a schedule-neighbor NPZ smoke packet, is source-linked, hashable, CI-checkable, and non-executing. It can pass before DT/LAVA training is allowed, but it is not a **Promotion Gate** for a trained policy.
+_Avoid_: DT/LAVA promotion, model-training permission, deployed Decision Transformer control, market execution
+
+**No-Market-Execution Safety Gate**:
+Boundary check proving that the current research packet keeps `market_execution_enabled=false` across attached V13, candidate-frame, and upstream promotion evidence. Passing it means non-execution is preserved, not that a **Market Execution Gate** has passed.
+_Avoid_: market-execution approval, bid-submission readiness, inverter dispatch permission
+
+**DAM Publication Receipt Source Lead**:
+Acquisition clue that may identify where explicit row-level DAM publication receipts could be obtained, such as a dataset page, API endpoint, or manual export path. It is not V13-ready evidence until it yields validated rows with `timestamp` and `source_publication_timestamp`.
+_Avoid_: receipt row, validated receipt CSV, source-readiness pass, DT/LAVA permission, market execution
+
 **Effective-Dated Market Constraint**:
 Regulatory or market parameter whose value depends on the delivery/decision date, such as DAM/IDM/Balancing price caps, operator transaction tariffs, or fixed participation fees.
 _Avoid_: timeless constant, hidden config, dashboard-only annotation, post-hoc correction

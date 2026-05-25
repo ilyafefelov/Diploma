@@ -19,6 +19,30 @@ const forecastOption = computed(() => buildBaselineForecastChartOption(props.bas
 const scheduleOption = computed(() => buildBaselineScheduleChartOption(props.baselinePreview))
 const startingSocSourceLabel = computed(() => props.baselinePreview?.starting_soc_source || 'not reported')
 const telemetryFreshnessLabel = computed(() => formatTelemetryFreshness(props.baselinePreview?.telemetry_freshness))
+const baselineBoundaryItems = computed(() => {
+  const preview = props.baselinePreview
+
+  return [
+    {
+      label: 'DAM delivery',
+      value: preview?.target_delivery_window_start && preview.target_delivery_window_end
+        ? `${formatBoundaryTimestamp(preview.target_delivery_window_start)} -> ${formatBoundaryTimestamp(preview.target_delivery_window_end)}`
+        : 'loading'
+    },
+    {
+      label: 'Read-model anchor',
+      value: formatBoundaryTimestamp(preview?.anchor_timestamp)
+    },
+    {
+      label: 'Execution',
+      value: preview?.market_execution_enabled ? 'Market execution enabled' : 'No market execution'
+    },
+    {
+      label: 'Bid status',
+      value: formatBoundaryStatus(preview?.proposed_bid_status ?? 'not_emitted_operator_preview')
+    }
+  ]
+})
 const selectedStrategyLabel = computed(() => {
   if (!props.operatorRecommendation) {
     return formatStrategyId(props.selectedStrategyId)
@@ -186,6 +210,31 @@ const formatTelemetryFreshness = (freshness: Record<string, unknown> | null | un
   return typeof freshnessLabel === 'string' ? freshnessLabel : 'metadata available'
 }
 
+const formatBoundaryTimestamp = (value: string | null | undefined): string => {
+  if (!value) {
+    return 'not available'
+  }
+
+  return new Date(value).toLocaleString('en-GB', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const formatBoundaryStatus = (value: string | null | undefined): string => {
+  if (!value) {
+    return 'not available'
+  }
+
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
+    .join(' ')
+}
+
 const formatStrategyId = (strategyId: string): string => strategyId
   .split('_')
   .filter(Boolean)
@@ -248,6 +297,20 @@ const formatStrategyId = (strategyId: string): string => strategyId
         <strong>Different strategy, same tenant</strong>
         <small>Baseline cards score the LP comparator; top cards score the selected strategy preview.</small>
       </article>
+    </div>
+
+    <div
+      class="baseline-boundary-strip"
+      aria-label="Baseline DAM preview boundary"
+    >
+      <span
+        v-for="item in baselineBoundaryItems"
+        :key="item.label"
+        class="baseline-boundary-pill"
+      >
+        <strong>{{ item.label }}</strong>
+        {{ item.value }}
+      </span>
     </div>
 
     <div
@@ -606,6 +669,7 @@ const formatStrategyId = (strategyId: string): string => strategyId
 .baseline-slab__economics,
 .baseline-slab__compact-preview,
 .baseline-comparison-strip,
+.baseline-boundary-strip,
 .baseline-feasible-strip,
 .baseline-slab__grid,
 .baseline-explainer-grid {
@@ -620,6 +684,10 @@ const formatStrategyId = (strategyId: string): string => strategyId
 
 .baseline-comparison-strip {
   grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.baseline-boundary-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .baseline-comparison-pill {
@@ -661,6 +729,28 @@ const formatStrategyId = (strategyId: string): string => strategyId
   font-size: 0.72rem;
   font-weight: 750;
   line-height: 1.32;
+}
+
+.baseline-boundary-pill {
+  display: grid;
+  gap: 0.16rem;
+  min-width: 0;
+  padding: 0.5rem 0.58rem;
+  border: 1px solid rgba(202, 249, 255, 0.28);
+  border-radius: 0.62rem;
+  background: rgba(2, 70, 128, 0.5);
+  color: rgba(229, 249, 255, 0.82);
+  font-size: 0.78rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.baseline-boundary-pill strong {
+  color: rgba(215, 255, 79, 0.82);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
 }
 
 .baseline-slab__compact-preview {
@@ -1009,7 +1099,8 @@ const formatStrategyId = (strategyId: string): string => strategyId
 
 @media (max-width: 859px) {
   .baseline-slab__compact-preview,
-  .baseline-comparison-strip {
+  .baseline-comparison-strip,
+  .baseline-boundary-strip {
     grid-template-columns: 1fr;
   }
 }

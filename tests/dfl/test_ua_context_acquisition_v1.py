@@ -110,6 +110,43 @@ def test_dam_publication_receipts_normalizer_emits_safe_csv_schema() -> None:
     assert normalized["market_execution_enabled"].to_list() == [False]
 
 
+def test_dam_publication_receipts_normalizer_rejects_non_prior_publication_time() -> None:
+    try:
+        normalize_dfl_ua_dam_publication_receipts_frame(
+            pl.DataFrame(
+                [
+                    {
+                        "timestamp": "2026-01-01T00:00:00",
+                        "source_publication_timestamp": "2026-01-01T00:00:00",
+                    }
+                ]
+            )
+        )
+    except ValueError as exc:
+        assert "prior to delivery timestamp" in str(exc)
+    else:
+        raise AssertionError("non-prior DAM publication receipt was accepted")
+
+
+def test_dam_publication_receipts_normalizer_rejects_observation_metadata_columns() -> None:
+    try:
+        normalize_dfl_ua_dam_publication_receipts_frame(
+            pl.DataFrame(
+                [
+                    {
+                        "timestamp": "2026-01-01T00:00:00",
+                        "source_publication_timestamp": "2025-12-31T14:00:00",
+                        "source_observed_at_utc": "2025-12-31T14:01:00+00:00",
+                    }
+                ]
+            )
+        )
+    except ValueError as exc:
+        assert "observation/download metadata" in str(exc)
+    else:
+        raise AssertionError("observation metadata was accepted as receipt input")
+
+
 def test_dam_publication_receipts_cli_writes_normalized_csv(tmp_path: Path) -> None:
     input_path = tmp_path / "receipts.csv"
     output_path = tmp_path / "normalized_receipts.csv"

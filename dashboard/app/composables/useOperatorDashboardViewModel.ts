@@ -2,6 +2,7 @@ import { computed, type Ref } from 'vue'
 
 import type {
   BaselineLpPreview,
+  BidRecommendationPreviewPoint,
   DashboardBatteryStateResponse,
   OperatorRecommendationResponse,
   OperatorStatus,
@@ -132,11 +133,23 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     return input.baselinePreview.value?.recommendation_schedule ?? []
   })
 
+  const activeBidRecommendationPreview = computed(() => {
+    const selectedPreview = input.operatorRecommendation?.value?.bid_recommendation_preview ?? []
+    if (selectedPreview.length > 0) {
+      return selectedPreview
+    }
+
+    return input.baselinePreview.value?.bid_recommendation_preview ?? []
+  })
+
   const activeEconomics = computed(() => input.operatorRecommendation?.value?.economics
     ?? input.baselinePreview.value?.economics
     ?? null)
 
   const selectedTimelineSchedulePoints = computed(() => selectTimelineSchedulePoints(activeRecommendationSchedule.value))
+  const bidPreviewByInterval = computed(() => new Map(
+    activeBidRecommendationPreview.value.map(point => [point.interval_start, point])
+  ))
 
   const latestRecommendedPowerMw = computed(() => {
     const selectedPoint = selectedTimelineSchedulePoints.value[0]
@@ -363,6 +376,9 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
           time: 'DAM delivery',
           label: 'Preview pending',
           value: 'No schedule loaded',
+          marketSideLabel: 'PENDING',
+          indicativePriceLabel: 'price pending',
+          marketBoundaryLabel: 'No market payload',
           tone: 'blue',
           tooltipTitle: 'DAM delivery schedule pending',
           tooltipBody: 'No DAM delivery-hour schedule has loaded yet, so this dock is not showing a bid, ProposedBid, or market instruction.'
@@ -372,18 +388,36 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
 
     return schedule.map((point) => {
       const label = powerToTimelineLabel(point.recommended_net_power_mw)
+      const bidPreview = bidPreviewByInterval.value.get(point.interval_start)
+      const marketSideLabel = bidPreview?.side ?? marketSideFromTimelineLabel(label)
+      const indicativePriceLabel = bidPreview
+        ? `${Math.round(bidPreview.indicative_limit_price_uah_mwh).toLocaleString('en-GB')} UAH/MWh`
+        : 'price pending'
+      const marketBoundaryLabel = bidPreview?.market_order_payload_emitted === false
+        ? 'No market payload'
+        : 'Preview only'
 
       return {
         time: formatDamDeliveryLabel(point.interval_start),
         label,
         value: formatSignedMw(point.recommended_net_power_mw),
+        marketSideLabel,
+        indicativePriceLabel,
+        marketBoundaryLabel,
         tone: label === 'Discharge'
           ? 'green'
           : label === 'Charge'
             ? 'orange'
             : 'blue',
         tooltipTitle: `${label} for ${formatDamDeliveryLabel(point.interval_start)}`,
-        tooltipBody: timelineTooltipBody(label, point.recommended_net_power_mw)
+        tooltipBody: formatTimelineTooltipBody(
+          label,
+          point.recommended_net_power_mw,
+          bidPreview,
+          marketSideLabel,
+          indicativePriceLabel,
+          marketBoundaryLabel
+        )
       }
     })
   })
@@ -502,6 +536,40 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
 }
 
 const formatUah = (value: number): string => `${Math.round(value).toLocaleString('en-GB')} UAH`
+
+const marketSideFromTimelineLabel = (
+  label: OperatorTimelineSegment['label']
+): OperatorTimelineSegment['marketSideLabel'] => {
+  if (label === 'Discharge') {
+    return 'SELL'
+  }
+
+  if (label === 'Charge') {
+    return 'BUY'
+  }
+
+  if (label === 'Hold') {
+    return 'HOLD'
+  }
+
+  return 'PENDING'
+}
+
+const formatTimelineTooltipBody = (
+  label: OperatorTimelineSegment['label'],
+  powerMw: number,
+  bidPreview: BidRecommendationPreviewPoint | undefined,
+  marketSideLabel: OperatorTimelineSegment['marketSideLabel'],
+  indicativePriceLabel: string,
+  marketBoundaryLabel: string
+): string => {
+  const scheduleBody = timelineTooltipBody(label, powerMw)
+  if (!bidPreview || marketSideLabel === 'PENDING') {
+    return scheduleBody
+  }
+
+  return `${scheduleBody} It is a non-submittable DAM ${marketSideLabel} preview at ${indicativePriceLabel}; ${marketBoundaryLabel.toLowerCase()} and no ProposedBid.`
+}
 
 const selectTimelineSchedulePoints = <T extends { recommended_net_power_mw: number }>(schedule: T[]): T[] => {
   const actionPoints = schedule.filter(point => Math.abs(point.recommended_net_power_mw) >= DAM_REVIEW_ACTION_THRESHOLD_MW)

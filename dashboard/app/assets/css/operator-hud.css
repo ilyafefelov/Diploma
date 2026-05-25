@@ -1936,6 +1936,17 @@
   font-weight: 800;
 }
 
+.schedule-segment > em {
+  max-width: 100%;
+  overflow: hidden;
+  color: rgba(246, 255, 255, 0.9);
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .schedule-segment strong {
   font-size: 0.9rem;
 }
@@ -1974,6 +1985,13 @@
   font-size: 0.66rem;
   font-weight: 700;
   line-height: 1.32;
+}
+
+.schedule-tooltip__boundary {
+  display: block;
+  color: rgba(215, 255, 79, 0.9);
+  font-size: 0.63rem;
+  font-weight: 900;
 }
 
 .dock-selectors {

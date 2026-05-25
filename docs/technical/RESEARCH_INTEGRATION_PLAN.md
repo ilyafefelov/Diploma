@@ -70,6 +70,96 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
    - UA-context LAVA/DT candidate-index v1 then proved that behavior cloning is
      weak and the conservative candidate-index policy safely falls back to V2+
      instead of taking risky switches.
+   - V13 now adds a gated teacher-contract handoff for the next DT/LAVA lane:
+     `dfl_v13_gated_dt_lava_teacher_contract_frame` keeps the DFL input as
+     calibrated NBEATSx/TFT forecast context plus tenant/SOC/context and
+     feasible candidate schedules, keeps the DFL target as best candidate /
+     schedule value / regret delta versus V2+, exposes DT targets as candidate
+     id or schedule family, and treats V2+ as teacher, comparator, and fallback.
+     It does not permit model training until V13 source readiness passes.
+   - Phase 3 now has a repeatable offline challenger packet exporter:
+     `scripts/materialize_v13_dt_lava_offline_challenger_packet.py`. It combines
+     the V13 teacher summary with a V2+-anchored bridge strict frame, emits
+     summary/metrics artifacts, requires strict/V2+/behavior-cloning controls,
+     checks deterministic safety projection, and keeps
+     `market_execution_enabled=false`. The 2026-05-25 safe-switch-only packet
+     is blocked with `safe_switch_coverage_gate_passed=true`,
+     `deterministic_safety_projection_passed=true` for `1080` bridge rows,
+     `v13_training_permission_gate_passed=false`,
+     `teacher_permitted_model_training_rows=0`, and `bridge_gate_passed=false`.
+     That is infrastructure evidence, not DT/LAVA promotion.
+   - The LAVA NPZ CI-smoke packet is now stricter about the same evaluation
+     boundary: `scripts/validate_lava_npz_margin_smoke_packet.py` requires
+     complete `strict_control` and `frozen_v2_plus_fallback` baseline coverage
+     for every selected smoke instance before the prototype readiness packet can
+     report `ci_smoke_ready=true`. This keeps V2+ as teacher/comparator/fallback
+     and prevents a shape-only NPZ artifact from being cited as DT/LAVA
+     readiness.
+   - The Phase 3 offline challenger packet now exports
+     `control_comparison_summary` into the credentialless MVP packet. It carries
+     strict-reference, frozen V2+, and behavior-cloning controls, validation
+     anchor coverage, and per-source regret summaries, so the packet explains
+     non-promotion instead of only saying the challenger is blocked.
+   - Credentialless academic MVP readiness is now a separate thesis-facing
+     packet via
+     `scripts/materialize_credentialless_academic_mvp_readiness_packet.py`.
+     It composes the operator preview payload, V13 source-governance packet,
+     DT/LAVA prototype readiness packet, including embedded
+     `lava_npz_smoke_validation`, V13-gated teacher packet plus
+     `dfl_v13_dt_lava_teacher_validation.json`, and offline challenger packet
+     plus `dfl_v13_dt_lava_offline_challenger_validation.json`.
+     The MVP validation artifact now re-checks that NPZ smoke validation as
+     `lava_npz_smoke_packet_validation`, so a tampered Phase 1 packet cannot
+     pass through the thesis/API surface. The compact gate passport also
+     exposes `lava_npz_smoke_packet_validation_gate` for the operator dashboard,
+     separate from the broader DT/LAVA CI-smoke gate.
+     The packet now adds `prototype_evidence_scorecard`, which summarizes the
+     already validated operator bid-preview rows, LAVA NPZ validation,
+     V13-gated teacher rows, `0` permitted model-training rows, strict/V2+/
+     behavior-cloning controls, deterministic safety projection, and
+     non-execution flags in one thesis/dashboard object. The same summary is
+     also mirrored into `gate_passport.prototype_evidence_scorecard_gate`, and
+     API/dashboard consumers require that passport gate to pass.
+     This is the diploma MVP boundary: DAM delivery-day
+     recommendation preview plus research-only DFL/DT evidence. SCMO
+     credentials are not required for this MVP; missing SCMO
+     username/password/cert/P12 material blocks only market-submission-grade
+     receipt readiness. The packet passes only when `ProposedBid`/market-order
+     payloads are absent, the receipt gate is still honestly blocked for market
+     submission, DT/LAVA training remains blocked, and
+     `market_execution_enabled=false`.
+     DT research-shadow training now uses a chronological delivery-time split
+     over existing candidate/value teacher rows. This is valid for offline
+     academic evaluation, not market-availability claims:
+     `publication_receipt_verified=false`,
+     `source_publication_timestamp_available=false`,
+     `market_availability_claim=false`,
+     `research_shadow_not_promotable=true`, and
+     `promotable_v13_permitted_training_rows=0`.
+     Its evaluation packet must report regret and value metrics for the DT
+     shadow selection, strict LP/oracle reference, V2+
+     teacher/comparator/fallback, and behavior-cloning baseline before any
+     accuracy number is used in thesis text.
+     It must also report NBEATSx/TFT forecast-family coverage separately from
+     the promotion gate. The current refreshed DT shadow packet reaches
+     `forecast_context_coverage_status=complete_nbeatsx_tft` by adapting TFT
+     candidate-library rows as credentialless research-shadow context, not as
+     V13-permitted training data or market/source-readiness proof.
+     The smoke artifact records the Decision Transformer backend separately:
+     `--model-backbone auto` uses Hugging Face `DecisionTransformerModel` only
+     when `transformers` is importable, and the current `.venv` records the
+     honest fallback `model_backbone_selection_reason=transformers_not_installed`.
+     The sequence artifact now also includes explicit state and reward
+     contracts: all required state groups are present, and return-to-go is
+     fixed as negative regret delta versus V2+/strict reference with schedule
+     value retained as an evaluation metric.
+     The sidecars `dt_research_shadow_evaluation_summary.json` and
+     `dt_research_shadow_evaluation_validation.json` are the formal evaluation
+     packet: DT shadow is compared against strict LP/oracle, V2+, and
+     behavior-cloning baselines with regret/value deltas first and imitation
+     accuracy only as secondary evidence; validation fails closed on promotion
+     or market execution. The academic MVP materializer loads this validation
+     sidecar and the top-level MVP gate depends on it.
    - Regret-Surrogate DFL v1 is now materialized as learning-limit evidence.
      The oracle-best candidate universe has latest-holdout upside (`174.77` ->
      `161.38` UAH mean regret, `7.66%`) and train/prior upside (`252.57` ->
@@ -248,9 +338,9 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      `23,499` strict-scored teacher rows, but candidate-value V11, behavior
      cloning, and the DT/LAVA candidate-index policy all fell back to V2+.
      Result: `174.77` UAH mean regret, `67.30` UAH median regret, zero safety
-     violations, and `market_execution_enabled=false`. The DT/LAVA gate remains
-     blocked because the prior material safe-switch count is only `2-7` per
-     tenant, below the configured `20`.
+     violations, and `market_execution_enabled=false`. That historical DT/LAVA
+     gate was blocked because the prior material safe-switch count was only
+     `2-7` per tenant, below the configured `20`.
    - V12 is the next safe teacher-label backfill, not another selector. It adds
      `dfl_ua_context_source_expansion_inventory_v12_frame`,
      `dfl_ua_expanded_anchor_context_panel_v12_frame`,
@@ -271,23 +361,23 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      sources reached only partial coverage (`0.593`), optional measured-load/PV,
      explicit DAM-publication receipt, and richer grid/outage hooks remained
      unavailable, and no new V12 low-tail candidates were generated. The safe
-     example counts stayed at `2-7 / 20`, so `dt_lava_ready=false`. This moves
-     the next real ML work from selector design to Ukrainian data acquisition
-     and source coverage repair.
+     example counts stayed at `2-7 / 20` in that V12 packet, so
+     `dt_lava_ready=false`. This moved the next real ML work from selector
+     design to Ukrainian data acquisition and source coverage repair.
    - V13 is the acquisition gate for that repair, not a modeling slice. The
-     current packet (`28740367-26ba-40fb-9a68-88dc7e707c8b`) reports
-     `ready_rows=0/5`, `data_acquisition_needed`, max prior safe-switch support
-     `7 / 20`, and `market_execution_enabled=false`. The first blocker is
-     explicit row-level OREE DAM publication receipts. The optional
+     current safe-switch-only packet reports `ready_rows=0/5`,
+     `data_acquisition_needed`, max prior safe-switch support `20 / 20`, and
+     `market_execution_enabled=false`. The remaining required source-family
+     blocker is explicit row-level OREE DAM publication receipts. The optional
      `dfl_ua_dam_publication_receipts_overlay_frame` reads
      `oree_dam_publication_receipts_csv_path` and only marks
      `explicit_dam_publication_receipts` ready when source-backed receipt
      metadata exists; an empty path preserves the blocked result.
      `dfl_ua_context_safe_switch_examples_v13_frame` similarly reads
      `ua_context_safe_switch_examples_csv_path` for incremental source-backed
-     `train_selection` non-tail-risk material safe-switch examples. Empty path
-     preserves the current `2-7 / 20` counts; supplied rows can only satisfy the
-     V13 count precondition through
+     `train_selection` non-tail-risk material safe-switch examples. The current
+     configured safe-switch backfill satisfies the V13 count precondition
+     through
      `dfl_ua_context_safe_switch_readiness_overlay_v13_frame` and still keep
      `dt_lava_ready=false`, `permits_model_training=false`, and
      `market_execution_enabled=false`.
@@ -296,13 +386,106 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      evidence and must not be converted into receipt rows.
      The packet now also exports
      `dfl_ua_context_v13_source_acquisition_backlog.csv`, which combines the
-     explicit receipt blocker, safe-switch example deficits, and source-family
-     readiness rows into one acquisition checklist with
+     explicit receipt blocker, receipt-source leads, optional safe-switch
+     acquisition targets, and source-family readiness rows into one acquisition
+     checklist with
      `permits_model_training=false` and `market_execution_enabled=false`.
      It can also attach the config-level acquisition preflight as
      `dfl_ua_context_v13_acquisition_input_preflight.json` and
      `acquisition_input_preflight_summary`; this records missing configured
      DAM receipt and safe-switch CSV inputs, not model-training permission.
+     It can now attach the sanitized SCMO WS-Security credential preflight via
+     `--scmo-ws-security-preflight-json`, copying it as
+     `dfl_ua_context_v13_scmo_ws_security_preflight.json` and surfacing
+     `scmo_ws_security_preflight_summary` as credential-source blocker
+     evidence only.
+     Safe-switch curation now has a deterministic handoff:
+     `export_ua_context_v13_safe_switch_review_backlog.py` ranks weak or
+     noncanonical candidates, `export_ua_context_v13_safe_switch_curation_worksheet.py`
+     resets canonical evidence fields for human source review, and
+     `extract_ua_context_v13_safe_switch_examples_from_curation.py` emits only
+     `approved_source_backed_v13_safe_switch` rows into the existing validator
+     contract. This improves acquisition throughput but still keeps
+     `permits_model_training=false` and `market_execution_enabled=false` until
+     V13 materializes with real CSV paths.
+     The LAVA candidate-frame backfill extractor now mines source-observed
+     schedule-neighbor candidates into canonical V13 rows. The 2026-05-24 run
+     combined `19` previously seeded rows with `58` additional OREE-observed
+     LAVA candidate rows, producing
+     `data\external_sources\v13\safe_switch_examples_v13_combined_lava_backfill_validated.csv`
+     with `77` validated incremental rows. This projects every tenant/source
+     to `20 / 20` safe-switch examples, but V13 still remains blocked by the
+     missing explicit DAM publication receipt CSV.
+     The generic OREE DAM receipt validator now rejects non-prior publication
+     times and observation/download metadata columns, so OREE PXS observation
+     files, Energy Map file metadata, workbook generated timestamps, and HTTP
+     download dates cannot accidentally become `oree_dam_publication_receipts_csv_path`
+     inputs. A 2026-05-25 OREE PXS rerun for `2026-05-24` through `2026-05-25`
+     again found row-level DAM data but no `Last-Modified` or explicit
+     publication timestamp; a 2026-05-25 Energy Map rerun again found only
+     dataset-level file metadata.
+     The next receipt-source lead is now SCMO XMtrade/PXS:
+     `probe_scmo_dam_publication_receipt_access.py` confirms the official
+     portal redirects to SSO without credentials, so it is a likely
+     credentialed export path rather than a public receipt source. An
+     authenticated export still has to provide `timestamp` and
+     `source_publication_timestamp` before the V13 receipt overlay can pass.
+     `probe_scmo_dam_wsdl.py` now captures the public SCMO SOAP `Download`
+     contract as source-lead evidence. The 2026-05-25 probe found the DAM
+     Evaluations WSDL, message-code and market-area enums, and the service
+     address. It also records WS-Security requirements such as signed parts,
+     `UsernameToken`, and `X509Token`, so it remains a signed/authenticated
+     download target rather than a validated receipt CSV.
+     `probe_scmo_dam_soap_download.py` posts the exact unsigned DAM
+     Evaluations `Download` envelope for a delivery day. The 2026-05-25 live
+     attempt returned the WSDL/security contract again instead of data, so it
+     is recorded as `wsdl_response_returned_signed_download_required` and still
+     cannot satisfy explicit DAM publication receipts. A 2026-05-25 sweep over
+     all WSDL-advertised Evaluations `Download` request message codes (`807`,
+     `810`, `831`, `934`, `941`, `951`, `961`) produced the same signed-download
+     blocker and no `ISOTEDATA` response. The same probe now supports
+     `--credential-mode preflight-gated-mtls-username-token`; it refuses to post
+     unless credential preflight passes, writes sanitized request XML, records
+     `ws_security_signature_applied=false`, and supports guarded
+     `--normalized-output` writing. That output is skipped for WSDL/fault/auth
+     blockers and is written only when a real `DownloadResponse`/`ISOTEDATA`
+     validates into explicit receipt rows; it still does not permit DT/LAVA
+     training or market execution by itself.
+     It also supports `--credential-mode preflight-gated-signed-ws-security`,
+     which builds a WS-Security UsernameToken/X509/SignedParts request and
+     refuses to post while `signed_download_request_ready=false`. The current
+     preflight reports
+     `ws_security_signature_status=xml_signature_builder_available`, so the
+     remaining local blocker is usable SCMO credential material; live SCMO
+     acceptance is still required before any receipt CSV can be written.
+     `preflight_scmo_dam_ws_security_credentials.py` now records the local
+     UsernameToken/X509 material gap without writing secret values and also
+     checks whether either the PEM certificate/key pair or PKCS#12/PFX bundle
+     can be loaded; optional `SCMO_CLIENT_KEY_PASSWORD` and
+     `SCMO_CLIENT_P12_PASSWORD` are recorded only as presence flags. The current
+     machine lacks `SCMO_USERNAME`, `SCMO_PASSWORD`, `SCMO_CLIENT_CERT_PEM`,
+     `SCMO_CLIENT_KEY_PEM`, and `SCMO_CLIENT_P12`, so no signed request can be
+     attempted yet. Attach
+     that preflight to V13 packet exports with
+     `--scmo-ws-security-preflight-json` so the blocker sits in the same packet
+     as receipt-source and acquisition-input evidence.
+     `normalize_scmo_dam_publication_receipt_export.py` is now the explicit
+     conversion step for that export and signed SOAP `DownloadResponse` XML; it
+     can map SCMO `ISOTEDATA date-time` to `source_publication_timestamp`,
+     converts XLSX Excel serial date/time cells before validation, unwraps
+     one-file ZIP containers, accepts authenticated HTML table exports with
+     explicit delivery/publication headers, expands unique `Trade/Data` periods
+     into hourly receipt rows, rejects
+     observation/retrieval timestamps, and requires the publication timestamp
+     to be prior to the delivery timestamp. It can also write a derived V13 input config
+     and preflight when given `--v13-base-config`,
+     `--v13-safe-switch-csv`, `--v13-output-config`, and
+     `--v13-preflight-output`; that remains input validation only, not the full
+     V13 gate.
+     `fetch_scmo_dam_publication_receipt_export.py` adds the authenticated URL
+     retrieval path using an out-of-repo `SCMO_COOKIE`, and refuses SSO/login
+     HTML before writing any V13 receipt file; authenticated HTML table exports
+     still must normalize into explicit receipt columns before they can feed V13.
    - Keep ENTSO-E/Poland rows out of Ukrainian target training; Poland remains
      an exogenous feature lane with `market_execution_enabled=false`.
 

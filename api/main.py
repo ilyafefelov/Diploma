@@ -152,6 +152,84 @@ V13_ACQUISITION_PACKET_JSON_DEFAULT = (
 	/ "week3_dfl_ua_context_acquisition_v13"
 	/ "dfl_ua_context_v13_acquisition_summary.json"
 )
+ACADEMIC_MVP_PACKET_JSON_ENV = "SMART_ARBITRAGE_ACADEMIC_MVP_PACKET_JSON"
+ACADEMIC_MVP_PACKET_JSON_DEFAULT = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_credentialless_academic_mvp_current"
+	/ "credentialless_academic_mvp_readiness_summary.json"
+)
+ACADEMIC_MVP_VALIDATION_JSON_ENV = "SMART_ARBITRAGE_ACADEMIC_MVP_VALIDATION_JSON"
+ACADEMIC_MVP_VALIDATION_JSON_NAME = "credentialless_academic_mvp_readiness_validation.json"
+ACADEMIC_MVP_VALIDATION_CLAIM_SCOPE = (
+	"credentialless_academic_mvp_readiness_validation_not_market_execution"
+)
+ACADEMIC_MVP_REQUIRED_PASSPORT_GATES = frozenset(
+	{
+		"operator_preview_gate",
+		"dam_bid_recommendation_preview_gate",
+		"academic_source_governance_gate",
+		"dt_lava_prototype_ci_smoke_gate",
+		"lava_npz_smoke_packet_validation_gate",
+		"dfl_dt_prototype_contract_gate",
+		"v13_gated_teacher_contract_gate",
+		"offline_challenger_non_promotion_gate",
+		"dt_research_shadow_smoke_gate",
+		"prototype_evidence_scorecard_gate",
+		"market_execution_safety_gate",
+	}
+)
+ACADEMIC_MVP_NON_REQUIRED_PASSPORT_GATES = frozenset(
+	{
+		"market_submission_receipt_gate",
+		"dt_lava_training_promotion_gate",
+		"market_execution_gate",
+	}
+)
+ACADEMIC_MVP_REQUIRED_VALIDATION_GATES = frozenset(
+	{
+		"academic_mvp_gate",
+		"operator_preview_gate",
+		"dam_bid_recommendation_preview_gate",
+		"academic_source_governance_gate",
+		"dt_lava_prototype_ci_smoke_gate",
+		"dfl_dt_prototype_contract_gate",
+		"v13_gated_teacher_contract_gate",
+		"offline_challenger_non_promotion_gate",
+		"dt_research_shadow_gate",
+		"prototype_evidence_scorecard_gate",
+		"market_execution_safety_gate",
+		"market_submission_receipt_gate",
+		"dt_lava_training_promotion_gate",
+		"market_execution_gate",
+		"prototype_contract",
+		"prototype_phase_readiness",
+		"prototype_evidence_scorecard",
+		"lava_npz_smoke_packet_validation",
+		"teacher_packet_validation",
+		"offline_challenger_packet_validation",
+	}
+)
+ACADEMIC_MVP_REQUIRED_FALSE_FLAGS = {
+	"market_submission_ready": False,
+	"market_execution_gate_passed": False,
+	"promotion_gate_passed": False,
+	"permits_model_training": False,
+	"market_execution_enabled": False,
+	"no_market_execution_safety_gate_passed": True,
+}
+ACADEMIC_MVP_ALLOWED_DT_ACTION_TARGETS = frozenset(
+	{
+		"candidate_id",
+		"candidate_index",
+		"schedule_family",
+		"schedule_block",
+		"candidate_id_or_schedule_family",
+		"candidate_id_or_schedule_block",
+		"candidate_index_or_schedule_family",
+		"candidate_index_or_schedule_block",
+	}
+)
 V13_GOAL_BOUNDARY_DOC = "docs/technical/CURRENT_GOAL_BOUNDARY_V13.md"
 
 
@@ -288,6 +366,21 @@ class BaselineRecommendationPointResponse(BaseModel):
 	net_value_uah: float
 
 
+class BidRecommendationPreviewPointResponse(BaseModel):
+	step_index: int
+	interval_start: datetime
+	market_venue: str
+	side: str
+	operator_action: str
+	quantity_mw: float
+	indicative_limit_price_uah_mwh: float
+	preview_only: bool
+	market_execution_enabled: bool
+	market_order_payload_emitted: bool
+	proposed_bid_status: str
+	read_model_boundary: str
+
+
 class BaselinePreviewEconomicsResponse(BaseModel):
 	total_gross_market_value_uah: float
 	total_degradation_penalty_uah: float
@@ -298,13 +391,24 @@ class BaselinePreviewEconomicsResponse(BaseModel):
 class BaselineLpPreviewResponse(BaseModel):
 	tenant_id: str
 	market_venue: str
+	market_scope: str
 	interval_minutes: int
+	anchor_timestamp: datetime
+	forecast_generated_at: datetime | None
+	target_delivery_window_start: datetime | None
+	target_delivery_window_end: datetime | None
+	market_execution_enabled: bool
+	read_model_boundary: str
+	market_gate_status: str
+	bid_eligibility_status: str
+	proposed_bid_status: str
 	starting_soc_fraction: float
 	starting_soc_source: str
 	battery_metrics: BatteryPhysicalMetrics
 	resolved_location: WeatherLocationResponse
 	forecast: list[BaselineForecastPointResponse]
 	recommendation_schedule: list[BaselineRecommendationPointResponse]
+	bid_recommendation_preview: list[BidRecommendationPreviewPointResponse]
 	projected_state: ProjectedBatteryStateResponse
 	economics: BaselinePreviewEconomicsResponse
 	telemetry_freshness: dict[str, Any] | None = None
@@ -782,6 +886,11 @@ class OperatorV13ReadinessResponse(BaseModel):
 	receipt_source_audit_candidate_found: bool
 	receipt_source_audit_csv_generated: bool
 	receipt_source_audit_all_probes_insufficient: bool
+	source_governance_status: str
+	source_governance_label: str
+	market_submission_receipt_gate_status: str
+	scmo_credentials_required_for_diploma_mvp: bool
+	scmo_credentials_required_for_market_submission_grade_receipts: bool
 	safe_switch_target_tenant_source_count: int
 	safe_switch_max_new_examples_required: int
 	safe_switch_acquisition_targets: list[OperatorV13SafeSwitchTargetResponse]
@@ -825,10 +934,37 @@ class OperatorRecommendationResponse(BaseModel):
 	load_forecast: list[OperatorLoadForecastPointResponse]
 	soc_projection: list[OperatorSocProjectionPointResponse]
 	recommendation_schedule: list[BaselineRecommendationPointResponse]
+	bid_recommendation_preview: list[BidRecommendationPreviewPointResponse]
 	daily_value_uah: float
 	hold_baseline_value_uah: float
 	value_vs_hold_uah: float
 	economics: BaselinePreviewEconomicsResponse
+
+
+class AcademicMvpReadinessResponse(BaseModel):
+	claim_scope: str
+	generated_at: datetime | None
+	academic_mvp_gate_passed: bool
+	operator_preview_gate: dict[str, Any]
+	source_governance: dict[str, Any]
+	dt_lava_prototype_gate: dict[str, Any]
+	dt_lava_teacher_contract_gate: dict[str, Any]
+	offline_challenger_gate: dict[str, Any]
+	dt_research_shadow_gate: dict[str, Any]
+	prototype_contract: dict[str, Any]
+	prototype_evidence_scorecard: dict[str, Any]
+	prototype_phase_readiness: dict[str, Any]
+	gate_passport: dict[str, Any]
+	market_submission_ready: bool
+	market_execution_gate_passed: bool
+	promotion_gate_passed: bool
+	permits_model_training: bool
+	market_execution_enabled: bool
+	no_market_execution_safety_gate_passed: bool
+	next_gate: str
+	artifact_validation: dict[str, Any]
+	source_packet_path: str
+	artifact_validation_packet_path: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -1514,10 +1650,22 @@ def _operator_dam_delivery_anchor(anchor_timestamp: datetime) -> datetime:
 	return delivery_start - timedelta(hours=1)
 
 
-def _historical_prices_for_anchor(price_history: pl.DataFrame, anchor_timestamp: datetime) -> pl.DataFrame:
-	historical_prices = price_history.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN) <= anchor_timestamp)
-	if historical_prices.height < 168:
+def _historical_prices_for_anchor(
+	price_history: pl.DataFrame,
+	anchor_timestamp: datetime,
+	*,
+	required_through_timestamp: datetime | None = None,
+) -> pl.DataFrame:
+	prior_prices = price_history.filter(pl.col(DEFAULT_TIMESTAMP_COLUMN) <= anchor_timestamp)
+	if prior_prices.height < 168:
 		raise ValueError("At least 168 hourly DAM observations are required before the anchor timestamp.")
+	filter_through_timestamp = max(
+		anchor_timestamp,
+		required_through_timestamp or anchor_timestamp,
+	)
+	historical_prices = price_history.filter(
+		pl.col(DEFAULT_TIMESTAMP_COLUMN) <= filter_through_timestamp
+	)
 	return historical_prices
 
 
@@ -1526,6 +1674,39 @@ def _to_scheduled_power_points(schedule_result: BaselineSolveResult) -> list[Sch
 		ScheduledPowerPoint(interval_start=point.interval_start, net_power_mw=point.net_power_mw)
 		for point in schedule_result.schedule
 	]
+
+
+def _bid_preview_side_and_action(net_power_mw: float) -> tuple[str, str]:
+	if net_power_mw > 1e-9:
+		return "SELL", "discharge"
+	if net_power_mw < -1e-9:
+		return "BUY", "charge"
+	return "HOLD", "hold"
+
+
+def _to_bid_recommendation_preview(
+	recommendation_schedule: list[BaselineRecommendationPointResponse],
+) -> list[BidRecommendationPreviewPointResponse]:
+	preview_points: list[BidRecommendationPreviewPointResponse] = []
+	for point in recommendation_schedule:
+		side, operator_action = _bid_preview_side_and_action(point.recommended_net_power_mw)
+		preview_points.append(
+			BidRecommendationPreviewPointResponse(
+				step_index=point.step_index,
+				interval_start=point.interval_start,
+				market_venue=LEVEL1_MARKET_VENUE,
+				side=side,
+				operator_action=operator_action,
+				quantity_mw=abs(point.recommended_net_power_mw),
+				indicative_limit_price_uah_mwh=point.forecast_price_uah_mwh,
+				preview_only=True,
+				market_execution_enabled=False,
+				market_order_payload_emitted=False,
+				proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+				read_model_boundary=OPERATOR_READ_MODEL_BOUNDARY,
+			)
+		)
+	return preview_points
 
 
 def _to_baseline_lp_preview_response(
@@ -1538,15 +1719,48 @@ def _to_baseline_lp_preview_response(
 	resolved_location: WeatherLocation,
 	solve_result: BaselineSolveResult,
 	projected_state: ProjectedBatteryStateResponse,
+	read_model_anchor_timestamp: datetime | None = None,
 ) -> BaselineLpPreviewResponse:
 	total_gross_market_value_uah = sum(point.gross_market_value_uah for point in solve_result.schedule)
 	total_degradation_penalty_uah = sum(point.degradation_penalty_uah for point in solve_result.schedule)
 	total_net_value_uah = sum(point.net_objective_value_uah for point in solve_result.schedule)
 	total_throughput_mwh = sum(point.throughput_mwh for point in solve_result.schedule)
+	response_anchor_timestamp = read_model_anchor_timestamp or solve_result.anchor_timestamp
+	target_delivery_window_start = solve_result.schedule[0].interval_start if solve_result.schedule else None
+	target_delivery_window_end = (
+		solve_result.schedule[-1].interval_start + timedelta(minutes=LEVEL1_INTERVAL_MINUTES)
+		if solve_result.schedule
+		else None
+	)
+	recommendation_schedule = [
+		BaselineRecommendationPointResponse(
+			step_index=point.step_index,
+			interval_start=point.interval_start,
+			forecast_price_uah_mwh=point.forecast_price_uah_mwh,
+			recommended_net_power_mw=point.net_power_mw,
+			projected_soc_before_fraction=point.soc_before_mwh / battery_metrics.capacity_mwh,
+			projected_soc_after_fraction=point.soc_after_mwh / battery_metrics.capacity_mwh,
+			throughput_mwh=point.throughput_mwh,
+			degradation_penalty_uah=point.degradation_penalty_uah,
+			gross_market_value_uah=point.gross_market_value_uah,
+			net_value_uah=point.net_objective_value_uah,
+		)
+		for point in solve_result.schedule
+	]
 	return BaselineLpPreviewResponse(
 		tenant_id=tenant_id,
 		market_venue=LEVEL1_MARKET_VENUE,
+		market_scope=OPERATOR_MARKET_SCOPE,
 		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		anchor_timestamp=response_anchor_timestamp,
+		forecast_generated_at=None,
+		target_delivery_window_start=target_delivery_window_start,
+		target_delivery_window_end=target_delivery_window_end,
+		market_execution_enabled=False,
+		read_model_boundary=OPERATOR_READ_MODEL_BOUNDARY,
+		market_gate_status=OPERATOR_MARKET_GATE_STATUS,
+		bid_eligibility_status=OPERATOR_BID_ELIGIBILITY_STATUS,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
 		starting_soc_fraction=starting_soc_fraction,
 		starting_soc_source=starting_soc_source,
 		battery_metrics=battery_metrics,
@@ -1559,21 +1773,8 @@ def _to_baseline_lp_preview_response(
 			)
 			for point in solve_result.forecast
 		],
-		recommendation_schedule=[
-			BaselineRecommendationPointResponse(
-				step_index=point.step_index,
-				interval_start=point.interval_start,
-				forecast_price_uah_mwh=point.forecast_price_uah_mwh,
-				recommended_net_power_mw=point.net_power_mw,
-				projected_soc_before_fraction=point.soc_before_mwh / battery_metrics.capacity_mwh,
-				projected_soc_after_fraction=point.soc_after_mwh / battery_metrics.capacity_mwh,
-				throughput_mwh=point.throughput_mwh,
-				degradation_penalty_uah=point.degradation_penalty_uah,
-				gross_market_value_uah=point.gross_market_value_uah,
-				net_value_uah=point.net_objective_value_uah,
-			)
-			for point in solve_result.schedule
-		],
+		recommendation_schedule=recommendation_schedule,
+		bid_recommendation_preview=_to_bid_recommendation_preview(recommendation_schedule),
 		projected_state=projected_state,
 		economics=BaselinePreviewEconomicsResponse(
 			total_gross_market_value_uah=total_gross_market_value_uah,
@@ -2967,6 +3168,8 @@ def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
 	backlog = _mapping_value(packet.get("source_acquisition_backlog_summary"))
 	preflight = _mapping_value(packet.get("acquisition_input_preflight_summary"))
 	receipt_audit = _mapping_value(packet.get("receipt_source_audit_summary"))
+	receipt_lead_audit = _mapping_value(packet.get("receipt_source_lead_audit_summary"))
+	scmo_preflight = _mapping_value(packet.get("scmo_ws_security_preflight_summary"))
 	safe_switch_targets = _mapping_value(packet.get("safe_switch_acquisition_target_summary"))
 	claim_boundary = _mapping_value(packet.get("claim_boundary"))
 	readiness_decisions = _string_list_value(readiness.get("readiness_decisions"))
@@ -2977,6 +3180,14 @@ def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
 		)
 	)
 	market_execution_enabled = bool(claim_boundary.get("market_execution_enabled", False))
+	top_priority_blocker = str(backlog.get("top_priority_blocker", "unknown"))
+	source_governance = _operator_source_governance_status(
+		top_priority_blocker=top_priority_blocker,
+		missing_required_inputs=_string_list_value(preflight.get("missing_required_inputs")),
+		receipt_audit=receipt_audit,
+		receipt_lead_audit=receipt_lead_audit,
+		scmo_preflight=scmo_preflight,
+	)
 	dt_lava_ready = (
 		v13_candidate_generation_ready
 		and not bool(claim_boundary.get("dt_lava_still_gated", True))
@@ -2994,7 +3205,7 @@ def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
 		readiness_rows=_int_value(readiness.get("readiness_rows")),
 		missing_safe_switch_examples=_int_value(safe_switch.get("total_missing_examples")),
 		missing_required_inputs=_string_list_value(preflight.get("missing_required_inputs")),
-		top_priority_blocker=str(backlog.get("top_priority_blocker", "unknown")),
+		top_priority_blocker=top_priority_blocker,
 		receipt_source_audit_probe_count=_int_value(receipt_audit.get("probe_count")),
 		receipt_source_audit_months_probed=_string_list_value(
 			receipt_audit.get("months_probed")
@@ -3007,6 +3218,15 @@ def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
 		),
 		receipt_source_audit_all_probes_insufficient=bool(
 			receipt_audit.get("all_probes_insufficient_for_v13_receipts", False)
+		),
+		source_governance_status=source_governance["status"],
+		source_governance_label=source_governance["label"],
+		market_submission_receipt_gate_status=source_governance[
+			"market_submission_receipt_gate_status"
+		],
+		scmo_credentials_required_for_diploma_mvp=False,
+		scmo_credentials_required_for_market_submission_grade_receipts=bool(
+			source_governance["scmo_credentials_required_for_market_submission_grade_receipts"]
 		),
 		safe_switch_target_tenant_source_count=_int_value(
 			safe_switch_targets.get("target_tenant_source_count")
@@ -3026,6 +3246,332 @@ def _operator_v13_readiness() -> OperatorV13ReadinessResponse:
 def _operator_v13_packet_path() -> Path:
 	raw_path = os.getenv(V13_ACQUISITION_PACKET_JSON_ENV, "").strip()
 	return Path(raw_path) if raw_path else V13_ACQUISITION_PACKET_JSON_DEFAULT
+
+
+def _academic_mvp_packet_path() -> Path:
+	raw_path = os.getenv(ACADEMIC_MVP_PACKET_JSON_ENV, "").strip()
+	return Path(raw_path) if raw_path else ACADEMIC_MVP_PACKET_JSON_DEFAULT
+
+
+def _academic_mvp_validation_packet_path(*, readiness_packet_path: Path) -> Path:
+	raw_path = os.getenv(ACADEMIC_MVP_VALIDATION_JSON_ENV, "").strip()
+	if raw_path:
+		return Path(raw_path)
+	return readiness_packet_path.with_name(ACADEMIC_MVP_VALIDATION_JSON_NAME)
+
+
+def _academic_mvp_passport_gate(
+	*,
+	gate_passport: dict[str, Any],
+	gate_name: str,
+) -> dict[str, Any]:
+	gate = gate_passport.get(gate_name)
+	if not isinstance(gate, dict):
+		raise HTTPException(
+			status_code=500,
+			detail=f"Credentialless academic MVP readiness packet missing gate: {gate_name}",
+		)
+	return gate
+
+
+def _validate_academic_mvp_gate_passport(packet: dict[str, Any]) -> None:
+	gate_passport = packet.get("gate_passport")
+	if not isinstance(gate_passport, dict):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must include gate_passport.",
+		)
+	if packet.get("academic_mvp_gate_passed") is not True:
+		return
+	for flag_name, expected_value in ACADEMIC_MVP_REQUIRED_FALSE_FLAGS.items():
+		if packet.get(flag_name) is not expected_value:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP readiness packet has invalid "
+					f"{flag_name}: expected {expected_value}."
+				),
+			)
+	for gate_name in sorted(ACADEMIC_MVP_REQUIRED_PASSPORT_GATES):
+		gate = _academic_mvp_passport_gate(gate_passport=gate_passport, gate_name=gate_name)
+		if gate.get("passed") is not True:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP readiness packet required gate is not "
+					f"passed: {gate_name}"
+				),
+			)
+	for gate_name in sorted(ACADEMIC_MVP_NON_REQUIRED_PASSPORT_GATES):
+		gate = _academic_mvp_passport_gate(gate_passport=gate_passport, gate_name=gate_name)
+		if gate.get("required_for_academic_mvp") is not False:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP readiness packet future/source gate must "
+					f"be non-required for the academic MVP: {gate_name}"
+				),
+			)
+		if gate.get("passed") is True:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP readiness packet future/source gate "
+					f"must remain unpassed for this credentialless scope: {gate_name}"
+				),
+			)
+
+
+def _validate_academic_mvp_prototype_contract(packet: dict[str, Any]) -> None:
+	prototype_contract = packet.get("prototype_contract")
+	if not isinstance(prototype_contract, dict):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must include prototype_contract.",
+		)
+	if prototype_contract.get("claim_scope") != (
+		"credentialless_dfl_dt_prototype_contract_not_market_execution"
+	):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet has invalid prototype_contract claim_scope.",
+		)
+	if prototype_contract.get("product_boundary") != (
+		"dam_delivery_day_operator_recommendation_preview"
+	):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet has invalid prototype_contract product_boundary.",
+		)
+	if prototype_contract.get("dt_action_target_contract") not in (
+		ACADEMIC_MVP_ALLOWED_DT_ACTION_TARGETS
+	):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet has invalid DT action target contract.",
+		)
+	if prototype_contract.get("v2_plus_role") != "teacher_comparator_fallback":
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must keep V2+ as teacher/comparator/fallback.",
+		)
+	if prototype_contract.get("raw_hourly_action_imitation") is not False:
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must not use raw hourly DT action imitation.",
+		)
+	evaluation_contract = prototype_contract.get("evaluation_contract")
+	if not isinstance(evaluation_contract, dict):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must include evaluation_contract.",
+		)
+	for required_flag in (
+		"required_controls_present",
+		"behavior_cloning_control_present",
+		"deterministic_safety_projection_passed",
+	):
+		if evaluation_contract.get(required_flag) is not True:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP readiness packet evaluation "
+					f"contract flag is not true: {required_flag}"
+				),
+			)
+	if prototype_contract.get("prototype_contract_gate_passed") is not True:
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet prototype contract gate is not passed.",
+		)
+
+
+def _validate_academic_mvp_dt_research_shadow_gate(packet: dict[str, Any]) -> None:
+	dt_research_shadow_gate = packet.get("dt_research_shadow_gate")
+	if not isinstance(dt_research_shadow_gate, dict):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must include dt_research_shadow_gate.",
+		)
+	if dt_research_shadow_gate.get("passed_for_academic_mvp") is not True:
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet DT research-shadow gate is not passed.",
+		)
+	if dt_research_shadow_gate.get("split_strategy") != "chronological_delivery_timestamp":
+		raise HTTPException(
+			status_code=500,
+			detail=(
+				"Credentialless academic MVP readiness packet DT research-shadow gate "
+				"must use chronological delivery-time splits."
+			),
+		)
+	if dt_research_shadow_gate.get("chronological_split_passed") is not True:
+		raise HTTPException(
+			status_code=500,
+			detail=(
+				"Credentialless academic MVP readiness packet DT research-shadow "
+				"chronological split did not pass."
+			),
+		)
+	if _int_value(dt_research_shadow_gate.get("research_shadow_training_rows")) <= 0:
+		raise HTTPException(
+			status_code=500,
+			detail=(
+				"Credentialless academic MVP readiness packet DT research-shadow gate "
+				"must expose research_shadow_training_rows > 0."
+			),
+		)
+	if _int_value(dt_research_shadow_gate.get("promotable_v13_permitted_training_rows")) != 0:
+		raise HTTPException(
+			status_code=500,
+			detail=(
+				"Credentialless academic MVP readiness packet DT research-shadow gate "
+				"must keep promotable_v13_permitted_training_rows=0."
+			),
+		)
+	for flag_name in (
+		"publication_receipt_verified",
+		"source_publication_timestamp_available",
+		"market_availability_claim",
+		"dt_promotion_gate_passed",
+		"market_execution_enabled",
+	):
+		if dt_research_shadow_gate.get(flag_name) is not False:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP readiness packet DT research-shadow "
+					f"flag must be false: {flag_name}"
+				),
+			)
+	if dt_research_shadow_gate.get("research_shadow_not_promotable") is not True:
+		raise HTTPException(
+			status_code=500,
+			detail=(
+				"Credentialless academic MVP readiness packet DT research-shadow gate "
+				"must be marked research_shadow_not_promotable=true."
+			),
+		)
+
+
+def _academic_mvp_artifact_validation(
+	*,
+	readiness_packet_path: Path,
+) -> tuple[dict[str, Any], Path]:
+	validation_path = _academic_mvp_validation_packet_path(
+		readiness_packet_path=readiness_packet_path,
+	)
+	if not validation_path.exists():
+		raise HTTPException(
+			status_code=500,
+			detail=f"Credentialless academic MVP validation artifact not found: {validation_path}",
+		)
+	try:
+		validation = json.loads(validation_path.read_text(encoding="utf-8"))
+	except (OSError, json.JSONDecodeError) as error:
+		raise HTTPException(
+			status_code=500,
+			detail=f"Credentialless academic MVP validation artifact is unreadable: {validation_path}",
+		) from error
+	if not isinstance(validation, dict):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP validation artifact must be a JSON object.",
+		)
+	if _json_contains_market_execution_enabled_true(validation):
+		raise HTTPException(
+			status_code=500,
+			detail=(
+				"Credentialless academic MVP validation artifact must keep "
+				"market_execution_enabled=false."
+			),
+		)
+	if validation.get("claim_scope") != ACADEMIC_MVP_VALIDATION_CLAIM_SCOPE:
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP validation artifact has invalid claim_scope.",
+		)
+	if validation.get("passed") is not True:
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP validation artifact did not pass.",
+		)
+	if validation.get("failures") != []:
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP validation artifact reports failures.",
+		)
+	gate_results = validation.get("gate_results")
+	if not isinstance(gate_results, dict):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP validation artifact must include gate_results.",
+		)
+	for gate_name in sorted(ACADEMIC_MVP_REQUIRED_VALIDATION_GATES):
+		gate = gate_results.get(gate_name)
+		if not isinstance(gate, dict):
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP validation artifact missing gate result: "
+					f"{gate_name}"
+				),
+			)
+		if gate.get("passed") is not True:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP validation artifact gate did not pass: "
+					f"{gate_name}"
+				),
+			)
+		if gate.get("failures") != []:
+			raise HTTPException(
+				status_code=500,
+				detail=(
+					"Credentialless academic MVP validation artifact gate reports failures: "
+					f"{gate_name}"
+				),
+			)
+	return validation, validation_path
+
+
+def _academic_mvp_readiness_response() -> AcademicMvpReadinessResponse:
+	packet_path = _academic_mvp_packet_path()
+	if not packet_path.exists():
+		raise HTTPException(
+			status_code=404,
+			detail=f"Credentialless academic MVP readiness packet not found: {packet_path}",
+		)
+	try:
+		packet = json.loads(packet_path.read_text(encoding="utf-8"))
+	except (OSError, json.JSONDecodeError) as error:
+		raise HTTPException(
+			status_code=500,
+			detail=f"Credentialless academic MVP readiness packet is unreadable: {packet_path}",
+		) from error
+	if not isinstance(packet, dict):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must be a JSON object.",
+		)
+	if _json_contains_market_execution_enabled_true(packet):
+		raise HTTPException(
+			status_code=500,
+			detail="Credentialless academic MVP readiness packet must keep market_execution_enabled=false.",
+		)
+	_validate_academic_mvp_gate_passport(packet)
+	_validate_academic_mvp_prototype_contract(packet)
+	_validate_academic_mvp_dt_research_shadow_gate(packet)
+	artifact_validation, validation_path = _academic_mvp_artifact_validation(
+		readiness_packet_path=packet_path,
+	)
+	response_payload = dict(packet)
+	response_payload["artifact_validation"] = artifact_validation
+	response_payload["source_packet_path"] = str(packet_path)
+	response_payload["artifact_validation_packet_path"] = str(validation_path)
+	return AcademicMvpReadinessResponse(**response_payload)
 
 
 def _operator_v13_readiness_fallback(
@@ -3048,6 +3594,11 @@ def _operator_v13_readiness_fallback(
 		receipt_source_audit_candidate_found=False,
 		receipt_source_audit_csv_generated=False,
 		receipt_source_audit_all_probes_insufficient=False,
+		source_governance_status="v13_source_packet_unavailable",
+		source_governance_label="V13 source packet unavailable",
+		market_submission_receipt_gate_status="missing_v13_packet",
+		scmo_credentials_required_for_diploma_mvp=False,
+		scmo_credentials_required_for_market_submission_grade_receipts=False,
 		safe_switch_target_tenant_source_count=0,
 		safe_switch_max_new_examples_required=0,
 		safe_switch_acquisition_targets=[],
@@ -3055,6 +3606,57 @@ def _operator_v13_readiness_fallback(
 		boundary_doc=V13_GOAL_BOUNDARY_DOC,
 		source_packet_path=source_packet_path,
 	)
+
+
+def _operator_source_governance_status(
+	*,
+	top_priority_blocker: str,
+	missing_required_inputs: list[str],
+	receipt_audit: dict[str, Any],
+	receipt_lead_audit: dict[str, Any],
+	scmo_preflight: dict[str, Any],
+) -> dict[str, Any]:
+	explicit_receipts_blocked = (
+		"explicit_dam_publication_receipts" in top_priority_blocker
+		or "oree_dam_publication_receipts_csv_path" in missing_required_inputs
+	)
+	auth_blocked_count = _int_value(receipt_lead_audit.get("auth_blocked_count"))
+	credential_material_ready = bool(
+		scmo_preflight.get("credential_material_ready", False)
+	)
+	candidate_found = bool(receipt_audit.get("candidate_receipt_source_found", False))
+	receipt_csv_generated = bool(receipt_audit.get("receipt_csv_generated", False))
+	if receipt_csv_generated and not explicit_receipts_blocked:
+		return {
+			"status": "market_submission_receipts_ready",
+			"label": "market-submission receipts ready",
+			"market_submission_receipt_gate_status": "ready",
+			"scmo_credentials_required_for_market_submission_grade_receipts": False,
+		}
+	if explicit_receipts_blocked and (auth_blocked_count > 0 or not credential_material_ready):
+		return {
+			"status": "receipt_gated_for_market_submission",
+			"label": "receipt-gated for market submission",
+			"market_submission_receipt_gate_status": "blocked_external_access",
+			"scmo_credentials_required_for_market_submission_grade_receipts": True,
+		}
+	if explicit_receipts_blocked:
+		return {
+			"status": "receipt_gated_for_market_submission",
+			"label": "receipt-gated for market submission",
+			"market_submission_receipt_gate_status": (
+				"blocked_missing_explicit_receipts"
+				if candidate_found
+				else "blocked_no_candidate_receipt_source"
+			),
+			"scmo_credentials_required_for_market_submission_grade_receipts": False,
+		}
+	return {
+		"status": "source_governance_ready_for_preview",
+		"label": "source governance ready for preview",
+		"market_submission_receipt_gate_status": "not_evaluated_preview_only",
+		"scmo_credentials_required_for_market_submission_grade_receipts": False,
+	}
 
 
 def _operator_v13_safe_switch_targets(
@@ -3104,6 +3706,19 @@ def _operator_v13_gate_status(
 
 def _mapping_value(value: object) -> dict[str, Any]:
 	return value if isinstance(value, dict) else {}
+
+
+def _json_contains_market_execution_enabled_true(value: object) -> bool:
+	if isinstance(value, dict):
+		for key, item in value.items():
+			if key == "market_execution_enabled" and bool(item):
+				return True
+			if _json_contains_market_execution_enabled_true(item):
+				return True
+		return False
+	if isinstance(value, list | tuple):
+		return any(_json_contains_market_execution_enabled_true(item) for item in value)
+	return False
 
 
 def _string_list_value(value: object) -> list[str]:
@@ -3624,7 +4239,11 @@ def _build_operator_recommendation_response(
 	price_history = _build_tenant_aware_price_history(resolved_location)
 	anchor_timestamp = _resolve_baseline_anchor(price_history)
 	delivery_anchor_timestamp = _operator_dam_delivery_anchor(anchor_timestamp)
-	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
+	historical_prices = _historical_prices_for_anchor(
+		price_history,
+		anchor_timestamp,
+		required_through_timestamp=delivery_anchor_timestamp,
+	)
 	load_frame = _operator_load_frame(tenant_id=tenant_id, anchor_timestamp=delivery_anchor_timestamp)
 	soc_resolution = _resolve_operator_soc(
 		tenant_id=tenant_id,
@@ -3678,6 +4297,7 @@ def _build_operator_recommendation_response(
 		resolved_location=resolved_location,
 		solve_result=solve_result,
 		projected_state=projected_state,
+		read_model_anchor_timestamp=anchor_timestamp,
 	)
 	daily_value_uah = baseline_preview.economics.total_net_value_uah
 	readiness_warnings = [*soc_resolution.warnings, *selection_warnings]
@@ -3735,6 +4355,7 @@ def _build_operator_recommendation_response(
 			battery_metrics=battery_metrics,
 		),
 		recommendation_schedule=baseline_preview.recommendation_schedule,
+		bid_recommendation_preview=baseline_preview.bid_recommendation_preview,
 		daily_value_uah=daily_value_uah,
 		hold_baseline_value_uah=0.0,
 		value_vs_hold_uah=daily_value_uah,
@@ -4395,6 +5016,22 @@ def dashboard_simulated_live_trading(
 
 
 @app.get(
+	"/dashboard/academic-mvp-readiness",
+	response_model=AcademicMvpReadinessResponse,
+	tags=["weather"],
+	summary="Get credentialless academic MVP readiness",
+	description=(
+		"Returns the materialized credentialless academic MVP readiness packet. "
+		"This is a read-only thesis/demo artifact: DAM operator preview and "
+		"DT/LAVA prototype gates may pass while market submission, DT training, "
+		"and market execution remain disabled."
+	),
+)
+def dashboard_academic_mvp_readiness() -> AcademicMvpReadinessResponse:
+	return _academic_mvp_readiness_response()
+
+
+@app.get(
 	"/dashboard/operator-recommendation",
 	response_model=OperatorRecommendationResponse,
 	tags=["weather"],
@@ -4427,8 +5064,8 @@ def dashboard_operator_recommendation(
 	tags=["weather"],
 	summary="Build baseline LP preview",
 	description=(
-		"Returns a tenant-aware baseline LP recommendation preview with hourly forecast, "
-		"signed MW schedule, projected SOC trace, and UAH economics."
+		"Returns a tenant-aware baseline LP recommendation preview for the next DAM delivery day "
+		"with hourly forecast, signed MW schedule, projected SOC trace, and UAH economics."
 	),
 )
 def build_baseline_lp_preview(
@@ -4444,14 +5081,19 @@ def build_baseline_lp_preview(
 	starting_soc_fraction = starting_soc_resolution.starting_soc_fraction
 	price_history = _build_tenant_aware_price_history(resolved_location)
 	anchor_timestamp = _resolve_baseline_anchor(price_history)
-	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
+	delivery_anchor_timestamp = _operator_dam_delivery_anchor(anchor_timestamp)
+	historical_prices = _historical_prices_for_anchor(
+		price_history,
+		anchor_timestamp,
+		required_through_timestamp=delivery_anchor_timestamp,
+	)
 	solver = HourlyDamBaselineSolver()
 	try:
 		solve_result = solver.solve_next_dispatch(
 			historical_prices,
 			battery_metrics=battery_metrics,
 			current_soc_fraction=starting_soc_fraction,
-			anchor_timestamp=anchor_timestamp,
+			anchor_timestamp=delivery_anchor_timestamp,
 		)
 	except (RuntimeError, ValueError) as error:
 		raise HTTPException(status_code=500, detail=str(error)) from error
@@ -4475,6 +5117,7 @@ def build_baseline_lp_preview(
 		resolved_location=resolved_location,
 		solve_result=solve_result,
 		projected_state=projected_state,
+		read_model_anchor_timestamp=anchor_timestamp,
 	)
 	_persist_operator_status(
 		tenant_id=tenant_id,

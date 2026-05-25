@@ -39,6 +39,19 @@ describe('operator HUD CSS', () => {
     expect(baselinePreview).toContain('Compact view keeps baseline value')
   })
 
+  it('surfaces baseline DAM delivery-window and no-execution metadata', () => {
+    const baselinePreview = readFileSync(baselinePreviewPath, 'utf8')
+
+    expect(baselinePreview).toContain('baselineBoundaryItems')
+    expect(baselinePreview).toContain('target_delivery_window_start')
+    expect(baselinePreview).toContain('target_delivery_window_end')
+    expect(baselinePreview).toContain('anchor_timestamp')
+    expect(baselinePreview).toContain('market_execution_enabled')
+    expect(baselinePreview).toContain('proposed_bid_status')
+    expect(baselinePreview).toContain('DAM delivery')
+    expect(baselinePreview).toContain('No market execution')
+  })
+
   it('keeps schedule dock fixed above all operator panels with one-row horizontal schedule scrolling', () => {
     const css = readFileSync(cssPath, 'utf8')
 

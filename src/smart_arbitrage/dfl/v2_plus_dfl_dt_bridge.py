@@ -407,6 +407,9 @@ def _bridge_row(
             "claim_scope": claim_scope,
             "academic_scope": academic_scope,
             "v2_plus_headline_baseline": dict(resolved_baseline_metrics),
+            "deterministic_safety_projection_passed": (
+                int(row["safety_violation_count"]) == 0
+            ),
             "not_full_dfl": True,
             "not_market_execution": True,
             "market_execution_enabled": False,
@@ -425,6 +428,9 @@ def _bridge_row(
             "generated_at": generated_at,
             "selection_role": selection_role,
             "selected_strategy_source": selected_strategy_source,
+            "deterministic_safety_projection_passed": (
+                int(row["safety_violation_count"]) == 0
+            ),
             "claim_scope": claim_scope,
             "not_full_dfl": True,
             "not_market_execution": True,

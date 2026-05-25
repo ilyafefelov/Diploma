@@ -400,6 +400,8 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_ua_context_safe_switch_rolling_robustness_frame",
         "dfl_ua_context_lava_teacher_frame",
         "dfl_ua_context_lava_sequence_training_frame",
+        "dfl_v13_gated_dt_lava_teacher_contract_frame",
+        "dfl_v13_dt_lava_offline_challenger_gate_frame",
         "dfl_ua_context_lava_candidate_policy_frame",
         "dfl_ua_context_lava_strict_lp_benchmark_frame",
         "dfl_ua_context_lava_rolling_robustness_frame",
@@ -1975,6 +1977,10 @@ def test_dfl_research_assets_are_registered() -> None:
         "dfl_official_global_panel_v2_plus_residual_schedule_value_model_frame",
         "dfl_official_global_panel_v2_plus_offline_dt_candidate_frame",
         "dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+    }
+    assert deps_by_key["dfl_v13_dt_lava_offline_challenger_gate_frame"] == {
+        "dfl_v13_gated_dt_lava_teacher_contract_frame",
+        "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame",
     }
     assert deps_by_key["dfl_official_global_panel_schedule_value_dfl_v2_frame"] == {
         "dfl_official_global_panel_schedule_candidate_library_v2_plus_frame",
