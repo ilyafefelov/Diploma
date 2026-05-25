@@ -85,12 +85,15 @@
 
 - [../../chapters/03-Methodology.md](../../chapters/03-Methodology.md)
 - [../../chapters/04-results-and-discussion.md](../../chapters/04-results-and-discussion.md)
+- [Google Docs thesis draft](https://docs.google.com/document/d/1jjja9ng99O-xCisijMUbPrEM-3UJi_hilwnFJY8nups/edit)
 
 Що сказати:
 
 - Week 5 syllabus очікує Methodology і first Results/Discussion draft.
 - Ці chapter drafts мають бути прив'язані до evidence manifest, а не до unsupported claims.
 - Negative/blocked evidence є частиною методологічної чесності: pipeline не підганяє висновок під DT/LAVA.
+- Methodology тепер має reader map: MVP, offline evaluation, research shadows і source-readiness gate розділені явно.
+- Results draft у Google Docs оновлено: V4/V5 без локального packet path позначені як pending evidence, а V13 F3 описано як safe-switch validated but DAM receipts blocked.
 
 ## Крок 7. Закрити демо коротким статусом
 

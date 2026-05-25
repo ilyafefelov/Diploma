@@ -14,6 +14,9 @@ Week 5 сфокусовано на фіналізації доказового �
 - Підтверджено, що safe-switch support досягає `20 / 20` prior/train non-tail-risk material examples для всіх п'яти tenant/source pairs.
 - Підтверджено, що V13 все ще блокується explicit DAM publication receipts, а не локальним safe-switch deficit.
 - Підготовлено supervisor handoff для Week 5: цей report, [supervisor-summary.md](./supervisor-summary.md) і [demo-script.md](./demo-script.md).
+- Оновлено локальні Methodology/Results chapters і Google Docs thesis draft,
+  щоб full-project review, V13 F3 status і V4/V5 pending-evidence boundary були
+  відображені без unsupported promotion claims.
 
 ## 3. Поточний MVP та V13 статус
 
@@ -98,6 +101,8 @@ Optional:
 - Operator boundary: [OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md](../../../technical/OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md)
 - Methodology draft: [03-Methodology.md](../../chapters/03-Methodology.md)
 - Results draft: [04-results-and-discussion.md](../../chapters/04-results-and-discussion.md)
+- Google Docs thesis draft:
+  [Draft.Thesis.2.goit.energy_arbitrage.Fefelov](https://docs.google.com/document/d/1jjja9ng99O-xCisijMUbPrEM-3UJi_hilwnFJY8nups/edit)
 
 ## 7. Ризики та відповіді
 

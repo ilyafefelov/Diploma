@@ -19,5 +19,12 @@ V13 статус став чіткішим:
 - V13 sprint note: [../../../technical/deep-research-reports/2026-05-25-full-project-review/v13-f3-acquisition-sprint-2026-05-26.md](../../../technical/deep-research-reports/2026-05-25-full-project-review/v13-f3-acquisition-sprint-2026-05-26.md)
 - Methodology draft: [../../chapters/03-Methodology.md](../../chapters/03-Methodology.md)
 - Results draft: [../../chapters/04-results-and-discussion.md](../../chapters/04-results-and-discussion.md)
+- Google Docs thesis draft:
+  [Draft.Thesis.2.goit.energy_arbitrage.Fefelov](https://docs.google.com/document/d/1jjja9ng99O-xCisijMUbPrEM-3UJi_hilwnFJY8nups/edit)
+
+Thesis draft sync status: local Methodology/Results chapters now separate the
+defendable MVP, offline evaluation, research-shadow evidence and V13
+source-readiness blocker. The Google Docs results draft was updated to remove
+hard V4/V5 run claims without packet paths and to include V13 F3 status.
 
 Next week I will prepare the final demo around the credentialless MVP and, after review, choose either an all-tenant robustness pass or a narrow DFL pilot. SCMO receipt work remains a separate source-access lane, not a prerequisite for showing the diploma MVP.

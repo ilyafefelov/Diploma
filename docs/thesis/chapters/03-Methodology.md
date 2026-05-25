@@ -23,6 +23,18 @@ models, schedule/value learners та DFL-style challengers можуть бути
 [DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS](../../technical/DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md)
 та [DFL_SCHEDULE_VALUE_PRODUCTION_GATE](../../technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md).
 
+Після повного project review від 2026-05-25 методологію зручно читати як
+чотири окремі шари. Перший шар - захищуваний credentialless MVP: DAM
+delivery-day recommendation preview для оператора без `ProposedBid`,
+market-order payload або фізичного dispatch. Другий шар - offline evaluation:
+rolling-origin дані, strict LP/oracle contour, regret/value metrics і
+відтворювані evidence packets. Третій шар - promoted research result: V2+ є
+поточним headline challenger, тоді як TFT, Poland, DT shadow і LAVA smoke
+залишаються non-promoted research evidence. Четвертий шар - source-readiness:
+V13 є acquisition gate, де safe-switch staged support already validated, але
+explicit DAM publication receipts ще блокують candidate generation, DT/LAVA
+training і будь-яке market-submission твердження.
+
 Для уникнення змішування дослідницьких, демонстраційних і продуктово
 орієнтованих тверджень у роботі використовується стисла таблиця методів.
 Таблиця 3.1 показує, які дані використовує кожний метод, чи допускає він
@@ -1170,20 +1182,23 @@ Run-receipt/manifest path описаний у `scripts/build_official_evidence_a
 `scripts/materialize_schedule_value_production_gate_registry.py` і
 `scripts/materialize_schedule_value_v2_plus_comparison.py`.
 
-Останні V11/V12 результати уточнюють порядок руху до DT/LAVA. V11 уже
+Останні V11/V12/V13 результати уточнюють порядок руху до DT/LAVA. V11 уже
 згенерував bounded lower-tail-risk schedules і перевірив candidate-value,
 behavior-cloning та candidate-index DT/LAVA policies, але всі вони безпечно
 повернулися до V2+, бо на tenant було лише `2-7` prior material safe-switch
 прикладів замість мінімальних `20`. V12 підтвердив, що проблема не в більшій
 нейромережі, а в source/context coverage: measured load/PV, row-level DAM
 publication receipts і richer grid/outage archive все ще не є повністю
-source-backed. Тому методологічний наступний крок формалізовано як V13
-acquisition gate: він не тренує selector і не будує candidates, а спершу
-вимагає source-backed Ukrainian context і достатню кількість non-tail-risk
-teacher labels. Окремо зафіксовано governance-розмежування: правило OREE про
-deadline публікації РДН є корисним prior-timing evidence, але не замінює
-row-level publication receipts; tenant load/PV може бути measured telemetry або
-source-backed proxy, але не видається за live metering без джерела. Тільки після
+source-backed. V13 F3 додатково звузив blocker: staged safe-switch input
+валідується до `77` incremental rows і закриває `20 / 20` prior/train
+non-tail-risk material safe-switch floor для п'яти tenant/source pairs, але це
+не робить V13 готовим. Методологічний наступний крок залишається acquisition
+gate: він не тренує selector і не будує candidates, доки explicit DAM
+publication receipts не будуть source-backed. Окремо зафіксовано
+governance-розмежування: правило OREE про deadline публікації РДН є корисним
+prior-timing evidence, але не замінює row-level publication receipts; tenant
+load/PV може бути measured telemetry або source-backed proxy, але не видається
+за live metering без джерела. Тільки після
 `v13_candidate_generation_ready=true` дозволяється нова candidate library;
 DT/LAVA після цього все одно має target candidate-index/schedule-family, а не
 raw hourly BUY/SELL/HOLD.
@@ -1216,6 +1231,13 @@ State vector має 20 ознак, action target є `candidate_index_or_schedule
 return-to-go target є negative regret delta versus V2+/strict reference, а
 evaluation порівнює DT проти V2+ fallback, strict LP/oracle reference і
 behavior-cloning control. Raw hourly BUY/SELL/HOLD imitation заборонена.
+
+SCMO credentials у цій методології не є передумовою credentialless MVP. Вони
+потрібні тільки для сильнішого market-submission-grade receipt proof. Якщо
+такий proof з'явиться, він має пройти sanitized preflight і дати source-backed
+rows з `timestamp` та `source_publication_timestamp`; observation time,
+first-seen polling time, HTTP response `Date` або market-rule deadline не можна
+перетворювати на `source_publication_timestamp`.
 
 Для Hugging Face implementation smoke використовується optional dependency
 extra `dt`, що додає `transformers>=4.53,<5` і дає доступ до

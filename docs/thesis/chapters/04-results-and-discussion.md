@@ -25,6 +25,13 @@ LP/oracle evaluator. Таким чином, порівняння з ним є к
   PriceFM і THieF, залишаються governance-only і не входять до тренування цього
   результату.
 
+Після full project review від 2026-05-25 цей розділ слід читати не як перелік
+усіх спроб, а як доказову ієрархію. Headline result - V2+ schedule/value
+learner під frozen strict LP/oracle comparator. TFT, Poland, DT shadow і LAVA
+залишаються пояснювальними або research-only гілками. Credentialless Academic
+MVP є defendable для демо, але V13 не відкритий для DT/LAVA training або
+market-submission claims, доки відсутні explicit DAM publication receipts.
+
 ## 4.2. Експериментальна драбина
 
 Експерименти були побудовані як послідовна драбина від простого контролю до
@@ -1197,16 +1204,18 @@ diagnostic evidence: поточний шлях все ще data/candidate limite
 V12 і V13 закривають це як окремий evidence result, а не як приховану невдачу
 моделі. V12 (`d1712548-a4fa-4eca-955d-183d1c4f258c`) показав, що current UA
 context coverage лишається partial (`0.593`), V12 не згенерував нових low-tail
-candidates, а prior safe examples залишились `2-7 / 20`. V13 тому переводить
-наступний крок у source-acquisition gate: потрібні measured tenant load/PV,
-explicit row-level DAM publication receipts, richer grid/outage archive,
-extended Ukrainian DAM/weather history і достатній safe-label support. Якщо ці
-джерела не готові, статус `data_acquisition_needed` є правильним результатом,
-а не приводом тренувати ще один selector або DT. Поточний V13 distinction також
-пояснює, чому rule-only OREE timing не дорівнює row-level publication receipts,
-а tenant load/PV proxy не треба називати measured telemetry. Headline evidence
-залишається V2+ (`174.77` / `67.30` UAH, `4 / 4` rolling,
-`market_execution_enabled=false`).
+candidates, а prior safe examples залишились `2-7 / 20`. V13 F3 від 2026-05-26
+звузив blocker: staged safe-switch lane валідовано до `77` incremental rows,
+`5` tenant/source pairs і `20 / 20` prior/train non-tail-risk material examples.
+Однак V13 все ще не готовий, бо explicit row-level DAM publication receipts
+відсутні. OREE PXS observation rows мають observation timestamp, але не дають
+source-provided `source_publication_timestamp`, а SCMO path лишається
+credential-blocked. Тому статус `data_acquisition_needed` є правильним
+результатом, а не приводом тренувати ще один selector або DT. Поточний V13
+distinction також пояснює, чому rule-only OREE timing не дорівнює row-level
+publication receipts, а tenant load/PV proxy не треба називати measured
+telemetry. Headline evidence залишається V2+ (`174.77` / `67.30` UAH, `4 / 4`
+rolling, `market_execution_enabled=false`).
 
 ## 4.13. Credentialless Academic MVP and HF DT shadow
 
@@ -1219,6 +1228,15 @@ preview і offline research evidence. Market-submission receipt gate лишає�
 `market_execution_enabled=false`. Це означає, що SCMO credentials не потрібні
 для дипломної демонстрації, але потрібні для будь-якого майбутнього
 market-submittable receipt claim.
+
+Після V13 F3 цей висновок став точнішим: safe-switch deficit більше не є
+активним локальним blocker для staged evidence, але DAM receipt lane лишається
+закритим. Для розблокування потрібен source-backed export з `timestamp` і
+`source_publication_timestamp`; цей timestamp не можна виводити з local
+observation time, first-seen polling time, HTTP response `Date` або OREE
+deadline rule. Через це `dt_lava_ready=false` і
+`permits_model_training=false` залишаються коректними навіть після safe-switch
+`20 / 20`.
 
 Operator-preview частина packet показує 24 hourly DAM recommendation-preview
 rows: 1 BUY row, 2 SELL rows і 21 HOLD rows. Це не `ProposedBid` і не market
@@ -1280,6 +1298,12 @@ receipt readiness.
 research-run каталогах і документах, які можна відтворити з Dagster/Postgres
 rows:
 
+- `docs/technical/deep-research-reports/2026-05-25-full-project-review/` -
+  full-project review packet, який формулює defendable thesis boundary,
+  engineering closure і ризики overclaim;
+- `docs/technical/deep-research-reports/2026-05-25-full-project-review/v13-f3-acquisition-sprint-2026-05-26.md` -
+  V13 F3 acquisition sprint: safe-switch staged support validated, explicit DAM
+  publication receipts still blocked;
 - `data/research_runs/week3_official_global_panel_365_strategy_promotion/` -
   базовий 365-anchor promotion packet для Schedule/Value Learner V2;
 - `data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/` -
