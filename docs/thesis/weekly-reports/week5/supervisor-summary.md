@@ -23,6 +23,7 @@ manual dashboard preview, не thesis headline і не deployment claim.
 
 - Week 5 report: [report.md](./report.md)
 - Demo script: [demo-script.md](./demo-script.md)
+- Demo freeze checklist: [demo-freeze-checklist.md](./demo-freeze-checklist.md)
 - Evidence manifest: [../../appendices/evidence-manifest.md](../../appendices/evidence-manifest.md)
 - Direct DT Shadow note: [../../../technical/DT_DIRECT_CANDIDATE_SHADOW.md](../../../technical/DT_DIRECT_CANDIDATE_SHADOW.md)
 - Apples-to-apples DT note: [../../../technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md](../../../technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md)
