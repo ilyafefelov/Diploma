@@ -604,7 +604,7 @@ Response shape:
 - `preview_source_id`, `preview_source_label`, `preview_status`: selected manual
   preview source and its boundary label. Current statuses include
   `research_shadow_not_promoted`, `direct_candidate_shadow_not_promoted`,
-  `positive_not_promoted`, `diagnostic_only`, and
+  `apples_to_apples_not_promoted`, `positive_not_promoted`, `diagnostic_only`, and
   `blocked_source_readiness_roadmap`.
 - `default_strategy_id`: the honest default/fallback strategy that remains
   selected when the operator is not viewing a manual shadow source; current
@@ -632,8 +632,14 @@ Operational notes:
   evidence is useful diagnostic evidence and not a rendering failure.
 - Direct DT Shadow is a trained HF DecisionTransformer preview over
   candidate-index/schedule-family teacher targets. It is manually selectable as
-  `preview_source=dt_direct_candidate_shadow`, ties V2+ on the current direct
-  packet, remains worse than strict/oracle, and stays non-promoted.
+  `preview_source=dt_direct_candidate_shadow`, ties the V13 fallback row in the
+  current direct packet, remains worse than strict/oracle, and stays
+  non-promoted.
+- DT vs real V2+ Shadow is the apples-to-apples check against the headline V2+
+  strict-row packet. It is manually selectable as
+  `preview_source=dt_v2_plus_apples_to_apples_shadow`, has DT selected mean
+  regret `460.30` UAH versus real V2+ `174.77` UAH and strict `310.58` UAH, and
+  stays non-promoted.
 - `v13_dt_lava_promoted_training` intentionally returns blocked roadmap
   evidence while explicit DAM publication receipts/source-readiness gates are
   blocked.

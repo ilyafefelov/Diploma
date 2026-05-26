@@ -27,8 +27,10 @@ reason to promote another selector over the same evidence.
 Direct DT Candidate Shadow now answers a narrower engineering question: the repo
 can train a HF DecisionTransformer over candidate-index/schedule-family teacher
 targets without LAVA promotion. That run is research-shadow evidence only: it
-ties V2+ on the direct packet, remains worse than strict/oracle, and is exposed
-only as a manual dashboard preview source.
+ties the V13 fallback row in the direct packet, remains worse than
+strict/oracle, and is exposed only as a manual dashboard preview source. The
+separate apples-to-apples DT packet compares against the real V2+ result and
+does not beat it (`460.30` UAH DT mean regret versus `174.77` UAH V2+).
 
 ## Promotion Rules
 

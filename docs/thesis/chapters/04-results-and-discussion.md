@@ -1274,14 +1274,37 @@ promotion і без candidate-library adapter rows:
 V13-gated teacher rows, але трактує їх як research-shadow substrate:
 `3,921` teacher rows available, `3,741` research-shadow training rows,
 `1,735` train sequences, `90` evaluation sequences, context length `4` і
-`model_backbone=huggingface_decision_transformer_model`. Результат є
-консервативним: DT mean regret `627.04` UAH точно повторив V2+ mean regret
-`627.04` UAH, behavior cloning також дорівнює `627.04` UAH, а strict/oracle
-reference лишився значно кращим із `310.58` UAH. Для Dnipro operator preview
-Direct DT Shadow вибирає frozen V2+ fallback candidate і показує 24 hourly rows
-через `/dashboard/shadow-recommendation-preview?preview_source=dt_direct_candidate_shadow`.
-Це підтверджує, що DT можна тренувати як research-shadow model без V13
-promotion, але не змінює headline: `promotable_v13_permitted_training_rows=0`,
+`model_backbone=huggingface_decision_transformer_model`. Цей packet відповідає
+на вузьке інженерне питання: чи можна натренувати і відрендерити DT без LAVA
+promotion. Відповідь - так. Але його `627.04` UAH comparator є fallback row у
+V13 teacher packet, а не headline V2+ comparator. Тому цей результат не можна
+читати як "DT ties real V2+". Він означає лише, що DT повторив fallback row у
+цьому V13 packet і все ще програв strict/oracle reference `310.58` UAH.
+
+Щоб прибрати цю неоднозначність, було створено apples-to-apples packet
+`week3_dt_v2_plus_apples_to_apples_current`, який бере real V2+ strict-row
+comparison artifact. У цьому packet final-holdout controls є такими:
+`schedule_value_learner_v2_plus` має `174.77` UAH mean regret і `67.30` UAH
+median regret; V2 reference має `206.37` / `96.02` UAH; `strict_reference` має
+`310.58` / `198.39` UAH; `raw_reference` має `622.25` / `290.22` UAH. DT
+selected result має `460.30` UAH mean regret, тобто на `285.53` UAH гірше за
+real V2+ і на `149.72` UAH гірше за strict reference. У selected preview DT
+обрав `schedule_value_learner_v2_reference` на `65` rows і `raw_reference` на
+`25` rows, але не обрав real V2+ на жодному final row. Це і є поточна відповідь
+на питання "чи прототипний DT має найкращий результат": ні, бо його
+classification-style sequence objective не оптимізує downstream regret краще за
+консервативний V2+ schedule/value selector.
+
+Це не суперечить тому, що у diagnostic label space є potential upside:
+best-available candidate mean regret дорівнює `153.27` UAH, а `52 / 90`
+anchors мають material better-than-V2+ candidate. Але ці labels є realized
+diagnostics, не prior-safe deployable permission. Поточна DT smoke training path
+використовує mirrored rows лише для tensor/training validation, тому не є
+out-of-sample promotion evidence. Для Dnipro operator preview Direct DT Shadow
+і DT vs real V2+ Shadow показуються через manual
+`/dashboard/shadow-recommendation-preview` sources. Вони підтверджують, що DT
+можна тренувати як research-shadow model без V13 promotion, але не змінюють
+headline: `promotable_v13_permitted_training_rows=0`,
 `dt_promotion_gate_passed=false`, `dt_lava_ready=false` і
 `market_execution_enabled=false`.
 
@@ -1295,7 +1318,7 @@ evidence; market submission, full DFL і deployed DT control не заявляю
 Operator dashboard тепер розділяє default strategy і manual shadow preview.
 Default `/operator` view лишається на V2+ / `schedule_value_learner_v2_plus`,
 тобто на best-valid/fallback recommendation. Ручний перемикач може завантажити
-DT Shadow, Direct DT Shadow, Poland/TFT Shadow і DFL diagnostics через read-model endpoint
+DT Shadow, Direct DT Shadow, DT vs real V2+ Shadow, Poland/TFT Shadow і DFL diagnostics через read-model endpoint
 `/dashboard/shadow-recommendation-preview`; ці режими показують власні hourly
 schedule recommendations, charts і comparison metrics, але не стають production
 default selection і не створюють market order payload.
@@ -1334,6 +1357,12 @@ rows:
   planned UA context acquisition readiness packet for the V11 precondition gate;
 - `data/research_runs/week3_dfl_schedule_value_dfl_v2_comparison/` -
   pairwise schedule-value DFL v2 diagnostic packet;
+- `data/research_runs/week3_dt_v2_plus_apples_to_apples_current/` -
+  DT vs real V2+ apples-to-apples shadow packet showing DT selected mean regret
+  `460.30` UAH versus real V2+ `174.77` UAH and strict `310.58` UAH;
+- `docs/technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md` - technical evidence
+  note that separates the old V13 fallback-row `627.04` comparison from the
+  real V2+ comparator;
 - `data/research_runs/week3_tft_quantile_365_full_negative_evidence/` -
   official global-panel TFT quantile negative evidence packet;
 - `data/research_runs/week3_poland_lag24_richer_calibrated_experimental_schedule_value/` -

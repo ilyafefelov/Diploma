@@ -894,6 +894,39 @@ strict value scoring. Це твердження має доказову силу
 comparison packet, а не як загальне твердження про NBEATSx/TFT superiority;
 див. `scripts/materialize_schedule_value_v2_plus_comparison.py`.
 
+### 3.8.2. DT shadow protocol і коректний comparator проти V2+
+
+Decision Transformer у цій роботі використовується як research-shadow pipeline,
+а не як deployed controller. Методологічно важливо розрізняти два різні DT
+checks:
+
+1. V13 teacher-shadow run перевіряє, що repo може зібрати candidate-index
+   sequence dataset, натренувати Hugging Face `DecisionTransformerModel` і
+   показати manual dashboard preview без LAVA promotion. Його `627.04` UAH
+   comparator є fallback row у V13 teacher packet, а не headline V2+ result.
+2. V2+ apples-to-apples shadow run бере real strict-row comparison packet
+   `dfl_schedule_value_learner_v2_plus_strict_rows.csv` і порівнює DT із
+   фактичними `schedule_value_learner_v2_plus`, V2 reference, strict reference
+   та raw reference rows. Саме цей packet треба використовувати, коли питання
+   звучить "чи DT б'є V2+".
+
+Поточна архітектура DT smoke не повинна автоматично мати найкращий regret. Вона
+навчає candidate-index / schedule-family sequence classifier через
+cross-entropy, тоді як thesis promotion gate оцінює downstream LP/oracle regret.
+Класифікаційна точність або валідний transformer forward pass не означають
+lower regret. Крім того, apples-to-apples packet є final-holdout comparison
+packet, а не повноцінним історичним training corpus; mirrored train rows
+використовуються лише для перевірки tensor/training path і не дають
+out-of-sample promotion claim.
+
+Тому правильний next ML objective - regret-aware candidate selector із
+point-in-time context, explicit abstention/fallback to V2+ і tail-risk guard.
+Більший DT без кращих prior-safe labels може просто навчитися вибирати
+неправильний candidate family. Це пояснює, чому V2+ залишається stronger
+method: він already conservative, schedule-value oriented, strict-scored і
+має fallback rule; DT/LAVA може замінити його лише після доказу нижчого regret,
+не гіршого median/rolling robustness і незмінної execution boundary.
+
 ## 3.9. Candidate-Value DFL v3-V5 як schedule-level value scorer і context repair
 
 Після фіксації V2+ як основного доказового результату було перевірено сильніший, але все ще

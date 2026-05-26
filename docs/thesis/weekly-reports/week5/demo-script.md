@@ -66,7 +66,8 @@
 
 - Direct DT Shadow відповідає на питання "чи можна train DT без LAVA promotion": так, як research-shadow run.
 - Він навчений на V2+/strict/oracle candidate-index і schedule-family targets: `3,741` research-shadow rows, `1,735` train sequences, `90` eval sequences.
-- Він повторив V2+ mean regret (`627.04` UAH) і програв strict/oracle (`310.58` UAH), тому це не headline result.
+- Він повторив fallback-row mean regret (`627.04` UAH) у V13 teacher packet і програв strict/oracle (`310.58` UAH), тому це не headline result.
+- Окремий apples-to-apples packet проти real V2+ показує V2+ `174.77` UAH, strict `310.58` UAH, DT selected `460.30` UAH; V2+ залишається headline.
 - У dashboard/API він доступний лише як manual `preview_source=dt_direct_candidate_shadow`; V2+ лишається default/fallback.
 
 Не казати:

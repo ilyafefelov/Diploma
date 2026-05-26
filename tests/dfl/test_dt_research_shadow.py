@@ -9,6 +9,7 @@ import polars as pl
 
 from smart_arbitrage.dfl.dt_research_shadow import (
     build_dt_research_shadow_teacher_rows_from_candidate_library,
+    build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
     build_dt_research_shadow_sequence_packet,
     run_dt_research_shadow_smoke,
     validate_dt_research_shadow_evaluation_packet,
@@ -17,6 +18,9 @@ from smart_arbitrage.dfl.dt_research_shadow import (
 )
 from scripts.materialize_dt_research_shadow_packet import (
     main as materialize_dt_research_shadow_packet,
+)
+from scripts.materialize_dt_v2_plus_apples_to_apples_packet import (
+    main as materialize_dt_v2_plus_apples_to_apples_packet,
 )
 
 
@@ -565,6 +569,107 @@ def test_dt_research_shadow_cli_merges_candidate_library_context(tmp_path) -> No
     assert evaluation_validation["market_execution_enabled"] is False
 
 
+def test_dt_research_shadow_adapts_real_v2_plus_strict_rows_for_apples_to_apples() -> None:
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=_v2_plus_strict_rows(),
+        regret_decomposition_frame=_v2_plus_regret_decomposition_rows(),
+    )
+
+    assert teacher_rows.height == 16
+    assert set(teacher_rows["dt_schedule_family_target"].unique().to_list()) == {
+        "raw_reference",
+        "schedule_value_learner_v2_plus",
+        "schedule_value_learner_v2_reference",
+        "strict_reference",
+    }
+    assert set(teacher_rows["split_name"].unique().to_list()) == {
+        "train_selection",
+        "final_holdout",
+    }
+    assert teacher_rows.filter(pl.col("split_name") == "train_selection").height == 8
+    assert teacher_rows.filter(pl.col("split_name") == "final_holdout").height == 8
+    assert (
+        teacher_rows.select(pl.col("market_execution_enabled").any()).item()
+        is False
+    )
+    assert (
+        teacher_rows.select(pl.col("promotion_gate_passed").any()).item()
+        is False
+    )
+    assert teacher_rows["v2_plus_role"].unique().to_list() == [
+        "real_schedule_value_learner_v2_plus_comparator"
+    ]
+    final_v2_mean = (
+        teacher_rows.filter(
+            (pl.col("split_name") == "final_holdout")
+            & (pl.col("dt_schedule_family_target") == "schedule_value_learner_v2_plus")
+        )["regret_uah"].mean()
+    )
+    assert final_v2_mean == 15.0
+    assert "best_available_candidate_regret_uah" in teacher_rows.columns
+    assert (
+        teacher_rows.filter(
+            pl.col("dt_schedule_family_target") == "schedule_value_learner_v2_plus"
+        )["regret_delta_vs_v2_plus_uah"].to_list()
+        == [0.0, 0.0, 0.0, 0.0]
+    )
+
+
+def test_dt_v2_plus_apples_to_apples_cli_reports_real_v2_plus_control(
+    tmp_path,
+) -> None:
+    strict_csv = tmp_path / "v2_plus_strict_rows.csv"
+    regret_csv = tmp_path / "regret_decomposition.csv"
+    output_dir = tmp_path / "packet"
+    _v2_plus_strict_rows().write_csv(strict_csv)
+    _v2_plus_regret_decomposition_rows().write_csv(regret_csv)
+
+    exit_code = materialize_dt_v2_plus_apples_to_apples_packet(
+        [
+            "--strict-rows-csv",
+            str(strict_csv),
+            "--regret-decomposition-csv",
+            str(regret_csv),
+            "--output-dir",
+            str(output_dir),
+            "--run-slug",
+            "dt-v2-plus-apples-test",
+            "--source-model-name",
+            "nbeatsx_official_global_panel_horizon_calibrated_v1",
+            "--context-length",
+            "4",
+            "--max-epochs",
+            "1",
+            "--hidden-dim",
+            "16",
+            "--num-layers",
+            "1",
+            "--num-heads",
+            "2",
+            "--model-backbone",
+            "local",
+        ]
+    )
+
+    assert exit_code == 0
+    summary = json.loads(
+        (output_dir / "dt_v2_plus_apples_to_apples_summary.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    controls = summary["final_holdout_controls"]
+    assert controls["schedule_value_learner_v2_plus"]["mean_regret_uah"] == 15.0
+    assert controls["strict_reference"]["mean_regret_uah"] == 30.0
+    assert "raw_reference" in summary["candidate_set"]
+    assert "schedule_value_learner_v2_reference" in summary["candidate_set"]
+    assert summary["boundary"]["real_v2_plus_comparator"] is True
+    assert summary["boundary"]["mirrored_training_rows"] is True
+    assert summary["boundary"]["out_of_sample_generalization_claim"] is False
+    assert summary["boundary"]["market_execution_enabled"] is False
+    assert summary["dt_evaluation_metrics"]["v2_plus_mean_regret_uah"] == 15.0
+    assert summary["best_available_label_summary"]["attached"] is True
+
+
 def _teacher_rows() -> pl.DataFrame:
     rows: list[dict[str, object]] = []
     start = datetime(2026, 1, 1, 23)
@@ -676,6 +781,104 @@ def _tft_candidate_library_rows() -> pl.DataFrame:
                     value=905.0 - anchor_index,
                 ),
             ]
+        )
+    return pl.DataFrame(rows)
+
+
+def _v2_plus_strict_rows() -> pl.DataFrame:
+    rows: list[dict[str, object]] = []
+    start = datetime(2026, 4, 12, 23)
+    role_regrets = {
+        "raw_reference": [80.0, 70.0],
+        "schedule_value_learner_v2_plus": [10.0, 20.0],
+        "schedule_value_learner_v2_reference": [18.0, 24.0],
+        "strict_reference": [35.0, 25.0],
+    }
+    for anchor_index in range(2):
+        anchor = start + timedelta(days=anchor_index)
+        for role, regrets in role_regrets.items():
+            rows.append(
+                {
+                    "evaluation_id": f"test:{role}:{anchor_index}",
+                    "tenant_id": "client_003_dnipro_factory",
+                    "source_model_name": (
+                        "nbeatsx_official_global_panel_horizon_calibrated_v1"
+                    ),
+                    "forecast_model_name": f"model_{role}",
+                    "strategy_kind": "dfl_schedule_value_learner_v2_plus_strict_lp",
+                    "market_venue": "DAM",
+                    "anchor_timestamp": anchor,
+                    "generated_at": "2026-05-15T17:53:14+00:00",
+                    "horizon_hours": 24,
+                    "starting_soc_fraction": 0.52,
+                    "starting_soc_source": "schedule_candidate_library_v2_plus",
+                    "decision_value_uah": 1000.0 - regrets[anchor_index],
+                    "forecast_objective_value_uah": 900.0,
+                    "oracle_value_uah": 1000.0,
+                    "regret_uah": regrets[anchor_index],
+                    "regret_ratio": regrets[anchor_index] / 1000.0,
+                    "total_degradation_penalty_uah": 2.0,
+                    "total_throughput_mwh": 0.4,
+                    "committed_action": "HOLD",
+                    "committed_power_mw": 0.0,
+                    "rank_by_regret": 1,
+                    "data_quality_tier": "thesis_grade",
+                    "observed_coverage_ratio": 1.0,
+                    "safety_violation_count": 0,
+                    "selection_role": role,
+                    "claim_scope": (
+                        "dfl_schedule_value_learner_v2_plus_strict_lp_gate_not_full_dfl"
+                    ),
+                    "not_full_dfl": True,
+                    "not_market_execution": True,
+                    "evaluation_payload": json.dumps(
+                        {
+                            "forecast_diagnostics": {
+                                "top_k_price_recall": 0.5,
+                            },
+                            "horizon": [
+                                {
+                                    "actual_price_uah_mwh": 1000.0,
+                                    "forecast_price_uah_mwh": 900.0,
+                                    "net_power_mw": 0.0,
+                                },
+                                {
+                                    "actual_price_uah_mwh": 1400.0,
+                                    "forecast_price_uah_mwh": 1300.0,
+                                    "net_power_mw": 0.1,
+                                },
+                            ],
+                        }
+                    ),
+                }
+            )
+    return pl.DataFrame(rows)
+
+
+def _v2_plus_regret_decomposition_rows() -> pl.DataFrame:
+    start = datetime(2026, 4, 12, 23)
+    rows = []
+    for anchor_index, best_regret in enumerate([10.0, 12.0]):
+        rows.append(
+            {
+                "tenant_id": "client_003_dnipro_factory",
+                "source_model_name": "nbeatsx_official_global_panel_horizon_calibrated_v1",
+                "anchor_timestamp": start + timedelta(days=anchor_index),
+                "split_name": "final_holdout",
+                "best_candidate_family": (
+                    "schedule_value_learner_v2_plus"
+                    if anchor_index == 0
+                    else "oracle_neighbor_diagnostic"
+                ),
+                "best_candidate_model_name": f"best_model_{anchor_index}",
+                "best_candidate_regret_uah": best_regret,
+                "regret_gap_v2_to_best_candidate_uah": (
+                    0.0 if anchor_index == 0 else 8.0
+                ),
+                "claim_scope": "dfl_schedule_value_regret_decomposition_not_full_dfl",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
         )
     return pl.DataFrame(rows)
 

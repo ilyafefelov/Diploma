@@ -48,9 +48,19 @@ Direct DT Shadow status:
 |---|---|---|
 | Research-shadow DT training | Completed | `data/research_runs/week3_dt_direct_candidate_shadow_current/` |
 | Training substrate | Valid | HF DecisionTransformer over candidate-index/schedule-family targets |
-| Result vs V2+ | Tie | DT mean regret `627.04` UAH; V2+ mean regret `627.04` UAH |
+| Result vs V13 fallback row | Tie | DT mean regret `627.04` UAH; fallback-row mean regret `627.04` UAH |
 | Result vs strict/oracle | Worse | strict/oracle mean regret `310.58` UAH |
 | Dashboard/API | Manual preview only | `preview_source=dt_direct_candidate_shadow`; V2+ remains default/fallback |
+
+Apples-to-apples DT vs real V2+ status:
+
+| Lane | Status | Evidence |
+|---|---|---|
+| Research-shadow DT comparison | Completed | `data/research_runs/week3_dt_v2_plus_apples_to_apples_current/` |
+| Correct comparator | Real V2+ strict-row packet | `schedule_value_learner_v2_plus` mean regret `174.77` UAH |
+| DT result | Not promoted | DT selected mean regret `460.30` UAH |
+| Result vs strict/oracle | Worse | strict/oracle mean regret `310.58` UAH |
+| Interpretation | Negative evidence | current DT classifier objective does not beat the conservative V2+ schedule/value selector |
 
 ## 4. Тестування та перевірки
 
@@ -112,6 +122,7 @@ Optional:
 - V13 sprint: [v13-f3-acquisition-sprint-2026-05-26.md](../../../technical/deep-research-reports/2026-05-25-full-project-review/v13-f3-acquisition-sprint-2026-05-26.md)
 - Evidence manifest: [evidence-manifest.md](../../appendices/evidence-manifest.md)
 - Direct DT Shadow note: [DT_DIRECT_CANDIDATE_SHADOW.md](../../../technical/DT_DIRECT_CANDIDATE_SHADOW.md)
+- Apples-to-apples DT note: [DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md](../../../technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md)
 - Operator boundary: [OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md](../../../technical/OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md)
 - Methodology draft: [03-Methodology.md](../../chapters/03-Methodology.md)
 - Results draft: [04-results-and-discussion.md](../../chapters/04-results-and-discussion.md)
@@ -126,7 +137,7 @@ Optional:
 | OREE PXS observation rows можуть бути сприйняті як publication receipts | Observation time не є source publication timestamp | Введено SCMO handoff rule: не деривити `source_publication_timestamp` |
 | SCMO credentials можуть змішатися з diploma MVP | SCMO потрібні для stronger market-submission-grade receipt proof, не для credentialless MVP | MVP описано як defendable без SCMO |
 | DT/LAVA smoke artifacts можуть виглядати як deployment | Це research-only evidence | `dt_lava_ready=false`, `permits_model_training=false`, no `ProposedBid` |
-| Direct DT Shadow може виглядати як promotion | Він лише повторює V2+ і програє strict/oracle | Документовано як manual preview, not promoted, no default switch |
+| Direct DT Shadow може виглядати як promotion | Він лише повторює fallback row у V13 packet і програє strict/oracle; apples-to-apples DT програє real V2+ | Документовано як manual preview, not promoted, no default switch |
 
 ## 8. План на наступний тиждень
 

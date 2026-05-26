@@ -10,6 +10,7 @@ export type OperatorPreviewSourceId
   = | 'best_valid'
     | 'dt_shadow'
     | 'dt_direct_candidate_shadow'
+    | 'dt_v2_plus_apples_to_apples_shadow'
     | 'poland_tft_shadow'
     | 'dfl_diagnostics'
     | 'v13_dt_lava_promoted_training'
@@ -17,6 +18,7 @@ export type OperatorPreviewSourceId
 export const SHADOW_PREVIEW_SOURCE_IDS: OperatorPreviewSourceId[] = [
   'dt_shadow',
   'dt_direct_candidate_shadow',
+  'dt_v2_plus_apples_to_apples_shadow',
   'poland_tft_shadow',
   'dfl_diagnostics',
   'v13_dt_lava_promoted_training'
@@ -377,7 +379,10 @@ const comparisonWarning = (shadowPreview: ShadowRecommendationPreviewResponse): 
   if (regretDelta < 0) {
     return `DT is better than V2+ by ${Math.round(Math.abs(regretDelta)).toLocaleString('en-GB')} UAH mean regret on this shadow packet.`
   }
-  return 'DT ties V2+ mean regret on this shadow packet.'
+  if (shadowPreview.preview_source_id === 'dt_direct_candidate_shadow') {
+    return 'DT ties the V13 fallback row on this shadow packet.'
+  }
+  return 'DT ties the comparator mean regret on this shadow packet.'
 }
 
 const formatSocPath = (before: number | null, after: number | null): string => {

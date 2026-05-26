@@ -46,9 +46,11 @@ Current fix-plan progress also closed the README stale-verification cleanup, cla
 2026-05-26 addendum: Direct DT Candidate Shadow is now trained and documented
 as a non-promoted research preview. It uses the existing candidate-index /
 schedule-family teacher target contract, writes artifacts under
-`data/research_runs/week3_dt_direct_candidate_shadow_current/`, ties V2+ on the
-direct packet, remains worse than strict/oracle, and keeps
-`market_execution_enabled=false`.
+`data/research_runs/week3_dt_direct_candidate_shadow_current/`, ties the V13
+fallback row in the direct packet, remains worse than strict/oracle, and keeps
+`market_execution_enabled=false`. The follow-up apples-to-apples DT packet at
+`data/research_runs/week3_dt_v2_plus_apples_to_apples_current/` compares
+against real V2+ and shows DT `460.30` UAH mean regret versus V2+ `174.77` UAH.
 
 Thesis support artifact:
 

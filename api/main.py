@@ -183,6 +183,18 @@ DT_DIRECT_CANDIDATE_SHADOW_SELECTED_PREVIEW_JSON_PATH = (
 	/ "dt_research_shadow_selected_schedule_preview.json"
 )
 DT_DIRECT_CANDIDATE_SHADOW_TEACHER_ROWS_CSV_PATH = DT_RESEARCH_SHADOW_TEACHER_ROWS_CSV_PATH
+DT_V2_PLUS_APPLES_TO_APPLES_SELECTED_PREVIEW_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_apples_to_apples_current"
+	/ "dt_research_shadow_selected_schedule_preview.json"
+)
+DT_V2_PLUS_APPLES_TO_APPLES_TEACHER_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_apples_to_apples_current"
+	/ "dt_v2_plus_apples_to_apples_teacher_rows.csv"
+)
 TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH = (
 	Path("data")
 	/ "research_runs"
@@ -4341,6 +4353,18 @@ def _operator_shadow_preview_sources() -> list[ShadowPreviewSourceOptionResponse
 			),
 		),
 		ShadowPreviewSourceOptionResponse(
+			preview_source_id="dt_v2_plus_apples_to_apples_shadow",
+			label="DT vs real V2+ Shadow",
+			status="apples_to_apples_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"DT smoke built from the real V2+ strict-row packet; comparator-aligned "
+				"research evidence only."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
 			preview_source_id="poland_tft_shadow",
 			label="Poland/TFT Shadow",
 			status="positive_not_promoted",
@@ -4387,6 +4411,15 @@ def _operator_shadow_recommendation_preview_response(
 			status="direct_candidate_shadow_not_promoted",
 			selected_preview_path=DT_DIRECT_CANDIDATE_SHADOW_SELECTED_PREVIEW_JSON_PATH,
 			teacher_rows_path=DT_DIRECT_CANDIDATE_SHADOW_TEACHER_ROWS_CSV_PATH,
+		)
+	elif preview_source == "dt_v2_plus_apples_to_apples_shadow":
+		response = _operator_dt_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label="DT vs real V2+ Shadow",
+			status="apples_to_apples_not_promoted",
+			selected_preview_path=DT_V2_PLUS_APPLES_TO_APPLES_SELECTED_PREVIEW_JSON_PATH,
+			teacher_rows_path=DT_V2_PLUS_APPLES_TO_APPLES_TEACHER_ROWS_CSV_PATH,
 		)
 	elif preview_source == "v13_dt_lava_promoted_training":
 		response = _blocked_shadow_recommendation_preview_response(

@@ -22,7 +22,8 @@ Current manual source ids:
 | Source id | Label | Boundary |
 |---|---|---|
 | `dt_shadow` | DT Shadow | Existing HF/local DT research-shadow smoke, not promoted |
-| `dt_direct_candidate_shadow` | Direct DT Shadow | Fresh HF DT trained directly on candidate-index/schedule-family teacher targets; ties V2+ and remains worse than strict/oracle |
+| `dt_direct_candidate_shadow` | Direct DT Shadow | Fresh HF DT trained directly on candidate-index/schedule-family teacher targets; ties the V13 fallback row and remains worse than strict/oracle |
+| `dt_v2_plus_apples_to_apples_shadow` | DT vs real V2+ Shadow | Apples-to-apples DT check against real V2+; DT loses to V2+ and remains non-promoted |
 | `poland_tft_shadow` | Poland/TFT Shadow | Positive/near-miss diagnostic evidence, not default |
 | `dfl_diagnostics` | DFL diagnostics | Candidate-value diagnostic evidence, not production |
 | `v13_dt_lava_promoted_training` | V13/DT/LAVA blocked | Roadmap-only blocked source, no schedule rows |

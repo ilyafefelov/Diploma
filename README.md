@@ -21,11 +21,13 @@ Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a tr
 - Direct DT candidate shadow: `scripts/materialize_dt_research_shadow_packet.py`
   now has a fresh HF DecisionTransformer run at
   `data/research_runs/week3_dt_direct_candidate_shadow_current/`. It trains on
-  candidate-index/schedule-family teacher targets without LAVA promotion, ties
-  V2+ on the direct packet (`627.04` UAH mean regret), remains worse than
-  strict/oracle (`310.58` UAH), and is manually selectable in the dashboard as
-  `dt_direct_candidate_shadow` only. It does not change the default strategy or
-  `market_execution_enabled=false`.
+  candidate-index/schedule-family teacher targets without LAVA promotion and
+  ties the V13 fallback row in that packet (`627.04` UAH mean regret), while
+  remaining worse than strict/oracle (`310.58` UAH). The apples-to-apples DT
+  check against the real V2+ comparator shows DT at `460.30` UAH mean regret
+  versus V2+ at `174.77` UAH, so V2+ remains the headline. Both DT packets are
+  manually selectable shadow previews only and do not change the default
+  strategy or `market_execution_enabled=false`.
 - Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
 
 ## Pipeline And LP Baseline

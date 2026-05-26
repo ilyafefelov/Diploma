@@ -7,6 +7,13 @@ on V2+/strict/oracle teacher rows with candidate-index and schedule-family
 targets. It answers a narrow question: can the repo train and render a DT
 without waiting for the V13 DT/LAVA promotion gate?
 
+Important comparator clarification: the `627.04` UAH "V2+" value in this
+packet is the V13 teacher-packet frozen fallback row, not the thesis headline
+V2+ result. The headline V2+ comparator from
+`dfl_schedule_value_learner_v2_plus_strict_rows.csv` is `174.77` UAH mean
+regret. The apples-to-apples DT comparison against that real V2+ packet is
+documented in [DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md](DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md).
+
 Answer: yes, as a research-shadow model. It is not V13-permitted/promoted
 training, not LAVA promotion, not a deployed controller, and not market
 execution.
@@ -61,7 +68,7 @@ Key files:
 | Context length | `4` |
 | Forecast context coverage | `partial_missing_tft` |
 | DT selected mean regret | `627.04` UAH |
-| V2+ mean regret in this packet | `627.04` UAH |
+| V13 fallback-row mean regret in this packet | `627.04` UAH |
 | Strict/oracle mean regret | `310.58` UAH |
 | DT minus V2+ mean regret | `0.00` UAH |
 | DT minus strict mean regret | `316.46` UAH |
@@ -69,8 +76,10 @@ Key files:
 Interpretation:
 
 - The direct DT model trained and produced a valid sequence/evaluation packet.
-- It selected the conservative frozen V2+ fallback candidate in the Dnipro
-  operator preview, so it ties V2+ on this direct packet.
+- It selected the conservative frozen fallback candidate in the Dnipro operator
+  preview, so it ties the fallback row in this V13 teacher packet.
+- This result must not be compared to the headline V2+ `174.77` UAH result; use
+  the apples-to-apples packet for that comparison.
 - It remains materially worse than the strict/oracle reference and therefore is
   not a thesis headline replacement.
 - `promotable_v13_permitted_training_rows=0`,

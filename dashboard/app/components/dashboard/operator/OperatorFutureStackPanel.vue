@@ -800,6 +800,15 @@ const previewSourceSelectItems = computed(() => {
           market_execution_enabled: false
         },
         {
+          preview_source_id: 'dt_v2_plus_apples_to_apples_shadow',
+          label: 'DT vs real V2+ Shadow',
+          status: 'apples_to_apples_not_promoted',
+          reason: 'Comparator-aligned DT preview only.',
+          is_default_strategy: false,
+          is_promoted_strategy: false,
+          market_execution_enabled: false
+        },
+        {
           preview_source_id: 'poland_tft_shadow',
           label: 'Poland-TFT Shadow',
           status: 'positive_not_promoted',
@@ -890,6 +899,9 @@ function formatPreviewSourceOptionLabel(
   if (previewSourceId === 'dt_direct_candidate_shadow') {
     return 'Direct DT shadow (not promoted)'
   }
+  if (previewSourceId === 'dt_v2_plus_apples_to_apples_shadow') {
+    return 'DT vs real V2+ shadow (not promoted)'
+  }
   if (previewSourceId === 'poland_tft_shadow') {
     return 'Poland/TFT shadow (positive, not promoted)'
   }
@@ -950,6 +962,9 @@ function shortStrategyLabel(row: StrategyComparisonRow): string {
   }
   if (row.sourceId === 'dt_direct_candidate_shadow') {
     return 'Direct DT'
+  }
+  if (row.sourceId === 'dt_v2_plus_apples_to_apples_shadow') {
+    return 'DT/V2+'
   }
   if (row.sourceId === 'poland_tft_shadow') {
     return 'Poland/TFT'

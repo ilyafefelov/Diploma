@@ -84,6 +84,21 @@ describe('operator shadow preview source switching', () => {
     expect(visible?.readiness_warnings.join(' ')).toContain('V2+ remains default/fallback')
   })
 
+  it('maps apples-to-apples DT/V2+ shadow rows without promoting them', () => {
+    const visible = adaptShadowPreviewToOperatorRecommendation(
+      baseRecommendation(),
+      applesToApplesDtShadowPreview(),
+      'dt_v2_plus_apples_to_apples_shadow'
+    )
+
+    expect(shouldLoadShadowPreview('dt_v2_plus_apples_to_apples_shadow')).toBe(true)
+    expect(visible?.selected_strategy_id).toBe('dt_v2_plus_apples_to_apples_shadow')
+    expect(visible?.selection_reason).toContain('apples_to_apples_not_promoted')
+    expect(visible?.market_execution_enabled).toBe(false)
+    expect(visible?.policy_mode).toBe('dt_v2_plus_apples_to_apples_shadow_preview')
+    expect(visible?.readiness_warnings.join(' ')).toContain('DT is worse than V2+')
+  })
+
   it('builds hourly table rows with candidate, value, regret, and safety labels', () => {
     const rows = buildShadowHourlyRecommendationRows(dtShadowPreview(), 0.5, 60)
 
@@ -151,6 +166,7 @@ describe('operator shadow preview source switching', () => {
   it('builds a comparison surface including direct DT, worse DT, and blocked previews', () => {
     const rows = buildStrategyComparisonRows(baseRecommendationWithSchedule(), [
       directDtShadowPreview(),
+      applesToApplesDtShadowPreview(),
       dtShadowPreview(),
       {
         ...dtShadowPreview(),
@@ -164,6 +180,7 @@ describe('operator shadow preview source switching', () => {
     expect(rows.map(row => row.sourceId)).toEqual([
       'best_valid',
       'dt_direct_candidate_shadow',
+      'dt_v2_plus_apples_to_apples_shadow',
       'dt_shadow',
       'v13_dt_lava_promoted_training'
     ])
@@ -186,6 +203,15 @@ describe('operator shadow preview source switching', () => {
       marketExecutionEnabled: false
     }))
     expect(rows[2]).toEqual(expect.objectContaining({
+      label: 'DT vs real V2+ Shadow',
+      status: 'apples_to_apples_not_promoted',
+      scheduleRows: 1,
+      totalDischargeMwh: 0.12,
+      meanRegretVsV2Uah: 45,
+      meanRegretVsStrictUah: 80,
+      marketExecutionEnabled: false
+    }))
+    expect(rows[3]).toEqual(expect.objectContaining({
       label: 'DT Shadow',
       status: 'research_shadow_not_promoted',
       scheduleRows: 1,
@@ -194,7 +220,7 @@ describe('operator shadow preview source switching', () => {
       meanRegretVsStrictUah: 80,
       marketExecutionEnabled: false
     }))
-    expect(rows[3]).toEqual(expect.objectContaining({
+    expect(rows[4]).toEqual(expect.objectContaining({
       label: 'V13/DT/LAVA blocked',
       status: 'blocked_source_readiness_roadmap',
       scheduleRows: 0,
@@ -446,5 +472,16 @@ function directDtShadowPreview(): ShadowRecommendationPreviewResponse {
     preview_status: 'direct_candidate_shadow_not_promoted',
     boundary_labels: ['Direct DT Shadow', 'Not promoted', 'Preview only', 'No market execution'],
     readiness_warnings: ['Direct DT shadow is diagnostic evidence only.']
+  }
+}
+
+function applesToApplesDtShadowPreview(): ShadowRecommendationPreviewResponse {
+  return {
+    ...dtShadowPreview(),
+    preview_source_id: 'dt_v2_plus_apples_to_apples_shadow',
+    preview_source_label: 'DT vs real V2+ Shadow',
+    preview_status: 'apples_to_apples_not_promoted',
+    boundary_labels: ['DT vs real V2+', 'Not promoted', 'Preview only', 'No market execution'],
+    readiness_warnings: ['DT/V2+ apples-to-apples shadow is diagnostic evidence only.']
   }
 }

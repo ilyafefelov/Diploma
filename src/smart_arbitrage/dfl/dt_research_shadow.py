@@ -9,7 +9,7 @@ non-executable.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import ast
 import importlib.util
 import json
@@ -176,6 +176,45 @@ CANDIDATE_LIBRARY_REQUIRED_COLUMNS: Final[frozenset[str]] = frozenset(
         "market_execution_enabled",
     }
 )
+V2_PLUS_STRICT_ROLE_TO_FAMILY: Final[dict[str, str]] = {
+    "raw_reference": "raw_reference",
+    "schedule_value_learner_v2_plus": "schedule_value_learner_v2_plus",
+    "schedule_value_learner_v2_reference": "schedule_value_learner_v2_reference",
+    "strict_reference": "strict_reference",
+}
+V2_PLUS_STRICT_REQUIRED_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "source_model_name",
+        "forecast_model_name",
+        "anchor_timestamp",
+        "generated_at",
+        "horizon_hours",
+        "starting_soc_fraction",
+        "decision_value_uah",
+        "forecast_objective_value_uah",
+        "oracle_value_uah",
+        "regret_uah",
+        "total_degradation_penalty_uah",
+        "total_throughput_mwh",
+        "selection_role",
+        "claim_scope",
+        "not_full_dfl",
+        "not_market_execution",
+        "evaluation_payload",
+    }
+)
+V2_PLUS_REGRET_DECOMPOSITION_COLUMNS: Final[frozenset[str]] = frozenset(
+    {
+        "tenant_id",
+        "source_model_name",
+        "anchor_timestamp",
+        "best_candidate_family",
+        "best_candidate_model_name",
+        "best_candidate_regret_uah",
+        "regret_gap_v2_to_best_candidate_uah",
+    }
+)
 
 
 def build_dt_research_shadow_teacher_rows_from_candidate_library(
@@ -286,6 +325,70 @@ def build_dt_research_shadow_teacher_rows_from_candidate_library(
                 }
             )
             adapted_rows.append(adapted)
+    return pl.DataFrame(adapted_rows)
+
+
+def build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+    *,
+    strict_rows_frame: pl.DataFrame,
+    regret_decomposition_frame: pl.DataFrame | None = None,
+    mirror_training_offset_days: int = 365,
+) -> pl.DataFrame:
+    """Adapt V2+ strict-row evidence into an apples-to-apples DT shadow table.
+
+    The exported V2+ strict rows are a final-holdout comparison packet, not a
+    full historical training table. To let the DT smoke path train while keeping
+    the real final-holdout V2+ controls intact, this adapter creates mirrored
+    non-promotable train rows dated before the final-holdout rows. The result is
+    a comparator-aligned smoke packet, not out-of-sample promotion evidence.
+    """
+
+    if mirror_training_offset_days <= 0:
+        raise ValueError("mirror_training_offset_days must be positive.")
+    frame = _normalized_v2_plus_strict_rows(strict_rows_frame)
+    best_labels = _best_available_label_lookup(regret_decomposition_frame)
+    role_to_index = {
+        role: index for index, role in enumerate(V2_PLUS_STRICT_ROLE_TO_FAMILY)
+    }
+    adapted_rows: list[dict[str, Any]] = []
+    for _, group in frame.group_by(
+        ["tenant_id", "source_model_name", "anchor_timestamp"],
+        maintain_order=True,
+    ):
+        rows = list(group.sort("selection_role").iter_rows(named=True))
+        v2_row = _role_row(rows, "schedule_value_learner_v2_plus")
+        if v2_row is None:
+            raise ValueError("V2+ strict rows are missing schedule_value_learner_v2_plus.")
+        v2_regret = _float(v2_row.get("regret_uah"))
+        candidate_count = len(rows)
+        for row in rows:
+            role = str(row["selection_role"])
+            if role not in V2_PLUS_STRICT_ROLE_TO_FAMILY:
+                continue
+            anchor = row["anchor_timestamp"]
+            if not isinstance(anchor, datetime):
+                raise ValueError("anchor_timestamp must parse as datetime.")
+            for split_name, anchor_timestamp in (
+                (
+                    "train_selection",
+                    anchor - timedelta(days=mirror_training_offset_days),
+                ),
+                ("final_holdout", anchor),
+            ):
+                adapted_rows.append(
+                    _v2_plus_strict_teacher_row(
+                        row=row,
+                        split_name=split_name,
+                        anchor_timestamp=anchor_timestamp,
+                        candidate_index=role_to_index[role],
+                        candidate_count=candidate_count,
+                        family=V2_PLUS_STRICT_ROLE_TO_FAMILY[role],
+                        v2_regret=v2_regret,
+                        best_label=best_labels.get(_anchor_key(row)),
+                    )
+                )
+    if not adapted_rows:
+        raise ValueError("No V2+ strict rows could be adapted for DT shadow.")
     return pl.DataFrame(adapted_rows)
 
 
@@ -844,6 +947,265 @@ def _normalized_candidate_library_rows(frame: pl.DataFrame) -> pl.DataFrame:
     ).sort(["tenant_id", "source_model_name", "anchor_timestamp"])
 
 
+def _normalized_v2_plus_strict_rows(frame: pl.DataFrame) -> pl.DataFrame:
+    missing = sorted(V2_PLUS_STRICT_REQUIRED_COLUMNS - set(frame.columns))
+    if missing:
+        raise ValueError(f"V2+ strict rows missing columns: {missing}")
+    if frame.height == 0:
+        raise ValueError("V2+ strict rows cannot be empty.")
+    if _frame_has_true(frame, "market_execution_enabled"):
+        raise ValueError("V2+ strict-row DT shadow refuses market execution rows.")
+    if not _frame_all_true(frame, "not_full_dfl"):
+        raise ValueError("V2+ strict rows must keep not_full_dfl=true.")
+    if not _frame_all_true(frame, "not_market_execution"):
+        raise ValueError("V2+ strict rows must keep not_market_execution=true.")
+    allowed_roles = set(V2_PLUS_STRICT_ROLE_TO_FAMILY)
+    adapted = frame.with_columns(
+        pl.col("anchor_timestamp").cast(pl.Datetime, strict=False),
+        pl.col("selection_role").cast(pl.String),
+        pl.lit(False).alias("market_execution_enabled"),
+        pl.lit(True).alias("not_full_dfl"),
+        pl.lit(True).alias("not_market_execution"),
+    ).filter(pl.col("selection_role").is_in(sorted(allowed_roles)))
+    if adapted.height == 0:
+        raise ValueError("V2+ strict rows contain no supported selection roles.")
+    return adapted.sort(["tenant_id", "source_model_name", "anchor_timestamp"])
+
+
+def _best_available_label_lookup(
+    regret_decomposition_frame: pl.DataFrame | None,
+) -> dict[tuple[str, str, str], dict[str, Any]]:
+    if regret_decomposition_frame is None:
+        return {}
+    missing = sorted(
+        V2_PLUS_REGRET_DECOMPOSITION_COLUMNS - set(regret_decomposition_frame.columns)
+    )
+    if missing:
+        raise ValueError(f"V2+ regret decomposition rows missing columns: {missing}")
+    lookup: dict[tuple[str, str, str], dict[str, Any]] = {}
+    frame = regret_decomposition_frame.with_columns(
+        pl.col("anchor_timestamp").cast(pl.Datetime, strict=False),
+    )
+    for row in frame.iter_rows(named=True):
+        lookup[_anchor_key(row)] = {
+            "best_available_candidate_family": _non_empty_text(
+                row.get("best_candidate_family"),
+                "unknown_best_candidate",
+            ),
+            "best_available_candidate_model_name": _non_empty_text(
+                row.get("best_candidate_model_name"),
+                "unknown_best_candidate_model",
+            ),
+            "best_available_candidate_regret_uah": _float(
+                row.get("best_candidate_regret_uah")
+            ),
+            "best_available_regret_gap_vs_v2_plus_uah": _float(
+                row.get("regret_gap_v2_to_best_candidate_uah")
+            ),
+        }
+    return lookup
+
+
+def _v2_plus_strict_teacher_row(
+    *,
+    row: Mapping[str, Any],
+    split_name: str,
+    anchor_timestamp: datetime,
+    candidate_index: int,
+    candidate_count: int,
+    family: str,
+    v2_regret: float,
+    best_label: Mapping[str, Any] | None,
+) -> dict[str, Any]:
+    payload = _json_mapping(row.get("evaluation_payload"))
+    horizon = _list_value(payload.get("horizon"))
+    forecast_vector = [
+        _float(_mapping(item).get("forecast_price_uah_mwh")) for item in horizon
+    ]
+    actual_vector = [
+        _float(_mapping(item).get("actual_price_uah_mwh")) for item in horizon
+    ]
+    dispatch_vector = [_float(_mapping(item).get("net_power_mw")) for item in horizon]
+    if not forecast_vector:
+        forecast_vector = [_float(row.get("forecast_objective_value_uah"))]
+    if not actual_vector:
+        actual_vector = [_float(row.get("oracle_value_uah"))]
+    if not dispatch_vector:
+        dispatch_vector = [0.0 for _ in forecast_vector]
+    starting_soc = _float(row.get("starting_soc_fraction"), fallback=0.52)
+    soc_vector = [starting_soc for _ in forecast_vector]
+    forecast_diagnostics = _mapping(payload.get("forecast_diagnostics"))
+    regret = _float(row.get("regret_uah"))
+    regret_delta = regret - v2_regret
+    label = dict(best_label or {})
+    candidate_model_name = _non_empty_text(row.get("forecast_model_name"), family)
+    return {
+        "tenant_id": _non_empty_text(row.get("tenant_id"), "unknown_tenant"),
+        "source_model_name": _non_empty_text(
+            row.get("source_model_name"),
+            "unknown_source",
+        ),
+        "anchor_timestamp": anchor_timestamp,
+        "generated_at": row.get("generated_at"),
+        "split_name": split_name,
+        "horizon_hours": _int(row.get("horizon_hours")),
+        "candidate_family": family,
+        "candidate_model_name": candidate_model_name,
+        "forecast_price_uah_mwh_vector": forecast_vector,
+        "actual_price_uah_mwh_vector": actual_vector,
+        "dispatch_mw_vector": dispatch_vector,
+        "soc_fraction_vector": soc_vector,
+        "decision_value_uah": _float(row.get("decision_value_uah")),
+        "forecast_objective_value_uah": _float(row.get("forecast_objective_value_uah")),
+        "oracle_value_uah": _float(row.get("oracle_value_uah")),
+        "regret_uah": regret,
+        "regret_ratio": _float(row.get("regret_ratio")),
+        "total_degradation_penalty_uah": _float(
+            row.get("total_degradation_penalty_uah")
+        ),
+        "total_throughput_mwh": _float(row.get("total_throughput_mwh")),
+        "forecast_spread_uah_mwh": _spread(forecast_vector),
+        "actual_spread_uah_mwh": _spread(actual_vector),
+        "forecast_top_k_actual_overlap": _float(
+            forecast_diagnostics.get("top_k_price_recall")
+        ),
+        "forecast_bottom_k_actual_overlap": _float(
+            payload.get("forecast_bottom_k_actual_overlap")
+        ),
+        "soc_min_slack_fraction": min(
+            abs(starting_soc - 0.05),
+            abs(0.95 - starting_soc),
+        ),
+        "safety_violation_count": _int(row.get("safety_violation_count")),
+        "data_quality_tier": _non_empty_text(row.get("data_quality_tier"), "unknown"),
+        "observed_coverage_ratio": _float(row.get("observed_coverage_ratio")),
+        "not_full_dfl": True,
+        "not_market_execution": True,
+        "claim_scope": "dt_v2_plus_strict_rows_apples_to_apples_shadow",
+        "candidate_library_version": "v2_plus_strict_rows_export",
+        "candidate_source": "v2_plus_strict_rows_apples_to_apples_adapter",
+        "eligible_for_final_selection": False,
+        "analysis_only": True,
+        "label_regret_delta_vs_v2_plus_uah": regret_delta,
+        "label_beats_v2_plus": regret_delta < 0.0,
+        "market_execution_enabled": False,
+        "label_safe_switch_win": regret_delta < 0.0,
+        "label_tail_risk_loss": False,
+        "raw_hourly_action_imitation": False,
+        "teacher_candidate_key": _v2_plus_strict_candidate_id(
+            row=row,
+            anchor_timestamp=anchor_timestamp,
+            family=family,
+            candidate_index=candidate_index,
+        ),
+        "teacher_candidate_index": candidate_index,
+        "teacher_anchor_candidate_count": candidate_count,
+        "teacher_schedule_candidate_class": family,
+        "teacher_target_family": family,
+        "teacher_target_source": "real_v2_plus_strict_rows",
+        "teacher_return_to_go_delta_uah": -regret_delta,
+        "teacher_tail_risk_penalty_uah": 0.0,
+        "teacher_tail_risk_probability_target": 0.0,
+        "teacher_loss_weight": 1.0,
+        "is_training_row": split_name == "train_selection",
+        "lava_tail_risk_avoidance_class": "not_lava_training",
+        "target_label_space": "candidate_index_or_schedule_family",
+        "sequence_position": candidate_index,
+        "dt_return_to_go_uah": -regret_delta,
+        "dt_tail_risk_target": 0.0,
+        "dt_candidate_index_target": candidate_index,
+        "dt_candidate_family_target": family,
+        "dt_candidate_id_target": _v2_plus_strict_candidate_id(
+            row=row,
+            anchor_timestamp=anchor_timestamp,
+            family=family,
+            candidate_index=candidate_index,
+        ),
+        "dt_schedule_family_target": family,
+        "return_to_go_regret_target_uah": -regret_delta,
+        "regret_delta_vs_v2_plus_uah": regret_delta,
+        "schedule_value_uah": _float(row.get("decision_value_uah")),
+        "dfl_input_contract": (
+            "v2_plus_strict_rows_forecast_battery_candidate_schedule_context"
+        ),
+        "dfl_target_contract": "best_candidate_schedule_value_regret_delta_vs_v2_plus",
+        "dt_input_contract": (
+            "v2_plus_strict_rows_sequence_forecast_candidate_value_return_to_go"
+        ),
+        "dt_action_target_contract": "candidate_id_or_schedule_family",
+        "v2_plus_role": "real_schedule_value_learner_v2_plus_comparator",
+        "v13_training_permission_gate_passed": False,
+        "v13_blocking_context_families": "explicit_dam_publication_receipts",
+        "permitted_model_training_row": False,
+        "permits_model_training": False,
+        "training_blocker": "apples_to_apples_research_shadow_not_v13_training",
+        "promotion_gate_passed": False,
+        "market_execution_gate_passed": False,
+        "not_deployed_dt_control": True,
+        "research_shadow_source_kind": (
+            "v2_plus_strict_rows_mirrored_training_adapter"
+        ),
+        "research_shadow_reward_reference": "real_v2_plus_strict_rows_comparator",
+        "publication_receipt_verified": False,
+        "source_publication_timestamp_available": False,
+        "market_availability_claim": False,
+        "research_shadow_not_promotable": True,
+        **label,
+    }
+
+
+def _role_row(
+    rows: Sequence[Mapping[str, Any]],
+    selection_role: str,
+) -> Mapping[str, Any] | None:
+    for row in rows:
+        if str(row.get("selection_role")) == selection_role:
+            return row
+    return None
+
+
+def _anchor_key(row: Mapping[str, Any]) -> tuple[str, str, str]:
+    return (
+        _non_empty_text(row.get("tenant_id"), ""),
+        _non_empty_text(row.get("source_model_name"), ""),
+        _iso_datetime(row.get("anchor_timestamp")),
+    )
+
+
+def _json_mapping(value: object) -> Mapping[str, Any]:
+    if isinstance(value, Mapping):
+        return value
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except json.JSONDecodeError:
+            return {}
+        return parsed if isinstance(parsed, Mapping) else {}
+    return {}
+
+
+def _spread(values: Sequence[float]) -> float:
+    return max(values) - min(values) if values else 0.0
+
+
+def _v2_plus_strict_candidate_id(
+    *,
+    row: Mapping[str, Any],
+    anchor_timestamp: datetime,
+    family: str,
+    candidate_index: int,
+) -> str:
+    return "|".join(
+        [
+            _non_empty_text(row.get("tenant_id"), "unknown_tenant"),
+            _non_empty_text(row.get("source_model_name"), "unknown_source"),
+            _iso_datetime(anchor_timestamp),
+            family,
+            str(candidate_index),
+        ]
+    )
+
+
 def _dt_research_shadow_evaluation_packet(
     smoke_summary: Mapping[str, Any],
 ) -> dict[str, Any]:
@@ -1263,8 +1625,8 @@ def _sequence_arrays(frame: pl.DataFrame, *, context_length: int) -> dict[str, A
             candidate_regret[sequence_index, position] = _float(row["regret_uah"])
             candidate_value[sequence_index, position] = _float(row["schedule_value_uah"])
             candidate_family_ids[sequence_index, position] = family_to_id[family]
-            is_v2_plus[sequence_index, position] = family == "frozen_v2_plus_fallback"
-            is_strict[sequence_index, position] = family == "strict_control"
+            is_v2_plus[sequence_index, position] = _is_v2_plus_family(family)
+            is_strict[sequence_index, position] = _is_strict_family(family)
             safety_counts[sequence_index, position] = _int(row.get("safety_violation_count"))
 
     return {
@@ -1407,6 +1769,17 @@ def _forecast_family(source_model_name: str) -> str:
     if "tft" in normalized:
         return "tft"
     return ""
+
+
+def _is_v2_plus_family(family: str) -> bool:
+    return family in {
+        "frozen_v2_plus_fallback",
+        "schedule_value_learner_v2_plus",
+    }
+
+
+def _is_strict_family(family: str) -> bool:
+    return family in {"strict_control", "strict_reference"}
 
 
 def _previous_action_one_hot(actions: torch.Tensor, *, action_dim: int) -> torch.Tensor:
