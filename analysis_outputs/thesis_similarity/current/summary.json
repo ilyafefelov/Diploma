@@ -1,0 +1,21 @@
+{
+  "thesis_files": [
+    "analysis_outputs\\thesis_similarity\\google_doc_export_2026-05-26-current.txt",
+    "docs\\thesis\\chapters\\00-terms-and-abbreviations.md",
+    "docs\\thesis\\chapters\\01-project-overview.md",
+    "docs\\thesis\\chapters\\02-literature-review.md",
+    "docs\\thesis\\chapters\\03-Methodology.md",
+    "docs\\thesis\\chapters\\04-results-and-discussion.md",
+    "docs\\thesis\\chapters\\05-conclusions-and-recommendations.md"
+  ],
+  "source_files": 56,
+  "internal_files": 201,
+  "thesis_chunks": 255,
+  "external_source_chunks": 5149,
+  "internal_source_chunks": 1741,
+  "external_hits": 25,
+  "internal_hits": 20,
+  "citation_issues": 0,
+  "semantic_note": "not requested",
+  "extraction_errors": []
+}

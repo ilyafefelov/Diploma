@@ -111,6 +111,28 @@ From an ML architecture perspective, this is expected:
   point-in-time context and explicit abstention/fallback to V2+, not raw hourly
   BUY/SELL/HOLD imitation and not a DT promotion shortcut.
 
+## Follow-Up Regret-Aware Selector
+
+The follow-up packet is documented in
+[REGRET_AWARE_V2_PLUS_SELECTOR_SHADOW.md](REGRET_AWARE_V2_PLUS_SELECTOR_SHADOW.md).
+It trains the correct value-gap objective:
+`regret_delta_vs_v2_plus_uah`, weighted by regret magnitude, and requires an
+explicit predicted improvement before switching away from V2+.
+
+The conservative run produced:
+
+| Metric | Value |
+|---|---:|
+| Selector mean regret | `174.77` UAH |
+| V2+ mean regret | `174.77` UAH |
+| Non-V2+ switches | `0 / 90` |
+| V2+ abstentions | `90 / 90` |
+
+This is useful negative evidence. It shows that the objective is now aligned
+with decision regret, but the available point-in-time features do not yet
+justify replacing V2+. Low-threshold switches worsened mean regret, so the safe
+research-shadow behavior is full abstention to V2+.
+
 ## API And Dashboard
 
 The packet is exposed only as a manual shadow preview:

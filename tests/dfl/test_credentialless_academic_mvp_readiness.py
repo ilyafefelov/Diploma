@@ -1414,7 +1414,9 @@ def _dt_research_shadow_smoke_summary() -> dict[str, object]:
         "hf_transformers_available": False,
         "hf_decision_transformer_available": False,
         "hf_decision_transformer_status": "transformers_not_installed",
-        "loss_function": "cross_entropy_candidate_index",
+        "loss_function": (
+            "cross_entropy_candidate_index_plus_decision_aware_regret_value_ranking"
+        ),
         "evaluation_packet_summary": {
             "claim_scope": (
                 "dt_research_shadow_evaluation_packet_not_promotable_not_market_execution"

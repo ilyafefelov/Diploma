@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -262,6 +263,14 @@ from smart_arbitrage.dfl.schedule_value_promotion_gate import (
 )
 from smart_arbitrage.dfl.market_coupling_ablation import (
     build_dfl_market_coupling_v2_plus_ablation_frame,
+)
+from smart_arbitrage.dfl.regret_aware_v2_plus_selector import (
+    build_regret_aware_v2_plus_selector_packet,
+    write_regret_aware_v2_plus_selector_packet,
+)
+from smart_arbitrage.dfl.dt_v2_plus_promotion_evidence import (
+    build_dt_v2_plus_promotion_evidence_packet,
+    write_dt_v2_plus_promotion_evidence_packet,
 )
 from smart_arbitrage.dfl.market_coupled_v2_plus import (
     DFL_MARKET_COUPLED_SCHEDULE_VALUE_LEARNER_V2_PLUS_STRICT_LP_STRATEGY_KIND,
@@ -1151,6 +1160,88 @@ class DflOfficialGlobalPanelScheduleValueLearnerV2PlusAssetConfig(dg.Config):
     final_validation_anchor_count_per_tenant: int = 18
     min_validation_tenant_anchor_count_per_source_model: int = 90
     min_prior_mean_improvement_ratio_vs_v2: float = 0.01
+
+
+class DflRegretAwareV2PlusSelectorShadowAssetConfig(dg.Config):
+    """Manual regret-aware V2+ selector shadow packet scope."""
+
+    source_model_name: str = "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    run_slug: str = "week3_regret_aware_v2_plus_selector_current"
+    output_dir: str = "data/research_runs/week3_regret_aware_v2_plus_selector_current"
+    min_predicted_improvement_uah: float = 150.0
+    tail_risk_loss_threshold_uah: float = 150.0
+    max_family_tail_risk_probability: float = 0.5
+    ridge_l2: float = 10.0
+    model_kind: str = "weighted_ridge"
+    feature_set: str = "base_prior_context"
+
+
+class DflDtV2PlusPromotionEvidenceAssetConfig(dg.Config):
+    """Manual offline promotion-evidence gate for residual DT over V2+."""
+
+    source_model_name: str = "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    run_slug: str = "week3_dt_v2_plus_promotion_evidence_current"
+    output_dir: str = "data/research_runs/week3_dt_v2_plus_promotion_evidence_current"
+    min_final_holdout_anchor_count: int = 90
+    min_mean_regret_improvement_ratio_vs_v2_plus: float = 0.03
+    max_non_v2_plus_switch_rate: float = 0.25
+    tail_risk_loss_threshold_uah: float = 150.0
+    max_tail_risk_loss_count: int = 0
+
+
+class DflDtV2PlusSafeSwitchSelectorAssetConfig(dg.Config):
+    """Manual residual safe-switch selector over frozen V2+ fallback."""
+
+    source_model_name: str = "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    run_slug: str = "week3_dt_v2_plus_safe_switch_selector_current"
+    output_dir: str = "data/research_runs/week3_dt_v2_plus_safe_switch_selector_current"
+    min_predicted_improvement_uah: float = 20.0
+    tail_risk_loss_threshold_uah: float = 150.0
+    max_family_tail_risk_probability: float = 0.5
+    ridge_l2: float = 10.0
+    model_kind: str = "random_forest"
+    feature_set: str = "expanded_prior_context_v1"
+
+
+class DflDtResearchShadowDecisionAwareAssetConfig(dg.Config):
+    """Manual DT shadow packet with decision-aware objective and V2+ fallback."""
+
+    source_model_name: str = "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    run_slug: str = "week3_dt_research_shadow_decision_aware_current"
+    output_dir: str = "data/research_runs/week3_dt_research_shadow_decision_aware_current"
+    context_length: int = 4
+    max_epochs: int = 3
+    hidden_dim: int = 48
+    num_layers: int = 2
+    num_heads: int = 2
+    seed: int = 20260526
+    model_backbone: str = "local"
+    objective_kind: str = "decision_aware_regret_value_ranking"
+    cross_entropy_weight: float = 1.0
+    decision_aware_ranking_weight: float = 1.0
+    min_predicted_improvement_uah: float = 50.0
+    max_family_tail_risk_probability: float = 0.5
+
+
+class DflDtV2PlusDistillationShadowAssetConfig(dg.Config):
+    """Manual DT V2+ rule-distillation shadow packet scope."""
+
+    source_model_name: str = "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    run_slug: str = "week3_dt_v2_plus_distillation_shadow_current"
+    output_dir: str = "data/research_runs/week3_dt_v2_plus_distillation_shadow_current"
+    context_length: int = 4
+    max_epochs: int = 3
+    hidden_dim: int = 48
+    num_layers: int = 2
+    num_heads: int = 2
+    seed: int = 20260526
+    model_backbone: str = "local"
+    objective_kind: str = "v2_plus_rule_distillation"
+    cross_entropy_weight: float = 0.0
+    decision_aware_ranking_weight: float = 0.0
+    distillation_weight: float = 1.0
+    min_predicted_improvement_uah: float = 50.0
+    max_family_tail_risk_probability: float = 0.5
 
 
 class DflPolandLag24ExperimentalRollingStrictAssetConfig(dg.Config):
@@ -3871,6 +3962,568 @@ def dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark
         },
     )
     return strict_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_regret_aware_v2_plus_selector_shadow_frame(
+    context,
+    config: DflRegretAwareV2PlusSelectorShadowAssetConfig,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_regret_decomposition_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Regret-aware manual selector shadow with explicit V2+ abstention."""
+
+    from smart_arbitrage.dfl.dt_research_shadow import (
+        build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
+    )
+
+    strict_rows = (
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+    )
+    if strict_rows.is_empty():
+        raise ValueError(
+            f"No V2+ strict rows found for source model: {config.source_model_name}"
+        )
+    regret_decomposition = (
+        dfl_official_global_panel_schedule_value_regret_decomposition_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+        if "source_model_name"
+        in dfl_official_global_panel_schedule_value_regret_decomposition_frame.columns
+        else dfl_official_global_panel_schedule_value_regret_decomposition_frame
+    )
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=strict_rows,
+        regret_decomposition_frame=regret_decomposition,
+    )
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _csv_ready_vector_frame(teacher_rows).write_csv(
+        output_dir / "regret_aware_v2_plus_selector_teacher_rows.csv"
+    )
+    result = build_regret_aware_v2_plus_selector_packet(
+        teacher_rows,
+        run_slug=config.run_slug,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        tail_risk_loss_threshold_uah=config.tail_risk_loss_threshold_uah,
+        max_family_tail_risk_probability=config.max_family_tail_risk_probability,
+        ridge_l2=config.ridge_l2,
+        model_kind=config.model_kind,
+        feature_set=config.feature_set,
+    )
+    paths = write_regret_aware_v2_plus_selector_packet(
+        output_dir=output_dir,
+        result=result,
+    )
+    summary = result["summary"]
+    evaluation = summary["evaluation"]
+    selected_rows = result["selected_rows"]
+    _add_metadata(
+        context,
+        {
+            "rows": selected_rows.height,
+            "source_model_name": config.source_model_name,
+            "run_slug": config.run_slug,
+            "selector_mean_regret_uah": evaluation["selector_mean_regret_uah"],
+            "v2_plus_mean_regret_uah": evaluation["v2_plus_mean_regret_uah"],
+            "selector_minus_v2_plus_mean_regret_uah": evaluation[
+                "selector_minus_v2_plus_mean_regret_uah"
+            ],
+            "non_v2_plus_switch_count": evaluation["non_v2_plus_switch_count"],
+            "abstention_count": evaluation["abstention_count"],
+            "model_kind": summary["model_kind"],
+            "feature_set": summary["feature_set"],
+            "selected_rows_csv": str(paths["selected_rows_csv"]),
+            "summary_json": str(paths["summary_json"]),
+            "summary_markdown": str(paths["summary_markdown"]),
+            "market_execution_enabled": False,
+            "promotion_gate_passed": False,
+            "dt_lava_ready": False,
+            "scope": "regret_aware_v2_plus_selector_shadow_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return selected_rows
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_dt_v2_plus_safe_switch_selector_frame(
+    context,
+    config: DflDtV2PlusSafeSwitchSelectorAssetConfig,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_regret_decomposition_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Residual safe-switch selector with expanded prior context and V2+ fallback."""
+
+    from smart_arbitrage.dfl.dt_research_shadow import (
+        build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
+    )
+
+    strict_rows = (
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+    )
+    if strict_rows.is_empty():
+        raise ValueError(
+            f"No V2+ strict rows found for source model: {config.source_model_name}"
+        )
+    regret_decomposition = (
+        dfl_official_global_panel_schedule_value_regret_decomposition_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+        if "source_model_name"
+        in dfl_official_global_panel_schedule_value_regret_decomposition_frame.columns
+        else dfl_official_global_panel_schedule_value_regret_decomposition_frame
+    )
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=strict_rows,
+        regret_decomposition_frame=regret_decomposition,
+    )
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _csv_ready_vector_frame(teacher_rows).write_csv(
+        output_dir / "regret_aware_v2_plus_selector_teacher_rows.csv"
+    )
+    result = build_regret_aware_v2_plus_selector_packet(
+        teacher_rows,
+        run_slug=config.run_slug,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        tail_risk_loss_threshold_uah=config.tail_risk_loss_threshold_uah,
+        max_family_tail_risk_probability=config.max_family_tail_risk_probability,
+        ridge_l2=config.ridge_l2,
+        model_kind=config.model_kind,
+        feature_set=config.feature_set,
+    )
+    paths = write_regret_aware_v2_plus_selector_packet(
+        output_dir=output_dir,
+        result=result,
+    )
+    summary = result["summary"]
+    evaluation = summary["evaluation"]
+    selected_rows = result["selected_rows"]
+    _add_metadata(
+        context,
+        {
+            "rows": selected_rows.height,
+            "source_model_name": config.source_model_name,
+            "run_slug": config.run_slug,
+            "selector_mean_regret_uah": evaluation["selector_mean_regret_uah"],
+            "v2_plus_mean_regret_uah": evaluation["v2_plus_mean_regret_uah"],
+            "selector_minus_v2_plus_mean_regret_uah": evaluation[
+                "selector_minus_v2_plus_mean_regret_uah"
+            ],
+            "non_v2_plus_switch_count": evaluation["non_v2_plus_switch_count"],
+            "abstention_count": evaluation["abstention_count"],
+            "model_kind": summary["model_kind"],
+            "feature_set": summary["feature_set"],
+            "selected_rows_csv": str(paths["selected_rows_csv"]),
+            "summary_json": str(paths["summary_json"]),
+            "summary_markdown": str(paths["summary_markdown"]),
+            "market_execution_enabled": False,
+            "promotion_gate_passed": False,
+            "dt_lava_ready": False,
+            "permits_model_training": False,
+            "v2_plus_remains_default": True,
+            "scope": "dt_v2_plus_safe_switch_selector_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return selected_rows
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="diagnostics",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_dt_v2_plus_promotion_evidence_frame(
+    context,
+    config: DflDtV2PlusPromotionEvidenceAssetConfig,
+    dfl_dt_v2_plus_safe_switch_selector_frame: pl.DataFrame,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_regret_decomposition_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Offline challenger gate for residual DT switches over frozen V2+."""
+
+    from smart_arbitrage.dfl.dt_research_shadow import (
+        build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
+    )
+
+    selected_rows = dfl_dt_v2_plus_safe_switch_selector_frame.filter(
+        pl.col("source_model_name") == config.source_model_name
+    )
+    if selected_rows.is_empty():
+        raise ValueError(
+            "No DT/V2+ safe-switch selector rows found for source model: "
+            f"{config.source_model_name}"
+        )
+    strict_rows = (
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+    )
+    if strict_rows.is_empty():
+        raise ValueError(
+            f"No V2+ strict rows found for source model: {config.source_model_name}"
+        )
+    regret_decomposition = (
+        dfl_official_global_panel_schedule_value_regret_decomposition_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+        if "source_model_name"
+        in dfl_official_global_panel_schedule_value_regret_decomposition_frame.columns
+        else dfl_official_global_panel_schedule_value_regret_decomposition_frame
+    )
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=strict_rows,
+        regret_decomposition_frame=regret_decomposition,
+    )
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    teacher_rows_csv = output_dir / "dt_v2_plus_promotion_evidence_teacher_rows.csv"
+    _csv_ready_vector_frame(teacher_rows).write_csv(teacher_rows_csv)
+    packet = build_dt_v2_plus_promotion_evidence_packet(
+        selected_rows,
+        teacher_rows,
+        run_slug=config.run_slug,
+        min_final_holdout_anchor_count=config.min_final_holdout_anchor_count,
+        min_mean_regret_improvement_ratio_vs_v2_plus=(
+            config.min_mean_regret_improvement_ratio_vs_v2_plus
+        ),
+        max_non_v2_plus_switch_rate=config.max_non_v2_plus_switch_rate,
+        tail_risk_loss_threshold_uah=config.tail_risk_loss_threshold_uah,
+        max_tail_risk_loss_count=config.max_tail_risk_loss_count,
+    )
+    paths = write_dt_v2_plus_promotion_evidence_packet(
+        output_dir=output_dir,
+        packet=packet,
+    )
+    summary = packet["summary"]
+    gate = summary["gate"]
+    gate_rows = packet["gate_rows"]
+    _add_metadata(
+        context,
+        {
+            "rows": gate_rows.height,
+            "source_model_name": config.source_model_name,
+            "run_slug": config.run_slug,
+            "promotion_evidence_passed": gate["promotion_evidence_passed"],
+            "promotion_blocker": gate["promotion_blocker"],
+            "selector_minus_v2_plus_mean_regret_uah": gate[
+                "selector_minus_v2_plus_mean_regret_uah"
+            ],
+            "mean_regret_improvement_ratio_vs_v2_plus": gate[
+                "mean_regret_improvement_ratio_vs_v2_plus"
+            ],
+            "non_v2_plus_switch_count": gate["non_v2_plus_switch_count"],
+            "observed_safe_switch_opportunity_count": gate[
+                "observed_safe_switch_opportunity_count"
+            ],
+            "recovered_safe_switch_opportunity_count": gate[
+                "recovered_safe_switch_opportunity_count"
+            ],
+            "gate_rows_csv": str(paths["gate_rows_csv"]),
+            "selected_rows_csv": str(paths["selected_rows_csv"]),
+            "safe_switch_opportunities_csv": str(
+                paths["safe_switch_opportunities_csv"]
+            ),
+            "summary_json": str(paths["summary_json"]),
+            "summary_markdown": str(paths["summary_markdown"]),
+            "teacher_rows_csv": str(teacher_rows_csv),
+            "v2_plus_remains_default": True,
+            "market_execution_enabled": False,
+            "promotion_gate_passed": False,
+            "dt_lava_ready": False,
+            "permits_model_training": False,
+            "scope": "dt_v2_plus_promotion_evidence_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return gate_rows
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_dt_research_shadow_decision_aware_frame(
+    context,
+    config: DflDtResearchShadowDecisionAwareAssetConfig,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_regret_decomposition_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Manual decision-aware DT shadow packet with conservative V2+ fallback."""
+
+    from smart_arbitrage.dfl.dt_research_shadow import (
+        build_dt_research_shadow_sequence_packet,
+        build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
+        run_dt_research_shadow_smoke,
+        write_dt_research_shadow_sequence_packet,
+    )
+
+    strict_rows = (
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+    )
+    if strict_rows.is_empty():
+        raise ValueError(
+            f"No V2+ strict rows found for source model: {config.source_model_name}"
+        )
+    regret_decomposition = (
+        dfl_official_global_panel_schedule_value_regret_decomposition_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+        if "source_model_name"
+        in dfl_official_global_panel_schedule_value_regret_decomposition_frame.columns
+        else dfl_official_global_panel_schedule_value_regret_decomposition_frame
+    )
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=strict_rows,
+        regret_decomposition_frame=regret_decomposition,
+    )
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    teacher_rows_csv = output_dir / "dt_research_shadow_teacher_rows.csv"
+    _csv_ready_vector_frame(teacher_rows).write_csv(teacher_rows_csv)
+    sequence_packet = build_dt_research_shadow_sequence_packet(
+        teacher_rows_frame=teacher_rows,
+        run_slug=config.run_slug,
+        context_length=config.context_length,
+    )
+    sequence_paths = write_dt_research_shadow_sequence_packet(
+        output_dir=output_dir,
+        packet=sequence_packet,
+        teacher_rows_frame=teacher_rows,
+    )
+    smoke_paths = run_dt_research_shadow_smoke(
+        sequence_npz_path=sequence_paths["sequence_npz"],
+        output_dir=output_dir,
+        max_epochs=config.max_epochs,
+        hidden_dim=config.hidden_dim,
+        num_layers=config.num_layers,
+        num_heads=config.num_heads,
+        seed=config.seed,
+        model_backbone=config.model_backbone,
+        objective_kind=config.objective_kind,
+        cross_entropy_weight=config.cross_entropy_weight,
+        decision_aware_ranking_weight=config.decision_aware_ranking_weight,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_family_tail_risk_probability=config.max_family_tail_risk_probability,
+    )
+    selected_preview = json.loads(
+        smoke_paths["selected_preview_json"].read_text(encoding="utf-8")
+    )
+    preview_rows = selected_preview.get("preview_rows")
+    selected_frame = (
+        pl.DataFrame(preview_rows)
+        if isinstance(preview_rows, list)
+        else pl.DataFrame([])
+    )
+    selected_rows_csv = output_dir / "dt_research_shadow_selected_rows.csv"
+    _csv_ready_vector_frame(selected_frame).write_csv(selected_rows_csv)
+    smoke_summary = json.loads(smoke_paths["summary_json"].read_text(encoding="utf-8"))
+    evaluation = smoke_summary.get("evaluation_metrics", {})
+    _add_metadata(
+        context,
+        {
+            "rows": selected_frame.height,
+            "source_model_name": config.source_model_name,
+            "run_slug": config.run_slug,
+            "loss_function": smoke_summary.get("loss_function", ""),
+            "objective_kind": config.objective_kind,
+            "dt_selected_mean_regret_uah": evaluation.get(
+                "dt_selected_mean_regret_uah"
+            ),
+            "v2_plus_mean_regret_uah": evaluation.get("v2_plus_mean_regret_uah"),
+            "strict_mean_regret_uah": evaluation.get("strict_mean_regret_uah"),
+            "non_v2_plus_switch_count": evaluation.get("non_v2_plus_switch_count"),
+            "abstention_count": evaluation.get("abstention_count"),
+            "sequence_summary_json": str(sequence_paths["summary_json"]),
+            "sequence_validation_json": str(sequence_paths["validation_json"]),
+            "smoke_summary_json": str(smoke_paths["summary_json"]),
+            "evaluation_summary_json": str(smoke_paths["evaluation_summary_json"]),
+            "evaluation_validation_json": str(
+                smoke_paths["evaluation_validation_json"]
+            ),
+            "selected_preview_json": str(smoke_paths["selected_preview_json"]),
+            "teacher_rows_csv": str(teacher_rows_csv),
+            "selected_rows_csv": str(selected_rows_csv),
+            "market_execution_enabled": False,
+            "promotion_gate_passed": False,
+            "dt_lava_ready": False,
+            "scope": "dt_research_shadow_decision_aware_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return selected_frame
+
+
+@dg.asset(
+    group_name=taxonomy.GOLD_DFL_TRAINING,
+    tags=taxonomy.asset_tags(
+        medallion="gold",
+        domain="dfl_research",
+        elt_stage="publish",
+        ml_stage="selection",
+        evidence_scope="not_market_execution",
+        backend="official_global_panel_nbeatsx",
+        market_venue="DAM",
+    ),
+)
+def dfl_dt_v2_plus_distillation_shadow_frame(
+    context,
+    config: DflDtV2PlusDistillationShadowAssetConfig,
+    dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame: (
+        pl.DataFrame
+    ),
+    dfl_official_global_panel_schedule_value_regret_decomposition_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Manual DT V2+ rule-distillation shadow packet."""
+
+    from smart_arbitrage.dfl.dt_research_shadow import (
+        build_dt_research_shadow_sequence_packet,
+        build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
+        run_dt_research_shadow_smoke,
+        write_dt_research_shadow_sequence_packet,
+    )
+
+    strict_rows = (
+        dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+    )
+    if strict_rows.is_empty():
+        raise ValueError(
+            f"No V2+ strict rows found for source model: {config.source_model_name}"
+        )
+    regret_decomposition = (
+        dfl_official_global_panel_schedule_value_regret_decomposition_frame
+        .filter(pl.col("source_model_name") == config.source_model_name)
+        if "source_model_name"
+        in dfl_official_global_panel_schedule_value_regret_decomposition_frame.columns
+        else dfl_official_global_panel_schedule_value_regret_decomposition_frame
+    )
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=strict_rows,
+        regret_decomposition_frame=regret_decomposition,
+    )
+    output_dir = Path(config.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    teacher_rows_csv = output_dir / "dt_research_shadow_teacher_rows.csv"
+    _csv_ready_vector_frame(teacher_rows).write_csv(teacher_rows_csv)
+    sequence_packet = build_dt_research_shadow_sequence_packet(
+        teacher_rows_frame=teacher_rows,
+        run_slug=config.run_slug,
+        context_length=config.context_length,
+    )
+    sequence_paths = write_dt_research_shadow_sequence_packet(
+        output_dir=output_dir,
+        packet=sequence_packet,
+        teacher_rows_frame=teacher_rows,
+    )
+    smoke_paths = run_dt_research_shadow_smoke(
+        sequence_npz_path=sequence_paths["sequence_npz"],
+        output_dir=output_dir,
+        max_epochs=config.max_epochs,
+        hidden_dim=config.hidden_dim,
+        num_layers=config.num_layers,
+        num_heads=config.num_heads,
+        seed=config.seed,
+        model_backbone=config.model_backbone,
+        objective_kind=config.objective_kind,
+        cross_entropy_weight=config.cross_entropy_weight,
+        decision_aware_ranking_weight=config.decision_aware_ranking_weight,
+        distillation_weight=config.distillation_weight,
+        min_predicted_improvement_uah=config.min_predicted_improvement_uah,
+        max_family_tail_risk_probability=config.max_family_tail_risk_probability,
+    )
+    selected_preview = json.loads(
+        smoke_paths["selected_preview_json"].read_text(encoding="utf-8")
+    )
+    preview_rows = selected_preview.get("preview_rows")
+    selected_frame = (
+        pl.DataFrame(preview_rows)
+        if isinstance(preview_rows, list)
+        else pl.DataFrame([])
+    )
+    selected_rows_csv = output_dir / "dt_v2_plus_distillation_selected_rows.csv"
+    _csv_ready_vector_frame(selected_frame).write_csv(selected_rows_csv)
+    smoke_summary = json.loads(smoke_paths["summary_json"].read_text(encoding="utf-8"))
+    evaluation = smoke_summary.get("evaluation_metrics", {})
+    _add_metadata(
+        context,
+        {
+            "rows": selected_frame.height,
+            "source_model_name": config.source_model_name,
+            "run_slug": config.run_slug,
+            "loss_function": smoke_summary.get("loss_function", ""),
+            "objective_kind": config.objective_kind,
+            "v2_plus_rule_recovery_rate": evaluation.get("v2_plus_rule_recovery_rate"),
+            "raw_distilled_argmax_mean_regret_uah": evaluation.get(
+                "raw_distilled_argmax_mean_regret_uah"
+            ),
+            "raw_distilled_argmax_minus_v2_plus_mean_regret_uah": evaluation.get(
+                "raw_distilled_argmax_minus_v2_plus_mean_regret_uah"
+            ),
+            "sequence_summary_json": str(sequence_paths["summary_json"]),
+            "sequence_validation_json": str(sequence_paths["validation_json"]),
+            "smoke_summary_json": str(smoke_paths["summary_json"]),
+            "evaluation_summary_json": str(smoke_paths["evaluation_summary_json"]),
+            "evaluation_validation_json": str(
+                smoke_paths["evaluation_validation_json"]
+            ),
+            "selected_preview_json": str(smoke_paths["selected_preview_json"]),
+            "teacher_rows_csv": str(teacher_rows_csv),
+            "selected_rows_csv": str(selected_rows_csv),
+            "market_execution_enabled": False,
+            "promotion_gate_passed": False,
+            "dt_lava_ready": False,
+            "permits_model_training": False,
+            "scope": "dt_v2_plus_distillation_shadow_not_market_execution",
+            "not_market_execution": True,
+        },
+    )
+    return selected_frame
 
 
 @dg.asset(
@@ -16863,6 +17516,11 @@ DFL_RESEARCH_GOLD_ASSETS = [
     dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame,
+    dfl_regret_aware_v2_plus_selector_shadow_frame,
+    dfl_dt_v2_plus_safe_switch_selector_frame,
+    dfl_dt_v2_plus_promotion_evidence_frame,
+    dfl_dt_research_shadow_decision_aware_frame,
+    dfl_dt_v2_plus_distillation_shadow_frame,
     dfl_official_global_panel_schedule_value_learner_v2_plus_oracle_gap_audit_frame,
     dfl_oracle_gap_safe_switch_label_frame,
     dfl_oracle_gap_safe_switch_feature_panel_frame,
@@ -17072,6 +17730,30 @@ def _normalize_asset_metadata(value: Any) -> Any:
             str(key): _normalize_asset_metadata(item) for key, item in value.items()
         }
     return value
+
+
+def _csv_ready_vector_frame(frame: pl.DataFrame) -> pl.DataFrame:
+    vector_columns = [
+        "forecast_price_uah_mwh_vector",
+        "actual_price_uah_mwh_vector",
+        "dispatch_mw_vector",
+        "soc_fraction_vector",
+    ]
+    expressions = []
+    for column in vector_columns:
+        if column in frame.columns:
+            expressions.append(
+                pl.col(column)
+                .map_elements(_json_text, return_dtype=pl.String)
+                .alias(column)
+            )
+    return frame.with_columns(expressions) if expressions else frame
+
+
+def _json_text(value: object) -> str:
+    if isinstance(value, pl.Series):
+        return json.dumps(value.to_list())
+    return json.dumps(value)
 
 
 def _forecast_model_names(raw_value: str) -> tuple[str, ...]:

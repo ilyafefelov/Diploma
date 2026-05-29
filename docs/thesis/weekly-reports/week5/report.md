@@ -20,6 +20,10 @@ Week 5 сфокусовано на фіналізації доказового �
 - Навчено direct DT candidate-index shadow без LAVA promotion:
   `3,741` research-shadow rows, `1,735` train sequences, `90` eval sequences,
   HF `DecisionTransformerModel`, `market_execution_enabled=false`.
+- Додано regret-aware V2+ selector shadow: objective тепер оптимізує
+  `regret_delta_vs_v2_plus_uah` з weighted loss і explicit abstention. Поточний
+  conservative packet робить `0 / 90` non-V2+ switches і зберігає V2+ mean
+  regret `174.77` UAH.
 
 ## 3. Поточний MVP та V13 статус
 
@@ -61,6 +65,16 @@ Apples-to-apples DT vs real V2+ status:
 | DT result | Not promoted | DT selected mean regret `460.30` UAH |
 | Result vs strict/oracle | Worse | strict/oracle mean regret `310.58` UAH |
 | Interpretation | Negative evidence | current DT classifier objective does not beat the conservative V2+ schedule/value selector |
+
+Regret-aware selector follow-up:
+
+| Lane | Status | Evidence |
+|---|---|---|
+| Objective repair | Completed | `data/research_runs/week3_regret_aware_v2_plus_selector_current/` |
+| Loss | Value-gap weighted | `weighted_ridge_regret_delta_vs_v2_plus` |
+| Conservative result | V2+ preserved | selector mean regret `174.77` UAH; V2+ mean regret `174.77` UAH |
+| Switch decision | Full abstention | `0 / 90` non-V2+ switches; `90 / 90` V2+ abstentions |
+| Interpretation | Negative evidence | current point-in-time features do not safely justify replacing V2+ |
 
 ## 4. Тестування та перевірки
 
@@ -123,6 +137,7 @@ Optional:
 - Evidence manifest: [evidence-manifest.md](../../appendices/evidence-manifest.md)
 - Direct DT Shadow note: [DT_DIRECT_CANDIDATE_SHADOW.md](../../../technical/DT_DIRECT_CANDIDATE_SHADOW.md)
 - Apples-to-apples DT note: [DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md](../../../technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md)
+- Regret-aware selector note: [REGRET_AWARE_V2_PLUS_SELECTOR_SHADOW.md](../../../technical/REGRET_AWARE_V2_PLUS_SELECTOR_SHADOW.md)
 - Operator boundary: [OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md](../../../technical/OPERATOR_DAM_TIMING_AND_BID_BOUNDARY.md)
 - Methodology draft: [03-Methodology.md](../../chapters/03-Methodology.md)
 - Results draft: [04-results-and-discussion.md](../../chapters/04-results-and-discussion.md)
@@ -138,6 +153,7 @@ Optional:
 | SCMO credentials можуть змішатися з diploma MVP | SCMO потрібні для stronger market-submission-grade receipt proof, не для credentialless MVP | MVP описано як defendable без SCMO |
 | DT/LAVA smoke artifacts можуть виглядати як deployment | Це research-only evidence | `dt_lava_ready=false`, `permits_model_training=false`, no `ProposedBid` |
 | Direct DT Shadow може виглядати як promotion | Він лише повторює fallback row у V13 packet і програє strict/oracle; apples-to-apples DT програє real V2+ | Документовано як manual preview, not promoted, no default switch |
+| Regret-aware selector може виглядати як новий headline | Він не покращує V2+; conservative rule abstains on all anchors | Документовано як objective repair / negative evidence, не як replacement |
 
 ## 8. План на наступний тиждень
 

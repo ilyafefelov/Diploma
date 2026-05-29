@@ -1,0 +1,1145 @@
+ContentslistsavailableatScienceDirect
+AppliedEnergy
+journal homepage: www.elsevier.com/locate/apenergy
+Optimizingtheoperationofenergystorageusinganon-linearlithium-ion
+batterydegradationmodel
+ArpitMaheshwaria,b,NikolaosG.Paterakisa,⁎
+,MassimoSantarellib,MadeleineGibescuc
+aDepartment of Electrical Engineering, Eindhoven University of Technology, 5600MB Eindhoven, the Netherlands
+bPolitecnico di Torino, Corso Duca Degli Abruzzi 24, 10129 Turin, Italy
+cCopernicus Institute of Sustainable Development, Utrecht University, 3584CB Utrecht, the Netherlands
+HIGHLIGHTS
+•Adegradation-awaremarketparticipationmodelforstationarystorageisproposed.
+•Anon-lineardegradationmodelisbuiltfromexperimentaldataforLi-ionbatteries.
+•Thenon-lineardegradationmodeliscompatiblewithaMILPformulation.
+•Adecompositiontechniqueforsolvingefficientlylong-horizonproblemsisproposed.
+•Theproposedmodelisbenchmarkedagainstcommonlyuseddegradationmodels.
+ARTICLEINFO
+Keywords:
+Lithium-ionbatteries
+Energymarkets
+Degradation
+Cycleaging
+Optimization
+ABSTRACT
+Giventheirtechnologicalandmarketmaturity,lithium-ionbatteriesareincreasinglybeingconsideredandused
+ingridapplicationstoprovideahostofservicessuchasfrequencyregulation,peakshaving,etc.Chargingand
+discharging these batteries causes degradation in their performance. Lack of data on degradation processes
+combined with requirement of fast computation have led to over-simplified models of battery degradation. In
+thiswork,therecentexperimentalevidencethatdemonstratesthatdegradationinlithium-ionbatteriesisnon-
+linearlydependentontheoperatingconditionsisincorporated.Experimentalagingdataofacommercialbattery
+have been used to develop a scheduling model applicable to the time constraints of a market model. A de-
+compositiontechniquethatenablesthedevelopedmodeltogivenear-optimalresultsforlongertimehorizonsis
+alsoproposed.
+1. Introduction
+Lithium-ionbatterytechnologyhasincreasedinpopularityinrecent
+yearsdrivenbyitsdemandinelectricvehicles[1,2].Thecombination
+of performance, flexibility and decreasing costs has also made it at-
+tractiveforintegrationinpowersystems.Numerousstudiesshedlight
+upon scheduling strategies for battery-based storage in providing grid
+services.However,lithium-ionbatterieshavealimitedlife[3–5].With
+timeandusedegradationprocessesoccur,leadingtoalossincapacity
+(capacity fade) and a loss in power capability (power fade). Thus, ac-
+curate determination of degradationis imperative insuchmodels, not
+onlyinordertoberealisticindeterminingthebusinesscase,butalsoto
+develop intelligent strategies for charge–discharge scheduling of these
+batteries.
+1.1. Literature review
+Severalmarketstudiesonbatteriesfocusontheeconomicviability
+ofthestorageoptionsfromalong-termperspective,whileothersfocus
+on optimizing their short-term operational strategy. The modus oper-
+andi of such studies is to develop a model that jointly simulates the
+marketandbatterybehaviour.Modellingofthemarketmechanismshas
+been comprehensive, with studies considering a single[6,7], multiple
+[8,9]ora combinationofmarkets[10–12],assumingperfect pricein-
+formation[8,9,13,14]oruncertaintyinprices[12,15].
+Battery models in power system and market studies often com-
+pletely ignore degradation[13,15,16]. In some works, degradation is
+calculatedpost-optimization.Asaresult,theoperationstrategyisshort-
+sighted and does not consider the battery as a time-limited and costly
+resource[17–20].
+https://doi.org/10.1016/j.apenergy.2019.114360
+Received22October2019;Receivedinrevisedform26November2019;Accepted10December2019
+⁎ Corresponding author.
+E-mail address:n.paterakis@tue.nl(N.G.Paterakis).
+Applied Energy 261 (2020) 114360
+Available online 30 December 2019
+0306-2619/ © 2020 The Authors. Published by Elsevier Ltd. This is an open access article under the CC BY-NC-ND license 
+(http://creativecommons.org/licenses/BY-NC-ND/4.0/).
+T
+
+Degradation-aware battery scheduling studies use either a con-
+straint-based approach[11,21,12]or an objective-based approach
+[9,22,23]. In[10], the constraint-based approach has even been com-
+bined with the objective-based approach. In the constraint-based ap-
+proach, to extend the life of the battery, one or more of the following
+variables are constrained: power, number of cycles per day, depth of
+discharge(DOD),maximumandminimumstateofcharge(SOC).Such
+approaches that do not model the degradation behaviour at all return
+non-optimalresults.
+In the objective-based approach, the cost of battery degradation is
+included as an economic cost in the objective function. Traditionally
+two main methods to model degradation have been used: the Ah
+throughputmethod[23,24]andthemethodofcyclelifevs.DODpower
+function[9,11,22]. In the first method, it is assumed that a certain
+amountofenergycanbecycledthroughabatterybeforeitsendoflife,
+irrespective of the depth of discharge. In the second method it is as-
+sumedthatthenumberofcyclesthatabatterycanperformisinversely
+proportional to the amplitude of DOD given by a simple power func-
+tion. The origins of the two most employed methods for quantifying
+degradation, cycle life vs. DOD and Ah throughput, can be traced to
+modellingthelead-acidbatterydegradationbehaviour[25–27].
+From the point of view of objective function, most approaches are
+singleobjective,wheredegradationisassignedaneconomiccost.This
+cost is often based on the battery replacement cost[9,18,28,29],
+sometimes on the economic utilization costs (investment & operating)
+[30]andothertimesonthemarginalcostofoperation[31].Theabove
+discussionhasbeensummarizedinFig.1.
+1.2. Gaps in modelling degradation phenomena in lithium-ion batteries
+Whilethemodellingofthemarketpartoftheschedulingmodelshas
+been comprehensive, modelling of battery degradation phenomena is
+Nomenclature
+Parameters
+l
+parameter representing the horizontal change between
+twoconsecutivepointsdefiningthepiecewiselinear
+function
+C1
+m
+parameter representing the vertical change between two
+consecutivepointsdefiningthepiecewiselinearfunction
+C1
+n
+totalnumberofsegmentsofapiecewiselinearfunction
+s
+parameterrepresenting SOCvaluesofpointsdefiningthe
+piecewiselinearfunction
+C1
+I C1
+1Ccurrent(A)
+Pt
+ch max,
+maximum power input to the battery in the trading in-
+terval
+t(W)
+Pt
+dis max,
+maximum power output from the battery in the trading
+interval
+t(W)
+Q
+ratedcapacityofthebattery(Ah)
+Vnom
+nominalbatteryvoltage(V)
+s( )C1
+parameter representing y coordinates of points defining
+thepiecewiselinearfunction
+C1
+efficiencyofthestoragesystem
+t
+marketclearingpriceforthetradinginterval
+t(€/Wh)
+weightingfactor
+T
+durationofatradinginterval(h)
+Decision Variables
+dt
+degradationduringthetradinginterval
+t(Ah)
+dt
+C1
+degradation at 1C current rate for the change in battery
+stateduringthetradinginterval
+t(Ah)
+it
+currentrateduringthetradinginterval
+t(h−1 )
+ut
+binary variable. 1 when storage system is charging in
+tradinginterval.else0
+vt i,
+modelling variable introduced to implement incremental
+costformulation
+zt i,
+binaryvariableintroducedtoimplementincrementalcost
+formulation
+D
+totaldegradationinthemarketperiod(Ah)
+Pt
+ch b,
+powerinputtothebatteryinthetradinginterval
+t(W)
+Pt
+ch m,
+powerinputfromthemarketinthetradinginterval
+t(W)
+Pt
+dis b,
+poweroutputfromthebatteryinthetradinginterval
+t(W)
+Pt
+dis m,
+poweroutputtothemarketinthetradinginterval
+t(W)
+R
+revenue(€)
+SOC
+stateof charge, measure of the remaining capacity ofthe
+battery,definedastheratioofthecurrentcapacitytothe
+totalcapacity,expressedinpercent
+t
+C1
+cumulativedegradationfunctionvaluecomputedfor1Cat
+theendoftradinginterval
+t
+compositeobjectivefunctionvalue
+degradation scaling factor to account for current depen-
+dence
+Indices
+i
+index of points defining the piecewise linear function
+t
+trading interval index
+Terms
+DOD
+depth of discharge or cycle depth, defined as one half of
+the fraction of full cell capacity used during one cycle,
+expressed in percent
+EFC
+equivalent full cycle, a measure of charge throughput
+equal to two times the capacity of a new battery
+SOCt
+state of charge of the storage system at the end of trading
+interval
+t
+Fig.1.Summaryofbatterymodelsusedformarketstudies(thecontributionof
+thisworkhighlightedusingalightershade).
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+2
+
+inadequateinmarket-basedschedulingmodelsforlithium-ionbatteries
+because of either the high complexity and subsequent computational
+burden associated with some non-linear models[32]or due to com-
+pletelyignoringtheeffectsofcurrentandSOCondegradationinvery
+simple models. The reasons for this are partly paucity of data for de-
+velopingdetailedmodelsandpartlytherequirementforsuchmodelsto
+besimpleandcomputationallyeffective.Theformerarisesfromthefact
+thataginginbatteriesisnotcompletelyunderstoodandisasubjectof
+ongoingresearch,whilethelatterstemsfromthepracticalconstraintof
+beingabletooptimizewithinthetimehorizonsofmarkettradingwhen
+using the computational power that is currently available and algo-
+rithmicknow-how.
+Neither the DOD vs. cycle life method nor the Ah throughput
+methodconsiderthedependenceoncurrentorSOC.InSection2ofthis
+study,itisshownwhythesemethodsareinadequateinrepresentingthe
+agingbehaviourinlithium-ionbatteriesusedinthiswork.
+1.3. Contribution
+Havingrecognizedthegapsinmodellingdegradationphenomenain
+lithium-ion batteries for optimization studies, the contribution of this
+workisthreefold:
+•Amarket-basedlithium-ionbatteryschedulingmodelthatconsiders
+theeffectofboththecurrentandthestateofchargeondegradation
+oflithium-ionbatteriesinordertooptimizeshort-termoperationsis
+developed. The degradation data come from long-duration experi-
+mental studies of a commercial lithium-ion battery. Since the de-
+gradation behaviour is non-linear, the optimality of the scheduling
+strategy is ensured by casting the model as a mixed-integer linear
+program(MILP).Itistobenotedthattheproposedmodelhasbeen
+developed for stationary storage applications. For this reason the
+effect of temperature on degradation has not been considered be-
+cause battery modules are placed in temperature regulated con-
+tainers.
+•A multi-objective approach where revenue and degradation are
+treated as separate objectives is introduced, putting the onus on a
+(human) decision maker on choosing the desired scheduling
+strategy. This approach is more transparent and flexible in a dy-
+namic market situation. Moreover, no artificial constraints except
+forlimitingthemaximuminput/outputpowerareconsideredinthe
+model.Theupperlimitisbasedontheavailabilityofexperimental
+dataforthebatteriesunderconsideration.
+•The proposed model that captures non-linearity in battery de-
+gradation behaviourina multi-objectiveoptimizationproblemset-
+ting is more realistic and accurate but also more complex. A two-
+stage temporal decomposition technique that allows more trading
+intervals to be handled but still returns near-optimal scheduling
+strategies in a limited computation time is proposed and demon-
+strated.
+The remainder of this paper is organized as follows: first, defi-
+ciencies of traditional degradation modelling based on recent experi-
+mentalevidenceareelucidatedinSection2.Then,aschedulingmodel
+that takes into account the non-linearities in lithium-ion battery de-
+gradation behaviour is proposed in Section3. In order to solve com-
+putationally intensive optimization problems, a two-stage temporal
+decomposition technique is introduced in Section4. The results of a
+case study considering a day-ahead market where the benefits of the
+current approach are shown and the degradation calculation is com-
+paredagainstotherestablishedapproachesarepresentedinSection5.
+It is to be noted that the choice of the day-ahead market in the case
+study is incidental to this work. Application of the decomposition
+technique to a week-long market horizon is also demonstrated in this
+section.Finally,thepaperisconcludedinSection6.
+2. Nature of aging in lithium-ion batteries
+Thecapacityofabatteryovertimeisnotconstant.Themainfactors
+thatcausedeclineinthecapacitycanbedividedinto:
+•Externalfactors:temperature,time
+•Internalfactors:SOC,current,DOD
+2.1. Calendar and Cycle aging
+Aging processes are often studied separately as calendar and cycle
+aging. Calendar aging refers to degradation in battery performance
+during storage (no load conditions), while cycle aging refers to de-
+gradationwhilecharginganddischargingthebatteries.Capacityisthe
+leadinghealthindicatorofthebattery.Whenthecapacityofabatteryis
+about 70–80
+%of the original capacity, it is usually retired from its
+primary application. In thiswork, degradation refers to the loss ofca-
+pacitythatabatteryexperiences.Thisworkisashort-termstudywhere
+theoperationalstrategyofabatteryisoptimised.Thus,onlycycleaging
+is considered in the degradation model. Moreover, for the batteries
+under study, pure calendar aging is quite low in comparison with the
+cycleaging[33].Inadditiontothat,thetemperatureisassumedtobe
+regulatedthroughaheatmanagementsystem,anessentialcomponent
+ofenergystoragesystems.Allvaluesofdegradationparametersusedin
+thisworkweredeterminedfor
+°20C.Hence,inthiswork,optimization
+iscarriedoutconsideringonlytheinternalfactors.
+2.2. Dependance on internal factors
+The characteristics of the lithium-ion battery considered in this
+workarelistedinTable1.Thisbatterywasextensivelycharacterizedto
+analyzecycleagingin[34].
+Theinvalidityofthecyclelifevs.DODmethodisevidentwhenthe
+aging behaviour of the battery is plotted for two tests that were con-
+ducted at the same temperature, current and DOD as seen inFig. 2a.
+The only difference between the tests is the average state of charge
+aroundwhichthecellsarecycled.Thenumberofequivalentfullcycles
+(equivalent to the Ah throughput, where one EFC = 4.3 Ah for this
+battery) until a capacity of 80% is substantially lower in the test case
+wherecellswherecycledaroundSOC=50%thanaroundSOC=25%.
+Similarresultsarereportedin[35–37],whereitisobservedthatdepth
+ofthecycleneedstobeconsideredalongwiththemeanSOCinorderto
+analysedegradation, whilein[38]a physicalmodelto explain the ef-
+fectofmeanSOChasbeendeveloped.Thisbehaviourhasbeenassigned
+tothevolumechangesinthegraphiteelectrodepresentinmostlithium-
+ionbatteries.Notonlythecyclelifevs.DODbutalsotheAhthroughput
+method does not consider this effect of average SOC on battery de-
+gradation.
+InFig. 2b the effect of current on capacity fade is depicted. The
+numberofequivalentfullcyclesuntilthecellcapacitydecreasesto80%
+is considerably different for the two currents shown. Evidently, the
+effect of current in the degradationmodels usedin battery scheduling
+strategiescannotbeignored.
+Table 1
+Batterypropertiesforthiscasestudy.1
+Property Value
+Chemistry NickelManganeseCobalt(NMC)
+Type 18650
+RatedCapacity(Ah) 2.15
+NominalVoltage(V) 3.7
+1Ccurrent(A) 2.15
+Cycleperformanceat5Adischarge 88%ofinitialcapacityat500cycles
+1 DatafrommanufacturerSonyEnergyDevicesCorporation,ModelNumber
+US18650V3.
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+3
+
+2.3. Quantification of degradation
+Asdiscussedintheprevioussection,thestudyofbatterycyclelifeas
+afunctionofDODhaslittlesignificancewithoutconsideringtheeffect
+ofSOC.In[34],thecombinedeffectofSOCandDODonbatteryaging
+wasquantifiedintermsofdegradationparameters.Theyareshownfor
+1C current inFig. 3a. The effect of current rate was found to be in-
+dependent of the effect of SOC and DOD. Parameters for 2C current
+were found to be a constant 30% higher than the parameters at 1C
+current.
+FromFig. 3a, areas of high degradation can be observed at high
+and low SOC. Low degradation is observed in the SOC range from
+30% to 60%. This is a common observation in lithium-ion battery
+testing[35,36]and as described before, it does not fit with the tradi-
+tional cycle life vs. DOD and Ah throughput models. To visualize the
+non-linear nature of aging for these batteries, degradation in terms of
+capacityfadeforeverypossiblechangeofstateofthebatteryismapped
+inFig. 3b. The surface has been shown for the two current rates
+that were experimentally tested. The graph is symmetric along the
+=x y
+plane, which means that degradation is direction-independent
+and depends only on the initial and final SOC. However, it is path-
+dependent and non-linear. The transition states that cause lower or
+higher degradation can be more easily observed by referring to the
+contourmapdisplayedinFig.3c.
+3. Multi-objective scheduling model
+The proposed model is distinguished from existing models on two
+main counts. First is how the degradation is handled given the non-
+linearity and second on how the degradation is treated as a second
+objectivealongwithrevenuefrommarkettrading.
+The composite objective function to be maximized is given by(1),
+where
+ isafreefictitiousvariable.
+= R D· (1 )·
+(1)
+ThevaluesofrevenueRanddegradationDarescaledinordertobe
+of the same order of magnitude. The weighting factor
+is varied be-
+tween 0 and 1 in a parametric sweep to generate Pareto optimal
+scheduling strategies. The two objective functions are detailed in(2)
+and(3).
+=R P P T t[ ·( )]·
+t
+t t
+dis m
+t
+ch m, ,
+(2)
+In(2)
+t is the market clearing price, assumed to be a known
+parameterfortheoptimization.Inthisstudy,asingleenergymarketis
+considered.However,multiplemarketscanbeconsideredinafashion
+similartotheonedescribedin[39].Itistobenotedthattheproposed
+modelcanbereadilyembeddedinotherapplicationsbysimplyrepla-
+cing the objective function, e.g., with the maximization of privacy or
+self-consumption.
+The total battery degradationduring the entire duration ofthe de-
+cision making horizon can be calculated by adding together the de-
+gradationincurredduringeachtimeinterval(
+dt
+)asdefinedby(3).
+=D d t
+t
+t
+(3)
+Fig. 2.ExperimentalagingbehaviourintheNMCbatteries[34].
+Fig. 3.Degradationbehaviouroflithium-ionbatteries.
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+4
+
+The SOC of the battery is updated by(4) depending on whether
+chargingordischargingtakesplaceduringatimeinterval.
+= + >SOC SOC P P T
+V I t( )·
+· 1t t
+t
+ch b
+t
+dis b
+nom C
+1
+, ,
+1
+(4)
+The lower bound of zero and the upper bound on the power cap-
+ability of the battery are set through(5) and (6). Using the binary
+variable
+ut,italsoensuresthatduringanytradinginterval,thestorage
+systemeitherchargesordischarges.
+P P u t0 ·t
+ch b ch max t
+, ,
+(5)
+P P u t0 ·(1 )t
+dis b dis max t
+, ,
+(6)
+Theprocessofenergyconversioninthestoragesystemisnot100
+%
+efficient, a fact that is taken into account by(7) and (8). These equa-
+tionsdistinguishthebatteryinput/outputpower(subscriptb)fromthat
+exchanged in the market (subscriptm). An efficiency factor
+is as-
+signedtotheconversionandtransmissionprocesses.Inreality,
+isnot
+a constant but it is also a factor of operating and environmental con-
+ditions. If this is factored in, it will introduce additional non-linearity
+andcomplexityintheproposedmodel.However,giventheoverallhigh
+efficiencies of lithium-ion batteries, it has been assumed a constant in
+thiswork.
+=P P t·t
+ch b
+t
+ch m, ,
+(7)
+=P P t·t
+dis b
+t
+dis m, ,
+(8)
+The SOC of the battery (given in percentage) is constrained by(9)
+becauseofitsdefinition.
+SOC t0 100 t
+(9)
+Observing that higher currents lead to greater degradation in bat-
+teries,thedegradationforeverymarkettimeintervalisexpressedina
+bilinearformin(10)withthedegradationat1Casabasis.Theequation
+relates the actual degradation caused in the battery in a time interval
+(
+dt
+) to the degradationthat will be caused in the battery for the same
+change of state but at 1C current rate (
+dt
+C1). It introduces through the
+scaling factor
+the non-linearity caused by the effect of current on
+degradation.
+isafunctionofthecurrentrate
+itwhichiscalculatedin
+(11). In this equation, the current rate has been determined using a
+constant value of voltage (nominal battery voltage,
+Vnom). In reality,
+however,thevoltageofthebatteryisnotconstantbutafunctionofthe
+state of charge. Including this dependency is outside the scope of this
+work as it will lead to additional non-linearity and computational
+burden.
+=d d t ·t t
+C
+t
+1
+(10)
+Theaboveequationrelatesthedegradationhappeninginanytime
+intervaltobothSOCandcurrentrate.TheSOCdependenceisgivenby
+dt
+C1
+and has been mapped beforehand based on experimental data as
+showninFig.3c.Theinfluenceofcurrentondegradationisgivenby
+t
+whichisexplainedbelow.
+= +i P P
+V I t( )
+·
+t
+t
+ch b
+t
+dis b
+nom C
+, ,
+1
+(11)
+Thisscalingfactor
+isequaltozeroatnoloadconditions(0C)asno
+cycle aging takes place when the battery is idle. Being based on 1C
+currentrate,ithasthevalueof1at1C.Fromtheexperimentaldatain
+[34], its value at 2C is determined to be 1.2956. Since intermediate
+experiments at other current values were not carried out, it has been
+assumedthattheparametersscalelinearlybetween0C-1Cand1C-2C.
+Forexample,ifthecurrentrateis1.5C,thescalingfactoristheaverage
+of1and1.2956.
+Assumingalinearscalingfactorintheabsenceofmoreprecisedata
+forintermediatecurrentvaluescanbeareasonableassumptionbecause
+increasing current causes increasing degradation in the battery. Thus,
+the scaling factor will be a monotonically increasing function of cur-
+rent. Accuracy can be improved by adding the intermediate values of
+the scaling factor if experimental results for more current values are
+available.Thiscanbeachievedwithoutanychangeinthestructureof
+thedevelopedmodel.
+In order to determine
+dt
+C1
+for each change in battery state, the ex-
+perimentaldataondegradationat1Ccurrentrateisfirstexpressedina
+cumulative form as shown inFig. 4. The cumulative degradation
+functionismadeupofnsegments(inthiscase
+=n 10).Thiscumulative
+degradationfunction(
+t
+C1)doesnothaveaphysicalsignificanceunlike
+dt
+C1
+.Itisamathematicaltool,conceivedinordertoimplementthenon-
+lineardegradationbehaviourrepresentedinFig.3,intheframeworkof
+MILP. Using the cumulative function facilitates modelling as degrada-
+tion during a time interval (
+dt
+C1) can be simply determined as a dif-
+ference of the cumulative degradation values before and after the
+tradinginterval.Thisisexpressedin(12).
+=d t| |t
+C
+t
+C
+t
+C1 1
+1
+1
+(12)
+The value of
+t
+C1is determined using the incremental cost for-
+mulation[40,41].Thisformulationallowsaccessingapiecewiselinear
+function such as the one ofFig. 4in a MILP. To implement the incre-
+mental cost formulation at any time intervalt, the piecewise linear
+cumulative degradation function ofFig. 4is specified by the points
+(
+s s, ( )t i C t i, 1 , )
+…i n {0, , } wherenis the total number of segments.
+Thus,
+st i,isthex-coordinateand
+s( )C t i1 ,isthey-coordinateofthepoints
+highlightedinFig.4.
+Nextlet,
+lt i,=
+st i, -
+st i, 1 and
+mt i, =
+s( )C t i1 , -
+s( )C t i1 , 1
+ i.
+Anyvalueofthestateofcharge
+SOCtsuchthat
+st,0
+SOCt
+st n, can
+bewrittenasin(13).
+= +
+=
+SOC s vt t
+i
+n
+t i,0
+1
+,
+(13)
+Theintroducedvariable
+vt i,isbounded0
+vt i,
+lt i,
+ i.
+Thenthecumulativedegradationfunctionvaluefortimeintervalt
+and
+SOCt isgivenby(14).
+= +
+=
+s m
+l v( ) ·t
+C
+t
+C
+i
+n
+t i
+t i
+t i
+1 1
+0
+1
+,
+,
+,
+(14)
+if
+vt i,
+<
++l v,t i t i, , 1 =0
+…i n {1, , 1} holdstrue.
+This can be enforced in the MILP through constraints(15)–(17)in
+whichthebinaryvariables
+z i ,t i,
+… n{1, , 1} areintroduced.
+l z v l·t t t t,1 ,1 ,1 ,1
+(15)
+…l z v l z i n· · {2, , 1}t i t i t i t i t i, , , , 1 , 1
+(16)
+v l z0 · t i t i t n, , , 1
+(17)
+Fig. 4.Cumulative degradation function. Annotations to clarify the im-
+plementation of the incremental cost formulation(13)–(17)are shown in a
+lightershadeofblue.
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+5
+
+The productof
+dt
+C1and
+t whichgives theactualdegradation
+dtis
+calculatedusingtheidentity(18).
+= +d d d· 2 2t
+C
+t
+t
+C
+t t
+C
+t1
+1 2 1 2
+(18)
+These two squares are approximated by piecewise linear formula-
+tions. To determine the values of the square as well as
+tfrom their
+piecewise linear functions, an incremental cost formulation is used,
+similar to the implementation in(13)–(17). This method introduces
+n 1
+binariesand
+n2constraintswherenisthenumberofsegmentsof
+thepiecewiselinearfunction.Theabsolutevaluein(12)isdetermined
+byaddinginequalities(19)and(20)tothemodel.
+| |t
+C
+t
+C
+t
+C
+t
+C1
+1
+1 1
+1
+1
+(19)
+| |t
+C
+t
+C
+t
+C
+t
+C1
+1
+1
+1
+1 1
+(20)
+Given the nature of the optimization, where degradation is pena-
+lized,thisformulationusingthetwoinequalitiescomputestheabsolute
+valueof
+t
+C1 -
+t
+C
+1
+1 whichisequalto
+dt
+C1.
+To summarize the developed model, Eqs.(1)–(3)define the objec-
+tivefunctions.(1)istiedto(2)and(3)throughtheweightingfactor
+.
+(4)updatesthestateofthebatteryaftereverymarkettradinginterval.
+(5) and (6)are constraints that limit the maximum power input and
+output and also ensure that battery is either charged or discharged in
+any time interval.(7)and (8)accountfor inefficienciesinbatterysys-
+tems.(9)setstheboundariesonthestateofcharge.(10)–(12)together
+calculate the degradation in any time interval. Eqs.(13)–(20)convert
+the non-linear problem into a MILP by introducing extra constants
+(
+s l m s, , , ( ) C1
+), continuous variables (v), binary variables (z), identity
+(18)and inequalities(19) and (20). Eqs.(13)–(17)describe the incre-
+mentalcostformulationtoaccountforpiecewiselinearfunctions,(18)
+suggests the way to deal with bilinear terms while the inequalities of
+(19) and (20)solve the problem of calculating the modulus function
+exploitingtheproblemsetup.
+4. Two-stage decomposition technique
+A scheduling algorithm is only useful when it can generate an op-
+timalstrategy(oratleastanear-optimalstrategy)withincomputational
+time restrictions imposed by the market horizon. For cases where
+greater accuracy is desired (e.g. by increasing the linear segments de-
+fining a non-linear function) or when optimizing for more trading in-
+tervals such as for multiple days in the day-ahead market or for the
+imbalance market (for example with 15-min trading intervals), the
+optimization routine might be unable to provide solutions with near-
+zero optimality gap within reasonable time. In this section, a decom-
+position technique is developed to enable computation for these cases
+whiledeliveringnear-optimalsolutionsmuchquickerthantheoriginal
+program.
+The decomposition method works by breaking the problem in the
+time domain into smaller tractable sub-problems. By tractable, it is
+impliedthateachofthesesub-problemscanbesolvedwithazeroop-
+timality gap in a reasonable time-frame with the computing resources
+at hand. By examining the structure of the optimization problem, the
+block variable
+dt
+C1is computed as the difference of two consecutive
+time interval values of
+C1where
+C1 is only a function of SOC (com-
+plicating constraints). Thus, fixing an intermediate SOC value, effec-
+tivelydividestheproblemintotwoindependentsub-problems.
+FixingtheintermediateSOCat
+50%isagoodheuristicasithedges
+equally on the possibility of both charging and discharging. However,
+anevenbetterguessforsettingtheintermediateSOCispossible.Thisis
+achieved by solving the original (non-decomposed) optimization pro-
+blem for the entire market horizon for a fixed period of computation
+time or optimality gap, whichever comes earlier. The best feasible so-
+lution at this stage is used for fixing the intermediate SOC values.
+Typically, a commercial solver (such as CPLEX) finds good feasible
+solutions in little time initially but then has difficulty in closing the
+optimality gap. These SOC values provide a better initial guess than
+fixingtheintermediateSOCstateat
+50%.Thereafter,thedecoupledsub-
+periods are solved individually. The two-stage methodology is graphi-
+cally shown inFig. 5. It is to be noted that decomposition in the time
+domainhasbeenappliedtootheroptimizationproblemsaswell[42].
+5. Numerical Case Study
+The proposed model is implemented using GAMS 24.8.5 and the
+MILP problem is solved using CPLEX 12. In order to demonstrate the
+functioning, results and advantages of the model compared to con-
+temporary approaches, the application of the lithium-ion battery in a
+day-ahead market setup is investigated in this case study. A 1MWh /
+2MW storage system is considered for the case study the basic unit of
+whichismadeofthecommercialcellofTable1.Itisassumedthatthe
+storage system is controlled by a battery management system that en-
+sures that the cells of the storage system are at the same state at all
+times.Theone-wayefficiencyofthissystem(
+)isassumedtobe95%.
+Theday-aheadmarketpricesonMonday,22January2018fortheUK
+SEM were obtained from ENTSO-E online platform[43]. This day-
+ahead market has half-hourly trading intervals (
+T = 0.5). It is as-
+sumedthatthestoragesystemactsasaprice-taker.Itisreiteratedthat
+thisstudyfocusesonanefficientschedulingofthestoragesystemand
+notontheeconomicsoftheapplicationofstorageindifferentmarkets
+ortheircombinations.Thechoiceofthisparticularmarketismotivated
+not from an economic perspective but because it fits the charge–-
+discharge characteristics of the battery under study and therefore, fa-
+cilitatesillustratingtheusabilityoftheproposeddegradationmodelin
+adidacticfashion.
+5.1. Revenue maximization
+First, optimization is carried out with thenaiveobjective of solely
+maximizingrevenue.Degradationiscomputedbutitdoesnotaffectthe
+scheduling strategy, which is geared towardsextracting the maximum
+financial gain possible from the day-ahead market. This case is con-
+sidered the base case against which multi-objective scheduling strate-
+gies can becompared. Note that this casecorresponds to
+= 1.00 in
+themulti-objectiveproblem.Theotherextremewhen
+=0.00,isthe
+trivialcaseofminimizationofdegradation,whichtakesplacewhenthe
+storageisnotoperated,leadingtozerodegradationandzerorevenue.
+Fig. 5.Illustrationofthetwo-stagetemporaldecompositionmethod.
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+6
+
+5.2. Multi-objective optimization
+Aparametricsweepiscarriedoutnext,startingwith
+=0.95and
+decreasing it by 0.05 in every iteration. The results for the naive ob-
+jectiveandthemulti-objectiveapproachareshowninFig.6.Thenaive
+objective which only maximizes revenue also maximizes the degrada-
+tioninthebattery.Resultsforthirteenvaluesof
+arecompared with
+thisasabasis.Astheweightisdecreased,therevenuefromthemarket
+decreasesaswellasthebatterydegradation.However,theproportions
+by which each objective decreases are not equal. Each point inFig. 6
+represents a Pareto optimal scheduling strategy. The algorithm finds
+intelligentschedulingstrategiesbasedontheinputdegradationdataof
+the battery by modulating the charge and discharge states with time-
+based on the price signals. In order to understand better how the al-
+gorithmworks,twosuchParetooptimalschedulingstrategies(
+=0.8
+and
+ =0.4)arecomparedagainstthebasecaseinFig.7.
+In the naive case, every opportunity to generate revenue from the
+market is fully utilized. This results in abrupt changes in SOC which
+causes high degradation in the storage system. When
+= 0.8, the
+scheduling strategy is more biased towards revenue generation than
+preservationofthestorage.Still,itcanbringdownthedegradationby
+about 22.7
+%whilegenerating 98.8
+%of themaximum revenue.This is
+made possible by only charging and discharging atthe maximum cur-
+rent when the prices are either very low or very high, respectively. In
+othertradingintervals,thecurrentisreducedorcyclingathighSOCis
+completelyavoided(e.g.,in
+t t40 45).Theschedulingstrategywhen
+=0.4givesmuchimportancetothedegradationinthebattery.Thisis
+evidentfromFig.6,wheredegradationisonly23.7
+%ofthemaximum.
+However,86.9
+%ofthemaximumrevenueisstillpossible.Thewaythe
+storage is operated in this scheduling strategy is to spread out the
+charginganddischargingoverlongerintervals.Also,veryhighstatesof
+chargearediscerniblyavoideduntilpricedifferencesjustifythem.Even
+when 100
+% state of charge is reached, it is done in stages with low
+currentsappliedathighstatesofcharge(e.g.,in
+t t15 18and
+t t31 35 in
+Fig.7).Thisstrategyisakintothechargingschemecurrentlyadopted
+for electric vehicles and devices such as mobiles and laptops where
+batteries are charged at a faster rate until they reach a SOC of 80
+%
+followedbychargingatareducedcurrent.
+5.3. Accuracy of the proposed degradation model
+The actualbatterydegradationbehaviouris non-linear.Itwascast
+as a MILP with the addition of piecewise linear segments and binary
+variablesapproximatingtheactualnon-linearbehaviour.Sixsegments
+wereusedtolinearizethesquarefunctionin(18).Theaccuracyofthis
+MILP is compared against the non-linear post-optimization computa-
+tioninTable2.ItcanbenoticedthattheMILPrepresentsthenon-linear
+degradationbehaviourwithgoodaccuracy.
+Theimportanceofincludingthecurrentdependencecanbegauged
+by calculating the degradation that would have been caused with the
+same scheduling strategy when no dependence of degradation on cur-
+rent is assumed. Thus, the degradation caused, for example, at 2C
+charge rate is the same as 1C discharge rate. Algorithmically, this is
+determined post-optimization by fixing the value of
+to unity, which
+meansthatthevalueof
+dtisalwaysequalto
+dt
+C1.Theerrorintroduced
+bythisassumptionhasalsobeenquantifiedinTable2.
+The actual degradation can also be compared against the Ah
+throughput model, which assumes no influence of current rate and
+averagestateofchargeondegradation.The degradationfromthisap-
+proach can be calculated post-optimization from the data available
+from the battery data sheet (Table 1). The degradation caused by one
+Ah of charge/discharge is equal to 120
+µAh. The inadequacy of this
+approach to represent degradation for this battery is evident from the
+resultspresentedinTable2.
+Theaforementioneddataindicatethataschedulingstrategyforan
+energy storage system based on lithium-ion batteries that is derived
+using incorrect degradation models is likely to be far from the actual
+optimum.
+5.4. Simulating a medium-term scheduling horizon – application of the
+decomposition technique
+Theapplicationoftheproposedtwo-stagetemporaldecomposition
+technique for solving the optimization problem for more trading in-
+tervalsisdemonstratedbyconsideringtheday-aheadmarketpricesfor
+oneweek, from 22January 2018 to29 January2018 forthe UK SEM
+[43], which corresponds to 336 time intervals. To make the problem
+even more difficult and highlight the utility of the proposed decom-
+positionapproach,
+=0.3isused.Forthisvalueof
+,asolutionwith
+zerooptimalitygapcouldnotbeobtainedevenafter3600sforthe48
+intervalproblemdiscussedintheprevioussections.
+Whenoptimizingthe336-intervaloptimizationproblemasawhole,
+thecompositeobjectivefunctionvalue
+progresswithtimeisasshown
+inTable3.Theincrementalprogressisveryslowafter1500s.Usingthe
+two-stage decomposition approach, the optimization horizon is sub-
+divided into 14 optimization periods of 24 intervals each. The inter-
+mediateSOCvaluesaresetusingthebestsolutioncaseat1500s.Each
+sub-period is then individually optimized. The value of
+after adding
+the individual sub-periods isfound tobe116.89. The entiretwo-stage
+optimization routine runs in less than 2000s and outputs a better
+scheduling strategy than the original program even after 36000s. This
+strategy is illustrated inFig. 5. In terms of the two objectives, this
+scheduling strategy yields 79
+%of the maximum revenue (€497.15 vs.
+€629.45)whilereducingthedegradationby81.6
+%(4.61mAhvs.25.12
+mAh). Degradation measured as capacity fade in one battery unit
+forming the storage system is also plotted inFig. 8. Sharp changes of
+SOC at high SOC values cause the most capacity fade in the battery.
+Thereisascopeoffurtherimprovementinthetotaltimetakenbythe
+optimizationroutinebysolvingthedecoupledsub-problemsinparallel
+ratherthansequentially.
+Theeffectivenessofthetwo-stagedecompositiontechniquevs.the
+heuristic offixing the intermediate SOCvalues to 50
+%
+can also be ad-
+judged. To evaluate the dispatch strategy using the heuristic, only the
+second stage of the two-stage decomposition technique is run after
+fixing the intermediate states to the value of 50
+%. The 336-interval
+optimizationproblemyieldsthedispatchstrategywhichcanbeseenin
+Fig. 8. In this case, the value of the composite objective function is
+104.92.Thesimulationtakeslessthan1200s.Thevalueoftheobjective
+function is however considerably lower than the one obtained by the
+Fig. 6.Paretoefficientschedulingstrategiesfortheday-aheadmarket.
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+7
+
+two-stage technique (116.89) demonstrating the effectiveness of this
+two-stagetechnique.Intermsofthetwoobjectives,revenuesof€455.5
+aregeneratedanddegradationof4.53mAhiscausedforthecasewhen
+=0.3usingtheheuristicapproach.
+6. Conclusion
+A more accurate way to quantify and account for non-linear de-
+gradation behaviour of lithium-ion batteries in storage scheduling
+modelsappliedtopowersystemshasbeenpresentedinthiswork.Even
+though the capacity fading model proposed is not totally reliable, it
+presentsanefficientcompromisebetweenspeedandaccuracybasedon
+experimental data collected from a battery with the same chemistry
+providedbythesamemanufacturer.Anovelmulti-objectiveapproach
+to optimize for revenue while taking degradation in lithium-ion bat-
+teries into account has been proposed. Evidently, multiple Pareto op-
+timaloperatingstrategiesforstoragesystemsarepossible,theselection
+ofwhichwillrequiredecisionmakingbasednotonlyonthecapitaland
+operatingcostsofthesebatteriesbutalsotheshort-termandlong-term
+financial goals of the energy storage system operator. The proposed
+mixed-integer linear programming based model is also applicable for
+more computationally intensive optimization studies through the two-
+stagetemporaldecompositiontechniquethatwasproposed.Itistobe
+noted that although the proposed model is applicable to lithium bat-
+teriesofdifferentchemistries,theexactdegradationparametersusedin
+this work are applicable only to the NMC battery under study.
+Degradationparametersforotherbatteriescanbedeterminedbasedon
+agingexperimentsfollowingthemethodologyin[34]orbyusingaging
+datasets that are openly available[44]. Once the degradation para-
+meters are determined, the linearisation techniques proposed in this
+workcanbeused.Theimportantrevenueversusdegradationtrade-off
+highlighted in this work can be easily replicated for other batteries,
+providedthattheexperimentaldataontheirdegradationbehaviourare
+available.
+Declaration of Competing Interest
+The authors declare that they have no known competing financial
+interests or personal relationships that could have appeared to influ-
+encetheworkreportedinthispaper.
+Fig. 7.Dispatchstrategyforthreecases.Thenaivecasedoesnottakebatterydegradationintoaccount.Theothertwocasesincreasinglypenalizedegradation.
+Table 2
+Comparisonoferrorsusingdifferentoptimizationanddegradationmodels.
+Case Non-linear MILP(6segment) Currentindependent AhThroughput
+Degradation(mAh) Degradation(mAh) %error Degradation(mAh) %error Degradation(mAh) %error
+Naive 4.65 4.60 1.07 3.72 20.11 2.58 44.52
+=0.9 3.99 3.94 1.26 4.77 −19.58 2.42 39.42
+=0.8 3.56 3.56 0.13 3.89 −9.20 2.37 33.34
+=0.7 2.45 2.42 1.38 3.29 −34.02 2.06 16.11
+=0.6 1.81 1.79 1.18 2.18 −20.55 1.81 0.25
+=0.5 1.34 1.32 1.08 2.40 −79.89 1.63 −21.94
+=0.4 1.11 1.09 1.58 1.84 −66.43 1.58 −42.62
+Table 3
+Solution progress of the original 336-interval
+problem.
+Time(s) Valueof
+1000 111.29
+1500 113.69
+3600 115.94
+10000 116.25
+15000 116.26
+36000 116.36
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+8
+
+References
+[1]GandomanFH,JaguemontJ,GoutamS,GopalakrishnanR,FirouzY,KalogiannisT,
+etal.Conceptofreliabilityandsafetyassessmentoflithium-ionbatteriesinelectric
+vehicles:basics,progress,andchallenges.ApplEnergy2019;251:113343.
+[2]WangY,SunZ,ChenZ.Energymanagementstrategyforbattery/supercapacitor/
+fuelcellhybridsourcevehiclesbasedonfinitestatemachine.ApplEnergy
+2019;254:113707.
+[3]ZhangC,WangY,GaoY,WangF,MuB,ZhangW.Acceleratedfadingrecognition
+forlithium-ionbatterieswithNickel-Cobalt-Manganesecathodeusingquantilere-
+gressionmethod.ApplEnergy2019;256:113841.
+[4]ZhuR,DuanB,ZhangC,GongS.Accuratelithium-ionbatterymodelingwithin-
+verserepeatbinarysequenceforelectricvehicleapplications.ApplEnergy
+2019;251:113339.
+[5]WangY,LiX,WangL,SunZ.Multiple-grainedvelocitypredictionandenergy
+managementstrategyforhybridpropulsionsystems.JEnergyStorage
+2019;26:100950.
+[6]GoebelC,HesseH,SchimpeM,JossenA,JacobsenHA.Model-baseddispatch
+strategiesforlithium-ionbatteryenergystorageappliedtopay-as-bidmarketsfor
+secondaryreserve.IEEETransPowerSyst2017;32(4):2724–34.
+[7]FaresRL,WebberME.Aflexiblemodelforeconomicoperationalmanagementof
+gridbatteryenergystorage.Energy2014;78:768–76.
+[8] PelzerD,CiechanowiczD,KnollA.Energyarbitragethroughsmartschedulingof
+batteryenergystorageconsideringbatterydegradationandelectricitypricefore-
+casts.In:2016IEEEInnovativeSmartGridTechnologies-Asia(ISGT-Asia),2016,p.
+472–7.
+[9]XuB,ZhaoJ,ZhengT,LitvinovE,KirschenDS.Factoringthecycleagingcostof
+batteriesparticipatinginelectricitymarkets.IEEETransPowerSyst
+2018;33(2):2248–59.
+[10]ZhaiQ,MengK,DongZY,MaJ.Modelingandanalysisoflithiumbatteryopera-
+tionsinspotandfrequencyregulationservicemarketsinAustraliaelectricity
+market.IEEETransIndustrInf2017;13(5):2576–86.
+[11] KazemiM,ZareipourH.Long-termschedulingofbatterystoragesystemsinenergy
+andregulationmarketsconsideringbattery’slifespan.IEEETransSmartGrid
+2018;9(6):6840–9.
+[12]HeG,ChenQ,KangC,PinsonP,XiaQ.Optimalbiddingstrategyofbatterystorage
+inpowermarketsconsideringperformance-basedregulationandbatterycyclelife.
+IEEETransSmartGrid2016;7(5):2359–67.
+[13]ShafieeS,Zamani-DehkordiP,ZareipourH,KnightAM.Economicassessmentofa
+price-makerenergystoragefacilityintheAlbertaelectricitymarket.Energy
+2016;111:537–47.
+[14] WankmüllerF,ThimmapuramPR,GallagherKG,BotterudA.Impactofbattery
+degradationonenergyarbitragerevenueofgrid-levelenergystorage.JEnergy
+Storage2017;10:56–66.
+[15]KazemiM,ZareipourH,AmjadyN,RosehartWD,EhsanM.Operationschedulingof
+batterystoragesystemsinjointenergyandancillaryservicesmarkets.IEEETrans
+SustainableEnergy2017;8(4):1726–35.
+[16]Akhavan-HejaziH,Mohsenian-RadH.Optimaloperationofindependentstorage
+systemsinenergyandreservemarketswithhighwindpenetration.IEEETrans
+SmartGrid2014;5(2):1088–97.
+[17]LiY,VilathgamuwaM,ChoiSS,FarrellTW,TranNT,TeagueJ.Developmentofa
+degradation-consciousphysics-basedlithium-ionbatterymodelforuseinpower
+systemplanningstudies.ApplEnergy2019;248:512–25.
+[18]HokeA,BrissetteA,SmithK,PrattA,MaksimovicD.Accountingforlithium-ion
+batterydegradationinelectricvehiclechargingoptimization.IEEEJEmergSelTop
+PowerElectron2014;2(3):691–700.
+[19]Dufo-LópezR,Bernal-AgustínJL,Domínguez-NavarroJA.Generationmanagement
+usingbatteriesinwindfarms:economicalandtechnicalanalysisforSpain.Energy
+Policy2009;37(1):126–39.
+[20]YouS,RasmussenCN.Genericmodellingframeworkforeconomicanalysisof
+batterysystems.IETConferenceonRenewablePowerGeneration(RPG2011).
+2011.p.1–6.
+[21]TelekeS,BaranME,BhattacharyaS,HuangAQ.Optimalcontrolofbatteryenergy
+storageforwindfarmdispatching.IEEETransEnergyConvers2010;25(3):787–94.
+[22]DuggalI,VenkateshB.Short-termschedulingofthermalgeneratorsandbattery
+storagewithdepthofdischarge-basedcostmodel.IEEETransPowerSyst
+2015;30(4):2110–8.
+[23]TanX,WuY,TsangDHK.Astochasticshortestpathframeworkforquantifyingthe
+valueandlifetimeofbatteryenergystorageunderdynamicpricing.IEEETrans
+SmartGrid2017;8(2):769–78.
+[24]NamorE,TorregrossaD,SossanF,CherkaouiR,PaoloneM.Assessmentofbattery
+ageingandimplementationofanageingawarecontrolstrategyforaloadleveling
+applicationofalithiumtitanatebatteryenergystoragesystem.2016IEEE17th
+WorkshoponControlandModelingforPowerElectronics(COMPEL).2016.p.1–6.
+[25] ThallerL.Expectedcyclelifeversusdepthofdischargerelationshipsofwellbe-
+havedsinglecellsandcellstrings.In:162ndMeetingoftheElectrochem.Soc.,
+Detroit,17-22Oct.1982;1982,p.17–22.
+[26] BindnerH,CroninT,LundsagerP,ManwellJF,AbdulwahidU,Baring-gouldI.
+Lifetimemodellingofleadacidbatteries,vol.1515,2005.http://130.226.56.153/
+rispubl/VEA/veapdf/ris-r-1515.pdf.
+[27]SchifferJ,SauerDU,BindnerH,CroninT,LundsagerP,KaiserR.Modelprediction
+forrankinglead-acidbatteriesaccordingtoexpectedlifetimeinrenewableenergy
+systemsandautonomouspower-supplysystems.JPowerSources
+2007;168(1):66–78.10thEuropeanleadbatteryconference.
+[28]Castelo-BecerraA,ZengW,ChowM.Cooperativedistributedaggregationalgorithm
+fordemandresponseusingdistributedenergystoragedevices.NorthAmerican
+PowerSymposium(NAPS),2017.2017.p.1–6.
+[29]AhmadianA,SedghiM,Mohammadi-ivatlooB,ElkamelA,AliakbarGolkarM,
+FowlerM.Cost-benefitanalysisofV2Gimplementationindistributionnetworks
+consideringPEVsbatterydegradation.IEEETransSustainableEnergy
+2018;9(2):961–70.
+[30]FortenbacherP,MathieuJL,AnderssonG.Modeling,identification,andoptimal
+controlofbatteriesforpowersystemapplications.2014Powersystemscomputa-
+tionconference.2014.p.1–7.
+[31]ZakeriB,SyriS.ValueofenergystorageintheNordicPowermarket-benefitsfrom
+pricearbitrageandancillaryservices.201613thInternationalConferenceonthe
+EuropeanEnergyMarket(EEM).2016.p.1–5.
+[32]TangX,ZouC,YaoK,LuJ,XiY,GaoF.Agingtrajectorypredictionforlithium-ion
+batteriesviamodelmigrationandbayesianmontecarlomethod.ApplEnergy
+2019;254:113591.
+[33]SchmittJ,MaheshwariA,HeckM,LuxS,VetterM.Impedancechangeandcapacity
+fadeoflithiumnickelmanganesecobaltoxide-basedbatteriesduringcalendar
+aging.JPowerSources2017;353:183–94.
+[34]MaheshwariA,HeckM,SantarelliM.Cycleagingstudiesoflithiumnickelman-
+ganesecobaltoxide-basedbatteriesusingelectrochemicalimpedancespectroscopy.
+ElectrochimActa2018;273:335–48.
+[35]EckerM,NietoN,KäbitzS,SchmalstiegJ,BlankeH,WarneckeA,SauerDU.
+Fig.8.Schedulingstrategyfortheweek-longmulti-objectiveoptimizationproblemfor
+=0.3plottedalongwithelectricitypricesforthetwo-stagedecomposition
+techniqueandtheheuristicapproachoffixingintermediateSOCat50
+%.
+A. Maheshwari, et al. Applied Energy 261 (2020) 114360
+9
+
+CalendarandcyclelifestudyofLi(NiMnCo)O2-based18650lithium-ionbatteries.J
+PowerSources2014;248:839–51.
+[36]SchmalstiegJ,KäbitzS,EckerM,SauerDU.AholisticagingmodelforLi(NiMnCo)
+O2based18650lithium-ionbatteries.JPowerSources2014;257:325–34.
+[37]LewerenzM,SauerDU.Evaluationofcyclicagingtestsofprismaticautomotive
+LiNiMnCoO2-graphitecellsconsideringinfluenceofhomogeneityandanode
+overhang.JEnergyStorage2018;18:421–34.
+[38]LaresgoitiI,KäbitzS,EckerM,SauerDU.Modelingmechanicaldegradationinli-
+thiumionbatteriesduringcycling:Solidelectrolyteinterphasefracture.JPower
+Sources2015;300:112–22.
+[39]PaterakisNG,GibescuM,KoutW,HugoYA.Investigationofarbitragebetweenthe
+Dutchday-aheadandimbalancemarketsasabusinesscaseforthehydrogen
+bromineflowbattery.2017IEEEManchesterPowerTech.2017.p.1–6.
+[40]PadbergM.Approximatingseparablenonlinearfunctionsviamixedzero-onepro-
+grams.OperatResLett2000;27(1):1–5.
+[41] KehaAB,deFariasIR,NemhauserGL.Modelsforrepresentingpiecewiselinearcost
+functions.OperatResLett2004;32(1):44–8.
+[42]KimK,BotterudA,QiuF.Temporaldecompositionforimprovedunitcommitment
+inpowersystemproductioncostmodeling.IEEETransPowerSyst
+2018;33(5):5276–87.
+[43] ENTSO-ETransparencyPlatform,https://transparency.entsoe.eu/,accessed2018-
+04-22.
+[44] CALCEBatteryResearchGroupData,https://web.calce.umd.edu/batteries/data.
+htm,accessed2019-11-24.
+A. Maheshwari, et al.
+Applied Energy 261 (2020) 114360
+10

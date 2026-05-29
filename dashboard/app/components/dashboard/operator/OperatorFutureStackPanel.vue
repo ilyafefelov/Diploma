@@ -528,6 +528,23 @@ const strategyComparisonRows = computed(() => buildStrategyComparisonRows(
   props.shadowComparisonPreviews
 ))
 const strategyComparisonLabels = computed(() => strategyComparisonRows.value.map(row => shortStrategyLabel(row)))
+const formatStrategyAxisLabel = (value: string): string => {
+  const wrappedLabels: Record<string, string> = {
+    'Best valid': 'Best\nvalid',
+    'DT Shadow': 'DT\nShadow',
+    'Direct DT': 'Direct\nDT',
+    'DT/V2+': 'DT/V2+',
+    'DT distill': 'DT\ndistill',
+    'Decision DT': 'Decision\nDT',
+    'RA V2+': 'RA\nV2+',
+    'DT V2+ safe-switch': 'DT V2+\nsafe-switch',
+    'Poland/TFT': 'Poland\nTFT',
+    'DFL diag': 'DFL\ndiag',
+    'V13 blocked': 'V13\nblocked'
+  }
+
+  return wrappedLabels[value] ?? value
+}
 const strategyComparisonSummary = computed(() => strategyComparisonRows.value.map(row => ({
   label: row.label,
   value: row.isBlocked
@@ -535,6 +552,49 @@ const strategyComparisonSummary = computed(() => strategyComparisonRows.value.ma
     : `${formatEnergy(row.totalChargeMwh)} charge / ${formatEnergy(row.totalDischargeMwh)} discharge`,
   meta: `${row.status}; ${row.scheduleRows} row${row.scheduleRows === 1 ? '' : 's'}; ${formatOptionalUah(row.meanRegretVsStrictUah)} vs strict`
 })))
+const shadowMetricsBySource = computed(() => new Map(
+  props.shadowComparisonPreviews.map(preview => [preview.preview_source_id, preview.comparison_metrics])
+))
+const shadowModelStoryItems = computed(() => {
+  const applesMetrics = shadowMetricsBySource.value.get('dt_v2_plus_apples_to_apples_shadow') ?? {}
+  const regretAwareMetrics = shadowMetricsBySource.value.get('regret_aware_v2_plus_selector_shadow') ?? {}
+  const safeSwitchMetrics = shadowMetricsBySource.value.get('dt_v2_plus_safe_switch_selector_shadow') ?? {}
+  const v2Regret = numericMetric(regretAwareMetrics.v2_plus_mean_regret_uah)
+    ?? numericMetric(safeSwitchMetrics.v2_plus_mean_regret_uah)
+    ?? numericMetric(applesMetrics.v2_plus_mean_regret_uah)
+    ?? 174.77
+  const dtRegret = numericMetric(applesMetrics.dt_selected_mean_regret_uah) ?? 460.30
+  const selectorRegret = numericMetric(safeSwitchMetrics.selector_mean_regret_uah)
+    ?? numericMetric(safeSwitchMetrics.dt_selected_mean_regret_uah)
+    ?? numericMetric(regretAwareMetrics.selector_mean_regret_uah)
+    ?? numericMetric(regretAwareMetrics.dt_selected_mean_regret_uah)
+    ?? 174.77
+  const switchCount = numericMetric(safeSwitchMetrics.non_v2_plus_switch_count)
+    ?? numericMetric(regretAwareMetrics.non_v2_plus_switch_count)
+    ?? 0
+  const abstentionCount = numericMetric(safeSwitchMetrics.abstention_count)
+    ?? numericMetric(regretAwareMetrics.abstention_count)
+    ?? 90
+  const recoveredSwitches = numericMetric(safeSwitchMetrics.recovered_safe_switch_opportunity_count) ?? 0
+
+  return [
+    {
+      label: 'V2+ default',
+      value: `${formatRegretMean(v2Regret)} mean regret`,
+      meta: 'headline/fallback'
+    },
+    {
+      label: 'Apples-to-apples DT',
+      value: `${formatRegretMean(dtRegret)} mean regret`,
+      meta: 'not promoted'
+    },
+    {
+      label: 'DT safe-switch shadow',
+      value: `${formatRegretMean(selectorRegret)} mean regret`,
+      meta: `${Math.round(switchCount).toLocaleString('en-GB')} switches / ${Math.round(abstentionCount).toLocaleString('en-GB')} V2+ abstentions / ${Math.round(recoveredSwitches).toLocaleString('en-GB')} recovered wins`
+    }
+  ]
+})
 const strategyComparisonOption = computed(() => ({
   animationDuration: 500,
   backgroundColor: 'transparent',
@@ -560,11 +620,17 @@ const strategyComparisonOption = computed(() => ({
     top: 0,
     textStyle: { color: 'rgba(236, 250, 255, 0.88)', fontWeight: 800 }
   },
-  grid: { left: 58, right: 54, top: 48, bottom: 54, containLabel: true },
+  grid: { left: 58, right: 54, top: 48, bottom: 72, containLabel: true },
   xAxis: {
     type: 'category',
     data: strategyComparisonLabels.value,
-    axisLabel: { color: 'rgba(219, 245, 255, 0.9)', fontWeight: 800 }
+    axisLabel: {
+      color: 'rgba(219, 245, 255, 0.9)',
+      fontWeight: 800,
+      fontSize: 11,
+      interval: 0,
+      formatter: formatStrategyAxisLabel
+    }
   },
   yAxis: [
     {
@@ -809,6 +875,24 @@ const previewSourceSelectItems = computed(() => {
           market_execution_enabled: false
         },
         {
+          preview_source_id: 'regret_aware_v2_plus_selector_shadow',
+          label: 'Regret-aware V2+ selector',
+          status: 'regret_aware_abstention_not_promoted',
+          reason: 'Regret-aware selector with explicit V2+ abstention.',
+          is_default_strategy: false,
+          is_promoted_strategy: false,
+          market_execution_enabled: false
+        },
+        {
+          preview_source_id: 'dt_v2_plus_safe_switch_selector_shadow',
+          label: 'DT V2+ safe-switch selector',
+          status: 'safe_switch_evidence_not_promoted',
+          reason: 'Corrected residual DT/V2+ shadow with safe-switch evidence and V2+ fallback.',
+          is_default_strategy: false,
+          is_promoted_strategy: false,
+          market_execution_enabled: false
+        },
+        {
           preview_source_id: 'poland_tft_shadow',
           label: 'Poland-TFT Shadow',
           status: 'positive_not_promoted',
@@ -902,6 +986,12 @@ function formatPreviewSourceOptionLabel(
   if (previewSourceId === 'dt_v2_plus_apples_to_apples_shadow') {
     return 'DT vs real V2+ shadow (not promoted)'
   }
+  if (previewSourceId === 'regret_aware_v2_plus_selector_shadow') {
+    return 'Regret-aware V2+ selector (abstains)'
+  }
+  if (previewSourceId === 'dt_v2_plus_safe_switch_selector_shadow') {
+    return 'DT V2+ safe-switch selector (not promoted)'
+  }
   if (previewSourceId === 'poland_tft_shadow') {
     return 'Poland/TFT shadow (positive, not promoted)'
   }
@@ -966,6 +1056,18 @@ function shortStrategyLabel(row: StrategyComparisonRow): string {
   if (row.sourceId === 'dt_v2_plus_apples_to_apples_shadow') {
     return 'DT/V2+'
   }
+  if (row.sourceId === 'dt_v2_plus_distillation_shadow') {
+    return 'DT distill'
+  }
+  if (row.sourceId === 'dt_decision_aware_shadow') {
+    return 'Decision DT'
+  }
+  if (row.sourceId === 'regret_aware_v2_plus_selector_shadow') {
+    return 'RA V2+'
+  }
+  if (row.sourceId === 'dt_v2_plus_safe_switch_selector_shadow') {
+    return 'DT V2+ safe-switch'
+  }
   if (row.sourceId === 'poland_tft_shadow') {
     return 'Poland/TFT'
   }
@@ -984,6 +1086,14 @@ function formatOptionalUah(value: number | null): string {
     return 'n/a'
   }
   return `${Math.round(value).toLocaleString('en-GB')} UAH`
+}
+
+function numericMetric(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
+
+function formatRegretMean(value: number): string {
+  return `${value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} UAH`
 }
 
 function formatForecastSeriesLabel(modelName: string): string {
@@ -1240,12 +1350,22 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
           <p class="decision-chart-card__eyebrow">
             Strategy comparison
           </p>
-          <h3>Five-strategy delivery-day comparison</h3>
+          <h3>Delivery-day strategy comparison</h3>
           <p>
             Charge/discharge totals and regret metrics are shown for the selected DAM delivery window
             {{ selectedScheduleWindowLabel }}. Shadow and diagnostic strategies stay preview-only; blocked V13/DT/LAVA
             remains visible as gate evidence with no schedule rows.
           </p>
+          <div class="shadow-model-story-strip">
+            <span
+              v-for="item in shadowModelStoryItems"
+              :key="item.label"
+            >
+              <strong>{{ item.label }}</strong>
+              {{ item.value }}
+              <small>{{ item.meta }}</small>
+            </span>
+          </div>
           <div
             v-if="strategyComparisonSummary.length"
             class="forecast-quality-strip"
@@ -1704,6 +1824,42 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   margin-top: 0.45rem;
 }
 
+.shadow-model-story-strip {
+  display: grid;
+  gap: 0.4rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.55rem;
+}
+
+.shadow-model-story-strip span {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+  border: 1px solid rgba(202, 249, 255, 0.34);
+  border-radius: 0.48rem;
+  background: rgba(4, 67, 119, 0.72);
+  color: rgba(236, 250, 255, 0.9);
+  padding: 0.42rem 0.52rem;
+  font-size: 0.72rem;
+  font-weight: 900;
+  line-height: 1.22;
+}
+
+.shadow-model-story-strip strong {
+  overflow-wrap: anywhere;
+  color: #d7ff4f;
+  font-size: 0.68rem;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.shadow-model-story-strip small {
+  overflow-wrap: anywhere;
+  color: rgba(229, 249, 255, 0.76);
+  font-size: 0.64rem;
+  font-weight: 800;
+}
+
 .forecast-quality-strip span {
   border: 1px solid rgba(202, 249, 255, 0.34);
   border-radius: 999px;
@@ -1779,6 +1935,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   .strategy-readiness-strip,
   .v13-readiness-strip,
   .academic-mvp-gate-strip,
+  .shadow-model-story-strip,
   .future-chart-grid,
   .future-explainer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1804,6 +1961,7 @@ const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleSt
   .strategy-readiness-strip,
   .v13-readiness-strip,
   .academic-mvp-gate-strip,
+  .shadow-model-story-strip,
   .future-chart-grid,
   .future-explainer-grid {
     grid-template-columns: 1fr;

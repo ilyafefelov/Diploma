@@ -1,0 +1,2701 @@
+Chad Augustine and Nate Blair
+Storage Futures Study
+Storage Technology Modeling 
+Input Data Report
+
+
+Suggested Citation: Augustine, Chad, and Nate Blair. Energy Storage Futures Study: Storage Technology Modeling Input Data Report. 
+Golden, CO: National Renewable Energy Laboratory. NREL/TP-5700-78694. https://www.nrel.gov/docs/fy21osti/78694.pdf.
+Storage Futures Study
+Storage Technology Modeling  
+Input Data Report
+Chad Augustine and Nate Blair
+
+iii 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Preface 
+This report is one in a series of the National Renewable Energy Laboratory’s Storage Futures 
+Study (SFS) publications. The SFS is a multiyear research project that explores the role and 
+impact of energy storage in the evolution and operation of the U.S. power sector. The SFS is 
+designed to examine the potential impact of energy storage technology advancement on the 
+deployment of utility-scale storage and the adoption of distributed storage, and the implications 
+for future power system infrastructure investment and operations. The research findings and 
+supporting data will be published as a series of publications. The table on the next page lists the 
+planned publications and specific research topics they will examine under the SFS.  
+This report, the second in the SFS series, reviews the current characteristics of a broad range of 
+mechanical, thermal, and electrochemical storage technologies with application to the power 
+sector. The report provides current and future projections of cost, performance characteristics, 
+and locational availability of specific commercial technologies already deployed, including 
+lithium-ion battery systems and pumped-storage hydropower. These projections will inform the 
+modeling and analysis of power system evolution scenarios planned for later reports in the series. 
+The SFS series provides data and analysis in support of the U.S. Department of Energy’s 
+Energy Storage Grand Challenge
+, a comprehensive program to accelerate the development, 
+commercialization, and utilization of next-generation energy storage technologies and sustain 
+American global leadership in energy storage. The Energy Storage Grand Challenge employs 
+a use case framework to ensure storage technologies can cost-effectively meet specific needs, 
+and it incorporates a broad range of technologies in several categories: electrochemical, 
+electromechanical, thermal, flexible generation, flexible buildings, and power electronics. 
+More information, any supporting data associated with this report, links to other reports in the 
+series, and other information about the broader study are available at 
+https://www.nrel.gov/analysis/storage-futures.html
+. 
+
+iv 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Title Description Relation to this Report 
+The Four Phases of 
+Storage Deployment: 
+A Framework for the 
+Expanding Role of 
+Storage in the U.S. 
+Power System 
+Explores the roles and opportunities for 
+new, cost-competitive stationary energy 
+storage with a conceptual framework 
+based on four phases of current and 
+potential future storage deployment, and 
+presents a value proposition for energy 
+storage that could result in cost-effective 
+deployments reaching hundreds of 
+gigawatts (GW) of installed capacity 
+Provides broader context on 
+the implications of the cost 
+and performance 
+characteristics discussed in 
+this report, including the 
+specific grid services they 
+may enable in various phases 
+of storage deployment 
+Energy Storage 
+Technology Modeling 
+Input Data Report  
+Reviews the current characteristics of a 
+broad range of mechanical, thermal, and 
+electrochemical storage technologies with 
+application to the power sector. Provides 
+current and future projections of cost, 
+performance characteristics, and locational 
+availability of specific commercial 
+technologies already deployed, including 
+lithium-ion battery systems and pumped 
+storage hydropower.  
+ Presented in this report 
+Economic Potential of 
+Diurnal Storage in the 
+U.S. Power Sector  
+Assesses the economic potential for utility-
+scale diurnal storage and the effects that 
+storage capacity additions could have on 
+power system evolution and operations 
+Analyzes utility-scale storage 
+deployment and grid 
+evolution scenarios to test the 
+various cost trajectories and 
+assumptions detailed in this 
+report. 
+Distributed Storage 
+Customer Adoption 
+Scenarios 
+Assesses the customer adoption of 
+distributed diurnal storage for several 
+future scenarios and the implications for 
+the deployment of distributed generation 
+and power system evolution 
+Analyzes distributed storage 
+adoption scenarios to test the 
+various cost trajectories and 
+assumptions detailed in this 
+report. 
+Grid Operational 
+Implications of 
+Widespread Storage 
+Deployment 
+Assesses the operation and associated 
+value streams of energy storage for 
+several power system evolution scenarios 
+and explores the implications of seasonal 
+storage on grid operations 
+Considers the operational 
+implications of storage 
+deployment and grid 
+evolution scenarios to 
+examine and expand on the 
+grid-scale scenario results 
+found with ReEDS 
+Storage Futures Study: 
+Executive Summary and 
+Synthesis of Findings 
+Synthesizes and summarizes findings from 
+the entire series and related analyses and 
+reports, and identifies topics for further 
+research 
+Includes a discussion of all 
+other aspects of the study 
+and provides context for the 
+results of this study 
+  
+
+v 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Acknowledgments 
+We would like to acknowledge the contributions of the entire Storage Futures Study team as well 
+as our U.S. Department of Energy (DOE) Office of Strategic Analysis colleagues as core 
+contributors to this document. Those contributors include Paul Denholm, Wesley Cole, Will 
+Frazier, Ben Sigrin, Kevin McCabe, and Ashreeta Prasanna from the National Renewable 
+Energy Laboratory (NREL) and Kara Podkaminer from DOE. We would also acknowledge the 
+feedback and contributions of other NREL staff, including Chad Hunter, Evan Reznicek, 
+Michael Penev, Greg Stark, Vignesh Ramasamy, David Feldman, and Trieu Mai, We also would 
+like to thank the technical review committee for input, including Doug Arent (NREL/Chair), 
+Paul Albertus, Ines Azevedo, Ryan Wiser, Susan Babinec, Aaron Bloom, Chris Namovicz, 
+Arvind Jaggi, Keith Parks, Kiran Kumaraswamy, Granger Morgan, Cara Marcy, Vincent 
+Sprenkle, Oliver Schmidt, David Rosner, John Gavan, and Howard Gruenspecht. Finally, 
+additional thoughts and suggestions came from various technical experts at DOE, including Paul 
+Spitsen, Kathryn Jackson, Neha Rustagi, Marc Melaina, Andrew Dawson, Adria Brooks, Sam 
+Baldwin, Sarah Garman. 
+This work was authored by the National Renewable Energy Laboratory, operated by Alliance for 
+Sustainable Energy, LLC, for the U.S. Department of Energy (DOE) under Contract No. DE-
+AC36-08GO28308. Funding provided by U.S. Department of Energy Office of Energy 
+Efficiency and Renewable Energy Solar Energy Technologies Office, U.S. Department of 
+Energy Office of Energy Efficiency and Renewable Energy Wind Energy Technologies Office, 
+U.S. Department of Energy Office of Energy Efficiency and Renewable Energy Water Power 
+Technologies Office and U.S. Department of Energy Office of Energy Efficiency and Renewable 
+Energy Office of Strategic Analysis. The views expressed in the article do not necessarily 
+represent the views of the DOE or the U.S. Government. The U.S. Government retains and the 
+publisher, by accepting the article for publication, acknowledges that the U.S. Government 
+retains a nonexclusive, paid-up, irrevocable, worldwide license to publish or reproduce the 
+published form of this work, or allow others to do so, for U.S. Government purposes. 
+
+vi 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+List of Acronyms and Abbreviations 
+ATB Annual Technology Baseline 
+BESS battery energy storage system(s) 
+BNEF Bloomberg New Energy Finance 
+BOS balance of system 
+CAES compressed air energy storage 
+CSP concentrating solar power 
+dGen Distributed Generation Market Demand (dGen) model 
+DOE U.S. Department of Energy 
+E/P energy/power ratio 
+EPC engineering, procurement, and construction 
+ESB energy storage block 
+ESBOS energy storage balance of system 
+ESS energy storage system 
+EV electric vehicle 
+FC fuel cell 
+FERC Federal Energy Regulatory Commission 
+H2 hydrogen (as a storage fluid) 
+H2 Elec-salt cavern- CT     hydrogen storage using electrolyzers, salt caverns, and combustion 
+turbines 
+H2 Elec-salt cavern- FC     hydrogen storage using electrolyzers, salt caverns, and stationary 
+fuel cells 
+kW kilowatt 
+kWh kilowatt-hour 
+LAES liquid air energy storage 
+LCOGS levelized cost of generation and storage 
+LFP lithium, iron, phosphate 
+LIB lithium-ion battery 
+mS millisecond 
+MW megawatts 
+MWDC megawatts-direct current 
+MWh megawatt-hour 
+NCA nickel, cobalt, aluminum 
+NMC nickel-manganese-cobalt 
+NREL  National Renewable Energy Laboratory 
+O&M operation and maintenance 
+PSH pumped-storage hydropower 
+PTES pumped thermal energy storage  
+ReEDS NREL’s Regional Energy Deployment System model 
+RTE round-trip efficiency 
+S second 
+SFS Storage Futures Study 
+USD U.S. dollars 
+WDC watts-direct current  
+
+vii 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Executive Summary 
+The Storage Futures Study (SFS) is a multiyear research project to explore the role and impact 
+of energy storage in the evolving electricity sector of the United States. The SFS is designed to 
+examine the potential impact of energy storage technology advancement on the deployment of 
+utility-scale storage and the adoption of distributed storage, and the implications for future power 
+system infrastructure investment and operations. This specific report synthesizes current and 
+projected cost performance assumptions along with location availability for storage technologies 
+through 2050 that will be used in scenario analysis for the SFS at both the bulk power and 
+distribution system scales. For comparison and context, this report also presents a synthesis of 
+current cost and performance characteristics of energy storage technologies for storage durations 
+ranging from minutes to months and including mechanical, thermal, and electrochemical storage 
+technologies for the electricity sector. This information is intended to cover a broad range of 
+storage technologies that are currently receiving significant attention from the investment 
+community as well as in the media. In the report, we emphasize that energy storage technologies 
+must be described in terms of both their power (kilowatts [kW]) capacity and energy (kilowatt-
+hours [kWh]) capacity to assess their costs and potential use cases.  
+The technology cost and performance future projections highlighted in this work are limited to 
+two commercial technologies that have already been deployed in the United States and thus have 
+available data to inform forward projections: battery energy storage systems (BESS) and 
+pumped-storage hydropower energy storage (PSH). These scenarios capture an aggressive range 
+of future cost reductions under current market and policy conditions. They do not explicitly 
+represent cost reductions that may occur with rapid deployment to achieve deep decarbonization. 
+While there are uncertainties with potential supply chain constraints, costs could come down 
+even faster than captured in this analysis under a highly decarbonized future. There are ongoing 
+efforts to better capture the potential for accelerated cost reductions based upon accelerated 
+deployment. 
+For each technology, we develop three projections: an Advanced Scenario, a Moderate Scenario, 
+and a Conservative Scenario. The Moderate Scenario is the most likely projection based on 
+literature and analysis, and the Advanced and Conservative Scenarios are used to test the 
+sensitivity of technology costs to projected deployments under SFS scenarios. The PSH and 
+utility-scale BESS projections will be used in the National Renewable Energy Laboratory’s 
+(NREL’s) Regional Energy Deployment System (ReEDS) capacity expansion model to explore 
+grid-scale energy storage, while residential and commercial and industrial BESS projections are 
+used in the Distributed Generation Market Demand (dGen) model to study distributed energy 
+storage. 
+These projections provide a benchmark for storage technologies, with a wide but plausible range 
+of technology advancement over multiple decades. Any of the emerging technologies that reach 
+comparable cost and performance levels could be deployed instead of BESS or PSH. Likewise, 
+the SFS project assesses the grid impacts independent of specific storage technologies, but 
+instead driven by the services and value that are provided. In other words, when evaluating SFS 
+model results, the reader should focus on the energy storage costs, durations, and use cases rather 
+than the specific technologies and should realize that a suite of technologies has the potential to 
+provide these characteristics in the future.  
+
+viii 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Current and Projected Costs 
+Current and Projected PSH Costs: To develop current and future projections for PSH costs, 
+data from the U.S. Department of Energy’s (DOE’s) HydroWIRES cost modeling of U.S.-
+averaged resources is used to frame PSH relative to a broad set of technologies (Mongird et al. 
+2020). Because of the interest in modeling site-specific regional data and constraints, we use the 
+existing regional supply curve cost and performance data developed as part of the DOE 
+HydroVision Study (DOE 2016) in the ReEDS model to assess the implications for grid 
+evolution. 
+Battery Energy Storage Systems (BESS) Costs: For utility-scale, commercial/industrial, and 
+residential BESS, we estimate current component-level costs of BESS for each market segment 
+and apply a consistent cost projection curve for future costs. For all BESS, we assume lithium-
+ion battery (LIB) technology is used, although do not specify the type of battery chemistry. 
+Current Utility-Scale BESS Costs: Current costs for utility-scale BESS are based on a bottom-
+up cost model using the data and methodology for utility-scale BESS in Feldman et al. (2021). 
+The bottom-up BESS model accounts for major components, including the LIB pack, inverter, 
+and the balance of system (BOS) needed for the installation. The battery pack is a set of cells 
+themselves and their packaging (see Figure 11). Enclosures and anything that packages a number 
+of packs is typically captured separately in the capital cost. Using the detailed NREL cost models 
+for LIB, we develop current costs for a 60-MW BESS with storage durations of 2, 4, 6, 8, and 10 
+hours, shown in terms of energy capacity ($/kWh) and power capacity ($/kW) in Figure ES-1 
+and Figure ES-2 respectively. 60-MW is used as the representative BESS project size in ReEDS 
+based on the assumed ratio of storage for the representative 100MW PV system used in ReEDS 
+(although here we are not looking at a hybrid system). Current installed capital costs for BESS in 
+terms of $/kWh decrease with duration, while costs in $/kW increase. This inverse behavior is 
+observed for all energy storage technologies and highlights the importance of distinguishing the 
+two types of battery capacity when discussing the cost of energy storage.  
+
+ix 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+ 
+Figure ES-1. 2019 U.S. utility-scale LIB storage costs for durations of 2–10 hours (60 MWDC) 
+in $/kWh 
+EPC = engineering, procurement, and construction 
+
+
+x 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+ 
+Figure ES-2. 2019 U.S. utility-scale LIB storage costs for durations of 2–10 hours (60 MWDC) in 
+$/kW 
+Projected Utility-Scale BESS Costs: Future cost projections for utility-scale BESS are based on 
+a synthesis of cost projections for 4-hour duration systems in Cole and Frazier (2020)1and the 
+Bloomberg New Energy Finance (BNEF) cost projections for utility-scale BESS (BNEF 2019b; 
+BNEF 2019a). The Cole and Frazier cost projections are based on a literature survey that 
+includes results from 18 studies of BESS costs. The BNEF cost projections are based on learning 
+rates and deployment projections for utility-scale BESS that are broken down at the system 
+component level. Both projections extend to 2050. Projected battery costs tend to decrease much 
+more quickly than other system components such as the inverter, BOS, installation, and soft cost 
+components (EPRI 2018; BNEF 2019b; BNEF 2019a; Schmidt et al. 2018). Thus, projected total 
+system costs decrease more quickly for longer-duration battery storage than shorter-duration 
+battery storage. However, the duration aspect is not captured in the BNEF cost projections, 
+which only consider a 4-hour system. The Cole and Frazier (2020) projections contain 
+information for both power and duration so costs can be calculated for any storage duration, but 
+they do not account for how the different BESS component costs (particularly, the LIB pack 
+cost) change over time. Therefore, to account for storage costs as a function of storage duration, 
+ 
+1 The report and comparison of 18 projections were developed for use in NREL’s Annual Technology Baseline 
+(https://atb.nrel.gov/). 
+
+
+xi 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+we apply the BNEF battery cost reduction projections to the energy (battery) portion of the 4-
+hour storage and use the Cole and Frazier summary for the remaining component costs to 
+develop combined projections for future years. In this way, the cost projections capture the 
+rapid projected decline in battery costs while also accounting for component costs decreasing at 
+different rates in the future. Figure ES-3 shows the resulting utility-scale BESS future cost 
+projections for the Moderate Scenario for 2–10 hours in terms of both $/kWh and $/kW. We 
+also explore Advanced and Conservative BESS cost scenarios as shown in Figure 32 (page 43) 
+and Figure 33 (page 45). 
+ 
+Figure ES-3. Utility-scale BESS Moderate Scenario cost projections, on a $/kWh basis (left) and 
+a $/kW basis (right) 
+Projections assume a 60-MWDC project. Note that 2019 costs correspond to Figure ES-1 and Figure ES-2. 
+Current Residential and Commercial/Industrial BESS: Residential and commercial/industrial 
+BESS costs are estimated based on BESS combined with solar photovoltaic (PV) systems, or 
+PV+BESS system. This is done to provide the dGen model with appropriate costs for these 
+typical hybrid systems. In addition, rather than prescribe a system size, we allow the model to 
+choose the optimum system size and storage duration. Current costs for residential and 
+commercial/industrial BESS and PV+BESS are based on NREL’s bottom-up BESS cost models 
+using the data and methodology for commercial/industrial PV systems and BESS in Feldman et 
+al. (2021) (see Figure ES-4 and Figure ES-5). We run the models over a range of system sizes 
+and storage durations and then develop a correlation for costs by fitting curves to the results. 
+Because of the method of optimization used to select PV and battery sizes within the dGen 
+model, the correlations are linear functions of system power capacity and energy capacity.  
+
+
+xii 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+ 
+Figure ES-4. Cost of residential PV-stand-alone, BESS-stand-alone, and PV+BESS systems 
+estimated using NREL bottom-up models 
+ 
+Figure ES-5. Estimated costs of commercial and industrial stand-alone PV, stand-alone BESS, and 
+PV+BESS using NREL bottom-up model 
+
+
+xiii 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Projected Residential and Commercial/Industrial BESS Costs: For both residential and 
+commercial/industrial BESS, future BESS cost projections are based on relative component level 
+cost reductions sourced from BNEF (Figure ES-6), which uses learning rates and future capacity 
+projections specific to residential BESS systems (BNEF 2019b). Projected costs for 
+representative residential BESS, shown in Figure ES-6 and ES-7, are calculated by applying the 
+BNEF cost reduction projections to the current costs described above. The resulting Advanced, 
+Moderate, and Conservative Scenario cost projections for representative residential and 
+commercial/industrial BESS are shown in Figure ES-7.  
+ 
+Figure ES-6. Relative changes in projected component costs for residential BESS 
+Data Source: (BNEF 2019b)  
+
+
+xiv 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+ 
+Figure ES-7. Moderate, Advanced, and Conservative Scenario cost projections for representative 
+residential BESS 
+Summary of Storage Technologies and Metrics Comparison 
+To be consistent and clear in our analysis of energy storage technologies, Section 2 defines and 
+summarizes the key metrics related to energy storage. The metrics needed to quantify electricity 
+storage costs differ from those for electricity generation. Electricity generation equipment is 
+sized based on only its power capacity, or the amount of power (kW) it can provide to the grid, 
+and the equipment is typically costed in capacity terms ($/kW). In contrast, energy storage 
+systems are sized based on two factors: their power capacity and their energy capacity, or how 
+much energy (kWh) they can store. Energy capacity relative to power capacity (E/P) determines 
+a system’s storage duration, or how long it can provide power at its rated power capacity. To 
+assess energy storage system costs, one must know both the energy capacity and power capacity 
+(or storage duration).  
+The data sources for the current technology costs and other parameters used in the comparison in 
+Figure ES-8 are based on a variety of sources with ranges of uncertainty, especially in emerging 
+technologies (Table ES-1). 
+
+
+xv 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Table ES- 1. Data Sources for Energy Storage Technologies 
+Storage Type/Technology 
+Reference Year for 
+Current (2019) Costs Primary Data Source 
+Thermal Storage   
+Pumped thermal energy storage (PTES) 2020 McTigue et al. In Press 
+Electrochemical Storage   
+Lithium-ion battery (weighted value) (LIB) 2020 Multiple sources; 
+see References (p. 59) 
+Lead-acid battery 2020 Mongird et al. 2020 
+Redox flow battery (flow batteries) 2020 Mongird et al. 2020 
+Sodium sulfur battery 2018 Mongird et al. 2019 
+Sodium metal halide battery 2018 Mongird et al. 2019 
+Zinc-hybrid cathode battery 2018 Mongird et al. 2019 
+Ultracapacitors 2018 Mongird et al. 2019 
+Hydrogen storage (using electrolyzers, 
+salt caverns, and combustion turbines)b 
+2020 Hunter et al. 2021 
+Hydrogen storage (using electrolyzers, 
+salt caverns, and stationary fuel cells)c 
+2020a Hunter et al. 2021 
+Electromechanical Storage   
+Compressed air energy storage (CAES) 2020 Mongird et al. 2020 
+Liquid air energy storage (LAES) 2020 Olympios et al. 2021 
+Pumped-storage hydropower (PSH) 2020 Mongird et al. 2020 
+Flywheel 2018 Mongird et al. 2019 
+Gravity 2018 Schmidt 2018 
+a And [the/a] future year as defined in Hunter et al. 2021 
+b Shown in figures in this report as H2 Elec-salt cavern- CT 
+ c Shown in figures in this report as H2 Elec-salt cavern- FC 
+We compare current costs for energy storage by separating the total capital costs for energy storage 
+into two components—a power capacity term ($/kW) and an energy component ($/kWh)—and 
+then plotting them on the same graph (Figure ES-8). Technology total capital cost ($/kW) for a 
+given duration is calculated by multiplying storage duration by the energy capital cost component 
+value ($/kWh) and adding the power capital cost component ($/kW). The results demonstrate that 
+technologies with high power component costs and low energy component costs are generally 
+more economic for long-duration storage applications. Technologies with low power component 
+costs and high energy component costs are more appropriate for short-duration storage. 
+Technologies with both low power and low energy component costs will be the lowest cost overall. 
+LIB, being closest to the origin of the graph, have the lowest power and energy component costs of 
+the technologies presented. Being on either side of the dashed line indicates a tendency toward 
+power or energy but lower absolute costs could still make one technology a project choice. 
+Meanwhile, technologies like hydrogen storage, compressed air energy storage (CAES) and (PSH) 
+are close to the y-axis indicating that buying the power “capacity” (MW) is the more expensive 
+portion of the project than storing and handling either the water or compressed air, making these 
+technologies more suitable for deploying with much longer durations.  
+
+xvi 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+   
+Figure ES-8. Capital cost for energy ($/kWh) versus capital cost for capacity ($/kW) for 
+various technologies 
+Energy storage technologies can also be compared across their total capital costs and storage 
+durations, as shown in Figure ES-9. In addition to showing the current costs of several 
+technologies, the chart demonstrates the changing landscape over 5 years as LIB costs continue 
+to decrease. As shown in the chart, LIB is currently the cheapest option at 4 hours of duration 
+and are anticipated to continue near-term price reductions. At 4 hours of duration, the non-LIB 
+battery types as well as gravity, pumped thermal, and LAES are all significantly more expensive 
+than LIBs. Cost reductions for any of these technologies could also occur as the energy storage 
+market grows, especially those technologies that are emerging now.  
+At over 8 hours of duration, the ratio of energy to duration costs changes such that several 
+technologies are at total capital costs comparable to or lower than LIBs. Pumped thermal energy 
+storage (PTES) is anticipated to be cheaper that LIB in most cases, and hydrogen storage costs 
+become more competitive— especially if future cost improvements are realized as described by 
+Hunter et al. (2020). This flip with longer durations indicates several technologies might be 
+competitive with LIBs at longer duration. PSH and CAES also enter the picture at longer durations 
+on the graph, at costs where it might be expected that they would be deployed more. However, as 
+we look to the future and an anticipated decrease in LIB capital costs of an additional 50% from 
+current by 2030, the capital cost advantage of most non-LIB technologies decreases resulting in 
+LIB capital costs potentially being below the other technologies even at these longer durations. 
+     Short-Duration 
+          Storage 
+  
+  
+
+xvii 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications. 
+Capital costs alone do not determine energy storage costs. Operational costs, efficiencies and 
+lifetimes must also be considered to determine lifetime project costs. Doing so is complicated by 
+the fact that these values all depend on how the storage is used in the system (e.g., frequently for 
+backup, capacity, and energy time-shifting). We use the levelized cost of storage (LCOS) to 
+allow for comparison of technologies that are providing the capabilities discussed in Section 2, 
+including four hour, 8-12 hour and long-duration technologies. However, the shortcomings of 
+attempting to use a single LCOS to capture the diverse use cases for storage are also highlighted 
+in that discussion. These shortcomings make it difficult to compare storage costs in a simplified 
+way. This limitation also underscores the need for system wide assessments using capacity 
+expansion and production cost models.  
+In summary, in this report, we review a variety of energy storage technologies with storage 
+durations ranging from minutes to months. We quantified the current costs of those technologies, 
+recognizing that energy storage technologies must be described in terms of both their power 
+(kW) capacity and energy (kWh) capacity to assess their costs and potential use cases (Section 
+2.3). And we examine LIB and PSH costs support the broader modeling activities. 
+More information and related data and information associated with this report are available at 
+https://www.nrel.gov/analysis/storage-futures.html
+.
+
+xviii 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publ ications. 
+   
+Figure ES-9. Total investment cost ($/kW) for a system with 100 MW of storage with varying durations 
+Flywheels and ultracapacitors are not included in the figure, as they are deemed to be unsuited for these durations. 
+H2 (Future) 
+CAES 
+PSH (2020) 
+LIB (2019) 
+LIB (2020) 
+LIB (2024) 
+H2 (2020) 
+
+xix 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publ ications. 
+Table of Contents 
+1 Introduction ........................................................................................................................................... 1 
+2 Energy Storage Technologies Overview ............................................................................................ 3 
+2.1 Reported Metrics ........................................................................................................................... 3 
+2.1.1 Round-Trip Efficiency ..................................................................................................... 3 
+2.1.2 Response Time ................................................................................................................. 3 
+2.1.3 Calendar Life and Cycle Life ........................................................................................... 3 
+2.1.4 Degradation ...................................................................................................................... 4 
+2.1.5 Technology Readiness Level ........................................................................................... 4 
+2.1.6 Total Capital Cost (total $ OR $/kW OR $/kWh) ............................................................ 4 
+2.1.7 Capital Cost of Power Capacity ($/kW) ........................................................................... 5 
+2.1.8 Capital Cost of Energy ($/kWh) ....................................................................................... 6 
+2.1.9 Operation and Maintenance: Fixed ($/kW-year) and Variable ($/kWh-year) ................. 6 
+2.1.10 Depth of Discharge........................................................................................................... 7 
+2.1.11 Levelized Cost of Storage (LCOS) .................................................................................. 7 
+2.1.12 Other Metrics ................................................................................................................... 8 
+2.2 Caveats of Metrics ......................................................................................................................... 8 
+2.3 Impacts of Anticipated Services Provided by Storage Technologies on Technology Selection ... 9 
+2.4 Cost and Performance Characteristics of Technologies Considered ........................................... 11 
+2.4.1 Thermal Storage Technologies ....................................................................................... 11 
+2.4.2 Electromechanical Technologies .................................................................................... 14 
+2.4.3 Electrochemical Technologies ....................................................................................... 17 
+2.5 Comparison of Current Costs of Technologies ........................................................................... 24 
+3 Battery Energy Storage System (BESS) Cost Assumptions and Projections for Scenario 
+Modeling .............................................................................................................................................. 33 
+3.1 Sensitivity to Commodity Prices ................................................................................................. 34 
+3.2 Utility-Scale BESS ...................................................................................................................... 36 
+3.2.1 Current Costs .................................................................................................................. 36 
+3.2.2 Utility-Scale PV+BESS.................................................................................................. 39 
+3.2.3 Future Cost Projections .................................................................................................. 39 
+3.3 Residential BESS ........................................................................................................................ 47 
+3.3.1 Current Costs .................................................................................................................. 47 
+3.3.2 BESS Future Cost Projections ........................................................................................ 51 
+3.3.3 PV+BESS Future Costs .................................................................................................. 54 
+3.4 Commercial and Industrial BESS................................................................................................ 54 
+3.4.1 Current Costs .................................................................................................................. 54 
+3.4.2 Future Cost Projections .................................................................................................. 55 
+4 Pumped-Storage Hydropower Inputs to ReEDS ............................................................................. 56 
+5 Conclusions ........................................................................................................................................ 58 
+6 References .......................................................................................................................................... 59 
+ 
+
+xx 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publ ications. 
+List of Figures 
+Figure ES-1. 2019 U.S. utility-scale LIB storage costs for durations of 2–10 hours (60 MWDC) in $/kWh ix 
+Figure ES-2. 2019 U.S. utility-scale LIB storage costs for durations of 2–10 hours (60 MWDC) in $/kW .. x 
+Figure ES-3. Utility-scale BESS Moderate Scenario cost projections, on a $/kWh basis (left) and 
+a $/kW basis (right) ................................................................................................................. xi 
+Figure ES-4. Cost of residential PV-stand-alone, BESS-stand-alone, and PV+BESS systems estimated 
+using NREL bottom-up models ............................................................................................. xii 
+Figure ES-5. Estimated costs of commercial and industrial stand-alone PV, stand-alone BESS, and 
+PV+BESS using NREL bottom-up model ............................................................................. xii 
+Figure ES-6. Relative changes in projected component costs for residential BESS .................................. xiii 
+Figure ES-7. Moderate, Advanced, and Conservative Scenario cost projections for representative 
+residential BESS ................................................................................................................... xiv 
+Figure ES-8. Capital cost for energy ($/kWh) versus capital cost for capacity ($/kW) for 
+various technologies .............................................................................................................. xvi 
+Figure ES-9. Total investment cost ($/kWh) for a system with 100 MW of storage with varying durations
+ ............................................................................................................................................. xviii 
+Figure 1. Energy storage system nomenclature ............................................................................................ 5 
+Figure 2. O&M costs for various storage technologies ................................................................................. 7 
+Figure 3. Electric system services provided by energy storage .................................................................. 10 
+Figure 4. Illustration of CSP with storage................................................................................................... 12 
+Figure 5. Image: Trane® Thermal Energy Storage .................................................................................... 13 
+Figure 6. Schematic of PTES system or Carnot battery using liquid storage ............................................. 14 
+Figure 7. Illustration of CAES system ........................................................................................................ 15 
+Figure 8. Schematic of flywheel energy storage system ............................................................................. 16 
+Figure 9. Illustration of hydropower pumped storage system ..................................................................... 17 
+Figure 10. 2019 BNEF battery price survey results (with cell and pack split) ........................................... 18 
+Figure 12. Illustration of flow battery system ............................................................................................. 19 
+Figure 13. Photo of sodium-metal halide battery ........................................................................................ 20 
+Figure 14. Illustration of grid-scale lithium-ion battery system ................................................................. 21 
+Figure 15. Past and projected market share of different LIB chemistries through 2030 ............................ 22 
+Figure 16. Illustration of hydrogen energy storage system ......................................................................... 24 
+Figure 17. Power capacity cost component ($/kW) versus energy capacity cost component ($/kwh) ....... 27 
+Figure 18. Total investment cost ($/kW) for a system with 100 MW of storage with varying durations... 28 
+Figure 19. Projected newly installed capacity of PSH for scenarios used in HydroVision study............... 30 
+Figure 20. Round-trip efficiency of energy storage technologies ............................................................... 31 
+Figure 21. Levelized cost of storage ($/kWh) of energy storage technologies included in this study ........ 32 
+Figure 22. Battery pack prices (real 2019 $/kWh) for different end-use applications ................................ 33 
+Figure 23. Expected battery demand by sector and LIB price projections ................................................. 34 
+Figure 24. Raw material costs for different LIB chemistries by year ......................................................... 35 
+Figure 25. Sensitivity of nickel-manganese-cobalt (811) LIB pack (percentage change) to metal 
+components prices .................................................................................................................. 35 
+Figure 26. 2019 U.S. utility-scale LIB stand-alone storage costs for durations of 2–10 hours (60 MWDC) 
+in $/kWh ................................................................................................................................. 38 
+Figure 27. 2019 U.S. utility-scale LIB stand-alone storage costs for durations of 2–10 hours (60 MWDC) 
+in $/kW ................................................................................................................................... 39 
+Figure 28. Normalized battery cost projections for 4-hour LIBs, with values relative to 2019 from Cole 
+and Frazier (2020) used in this study ..................................................................................... 40 
+Figure 29. Methodology for projecting utility-scale BESS costs ............................................................... 41 
+Figure 30. Utility-scale BESS Moderate Scenario cost projections, on a $/kWh basis (left) and 
+a $/kW basis (right) ................................................................................................................ 42 
+
+xxi 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publ ications. 
+Figure 31. Utility-scale BESS Advanced Scenario cost projections, on a $/kW basis and $/kWh basis ... 43 
+Figure 32. Utility-scale BESS Conservative Scenario cost projections, on a $/kW basis and $/kWh basis
+ ................................................................................................................................................ 43 
+Figure 33. Comparison of current and future utility-scale BESS cost estimates from different sources .... 45 
+Figure 34. Comparison of utility-scale BESS future cost projections ........................................................ 46 
+Figure 35. Cost of residential PV-stand-alone, BESS-stand-alone, and PV+BESS systems estimated using 
+NREL bottom-up models ....................................................................................................... 48 
+Figure 36. Comparison of current residential BESS total and component costs from NREL and BNEF .. 49 
+Figure 38. Relative changes in projected component costs for residential BESS ....................................... 52 
+Figure 39. Comparison of BNEF and Schmidt et al. (2018) residential BESS installed costs Storage 
+Futures Study scenarios with time on a $/kWh basis ............................................................. 53 
+Figure 40. Estimated costs of commercial and industrial stand-alone PV, stand-alone BESS, and 
+PV+BESS using NREL bottom-up model ............................................................................. 55 
+Figure 41. Modeled new PSH resource potential........................................................................................ 57 
+Figure 42. National PSH supply curve of capital cost versus cumulative capacity potential ..................... 57 
+ 
+List of Tables 
+Table ES- 1. Data Sources for Energy Storage Technologies .................................................................... xv 
+Table 1. Data Sources for Energy Storage Technologies ........................................................................... 26 
+Table 2. Utility-Scale LIB Energy Storage Systems Used in SFS modelinga............................................. 37 
+Table 3. Residential Storage-Only Modeling Inputs and Assumptionsa ..................................................... 47 
+Table 4. Assignment of Component Cost Categories from NREL Model to BNEF Component Cost 
+Categories, and Learning Rates Assumed for the Moderate Scenario ................................... 51 
+Table 5. Commercial and Industrial LIB Energy Storage Systems: 2019 Model Inputs and Assumptions 
+(in 2018 USD) ........................................................................................................................ 54 
+Table 6. Energy Storage Technology Data ................................................................................................. 62 
+ 
+
+1 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+1 Introduction 
+Energy storage has been used for hundreds of years to shift thermal energy from day to night and 
+from season to season. Originally, this was in the form of thermal energy as large buildings were 
+designed with thick walls to mitigate temperature fluctuations to reduce the need for fires. For 
+centuries, ice was transported great distances or stored underground from the prior winter to 
+preserve food in the summer. More recently, the first pumped hydropower electrical storage 
+plant was deployed in 1907 with the first use in the United States by Connecticut Electric and 
+Power Company in 1930.2 Since then, pumped-storage hydropower (PSH) has been the 
+dominant form of electricity storage in the United States and globally. However, because of 
+recent rapid decreases in grid-scale battery storage costs combined with recent dramatic price 
+drops and increased deployment trends for solar photovoltaic (PV) and land-based wind, we 
+anticipate an increase in energy storage demand and are already seeing this in the market. Both 
+solar PV and land-based wind technologies are variable in their output so the energy they 
+generate and supply to the grid will not always match the current demand for energy. As they 
+make up a larger portion of total energy generation capacity, this creates potential for significant 
+storage being optimally mixed in as these technologies grow in the marketplace. 
+The goal of this report is twofold, which is reflected in two parts of the report. The first half of 
+the report (Section 2) takes a broad look across a variety of mature and emerging electricity 
+storage technologies. The goal of this section is to provide a current understanding of the relative 
+capabilities of these technologies, gather information about the system cost and performance, and 
+provide background information on storage technologies that will be helpful to stakeholders 
+seeking to understand this sector. To do this, we introduce and describe a variety of relevant 
+metrics that can be used to compare and contrast energy storage technologies. The second half 
+of the report (Sections 3–4) deals with the detailed current and future costs of energy storage 
+technologies provided to the models performing future scenarios for the larger Storage Futures 
+Study (SFS), of which this report is a part. That section is limited to distributed and grid-scale 
+BESS and grid-scale PSH, as these are (1) commercial technologies that already have been 
+deployed in the United States and have sufficient available data to inform forward projections 
+and (2) the energy storage technologies used in the detailed modeling done in the broader SFS. 
+However, because the energy models consider only a few parameters such as cost, storage 
+duration, and capacity factor, BESS and PSH function as a proxy for any of the emerging 
+technologies that eventually reach comparable cost and performance levels. 
+The SFS uses the Regional Energy Deployment System (ReEDS) model and the Distributed 
+Generation Market Demand (dGen) model to project grid-scale and distributed capacity 
+deployments, respectively. These models and the scenarios used in the SFS guide the boundaries 
+of this report. Because they can neither model nor anticipate multiday energy storage needs, 
+storage durations for BESS are limited to 10 hours, and PSH plants are assumed to have 
+sufficient storage to operate as needed within the diurnal variations represented in the model 
+(i.e., 12-hour duration). At this time, energy storage technologies in dGen consist of only 
+ 
+2 “A Ten-Mile Storage Battery.” Popular Science, July 1930, p. 60. 
+https://books.google.com/books?id=sigDAAAAMBAJ&pg=PA60&dq=1930+plane+%22Popular&hl=en&ei=zxiV
+TtztJ-
+Pr0gGvtu2kBw&sa=X&oi=book_result&ct=result&resnum=2&ved=0CDQQ6AEwATgU#v=onepage&q=1930%2
+0plane%20%22Popular&f=true 
+
+2 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+distributed BESS technologies, which limits the distributed energy storage technologies we 
+explore in this report. ReEDS currently cannot model generation and energy storage hybrid 
+systems, so we neither explore or nor include the costs of utility-scale PV+BESS in this report. 
+Cost estimates for these systems, which are provided by Feldman et al. (2021) and included here,  
+show that the difference between stand-alone and colocated PV and BESS is small and should 
+not significantly impact results. Finally, some of the technologies discussed here (LIB in 
+particular) have costs and performance that are rapidly changing, so this report may not reflect 
+current values. The reader is encouraged to check for updated information before using the 
+values and conclusions in this report.  
+
+3 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+2 Energy Storage Technologies Overview 
+This section portrays various energy storage technologies across a variety of metrics. The 
+characteristics of each technology are discussed, as is the potential for disruption in the storage 
+technology space. 
+2.1 Reported Metrics 
+Appropriate metrics can be difficult to define for energy storage technologies because of the 
+many use cases, values, and configurations of energy storage technologies. Given the range in 
+technology scales from massive PSH systems utilizing huge reservoirs that last for decades to 
+small grid-enabling technologies that discharge in sub-second increments, comparing these 
+technologies and the growing role that they all are pursuing is daunting. Here we have gathered a 
+variety of metrics with which we seek to compare technologies. This set of metrics will not 
+determine the full value of the storage technologies within the grid or behind the meter; other 
+parts of the SFS will perform those functions. Here we do hope to supply metrics and present 
+information that helps set the energy storage landscape for the reader. 
+2.1.1 Round-Trip Efficiency 
+The round-trip efficiency (RTE) is equal to the energy supplied by the storage device during the 
+discharge phase divided by the energy provided to the device during the charging phase. This 
+metric is dramatically different across technologies we consider in this report, as it ranges from 
+27% for hydrogen systems including combustion turbines (page 17) to 92% for ultracapacitors. 
+Additionally, CAES adds natural gas to the compressed air prior to the combustion turbine to 
+increase power output and so RTEs for CAES are sometimes reported to be greater than one. 
+While RTE is just one component of the overall cost equation, a low RTE for a technology 
+requires that all the other cost components (e.g., capital cost, O&M, project development, and 
+construction time) be lower for the technology to be competitive. Raising the RTEs of 
+technologies—but especially those with significant losses —through R&D can provide 
+significant benefits in cost-effectiveness. 
+2.1.2 Response Time 
+Response time is defined as the time that it takes a storage system to go from rest to rated output. 
+Response times for battery systems are typically around 1 second (with the battery system design 
+allowing that to be slightly shorter or longer). PSH and CAES and other mechanical systems 
+have longer response times (Mongird et al. 2019), which may or may not matter depending on 
+the grid services being provided by the resource. 
+2.1.3 Calendar Life and Cycle Life 
+Calendar life is defined as the lifetime of the system absent degradation that is due to cycling. 
+Cycle life is defined as the number of charge-discharge cycles a system can go through in its 
+useful lifetime. When a system is being cycled, the lesser of the calendar life or the cycle life 
+determines the actual lifetime of the system. Significant cycling will lead to an actual lifetime 
+that is much shorter than the calendar life of the storage device. Note that full or partial 
+replacement of battery cells or packs can extend both calendar and cycle life.  
+
+4 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+2.1.4 Degradation 
+Degradation is the decrease in technology performance with time and/or the number of 
+charge/discharge cycles. Degradation is a critical metric, as some technologies degrade strongly 
+with use, including LIB. Other technologies indicate that with appropriate O&M, their 
+degradation is negligible. Degradation can be a strong function of how the storage technology is 
+used and cycled, thus making it nonlinear with both time and usage. The levelized cost of storage 
+(LCOS) equation described in Section 2.1.11 (page 7) incorporates the impact of these 
+degradation rates over the lifetime of a system. The LCOS equation includes several degradation 
+rates, including the calendar degradation and cycling degradation. Degradation is most impactful 
+for batteries and chemical systems. Mechanical, thermal systems, and electromechanical systems 
+broadly have minimal degradation each year. This has been shown over many decades with PSH 
+specifically in that its lifetime is assumed to be 40 years or more in ReEDS. Finally, not 
+including the degradation of a storage system (or conversely not accounting for upgrades during 
+the lifetime to augment the storage system) can lead to incorrect dispatch (i.e., dispatching to 
+capture arbitrage values insufficient to compensate for accelerated aging of the system). 
+2.1.5 Technology Readiness Level 
+A technology readiness level (TRL) is a common metric for assessment of R&D needs and 
+technology potential that categorizes the extent to which a technology has been developed. DOE 
+(2011) defines nine technology readiness levels: 
+• TRL 1: Basic principles observed and reported 
+• TRL 2: Technology concept and/or application formulated 
+• TRL 3: Analytical and experimental critical function and/or characteristic proof of 
+concept 
+• TRL 4: Component and/or system validation in laboratory environment 
+• TRL 5: Laboratory-scale, similar system validation in relevant environment 
+• TRL 6: Engineering/pilot-scale, similar (prototypical) system validation in relevant 
+environment 
+• TRL 7: Full-scale, similar (prototypical) system demonstrated in relevant environment 
+• TRL 8: Actual system completed and qualified through test and demonstration 
+• TRL 9: Actual system operated over the full range of expected mission conditions  
+The TRL level of technologies can be very important for these analyses and for assessing the 
+cost uncertainty as many of the technologies being discussed here have not been piloted yet, let 
+alone developed either individually in a large commercial facility or as part of a supply chain. 
+2.1.6 Total Capital Cost (total $ or $/kW or $/kWh) 
+As discussed above, storage technologies have both a power component cost and an 
+energy/duration component cost. The total capital cost includes the cost of all of the initial 
+investment to build the system. This includes not only the equipment but also installation; project 
+development; engineering, procurement, and construction (EPC); customer acquisition; and other 
+costs. The total capital cost can be described in terms of total cost ($), power capacity ($/kW) or 
+energy capacity ($/kWh). The storage duration (in hours) can be used to convert between total 
+capacity cost on a power or energy basis. For this reason, comparisons of total capital costs for 
+technologies must consider storage duration. Note that in this analysis, we use the nameplate 
+
+5 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+capacity for costing and not the “usable”3 capacity. We should also note that we use the 
+nameplate capacity of storage systems when we determine capital costs.  
+A common nomenclature for what is included in the total capital cost is important. Different cost 
+values reported in literature describe various portions of the overall cost. Below in Figure 1, we 
+provide a diagram that structures some of the nomenclature for energy storage systems. In the 
+diagram, from Mongird et al. (2020), key acronyms include ESS (energy storage system), ESB 
+(energy storage block), and ESBOS (energy storage balance of system). This nomenclature is 
+important throughout this report, as other publications refer only to the capital cost of the core 
+storage component and do not include the other costs needed to use an energy storage system. 
+ 
+Figure 1. Energy storage system nomenclature 
+2.1.7 Capital Cost of Power Capacity ($/kW) 
+As discussed above, storage technologies have both a power component cost and an 
+energy/duration component cost. When used as a specific cost component, this metric— the 
+capital cost of power capacity—speaks to the relative cost of building out the capacity 
+independent of the duration of the storage system. This is the portion of the installed cost of 
+a technology that can be attributed to equipment that converts energy to electricity and delivers 
+it to the grid. This cost component will need to be combined with the capital cost of energy 
+capacity ($/kwh; 2.1.8) to calculate the total capital cost (Section 2.1.6, page 4). In some 
+systems, such as PSH, the power capacity capital cost is the majority of the overall cost with the 
+ 
+3 Usable capacity refers to the capacity of energy storage when practical constraints are considered. For example, a 
+10-kWh battery that operates assuming a 90% depth of discharge has a usable storage capacity of 9 kWh.  
+
+
+6 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+cost for additional duration being low. Note that for this analysis we use the nameplate capacity 
+rather than the usable capacity. 
+2.1.8 Capital Cost of Energy ($/kWh) 
+As discussed above, storage technologies have both a power component cost and an energy/ 
+duration component cost. When used as a specific cost component, this metric— the c apital cost 
+of energy—speaks to the cost of building out the duration or energy capacity independent of the 
+power of the storage system. This is the portion of the installed cost of a technology that can be 
+attributed to equipment that stores the energy. This cost component will need to be combined 
+with the capital cost of power capacity ($/kW; Section 2.1.7) to calculate the total capital cost 
+(Section 2.1.6, page 4). Battery systems in particular are currently dominated by this cost instead 
+of the capacity cost component. Additionally, it should be noted that this metric might vary 
+significantly with increasing duration such as for CAES, hydrogen, PSH, and LAES. 
+2.1.9 Operation and Maintenance: Fixed ($/kW-year) and Variable ($/kWh-year)  
+Operation and maintenance (O&M) costs include all costs needed to keep storage equipment 
+operating as specified by the manufacturer and by the design and use case of the system 
+throughout the economic lifetime of the plant. Fixed O&M costs include all necessary costs that 
+are not based on usage (i.e., costs that need to be paid no matter what the use case is).4 Variable 
+O&M costs are for the necessary activities that are a function of the amount of usage of the 
+storage system. The O&M costs for most storage systems are lower than for generation 
+systems—particularly fossil fuel plants. However, our definition of O&M excludes the cost  of 
+energy for charging the system and the cost of augmenting the energy storage system that is due 
+to degradation or for any assumed replacements. Other resources might include those costs in the 
+O&M or related reserve accounts.  
+As an example of O&M costs, Figure 2 represents the reported O&M costs for the storage 
+technologies described and compared in Section 2.4. As is evident in the figure, several 
+technologies have more significant anticipated O&M costs, and several—typically those with n o 
+moving mechanical parts—have significant less O&M costs.  
+ 
+4 For a discussion of use cases, see Section 2.3 
+
+7 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 2. O&M costs for various storage technologies 
+2.1.10 Depth of Discharge 
+This metric— depth of discharge —is used primarily for battery technologies . It indicates the 
+fraction or percentage of the reduction in charge from a fully charged battery system and is the 
+opposite of the state of charge. In at least some battery technologies, there is a direct relation 
+between the depth of discharge and the cycle life as indicated in the LCOS equation. 
+2.1.11 Levelized Cost of Storage (LCOS) 
+For stand-alone storage systems, the levelized cost of storage is a useful metric for comparison 
+across storage technologies because it can combine the capital cost, charging cost and the round 
+trip efficiency of the storage product as well as degradation over time into a single metric. It is 
+defined as the present value of all costs for the system divided by the present value of all energy 
+output from the system. Among the costs for the system, LCOS is the cost of purchasing 
+electricity for the system throughout its lifetime. Of course, many system characteristics of both 
+grid and behind-the-meter storage impact the value of a storage system (and particularly the next 
+marginal storage system); however, for comparing between technologies within the same use 
+case (Section 2.3), LCOS can be helpful.  
+For this analysis, we use the LCOS metric equation defined by Schmidt et al. (2019) and 
+described here. Several different implementations of this metric are described in the literature 
+with varying levels of complexity. For this report, we approached this more simply from an 
+illustrative approach. And it should be noted that the version we use here does not include either 
+tax implications or incentives. Note that the cost of the electricity or energy to charge the storage 
+system has a significant impact on the overall LCOS. This is important because as the price of 
+0 5 10 15 20 25 30 35 40 45 50
+Fly wheel (2018)
+LIB (2020) 1-hour
+Ultr ac apac itor s (2018)
+LEAD (2018)
+LIB -4 hour (2020)
+FLOW (2018)
+Sodium Sulfur (2018)
+Sodium M etal Halide (2018)
+Zinc -Hybrid Cathode (2018)
+CAES (2020)
+LAES (an�c ipated )
+PTES (an�c ipated )
+PSH (2020)
+Gr av ity  (an�c ipated )
+H2 elec -ca ve rn- CT (2020)
+H2 elec -ca ve rn- FC (Future )
+Short Dura �on Four Hour 8-12 Hour
+Long
+Dura �on
+Fi xed O&M ($/kW-yr) V ar iable O&M ($/MWh)
+
+8 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+renewables and natural gas is anticipated to fall or stay low over the next several decades, the 
+LCOS for any new storage deployment (independent of technology) will fall as well. The basic 
+equation is: 
+𝐿𝐿𝐿𝐿𝐿𝐿𝐿𝐿� $
+𝑀𝑀𝑀𝑀ℎ�
+=
+𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼𝐼 𝑐𝑐𝑐𝑐𝐼𝐼𝐼𝐼+ ∑ 𝐿𝐿&𝑀𝑀 𝐿𝐿𝑐𝑐𝐼𝐼𝐼𝐼
+(1 + 𝑟𝑟)𝑛𝑛
+𝑁𝑁
+𝑛𝑛 + ∑ 𝐿𝐿ℎ𝑎𝑎𝑟𝑟𝑎𝑎𝑎𝑎𝐼𝐼𝑎𝑎 𝑐𝑐𝑐𝑐𝐼𝐼𝐼𝐼
+(1 + 𝑟𝑟)𝑛𝑛 + 𝐸𝐸𝐼𝐼𝐸𝐸− 𝑐𝑐𝑜𝑜− 𝑙𝑙𝑎𝑎𝑜𝑜𝐼𝐼 𝑐𝑐𝑐𝑐𝐼𝐼𝐼𝐼
+(1 + 𝑟𝑟)𝑁𝑁+1
+𝑁𝑁
+𝑛𝑛
+∑ 𝐸𝐸𝑙𝑙𝐼𝐼𝑐𝑐𝐷𝐷𝐷𝐷𝐷𝐷𝐷𝐷ℎ𝑎𝑎𝑎𝑎𝑎𝑎𝑎𝑎𝑎𝑎
+(1 + 𝑟𝑟)𝑛𝑛𝑁𝑁𝑛𝑛
+ 
+where: 
+• Investment Cost = total capital cost (Section 2.1.6) of the entire system including BOS 
+and other indirect costs but excluding financing costs  
+• O&M Cost = the annual sum of both the variable and fixed operating costs  
+• End-of-Life Cost = either the decommissioning cost or, as a negative cost, the value of 
+the installation at the end of the life of the system (salvage value); following the 
+convention set by Schmidt (2019), we assume no end-of-life cost, but in some situations, 
+this cost could be significant if remediation or recycling of the system is required. As 
+shown in Figure 1, there are several entries under remediation costs which are not 
+included with this assumption. 
+• Charging Cost = the cost of the electricity (or energy more broadly) needed to be 
+purchased as input to the system; for this, we assumed a constant 2.5 cents/kWh in all 
+cases throughout the year based on typical wholesale prices.  
+• ElecDischarged = the annual sum of electricity discharged through the system; a function of 
+the number of cycles each year as well as the RTE of the system  
+• r = the discount rate typically or, in this case, the weighted adjusted cost of capital (values 
+used are in Appendix 1)  
+• n = the number of years during which the system operates; we assume varying lifetimes 
+that are appropriate for each technology (assumptions in Appendix 1) 
+2.1.12 Other Metrics 
+Other, related metrics include the levelized cost of solar and storage, and the levelized cost of 
+generation and storage. These metrics assume a direct tie between the generation capacity (solar 
+or other) and the storage system such that the storage system is only or predominantly charged 
+by the generating station. In fact, these hybrid systems are often treated as a black box generation 
+system that, while it is higher in cost, produces output profiles that are more valuable to the grid. 
+We do not consider such hybrid storage technologies at grid scale in this report, but we describe 
+PV+battery hybrids for distributed or behind-the-meter systems in Section 3. 
+2.2 Caveats of Metrics 
+Here we list some caveats for the metrics and the technologies we consider: 
+• Though we work toward having a broad range of technologies and minimal, distinct 
+sources to reduce variance across cost methodologies, that is not completely possible. 
+
+9 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Many of our technology costs are from the efforts at Pacific Northwest National 
+Laboratory (Mongird et al. 2019; 2020). However, cost and performance data for gravity, 
+LAES, hydrogen, and PTES are all from separate sources. 
+• LIB storage system costs are calculated using a bottom-up model developed by the 
+National Renewable Energy Laboratory (NREL) (Feldman et al. forthcoming). We used 
+the NREL model in place of similar data in Mongird et al. (2020) for two reasons. First, it 
+allowed us to use the most up-to-date information possible for this key energy storage 
+technology. Second, it allowed us to estimate the costs of a wide range of LIB BESS 
+configurations for use in our capacity expansion models rather than being confined to 
+interpolating between a few data points. 
+• Though a large market has been built up around LIB, many of the other storage 
+technologies we consider here are in development and piloting stages and have not 
+deployed multiple systems. Therefore, many of these technology costs are highly 
+uncertain. Even for existing technologies, modifications and new configurations add 
+to the uncertainty.  
+• Though we would like to represent all cost data fort the same point in time (as of the 
+release), Mongird et al. (2019) provided either 2018 or 2025 data. For these technologies, 
+we used the 2018 data. Additionally, for the emerging technologies, their first 
+deployments are several years away, which results in variance from reported costs 
+and supplies as well. 
+• Several technologies have costs that can vary significantly by location. Specifically, 
+CAES, PSH, and hydrogen storage in caverns (other hydrogen storage options are not 
+location-specific) all can have significantly different costs depending on location. The 
+ReEDS model includes regionally specific PSH supply curves for the United States, 
+which is discussed in Section 5. Relatedly, the availability of appropriate locations for 
+PSH, CAES or hydrogen cavern storage not only varies the cost but can prohibit these 
+technologies in regions completely. One alternative to the use of geologic storage for 
+hydrogen is to use underground pipes for hydrogen storage (Hunter et al. 2020). If this 
+option is chosen, then initial costs and LCOS will be higher, but would not vary 
+geographically as widely. Geographically agnostic storage technologies can increase cost 
+but make them feasible in a wider range of regions. 
+• Our LCOS equation considerer neither tax implications nor incentives and degradation 
+data were difficult to determine for several technologies from the literature and so was 
+removed. We assume tax implications will impact grid technologies equally across the 
+grid technologies, and our intent is to show the LCOS without incentives to focus solely 
+on the aspects of the technologies.
+5 
+2.3 Impacts of Anticipated Services Provided by Storage 
+Technologies on Technology Selection 
+Energy storage can be valuable in a variety of services or use cases, but especially a series of 
+ancillary or grid services, capacity value, and energy shifting. For distributed behind-the-meter 
+storage, backup power and general bill savings are additional key values to system owners. As 
+shown in Figure 3, these grid services are distributed across a range of timescales at which these 
+ 
+5 Note that existing state policy and incentives are indeed driving recent energy storage deployment, especially in 
+the northeastern United States.  
+
+10 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+services are needed. Additionally, the figure indicates that although some of these capabilities 
+can be compensated in markets, others cannot currently receive payments and still others might 
+be valued in only certain U.S. electric-sector markets. 
+ 
+Figure 3. Electric system services provided by energy storage 
+Source: Vahan Gevorgian, NREL 
+mS = millisecond, S = second 
+Several of the technologies we consider here can contribute to all these use cases, but several 
+technologies are applicable to just a subset of these needs. In the current first phase of energy 
+storage deployment (as discussed in Denholm et al. (2021)), most systems are being deployed to 
+meet ancillary services needs and anticipate being compensated for this market. Because of the 
+timescales for these services and the size of this market (i.e., smaller than the energy and 
+capacity services markets), batteries located in strategic positions around the grid with shorter 
+durations are adequate. Additionally, flywheel systems are also critical in these markets as well 
+and the bulk of flywheel storage has a duration of typically 15 minutes. Finally, ultracapacitors 
+can provide short-duration (15 minute) high-power energy to assist with short-term grid 
+fluctuations. More slowly responding technologies, such as PSH, are not applicable for many of 
+these services.  
+Energy and 
+Capacity
+Ancillary 
+Services
+Transmission 
+Services
+Distribution 
+Services
+End-Use 
+Applications
+mS S Min Hr Day
+Energy
+Firm Capacity
+Fast Frequency Response
+Frequency Regulation
+Ramping reserves
+Contingency Spinning Reserves
+Replacement Nonspin Reserves
+Voltage Support
+Black-Start Capability
+Type of 
+Service
+Primary Frequency Response
+Timescale
+Transmission Upgade Deferral
+Transmission Congestion Relief
+Distribution Upgade Deferral
+Distribution Voltage Support
+Distribution Loss Reduction
+Power Quality
+Reliability and Resiliency
+Demand Charge 
+Management
+Time of Use and Real-Time 
+Pricing
+mS S Min Hr Day
+Inertial Response
+Services currently valued 
+in some markets
+Proposed or early adoption services 
+Currently not valued services
+
+
+11 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+To the issue of transmission upgrade deferral and distribution grid upgrade deferral, these 
+services could be met by various technologies. On the distribution side, because of the 
+anticipated smaller system size and location either close to distribution transformers or behind 
+the meter at the building level, these needs are anticipated to be met by batteries. However, 
+large-scale transmission avoidance could be met by much larger scale technologies, including 
+PSH, CAES, and other technologies.  
+Energy and capacity are anticipated to be the largest future markets for energy storage (much 
+larger than the grid services market) (Denholm et al. 2021), and they can last from timescales of 
+minutes to over 12 hours. Some of the emerging storage technologies can be more cost-effective 
+at these longer duration levels. These would include technologies for which the cost of capacity 
+is much higher than the cost of additional duration of storage (as demonstrated in Figure 17, page 
+27). These technologies would include PSH (and the emerging technology closed-loop PSH, 
+which has fewer geographic and environmental constraints), thermal storage technologies 
+(including LAES and PTES), hydrogen, and gravity. The future value to the grid for these long-
+duration technologies are uncertain because few data are available on when and at what size 
+storage durations higher than 8-10 hours would be beneficial to the system and with what other 
+changes to the system (e.g., high natural gas prices, high levels of variable renewable energy, or 
+increasing load growth). Behind the meter, another common service that often makes a battery 
+system (or PV and battery) cost-effective is demand charge reduction. Behind-the-meter storage 
+applications contribute to effectively providing the capacity needed by the system by reducing 
+the net load peaks. 
+In the next section (Section 2.4), a 4-hour duration storage is presented to examine providing 
+peaking capacity and eight hours to provide energy shifting or longer/flatter peak matching. As 
+this shows, some technologies are more cost-competitive at the 4-hour level (or below) and 
+several technologies are more cost-competitive at longer durations.  
+2.4 Cost and Performance Characteristics of Technologies 
+Considered 
+In this section, we seek to provide a high-level overview of a broad range of existing and 
+emerging energy storage technologies. Additional technologies have been discussed, but for 
+those listed here, we have some level of techno-economic data. We represent three groupings of 
+storage technologies—thermal, electro mechanical, and electrochemical—each of which has its 
+own typical characteristics; although within each general grouping, different technology 
+providers can have significant variations.  
+2.4.1 Thermal Storage Technologies 
+The first grouping of technologies are thermal storage technologies. For this study, this category 
+includes concentrating solar power with thermal storage, building thermal storage, and pumped 
+thermal energy storage. 
+Concentrating Solar Power with Thermal Storage 
+Concentrating solar power (CSP) concentrates energy from the sun using mirrors to focus the 
+sun’s rays to a small area. The two main types of commercial CSP concentrators are parabolic 
+troughs and heliostats. Parabolic troughs consist of a long U-shaped mirror that concentrate the 
+
+12 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+sun to a glass receiver tubing centered in the trough created by the mirror. Heliostats are flat 
+mirror panels that concentrate the sun to a receiver usually at the top of a tall tower. With both 
+types, the concentrated solar energy heats a fluid in the receiver. This heat energy can be used 
+immediately through a conventional Rankine-cycle steam turbine to generate electricity or more 
+relevant for this discussion, stored in a thermal storage system. 
+Today’s thermal storage employ high-temperature molten salts in a 2-tank (hot and cold) 
+configuration. Storage durations for CSP systems vary, but they often are in excess of 4 hours and 
+have been able to provide continuous power output throughout the night. CSP with thermal storage 
+is represented within the scenarios to be run in SFS modeling efforts using ReEDS and presented 
+in other reports. However, as CSP with thermal storage is not traditionally a stand-alone electricity 
+storage technology that can take electricity off the grid like the other technologies discussed here, 
+we do not include it in the various technology comparisons in Section 2.4 (page 27). CSP with 
+thermal storage does not show significant deployment in the scenarios with higher levels of 
+storage, but additional effort and global deployment could work to lower the overall cost of a 
+CSP+thermal storage system. Additionally, examples in North Africa and elsewhere indicate the 
+emergence of hybrid plants including CSP, thermal storage, LIB, and PV with the option to 
+convert electricity into thermal heat as one of the charging options.
+6 
+ 
+Figure 4. Illustration of CSP with storage 
+Source: Illustration by Al Hicks, NREL Utility-Scale Power Tower Solar Systems: Performance Acceptance Test 
+Guidelineshttps://www.nrel.gov/docs/fy13osti/57272.pdf 
+Building Thermal Storage 
+The oldest of energy storage technologies, thermal storage integrated into buildings—of all 
+sizes—has historically moderated temperature swings within the buildings via thermal mass. 
+In modern times, thermal storage in buildings has been used to avoid utility-rate variations, 
+including primarily time-of-use charges and demand charges for cooling. Peak shaving is 
+typically done by creating ice at night and then using that ice to cool circulated air or water for 
+cooling the next day. These systems can be quite large and are not typical in residential homes. 
+ 
+6 See, for example, “Morocco Pioneers PV with Thermal Storage at 800 MW Midelt CSP Project,” Susan Kraemer, 
+SolarPACES, posted April 25, 2020, https://www.solarpaces.org/morocco-pioneers-pv-to-thermal-storage-at-800-
+mw-midelt-csp-project/. 
+
+
+13 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 5. Image: Trane® Thermal Energy Storage 
+Source: Trane Corporation  
+Pumped Thermal Energy Storage (or Carnot Batteries) 
+An emerging family of energy storage systems are known as pumped thermal energy storage 
+(PTES) or Carnot batteries.7 These devices convert electricity into heat, which is stored as 
+thermal energy and then later converted back into electricity by means of reversible 
+thermodynamic cycles. At the most basic level, each system has a hot and cold store with an 
+electrically driven heat pump to transfer heat to the hot store and then uses the hot store later to 
+drive a turbine. Various cycles and thermal storage systems have been investigated, including: 
+• Joule-Brayton cycles with sensible energy storage, such as pebble beds (McTigue, White, 
+and Markides 2015), concrete storage (Desrues et al. 2010), or molten salts (Laughlin 
+2017); rock and concrete systems can operate over a wider range of temperatures, 
+whereas molten salt systems benefit from developments by the CSP industry. 
+• Trans-critical carbon dioxide cycles with hot water and ice storage (Morandin et al. 
+2013). 
+• Steam Rankine cycles with latent heat storage (Steinmann 2014); an electrical heater can 
+be used in place of the heat pump to reduces cost and avoid the need for a cold storage 
+(e.g., one technology heats a volcanic rock packed bed and discharges the heat through a 
+conventional steam turbine). 
+ 
+7 For more information about Carnot batteries, see “IEA Energy Storage Task 36: Carnot Batteries,” 
+https://www.eces-a36.org/. 
+
+
+14 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 6. Schematic of PTES system or Carnot battery using liquid storage 
+The heat pump is shown during charge. 
+Source: “Pumped Thermal Electricity Storage: Grid-Scale, Cheap Materials, Known Tech, Compact, Install 
+Anywhere,” Antoine Koen and Pau-Farres Antunez, Energy Post, March 5, 2020, https://energypost.eu/pumped-
+thermal-electricity-storage-grid-scale-cheap-materials-known-tech-compact-install-anywhere/. 
+Various other distributed and grid-scale designs and concepts are being pursued. Several of 
+them, such as ice storage for commercial buildings have already been commercialized. The 
+technologies above are highlighted here because the companies and technologies have either 
+reached or are approaching commercial viability and have garnered interest from the electric 
+sector broadly.  
+2.4.2 Electromechanical Technologies 
+Electromechanical technologies comprise our second grouping of technologies, which includes 
+very mature technologies such as PSH as well as emerging technologies like gravity storage. The 
+electromechanical technologies that we chose to examine include compressed air energy storage, 
+liquid air energy storage, pumped-storage hydropower, flywheels, gravity, and hydrogen storage. 
+Compressed Air Energy Storage (CAES) 
+Compressed air energy storage (CAES) has historically focused on compressing air into a large 
+underground cavern and then, when needed, decompressing the air, and combining it with 
+natural gas to significantly increase the efficiency of the natural gas combustion turbine. This 
+technology has been analyzed for many years and is represented in the ReEDS model. In the 
+United States, one commercial-scale CAES plant is in operation: the 110-MW plant Macintosh, 
+Alabama, has operated for 27 years. Without more plants and experience, the uncertainty around 
+costs is higher with CAES technology. Also, CAES plants have longer development timelines 
+than above-ground storage technologies (Mongird et al. 2019). Most importantly, the traditional 
+CAES implementation is geographically constrained, as it must be located near an appropriate 
+underground cavern. Finally, several CAES developments have been announced in the United 
+States, including developments by Burbank Power (for a site in Utah) and by PG&E.  
+
+
+15 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 7. Illustration of CAES system 
+Source: “Compressed Air Energy Storage,” PNNL, http://caes.pnnl.gov  
+Liquid Air Energy Storage (LAES) 
+Liquid air energy storage (LAES) seeks to harness some of the same fundamental physics of 
+CAES but without the need for geological formations. In this technology, electricity is used to 
+compress air until it becomes a liquid, and the released thermal energy is saved in a high-grade 
+thermal store. LAES systems can use waste heat from nearby industrial processes to raise the 
+RTE. Recent attention has been raised by a high-profile set of test plants and planned 
+commercial-size plants.8 Current costs are uncertain but ongoing improvements and prime 
+siting (i.e., close to thermal supply and demand) could make this option more viable. 
+Flywheels 
+Flywheels are another technology that has been developed and deployed, particularly in the 
+storage use case of providing grid services. Over 931 MW of flywheels are deployed globally. A 
+flywheel relies on the kinetic energy of a rotating weighted shaft in a nearly frictionless 
+environment to provide power via inertia when needed. They are typically used only for short-
+term power, and vendors typically provide storage durations of only 0.25 hour, with power sizes 
+up to 20 MW (Mongird et al. 2019).  
+ 
+8 See, for example, “Highview Power Bringing 50-MW Cryogenic Storage Plant to UK,” Power Engineering, 
+October, 21, 2019, https://www.power-eng.com/2019/10/21/highview-power-bringing-50-mw-cryogenic-storage-
+plant-to-uk/.  
+
+
+16 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+  
+Figure 8. Schematic of flywheel energy storage system 
+Source: By Pjrensburg - a rendering from a solid-works model, edited to include labels, in png format 
+Previously published: 2012-04-29, CC BY-SA 3.0, 
+https://commons.wikimedia.org/w/index.php?curid=19258681 
+Gravity Energy Storage 
+The physics concept behind gravity energy storage can be as simple as using electricity to raise a 
+large mass and then creating electricity when that potential energy is released. The practice of 
+gravity energy storage has taken many forms over the years and, with the recent increase in 
+interest in energy storage, new variations of the technology and companies are entering this 
+space regularly. From recent ideas such as pushing a train filled with rocks up a hill and letting it 
+roll down while running generators to dropping a heavy weight down a shaft, raising a heavy 
+weight by pumping water underneath it, or stacking and unstacking hundreds of large concrete 
+blocks, all these technologies focus on increasing and releasing potential energy. Due to the 
+scale, these technologies are likely most competitive at large scale and long-duration. Of course, 
+once built, many could also provide shorter duration capabilities as well. suited for large-scale 
+and longer-duration use cases. Most of these vendors for these technologies have either not yet 
+reached or are just now reaching commercial deployment; so, the costs reported are still 
+preliminary and we rely here on a single source by Schmidt (2018) for cost and performance 
+estimates. An additional selling point in terms of bankability is that most of the components are 
+from other industries and thus mature. 
+Pumped-Storage Hydropower (PSH) 
+In the United States and globally, pumped-storage hydropower (PSH) is by far the largest source of 
+electricity storage currently on electric systems. There are 23 GW installed in the United States,
+9 
+with installations dating to 1960, when expectations of nuclear and fossil baseload power drove the 
+system assumptions. PSH, which has an RTE of 80%, is capable of load shifting (arbitrage), 
+providing planning and operating reserve, and reducing curtailment of variable renewable energy. 
+It is sometimes colocated with existing hydropower facilities. Though growth of PSH has slowed 
+ 
+9 DOE OE Global Energy Storage Database, https://www.sandia.gov/ess-ssl/global-energy-storage-database/.  
+
+
+17 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+in recent decades as tracked by the EIA (2019), recent interest has grown and several closed-loop10 
+PSH systems have entered the planning stages, including Goldendale (1,200 MW in Washington 
+state), Gordon Butte (400 MW in Montana), and Banner Mountain (400 MW in Wyoming). 
+And DOEs HydroVision report (DOE 2016) presents various scenarios for the growth of PSH; 
+scenarios from that report are summarized in Section 3 (page 33). 
+ 
+Figure 9. Illustration of hydropower pumped storage system 
+Source: (Denholm et al. 2021) 
+2.4.3 Electrochemical Technologies 
+Finally, the third grouping of energy storage technologies are electrochemical technologies. 
+There is dramatic and growing interest in batteries from both distributed and grid-scale project 
+developers amid recent dramatic price drops in LIB chemistries (see Figure 10, page 18). Lower 
+battery storage costs combined with significant decreases in solar PV and wind costs have led 
+many experts to postulate that the combination of technologies will be market leaders going 
+forward; that hypothesis is something the SFS will explore. 
+For this portion of the SFS, we collect battery costs for a variety of technologies. LIBs are the 
+current market growth leader in energy storage deployments, with over 99% market share by 
+capacity deployment in the United States in 2019 (Wood Mackenzie P&R/ESA 2020), but many 
+of the other battery technologies have their own advantages and market niches.  
+ 
+10 Closed-loop PSH is not part of a river system. 
+
+
+18 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 10. 2019 BNEF battery price survey results (with cell and pack split) 
+Data Source: (Frith and Goldie-Scot 2019) 
+Throughout this report, the battery cell, battery module and battery pack are referenced. These 
+are stages of assembly of the overall battery system. The battery cell is the smallest unit of the 
+battery system. The battery cells are wired together into a battery module of various cells to 
+achieve a desired voltage level. These modules are then combined into a battery pack which 
+contains sensors and controls to monitor the battery and provide safety controls. 
+ 
+Figure 11 Battery cell, module, and pack diagram (Pesaran, Kim, and Keyser 2009) 
+Lead-Acid Batteries 
+Of the battery technologies studied here, lead-acid batteries have a large overall market (as a 
+result of their use in vehicle ignition batteries) and have been used extensively for off-grid 
+applications. They continue to be used extensively with mini-grids in developing countries, 
+
+
+19 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+although some of that market is shifting to LIBs (ESMAP 2019). Lead-acid batteries are a 
+mature technology with existing pathways for recycling and reuse. Unfortunately, they are 
+limited by the cycle life as a function of depth of discharge. There are applications such as 
+capacity for resource adequacy, but a typical daily cycling would limit the lifetime to 3 years 
+or less (Mongird et al. 2019). Several groups11 are looking at advanced lead batteries (i.e., lead 
+carbon batteries) and are seeking ways to increase the cycle life and improve other characteristics 
+of batteries under the Advanced Lead-acid Battery Consortium.12 
+Flow Batteries 
+According to the DOE Global Energy Storage Database,13 there are 300 MW of operating, under 
+construction or contracted capacity of flow batteries as of July 2020; this capacity makes this 
+family of battery types one of the more common grid-scale energy storage technologies. A flow 
+battery is typically composed of two tanks of fluid material, and both are pumped across opposite 
+sides of ion-selective membrane. Ion exchange (and therefore current) occurs through the 
+membrane. A few advances are being explored as well including hybrid systems, membrane-less 
+systems, and several chemistry variations (Mongird 2019).  
+ 
+Figure 12. Illustration of flow battery system 
+Source: (Denholm et al. 2021) 
+ 
+11 See ‘Advanced Lead Acid Battery Consortium,” 2017, 
+https://www.sciencedirect.com/topics/engineering/advanced-lead-acid-battery-consortium 
+12 https://batteryinnovation.org/ 
+13 DOE OE Global Energy Storage Database, https://www.sandia.gov/ess-ssl/global-energy-storage-database/. 
+
+
+20 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Sodium Sulfur Batteries 
+Of the batteries we describe here, sodium sulfur batteries are unique in that they are high-
+temperature batteries that operate at 300°C. As of 2018, over 189 MW of this technology are 
+installed around the world (Mongird et al. 2019), which implies greater maturity than other 
+emerging high-temperature liquid metal batteries. One electrode is molten sodium, and the other 
+is molten sulfur. The downside to this type of battery is that the battery temperature needs to be 
+maintained even when the battery is not in use and a freezing of the active material could result 
+in a decreased lifetime. This disadvantage makes them unlikely to be deployed except in large 
+central systems. 
+Sodium Metal Halide Batteries 
+Like sodium sulfur batteries, sodium-metal halide batteries14 are also molten batteries that are 
+composed of sodium and sodium-chloride operating between 270°C and 350°C. The key 
+difference in composition is that nickel has been substituted for sulfur in sodium metal halide 
+batteries. About 19 MW of sodium-metal halide are deployed in the United States (Mongird et 
+al. 2019). The technology is currently used mostly in bus fleets, but it still requires independent 
+heaters to maintain the molten state needed for operation. Research is ongoing to make them 
+cheaper and reduce their operating temperature. Given the brief history of these batteries, which 
+date to 1999, there are no dominant players at this time and there are possibilities to reduce the 
+costs of the technology in the near term with additional research. 
+ 
+Figure 13. Photo of sodium-metal halide battery 
+Source: Rudolf Simon - Own work, CC BY-SA 3.0, https://commons.wikimedia.org/w/index.php?curid=18740786  
+ 
+14 Sodium-metal halide batteries are commonly known as zebra batteries. 
+
+
+21 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Zinc-Hybrid Cathode Batteries 
+Zinc-hybrid cathode battery technology has several features that make it attractive, including 
+high energy density, inexpensive and widely available materials, and a nondendritic electrolyte. 
+Variations include Zn-MnO2, Zn-Ni, and Zinc-Air. And several firms are actively researching 
+and considering deploying this emerging technology.  
+Lithium-Ion Batteries 
+As with the other batteries we consider here, a lithium-ion battery (LIB) is a rechargeable battery 
+with lithium ions moving through an electrolyte from the negative electrode (usually graphite or 
+composite) to the positive electrode (a lithium compound that drives most of the characteristic 
+differences between the different chemistries described). LIB technology was first researched in 
+the 1970’s and has been used broadly in consumer electronics starting in the 1990’s. LIB 
+deployments are now growing in the burgeoning electric vehicle (EV) market and also being 
+deployed into the electric grid for energy storage as either as stand-alone systems or hybridized 
+with solar PV, wind, or other generation technologies. 
+ 
+Figure 14. Illustration of grid-scale lithium-ion battery system 
+Source: (Denholm et al. 2021) 
+Interconnection queues around the United States15 indicate significant additional LIB systems 
+could be seriously proposed over the next few years. Many chemical configurations of the anode, 
+cathode, and electrolyte have been deployed and are under development. Key cathode 
+ 
+15 Generation, Storage, and Hybrid Capacity in Interconnection Queues (Lawrence Berkeley National Lab) 
+https://emp.lbl.gov/generation-storage-and-hybrid-capacity 
+
+
+22 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+compounds include NMC (nickel-manganese-cobalt), LFP (lithium, iron, phosphate) and NCA 
+(nickel, cobalt, aluminum). BNEF and others postulate that the dramatic ramp-up in the EV 
+market (and building on the consumer electronics market) will continue to lower the cost of 
+several chemistries of LIBs broadly (see Figure 25, page 35). Currently, NMC is the most 
+commonly used cathode chemistry, but a new Wood-McKinsey forecast16 indicates LFP will 
+grow to dominate the grid-storage market over the next few decades (Figure 15). 
+Several factors influence the choice of cathodes, anodes, and electrolytes, and significant 
+research has been conducted globally on all these components. DOE is working to reduce the use 
+of critical materials in lithium ion batteries by moving to chemistries with lower cobalt content 
+and to diversify global supply chains to mitigate supply risk
+17. The anticipated rapid growth of 
+the EV market will both drive down cost (with spillover into the stationary storage market) but 
+will also put pressure on the supply chain, leading to diversification of supply. For example, LFP 
+components have a broader global ability to increase supply chain than NMC, which has fewer 
+locations for its growth (Igogo et al. 2019). 
+  
+Figure 15. Past and projected market share of different LIB chemistries through 2030 
+Source: Wood Mackenzie Energy Storage Service 
+ 
+16 “LFP to Overtake NMC as Dominant Stationary Storage Chemistry by 2030 ,” Wood Mackenzie, August 17, 
+2020, https://www.woodmac.com/press-releases/lfp-to-overtake-nmc-as-dominant-stationary-storage-chemistry-by-
+2030/ 
+17 https://www.energy.gov/sites/prod/files/2019/07/f64/112306-battery-recycling-brochure-June-2019%202-
+web150.pdf 
+NMC
+LFP
+NCA
+Others
+0%
+10%
+20%
+30%
+40%
+50%
+60%
+70%
+80%
+90%
+100%
+2015 2020 2025 2030
+Market share (%storage deployments)
+NMC LFP NCA Others
+
+23 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Recent cost reductions of LIBs, which have been driven by growth in both the EV market and 
+the grid market, have been both significant and surprising, with cost decreases of over 80% being 
+reported from 2010 to 2019 (Frith and Goldie-Scot 2019). A literature search of future 
+projections of cost by Cole and Frazier (2020) anticipates additional significant cost reductions 
+in the future scenarios as well (see Section 3).  
+Ultracapacitors 
+Historically, capacitors are used extensively in components of the electric grid to provide very 
+short-term emergency power so that the grid can be shut down smoothly in the event of an 
+outage. Ultracapacitors are a form of capacitor that typically stores up to 100x the energy per 
+volume of electrolytic capacitors, and they can charge and discharge much faster than batteries 
+with extremely high cycle life. Ultracapacitors are much more expensive than any batteries, and 
+they are typically only built with low energy/power (E/P) capacity ratios (typically 0.25 hours) 
+(Mongird et al. 2019). Ultracapacitors can be paired with other battery technologies (lacking 
+quick response) due to their quick response but short-duration. A variety of companies 
+manufacture ultracapacitors (or supercapacitors) for grid, transport, and other applications. 
+Hydrogen Storage 
+Various existing and potential methods can be used, in this case, to create hydrogen from 
+electricity, store this hydrogen, and then then convert it back into electricity for the grid. NREL 
+has contributed to a recent paper on hydrogen energy storage (Hunter et al. 2020) as one of 
+several long-duration storage options, and we gather data primarily from this source for this 
+report. Hunter et al. (2020) present several options for storing the hydrogen (e.g., in salt caverns 
+and pipes) and several methods for converting hydrogen to electricity, including via a combined 
+cycle turbine, a stationary fuel cell, or a fuel cell designed for heavy-duty vehicle applications. 
+Stationary fuel cells are designed to be more durable and to operate continuously for years, 
+leading to higher capital costs than heavy-duty vehicle fuel cells, which are designed more for 
+intermittent operation than in grid storage systems. For this report, the current costs were 
+represented by an electrolyzer to cavern storage to a combustion turbine to convert the hydrogen 
+back to electricity. For the future state of hydrogen, the stationary fuel cell and salt cavern 
+configuration is chosen (again with electrolyzers albeit cheaper than current electrolyzers). 
+Hydrogen can store energy over extended periods of time. Additionally, there are a variety of 
+high value uses for hydrogen within the industrial and transportation sectors that could develop 
+alongside a market for hydrogen energy storage. The development of these markets in parallel 
+could reduce costs by enabling economies of scale and enabling capital-intensive equipment 
+(such as electrolyzers) to be monetized by multiple sectors (costs reported in Section 2.5). 
+Hydrogen can also be used to produce synthetic fuels, which can then be used for power 
+generation. Such concepts are in early stages of development and were therefore outside the 
+scope of the current study.  
+As shown in Figure 16, there are two pathways shown for using the compressed hydrogen stored 
+underground. One pathway is via a fuel cell. The other pathway is perhaps of equal interest for 
+current deployments using hydrogen via a combustion turbine. At an overnight capital cost of 
+$1296 (2018 USD) for a hydrogen combined-cycle turbine versus a cost of a stationary PEM 
+Fuel cell of $1320 (2018 USD), the overall total cost (including electrolysis and compression) 
+makes the turbine pathway slightly cheaper. The “future” H2 pathway we display in section 2.5 
+
+24 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+incorporates an anticipated significant cost reduction in the stationary fuel cell pathway to $425. 
+The key takeaway is that there are several pathways to utilize hydrogen as a short-term or long-
+term electricity storage medium with a variety of external market factors and the possibility of 
+significant future cost reductions. 
+ 
+Figure 16. Illustration of hydrogen energy storage system 
+Source: (Denholm et al. 2021)  
+2.5 Comparison of Current Costs of Technologies 
+In this section, we compare the cost and performance of energy storage technologies. It is 
+difficult to meaningfully compare a broad range of storage technologies that apply to different 
+use cases and across different sectors from distributed residential to grid-scale storage. 
+Therefore, we attempt to compare the technologies appropriately in the context of this study. As 
+we primarily model PV and distributed batteries for the distributed sector in this analysis, most 
+of our comparisons are across grid-scale technologies and we seek to explore how the technology 
+characteristics might impact the grid-scale market penetrations of different technologies. As 
+stated above, comparisons are also difficult because storage technology costs are a function of 
+both capacity and duration (as well as efficiency and other metrics). 
+As stated above, one of the difficulties of assessing the economics of storage technologies is that 
+the linkage with the services they will provide impacts the price they receive for their services. 
+This is, of course, different from typical generators as they simply produce electric power. 
+Storage systems’ cost, performance, and value all change as systems are sized for the need and 
+
+
+25 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+throughout their lifetime as they might shift from providing grid services to eventually assisting 
+with peaking power. Therefore, the presentation of storage data must include both power and 
+duration components. Figure 17 (page 27) plots the relative costs for the storage technologies we 
+consider by their power capacity and energy capacity cost components. To be clear, this is not 
+the total capital cost represented in two different ways but rather the portion of the capital cost 
+associated with the power of the system and the capital cost associated with the energy or 
+duration of the system. The total capital cost would be the sum of the capital cost power and the 
+duration multiplied by the capital cost energy. Note that some outliers (flywheels and 
+ultracapacitors) are not shown.  
+The data sources for each of these technologies is recent, but no sole source contained data on all 
+technologies. The electrochemical technologies (except for LIBs, which are updated within this 
+study) are from energy storage cost reports by Mongird et al. (2019; 2020), data for PTES are 
+from other work at NREL (McTigue et al. In Press), hydrogen data are from NREL long-
+duration storage work (Hunter et al. 2020), and gravity storage data are from analysis by Schmidt 
+(2018).  
+The data sources for technology costs and other parameters used in this comparison are from a 
+variety of sources, which we sought to compare as equitably as possible while accepting ranges 
+of uncertainty especially in emerging technologies. 
+The ideal energy storage technology is in the lower left corner of Figure 17 (page 27), where low 
+costs for both power and duration appear. Storage technologies that are best for grid services 
+would be cheaper for power and more expensive for duration. Conversely, long-duration storage 
+(e.g., over 10 hours) could be more expensive for power but the cheapest option for duration. 
+The figure shows several battery technologies all similarly aligned at 450 $/kW, but LIB (using a 
+weighted average cost across all chemistries) is closer to the cheapest point because of its low 
+dollars per kilowatt-hour cost. Note that CAES and PSH are located close to 0 $/kWh and have 
+their capital costs captured mostly on the dollars per kilowatt scale. Note that several 
+technologies have cost values outside the range of the graphic including ultracapacitors, 
+flywheels and H2-elec-cavern-CT. Specific values are in Appendix A. 
+
+26 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Table 1. Data Sources for Energy Storage Technologies 
+Storage Type/Technology 
+Reference Year for 
+Current (2019) Costs Primary Data Source 
+Thermal Storage   
+Pumped thermal energy storage (PTES) 2020 McTigue et al. In Press 
+Electrochemical Storage   
+Lithium-ion battery (weighted value) (LIB) 2020 Multiple sources; 
+see References (p. 59) 
+Lead-acid battery 2020 Mongird et al. 2020 
+Redox flow battery (flow batteries) 2020 Mongird et al. 2020 
+Sodium sulfur battery 2018 Mongird et al. 2019 
+Sodium metal halide battery 2018 Mongird et al. 2019 
+Zinc-hybrid cathode battery 2018 Mongird et al. 2019 
+Ultracapacitors 2018 Mongird et al. 2019 
+Hydrogen storage (using electrolyzers, 
+salt caverns, and combustion turbines)b 2020 Hunter et al. 2021 
+Hydrogen storage (using electrolyzers, 
+salt caverns, and stationary fuel cells)b 2020a Hunter et al. 2021 
+Electromechanical Storage   
+Compressed air energy storage (CAES) 2020 Mongird et al. 2020 
+Liquid air energy storage (LAES) 2020 Olympios et al. 2021 
+Pumped-storage hydropower (PSH) 2020 Mongird et al. 2020 
+Flywheel 2018 Mongird et al. 2019 
+Gravity 2018 Schmidt 2018 
+ 
+
+27 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+   
+Figure 17. Power capacity cost component ($/kW) versus energy capacity cost component ($/kwh) 
+The figure demonstrates the technologies for which cost does not vary significantly with additional duration. 
+Figure 18 shows the total investment cost in $/kWh for various technologies, assuming a 100-
+MW storage system with varying levels of storage. These ranges of sizes are selected because of 
+the current and near-term (next 10 years) focus on 4 hours of battery storage capacity as the 
+typical size, for our interest in longer-duration storage, and to illustrate how total system costs 
+change with storage duration among technologies. We select 100 MW as a significant size of 
+storage for the grid currently. Eventually, much larger storage systems might be composed of 
+100-MW or larger modules, but that is not currently typical. Note that this graph has four lines 
+for LIB showing the progression of costs from 2019 to 2024 and thereby current and anticipated 
+cost reductions. 
+      Short-Duration 
+ 
+  
+
+28 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 18. Total investment cost ($/kW) for a system with 100 MW of storage with varying durations 
+Flywheels and ultracapacitors are not included in the figure, as they are deemed to be inappropriate for these durations. 
+0
+1000
+2000
+3000
+4000
+5000
+6000
+7000
+8000
+1 2 3 4 5 6 7 8 9 10 11 12 13
+TOT AL CAPIT AL COST ($/KW)
+HOURS OF DURATION
+LIB (2019) LIB (2020) LIB (2022) LIB (2024)
+PTES (an�c ipated ) LEAD (2018) FLOW (2018) Sodium Sulfur (2018)
+Sodium M etal Halide (2018) Zinc -Hybrid Cathode (2018) CAES (2020) LAES (an�c ipated )
+PSH (2020) Gr av ity  (an�c ipated ) H2 elec -ca ve rn- CT (2020) H2 elec -ca ve rn- FC (Future )
+H2 (Future) 
+CAES 
+PSH (2021) 
+LIB (2019) 
+LIB (2020) 
+LIB (2024) 
+H2 (2020) 
+
+29 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+At the 4-hour duration mark in Figure 18, LIB (current through 2024) is the cheapest choice18 by 
+capital cost for energy storage with the anticipated costs for PTES, gravity energy storage, flow 
+batteries, and zinc-hybrid cathodes virtually tied as the next cheapest technologies. At the high-
+cost end of the spectrum are flywheels and ultracapacitors, which have been left off the graph as 
+they are not cost competitive beyond very short durations (~0.25 hours).  
+At more than 8 hours of duration, the ratio of energy to duration costs changes such that several 
+technologies are at capital costs comparable to or lower than LIBs. Pumped thermal energy 
+storage (PTES) is anticipated to be cheaper that LIB in most cases, and hydrogen storage costs 
+are competitive if future cost improvements are realized as described by Hunter et al. (2020). 
+This flip with longer durations indicates several technologies might be competitive with LIBs at 
+longer duration. PSH and CAES also enter the picture at longer durations on the graph, at costs 
+where it might be expected that they would be deployed more. However, as we look to the future 
+and an anticipated decrease in LIB capital costs of an additional 50% from current by 2030, the 
+capital cost advantage of non-LIB technologies decreases resulting in potentially LIB capital 
+costs being below the other technologies even at these longer durations. 
+Several of the factors impacting PSH deployment were discussed within the DOE Hydropower 
+Vision Study (DOE 2016). As that study showed (Figure 19, page 30), in the base case, minimal 
+new PSH was built in the United States. However, with technology improvements, low-cost 
+financing, and improved environmental considerations, PSH could add 35 GW of additional 
+long-duration capacity by 2050 in one of the core scenarios. Since the Hydropower Vision report 
+was published, investor interest has also grown in closed-loop PSH systems, which have now 
+entered the planning stage at several locations. As discussed in Section 2.4.2 (page 14), despite 
+its apparent low cost, CAES is geographically constrained. The lack of any new, large 
+installations in decades makes uncertainty high about CAES future deployment and is further 
+proof that factors beyond cost are preventing more deployments.  
+Finally, the other technologies that are explored are more expensive than PSH, CAES and LIBs. 
+However, it is important to remember that several of these other technologies (gravity, LAES, 
+flow batteries, several battery chemistries) are at early stages of commercialization. Therefore, 
+they could have more dramatic price decreases as the number of systems grows and capital costs 
+decrease. The developers of these technologies anticipate being cost-competitive when they 
+achieve their deployment goals.  
+ 
+18 Lead-acid batteries have costs comparable to current LIB costs, but they are not included here because of a low 
+cycle lifetime that continues to limit the market in comparison to other battery technologies.  
+
+30 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 19. Projected newly installed capacity of PSH for scenarios used in HydroVision study 
+Source: (DOE 2016) 
+Several manufacturers are considering these long durations for their technologies. However, as 
+we look to the future and an anticipated decrease in LIB capital costs of an additional 50% by 
+2030 (described in Section 3), the capital cost advantage even at longer durations decreases 
+significantly, potentially with LIB capital costs below those of other technologies.  
+Another key metric to discuss is that of the RTE. Figure 20 shows the RTE of all the 
+technologies we considered. The RTE value is critical and important but also usually limited by 
+the physics of a given technology and engineering a way to a higher RTE value is difficult. Some 
+efficiencies could be gained in thermal systems by improving thermodynamics and materials. 
+In batteries, significant research is seeking new combinations of materials and also 
+manufacturing improvements to improve the RTE and thereby reduce the heat generated and 
+degradation. However, it is not anticipated that RTE will increase significantly for these existing 
+technologies over the next decade.  
+0
+10
+20
+30
+40
+50
+60
+2010 2020 2030 2040 2050
+New PSH Capacity (GW)
+Advanced Technology, Low Cost Finance, Combined
+Environmental Considerations
+Low Cost Finance
+Advanced Technology
+
+31 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 20. Round-trip efficiency of energy storage technologies 
+It is important to understand that LIBs and, in fact, most battery chemistries in Figure 20 have an 
+RTE close to or above 80%. LIBs are 86% RTE, and RTE trends downward—to near 70% — for 
+zinc-hybrid, sodium-sulfur, and lead acid battery technologies. Two thermal technologies (CAES 
+and PTES) have RTEs of 50%–60%. Finally, the hydrogen RTE (electrolyzers, compression, 
+storage, and fuel cell or combustion turbine) of 27% (with combustion turbine) and 37% (fuel 
+cells) are lower than the others.  
+Again, the RTE by itself does not indicate that a technology may or may not be cost-effective. 
+However, a low RTE (especially combined with more expensive charging electricity) means 
+other technologies can have a higher capital cost and still end up with a similar levelized cost of 
+storage value over time.  
+Building on the impacts of RTE on overall cost, Figure 21 shows the LCOS for several of these 
+technologies within a certain use case or duration. As described above, the LCOS is a metric that 
+seeks to combine the capital cost, O&M costs, salvage costs, charging costs, and storage system 
+throughput, notably by including the RTE and the depth of discharge to calculate the amount of 
+energy discharged during operation. This metric does not speak to the value of the array of 
+services that the storage device can provide. Also, the metric should not be used to compare 
+storage technologies to generation technologies. As with capital cost, the LCOS will change with 
+the duration of the storage system such that durations 1 hour and 10 hours will have different 
+LCOS values. With these caveats, the authors consider this metric to be important in part 
+because of the wide variation in both capital cost and RTE across all these technologies. The 
+values used to calculate the LCOS for each technology vary by technology, but we hold the 
+charging price constant (at the US wholesale price of 2.5cents/kwh) and the WACC for all at 
+
+
+32 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+6.5%, DOD and RTE are taken from the data sources for each technology and the number of 
+cycles per year are 660 for short duration, 330 for four and 8-12 hour while the value is 52 for 
+long-duration technologies (which is approximately a 10% capacity factor for long-duration). 
+Again, these values are all assumed to be for large grid-scale batteries with noted levels of 
+duration but could vary significantly when deployed into different grids with unique needs. Note 
+that we do not include short-duration technologies (including flywheels and ultracapacitors) 
+because their dispatch is vastly different from these technologies. 
+The LCOS results broadly indicate similar trends to what we saw with the total capital 
+investment for the system. For 4-hour duration use cases (such as much of the time-shifting and 
+peak capacity provision that is driving the market today), we see that the LIB LCOS is the lowest 
+of the technologies at this duration. We anticipate that gap to widen as LIB costs continue to fall 
+relative to other technologies. Within the 8-hour to 12-hour duration, PTES and CAES have 
+lower LCOS than LAES. Of course, these costs are uncertain, as PTES and LAES are still under 
+active development and have not been deployed widely. Finally, under long duration, we see that 
+the potential cost reductions for this hydrogen storage pathway (described in Hunter (2020) 
+could significantly reduce the LCOS which is an example of the possible changes in relative 
+attractiveness in emerging technologies.  
+ 
+Figure 21. Levelized cost of storage ($/kWh) of energy storage technologies included in this study 
+Technologies are differentiated by duration (4-hour, 10-hour, and 16-hour). 
+0.000 0.100 0.200 0.300 0.400 0.500 0.600 0.700 0.800 0.900 1.000
+LIB -4 hour (2020)
+FLOW (2018)
+Sodium Sulfur (2018)
+Sodium M etal Halide (2018)
+Zinc -Hybrid Cathode (2018)
+CAES (2020)
+LAES (an�c ipated )
+PTES (an�c ipated )
+PSH (2020)
+Gr av ity  (an�c ipated )
+H2 elec -ca ve rn- CT (2020)
+H2 elec -ca ve rn- FC (Future )
+Four Hour 8-12 Hour Long Dura�on
+ Extends  
+to 2.5 
+
+33 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+3 Battery Energy Storage System (BESS) Cost 
+Assumptions and Projections for Scenario 
+Modeling 
+In this section, we estimate the current and projected cost for utility-scale, commercial/industrial, 
+and residential battery energy storage systems (BESS) for use in concurrent SFS modeling 
+analyses. The projections are made by estimating the current costs of BESS for each market 
+segment and applying a cost projection curve for future costs. For all BESS, we assume LIB 
+technology is used, although we do not specify the type of battery chemistry (e.g., NMC or LFP), 
+and we note that these serve as a proxy—in other words, that any battery chemistry (including 
+non-LIB technology) that can meet these same cost and performance characteristics can be 
+equally competitive in the market. 
+The price of LIB packs depends on the chemistry used and its intended end use. Most BESS 
+projects use either lithium-ion nickel-manganese-cobalt (NMC) batteries, which are sourced 
+mainly from South Korea, or lithium-iron-phosphate (LFP) batteries, which are sourced mainly 
+from China (BNEF 2019b). Figure 22 illustrates how battery pack costs vary with end use. The 
+differences in prices are due to differences in the cell and pack design, and to battery 
+performance requirements (e.g., end uses such as hybrid EVs that require faster charging rates) 
+(Frith and Goldie-Scot 2019). To account for these differences, BNEF uses a volume-weighted 
+average for tracking LIB prices. BNEF, in their 2019 LIB price survey, pegged the volume-
+weighted average price for a LIB pack at 2019 USD $156/kWh (Frith and Goldie-Scot 2019). 
+ 
+Figure 22. Battery pack prices (real 2019 $/kWh) for different end-use applications 
+Data Source: (Frith and Goldie-Scot 2019) 
+LIB demand is projected, both in the SFS and elsewhere, to increase rapidly as battery pack 
+prices continue to decrease, and EVs are expected to dominate the LIB market in the future, 
+according to BNEF (see Figure 23). BNEF (2019) assumes an 18% learning rate for LIB pack 
+prices, meaning the price of LIB packs decreases by 18% for every doubling in cumulative 
+manufactured storage capacity. Because the underlying technologies and manufacturing 
+processes are similar, we assume the growth of the EV LIB pack market will also significantly 
+impact prices in the stationary energy storage market. For pricing battery packs (not the entire 
+
+
+34 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+system) for BESS, we adopt the methodology described in Energy Storage System Costs Survey 
+2019 (BNEF 2019b). That methodology uses the BNEF 2019 Lithium-Ion Battery Price Survey 
+(Frith and Goldie-Scot 2019) average volume-weighted battery pack price projections as the 
+basis of the LIB pack prices but adds a premium to account for lower volumes in the stationary 
+storage LIB market compared to the EV LIB market. The projections presented in the Energy 
+Storage System Costs Survey 2019 start at current LIB prices for stationary storage and assume 
+they converge with the volume-weighted battery pack price projections in 2019 Lithium-Ion 
+Battery Price Survey by 2025, but at a premium. For utility-scale projects, the premium results in 
+the battery pack price in 2025 and beyond being 10% above the volume-weighted average 
+battery pack price, and for residential-scale projects the price is assumed to be 20% above the 
+volume-weighted battery pack price average (BNEF 2019b).  
+ 
+Figure 23. Expected battery demand by sector and LIB price projections 
+Data Source: (Frith and Goldie-Scot 2019) 
+3.1 Sensitivity to Commodity Prices 
+The commodity prices of the metals used in LIBs vary with supply and demand. With LIB 
+deployment projections so high, there is concern that metal commodity prices could increase as 
+demand for batteries increases. The impact on battery prices depends on the battery chemistry 
+that is used and how much metal is required. Figure 24 shows raw material costs for a range of 
+LIB chemistries in recent years. The figure shows that regardless of chemistry, raw material 
+costs are decreasing year over year. This trend suggests that newer battery designs are less 
+sensitive to fluctuations in commodity metal prices because the modern designs require less 
+metal for a given storage capacity. It also shows the actual chemistry has a significant impact 
+
+
+35 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+on raw material costs, with LFP battery chemistry having significantly lower raw material costs. 
+BNEF further showed that battery pack prices are fairly insensitive to large swings in metal 
+commodity prices (see Figure 25) (Frith and Goldie-Scot 2019). For an NMC 811 battery, 
+doubling the commodity price of lithium would only increase battery pack costs by 5% and 
+doubling nickel costs would increase battery pack costs by 8.3%. Given that raw material costs 
+are only a fraction of the battery pack cost, and the battery pack costs are only a fraction of the 
+BESS cost, it appears that metal commodity prices would have to increase several times to 
+significantly affect BESS prices.  
+ 
+Figure 24. Raw material costs for different LIB chemistries by year 
+Data Source: (Frith and Goldie-Scot 2019) 
+ 
+Figure 25. Sensitivity of nickel-manganese-cobalt (811) LIB pack (percentage change) to metal 
+components prices 
+Data Source: (Frith and Goldie-Scot 2019) 
+
+
+36 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+3.2 Utility-Scale BESS 
+Utility-scale BESS are multimegawatt projects connected directly to the grid that provide electric 
+system services such as ancillary services, energy shifting, and firm capacity (see Section 2.3 and 
+Figure 3, page 10). At the end of 2019, 1,208 MW of front-of-the-meter utility-scale BESS were 
+installed in the United States, and another 80,230-MW of front-of-the-meter BESS were under 
+development or contract (Wood Mackenzie Power & Renewables/ESA U.S. Energy Storage 
+Monitor 2020). The dramatic growth that this pipeline implies reinforces the industry perception 
+that LIB costs are currently at a cost-effective level and are perceived to be continuing to decline. 
+For this study, we assume a stand-alone 60-MWDC LIB storage system with storage durations of 
+2–10 hours.  
+3.2.1 Current Costs 
+Current (2019) costs for utility-scale BESS used in SFS are based on a bottom-up cost model using 
+the data and methodology in Feldman et al. (2021). The bottom-up BESS model accounts for: 
+• Major components such as the LIB pack and inverter 
+• The balance of system (BOS) needed for the installation, such as battery containers, 
+electrical wiring, electronic controls, safety systems 
+• The installation labor and equipment 
+• Soft costs such as sales tax, overhead, and profit. 
+Feldman et al. (2021) generated costs for systems with storage durations of 0.5-4.0 hours. For 
+this study, we use the same model and data to develop costs for BESS with storage durations of 
+2, 4, 6, 8, and 10 hours (Table 2). Storage durations of 1 hour or less typically serve the smaller 
+ancillary services market, which is not a priority in capacity expansion models like ReEDS and 
+are not included. We include storage durations up to 10 hours to study the role of longer-duration 
+storage on the grid under different scenarios.  
+
+37 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Table 2. Utility-Scale LIB Energy Storage Systems Used in SFS modelinga 
+Model 
+Component Modeled Value Description Sources 
+Battery total size 60 MWDC A baseline case to match a 100-MW 
+PV system 
+Feldman et al. 
+2021 
+Battery size per 
+container 
+2.5-MWh (megawatt-hour) 
+per 40-ft container 
+Assumption to compute the number of 
+containers 
+Feldman et al. 
+2021 
+LIB pack price $188/kWh  Ex-factory gate (first buyer) prices BNEF 2019a 
+Storage duration 2–10 hours Duration determines energy (MWh). This study 
+Battery central 
+inverter price $0.06/W Ex-factory gate (first buyer) prices 
+Wood-
+Mackenzie, 
+Gupta 2019 
+Inverter size 2.5 MW per inverter Used to determine the number of battery 
+inverters 
+Feldman et al. 
+2021 
+Electrical BOS  $0.07–$0.14/W  
+Includes conduit, wiring, DC cable, energy 
+management system, switchgear, 
+transformer, and monitor and controls for 
+each container. Determined by the number 
+of containers, transformers, and row 
+spacing.  
+Feldman et al. 
+2021 
+Structural BOS  $0.01–$0.05/W  
+Includes foundation, battery containers, 
+and inverter house. Determined by the 
+number of containers, inverters, 
+transformers, and the spacing between 
+containers.  
+Feldman et al. 
+2021 
+Installation labor Electrician: $27.47/hour 
+Laborer: $18.17/hour 
+National average modeled labor rate 
+assumes nonunionized labor  BLS 2019 
+Sales tax 5% U.S. average RS Means 
+2017 
+EPC overhead 
+and profit 
+8.67% for equipment and 
+material; 23%–69% for labor 
+costs; varies by system size, 
+labor activity, and location  
+Costs associated with EPC selling, general 
+and administrative expense; warehousing; 
+shipping; logistics  
+Feldman et al. 
+2021 
+Developer cost: 
+developer 
+overhead  
+3% of total installation cost 
+Includes overhead expenses such as 
+payroll, facilities, travel, legal fees, 
+administrative, business development, 
+finance, and other corporate functions 
+Feldman et al. 
+2021 
+Developer cost: 
+contingency 3% Estimated as markup on the total EPC cost Feldman et al. 
+2021 
+Developer cost: 
+EPC/developer net 
+profit 
+5% 
+Applies a percentage margin to all costs 
+including hardware, installation labor, 
+EPC overhead, and developer overhead 
+Feldman et al. 
+2021 
+a Model inputs and assumptions (adapted from Feldman et al. 2021). Values are for 2019 (in 2018 USD). 
+
+38 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Battery pack prices for stationary storage come from BNEF and are estimated to be $188/kWhDC 
+2018 USD (BNEF 2019a) in 2019. The price reflects a premium to the price for LIB packs for 
+EVs as discussed previously in the introduction to Section 3. Figure 26 and Figure 27 show the 
+2019 cost estimate of utility-scale BESS for storage durations of 2–10 hours in $/kWh and $/kW 
+respectively. The cost estimates assume a stand-alone 60-MWDC BESS system and are made 
+using the NREL bottom-up BESS cost model. The figures include a breakout of costs by 
+component. The figures show how costs in terms of $/kW and $/kWh can vary significantly with 
+storage duration. 
+ 
+Figure 26. 2019 U.S. utility-scale LIB stand-alone storage costs for durations of 2–10 hours 
+(60 MWDC) in $/kWh 
+
+
+39 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 27. 2019 U.S. utility-scale LIB stand-alone storage costs for durations of 2–10 hours 
+(60 MWDC) in $/kW 
+3.2.2 Utility-Scale PV+BESS 
+Utility-scale BESS can be built free-standing or can be combined with new or existing 
+electricity generation systems. PV is the generation technology most commonly paired with 
+BESS (PV+BESS): 9% of annual front-of-the-meter PV deployments and 55% of all annual 
+storage deployments in the United States expected to be paired with BESS by 2023 (Gupta 
+2019). Colocation of PV and BESS allows for sharing of several hardware components by the 
+PV and energy storage systems as well as also soft costs related to site preparation, land 
+acquisition, installation labor, permitting, interconnection, and EPC/developer overhead and 
+profit, resulting in savings of 5%–10% of total costs compared to installing the PV and BESS 
+separately (Feldman et al. 2021). However, because the ReEDS model is not currently 
+configured to deploy PV+BESS systems, this study considers only stand-alone BESS. 
+3.2.3 Future Cost Projections 
+Future cost projections for utility-scale BESS are based on cost projections by Cole and Frazier 
+(2020) that are used in the ATB (National Renewable Energy Laboratory (NREL) 2020) with 
+variations for duration described below. The BESS cost projections (Figure 28) are based on a 
+literature review of utility-scale BESS costs. For the SFS, we use the Conservative, Moderate, 
+and Advanced Scenarios.  
+
+
+40 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 28. Normalized battery cost projections for 4-hour LIBs, with values relative to 2019 from 
+Cole and Frazier (2020) used in this study 
+Cost projections are shown relative to published values from a literature review. 
+The ATB utility-scale BESS cost projections in Figure 28 assume a 4-hour BESS. Applying the 
+same relative trajectory to all BESS regardless of storage duration implies future cost reductions 
+apply equally to all BESS cost components. However, multiple studies (BNEF 2019a; EPRI 
+2018) predict the majority of cost reductions are from lower battery pack costs in the future. 
+From Figure 27, it is clear that for a given BESS power capacity (power delivery potential to 
+grid), reductions in battery costs will lower the cost of longer duration systems more than 
+shorter-duration systems.  
+Future cost projections must consider the storage duration when calculating costs. Although we 
+do not have future cost projections from the literature specifically for all storage durations of 
+interest to us, we can estimate future cost projections that consider storage duration using the 
+information we do have. BNEF projects LIB costs out to 2050 (BNEF 2019a; BNEF 2019b). 
+Because BNEF is the only source that gives both cost projections by component and projections 
+out to 2050, the time-frame considered in the capacity-expansion models, we use BNEF data in 
+our component cost analysis. By assuming the BNEF battery cost reduction projections can be 
+applied to the battery component cost term, we can back-calculate the remaining costs (the 
+power component costs) for a 4-hour duration BESS based on utility-scale BESS cost projections 
+from the ATB (National Renewable Energy Laboratory (NREL) 2020) and then use these 
+parameters to adjust the cost for any storage duration we desire. The following methodology 
+(illustrated in Figure 29, page 41) involves the following steps to generate the storage-duration-
+specific future cost projects for the SFS Moderate Scenario: 
+1. Use current (2019) 60-MW
+DC utility-scale BESS costs from NREL bottom-up model for 
+storage durations of 2–10 hours to develop a linear correlation relating BESS costs to 
+duration for the current year. Note that this model is based on a bottom-up model for PV 
+that has been used and refined for years. The BESS cost model is more recent but builds 
+on the PV component cost methodology and has been reviewed by numerous industry 
+experts. 
+
+
+41 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+A. BESS cost ($/kW) = $246/kW + $320/kWh * d 
+B. d = storage duration (hours) 
+2. Apply the ATB (National Renewable Energy Laboratory (NREL) 2020) cost projection 
+curve, normalized to 2019, to the current (2019) 4-hour utility-scale BESS cost to 
+determine the cost of a 4-hour BESS in future years.  
+3. Apply the normalized BNEF LIB cost projections to the energy ($/kWh) term in the 
+current (2019) BESS cost correlation from Step 1 to determine the energy term (slope) of 
+the correlation in future years. Multiply the energy component term ($320/kWh) by 
+future year normalized cost reduction for LIBs from BNEF (e.g., 2030 = 36% of 2019 
+value) for each future year 
+4. Use the 4-hour BESS cost for each year and the updated energy component term to back-
+calculate the power ($/kW) term (y-intercept) for each future year. Use the updated 
+power and energy component term for each future year to estimate the cost of BESS 
+systems at 6-, 8- and 10-hour storage durations. 
+ 
+Figure 29. Methodology for projecting utility-scale BESS costs 
+
+
+42 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+The BNEF battery price reduction projections are for the price of the battery pack only, but in 
+the methodology above, we apply it to the whole energy component term, which includes the 
+costs of the LIB packs, the additional hardware for installation (BOS), and their installation. 
+The costs of BOS and installation labor are not expected to drop as quickly as the price of LIB 
+packs. However, the energy density of LIB packs is expected to continue to increase, so future 
+BESS would require fewer LIB packs for a given amount of storage, which would drive down 
+installation and BOS costs. We do not have data to quantify the impact of increasing energy 
+density on BESS costs. The methodology overestimates the decline of the energy component 
+term, but this should be partially offset by declines in installation costs of LIB that we did not 
+capture.  
+We do not have future LIB cost projections for Advanced or Conservative Scenarios. Instead, we 
+use the Advanced and Conservative normalized cost projections from the 2020 ATB and apply 
+them to all storage durations. The resulting future cost projection curves for the Moderate, 
+Advanced, and Conservative Scenarios are shown in Figure 30, Figure 31, and Figure 32 
+respectively. Costs are shown for storage durations of 2–10 hours, assuming a 60-MW
+DC BESS. 
+As expected, costs on a $/kW basis drop more rapidly for longer-duration BESS than shorter 
+duration because battery costs decrease faster than other system costs. 
+ 
+Figure 30. Utility-scale BESS Moderate Scenario cost projections, on a $/kWh basis (left) and 
+a $/kW basis (right) 
+Projections assume a 60-MWDC project. 
+
+
+43 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 31. Utility-scale BESS Advanced Scenario cost projections, on a $/kW basis and $/kWh basis 
+Projections assume a 60-MWDC project 
+ 
+Figure 32. Utility-scale BESS Conservative Scenario cost projections, on a $/kW basis and $/kWh basis 
+Projections assume a 60-MWDC project. 
+
+
+44 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+We compare our current and future cost projections to values in the literature for reasonableness, 
+paying special attention to the later-year future cost projections to ensure they are realistic. The 
+projected cost of a 4-hour utility-scale BESS in 2050 used in the NREL SFS is $152/kWh for the 
+Moderate Scenario, $85/kWh for the Advanced Scenario, and $213/kWh for the Conservative 
+Scenario. We found two sources in the literature that give BESS cost projections at the 
+component cost level. One is from EPRI’s Energy Storage Technology and Cost Assessment 
+(2018) and gives component level costs out to 2030. The other is from BNEF’s 2019 Long-Term 
+Energy Storage Outlook (2019a) and gives component level costs out to 2050.19  
+Because of differences in methodology, included costs, and nomenclature, the reported cost 
+components cannot be easily compared between studies. To make a general comparison, we 
+group cost components into three groups: battery, balance of plant, and installation and soft 
+costs. Figure 33 (page 45) compares current cost estimates (in $/kWh) for 4-hour utility-scale 
+BESS between BNEF, EPRI, and the values used in the SFS Moderate Scenario. The figure also 
+compares EPRI and BNEF future cost projections out to 2030 and shows BNEF’s estimates out 
+to 2050. From the figure, we observe that: 
+• Current cost estimates across studies are consistent in terms of total estimated cost and by 
+component breakout. All studies put current battery costs at around $200/kWh, and 
+remaining costs are split roughly equally between capital and soft costs.  
+• BNEF and EPRI cost estimates are comparable through 2030, and the difference in 
+projected cost comes mostly from the assumed cost of batteries. EPRI’s battery cost 
+estimate is consistently higher. 
+• Most BESS cost reductions in the future come from reductions in battery pack costs. By 
+2040, the cost of batteries on a $/kWh basis is comparable to capital and soft costs. 
+ 
+19 BNEF gives updated BESS cost estimates in their Energy Storage System Costs Survey  2019 (BNEF 2019b), but 
+that source only includes projections out to 2030.  
+
+45 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 33. Comparison of current and future utility-scale BESS cost estimates from 
+different sources 
+Costs are broken out by major components and assume 4-hour storage. 
+Figure 34 shows the total system cost projections for the SFS through 2050 compared to cost 
+projections from literature. In future years, the SFS Moderate Scenario is nearly identical to the 
+EPRI estimate and, in later years, to projections from Schmidt et al. (2017; 2018), while the SFS 
+Advanced Scenario is similar to the BNEF estimate after 2025. The SFS Conservative Scenario 
+is more costly than any of the literature values after 2030. Taken together, the SFS scenarios 
+have future utility-scale BESS costs that are realistic and span the range of costs projected by 
+literature.  
+
+
+46 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+  
+Figure 34. Comparison of utility-scale BESS future cost projections 
+When using the utility-scale BESS cost projections in analysis, it is important to remember they 
+were developed assuming learning and manufacturing scale will drive down BESS costs. Thus, 
+any modeling that uses the projections should see results where the cost reductions scale with 
+BESS deployment projected by the model. The cost projections from BNEF and Schmidt et al. 
+(2018) are based on observed experience rates
+20 applied to assumptions about future cumulative 
+installed capacity. Data from Schmidt et al. project that in 2030 there will be 238 GWh of 
+cumulative installed manufacturing capacity and it will help drive the cost of utility-scale BESS 
+down to $283/kWh (2015 USD). In 2040, there will be 1,000 GWh of cumulative installed 
+capacity and the price of utility-scale BESS will be $195/kWh (2015 USD). In 2050 there will be 
+roughly 2,000 GWh of installed capacity and the price drops to $165/kWh (2015 USD). Note 
+that these deployment projections are for utility-scale BESS only. Demand for LIBs is also 
+driven by their use in electronics and EVs, and this demand contributes to price reductions in 
+LIBs through learning rates tied to deployment. Figure 23 (page 34) shows how BNEF projects 
+the price of LIBs with deployment in different markets through 2030. BNEF projects 9,577 GWh 
+of cumulative demand for LIBs by 2030 (Frith and Goldie-Scot 2019), mostly from EVs. This 
+amount is similar in magnitude to the 5,220 GWh of total LIBs cumulative demand in 2030 
+project by Schmidt et al. (2018). EPRI projections are based on a compounded annual growth 
+rate and do not appear to take installed capacity into consideration.  
+ 
+20 The experience rate is the decrease in the cost of a technology for every doubling of installed cumulative capacity.  
+
+
+47 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+3.3 Residential BESS 
+3.3.1 Current Costs 
+Current (2020) costs for residential BESS are based on NREL’s bottom-up BESS cost model 
+using the data and methodology in Feldman et al. (2021). In that study, Feldman et al. estimated 
+costs for both AC- and DC-coupled systems for a less-resilient (3 kW/6 kWh) installation and a 
+more-resilient (5 kW/20 kWh) installation. We use the same model and methodology but do not 
+restrict the power or energy capacity of the BESS to two options. Key modeling assumptions and 
+inputs are shown in Table 3. We assume 2020 battery pack costs of $248/kWhDC 2018 USD 
+(BNEF 2019b).  
+Table 3. Residential Storage-Only Modeling Inputs and Assumptionsa 
+Model Component Modeled Value Description 
+System size  3-8 kW power capacity 
+2-5 E/P ratio  
+Battery capacity is in kWDC 
+E/P is battery energy to power ratio and is 
+synonymous with storage duration in hours 
+Battery pack cost $248/kWh Battery pack only (BNEF 2019b) 
+Battery-based 
+inverter cost 
+$479/kW Assumes a bidirectional inverter (BNEF 2019b), 
+converted from $/kWh for 5 kW/14 kWh system 
+Supply-chain costs 5% of cost of equipment Includes costs of inventory, shipping, and 
+handling of equipment 
+Sales tax 6.86% (U.S. average) U.S. average sales tax on equipment 
+Installation labor cost Electrician: $28.39/hour 
+Laborer: $19.34/hour 
+Assumes U.S. average pricing  
+Engineering fee $100 Engineering design and professional engineer-
+stamped calculations and drawings 
+Permitting, inspection, 
+and interconnection 
+Electrician: $29.21/hour 20–32 hours (DC-coupled/AC-coupled) of 
+commissioning and interconnection labor, and 
+permit fee 
+Sales and marketing 
+(customer acquisition)  
+$0.61/WDC 
+ 
+20 additional hours for DC system, and 32 
+additional hours for AC system, per closed sale, 
+associated with selling a PV system with storage 
+Overhead (general 
+and administrative) 
+$0.28/WDC Rent, building, equipment, staff expenses not 
+directly tied to permitting, inspection, and 
+interconnection; customer acquisition; or direct 
+installation labor 
+Profit (%) 17% Fixed percentage margin applied to all direct 
+costs including hardware, installation labor, direct 
+sales and marketing, design, installation, and 
+permitting fees  
+a Values are from(based on Feldman et al. 2021). Values are for 2020 (in 2018 USD) 
+
+48 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Residential BESS can be installed separately or can be added to an existing PV system (as an 
+AC-coupled system). We also consider the installation of PV systems combined with BESS 
+(PV+BESS) systems. Costs for residential PV systems come from NREL’s bottom-up PV cost 
+model (Feldman et al. 2021). We do include some cost savings for a combined PV and battery 
+storage system. We assume the electrical BOS and installation labor are 90% of what they would 
+be if the systems were installed separately. We also assume the sales and marketing costs for 
+PV+BESS includes the cost of 20 additional hours for a DC-coupled system and 32 additional 
+hours for an AC-coupled system than they would be for a PV-only system installation (Feldman 
+et al. 2021, Table 10). For the PV systems shown in Figure 35, this adds 20%–30% to customer 
+acquisition costs. The resulting cost estimates are shown in Figure 35.  
+ 
+Figure 35. Cost of residential PV-stand-alone, BESS-stand-alone, and PV+BESS systems 
+estimated using NREL bottom-up models 
+Figure 36 compares NREL’s cost estimate for a residential BESS against BNEF’s (BNEF 2019b). 
+The power and energy storage capacity in the NREL model are changed to match the BNEF 
+system size of 5 kW/14 kWh. The BNEF estimate divides the costs into only four components, 
+and it does not include soft costs (e.g., permitting, sales and marketing costs) as a separate 
+category. Instead, BNEF assumes a flat installation cost of $2,500 (BNEF 2019b). Despite 
+adopting BNEF’s battery and inverter cost estimates, the NREL current cost estimate is more than 
+twice the value reported by BNEF. Most of the difference is due to soft costs, which we have 
+confirmed that BNEF does not include specifically. They note that the United States is an outlier 
+for installation costs which can vary from $2,000 to $8,000 per project in the United States.  
+
+
+49 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 36. Comparison of current residential BESS total and component costs from NREL 
+and BNEF 
+As with PV and when looking across both utility-scale and distributed sectors, these soft costs 
+can be significant. The US has experienced higher residential PV costs than other major 
+economies (Figure 37). This historical trend is due to several factors (Feldman 2020), but the soft 
+costs of the system installation is indicated as the biggest and most consistent effect. Our bottom-
+up modeling includes those soft cost effects for distributed storage as well. It may be that for 
+linked PV-battery systems the soft costs are shared or could be attributed to the PV costs but for 
+standalone systems, these costs are relevant and significant. More global focused data from 
+BNEF or Schmidt do not include significant soft cost values leading to the differences noted in 
+Figure 36 and Figure 39. 
+
+
+50 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 37. Historical residential PV system costs indicating higher US soft costs Feldman (2020)  
+As with utility-scale BESS, the cost of a residential BESS is a function of both the power 
+capacity and the energy storage capacity of the system, and both must be considered when 
+estimating system cost. Furthermore, the dGen model does not assume specific BESS system 
+sizes and it needs an algorithm to estimate residential BESS system cost based on the attributes 
+of the residences (agents) it generates.  
+We develop an algorithm for stand-alone residential BESS cost as a function of power and 
+energy storage capacity using the NREL bottom-up residential BESS cost model (Feldman et al. 
+2021) with some modifications. The NREL bottom-up model assumes either a 6-kW (less-
+resilient) or 8-kW (more-resilient) inverter, which introduces a step function to the model and 
+limits system size. We update the model to assume inverter costs of $0.48/WDC, which is 
+consistent with BNEF estimates for inverter costs (BNEF 2019b). We then run the model for 
+BESS with 3 kW–10 kW of power capacity and 4 kWh–50 kWh of energy storage capacity. We 
+achieve a near-perfect fit for all systems by fitting the costs to a linear equation with three 
+constants: 
+• BESS cost (total $) = $1,690/kW * PB + $354/kWh * EB + $5,982 
+• Where PB = battery power capacity (kW) and EB = battery energy storage capacity (kWh) 
+We also develop an algorithm for PV+BESS using the same methodology. We assume the 
+PV+BESS is DC-coupled, use PV system sizes of 3.5 kW–14 kW, and rerun the bottom-up cost 
+model for the same combinations of BESS power and energy storage capacity. We achieve an 
+excellent fit for all systems by fitting the costs to a linear equation with four constants: 
+• PV+BESS cost (total $) = $2,440/kW * P
+PV + $674/kW * PB + $329/kWh * EB + $4,561 
+• Where PPV = PV power capacity (kW) 
+
+
+51 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+3.3.2 BESS Future Cost Projections 
+NREL has not maintained future cost projections for residential BESS for the ATB as it has for 
+utility-scale systems. In their absence, we base residential BESS cost projections on the NREL 
+bottom-up cost model for residential systems combined with component cost projections from 
+BNEF. BNEF has published cost projections for a 5-kW/14-kWh BESS system through 2030 
+(BNEF 2019b), with the projections being based on learning rates and future capacity 
+projections. 
+The NREL bottom-up model reports component costs at a more detailed level than reported by 
+BNEF. To allow a comparison, the component costs from the NREL model are assigned to the 
+categories used by BNEF (2019b) as shown in Table 4. As mentioned previously, BNEF assumes 
+a flat installation cost of $2,500 (BNEF 2019b) and does not include a soft cost categories, so we 
+add that category. Table 4 also shows the learning rates assumed for each category. The learning 
+rates, when combined with installed capacity projections, give the future cost projections by year 
+(BNEF 2019b). We assume a 10% learning rate for soft costs, which is the same as what is 
+assumed for other hardware and installation costs. Figure 38 (page 52) shows the relative change 
+in costs of the different component categories over time through 2030. Note how the battery 
+component costs decrease more quickly than other components. 
+Table 4. Assignment of Component Cost Categories from NREL Model to BNEF Component Cost 
+Categories, and Learning Rates Assumed for the Moderate Scenario 
+NREL Residential BESS Bottom-Up 
+Cost Model Component Cost Category 
+BNEF Residential BESS 
+Component Cost Category 
+Learning 
+Ratea 
+Battery pack Battery 18% 
+Inverter Inverter 15% 
+BOS, supply chain costs Other hardware 10% 
+Installation labor and equipment 
+Engineering fee 
+Installation 10% 
+Sales tax 
+Permitting, inspection, and interconnection 
+Overhead 
+Sales and customer acquisition 
+Profit 
+Softb 10%b 
+a Source: (BENF 2019b) 
+b BNEF did not include a “soft” cost category. We assume a 10% learning rate for soft costs. 
+
+52 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 38. Relative changes in projected component costs for residential BESS  
+Data Source: (BNEF 2019b) 
+The following methodology involves the following the steps to generate the Moderate Scenario 
+future cost projections in detail: 
+1. Estimate current costs for a range of BESS power and energy capacity combinations 
+using the NREL bottom-up residential BESS cost model.  
+A. Total and component cost results are recorded. 
+B. Component costs are assigned to categories according to Table 4. 
+2. Moderate Scenario: For each future year, apply cost reductions. 
+A. Apply cost reductions from the BNEF projections (Figure 38) to the 
+corresponding component cost category for each BESS considered. 
+B. BNEF projections only go to 2030. We assume residential BESS component costs 
+decline by an additional 25% from 2030 to 2050, similar to the assumption used 
+in the ATB utility-scale BESS cost projections (Cole and Frazier 2020). 
+3. Advanced and Conservative Scenarios: Apply cost projections from the corresponding 
+ATB utility-scale BESS scenario to all component costs. 
+4. Sum the component costs to get the total BESS cost in future years. For each future year, 
+develop a linear correlation relating BESS costs to power and energy capacity: 
+A. BESS cost (total $) = c
+a * PB + c2 * EB + c3 
+B. Where PB = battery power capacity (kW) and EB = battery energy storage capacity 
+($/kWh), and ci = constants specific to each future year 
+
+
+53 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Figure 39 show BESS cost projections from BNEF (2019b) and Schmidt et al. (2018) compared 
+to the SFS scenarios. As indicated above, note the significant disparity due to the inclusion of 
+soft costs by NREL and the exclusion by the other organizations. The BNEF and SFS curves 
+assume a 5-kW/14-kWh BESS; Schmidt et al. do not identify the size of the system. BESS costs 
+depend on both system power and energy capacity, so comparisons of studies should be made 
+using the same system size. The Schmidt et al. costs are higher than BNEF cost projections 
+initially, but they converge around 2030. Schmidt et al. report both learning rates and installed 
+capacity assumptions. For example, Schmidt et al. project residential BESS costs of $401/kWh 
+assuming 285 GWh installed worldwide capacity in 2030 and $251/kWh in 2050 assuming 
+2+GWh installed capacity (Schmidt et al. 2018). Both SFS scenarios are higher in costs than the 
+literature data. This is due to the inclusion of larger soft costs in the NREL model when 
+compared to BNEF data. Further inquiries to Schmidt et al. indicate that they do include soft 
+costs in their BESS costs. However, as discussed above, US soft costs are typically much larger 
+than either global or European soft costs and that translates into these values. As discussed in 
+Section 2.4, the definition of what is included in the overall system cost is critical and currently 
+is not handled consistently across the globe nor are specific US prices always defined (which 
+should be higher with soft costs included). Note that many analyses might use any of these 
+current and future costs for analyses and come back with significantly different results. 
+ 
+Figure 39. Comparison of BNEF and Schmidt et al. (2018) residential BESS installed costs Storage 
+Futures Study scenarios with time on a $/kWh basis 
+
+
+54 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+BNEF and NREL curves assume a 5-kW/14-kWh BESS. Schmidt et al. does not specify a system size. 
+3.3.3 PV+BESS Future Costs 
+Future costs for DC-coupled PV+BESS are developed using the same methodology as for stand-
+alone systems and including the costs for PV from the NREL bottom-up model (Feldman et al. 
+2021) as described in the section on PV+BESS current costs (Section 3.3.1), including cost 
+savings from combining systems. Future cost projections for the PV portion of the system costs 
+are calculated using the cost projections for residential PV in the 2020 ATB (National 
+Renewable Energy Laboratory (NREL) 2020). The ATB Moderate and Advanced cost 
+projections are applied to the PV cost component in future years in the SFS Moderate and 
+Advanced Scenarios, respectively. 
+3.4 Commercial and Industrial BESS 
+Commercial and industrial BESS range in power capacity from tens of kilowatts to more than a 
+megawatt. We estimate commercial and industrial BESS costs in the same way we estimate 
+residential BESS: using an NREL bottom-up BESS cost model to estimate current costs and 
+using projections from NREL (the ATB) and BNEF to make future cost projections. 
+3.4.1 Current Costs 
+Current costs for commercial and industrial BESS are based on NREL’s bottom-up BESS cost 
+model using the data and methodology in Feldman et al. (2021). That study estimated costs for 
+a 600-kW
+DC stand-alone BESS with 0.5–4.0 hours of storage. We use the same model and 
+methodology but do not restrict the power and energy capacity of the BESS. Feldman et al. 
+assumed an inverter/storage ratio of 1.67 based on guidance from Denholm, Eichman, and 
+Margolis (2017). We adopt this assumption, too. Key modeling assumptions and inputs are 
+shown in Table 5. Because we do not have battery costs that are specific to commercial and 
+industrial BESS, we use the battery pack costs from Feldman et al. (2021), which vary depending 
+on the battery duration. These battery costs are close to our assumptions for battery pack costs 
+for residential BESS at low storage duration and for utility-scale battery costs for utility-scale 
+BESS at long durations. The underlying battery costs in Feldman et al. come from BNEF 
+(2019b) and should be consistent with battery cost assumptions for the residential and utility-
+scale markets. 
+Table 5. Commercial and Industrial LIB Energy Storage Systems: 2019 Model Inputs and 
+Assumptions (in 2018 USD) 
+Model Component Modeled Value Description 
+System size 60–1,200 kWDC 
+power capacity 
+0.5–4 E/P ratio 
+Battery capacity is in kWDC 
+E/P is battery energy to power ratio and is synonymous 
+with storage duration in hours 
+LIB price 0.5-hr: $242/kWh 
+1-hr: $223/kWh 
+2-hr: $198/kWh 
+4-hr: $194/kWh 
+Ex-factory gate (first buyer) prices (Feldman et al. 2021) 
+Inverter/storage ratio 1.67 Ratio of inverter power capacity to storage battery 
+capacity (Denholm, Eichman, and Margolis 2017) 
+
+55 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Model Component Modeled Value Description 
+Battery central 
+inverter price 
+$60/kW Ex-factory gate (first buyer) prices 
+We also consider the installation of commercial and industrial PV systems combined with BESS 
+(PV+BESS) systems (Figure 40). Costs for commercial and industrial PV systems come from 
+NREL’s bottom-up PV cost model (Feldman et al. 2021). We assume an inverter/load ratio of 
+1.3, which when combined with an inverter/storage ratio of 1.67 sets the BESS power capacity at 
+60% of the installed PV capacity. As with residential PV+BESS, we include cost savings for a 
+combined PV and battery storage system. We assume the electrical BOS and installation labor 
+are 90% of what they would be if the systems were installed separately. We also assume the sales 
+and marketing costs for PV+BESS include 20 additional hours for a DC-coupled system and 32 
+additional hours for an AC-coupled system than they would be for a PV-only system installation. 
+ 
+Figure 40. Estimated costs of commercial and industrial stand-alone PV, stand-alone BESS, and 
+PV+BESS using NREL bottom-up model 
+3.4.2 Future Cost Projections 
+Future cost projections for commercial and industrial BESS and PV+BESS are made using the 
+same methodology as is used for residential BESS and PV+BESS. The normalized cost 
+reduction projections for LIB packs used in residential BESS by BNEF (2019b) are applied to 
+future battery costs, while cost reductions for other BESS components use the same cost 
+reduction potentials in Figure 38 (page 52). Costs for commercial and industrial PV systems 
+come from the 2020 ATB Moderate and Advanced Scenarios (National Renewable Energy 
+Laboratory (NREL) 2020). We could not find projected costs for commercial and industrial 
+BESS in the literature for comparison. 
+
+
+56 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+4 Pumped-Storage Hydropower Inputs to ReEDS 
+In this section, we estimate the resource potential and current and projected cost for pumped-
+storage hydropower (PSH). As noted in Section 2.4.2 (page 14), PSH currently has far more 
+installed capacity in the United States and worldwide than any other energy storage technology. 
+Existing PSH deployments in the United States total 22.2 GW. However, most PSH plants in the 
+United States were constructed from the 1960s to the 1980s and deployments have slowed 
+dramatically in recent decades (DOE 2016). The decline in new PSH projects in recent years has 
+produced a dearth of data on PSH costs, making estimates of current and future costs uncertain.  
+PSH is location-restricted due to hydrology and topography. Therefore, the resource potential 
+analysis from the DOE HydroVision study (DOE 2016) is used; that study considered two types 
+of PSH resource: natural and artificial. The natural resource consists of existing, identified 
+resources and is derived from all PSH projects proposed to the Federal Energy Regulatory 
+Commission (FERC) since 1980. In total, there is 108.7 GW FERC-based PSH resource (Figure 
+41, page 57). This is a lower bound, as it does not include potential sites that have not submitted 
+applications to FERC or sites that do not need FERC authorization. In theory, a closed-loop PSH 
+configuration (using two human-made reservoirs unconnected to existing bodies of water) can be 
+built anywhere there is sufficient elevation change. A study of PSH potential based on physical 
+geography found over 1,000 GW of resource (U.S. Army Corps of Engineers 1981). To 
+recognize this unknown resource potential and prevent over-constraining PSH expansion in 
+regions without FERC applications, the HydroVision study (DOE 2016) assumed there is an 
+“artificial” PSH resource potential. The HydroVision study also used the ReEDS model and 
+implemented their assumption by including 750 MW of artificial closed-loop PSH resource 
+potential in every ReEDS balancing area. This resulted in 100.5 GW of artificial PSH resource in 
+ReEDS.
+21 
+The cost of developing PSH projects is site-specific. Each project has unique topography and site 
+development challenges to consider. Capital costs for natural PSH resources identified through 
+FERC applications are based on O’Connor et al. (2015) and include site-specific estimates. The 
+artificial PSH resource is assumed to have a capital cost of $3,500/kW, following the assumption 
+used in the HydroVision report (DOE 2016) and is near the upper bound of greenfield PSH 
+resource, which is sized at 750 MW (Figure 42, page 57). For the Moderate Scenario, we assume 
+smaller cost reductions of 5% by 2035 and 9% by 2050. For the Advanced Scenario, cost 
+reductions of 12% by 2035 and 15% by 2050 are assumed. These assumptions are consistent 
+with those used in the DOE HydroVision study. 
+PSH fixed O&M costs of 2%/year of the initial capital cost are also based on O’Connor et al. 
+(2015), and RTE is assumed to be 80% for all existing and new capacity. In ReEDS, PSH is 
+assumed to have sufficient storage to operate as needed within the diurnal variations represented 
+in the model. ReEDS assumes of 12 hours for PSH duration for existing storage capacity. 
+ 
+21 Detailed geographic information system-based assessment to refine the resource estimates is ongoing at NREL 
+and is expected to be available for future analyses in 2022. 
+
+57 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+ 
+Figure 41. Modeled new PSH resource potential 
+Source: (DOE 2016) 
+ 
+Figure 42. National PSH supply curve of capital cost versus cumulative capacity potential  
+Source: (DOE 2016) 
+
+
+58 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+5 Conclusions 
+The demand for energy storage is growing. This can be seen not only in the increasing number of 
+utility-scale and behind-the-meter energy storage installations, but also in the increasing interest 
+in new and existing energy storage technologies. This study summarized a variety of mature and 
+emerging energy storage technologies with storage durations ranging from minutes to months. It 
+quantified the current or anticipated costs of those technologies, recognizing that energy storage 
+technologies must be described in terms of both their power capacity (kW) and energy capacity 
+(kWh) to assess their costs and potential use cases. 
+We observed that energy storage systems whose total costs are dominated by power component 
+costs ($/kW) are better suited for longer-term energy storage and those dominated by energy 
+(storage) component costs ($/kWh) should be used for shorter-term energy storage. We 
+illustrated this by comparing total system costs as a function of storage duration and storage 
+power. From this comparison, we observe the points where high energy component costs 
+increase with storage duration to drive the cost of technologies like batteries beyond the cost of 
+technologies with high power component costs but little duration costs (like PSH, hydrogen 
+storage or PTES). We also noted how cost alone does not determine the market for energy 
+storage technologies; historical or low levels of PV on the grid result in a smaller grid storage 
+market while high levels of variable renewables and specifically solar are anticipated to create a 
+market for 4-hour and even longer-duration energy storage. 
+The second part of this report describes the current and future cost projections for energy storage 
+technologies used in the modeling done in the broader Storage Futures Study. The modeling uses 
+LIBs and PSH to fill any energy storage demand. These are commercially available technologies 
+that are low-cost options both now and, in the future, based on projections. 
+Because the energy models consider only a few parameters such as cost, storage duration, and 
+capacity factor, the inputs can function as a proxy for any technology with similar performance. 
+Current costs for LIB were estimated from NREL bottom-up models, and future costs were 
+derived from ATB projections and data from BNEF. Those projections rely on learning rates to 
+estimate costs as a function of installed capacity. The same underlying battery pack cost data are 
+used for utility-scale, commercial/industrial, and residential BESS cost projections so that the 
+projections across markets are internally consistent. Our analysis projects that LIB will continue 
+to be the low-cost leader among diurnal energy storage technologies. However, with many 
+entrants and innovative ideas being researched daily, one or more breakthroughs or steady 
+incremental improvements could lead to technologies other than LIBs capturing a share of the 
+market. Finally, energy storage technologies (LIB in particular) have costs and performance that 
+are rapidly changing, so this report may not reflect current values. The reader is encouraged to 
+check for updated information before using the values and conclusions in this report. 
+
+59 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+6 References 
+Bloomberg New Energy Finance (BNEF). 2019a. “2019 Long-Term Energy Storage Outlook.” 
+https://www.bnef.com/core/insights/21113. 
+———. 2019b. “Energy Storage System Costs Survey 2019.”  
+Cole, Wesley, and Will Frazier. 2020. “Cost Projections for Utility-Scale Battery Storage: 2020 
+Update.” NREL/TP-6A20-75385. Golden, CO: National Renewable Energy Laboratory. 
+https://www.nrel.gov/docs/fy20osti/75385.pdf. 
+Denholm, Paul, Wesley Cole, A. Will Frazier, Kara Podkaminer, and Nate Blair. 2021. “The 
+Four Phases of Storage Deployment: A Framework for the Expanding Role of Storage in 
+the U.S. Power System.” NREL/TP-6A20-77480. Golden, CO: National Renewable 
+Energy Laboratory. https://www.nrel.gov/docs/fy21osti/77480.pdf. 
+Denholm, Paul, Josh Eichman, and Robert Margolis. 2017. “Evaluating the Technical and 
+Economic Performance of PV Plus Storage Power Plants.” NREL/TP-6A20-68737. 
+https://www.nrel.gov/docs/fy17osti/68737.pdf. 
+Desrues, T., J. Ruer, P. Marty, and J.F. Fourmigué. 2010. “A Thermal Energy Storage Process 
+for Large Scale Electric Applications.” Applied Thermal Engineering 30 (5): 425–32. 
+https://doi.org/10.1016/j.applthermaleng.2009.10.002. 
+DOE. 2011. “Technology Readiness Assessment Guide.” DOE G 413.3-4A. Washington, D.C.: 
+U.S. Department of Energy. https://www.directives.doe.gov/directives-documents/400-
+series/0413.3-EGuide-04a. 
+———. 2016. “Hydropower Vision: Full Report.” DOE/GO -102016-4869. U.S. Department of 
+Energy. https://doi.org/10.2172/1330494. 
+Electric Power Research Institute (EPRI). 2018. “Energy Storage Technology and Cost 
+Assessment: Executive Summary.” 3002013958. 
+http://membercenter.epri.com/abstracts/Pages/ProductAbstract.aspx?ProductId=0000000
+03002013958. 
+Energy Sector Management Assistance Program (ESMAP). 2019. “Mini Grids for Half a Billion 
+People : Market Outlook and Handbook for Decision Makers.” ESMAP Technical Report 
+014/19. Washington, D.C.: World Bank. http://hdl.handle.net/10986/31926. 
+Feldman, David, Vignesh Ramasamy, Ran Fu, Ashwin Ramdas, Jal Desai, and Robert Margolis. 
+2021. “U.S. Solar Photovoltaic System and Energy Storage Cost Benchmark: Q1 2020.” 
+NREL/TP-6A20-77324. Golden, CO: National Renewable Energy Laboratory. 
+https://www.nrel.gov/docs/fy21osti/77324.pdf. 
+Frith, James, and Logan Goldie-Scot. 2019. “2019 Lithium-Ion Battery Price Survey.” 
+Bloomberg New Energy Finance. 
+Gupta, Mitalee. 2019. “Solar-Plus-Stoarge System Architectures Design, Pricing and Economics 
+in U.S.” Wood Mackenzie Power & Renewables. 
+Hunter, Chad, Michael Penev, Evan P. Reznicek, Joshua Eichman, Neha Rustagi, and Samuel F. 
+Baldwin. 2020. “Techno-Economic Analysis of Long-Duration Energy Storage and 
+Flexible Power Generation Technologies to Support High Variable Renewable Energy 
+Grids.” SSRN Electronic Journal. https://doi.org/10.2139/ssrn.3720769. 
+Igogo, Tsisilile, Debra Sandor, Ahmad Mayyas, and Jill Engel-Cox. 2019. “Supply Chain of 
+Raw Materials Used in the Manufacturing of Light-Duty Vehicle Lithium-Ion Batteries.” 
+NREL/TP-6A20-73374. Golden, CO: Clean Energy Manufacturing Analysis Center, 
+National Renewable Energy Laboratory. https://www.nrel.gov/docs/fy19osti/73374.pdf. 
+
+60 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Laughlin, Robert B. 2017. “Pumped Thermal Grid Storage with Heat Exchange.” Journal of 
+Renewable and Sustainable Energy 9 (4): 044103. https://doi.org/10.1063/1.4994054. 
+McTigue, Joshua D., P. Farres-Antunez, K. Ayyanathan, C. Markides, and A. White. In Press. 
+“Techno-Economic Analysis of Recuperated Joule-Brayton Pumped Thermal Energy 
+Storage (PTES).” Applied Energy. 
+McTigue, Joshua D., Alexander J. White, and Christos N. Markides. 2015. “Parametric Studies 
+and Optimisation of Pumped Thermal Electricity Storage.” Applied Energy 137 
+(January): 800–811. https://doi.org/10.1016/j.apenergy.2014.08.039. 
+Mongird, Kendall, Vilayanur V. Viswanathan, Jan Alam, Charlie Vartanian, Vincent Sprenkle, 
+and Richard Baxter. 2020. “2020 Grid Energy Storage Technology and Cost Performance 
+Assessment.” DOE/PA-0204. 
+https://www.pnnl.gov/sites/default/files/media/file/Final%20-
+%20ESGC%20Cost%20Performance%20Report%2012-11-2020.pdf. 
+Mongird, Kendall, Vilayanur V. Viswanathan, Patrick J. Balducci, Md Jan E. Alam, Vanshika 
+Fotedar, V. S. Koritarov, and Boualem Hadjerioua. 2019. “Energy Storage Technology 
+and Cost Characterization Report.” PNNL-28866. Pacific Northwest National Lab. 
+(PNNL), Richland, WA (United States). https://doi.org/10.2172/1573487. 
+Morandin, Matteo, Mehmet Mercangöz, Jaroslav Hemrle, François Maréchal, and Daniel Favrat. 
+2013. “Thermoeconomic Design Optimization of a Thermo-Electric Energy Storage 
+System Based on Transcritical CO2 Cycles.” Energy 58 (September): 571–87. 
+https://doi.org/10.1016/j.energy.2013.05.038. 
+National Renewable Energy Laboratory (NREL). 2020. “2020 Annual Technology Baseline.” 
+Golden, CO: National Renewable Energy Laboratory. https://atb.nrel.gov/. 
+O’Connor, Patrick W., Qin Fen Zhang, Scott T. DeNeale, Dol Raj Chalise, and Emma E. 
+Centurion. 2015. “Hydropower Baseline Cost Modeling.” ORNL/TM--2015/14, 
+1185882. Oak Ridge National Laboratory. https://doi.org/10.2172/1185882. 
+Pesaran, A. A., G. H. Kim, and M. Keyser. 2009. “Integration Issues of Cells into Battery Packs 
+for Plug-in and Hybrid Electric Vehicles: Preprint.” NREL/CP-540-45779. National 
+Renewable Energy Lab. (NREL), Golden, CO (United States). 
+https://www.osti.gov/biblio/953833-integration-issues-cells-battery-packs-plug-hybrid-
+electric-vehicles-preprint. 
+Schmidt, Oliver. 2018. “Levelized Cost of Storage: Gravity Storage.” Imperial College London 
+Consultants. https://heindl-energy.com/wp-
+content/uploads/2018/10/LCOS_GravityStorage-II-Okt-2018.pdf. 
+Schmidt, Oliver, A. Hawkes, A. Gambhir, and I. Staffell. 2017. “The Future Cost of Electrical 
+Energy Storage Based on Experience Rates.” Nature Energy 2 (8): 17110. 
+https://doi.org/10.1038/nenergy.2017.110. 
+Schmidt, Oliver, Sylvain Melchior, Adam Hawkes, and Iain Staffell. 2018. “Update 2018 - The 
+Future Cost of Electrical Energy Storage Based on Experience Rates.” Figshare. 
+https://doi.org/10.6084/M9.FIGSHARE.7012202. 
+———. 2019. “Projecting the Future Levelized Cost of Electricity Storage Technologies.” Joule 
+3 (January). https://doi.org/10.1016/j.joule.2018.12.008. 
+Steinmann, W.D. 2014. “The CHEST (Compressed Heat Energy STorage) Concept for Facility 
+Scale Thermo Mechanical Energy Storage.” Energy 69 (May): 543–52. 
+https://doi.org/10.1016/j.energy.2014.03.049. 
+
+61 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+U.S. Army Corps of Engineers. 1981. “National Hydroelectric Power Resources Study Vol X: 
+An Assessment of Hydroelectric Pumped Storage.” IWR-82-H-10. Washington, D.C.: 
+Department of the Army Corps of Engineers Institute for Water Resources. 
+https://www.iwr.usace.army.mil/Portals/70/docs/iwrreports/IWR019-000001-000517.pdf. 
+U.S. Energy Information Administration (EIA). 2019. “Most Pumped Storage Electricity 
+Generators in the U.S. Were Built in the 1970s.” Today in Energy (blog). October 31, 
+2019. https://www.eia.gov/todayinenergy/detail.php?id=41833#. 
+Wood Mackenzie P&R/ESA. 2020. “U.S. Energy Storage Monitor 2019 Year in Review.” Wood 
+Mackenzie Power & Renewables/ESA U.S. Energy Storage Monitor. 
+https://www.woodmac.com/reports/power-markets-us-energy-storage-monitor-2019-
+year-in-review-393355/. 
+ 
+
+62 
+This report is available at no cost from the National Renewable Energy Laboratory (NREL) at www.nrel.gov/publications . 
+Appendix A. Energy Storage Technology Data 
+Table 6. Energy Storage Technology Data 
+Technology Abbrev. Capital 
+Costs 
+(Energy) 
+($/kWh) 
+Capital 
+Costs 
+(Power) 
+($/kw) 
+Variable 
+O&M 
+($/MWh) 
+Fixed 
+O&M 
+($/kW-yr) 
+Round-trip 
+Efficiency 
+(DOD)  
+Cycles 
+(at 80% 
+DOD) 
+# of 
+cycles 
+per year 
+Depth of 
+discharge 
+(DOD) 
+Project 
+lifetime 
+(years) 
+WACC 
+used for 
+LCOS  
+Approx. 
+LCOS 
+Flywheel (2018) 11520 0 30 5.60 0.86 200000 660 1 20 0.065 1.832 
+Ultracapacitors (2018) 74480 0 30 1.00 0.92 1000000 660 1 16 0.065 12.578 
+LEAD (2018) 352 137 0.5125 5.11 0.72 900 660 1 3 0.065 0.707 
+LIB -4 hour (2020) 320 246 0.5125 10 0.86 3500 330 0.8 10 0.065 0.254 
+FLOW (2018) 483 137 0.5125 5.89 0.68 10000 330 1 15 0.065 0.277 
+Sodium Sulfur (2018) 794 450 0.3 10.00 0.75 4000 330 0.8 13.5 0.065 0.543 
+Sodium Metal Halide 
+(2018) 
+815 450 0.3 10.00 0.83 3500 330 1 12.5 0.065 0.425 
+Zinc-Hybrid Cathode 
+(2018) 
+438 450 0.3 10.00 0.72 3500 330 1 10 0.065 0.346 
+CAES (2020) 3.66 1153 0.5125 16.12 0.52 1 330 1 25 0.065 0.096 
+LAES (anticipated) 450 3500 3.3 48.70 0.60 10000 330 1 25 0.065 0.348 
+PTES (anticipated) 37 1836 3.3 48.70 0.56 10000 330 1 25 0.065 0.116 
+PSH (2020) 72.4 1150.8 0.5125 26.62 0.80 15000 52 1 40 0.065 0.237 
+Gravity (anticipated) 337.00 692 0 6.12 0.80 200000 52 1 25 0.065 0.771 
+H2 elec-cavern- CC 
+(2020) 
+3.8 7350.59 9.4 29.7 0.27 10000 52 1 30 0.065 2.486 
+H2 elec-cavern- FC 
+(Future) 
+3.8 1675.31 4.9 27.0 0.37 10000 52 1 30 0.065 0.410 
+ 
+
+National Renewable Energy Laboratory 
+15013 Denver West Parkway, Golden, CO 80401 
+303-275-3000  •  www.nrel.gov
+NREL prints on paper that contains recycled content.
+NREL is a national laboratory of the U.S. Department of Energy 
+Office of Energy Efficiency and Renewable Energy 
+Operated by the Alliance for Sustainable Energy, LLC
+NREL/TP-5700-78694 •  May 2021

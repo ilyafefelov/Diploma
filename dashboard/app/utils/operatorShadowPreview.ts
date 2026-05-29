@@ -11,6 +11,10 @@ export type OperatorPreviewSourceId
     | 'dt_shadow'
     | 'dt_direct_candidate_shadow'
     | 'dt_v2_plus_apples_to_apples_shadow'
+    | 'dt_v2_plus_distillation_shadow'
+    | 'dt_decision_aware_shadow'
+    | 'regret_aware_v2_plus_selector_shadow'
+    | 'dt_v2_plus_safe_switch_selector_shadow'
     | 'poland_tft_shadow'
     | 'dfl_diagnostics'
     | 'v13_dt_lava_promoted_training'
@@ -19,6 +23,10 @@ export const SHADOW_PREVIEW_SOURCE_IDS: OperatorPreviewSourceId[] = [
   'dt_shadow',
   'dt_direct_candidate_shadow',
   'dt_v2_plus_apples_to_apples_shadow',
+  'dt_v2_plus_distillation_shadow',
+  'dt_decision_aware_shadow',
+  'regret_aware_v2_plus_selector_shadow',
+  'dt_v2_plus_safe_switch_selector_shadow',
   'poland_tft_shadow',
   'dfl_diagnostics',
   'v13_dt_lava_promoted_training'
@@ -73,6 +81,15 @@ export const previewSourceDisplayLabel = (
 ): string => {
   if (previewSourceId === 'v13_dt_lava_promoted_training') {
     return 'V13/DT/LAVA blocked'
+  }
+  if (previewSourceId === 'regret_aware_v2_plus_selector_shadow') {
+    return fallbackLabel || 'Regret-aware V2+ selector'
+  }
+  if (previewSourceId === 'dt_v2_plus_safe_switch_selector_shadow') {
+    return fallbackLabel || 'DT V2+ safe-switch selector'
+  }
+  if (previewSourceId === 'dt_v2_plus_distillation_shadow') {
+    return fallbackLabel || 'DT V2+ distillation shadow'
   }
 
   return fallbackLabel || previewSourceId
@@ -377,10 +394,32 @@ const comparisonWarning = (shadowPreview: ShadowRecommendationPreviewResponse): 
     return `DT is worse than V2+ by ${Math.round(regretDelta).toLocaleString('en-GB')} UAH mean regret.`
   }
   if (regretDelta < 0) {
+    if (shadowPreview.preview_source_id === 'dt_v2_plus_safe_switch_selector_shadow') {
+      const switches = shadowPreview.comparison_metrics.non_v2_plus_switch_count
+      const recovered = shadowPreview.comparison_metrics.recovered_safe_switch_opportunity_count
+      const switchLabel = typeof switches === 'number'
+        ? `${Math.round(switches).toLocaleString('en-GB')} non-V2+ switches`
+        : 'non-V2+ switches'
+      const recoveredLabel = typeof recovered === 'number'
+        ? `${Math.round(recovered).toLocaleString('en-GB')} recovered safe-switch wins`
+        : 'recovered safe-switch evidence'
+      return `Safe-switch DT shadow improves V2+ by ${Math.round(Math.abs(regretDelta)).toLocaleString('en-GB')} UAH mean regret (${switchLabel}, ${recoveredLabel}).`
+    }
     return `DT is better than V2+ by ${Math.round(Math.abs(regretDelta)).toLocaleString('en-GB')} UAH mean regret on this shadow packet.`
+  }
+  if (shadowPreview.preview_source_id === 'dt_v2_plus_distillation_shadow') {
+    return 'Distillation shadow mirrors the V2+ selector decisions on this shadow packet.'
   }
   if (shadowPreview.preview_source_id === 'dt_direct_candidate_shadow') {
     return 'DT ties the V13 fallback row on this shadow packet.'
+  }
+  if (shadowPreview.preview_source_id === 'regret_aware_v2_plus_selector_shadow') {
+    const abstentions = shadowPreview.comparison_metrics.abstention_count
+    const switches = shadowPreview.comparison_metrics.non_v2_plus_switch_count
+    if (typeof abstentions === 'number' && typeof switches === 'number') {
+      return `Regret-aware selector abstained to V2+ (${Math.round(abstentions).toLocaleString('en-GB')} abstentions, ${Math.round(switches).toLocaleString('en-GB')} non-V2+ switches).`
+    }
+    return 'Regret-aware selector abstained to V2+ on this shadow packet.'
   }
   return 'DT ties the comparator mean regret on this shadow packet.'
 }

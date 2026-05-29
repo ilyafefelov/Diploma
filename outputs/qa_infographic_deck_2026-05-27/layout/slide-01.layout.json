@@ -1,0 +1,862 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/ver6qb",
+    "id": "ver6qb",
+    "slide": 1,
+    "layoutId": "613f4a95-d60c-4048-a56d-e80bd3e77249",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "97ffb965-4f90-4736-8a57-fa15fcddd985",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display",
+      "Aptos Mono"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "613f4a95-d60c-4048-a56d-e80bd3e77249",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "97ffb965-4f90-4736-8a57-fa15fcddd985",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "97ffb965-4f90-4736-8a57-fa15fcddd985",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/p0bi9s36",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "alt": "Как работает LP",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "asset": {
+        "assetId": "7c296f98-a0c3-4798-9c69-30ba5bd73e0b",
+        "contentType": "image/png",
+        "byteLength": 1255771
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vmtwra5g",
+      "id": "2",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.33333)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/61032lsz",
+      "id": "3",
+      "bbox": [
+        34,
+        30,
+        398,
+        660
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.91765)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d4vmtwra",
+      "id": "4",
+      "bbox": [
+        60,
+        54,
+        72,
+        44
+      ],
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Aptos",
+        "color": "#087E79",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos",
+            "color": "#087E79",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 24,
+              "typeface": "Aptos",
+              "color": "#087E79",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#E6F5F3",
+      "lineColor": "#9ED3CD",
+      "lineWidth": 1
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/oj2t83it",
+      "id": "5",
+      "bbox": [
+        60,
+        112,
+        330,
+        92
+      ],
+      "geometry": "rect",
+      "text": "Как работает LP",
+      "textPreview": "Как работает LP",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 34,
+        "typeface": "Aptos Display",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Как работает LP"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Как работает LP",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "typeface": "Aptos Display",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Как работает LP",
+              "fontSize": 34,
+              "typeface": "Aptos Display",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vy90je9c",
+      "id": "6",
+      "bbox": [
+        60,
+        210,
+        330,
+        92
+      ],
+      "geometry": "rect",
+      "text": "Механизм покупки, продажи и физических ограничений",
+      "textPreview": "Механизм покупки, продажи и физических ограничений",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 18,
+        "typeface": "Aptos",
+        "color": "#40566B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Механизм покупки, продажи и"
+          },
+          {
+            "index": 2,
+            "text": "физических ограничений"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Механизм покупки, продажи и физических ограничений",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "typeface": "Aptos",
+            "color": "#40566B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Механизм покупки, продажи и физических ограничений",
+              "fontSize": 18,
+              "typeface": "Aptos",
+              "color": "#40566B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6dcbulwv",
+      "id": "7",
+      "bbox": [
+        60,
+        328,
+        330,
+        130
+      ],
+      "geometry": "rect",
+      "text": "max sum_t [ price_t * (discharge_t - charge_t) * dt - k_deg * (charge_t + discharge_t) * dt ]",
+      "textPreview": "max sum_t [ price_t * (discharge_t - charge_t) * dt - k_deg * (charge_t + discharge_t) * dt ]",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 17,
+        "typeface": "Aptos Mono",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 14,
+          "right": 16,
+          "bottom": 12,
+          "left": 16
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "max sum_t [ price_t * (discharge_t -"
+          },
+          {
+            "index": 2,
+            "text": "charge_t) * dt - k_deg * (charge_t +"
+          },
+          {
+            "index": 3,
+            "text": "discharge_t) * dt ]"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "max sum_t [ price_t * (discharge_t - charge_t) * dt - k_deg * (charge_t + discharge_t) * dt ]",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos Mono",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "max sum_t [ price_t * (discharge_t - charge_t) * dt - k_deg * (charge_t + discharge_t) * dt ]",
+              "fontSize": 17,
+              "typeface": "Aptos Mono",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(247, 250, 251, 0.93725)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/d8v6psfi",
+      "id": "8",
+      "bbox": [
+        60,
+        492,
+        330,
+        130
+      ],
+      "geometry": "rect",
+      "text": "Результат: BUY если net_power < 0, SELL если > 0, HOLD если около 0.",
+      "textPreview": "Результат: BUY если net_power < 0, SELL если > 0, HOLD если около 0.",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 18,
+        "typeface": "Aptos",
+        "color": "#087E79",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Результат: BUY если net_power < 0, SELL"
+          },
+          {
+            "index": 2,
+            "text": "если > 0, HOLD если около 0."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Результат: BUY если net_power < 0, SELL если > 0, HOLD если около 0.",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "typeface": "Aptos",
+            "color": "#087E79",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Результат: BUY если net_power < 0, SELL если > 0, HOLD если около 0.",
+              "fontSize": 18,
+              "typeface": "Aptos",
+              "color": "#087E79",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/onyd0z61",
+      "id": "9",
+      "bbox": [
+        460,
+        54,
+        760,
+        228
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.91765)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/epkzupwb",
+      "id": "10",
+      "bbox": [
+        492,
+        84,
+        700,
+        174
+      ],
+      "geometry": "rect",
+      "text": "LP смотрит на 24 часа цен. Если цена низкая - выгодно зарядить батарею. Если цена высокая - выгодно разрядить и продать энергию. Он выбирает не одно действие, а весь безопасный профиль charge/discharge/SOC.",
+      "textPreview": "LP смотрит на 24 часа цен. Если цена низкая - выгодно зарядить батарею. Если цена высокая - выгодно разрядить и продать энергию. Он выбир...",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 27,
+        "typeface": "Aptos Display",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "LP смотрит на 24 часа цен. Если цена низкая - выгодно"
+          },
+          {
+            "index": 2,
+            "text": "зарядить батарею. Если цена высокая - выгодно разрядить"
+          },
+          {
+            "index": 3,
+            "text": "и продать энергию. Он выбирает не одно действие, а весь"
+          },
+          {
+            "index": 4,
+            "text": "безопасный профиль charge/discharge/SOC."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "LP смотрит на 24 часа цен. Если цена низкая - выгодно зарядить батарею. Если цена высокая - выгодно разрядить и продать энергию. Он выбирает не одно действие, а весь безопасный профиль charge/discharge/SOC.",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "typeface": "Aptos Display",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "LP смотрит на 24 часа цен. Если цена низкая - выгодно зарядить батарею. Если цена высокая - выгодно разрядить и продать энергию. Он выбирает не одно действие, а весь безопасный профиль charge/discharge/SOC.",
+              "fontSize": 27,
+              "typeface": "Aptos Display",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7adsji5s",
+      "id": "11",
+      "bbox": [
+        460,
+        312,
+        760,
+        288
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.91765)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wval87ed",
+      "id": "12",
+      "bbox": [
+        496,
+        342,
+        688,
+        230
+      ],
+      "geometry": "rect",
+      "text": "- SOC: 5-95% емкости\n- charge/discharge <= max power\n- SOC_t+1 = SOC_t + charge*sqrt(RTE)*dt - discharge/sqrt(RTE)*dt\n- Коммитится только первый час rolling horizon",
+      "textPreview": "- SOC: 5-95% емкости | - charge/discharge <= max power | - SOC_t+1 = SOC_t + charge*sqrt(RTE)*dt - discharge/sqrt(RTE)*dt | - Коммитится ...",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "Aptos",
+        "color": "#14213D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "- SOC: 5-95% емкости"
+          },
+          {
+            "index": 2,
+            "text": "- charge/discharge <= max power"
+          },
+          {
+            "index": 3,
+            "text": "- SOC_t+1 = SOC_t + charge*sqrt(RTE)*dt - discharge/sqrt(RTE)*dt"
+          },
+          {
+            "index": 4,
+            "text": "- Коммитится только первый час rolling horizon"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "- SOC: 5-95% емкости",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- SOC: 5-95% емкости",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "- charge/discharge <= max power",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- charge/discharge <= max power",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "- SOC_t+1 = SOC_t + charge*sqrt(RTE)*dt - discharge/sqrt(RTE)*dt",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- SOC_t+1 = SOC_t + charge*sqrt(RTE)*dt - discharge/sqrt(RTE)*dt",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "- Коммитится только первый час rolling horizon",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- Коммитится только первый час rolling horizon",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/pg3ex0nu",
+      "id": "13",
+      "bbox": [
+        492,
+        628,
+        520,
+        34
+      ],
+      "geometry": "rect",
+      "text": "DAM recommendation preview / offline evidence / no market execution",
+      "textPreview": "DAM recommendation preview / offline evidence / no market execution",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14,
+        "typeface": "Aptos",
+        "color": "#40566B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "DAM recommendation preview / offline evidence / no market execution"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "DAM recommendation preview / offline evidence / no market execution",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "Aptos",
+            "color": "#40566B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "DAM recommendation preview / offline evidence / no market execution",
+              "fontSize": 14,
+              "typeface": "Aptos",
+              "color": "#40566B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e1w7mp0b",
+      "id": "14",
+      "bbox": [
+        1012,
+        620,
+        178,
+        42
+      ],
+      "geometry": "rect",
+      "text": "market_execution_enabled=false",
+      "textPreview": "market_execution_enabled=false",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "Aptos",
+        "color": "#C7372F",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4,
+          "right": 8,
+          "bottom": 4,
+          "left": 8
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "market_execution_enabled"
+          },
+          {
+            "index": 2,
+            "text": "=false"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "market_execution_enabled=false",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "Aptos",
+            "color": "#C7372F",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "market_execution_enabled=false",
+              "fontSize": 14,
+              "typeface": "Aptos",
+              "color": "#C7372F",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(255, 241, 240, 0.9098)",
+      "lineColor": "#F0B3AD",
+      "lineWidth": 1
+    }
+  ],
+  "composeRuns": []
+}

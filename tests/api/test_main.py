@@ -970,6 +970,302 @@ def test_apples_to_apples_dt_shadow_preview_uses_real_v2_plus_artifacts(
 	assert "market_order_payload" not in response_payload
 
 
+def test_dt_v2_plus_distillation_shadow_preview_uses_distillation_artifacts(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_shadow_preview_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_DISTILLATION_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_DISTILLATION_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "dt_v2_plus_distillation_shadow",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["preview_source_id"] == "dt_v2_plus_distillation_shadow"
+	assert response_payload["preview_source_label"] == "DT V2+ distillation shadow"
+	assert response_payload["preview_status"] == "distillation_diagnostic_not_promoted"
+	assert response_payload["preview_only"] is True
+	assert response_payload["is_default_strategy"] is False
+	assert response_payload["is_promoted_strategy"] is False
+	assert response_payload["research_shadow_not_promotable"] is True
+	assert response_payload["default_strategy_id"] == "schedule_value_learner_v2_plus"
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert response_payload["market_order_payload_emitted"] is False
+	assert response_payload["promotion_gate_passed"] is False
+	assert response_payload["dt_lava_ready"] is False
+	assert response_payload["source_readiness_gate_passed"] is False
+	assert "DT V2+ distillation shadow" in response_payload["boundary_labels"]
+	assert any(
+		source["preview_source_id"] == "dt_v2_plus_distillation_shadow"
+		and source["is_default_strategy"] is False
+		and source["is_promoted_strategy"] is False
+		and source["market_execution_enabled"] is False
+		for source in response_payload["available_preview_sources"]
+	)
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
+def test_dt_v2_plus_distillation_shadow_preview_rejects_promoted_rows(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_shadow_preview_fixture(tmp_path, teacher_promotion_gate_passed=True)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_DISTILLATION_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_DISTILLATION_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "dt_v2_plus_distillation_shadow",
+		},
+	)
+
+	assert response.status_code == 500
+	assert "must not contain promoted rows" in response.json()["detail"]
+
+
+@pytest.mark.parametrize(
+	("fixture_kwargs", "expected_detail"),
+	[
+		(
+			{"packet_market_execution_enabled": True},
+			"must keep market_execution_enabled=false",
+		),
+		(
+			{"packet_dt_lava_ready": True},
+			"must not enable dt_lava_ready",
+		),
+		(
+			{"packet_permits_model_training": True},
+			"must not permit model training",
+		),
+	],
+)
+def test_dt_v2_plus_distillation_shadow_preview_rejects_executable_packet_flags(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+	fixture_kwargs: dict[str, Any],
+	expected_detail: str,
+) -> None:
+	_write_dt_shadow_preview_fixture(tmp_path, **fixture_kwargs)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_DISTILLATION_SHADOW_SELECTED_PREVIEW_JSON_PATH",
+		tmp_path / "dt_selected_preview.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_DISTILLATION_SHADOW_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "teacher_rows.csv",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "dt_v2_plus_distillation_shadow",
+		},
+	)
+
+	assert response.status_code == 500
+	assert expected_detail in response.json()["detail"]
+
+
+def test_regret_aware_selector_shadow_preview_abstains_to_v2_plus_without_promotion(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_regret_aware_selector_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"REGRET_AWARE_V2_PLUS_SELECTOR_SELECTED_ROWS_CSV_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_selected_rows.csv",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"REGRET_AWARE_V2_PLUS_SELECTOR_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_teacher_rows.csv",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"REGRET_AWARE_V2_PLUS_SELECTOR_SUMMARY_JSON_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_summary.json",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "regret_aware_v2_plus_selector_shadow",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["preview_source_id"] == "regret_aware_v2_plus_selector_shadow"
+	assert response_payload["preview_source_label"] == "Regret-aware V2+ selector"
+	assert response_payload["preview_status"] == "regret_aware_abstention_not_promoted"
+	assert response_payload["selected_candidate_id"] == "v2-plus-candidate"
+	assert response_payload["selected_schedule_family"] == "schedule_value_learner_v2_plus"
+	assert response_payload["is_default_strategy"] is False
+	assert response_payload["is_promoted_strategy"] is False
+	assert response_payload["research_shadow_not_promotable"] is True
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["promotion_gate_passed"] is False
+	assert response_payload["dt_lava_ready"] is False
+	assert response_payload["comparison_metrics"]["selector_mean_regret_uah"] == pytest.approx(174.77)
+	assert response_payload["comparison_metrics"]["dt_selected_mean_regret_uah"] == pytest.approx(174.77)
+	assert response_payload["comparison_metrics"]["dt_minus_v2_plus_regret_uah"] == pytest.approx(0.0)
+	assert response_payload["comparison_metrics"]["non_v2_plus_switch_count"] == pytest.approx(0.0)
+	assert response_payload["comparison_metrics"]["abstention_count"] == pytest.approx(90.0)
+	assert response_payload["recommendation_schedule"][0]["regret_vs_v2_plus_uah"] == pytest.approx(0.0)
+	assert response_payload["recommendation_schedule"][0]["schedule_family"] == "schedule_value_learner_v2_plus"
+	assert any(
+		source["preview_source_id"] == "regret_aware_v2_plus_selector_shadow"
+		and source["is_promoted_strategy"] is False
+		and source["market_execution_enabled"] is False
+		for source in response_payload["available_preview_sources"]
+	)
+	assert "Selector abstained to V2+" in " ".join(response_payload["readiness_warnings"])
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
+def test_dt_v2_plus_safe_switch_selector_shadow_preview_uses_current_evidence(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_dt_v2_plus_safe_switch_selector_fixture(tmp_path)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SELECTED_ROWS_CSV_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_selected_rows.csv",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_SAFE_SWITCH_SELECTOR_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_teacher_rows.csv",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SUMMARY_JSON_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_summary.json",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"DT_V2_PLUS_PROMOTION_EVIDENCE_SUMMARY_JSON_PATH",
+		tmp_path / "dt_v2_plus_promotion_evidence_summary.json",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "dt_v2_plus_safe_switch_selector_shadow",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["preview_source_id"] == "dt_v2_plus_safe_switch_selector_shadow"
+	assert response_payload["preview_source_label"] == "DT V2+ safe-switch selector"
+	assert response_payload["preview_status"] == "safe_switch_evidence_not_promoted"
+	assert response_payload["selected_candidate_id"] == "strict-candidate"
+	assert response_payload["selected_schedule_family"] == "strict_reference"
+	assert response_payload["is_default_strategy"] is False
+	assert response_payload["is_promoted_strategy"] is False
+	assert response_payload["research_shadow_not_promotable"] is True
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["promotion_gate_passed"] is False
+	assert response_payload["dt_lava_ready"] is False
+	assert response_payload["comparison_metrics"]["selector_mean_regret_uah"] == pytest.approx(168.15664125116336)
+	assert response_payload["comparison_metrics"]["dt_selected_mean_regret_uah"] == pytest.approx(168.15664125116336)
+	assert response_payload["comparison_metrics"]["dt_minus_v2_plus_regret_uah"] == pytest.approx(-6.611757063998141)
+	assert response_payload["comparison_metrics"]["non_v2_plus_switch_count"] == pytest.approx(4.0)
+	assert response_payload["comparison_metrics"]["abstention_count"] == pytest.approx(86.0)
+	assert response_payload["comparison_metrics"]["observed_safe_switch_opportunity_count"] == pytest.approx(15.0)
+	assert response_payload["comparison_metrics"]["recovered_safe_switch_opportunity_count"] == pytest.approx(3.0)
+	assert response_payload["comparison_metrics"]["safe_switch_win_count"] == pytest.approx(3.0)
+	assert response_payload["comparison_metrics"]["tail_risk_loss_count"] == pytest.approx(0.0)
+	assert response_payload["recommendation_schedule"][0]["regret_vs_v2_plus_uah"] == pytest.approx(-30.0)
+	assert any(
+		source["preview_source_id"] == "dt_v2_plus_safe_switch_selector_shadow"
+		and source["is_promoted_strategy"] is False
+		and source["market_execution_enabled"] is False
+		for source in response_payload["available_preview_sources"]
+	)
+	warnings = " ".join(response_payload["readiness_warnings"])
+	assert "Recovered 3 of 15" in warnings
+	assert "V2+ remains default/fallback" in " ".join(response_payload["boundary_labels"])
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
+def test_regret_aware_selector_shadow_preview_rejects_market_execution_artifacts(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	_write_regret_aware_selector_fixture(tmp_path, market_execution_enabled=True)
+	monkeypatch.setattr(
+		api_main,
+		"REGRET_AWARE_V2_PLUS_SELECTOR_SELECTED_ROWS_CSV_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_selected_rows.csv",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"REGRET_AWARE_V2_PLUS_SELECTOR_TEACHER_ROWS_CSV_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_teacher_rows.csv",
+	)
+	monkeypatch.setattr(
+		api_main,
+		"REGRET_AWARE_V2_PLUS_SELECTOR_SUMMARY_JSON_PATH",
+		tmp_path / "regret_aware_v2_plus_selector_summary.json",
+	)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "regret_aware_v2_plus_selector_shadow",
+		},
+	)
+
+	assert response.status_code == 500
+	assert "market_execution_enabled=false" in response.json()["detail"]
+
+
 def test_dt_shadow_recommendation_preview_projects_placeholder_soc(
 	client: TestClient,
 	monkeypatch: pytest.MonkeyPatch,
@@ -1103,6 +1399,14 @@ def _write_dt_shadow_preview_fixture(
 	tmp_path: Path,
 	*,
 	soc_fraction_vector: list[float] | None = None,
+	packet_market_execution_enabled: bool = False,
+	packet_dt_lava_ready: bool = False,
+	packet_permits_model_training: bool = False,
+	packet_promotion_gate_passed: bool = False,
+	teacher_market_execution_enabled: bool = False,
+	teacher_dt_lava_ready: bool = False,
+	teacher_permits_model_training: bool = False,
+	teacher_promotion_gate_passed: bool = False,
 ) -> None:
 	selected_candidate_id = "dt-candidate-worse-than-v2"
 	soc_values = soc_fraction_vector or [0.52, 0.47, 0.51, 0.51]
@@ -1125,8 +1429,11 @@ def _write_dt_shadow_preview_fixture(
 						"strict_value_uah": 780.0,
 						"behavior_cloning_regret_uah": 250.0,
 						"behavior_cloning_value_uah": 695.0,
-						"market_execution_enabled": False,
-						"dt_promotion_gate_passed": False,
+						"market_execution_enabled": packet_market_execution_enabled,
+						"promotion_gate_passed": packet_promotion_gate_passed,
+						"dt_promotion_gate_passed": packet_promotion_gate_passed,
+						"dt_lava_ready": packet_dt_lava_ready,
+						"permits_model_training": packet_permits_model_training,
 						"research_shadow_not_promotable": True,
 					}
 				],
@@ -1140,8 +1447,11 @@ def _write_dt_shadow_preview_fixture(
 					"behavior_cloning_mean_regret_uah": 250.0,
 					"behavior_cloning_mean_value_uah": 695.0,
 				},
-				"market_execution_enabled": False,
-				"dt_promotion_gate_passed": False,
+				"market_execution_enabled": packet_market_execution_enabled,
+				"promotion_gate_passed": packet_promotion_gate_passed,
+				"dt_promotion_gate_passed": packet_promotion_gate_passed,
+				"dt_lava_ready": packet_dt_lava_ready,
+				"permits_model_training": packet_permits_model_training,
 				"research_shadow_not_promotable": True,
 			}
 		),
@@ -1164,13 +1474,234 @@ def _write_dt_shadow_preview_fixture(
 			"regret_delta_vs_v2_plus_uah": [45.0],
 			"oracle_value_uah": [945.0],
 			"safety_violation_count": [0],
-			"market_execution_enabled": [False],
+			"market_execution_enabled": [teacher_market_execution_enabled],
 			"market_execution_gate_passed": [False],
-			"promotion_gate_passed": [False],
+			"promotion_gate_passed": [teacher_promotion_gate_passed],
+			"dt_lava_ready": [teacher_dt_lava_ready],
+			"permits_model_training": [teacher_permits_model_training],
 			"not_market_execution": [True],
 			"not_deployed_dt_control": [True],
 		}
 	).write_csv(tmp_path / "teacher_rows.csv")
+
+
+def _write_regret_aware_selector_fixture(
+	tmp_path: Path,
+	*,
+	market_execution_enabled: bool = False,
+) -> None:
+	selected_candidate_id = "v2-plus-candidate"
+	(tmp_path / "regret_aware_v2_plus_selector_summary.json").write_text(
+		json.dumps(
+			{
+				"boundary": {
+					"market_execution_enabled": market_execution_enabled,
+					"promotion_gate_passed": False,
+					"dt_lava_ready": False,
+					"research_shadow_not_promotable": True,
+				},
+				"evaluation": {
+					"selector_mean_regret_uah": 174.77,
+					"selector_mean_value_uah": 825.0,
+					"selector_minus_v2_plus_mean_regret_uah": 0.0,
+					"selector_minus_v2_plus_mean_value_uah": 0.0,
+					"v2_plus_mean_regret_uah": 174.77,
+					"v2_plus_mean_value_uah": 825.0,
+					"non_v2_plus_switch_count": 0,
+					"abstention_count": 90,
+					"control_summary": {
+						"strict_reference": {
+							"mean_regret_uah": 310.58,
+							"mean_value_uah": 700.0,
+						}
+					},
+				},
+				"market_execution_enabled": market_execution_enabled,
+			}
+		),
+		encoding="utf-8",
+	)
+	pl.DataFrame(
+		{
+			"tenant_id": ["client_003_dnipro_factory"],
+			"source_model_name": ["nbeatsx_official_global_panel_horizon_calibrated_v1"],
+			"anchor_timestamp": [datetime(2026, 5, 5, 23, tzinfo=UTC)],
+			"selected_candidate_id": [selected_candidate_id],
+			"selected_candidate_index": [1],
+			"selected_schedule_family": ["schedule_value_learner_v2_plus"],
+			"selected_regret_uah": [174.77],
+			"selected_value_uah": [825.0],
+			"v2_plus_candidate_id": [selected_candidate_id],
+			"v2_plus_regret_uah": [174.77],
+			"v2_plus_value_uah": [825.0],
+			"selected_minus_v2_plus_regret_uah": [0.0],
+			"selected_minus_v2_plus_value_uah": [0.0],
+			"predicted_regret_delta_vs_v2_plus_uah": [0.0],
+			"predicted_improvement_vs_v2_plus_uah": [0.0],
+			"abstained_to_v2_plus": [True],
+			"abstention_reason": ["predicted_improvement_below_threshold"],
+			"family_tail_risk_probability": [0.07],
+			"tail_risk_guard_passed": [True],
+			"research_shadow_not_promotable": [True],
+			"dt_lava_ready": [False],
+			"promotion_gate_passed": [False],
+			"market_execution_enabled": [market_execution_enabled],
+			"not_market_execution": [not market_execution_enabled],
+		}
+	).write_csv(tmp_path / "regret_aware_v2_plus_selector_selected_rows.csv")
+	pl.DataFrame(
+		{
+			"tenant_id": ["client_003_dnipro_factory", "client_003_dnipro_factory"],
+			"anchor_timestamp": [
+				datetime(2026, 5, 5, 23, tzinfo=UTC),
+				datetime(2026, 5, 5, 23, tzinfo=UTC),
+			],
+			"dt_candidate_id_target": [selected_candidate_id, "strict-candidate"],
+			"dt_schedule_family_target": ["schedule_value_learner_v2_plus", "strict_reference"],
+			"candidate_family": ["schedule_value_learner_v2_plus", "strict_reference"],
+			"candidate_model_name": ["schedule_value_learner_v2_plus", "strict_reference"],
+			"horizon_hours": [3, 3],
+			"forecast_price_uah_mwh_vector": [
+				json.dumps([4300.0, 1400.0, 2400.0]),
+				json.dumps([4300.0, 1400.0, 2400.0]),
+			],
+			"dispatch_mw_vector": [json.dumps([0.12, -0.05, 0.0]), json.dumps([0.0, 0.0, 0.0])],
+			"soc_fraction_vector": [json.dumps([0.52, 0.47, 0.51, 0.51]), json.dumps([0.52, 0.52, 0.52, 0.52])],
+			"schedule_value_uah": [825.0, 700.0],
+			"decision_value_uah": [825.0, 700.0],
+			"regret_uah": [174.77, 310.58],
+			"regret_delta_vs_v2_plus_uah": [0.0, 135.81],
+			"oracle_value_uah": [999.77, 1010.58],
+			"safety_violation_count": [0, 0],
+			"market_execution_enabled": [market_execution_enabled, False],
+			"market_execution_gate_passed": [False, False],
+			"promotion_gate_passed": [False, False],
+			"not_market_execution": [not market_execution_enabled, True],
+			"not_deployed_dt_control": [True, True],
+		}
+	).write_csv(tmp_path / "regret_aware_v2_plus_selector_teacher_rows.csv")
+
+
+def _write_dt_v2_plus_safe_switch_selector_fixture(tmp_path: Path) -> None:
+	selected_candidate_id = "strict-candidate"
+	v2_plus_candidate_id = "v2-plus-candidate"
+	(tmp_path / "regret_aware_v2_plus_selector_summary.json").write_text(
+		json.dumps(
+			{
+				"boundary": {
+					"market_execution_enabled": False,
+					"promotion_gate_passed": False,
+					"dt_lava_ready": False,
+					"research_shadow_not_promotable": True,
+				},
+				"evaluation": {
+					"selector_mean_regret_uah": 168.15664125116336,
+					"selector_mean_value_uah": 3743.327643562355,
+					"selector_minus_v2_plus_mean_regret_uah": -6.611757063998141,
+					"selector_minus_v2_plus_mean_value_uah": 6.611757063998084,
+					"v2_plus_mean_regret_uah": 174.7683983151615,
+					"v2_plus_mean_value_uah": 3736.715886498357,
+					"non_v2_plus_switch_count": 4,
+					"abstention_count": 86,
+					"control_summary": {
+						"strict_reference": {
+							"mean_regret_uah": 310.58280814033515,
+							"mean_value_uah": 3600.901476666783,
+						}
+					},
+				},
+				"market_execution_enabled": False,
+			}
+		),
+		encoding="utf-8",
+	)
+	(tmp_path / "dt_v2_plus_promotion_evidence_summary.json").write_text(
+		json.dumps(
+			{
+				"boundary": {
+					"market_execution_enabled": False,
+					"promotion_gate_passed": False,
+					"dt_lava_ready": False,
+					"permits_model_training": False,
+					"promotion_evidence_passed": True,
+				},
+				"gate": {
+					"observed_safe_switch_opportunity_count": 15,
+					"recovered_safe_switch_opportunity_count": 3,
+					"safe_switch_win_count": 3,
+					"safe_switch_loss_count": 0,
+					"safe_switch_tie_count": 1,
+					"tail_risk_loss_count": 0,
+					"max_switch_loss_uah": 0.0,
+					"mean_regret_improvement_ratio_vs_v2_plus": 0.03783153663784855,
+					"oracle_scored_final_holdout_row_count": 360,
+					"selected_mean_regret_uah": 168.15664125116336,
+					"v2_plus_mean_regret_uah": 174.7683983151615,
+					"strict_reference_mean_regret_uah": 310.58280814033515,
+				},
+			}
+		),
+		encoding="utf-8",
+	)
+	pl.DataFrame(
+		{
+			"tenant_id": ["client_003_dnipro_factory"],
+			"source_model_name": ["nbeatsx_official_global_panel_horizon_calibrated_v1"],
+			"anchor_timestamp": [datetime(2026, 5, 5, 23, tzinfo=UTC)],
+			"selected_candidate_id": [selected_candidate_id],
+			"selected_candidate_index": [3],
+			"selected_schedule_family": ["strict_reference"],
+			"selected_regret_uah": [144.77],
+			"selected_value_uah": [855.0],
+			"v2_plus_candidate_id": [v2_plus_candidate_id],
+			"v2_plus_regret_uah": [174.77],
+			"v2_plus_value_uah": [825.0],
+			"selected_minus_v2_plus_regret_uah": [-30.0],
+			"selected_minus_v2_plus_value_uah": [30.0],
+			"predicted_regret_delta_vs_v2_plus_uah": [-42.0],
+			"predicted_improvement_vs_v2_plus_uah": [42.0],
+			"abstained_to_v2_plus": [False],
+			"abstention_reason": ["safe_switch_threshold_passed"],
+			"family_tail_risk_probability": [0.34],
+			"tail_risk_guard_passed": [True],
+			"research_shadow_not_promotable": [True],
+			"dt_lava_ready": [False],
+			"promotion_gate_passed": [False],
+			"market_execution_enabled": [False],
+			"not_market_execution": [True],
+		}
+	).write_csv(tmp_path / "regret_aware_v2_plus_selector_selected_rows.csv")
+	pl.DataFrame(
+		{
+			"tenant_id": ["client_003_dnipro_factory", "client_003_dnipro_factory"],
+			"anchor_timestamp": [
+				datetime(2026, 5, 5, 23, tzinfo=UTC),
+				datetime(2026, 5, 5, 23, tzinfo=UTC),
+			],
+			"dt_candidate_id_target": [selected_candidate_id, v2_plus_candidate_id],
+			"dt_schedule_family_target": ["strict_reference", "schedule_value_learner_v2_plus"],
+			"candidate_family": ["strict_reference", "schedule_value_learner_v2_plus"],
+			"candidate_model_name": ["strict_reference", "schedule_value_learner_v2_plus"],
+			"horizon_hours": [3, 3],
+			"forecast_price_uah_mwh_vector": [
+				json.dumps([4300.0, 1400.0, 2400.0]),
+				json.dumps([4300.0, 1400.0, 2400.0]),
+			],
+			"dispatch_mw_vector": [json.dumps([0.12, -0.05, 0.0]), json.dumps([0.10, -0.02, 0.0])],
+			"soc_fraction_vector": [json.dumps([0.52, 0.47, 0.51, 0.51]), json.dumps([0.52, 0.48, 0.50, 0.50])],
+			"schedule_value_uah": [855.0, 825.0],
+			"decision_value_uah": [855.0, 825.0],
+			"regret_uah": [144.77, 174.77],
+			"regret_delta_vs_v2_plus_uah": [-30.0, 0.0],
+			"oracle_value_uah": [999.77, 999.77],
+			"safety_violation_count": [0, 0],
+			"market_execution_enabled": [False, False],
+			"market_execution_gate_passed": [False, False],
+			"promotion_gate_passed": [False, False],
+			"not_market_execution": [True, True],
+			"not_deployed_dt_control": [True, True],
+		}
+	).write_csv(tmp_path / "regret_aware_v2_plus_selector_teacher_rows.csv")
 
 
 def _write_shadow_augmented_gate_fixture(tmp_path: Path) -> None:

@@ -20,6 +20,7 @@ Artifact:
 | TFT quantile 365 | Official TFT/NBEATSx forecast-screen branch | TFT evidence computed but not promoted over V2+ | Negative/complementary | "TFT is a forecast adapter candidate, not the headline scheduler" |
 | Poland lag24 features | 24 lagged exogenous columns, 17 pass, 7 null-blocked | Latest-holdout signal positive but rolling status `positive_not_promoted`; full 90-row comparison does not beat Ukrainian-only V2+ mean | Promising, not promoted | "Point-in-time external context research only" |
 | DT research shadow | HF Decision Transformer importable, candidate-index/schedule-family target | 97,431 research-shadow rows, 7,300 sequences, 360 eval sequences; mean regret `507.90` vs strict `431.70` | Not promotable | "Offline sequence-policy shadow, not controller" |
+| Regret-aware V2+ selector | Weighted value-gap ranker with explicit V2+ abstention | Selector mean regret `174.77` UAH equals V2+; `0 / 90` non-V2+ switches; `90 / 90` abstentions | Conservative negative evidence | "Correct objective trained, but current features do not justify replacing V2+" |
 | LAVA NPZ smoke | 8-instance neighbor/margin smoke | Contract and hashes pass; promotion false; V13 blocked | CI/prototype only | "NPZ smoke contract validation" |
 | V13 acquisition | Ukrainian source-readiness preflight | explicit DAM receipts missing; safe-switch examples below required count; ready rows 0 | Blocked | "Source acquisition gate, not modeling slice" |
 

@@ -1,0 +1,901 @@
+Пояснювальна записка
+Перелік умовних позначень, скорочень і термінів
+
+
+Повний словник технічних назв, evidence flags, endpoint names і довгих дослідницьких термінів перенесено в додаток. Нижче наведено лише ті скорочення, які використовуються в розділах 1-5.
+
+
+BESS - Battery Energy Storage System, система накопичення енергії на батареях.
+DAM - Day-Ahead Market, ринок на добу наперед; основний market scope у роботі.
+DFL - Decision-Focused Learning, підхід до оцінювання моделей за downstream decision value.
+DT - Decision Transformer, offline sequence-policy напрям, який у роботі має статус research-shadow.
+EPF - Electricity Price Forecasting, прогнозування цін електроенергії.
+LP - Linear Programming, лінійне програмування для побудови feasible schedule.
+MAE / RMSE - forecast-only метрики, які не є головним критерієм promotion.
+NBEATSx - time-series forecast adapter, використаний як source model для schedule candidates.
+SOC - State of Charge, стан заряду батареї.
+SOH - State of Health, стан здоров'я батареї; повний digital-twin шар лишається roadmap.
+TFT - Temporal Fusion Transformer, quantile forecasting model для shadow/complementarity evidence.
+UAH - українська гривня, валюта regret/value у головних результатах.
+V13 - source-readiness/acquisition gate; не modeling slice і не дозвіл на DT/LAVA.
+
+
+Ключові межі:
+market_execution_enabled=false - явний прапорець, що забороняє трактувати preview як live trading.
+Operator preview - read-model поверхня для перегляду рекомендацій, а не market execution console.
+Regret - втрачена цінність відносно oracle LP.
+strict_similar_day - frozen leakage-free baseline і fallback comparator.
+V2+ - підтверджений schedule/value selector у межах offline/read-model evidence.
+
+
+Розділ 1. Вступ
+
+
+1.1. Актуальність теми
+Українська енергосистема у 2026 і далі році потребує інструментів, які допомагають працювати з волатильністю, дефіцитом маневреності та зростанням ролі систем накопичення енергії. BESS може переносити енергію між годинами з різною ціною, але практична цінність такого переносу виникає лише тоді, коли рішення одночасно враховує ринковий сигнал, фізичні обмеження батареї, часову доступність даних і операційну безпеку. Сам прогноз ціни не є достатнім результатом: модель може мати прийнятну forecast error, але створити schedule з поганим SOC timing або низькою економічною цінністю.
+
+
+Тому в роботі розглянуто не задачу автономної ринкової торгівлі, а задачу побудови evidence system для DAM recommendation preview. Така система пояснює оператору, чому певний hourly schedule є доцільним, які дані були доступні до моменту рішення, як результат порівнюється з conservative baseline і чому він не перетворюється автоматично на market-submittable bid. Ця межа важлива академічно й практично: без неї результат дослідження легко перебільшити до live trading або deployed Decision Transformer control, хоча наявна доказова база цього не дозволяє.
+
+
+Логіку переходу від проблеми до рішення наведено на рисунку 1.1.
+
+
+  
+
+Рисунок 1.1. Карта переходу від проблеми українського DAM до operator preview
+
+
+Рисунок 1.1 узагальнює центральну ідею роботи. Ціновий сигнал DAM стає корисним лише після deterministic optimization і strict evidence gate. Саме тому головний внесок полягає не в додаванні ще однієї нейронної моделі, а в побудові чесного контуру, де forecast, schedule optimization, regret evaluation і source-governance працюють разом.
+
+
+
+
+1.2. Проблема, що вирішується
+Проблема має три рівні. 
+Перший рівень - ринковий: погодинні ціни DAM можуть створювати можливість арбітражу, але реальна можливість залежить від spread shape, local price regime і доступності source-backed publication evidence. 
+Другий рівень - інженерний: BESS не можна розглядати як абстрактний фінансовий актив, бо schedule має проходити SOC, power, efficiency і degradation-aware обмеження. 
+Третій рівень - науковий: оцінювати модель за MAE/RMSE недостатньо, якщо рішення використовується для storage arbitrage; потрібна decision-aware метрика, що вимірює regret або value після optimization.
+
+
+У дослідженні ці три рівні зведено в один offline/read-model contour. Price forecasts та candidate schedules оцінюються через однаковий strict LP/oracle evaluator. Learned або heuristic candidates можуть бути корисними лише тоді, коли вони знижують regret проти frozen baseline, не погіршують median behavior, проходять rolling robustness і не порушують safety/source gates. Якщо challenger не проходить gate, це не приховується: негативна evidence залишається частиною наукового результату й пояснює, чому система не просуває слабший метод.
+
+
+Межу системи наведено на рисунку 1.2.
+
+
+  
+
+Рисунок 1.2. Межа системи: evidence та preview без market execution
+
+
+Рисунок 1.2 показує, що результат належить до allowed evidence: offline materialization, read-model dashboard, operator preview і reproducible packets. Заблокована зона містить ProposedBid, ClearedTrade, DispatchCommand, deployed DT/LAVA і будь-який claim, який потребує explicit market submission readiness. Така межа зберігає практичну корисність без переходу до невиправданого market execution.
+
+
+1.3. Мета і завдання
+Мета роботи - спроектувати, реалізувати та оцінити evidence system для DAM recommendation preview у задачі BESS-арбітражу в Україні, де якість моделей оцінюється за downstream decision value, а не лише за forecast-only метриками. Практична мета полягає в тому, щоб оператор або власник BESS отримував зрозумілу картину: які hourly recommendations пропонуються, чим вони кращі або гірші за conservative baseline, які gates пройдено і чому система не подає заявку на ринок.
+
+
+Для досягнення цієї мети виконано такі завдання:
+* сформовано market/problem framing для українського DAM;
+* побудовано pipeline source snapshots -> normalized panel -> forecast/candidates -> strict LP/oracle scoring -> dashboard/read model; 
+* визначено метрики regret/value та rolling robustness; 
+* перевірено Schedule/Value Learner V2 і V2+ проти strict_similar_day; 
+* проаналізовано TFT, Poland lag24 / prior-only veto і DT shadow як дослідницькі, але не promotional гілки;
+* зафіксовано V13 source-readiness blockers і прапорець market_execution_enabled=false.
+
+
+1.4. Об'єкт, предмет і межі дослідження
+Об'єктом є система прийняття рішень для BESS у DAM delivery-day planning scenario. Предметом є методологія побудови й оцінювання forecast-to-schedule candidates через strict LP/oracle contour та decision-aware regret/value metrics. У роботі не досліджується live market bidding, settlement, balancing-market participation, physical inverter dispatch або юридична процедура участі на ринку. Такі елементи потребують окремих operational gates, credentials, signed submissions, explicit DAM publication receipts і відповідальності оператора.
+
+
+Межа market_execution_enabled=false проходить через всю роботу. Вона означає, що навіть коли offline evidence показує кращий regret, система не створює market order payload. Це дає можливість академічно оцінити практичну придатність методу для України без небезпечного змішування демонстраційного preview з торговою системою.
+
+
+1.5. Наукова новизна і практична цінність
+Наукова новизна полягає у фокусі на decision-quality evidence для BESS arbitrage: forecast candidates оцінюються не ізольовано, а через LP schedule та regret відносно oracle value. Додатково робота демонструє, як негативні результати TFT/DT або blocked V13 acquisition можуть бути коректними evidence artifacts, якщо вони запобігають overclaiming. Практична цінність для України полягає в тому, що system design може бути використаний як консервативний операторський preview: він показує економічну логіку рішення, залишає audit trail і не потребує market-submission credentials для academic MVP.
+
+
+
+
+1.6. Структура роботи
+Розділ 2 стисло розглядає ринковий та методологічний контекст. Розділ 3 описує методологію, математичні вирази, evidence boundaries і архітектуру. Розділ 4 подає головні результати V2/V2+, robustness і shadow evidence. Розділ 5 формулює висновки й рекомендації. Детальні glossary, API traceability, довгі evidence manifests і shadow diagnostics винесено в додатки, щоб основна частина залишалася зосередженою на main story.
+
+
+
+
+
+
+
+
+1.7. Практичний контекст для українського оператора
+Практичний користувач такої системи не починає з питання, яка neural architecture є наймоднішою. Його перше питання простіше: чи можна довіряти рекомендації, коли ціна завтра може суттєво відрізнятися від історичного патерну, а батарея має реальні обмеження? Тому в роботі акцент зроблено на прозорості контуру. Оператор має бачити не лише "купити" або "продати", а й те, що recommendation прийшла з відтворюваного evidence packet, пройшла deterministic checks і не є ринковою заявкою.
+
+
+Для України це особливо важливо через різницю між академічною демонстрацією та промисловою інтеграцією. У промисловому контурі потрібні credentials, юридична відповідальність, receipt evidence, settlement reconciliation і диспетчерські процедури. У академічному контурі інженерний підхід демонструє чесне ставлення до таких меж: без explicit source publication receipts система не маскує blocker красивым dashboard, а DT shadow без переваги над V2+ не називається контролером.
+
+
+Таке формулювання робить роботу прикладною, але не ризиковою. Вона не обіцяє автономної торгівлі; вона показує, як можна прийти до неї поступово: спочатку offline evidence, потім operator trust, потім source readiness, і лише після цього execution gate. У цьому сенсі результат корисний не тільки як кодовий MVP, а як методологічний шаблон для подібних українських energy-tech систем.
+
+
+1.8. Відмінність між науковим результатом і інженерним артефактом
+Науковий результат у роботі - це не просто наявність dashboard або факт, що pipeline запускається. Науковий результат полягає в доведенні, що schedule/value selector може зменшити downstream regret у строгому порівнянні з baseline, а також у доведенні меж, де інші candidates не проходять gate. Інженерний артефакт підтримує цей результат: Dagster materialization, FastAPI read model, Pydantic contracts і dashboard роблять evidence відтворювальною та зрозумілою.
+
+
+Це розмежування допомагає уникнути двох крайнощів. Перша крайність - описати роботу як чистий software project без наукової оцінки. Друга - описати її як research paper без практичного MVP. У роботі обрано середній шлях: практичний проєкт має науково обґрунтований evaluation contour, а дослідницька частина має робочий інженерний носій.
+
+
+Розділ 2. Огляд предметної області та джерел
+
+
+2.1. Український DAM і роль BESS
+Ринок на добу наперед задає погодинні price signals, які можуть бути використані для планування заряду й розряду BESS. Для України така задача має практичну вагу через потребу в гнучкості, інтеграції відновлюваної генерації, локальному балансуванні та зменшенні вартості пікових годин. Ринкова специфіка описується не тільки загальноєвропейською логікою electricity market design, а й локальними правилами, price caps, тарифами та енергетичною політикою України (European Commission, 2026 [34], [35]; NEURC, 2026 [36]; JSC Market Operator, 2026 [37]; Ministry of Economy of Ukraine, 2024 [40], [41]).
+
+
+Водночас академічна модель має обережну межу: наявність historical price rows не перетворює систему на контур подання заявок і не означає, що timestamp publication evidence вже готовий для market-executable сценаріїв. Ця межа узгоджується з європейським контекстом синхронізації та майбутнього market-coupling, але не підміняє український DAM evidence layer (ENTSO-E, 2022 [42]; ACER, 2025 [43]).
+
+
+Європейські роботи про BESS utilization, revenue stacking і energy/reserve bidding корисні як ширший market-design контекст, однак у роботі вони не використовуються як доказ готовності українського live execution (Hu et al., 2022 [12]; Li et al., 2024 [13]).
+
+
+Контекст українського застосування наведено на рисунку 2.1.
+
+
+  
+
+Рисунок 2.1. Контекст BESS/DAM для українського застосування
+
+
+Рисунок 2.1 показує, що практична цінність виникає на перетині DAM signal, BESS asset constraints і operator needs. Дипломний MVP охоплює рекомендаційний preview і відтворювану evidence chain; production trading потребує окремої юридичної, технічної і source-readiness інфраструктури.
+
+
+2.2. Чому forecast-only оцінка недостатня
+
+
+Класичні роботи з electricity price forecasting часто оцінюють моделі через MAE, RMSE, MAPE або quantile losses. Такі метрики корисні для порівняння прогнозів, але вони не відповідають безпосередньо на питання, чи кращим буде battery schedule. Lago et al. (2021) показують важливість строгих EPF-бенчмарків і сильних baseline, а Elmachtoub and Grigas (2022) демонструють, що статистична якість прогнозу не завжди збігається з якістю downstream optimization decision [14], [4].
+
+
+У BESS arbitrage важливі не всі помилки однаково: помилка біля локального піку або провалу може коштувати значно більше, ніж така сама абсолютна похибка у стабільній середині доби. Крім того, schedule value залежить від SOC path, efficiency losses і обмеження потужності. Саме тому storage-specific DFL роботи Sang et al. (2022/2023) та Mandi et al. (2024) пропонують оцінювати моделі через regret/value або decision loss, а не лише через forecast-only loss [29], [28].
+
+
+Тому в роботі forecast layer розглядається як джерело candidate schedules, а не як остаточна відповідь. NBEATSx і TFT мають сенс лише тоді, коли їхні сигнали після LP scoring зменшують regret. Це також пояснює, чому raw neural forecast може бути слабшим за conservative baseline, але calibrated або schedule/value selected variants можуть стати корисними.
+
+
+2.3. Ландшафт методів
+
+
+Ландшафт методів, використаних у роботі, наведено на рисунку 2.2.
+  
+
+Рисунок 2.2. Ландшафт методів: forecast, LP, regret і governance
+
+
+Рисунок 2.2 групує методи у чотири шари. Forecasting дає price signal; optimization перетворює його на feasible schedule; decision-quality оцінює результат через regret/value; governance визначає, які source rows і claims можна використовувати. Така структура ближча до прикладної evidence system, ніж до традиційної таблиці forecast metrics.
+
+
+2.4. Стислий literature/source matrix
+
+
+Огляд джерел у роботі не подається як довгий paper-by-paper summary. Для практичної дипломної роботи важливіше показати, яка частина літератури і технічних джерел підтримує конкретний design choice. Матрицю напрямів наведено в таблиці 2.1.
+
+
+________________
+
+
+Таблиця 2.1. Матриця літературних і технічних напрямів
+Напрям
+	В роботі
+	Поза scope
+	EPF / time-series forecasting
+	NBEATSx/TFT; downstream regret [2], [6], [14]
+	SOTA за MAE/RMSE без LP/regret
+	Storage optimization
+	LP schedule із SOC/power/efficiency [51], [10], [5]
+	Settlement/live dispatch
+	DFL / predict-then-optimize
+	Regret/value як decision-quality criterion [4], [29], [28]
+	Full differentiable controller
+	Offline RL / DT
+	Research-shadow sequence policy [7], [32]
+	DT/LAVA promotion/live policy
+	Ukrainian market governance
+	DAM preview і source-readiness blockers [36], [37], [43]
+	Inferred receipts/submission claims
+	Таблиця 2.1 показує, що робота поєднує electricity price forecasting, storage optimization, DFL/predict-then-optimize і market governance. Водночас вона свідомо не заявляє full settlement, deployed DT або full differentiable controller. Це скорочує текст і робить межі дослідження прозорими.
+
+
+2.5. Storage optimization і LP як контрольний контур
+
+
+Для BESS schedule LP є природним базовим інструментом: він може задати баланс енергії, обмеження SOC, потужність заряду/розряду, efficiency і простий економічний objective. Park et al. (2017) прямо формулюють short-term ESS scheduling через лінійні обмеження SOC, power range, energy limits та efficiency [51]. Hesse et al. (2019), Maheshwari et al. (2020), Kumtepeli et al. (2020) і Cao et al. (2020) показують, що storage dispatch може бути розширений degradation-aware або learning-based компонентами, але це підвищує вимоги до параметризації батареї та якості даних [10], [11], [45], [46].
+
+
+У роботі LP використовується не як тема окремого математичного дослідження, а як deterministic evaluator, який дає однаковий scoring contour для всіх forecast і selector candidates. Це важливо, бо порівняння моделей без спільного optimization contour може бути несправедливим. Vykhodtsev et al. (2022) додатково пояснюють, що спрощене power-energy представлення батареї є придатним для techno-economic studies, але не замінює повний electrochemical digital twin [9].
+
+
+Strict LP/oracle evaluator виконує дві ролі. По-перше, він оцінює value вибраного schedule. По-друге, він обчислює oracle reference, тобто найкращу offline value при realized prices. Різниця між oracle value і selected value стає regret. Такий підхід дозволяє говорити не "модель має меншу похибку", а "schedule втрачає менше економічної цінності відносно oracle". Економічні припущення про storage cost/performance підтримуються NREL Storage Futures та NREL ATB матеріалами [52], [53].
+2.6. NBEATSx, TFT і probabilistic forecasting
+
+
+NBEATSx у роботі має статус forecast-layer choice/adaptor. Olivares et al. (2023) описують NBEATSx як neural basis expansion model з exogenous variables для electricity price forecasting [2]. Це релевантно для DAM/BESS, бо цінові ряди мають денні, тижневі, сезонні та регуляторні компоненти, а також реагують на погодні й системні фактори. Проте сам факт використання NBEATSx не є доказом кращого arbitrage result; його output перевіряється через LP/regret.
+
+
+Temporal Fusion Transformer, запропонований Lim et al. (2021), є другим важливим forecast-layer напрямом [6]. TFT підтримує multi-horizon forecasting, static covariates, known future inputs, observed historical inputs, variable selection та attention-based interpretability. Probabilistic TFT та інші сучасні deep-learning EPF роботи розширюють цей напрям у бік uncertainty-aware forecasting, quantile loss і exogenous-aware transformer architectures (Jiang et al., 2024 [3]; Wang et al., 2024 [15]; Yu et al., 2026 [16]; Jin and Blanco-Encomienda, 2026 [60]).
+
+
+Окремий висновок із сучасної EPF-літератури стосується foundation models і temporal hierarchy. PriceFM, THieF, TSFM leakage studies, TFMAdapter і Reverso показують активний розвиток time-series foundation-model напряму, але ці джерела у роботі мають статус future/research context, а не підставу для зміни поточного headline result [17], [18], [19], [20], [21]. Current evidence залишається прив'язаною до українського DAM benchmark і V2/V2+ schedule/value selector.
+2.7. Decision-focused learning і практична межа
+
+
+Decision-Focused Learning у повному сенсі може означати навчання моделі через differentiable optimization layer або task-aware surrogate loss. Smart Predict-then-Optimize у Elmachtoub and Grigas (2022) формалізує проблему розриву між prediction loss і downstream objective [4]. Mandi et al. (2024) систематизують DFL як напрям, у якому learning model і constrained optimization problem поєднуються через decision loss, differentiable optimization, surrogate gradients або gradient-free methods [28].
+
+
+Для storage arbitrage ця логіка особливо важлива, бо рішення є multistage: charge/discharge у поточну годину змінює SOC і майбутні feasible actions. Sang et al. (2022/2023) безпосередньо пов'язують electricity price prediction з ESS arbitrage regret, Persak and Anjos (2024) підкреслюють multistage structure, а Yi, Alghumayjan, and Xu (2024) показують perturbed DFL для strategic energy storage [29], [30], [31].
+
+
+Distributional RL для energy arbitrage розглядається як risk-sensitive future context, а не як поточний production-facing метод рекомендаційного preview (Madahi et al., 2024 [22]).
+
+
+У роботі цей напрям використовується обережно. Головний результат є schedule/value selector з regret-aware evaluation, а не повний differentiable predict-then-bid stack. Диференційовані оптимізаційні шари Agrawal et al. (2019) та OptNet Amos and Kolter (2017) підтримують roadmap, але не доводять наявність deployed DFL controller [8], [54]. Predict-then-bid framework Yi et al. (2025) також використовується як цільова дослідницька траєкторія, а не як опис поточного market-execution стану [1].
+2.8. Decision Transformer як research-shadow
+
+
+Decision Transformer є привабливим напрямом для sequence-policy tasks, бо він може умовлювати дії на return-to-go та історію станів. Chen et al. (2021) формулюють Decision Transformer як return-conditioned sequence modeling для offline reinforcement learning [7]. Bhargava et al. (2023) додатково показують, що переваги DT залежать від якості, обсягу й структури offline trajectories [32]. Практичну implementation reference для майбутніх експериментів дає офіційна документація Hugging Face Transformers [33].
+
+
+У поточній роботі DT має тільки research-shadow статус. V13 source-readiness gate не дозволяє трактувати DT або LAVA як production-ready, доки немає explicit DAM publication receipts і достатньої кількості permitted training rows. Тому DT використовується для перевірки майбутньої архітектурної можливості, а не для headline result.
+2.9. Роль українських джерел і source governance
+
+
+Окремий аспект огляду - джерельна дисципліна. У задачах енергетичного арбітражу дані не є нейтральним фоном: timestamp, publication timing, timezone normalization і provenance визначають, чи має модель право бачити конкретну ознаку. Якщо зовнішній ряд доступний лише після decision time, його використання як train або selection feature створює leakage. Якщо publication receipt не підтверджено, не можна описувати систему як market-ready, навіть якщо локальний backtest виглядає переконливо.
+
+
+У роботі тому використано обережний словник. DAM rows можуть бути частиною recommendation preview, але explicit DAM publication receipts потрібні для сильніших source-readiness claims. EU/Poland/ENTSO-E контексти можуть бути корисними як governance або shadow lanes, але вони не перетворюються автоматично на українські training targets. Такий підхід спирається на офіційні джерела про дані й ринкову інтеграцію: ENTSO-E Transparency Platform, OPSD, Nord Pool, Ember, ACER, European Commission і Ukrainian market/operator sources [23], [24], [25], [26], [27], [34], [35], [36], [37], [43].
+
+
+Для forecast layer зовнішні ряди можуть бути корисними як exogenous covariates, але лише після licensing, timezone/DST, currency, market-rule, publication-time availability і domain-shift checks. Роботи Li and Becker (2021), Redhu and Bremdal (2023) та Mascarenhas et al. (2025) підтримують ідею neighboring-zone або cross-border features для EPF, а документація Nixtla пояснює технічну підтримку exogenous variables у NeuralForecast/NBEATSx [47], [48], [49], [50].
+
+
+Погодні ознаки також потребують явного source contract: для цього релевантні документації Open-Meteo Forecast API та Historical Weather API, але ці джерела не скасовують вимоги перевіряти availability timing і leakage risk [38], [39].
+2.10. Інженерна evidence system і MLOps-контекст
+
+
+У прикладній роботі академічна якість залежить не лише від вибору моделі, а й від відтворюваності evidence pipeline. Dagster software-defined assets підтримують materialization, lineage і asset checks [55]. MLflow tracking використовується як джерело експериментальних run records і метрик [56]. FastAPI дає read-model surface для операторського preview, а не execution endpoint [57]. Pydantic strict mode підтримує deterministic validation і boundary discipline [58]. Medallion architecture використовується як термінологічна основа для Bronze/Silver/Gold data layers [59].
+
+
+Governance-контекст також включає AI Act regulatory framework як загальну рамку для data quality, human oversight, logging і risk management [44]. У роботі ці джерела не доводять market readiness, але підтримують engineering design: результати мають бути перевірюваними, відтворюваними й явно обмеженими.
+2.11. Decision-aware evaluation як відповідь на слабкість forecast leaderboard
+
+
+Forecast leaderboard зазвичай ранжує моделі за середньою помилкою. У storage arbitrage такий leaderboard може бути оманливим. Модель, що трохи краще передбачає середні години, може не давати кращого рішення, якщо вона помиляється в годинах з найбільшим arbitrage spread. Навпаки, модель із неідеальним MAE може мати корисний порядок піків і провалів, якщо LP schedule використовує саме цей порядок.
+
+
+Тому decision-aware evaluation у роботі не є додатковою прикрасою. Вона є відповіддю на центральну слабкість forecast-only підходу, описану в EPF benchmarking, PTO і storage-specific DFL літературі (Lago et al., 2021 [14]; Elmachtoub and Grigas, 2022 [4]; Sang et al., 2022/2023 [29]). Regret/value оцінка відповідає на питання, яке реально важить для BESS owner: скільки економічної цінності втрачено відносно oracle і чи стало рішення кращим за conservative fallback.
+2.12. Висновок до розділу 2
+
+
+Огляд показує, що науково коректна постановка задачі для BESS arbitrage не зводиться до forecast leaderboard. Найбільш релевантний шлях для дипломного MVP - це evidence-based contour, де прогноз, LP optimization, regret/value metrics і source governance перевіряються разом. EPF-моделі на кшталт NBEATSx і TFT є обґрунтованими forecast candidates, але їхня цінність має підтверджуватися через downstream LP scheduling, net value і regret (Olivares et al., 2023 [2]; Lim et al., 2021 [6]; Lago et al., 2021 [14]).
+
+
+Для роботи з цього випливають три методологічні вимоги. Перша: forecast candidates оцінюються через downstream LP/regret. Друга: source governance є явною, особливо для V13 і зовнішніх джерел. Третя: negative evidence залишається в тексті, бо саме вона показує, що система не просуває weak challengers. Ці вимоги формують методологію розділу 3 (Mandi et al., 2024 [28]; Yi et al., 2025 [1]; Chen et al., 2021 [7]).
+Розділ 3. Методологія та архітектура
+
+
+3.1. Загальна методологія
+
+
+Методологія роботи побудована навколо простого принципу: кожне твердження про якість моделі має пройти через однаковий decision contour. Forecast model або selector не оцінюється ізольовано. Він генерує price signal або вибирає candidate family, після чого deterministic LP формує feasible schedule, oracle evaluator обчислює reference value, а regret/value metrics визначають, чи має candidate практичний сенс.
+
+
+Evidence pipeline наведено на рисунку 3.1.
+
+
+  
+
+Рисунок 3.1. Evidence pipeline від source snapshots до read-model preview
+
+
+Рисунок 3.1 показує послідовність: source snapshots надходять у normalized panel, forecast/candidate layer створює schedule options, strict LP/oracle evaluator оцінює decision quality, а FastAPI/dashboard read model показує operator preview. Жоден крок не створює market order payload; це принципова межа методології.
+
+
+3.2. Evidence boundaries
+
+
+Ключові межі доказів наведено в таблиці 3.1.
+
+
+Таблиця 3.1. Evidence boundaries для інтерпретації результатів
+Шар доказів
+	Дозволене твердження
+	Заборонене твердження
+	Forecast adapter
+	Модель генерує price signal для LP candidate
+	Модель сама оптимізує ринковий bid
+	LP/oracle evaluator
+	Schedule оцінено в однаковому strict contour
+	Oracle value доступний до рішення
+	V2/V2+ selector
+	Offline/read-model Strategy Promotion
+	Автономна торгівля або dispatch
+	TFT / Poland / DT shadow
+	Research-only diagnostics and future work
+	Replacement of V2+ без gate
+	V13 acquisition
+	Source-readiness blockers documented
+	DT/LAVA ready або market execution ready
+	Таблиця 3.1 потрібна для читання всіх наступних результатів. Вона відділяє дозволені offline/read-model claims від заборонених execution claims. Якщо результат проходить offline promotion gate, це означає thesis-facing strategy evidence, але не дозвіл на ринок.
+
+
+3.3. Rolling-origin protocol
+
+
+Для часових рядів критично уникати future leakage. У роботі використано rolling-origin validation: на кожному anchor модель або selector має бачити лише prior information, а realized prices final holdout використовуються тільки після рішення для scoring. Схему наведено на рисунку 3.2.
+
+
+  
+
+Рисунок 3.2. Rolling-origin validation без future leakage
+
+
+Рисунок 3.2 пояснює, чому validation не можна замінити випадковим train/test split. Для market data випадкове перемішування руйнує часову доступність ознак. Rolling-origin protocol зберігає причинний порядок і дозволяє чесно оцінити, що було відомо до decision time.
+
+
+3.4. LP schedule and value
+
+
+Нехай    (t) позначає погодинний інтервал,    (p_t) - realized DAM price,    (c_t) - charge power,    (d_t) - discharge power,    (eta_c) та    (eta_d) - efficiency, а    (e_t) - енергія в батареї. Економічну цінність schedule можна записати як:
+V(s) = sum_t p_t * (d_t * eta_d - c_t / eta_c) - C_deg(s)    (3.1)
+  
+
+
+
+Regret визначається як різниця між oracle value і value вибраного schedule:
+Regret(s) = V_oracle - V(s)    (3.2)
+  
+
+
+
+Mean improvement проти strict baseline записується так:
+Improvement = (mean(Regret_strict) - mean(Regret_candidate)) / mean(Regret_strict)    (3.3)
+  
+
+
+
+Rolling robustness вважається пройденою, якщо candidate перемагає baseline у кожному validation window:
+Robustness = passed_windows / total_windows    (3.4)
+  
+
+
+
+Ці вирази використовуються як decision metrics. У тексті далі посилання робляться за виразами (3.1)-(3.4), без окремого словесного лейблу перед номером.
+
+
+LP scoring contour наведено на рисунку 3.3.
+
+
+  
+
+Рисунок 3.3. LP schedule scoring contour
+
+
+Рисунок 3.3 показує, що candidate проходить один і той самий optimization path незалежно від того, чи прийшов він від strict rule, NBEATSx, TFT або selector. Це робить порівняння результатів стійким до зміни evaluator.
+
+
+3.5. Metrics and formula map
+
+
+Метрики та їхню роль наведено в таблиці 3.2.
+
+
+Таблиця 3.2. Метрики та нумеровані вирази методології
+Метрика
+	Вираз
+	Роль у висновку
+	Schedule value
+	(3.1)
+	Оцінює економічну цінність hourly schedule
+	Regret
+	(3.2)
+	Порівнює schedule з oracle LP
+	Mean improvement
+	(3.3)
+	Нормує gain проти strict baseline
+	Rolling robustness
+	(3.4)
+	Перевіряє стійкість у validation windows
+	Gate decision
+	(3.7)
+	Фіксує, що promotion не дорівнює execution
+	Таблиця 3.2 показує, що головна метрика не є forecast-only. Schedule value і regret прив'язують метод до економічної задачі, а rolling robustness не дозволяє просувати результат, який спрацював лише в одному зручному slice.
+
+
+3.6. Promotion gate
+
+
+Offline strategy candidate може вважатися thesis-facing promoted тільки тоді, коли він проходить набір умов:
+
+
+G_1 = mean(Regret_candidate) < mean(Regret_baseline)    (3.5)
+  
+
+
+
+G_2 = median(Regret_candidate) <= median(Regret_baseline)    (3.6)
+  
+
+
+
+Promotion = G_1 and G_2 and Robustness_passed and Safety_passed and market_execution_enabled=false    (3.7)
+  
+
+
+
+За виразом (3.7), навіть promoted offline candidate не стає market execution. Прапорець market_execution_enabled=false є частиною gate, а не приміткою після результату. Це дисциплінує claim boundary і прямо відповідає вимозі не описувати поточний MVP як live trading.
+
+
+3.7. Candidate families
+
+
+Candidate families, що використовуються або аналізуються в роботі, наведено в таблиці 3.3.
+
+
+Таблиця 3.3. Candidate families у методології
+Candidate family
+	Джерело
+	Чому потрібна
+	strict_similar_day
+	Заморожене історичне правило
+	Conservative fallback і контроль
+	Raw NBEATSx
+	Official forecast adapter
+	Джерело price-signal candidates
+	Calibrated NBEATSx
+	Prior-only horizon calibration
+	Зменшує regret-relevant bias
+	V2/V2+
+	Schedule/value selector
+	Вибирає candidate за downstream value
+	TFT quantiles
+	p10/p50/p90 forecast lanes
+	Schedule diversity and uncertainty diagnostics
+	DT shadow
+	HF DecisionTransformerModel
+	Sequence-policy research only
+	Таблиця 3.3 фіксує, що V2/V2+ є headline decision layer, тоді як TFT і DT мають інший статус. TFT додає uncertainty/diversity evidence, але не проходить portfolio promotion. DT підтверджує research-shadow feasibility, але не перемагає V2+ і не проходить V13.
+
+
+3.8. Gatekeeper та read model
+
+
+Gatekeeper має відокремити preview від execution. Після LP/scoring результат може бути показаний оператору, але він не може бути перетворений на bid або dispatch command без окремих source, legal, market і safety gates. Схему наведено на рисунку 3.4.
+
+
+  
+
+Рисунок 3.4. Gatekeeper та read-model boundary
+
+
+Рисунок 3.4 показує, що deterministic checks не є декоративними. Якщо candidate порушує envelope або source readiness, система має записати це як robustness evidence, а не приховати або виконати дію. Для України така межа особливо важлива, бо реальна участь на ринку потребує верифікованої інфраструктури, а дипломний MVP має залишатися безпечним.
+
+
+Зв'язок між виразами (3.1)-(3.7) і рішенням promotion gate наведено на рисунку 3.5.
+
+
+  
+
+
+
+Рисунок 3.5. Як метрики переходять у рішення gate
+
+
+Рисунок 3.5 показує, що value і regret самі по собі ще не є дозволом на execution. Вони стають частиною рішення лише разом із median check, rolling robustness, safety boundary і прапорцем market_execution_enabled=false.
+
+
+3.9. Архітектура реалізації
+
+
+Реалізація організована як практична MLOps evidence system. Dagster відповідає за materialization assets і lineage; Polars використовується для швидкої табличної обробки; Pydantic strict contracts фіксують schema та safety boundaries; FastAPI віддає read-model endpoints; dashboard показує operator-facing preview і shadow diagnostics. Така архітектура не створює зайвої складності заради самої складності: кожен шар потрібний для відтворюваності або для безпечного пояснення рішення.
+
+
+Bronze layer зберігає source snapshots і audit trail. Silver layer нормалізує timezone, tenants, price rows і candidate features. Gold layer матеріалізує forecasts, LP scores, V2/V2+ selections і diagnostics. Read model не змінює рішення: він тільки показує materialized evidence у формі, придатній для аудиту й демонстрації.
+
+
+3.10. Висновок до розділу 3
+
+
+Методологія поєднує rolling-origin validation, LP optimization, regret/value metrics і deterministic gatekeeper. Це дає основу для чесної інтерпретації результатів у розділі 4: кращий candidate має бути кращим не на словах і не за isolated forecast error, а в однаковому strict decision contour.
+
+
+
+
+3.11. Підсумок методологічної частини
+
+
+Методологія зводить технічну реалізацію до одного перевірного питання: чи дає певний forecast або selector кращий BESS schedule у тому самому strict LP/oracle contour. Тому в розділі не просуваються окремо NBEATSx, TFT або DT як "сильні" моделі за назвою. Кожен кандидат має пройти однакові етапи: prior-only input, feasible schedule, value/regret scoring, rolling robustness і safety/source boundary.
+
+
+Практичний зміст цієї методології полягає в тому, що оператор бачить не абстрактний прогноз ціни, а рекомендаційний preview із поясненням його меж. Якщо evidence достатня, система може показати selected schedule, regret/value порівняння і gate status. Якщо evidence слабка, коректним результатом є fallback або non-promotion. Саме так negative evidence з TFT, Poland lag24 / prior-only veto, DT або regret-aware selector стає частиною наукового висновку, а не службовою помилкою.
+
+
+Отже, розділ 4 інтерпретується через три критерії: економічну якість schedule, стійкість у rolling windows і чесну межу застосування. Цей підхід дозволяє говорити про практичну користь для України без переходу до непідтверджених claims про live trading, market submission або deployed autonomous controller.
+Розділ 4. Результати та обговорення
+
+
+4.1. Scope результатів
+
+
+Результати належать до DAM delivery-day recommendation preview та offline/read-model evidence. Усі числові твердження нижче походять з наявних evidence packets і не є новими експериментами. Межу scope наведено в таблиці 4.1.
+
+
+Таблиця 4.1. Scope результатів і межі інтерпретації
+Scope item
+	Поточний статус
+	Інтерпретація
+	Market
+	DAM delivery-day preview
+	Не IDM і не market coupling execution
+	Evidence
+	Offline/read-model packets
+	Результати відтворюються з repo artifacts
+	Safety
+	market_execution_enabled=false
+	No ProposedBid, ClearedTrade або DispatchCommand
+	V13
+	Receipts blocked; safe-switch staged support 20/20
+	DT/LAVA training remains blocked
+	Таблиця 4.1 задає рамку для всього розділу. Headline result може бути практично корисним для operator preview, але він не відкриває live market execution. Це особливо важливо для V13, де safe-switch staged support уже може бути достатнім для частини локальної evidence, але explicit DAM publication receipts залишаються blocker для DT/LAVA training і market-submission claims.
+
+
+4.2. Headline V2/V2+ результат
+
+
+Головний результат отримано не raw forecast, а Schedule/Value Learner V2+, який вибирає feasible schedule candidate за downstream value. Порівняння наведено в таблиці 4.2.
+
+
+Таблиця 4.2. Headline comparison для strict, V2, V2+ та raw reference
+Comparator
+	Mean regret, UAH
+	Median regret, UAH
+	Висновок
+	strict_reference
+	310.58
+	198.39
+	Контрольний leakage-free baseline
+	Schedule/Value Learner V2
+	206.37
+	96.02
+	Перший стійкий improvement
+	Schedule/Value Learner V2+
+	174.77
+	67.30
+	Headline offline strategy result
+	raw_reference
+	622.25
+	290.22
+	Raw forecast alone is insufficient
+	Таблиця 4.2 показує, що V2+ має mean regret 174.77 UAH і median regret 67.30 UAH. Це краще за strict_reference 310.58 / 198.39 UAH і краще за V2 206.37 / 96.02 UAH. Raw reference у цьому slice має значно гірший mean regret, що підтверджує головну тезу: прогноз сам по собі не є достатнім; потрібний schedule/value decision layer.
+
+
+Ту саму різницю візуально наведено на рисунку 4.1.
+
+
+  
+
+Рисунок 4.1. Драбина mean regret для strict, V2 та V2+
+
+
+Рисунок 4.1 робить headline result зрозумілим без довгого переліку проміжних експериментів. Lower regret означає меншу втрату economic value відносно oracle. V2+ знижує mean regret на 43.73% проти strict baseline і на 15.31% проти frozen V2.
+
+
+Ключову result card наведено на рисунку 4.2.
+
+
+  
+
+Рисунок 4.2. Підсумковий V2+ result card
+
+
+Рисунок 4.2 підкреслює, що result має три частини: lower regret, lower median regret і rolling robustness 4 / 4. Саме поєднання цих критеріїв дозволяє назвати результат offline/read-model Strategy Promotion. Водночас safety boundary залишається незмінною.
+
+
+4.3. Чому V2+ сильніший за raw forecast
+
+
+Raw NBEATSx і TFT можуть мати корисні price signals, але BESS schedule залежить від розташування екстремумів, spread shape, SOC path і фізичних constraints. V2+ працює вище forecast layer: він порівнює candidate schedules, а не тільки прогнозні ряди. Це пояснює, чому calibrated forecast може допомогти, але headline improvement виникає після schedule/value selection.
+
+
+Архітектурно V2+ складається з трьох рівнів. 
+1. Перший рівень - candidate library: поруч із frozen V2 додаються deterministic schedule families, які атакують конкретні failure modes попереднього рішення. До них належать perturbation around price extrema, robust spread penalty, small timing shifts around strict_similar_day, temporal block reconciliation і terminal SOC target. 
+2. Другий рівень - prior-only selector: він дивиться на train/prior anchors, prior family regret, forecast spread, forecast objective value, throughput, degradation proxy, SOC slack і candidate identity, але не використовує final-holdout regret як ознаку. 
+3. Третій рівень - unchanged strict LP/oracle scoring: кожний selected schedule оцінюється тим самим evaluator, що й strict, raw і V2. Саме ця комбінація дає V2+ перевагу: модель не намагається "вгадати ціну краще за всіх", а вибирає той feasible schedule, який має кращу decision-value evidence.
+
+
+Схему архітектурної різниці між підходами наведено на рисунку 4.3.
+  Рисунок 4.3. Архітектурне порівняння raw, strict, V2+, DFL і DT
+
+
+Рисунок 4.3 показує, що raw forecast зупиняється на price vector, strict_similar_day дає безпечний, але негнучкий fallback, а V2+ додає schedule-family search і conservative prior-only switching. DFL і Decision Transformer мають потенційно сильнішу форму навчання, але в поточному evidence set вони не мають достатнього prior-safe signal, щоб замінити V2+ без деградації.
+
+
+Strict baseline програє V2+ не тому, що є поганим контрольним методом. Навпаки, його сила в тому, що він leakage-free, простий і стабільний. Але strict_similar_day не бачить нові feasible schedule families і не навчається на prior evidence, де саме baseline втрачає value. Тому він залишається корисним fallback і comparator, але не headline result: його mean regret 310.58 UAH суттєво вищий за 174.77 UAH у V2+.
+
+
+Raw forecast програє ще сильніше. Raw reference має mean regret 622.25 UAH і median regret 290.22 UAH, бо price forecast не дорівнює battery decision. Навіть якщо forecast вловлює загальний рівень ціни, LP може отримати неправильний порядок charge/discharge годин, terminal SOC pressure або надмірний throughput. V2+ зменшує цю проблему через schedule-level selection: він оцінює не абстрактну точність ряду, а downstream value після фізичних і економічних constraints.
+
+
+DFL-напрям у роботі не відкинуто, але його поточні реалізації не перемогли V2+. Candidate-value DFL v3, residual/DT bridge і regret-aware selector були корисними як negative evidence: вони перевіряли, чи можна навчити prior-only replacement rule поверх V2+. DFL v2 matched V2+ на рівні mean regret 174.77 UAH, але не створив replacement improvement. Regret-aware selector поставив правильнішу ціль -    (`regret_delta_vs_v2_plus_uah`), де   , тобто value gap відносно V2+, а не label accuracy. Однак conservative run зробив 0 / 90 non-V2+ switches і 90 / 90 abstentions, а нижчі thresholds погіршували mean regret. Це означає, що DFL є перспективним наступним кроком, але поточні point-in-time features ще не підтримують safe replacement of V2+.
+
+
+Decision Transformer у поточному evidence set не програв через саму ідею sequence modeling. Негативний результат пов'язаний із постановкою proxy-задачі: поточний DT shadow навчається як candidate-index / schedule-family sequence classifier з cross-entropy objective. Така модель оптимізує відтворення teacher labels, а не LP/oracle regret напряму. Тому classification diagnostics можуть виглядати прийнятно, але це не гарантує кращої decision value. У apples-to-apples comparison DT selected mean regret становив 460.30 UAH, тобто був гіршим за V2+ на 285.53 UAH і навіть гіршим за strict_reference. Подальший regret-aware selector перевірив правильнішу value-gap постановку: він не погіршив V2+, але conservative gate abstained back to V2+ на всіх holdout anchors. Отже, коректний висновок полягає не в тому, що DT неможливо натренувати правильно, а в тому, що поточні дані та ознаки ще не дають evidence для заміни V2+ або DT/LAVA promotion. Додатково V13 source-readiness не дозволяє описувати DT/LAVA як готовий training або execution contour.
+
+
+Кількісне порівняння підходів наведено на рисунку 4.4.
+  Рисунок 4.4. Порівняння mean regret для raw, DT, strict, V2 і V2+
+
+
+Рисунок 4.4 підкреслює головну логіку результату: нижчий regret має не найскладніша модель за назвою, а той підхід, який краще поєднує feasible schedules, prior-only selection і strict LP/oracle evaluation. V2+ перемагає в поточному evidence set саме як conservative decision layer, а не як claim про універсальну перевагу над усіма майбутніми DFL або DT варіантами.
+
+
+У практичній інтерпретації оператор отримує не "сирий прогноз", а пояснення: який schedule обрано, який regret очікується за backtest evidence, чому fallback не гірший і які gates пройдено. Така структура робить dashboard корисним для українського BESS owner, бо він бачить decision evidence, а не лише графік ціни.
+
+
+4.4. Robustness і negative evidence
+
+
+Після V2+ були перевірені додаткові candidate-value та plateau-breaking кроки. Їхній підсумок наведено в таблиці 4.3.
+
+
+Таблиця 4.3. Robustness і plateau diagnostics після V2+
+Challenger
+	Observed result
+	Gate status
+	V3 candidate-value
+	Додав value labels, але не дав robust improvement
+	Not promoted
+	V4 plateau breaker
+	Діагностував failure-mode candidates
+	Not promoted
+	V5 point-in-time repair
+	Покращив protocol clarity, але не замінив V2+
+	Not promoted
+	Regret-aware selector
+	0 / 90 non-V2+ switches; abstention best
+	Keep V2+ fallback
+	Таблиця 4.3 показує, що подальші candidate-value кроки не дали safe replacement of V2+. Це не знецінює результат, а навпаки робить його сильнішим: система демонструє здатність зупинити challenger, якщо він не проходить strict gate. Для дипломної роботи важливо показати не лише success path, а й disciplined non-promotion.
+
+
+Пояснення плато наведено на рисунку 4.5.
+
+
+  
+
+Рисунок 4.5. Діагностика плато V3/V4/V5
+
+
+Рисунок 4.5 фіксує логіку негативної evidence. Якщо новий selector не має стійкого prior-only сигналу, abstention і fallback до V2+ є правильним рішенням. Це зменшує ризик перебільшення claims і формує реалістичний roadmap майбутніх досліджень.
+
+
+4.5. Shadow evidence і непідтверджені challengers
+
+
+Після headline V2+ були перевірені додаткові гілки, які могли б пояснити або потенційно покращити результат. Їхній підсумок наведено в таблиці 4.4.
+
+
+Таблиця 4.4. Shadow evidence, near-miss results і blockers
+Shadow lane
+	Ключовий результат
+	Чому не headline
+	TFT quantile
+	Best TFT V2+ row: 225.47 UAH mean regret; 121.00 UAH median regret
+	Гірше за frozen V2+ 174.77 / 67.30 UAH; blocked
+	Poland lag24 / prior-only veto
+	177.34 UAH richer mean; prior-only veto 167.05 / 55.97 UAH
+	Near-miss: 4.41% improvement below 5%; not promoted
+	DT apples-to-apples
+	460.30 UAH mean regret; +285.53 UAH vs V2+
+	Research-shadow only; not promoted
+	V13 acquisition
+	Safe-switch support validated; explicit DAM publication receipts missing
+	dt_lava_ready=false; permits_model_training=false
+	Таблиця 4.4 важлива не менше за headline. Вона показує, що система не просуває model family тільки через сучасну назву або локально привабливий сигнал. Poland prior-only veto є найцікавішим near-miss: він знизив mean і median regret, але не пройшов консервативний поріг replacement. TFT та DT лишилися корисними для аналізу, але не для зміни default strategy.
+
+
+Межу TFT наведено на рисунку 4.6.
+
+
+  
+
+Рисунок 4.6. TFT як complementary schedule expert
+
+
+Рисунок 4.6 показує, що TFT не є провалом. Він є complementary schedule expert і джерело uncertainty/diversity evidence. Але поки current prior-only selector не може robustly використати ці local wins, headline architecture лишається V2+.
+
+
+Межу Decision Transformer наведено на рисунку 4.7.
+
+
+  
+
+Рисунок 4.7. Decision Transformer shadow boundary
+
+
+Рисунок 4.7 показує, що DT shadow корисний як proof-of-pipeline: sequence dataset, HF DecisionTransformerModel і evaluation contour працюють. Однак apples-to-apples mean regret 460.30 UAH гірший за V2+ 174.77 UAH, а V13 source-readiness не дозволяє DT/LAVA promotion. Тому чесний висновок: DT є research-shadow, не deployed controller.
+
+
+4.6. Шлях експериментів
+
+
+Експериментальний шлях у роботі можна стисло подати як послідовність контрольованих gates. Спочатку strict_similar_day задає leakage-free baseline. Далі raw NBEATSx/TFT forecast adapters створюють price signals, але не вважаються рішенням самі по собі. Потім LP contour перетворює forecast або selector output на feasible schedule, а regret/value scoring порівнює цей schedule з oracle. Після цього V2 і V2+ перевіряються на 5 tenants, 90 tenant-anchors і 4 rolling windows. Цю послідовність наведено на рисунку 4.8.
+
+
+  
+
+
+
+Рисунок 4.8. Експериментальний шлях від baseline до operator preview
+
+
+Рисунок 4.8 показує, що кожний етап додає не "красивішу модель", а новий рівень доказовості. Raw forecast стає корисним тільки після LP scoring; V2+ стає headline лише після rolling robustness; shadow lanes залишаються diagnostics, якщо не проходять gate.
+
+
+Цей шлях пояснює, чому результат не зводиться до одного числа. V2 довів корисність schedule/value selection проти strict baseline. V2+ став headline, бо одночасно знизив mean regret, median regret і пройшов rolling robustness. Shadow lanes після цього мали роль challengers: вони могли замінити V2+ лише за умови prior-only evidence, non-degradation і достатнього improvement. Жоден challenger такого рівня доказовості не дав.
+4.7. Що можна впевнено показувати оператору
+
+
+На поточному етапі оператору можна показувати не market command, а evidence-backed preview. До такого preview належать selected strategy, hourly DAM recommendation rows, forecast/read-model context, regret/value comparison, V2+ versus strict/raw comparators, gate status, V13 readiness і shadow diagnostics. Кожний елемент має читатися як пояснення рішення, а не як ProposedBid, ClearedTrade або DispatchCommand.
+
+
+Склад такого operator-facing preview наведено на рисунку 4.9.
+
+
+  
+
+
+
+Рисунок 4.9. Що можна впевнено показувати оператору
+
+
+Рисунок 4.9 відділяє дозволені read-model елементи від недозволених execution objects. Оператор може бачити schedule preview, regret/value comparison і gate status, але система не формує market-submittable bid або dispatch command.
+
+
+Operator-preview частина має 24 hourly DAM recommendation-preview rows, зокрема 1 BUY, 2 SELL і 21 HOLD. Такий розподіл не є слабкістю: HOLD може бути правильним рішенням, якщо spread, SOC або risk не підтримують charge/discharge. Саме тому dashboard має оцінюватися через regret/value і gate status, а не через кількість активних BUY/SELL action labels.
+4.8. Практична інтерпретація для України
+
+
+Практичний результат полягає не в тому, що система торгує, а в тому, що вона допомагає оператору приймати evidence-informed decisions. Для українського BESS owner це корисно з трьох причин. По-перше, DAM preview можна демонструвати без regulatory overreach. По-друге, кожний result row має audit trail і може бути пояснений через regret/value. По-третє, система явно показує blockers: source receipts, V13, DT/LAVA і market execution не змішуються з current MVP.
+
+
+Прапорець market_execution_enabled=false у цьому контексті є частиною safety case. Він означає, що навіть підтверджений offline result не перетворюється автоматично на live market action. Щоб змінити цю межу, потрібні source receipts, operational responsibility, legal review, market integration і monitoring. Тому current practical suitability означає operator-facing evidence preview, а не готовність до live trading.
+4.9. Обмеження результатів
+
+
+Головні обмеження результатів залишаються явними. Результат не охоплює live bid submission, settlement reconciliation, balancing market, physical inverter dispatch або повний electrochemical digital twin. LP contour є достатнім для однакового feasibility/value evaluation, але не замінює production asset-management model. External source lanes, зокрема Poland lag24 / prior-only veto і V13, показують потенціал, але не скасовують source-governance blockers.
+
+
+Ці обмеження не зменшують цінність розділу, бо вони визначають чесну межу claims. V2+ можна описувати як strongest offline/read-model strategy result у наявному evidence set. Його не можна описувати як універсальну гарантію прибутку, market-ready bid engine або deployed DT/DFL controller. Така межа робить результат захищеним академічно й придатним для практичного roadmap.
+4.10. Висновок до розділу 4
+
+
+Головний результат роботи - V2+ schedule/value selector з mean regret 174.77 UAH, median regret 67.30 UAH, improvement 43.73% проти strict і 15.31% проти V2, а також rolling robustness 4 / 4. Raw forecast, TFT, Poland lag24 / prior-only veto, regret-aware selector і DT shadow не змінюють headline, але роблять розділ сильнішим: вони показують не лише success path, а й дисципліновані non-promotion decisions. Підсумкова межа залишається незмінною: DAM recommendation preview, offline/read-model evidence і no market execution.
+Розділ 5. Висновки та рекомендації
+
+
+5.1. Підсумок виконаних завдань
+
+
+У роботі побудовано практичну evidence system для DAM recommendation preview у задачі BESS-арбітражу. Основна ідея полягала в тому, щоб оцінювати не лише прогноз ціни, а downstream decision value після LP schedule optimization. Це дозволило перейти від forecast-only порівнянь до regret/value evidence, яка краще відповідає реальній економічній задачі оператора BESS.
+
+
+Підсумок цілей і результатів наведено в таблиці 5.1.
+
+
+Таблиця 5.1. Цілі роботи та отримані результати
+Мета
+	Підсумок
+	Практичне значення
+	Оцінити DAM BESS рішення
+	Regret/value введено як головний критерій
+	Рішення оцінюються економічно, не тільки forecast-only
+	Побудувати MVP
+	Dagster/FastAPI/dashboard read model працює як evidence surface
+	Оператор бачить preview без live execution
+	Перевірити ML/DFL потенціал
+	V2+ став headline, TFT/DT лишились shadow
+	Система не overclaim-ить слабкі challengers
+	Зберегти безпеку
+	market_execution_enabled=false і V13 blockers явні
+	Підхід придатний для академічної демонстрації в Україні
+	Таблиця 5.1 показує, що основні завдання виконано в межах безпечного scope. Робота не заявляє live market execution, але дає defendable academic MVP: source-backed offline evidence, dashboard/read-model preview, strict LP/oracle scoring і пояснювану межу V13.
+
+
+5.2. Основні висновки
+
+
+Перший висновок: для BESS arbitrage forecast-only метрики недостатні. Практична якість визначається тим, скільки economic value schedule втрачає відносно oracle LP. Тому regret/value має бути центральним критерієм, а MAE/RMSE - допоміжним forecast diagnostics.
+
+
+Другий висновок: Schedule/Value Learner V2+ є найсильнішим підтвердженим результатом у наявному evidence set. Його mean regret 174.77 UAH, median regret 67.30 UAH і rolling robustness 4 / 4 формують достатню основу для offline/read-model Strategy Promotion, але не для market execution.
+
+
+Третій висновок: negative evidence є важливою частиною академічної якості. TFT, Poland lag24 / prior-only veto, DT shadow і V3/V4/V5 diagnostics не були приховані або подані як перемоги. Вони пояснюють межі поточної архітектури й показують, що система зберігає fallback, коли challenger недостатньо надійний.
+
+
+Четвертий висновок: для української практики найціннішою є не автономність, а контрольована прозорість. Operator preview може допомогти зрозуміти schedule logic, але market_execution_enabled=false має залишатися явним до проходження джерельних, юридичних і операційних gates.
+
+
+5.3. Рекомендації для впровадження
+
+
+Практичний roadmap наведено на рисунку 5.1.
+
+
+  
+
+Рисунок 5.1. Практичний roadmap впровадження для України
+
+
+Рисунок 5.1 показує послідовний шлях: спочатку evidence and preview, потім source receipts і point-in-time context, після цього shadow challengers під strict LP/oracle, і лише значно пізніше supervised execution gate. Такий порядок зменшує ризик overclaiming і робить систему придатною для поступового використання в українському контексті.
+
+
+V2+ залишається default preview strategy, а TFT/DT/Poland lanes - shadow diagnostics. Подальша робота зосереджується на explicit DAM publication receipts, richer point-in-time context, перевірці null coverage у зовнішніх features і окремому legal/operational design для market-submittable contours. До цього моменту жодний dashboard або API endpoint не описується як trading console.
+
+
+5.4. Підсумковий висновок
+
+
+Робота демонструє практично придатний і академічно чесний шлях від українського DAM price signal до BESS recommendation preview. Головна цінність полягає в disciplined evidence: результат є коротшим, зрозумілішим і краще обмеженим, ніж перелік усіх дослідницьких траєкторій. Claim boundary залишається незмінною: DAM recommendation preview, offline evidence, no market execution.
+
+
+
+
+5.5. Обмеження роботи
+
+
+Основне обмеження полягає в тому, що результат не є market-executable system. У роботі немає live bid submission, settlement reconciliation, physical dispatch integration або юридичного процесу участі на ринку. Це не недолік реалізації, а свідома межа. Для market execution потрібні інші gates, відповідальність і source receipts, яких поточний academic MVP не заявляє.
+
+
+Друге обмеження - спрощення фізики батареї. LP contour враховує основні feasibility constraints, але не є повним electrochemical digital twin. Для практичного preview цього достатньо, а повний production asset management потребує детальнішої SOH/degradation моделі й перевірки на measured telemetry.
+
+
+Третє обмеження - статус зовнішніх джерел. TFT, Poland lag24 / prior-only veto і V13 acquisition lanes показують потенціал, але не проходять достатні gates для headline promotion. Тому вони залишаються roadmap evidence, а не результатом, який змінює default strategy.
+
+
+5.6. Напрями подальшого розвитку
+
+
+Перший напрям - завершення explicit DAM publication receipt lane. Це розблокує сильніші source-readiness claims і дозволить безпечніше розглядати DT/LAVA або інші sequence-policy approaches. Другий напрям - покращення point-in-time context для candidate-value learners, особливо там, де current features не підтримують safe replacement of V2+. Третій напрям - контрольоване розширення TFT/Poland feature space після repair null coverage і rolling validation.
+
+
+Окремий напрям розвитку - operator experience. Dashboard пояснює не тільки що рекомендовано, а й чому рекомендація не є market command. Для практичного використання це може бути важливіше за додавання ще однієї моделі: оператору потрібна довіра, auditability і зрозуміла межа відповідальності.
+
+
+5.7. Завершальний практичний висновок
+
+
+Коротка інтерпретація така: система вже корисна як академічний і операторський preview, але ще не є trading system. Результат є обґрунтованим. Він показує реальну інженерну придатність для України, не перебільшуючи рівень ринкової готовності.
+
+
+
+
+5.8. Пілотне використання після завершення роботи
+
+
+Робота може бути основою для controlled pilot. У такому контурі market_execution_enabled=false зберігається, source-readiness та monitoring поступово покращуються, shadow validation виконується на новіших даних без зміни default strategy, а operator decisions порівнюються з preview для оцінки корисності пояснень.
+
+
+Execution integration належить до наступного етапу. Навіть тоді execution залишається окремим bounded context, із власними schema, permissions, audit logs і rollback procedures. Поточна робота не змішує ці етапи.
+
+
+5.9. Підсумкова академічна позиція
+
+
+Академічна позиція роботи полягає в контрольованій практичності. Вона не є суто теоретичною, бо має працюючий MVP і реальні evidence artifacts. Вона не є неконтрольованим стартап-прототипом, бо кожний сильний claim має gate і boundary. Вона не є повним research paper про DT або DFL, бо DT/DFL напрями залишені в чесному status research-shadow / future work.
+
+
+5.10. Відповідь на дослідницьке питання
+
+
+Дослідницьке питання: чи можна побудувати практично придатну, безпечну й evidence-backed систему DAM recommendation preview для BESS в Україні, де якість оцінюється через decision value? Відповідь роботи - так, у межі offline/read-model evidence. V2+ демонструє кращий regret/value результат, а архітектура показує, як цей результат подати оператору без переходу до market execution.
+
+
+Друга частина відповіді не менш важлива: не всі advanced AI lanes готові. TFT, Poland lag24 / prior-only veto і DT shadow є корисними, але не headline. V13 source-readiness лишається gate. Тому підсумковий результат не перебільшує AI capability, а показує контрольовану практичну цінність.

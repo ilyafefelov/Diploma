@@ -47,6 +47,25 @@ EVALUATION_SUMMARY_JSON_NAME: Final[str] = (
 EVALUATION_VALIDATION_JSON_NAME: Final[str] = (
     "dt_research_shadow_evaluation_validation.json"
 )
+OBJECTIVE_KIND_CROSS_ENTROPY: Final[str] = "cross_entropy_candidate_index"
+OBJECTIVE_KIND_DECISION_AWARE: Final[str] = (
+    "decision_aware_regret_value_ranking"
+)
+OBJECTIVE_KIND_V2_PLUS_RULE_DISTILLATION: Final[str] = (
+    "v2_plus_rule_distillation"
+)
+LOSS_FUNCTION_DECISION_AWARE: Final[str] = (
+    "cross_entropy_candidate_index_plus_decision_aware_regret_value_ranking"
+)
+LOSS_FUNCTION_V2_PLUS_RULE_DISTILLATION: Final[str] = (
+    "v2_plus_rule_distillation_listwise"
+)
+DEFAULT_OBJECTIVE_KIND: Final[str] = OBJECTIVE_KIND_DECISION_AWARE
+DEFAULT_CROSS_ENTROPY_WEIGHT: Final[float] = 1.0
+DEFAULT_DECISION_AWARE_RANKING_WEIGHT: Final[float] = 1.0
+DEFAULT_DISTILLATION_WEIGHT: Final[float] = 1.0
+DEFAULT_MIN_PREDICTED_IMPROVEMENT_UAH: Final[float] = 50.0
+DEFAULT_MAX_FAMILY_TAIL_RISK_PROBABILITY: Final[float] = 0.5
 
 STATE_FEATURE_NAMES: Final[tuple[str, ...]] = (
     "forecast_vector_mean_scaled",
@@ -375,6 +394,17 @@ def build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
                 ),
                 ("final_holdout", anchor),
             ):
+                v2_plus_selected_candidate_index = role_to_index[
+                    "schedule_value_learner_v2_plus"
+                ]
+                v2_plus_selected_candidate_id = _v2_plus_strict_candidate_id(
+                    row=v2_row,
+                    anchor_timestamp=anchor_timestamp,
+                    family=V2_PLUS_STRICT_ROLE_TO_FAMILY[
+                        "schedule_value_learner_v2_plus"
+                    ],
+                    candidate_index=v2_plus_selected_candidate_index,
+                )
                 adapted_rows.append(
                     _v2_plus_strict_teacher_row(
                         row=row,
@@ -385,6 +415,8 @@ def build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
                         family=V2_PLUS_STRICT_ROLE_TO_FAMILY[role],
                         v2_regret=v2_regret,
                         best_label=best_labels.get(_anchor_key(row)),
+                        v2_plus_selected_candidate_index=v2_plus_selected_candidate_index,
+                        v2_plus_selected_candidate_id=v2_plus_selected_candidate_id,
                     )
                 )
     if not adapted_rows:
@@ -698,11 +730,59 @@ def run_dt_research_shadow_smoke(
     learning_rate: float = 0.01,
     seed: int = 20260525,
     model_backbone: str = "auto",
+    objective_kind: str = DEFAULT_OBJECTIVE_KIND,
+    cross_entropy_weight: float = DEFAULT_CROSS_ENTROPY_WEIGHT,
+    decision_aware_ranking_weight: float = DEFAULT_DECISION_AWARE_RANKING_WEIGHT,
+    distillation_weight: float = DEFAULT_DISTILLATION_WEIGHT,
+    min_predicted_improvement_uah: float = DEFAULT_MIN_PREDICTED_IMPROVEMENT_UAH,
+    max_family_tail_risk_probability: float = (
+        DEFAULT_MAX_FAMILY_TAIL_RISK_PROBABILITY
+    ),
 ) -> dict[str, Path]:
-    """Train/evaluate a tiny local DT-compatible candidate-index classifier."""
+    """Train/evaluate a tiny DT research shadow with conservative V2+ fallback."""
 
     if max_epochs <= 0:
         raise ValueError("max_epochs must be positive for the research-shadow smoke.")
+    if cross_entropy_weight < 0.0:
+        raise ValueError("cross_entropy_weight must be non-negative.")
+    if decision_aware_ranking_weight < 0.0:
+        raise ValueError("decision_aware_ranking_weight must be non-negative.")
+    if distillation_weight < 0.0:
+        raise ValueError("distillation_weight must be non-negative.")
+    if min_predicted_improvement_uah < 0.0:
+        raise ValueError("min_predicted_improvement_uah must be non-negative.")
+    if not 0.0 <= max_family_tail_risk_probability <= 1.0:
+        raise ValueError("max_family_tail_risk_probability must be in [0, 1].")
+    if objective_kind not in {
+        OBJECTIVE_KIND_CROSS_ENTROPY,
+        OBJECTIVE_KIND_DECISION_AWARE,
+        OBJECTIVE_KIND_V2_PLUS_RULE_DISTILLATION,
+    }:
+        raise ValueError(
+            "objective_kind must be one of: "
+            f"{OBJECTIVE_KIND_CROSS_ENTROPY}, {OBJECTIVE_KIND_DECISION_AWARE}, "
+            f"{OBJECTIVE_KIND_V2_PLUS_RULE_DISTILLATION}."
+        )
+    if (
+        objective_kind == OBJECTIVE_KIND_V2_PLUS_RULE_DISTILLATION
+        and cross_entropy_weight == DEFAULT_CROSS_ENTROPY_WEIGHT
+        and decision_aware_ranking_weight == DEFAULT_DECISION_AWARE_RANKING_WEIGHT
+        and distillation_weight == DEFAULT_DISTILLATION_WEIGHT
+    ):
+        cross_entropy_weight = 0.0
+        decision_aware_ranking_weight = 0.0
+
+    objective_config = _training_objective_config(
+        objective_kind=objective_kind,
+        cross_entropy_weight=cross_entropy_weight,
+        decision_aware_ranking_weight=decision_aware_ranking_weight,
+        distillation_weight=distillation_weight,
+    )
+    selection_policy = _selection_policy_config(
+        min_predicted_improvement_uah=min_predicted_improvement_uah,
+        max_family_tail_risk_probability=max_family_tail_risk_probability,
+    )
+
     torch.manual_seed(seed)
     npz = np.load(sequence_npz_path, allow_pickle=True)
     states = torch.tensor(npz["states"], dtype=torch.float32)
@@ -757,6 +837,12 @@ def run_dt_research_shadow_smoke(
     previous_actions = _previous_action_one_hot(actions, action_dim=action_dim)
     train_loss_first = 0.0
     train_loss_last = 0.0
+    train_ce_loss_first = 0.0
+    train_ce_loss_last = 0.0
+    train_decision_aware_loss_first = 0.0
+    train_decision_aware_loss_last = 0.0
+    train_distillation_loss_first = 0.0
+    train_distillation_loss_last = 0.0
     model.train()
     for epoch in range(max_epochs):
         optimizer.zero_grad()
@@ -778,13 +864,73 @@ def run_dt_research_shadow_smoke(
                 candidate_mask[train_indices],
             ).reshape(-1),
         )
+        decision_aware_ranking_loss = torch.zeros_like(loss)
+        distillation_rule_loss = torch.zeros_like(loss)
+        if objective_kind == OBJECTIVE_KIND_DECISION_AWARE:
+            decision_aware_ranking_loss = _decision_aware_ranking_loss(
+                logits=logits,
+                actions=actions[train_indices],
+                candidate_mask=candidate_mask[train_indices],
+                candidate_regret=torch.tensor(
+                    npz["candidate_regret_uah"][train_indices],
+                    dtype=torch.float32,
+                ),
+                candidate_value=torch.tensor(
+                    npz["candidate_value_uah"][train_indices],
+                    dtype=torch.float32,
+                ),
+                is_v2_plus=torch.tensor(
+                    npz["is_v2_plus_reference"][train_indices],
+                    dtype=torch.bool,
+                ),
+            )
+        if objective_kind == OBJECTIVE_KIND_V2_PLUS_RULE_DISTILLATION:
+            distillation_rule_loss = _v2_plus_rule_distillation_loss(
+                logits=logits,
+                actions=actions[train_indices],
+                candidate_mask=candidate_mask[train_indices],
+                target_mask=torch.tensor(
+                    npz["v2_plus_rule_distillation_target_mask"][train_indices],
+                    dtype=torch.bool,
+                ),
+            )
+        weighted_loss = (
+            cross_entropy_weight * loss
+            + decision_aware_ranking_weight * decision_aware_ranking_loss
+            + distillation_weight * distillation_rule_loss
+        )
         if epoch == 0:
-            train_loss_first = float(loss.detach().item())
-        train_loss_last = float(loss.detach().item())
-        loss.backward()
+            train_loss_first = float(weighted_loss.detach().item())
+            train_ce_loss_first = float(loss.detach().item())
+            train_decision_aware_loss_first = float(
+                decision_aware_ranking_loss.detach().item()
+            )
+            train_distillation_loss_first = float(
+                distillation_rule_loss.detach().item()
+            )
+        train_loss_last = float(weighted_loss.detach().item())
+        train_ce_loss_last = float(loss.detach().item())
+        train_decision_aware_loss_last = float(
+            decision_aware_ranking_loss.detach().item()
+        )
+        train_distillation_loss_last = float(
+            distillation_rule_loss.detach().item()
+        )
+        weighted_loss.backward()
         optimizer.step()
     model.eval()
     with torch.no_grad():
+        train_logits = _dt_policy_logits(
+            model=model,
+            selected_backbone=selected_backbone,
+            states=states[train_indices],
+            previous_actions=previous_actions[train_indices],
+            returns_to_go=returns_to_go[train_indices],
+        )
+        train_logits = _mask_infeasible_action_logits(
+            train_logits,
+            action_feasibility_mask[train_indices],
+        )
         eval_logits = _dt_policy_logits(
             model=model,
             selected_backbone=selected_backbone,
@@ -803,16 +949,58 @@ def run_dt_research_shadow_smoke(
                 candidate_mask[eval_indices],
             ).reshape(-1),
         )
-    metrics = _evaluation_metrics(
+    eval_decision_aware_ranking_loss = torch.zeros_like(eval_loss)
+    eval_distillation_loss = torch.zeros_like(eval_loss)
+    if objective_kind == OBJECTIVE_KIND_DECISION_AWARE:
+        eval_decision_aware_ranking_loss = _decision_aware_ranking_loss(
+            logits=eval_logits,
+            actions=actions[eval_indices],
+            candidate_mask=candidate_mask[eval_indices],
+            candidate_regret=torch.tensor(
+                npz["candidate_regret_uah"][eval_indices],
+                dtype=torch.float32,
+            ),
+            candidate_value=torch.tensor(
+                npz["candidate_value_uah"][eval_indices],
+                dtype=torch.float32,
+            ),
+            is_v2_plus=torch.tensor(
+                npz["is_v2_plus_reference"][eval_indices],
+                dtype=torch.bool,
+            ),
+        )
+    if objective_kind == OBJECTIVE_KIND_V2_PLUS_RULE_DISTILLATION:
+        eval_distillation_loss = _v2_plus_rule_distillation_loss(
+            logits=eval_logits,
+            actions=actions[eval_indices],
+            candidate_mask=candidate_mask[eval_indices],
+            target_mask=torch.tensor(
+                npz["v2_plus_rule_distillation_target_mask"][eval_indices],
+                dtype=torch.bool,
+            ),
+        )
+    metrics, selected_rows = _evaluation_metrics_and_preview_rows(
         npz=npz,
         eval_indices=eval_indices,
         eval_logits=eval_logits.detach().cpu().numpy(),
+        train_indices=train_indices,
+        train_logits=train_logits.detach().cpu().numpy(),
+        min_predicted_improvement_uah=min_predicted_improvement_uah,
+        max_family_tail_risk_probability=max_family_tail_risk_probability,
     )
     metrics["eval_cross_entropy_loss"] = float(eval_loss.detach().item())
+    metrics["eval_decision_aware_ranking_loss"] = float(
+        eval_decision_aware_ranking_loss.detach().item()
+    )
+    metrics["eval_weighted_objective_loss"] = float(
+        cross_entropy_weight * eval_loss.detach().item()
+        + decision_aware_ranking_weight
+        * eval_decision_aware_ranking_loss.detach().item()
+        + distillation_weight * eval_distillation_loss.detach().item()
+    )
+    metrics["eval_distillation_loss"] = float(eval_distillation_loss.detach().item())
     selected_preview_packet = _dt_research_shadow_selected_preview_packet(
-        npz=npz,
-        eval_indices=eval_indices,
-        eval_logits=eval_logits.detach().cpu().numpy(),
+        selected_rows=selected_rows,
         metrics=metrics,
     )
     summary = {
@@ -823,7 +1011,17 @@ def run_dt_research_shadow_smoke(
         "hf_transformers_available": hf_available,
         "hf_decision_transformer_available": hf_available,
         "hf_decision_transformer_status": hf_reason,
-        "loss_function": "cross_entropy_candidate_index",
+        "loss_function": (
+            LOSS_FUNCTION_DECISION_AWARE
+            if objective_kind == OBJECTIVE_KIND_DECISION_AWARE
+            else (
+                LOSS_FUNCTION_V2_PLUS_RULE_DISTILLATION
+                if objective_kind == OBJECTIVE_KIND_V2_PLUS_RULE_DISTILLATION
+                else OBJECTIVE_KIND_CROSS_ENTROPY
+            )
+        ),
+        "training_objective": objective_config,
+        "selection_policy": selection_policy,
         "dt_tensor_contract": {
             "states_shape": list(states.shape),
             "actions_shape": list(actions.shape),
@@ -859,6 +1057,12 @@ def run_dt_research_shadow_smoke(
         ),
         "train_loss_first": train_loss_first,
         "train_loss_last": train_loss_last,
+        "train_cross_entropy_loss_first": train_ce_loss_first,
+        "train_cross_entropy_loss_last": train_ce_loss_last,
+        "train_decision_aware_ranking_loss_first": train_decision_aware_loss_first,
+        "train_decision_aware_ranking_loss_last": train_decision_aware_loss_last,
+        "train_distillation_loss_first": train_distillation_loss_first,
+        "train_distillation_loss_last": train_distillation_loss_last,
         "comparison_controls": [
             "strict_lp_oracle_reference",
             "schedule_value_learner_v2_plus_teacher_comparator_fallback",
@@ -1016,6 +1220,8 @@ def _v2_plus_strict_teacher_row(
     family: str,
     v2_regret: float,
     best_label: Mapping[str, Any] | None,
+    v2_plus_selected_candidate_index: int,
+    v2_plus_selected_candidate_id: str,
 ) -> dict[str, Any]:
     payload = _json_mapping(row.get("evaluation_payload"))
     horizon = _list_value(payload.get("horizon"))
@@ -1039,6 +1245,9 @@ def _v2_plus_strict_teacher_row(
     regret_delta = regret - v2_regret
     label = dict(best_label or {})
     candidate_model_name = _non_empty_text(row.get("forecast_model_name"), family)
+    label_is_v2_plus_selected_candidate = (
+        family == "schedule_value_learner_v2_plus"
+    )
     return {
         "tenant_id": _non_empty_text(row.get("tenant_id"), "unknown_tenant"),
         "source_model_name": _non_empty_text(
@@ -1088,6 +1297,12 @@ def _v2_plus_strict_teacher_row(
         "analysis_only": True,
         "label_regret_delta_vs_v2_plus_uah": regret_delta,
         "label_beats_v2_plus": regret_delta < 0.0,
+        "label_is_v2_plus_selected_candidate": label_is_v2_plus_selected_candidate,
+        "label_v2_plus_selected_candidate_index": v2_plus_selected_candidate_index,
+        "label_v2_plus_selected_candidate_id": v2_plus_selected_candidate_id,
+        "label_v2_plus_rule_distillation_target": (
+            label_is_v2_plus_selected_candidate
+        ),
         "market_execution_enabled": False,
         "label_safe_switch_win": regret_delta < 0.0,
         "label_tail_risk_loss": False,
@@ -1588,9 +1803,21 @@ def _sequence_arrays(frame: pl.DataFrame, *, context_length: int) -> dict[str, A
     )
     candidate_regret = np.full((len(sequences), context_length), np.nan, dtype=np.float32)
     candidate_value = np.full((len(sequences), context_length), np.nan, dtype=np.float32)
+    candidate_regret_delta = np.full(
+        (len(sequences), context_length),
+        np.nan,
+        dtype=np.float32,
+    )
+    candidate_tail_risk = np.zeros((len(sequences), context_length), dtype=bool)
     candidate_family_ids = np.full((len(sequences), context_length), -1, dtype=np.int64)
     is_v2_plus = np.zeros((len(sequences), context_length), dtype=bool)
     is_strict = np.zeros((len(sequences), context_length), dtype=bool)
+    v2_plus_rule_target_mask = np.zeros((len(sequences), context_length), dtype=bool)
+    v2_plus_rule_target_candidate_id = np.full(
+        (len(sequences), context_length),
+        "",
+        dtype=object,
+    )
     safety_counts = np.zeros((len(sequences), context_length), dtype=np.int64)
     split_names: list[str] = []
     anchor_timestamps: list[str] = []
@@ -1624,6 +1851,21 @@ def _sequence_arrays(frame: pl.DataFrame, *, context_length: int) -> dict[str, A
             action_feasibility_mask[sequence_index, position, feasible_actions] = True
             candidate_regret[sequence_index, position] = _float(row["regret_uah"])
             candidate_value[sequence_index, position] = _float(row["schedule_value_uah"])
+            candidate_regret_delta[sequence_index, position] = _float(
+                row.get("regret_delta_vs_v2_plus_uah")
+            )
+            candidate_tail_risk[sequence_index, position] = (
+                _bool(row.get("label_tail_risk_loss"))
+                or _int(row.get("safety_violation_count")) > 0
+            )
+            is_v2_plus_target = _bool(
+                row.get("label_v2_plus_rule_distillation_target")
+            ) or _bool(row.get("label_is_v2_plus_selected_candidate"))
+            if is_v2_plus_target:
+                v2_plus_rule_target_mask[sequence_index, position] = True
+                v2_plus_rule_target_candidate_id[sequence_index, position] = str(
+                    row.get("dt_candidate_id_target", "")
+                )
             candidate_family_ids[sequence_index, position] = family_to_id[family]
             is_v2_plus[sequence_index, position] = _is_v2_plus_family(family)
             is_strict[sequence_index, position] = _is_strict_family(family)
@@ -1643,6 +1885,10 @@ def _sequence_arrays(frame: pl.DataFrame, *, context_length: int) -> dict[str, A
         "action_feasibility_mask": action_feasibility_mask,
         "candidate_regret_uah": candidate_regret,
         "candidate_value_uah": candidate_value,
+        "candidate_regret_delta_vs_v2_plus_uah": candidate_regret_delta,
+        "candidate_tail_risk_label": candidate_tail_risk,
+        "v2_plus_rule_distillation_target_mask": v2_plus_rule_target_mask,
+        "v2_plus_rule_distillation_target_candidate_id": v2_plus_rule_target_candidate_id,
         "candidate_family_ids": candidate_family_ids,
         "candidate_family_names": np.array(family_names, dtype=object),
         "is_v2_plus_reference": is_v2_plus,
@@ -1832,58 +2078,164 @@ def _mask_infeasible_action_logits(
     return logits.masked_fill(~action_feasibility_mask, -1_000_000_000.0)
 
 
-def _evaluation_metrics(
+def _training_objective_config(
+    *,
+    objective_kind: str,
+    cross_entropy_weight: float,
+    decision_aware_ranking_weight: float,
+    distillation_weight: float,
+) -> dict[str, Any]:
+    return {
+        "objective_kind": objective_kind,
+        "cross_entropy_weight": float(cross_entropy_weight),
+        "decision_aware_ranking_weight": float(decision_aware_ranking_weight),
+        "distillation_weight": float(distillation_weight),
+        "action_target": "candidate_index_or_schedule_family",
+        "raw_hourly_buy_sell_hold_action_target": False,
+        "market_execution_enabled": False,
+    }
+
+
+def _selection_policy_config(
+    *,
+    min_predicted_improvement_uah: float,
+    max_family_tail_risk_probability: float,
+) -> dict[str, Any]:
+    return {
+        "selection_method": "conservative_v2_plus_fallback_shadow_selector",
+        "v2_plus_default_fallback": True,
+        "min_predicted_improvement_uah": float(min_predicted_improvement_uah),
+        "max_family_tail_risk_probability": float(max_family_tail_risk_probability),
+        "market_execution_enabled": False,
+    }
+
+
+def _decision_aware_ranking_loss(
+    *,
+    logits: torch.Tensor,
+    actions: torch.Tensor,
+    candidate_mask: torch.Tensor,
+    candidate_regret: torch.Tensor,
+    candidate_value: torch.Tensor,
+    is_v2_plus: torch.Tensor,
+) -> torch.Tensor:
+    losses: list[torch.Tensor] = []
+    for sequence_index in range(logits.shape[0]):
+        valid_positions = torch.nonzero(candidate_mask[sequence_index], as_tuple=False).reshape(-1)
+        if valid_positions.numel() == 0:
+            continue
+        action_ids = actions[sequence_index, valid_positions]
+        valid_action_flags = action_ids >= 0
+        if not bool(valid_action_flags.any()):
+            continue
+        valid_positions = valid_positions[valid_action_flags]
+        action_ids = action_ids[valid_action_flags]
+        candidate_scores = logits[sequence_index, valid_positions, action_ids]
+        regrets = candidate_regret[sequence_index, valid_positions]
+        values = candidate_value[sequence_index, valid_positions]
+        v2_positions = valid_positions[
+            is_v2_plus[sequence_index, valid_positions]
+        ]
+        if v2_positions.numel() > 0:
+            v2_position = int(v2_positions[0].item())
+            reference_regret = candidate_regret[sequence_index, v2_position]
+            reference_value = candidate_value[sequence_index, v2_position]
+        else:
+            finite_regrets = regrets[torch.isfinite(regrets)]
+            finite_values = values[torch.isfinite(values)]
+            reference_regret = (
+                finite_regrets.min()
+                if finite_regrets.numel() > 0
+                else torch.tensor(0.0, dtype=logits.dtype, device=logits.device)
+            )
+            reference_value = (
+                finite_values.max()
+                if finite_values.numel() > 0
+                else torch.tensor(0.0, dtype=logits.dtype, device=logits.device)
+            )
+        improvement = reference_regret - regrets
+        value_gain = values - reference_value
+        utility = improvement + 0.25 * value_gain
+        utility = torch.nan_to_num(utility, nan=0.0, posinf=0.0, neginf=0.0)
+        target = torch.softmax(utility / 25.0, dim=0)
+        log_probs = torch.log_softmax(candidate_scores, dim=0)
+        losses.append(-(target * log_probs).sum())
+    if not losses:
+        return torch.zeros((), dtype=logits.dtype, device=logits.device)
+    return torch.stack(losses).mean()
+
+
+def _v2_plus_rule_distillation_loss(
+    *,
+    logits: torch.Tensor,
+    actions: torch.Tensor,
+    candidate_mask: torch.Tensor,
+    target_mask: torch.Tensor,
+) -> torch.Tensor:
+    losses: list[torch.Tensor] = []
+    for sequence_index in range(logits.shape[0]):
+        valid_positions = torch.nonzero(
+            candidate_mask[sequence_index],
+            as_tuple=False,
+        ).reshape(-1)
+        if valid_positions.numel() == 0:
+            continue
+        action_ids = actions[sequence_index, valid_positions]
+        valid_action_flags = action_ids >= 0
+        if not bool(valid_action_flags.any()):
+            continue
+        valid_positions = valid_positions[valid_action_flags]
+        action_ids = action_ids[valid_action_flags]
+        candidate_scores = logits[sequence_index, valid_positions, action_ids]
+        target_positions = torch.nonzero(
+            target_mask[sequence_index, valid_positions],
+            as_tuple=False,
+        ).reshape(-1)
+        if target_positions.numel() != 1:
+            continue
+        target_relative_index = int(target_positions[0].item())
+        log_probs = torch.log_softmax(candidate_scores, dim=0)
+        losses.append(-log_probs[target_relative_index])
+    if not losses:
+        return torch.zeros((), dtype=logits.dtype, device=logits.device)
+    return torch.stack(losses).mean()
+
+
+def _evaluation_metrics_and_preview_rows(
     *,
     npz: np.lib.npyio.NpzFile,
     eval_indices: np.ndarray,
     eval_logits: np.ndarray,
-) -> dict[str, float]:
-    action_labels = npz["actions"][eval_indices]
-    candidate_mask = npz["candidate_mask"][eval_indices]
-    action_feasibility_mask = npz["action_feasibility_mask"][eval_indices]
+    train_indices: np.ndarray,
+    train_logits: np.ndarray,
+    min_predicted_improvement_uah: float,
+    max_family_tail_risk_probability: float,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    selected_rows, diagnostics = _conservative_preview_rows(
+        npz=npz,
+        eval_indices=eval_indices,
+        eval_logits=eval_logits,
+        train_indices=train_indices,
+        train_logits=train_logits,
+        min_predicted_improvement_uah=min_predicted_improvement_uah,
+        max_family_tail_risk_probability=max_family_tail_risk_probability,
+    )
+    dt_regrets = [float(row["dt_selected_regret_uah"]) for row in selected_rows]
+    dt_values = [float(row["dt_selected_value_uah"]) for row in selected_rows]
+    v2_regrets = [float(row["v2_plus_regret_uah"]) for row in selected_rows]
+    v2_values = [float(row["v2_plus_value_uah"]) for row in selected_rows]
+    strict_regrets = [float(row["strict_regret_uah"]) for row in selected_rows]
+    strict_values = [float(row["strict_value_uah"]) for row in selected_rows]
+
     candidate_regret = npz["candidate_regret_uah"][eval_indices]
     candidate_value = npz["candidate_value_uah"][eval_indices]
     family_ids = npz["candidate_family_ids"]
-    is_v2_plus = npz["is_v2_plus_reference"][eval_indices]
-    is_strict = npz["is_strict_reference"][eval_indices]
     train_family_ids = family_ids[npz["split_names"].astype(str) == "train"]
     behavior_family_id = _majority_family_id(train_family_ids)
 
-    dt_regrets: list[float] = []
-    dt_values: list[float] = []
-    v2_regrets: list[float] = []
-    v2_values: list[float] = []
-    strict_regrets: list[float] = []
-    strict_values: list[float] = []
     bc_regrets: list[float] = []
     bc_values: list[float] = []
-    correct = 0
-    total = 0
-    infeasible_predictions = 0
     for index in range(len(eval_indices)):
-        valid_positions = np.flatnonzero(candidate_mask[index])
-        if len(valid_positions) == 0:
-            continue
-        predicted_token_classes = np.argmax(eval_logits[index], axis=-1)
-        for position in valid_positions:
-            total += 1
-            predicted_class = int(predicted_token_classes[position])
-            if not bool(action_feasibility_mask[index, position, predicted_class]):
-                infeasible_predictions += 1
-            if predicted_token_classes[position] == action_labels[index, position]:
-                correct += 1
-        candidate_scores = [
-            eval_logits[index, position, int(action_labels[index, position])]
-            for position in valid_positions
-            if int(action_labels[index, position]) >= 0
-        ]
-        selected_position = int(valid_positions[int(np.argmax(candidate_scores))])
-        dt_regrets.append(float(candidate_regret[index, selected_position]))
-        dt_values.append(float(candidate_value[index, selected_position]))
-        v2_regrets.append(_reference_regret(candidate_regret[index], is_v2_plus[index]))
-        v2_values.append(_reference_value(candidate_value[index], is_v2_plus[index]))
-        strict_regrets.append(_reference_regret(candidate_regret[index], is_strict[index]))
-        strict_values.append(_reference_value(candidate_value[index], is_strict[index]))
         behavior_mask = np.equal(family_ids[eval_indices[index]], behavior_family_id)
         bc_regrets.append(
             _reference_regret(
@@ -1892,39 +2244,100 @@ def _evaluation_metrics(
             )
         )
         bc_values.append(_reference_value(candidate_value[index], behavior_mask))
-    return {
+    switch_rows = [
+        row
+        for row in selected_rows
+        if not bool(row["abstained_to_v2_plus"])
+        and not _is_v2_plus_family(str(row["selected_schedule_family"]))
+    ]
+    switch_regret_deltas = [float(row["regret_vs_v2_plus_uah"]) for row in switch_rows]
+    raw_distilled_regrets = [
+        float(row["raw_selected_regret_uah"]) for row in selected_rows
+    ]
+    raw_distilled_values = [
+        float(row["raw_selected_value_uah"]) for row in selected_rows
+    ]
+    raw_distilled_regret_deltas = [
+        float(row["raw_selected_regret_uah"] - row["v2_plus_regret_uah"])
+        for row in selected_rows
+    ]
+    raw_distilled_win_count = int(sum(delta < 0.0 for delta in raw_distilled_regret_deltas))
+    raw_distilled_loss_count = int(sum(delta > 0.0 for delta in raw_distilled_regret_deltas))
+    raw_distilled_tie_count = int(sum(delta == 0.0 for delta in raw_distilled_regret_deltas))
+    recovery_target_rows = [
+        row
+        for row in selected_rows
+        if str(row.get("v2_plus_rule_target_candidate_id", "")).strip()
+    ]
+    recovery_count = sum(
+        1
+        for row in recovery_target_rows
+        if bool(row.get("raw_selected_matches_v2_plus_rule_target"))
+    )
+    metrics = {
         "dt_selected_mean_regret_uah": _safe_mean(dt_regrets),
         "dt_selected_mean_value_uah": _safe_mean(dt_values),
+        "dt_selected_median_regret_uah": _safe_median(dt_regrets),
+        "dt_selected_median_value_uah": _safe_median(dt_values),
         "v2_plus_mean_regret_uah": _safe_mean(v2_regrets),
         "v2_plus_mean_value_uah": _safe_mean(v2_values),
+        "v2_plus_median_regret_uah": _safe_median(v2_regrets),
+        "v2_plus_median_value_uah": _safe_median(v2_values),
         "strict_mean_regret_uah": _safe_mean(strict_regrets),
         "strict_mean_value_uah": _safe_mean(strict_values),
+        "strict_median_regret_uah": _safe_median(strict_regrets),
+        "strict_median_value_uah": _safe_median(strict_values),
         "behavior_cloning_mean_regret_uah": _safe_mean(bc_regrets),
         "behavior_cloning_mean_value_uah": _safe_mean(bc_values),
-        "infeasible_action_prediction_count": float(infeasible_predictions),
-        "accuracy_secondary": float(correct / total) if total else 0.0,
+        "behavior_cloning_median_regret_uah": _safe_median(bc_regrets),
+        "behavior_cloning_median_value_uah": _safe_median(bc_values),
+        "non_v2_plus_switch_count": float(len(switch_rows)),
+        "abstention_count": float(
+            sum(1 for row in selected_rows if bool(row["abstained_to_v2_plus"]))
+        ),
+        "switch_win_count": float(sum(delta < 0.0 for delta in switch_regret_deltas)),
+        "switch_loss_count": float(sum(delta > 0.0 for delta in switch_regret_deltas)),
+        "switch_tie_count": float(sum(delta == 0.0 for delta in switch_regret_deltas)),
+        "switch_mean_regret_delta_uah": _safe_mean(switch_regret_deltas),
+        "infeasible_action_prediction_count": float(
+            diagnostics["infeasible_action_predictions"]
+        ),
+        "accuracy_secondary": float(
+            diagnostics["correct"] / diagnostics["total"]
+        )
+        if diagnostics["total"]
+        else 0.0,
+        "v2_plus_rule_recovery_rate": float(recovery_count / len(recovery_target_rows))
+        if recovery_target_rows
+        else 0.0,
+        "raw_distilled_argmax_mean_regret_uah": _safe_mean(raw_distilled_regrets),
+        "raw_distilled_argmax_median_regret_uah": _safe_median(raw_distilled_regrets),
+        "raw_distilled_argmax_mean_value_uah": _safe_mean(raw_distilled_values),
+        "raw_distilled_argmax_minus_v2_plus_mean_regret_uah": _safe_mean(
+            raw_distilled_regret_deltas
+        ),
+        "raw_distilled_argmax_win_loss_tie_vs_v2_plus": {
+            "wins": raw_distilled_win_count,
+            "losses": raw_distilled_loss_count,
+            "ties": raw_distilled_tie_count,
+        },
     }
+    return metrics, selected_rows
 
 
 def _dt_research_shadow_selected_preview_packet(
     *,
-    npz: np.lib.npyio.NpzFile,
-    eval_indices: np.ndarray,
-    eval_logits: np.ndarray,
-    metrics: Mapping[str, float],
+    selected_rows: list[dict[str, Any]],
+    metrics: Mapping[str, Any],
 ) -> dict[str, Any]:
     return {
         "claim_scope": (
             "dt_research_shadow_selected_schedule_preview_not_promotable_not_market_execution"
         ),
         "selection_method": (
-            "highest_feasible_dt_candidate_logit_over_evaluation_sequence_candidates"
+            "conservative_v2_plus_fallback_by_predicted_improvement_and_tail_risk"
         ),
-        "preview_rows": _dt_research_shadow_selected_preview_rows(
-            npz=npz,
-            eval_indices=eval_indices,
-            eval_logits=eval_logits,
-        ),
+        "preview_rows": selected_rows,
         "evaluation_metrics": dict(metrics),
         "action_target": "candidate_index_or_schedule_family",
         "raw_hourly_buy_sell_hold_action_target": False,
@@ -1935,48 +2348,132 @@ def _dt_research_shadow_selected_preview_packet(
     }
 
 
-def _dt_research_shadow_selected_preview_rows(
+def _conservative_preview_rows(
     *,
     npz: np.lib.npyio.NpzFile,
     eval_indices: np.ndarray,
     eval_logits: np.ndarray,
-) -> list[dict[str, Any]]:
+    train_indices: np.ndarray,
+    train_logits: np.ndarray,
+    min_predicted_improvement_uah: float,
+    max_family_tail_risk_probability: float,
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
     action_labels = npz["actions"][eval_indices]
     candidate_mask = npz["candidate_mask"][eval_indices]
+    action_feasibility_mask = npz["action_feasibility_mask"][eval_indices]
     candidate_ids = npz["candidate_id_targets"][eval_indices].astype(str)
     schedule_families = npz["schedule_family_targets"][eval_indices].astype(str)
     candidate_regret = npz["candidate_regret_uah"][eval_indices]
     candidate_value = npz["candidate_value_uah"][eval_indices]
     candidate_safety = npz["candidate_safety_violation_count"][eval_indices]
-    anchor_timestamps = npz["anchor_timestamps"].astype(str)
     is_v2_plus = npz["is_v2_plus_reference"][eval_indices]
     is_strict = npz["is_strict_reference"][eval_indices]
+    v2_plus_target_mask = (
+        npz["v2_plus_rule_distillation_target_mask"][eval_indices]
+        if "v2_plus_rule_distillation_target_mask" in npz.files
+        else np.zeros_like(candidate_mask, dtype=bool)
+    )
+    v2_plus_target_candidate_id = (
+        npz["v2_plus_rule_distillation_target_candidate_id"][eval_indices].astype(str)
+        if "v2_plus_rule_distillation_target_candidate_id" in npz.files
+        else np.full(candidate_ids.shape, "", dtype=object).astype(str)
+    )
+    anchor_timestamps = npz["anchor_timestamps"].astype(str)
+    tail_risk_probabilities = _family_tail_risk_probabilities(
+        npz=npz,
+        train_indices=train_indices,
+    )
+    margin_slope, margin_intercept = _margin_to_improvement_calibration(
+        npz=npz,
+        sequence_indices=train_indices,
+        logits=train_logits,
+    )
     rows: list[dict[str, Any]] = []
+    diagnostics = {"correct": 0, "total": 0, "infeasible_action_predictions": 0}
     for local_index, sequence_index in enumerate(eval_indices):
         valid_positions = np.flatnonzero(candidate_mask[local_index])
         if len(valid_positions) == 0:
             continue
-        candidate_scores = [
-            eval_logits[local_index, position, int(action_labels[local_index, position])]
-            for position in valid_positions
-            if int(action_labels[local_index, position]) >= 0
-        ]
-        if not candidate_scores:
+        predicted_token_classes = np.argmax(eval_logits[local_index], axis=-1)
+        for position in valid_positions:
+            diagnostics["total"] += 1
+            predicted_class = int(predicted_token_classes[position])
+            if not bool(action_feasibility_mask[local_index, position, predicted_class]):
+                diagnostics["infeasible_action_predictions"] += 1
+            if predicted_class == int(action_labels[local_index, position]):
+                diagnostics["correct"] += 1
+        candidate_score_rows: list[tuple[int, float]] = []
+        for position in valid_positions:
+            action_class = int(action_labels[local_index, position])
+            if action_class < 0:
+                continue
+            candidate_score_rows.append(
+                (int(position), float(eval_logits[local_index, position, action_class]))
+            )
+        if not candidate_score_rows:
             continue
-        selected_position = int(valid_positions[int(np.argmax(candidate_scores))])
+        raw_selected_position = max(candidate_score_rows, key=lambda row: row[1])[0]
+        raw_selected_score = dict(candidate_score_rows)[raw_selected_position]
+        raw_selected_regret = float(candidate_regret[local_index, raw_selected_position])
+        raw_selected_value = float(candidate_value[local_index, raw_selected_position])
+        v2_plus_target_positions = np.flatnonzero(
+            candidate_mask[local_index] & v2_plus_target_mask[local_index]
+        )
+        v2_plus_target_position = (
+            int(v2_plus_target_positions[0]) if len(v2_plus_target_positions) else None
+        )
+        target_candidate_id = (
+            str(v2_plus_target_candidate_id[local_index, v2_plus_target_position])
+            if v2_plus_target_position is not None
+            else ""
+        )
+        raw_selected_matches_target = (
+            v2_plus_target_position is not None
+            and raw_selected_position == v2_plus_target_position
+        )
+        v2_positions = np.flatnonzero(
+            candidate_mask[local_index] & is_v2_plus[local_index]
+        )
+        v2_position = int(v2_positions[0]) if len(v2_positions) else raw_selected_position
+        v2_candidate_id = str(candidate_ids[local_index, v2_position])
+        v2_regret = float(candidate_regret[local_index, v2_position])
+        v2_value = float(candidate_value[local_index, v2_position])
+        v2_score = dict(candidate_score_rows).get(v2_position, raw_selected_score)
+        predicted_improvement = (
+            margin_slope * (raw_selected_score - v2_score) + margin_intercept
+            if raw_selected_position != v2_position
+            else 0.0
+        )
+        raw_selected_family = str(schedule_families[local_index, raw_selected_position])
+        family_tail_risk_probability = tail_risk_probabilities.get(raw_selected_family, 0.0)
+        tail_risk_guard_passed = (
+            family_tail_risk_probability <= max_family_tail_risk_probability
+            and int(candidate_safety[local_index, raw_selected_position]) <= 0
+        )
+        abstained_to_v2_plus = False
+        abstention_reason = ""
+        selected_position = raw_selected_position
+        if raw_selected_position != v2_position:
+            if not tail_risk_guard_passed:
+                abstained_to_v2_plus = True
+                abstention_reason = "tail_risk_guard_blocked"
+                selected_position = v2_position
+            elif predicted_improvement < min_predicted_improvement_uah:
+                abstained_to_v2_plus = True
+                abstention_reason = "predicted_improvement_below_threshold"
+                selected_position = v2_position
+
         selected_candidate_id = str(candidate_ids[local_index, selected_position])
         selected_regret = float(candidate_regret[local_index, selected_position])
         selected_value = float(candidate_value[local_index, selected_position])
-        v2_regret = _reference_regret(
-            candidate_regret[local_index],
-            is_v2_plus[local_index],
-        )
-        v2_value = _reference_value(candidate_value[local_index], is_v2_plus[local_index])
         strict_regret = _reference_regret(
             candidate_regret[local_index],
             is_strict[local_index],
         )
-        strict_value = _reference_value(candidate_value[local_index], is_strict[local_index])
+        strict_value = _reference_value(
+            candidate_value[local_index],
+            is_strict[local_index],
+        )
         rows.append(
             {
                 "tenant_id": _candidate_id_part(selected_candidate_id, 0),
@@ -1989,17 +2486,49 @@ def _dt_research_shadow_selected_preview_rows(
                 "selected_candidate_index": int(
                     action_labels[local_index, selected_position]
                 ),
-                "selected_candidate_position": selected_position,
+                "selected_candidate_position": int(selected_position),
+                "raw_selected_candidate_id": str(
+                    candidate_ids[local_index, raw_selected_position]
+                ),
+                "raw_selected_schedule_family": raw_selected_family,
+                "raw_selected_candidate_index": int(
+                    action_labels[local_index, raw_selected_position]
+                ),
+                "raw_selected_regret_uah": raw_selected_regret,
+                "raw_selected_value_uah": raw_selected_value,
+                "raw_selected_minus_v2_plus_regret_uah": (
+                    raw_selected_regret - v2_regret
+                ),
+                "raw_selected_minus_v2_plus_value_uah": (
+                    raw_selected_value - v2_value
+                ),
+                "v2_plus_rule_target_candidate_id": target_candidate_id,
+                "v2_plus_rule_target_candidate_index": (
+                    int(action_labels[local_index, v2_plus_target_position])
+                    if v2_plus_target_position is not None
+                    else None
+                ),
+                "raw_selected_matches_v2_plus_rule_target": bool(
+                    raw_selected_matches_target
+                ),
+                "v2_plus_candidate_id": v2_candidate_id,
                 "dt_selected_regret_uah": selected_regret,
                 "dt_selected_value_uah": selected_value,
                 "v2_plus_regret_uah": v2_regret,
                 "v2_plus_value_uah": v2_value,
                 "strict_regret_uah": strict_regret,
                 "strict_value_uah": strict_value,
+                "selected_minus_v2_plus_regret_uah": selected_regret - v2_regret,
+                "selected_minus_v2_plus_value_uah": selected_value - v2_value,
                 "regret_vs_v2_plus_uah": selected_regret - v2_regret,
                 "regret_vs_strict_uah": selected_regret - strict_regret,
                 "value_vs_v2_plus_uah": selected_value - v2_value,
                 "value_vs_strict_uah": selected_value - strict_value,
+                "predicted_improvement_vs_v2_plus_uah": float(predicted_improvement),
+                "abstained_to_v2_plus": bool(abstained_to_v2_plus),
+                "abstention_reason": abstention_reason,
+                "family_tail_risk_probability": float(family_tail_risk_probability),
+                "tail_risk_guard_passed": bool(tail_risk_guard_passed),
                 "candidate_safety_violation_count": int(
                     candidate_safety[local_index, selected_position]
                 ),
@@ -2009,7 +2538,102 @@ def _dt_research_shadow_selected_preview_rows(
                 "market_execution_enabled": False,
             }
         )
-    return rows
+    return rows, diagnostics
+
+
+def _family_tail_risk_probabilities(
+    *,
+    npz: np.lib.npyio.NpzFile,
+    train_indices: np.ndarray,
+) -> dict[str, float]:
+    if len(train_indices) == 0:
+        return {}
+    families = npz["schedule_family_targets"][train_indices].astype(str)
+    if "candidate_tail_risk_label" in npz.files:
+        labels = npz["candidate_tail_risk_label"][train_indices]
+    else:
+        safety = npz["candidate_safety_violation_count"][train_indices]
+        labels = np.array(safety > 0, dtype=bool)
+    mask = npz["candidate_mask"][train_indices]
+    counts: dict[str, int] = {}
+    positives: dict[str, int] = {}
+    for sequence_index in range(families.shape[0]):
+        for position in range(families.shape[1]):
+            if not bool(mask[sequence_index, position]):
+                continue
+            family = str(families[sequence_index, position])
+            counts[family] = counts.get(family, 0) + 1
+            if bool(labels[sequence_index, position]):
+                positives[family] = positives.get(family, 0) + 1
+    return {
+        family: float(positives.get(family, 0) / count)
+        for family, count in counts.items()
+        if count > 0
+    }
+
+
+def _margin_to_improvement_calibration(
+    *,
+    npz: np.lib.npyio.NpzFile,
+    sequence_indices: np.ndarray,
+    logits: np.ndarray,
+) -> tuple[float, float]:
+    if len(sequence_indices) == 0:
+        return 0.0, 0.0
+    action_labels = npz["actions"][sequence_indices]
+    candidate_mask = npz["candidate_mask"][sequence_indices]
+    is_v2_plus = npz["is_v2_plus_reference"][sequence_indices]
+    candidate_regret = npz["candidate_regret_uah"][sequence_indices]
+    margins: list[float] = []
+    improvements: list[float] = []
+    for sequence_local_index in range(len(sequence_indices)):
+        valid_positions = np.flatnonzero(candidate_mask[sequence_local_index])
+        if len(valid_positions) == 0:
+            continue
+        candidate_scores: list[tuple[int, float]] = []
+        for position in valid_positions:
+            action_class = int(action_labels[sequence_local_index, position])
+            if action_class < 0:
+                continue
+            candidate_scores.append(
+                (
+                    int(position),
+                    float(logits[sequence_local_index, position, action_class]),
+                )
+            )
+        if not candidate_scores:
+            continue
+        raw_position = max(candidate_scores, key=lambda row: row[1])[0]
+        v2_positions = np.flatnonzero(
+            candidate_mask[sequence_local_index] & is_v2_plus[sequence_local_index]
+        )
+        if len(v2_positions) == 0:
+            continue
+        v2_position = int(v2_positions[0])
+        score_lookup = dict(candidate_scores)
+        raw_score = score_lookup.get(raw_position)
+        v2_score = score_lookup.get(v2_position)
+        if raw_score is None or v2_score is None:
+            continue
+        raw_regret = float(candidate_regret[sequence_local_index, raw_position])
+        v2_regret = float(candidate_regret[sequence_local_index, v2_position])
+        margins.append(raw_score - v2_score)
+        improvements.append(v2_regret - raw_regret)
+    if not margins:
+        return 0.0, 0.0
+    margin_array = np.array(margins, dtype=np.float64)
+    improvement_array = np.array(improvements, dtype=np.float64)
+    margin_mean = float(np.mean(margin_array))
+    improvement_mean = float(np.mean(improvement_array))
+    margin_var = float(np.var(margin_array))
+    if margin_var < 1e-9:
+        return 0.0, improvement_mean
+    covariance = float(
+        np.mean((margin_array - margin_mean) * (improvement_array - improvement_mean))
+    )
+    slope = covariance / margin_var
+    intercept = improvement_mean - slope * margin_mean
+    return float(slope), float(intercept)
 
 
 def _candidate_id_part(candidate_id: str, index: int) -> str:
@@ -2044,6 +2668,10 @@ def _reference_metric(values: np.ndarray, mask: np.ndarray) -> float:
 
 def _safe_mean(values: list[float]) -> float:
     return float(sum(values) / len(values)) if values else 0.0
+
+
+def _safe_median(values: list[float]) -> float:
+    return float(np.median(np.array(values, dtype=np.float64))) if values else 0.0
 
 
 def _add_gate(
@@ -2137,6 +2765,16 @@ def _float(value: object, *, fallback: float = 0.0) -> float:
         except ValueError:
             return fallback
     return fallback
+
+
+def _bool(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().casefold() in {"1", "true", "yes"}
+    return False
 
 
 def _float_or_none(value: object) -> float | None:

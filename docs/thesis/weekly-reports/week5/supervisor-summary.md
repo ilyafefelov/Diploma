@@ -19,6 +19,12 @@ fallback-row mean regret (`627.04` UAH), але це не real V2+ comparator.
 `174.77` UAH, strict/oracle `310.58` UAH, DT selected `460.30` UAH. Тому DT є
 manual dashboard preview, не thesis headline і не deployment claim.
 
+Після цього додано regret-aware follow-up: selector навчається на
+`regret_delta_vs_v2_plus_uah` з weighted loss і explicit abstention. Поточний
+conservative result робить `0 / 90` non-V2+ switches, `90 / 90` abstentions і
+зберігає V2+ mean regret `174.77` UAH. Це показує, що objective виправлено, але
+current point-in-time features ще не дають підстав замінювати V2+.
+
 Що готове для перегляду:
 
 - Week 5 report: [report.md](./report.md)
@@ -27,6 +33,7 @@ manual dashboard preview, не thesis headline і не deployment claim.
 - Evidence manifest: [../../appendices/evidence-manifest.md](../../appendices/evidence-manifest.md)
 - Direct DT Shadow note: [../../../technical/DT_DIRECT_CANDIDATE_SHADOW.md](../../../technical/DT_DIRECT_CANDIDATE_SHADOW.md)
 - Apples-to-apples DT note: [../../../technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md](../../../technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md)
+- Regret-aware selector note: [../../../technical/REGRET_AWARE_V2_PLUS_SELECTOR_SHADOW.md](../../../technical/REGRET_AWARE_V2_PLUS_SELECTOR_SHADOW.md)
 - V13 sprint note: [../../../technical/deep-research-reports/2026-05-25-full-project-review/v13-f3-acquisition-sprint-2026-05-26.md](../../../technical/deep-research-reports/2026-05-25-full-project-review/v13-f3-acquisition-sprint-2026-05-26.md)
 - Methodology draft: [../../chapters/03-Methodology.md](../../chapters/03-Methodology.md)
 - Results draft: [../../chapters/04-results-and-discussion.md](../../chapters/04-results-and-discussion.md)

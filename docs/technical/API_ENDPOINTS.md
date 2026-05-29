@@ -590,8 +590,9 @@ Operational notes:
 Returns a manually selected shadow/diagnostic recommendation preview for the
 operator dashboard. The dashboard uses it only when the operator selects a
 non-default preview source such as `dt_shadow`,
-`dt_direct_candidate_shadow`, `poland_tft_shadow`, `dfl_diagnostics`, or
-`v13_dt_lava_promoted_training`.
+`dt_direct_candidate_shadow`, `dt_v2_plus_apples_to_apples_shadow`,
+`regret_aware_v2_plus_selector_shadow`, `poland_tft_shadow`,
+`dfl_diagnostics`, or `v13_dt_lava_promoted_training`.
 
 Request query example:
 
@@ -604,8 +605,9 @@ Response shape:
 - `preview_source_id`, `preview_source_label`, `preview_status`: selected manual
   preview source and its boundary label. Current statuses include
   `research_shadow_not_promoted`, `direct_candidate_shadow_not_promoted`,
-  `apples_to_apples_not_promoted`, `positive_not_promoted`, `diagnostic_only`, and
-  `blocked_source_readiness_roadmap`.
+  `apples_to_apples_not_promoted`,
+  `regret_aware_abstention_not_promoted`, `positive_not_promoted`,
+  `diagnostic_only`, and `blocked_source_readiness_roadmap`.
 - `default_strategy_id`: the honest default/fallback strategy that remains
   selected when the operator is not viewing a manual shadow source; current
   value is `schedule_value_learner_v2_plus`.
@@ -616,7 +618,11 @@ Response shape:
   candidate id, schedule family, expected value, regret/value versus V2+ and
   strict reference, and gate/safety status.
 - `comparison_metrics`: regret/value metrics for DT/shadow versus V2+,
-  strict/oracle reference, and behavior-cloning controls when present.
+  strict/oracle reference, and behavior-cloning controls when present. The
+  regret-aware selector also exposes `selector_mean_regret_uah`,
+  `v2_plus_mean_regret_uah`,
+  `selector_minus_v2_plus_mean_regret_uah`,
+  `non_v2_plus_switch_count`, and `abstention_count`.
 - `available_preview_sources`: dashboard strategy-switch options.
 - `boundary_labels` and `readiness_warnings`: display labels such as
   `DT Shadow`, `Not promoted`, `Preview only`, `No market execution`, and
@@ -640,6 +646,13 @@ Operational notes:
   `preview_source=dt_v2_plus_apples_to_apples_shadow`, has DT selected mean
   regret `460.30` UAH versus real V2+ `174.77` UAH and strict `310.58` UAH, and
   stays non-promoted.
+- Regret-aware V2+ selector is the corrected shadow model path for the current
+  dashboard story. It is manually selectable as
+  `preview_source=regret_aware_v2_plus_selector_shadow`, trains against the
+  value-gap/regret-delta objective, reports selector mean regret `174.77` UAH
+  versus V2+ `174.77` UAH, and abstains back to V2+ with `0 / 90` non-V2+
+  switches and `90 / 90` abstentions. It is not a default switch, DT/LAVA
+  promotion, or market-execution permission.
 - `v13_dt_lava_promoted_training` intentionally returns blocked roadmap
   evidence while explicit DAM publication receipts/source-readiness gates are
   blocked.

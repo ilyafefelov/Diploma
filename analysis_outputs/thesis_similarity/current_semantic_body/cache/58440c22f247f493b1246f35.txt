@@ -1,0 +1,1581 @@
+Ukraine’s Energy  
+Security and the  
+Coming Winter 
+An energy action plan for Ukraine 
+and its partners
+
+The IEA examines the 
+full spectrum 
+of energy issues 
+including oil, gas and 
+coal supply and 
+demand, renewable 
+energy technologies, 
+electricity markets, 
+energy efficiency, 
+access to energy, 
+demand side 
+management and 
+much more. Through 
+its work, the IEA 
+advocates policies that 
+will enhance the 
+reliability, affordability 
+and sustainability of 
+energy in its  
+31 member countries, 
+13 association 
+countries and beyond.
+This publication and any 
+map included herein are 
+without prejudice to the 
+status of or sovereignty over 
+any territory, to the 
+delimitation of international 
+frontiers and boundaries and 
+to the name of any territory, 
+city or area.
+Source: IEA. 
+International Energy Agency 
+Website: www.iea.org
+IEA member 
+countries:    
+Australia
+Austria
+Belgium
+Canada
+Czech Republic
+Denmark
+Estonia
+Finland
+France
+Germany
+Greece
+Hungary
+Ireland
+Italy
+Japan
+Korea
+Lithuania
+Luxembourg
+Mexico
+Netherlands
+New Zealand
+Norway
+Poland
+Portugal
+Slovak Republic
+Spain
+Sweden
+Switzerland
+Republic of Türkiye
+United Kingdom
+United States
+The European 
+Commission also 
+participates in the 
+work of the IEA
+IEA association 
+countries:
+Argentina 
+Brazil
+China
+Egypt
+India
+Indonesia
+Kenya
+Morocco
+Senegal
+Singapore 
+South Africa 
+Thailand 
+Ukraine
+INTERNATIONAL ENERGY
+AGENCY
+
+Ukraine’s Energy Security and the Coming Winter Abstract 
+ 
+PAGE | 3  
+I EA. CC BY 4.0. 
+Abstract  
+This special report from the IEA,  Ukraine’s Energy Security and the Coming 
+Winter, provides an energy action plan for Ukraine and its partners to help the 
+country meet its energy needs through the challenging months ahead. 
+Ukraine's energy system has been targeted since Russia launched its full-scale 
+invasion of the country in February 2022. These attacks on key infrastructure have 
+recently increased and intensified, posing a huge threat to reliable access to 
+power, heating and communications services across Ukraine this winter. 
+This special report lays out 10 key energy actions to reinforce the country’s energy 
+security – essential to its security overall – at this critical juncture. It will take stock 
+of the war’s impact on Ukraine’s energy sector, identify key risks for the coming 
+winter and outline immediate actions that Ukraine and its partners could take in 
+response. While the main focus is on Ukraine, the report also examines the energy 
+situation in Moldova. 
+ 
+
+Ukraine’s Energy Security and the Coming Winter Acknowledgements 
+PAGE | 4  
+I EA. CC BY 4.0. 
+Acknowledgements, contributors 
+and credits  
+This report was prepared by a team drawn from different parts of the International 
+Energy Agency (IEA). It was designed and directed by Tim Gould, Chief Energy 
+Economist. T he lead authors were  Craig Hart, Dennis Hesseling, Akos Losz, 
+Gergely Molnar, Talya Vatman and Jacques Warichet. 
+Valuable comments and feedback were provided by IEA senior management and 
+other colleagues within the IEA , in particular by Mary Warlick , Ali Al-Saffar, 
+Theresa Gebhardt , Ronan Graham, Pablo Hevia Koch, Milosz Karpinski, 
+Christophe McGlade, Emma Mooney, Ksenia Petrichenko, Jairo Plata, Frederick 
+Ritter, and Peter Zeniewski. 
+Thanks go to the IEA’s Communications and Digital Office for their help in 
+producing the report and website materials. Particular thanks go to Julia Horowitz, 
+who edited the report, and to Jethro Mullen, Rob Stone, Astrid Dumond, Clara 
+Vallois and Poeli Bojorquez. 
+Many senior government officials and international experts provided input and 
+reviewed a preliminary draft of the report. Their comments and suggestions were 
+of great value. They include:  colleagues from the Ministry of Energy of Ukraine  
+and from Ukrenergo, and from the Ministry of Energy of the Republic of Moldova; 
+Jonathan Elkind (Center on Global Energy Policy, Columbia University) ; 
+Frederikke Laursen and Pernille Hagedorn-Rasmussen (Danish Energy Agency); 
+Inna Surzhok, Valentyna Diatlovska, Oleksii Orzh el and Jasmina Trhulj (Energy 
+Community); Arvid Tuerkner and Giuseppe Grimaldi (European Bank for 
+Reconstruction and Development) ; Jolanta Navickaite, Julia Walschebauer and 
+Mechthild Woersdoerfer (DG-ENER, European Commission) ; Bruno Governeur 
+(ENTSO-E); Kacper Zeromski (ENTSO-G); Susanne Nies (Green Deal Ukraina); 
+Borys Dodonov (Kyiv School of Economics); Krzysztof Bolesta (Ministry of Climate 
+and Environment, Poland) ; Dovilė Paužaitė  and Vita Naujokaityt ė (Ministry of 
+Foreign Affairs, Lithuania) ; Viven Lo and Isabel Murray  (Natural Resources 
+Canada); Jan Petter Nore (NORAD, Nord University); Rafi Nersessian and Russ 
+Conklin (United States Department of Energy); Scott Greenip, Juhani M Platt, Erik 
+J Magdanz  and Geoff Pyatt (U nited States Department of State) ; Christopher 
+Metz, Stephen Lowe, Charlotte Beck, Marina Delegan, Ryan King and Tetiana 
+Temniuk (Government of the United Kingdom) ; and Antonio Albino Marques  
+(REN).  
+
+Ukraine’s Energy Security and the Coming Winter Acknowledgements 
+PAGE | 5  
+I EA. CC BY 4.0. 
+The individuals and organisations that contributed to this report are not 
+responsible for any opinions or judgements it contains. All errors and omissions 
+are solely the responsibility of the IEA. 
+Note on data: because of the ongoing conflict, a significant portion of Ukraine’s 
+energy data has been restricted and is not accessible to the public.  All data and 
+other information in this report is based on publicly available sources. 
+ 
+  
+
+Ukraine’s Energy Security and the Coming Winter Executive summary 
+PAGE | 6  
+I EA. CC BY 4.0. 
+Executive summary 
+This year has seen a step change in the intensity of attacks on Ukraine’s 
+energy sector, creating risks that extend far beyond energy as Ukraine 
+approaches the winter months. While Russia has regularly targeted energy 
+infrastructure in Ukraine since its full -scale invasion of the country in February 
+2022, its  most recent bombardments have been unprecedented in scale;  a 
+concerted attack in late August 2024, for example, involved more than 200 
+missiles and drones. Air defence measures have been unable to prevent major 
+damage. The primary targets have been in the electricity sector –  including 
+generation, transmission and distribution – but district heating networks and some 
+gas infrastructure have also been hit. 
+Rolling blackouts and other unscheduled interruptions to supply have 
+become the norm, limiting electricity provision in the worst-affected regions 
+to a few hours per day.  While Ukrainians have showed immense solidarity, 
+courage and ingenuity –  and support from Ukraine’s international partners has 
+been crucial in keeping systems functioning – the power system is increasingly 
+fragile. During the summer of 2024, Ukraine experienced a major power deficit as 
+generation capacity fell more than 2  gigawatts ( GW) below peak demand of 
+12 GW. Unreliable electricity is having knock-on effects on all aspects of daily life. 
+Strains that are bearable in the summer months may become unbearable when 
+temperatures start to fall and suppl ies of heat and water  falter, triggering further 
+displacement of affected populations across the country and abroad. 
+Ukraine’s energy system made it through two successive winters since 
+Russia’s invasion, but the third promises to be the sternest of tests. Over the 
+course of 2022 and 2023, about half of Ukraine’s power generation capacity was 
+either occupied by Russian forces, destroyed or damaged – and approximately 
+half of large network substations were damaged by missiles and drones. Strains 
+on Ukraine’s energy sector through the first two winters of war were mitigated by 
+significant reductions in demand, relatively mi ld weather and a major collective 
+effort to repair damaged facilities and mobilise alternative sources of supply. 
+However, intensified attacks between March and May 2024 left Ukraine with only 
+around a third of its pre- war electricity generation capacity by mid -year, even 
+before the latest strikes. The stresses on the system are now immense. Ukraine 
+is increasingly dependent on the three remaining operational nuclear power plants 
+and the over-crowded links between these plants and the main cities closer to the 
+front lines in the east. 
+
+Ukraine’s Energy Security and the Coming Winter Executive summary 
+PAGE | 7  
+I EA. CC BY 4.0. 
+Ukraine’s international partners have been providing much- needed 
+equipment and aid throughout the war, but today’s acute situation demands 
+further support.  After years of dependence on Russia for  its energy  supply, 
+Ukraine is now looking west not only for short -term fixes, but also for integration, 
+infrastructure links and , ultimately, a better kind of energy future. This report 
+proposes tangible and immediate actions that Ukraine and its partners can take to 
+address its pressing energy security vulnerabilities and to bolster Ukraine’s longer-
+term resilience. The central focus is naturally on Ukraine, but a coordinated 
+regional approach is essential to address implications for Moldova. Four issues 
+stand out: 
+• Ukraine’s severe electricity deficit . Peak demand could increase to 
+18.5 GW this winter. Even with the return of nuclear units from maintenance 
+over the summer , and the continued import of 1.7 GW of electricity from 
+Ukraine’s European neighbours, the supply deficit could reach as much as 
+6 GW, equivalent to peak annual demand in  Denmark. Further attacks on 
+infrastructure, unforeseen equipment failures and missed maintenance 
+cycles add further risks. 
+• Heat supply to Ukraine’s major cities . Most attacks on heating 
+infrastructure have occurred in regions close to the front lines. The Kharkiv 
+region is now without large- scale heat generating capacity and other 
+frontline regions – particularly Chernihiv, Donetsk, Zaporizhzhia, Sumy and 
+Mykolaiv – have suffered severe damage to their heat generation capacities. 
+Heat supply is also at risk in Ukraine’s capital, Kyiv. 
+• Potential strains on Ukraine’s natural gas balance. Under average 
+weather conditions, Ukraine could meet all its  gas demand requirements 
+from domestic production and storage, but a colder -than-average winter 
+would increase the need for imports. Once Russian transit volumes halt in 
+January, after current contracts  expire, additional supply would require  
+physical west-to-east gas flows piped to Ukraine from Central and Eastern 
+Europe. 
+• Disruption to gas and electricity supply arrangements in Moldova. 
+Moldova no longer relies directly on Russian gas to meet demand on the 
+territory that it controls, but indirect dependence is still strong because it 
+receives around two-thirds of its electricity from a large power plant based 
+in the breakaway, Russian- backed region of Transnistria. The upcoming 
+expiry of the transit arrangements for Russian gas through Ukraine , at the 
+end of 2024, creates significant uncertainty for gas deliveries to the region 
+of Transnistria and for Moldova’s electricity security. 
+
+Ukraine’s Energy Security and the Coming Winter Executive summary 
+PAGE | 8  
+I EA. CC BY 4.0. 
+10 key energy sector actions 
+ 
+These 10 actions are designed, first and foremost, to safeguard an essential 
+level of energy services in Ukraine through the coming months. This 
+necessarily involves actions outside the energy sector, with effective air defence 
+being by far the most important, alongside the provision of essential energy 
+equipment, imported supply , and back -up capabilities. Quick responses are 
+crucial, and Ukraine’s international partners will need to be creative and nimble to 
+minimise delays and do what it takes to help. At the same time, it will be important 
+to build in  structural changes , wherever possible, that will increase Ukraine’s 
+resilience over the medium term and put the country’s energy sector on a  
+sustainable pathway towards modernisation and integration with the  rest of 
+Europe. Many of these actions are already underway or under consideration, but 
+time is of the essence.  
+1. Bolster the physical and cyber security of Ukraine’s critical energy 
+infrastructure. Repair and construction work needs to be done with a view 
+towards protecting assets against further attacks, especially at crucial nodes 
+in the system like the network substations near nuclear power plants . This 
+includes not only fortification, concealment and defence measures against 
+modern military technologies , but also protection against attempted 
+cyberattacks, which have tripled since the invasion. 
+2. Expedite the delivery of equipment and spare parts for repairs . The 
+donation, sale or lease of essential equipment – such as transformers, 
+generators and spare parts  – has been an essential component of 
+international support to Ukraine. This is now more important than ever and 
+needs to be facilitated by streamlined import procedures  and a clear 
+prioritisation of needs. 
+3. Increase and decentralise power supply. Large energy assets are more 
+vulnerable to attack , so decentralisation brings clear security benefits.  
+Ukraine has seen a massive influx of diesel generators to provide back -up 
+power. Accelerating deployment of s maller-scale gas-fired combined heat 
+and power plants , and solar PV and wind systems complemented by 
+batteries and other storage technologies is crucial to increase the resilience 
+of supply . A particular focus is needed on  supply for hospitals, schools, 
+water pumps and mobile networks. 
+4. Expand electricity transmission capacity with the European Union . 
+Ukraine and its partners swiftly moved to synchronise Ukraine (and 
+Moldova) with the main European electricity system after the 2022 invasion, 
+but the current limits on transmission capacity are set by relatively 
+
+Ukraine’s Energy Security and the Coming Winter Executive summary 
+PAGE | 9  
+I EA. CC BY 4.0. 
+conservative guidance on network risk management. An expansion of west-
+to-east electricity flows in support of Ukraine is possible but requires political 
+support.  
+5. Engage consumers in energy saving and demand response, while 
+continuing investments in energy efficiency. A social tariff that 
+safeguards a certain volume of consumption at subsidised rates, after which 
+consumers pay a higher price, would help to incentivise efficient practices 
+and investments, supported by public information campaigns that advise on 
+energy efficiency measures for immediate impact as well as longer -term 
+gains. Lowering the default temperature for district heating can also provide 
+quick savings. 
+6. Prepare back-up options for winter heating. Expedited delivery of smaller 
+combined heat and power units should focus on bolstering supply in the 
+worst-affected regions in the east. Investment in reliable back -up options 
+should also include liquefied petroleum gas ( LPG) heaters, wood and coal 
+stoves, and associated reserves of fuel, especially for rural areas. 
+7. Build up natural gas storage levels . Ukraine’s storage sites play a key 
+role in meeting winter gas demand. Ukraine and its international partners 
+need to ensure that inventory levels are adequate ahead of the winter to 
+ensure that the gas system can react to unexpected demand or supply 
+shocks. 
+8. Strengthen firm gas import capacities from the European Union. Some 
+of the current arrangements that guarantee the availability of capacity for 
+gas flows to Ukraine are expiring. They need to be extended and reinforced, 
+as necessary, to provide Ukraine with assured options for import. Operating 
+the trans-Balkan pipeline system in reverse mode, with a more competitive 
+tariff structure, would enhance gas supply security for Ukraine and Moldova. 
+9. Coordinate approaches to Ukraine and Moldova. While not subject to the 
+same physical risks from attacks, the coming winter could also be 
+destabilising in Moldova, including Transnistria, as gas and electricity flows 
+and relationships move to a new footing. Energy security issues in Ukraine 
+and Moldova are closely linked, and investments in new sources of supply, 
+energy efficiency and reinforced interconnections with neighbouring 
+countries bring both national and regional gains. This requires coordinated 
+strategies that recognise the inter-related nature of risks across the region 
+and act quickly to mitigate them. 
+10. Lay the groundwork for a modern, market -based, resilient and 
+sustainable Ukrainian energy system , well integrated with the EU 
+system. The immediate priority is to mitigate the extreme risks over the 
+
+Ukraine’s Energy Security and the Coming Winter Executive summary 
+PAGE | 10  
+I EA. CC BY 4.0. 
+coming winter, but it will be vital to start actions that have a longer lead time 
+– including investment in reinforced transmission corridors with western 
+neighbours – and to integrate, wherever possible, a medium-term vision for 
+a new Ukrainian energy system into the immediate response. 
+ 
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 11  
+I EA. CC BY 4.0. 
+Ukraine’s energy system under 
+attack 
+Introduction 
+On the morning of 26 August 2024, Russia fired more than 200 missiles and 
+drones in one of its largest aerial attacks on Ukraine; the main targets were 
+the country’s energy infrastructure. Around 8 million households lost power  
+without warning; the capital, Kyiv, experienced its first unscheduled blackout since 
+November 2022. Ukraine’s air defences provided some protection, but the scale 
+of the attack and the resulting disruption highlighted once again the vital strategic 
+importance of Ukraine’s energy sector, as well as the ever -present risks to the 
+country’s energy supply.  
+Ukraine’s energy system1 has been regularly targeted by Russia since its 
+full-scale invasion in 2022, with attacks intensifying since the spring of 2024. 
+The targeting of energy infrastructure has had wide-ranging consequences for the 
+provision of energy  to Ukrainian households and other consumers. Over the 
+course of 2022-23, about half of Ukraine’s power generation capacity was either 
+occupied by Russian forces, destroyed or damaged, and approximately half of the 
+large network substations were damaged by missiles and drones. The occupation 
+of the Zaporizhzhia nuclear power plant, on its own, reduced available Ukrainian 
+power generation capacity by 6 gigawatts ( GW). In the wave of attacks between 
+March and May 2024, Ukraine lost another 9 GW of generation capacity; this was 
+mainly thermal and hydro assets, although some smaller solar PV units also came 
+under attack, as well as numerous substations. This left Ukraine with only around 
+one-third of its pre-war capacity, even before the most recent round of summer 
+attacks. Ukraine's district heating and natural gas infrastructure has also been 
+targeted. Since 2022, 18 large combined heat and power (CHP) plants have been 
+damaged or completely destroyed, along with more than 800 boiler houses. Some 
+above-ground natural gas storage infrastructure has been damaged , although 
+underground inventories remain unaffected. 
+Ukraine experienced an acute power deficit over the summer months of 
+2024, when its generation capacity fell 2.3 GW below its peak demand of 
+12 GW, despite electricity imports from Ukraine’s western neighbours. The 
+deficit has been  managed by  Ukraine’s state-owned electricity transmission 
+system operator, Ukrenergo, through rolling cuts to supply, limiting electricity 
+ 
+ 
+1 See Annex for background information on Ukraine’s energy sector 
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 12  
+I EA. CC BY 4.0. 
+provision in the worst -affected regions to a few hours per day. While Ukrainians 
+have show n immense solidarity, ingenuity and resilience, and support from 
+Ukraine’s partners, including equipment and spare parts, have been instrumental 
+in maintaining a functioning system, the possibility of an even deeper shortfall in 
+energy supply during the upcoming cold winter months presents profound risks.  
+This report describes the urgent challenges facing Ukraine’s energy sector 
+and outlines tangible actions that can be taken by Ukraine and its partners 
+to address its immediate energy security vulnerabilities ahead of the winter, 
+while bolstering long-term resilience. The central focus is on Ukraine, but the 
+report also incorporates analysis of the situation in Moldova, whose energy system 
+is closely interlinked with that of Ukraine.  The remainder of this section  of the 
+report provides background on the status of electricity, heat and gas supply in 
+Ukraine, the second section examines the risks facing the energy sector during 
+the upcoming winter. The final section identifies 10 key energy actions to address 
+these risks. 
+Electricity 
+Since 2022, Russian targeting of Ukraine's power infrastructure has sought 
+to destabilise the electricity system by disabl ing large coal and gas -fired 
+generation units and key parts of the transmission network. Prior to Russia’s 
+full-scale invasion in 2022, nuclear power generated half of the country’s 
+electricity, followed by coal-fired plants at 23% and gas -fired plants at 9%. As of 
+the end of May 2024 2, about 70% of Ukraine's thermal generation capacity was 
+either occupied or damaged, and the Zaporizhzhia nuclear power plant (whose 
+6 GW of capacity generated around one- quarter of Ukraine’s electricity supply 
+prior to 2022) remained under Russian control. Additionally, approximately half of 
+Ukrenergo’s very high voltage substations had been damaged, as well as many 
+distribution substations, leading to intermittent unavailability of parts of the 
+electricity network despite ongoing repairs. Recent attacks underscored the risks 
+to supply from Ukraine’s other nuclear plants, as damage to nearby substations 
+can prevent these plants feeding the grid or endanger the backup supply that 
+keeps the reactors safe. The electric power industry is the part of the energy sector 
+that has suffered the greatest damage since the Russian  invasion in 2022, 
+estimated in June to top USD 11.4 billion, with three -quarters of the losses  in 
+generation facilities and the remainder in networks. Full like-for-like restoration of 
+all the lost generation capacities is not aligned with Ukraine's vision for the future, 
+but early estimates for the cost of building back are around USD 30 billion.  
+ 
+ 
+2 The extent of the additional damage caused by more recent  attacks, notably the large attack on 26 August, was still 
+uncertain at the time of writing. 
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 13  
+I EA. CC BY 4.0. 
+Estimated electricity generation capacity available to Ukraine at selected times since 
+2022 
+ 
+Sources: UNDP (2023), Update on the Energy Damage assessment June 2023, Towards a green transition of the energy 
+sector in Ukraine, https://www.undp.org/ukraine/publications/towards-green-transition-energy-sector-ukraine 
+Ukrainian Government (2024), Герман Галущенко: Ми відновили і додали до енергосистеми 3 ГВт потужності 
+https://www.kmu.gov.ua/news/herman-halushchenko-my-vidnovyly-i-dodaly-do-enerhosystemy-3-hvt-potuzhnosti 
+Ukrainian Government (2024), За два роки росія атакувала українську енергетику понад 1000 разів – Герман 
+Галущенко, https://mev.gov.ua/novyna/za-dva-roky-rosiya-atakuvala-ukrayinsku-enerhetyku-ponad-1000-raziv-herman-
+halushchenko 
+ 
+Industrial power consumption has halved since the 2022 invasion, and even 
+though household electricity use is down 20%, it now constitutes the largest share 
+of overall demand. The composition and level of Ukrainian electricity consumption 
+has shifted significantly. Industrial demand has plummeted. The 20% fall in 
+residential demand is largely due to the effect of 6.5 million Ukrainian refugees 
+leaving the country, although some policies and initiatives have helped save 
+electricity. For example, an EU-funded program that replaced incandescent bulbs 
+with LED bulbs reduced demand by as much as  1 GW. Many utilities are now 
+facing extreme financial difficulties due to lost assets, lower revenues due to 
+reduced economic activity and additional expenses such as clearing debris or the 
+cost of repairing or demolishing damaged facilities.  While donors have been 
+providing much -needed equipment  and assistance to restore damaged 
+infrastructure, including standalone generators for critical infrastructure such as 
+hospitals, water systems and district heating companies, the scale of the challenge 
+remains huge.  
+Despite the high investment risks, the construction of a more decentralised 
+system has begun, increasing resilience to attack and laying the 
+groundwork for a distinctive longer-term transition pathway. In contrast with 
+other countries, where decentralisation has been driven by sustainability 
+concerns, the clear driver in Ukraine is energy security.  Large-scale generating 
+units are easier targets for missiles and drone attacks, so the Ukrainian 
+government gave guidance early on to deploy decentralised generation, mainly 
+0
+5
+10
+15
+20
+25
+30
+35
+40
+ 2022, before full-scale
+invasion
+ March 2023  March 2024 Summer 2024
+aavailable generation capacity (in GW)
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 14  
+I EA. CC BY 4.0. 
+small modular gas turbines in the range of 5 to 40 megawatts (MW), and to speed 
+up the deployment of rooftop solar with storage in administrative buildings, 
+hospitals, schools, households and businesses. Almost 1 500 MW of consumer-
+installed solar PV w as in place by the beginning of 2024 , with deployment 
+continuing at a regular pace in recent years.3  
+Net monthly trade of electricity of the Ukrainian power system 
+ 
+ 
+Interconnection with the main European  system4 has made a crucial 
+contribution to Ukraine’s electricity security, with the limit on cross-border 
+trade5 increasing to 1.7 GW in November 2023.  Before the 2022 invasion, 
+Ukraine's power system was inter connected with the Russian and Belarussian 
+grids. P lans had been in place since 2017 to synchroni se with the continental 
+Europe system in 2023. On the day of the invasion, Ukraine had just disconnected 
+from the Russian and Belarusian system , performing a planned test of  “isolated 
+mode” operation. Soon after the invasion, Ukraine (along with Moldova) requested 
+an emergency synchronisation, which was achieved in record time: an initial 
+timeline of months was brought down to a matter of weeks thanks to an  
+extraordinary effort from the involved European transmission system operators 
+(TSOs) and Ukrenergo, coordinated by the European Network of Transmission 
+System Operators for Electricity ( ENTSO-E), with the strong support of the 
+European Commission. Since then, integration with the European system has 
+been a priority. Trade started in June 2022 with trade limits gradually increasing. 
+Currently, the trade limit from continental Europe to Ukraine and Moldova stands 
+at 1.7 GW, complemented with a non- firm emergency inter-TSO agreement that 
+can provide a few hundred megawatts of  support for a few hours if network 
+ 
+ 
+3 A law adopted in July 2024 exempts energy equipment imports from duties and taxes and introduced favourable loans for 
+energy investments. By another government decision, businesses generating at least 80% of their electricity consumption, 
+or importing at least 80% of their electricity consumption from the rest of Europe, are exempted from rolling blackouts. 
+4 Continental Europe is the largest synchronously interconnected system in Europe, spanning from Portugal to Ukraine and 
+West Denmark to Italy. It will be further expanded in 2025 to include the Baltic states. 
+5 See Annex for information on how cross-border capacity limits are defined. 
+-1 000
+- 800
+- 600
+- 400
+- 200
+ 0
+ 200
+ 400
+ 600
+Moldova Russian Federation Belarus EU Net trade
+GWh
+Imports Exports
+Synchronisation 
+to continental
+Europe system
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 15  
+I EA. CC BY 4.0. 
+conditions permit. In June 2024, Ukraine’s total imports were close to 2 GW for a 
+few hours every day , and joint efforts with neighbouring system operators are 
+continuing to increase the trade limit further. 
+Map of the western portion of the Ukrainian grid and its existing and planned 
+interconnectors with Moldova and the continental Europe system 
+ 
+Note: The corridors for proposed/under construction transmission lines from have been estimated based on substation 
+locations. 
+Sources: ENTSO-E Transmission System Map, Green Deal Ukraina (2024). 
+ 
+
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 16  
+I EA. CC BY 4.0. 
+Even so, t he summer electricity deficit has resulted in daily power cuts, 
+disrupting lives and businesses and heightening social and humanitarian 
+risks. During the months of June and July, even with power imports, the estimated 
+supply-demand gap ranged from 0. 8 GW to 2 .3 GW – the latter equivalent to 
+Slovenia's peak demand. This has led to rolling blackouts across the country. Most 
+citizens have faced these daily power cuts with solidarity, but the limited availability 
+of electricity-dependent facilities such as elevators and water has made daily life 
+difficult. The end of the scheduled maintenance to nuclear power plants eased the 
+situation in August, but this was before the recent intensification of attacks. Many 
+households and businesses have purchased small-scale diesel generators and 
+power banks as back-up options to maintain supply during the blackouts.  
+Heating 
+Ukraine’s extensive district heating network, which provides most of the hot 
+water and space heating in large cities , has been repeatedly targeted by 
+Russian forces since the 2022 invasion. In 2022, more than one -third of 
+Ukrainian households were connected to the district heating network , according 
+to the State Statistics Service. Most of the heat production (about 70%) is fuelled 
+by natural gas, and about a third of Ukraine’s heat supply is generated by 
+combined heat and power (CHP) plants, while the remainder comes from 
+conventional heat plants and other sources . Between February 2022 and May 
+2024, a total of 18 large-scale CHP plants were damaged or destroyed, as well as 
+815 boiler houses, 152 central heating points, and 354 kilometres of district 
+heating pipes, according to the Kyiv School of Economics. The direct damage  
+resulting from these attacks (excluding social and economic costs) is estimated at 
+USD 2.4 billion, with more than half attributable to attacks on CHP plants
+6. 
+As with the attacks on electricity infrastructure, damage to heat supply is 
+highly disruptive to the population. Ukraine was spared catastrophic losses to 
+its heat supply during the 2022-23 and 2023-24 winters, when attacks were more 
+limited and the winters relatively mild. With the escalation of attacks against 
+Ukraine’s energy infrastructure in 2024, the risk s are significantly higher this 
+winter. Temperatures can routinely drop below - 10 °C between December and 
+March, posing a serious humanitarian risk if heating is not available.  
+Heavily subsidised residential heat tariffs have led to significant fiscal 
+strains and a build -up of debt.  Large subsidies to district heat producers  had 
+previously been reduced thanks to price reforms between 2014 and 2016 (which 
+led to a five -fold increase in residential tariffs ). By 2021, the public service 
+obligation (PSO) requiring Naftogaz , Ukraine’s national oil and natural gas 
+ 
+ 
+6 These aggregates exclude damages incurred in Ukrainian territories occupied by Russia. 
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 17  
+I EA. CC BY 4.0. 
+company, to supply discounted gas to district heating companies was phased out. 
+It was re-introduced shortly after the 2022 invasion, fixing gas prices for residential 
+heat producers at less than half the market rate , and has been extended until at 
+least 30 April 2025. The current PSO scheme has contributed to significant 
+financial challenges and large arrears to Naftogaz. The company was forced to 
+restructure its foreign currency-denominated debt in 2023, and by October 2023, 
+it estimated its accumulated debt from district heating companies stood at UAH 95 
+billion (USD 2.6 billion) . No provision for Naftogaz’s losses was included in 
+Ukraine’s 2024 budget.  
+Natural gas 
+Russia’s 2022 invasion was followed by a one- third decline in Ukraine’s 
+natural gas demand: consumption in 2022 fell below 20 billion cubic metres 
+(bcm), the lowest level since independence in 1991. This was largely driven by 
+the decline in demand from district heating companies, industry and households. 
+Ukraine’s natural gas demand increased by 2.5% (or 0.5 bcm) in 2023, with growth 
+primarily driven by a partial recovery in industrial and commercial activity. First 
+indications are that gas demand in 2024 is similar to 2023, with natural gas use in 
+power generation limited to peak hours. The PSO scheme that was re-introduced 
+in 2022 extends to nearly all segments of the market , regulating prices at levels 
+below market rates . This offers protection to consumers but , as noted above, 
+comes at significant cost and disincentivises efficiency improvements, as well as 
+new investments. 
+Ukraine’s natural gas production has been more resilient than its demand, 
+but it still fell by 6% in 2022  to 18.5 bcm  – its lowest level since 1999.  
+Production rose slightly in 2023 and t here are some tentative signs of higher 
+output in 2024: P roduction numbers for the first seven months of 2024 for 
+Naftogaz, Ukraine’s largest producer, rose by 7% year -on-year, supported by a 
+concerted effort to develop new wells and increase productivity rates at old wells. 
+The company is targeting 15 bcm of na tural gas production in 2024, up from 
+14 bcm in 2023.  
+The steep decline in natural gas demand has brought Ukraine close to self-
+sufficiency in gas, and the need for imports has decreased significantly. A 
+similar pattern of reduced import demand is visible in Ukraine’s coal sector 7. 
+According to Naftogaz, Ukraine did not import natural gas during the 2023- 24 
+heating season, with all demand met through domestic production and storage 
+ 
+ 
+7 In 2023, Ukraine produced 16.4 million tonnes (Mt) of coal and imported less than 1  Mt, a big drop from imports of 4.6 Mt 
+in 2022 and from almost 20 Mt in 2021. Almost two- thirds was used in the electricity sector, almost one- third was used in 
+steel mills and around 10% for building heating. Efforts are being made to enhance domestic production: DTEK Energy, the 
+largest coal producer in Ukraine, announced that it began operating 26 longwalls in 2023, and 11 more in 2024 (as of August). 
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 18  
+I EA. CC BY 4.0. 
+withdrawals. Naftogaz expects that Ukraine will not need gas imports through the 
+2024-25 winter. Ukraine has the capacity to import around 60 million cubic metres 
+(mcm) of gas per day from the European Union and Moldova; however, not all of 
+this capacity can be considered firm 8 on a long- term basis (i.e. longer than a 
+quarter), which can pose risks in a security of supply crisis.  
+Russian gas transit volumes via Ukraine continued to decline in 2023. 
+Russian transit flows dropped by 65% from more than 40 bcm in 2021 to less than 
+15 bcm in 2023. This is less than half of the capacities booked by Gazprom under 
+its long-term contract. The main countries that still receive Russian gas via Ukraine 
+are Austria and Slovakia, although Czechia and Hungary also receive limited 
+volumes. Gas also transits Ukraine to the Transnistria region of Moldova. 
+Natural gas production and demand in Ukraine and Russian transit flows 
+ 
+ 
+The transit and interconnector agreement s between Ukraine and Gazprom 
+expire at the end of 2024. Ukraine’s gas TSO has explicitly stated that it will not 
+renew the interconnector agreement, although it would not hinder other  parties’ 
+direct discussions. It is not excluded that some sort of continued arrangement for 
+transit flows might yet be found, but the base case assumption is that Russian 
+transit flows via Ukraine will be discontinued from January 2025. 
+Russia has been targeting some natural gas infrastructure in Ukraine, 
+including production sites and transmission and distribution networks, as 
+well as gas storage facilities. While gas storage in deep underground facilities 
+is unaffected, above-ground facilities are more easily targeted and have sustained 
+ 
+ 
+8 Firm capacity refers to natural gas transmission capacity contractually guaranteed as uninterruptible by  the transmission 
+system operator. 
+0
+ 10
+ 20
+ 30
+ 40
+ 50
+ 60
+ 70
+ 80
+ 90
+ 100
+ 110
+2010
+2011
+2012
+2013
+2014
+2015
+2016
+2017
+2018
+2019
+2020
+2021
+2022
+2023
+bcm
+Domestic production Demand Transit
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 19  
+I EA. CC BY 4.0. 
+some damage. Production sites  in the east of the country  have been most 
+vulnerable, although the sharp decline in output seen in the first months of the 
+invasion was reversed as Ukraine regained territory in the Kharkiv region in late 
+2022. Parts of Ukraine’s transmission and distribution system were also damaged, 
+again primarily in the eastern part of the country.  
+Several gas storage facilities in the east  have faced operational limitations 
+or been damaged by Russia’s invasion, but the bulk of gas storage is in 
+western Ukraine. The Krasnopopivske (0.42 bcm) and Verhunske (0.4 bcm) 
+underground storage sites are located under territory occupied by Russia, and 
+there have been reports of damage to surface facilities at other sites. Gas storage 
+facilities were also damaged in Russia’s major missile and drone attack in late 
+August, although the storage operator remains able to fulfil nominations to 
+customers. Ukraine can offer the bulk of its large storage sites (30 bcm, mainly in 
+Western Ukraine) for use by European companies, but security risks mean that 
+European traders have so far made limited use of  this option9. Lower storage 
+utilisation weighs on the revenue and profitability of Ukraine’s system operator.    
+Gas metering facilities on the border between Russia and Ukraine have been 
+in the spotlight. In May 2022, the Gas TSO of Ukraine declared force majeure at 
+the Sokhranivka gas metering station, claiming illegal actions and unauthorised 
+gas offtakes by Russian forces. According to the Gas TSO of Ukraine, flows could 
+have been temporarily rerouted through the Sudzha gas entry point, although 
+Gazprom declined to accommodate this option. This led to a significant decline in 
+transit volumes. More recently, as part of a Ukrainian cross -border offensive into 
+Russia’s Kursk region in August 2024, Ukrainian forces reportedly took control of 
+the Sudzha gas metering station – the only remaining entry point for Russian gas 
+into Ukraine. For the moment, this has not resulted in any further decline in gas 
+transit flows, which have remained steady at around 40 mcm per day. 
+ 
+Implications for Moldova 
+Moldova has strong energy infrastructure links with Ukraine, and its energy 
+security has also been strongly affected by the war and the attacks on 
+Ukraine’s energy assets. In recent years, Moldova has pushed to diversify away 
+from its historical dependence on Russian gas; the gas consumed within the 
+ 
+ 
+9 Injections into Ukrainian storage sites in June and July 2024 by European companies were ten times lower than in the same 
+period of 2023 (declining from 0.69 bcm in June-July 2023 to less than 0.1 bcm in June-July 2024). 
+
+Ukraine’s Energy Security and the Coming Winter Ukraine’s energy system under attack 
+PAGE | 20  
+I EA. CC BY 4.0. 
+territory controlled by the Moldovan government (i.e. excluding the breakaway, 
+Russian-backed region of Transnistria) is now imported through Romania.  
+However, Moldova retains a strong indirect reliance on Russia because it 
+receives around two-thirds of its electricity from a large power plant  based 
+in the Transnistrian region. This plant – Moldavskaya GRES, or MGRES – has 
+an installed capacity of 2 520 MW and is fuelled by gas imported from Russia via 
+Ukraine. The region of Transnistria currently receives 2.1 bcm per year of Russian 
+gas, essentially free of charge, through a contract between Gazprom and national 
+operator Moldovagaz and sells the electricity on to Moldova. These electricity sales 
+are a mainstay of Moldova’s energy security and represent an important source of 
+revenue for Transnistria. While MGRES can also use coal to generate electricity, 
+the plant’s coal reserves have dwindled since 2022, and the plant is configured to 
+use a type of coal imported from the Russian-occupied Donbass region of Ukraine. 
+The expiry of the transit arrangements for Russian gas through Ukraine 
+creates significant uncertainty for gas deliveries to the region of Transnistria 
+and for Moldova’s electricity security . Moldova is preparing for different 
+scenarios but faces tangible risks to the security and affordability of its energy 
+supply.  
+Moldova has been working to diversify its electricity supplies and modernise 
+energy infrastructure: attracting further investment is a major priority . 
+Moldova has increased its installed renewable capacity after adopting legislation 
+to promote deployment in 2018, but more needs to be done to bring forward new 
+projects for generation, grid infrastructure and energy efficiency. As of 2023, wind 
+and solar made up roughly 10% of total electricity generation.  
+Strengthening interconnections with neighbouring European markets is 
+essential to bolster Moldova’s energy security, with benefits for the wider 
+region. A third 400 kilovolt (kV) high-voltage power line between Moldova and 
+Romania (Straseni -Gutinas) has been  approved and is scheduled to be 
+operational by 2031, alongside the planned  Vulcanesti-Chisinau and Balti -
+Suceava lines that should come online in late 2025 and 2027, respectively . The 
+400 kV line currently under construction between Isaccea (Romania) and Ukraine 
+would increase the import capacity of Ukraine and Moldova by at least 1 GW10. In 
+the short -term, Moldova's winter preparedness plan also includes diesel 
+generators and building stocks of biofuels and firewood, in addition to securing 
+additional imports of electricity from Romania and the wider Europe. 
+ 
+ 
+ 
+10 Originally planned for 2028, an accelerated commissioning by 2026 is possible if the line were included in the priority list 
+of Projects of Common Interest (PCIs) and supported by the European Commission, helping to reduce Moldova’s 
+dependency on MGRES. 
+
+Ukraine’s Energy Security and the Coming Winter The upcoming winter will be a critical test 
+PAGE | 21  
+I EA. CC BY 4.0. 
+The upcoming winter will be a 
+critical test  
+Intensified attacks since spring  2024 have left Ukraine’s energy 
+infrastructure in a very fragile state for the coming winter. Russia’s strategy 
+has focused on generation and transmission assets and has used combinations 
+of missiles and drones to evade Ukraine's air defences. As a result, Ukraine has 
+sustained more widespread and lasting damage to its energy infrastructure 
+compared with the attacks in earlier stages of the war, even with ongoing support 
+for repairs from donors.  
+Energy supply has already been challenging over the summer months for 
+many Ukrainians, but the full effects of the infrastructure losses have been 
+masked by the warm weather and longer days. Diesel generators have allowed 
+shops and restaurants to stay open, with many facilities using outdoor spaces to 
+help with the effects of rolling blackouts.  
+However, once temperatures begin to fall and the heating season officially 
+begins in October, it will become much more difficult to live and work with 
+limited access to electricity and heat. Home to roughly 70% of the population, 
+Ukraine's urban centres are particularly vulnerable to unreliable electricity supply, 
+given the strong concentration of high- rise buildings that need electricity for 
+elevators and water pumps.  
+The winter season can last  for up to six months, with the coldest months 
+between December to March, when temperatures can drop as low as -20 °C, 
+and average between -4.8 °C and 2  °C. All regions, or oblasts,  in Ukraine 
+experience days with temperatures below -10 °C during the standard heating 
+season. In the current context, this would result in huge risks for people across 
+the country. A period of extreme cold over the coming winter would take a massive 
+toll on the overall population and put enormous pressure on the already 
+overstretched health system. If the winter is accompanied by inadequate provision 
+of heat or electricity, this could lead to a renewed wave of refugees moving to 
+other parts of Ukraine and abroad, as some places in the country become simply 
+unliveable.  
+Since 2022, and especially since March 2024, Ukraine’s energy 
+infrastructure has been degraded in ways that make this winter the sternest 
+test yet for Ukraine’s energy system. These risks are already visible and 
+foreseeable; they can be exacerbated by continued targeting of energy 
+infrastructure by Russia and mitigated by successful air defence, as well as a 
+
+Ukraine’s Energy Security and the Coming Winter The upcoming winter will be a critical test 
+PAGE | 22  
+I EA. CC BY 4.0. 
+range of other national and international actions, including expedited repair and 
+reconstruction. Some of these risks spill over to Moldova, requiring a coordinated, 
+regional approach.  
+The key risks are the following: 
+• A growing deficit of electricity supply relative to much higher winter 
+demand. Peak demand is expected to increase to 18.5  GW this winter (from 
+around 12 GW in the summer). Despite the return to service of nuclear units 
+from maintenance over the summer and an expected 1.7 GW of electricity 
+imported from the European Union, the deficit of electricity supply could reach 
+as much as 6 GW, an amount equivalent to Denmark’s peak demand
+11. Since 
+March, rolling blackouts that have left households without electricity for hours 
+every day have been faced with solidarity by citizens, but longer electricity cuts 
+in the winter months will lead to enormous strains , including on centralised 
+water supply. Repair and reconstruction work is ongoing, but it may be 
+impossible to bring back a significant portion of the lost assets. T here is also 
+the risk that damage  from new Russian attacks outpaces the speed at which 
+infrastructure can be repaired, undermining system stability even further. 
+Estimated electricity deficit versus peak demand in Ukraine in summer 2024 and for the 
+winter of 2024-25 
+ 
+ 
+• Inability to provide district heating to major cities. Regions close to the front 
+lines are the most vulnerable, as most attacks on heating infrastructure have 
+occurred in these areas. The Kharkiv region has been without large-scale heat 
+generating capacity following the destruction of the Zmiivska thermal power 
+ 
+ 
+11 Source: IEA analysis based on exchanges with ENTSO-E, the European Commission and papers by Green Deal Ukraïna 
+(Six options to boost power grid transfers from continental Europe to Ukraine, for the next two winters, August 2024; Modelling 
+the Electricity Deficit in Ukraine and Potential Policy Responses for the period June 2024 – May 2025, June 2024). 
+0
+2
+4
+6
+8
+10
+12
+14
+16
+18
+20
+Peak demand Deficit Available supply Estimated peak
+demand
+Deficit Estimated
+available supply
+Summer 2024 Winter 2024-25
+Imports
+2.3 GW
+5.8 GW
+GW
+
+Ukraine’s Energy Security and the Coming Winter The upcoming winter will be a critical test 
+PAGE | 23  
+I EA. CC BY 4.0. 
+plant and Kharkiv CHP -5 plant in late March.  Other frontline regions 
+(particularly Chernihiv, Donetsk, Zaporizhzhia, Sumy and Mykolaiv) have also 
+suffered severe damage to their heat generation capacities. Heat supply is  at 
+risk as well in Ukraine’s capital, Kyiv, where 98% of the population is connected 
+to the district heating grid and three large CHP plants provide the bulk of supply 
+during the winter months. 
+• Possible need for gas imports to ease strains on the gas supply balance. 
+Ukraine’s may require additional imports during the coming heating season. 
+While under average weather conditions Ukraine could potentially meet all its 
+demand requirements from domestic production and storage, a colder -than-
+average winter could increase import requirements through the heating season, 
+assuming that heating intensity
+12 remains close to last winter’s levels. A 
+particularly cold winter –  similar to the one Ukraine faced in 2016- 17 – could 
+increase gas used for space heating in households by 25% (or 1.5 bcm ) 
+compared with the 2023-24 winter season. The expected halt of Russian gas 
+transit via Ukraine from  January 2025 will mean the end of possibilities for 
+backhaul (or virtual reverse flows) from the European Union. This means 
+physical west-to-east gas supplies from Central and Eastern Europe will be 
+needed to bring additional gas into Ukraine, which could raise procurement 
+costs (due to t ransmission tariffs). The adequacy of supply is also subject to 
+risks from further attacks on gas infrastructure.  
+• Disruption to prevailing gas and electricity supply arrangements in 
+Moldova. The likely end of Russian gas transit across Ukraine to the region of 
+Transnistria from January raises major questions over how the region  will 
+receive its gas and, by extension, over the availability and cost of the electricity 
+that it provides to the rest of Moldova. Russian gas delivered to Transnistria 
+through a longer and more circuitous route, via Türkiye and the Western 
+Balkans, would incur additional transit charges that would push up the price of 
+gas to Transnistria. This would be a major shock to a region that has become 
+used to getting gas at minimum or zero cost . An adjustment towards market 
+prices would in turn increase electricity generation costs and the price paid by 
+Moldovans for electricity, a politically and socially sensitive issue. If electricity 
+production from MGRES needs to be replaced with imports from Romania, 
+some 600 to 650 MW of interconnection capacity will be needed, exceeding the 
+current 255 MW quota for Moldova from the allowed 1.7 GW of trade capacity 
+with continental Europe that is shared between Moldova and Ukraine
+13. If gas 
+flows to Transnistria were interrupted for any reason (including non-payment), 
+ 
+ 
+12 Heating intensity refers to natural gas use per heating degree day. 
+13 The trade limit with continental Europe is shared between Ukraine and Moldova. The two countries agree bilaterally on 
+how to use the capacity at a given moment in time. In case of failure to reach an agreement, the capacity is split in proportion 
+to the number of interconnectors each country has, meaning that Moldova would receive one-sixth of the capacity.  
+
+Ukraine’s Energy Security and the Coming Winter The upcoming winter will be a critical test 
+PAGE | 24  
+I EA. CC BY 4.0. 
+this would have immediate and damaging implications for Moldova’s electricity 
+supply and for Transnistria’s budget, the bulk of which comes from selling 
+electricity to Moldova. The consequences would represent an additional source 
+of instability for the wider region. 
+The coming winter and the tense geopolitical context in the region could 
+have ramifications for the energy security of other European nations. Risks 
+include cyber-attacks and physical threats to critical energy infrastructure that may 
+be used to supply Ukraine, requiring increased vigilance and emergency 
+preparedness. There could also be implications for market balances and prices, 
+although these will be determined, as ever, by multiple factors. Electricity prices in 
+Europe have slightly moderated since the peaks of 2022, but wholesale electricity 
+prices in Southeast Europe, in particular, remain elevated compared with pre-war 
+levels. Most countries in Southeast Europe are highly reliant on gas for electricity 
+generation, and over the summer months tight gas markets have combined with 
+congested energy corridors, warm weather and low hydropower generation, 
+resulting in notable price disparities with the rest of Europe.  
+This winter will also see the scheduled decoupling of the electricity systems of the 
+Baltic states of Estonia, Latvia and Lithuania from Russia- Belarus on 7 February 
+2025, prior to synchronisation with continental Europe. Following synchronisation, 
+the energy security of the Baltic states will be strongly dependent on imports from 
+neighbouring countries Poland, Sweden and Finland. While the Baltic 
+transmission system operators ( TSOs) have deployed much of the necessary 
+equipment to ensure stable, independent operation, the full reinforcement of 
+interconnectors and required IT system upgrades are set to take place  between 
+2025 to 2030.  In the meantime, t here will be a lack of redundancy  in the single 
+synchronous interconnection with Poland, which will be the only link between the 
+Baltic grid and the continental Europe system u ntil these upgrades and 
+reinforcements are complete.  
+ 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 25  
+I EA. CC BY 4.0. 
+An energy action plan 
+This section proposes ten actions that can help to address Ukraine’s 
+pressing energy security vulnerabilities. Many of these measures are already 
+underway or under consideration, but time is of the essence. They focus on issues 
+directly related to the energy sector, but a first-order consideration and priority for 
+the upcoming winter is to counter further attacks and avoid or minimise further 
+damage to infrastructure by providing effective air defence. 
+The energy sector measures respond to an immediate need, but where 
+possible, they are designed with a view to structural changes that will 
+increase Ukraine’s resilience over time. Ukraine’s energy system faces an 
+emergency, and any effective solution needs to be on the table, but there are still 
+possibilities to prepare for a different and more sustainable energy system for 
+Ukraine and avoid becoming stuck in a repeated loop of damage and repair to 
+existing assets. The actions proposed below encompass immediate measures to 
+enhance resilience (1, 2), actions focused on the electricity sector (3 , 4), energy 
+efficiency (5), heat (6) and natural gas (7, 8), as well as the need to factor in 
+implications for Moldova (9) and integrate short-term responses with medium-term 
+goals (10).  
+Action 1 – Bolster the physical and cyber security of 
+Ukraine's energy infrastructure 
+As Ukraine repairs and reconstructs its energy infrastructure, build in a high 
+level of physical and cyber security. Ukraine’s historically centralised system 
+for the provision of power and heat, based on a relatively small number of large 
+assets, makes it vulnerable to Russian attack. R estoration of vital infrastructure 
+such as generation capacity and grid infrastructure, especially at crucial nodes in 
+the system like the network substations near nuclear power plants , needs to be 
+accompanied by efforts to bolster the resilience of the system , based on an 
+assessment of key system vulnerabilities, comprehensive costing that includes 
+physical and cyber protection measures, and a broadening of options to include 
+more decentralised generation and distributed energy resources.  
+Expand and intensify the construction of anti-drone protection measures for 
+critical energy infrastructure, including high- voltage equipment. 
+Reconstruction and restoration efforts for Ukraine’s  energy infrastructure, in 
+particular power and heating (via cogeneration) systems, need to include “passive 
+defence,” including fortification, concealment and other defence measures against 
+modern military technologies – especially drones – that are used to identify and 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 26  
+I EA. CC BY 4.0. 
+destroy energy infrastructure. Greater investment in measures such as cement 
+fortifications, cage roofs and sandbags, as well as moving equipment underground 
+that does not need access to outside airflow, can make key assets more resilient. 
+Installing air defence capabilities at the most critical energy generation and 
+storage facilities could further maintain and strengthen security.  
+Assist Ukraine in bolstering its defences against cyberattacks, which can be 
+as damaging as physical attacks.  Attempted cyberattacks against energy 
+infrastructure have tripled since the beginning of the invasion and remain a 
+permanent threat. Assistance should intensify as the Ukrainian power system 
+builds more decentralised generation and cogeneration capacity. This is changing 
+the power system from one whose Soviet-era characteristics are well understood 
+by Russia to one that is significantly more secure, resilient and flexible. However, 
+its expanded digital footprint opens up a range of potential vulnerabilities in the 
+absence of appropriate cyber security measures. Ukrenergo has made impressive 
+progress in this area, but enhanced access to world- leading expertise and 
+technology is needed to help Ukraine establish strong safeguards for the digital 
+security of its energy system.  
+Action 2 – Expedite the delivery of equipment and spare 
+parts 
+Expand and accelerate the supply of replacement equipment and 
+technology for damaged facilities . The donation, sale or lease of essential 
+equipment – such as transformers, generators, spare parts and other critical 
+components – has been an essential component of international support to 
+Ukraine. This is more urgent than ever. Clear  prioritisation of Ukraine’s needs, 
+alongside standardisation of technologies on the ground , can help minimise 
+downtime for both network and generation-level assets. Key partner-led initiatives 
+provide platform s to centrali se financial support and coordinate the supply of 
+necessary equipment. The Energy Community’s Ukraine Energy Support Fund
+, 
+for example,  enables governments, international financial institutions and 
+international organizations as well as corporate donors to provide financial support 
+to the Ukrainian energy sector’s efforts to repair damage and keep functioning, 
+while t he G7+ Energy Coordination Group is working closely with donors to 
+mobilise equipment donations, ensuring that Ukraine has the resources needed 
+to repair, restore and defend its energy infrastructure. The USAID Energy Security 
+Project has been working to support Ukraine's energy sector resilience, 
+collaborating with the Ukrainian government and utilities to repair and stabilise the 
+energy sector. Increasing production and stockpiling replacement parts for key 
+energy infrastructure in neighbouring countries can aid rapid restoration and 
+repairs. 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 27  
+I EA. CC BY 4.0. 
+Streamline procedures for cross- border equipment import. T he process of 
+importing critical energy equipment into Ukraine has faced administrative  
+challenges that have slowed down repairs and the deployment of distributed 
+energy resources. Supply chain and procurement bottlenecks have also hindered 
+the ability of donors to respond quickly to Ukraine's needs. Recognizing this , the 
+Ukrainian government removed import duties and value- added tax ( VAT) on 
+certain energy equipment in July 2024. Quickly implementing these changes and 
+considering extensions to include all critical components, such as the main 
+components of wind turbines, will shorten timelines for the repair and retooling of 
+Ukraine’s energy infrastructure. A clear priority list of equipment needs can serve 
+as guidance to the Ukrainian authorities for those items that need streamline d 
+import procedures. 
+Provide technical expertise and training to Ukraine’s energy workforce to 
+help them  manage and repair a system operating under severe stress. 
+Ukrainian energy professionals – both the existing workforce and new recruits –  
+need to be well-equipped to operate, maintain and restore energy infrastructure.  
+Technical expertise and training for  Ukrainian energy engineers and technicians 
+is crucial to enhance their capacity to deal with increasingly challenging conditions. 
+This needs to include advice and expertise on managing the transition to a more 
+decentralised model.  
+Action 3 – Increase and decentralise power supply 
+Deploy decentralised generation capacity as quickly as possible. Alongside 
+the diesel generators that are widely deployed already as back-up for grid supply, 
+this should include small -scale gas-fired combined heat and power plants  (< 40 
+MW), solar PV 14 and wind systems, a s well as  batteries and other storage 
+technologies. Solar PV and batteries, including behind-the-meter installations, can 
+be deployed quickly with the right incentives in place, allowing them to help meet 
+energy needs while increasing the physical resilience of the system. Supportive 
+regulatory changes are needed to accelerate the connection of new resources and 
+energy storage, including innovative approaches, such as non-firm connections in 
+congested areas. Off-grid and mini-grid solutions should be part of the solution.  
+Working with partners to provide back -up generation for water supply, mobile 
+networks and hospitals will also be key to ensuring resilience for critical 
+infrastructure. 
+Coordinate decentralisation efforts with the availability of existing networks, 
+while considering  flexibility needs for system balancing . The country's 
+ 
+ 
+14 Solar PV production potential is lowest during winter months, particularly in December and January, when capacity factors 
+drop to below 10%. As a result, complementary energy technologies, such as wind or batteries, and dispatchable generation, 
+e.g. gas-fired plants, are essential to maintain reliable supply. 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 28  
+I EA. CC BY 4.0. 
+extensive gas network offers multiple potential sites for small-scale gas turbines, 
+providing a flexible and resilient source of power generation that can help to 
+integrate variable renewables. This decentralisation has to align with gas network 
+and flows, and it must consider the prospective halt to transit flows from January 
+2025 and a constrained domestic gas market.  
+Action 4 – Enhance electricity transmission capacity with 
+the European Union 
+Increase electricity imports from the European Union  to Ukraine. Ukraine is 
+interconnected with continental Europe through Poland, Slovakia, Hungary and 
+Romania, and via  Moldova. The current firm transmission capacity for trade 
+towards Ukraine and Moldova is 1700 MW and can be complemented, when the 
+network allows, with a non-firm emergency inter-TSO agreement that can provide 
+additional support for a few hours. In June, Ukraine’s total import was close to 
+2000 MW for a few hours every day, triggering a request from Ukraine and 
+Moldova to further raise the trade limit. The transmission capacity is mainly 
+constrained by grid congestions in neighbouring countries and in Ukraine, where 
+constant network repairs are required to keep imports at their current levels. 
+Enhance short-term transmission capacity. TSOs aim to maximise  the 
+available capacity from continental Europe to Ukraine and Moldova by increasing 
+the frequency of calculations to a monthly basis, with automated calculations 
+including remedial actions for congestions , starting from  November. Most 
+observers expect this improved process to deliver an increase of the capacity by 
+around 200-300 MW. While this represents a clear improvement to the current 
+situation, further improvements can and should be made. Increasing the frequency 
+of capacity calculations to weekly or daily could enable more capacity to be made 
+available part of the time. EU legislation requires TSOs to minimise the risk to their 
+system when calculating available capacities, thereby making available cross -
+border capacity the outcome of a calculation that is risk-averse by design. Political 
+support for accepting higher risk on the EU side should enable making more 
+interconnection capacity available. In parallel, innovative technologies , including 
+software solutions such as dynamic line rating, could be deployed in a matter of 
+months and deliver higher capacities during cold or windy conditions. 
+Address regulatory impacts on import demand. Ukrainian demand for 
+interconnection capacity is influenced by a rule exempting industrial consumers 
+from rolling blackouts if they secure 80% of their power consumption from direct  
+ 
+ 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 29  
+I EA. CC BY 4.0. 
+imports15. The impact of this  rule on import patterns and grid efficiency warrants  
+further examination to assess if it does not lead to inefficient demand for the 
+already constrained interconnection capacity. 
+Action 5 – Engage consumers in energy saving and 
+demand response, while continuing investments in 
+energy efficiency  
+Implement immediate energy-saving measures to improve energy security 
+and thermal comfort . There are quick, low -cost actions that can improve 
+efficiency in r esidential buildings , which account for close to one -third of the  
+country’s total final energy consumption. S upport of simple weatherisation 
+measures – such as weatherstripping windows and doors, minimising air leaks in 
+buildings, and replacing inefficient windows and doors – can help to reduce heat 
+losses by up to 30%. Lowering the default heating temperature for district heating, 
+as well as (even localised) insulation of district heating pipes, can help improve 
+the reliability of service and provide quick energy savings.  
+Launch energy efficiency campaigns to raise awareness of  short-term 
+measures that citizens can take to keep warm. The Ministry of Energy, Ministry 
+of Infrastructure and Ministry of Environmental Protection have special teams 
+focusing on behavioural  campaigns. The State Energy Efficiency Agency has 
+conducted energy efficiency campaigns including public service announcements, 
+social media outreach and partnerships with local community groups. Redesigning 
+these existing measures to reflect the current situation that consumers face, in 
+conjunction with the provision of energy-saving products and services, can lead to 
+a reduction in energy consumption and mitigate the impact of energy shortages. 
+Swift action is required to be prepared for the winter ahead. The initial focus should 
+be on short-term, easy-to-implement measures for immediate impact and to help 
+in case of grid failure, but they should also include longer-term structural measures 
+to help improve efficiency. Engaging with multiple stakeholders, including media, 
+utilities, community groups and business organisations, will help the campaign 
+reach as many Ukrainian households as possible.  
+Enable demand response to help balance supply and demand . Clear price 
+signals during shortages and transparent communication towards energy 
+consumers are crucial. Analy sing potential demand-saving options ahead of the 
+winter period can help to ensure the appropriate design  of emergency demand-
+side policy measures and awareness-raising campaigns. Metering improvements 
+are necessary for this winter and beyond. Consumer protection can be maintained 
+ 
+ 
+15 Another rule exists that also exempts industrial consumers from rolling blackouts if they self -produce 80% of their power 
+consumption.  
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 30  
+I EA. CC BY 4.0. 
+through reform of the price cap in the Ukrainian electricity market , introducing 
+instead a system whereby a social consumption volume is charged at a subsidized 
+rate, after which consumers pay the market price. 
+Action 6 – Prepare back-up options for winter heating 
+Expedite the delivery of small CHP (combined heat and power)  units, 
+prioritising the worst -hit areas. Reinforcing Ukraine’s heat ing infrastructure 
+ahead of the winter requires a localised approach, focusing on the most affected 
+regions, such as Kharkiv, Mykolaiv and Sumy. By the end of July 2024, Kharkiv 
+had installed 22 cogeneration units and 31 autonomous boiler houses, but the city 
+needs as many as 140 units (with a total capacity of 340 MW) to ensure adequate 
+heat supply this winter. Kyiv’s municipally-owned Kyivteploenergo has ordered 15 
+small CHP units (with a combined capacity of 60 MW), but they will not be 
+delivered until December 2025 – too late to supply heat this winter. To the extent 
+possible, Ukraine should expedite and prioriti se these deliveries with the help of 
+international partners. Industrial-scale heat pumps could also play a useful role in 
+some areas, although these systems are more feasible for baseload heat supply 
+than as a backup due to their high capital cost , and they rely on electr icity to 
+operate. Though outside the scope of this report, humanitarian assistance, such 
+as heating tents and the distribution of thermal blankets, proved vital in alleviating 
+hardship during the previous two winters and should continue to complement the 
+energy-related actions. 
+Distribute backup heating equipment in rural areas.  In addition to procuring 
+small CHP units, Ukraine should prepare reliable backup heating options . This 
+might include LPG heaters, packaged boiler systems, hot water tanks and, given 
+the emergency conditions,  wood stoves and coal stoves for rural areas, though 
+the health and fire hazards associated with stoves  require careful consideration. 
+These measures can help ensure sufficient heat supply even in the event of gas 
+and power cuts. Electric boilers coupled with thermal energy storage could be a 
+suitable backup option in areas where the power supply is stable or in surplus. 
+Deploying small-scale CHPs and decentralized heating solutions could bolster the 
+resilience of Ukraine’s heating network against targeted Russian strikes on energy 
+infrastructure. 
+Action 7 – Build up natural gas storage levels 
+Ensure that Ukrainian storage sites are filled up to adequate levels ahead of 
+the heating season. Storage sites play a key role in meeting Ukraine’s natural 
+gas demand over the winter  and in preserving its ability to react to unexpected 
+demand and/or supply shocks . We estimate that net storage withdrawals met 
+around 30% of Ukraine’s natural gas demand requirements over the 2023- 24 
+heating season. Ukraine reduced its gas storage target from 14.7 bcm ahead of 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 31  
+I EA. CC BY 4.0. 
+the 2023-24 winter to 13.2 bcm ahead of the 2024-25 heating season and needs 
+to ensure, with international support, that the revised target is met in full.  
+To accelerate storage injections, Ukraine could require additional piped gas 
+imports from the European Union; international partners should continue to 
+support Ukraine in building- up adequate inventory levels.  We estimate that 
+Ukraine would need around 0.6 bcm of imports in September and October to reach 
+its storage target ahead of 1 November. International support, including via loans 
+and grants, is needed support Ukrainian gas companies to ramp-up their imports 
+ahead of this  winter season and to enhance i nterconnectivity with the rest of 
+Europe ahead of forthcoming winters . Based on spot prices at the beginning of 
+September, the cost of procuring 0. 6 bcm of natural gas would be just over 
+EUR 250 million. The European Bank for Reconstruction and Development 
+(EBRD) signed an agreement on a EUR 200 million loan under government 
+guarantees in November 2023 to support the creation of strategic gas reserves. 
+The corresponding agreement on guarantees was signed i n July 2024,  and 
+Naftogaz started buying natural gas using the loan in August 2024. AggregateEU, 
+the EU’s demand aggregation and joint purchasing platform, could also be a 
+mechanism to support Ukraine’s natural gas procurement.  
+Action 8 – Strengthen firm gas import capacities from 
+the European Union 
+Ensure and strengthen long-term firm import capacities from the European 
+Union to bolster Ukraine’s access to  natural gas. Ukraine has around 60 
+million cubic metres per day (mcm per day) of import capacity from the European 
+Union today. However, some of this capacity cannot be considered as available  
+on a long-term, firm basis. Ukraine and its European partners should work together 
+to ensure that firm capacity offerings are extended and ensured ahead of 
+forthcoming winter seasons. 
+• Slovakia: Between February 2022 and March 2024, the Slovak gas 
+transmission system operator (TSO) Eustream increased firm exit capacity to 
+Ukraine from 27 mcm per day to 42 mcm per day. Since 1 April 2024, the firm 
+capacity has been reduced to 27 mcm per day. 
+• Hungary: Since January 2022, Hungary’s gas TSO offered over 9 mcm per 
+day of firm exit capacity towards Ukraine.  However, this agreement is set to 
+expire starting from 1 January 2025. Parties need to work together to evaluate 
+options on how the offer of firm capacity can be extended.  
+• Poland: Firm capacity between Poland and Ukraine is not provided on a 
+permanent basis, though there is  capacity of over 6 mcm per day . This 
+capacity is offered as interruptible under long products (yearly, quarterly and 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 32  
+I EA. CC BY 4.0. 
+monthly products), although it can be offered as firm capacity on daily and 
+intraday auctions. TSOs should consider options offering firm capacity 
+products on a long-term basis, at least for the upcoming winter season.  
+Operating the Trans -Balkan pipeline system in reverse would further 
+enhance Ukraine’s natural gas supply security.  Ukraine already imported 
+0.5 bcm of natural gas via the Trans -Balkan pipeline in 2023, according to 
+Ukraine’s gas TSO. However, the current high tariffs are discouraging the use of 
+this route. This situation requires a structural regional approach involving all 
+relevant stakeholders. The countries along the Trans -Balkan pipeline system 
+(Bulgaria, Romania, Moldova and Ukraine) should work together to develop a 
+more competitive transmission tariff structure and further harmonise gas qualities. 
+Market participants are also evaluating a potential expansion of reverse capacity 
+over the medium -term. The Gas TSO of Ukraine and Moldova’s 
+“Vestmoldtransgaz” are working to enhance the firm capacities of gas 
+transmission along the Trans-Balkan route towards Ukraine from 1 mcm per day 
+to at least 7 mcm per day by April 2025. 
+Action 9 – Coordinate approaches to Ukraine and 
+Moldova 
+Carefully manage the knock- on effects of the situation in Ukraine for 
+Moldova over the coming winter, including the halt of transit flows. While not 
+subject to the same physical risks from Russian shelling, the coming winter could 
+also be destabilising in Moldova, including Transnistria, as gas and electricity flows 
+and relationships move across to a new footing. This requires integrated strategies 
+for the broader region that recognise the risks to gas and electricity security in 
+Moldova and act in an early  and coordinated manner to mitigate them. Moldova 
+will need to be adequately prepared for the winter in terms of gas, with adequate 
+storage levels in nearby markets such as Romania and Ukraine. In addition, taking 
+advantage of all possible import routes for gas , including the Trans -Balkan 
+pipeline, will be key to securing stable flows. A continued and transparent dialogue 
+with international financial institutions and donors is needed to ensure stable gas 
+supplies for the winter season and to manage the implications of any price 
+increases as the Gazprom transit agreement comes to an end.  
+Accelerate structural changes, including renewables deployment, grid 
+upgrades and energy efficiency improvements in Moldova.  Moldova is 
+moving to accelerate deployment of utility -scale wind and solar, with 165  MW of 
+tenders launched in August  2024. Boosting energy efficiency, particularly in 
+buildings and industry, through updated regulations and incentives  can likewise 
+help to balance the energy relationship with the Transnistrian region by reducing 
+reliance on electricity from MGRES  and improve national and regional energy  
+ 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 33  
+I EA. CC BY 4.0. 
+security. Given that transmission capacity with  the continental Europe system is 
+shared between Ukraine and Moldova, any improvement to Moldova’s electricity 
+security is also beneficial  to Ukraine. In case of shortages in Moldova, the two 
+countries need to agree to a distribution of imports . By default, one -sixth of the 
+available capacity would be allocated to Moldova, proportional to the number of 
+interconnectors. 
+Enhance Moldova’s energy connectivity  with its neighbours.  Stronger 
+coordination between Ukrainian and Moldovan TSOs with their neighbours – 
+notably through accelerated transposition and the implementation of 
+EU 
+provisions on el ectricity integration – can help prioritise and accelerate the 
+construction of new interconnectors and transmission lines that will strongly 
+benefit both Ukraine and Moldova, as well as broader European energy security. 
+New 400 kV lines are planned between Romania, Ukraine and Moldova that are 
+scheduled to start operation between 2025 and 2031. 
+Action 10 – Lay the groundwork for a modern, market-
+based, resilient and sustainable post-war energy system, 
+well integrated with the European Union 
+The immediate priority for action must be to mitigate the extreme risks over 
+the 2024-25 winter season. But it will also be vital to start actions that have 
+a longer lead time and to integrate, wherever possible, a vision for a new 
+Ukrainian energy system into the response. While Ukraine’s most urgent 
+concern remains the welfare and safety of its citizens through the upcoming winter, 
+there is a strong need to put foundations in place for future winters  and to meet 
+the longer-term needs of Ukraine’s  energy sector  by adopting measures that 
+facilitate system security, affordability and sustainability , and the country’s 
+ambition to develop its potential as a supplier of clean energy . These measures 
+should support Ukraine’s drive to integrate into the broader European system, as 
+set out in its commitment under the Energy Community framework to align with 
+EU energy legislation in the context of EU accession talks. The government’s work 
+to develop a 2050 Energy Strategy and a National Energy and Climate Plan 
+through 2030 are important steps, which now need to be underpinned, wherever 
+possible, with implementation strategies that prioritise a favourable regulatory 
+environment for investment.  
+Integrate longer -term viability and affordability into decision- making on 
+short-term assets. Emergency situations require emergency measures to limit, 
+as much as possible, the impact of continued Russian attacks on the provision of 
+electricity and heat. These include creative solutions , such as the transfer of 
+decommissioned equipment from Ukraine’s European neighbours. However, 
+investment in new capacity and the restoration of either damaged or destroyed 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 34  
+I EA. CC BY 4.0. 
+assets may impose unwanted long-term consequences on Ukrainian consumers 
+if they come with very high operating costs. Longer-term viability should be a factor 
+in near-term decision-making. 
+Reinforce the transmission corridors with neighbouring grids to enable 
+increased exports to Ukraine and Moldova. Two late submissions were added 
+to the list of projects in the ongoing cycle of ENTSO -E’s Ten-Year Network 
+Development Plan to reinforce the interconnections of Ukraine with Slovakia and 
+Romania, with completion expected in 2026-27. In the context of winter 2025-26, 
+further efforts could be made to increase the firm capacity by deploying phase-
+shifting transformers, upgrading equipment , reconduct oring and deploying 
+software solutions, such as dynamic line rating, on congested corridors. Together 
+with early commissioning of planned reinforcements, imports could be increased 
+by over 1 GW bef ore winter 2025- 26. In parallel, the market coupling process in 
+Eastern Europe should be sped up to maximise the utilisation of cross -border 
+capacity, based on the EU and Energy Community regulatory framework and 
+building on the work of the relevant High-Level Working Group. 
+Incentivise private investment in the energy sector . Ukraine's goal of 
+modernising its energy system and increasing its resilience will require the 
+engagement and support of private investors, and they will require an appropriate 
+level of risk-adjusted return. This means bringing down risks that can affect such 
+investments though a clear  policy vision, a readiness to work with the private 
+sector, and a commitment to transparency, regulatory stability and predictability 
+over time. In the power sector, for example, key issues include sector regulation, 
+the reliability of revenues – dependent mainly on the off -taker’s ability to pay on 
+time – and the availability of transmission infrastructure or land, as well as how all 
+these issues are defined in contracts. The reliability and credibility of the offtake 
+system can be bolstered by new risk -sharing facilities backed by international 
+partners and/or the government. Political risk can be mitigated by international 
+mechanisms that protect against losses, as well as by export credit agencies like 
+the Danish Export and Investment Fund or the US International Development 
+Finance Corporation.  
+Move towards cost-reflective tariffs for electricity and heat, with appropriate 
+safeguards for vulnerable households.  Price caps in wholesale markets or 
+other regulatory measures that hinder the incentive for private investment in new 
+assets, including price caps for ancillary services, should be reviewed and, where 
+possible, reduced or eliminated. In the place of broad price caps, the regulator 
+should consider retail tariffs designed to protect vulnerable consumers. Cost -
+reflective tariffs, allied with other supportive regulatory provisions, are instrumental 
+to support  investment in new infrastructure for power and heat, including 
+distributed energy resources, and to encourage more efficient and system-friendly 
+electricity consumption.  
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 35  
+I EA. CC BY 4.0. 
+Prioritise investments in energy efficiency . Almost 80% of the residential 
+building stock  in  Ukraine was categorised as  energy inefficient  as of 2021.  
+Increasing the energy efficiency of the existing building stock, particularly by 
+targeting building fabric improvements, could halve their energy consumption.  
+New construction, r econstruction of buildings damaged during the war , and the 
+renovation of existing buildings should be carried out with a view to embedding 
+high efficiency standards in buildings. Projects of the Energy Efficiency Fund of 
+Ukraine and the recently established State Fund for Decarbonization and Energy 
+Efficient Transformation s hould provide financial mechanisms to improve the 
+efficiency of buildings. 
+Accelerate the modernisation of  Ukraine’s heating system s. The 
+modernisation of Ukraine’s district heating network is long overdue and needs to 
+be accelerated in conjunction with the modernisation of the country’s building 
+stock. Much of Ukraine’s heating equipment and infrastructure  is close to, or 
+beyond, the end of its design life and network losses (at over 20 %, even before 
+the full-scale invasion) are more than double the typical losses in EU countries. 
+According to a government estimate, about 44% of the district heating network is 
+dilapidated. The lack of investment in the heating grid, combined with poor end-
+use energy efficiency, means that more than half of the fuel currently used to 
+produce heat is wasted
+16. The Ministry of Infrastructure has already developed a 
+thermal modernisation strategy through 2030 and a Priority Action Plan, adopted 
+in February 2024, includes a draft resolution to improve energy efficiency in 
+buildings and reduce heat losses from the sector , with a focus on upgrading the 
+building envelope and heating systems and integrating renewable energy . This 
+now needs a more detailed roadmap of measures to support its implementation  
+Implement smart meters for electricity and universal heat metering.  
+Developing a plan to roll out smart meters and adding demand-response devices 
+to major electricity appliances and equipment can lay the groundwork for future 
+automated demand response programs for load management and reducing peak 
+demand. Ukraine’s ongoing efforts to implement universal heat metering should 
+be continued, and heat tariffs should enable consumption- based billing to 
+encourage the installation of automated meters and end -user t emperature 
+controls in buildings. 
+Ensure that strong corporate governance standards are upheld to maintain 
+energy sector stability and investor confidence. Maintaining and strengthening 
+corporate governance for Ukraine's energy companies in accordance with OECD 
+and EU standards will allow for smoother cooperation with European institutions 
+ 
+ 
+16 The energy saving potential from upgrading district heating systems in Ukraine is substantial. A renovation project in Odesa 
+demonstrated a 50% reduction in total energy consumption,  a 30% reduction in direct system costs, a 40% reduction in 
+electricity costs, and 95%  water consumption. 
+
+Ukraine’s Energy Security and the Coming Winter An energy action plan 
+PAGE | 36  
+I EA. CC BY 4.0. 
+and investors. A near-term priority is to ensure that equipment procurement and 
+imports can ramp up  and that donations are managed efficiently . Implementing 
+best practices for transparency is essential, as is ensuring the independence of 
+corporate boards.  
+Utilise Ukraine’s significant potential for biogas and biomethane production. 
+Incentives to promote investment in biogas and biomethane- based installations 
+(including for combined heat and power generation) could provide an alternative 
+to natural gas -based district heating systems and increase the resilience of 
+Ukraine’s heat supply in the face of ongoing gas supply security risks. Ukraine has 
+two operational biomethane plants and several under construction, according to 
+the country’s industry group. It plans to open ten new facilities with a capacity of 
+1.5 million cubic meters per year in 2024- 25. This work could build on the 2023 
+EU-Ukraine Memorandum of Understanding on a Strategic Partnership on 
+Biomethane and Hydrogen.  
+Integrate the Ukrainian gas storage system in the European and global gas 
+market. Ukraine has the largest natural gas storage capacity in Europe, at about 
+30 bcm. Most of its storage sites  are located in the western part of the country, 
+close to the European Union, and Ukraine has offered 10 bcm of storage capacity 
+to European market players. Ukrtransgaz, the storage system operator, 
+underwent successful certification according to new EU rules in 2023. That year, 
+European companies stored around 2.5 bcm in Ukrainian storage sites, although 
+they significantly reduced their storage operations in 2024 due to ongoing security 
+issues. In addition to enhancing European gas supply security, storing natural gas 
+in Ukraine provides much-needed income to Ukraine’s storage system operator.   
+Enable Ukrainian citizens to gain the most from their energy system  and 
+engage them in the process of change, while managing the system’s use 
+and cost. Energy efficiency policies that prioritise people can build connections 
+between energy consumers and the energy system – a vital element in achieving 
+quick short-term actions, but also in meeting longer term energy transition goals. 
+Policies must be designed with the Ukrainian people at the centre, allowing  
+Ukrainians – as consumers, producers, operators or users – to engage with and 
+benefit from their energy system. Potential actions include the upscaling of energy 
+efficiency skills, capacity-building measures (education, training and mentorship), 
+the provision of clear  and consumer-friendly energy-related product information 
+(labels on energy use, rating,  etc.) at or before the purchasing stage, and t he 
+inclusion of behavioural insights in the design of energy efficiency policy.   
+ 
+
+A nnexes 
+PAGE | 37  
+I EA. CC BY 4.0. 
+Ukraine’s Energy Security and the Coming Winter 
+Annexes 
+Ukraine's energy background 
+Prior to Russia’s 2022 invasion, Ukraine’s energy system depended primarily on 
+fossil fuels and nuclear energy. Total energy supply totalled 88 million tonnes of 
+oil equivalent (Mtoe) in 2021, with oil, natural gas and coal accounting for nearly 
+70%, and nuclear power for around 25%.
+17 Coal, nuclear and most renewable 
+energy sources were used for the most part in power generation, while oil and gas 
+were used primarily in the end-use sectors. Ukraine produces significant quantities 
+of coal and natural gas, but domestic production has historically not been enough 
+to cover demand. In 2021, domestic energy production totalled 55 Mtoe, or almost 
+two-thirds (62%) of the country’s total supply. Although renewable energy sources 
+contributed only modestly to the energy mix, solar and wind power generation had 
+been expanding quickly from a low base. 
+Total final consumption (TFC) was 49 Mtoe in 2021, with natural gas accounting 
+for 27%, electricity and oil for 21% each, heat for 15%, coal for 11% and bioenergy 
+for 5%. The industry sector was responsible for 39% of TFC, followed by the 
+residential sector (28%), transport (19%) and services and other sectors (13%).  
+Before 2022, nuclear power generated half of the country’s electricity, followed by 
+coal-fired plants at 23% and gas-fired plants at 9%. Renewable energy contributed 
+to 11% of the mix, with hydropower comprising the largest share at 6.5%, followed 
+by solar  (4.2%) and wind (2%). Ukraine's power generation capacity was the 
+seventh largest in Europe, with a nominal capacity of 56 GW, which  allowed 
+Ukraine to export electricity to neighbouring European countries until late 2022. 
+Before 2022, natural gas was the second- largest element in Ukraine’s primary 
+energy mix behind oil, with a share of around 28% of  the total. Most of this gas 
+went to produce heat and power, which accounted for 38% of total gas demand, 
+followed by consumption in the residential sector (27%) and by industry (21%). 
+Ukraine traditionally met its gas needs through a combination of domestic 
+production and gas imports from Russia. However, the gas relationship with 
+Russia was a consistent source of tension and ins tability. Ukraine stopped direct 
+gas imports from Russia in November 2015, replacing some of it with  indirect 
+imports via the European Union. Coal imports grew after Ukraine lost control of its 
+17 Source: IEA (2022), World Energy Statistics and Balances (database). 
+
+Ukraine’s Energy Security and the Coming Winter Annexes 
+PAGE | 38  
+I EA. CC BY 4.0. 
+main coal mining region in the Donbass after 2014;  it moved from being almost 
+self-sufficient in coal to being a major importer (40% of coal supply). 
+Defining cross-border electricity capacity 
+limits 
+The calculation of cross-border capacity limits by t ransmission system operators 
+(TSOs) involves careful balancing between maximi sing cross -border electricity 
+flows and maintaining grid reliability. The key risks TSOs manage in this process 
+are system instability and grid congestions, which can arise from unexpected 
+power flows and equipment failures.  
+Since the grid in continental Europe is highly meshed, the power flows between 
+two countries can affect, and be affected by, grid conditions in neighbouring 
+countries. As required by EU legislation, cross-border capacities are co-ordinated 
+at the regional level by Regional Coordination Centres , but the process is only 
+starting for the newly-connected Ukraine and Moldova. Capacities are calculated 
+for each direction separately . As of today, Ukraine and Moldova share a single 
+area for the capacity calculations, meaning that the trade limit of 1.7 GW applies 
+to the imports of both countries together, through the grids of Poland, Slovakia, 
+Hungary and Romania. In the other direction (Ukraine and Moldova exporting to 
+Europe), the current limit is set to 550 MW, due to stability risks for the 
+interconnected system. 
+The transmission capacity calculation relies on system models and forecasts 
+about resources and network availability. For borders within the EU, the 
+calculations are performed at regular intervals to assess the limits valid for various 
+durations, from yearly down to intradaily values. Capacities available for trade tend 
+to be higher closer to the time of delivery given the higher certainty of the forecasts. 
+For the trade with Ukraine and Moldova, the 1.7 GW and 550 MW trade limits was 
+the result of a calcul ation for a long- term commitment  with complete network 
+availability, taking into account likely outages outside of wartimes . TSOs are 
+currently proceeding towards a monthly capacity calculation that may deliver more 
+capacity, in the order of magnitude of 200 to 300 MW, thanks to a shorter duration 
+of the commitment and the incorporation of available remedial actions. 
+ 
+ 
+
+International Energy Agency (IEA)
+This work reflects the views of the IEA Secretariat but does not 
+necessarily reflect those of the IEA’s individual member countries or of 
+any particular funder or collaborator. The work does not constitute 
+professional advice on any specific issue or situation. The IEA makes 
+no representation or warranty, express or implied, in respect of the 
+work’s contents (including its completeness or accuracy) and shall not 
+be responsible for any use of, or reliance on, the work.  
+Subject to the IEA’s Notice for CC-licenced Content, this work 
+is licenced under a Creative Commons Attribution 4.0 
+International Licence.
+This document and any map included herein are without prejudice to the 
+status of or sovereignty over any territory, to the delimitation of 
+international frontiers and boundaries and to the name of any territory, 
+city or area.
+Unless otherwise indicated, all material presented in figures and tables is 
+derived from IEA data and analysis.
+IEA Publications 
+International Energy Agency 
+Website: www.iea.org 
+Contact information: www.iea.org/contact 
+Typeset in France by IEA - September 2024
+Cover design: IEA
+Photo credits: © Shutterstock
+
+

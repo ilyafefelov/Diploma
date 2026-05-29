@@ -6,6 +6,7 @@ import json
 
 import numpy as np
 import polars as pl
+import torch
 
 from smart_arbitrage.dfl.dt_research_shadow import (
     build_dt_research_shadow_teacher_rows_from_candidate_library,
@@ -21,6 +22,9 @@ from scripts.materialize_dt_research_shadow_packet import (
 )
 from scripts.materialize_dt_v2_plus_apples_to_apples_packet import (
     main as materialize_dt_v2_plus_apples_to_apples_packet,
+)
+from scripts.materialize_dt_v2_plus_distillation_shadow_packet import (
+    main as materialize_dt_v2_plus_distillation_shadow_packet,
 )
 
 
@@ -276,7 +280,16 @@ def test_dt_research_shadow_smoke_trains_transformer_and_reports_regret_controls
     assert summary["requested_model_backbone"] == "local"
     assert summary["model_backbone"] == "local_dt_compatible_transformer_classifier"
     assert summary["model_backbone_selection_reason"] == "local_requested"
-    assert summary["loss_function"] == "cross_entropy_candidate_index"
+    assert summary["loss_function"] == (
+        "cross_entropy_candidate_index_plus_decision_aware_regret_value_ranking"
+    )
+    assert summary["training_objective"]["objective_kind"] == (
+        "decision_aware_regret_value_ranking"
+    )
+    assert summary["training_objective"]["cross_entropy_weight"] == 1.0
+    assert summary["training_objective"]["decision_aware_ranking_weight"] == 1.0
+    assert summary["selection_policy"]["v2_plus_default_fallback"] is True
+    assert summary["selection_policy"]["market_execution_enabled"] is False
     assert summary["dt_tensor_contract"]["states_shape"] == [4, 3, 20]
     assert summary["dt_tensor_contract"]["actions_shape"] == [4, 3]
     assert summary["dt_tensor_contract"]["candidate_id_targets_shape"] == [4, 3]
@@ -309,7 +322,14 @@ def test_dt_research_shadow_smoke_trains_transformer_and_reports_regret_controls
     assert summary["evaluation_metrics"]["strict_mean_value_uah"] >= 0.0
     assert summary["evaluation_metrics"]["behavior_cloning_mean_regret_uah"] >= 0.0
     assert summary["evaluation_metrics"]["behavior_cloning_mean_value_uah"] >= 0.0
+    assert summary["evaluation_metrics"]["dt_selected_median_regret_uah"] >= 0.0
+    assert summary["evaluation_metrics"]["v2_plus_median_regret_uah"] >= 0.0
+    assert summary["evaluation_metrics"]["strict_median_regret_uah"] >= 0.0
     assert summary["evaluation_metrics"]["infeasible_action_prediction_count"] == 0
+    assert summary["evaluation_metrics"]["abstention_count"] >= 0.0
+    assert summary["evaluation_metrics"]["non_v2_plus_switch_count"] >= 0.0
+    assert summary["evaluation_metrics"]["switch_win_count"] >= 0.0
+    assert summary["evaluation_metrics"]["switch_loss_count"] >= 0.0
     assert summary["evaluation_metrics"]["accuracy_secondary"] >= 0.0
     assert summary["comparison_controls"] == [
         "strict_lp_oracle_reference",
@@ -343,6 +363,10 @@ def test_dt_research_shadow_smoke_trains_transformer_and_reports_regret_controls
     assert selected_preview["preview_rows"][0]["selected_candidate_id"]
     assert selected_preview["preview_rows"][0]["selected_schedule_family"]
     assert selected_preview["preview_rows"][0]["market_execution_enabled"] is False
+    assert "abstained_to_v2_plus" in selected_preview["preview_rows"][0]
+    assert "predicted_improvement_vs_v2_plus_uah" in selected_preview["preview_rows"][0]
+    assert "tail_risk_guard_passed" in selected_preview["preview_rows"][0]
+    assert "family_tail_risk_probability" in selected_preview["preview_rows"][0]
     assert evaluation["claim_scope"] == (
         "dt_research_shadow_evaluation_packet_not_promotable_not_market_execution"
     )
@@ -367,6 +391,64 @@ def test_dt_research_shadow_smoke_trains_transformer_and_reports_regret_controls
     assert evaluation_validation["failures"] == []
     assert evaluation_validation["gate_results"]["regret_value_metrics"]["passed"] is True
     assert evaluation_validation["gate_results"]["no_market_execution"]["passed"] is True
+
+
+def test_dt_research_shadow_smoke_conservative_selector_abstains_to_v2_plus(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    packet = build_dt_research_shadow_sequence_packet(
+        teacher_rows_frame=_teacher_rows(),
+        run_slug="dt-shadow-conservative-selector",
+        context_length=3,
+    )
+    paths = write_dt_research_shadow_sequence_packet(
+        output_dir=tmp_path,
+        packet=packet,
+        teacher_rows_frame=_teacher_rows(),
+    )
+
+    import smart_arbitrage.dfl.dt_research_shadow as dt_shadow_module
+
+    def _fake_policy_logits(**kwargs) -> torch.Tensor:
+        states = kwargs["states"]
+        action_dim = int(kwargs["previous_actions"].shape[-1])
+        logits = torch.zeros(
+            (states.shape[0], states.shape[1], action_dim),
+            dtype=torch.float32,
+        )
+        if action_dim >= 2:
+            logits[:, :, 1] = 12.0
+            logits[:, :, 0] = 0.5
+        return logits.requires_grad_()
+
+    monkeypatch.setattr(dt_shadow_module, "_dt_policy_logits", _fake_policy_logits)
+
+    smoke = run_dt_research_shadow_smoke(
+        sequence_npz_path=paths["sequence_npz"],
+        output_dir=tmp_path,
+        model_backbone="local",
+        max_epochs=1,
+        hidden_dim=16,
+        num_layers=1,
+        num_heads=2,
+        seed=11,
+        min_predicted_improvement_uah=10_000.0,
+        max_family_tail_risk_probability=0.01,
+        objective_kind="decision_aware_regret_value_ranking",
+    )
+
+    selected_preview = json.loads(
+        smoke["selected_preview_json"].read_text(encoding="utf-8")
+    )
+    assert selected_preview["preview_rows"]
+    row = selected_preview["preview_rows"][0]
+    assert row["abstained_to_v2_plus"] is True
+    assert row["abstention_reason"] == "predicted_improvement_below_threshold"
+    assert row["selected_schedule_family"] == "frozen_v2_plus_fallback"
+    assert row["selected_candidate_id"] == row["v2_plus_candidate_id"]
+    assert row["tail_risk_guard_passed"] is True
+    assert row["market_execution_enabled"] is False
 
 
 def test_dt_research_shadow_smoke_masks_infeasible_candidate_classes(
@@ -615,6 +697,70 @@ def test_dt_research_shadow_adapts_real_v2_plus_strict_rows_for_apples_to_apples
     )
 
 
+def test_dt_research_shadow_marks_single_v2_plus_distillation_target_per_candidate_set() -> None:
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=_v2_plus_strict_rows(),
+        regret_decomposition_frame=_v2_plus_regret_decomposition_rows(),
+    )
+
+    grouped = teacher_rows.group_by(
+        ["tenant_id", "source_model_name", "anchor_timestamp", "split_name"]
+    ).agg(
+        pl.col("label_v2_plus_rule_distillation_target")
+        .cast(pl.Int64)
+        .sum()
+        .alias("target_count"),
+        pl.col("label_v2_plus_selected_candidate_id")
+        .n_unique()
+        .alias("selected_candidate_id_count"),
+    )
+    assert grouped.height == 4
+    assert grouped["target_count"].to_list() == [1, 1, 1, 1]
+    assert grouped["selected_candidate_id_count"].to_list() == [1, 1, 1, 1]
+    target_rows = teacher_rows.filter(pl.col("label_v2_plus_rule_distillation_target"))
+    assert target_rows.height == 4
+    assert target_rows["dt_schedule_family_target"].unique().to_list() == [
+        "schedule_value_learner_v2_plus"
+    ]
+    assert (
+        target_rows["label_v2_plus_selected_candidate_id"].to_list()
+        == target_rows["dt_candidate_id_target"].to_list()
+    )
+
+
+def test_dt_research_shadow_sequence_packet_exports_v2_plus_distillation_targets(
+    tmp_path,
+) -> None:
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=_v2_plus_strict_rows(),
+        regret_decomposition_frame=_v2_plus_regret_decomposition_rows(),
+    )
+    packet = build_dt_research_shadow_sequence_packet(
+        teacher_rows_frame=teacher_rows,
+        run_slug="dt-shadow-distillation-targets",
+        context_length=4,
+    )
+    paths = write_dt_research_shadow_sequence_packet(
+        output_dir=tmp_path,
+        packet=packet,
+        teacher_rows_frame=teacher_rows,
+    )
+
+    npz = np.load(paths["sequence_npz"], allow_pickle=True)
+    target_mask = npz["v2_plus_rule_distillation_target_mask"]
+    target_ids = npz["v2_plus_rule_distillation_target_candidate_id"].astype(str)
+    candidate_ids = npz["candidate_id_targets"].astype(str)
+    assert target_mask.shape == candidate_ids.shape
+    assert target_ids.shape == candidate_ids.shape
+    assert target_mask.sum(axis=1).tolist() == [1, 1, 1, 1]
+    for sequence_index in range(target_mask.shape[0]):
+        target_position = int(np.flatnonzero(target_mask[sequence_index])[0])
+        assert (
+            target_ids[sequence_index, target_position]
+            == candidate_ids[sequence_index, target_position]
+        )
+
+
 def test_dt_v2_plus_apples_to_apples_cli_reports_real_v2_plus_control(
     tmp_path,
 ) -> None:
@@ -668,6 +814,104 @@ def test_dt_v2_plus_apples_to_apples_cli_reports_real_v2_plus_control(
     assert summary["boundary"]["market_execution_enabled"] is False
     assert summary["dt_evaluation_metrics"]["v2_plus_mean_regret_uah"] == 15.0
     assert summary["best_available_label_summary"]["attached"] is True
+
+
+def test_dt_research_shadow_smoke_reports_v2_plus_rule_distillation_metrics(
+    tmp_path,
+) -> None:
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=_v2_plus_strict_rows(),
+        regret_decomposition_frame=_v2_plus_regret_decomposition_rows(),
+    )
+    packet = build_dt_research_shadow_sequence_packet(
+        teacher_rows_frame=teacher_rows,
+        run_slug="dt-shadow-distillation-smoke",
+        context_length=4,
+    )
+    paths = write_dt_research_shadow_sequence_packet(
+        output_dir=tmp_path,
+        packet=packet,
+        teacher_rows_frame=teacher_rows,
+    )
+
+    smoke = run_dt_research_shadow_smoke(
+        sequence_npz_path=paths["sequence_npz"],
+        output_dir=tmp_path,
+        model_backbone="local",
+        max_epochs=40,
+        hidden_dim=16,
+        num_layers=1,
+        num_heads=2,
+        seed=17,
+        objective_kind="v2_plus_rule_distillation",
+        cross_entropy_weight=0.0,
+        decision_aware_ranking_weight=0.0,
+        distillation_weight=1.0,
+    )
+    summary = json.loads(smoke["summary_json"].read_text(encoding="utf-8"))
+    metrics = summary["evaluation_metrics"]
+    assert summary["loss_function"] == "v2_plus_rule_distillation_listwise"
+    assert summary["training_objective"]["objective_kind"] == "v2_plus_rule_distillation"
+    assert summary["training_objective"]["cross_entropy_weight"] == 0.0
+    assert summary["training_objective"]["decision_aware_ranking_weight"] == 0.0
+    assert summary["training_objective"]["distillation_weight"] == 1.0
+    assert summary["market_execution_enabled"] is False
+    assert summary["dt_promotion_gate_passed"] is False
+    assert metrics["v2_plus_rule_recovery_rate"] >= 0.95
+    assert abs(metrics["raw_distilled_argmax_minus_v2_plus_mean_regret_uah"]) <= 1e-6
+    assert metrics["raw_distilled_argmax_win_loss_tie_vs_v2_plus"]["losses"] == 0
+
+
+def test_dt_v2_plus_distillation_shadow_cli_materializes_packet(
+    tmp_path,
+) -> None:
+    strict_csv = tmp_path / "v2_plus_strict_rows.csv"
+    regret_csv = tmp_path / "regret_decomposition.csv"
+    output_dir = tmp_path / "packet"
+    _v2_plus_strict_rows().write_csv(strict_csv)
+    _v2_plus_regret_decomposition_rows().write_csv(regret_csv)
+
+    exit_code = materialize_dt_v2_plus_distillation_shadow_packet(
+        [
+            "--strict-rows-csv",
+            str(strict_csv),
+            "--regret-decomposition-csv",
+            str(regret_csv),
+            "--output-dir",
+            str(output_dir),
+            "--run-slug",
+            "dt-v2-plus-distillation-test",
+            "--source-model-name",
+            "nbeatsx_official_global_panel_horizon_calibrated_v1",
+            "--context-length",
+            "4",
+            "--max-epochs",
+            "10",
+            "--hidden-dim",
+            "16",
+            "--num-layers",
+            "1",
+            "--num-heads",
+            "2",
+            "--seed",
+            "19",
+        ]
+    )
+
+    assert exit_code == 0
+    assert (output_dir / "dt_research_shadow_teacher_rows.csv").exists()
+    assert (output_dir / "dt_v2_plus_distillation_teacher_rows.csv").exists()
+    summary = json.loads(
+        (output_dir / "dt_v2_plus_distillation_summary.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert summary["boundary"]["market_execution_enabled"] is False
+    assert summary["boundary"]["dt_promotion_gate_passed"] is False
+    assert summary["boundary"]["v2_plus_remains_default"] is True
+    assert (
+        summary["dt_evaluation_metrics"]["v2_plus_rule_recovery_rate"] >= 0.95
+    )
 
 
 def _teacher_rows() -> pl.DataFrame:

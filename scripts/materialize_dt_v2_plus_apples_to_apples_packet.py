@@ -29,6 +29,10 @@ DEFAULT_SOURCE_MODEL_NAME = "nbeatsx_official_global_panel_horizon_calibrated_v1
 APPLES_TO_APPLES_SUMMARY_JSON_NAME = "dt_v2_plus_apples_to_apples_summary.json"
 APPLES_TO_APPLES_SUMMARY_MD_NAME = "dt_v2_plus_apples_to_apples_summary.md"
 APPLES_TO_APPLES_TEACHER_ROWS_CSV_NAME = "dt_v2_plus_apples_to_apples_teacher_rows.csv"
+APPLES_TO_APPLES_SELECTED_ROWS_CSV_NAME = "dt_v2_plus_apples_to_apples_selected_rows.csv"
+REFERENCE_V2_PLUS_MEAN_REGRET_UAH = 174.77
+REFERENCE_STRICT_MEAN_REGRET_UAH = 310.58
+REFERENCE_DT_SHADOW_MEAN_REGRET_UAH = 460.30
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -51,6 +55,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--num-layers", type=int, default=2)
     parser.add_argument("--num-heads", type=int, default=2)
     parser.add_argument("--seed", type=int, default=20260526)
+    parser.add_argument(
+        "--objective-kind",
+        choices=(
+            "cross_entropy_candidate_index",
+            "decision_aware_regret_value_ranking",
+            "v2_plus_rule_distillation",
+        ),
+        default="decision_aware_regret_value_ranking",
+    )
+    parser.add_argument("--cross-entropy-weight", type=float, default=1.0)
+    parser.add_argument("--decision-aware-ranking-weight", type=float, default=1.0)
+    parser.add_argument("--distillation-weight", type=float, default=1.0)
+    parser.add_argument("--min-predicted-improvement-uah", type=float, default=50.0)
+    parser.add_argument("--max-family-tail-risk-probability", type=float, default=0.5)
     parser.add_argument("--model-backbone", choices=("auto", "local", "hf"), default="hf")
     args = parser.parse_args(argv)
 
@@ -106,6 +124,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         num_heads=args.num_heads,
         seed=args.seed,
         model_backbone=args.model_backbone,
+        objective_kind=args.objective_kind,
+        cross_entropy_weight=args.cross_entropy_weight,
+        decision_aware_ranking_weight=args.decision_aware_ranking_weight,
+        distillation_weight=args.distillation_weight,
+        min_predicted_improvement_uah=args.min_predicted_improvement_uah,
+        max_family_tail_risk_probability=args.max_family_tail_risk_probability,
+    )
+    selected_rows_csv_path = _write_selected_rows_csv(
+        selected_preview_json_path=smoke_paths["selected_preview_json"],
+        output_dir=args.output_dir,
     )
     summary = _apples_to_apples_summary(
         run_slug=args.run_slug,
@@ -115,6 +143,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         teacher_rows=teacher_rows,
         sequence_paths=sequence_paths,
         smoke_paths=smoke_paths,
+        selected_rows_csv_path=selected_rows_csv_path,
     )
     summary_json_path = args.output_dir / APPLES_TO_APPLES_SUMMARY_JSON_NAME
     summary_md_path = args.output_dir / APPLES_TO_APPLES_SUMMARY_MD_NAME
@@ -130,6 +159,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "teacher_rows_csv": str(
                 args.output_dir / APPLES_TO_APPLES_TEACHER_ROWS_CSV_NAME
             ),
+            "selected_rows_csv": str(selected_rows_csv_path),
             "sequence_summary_json": str(sequence_paths["summary_json"]),
             "smoke_summary_json": str(smoke_paths["summary_json"]),
             "evaluation_summary_json": str(smoke_paths["evaluation_summary_json"]),
@@ -158,6 +188,7 @@ def _apples_to_apples_summary(
     teacher_rows: pl.DataFrame,
     sequence_paths: dict[str, Path],
     smoke_paths: dict[str, Path],
+    selected_rows_csv_path: Path,
 ) -> dict[str, Any]:
     evaluation = json.loads(
         smoke_paths["evaluation_summary_json"].read_text(encoding="utf-8")
@@ -185,6 +216,58 @@ def _apples_to_apples_summary(
         "best_available_label_summary": best_labels,
         "dt_evaluation_metrics": evaluation["evaluation_metrics"],
         "regret_value_deltas": evaluation["regret_value_deltas"],
+        "reference_regret_comparison_uah": {
+            "reference_v2_plus_mean_regret_uah": REFERENCE_V2_PLUS_MEAN_REGRET_UAH,
+            "reference_strict_mean_regret_uah": REFERENCE_STRICT_MEAN_REGRET_UAH,
+            "reference_dt_shadow_mean_regret_uah": REFERENCE_DT_SHADOW_MEAN_REGRET_UAH,
+            "new_dt_selected_mean_regret_uah": evaluation["evaluation_metrics"][
+                "dt_selected_mean_regret_uah"
+            ],
+            "new_v2_plus_mean_regret_uah": evaluation["evaluation_metrics"][
+                "v2_plus_mean_regret_uah"
+            ],
+            "new_strict_mean_regret_uah": evaluation["evaluation_metrics"][
+                "strict_mean_regret_uah"
+            ],
+            "new_dt_minus_reference_v2_plus_uah": (
+                evaluation["evaluation_metrics"]["dt_selected_mean_regret_uah"]
+                - REFERENCE_V2_PLUS_MEAN_REGRET_UAH
+            ),
+            "new_dt_minus_reference_strict_uah": (
+                evaluation["evaluation_metrics"]["dt_selected_mean_regret_uah"]
+                - REFERENCE_STRICT_MEAN_REGRET_UAH
+            ),
+            "new_dt_minus_reference_current_dt_uah": (
+                evaluation["evaluation_metrics"]["dt_selected_mean_regret_uah"]
+                - REFERENCE_DT_SHADOW_MEAN_REGRET_UAH
+            ),
+        },
+        "switch_quality": {
+            "non_v2_plus_switch_count": evaluation["evaluation_metrics"].get(
+                "non_v2_plus_switch_count",
+                0.0,
+            ),
+            "abstention_count": evaluation["evaluation_metrics"].get(
+                "abstention_count",
+                0.0,
+            ),
+            "switch_win_count": evaluation["evaluation_metrics"].get(
+                "switch_win_count",
+                0.0,
+            ),
+            "switch_loss_count": evaluation["evaluation_metrics"].get(
+                "switch_loss_count",
+                0.0,
+            ),
+            "switch_tie_count": evaluation["evaluation_metrics"].get(
+                "switch_tie_count",
+                0.0,
+            ),
+            "switch_mean_regret_delta_uah": evaluation["evaluation_metrics"].get(
+                "switch_mean_regret_delta_uah",
+                0.0,
+            ),
+        },
         "boundary": {
             "real_v2_plus_comparator": True,
             "mirrored_training_rows": True,
@@ -196,6 +279,7 @@ def _apples_to_apples_summary(
         },
         "attached_artifacts": {
             "teacher_rows_csv": APPLES_TO_APPLES_TEACHER_ROWS_CSV_NAME,
+            "selected_rows_csv": selected_rows_csv_path.name,
             "sequence_summary_json": sequence_paths["summary_json"].name,
             "sequence_validation_json": sequence_paths["validation_json"].name,
             "smoke_summary_json": smoke_paths["summary_json"].name,
@@ -205,7 +289,22 @@ def _apples_to_apples_summary(
             "summary_json": APPLES_TO_APPLES_SUMMARY_JSON_NAME,
             "summary_markdown": APPLES_TO_APPLES_SUMMARY_MD_NAME,
         },
-    }
+}
+
+
+def _write_selected_rows_csv(
+    *,
+    selected_preview_json_path: Path,
+    output_dir: Path,
+) -> Path:
+    selected_preview = json.loads(selected_preview_json_path.read_text(encoding="utf-8"))
+    preview_rows = selected_preview.get("preview_rows")
+    if not isinstance(preview_rows, list):
+        preview_rows = []
+    frame = pl.DataFrame(preview_rows) if preview_rows else pl.DataFrame([])
+    selected_rows_csv_path = output_dir / APPLES_TO_APPLES_SELECTED_ROWS_CSV_NAME
+    frame.write_csv(selected_rows_csv_path)
+    return selected_rows_csv_path
 
 
 def _load_polars_frame(path: Path) -> pl.DataFrame:
@@ -271,6 +370,8 @@ def _summary_markdown(summary: dict[str, Any]) -> str:
     metrics = summary["dt_evaluation_metrics"]
     deltas = summary["regret_value_deltas"]
     best = summary["best_available_label_summary"]
+    switch_quality = summary.get("switch_quality", {})
+    references = summary.get("reference_regret_comparison_uah", {})
     lines = [
         "# DT V2+ Apples-to-Apples Shadow",
         "",
@@ -299,6 +400,24 @@ def _summary_markdown(summary: dict[str, Any]) -> str:
             f"- Strict comparator mean regret: `{controls['strict_reference']['mean_regret_uah']:.2f}` UAH.",
             f"- DT minus real V2+: `{deltas['dt_minus_v2_plus_regret_uah']:.2f}` UAH.",
             f"- DT minus strict: `{deltas['dt_minus_strict_regret_uah']:.2f}` UAH.",
+            f"- DT selected median regret: `{metrics.get('dt_selected_median_regret_uah', 0.0):.2f}` UAH.",
+            f"- V2+ median regret: `{metrics.get('v2_plus_median_regret_uah', 0.0):.2f}` UAH.",
+            "",
+            "## Switch Quality",
+            "",
+            f"- Non-V2+ switches: `{int(switch_quality.get('non_v2_plus_switch_count', 0))}`.",
+            f"- Abstentions to V2+: `{int(switch_quality.get('abstention_count', 0))}`.",
+            f"- Switch wins/losses/ties: `{int(switch_quality.get('switch_win_count', 0))}` / "
+            f"`{int(switch_quality.get('switch_loss_count', 0))}` / "
+            f"`{int(switch_quality.get('switch_tie_count', 0))}`.",
+            f"- Mean switch regret delta vs V2+: `{switch_quality.get('switch_mean_regret_delta_uah', 0.0):.2f}` UAH.",
+            "",
+            "## Reference Ladder",
+            "",
+            f"- Baseline V2+ mean regret reference: `{references.get('reference_v2_plus_mean_regret_uah', 0.0):.2f}` UAH.",
+            f"- Baseline strict mean regret reference: `{references.get('reference_strict_mean_regret_uah', 0.0):.2f}` UAH.",
+            f"- Baseline current DT mean regret reference: `{references.get('reference_dt_shadow_mean_regret_uah', 0.0):.2f}` UAH.",
+            f"- New DT minus reference current DT: `{references.get('new_dt_minus_reference_current_dt_uah', 0.0):.2f}` UAH.",
             "",
             "## Boundary",
             "",

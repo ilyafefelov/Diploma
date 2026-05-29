@@ -51,6 +51,10 @@ fallback row in the direct packet, remains worse than strict/oracle, and keeps
 `market_execution_enabled=false`. The follow-up apples-to-apples DT packet at
 `data/research_runs/week3_dt_v2_plus_apples_to_apples_current/` compares
 against real V2+ and shows DT `460.30` UAH mean regret versus V2+ `174.77` UAH.
+The follow-up regret-aware selector at
+`data/research_runs/week3_regret_aware_v2_plus_selector_current/` trains a
+value-gap objective with explicit V2+ abstention; the conservative result makes
+`0 / 90` non-V2+ switches and preserves V2+ at `174.77` UAH mean regret.
 
 Thesis support artifact:
 

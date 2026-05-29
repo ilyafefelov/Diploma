@@ -68,13 +68,17 @@
 - Він навчений на V2+/strict/oracle candidate-index і schedule-family targets: `3,741` research-shadow rows, `1,735` train sequences, `90` eval sequences.
 - Він повторив fallback-row mean regret (`627.04` UAH) у V13 teacher packet і програв strict/oracle (`310.58` UAH), тому це не headline result.
 - Окремий apples-to-apples packet проти real V2+ показує V2+ `174.77` UAH, strict `310.58` UAH, DT selected `460.30` UAH; V2+ залишається headline.
-- У dashboard/API він доступний лише як manual `preview_source=dt_direct_candidate_shadow`; V2+ лишається default/fallback.
+- Regret-aware follow-up виправляє objective: тренує value-gap selector на
+  `regret_delta_vs_v2_plus_uah`, але conservative rule робить `0 / 90`
+  non-V2+ switches і `90 / 90` abstentions, тому V2+ не замінюється.
+- У dashboard/API direct packet доступний як manual `preview_source=dt_direct_candidate_shadow`, apples-to-apples packet як `preview_source=dt_v2_plus_apples_to_apples_shadow`, а corrected selector path як `preview_source=regret_aware_v2_plus_selector_shadow`; V2+ лишається default/fallback.
 
 Не казати:
 
 - "DT is deployed".
 - "DT is ready for market execution".
 - "V13 was bypassed".
+- "Regret-aware selector beats V2+".
 
 ## Крок 5. Пояснити SCMO receipt handoff
 
@@ -112,7 +116,7 @@
 
 - Week 5 syllabus очікує Methodology і first Results/Discussion draft.
 - Ці chapter drafts мають бути прив'язані до evidence manifest, а не до unsupported claims.
-- Negative/blocked evidence є частиною методологічної чесності: Direct DT Shadow працює як модель, але не підганяє висновок під DT/LAVA promotion.
+- Negative/blocked evidence є частиною методологічної чесності: Direct DT Shadow працює як модель, а regret-aware selector показує, що current features still abstain to V2+, тому висновок не підганяється під DT/LAVA promotion.
 - Methodology тепер має reader map: MVP, offline evaluation, research shadows і source-readiness gate розділені явно.
 - Results draft у Google Docs оновлено: V4/V5 без локального packet path позначені як pending evidence, а V13 F3 описано як safe-switch validated but DAM receipts blocked.
 
@@ -120,4 +124,4 @@
 
 Фінальний меседж:
 
-> Поточний дипломний результат defendable як credentialless DAM recommendation preview з сильним evidence manifest. Direct DT Shadow уже тренується і показується як manual research preview, але не замінює V2+ і не обходить V13. V13 має чіткий залишковий blocker: explicit DAM publication receipts. Safe-switch support validated, але без source-backed publication timestamps немає DT/LAVA readiness, training permission або market execution.
+> Поточний дипломний результат defendable як credentialless DAM recommendation preview з сильним evidence manifest. Direct DT Shadow уже тренується і показується як manual research preview, але не замінює V2+. Regret-aware selector тренує правильний value-gap objective, проте на current features abstains to V2+. V13 має чіткий залишковий blocker: explicit DAM publication receipts. Safe-switch support validated, але без source-backed publication timestamps немає DT/LAVA readiness, training permission або market execution.

@@ -9,6 +9,7 @@
 | DT shadow | HF DT available, 97,431 research rows, 7,300 sequences, not promotable | `data/research_runs/week3_dt_research_shadow_current/dt_research_shadow_smoke_summary.json` |
 | Direct DT shadow | HF DT trained directly on candidate-index/schedule-family teacher targets; ties the V13 fallback row, worse than strict/oracle, not promoted | `data/research_runs/week3_dt_direct_candidate_shadow_current/dt_research_shadow_smoke_summary.json`; `docs/technical/DT_DIRECT_CANDIDATE_SHADOW.md` |
 | DT vs real V2+ shadow | Apples-to-apples DT check against the headline V2+ strict-row packet; DT loses to V2+ and strict, not promoted | `data/research_runs/week3_dt_v2_plus_apples_to_apples_current/dt_v2_plus_apples_to_apples_summary.json`; `docs/technical/DT_V2_PLUS_APPLES_TO_APPLES_SHADOW.md` |
+| Regret-aware V2+ selector shadow | Value-gap objective with explicit V2+ abstention; selector preserves V2+ and makes no non-V2+ switch on current features | `data/research_runs/week3_regret_aware_v2_plus_selector_current/regret_aware_v2_plus_selector_summary.json`; `docs/technical/REGRET_AWARE_V2_PLUS_SELECTOR_SHADOW.md` |
 | LAVA smoke | 8-instance NPZ smoke, promotion false, V13 blocked | `data/research_runs/week3_dt_lava_lava_npz_smoke_current/candidate_lava_margin_metrics.json` |
 | Poland feature audit | 17 passing features, 7 null-blocked, positive not promoted | `data/research_runs/week3_poland_lag24_feature_audit_rolling_gate/poland_lag24_feature_audit_rolling_gate_summary.json` |
 | Market rules | NEURC 621 regime and caps | `configs/market_rules_ua.yaml` |

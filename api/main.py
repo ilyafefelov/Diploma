@@ -195,6 +195,72 @@ DT_V2_PLUS_APPLES_TO_APPLES_TEACHER_ROWS_CSV_PATH = (
 	/ "week3_dt_v2_plus_apples_to_apples_current"
 	/ "dt_v2_plus_apples_to_apples_teacher_rows.csv"
 )
+DT_V2_PLUS_DISTILLATION_SHADOW_SELECTED_PREVIEW_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_distillation_shadow_current"
+	/ "dt_research_shadow_selected_schedule_preview.json"
+)
+DT_V2_PLUS_DISTILLATION_SHADOW_TEACHER_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_distillation_shadow_current"
+	/ "dt_research_shadow_teacher_rows.csv"
+)
+DT_DECISION_AWARE_SHADOW_SELECTED_PREVIEW_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_research_shadow_decision_aware_current"
+	/ "dt_research_shadow_selected_schedule_preview.json"
+)
+DT_DECISION_AWARE_SHADOW_TEACHER_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_research_shadow_decision_aware_current"
+	/ "dt_research_shadow_teacher_rows.csv"
+)
+REGRET_AWARE_V2_PLUS_SELECTOR_SELECTED_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_regret_aware_v2_plus_selector_current"
+	/ "regret_aware_v2_plus_selector_selected_rows.csv"
+)
+REGRET_AWARE_V2_PLUS_SELECTOR_TEACHER_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_regret_aware_v2_plus_selector_current"
+	/ "regret_aware_v2_plus_selector_teacher_rows.csv"
+)
+REGRET_AWARE_V2_PLUS_SELECTOR_SUMMARY_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_regret_aware_v2_plus_selector_current"
+	/ "regret_aware_v2_plus_selector_summary.json"
+)
+DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SELECTED_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_safe_switch_selector_current"
+	/ "regret_aware_v2_plus_selector_selected_rows.csv"
+)
+DT_V2_PLUS_SAFE_SWITCH_SELECTOR_TEACHER_ROWS_CSV_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_safe_switch_selector_current"
+	/ "regret_aware_v2_plus_selector_teacher_rows.csv"
+)
+DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SUMMARY_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_safe_switch_selector_current"
+	/ "regret_aware_v2_plus_selector_summary.json"
+)
+DT_V2_PLUS_PROMOTION_EVIDENCE_SUMMARY_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week3_dt_v2_plus_promotion_evidence_current"
+	/ "dt_v2_plus_promotion_evidence_summary.json"
+)
 TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH = (
 	Path("data")
 	/ "research_runs"
@@ -3814,15 +3880,19 @@ def _mapping_value(value: object) -> dict[str, Any]:
 
 
 def _json_contains_market_execution_enabled_true(value: object) -> bool:
+	return _json_contains_truthy_flag(value, flag_name="market_execution_enabled")
+
+
+def _json_contains_truthy_flag(value: object, *, flag_name: str) -> bool:
 	if isinstance(value, dict):
 		for key, item in value.items():
-			if key == "market_execution_enabled" and bool(item):
+			if key == flag_name and _artifact_truthy(item):
 				return True
-			if _json_contains_market_execution_enabled_true(item):
+			if _json_contains_truthy_flag(item, flag_name=flag_name):
 				return True
 		return False
 	if isinstance(value, list | tuple):
-		return any(_json_contains_market_execution_enabled_true(item) for item in value)
+		return any(_json_contains_truthy_flag(item, flag_name=flag_name) for item in value)
 	return False
 
 
@@ -4365,6 +4435,54 @@ def _operator_shadow_preview_sources() -> list[ShadowPreviewSourceOptionResponse
 			),
 		),
 		ShadowPreviewSourceOptionResponse(
+			preview_source_id="dt_v2_plus_distillation_shadow",
+			label="DT V2+ distillation shadow",
+			status="distillation_diagnostic_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"Rule-distillation DT smoke that mirrors V2+ selector targets; "
+				"manual diagnostic preview only."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="dt_decision_aware_shadow",
+			label="DT Decision-Aware Shadow",
+			status="decision_aware_diagnostic_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"Decision-aware DT objective over regret/value with conservative "
+				"V2+ fallback and tail-risk guard; manual diagnostic preview only."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="regret_aware_v2_plus_selector_shadow",
+			label="Regret-aware V2+ selector",
+			status="regret_aware_abstention_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"Regret-aware value-gap selector with explicit abstention back to V2+; "
+				"manual diagnostic preview only."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="dt_v2_plus_safe_switch_selector_shadow",
+			label="DT V2+ safe-switch selector",
+			status="safe_switch_evidence_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"Corrected residual DT/V2+ shadow recovered 3 of 15 safe-switch opportunities "
+				"with 4 / 90 non-V2+ switches, zero tail-risk losses, and V2+ fallback/default preserved."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
 			preview_source_id="poland_tft_shadow",
 			label="Poland/TFT Shadow",
 			status="positive_not_promoted",
@@ -4420,6 +4538,39 @@ def _operator_shadow_recommendation_preview_response(
 			status="apples_to_apples_not_promoted",
 			selected_preview_path=DT_V2_PLUS_APPLES_TO_APPLES_SELECTED_PREVIEW_JSON_PATH,
 			teacher_rows_path=DT_V2_PLUS_APPLES_TO_APPLES_TEACHER_ROWS_CSV_PATH,
+		)
+	elif preview_source == "dt_v2_plus_distillation_shadow":
+		response = _operator_dt_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label="DT V2+ distillation shadow",
+			status="distillation_diagnostic_not_promoted",
+			selected_preview_path=DT_V2_PLUS_DISTILLATION_SHADOW_SELECTED_PREVIEW_JSON_PATH,
+			teacher_rows_path=DT_V2_PLUS_DISTILLATION_SHADOW_TEACHER_ROWS_CSV_PATH,
+		)
+	elif preview_source == "dt_decision_aware_shadow":
+		response = _operator_dt_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label="DT Decision-Aware Shadow",
+			status="decision_aware_diagnostic_not_promoted",
+			selected_preview_path=DT_DECISION_AWARE_SHADOW_SELECTED_PREVIEW_JSON_PATH,
+			teacher_rows_path=DT_DECISION_AWARE_SHADOW_TEACHER_ROWS_CSV_PATH,
+		)
+	elif preview_source == "regret_aware_v2_plus_selector_shadow":
+		response = _operator_regret_aware_selector_shadow_preview_response(
+			tenant_id=tenant_id,
+		)
+	elif preview_source == "dt_v2_plus_safe_switch_selector_shadow":
+		response = _operator_regret_aware_selector_shadow_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source,
+			label="DT V2+ safe-switch selector",
+			status="safe_switch_evidence_not_promoted",
+			selected_rows_path=DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SELECTED_ROWS_CSV_PATH,
+			teacher_rows_path=DT_V2_PLUS_SAFE_SWITCH_SELECTOR_TEACHER_ROWS_CSV_PATH,
+			summary_path=DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SUMMARY_JSON_PATH,
+			promotion_summary_path=DT_V2_PLUS_PROMOTION_EVIDENCE_SUMMARY_JSON_PATH,
 		)
 	elif preview_source == "v13_dt_lava_promoted_training":
 		response = _blocked_shadow_recommendation_preview_response(
@@ -4547,16 +4698,20 @@ def _operator_dt_shadow_recommendation_preview_response(
 		packet_path,
 		not_found_detail=f"{label} selected schedule preview artifact not found.",
 	)
-	if _json_contains_market_execution_enabled_true(packet):
-		raise HTTPException(
-			status_code=500,
-			detail=f"{label} selected schedule preview must keep market_execution_enabled=false.",
-		)
+	_reject_executable_shadow_payload(packet, label=f"{label} selected schedule preview")
 	rows = packet.get("preview_rows")
 	if not isinstance(rows, list):
 		raise HTTPException(status_code=500, detail=f"{label} preview artifact missing preview_rows.")
+	preview_rows = [row for row in rows if isinstance(row, dict)]
+	if not preview_rows:
+		raise HTTPException(status_code=500, detail=f"{label} preview artifact has no object preview_rows.")
+	try:
+		preview_frame = pl.DataFrame(preview_rows)
+	except (TypeError, ValueError, pl.exceptions.PolarsError) as error:
+		raise HTTPException(status_code=500, detail=f"{label} preview rows are unreadable.") from error
+	_reject_executable_shadow_frame(preview_frame, label=f"{label} preview rows")
 	tenant_rows = [
-		row for row in rows if isinstance(row, dict) and str(row.get("tenant_id", tenant_id)) == tenant_id
+		row for row in preview_rows if str(row.get("tenant_id", tenant_id)) == tenant_id
 	]
 	if not tenant_rows:
 		raise HTTPException(status_code=404, detail=f"{label} preview rows not found for tenant {tenant_id}.")
@@ -4571,6 +4726,7 @@ def _operator_dt_shadow_recommendation_preview_response(
 		teacher_rows_path=resolved_teacher_rows_path,
 		tenant_id=tenant_id,
 		selected_candidate_id=selected_candidate_id,
+		label=label,
 	)
 	schedule = _shadow_schedule_rows_from_candidate(
 		candidate_row=candidate_row,
@@ -4623,6 +4779,143 @@ def _operator_dt_shadow_recommendation_preview_response(
 		artifact_paths={
 			"selected_preview_json": str(packet_path),
 			"teacher_rows_csv": str(resolved_teacher_rows_path),
+		},
+	)
+
+
+def _operator_regret_aware_selector_shadow_preview_response(
+	*,
+	tenant_id: str,
+	preview_source_id: str = "regret_aware_v2_plus_selector_shadow",
+	label: str = "Regret-aware V2+ selector",
+	status: str = "regret_aware_abstention_not_promoted",
+	selected_rows_path: Path | None = None,
+	teacher_rows_path: Path | None = None,
+	summary_path: Path | None = None,
+	promotion_summary_path: Path | None = None,
+) -> ShadowRecommendationPreviewResponse:
+	resolved_selected_rows_path = selected_rows_path or REGRET_AWARE_V2_PLUS_SELECTOR_SELECTED_ROWS_CSV_PATH
+	resolved_teacher_rows_path = teacher_rows_path or REGRET_AWARE_V2_PLUS_SELECTOR_TEACHER_ROWS_CSV_PATH
+	resolved_summary_path = summary_path or REGRET_AWARE_V2_PLUS_SELECTOR_SUMMARY_JSON_PATH
+	summary = _read_json_object(
+		resolved_summary_path,
+		not_found_detail=f"{label} summary artifact not found.",
+	)
+	_reject_executable_shadow_payload(summary, label=f"{label} artifact")
+	selected_rows = _read_shadow_csv_frame(
+		resolved_selected_rows_path,
+		label=f"{label} selected rows",
+	)
+	teacher_rows = _read_shadow_csv_frame(
+		resolved_teacher_rows_path,
+		label=f"{label} teacher rows",
+	)
+	_reject_executable_shadow_frame(selected_rows, label=f"{label} selected rows")
+	_reject_executable_shadow_frame(teacher_rows, label=f"{label} teacher rows")
+	selection = _latest_regret_aware_selector_row(
+		selected_rows,
+		tenant_id=tenant_id,
+		label=label,
+	)
+	_validate_regret_aware_v2_fallback(selection, label=label)
+	selected_candidate_id = str(selection.get("selected_candidate_id", "")).strip()
+	candidate_row = _regret_aware_selector_teacher_candidate_row(
+		teacher_rows=teacher_rows,
+		tenant_id=tenant_id,
+		anchor_timestamp=_datetime_row_value(
+			selection["anchor_timestamp"],
+			field_name="anchor_timestamp",
+		),
+		selected_candidate_id=selected_candidate_id,
+		label=label,
+	)
+	strict_row = _regret_aware_selector_reference_row(
+		teacher_rows=teacher_rows,
+		tenant_id=tenant_id,
+		anchor_timestamp=_datetime_row_value(
+			selection["anchor_timestamp"],
+			field_name="anchor_timestamp",
+		),
+		reference_family="strict_reference",
+	)
+	comparison_metrics = _regret_aware_selector_comparison_metrics(summary=summary)
+	if promotion_summary_path is not None:
+		promotion_summary = _read_json_object(
+			promotion_summary_path,
+			not_found_detail=f"{label} promotion evidence summary artifact not found.",
+		)
+		_reject_executable_shadow_payload(
+			promotion_summary,
+			label=f"{label} promotion evidence artifact",
+		)
+		comparison_metrics.update(
+			_dt_v2_plus_safe_switch_promotion_metrics(summary=promotion_summary)
+		)
+	shadow_selection = _regret_aware_shadow_selection(
+		selection=selection,
+		strict_row=strict_row,
+		comparison_metrics=comparison_metrics,
+	)
+	selected_schedule_family = str(selection.get("selected_schedule_family") or candidate_row.get("dt_schedule_family_target", ""))
+	schedule = _shadow_schedule_rows_from_candidate(
+		candidate_row=candidate_row,
+		selection=shadow_selection,
+		selected_candidate_id=selected_candidate_id,
+		selected_schedule_family=selected_schedule_family,
+	)
+	target_start = schedule[0].interval_start if schedule else None
+	target_end = schedule[-1].interval_start + timedelta(minutes=LEVEL1_INTERVAL_MINUTES) if schedule else None
+	return ShadowRecommendationPreviewResponse(
+		tenant_id=tenant_id,
+		preview_source_id=preview_source_id,
+		preview_source_label=label,
+		preview_status=status,
+		preview_only=True,
+		is_default_strategy=False,
+		is_promoted_strategy=False,
+		research_shadow_not_promotable=True,
+		default_strategy_id=OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
+		default_strategy_label=OFFLINE_V2_PLUS_LABEL,
+		selected_candidate_id=selected_candidate_id,
+		selected_schedule_family=selected_schedule_family,
+		selected_candidate_index=_optional_int(selection.get("selected_candidate_index")),
+		market_scope=OPERATOR_MARKET_SCOPE,
+		market_venue=LEVEL1_MARKET_VENUE,
+		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		anchor_timestamp=_datetime_row_value(selection["anchor_timestamp"], field_name="anchor_timestamp"),
+		target_delivery_window_start=target_start,
+		target_delivery_window_end=target_end,
+		market_execution_enabled=False,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+		market_order_payload_emitted=False,
+		promotion_gate_passed=False,
+		dt_lava_ready=False,
+		source_readiness_gate_passed=False,
+		comparison_metrics=comparison_metrics,
+		available_preview_sources=_operator_shadow_preview_sources(),
+		recommendation_schedule=schedule,
+		boundary_labels=[
+			label,
+			"Not promoted",
+			"Preview only",
+			"No market execution",
+			"V2+ remains default/fallback",
+			"Conservative V2+ abstention/safe-switch guard",
+		],
+		readiness_warnings=_regret_aware_selector_readiness_warnings(
+			label=label,
+			promotion_summary_path=promotion_summary_path,
+			comparison_metrics=comparison_metrics,
+		),
+		artifact_paths={
+			"selected_rows_csv": str(resolved_selected_rows_path),
+			"teacher_rows_csv": str(resolved_teacher_rows_path),
+			"summary_json": str(resolved_summary_path),
+			**(
+				{"promotion_evidence_summary_json": str(promotion_summary_path)}
+				if promotion_summary_path is not None
+				else {}
+			),
 		},
 	)
 
@@ -4724,6 +5017,279 @@ def _operator_artifact_shadow_recommendation_preview_response(
 	)
 
 
+def _read_shadow_csv_frame(path: Path, *, label: str) -> pl.DataFrame:
+	if not path.exists():
+		raise HTTPException(status_code=404, detail=f"{label} artifact not found: {path}")
+	try:
+		frame = pl.read_csv(path, infer_schema_length=1000, try_parse_dates=True)
+	except (OSError, pl.exceptions.PolarsError) as error:
+		raise HTTPException(status_code=500, detail=f"{label} artifact is unreadable: {path}") from error
+	if frame.height == 0:
+		raise HTTPException(status_code=404, detail=f"{label} artifact is empty.")
+	return frame
+
+
+def _reject_executable_shadow_payload(payload: object, *, label: str) -> None:
+	if _json_contains_truthy_flag(payload, flag_name="market_execution_enabled"):
+		raise HTTPException(status_code=500, detail=f"{label} must keep market_execution_enabled=false.")
+	if _json_contains_truthy_flag(payload, flag_name="promotion_gate_passed") or _json_contains_truthy_flag(
+		payload,
+		flag_name="is_promoted_strategy",
+	):
+		raise HTTPException(status_code=500, detail=f"{label} must not contain promoted rows.")
+	if _json_contains_truthy_flag(payload, flag_name="dt_lava_ready"):
+		raise HTTPException(status_code=500, detail=f"{label} must not enable dt_lava_ready.")
+	if _json_contains_truthy_flag(payload, flag_name="permits_model_training"):
+		raise HTTPException(status_code=500, detail=f"{label} must not permit model training.")
+
+
+def _reject_executable_shadow_frame(frame: pl.DataFrame, *, label: str) -> None:
+	if _artifact_frame_column_has_true(frame, "market_execution_enabled"):
+		raise HTTPException(status_code=500, detail=f"{label} must keep market_execution_enabled=false.")
+	if _artifact_frame_column_has_true(frame, "market_execution_gate_passed"):
+		raise HTTPException(status_code=500, detail=f"{label} must not pass market execution gates.")
+	if _artifact_frame_column_has_true(frame, "promotion_gate_passed"):
+		raise HTTPException(status_code=500, detail=f"{label} must not contain promoted rows.")
+	if _artifact_frame_column_has_true(frame, "dt_lava_ready"):
+		raise HTTPException(status_code=500, detail=f"{label} must not enable dt_lava_ready.")
+	if _artifact_frame_column_has_true(frame, "permits_model_training"):
+		raise HTTPException(status_code=500, detail=f"{label} must not permit model training.")
+
+
+def _artifact_frame_column_has_true(frame: pl.DataFrame, column: str) -> bool:
+	if column not in frame.columns:
+		return False
+	for value in frame[column].to_list():
+		if _artifact_truthy(value):
+			return True
+	return False
+
+
+def _artifact_truthy(value: Any) -> bool:
+	if isinstance(value, bool):
+		return value
+	if isinstance(value, (int, float)):
+		return value != 0
+	if isinstance(value, str):
+		return value.strip().lower() in {"1", "true", "yes"}
+	return False
+
+
+def _latest_regret_aware_selector_row(
+	frame: pl.DataFrame,
+	*,
+	tenant_id: str,
+	label: str,
+) -> dict[str, Any]:
+	if "tenant_id" not in frame.columns or "anchor_timestamp" not in frame.columns:
+		raise HTTPException(status_code=500, detail=f"{label} selected rows missing tenant/anchor columns.")
+	tenant_frame = frame.filter(pl.col("tenant_id").cast(pl.String) == tenant_id)
+	if tenant_frame.height == 0:
+		raise HTTPException(status_code=404, detail=f"{label} rows not found for tenant {tenant_id}.")
+	return tenant_frame.sort("anchor_timestamp").tail(1).row(0, named=True)
+
+
+def _validate_regret_aware_v2_fallback(selection: dict[str, Any], *, label: str) -> None:
+	if not str(selection.get("selected_candidate_id", "")).strip():
+		raise HTTPException(status_code=500, detail=f"{label} selected row missing selected_candidate_id.")
+	if not str(selection.get("v2_plus_candidate_id", "")).strip():
+		raise HTTPException(status_code=500, detail=f"{label} selected row missing V2+ fallback candidate.")
+	if _optional_float(selection.get("v2_plus_regret_uah")) is None:
+		raise HTTPException(status_code=500, detail=f"{label} selected row missing V2+ regret.")
+	if _optional_float(selection.get("v2_plus_value_uah")) is None:
+		raise HTTPException(status_code=500, detail=f"{label} selected row missing V2+ value.")
+
+
+def _regret_aware_selector_teacher_candidate_row(
+	*,
+	teacher_rows: pl.DataFrame,
+	tenant_id: str,
+	anchor_timestamp: datetime,
+	selected_candidate_id: str,
+	label: str,
+) -> dict[str, Any]:
+	for row in teacher_rows.iter_rows(named=True):
+		if str(row.get("tenant_id", "")) != tenant_id:
+			continue
+		if _datetime_row_value(row["anchor_timestamp"], field_name="anchor_timestamp") != anchor_timestamp:
+			continue
+		if not _row_candidate_id_matches(row, selected_candidate_id):
+			continue
+		return row
+	raise HTTPException(
+		status_code=404,
+		detail=f"{label} selected candidate not found in teacher rows: {selected_candidate_id}",
+	)
+
+
+def _regret_aware_selector_reference_row(
+	*,
+	teacher_rows: pl.DataFrame,
+	tenant_id: str,
+	anchor_timestamp: datetime,
+	reference_family: str,
+) -> dict[str, Any] | None:
+	for row in teacher_rows.iter_rows(named=True):
+		if str(row.get("tenant_id", "")) != tenant_id:
+			continue
+		if _datetime_row_value(row["anchor_timestamp"], field_name="anchor_timestamp") != anchor_timestamp:
+			continue
+		families = {
+			str(row.get("candidate_family", "")),
+			str(row.get("dt_schedule_family_target", "")),
+			str(row.get("candidate_model_name", "")),
+		}
+		if reference_family in families:
+			return row
+	return None
+
+
+def _row_candidate_id_matches(row: dict[str, Any], selected_candidate_id: str) -> bool:
+	for column in ("dt_candidate_id_target", "teacher_candidate_key", "candidate_model_name"):
+		if str(row.get(column, "")) == selected_candidate_id:
+			return True
+	return False
+
+
+def _regret_aware_shadow_selection(
+	*,
+	selection: dict[str, Any],
+	strict_row: dict[str, Any] | None,
+	comparison_metrics: dict[str, float],
+) -> dict[str, Any]:
+	strict_regret = _optional_float(strict_row.get("regret_uah")) if strict_row else None
+	strict_value = _optional_float(
+		strict_row.get("schedule_value_uah", strict_row.get("decision_value_uah"))
+	) if strict_row else None
+	return {
+		"anchor_timestamp": selection["anchor_timestamp"],
+		"selected_candidate_id": str(selection["selected_candidate_id"]),
+		"selected_schedule_family": str(selection.get("selected_schedule_family", "")),
+		"selected_candidate_index": _optional_int(selection.get("selected_candidate_index")),
+		"dt_selected_regret_uah": _float_payload_value(selection.get("selected_regret_uah")),
+		"dt_selected_value_uah": _float_payload_value(selection.get("selected_value_uah")),
+		"v2_plus_regret_uah": _float_payload_value(selection.get("v2_plus_regret_uah")),
+		"v2_plus_value_uah": _float_payload_value(selection.get("v2_plus_value_uah")),
+		"strict_regret_uah": strict_regret
+		if strict_regret is not None
+		else comparison_metrics.get("strict_mean_regret_uah"),
+		"strict_value_uah": strict_value
+		if strict_value is not None
+		else comparison_metrics.get("strict_mean_value_uah"),
+		"abstained_to_v2_plus": _artifact_truthy(selection.get("abstained_to_v2_plus")),
+		"abstention_reason": str(selection.get("abstention_reason", "")),
+		"market_execution_enabled": False,
+	}
+
+
+def _regret_aware_selector_comparison_metrics(
+	*,
+	summary: dict[str, Any],
+) -> dict[str, float]:
+	evaluation = summary.get("evaluation")
+	if not isinstance(evaluation, dict):
+		raise HTTPException(status_code=500, detail="Regret-aware selector summary missing evaluation metrics.")
+	control_summary = evaluation.get("control_summary")
+	strict_summary = control_summary.get("strict_reference", {}) if isinstance(control_summary, dict) else {}
+	selector_regret = _required_metric(evaluation, "selector_mean_regret_uah")
+	selector_value = _required_metric(evaluation, "selector_mean_value_uah")
+	v2_regret = _required_metric(evaluation, "v2_plus_mean_regret_uah")
+	v2_value = _required_metric(evaluation, "v2_plus_mean_value_uah")
+	strict_regret = _optional_metric(strict_summary, "mean_regret_uah")
+	strict_value = _optional_metric(strict_summary, "mean_value_uah")
+	metrics = {
+		"selector_mean_regret_uah": selector_regret,
+		"selector_mean_value_uah": selector_value,
+		"v2_plus_mean_regret_uah": v2_regret,
+		"v2_plus_mean_value_uah": v2_value,
+		"selector_minus_v2_plus_mean_regret_uah": _optional_metric(
+			evaluation,
+			"selector_minus_v2_plus_mean_regret_uah",
+		) or selector_regret - v2_regret,
+		"selector_minus_v2_plus_mean_value_uah": _optional_metric(
+			evaluation,
+			"selector_minus_v2_plus_mean_value_uah",
+		) or selector_value - v2_value,
+		"non_v2_plus_switch_count": _required_metric(evaluation, "non_v2_plus_switch_count"),
+		"abstention_count": _required_metric(evaluation, "abstention_count"),
+		"dt_selected_mean_regret_uah": selector_regret,
+		"dt_selected_mean_value_uah": selector_value,
+		"dt_minus_v2_plus_regret_uah": selector_regret - v2_regret,
+		"dt_minus_v2_plus_value_uah": selector_value - v2_value,
+	}
+	if strict_regret is not None:
+		metrics["strict_mean_regret_uah"] = strict_regret
+		metrics["dt_minus_strict_regret_uah"] = selector_regret - strict_regret
+	if strict_value is not None:
+		metrics["strict_mean_value_uah"] = strict_value
+		metrics["dt_minus_strict_value_uah"] = selector_value - strict_value
+	return metrics
+
+
+def _dt_v2_plus_safe_switch_promotion_metrics(
+	*,
+	summary: dict[str, Any],
+) -> dict[str, float]:
+	gate = summary.get("gate")
+	if not isinstance(gate, dict):
+		raise HTTPException(status_code=500, detail="DT V2+ promotion evidence summary missing gate metrics.")
+	metrics: dict[str, float] = {}
+	for name in (
+		"observed_safe_switch_opportunity_count",
+		"recovered_safe_switch_opportunity_count",
+		"safe_switch_win_count",
+		"safe_switch_loss_count",
+		"safe_switch_tie_count",
+		"tail_risk_loss_count",
+		"max_switch_loss_uah",
+		"mean_regret_improvement_ratio_vs_v2_plus",
+		"oracle_scored_final_holdout_row_count",
+	):
+		value = _optional_metric(gate, name)
+		if value is not None:
+			metrics[name] = value
+	return metrics
+
+
+def _regret_aware_selector_readiness_warnings(
+	*,
+	label: str,
+	promotion_summary_path: Path | None,
+	comparison_metrics: dict[str, float],
+) -> list[str]:
+	if promotion_summary_path is not None:
+		recovered = int(comparison_metrics.get("recovered_safe_switch_opportunity_count", 0.0))
+		observed = int(comparison_metrics.get("observed_safe_switch_opportunity_count", 0.0))
+		switches = int(comparison_metrics.get("non_v2_plus_switch_count", 0.0))
+		losses = int(comparison_metrics.get("tail_risk_loss_count", 0.0))
+		improvement = comparison_metrics.get("mean_regret_improvement_ratio_vs_v2_plus", 0.0) * 100.0
+		return [
+			f"Recovered {recovered} of {observed} safe-switch opportunities with {label}; "
+			f"{switches} / 90 non-V2+ switches and {losses} tail-risk losses.",
+			f"Mean regret improved by {improvement:.2f}% versus V2+ in offline final-holdout evidence, "
+			"but promotion_gate_passed=false and V2+ remains default/fallback.",
+			"V13 explicit DAM publication receipts remain blocked for market-submission claims.",
+		]
+	return [
+		"Selector abstained to V2+ on the current packet; this is diagnostic evidence, not a default switch.",
+		"V13 explicit DAM publication receipts remain blocked for market-submission claims.",
+	]
+
+
+def _required_metric(metrics: dict[str, Any], name: str) -> float:
+	value = _optional_metric(metrics, name)
+	if value is None:
+		raise HTTPException(status_code=500, detail=f"Regret-aware selector summary missing metric: {name}")
+	return value
+
+
+def _optional_metric(metrics: dict[str, Any], name: str) -> float | None:
+	value = metrics.get(name)
+	if isinstance(value, (int, float, str)):
+		return float(value)
+	return None
+
+
 def _read_json_object(path: Path, *, not_found_detail: str) -> dict[str, Any]:
 	if not path.exists():
 		raise HTTPException(status_code=404, detail=f"{not_found_detail} Path: {path}")
@@ -4741,24 +5307,24 @@ def _dt_shadow_teacher_candidate_row(
 	teacher_rows_path: Path,
 	tenant_id: str,
 	selected_candidate_id: str,
+	label: str = "DT shadow",
 ) -> dict[str, Any]:
 	if not teacher_rows_path.exists():
-		raise HTTPException(status_code=404, detail=f"DT shadow teacher rows not found: {teacher_rows_path}")
+		raise HTTPException(status_code=404, detail=f"{label} teacher rows not found: {teacher_rows_path}")
 	try:
 		frame = pl.read_csv(teacher_rows_path, try_parse_dates=True)
 	except (OSError, pl.exceptions.PolarsError) as error:
-		raise HTTPException(status_code=500, detail=f"DT shadow teacher rows are unreadable: {teacher_rows_path}") from error
+		raise HTTPException(status_code=500, detail=f"{label} teacher rows are unreadable: {teacher_rows_path}") from error
 	if frame.height == 0:
-		raise HTTPException(status_code=404, detail="DT shadow teacher rows are empty.")
-	if "market_execution_enabled" in frame.columns and frame.select(pl.col("market_execution_enabled").any()).item():
-		raise HTTPException(status_code=500, detail="DT shadow teacher rows must keep market_execution_enabled=false.")
+		raise HTTPException(status_code=404, detail=f"{label} teacher rows are empty.")
+	_reject_executable_shadow_frame(frame, label=f"{label} teacher rows")
 	candidate_columns = [
 		column
 		for column in ("dt_candidate_id_target", "teacher_candidate_key", "candidate_model_name")
 		if column in frame.columns
 	]
 	if not candidate_columns:
-		raise HTTPException(status_code=500, detail="DT shadow teacher rows have no candidate id columns.")
+		raise HTTPException(status_code=500, detail=f"{label} teacher rows have no candidate id columns.")
 	filter_expr = pl.col("tenant_id").cast(pl.String) == tenant_id
 	candidate_expr = pl.lit(False)
 	for column in candidate_columns:
@@ -4767,7 +5333,7 @@ def _dt_shadow_teacher_candidate_row(
 	if filtered.height == 0:
 		raise HTTPException(
 			status_code=404,
-			detail=f"DT shadow selected candidate not found in teacher rows: {selected_candidate_id}",
+			detail=f"{label} selected candidate not found in teacher rows: {selected_candidate_id}",
 		)
 	return filtered.sort("anchor_timestamp").tail(1).row(0, named=True)
 

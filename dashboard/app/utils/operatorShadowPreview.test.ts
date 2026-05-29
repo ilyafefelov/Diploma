@@ -99,6 +99,56 @@ describe('operator shadow preview source switching', () => {
     expect(visible?.readiness_warnings.join(' ')).toContain('DT is worse than V2+')
   })
 
+  it('maps DT V2+ distillation shadow rows as a non-promoted diagnostic source', () => {
+    const visible = adaptShadowPreviewToOperatorRecommendation(
+      baseRecommendation(),
+      distillationDtShadowPreview(),
+      'dt_v2_plus_distillation_shadow'
+    )
+
+    expect(shouldLoadShadowPreview('dt_v2_plus_distillation_shadow')).toBe(true)
+    expect(previewSourceDisplayLabel('dt_v2_plus_distillation_shadow')).toBe('DT V2+ distillation shadow')
+    expect(visible?.selected_strategy_id).toBe('dt_v2_plus_distillation_shadow')
+    expect(visible?.selection_reason).toContain('distillation_diagnostic_not_promoted')
+    expect(visible?.market_execution_enabled).toBe(false)
+    expect(visible?.policy_mode).toBe('dt_v2_plus_distillation_shadow_preview')
+    expect(visible?.readiness_warnings.join(' ')).toContain('Distillation shadow mirrors the V2+ selector')
+  })
+
+  it('maps regret-aware selector shadow rows as an abstention back to V2+', () => {
+    const visible = adaptShadowPreviewToOperatorRecommendation(
+      baseRecommendation(),
+      regretAwareSelectorPreview(),
+      'regret_aware_v2_plus_selector_shadow'
+    )
+
+    expect(shouldLoadShadowPreview('regret_aware_v2_plus_selector_shadow')).toBe(true)
+    expect(visible?.selected_strategy_id).toBe('regret_aware_v2_plus_selector_shadow')
+    expect(visible?.selection_reason).toContain('regret_aware_abstention_not_promoted')
+    expect(visible?.market_execution_enabled).toBe(false)
+    expect(visible?.policy_mode).toBe('regret_aware_v2_plus_selector_shadow_preview')
+    expect(visible?.readiness_warnings.join(' ')).toContain('selector abstained to V2+')
+    expect(visible?.readiness_warnings.join(' ')).not.toContain('DT ties the comparator')
+  })
+
+  it('maps DT V2+ safe-switch selector rows as current non-promoted evidence', () => {
+    const visible = adaptShadowPreviewToOperatorRecommendation(
+      baseRecommendation(),
+      safeSwitchSelectorPreview(),
+      'dt_v2_plus_safe_switch_selector_shadow'
+    )
+
+    expect(shouldLoadShadowPreview('dt_v2_plus_safe_switch_selector_shadow')).toBe(true)
+    expect(previewSourceDisplayLabel('dt_v2_plus_safe_switch_selector_shadow')).toBe('DT V2+ safe-switch selector')
+    expect(visible?.selected_strategy_id).toBe('dt_v2_plus_safe_switch_selector_shadow')
+    expect(visible?.selection_reason).toContain('safe_switch_evidence_not_promoted')
+    expect(visible?.market_execution_enabled).toBe(false)
+    expect(visible?.policy_mode).toBe('dt_v2_plus_safe_switch_selector_shadow_preview')
+    expect(visible?.readiness_warnings.join(' ')).toContain('Safe-switch DT shadow improves V2+')
+    expect(visible?.readiness_warnings.join(' ')).toContain('3 recovered safe-switch wins')
+    expect(visible?.readiness_warnings.join(' ')).toContain('V2+ remains default/fallback')
+  })
+
   it('builds hourly table rows with candidate, value, regret, and safety labels', () => {
     const rows = buildShadowHourlyRecommendationRows(dtShadowPreview(), 0.5, 60)
 
@@ -167,6 +217,8 @@ describe('operator shadow preview source switching', () => {
     const rows = buildStrategyComparisonRows(baseRecommendationWithSchedule(), [
       directDtShadowPreview(),
       applesToApplesDtShadowPreview(),
+      regretAwareSelectorPreview(),
+      safeSwitchSelectorPreview(),
       dtShadowPreview(),
       {
         ...dtShadowPreview(),
@@ -181,6 +233,8 @@ describe('operator shadow preview source switching', () => {
       'best_valid',
       'dt_direct_candidate_shadow',
       'dt_v2_plus_apples_to_apples_shadow',
+      'regret_aware_v2_plus_selector_shadow',
+      'dt_v2_plus_safe_switch_selector_shadow',
       'dt_shadow',
       'v13_dt_lava_promoted_training'
     ])
@@ -212,6 +266,23 @@ describe('operator shadow preview source switching', () => {
       marketExecutionEnabled: false
     }))
     expect(rows[3]).toEqual(expect.objectContaining({
+      label: 'Regret-aware V2+ selector',
+      status: 'regret_aware_abstention_not_promoted',
+      scheduleRows: 1,
+      totalDischargeMwh: 0.12,
+      meanRegretVsV2Uah: 0,
+      meanRegretVsStrictUah: -136,
+      marketExecutionEnabled: false
+    }))
+    expect(rows[4]).toEqual(expect.objectContaining({
+      label: 'DT V2+ safe-switch selector',
+      status: 'safe_switch_evidence_not_promoted',
+      scheduleRows: 1,
+      totalDischargeMwh: 0.12,
+      meanRegretVsV2Uah: -7,
+      marketExecutionEnabled: false
+    }))
+    expect(rows[5]).toEqual(expect.objectContaining({
       label: 'DT Shadow',
       status: 'research_shadow_not_promoted',
       scheduleRows: 1,
@@ -220,7 +291,7 @@ describe('operator shadow preview source switching', () => {
       meanRegretVsStrictUah: 80,
       marketExecutionEnabled: false
     }))
-    expect(rows[4]).toEqual(expect.objectContaining({
+    expect(rows[6]).toEqual(expect.objectContaining({
       label: 'V13/DT/LAVA blocked',
       status: 'blocked_source_readiness_roadmap',
       scheduleRows: 0,
@@ -242,7 +313,7 @@ describe('operator shadow preview source switching', () => {
     expect(route).toContain('fetchControlPlane')
   })
 
-  it('keeps the five-strategy comparison anchored to the best-valid recommendation in the panel', () => {
+  it('keeps the strategy comparison chart anchored to the best-valid recommendation in the panel', () => {
     const pagePath = fileURLToPath(new URL('../pages/operator.vue', import.meta.url))
     const panelPath = fileURLToPath(
       new URL('../components/dashboard/operator/OperatorFutureStackPanel.vue', import.meta.url)
@@ -253,6 +324,10 @@ describe('operator shadow preview source switching', () => {
     expect(panel).toContain('bestValidRecommendation: OperatorRecommendationResponse | null')
     expect(panel).toContain('buildStrategyComparisonRows(')
     expect(panel).toContain('props.bestValidRecommendation')
+    expect(panel).toContain("'dt_v2_plus_safe_switch_selector_shadow'")
+    expect(panel).toContain("return 'DT V2+ safe-switch'")
+    expect(panel).toContain('interval: 0')
+    expect(panel).toContain('formatter: formatStrategyAxisLabel')
     expect(page).toContain(':best-valid-recommendation="operatorRecommendation"')
   })
 
@@ -274,6 +349,9 @@ describe('operator shadow preview source switching', () => {
     expect(panel).toContain('.future-schedule-source-control :deep(.future-strategy-select)')
     expect(panel).toContain('future-baseline-context')
     expect(panel).toContain('Strict similar-day baseline')
+    expect(panel).toContain('Regret-aware selector')
+    expect(panel).toContain('DT safe-switch shadow')
+    expect(panel).toContain('shadowModelStoryItems')
     expect(panel).toContain('Value shortfall vs strict (UAH)')
     expect(panel).toContain('strict LP/reference value')
     expect(panel).not.toContain('V2+ schedule evidence, TFT portfolio, and strategy preview')
@@ -483,5 +561,106 @@ function applesToApplesDtShadowPreview(): ShadowRecommendationPreviewResponse {
     preview_status: 'apples_to_apples_not_promoted',
     boundary_labels: ['DT vs real V2+', 'Not promoted', 'Preview only', 'No market execution'],
     readiness_warnings: ['DT/V2+ apples-to-apples shadow is diagnostic evidence only.']
+  }
+}
+
+function regretAwareSelectorPreview(): ShadowRecommendationPreviewResponse {
+  return {
+    ...dtShadowPreview(),
+    preview_source_id: 'regret_aware_v2_plus_selector_shadow',
+    preview_source_label: 'Regret-aware V2+ selector',
+    preview_status: 'regret_aware_abstention_not_promoted',
+    selected_candidate_id: 'v2-plus-candidate',
+    selected_schedule_family: 'schedule_value_learner_v2_plus',
+    comparison_metrics: {
+      selector_mean_regret_uah: 174.77,
+      selector_mean_value_uah: 825,
+      v2_plus_mean_regret_uah: 174.77,
+      v2_plus_mean_value_uah: 825,
+      strict_mean_regret_uah: 310.58,
+      strict_mean_value_uah: 700,
+      dt_selected_mean_regret_uah: 174.77,
+      dt_selected_mean_value_uah: 825,
+      dt_minus_v2_plus_regret_uah: 0,
+      dt_minus_v2_plus_value_uah: 0,
+      dt_minus_strict_regret_uah: -135.81,
+      dt_minus_strict_value_uah: 125,
+      non_v2_plus_switch_count: 0,
+      abstention_count: 90
+    },
+    recommendation_schedule: dtShadowPreview().recommendation_schedule.map(point => ({
+      ...point,
+      selected_candidate_id: 'v2-plus-candidate',
+      schedule_family: 'schedule_value_learner_v2_plus',
+      expected_value_uah: 825,
+      regret_uah: 174.77,
+      regret_vs_v2_plus_uah: 0,
+      regret_vs_strict_uah: -135.81,
+      value_vs_v2_plus_uah: 0,
+      value_vs_strict_uah: 125
+    })),
+    boundary_labels: ['Regret-aware V2+ selector', 'Not promoted', 'Preview only', 'No market execution'],
+    readiness_warnings: ['Regret-aware selector abstained to V2+.']
+  }
+}
+
+function safeSwitchSelectorPreview(): ShadowRecommendationPreviewResponse {
+  return {
+    ...dtShadowPreview(),
+    preview_source_id: 'dt_v2_plus_safe_switch_selector_shadow',
+    preview_source_label: 'DT V2+ safe-switch selector',
+    preview_status: 'safe_switch_evidence_not_promoted',
+    selected_candidate_id: 'strict-candidate',
+    selected_schedule_family: 'strict_reference',
+    comparison_metrics: {
+      selector_mean_regret_uah: 168.15664125116336,
+      selector_mean_value_uah: 3743.327643562355,
+      v2_plus_mean_regret_uah: 174.7683983151615,
+      v2_plus_mean_value_uah: 3736.715886498357,
+      strict_mean_regret_uah: 310.58280814033515,
+      strict_mean_value_uah: 3600.901476666783,
+      dt_selected_mean_regret_uah: 168.15664125116336,
+      dt_selected_mean_value_uah: 3743.327643562355,
+      dt_minus_v2_plus_regret_uah: -6.611757063998141,
+      dt_minus_v2_plus_value_uah: 6.611757063998084,
+      dt_minus_strict_regret_uah: -142.4261668891718,
+      dt_minus_strict_value_uah: 142.42616689557218,
+      non_v2_plus_switch_count: 4,
+      abstention_count: 86,
+      observed_safe_switch_opportunity_count: 15,
+      recovered_safe_switch_opportunity_count: 3,
+      safe_switch_win_count: 3,
+      safe_switch_loss_count: 0,
+      safe_switch_tie_count: 1,
+      tail_risk_loss_count: 0
+    },
+    recommendation_schedule: dtShadowPreview().recommendation_schedule.map(point => ({
+      ...point,
+      selected_candidate_id: 'strict-candidate',
+      schedule_family: 'strict_reference',
+      expected_value_uah: 855,
+      regret_uah: 168.16,
+      regret_vs_v2_plus_uah: -6.61,
+      regret_vs_strict_uah: -142.43,
+      value_vs_v2_plus_uah: 6.61,
+      value_vs_strict_uah: 142.43
+    })),
+    boundary_labels: ['DT V2+ safe-switch selector', 'Not promoted', 'Preview only', 'No market execution'],
+    readiness_warnings: ['Recovered 3 of 15 safe-switch opportunities; V2+ remains default/fallback.']
+  }
+}
+
+function distillationDtShadowPreview(): ShadowRecommendationPreviewResponse {
+  return {
+    ...dtShadowPreview(),
+    preview_source_id: 'dt_v2_plus_distillation_shadow',
+    preview_source_label: 'DT V2+ distillation shadow',
+    preview_status: 'distillation_diagnostic_not_promoted',
+    comparison_metrics: {
+      ...dtShadowPreview().comparison_metrics,
+      dt_minus_v2_plus_regret_uah: 0
+    },
+    boundary_labels: ['DT V2+ distillation shadow', 'Not promoted', 'Preview only', 'No market execution'],
+    readiness_warnings: ['DT distillation shadow is diagnostic evidence only.']
   }
 }
