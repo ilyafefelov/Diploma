@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 import { useOperatorDashboardViewModel } from './useOperatorDashboardViewModel'
 
 describe('useOperatorDashboardViewModel', () => {
-  it('does not show fake fallback charge or discharge proposals when no DAM schedule is loaded', () => {
+  it('does not show fake fallback charge or discharge proposals when no market schedule is loaded', () => {
     const viewModel = useOperatorDashboardViewModel({
       tenants: ref([]),
       selectedTenant: ref(null),
@@ -26,7 +26,7 @@ describe('useOperatorDashboardViewModel', () => {
 
     expect(viewModel.timelineSegments.value).toEqual([
       expect.objectContaining({
-        time: 'DAM delivery',
+        time: 'Delivery window',
         label: 'Preview pending',
         value: 'No schedule loaded'
       })
@@ -35,7 +35,32 @@ describe('useOperatorDashboardViewModel', () => {
     expect(viewModel.timelineSegments.value.map(segment => segment.value)).not.toContain('+80 MW')
   })
 
-  it('keeps the schedule dock, right rail action, and headline economics aligned to the selected DAM preview', () => {
+  it('keeps right-rail action labels aligned to selected IDM when source-backed preview is blocked', () => {
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      selectedMarketVenue: ref('IDM'),
+      signalPreview: ref(null),
+      baselinePreview: ref(null),
+      operatorRecommendation: ref(null),
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref('Official observed OREE IDM rows are required.'),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.batteryStatusLabel.value).toBe('IDM hold preview')
+    expect(viewModel.timelineSegments.value[0]?.tooltipBody).toContain('No DAM/IDM hourly schedule has loaded yet')
+  })
+
+  it('keeps the schedule dock, right rail action, and headline economics aligned to the selected market preview', () => {
     const baselinePreview = ref({
       battery_metrics: {
         capacity_mwh: 1,
@@ -108,7 +133,7 @@ describe('useOperatorDashboardViewModel', () => {
     expect(viewModel.timelineSegments.value.map(segment => segment.label)).toEqual(['Discharge', 'Charge'])
     expect(viewModel.timelineSegments.value.map(segment => segment.marketSideLabel)).toEqual(['SELL', 'BUY'])
     expect(viewModel.timelineSegments.value.map(segment => segment.tone)).toEqual(['green', 'orange'])
-    expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['DAM 19 May, 11:00', 'DAM 19 May, 12:00'])
+    expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual(['Delivery 19 May, 11:00', 'Delivery 19 May, 12:00'])
     expect(viewModel.timelineSegments.value[0]).toMatchObject({
       value: '+0.25 MW / 0.25 MWh (25% cap)',
       indicativePriceLabel: '4,200 UAH/MWh',
@@ -187,14 +212,14 @@ describe('useOperatorDashboardViewModel', () => {
 
     expect(viewModel.timelineSegments.value).toEqual([
       expect.objectContaining({
-        time: 'DAM delivery',
+        time: 'Delivery window',
         label: 'Preview pending',
         value: 'No schedule loaded'
       })
     ])
-    expect(viewModel.timelineSegments.value.map(segment => segment.time)).not.toContain('DAM 26 May, 08:00')
+    expect(viewModel.timelineSegments.value.map(segment => segment.time)).not.toContain('Delivery 26 May, 08:00')
     expect(viewModel.latestRecommendedPowerLabel.value).toBe('0.0 MW')
-    expect(viewModel.deliveryWindowLabel.value).toBe('Delivery window: DAM 26 May, 00:00 -> DAM 27 May, 00:00')
+    expect(viewModel.deliveryWindowLabel.value).toBe('Delivery window: Delivery 26 May, 00:00 -> Delivery 27 May, 00:00')
   })
 
   it('counts read-model gaps in the operator health ribbon', () => {

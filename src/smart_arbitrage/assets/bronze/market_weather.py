@@ -95,10 +95,11 @@ class WeatherLocationConfig(dg.Config):
 
 
 class ObservedMarketBackfillConfig(dg.Config):
-    """Observed-only OREE DAM backfill window."""
+    """Observed-only OREE market backfill window."""
 
     start_date: str = "2026-01-01"
     end_date: str = "2026-01-31"
+    market_venue: str = LEVEL1_MARKET_VENUE
 
 
 class TenantHistoricalWeatherConfig(dg.Config):
@@ -182,6 +183,7 @@ def observed_market_price_history_bronze(
     price_history = build_observed_market_price_history(
         start_date=date.fromisoformat(config.start_date),
         end_date=date.fromisoformat(config.end_date),
+        market_venue="DAM",
     )
     market_observations = market_price_observations_from_frame(price_history)
     get_market_data_store().upsert_market_prices(market_observations)
@@ -193,6 +195,45 @@ def observed_market_price_history_bronze(
             "market_observation_rows": len(market_observations),
             "start_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0).isoformat(),
             "end_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1).isoformat(),
+        },
+    )
+    return price_history
+
+
+@dg.asset(
+    group_name=taxonomy.BRONZE_MARKET_DATA,
+    tags=taxonomy.asset_tags(
+        medallion="bronze",
+        domain="market_data",
+        elt_stage="extract_load",
+        ml_stage="source_data",
+        evidence_scope="research_only",
+        market_venue="IDM",
+    ),
+)
+def observed_idm_price_history_bronze(
+    context,
+    config: ObservedMarketBackfillConfig,
+) -> pl.DataFrame:
+    """Observed-only OREE IDM hourly preview backfill for research/operator-readiness runs."""
+
+    price_history = build_observed_market_price_history(
+        start_date=date.fromisoformat(config.start_date),
+        end_date=date.fromisoformat(config.end_date),
+        market_venue="IDM",
+    )
+    market_observations = market_price_observations_from_frame(price_history)
+    get_market_data_store().upsert_market_prices(market_observations)
+    _add_metadata(
+        context,
+        {
+            "rows": price_history.height,
+            "source_kind": "observed",
+            "market_venue": "IDM",
+            "market_observation_rows": len(market_observations),
+            "start_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0).isoformat(),
+            "end_timestamp": price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1).isoformat(),
+            "boundary": "hourly_idm_preview_not_15_min_bid_submission",
         },
     )
     return price_history
@@ -241,6 +282,7 @@ def tenant_historical_weather_bronze(
 
 REAL_DATA_BENCHMARK_BRONZE_ASSETS = [
     observed_market_price_history_bronze,
+    observed_idm_price_history_bronze,
     tenant_historical_weather_bronze,
 ]
 
@@ -313,11 +355,13 @@ def build_observed_market_price_history(
     *,
     start_date: date,
     end_date: date,
+    market_venue: str = LEVEL1_MARKET_VENUE,
 ) -> pl.DataFrame:
-    """Build an observed-only OREE DAM hourly history window."""
+    """Build an observed-only OREE DAM/IDM hourly history window."""
 
     if end_date < start_date:
         raise ValueError("end_date must be on or after start_date.")
+    resolved_market_venue = _normalize_oree_market_venue(market_venue)
     observed_rows: list[dict[str, Any]] = []
     requested_dates = _date_range(start_date, end_date)
     requested_date_set = set(requested_dates)
@@ -328,7 +372,11 @@ def build_observed_market_price_history(
     for month_index, month_date in enumerate(_month_range(start_date, end_date)):
         if month_index > 0:
             _pause_between_oree_month_requests()
-        fetched_rows = _fetch_oree_data_view_month_prices(month_date)
+        fetched_rows = (
+            _fetch_oree_data_view_month_prices(month_date)
+            if resolved_market_venue == LEVEL1_MARKET_VENUE
+            else _fetch_oree_data_view_month_prices(month_date, market_venue=resolved_market_venue)
+        )
         if fetched_rows is None:
             logger.warning(
                 "OREE monthly fetch failed for %s; falling back to per-day fetch.",
@@ -343,7 +391,11 @@ def build_observed_market_price_history(
     missing_dates: list[date] = []
     for target_date, rows in rows_by_date.items():
         if not rows:
-            fallback_rows = _fetch_oree_prices(target_date)
+            fallback_rows = (
+                _fetch_oree_prices(target_date)
+                if resolved_market_venue == LEVEL1_MARKET_VENUE
+                else _fetch_oree_prices(target_date, market_venue=resolved_market_venue)
+            )
             rows = fallback_rows or []
         if not rows:
             missing_dates.append(target_date)
@@ -351,7 +403,7 @@ def build_observed_market_price_history(
         observed_rows.extend(rows)
     if missing_dates or not observed_rows:
         missing_text = ", ".join(target_date.isoformat() for target_date in missing_dates)
-        raise ValueError(f"Missing observed OREE DAM rows for benchmark dates: {missing_text}.")
+        raise ValueError(f"Missing observed OREE {resolved_market_venue} rows for benchmark dates: {missing_text}.")
 
     price_history = _validate_market_data(pl.DataFrame(observed_rows))
     source_kinds = set(price_history.select("source_kind").to_series().to_list())
@@ -559,9 +611,10 @@ def _parse_hour_value(raw_value: object) -> int | None:
     return None
 
 
-def _fetch_oree_prices(target_date: date) -> list[dict[str, Any]] | None:
+def _fetch_oree_prices(target_date: date, *, market_venue: str = LEVEL1_MARKET_VENUE) -> list[dict[str, Any]] | None:
+    resolved_market_venue = _normalize_oree_market_venue(market_venue)
     try:
-        data_view_prices = _fetch_oree_data_view_prices(target_date)
+        data_view_prices = _fetch_oree_data_view_prices(target_date, market_venue=resolved_market_venue)
         if data_view_prices:
             return data_view_prices
 
@@ -570,7 +623,7 @@ def _fetch_oree_prices(target_date: date) -> list[dict[str, Any]] | None:
             response.raise_for_status()
 
         soup = BeautifulSoup(response.text, "html.parser")
-        parsed_rows = _extract_oree_price_rows(soup, target_date)
+        parsed_rows = _extract_oree_price_rows(soup, target_date, market_venue=resolved_market_venue)
         if parsed_rows:
             logger.info("Parsed %s OREE rows from HTML tables for %s.", len(parsed_rows), target_date)
             return parsed_rows
@@ -581,8 +634,13 @@ def _fetch_oree_prices(target_date: date) -> list[dict[str, Any]] | None:
         return None
 
 
-def _fetch_oree_data_view_prices(target_date: date) -> list[dict[str, Any]] | None:
-    month_rows = _fetch_oree_data_view_month_prices(target_date)
+def _fetch_oree_data_view_prices(
+    target_date: date,
+    *,
+    market_venue: str = LEVEL1_MARKET_VENUE,
+) -> list[dict[str, Any]] | None:
+    resolved_market_venue = _normalize_oree_market_venue(market_venue)
+    month_rows = _fetch_oree_data_view_month_prices(target_date, market_venue=resolved_market_venue)
     if month_rows is not None:
         target_rows = [
             row
@@ -597,7 +655,12 @@ def _fetch_oree_data_view_prices(target_date: date) -> list[dict[str, Any]] | No
     return None
 
 
-def _fetch_oree_data_view_month_prices(month_date: date) -> list[dict[str, Any]] | None:
+def _fetch_oree_data_view_month_prices(
+    month_date: date,
+    *,
+    market_venue: str = LEVEL1_MARKET_VENUE,
+) -> list[dict[str, Any]] | None:
+    resolved_market_venue = _normalize_oree_market_venue(market_venue)
     last_error: Exception | None = None
     for attempt_index in range(OREE_DATA_VIEW_MONTH_REQUEST_ATTEMPTS):
         try:
@@ -606,7 +669,7 @@ def _fetch_oree_data_view_month_prices(month_date: date) -> list[dict[str, Any]]
                     OREE_DATA_VIEW_URL,
                     data={
                         "date": month_date.strftime("%m.%Y"),
-                        "market": LEVEL1_MARKET_VENUE,
+                        "market": resolved_market_venue,
                         "zone": LEVEL1_MARKET_ZONE,
                     },
                     headers={
@@ -619,7 +682,10 @@ def _fetch_oree_data_view_month_prices(month_date: date) -> list[dict[str, Any]]
             content_html = _extract_oree_data_view_content(response)
             if not content_html:
                 continue
-            parsed_rows = _extract_all_prices_from_data_view_content(content_html)
+            parsed_rows = _extract_all_prices_from_data_view_content(
+                content_html,
+                market_venue=resolved_market_venue,
+            )
             if parsed_rows:
                 logger.info(
                     "Parsed %s OREE rows from data_view endpoint for %s.",
@@ -660,16 +726,26 @@ def _extract_oree_data_view_content(response: httpx.Response) -> str | None:
     return content_html if content_html.strip() else None
 
 
-def _extract_prices_from_data_view_content(content_html: str, target_date: date) -> list[dict[str, Any]]:
+def _extract_prices_from_data_view_content(
+    content_html: str,
+    target_date: date,
+    *,
+    market_venue: str = LEVEL1_MARKET_VENUE,
+) -> list[dict[str, Any]]:
     return [
         row
-        for row in _extract_all_prices_from_data_view_content(content_html)
+        for row in _extract_all_prices_from_data_view_content(content_html, market_venue=market_venue)
         if isinstance(row.get(DEFAULT_TIMESTAMP_COLUMN), datetime)
         and row[DEFAULT_TIMESTAMP_COLUMN].date() == target_date
     ]
 
 
-def _extract_all_prices_from_data_view_content(content_html: str) -> list[dict[str, Any]]:
+def _extract_all_prices_from_data_view_content(
+    content_html: str,
+    *,
+    market_venue: str = LEVEL1_MARKET_VENUE,
+) -> list[dict[str, Any]]:
+    resolved_market_venue = _normalize_oree_market_venue(market_venue)
     soup = BeautifulSoup(content_html, "html.parser")
     table = soup.find("table", id="price_table") or soup.find("table")
     if table is None:
@@ -702,22 +778,34 @@ def _extract_all_prices_from_data_view_content(content_html: str) -> list[dict[s
                     source="OREE_DATA_VIEW",
                     source_kind=OBSERVED_SOURCE_KIND,
                     source_url=OREE_DATA_VIEW_URL,
+                    market_venue=resolved_market_venue,
                 )
             )
     return parsed_rows
 
 
-def _extract_oree_price_rows(soup: BeautifulSoup, target_date: date) -> list[dict[str, Any]]:
+def _extract_oree_price_rows(
+    soup: BeautifulSoup,
+    target_date: date,
+    *,
+    market_venue: str = LEVEL1_MARKET_VENUE,
+) -> list[dict[str, Any]]:
     tables = soup.find_all("table", class_="price-table") or soup.find_all("table")
     best_candidate: list[dict[str, Any]] = []
     for table in tables:
-        parsed_rows = _parse_table_rows(table, target_date)
+        parsed_rows = _parse_table_rows(table, target_date, market_venue=market_venue)
         if len(parsed_rows) > len(best_candidate):
             best_candidate = parsed_rows
     return best_candidate
 
 
-def _parse_table_rows(table: Any, target_date: date) -> list[dict[str, Any]]:
+def _parse_table_rows(
+    table: Any,
+    target_date: date,
+    *,
+    market_venue: str = LEVEL1_MARKET_VENUE,
+) -> list[dict[str, Any]]:
+    resolved_market_venue = _normalize_oree_market_venue(market_venue)
     rows = table.find_all("tr")
     parsed_rows: list[dict[str, Any]] = []
     seen_hours: set[int] = set()
@@ -755,10 +843,18 @@ def _parse_table_rows(table: Any, target_date: date) -> list[dict[str, Any]]:
                 source="OREE_HTML",
                 source_kind=OBSERVED_SOURCE_KIND,
                 source_url=OREE_PRICES_URL,
+                market_venue=resolved_market_venue,
             )
         )
         seen_hours.add(hour)
     return parsed_rows
+
+
+def _normalize_oree_market_venue(market_venue: str) -> str:
+    normalized = market_venue.strip().upper()
+    if normalized not in {"DAM", "IDM"}:
+        raise ValueError(f"Unsupported OREE market venue: {market_venue}")
+    return normalized
 
 
 def _validate_market_data(price_history: pl.DataFrame) -> pl.DataFrame:
@@ -1456,6 +1552,8 @@ __all__ = [
     "build_synthetic_market_price_history",
     "enrich_market_price_history_with_weather",
     "list_available_weather_tenants",
+    "observed_idm_price_history_bronze",
+    "observed_market_price_history_bronze",
     "resolve_tenant_registry_entry",
     "resolve_weather_location_for_tenant",
     "weather_forecast_bronze",

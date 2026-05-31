@@ -5,11 +5,35 @@ submit bids, dispatch hardware, or emit market order payloads.
 
 ## Operator Preview Sources
 
-The default operator recommendation remains the best-valid V2+ fallback from:
+The default operator recommendation is the official OREE row routed through a
+deterministic hourly LP preview:
 
 ```text
 GET /dashboard/operator-recommendation
 ```
+
+For an explicit future delivery date, the API checks the official OREE row for
+that date first. If it is not published yet, a complete NBEATSx/TFT
+forecast-store horizon can feed deterministic LP as a
+`pre_publication_forecast` operator preview. The advisor also ranks complete
+NBEATSx/TFT LP scenario candidates by decision value/regret, reports the
+candidate gatekeeper status, and still abstains from market execution:
+
+```text
+GET /dashboard/operator-recommendation?strategy_id=nbeatsx_official_v0&target_delivery_date=2026-05-20
+```
+
+DAM is the default venue. IDM is available as a separate hourly
+planning/read-model lane:
+
+```text
+GET /dashboard/operator-recommendation?market_venue=IDM
+```
+
+IDM v1 is not a 15-minute bid/submission lane. It uses the same non-execution
+boundary as DAM: NBEATSx/TFT are scenario evidence, AFL/DFL are decision-value
+evidence, and DT/policy advisor metadata ranks candidates or abstains while the
+deterministic LP schedule remains active.
 
 Manual shadow previews are loaded through:
 
@@ -31,7 +55,7 @@ Current manual source ids:
 | `v13_dt_lava_promoted_training` | V13/DT/LAVA blocked | Roadmap-only blocked source, no schedule rows |
 
 Every shadow preview keeps `market_execution_enabled=false`, does not emit
-`ProposedBid`, and does not change the default V2+ recommendation.
+`ProposedBid`, and does not change the official-row LP recommendation.
 
 The operator panel summarizes the current ML architecture story as: V2+ remains
 the default/fallback result at `174.77` UAH mean regret, apples-to-apples DT is

@@ -4,9 +4,9 @@ Based on the retrievable prior context and Drive artifacts, the last four recove
 
 ## 1. Last four chats / threads — integrated summary
 
-### 1) Week 1 thesis/MVP consolidation
+### 1) Initial thesis/MVP consolidation
 
-The main thread was the Week 1 report: your current system is scoped as a  **Level 1 DAM-only BESS arbitrage MVP** . It uses hourly Ukrainian DAM prices, UAH as canonical currency, a strict similar-day forecast, LP optimization, rolling-horizon logic, Pydantic safety contracts, and an operator-facing preview surface. The report explicitly separates what is implemented from what remains research target architecture: DFL, multi-market control, bid/clearing semantics, and a richer digital twin are  **not yet implemented** .
+The main thread established the current system as a **Level 1 DAM-only BESS arbitrage MVP**. It uses hourly Ukrainian DAM prices, UAH as canonical currency, a strict similar-day forecast, LP optimization, rolling-horizon logic, Pydantic safety contracts, and an operator-facing preview surface. The technical narrative explicitly separates what is implemented from what remains research target architecture: DFL, multi-market control, bid/clearing semantics, and a richer digital twin are **not yet implemented**.
 
 The most important wording from that thread is:
 
@@ -65,9 +65,9 @@ This connects cleanly with your demo result: raw NBEATSx/TFT may look academical
 
 This is the strategic architecture report. It gives the “why” behind the project: Ukraine’s future energy market is volatile, increasingly coupled with Europe, and needs autonomous storage systems that combine forecasting, optimization, regulation-awareness, and battery constraints. It supports your target architecture: NBEATSx/TFT for forecasting, LP/MILP for baseline decisions, DFL for value-aligned learning, and DT/sequence models as later-stage research.
 
-### Report B — Week 1 technical report
+### Report B — Baseline technical implementation summary
 
-This is the implementation evidence. It says what is actually done: OREE/Open-Meteo ingestion, tenant-aware weather, strict similar-day forecast, LP baseline, degradation proxy, SOC preview, FastAPI read models, Dagster assets, MLflow regret logging, dashboard/operator surfaces, and first thesis chapters.
+This is the implementation evidence. It says what is actually done: OREE/Open-Meteo ingestion, tenant-aware weather, strict similar-day forecast, LP baseline, degradation proxy, SOC preview, FastAPI read models, Dagster assets, MLflow regret logging, dashboard/operator surfaces, and thesis chapter drafts.
 
 ### Report C — Demo/defense decks
 

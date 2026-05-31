@@ -7,7 +7,7 @@
   "googleSlidesUrl": "https://docs.google.com/presentation/d/1uIJV-tj4SOTf7QKLD9p-Eo_igDVj1HshJPWCHfgeKOM",
   "googleSlidesTitle": "DT Shadow Academic MVP Defense Deck - Verified",
   "googleSlidesSlideCount": 9,
-  "claimBoundary": "DAM operator preview only; DT shadow is not promoted; market_execution_enabled=false; no ProposedBid; no market order payload.",
+  "claimBoundary": "DAM/IDM hourly recommendation preview only; DT shadow is not promoted; market_execution_enabled=false; no ProposedBid; no market order payload.",
   "sourceEvidence": {
     "academicMvpGatePassed": true,
     "modelBackbone": "huggingface_decision_transformer_model",

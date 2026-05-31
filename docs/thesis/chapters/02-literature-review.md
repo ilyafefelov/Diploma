@@ -10,11 +10,11 @@
 
 Контекст українського застосування наведено на рисунку 2.1.
 
-![Рисунок 2.1. Контекст BESS/DAM для українського застосування](assets/compact-fig-2-1-ukraine-context.png)
+![Рисунок 2.1. Контекст BESS/DAM/IDM для українського застосування](assets/compact-fig-2-1-ukraine-context.png)
 
-Рисунок 2.1. Контекст BESS/DAM для українського застосування
+Рисунок 2.1. Контекст BESS/DAM/IDM для українського застосування
 
-Рисунок 2.1 показує, що практична цінність виникає на перетині DAM signal, BESS asset constraints і operator needs. Дипломний MVP охоплює рекомендаційний preview і відтворювану evidence chain; production trading потребує окремої юридичної, технічної і source-readiness інфраструктури.
+Рисунок 2.1 показує, що практична цінність виникає на перетині DAM/IDM hourly signal, BESS asset constraints і operator needs. Дипломний MVP охоплює рекомендаційний preview і відтворювану evidence chain; production trading потребує окремої юридичної, технічної і source-readiness інфраструктури.
 
 2.2. Чому forecast-only оцінка недостатня
 
@@ -46,7 +46,7 @@
 | Storage optimization | LP schedule із SOC/power/efficiency [[51]](#source-51), [[10]](#source-10), [[5]](#source-5) | Settlement/live dispatch |
 | DFL / predict-then-optimize | Regret/value як decision-quality criterion [[4]](#source-4), [[29]](#source-29), [[28]](#source-28) | Full differentiable controller |
 | Offline RL / DT | Research-shadow sequence policy [[7]](#source-7), [[32]](#source-32) | DT/LAVA promotion/live policy |
-| Ukrainian market governance | DAM preview і source-readiness blockers [[36]](#source-36), [[37]](#source-37), [[43]](#source-43) | Inferred receipts/submission claims |
+| Ukrainian market governance | DAM/IDM hourly preview і source-readiness blockers [[36]](#source-36), [[37]](#source-37), [[43]](#source-43) | Inferred receipts/submission claims |
 
 Таблиця 2.1 показує, що робота поєднує electricity price forecasting, storage optimization, DFL/predict-then-optimize і market governance. Водночас вона свідомо не заявляє full settlement, deployed DT або full differentiable controller. Це скорочує текст і робить межі дослідження прозорими.
 
@@ -80,13 +80,13 @@ Distributional RL для energy arbitrage розглядається як risk-s
 
 Decision Transformer є привабливим напрямом для sequence-policy tasks, бо він може умовлювати дії на return-to-go та історію станів. Chen et al. (2021) формулюють Decision Transformer як return-conditioned sequence modeling для offline reinforcement learning [[7]](#source-7). Bhargava et al. (2023) додатково показують, що переваги DT залежать від якості, обсягу й структури offline trajectories [[32]](#source-32). Практичну implementation reference для майбутніх експериментів дає офіційна документація Hugging Face Transformers [[33]](#source-33).
 
-У поточній роботі DT має тільки research-shadow статус. V13 source-readiness gate не дозволяє трактувати DT або LAVA як production-ready, доки немає explicit DAM publication receipts і достатньої кількості permitted training rows. Тому DT використовується для перевірки майбутньої архітектурної можливості, а не для headline result.
+У поточній роботі DT має тільки research-shadow статус. V13 source-readiness gate не дозволяє трактувати DT або LAVA як production-ready, доки немає explicit OREE DAM/IDM source/publication evidence for preview і достатньої кількості permitted training rows; market-submission receipts залишаються окремою execution-ready вимогою. Тому DT використовується для перевірки майбутньої архітектурної можливості, а не для headline result.
 
 2.9. Роль українських джерел і source governance
 
 Окремий аспект огляду - джерельна дисципліна. У задачах енергетичного арбітражу дані не є нейтральним фоном: timestamp, publication timing, timezone normalization і provenance визначають, чи має модель право бачити конкретну ознаку. Якщо зовнішній ряд доступний лише після decision time, його використання як train або selection feature створює leakage. Якщо publication receipt не підтверджено, не можна описувати систему як market-ready, навіть якщо локальний backtest виглядає переконливо.
 
-У роботі тому використано обережний словник. DAM rows можуть бути частиною recommendation preview, але explicit DAM publication receipts потрібні для сильніших source-readiness claims. EU/Poland/ENTSO-E контексти можуть бути корисними як governance або shadow lanes, але вони не перетворюються автоматично на українські training targets. Такий підхід спирається на офіційні джерела про дані й ринкову інтеграцію: ENTSO-E Transparency Platform, OPSD, Nord Pool, Ember, ACER, European Commission і Ukrainian market/operator sources [[23]](#source-23), [[24]](#source-24), [[25]](#source-25), [[26]](#source-26), [[27]](#source-27), [[34]](#source-34), [[35]](#source-35), [[36]](#source-36), [[37]](#source-37), [[43]](#source-43).
+У роботі тому використано обережний словник. DAM/IDM rows можуть бути частиною hourly recommendation preview, але explicit OREE DAM/IDM source/publication evidence потрібна для сильніших source-readiness claims; market-submission receipts залишаються окремими для execution contour. EU/Poland/ENTSO-E контексти можуть бути корисними як governance або shadow lanes, але вони не перетворюються автоматично на українські training targets. Такий підхід спирається на офіційні джерела про дані й ринкову інтеграцію: ENTSO-E Transparency Platform, OPSD, Nord Pool, Ember, ACER, European Commission і Ukrainian market/operator sources [[23]](#source-23), [[24]](#source-24), [[25]](#source-25), [[26]](#source-26), [[27]](#source-27), [[34]](#source-34), [[35]](#source-35), [[36]](#source-36), [[37]](#source-37), [[43]](#source-43).
 
 Для forecast layer зовнішні ряди можуть бути корисними як exogenous covariates, але лише після licensing, timezone/DST, currency, market-rule, publication-time availability і domain-shift checks. Роботи Li and Becker (2021), Redhu and Bremdal (2023) та Mascarenhas et al. (2025) підтримують ідею neighboring-zone або cross-border features для EPF, а документація Nixtla пояснює технічну підтримку exogenous variables у NeuralForecast/NBEATSx [[47]](#source-47), [[48]](#source-48), [[49]](#source-49), [[50]](#source-50).
 

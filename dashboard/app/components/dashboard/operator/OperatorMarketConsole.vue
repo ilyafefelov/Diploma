@@ -3,7 +3,18 @@ import { computed } from 'vue'
 import HudSignalCharts from '~/components/dashboard/HudSignalCharts.vue'
 import OperatorMarketSignalHero from '~/components/dashboard/operator/OperatorMarketSignalHero.vue'
 import type { OperatorRecommendationResponse, SignalPreview, TenantSummary } from '~/types/control-plane'
-import type { OperatorExplanationMode, OperatorMarketRegimeChip } from '~/types/operator-dashboard'
+import type {
+  OperatorChartHorizon,
+  OperatorExplanationMode,
+  OperatorMarketRegimeChip,
+  OperatorMarketVenue
+} from '~/types/operator-dashboard'
+import {
+  operatorChartHorizonOptions,
+  operatorMarketScopeLabel,
+  operatorMarketVenueLabel,
+  operatorMarketVenueOptions
+} from '~/utils/operatorPreviewControls'
 
 const props = defineProps<{
   tenants: TenantSummary[]
@@ -14,6 +25,10 @@ const props = defineProps<{
   marketRegimeChips: OperatorMarketRegimeChip[]
   signalPreview: SignalPreview | null
   operatorRecommendation: OperatorRecommendationResponse | null
+  marketPreviewError: string
+  selectedMarketVenue: OperatorMarketVenue
+  selectedTargetDeliveryDate: string | null
+  selectedChartHorizon: OperatorChartHorizon
   isRegistryLoading: boolean
   isSignalPreviewLoading: boolean
   signalPreviewLastLoadedLabel: string
@@ -21,7 +36,56 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   'update:explanationMode': [value: OperatorExplanationMode]
+  'update:selectedMarketVenue': [value: OperatorMarketVenue]
+  'update:selectedTargetDeliveryDate': [value: string | null]
+  'update:selectedChartHorizon': [value: OperatorChartHorizon]
 }>()
+
+const marketVenueOptions = operatorMarketVenueOptions
+const chartHorizonOptions = operatorChartHorizonOptions
+
+const formatDateInputValue = (date: Date): string => {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return localDate.toISOString().slice(0, 10)
+}
+
+const addDays = (days: number): string => {
+  const date = new Date()
+  date.setDate(date.getDate() + days)
+  return formatDateInputValue(date)
+}
+
+const targetDateShortcuts = computed(() => [
+  {
+    label: 'Latest official',
+    value: null,
+    detail: 'Official/source row first'
+  },
+  {
+    label: 'Today',
+    value: addDays(0),
+    detail: 'current delivery date'
+  },
+  {
+    label: 'Tomorrow',
+    value: addDays(1),
+    detail: 'next delivery date'
+  },
+  {
+    label: 'Day +2',
+    value: addDays(2),
+    detail: 'pre-publication planning'
+  }
+])
+
+const updateTargetDateFromInput = (event: Event): void => {
+  const target = event.target
+  if (!(target instanceof HTMLInputElement)) {
+    return
+  }
+
+  emit('update:selectedTargetDeliveryDate', target.value || null)
+}
 
 const formatBoundaryTimestamp = (value: string | null | undefined): string => {
   if (!value) {
@@ -48,15 +112,26 @@ const formatBoundaryStatus = (value: string | null | undefined): string => {
     .join(' ')
 }
 
+const hasMarketPreviewError = computed(() => props.marketPreviewError.trim().length > 0)
+
 const marketBoundaryItems = computed(() => {
-  const recommendation = props.operatorRecommendation
+  const recommendation = hasMarketPreviewError.value ? null : props.operatorRecommendation
+  const responseVenue = operatorMarketVenueLabel(recommendation?.market_venue ?? props.selectedMarketVenue)
 
   return [
     {
       label: 'Scope',
-      value: recommendation?.market_scope === 'dam_hourly_planning_preview'
-        ? 'DAM hourly preview'
-        : formatBoundaryStatus(recommendation?.market_scope)
+      value: operatorMarketScopeLabel(responseVenue)
+    },
+    {
+      label: 'Target',
+      value: recommendation?.target_delivery_date
+        ?? props.selectedTargetDeliveryDate
+        ?? 'latest official/source row'
+    },
+    {
+      label: 'Price',
+      value: formatBoundaryStatus(recommendation?.price_context_status ?? 'source_pending')
     },
     {
       label: 'Delivery',
@@ -87,10 +162,11 @@ const marketBoundaryItems = computed(() => {
           Market scope
         </p>
         <h2 class="section-title">
-          DAM hourly planning preview
+          DAM/IDM hourly recommendation preview
         </h2>
         <p class="console-subcopy">
-          No ProposedBid, no market submission, no IDM recommendation mode.
+          Official/source row first. NBEATSx/TFT scenario context only appears for unpublished horizons. No ProposedBid,
+          no market submission, no live IDM bid, no settlement.
         </p>
         <div
           class="console-boundary-strip"
@@ -108,6 +184,80 @@ const marketBoundaryItems = computed(() => {
       </div>
 
       <div class="console-controls">
+        <div
+          class="console-control-group"
+          aria-label="Market venue"
+        >
+          <span class="console-control-label">Venue</span>
+          <div
+            class="segmented-control"
+            role="tablist"
+            aria-label="Market venue"
+          >
+            <button
+              v-for="option in marketVenueOptions"
+              :key="option.value"
+              type="button"
+              :aria-selected="selectedMarketVenue === option.value"
+              :title="option.description"
+              :class="{ 'segmented-control__button-active': selectedMarketVenue === option.value }"
+              @click="emit('update:selectedMarketVenue', option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
+        <div
+          class="console-control-group console-control-group-wide"
+          aria-label="Target delivery date"
+        >
+          <span class="console-control-label">Target date</span>
+          <div class="console-date-row">
+            <button
+              v-for="shortcut in targetDateShortcuts"
+              :key="shortcut.label"
+              type="button"
+              class="console-date-chip"
+              :class="{ 'console-date-chip-active': selectedTargetDeliveryDate === shortcut.value }"
+              :title="shortcut.detail"
+              @click="emit('update:selectedTargetDeliveryDate', shortcut.value)"
+            >
+              {{ shortcut.label }}
+            </button>
+            <input
+              class="console-date-input"
+              type="date"
+              :value="selectedTargetDeliveryDate ?? ''"
+              aria-label="Custom target delivery date"
+              @input="updateTargetDateFromInput"
+            >
+          </div>
+        </div>
+
+        <div
+          class="console-control-group"
+          aria-label="Visible chart horizon"
+        >
+          <span class="console-control-label">Charts</span>
+          <div
+            class="segmented-control"
+            role="tablist"
+            aria-label="Visible chart horizon"
+          >
+            <button
+              v-for="option in chartHorizonOptions"
+              :key="option.value"
+              type="button"
+              :aria-selected="selectedChartHorizon === option.value"
+              :class="{ 'segmented-control__button-active': selectedChartHorizon === option.value }"
+              @click="emit('update:selectedChartHorizon', option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
         <div
           class="segmented-control"
           role="tablist"
@@ -142,6 +292,11 @@ const marketBoundaryItems = computed(() => {
       <div class="market-signal-panel">
         <OperatorMarketSignalHero
           :signal-preview="signalPreview"
+          :operator-recommendation="operatorRecommendation"
+          :selected-market-venue="selectedMarketVenue"
+          :selected-target-delivery-date="selectedTargetDeliveryDate"
+          :selected-chart-horizon="selectedChartHorizon"
+          :market-preview-error="marketPreviewError"
           :is-loading="isSignalPreviewLoading"
           :last-loaded-label="signalPreviewLastLoadedLabel"
         />
@@ -159,6 +314,8 @@ const marketBoundaryItems = computed(() => {
             :key="chip.label"
             class="market-chip"
             :class="{ 'market-chip-active': chip.active }"
+            role="group"
+            :aria-label="`${chip.label} market regime: ${chip.tooltipTitle}`"
             tabindex="0"
           >
             <UIcon :name="chip.icon" />
@@ -179,6 +336,9 @@ const marketBoundaryItems = computed(() => {
       <HudSignalCharts
         :signal-preview="signalPreview"
         :operator-recommendation="operatorRecommendation"
+        :selected-market-venue="selectedMarketVenue"
+        :selected-chart-horizon="selectedChartHorizon"
+        :market-preview-error="marketPreviewError"
         :is-loading="isSignalPreviewLoading"
         :last-loaded-label="signalPreviewLastLoadedLabel"
         :explanation-mode="explanationMode"

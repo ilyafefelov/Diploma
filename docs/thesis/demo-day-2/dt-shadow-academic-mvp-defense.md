@@ -6,7 +6,7 @@ This packet packages the credentialless Academic MVP and Hugging Face-backed
 DT research-shadow smoke for defense use. It is intentionally scoped to
 operator preview and offline evidence.
 
-Claim boundary: **DAM delivery-day recommendation preview only**,
+Claim boundary: **DAM/IDM hourly recommendation preview only**,
 `market_execution_enabled=false`, no `ProposedBid`, no market order payload, no
 promoted DT/LAVA controller, and no synthetic OREE/SCMO publication receipts.
 

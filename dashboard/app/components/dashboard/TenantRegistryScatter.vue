@@ -27,13 +27,17 @@ const option = computed(() => {
 .registry-chart {
   width: 100%;
   min-height: 30rem;
-  border: 1px solid rgba(255, 255, 255, 0.66);
+  border: 1px solid color-mix(in oklab, var(--panel-strong) 72%, transparent);
   border-radius: 0.78rem;
   background:
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(222, 245, 255, 0.94), rgba(191, 229, 250, 0.9));
+    radial-gradient(circle at top right, color-mix(in oklab, var(--plumbob-green) 9%, transparent), transparent 24%),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--canvas-top) 94%, var(--accent-cyan) 6%),
+      color-mix(in oklab, var(--canvas-base) 88%, var(--accent-cyan) 12%)
+    );
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.86),
-    0 12px 24px rgba(0, 48, 95, 0.12);
+    inset 0 1px 0 color-mix(in oklab, var(--panel-strong) 92%, transparent),
+    0 12px 24px color-mix(in oklab, var(--accent-cyan-strong) 14%, transparent);
 }
 </style>

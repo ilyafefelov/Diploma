@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import type { OperatorMarketVenue } from '~/types/operator-dashboard'
 import type { OperatorTimelineSegment } from '~/types/operator-dashboard'
 import type { ShadowHourlyRecommendationRow } from '~/utils/operatorShadowPreview'
 
@@ -10,6 +11,7 @@ const props = defineProps<{
   dispatchModeLabel: string
   predictionHeadLabel: string
   marketBoundaryLabel: string
+  selectedMarketVenue: OperatorMarketVenue
   batteryCapacityContextLabel: string
   deliveryWindowLabel: string
   selectedPreviewSourceLabel: string
@@ -53,7 +55,7 @@ const hideSegmentTooltip = (): void => {
     <div class="schedule-dock__heading">
       <UIcon name="i-lucide-clock-3" />
       <div>
-        <p>{{ isShadowPreviewMode ? 'Shadow delivery-day preview' : 'DAM delivery day review' }}</p>
+        <p>{{ isShadowPreviewMode ? 'Shadow delivery-day preview' : `${selectedMarketVenue} hourly delivery review` }}</p>
         <span>{{ selectedTenantName }} / {{ selectedTenantBadge }}</span>
         <strong class="schedule-dock__battery-context">
           <UIcon name="i-lucide-battery-charging" />
@@ -75,6 +77,8 @@ const hideSegmentTooltip = (): void => {
         :key="`${segment.time}-${segment.label}`"
         class="schedule-segment"
         :class="`schedule-segment--${segment.tone}`"
+        role="group"
+        :aria-label="`${segment.time}: ${segment.label}. ${segment.value}. ${segment.marketSideLabel}; ${segment.indicativePriceLabel}`"
         tabindex="0"
         @mouseenter="showSegmentTooltip(segment, $event)"
         @focus="showSegmentTooltip(segment, $event)"
@@ -103,30 +107,57 @@ const hideSegmentTooltip = (): void => {
       class="shadow-hourly-table"
       aria-label="Hourly recommendation table"
     >
-      <div class="shadow-hourly-table__head">
-        <span>Timestamp</span>
-        <span>Action</span>
-        <span>MW / MWh / capacity</span>
-        <span>SOC</span>
-        <span>Candidate / family</span>
-        <span>Value</span>
-        <span>Regret / value gap</span>
-        <span>Gate</span>
-      </div>
-      <div
-        v-for="row in hourlyRecommendationRows"
-        :key="`${row.timestamp}-${row.candidateLabel}`"
-        class="shadow-hourly-table__row"
-      >
-        <span>{{ row.timestamp }}</span>
-        <strong>{{ row.action }}</strong>
-        <span>{{ row.quantityLabel }}</span>
-        <span>{{ row.socPathLabel }}</span>
-        <span>{{ row.candidateLabel }} / {{ row.scheduleFamily }}</span>
-        <span>{{ row.expectedValueLabel }}</span>
-        <span>{{ row.regretVsV2Label }}; {{ row.regretVsStrictLabel }}</span>
-        <span>{{ row.gateStatus }}</span>
-      </div>
+      <table class="shadow-hourly-table__table">
+        <caption class="sr-only">
+          Hourly recommendation table
+        </caption>
+        <thead>
+          <tr class="shadow-hourly-table__head">
+            <th scope="col">
+              Timestamp
+            </th>
+            <th scope="col">
+              Action
+            </th>
+            <th scope="col">
+              MW / MWh / capacity
+            </th>
+            <th scope="col">
+              SOC
+            </th>
+            <th scope="col">
+              Candidate / family
+            </th>
+            <th scope="col">
+              Value
+            </th>
+            <th scope="col">
+              Regret / value gap
+            </th>
+            <th scope="col">
+              Gate
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="row in hourlyRecommendationRows"
+            :key="`${row.timestamp}-${row.candidateLabel}`"
+            class="shadow-hourly-table__row"
+          >
+            <td>{{ row.timestamp }}</td>
+            <td>
+              <strong>{{ row.action }}</strong>
+            </td>
+            <td>{{ row.quantityLabel }}</td>
+            <td>{{ row.socPathLabel }}</td>
+            <td>{{ row.candidateLabel }} / {{ row.scheduleFamily }}</td>
+            <td>{{ row.expectedValueLabel }}</td>
+            <td>{{ row.regretVsV2Label }}; {{ row.regretVsStrictLabel }}</td>
+            <td>{{ row.gateStatus }}</td>
+          </tr>
+        </tbody>
+      </table>
       <p v-if="hourlyRecommendationRows.length === 0">
         {{ hourlyEmptyMessage }}
       </p>

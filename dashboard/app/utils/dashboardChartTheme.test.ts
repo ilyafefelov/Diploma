@@ -29,12 +29,53 @@ describe('dashboard chart theme', () => {
     expect(option.xAxis.data).toEqual(['04 May\n18:00', '04 May\n21:00'])
   })
 
+  it('labels pre-publication market hero rows as ML forecast prices without synthetic future curves', () => {
+    const signalPreview: SignalPreview = {
+      tenant_id: 'client_003_dnipro_factory',
+      labels: ['00:00', '01:00'],
+      label_timestamps: ['2026-06-02T00:00:00Z', '2026-06-02T01:00:00Z'],
+      timezone: 'Europe/Kyiv',
+      market_price: [7200, 6800],
+      weather_bias: [0, 0],
+      weather_sources: ['ML_FORECAST_NBEATSX_OFFICIAL_V0', 'ML_FORECAST_NBEATSX_OFFICIAL_V0'],
+      charge_intent: [0, 0],
+      regret: [0, 0],
+      resolved_location: {
+        latitude: 48.46,
+        longitude: 35.04,
+        timezone: 'Europe/Kyiv'
+      }
+    }
+
+    const option = buildMarketSignalHeroChartOption(signalPreview, 'DAM', {
+      priceContextStatus: 'pre_publication_forecast',
+      priceContextSourceLabel: 'NBEATSx/TFT forecast store'
+    }) as {
+      series: Array<{ name: string }>
+    }
+
+    expect(option.series.map(series => series.name)).toEqual(['DAM ML forecast price'])
+    expect(option.series.map(series => series.name).join(' ')).not.toContain('Adjusted forecast context')
+  })
+
+  it('keeps operator market signal legend clear of the plot area', () => {
+    const option = buildMarketSignalHeroChartOption(null, 'IDM') as {
+      legend: { itemGap: number, textStyle: { fontSize: number } }
+      grid: { top: number }
+    }
+
+    expect(option.legend.itemGap).toBeLessThanOrEqual(12)
+    expect(option.legend.textStyle.fontSize).toBeLessThanOrEqual(11)
+    expect(option.grid.top).toBeGreaterThanOrEqual(72)
+  })
+
   it('builds selected-strategy dispatch charts from operator recommendations', () => {
     const recommendation: OperatorRecommendationResponse = {
       tenant_id: 'client_003_dnipro_factory',
       market_scope: 'dam_hourly_planning_preview',
       market_venue: 'DAM',
       interval_minutes: 60,
+      price_context_status: 'loaded',
       anchor_timestamp: '2026-05-19T14:00:00Z',
       forecast_generated_at: null,
       target_delivery_window_start: '2026-05-19T15:00:00Z',
@@ -135,6 +176,20 @@ describe('dashboard chart theme', () => {
           metric_source: 'read_model'
         }
       ],
+      decision_advisor: {
+        advisor_source_id: 'schedule_value_learner_v2_plus',
+        advisor_status: 'read_model_preview',
+        candidate_decision: 'review_v2_plus_schedule',
+        selected_candidate_id: 'schedule_value_learner_v2_plus',
+        selected_schedule_family: 'schedule_value_learner_v2_plus',
+        reason: 'headline evidence',
+        evidence_layers: ['offline_strategy_promotion'],
+        comparison_metrics: {},
+        market_execution_enabled: false,
+        market_order_payload_emitted: false,
+        promotion_gate_passed: false,
+        dt_lava_ready: false
+      },
       load_forecast: [],
       soc_projection: [],
       recommendation_schedule: [

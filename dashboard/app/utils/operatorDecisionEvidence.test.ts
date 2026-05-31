@@ -4,6 +4,7 @@ import {
   buildControlRegretTimeline,
   buildOperatorDecisionReadinessItems,
   buildOperatorDecisionStateCards,
+  buildOperatorForecastScenarioCandidateRows,
   buildOperatorStrategyEvidenceRows,
   buildSensitivityEvidenceRows
 } from './operatorDecisionEvidence'
@@ -235,6 +236,60 @@ describe('operator decision evidence', () => {
         bucket: 'forecast context',
         rows: 3
       })
+    ])
+  })
+
+  it('formats pre-publication forecast scenario candidates in rank order', () => {
+    const recommendation = {
+      decision_advisor: {
+        forecast_scenario_candidates: [
+          {
+            candidate_id: 'forecast_scenario:DAM:2026-05-20:tft_official_v0',
+            model_name: 'tft_official_v0',
+            rank: 2,
+            advisor_decision: 'ranked_abstain_preview_only',
+            decision_value_uah: 1234.4,
+            regret_to_best_uah: 55.8,
+            total_throughput_mwh: 0.742,
+            gatekeeper_status: 'passed_lp_physical_constraints_preview_only',
+            selected_for_operator_preview: false
+          },
+          {
+            candidate_id: 'forecast_scenario:DAM:2026-05-20:nbeatsx_official_v0',
+            model_name: 'nbeatsx_official_v0',
+            rank: 1,
+            advisor_decision: 'ranked_abstain_preview_only',
+            decision_value_uah: 1290.2,
+            regret_to_best_uah: 0,
+            total_throughput_mwh: 0.68,
+            gatekeeper_status: 'passed_lp_physical_constraints_preview_only',
+            selected_for_operator_preview: true
+          }
+        ]
+      }
+    } as unknown as OperatorRecommendationResponse
+
+    expect(buildOperatorForecastScenarioCandidateRows(recommendation)).toEqual([
+      {
+        candidateId: 'forecast_scenario:DAM:2026-05-20:nbeatsx_official_v0',
+        modelName: 'Nbeatsx Official V0',
+        rankLabel: '#1',
+        decisionValueLabel: '1,290 UAH',
+        regretLabel: 'best',
+        throughputLabel: '0.68 MWh',
+        statusLabel: 'selected preview',
+        selectedForPreview: true
+      },
+      {
+        candidateId: 'forecast_scenario:DAM:2026-05-20:tft_official_v0',
+        modelName: 'TFT Official V0',
+        rankLabel: '#2',
+        decisionValueLabel: '1,234 UAH',
+        regretLabel: '56 UAH regret',
+        throughputLabel: '0.74 MWh',
+        statusLabel: 'ranked abstain preview only',
+        selectedForPreview: false
+      }
     ])
   })
 

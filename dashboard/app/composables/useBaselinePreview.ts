@@ -1,8 +1,17 @@
 import { computed, ref, watch } from 'vue'
 
 import type { BaselineLpPreview } from '~/types/control-plane'
+import type { OperatorMarketVenue } from '~/types/operator-dashboard'
+import { buildOperatorPreviewQuery } from '../utils/operatorPreviewControls'
 
-export const useBaselinePreview = (selectedTenantId: Readonly<{ value: string }>) => {
+const DEFAULT_MARKET_VENUE: Readonly<{ value: OperatorMarketVenue }> = { value: 'DAM' }
+const DEFAULT_TARGET_DELIVERY_DATE: Readonly<{ value: string | null }> = { value: null }
+
+export const useBaselinePreview = (
+  selectedTenantId: Readonly<{ value: string }>,
+  selectedMarketVenue: Readonly<{ value: OperatorMarketVenue }> = DEFAULT_MARKET_VENUE,
+  selectedTargetDeliveryDate: Readonly<{ value: string | null }> = DEFAULT_TARGET_DELIVERY_DATE
+) => {
   const baselinePreview = ref<BaselineLpPreview | null>(null)
   const isLoading = ref(false)
   const error = ref('')
@@ -34,9 +43,11 @@ export const useBaselinePreview = (selectedTenantId: Readonly<{ value: string }>
 
     try {
       baselinePreview.value = await $fetch<BaselineLpPreview>('/api/control-plane/dashboard/baseline-lp-preview', {
-        query: {
-          tenant_id: selectedTenantId.value
-        }
+        query: buildOperatorPreviewQuery(
+          selectedTenantId.value,
+          selectedMarketVenue.value,
+          selectedTargetDeliveryDate.value
+        )
       })
       lastLoadedAt.value = Date.now()
     } catch (unknownError) {
@@ -47,7 +58,7 @@ export const useBaselinePreview = (selectedTenantId: Readonly<{ value: string }>
     }
   }
 
-  watch(selectedTenantId, async () => {
+  watch([selectedTenantId, selectedMarketVenue, selectedTargetDeliveryDate], async () => {
     await loadBaselinePreview()
   })
 

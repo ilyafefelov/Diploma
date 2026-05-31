@@ -24,7 +24,7 @@ Deep-research update: this backend slice is a valid engineering foundation, but 
 - Gold forecast-strategy rows persist to `forecast_strategy_evaluations` with decision value, forecast-objective value, oracle value, regret, degradation penalty, throughput, committed action preview, starting SOC source, and an explanatory payload.
 - This Gold asset is evaluation evidence only. It does not create `ProposedBid`, `ClearedTrade`, settlement IDs, or physical dispatch commands.
 - For thesis-grade use, this Gold bridge must be run as a rolling-origin backtest on observed DAM/weather history with explicit provenance, effective-dated market constraints, and market participation costs.
-- `simulated_trade_training_frame` generates DAM-only simulated trajectories with IDM-compatible naming reserved for later.
+- `simulated_trade_training_frame` generates DAM-scoped simulated trajectories; it is legacy training evidence, not the current DAM/IDM hourly preview contract.
 - Simulated transitions store state, action, feasible dispatch, reward, degradation penalty, baseline value, oracle value, regret, and a `ClearedTrade` payload with `provenance="simulated"`.
 
 ## E2E Experiment Check

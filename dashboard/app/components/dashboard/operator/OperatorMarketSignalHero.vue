@@ -2,20 +2,59 @@
 import { computed } from 'vue'
 
 import ClientVChart from '~/components/dashboard/ClientVChart.vue'
-import type { SignalPreview } from '~/types/control-plane'
+import type { OperatorRecommendationResponse, SignalPreview } from '~/types/control-plane'
+import type { OperatorChartHorizon, OperatorMarketVenue } from '~/types/operator-dashboard'
 import { buildMarketSignalHeroChartOption } from '~/utils/dashboardChartTheme'
+import {
+  operatorPriceContextModeLabel,
+  operatorPriceContextSourceLabel,
+  operatorMarketVenueLabel,
+  selectOperatorMarketSignalPreview,
+  sliceSignalPreviewForChartHorizon
+} from '~/utils/operatorPreviewControls'
 
 const props = defineProps<{
   signalPreview: SignalPreview | null
+  operatorRecommendation: OperatorRecommendationResponse | null
+  selectedMarketVenue: OperatorMarketVenue
+  selectedTargetDeliveryDate: string | null
+  selectedChartHorizon: OperatorChartHorizon
+  marketPreviewError: string
   isLoading: boolean
   lastLoadedLabel: string
 }>()
 
-const chartOption = computed(() => buildMarketSignalHeroChartOption(props.signalPreview))
+const selectedMarketSignalPreview = computed(() => selectOperatorMarketSignalPreview(
+  props.signalPreview,
+  props.operatorRecommendation
+))
+const visibleSignalPreview = computed(() => sliceSignalPreviewForChartHorizon(
+  selectedMarketSignalPreview.value,
+  props.selectedChartHorizon
+))
+const marketVenueLabel = computed(() => operatorMarketVenueLabel(props.selectedMarketVenue))
+const chartOption = computed(() => buildMarketSignalHeroChartOption(
+  visibleSignalPreview.value,
+  props.selectedMarketVenue,
+  {
+    priceContextStatus: props.operatorRecommendation?.price_context_status,
+    priceContextSourceLabel: operatorPriceContextSourceLabel(props.operatorRecommendation)
+  }
+))
+const priceContextModeLabel = computed(() => operatorPriceContextModeLabel(props.operatorRecommendation))
+const priceContextSourceLabel = computed(() => operatorPriceContextSourceLabel(props.operatorRecommendation))
+const priceContextMetricLabel = computed(() => {
+  if (props.operatorRecommendation?.price_context_status === 'pre_publication_forecast') {
+    return `${marketVenueLabel.value} ML forecast price`
+  }
+
+  return `${marketVenueLabel.value} official/source price`
+})
 
 const hasSignalData = computed(() => {
-  return !!props.signalPreview && props.signalPreview.market_price.length > 0
+  return !!visibleSignalPreview.value && visibleSignalPreview.value.market_price.length > 0
 })
+const hasMarketPreviewBlocker = computed(() => props.marketPreviewError.trim().length > 0)
 
 const formatNumber = (value: number): string => `${value.toFixed(2)}`
 const formatPowerLabel = (value: number): string => `${value >= 0 ? '+' : ''}${value.toFixed(1)} UAH/MWh`
@@ -35,55 +74,61 @@ const formatPeriodDateTime = (value: string | null | undefined): string => {
     month: 'short',
     hour: '2-digit',
     minute: '2-digit',
-    timeZone: props.signalPreview?.timezone || props.signalPreview?.resolved_location.timezone || 'Europe/Kyiv'
+    timeZone: visibleSignalPreview.value?.timezone || visibleSignalPreview.value?.resolved_location.timezone || 'Europe/Kyiv'
   }).format(parsedDate)
 }
 
 const latestPricePeriodLabel = computed(() => {
-  return `Hour: ${formatPeriodDateTime(props.signalPreview?.latest_price_timestamp || props.signalPreview?.forecast_window_end)}`
+  return `Hour: ${formatPeriodDateTime(visibleSignalPreview.value?.latest_price_timestamp || visibleSignalPreview.value?.forecast_window_end)}`
 })
 
 const forecastWindowPeriodLabel = computed(() => {
-  const startLabel = formatPeriodDateTime(props.signalPreview?.forecast_window_start)
-  const endLabel = formatPeriodDateTime(props.signalPreview?.forecast_window_end)
+  const startLabel = formatPeriodDateTime(
+    props.operatorRecommendation?.target_delivery_window_start
+      || visibleSignalPreview.value?.forecast_window_start
+  )
+  const endLabel = formatPeriodDateTime(
+    props.operatorRecommendation?.target_delivery_window_end
+      || visibleSignalPreview.value?.forecast_window_end
+  )
 
   if (startLabel === 'date pending' || endLabel === 'date pending') {
-    return 'Forecast window pending'
+    return 'Selected period pending'
   }
 
   return `${startLabel} → ${endLabel}`
 })
 
 const latestMarketPrice = computed(() => {
-  if (!props.signalPreview?.market_price.length) {
+  if (!visibleSignalPreview.value?.market_price.length) {
     return null
   }
 
-  return props.signalPreview.market_price.at(-1) ?? null
+  return visibleSignalPreview.value.market_price.at(-1) ?? null
 })
 
 const maxMarketPrice = computed(() => {
-  if (!props.signalPreview?.market_price.length) {
+  if (!visibleSignalPreview.value?.market_price.length) {
     return null
   }
 
-  return Math.max(...props.signalPreview.market_price)
+  return Math.max(...visibleSignalPreview.value.market_price)
 })
 
 const minMarketPrice = computed(() => {
-  if (!props.signalPreview?.market_price.length) {
+  if (!visibleSignalPreview.value?.market_price.length) {
     return null
   }
 
-  return Math.min(...props.signalPreview.market_price)
+  return Math.min(...visibleSignalPreview.value.market_price)
 })
 
 const avgBias = computed(() => {
-  if (!props.signalPreview?.weather_bias.length) {
+  if (!visibleSignalPreview.value?.weather_bias.length) {
     return null
   }
 
-  const avg = props.signalPreview.weather_bias.reduce((acc, value) => acc + value, 0) / props.signalPreview.weather_bias.length
+  const avg = visibleSignalPreview.value.weather_bias.reduce((acc, value) => acc + value, 0) / visibleSignalPreview.value.weather_bias.length
   return avg
 })
 
@@ -100,14 +145,19 @@ const forecastSpread = computed(() => {
   <div class="market-signal-hero">
     <div class="market-signal-hero__toolbar">
       <div class="market-signal-hero__tabs">
-        <span class="market-signal-hero__tab market-signal-hero__tab-active">DAM hourly</span>
-        <span class="market-signal-hero__tab market-signal-hero__tab-muted">IDM disabled</span>
+        <span
+          class="market-signal-hero__tab"
+          :class="{ 'market-signal-hero__tab-active': selectedMarketVenue === 'DAM', 'market-signal-hero__tab-muted': selectedMarketVenue !== 'DAM' }"
+        >DAM hourly</span>
+        <span
+          class="market-signal-hero__tab"
+          :class="{ 'market-signal-hero__tab-active': selectedMarketVenue === 'IDM', 'market-signal-hero__tab-muted': selectedMarketVenue !== 'IDM' }"
+        >IDM hourly preview</span>
       </div>
 
       <div class="market-signal-hero__range">
-        <span>24H</span>
-        <span>7D</span>
-        <span>30D</span>
+        <span>{{ selectedChartHorizon.toUpperCase() }}</span>
+        <span>{{ operatorRecommendation?.target_delivery_date ?? selectedTargetDeliveryDate ?? 'latest' }}</span>
       </div>
 
       <UBadge
@@ -119,15 +169,46 @@ const forecastSpread = computed(() => {
     </div>
 
     <div
-      v-if="!isLoading"
+      v-if="hasMarketPreviewBlocker"
+      class="market-signal-hero__blocker"
+      role="status"
+    >
+      <p>Source-backed preview blocker</p>
+      <strong>{{ marketVenueLabel }} hourly preview cannot be charted as official/source-backed context.</strong>
+      <span>{{ marketPreviewError }}</span>
+    </div>
+
+    <div
+      v-else-if="!isLoading"
+      class="market-signal-hero__context-strip"
+      aria-label="Selected market price context"
+    >
+      <span>
+        <strong>Selected period</strong>
+        {{ forecastWindowPeriodLabel }}
+      </span>
+      <span>
+        <strong>Price source</strong>
+        {{ priceContextSourceLabel }}
+      </span>
+      <span>
+        <strong>Mode</strong>
+        {{ priceContextModeLabel }}
+      </span>
+    </div>
+
+    <div
+      v-if="!hasMarketPreviewBlocker && !isLoading"
       class="market-signal-hero__metrics"
     >
       <article
         class="hud-mini-stat"
+        role="group"
+        :aria-label="`${priceContextMetricLabel}: ${latestMarketPrice == null ? 'pending' : formatPowerLabel(latestMarketPrice)}. ${latestPricePeriodLabel}`"
         tabindex="0"
       >
         <p class="hud-mini-stat__label">
-          DAM context price
+          {{ priceContextMetricLabel }}
         </p>
         <strong>{{ latestMarketPrice == null ? '—' : formatPowerLabel(latestMarketPrice) }}</strong>
         <p class="hud-mini-stat__meta">
@@ -137,14 +218,16 @@ const forecastSpread = computed(() => {
           class="hud-mini-stat__tooltip"
           role="tooltip"
         >
-          <span class="hud-mini-stat__tooltip-title">DAM hourly price context</span>
+          <span class="hud-mini-stat__tooltip-title">{{ priceContextMetricLabel }}</span>
           <span>Formula: P_t = market_price[t]</span>
           <span>Period: {{ latestPricePeriodLabel }}.</span>
-          <span>Definition: hourly DAM planning context used for the selected delivery-day preview; not an IDM bid.</span>
+          <span>Definition: published windows use official/source-backed rows; unpublished windows use ML forecast evidence; not a market bid.</span>
         </span>
       </article>
       <article
         class="hud-mini-stat"
+        role="group"
+        :aria-label="`Window spread: ${forecastSpread == null ? 'pending' : `${formatNumber(forecastSpread)} UAH/MWh`}. ${forecastWindowPeriodLabel}`"
         tabindex="0"
       >
         <p class="hud-mini-stat__label">
@@ -166,6 +249,8 @@ const forecastSpread = computed(() => {
       </article>
       <article
         class="hud-mini-stat"
+        role="group"
+        :aria-label="`Weather uplift: ${avgBias == null ? 'pending' : `${avgBias >= 0 ? '+' : ''}${formatNumber(avgBias)} UAH/MWh`}. ${forecastWindowPeriodLabel}`"
         tabindex="0"
       >
         <p class="hud-mini-stat__label">
@@ -187,12 +272,14 @@ const forecastSpread = computed(() => {
       </article>
       <article
         class="hud-mini-stat"
+        role="group"
+        :aria-label="`Signal count: ${hasSignalData ? visibleSignalPreview?.labels.length : 'pending'}. ${forecastWindowPeriodLabel}`"
         tabindex="0"
       >
         <p class="hud-mini-stat__label">
           Signal count
         </p>
-        <strong>{{ hasSignalData ? props.signalPreview?.labels.length : '—' }}</strong>
+        <strong>{{ hasSignalData ? visibleSignalPreview?.labels.length : '—' }}</strong>
         <p class="hud-mini-stat__meta">
           {{ forecastWindowPeriodLabel }}
         </p>
@@ -210,7 +297,13 @@ const forecastSpread = computed(() => {
 
     <ClientOnly>
       <div
-        v-if="isLoading"
+        v-if="hasMarketPreviewBlocker"
+        class="chart-fallback"
+      >
+        Waiting for source-backed {{ marketVenueLabel }} rows before rendering this venue as official context.
+      </div>
+      <div
+        v-else-if="isLoading"
         class="chart-fallback"
       >
         Preparing market signals...

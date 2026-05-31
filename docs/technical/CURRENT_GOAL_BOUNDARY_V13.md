@@ -2,9 +2,10 @@
 
 ## Defensible Goal
 
-Build a DAM delivery-day recommendation preview and offline strategy-evidence
-system for BESS arbitrage, with DFL/DT research lanes gated by V13
-source-readiness. This is not market-submittable DAM/IDM bids, no deployed Decision Transformer control, no full differentiable DFL claim, and
+Build a DAM/IDM hourly recommendation preview and offline strategy-evidence
+system for BESS arbitrage, with DAM/V2+ as the primary evaluated research
+result and DFL/DT research lanes gated by V13 source-readiness. This is not
+market-submittable DAM/IDM bids, no deployed Decision Transformer control, no full differentiable DFL claim, and
 `market_execution_enabled=false` until separate promotion and execution gates are
 designed, implemented, and passed.
 
@@ -15,7 +16,7 @@ The current V13 acquisition packet remains blocked:
 - readiness rows: `ready_rows=0/5`;
 - decision: `data_acquisition_needed`;
 - missing configured input: `oree_dam_publication_receipts_csv_path`;
-- top source blocker: `explicit DAM publication receipts`;
+- top source blocker: `explicit OREE DAM/IDM source/publication evidence for preview`;
 - staged safe-switch support: `77` safe-switch examples across five
   tenant/source pairs, meeting the `20 / 20` prior/train example floor as
   precondition evidence;
@@ -34,11 +35,12 @@ does not beat it (`460.30` UAH DT mean regret versus `174.77` UAH V2+).
 
 ## Promotion Rules
 
-DAM recommendation preview may use observed DAM rows and offline schedule/value
-evidence for operator planning. It must not be described as a market order, bid
-submission, or clearing path.
+DAM/IDM hourly recommendation preview may use observed OREE rows and offline
+schedule/value evidence for operator planning. DAM remains the primary evaluated
+thesis evidence packet; IDM is a source-backed hourly preview/read-model lane.
+Neither must be described as a market order, bid submission, or clearing path.
 
-DT/LAVA remains blocked until every tenant/source has at least `20` prior/train non-tail-risk material safe-switch examples and every required V13 source family, including explicit DAM publication receipts, is ready.
+DT/LAVA remains blocked until every tenant/source has at least `20` prior/train non-tail-risk material safe-switch examples and every required V13 source family, including explicit OREE DAM/IDM source/publication evidence for preview, is ready. Market-submission receipts remain a separate execution-contour requirement.
 
 Research-shadow DT training is allowed only when it stays clearly labeled as
 non-promoted, does not use market execution semantics, does not change the
@@ -50,9 +52,9 @@ prediction, storage optimization, and market-clearing or settlement assumptions.
 Regret-weighted calibration and schedule/value ranking are decision-quality
 evidence, not a full differentiable controller.
 
-IDM remains a separate future market lane. DAM and IDM can both be discussed in
-the motivation, but the current product boundary is DAM-only recommendation
-preview.
+IDM is no longer excluded from the read-model product surface. DAM and IDM can
+both be operator-facing hourly recommendation preview lanes; 15-minute IDM bids,
+settlement, and market submission remain out of scope.
 
 ## Literature Framing
 
@@ -68,10 +70,11 @@ preview.
 
 Use:
 
-- "DAM delivery-day recommendation preview";
+- "DAM/IDM hourly recommendation preview";
 - "offline/read-model strategy evidence";
 - "V13 acquisition/source-readiness gate";
 - "`market_execution_enabled=false`";
+- "DAM/V2+ headline evidence";
 - "DT/LAVA blocked until the 20-example and source-family gates pass."
 
 Avoid:

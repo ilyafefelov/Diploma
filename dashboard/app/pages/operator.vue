@@ -17,20 +17,12 @@ import {
 import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
-import { useOperatorRecommendation } from '~/composables/useOperatorRecommendation'
-import { useShadowRecommendationComparison } from '~/composables/useShadowRecommendationComparison'
-import { useShadowRecommendationPreview } from '~/composables/useShadowRecommendationPreview'
+import { useOperatorPageNarrativeModel } from '~/composables/useOperatorPageNarrativeModel'
+import { useOperatorRecommendationPreviewModel } from '~/composables/useOperatorRecommendationPreviewModel'
+import { useOperatorRootScrollRecovery } from '~/composables/useOperatorRootScrollRecovery'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
-import { buildOperatorResearchMetrics } from '~/utils/operatorResearchMetrics'
-import {
-  adaptShadowPreviewToOperatorRecommendation,
-  buildOperatorHourlyRecommendationRows,
-  buildShadowHourlyRecommendationRows,
-  previewModeLabel,
-  shouldLoadShadowPreview,
-  type OperatorPreviewSourceId
-} from '~/utils/operatorShadowPreview'
+import type { OperatorChartHorizon, OperatorMarketVenue } from '~/types/operator-dashboard'
 
 const {
   tenants,
@@ -54,6 +46,10 @@ const {
   loadSignalPreview
 } = useSignalPreview(selectedTenantId)
 
+const selectedMarketVenue = ref<OperatorMarketVenue>('DAM')
+const selectedTargetDeliveryDate = ref<string | null>(null)
+const selectedChartHorizon = ref<OperatorChartHorizon>('24h')
+
 const {
   baselinePreview,
   isLoading: isBaselinePreviewLoading,
@@ -61,7 +57,7 @@ const {
   clearError: clearBaselinePreviewError,
   lastLoadedLabel: baselinePreviewLastLoadedLabel,
   loadBaselinePreview
-} = useBaselinePreview(selectedTenantId)
+} = useBaselinePreview(selectedTenantId, selectedMarketVenue, selectedTargetDeliveryDate)
 
 const defense = useDefenseDashboard(selectedTenantId)
 
@@ -82,63 +78,34 @@ const {
 
 const includePriceHistory = ref(true)
 const explanationMode = ref<'mvp' | 'future'>('mvp')
-const selectedOperatorStrategyId = ref('schedule_value_learner_v2_plus')
-const selectedPreviewSourceId = ref<OperatorPreviewSourceId>('best_valid')
-
 const {
+  clearOperatorRecommendationError,
+  clearShadowComparisonError,
+  clearShadowPreviewError,
+  hourlyRecommendationEmptyMessage,
+  hourlyRecommendationRows,
+  isOperatorRecommendationLoading,
+  isShadowComparisonLoading,
+  isShadowPreviewLoading,
   operatorRecommendation,
-  isLoading: isOperatorRecommendationLoading,
-  error: operatorRecommendationError,
-  clearError: clearOperatorRecommendationError,
-  loadOperatorRecommendation
-} = useOperatorRecommendation(selectedTenantId, selectedOperatorStrategyId)
-const shadowDeliveryWindowStart = computed(() => operatorRecommendation.value?.target_delivery_window_start ?? null)
-
-const {
-  shadowPreview,
-  isLoading: isShadowPreviewLoading,
-  error: shadowPreviewError,
-  clearError: clearShadowPreviewError,
-  lastLoadedLabel: shadowPreviewLastLoadedLabel,
-  loadShadowRecommendationPreview
-} = useShadowRecommendationPreview(selectedTenantId, selectedPreviewSourceId, shadowDeliveryWindowStart)
-const {
+  loadRecommendationSurfaces,
+  operatorRecommendationError,
+  refreshVisibleRecommendation,
+  selectedOperatorStrategyId,
+  selectedPreviewSourceId,
+  selectedPreviewSourceLabel,
+  shadowComparisonError,
   shadowComparisonPreviews,
-  isLoading: isShadowComparisonLoading,
-  error: shadowComparisonError,
-  clearError: clearShadowComparisonError,
-  loadShadowComparisonPreviews
-} = useShadowRecommendationComparison(selectedTenantId, shadowDeliveryWindowStart)
-
-const visibleOperatorRecommendation = computed(() => adaptShadowPreviewToOperatorRecommendation(
-  operatorRecommendation.value,
-  shadowPreview.value,
-  selectedPreviewSourceId.value
-))
-const selectedPreviewSourceLabel = computed(() => previewModeLabel(selectedPreviewSourceId.value, shadowPreview.value))
-const hourlyRecommendationRows = computed(() => {
-  const batteryCapacityMwh = baselinePreview.value?.battery_metrics.capacity_mwh ?? null
-  if (selectedPreviewSourceId.value === 'best_valid') {
-    return buildOperatorHourlyRecommendationRows(visibleOperatorRecommendation.value, batteryCapacityMwh)
-  }
-
-  return buildShadowHourlyRecommendationRows(
-    shadowPreview.value,
-    batteryCapacityMwh,
-    shadowPreview.value?.interval_minutes ?? visibleOperatorRecommendation.value?.interval_minutes ?? 60
-  )
+  shadowPreview,
+  shadowPreviewError,
+  shadowPreviewLastLoadedLabel,
+  visibleOperatorRecommendation
+} = useOperatorRecommendationPreviewModel({
+  selectedTenantId,
+  selectedMarketVenue,
+  selectedTargetDeliveryDate,
+  baselinePreview
 })
-const hourlyRecommendationEmptyMessage = computed(() => {
-  if (selectedPreviewSourceId.value === 'v13_dt_lava_promoted_training') {
-    return 'Blocked by V13 source-readiness; no promoted schedule exists; V2+ remains fallback/default.'
-  }
-  if (selectedPreviewSourceId.value === 'best_valid') {
-    return 'Best-valid recommendation schedule is not loaded yet. Refresh the preview read model.'
-  }
-  return 'Selected shadow source has no hourly schedule rows. It remains roadmap evidence only.'
-})
-
-const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Selected V2+ evidence' : 'Research roadmap')
 
 const operatorReadModelErrorCount = computed(() => {
   return defense.activeErrorCount.value
@@ -192,6 +159,7 @@ const {
 } = useOperatorDashboardViewModel({
   tenants,
   selectedTenant,
+  selectedMarketVenue,
   signalPreview,
   baselinePreview,
   operatorRecommendation: visibleOperatorRecommendation,
@@ -209,59 +177,23 @@ const {
   readModelErrorCount: operatorReadModelErrorCount
 })
 
-const primaryBoundaryCopy = computed(() => explanationMode.value === 'mvp'
-  ? 'The dashboard reads FastAPI evidence and previews the selected schedule. It does not execute trades or switch a live controller.'
-  : 'Next research surfaces stay behind the same read-model boundary: TFT portfolio, market coupling, and DT/LAVA must beat V2+ before claim changes.'
-)
-
-const nextStepsItems = computed(() => explanationMode.value === 'mvp'
-  ? [
-      'Use V2+ as the headline offline schedule/value comparator.',
-      'Compare any selected strategy against strict_similar_day and frozen V2+.',
-      'Treat the lower schedule dock as a preview recommendation, not market execution.'
-    ]
-  : [
-      'Keep the closed TFT portfolio result visible as negative evidence.',
-      'Route future DT/LAVA work through candidate-value or schedule-neighbor supervision.',
-      'Promote nothing unless it beats V2+ under strict LP/oracle scoring.'
-    ]
-)
-
-const schedulePredictionHeadLabel = computed(() => {
-  if (visibleOperatorRecommendation.value) {
-    const selectedOption = visibleOperatorRecommendation.value.available_strategies.find((strategy) => {
-      return strategy.strategy_id === visibleOperatorRecommendation.value?.selected_strategy_id
-    })
-    return `Schedule source: ${selectedOption?.label || selectedPreviewSourceLabel.value || formatStrategyId(visibleOperatorRecommendation.value.selected_strategy_id)}`
-  }
-  return explanationMode.value === 'mvp'
-    ? 'Schedule source: strict_similar_day fallback'
-    : 'Research branch: TFT/DT candidate review'
+const {
+  explanationModeLabel,
+  nextStepsItems,
+  operatorResearchMetrics,
+  primaryBoundaryCopy,
+  scheduleMarketBoundaryLabel,
+  schedulePredictionHeadLabel
+} = useOperatorPageNarrativeModel({
+  explanationMode,
+  visibleOperatorRecommendation,
+  selectedPreviewSourceLabel,
+  modelRows: defense.modelRows,
+  readinessRows: defense.researchReadinessRows,
+  offlineStrategyPromotion: defense.offlineStrategyPromotion,
+  exogenousSignals: defense.exogenousSignals,
+  batteryState: defense.batteryState
 })
-
-const scheduleMarketBoundaryLabel = computed(() => {
-  if (!visibleOperatorRecommendation.value) {
-    return 'DAM hourly preview / boundary loading'
-  }
-
-  return visibleOperatorRecommendation.value.market_execution_enabled
-    ? 'Market execution enabled'
-    : 'DAM delivery-day preview / no ProposedBid / no market submission'
-})
-
-const formatStrategyId = (strategyId: string): string => strategyId
-  .split('_')
-  .filter(Boolean)
-  .map(part => part.length <= 3 ? part.toUpperCase() : `${part[0]?.toUpperCase() ?? ''}${part.slice(1)}`)
-  .join(' ')
-
-const operatorResearchMetrics = computed(() => buildOperatorResearchMetrics({
-  modelRows: defense.modelRows.value,
-  readinessRows: defense.researchReadinessRows.value,
-  offlineStrategyPromotion: defense.offlineStrategyPromotion.value,
-  exogenousSignals: defense.exogenousSignals.value,
-  batteryState: defense.batteryState.value
-}))
 
 const refreshRegistry = async (): Promise<void> => {
   await loadTenants()
@@ -297,13 +229,7 @@ const setSelectedTenantId = (tenantId: string): void => {
   selectedTenantId.value = tenantId
 }
 
-const refreshVisibleRecommendation = async (): Promise<void> => {
-  await loadOperatorRecommendation()
-  await loadShadowComparisonPreviews()
-  if (shouldLoadShadowPreview(selectedPreviewSourceId.value)) {
-    await loadShadowRecommendationPreview()
-  }
-}
+useOperatorRootScrollRecovery()
 
 watch(selectedTenantId, () => {
   clearWeatherError()
@@ -317,9 +243,7 @@ onMounted(async () => {
 
   await loadSignalPreview()
   await loadBaselinePreview()
-  await loadOperatorRecommendation()
-  await loadShadowComparisonPreviews()
-  await loadShadowRecommendationPreview()
+  await loadRecommendationSurfaces()
   await defense.loadDefenseDashboard()
   await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
@@ -331,7 +255,17 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="operator-shell">
+  <main
+    id="operator-content"
+    class="operator-shell"
+    tabindex="-1"
+  >
+    <a
+      class="operator-skip-link"
+      href="#operator-content"
+    >
+      Skip to operator dashboard
+    </a>
     <div class="operator-frame">
       <OperatorTopBar
         :clock-label="operatorClockLabel"
@@ -370,10 +304,17 @@ onBeforeUnmount(() => {
             :explanation-mode-label="explanationModeLabel"
             :market-regime-chips="marketRegimeChips"
             :signal-preview="signalPreview"
-            :operator-recommendation="visibleOperatorRecommendation"
+            :operator-recommendation="operatorRecommendation"
+            :market-preview-error="operatorRecommendationError || baselinePreviewError"
+            :selected-market-venue="selectedMarketVenue"
+            :selected-target-delivery-date="selectedTargetDeliveryDate"
+            :selected-chart-horizon="selectedChartHorizon"
             :is-registry-loading="isLoading"
             :is-signal-preview-loading="isSignalPreviewLoading"
             :signal-preview-last-loaded-label="signalPreviewLastLoadedLabel"
+            @update:selected-market-venue="value => selectedMarketVenue = value"
+            @update:selected-target-delivery-date="value => selectedTargetDeliveryDate = value"
+            @update:selected-chart-horizon="value => selectedChartHorizon = value"
             @update:explanation-mode="value => explanationMode = value"
           />
 
@@ -381,6 +322,7 @@ onBeforeUnmount(() => {
             :baseline-preview="baselinePreview"
             :operator-recommendation="visibleOperatorRecommendation"
             :selected-strategy-id="selectedOperatorStrategyId"
+            :selected-chart-horizon="selectedChartHorizon"
             :is-loading="isBaselinePreviewLoading"
             :last-loaded-label="baselinePreviewLastLoadedLabel"
             :explanation-mode="explanationMode"
@@ -408,6 +350,7 @@ onBeforeUnmount(() => {
             :academic-mvp-readiness="defenseAcademicMvpReadiness"
             :selected-strategy-id="selectedOperatorStrategyId"
             :selected-preview-source-id="selectedPreviewSourceId"
+            :selected-chart-horizon="selectedChartHorizon"
             :is-loading="defenseIsLoading || isOperatorRecommendationLoading || isShadowPreviewLoading || isShadowComparisonLoading"
             :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
             :active-error-count="operatorReadModelErrorCount"
@@ -463,6 +406,7 @@ onBeforeUnmount(() => {
         :dispatch-mode-label="dispatchModeLabel"
         :prediction-head-label="schedulePredictionHeadLabel"
         :market-boundary-label="scheduleMarketBoundaryLabel"
+        :selected-market-venue="selectedMarketVenue"
         :battery-capacity-context-label="batteryCapacityContextLabel"
         :delivery-window-label="deliveryWindowLabel"
         :selected-preview-source-label="selectedPreviewSourceLabel"

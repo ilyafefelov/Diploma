@@ -14,10 +14,10 @@
   <g font-family="Arial, sans-serif">
     <rect x="70" y="150" width="196" height="420" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
     <text x="95" y="188" font-size="20" font-weight="700" fill="#334155">Raw forecast</text>
-    <text x="95" y="226" font-size="16" fill="#111827">NBEATSx / TFT</text>
+    <text x="95" y="226" font-size="16" fill="#111827">forecast scenario</text>
     <text x="95" y="258" font-size="15" fill="#475569">price vector only</text>
     <line x1="105" y1="292" x2="230" y2="292" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow)"/>
-    <text x="95" y="336" font-size="15" fill="#475569">LP receives forecast,</text>
+    <text x="95" y="336" font-size="15" fill="#475569">LP receives scenario,</text>
     <text x="95" y="360" font-size="15" fill="#475569">but no schedule-level</text>
     <text x="95" y="384" font-size="15" fill="#475569">fallback learning.</text>
     <rect x="95" y="455" width="145" height="55" rx="6" fill="#fee2e2" stroke="#fecaca"/>
@@ -36,9 +36,9 @@
 
     <rect x="514" y="150" width="196" height="420" rx="8" fill="#ecfdf5" stroke="#86efac"/>
     <text x="539" y="188" font-size="20" font-weight="700" fill="#166534">V2+</text>
-    <text x="539" y="226" font-size="16" fill="#111827">candidate library</text>
-    <text x="539" y="258" font-size="15" fill="#475569">extrema, spread,</text>
-    <text x="539" y="282" font-size="15" fill="#475569">timing, SOC target</text>
+    <text x="539" y="226" font-size="16" fill="#111827">official row or</text>
+    <text x="539" y="258" font-size="15" fill="#475569">forecast scenario +</text>
+    <text x="539" y="282" font-size="15" fill="#475569">candidate library</text>
     <line x1="549" y1="320" x2="674" y2="320" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow)"/>
     <text x="539" y="360" font-size="15" fill="#475569">Prior-only selector</text>
     <text x="539" y="384" font-size="15" fill="#475569">with V2 fallback.</text>

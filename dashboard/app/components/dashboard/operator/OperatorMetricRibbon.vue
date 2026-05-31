@@ -13,6 +13,8 @@ defineProps<{
       :key="metric.label"
       class="metric-capsule"
       :class="`metric-capsule--${metric.tone}`"
+      role="group"
+      :aria-label="`${metric.label}: ${metric.value}. ${metric.meta}`"
       tabindex="0"
     >
       <div class="metric-capsule__icon">

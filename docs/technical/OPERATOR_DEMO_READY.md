@@ -39,7 +39,7 @@
 ### Slice 3: future-stack evidence surface
 
 Підтверджені операторські кроки:
-- operator recommendation read model with manual strategy switch, selected-policy explanation, and explicit DAM hourly planning-preview metadata
+- operator recommendation read model with manual strategy switch, selected-policy explanation, and explicit DAM/IDM hourly planning-preview metadata
 - NBEATSx/TFT forecast-stack graph from FastAPI read models
 - DT policy-preview value-gap/action graph when policy rows exist
 - daily value against hold/no-arbitrage baseline
@@ -79,15 +79,10 @@
 - FastAPI docs: `http://127.0.0.1:8010/docs`
 - Dagster UI: `http://127.0.0.1:3000/`
 - MLflow UI: `http://127.0.0.1:5000/`
-- Vercel public entry: `https://dashboard-gilt-one-97.vercel.app/` (redirects to the Week 1 report)
+- Vercel public entry: `https://dashboard-gilt-one-97.vercel.app/`
 - Vercel operator dashboard: `https://dashboard-gilt-one-97.vercel.app/operator`
-- Vercel Week 1 report: `https://dashboard-gilt-one-97.vercel.app/week1/interactive_report1`
-- Week 1 report: [docs/thesis/weekly-reports/week1/report.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/report.md)
-- Week 1 short summary: [docs/thesis/weekly-reports/week1/supervisor-summary.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/supervisor-summary.md)
 - API contracts: [docs/technical/API_ENDPOINTS.md](d:/School/GoIT/Courses/Diploma/docs/technical/API_ENDPOINTS.md)
 - PRD and issue trace: [docs/technical/PRD-operator-mvp-slices.md](d:/School/GoIT/Courses/Diploma/docs/technical/PRD-operator-mvp-slices.md), [docs/technical/issues](d:/School/GoIT/Courses/Diploma/docs/technical/issues)
-- Week 1 presentation script: [docs/thesis/weekly-reports/week1/presentation-script.md](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/presentation-script.md)
-- Week 1 screenshots: [docs/thesis/weekly-reports/week1/assets/dagster-ui.png](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/assets/dagster-ui.png), [docs/thesis/weekly-reports/week1/assets/mlflow-ui.png](d:/School/GoIT/Courses/Diploma/docs/thesis/weekly-reports/week1/assets/mlflow-ui.png)
 
 ## Verified implementation commits
 

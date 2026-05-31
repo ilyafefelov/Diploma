@@ -1,10 +1,17 @@
 import { computed, ref, watch } from 'vue'
 
 import type { OperatorRecommendationResponse } from '~/types/control-plane'
+import type { OperatorMarketVenue } from '~/types/operator-dashboard'
+import { buildOperatorPreviewQuery } from '../utils/operatorPreviewControls'
+
+const DEFAULT_MARKET_VENUE: Readonly<{ value: OperatorMarketVenue }> = { value: 'DAM' }
+const DEFAULT_TARGET_DELIVERY_DATE: Readonly<{ value: string | null }> = { value: null }
 
 export const useOperatorRecommendation = (
   selectedTenantId: Readonly<{ value: string }>,
-  selectedStrategyId: Readonly<{ value: string }>
+  selectedStrategyId: Readonly<{ value: string }>,
+  selectedMarketVenue: Readonly<{ value: OperatorMarketVenue }> = DEFAULT_MARKET_VENUE,
+  selectedTargetDeliveryDate: Readonly<{ value: string | null }> = DEFAULT_TARGET_DELIVERY_DATE
 ) => {
   const operatorRecommendation = ref<OperatorRecommendationResponse | null>(null)
   const isLoading = ref(false)
@@ -39,10 +46,12 @@ export const useOperatorRecommendation = (
       operatorRecommendation.value = await $fetch<OperatorRecommendationResponse>(
         '/api/control-plane/dashboard/operator-recommendation',
         {
-          query: {
-            tenant_id: selectedTenantId.value,
-            strategy_id: selectedStrategyId.value
-          }
+          query: buildOperatorPreviewQuery(
+            selectedTenantId.value,
+            selectedMarketVenue.value,
+            selectedTargetDeliveryDate.value,
+            selectedStrategyId.value
+          )
         }
       )
       lastLoadedAt.value = Date.now()
@@ -54,7 +63,7 @@ export const useOperatorRecommendation = (
     }
   }
 
-  watch([selectedTenantId, selectedStrategyId], async () => {
+  watch([selectedTenantId, selectedStrategyId, selectedMarketVenue, selectedTargetDeliveryDate], async () => {
     await loadOperatorRecommendation()
   })
 

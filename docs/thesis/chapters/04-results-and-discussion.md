@@ -2,18 +2,18 @@
 
 4.1. Scope результатів
 
-Результати належать до DAM delivery-day recommendation preview та offline/read-model evidence. Усі числові твердження нижче походять з наявних evidence packets і не є новими експериментами. Межу scope наведено в таблиці 4.1.
+Результати належать до DAM/IDM hourly recommendation preview та offline/read-model evidence. DAM/V2+ лишається primary evaluated packet, а IDM належить до product/read-model preview capability без market execution. Усі числові твердження нижче походять з наявних evidence packets і не є новими експериментами. Межу scope наведено в таблиці 4.1.
 
 Таблиця 4.1. Scope результатів і межі інтерпретації
 
 | Scope item | Поточний статус | Інтерпретація |
 | --- | --- | --- |
-| Market | DAM delivery-day preview | Не IDM і не market coupling execution |
+| Market | DAM/V2+ evaluated packet; DAM/IDM hourly preview capability | Not live IDM bid, settlement або market coupling execution |
 | Evidence | Offline/read-model packets | Результати відтворюються з repo artifacts |
 | Safety | market_execution_enabled=false | No ProposedBid, ClearedTrade або DispatchCommand |
 | V13 | Receipts blocked; safe-switch staged support 20/20 | DT/LAVA training remains blocked |
 
-Таблиця 4.1 задає рамку для всього розділу. Headline result може бути практично корисним для operator preview, але він не відкриває live market execution. Це особливо важливо для V13, де safe-switch staged support уже може бути достатнім для частини локальної evidence, але explicit DAM publication receipts залишаються blocker для DT/LAVA training і market-submission claims.
+Таблиця 4.1 задає рамку для всього розділу. Headline result може бути практично корисним для operator preview, але він не відкриває live market execution. Це особливо важливо для V13, де safe-switch staged support уже може бути достатнім для частини локальної evidence, але explicit OREE DAM/IDM source/publication evidence for preview залишається blocker для DT/LAVA training, а market-submission receipts залишаються окремим execution blocker.
 
 4.2. Headline V2/V2+ результат
 
@@ -50,7 +50,7 @@
 
 Raw NBEATSx і TFT можуть мати корисні price signals, але BESS schedule залежить від розташування екстремумів, spread shape, SOC path, terminal SOC pressure, throughput і фізичних constraints. Тому прогнозний ряд не є кінцевим рішенням. Він стає корисним лише тоді, коли перетворюється на feasible charge/discharge schedule і оцінюється через regret/value. V2+ працює саме на цьому рівні: він порівнює candidate schedules, а не тільки прогнозні ряди.
 
-Архітектура V2+ є decision stack з чотирьох частин. Перший шар - forecast/source layer: horizon-calibrated NBEATSx дає price signal, але цей signal не просувається напряму як ринкова дія. Другий шар - candidate library: поруч із frozen V2 додаються deterministic schedule families, які закривають failure modes попереднього рішення. До них належать perturbation around price extrema, robust spread penalty, small timing shifts around strict_similar_day, temporal block reconciliation і terminal SOC target. Третій шар - prior-only selector: він використовує train/prior anchors, prior family regret, forecast spread, forecast objective value, throughput, degradation proxy, SOC slack і candidate identity, але не бачить final-holdout regret до моменту scoring. Четвертий шар - unchanged strict LP/oracle evaluator: кожний selected schedule оцінюється тим самим contour, що й strict, raw, V2, DFL shadow і DT shadow. Саме ця комбінація дає V2+ перевагу: модель не намагається "вгадати ціну краще за всіх", а вибирає той feasible schedule, який має кращу decision-value evidence.
+Архітектура V2+ є decision stack з чотирьох частин. Перший шар - price-context/source layer: для published preview price source є official OREE row, а horizon-calibrated NBEATSx/TFT використовуються як scenario або historical forecast evidence для unpublished/replay cases. Жоден із цих signals не просувається напряму як ринкова дія. Другий шар - candidate library: поруч із frozen V2 додаються deterministic schedule families, які закривають failure modes попереднього рішення. До них належать perturbation around price extrema, robust spread penalty, small timing shifts around strict_similar_day, temporal block reconciliation і terminal SOC target. Третій шар - prior-only selector: він використовує train/prior anchors, prior family regret, forecast spread, forecast objective value, throughput, degradation proxy, SOC slack і candidate identity, але не бачить final-holdout regret до моменту scoring. Четвертий шар - unchanged strict LP/oracle evaluator: кожний selected schedule оцінюється тим самим contour, що й strict, raw, V2, DFL shadow і DT shadow. Саме ця комбінація дає V2+ перевагу: модель не намагається "вгадати вже опубліковану ціну краще за офіційне джерело", а вибирає той feasible schedule, який має кращу decision-value evidence.
 
 Практично це означає, що V2+ не конкурує з forecast model як ще один forecast. Він стоїть після forecast і перед operator preview. Якщо forecast помиляється у рівні ціни, але зберігає корисний shape, V2+ може вибрати schedule family, яка зменшує regret. Якщо forecast дає привабливий, але ризиковий schedule, selector або fallback залишають V2+/strict contour без просування слабшого challenger. Тому головний результат виникає не з isolated forecast accuracy, а з поєднання candidate diversity, prior-only вибору, V2 fallback і однакового LP/oracle scoring на 5 tenants, 90 tenant-anchors і 4 rolling windows.
 
@@ -91,7 +91,7 @@ Decision Transformer у поточному evidence set треба описув�
 | V3 candidate-value | Додав value labels, але не дав robust improvement | Not promoted |
 | V4 plateau breaker | Діагностував failure-mode candidates | Not promoted |
 | V5 point-in-time repair | Покращив protocol clarity, але не замінив V2+ | Not promoted |
-| DT/V2+ safe-switch selector | 168.16 UAH mean regret; 4 / 90 non-V2+ switches; 3 / 15 safe-switch opportunities recovered | Positive shadow evidence; keep V2+ default |
+| DT/V2+ safe-switch selector | 168.16 UAH mean regret; 4 / 90 non-V2+ switches; 3 / 15 safe-switch opportunities recovered | Positive shadow evidence; V2+ remains confirmed offline comparator/evidence |
 
 Таблиця 4.3 показує, що подальші candidate-value кроки спочатку не дали safe replacement of V2+, але corrected safe-switch shadow знайшов рідкісні безпечні обходи V2+. Це не змінює default strategy автоматично: система демонструє здатність показати positive shadow evidence і водночас зупинити promotion, доки окремий gate не дозволить default switch. Для дипломної роботи важливо показати не лише success path, а й disciplined non-promotion.
 
@@ -114,9 +114,9 @@ Decision Transformer у поточному evidence set треба описув�
 | TFT quantile | Best TFT V2+ row: 225.47 UAH mean regret і 121.00 UAH median regret | Гірше за frozen V2+ 174.77 / 67.30 UAH; blocked |
 | Poland lag24 richer | 177.34 UAH mean regret, 39.46 UAH median regret | Median кращий, але mean гірший за V2+ на 2.58 UAH; not promoted |
 | Poland prior-only veto | 167.05 UAH mean regret, 55.97 UAH median regret; 34 challenger rows і 56 fallback rows | Near-miss: improvement 4.41% нижче порогу 5%; not promoted |
-| DT/V2+ safe-switch selector | 168.16 UAH mean regret проти V2+ 174.77 UAH; 4 / 90 non-V2+ switches; 3 / 15 safe-switch opportunities recovered; 0 tail-risk losses | Positive shadow evidence; V2+ remains default/fallback |
+| DT/V2+ safe-switch selector | 168.16 UAH mean regret проти V2+ 174.77 UAH; 4 / 90 non-V2+ switches; 3 / 15 safe-switch opportunities recovered; 0 tail-risk losses | Positive shadow evidence; V2+ remains confirmed offline comparator/evidence |
 | DT apples-to-apples | 460.30 UAH mean regret; +285.53 UAH проти V2+ | Research-shadow only; not promoted |
-| V13 acquisition | Safe-switch support validated, але explicit DAM publication receipts missing | dt_lava_ready=false; permits_model_training=false |
+| V13 acquisition | Safe-switch support validated, але explicit OREE DAM/IDM source/publication evidence for preview missing | dt_lava_ready=false; permits_model_training=false |
 
 Таблиця 4.4 важлива не менше за headline. Вона показує, що система не просуває model family тільки через сучасну назву або локально привабливий сигнал. Poland prior-only veto був near-miss, а DT/V2+ safe-switch selector став першим corrected shadow, який показав невелике regret improvement без tail-risk losses. Водночас він лишається manual diagnostic, бо explicit promotion gate не додано і `promotion_gate_passed=false`. Отже, V2+ не замінюється, але roadmap уже має конкретний напрям: навчати модель шукати рідкісні safe switches, а не копіювати V2+ або raw action labels.
 
@@ -134,7 +134,7 @@ Decision Transformer у поточному evidence set треба описув�
 
 Рисунок 4.7. Decision Transformer shadow boundary
 
-Рисунок 4.7 відділяє working sequence-policy pipeline від deployed controller. Ранній apples-to-apples DT classifier дав regret 460.30 UAH і тому залишився negative evidence. Corrected DT/V2+ safe-switch shadow уже показав кращий final-holdout regret, ніж V2+ (168.16 проти 174.77 UAH), але тільки як offline/manual research diagnostic. Додатково V13 не дозволяє DT/LAVA training claims, доки explicit DAM publication receipts залишаються blocker.
+Рисунок 4.7 відділяє working sequence-policy pipeline від deployed controller. Ранній apples-to-apples DT classifier дав regret 460.30 UAH і тому залишився negative evidence. Corrected DT/V2+ safe-switch shadow уже показав кращий final-holdout regret, ніж V2+ (168.16 проти 174.77 UAH), але тільки як offline/manual research diagnostic. Додатково V13 не дозволяє DT/LAVA training claims, доки explicit OREE DAM/IDM source/publication evidence for preview залишається blocker.
 
 4.6. Шлях експериментів
 
@@ -150,7 +150,7 @@ Decision Transformer у поточному evidence set треба описув�
 
 4.7. Що можна впевнено показувати оператору
 
-На поточному етапі оператору можна показувати не market command, а evidence-backed preview. До такого preview належать selected strategy, hourly DAM recommendation rows, forecast/read-model context, regret/value comparison, V2+ versus strict/raw comparators, gate status, V13 readiness і shadow diagnostics. Кожний елемент має читатися як пояснення рішення, а не як ProposedBid, ClearedTrade або DispatchCommand.
+На поточному етапі оператору можна показувати не market command, а evidence-backed preview. До такого preview належать DAM/IDM hourly recommendation rows, official-row або forecast-scenario context, regret/value comparison, V2+ versus strict/raw comparators, gate status, V13 readiness і shadow diagnostics. Кожний елемент має читатися як пояснення рішення, а не як ProposedBid, ClearedTrade або DispatchCommand.
 
 Склад такого operator-facing preview наведено на рисунку 4.9.
 
@@ -160,13 +160,13 @@ Decision Transformer у поточному evidence set треба описув�
 
 Рисунок 4.9 відділяє дозволені read-model елементи від недозволених execution objects. Оператор може бачити schedule preview, regret/value comparison і gate status, але система не формує market-submittable bid або dispatch command.
 
-Operator-preview частина має 24 hourly DAM recommendation-preview rows, зокрема 1 BUY, 2 SELL і 21 HOLD. Такий розподіл не є слабкістю: HOLD може бути правильним рішенням, якщо spread, SOC або risk не підтримують charge/discharge. Саме тому dashboard має оцінюватися через regret/value і gate status, а не через кількість активних BUY/SELL action labels.
+У показаному materialized packet operator-preview частина має 24 hourly DAM rows, зокрема 1 BUY, 2 SELL і 21 HOLD. Той самий read-model contract підтримує IDM hourly recommendation preview rows, але не live IDM bids. Якщо DAM/IDM row уже published, LP використовує official row first; якщо target ще unpublished, ML forecast scenarios можуть бути лише scenario input до LP. Такий розподіл не є слабкістю: HOLD може бути правильним рішенням, якщо spread, SOC або risk не підтримують charge/discharge. Саме тому dashboard має оцінюватися через regret/value і gate status, а не через кількість активних BUY/SELL action labels.
 
 4.8. Практична інтерпретація для України
 
-Практичний результат полягає не в тому, що система торгує, а в тому, що вона допомагає оператору приймати evidence-informed decisions. Для українського BESS owner це корисно з трьох причин. По-перше, DAM preview можна демонструвати без regulatory overreach. По-друге, кожний result row має audit trail і може бути пояснений через regret/value. По-третє, система явно показує blockers: source receipts, V13, DT/LAVA і market execution не змішуються з current MVP.
+Практичний результат полягає не в тому, що система торгує, а в тому, що вона допомагає оператору приймати evidence-informed decisions. Для українського BESS owner це корисно з трьох причин. По-перше, DAM/IDM hourly preview можна демонструвати без regulatory overreach. По-друге, кожний result row має audit trail і може бути пояснений через regret/value. По-третє, система явно показує blockers: source/publication evidence, V13, DT/LAVA і market execution не змішуються з current MVP.
 
-Прапорець market_execution_enabled=false у цьому контексті є частиною safety case. Він означає, що навіть підтверджений offline result не перетворюється автоматично на live market action. Щоб змінити цю межу, потрібні source receipts, operational responsibility, legal review, market integration і monitoring. Тому current practical suitability означає operator-facing evidence preview, а не готовність до live trading.
+Прапорець market_execution_enabled=false у цьому контексті є частиною safety case. Він означає, що навіть підтверджений offline result не перетворюється автоматично на live market action. Щоб змінити цю межу, потрібні source/publication evidence, operational responsibility, legal review, market integration і monitoring; market-submission receipts залишаються окремими для execution contour. Тому current practical suitability означає operator-facing evidence preview, а не готовність до live trading.
 
 4.9. Обмеження результатів
 
@@ -176,4 +176,4 @@ Operator-preview частина має 24 hourly DAM recommendation-preview rows
 
 4.10. Висновок до розділу 4
 
-Головний результат роботи - V2+ schedule/value selector з mean regret 174.77 UAH, median regret 67.30 UAH, improvement 43.73% проти strict і 15.31% проти V2, а також rolling robustness 4 / 4. Corrected DT/V2+ safe-switch shadow показує практично важливий follow-up: mean regret 168.16 UAH, median regret 61.71 UAH, 4 / 90 safe switches, 3 / 15 recovered opportunities і 0 tail-risk losses. Але він не змінює headline/default без окремого promotion gate: V2+ лишається fallback, dashboard/API показують DT shadow лише manual diagnostic, а підсумкова межа залишається незмінною: DAM recommendation preview, offline/read-model evidence і no market execution.
+Головний результат роботи - V2+ schedule/value selector з mean regret 174.77 UAH, median regret 67.30 UAH, improvement 43.73% проти strict і 15.31% проти V2, а також rolling robustness 4 / 4. Corrected DT/V2+ safe-switch shadow показує практично важливий follow-up: mean regret 168.16 UAH, median regret 61.71 UAH, 4 / 90 safe switches, 3 / 15 recovered opportunities і 0 tail-risk losses. Але він не змінює headline/default без окремого promotion gate: V2+ є confirmed offline schedule-value evidence/comparator, dashboard/API показують DT shadow лише manual diagnostic, а operator preview path використовує official OREE row + deterministic LP. Підсумкова межа залишається незмінною: DAM/IDM hourly recommendation preview, offline/read-model evidence і no market execution.

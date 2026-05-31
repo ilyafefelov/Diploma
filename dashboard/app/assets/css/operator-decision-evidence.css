@@ -1,0 +1,355 @@
+.operator-decision-panel {
+  display: grid;
+  gap: 0.85rem;
+  padding: 0.8rem;
+  min-width: 0;
+  overflow: visible;
+}
+
+.decision-state-grid,
+.decision-readiness-strip,
+.decision-chart-grid,
+.forecast-scenario-strip,
+.decision-explainer-grid {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.decision-state-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.decision-readiness-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.forecast-scenario-strip {
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+}
+
+.decision-state-card,
+.decision-readiness-card,
+.decision-chart-card,
+.forecast-scenario-card,
+.decision-explainer-grid article {
+  border: 1px solid var(--operator-card-border);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, var(--operator-card-accent-wash), transparent 30%),
+    linear-gradient(180deg, var(--operator-card-gradient-top), var(--operator-card-gradient-bottom));
+  padding: 0.72rem;
+}
+
+.decision-state-card {
+  position: relative;
+  display: grid;
+  gap: 0.3rem;
+  overflow: visible;
+}
+
+.decision-readiness-card {
+  display: grid;
+  gap: 0.25rem;
+  min-height: 4.8rem;
+}
+
+.forecast-scenario-card {
+  display: grid;
+  gap: 0.48rem;
+  min-width: 0;
+}
+
+.forecast-scenario-card--selected {
+  border-color: var(--operator-accent-border);
+  background:
+    radial-gradient(circle at top right, var(--operator-accent-glow), transparent 32%),
+    linear-gradient(180deg, var(--operator-tone-mint-gradient-top), var(--operator-tone-mint-gradient-bottom));
+}
+
+.decision-readiness-card--green {
+  background: linear-gradient(180deg, var(--operator-tone-green-gradient-top), var(--operator-tone-green-gradient-bottom));
+}
+
+.decision-readiness-card--orange {
+  background: linear-gradient(180deg, var(--operator-tone-orange-gradient-top), var(--operator-tone-orange-gradient-bottom));
+}
+
+.decision-readiness-card--red {
+  background: linear-gradient(180deg, var(--operator-control-button-danger-gradient-top), var(--operator-control-button-danger-gradient-bottom));
+}
+
+.decision-readiness-card--blue {
+  background: linear-gradient(180deg, var(--operator-card-gradient-top), var(--operator-card-gradient-bottom));
+}
+
+.decision-state-card span,
+.decision-readiness-card span,
+.forecast-scenario-card span,
+.decision-chart-card__eyebrow,
+.decision-explainer-grid span {
+  color: var(--operator-accent-soft);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.decision-state-card strong {
+  overflow-wrap: anywhere;
+  color: var(--operator-positive);
+  font-size: 1.22rem;
+  line-height: 1.08;
+}
+
+.forecast-scenario-card strong {
+  overflow-wrap: anywhere;
+  color: var(--operator-control-foreground);
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1.12;
+}
+
+.forecast-scenario-card dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.42rem;
+  margin: 0;
+}
+
+.forecast-scenario-card div {
+  display: grid;
+  gap: 0.08rem;
+  min-width: 0;
+  border: 1px solid var(--operator-line-faint);
+  border-radius: 0.5rem;
+  background: var(--operator-surface-wash);
+  padding: 0.36rem 0.42rem;
+}
+
+.forecast-scenario-card dt,
+.forecast-scenario-card dd {
+  margin: 0;
+  min-width: 0;
+}
+
+.forecast-scenario-card dt {
+  color: var(--operator-accent-readable);
+  font-size: 0.62rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.forecast-scenario-card dd {
+  overflow-wrap: anywhere;
+  color: var(--operator-text-strong);
+  font-size: 0.74rem;
+  font-weight: 820;
+  line-height: 1.2;
+}
+
+.decision-readiness-card strong {
+  color: var(--operator-control-foreground);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
+.decision-state-card small,
+.decision-readiness-card small,
+.decision-chart-card p,
+.decision-explainer-grid p {
+  color: var(--operator-text-body);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.decision-state-tooltip {
+  position: absolute;
+  left: 0.45rem;
+  bottom: calc(100% + 0.42rem);
+  z-index: 170;
+  display: none;
+  width: min(20rem, calc(100vw - 2rem));
+  gap: 0.26rem;
+  border: 1px solid var(--operator-tooltip-border);
+  border-radius: 0.72rem;
+  background: linear-gradient(180deg, var(--operator-tooltip-gradient-top), var(--operator-tooltip-gradient-bottom));
+  padding: 0.62rem 0.7rem;
+  color: var(--operator-text-bright);
+  box-shadow: var(--operator-tooltip-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.24rem) scale(0.97);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.decision-state-tooltip strong {
+  color: var(--operator-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.decision-state-tooltip span,
+.decision-state-tooltip em {
+  color: var(--operator-text-bright-muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.34;
+}
+
+.decision-state-tooltip em {
+  color: var(--operator-accent);
+}
+
+.decision-state-card:hover .decision-state-tooltip,
+.decision-state-card:focus-visible .decision-state-tooltip {
+  display: grid;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.decision-chart-guide {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.35rem;
+}
+
+.decision-chart-guide span {
+  border: 1px solid var(--operator-line-soft);
+  border-radius: 0.55rem;
+  background: var(--operator-surface-soft);
+  padding: 0.42rem 0.5rem;
+  color: var(--operator-text-readable);
+  font-size: 0.68rem;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.decision-chart-guide strong {
+  color: var(--operator-accent);
+}
+
+.decision-win-reason {
+  display: grid;
+  gap: 0.24rem;
+  border: 1px solid var(--operator-line-muted);
+  border-radius: 0.55rem;
+  background: var(--operator-surface-soft);
+  padding: 0.48rem 0.55rem;
+}
+
+.decision-win-reason strong {
+  color: var(--operator-accent);
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.decision-win-reason p {
+  margin: 0;
+  color: var(--operator-text-strong);
+  font-size: 0.72rem;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.decision-chart-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.42rem;
+}
+
+.decision-chart-summary span {
+  display: grid;
+  gap: 0.12rem;
+  min-width: 0;
+  border: 1px solid var(--operator-line-soft);
+  border-radius: 0.58rem;
+  background: var(--operator-surface-soft);
+  padding: 0.48rem 0.54rem;
+}
+
+.decision-chart-summary strong {
+  overflow-wrap: anywhere;
+  color: var(--operator-accent);
+  font-size: 0.9rem;
+  font-weight: 950;
+  line-height: 1.05;
+}
+
+.decision-chart-summary small {
+  color: var(--operator-text-readable);
+  font-size: 0.66rem;
+  font-weight: 780;
+  line-height: 1.22;
+}
+
+.decision-chart-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.decision-chart-card {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.decision-chart-card-control .decision-chart {
+  min-height: 16.8rem;
+}
+
+.decision-chart-card h3 {
+  margin: 0.15rem 0 0.2rem;
+  color: var(--operator-control-foreground);
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.decision-chart-card-wide {
+  grid-column: 1 / -1;
+}
+
+.decision-chart {
+  height: 18rem;
+  min-height: 18rem;
+}
+
+.decision-chart-compact {
+  height: 15rem;
+  min-height: 15rem;
+}
+
+.decision-explainer-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.decision-explainer-grid article {
+  display: grid;
+  gap: 0.35rem;
+}
+
+@media (max-width: 1320px) {
+  .decision-state-grid,
+  .decision-readiness-strip,
+  .decision-chart-grid,
+  .decision-explainer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .decision-state-grid,
+  .decision-readiness-strip,
+  .decision-chart-grid,
+  .decision-explainer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-chart-summary {
+    grid-template-columns: 1fr;
+  }
+}
+

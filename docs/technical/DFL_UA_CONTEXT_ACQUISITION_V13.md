@@ -72,13 +72,15 @@ The packet writes `dfl_v13_dt_lava_teacher_summary.json`,
 and gate status. It does not train DT/LAVA, does not pass a promotion gate, does
 not change dashboard/API defaults, and keeps `market_execution_enabled=false`.
 
-## DAM Receipt Overlay
+## DAM/IDM Source Evidence Overlay
 
 `dfl_ua_dam_publication_receipts_overlay_frame` optionally left-joins explicit
-OREE DAM publication receipt metadata onto observed hourly DAM rows by
-`timestamp`. The tracked config keeps
-`oree_dam_publication_receipts_csv_path: ""`, which preserves the current
-`data_acquisition_needed` result until a source-backed CSV is provided.
+OREE DAM publication metadata onto observed hourly DAM rows by `timestamp`.
+That asset remains the current DAM-side implementation hook, while the product
+readiness claim is broader: explicit OREE DAM/IDM source/publication evidence
+for preview. The tracked config keeps `oree_dam_publication_receipts_csv_path:
+""`, which preserves the current `data_acquisition_needed` result until a
+source-backed CSV is provided.
 
 Receipt CSV requirements:
 
@@ -418,7 +420,7 @@ rows, the validated CSV
 `data\external_sources\v13\safe_switch_examples_v13_combined_lava_backfill_validated.csv`
 has `77` rows and projects every tenant/source to `20/20` prior material
 safe-switch examples. This closes the safe-switch count blocker only; explicit
-OREE DAM publication receipts are still missing, so V13 remains
+OREE DAM/IDM source/publication evidence for preview is still missing, so V13 remains
 `data_acquisition_needed`, `permits_model_training=false`, and
 `market_execution_enabled=false`.
 
@@ -427,7 +429,8 @@ validated incremental examples to the V13 acquisition precondition. It keeps
 `dt_lava_ready=false`, `permits_model_training=false`, and
 `market_execution_enabled=false`. Passing the count floor can only allow the
 next V13 candidate-generation gate if every required source family, including
-explicit DAM receipts, is also ready; it is not permission to train DT/LAVA.
+explicit OREE DAM/IDM source/publication evidence for preview, is also ready;
+it is not permission to train DT/LAVA.
 
 ## Acquisition Input Preflight
 
@@ -453,7 +456,7 @@ The sanitized SCMO WS-Security credential preflight can also be attached with
 `--scmo-ws-security-preflight-json`; it is copied as
 `dfl_ua_context_v13_scmo_ws_security_preflight.json` and summarized in
 `scmo_ws_security_preflight_summary`. That attachment is credential-source
-blocker evidence only and does not satisfy explicit DAM publication receipts.
+blocker evidence only and does not satisfy explicit OREE DAM/IDM source/publication evidence for preview.
 
 ## What V13 Requires
 
@@ -461,7 +464,7 @@ V13 keeps the V12 Ukrainian-only source contract and adds explicit acquisition
 requirements for the observed blockers:
 
 - measured tenant load/PV telemetry or source-backed historical import;
-- explicit row-level OREE DAM publication receipts, not only broad rules;
+- explicit OREE DAM/IDM source/publication evidence for preview, not only broad rules;
 - richer Ukrenergo/grid/outage/no-event history;
 - longer Ukrainian DAM/weather/load context for sparse safe-switch labels;
 - enough prior/train non-tail-risk material safe-switch labels.
@@ -527,8 +530,9 @@ readiness rows. This file translates the deficit into an acquisition backlog:
 - `target_is_precondition_only=true` and `market_execution_enabled=false`.
 
 Use this file to plan the data acquisition/backfill order. It does not promote
-DT/LAVA by itself: explicit DAM receipts and every other V13 source family must
-also clear before candidate generation or sequence-policy work starts.
+DT/LAVA by itself: explicit OREE DAM/IDM source/publication evidence for preview
+and every other V13 source family must also clear before candidate generation or
+sequence-policy work starts.
 `scripts\export_ua_context_v13_safe_switch_review_backlog.py` can combine this
 target file with a large candidate label export to produce an ordered review
 queue, but that queue is not accepted as V13 evidence until a curator produces
@@ -560,7 +564,7 @@ operator-facing acquisition checklist:
   backlog an acquisition artifact only.
 
 The previously exported V13 packet had `4` blocker classes in practice:
-explicit DAM publication receipts, receipt-source leads that still do not yield
+explicit OREE DAM/IDM source/publication evidence for preview, receipt-source leads that still do not yield
 a validated CSV, tenant/source safe-switch example deficits, and the aggregate
 V12 safe-teacher support row. The current acquisition artifacts close the
 safe-switch count precondition with `77` validated incremental rows, but the
@@ -578,8 +582,8 @@ as a credentialed lead. Probe it with:
 
 The 2026-05-24 unauthenticated probe redirected to
 `login-scmo.oree.com.ua` and is classified as `auth_required_sso_login`.
-This makes SCMO the likely credentialed export path for explicit DAM
-publication receipts, but still leaves `candidate_receipt_source_found=false`,
+This makes SCMO the likely credentialed export path for explicit OREE DAM/IDM
+source/publication evidence for preview, but still leaves `candidate_receipt_source_found=false`,
 `receipt_csv_generated=false`, `validated_receipt_csv_ready=false`, and
 `market_execution_enabled=false` until an authenticated export with
 `timestamp` and `source_publication_timestamp` is validated.

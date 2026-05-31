@@ -21,11 +21,7 @@ export const proxyControlPlane = async <T>(
   try {
     return await fetchControlPlane<T>(endpoint, { query })
   } catch (error) {
-    throw createError({
-      statusCode: 502,
-      statusMessage: failureMessage,
-      data: error
-    })
+    throw toControlPlaneProxyError(error, failureMessage)
   }
 }
 
@@ -44,8 +40,8 @@ export const proxyOptionalControlPlane = async <T>(
     }
 
     throw createError({
-      statusCode: 502,
-      statusMessage: failureMessage,
+      statusCode: controlPlaneStatusCode(error) ?? 502,
+      statusMessage: controlPlaneErrorMessage(error) ?? failureMessage,
       data: error
     })
   }
@@ -117,8 +113,14 @@ const fetchFromControlPlaneBase = async <T>(
 const shouldTryNextControlPlaneBase = (error: unknown): boolean => {
   const statusCode = controlPlaneStatusCode(error)
 
-  return statusCode === null || Number.isNaN(statusCode) || statusCode >= 500
+  return statusCode === null || Number.isNaN(statusCode)
 }
+
+const toControlPlaneProxyError = (error: unknown, failureMessage: string) => createError({
+  statusCode: controlPlaneStatusCode(error) ?? 502,
+  statusMessage: controlPlaneErrorMessage(error) ?? failureMessage,
+  data: error
+})
 
 const controlPlaneStatusCode = (error: unknown): number | null => {
   if (typeof error !== 'object' || error === null) {
@@ -132,6 +134,28 @@ const controlPlaneStatusCode = (error: unknown): number | null => {
   if ('response' in error) {
     const response = (error as { response?: { status?: number } }).response
     return typeof response?.status === 'number' ? response.status : null
+  }
+
+  return null
+}
+
+const controlPlaneErrorMessage = (error: unknown): string | null => {
+  if (typeof error !== 'object' || error === null) {
+    return null
+  }
+
+  if ('data' in error) {
+    const data = (error as { data?: { detail?: unknown; message?: unknown } }).data
+    if (typeof data?.detail === 'string') {
+      return data.detail
+    }
+    if (typeof data?.message === 'string') {
+      return data.message
+    }
+  }
+
+  if ('statusMessage' in error && typeof (error as { statusMessage?: unknown }).statusMessage === 'string') {
+    return (error as { statusMessage: string }).statusMessage
   }
 
   return null

@@ -33,7 +33,7 @@ strict LP/oracle evaluator.
 
 | Asset | Purpose |
 |---|---|
-| `dfl_lava_tail_risk_diagnostic_frame` | Classifies LAVA candidates as V2+ default, safe neighbor, weak neighbor, oracle-only diagnostic, or tail-risk perturbation loss. |
+| `dfl_lava_tail_risk_diagnostic_frame` | Classifies LAVA candidates as V2+ comparator, safe neighbor, weak neighbor, oracle-only diagnostic, or tail-risk perturbation loss. |
 | `dfl_lava_tail_risk_aware_target_frame` | Builds candidate-index targets from prior diagnostics and blocks families with prior tail losses. |
 | `dfl_lava_tail_risk_aware_strict_lp_benchmark_frame` | Strict-scores the redesigned target against `strict_similar_day` and frozen V2+. |
 | `dfl_lava_tail_risk_safe_switch_scorer_frame` | Trains a prior-profile safe-switch scorer over approved challenger sources, while requiring family-level tail-risk safety. |

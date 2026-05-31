@@ -1,0 +1,294 @@
+.defense-shell {
+  --defense-accent: var(--accent-cyan-strong);
+  --defense-accent-text: color-mix(in oklab, var(--accent-cyan-strong) 72%, var(--ink-strong));
+  --defense-accent-tint: color-mix(in oklab, var(--canvas-base) 64%, var(--panel-strong));
+  --defense-border: var(--line-soft);
+  --defense-border-strong: color-mix(in oklab, var(--ink-strong) 18%, transparent);
+  --defense-focus: color-mix(in oklab, var(--accent-cyan-strong) 45%, transparent);
+  --defense-hero-surface: linear-gradient(135deg, color-mix(in oklab, var(--panel-strong) 96%, transparent), color-mix(in oklab, var(--canvas-base) 70%, var(--panel-strong)));
+  --defense-panel: var(--panel-strong);
+  --defense-panel-muted: var(--panel-base);
+  --defense-pill-bg: color-mix(in oklab, var(--canvas-base) 86%, var(--panel-strong));
+  --defense-shadow: color-mix(in oklab, var(--ink-strong) 8%, transparent);
+  --defense-tooltip-shadow: color-mix(in oklab, var(--ink-strong) 16%, transparent);
+  --defense-text: var(--ink-strong);
+  --defense-text-muted: var(--ink-soft);
+  --defense-text-soft: color-mix(in oklab, var(--ink-soft) 88%, var(--ink-strong));
+  min-height: 100dvh;
+  padding: 1.25rem;
+  color: var(--defense-text);
+}
+
+.defense-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0 auto 1rem;
+  max-width: 1380px;
+}
+
+.brand-link,
+.icon-button,
+.tenant-picker select {
+  border: 1px solid var(--defense-border-strong);
+  border-radius: 0.5rem;
+  background: var(--defense-panel-muted);
+  color: var(--defense-text);
+}
+
+.brand-link,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 2.5rem;
+  padding: 0 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.icon-button:disabled {
+  opacity: 0.55;
+}
+
+.topbar-controls {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tenant-picker {
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--defense-text-soft);
+}
+
+.tenant-picker select {
+  min-width: 16rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  font: inherit;
+}
+
+.defense-hero,
+.narrative-band,
+.pipeline-visual-panel,
+.evidence-chart-panel,
+.dt-shadow-defense-panel,
+.section-grid {
+  max-width: 1380px;
+  margin: 0 auto 1rem;
+}
+
+.defense-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(320px, 0.75fr);
+  gap: 1rem;
+  min-height: 28rem;
+  align-items: stretch;
+  padding: 1.25rem;
+  border: 1px solid var(--defense-border);
+  border-radius: 0.75rem;
+  background: var(--defense-hero-surface);
+  box-shadow: 0 18px 45px var(--defense-shadow);
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1rem;
+  max-width: 54rem;
+}
+
+.eyebrow {
+  margin: 0;
+  color: var(--defense-accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.defense-shell h1,
+.defense-shell h2,
+.defense-shell p {
+  margin: 0;
+}
+
+.defense-shell h1 {
+  max-width: 54rem;
+  font-size: clamp(2.1rem, 4rem, 4rem);
+  line-height: 1.03;
+  letter-spacing: 0;
+}
+
+.defense-shell h2 {
+  font-size: 1.25rem;
+  line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.hero-body {
+  max-width: 48rem;
+  color: var(--defense-text-soft);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.tenant-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tenant-context span,
+.source-pill {
+  border: 1px solid color-mix(in oklab, var(--defense-accent) 20%, transparent);
+  border-radius: 999px;
+  background: var(--defense-pill-bg);
+  padding: 0.4rem 0.7rem;
+  color: var(--defense-accent-text);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.metric-tile,
+.narrative-step,
+.wide-panel,
+.side-panel,
+.bucket-tile,
+.context-tile,
+.readiness-row,
+.error-row {
+  border: 1px solid var(--defense-border);
+  border-radius: 0.5rem;
+  background: var(--defense-panel);
+}
+
+.metric-tile {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 0.4rem;
+  min-height: 9.5rem;
+  padding: 1rem;
+  cursor: help;
+  overflow: visible;
+}
+
+.metric-tile span,
+.bucket-tile span,
+.context-tile span,
+.readiness-row span {
+  color: var(--defense-text-muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.metric-tile strong {
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+
+.metric-tile small,
+.bucket-tile small,
+.context-tile small,
+.readiness-row small,
+.readiness-row em,
+.error-row span {
+  color: var(--defense-text-muted);
+  line-height: 1.45;
+}
+
+.metric-tile:focus-visible,
+.bucket-tile:focus-visible,
+.table-help:focus-visible {
+  outline: 2px solid var(--defense-focus);
+  outline-offset: 2px;
+}
+
+.defense-tooltip {
+  position: absolute;
+  left: 0.65rem;
+  top: calc(100% + 0.4rem);
+  z-index: 80;
+  display: none;
+  width: min(20rem, calc(100vw - 2rem));
+  gap: 0.3rem;
+  border: 1px solid color-mix(in oklab, var(--defense-accent) 26%, transparent);
+  border-radius: 0.5rem;
+  background: var(--panel-strong);
+  box-shadow: 0 18px 36px var(--defense-tooltip-shadow);
+  padding: 0.75rem;
+  color: var(--defense-text);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.3rem);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.defense-tooltip strong {
+  color: var(--defense-accent);
+  font-size: 0.82rem;
+  font-weight: 850;
+}
+
+.defense-tooltip span,
+.defense-tooltip em {
+  color: var(--defense-text-soft);
+  font-size: 0.76rem;
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1.4;
+  text-transform: none;
+}
+
+.defense-tooltip em {
+  color: var(--defense-accent-text);
+  font-weight: 800;
+}
+
+.metric-tile:hover .defense-tooltip,
+.metric-tile:focus-visible .defense-tooltip,
+.bucket-tile:hover .defense-tooltip,
+.bucket-tile:focus-visible .defense-tooltip,
+.table-help:hover .defense-tooltip,
+.table-help:focus-visible .defense-tooltip {
+  display: grid;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.narrative-band {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.narrative-step {
+  padding: 1rem;
+}
+
+.narrative-step span {
+  display: block;
+  margin-bottom: 0.55rem;
+  color: var(--defense-accent);
+  font-weight: 800;
+}
+
+.narrative-step p {
+  color: var(--defense-text-soft);
+  font-size: 0.92rem;
+  line-height: 1.55;
+}

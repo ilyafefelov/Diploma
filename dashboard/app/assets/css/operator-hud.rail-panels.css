@@ -1,0 +1,107 @@
+.operator-right-rail {
+  position: relative;
+  z-index: 3;
+  align-self: start;
+  min-width: 0;
+}
+
+.rail-heading {
+  justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+  z-index: 1;
+}
+
+.rail-heading__icon {
+  width: 1.55rem;
+  height: 1.55rem;
+  color: var(--operator-accent);
+  filter: var(--operator-rail-heading-icon-shadow);
+}
+
+.operator-frame .mood-panel,
+.operator-frame .battery-panel,
+.operator-frame .gatekeeper-panel,
+.operator-frame .control-actions-panel,
+.operator-frame .notes-panel {
+  display: grid;
+  gap: 0.72rem;
+  padding: 0.75rem;
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(180deg, var(--operator-rail-panel-highlight), transparent 42%),
+    radial-gradient(circle at top right, var(--operator-rail-panel-accent-wash), transparent 30%),
+    linear-gradient(180deg, var(--operator-rail-panel-gradient-top), var(--operator-rail-panel-gradient-bottom));
+  box-shadow:
+    var(--operator-rail-panel-shadow),
+    var(--operator-rail-panel-inset);
+}
+
+.mood-meter {
+  position: relative;
+  overflow: hidden;
+  height: 1rem;
+  border: 1px solid var(--operator-rail-mood-meter-border);
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--operator-rail-mood-meter-red) 0%, var(--operator-rail-mood-meter-yellow) 32%, var(--operator-rail-mood-meter-lime) 63%, var(--operator-rail-mood-meter-green) 100%);
+  box-shadow:
+    var(--operator-rail-mood-meter-inset),
+    var(--operator-rail-mood-meter-glow);
+}
+
+.mood-meter span {
+  position: absolute;
+  top: -0.18rem;
+  left: 74%;
+  width: 1.35rem;
+  height: 1.35rem;
+  border: 3px solid var(--operator-rail-mood-knob-border);
+  border-radius: 50%;
+  background: var(--operator-rail-mood-knob-surface);
+  box-shadow: var(--operator-rail-mood-knob-shadow);
+}
+
+.mood-chip-grid,
+.battery-stat-grid,
+.gatekeeper-grid,
+.action-button-grid {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.mood-chip-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.mood-chip {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid var(--operator-rail-chip-border);
+  border-radius: 0.65rem;
+  background:
+    linear-gradient(180deg, var(--operator-rail-chip-highlight), var(--operator-rail-chip-surface));
+  padding: 0.52rem;
+  min-width: 0;
+}
+
+.mood-chip span {
+  color: var(--operator-rail-chip-label-text);
+}
+
+.mood-chip strong {
+  display: inline-flex;
+  justify-self: start;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--operator-rail-chip-green-gradient-top), var(--operator-rail-chip-green-gradient-bottom));
+  padding: 0.22rem 0.48rem;
+  font-size: 0.78rem;
+  color: var(--operator-control-foreground);
+}
+
+.mood-chip--blue strong {
+  background: linear-gradient(180deg, var(--operator-rail-chip-blue-gradient-top), var(--operator-rail-chip-blue-gradient-bottom));
+}
+
+.mood-chip--orange strong {
+  background: linear-gradient(180deg, var(--operator-rail-chip-orange-gradient-top), var(--operator-rail-chip-orange-gradient-bottom));
+}

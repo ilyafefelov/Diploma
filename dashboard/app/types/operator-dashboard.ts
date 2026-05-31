@@ -2,6 +2,10 @@ import type { BaselineLpPreview, OperatorStatus, SignalPreview, TenantSummary } 
 
 export type OperatorExplanationMode = 'mvp' | 'future'
 
+export type OperatorMarketVenue = 'DAM' | 'IDM'
+
+export type OperatorChartHorizon = '6h' | '12h' | '24h' | 'all'
+
 export type OperatorHudTone = 'blue' | 'green' | 'orange' | 'mint' | 'lime'
 
 export interface OperatorNavItem {

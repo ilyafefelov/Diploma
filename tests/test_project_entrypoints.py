@@ -730,10 +730,10 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
 def test_agents_md_preserves_v13_claim_boundary() -> None:
     agents = (PROJECT_ROOT / "AGENTS.md").read_text(encoding="utf-8")
 
-    assert "DAM delivery-day recommendation preview" in agents
+    assert "DAM/IDM hourly recommendation preview" in agents
     assert "V13 є gate для acquisition/source-readiness" in agents
     assert "щонайменше `20` prior/train non-tail-risk material safe-switch examples" in agents
-    assert "explicit DAM publication receipts" in agents
+    assert "explicit OREE DAM/IDM source/publication evidence for preview" in agents
     assert "ua_context_safe_switch_examples_csv_path" in agents
     assert "validate_ua_context_safe_switch_examples_v13.py" in agents
     assert "audit_ua_context_safe_switch_candidates_v13.py" in agents
@@ -801,13 +801,14 @@ def test_current_goal_boundary_doc_preserves_v13_scope() -> None:
     readme = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
     context = (PROJECT_ROOT / "CONTEXT.md").read_text(encoding="utf-8")
 
-    assert "DAM delivery-day recommendation preview" in boundary
-    assert "not market-submittable DAM/IDM bids" in boundary
+    assert "DAM/IDM hourly recommendation preview" in boundary
+    assert "This is not" in boundary
+    assert "market-submittable DAM/IDM bids" in boundary
     assert "no deployed Decision Transformer control" in boundary
     assert "no full differentiable DFL claim" in boundary
     assert "`market_execution_enabled=false`" in boundary
     assert "`20` prior/train non-tail-risk material safe-switch examples" in boundary
-    assert "explicit DAM publication receipts" in boundary
+    assert "explicit OREE DAM/IDM source/publication evidence for preview" in boundary
     assert "`ready_rows=0/5`" in boundary
     assert "`77` safe-switch examples" in boundary
     assert "Yi et al. 2025" in boundary

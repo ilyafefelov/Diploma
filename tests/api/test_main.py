@@ -24,7 +24,11 @@ from smart_arbitrage.resources.battery_telemetry_store import (
 	InMemoryBatteryTelemetryStore,
 )
 from smart_arbitrage.resources.grid_event_store import GridEventObservation, InMemoryGridEventStore
-from smart_arbitrage.resources.market_data_store import InMemoryMarketDataStore, WeatherObservation
+from smart_arbitrage.resources.market_data_store import (
+	InMemoryMarketDataStore,
+	MarketPriceObservation,
+	WeatherObservation,
+)
 from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
 from smart_arbitrage.resources.forecast_store import InMemoryForecastStore
 from smart_arbitrage.resources.simulated_trade_store import InMemorySimulatedTradeStore
@@ -45,11 +49,6 @@ class _FakeOperatorStatusStore:
 
 	def get_status(self, *, tenant_id: str, flow_type: OperatorFlowType) -> OperatorStatusRecord | None:
 		return self.records.get((tenant_id, flow_type))
-
-
-@pytest.fixture
-def client() -> TestClient:
-	return TestClient(api_main.app)
 
 
 @pytest.fixture
@@ -111,10 +110,80 @@ def fake_market_data_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryMarketDat
 
 
 @pytest.fixture
+def client(fake_market_data_store: InMemoryMarketDataStore) -> TestClient:
+	_seed_official_oree_dam_rows(fake_market_data_store)
+	return TestClient(api_main.app)
+
+
+@pytest.fixture
 def fake_grid_event_store(monkeypatch: pytest.MonkeyPatch) -> InMemoryGridEventStore:
 	store = InMemoryGridEventStore()
 	monkeypatch.setattr(api_main, "get_grid_event_store", lambda: store)
 	return store
+
+
+def _seed_official_oree_dam_rows(
+	store: InMemoryMarketDataStore,
+	*,
+	start: datetime = datetime(2026, 5, 1, tzinfo=UTC),
+	hours: int = 15 * 24,
+	price_offset_uah_mwh: float = 0.0,
+) -> None:
+	store.upsert_market_prices(
+		[
+			MarketPriceObservation(
+				timestamp=start + timedelta(hours=index),
+				price_uah_mwh=2400.0
+				+ price_offset_uah_mwh
+				+ ((index % 24) * 42.0)
+				+ (520.0 if 18 <= (index % 24) <= 21 else 0.0)
+				- (180.0 if 0 <= (index % 24) <= 5 else 0.0),
+				price_eur_mwh=50.0 + ((index % 24) * 0.9),
+				volume_mwh=2100.0 + (index % 7) * 12.0,
+				source="OREE_DATA_VIEW",
+				source_kind="observed",
+				source_url="https://www.oree.com.ua/index.php/pricectr/data_view",
+				market_venue="DAM",
+				market_zone="IPS",
+				market_timezone="Europe/Kyiv",
+				fetched_at=start + timedelta(hours=index, minutes=20),
+				price_spike=False,
+				low_volume=False,
+			)
+			for index in range(hours)
+		]
+	)
+
+
+def _seed_official_oree_idm_rows(
+	store: InMemoryMarketDataStore,
+	*,
+	start: datetime = datetime(2026, 5, 1, tzinfo=UTC),
+	hours: int = 15 * 24,
+) -> None:
+	store.upsert_market_prices(
+		[
+			MarketPriceObservation(
+				timestamp=start + timedelta(hours=index),
+				price_uah_mwh=2550.0
+				+ ((index % 24) * 38.0)
+				+ (430.0 if 17 <= (index % 24) <= 22 else 0.0)
+				- (140.0 if 0 <= (index % 24) <= 5 else 0.0),
+				price_eur_mwh=54.0 + ((index % 24) * 0.8),
+				volume_mwh=900.0 + (index % 7) * 9.0,
+				source="OREE_DATA_VIEW",
+				source_kind="observed",
+				source_url="https://www.oree.com.ua/index.php/pricectr/data_view",
+				market_venue="IDM",
+				market_zone="IPS",
+				market_timezone="Europe/Kyiv",
+				fetched_at=start + timedelta(hours=index, minutes=25),
+				price_spike=False,
+				low_volume=False,
+			)
+			for index in range(hours)
+		]
+	)
 
 
 def test_healthcheck_returns_ok(client: TestClient) -> None:
@@ -649,18 +718,15 @@ def test_operator_recommendation_projects_stale_soc_with_load_schedule_and_warns
 	assert "stale telemetry" in " ".join(response_payload["readiness_warnings"]).lower()
 	assert response_payload["value_vs_hold_uah"] == pytest.approx(response_payload["daily_value_uah"])
 	assert response_payload["hold_baseline_value_uah"] == pytest.approx(0.0)
-	assert response_payload["policy_mode"] == "baseline_lp_preview"
-	assert response_payload["policy_readiness"] == "lp_control_ready"
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
+	assert response_payload["policy_readiness"] == "official_dam_row_ready"
 	assert response_payload["selected_policy_id"] == "strict_similar_day"
 	assert response_payload["policy_forecast_context_source"] == "not_applicable"
 	assert response_payload["policy_forecast_context_row_count"] == 0
 	assert response_payload["policy_forecast_context_coverage_ratio"] == pytest.approx(0.0)
 	assert response_payload["policy_forecast_context_warning"] is None
 	assert len(response_payload["value_gap_series"]) == len(response_payload["recommendation_schedule"])
-	assert {
-		series["model_name"]
-		for series in response_payload["forecast_model_series"]
-	}.issuperset({"nbeatsx_silver_v0", "tft_silver_v0"})
+	assert response_payload["forecast_model_series"] == []
 	assert response_payload["load_forecast"][0]["reason_code"] in {"first_shift", "second_shift", "off_hours"}
 	assert response_payload["available_strategies"][0]["strategy_id"] == "strict_similar_day"
 	assert any(strategy["enabled"] is False for strategy in response_payload["available_strategies"] if strategy["strategy_id"] == "decision_transformer")
@@ -767,6 +833,325 @@ def test_operator_recommendation_exposes_dam_preview_boundary_metadata(client: T
 	} == {target_start.date()}
 
 
+def test_operator_recommendation_uses_latest_official_oree_delivery_row_without_synthetic_fallback(
+	client: TestClient,
+	fake_market_data_store: InMemoryMarketDataStore,
+) -> None:
+	start = datetime(2026, 5, 15, tzinfo=UTC)
+	fake_market_data_store.upsert_market_prices(
+		[
+			MarketPriceObservation(
+				timestamp=start + timedelta(hours=index),
+				price_uah_mwh=9900.0 + index,
+				price_eur_mwh=200.0 + index,
+				volume_mwh=1.0,
+				source="SYNTHETIC_DEMO_FALLBACK",
+				source_kind="synthetic",
+				source_url="synthetic://demo",
+				market_venue="DAM",
+				market_zone="IPS",
+				market_timezone="Europe/Kyiv",
+				fetched_at=start + timedelta(hours=index),
+				price_spike=False,
+				low_volume=False,
+			)
+			for index in range(24)
+		]
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "strict_similar_day"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	expected_prices = [
+		2400.0
+		+ (hour * 42.0)
+		+ (520.0 if 18 <= hour <= 21 else 0.0)
+		- (180.0 if 0 <= hour <= 5 else 0.0)
+		for hour in range(24)
+	]
+	assert [
+		point["forecast_price_uah_mwh"]
+		for point in response_payload["recommendation_schedule"]
+	] == pytest.approx(expected_prices)
+	assert response_payload["forecast_source"] == (
+		"Official OREE published DAM delivery row routed through Level 1 LP preview"
+	)
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
+	assert response_payload["forecast_model_series"] == []
+	assert "synthetic" not in json.dumps(response_payload).lower()
+
+
+def test_operator_recommendation_blocks_when_official_oree_dam_rows_are_missing(
+	client: TestClient,
+	fake_market_data_store: InMemoryMarketDataStore,
+) -> None:
+	fake_market_data_store.market_observations.clear()
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "strategy_id": "strict_similar_day"},
+	)
+
+	assert response.status_code == 503
+	assert "Official observed OREE DAM rows are required" in response.json()["detail"]
+	assert "synthetic fallback is disabled" in response.json()["detail"]
+
+
+def test_operator_recommendation_supports_source_backed_idm_hourly_preview(
+	client: TestClient,
+	fake_market_data_store: InMemoryMarketDataStore,
+) -> None:
+	_seed_official_oree_idm_rows(fake_market_data_store)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_idm_v0",
+			"market_venue": "IDM",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["market_venue"] == "IDM"
+	assert response_payload["market_scope"] == "idm_hourly_planning_preview"
+	assert response_payload["interval_minutes"] == 60
+	assert response_payload["price_context_status"] == "official_published"
+	assert response_payload["policy_mode"] == "official_oree_idm_row_lp_preview"
+	assert response_payload["forecast_source"] == (
+		"Official OREE published IDM delivery row routed through hourly LP preview; "
+		"NBEATSx remains forecast/scenario evidence"
+	)
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
+	assert all(point["market_venue"] == "IDM" for point in response_payload["bid_recommendation_preview"])
+	assert len(response_payload["recommendation_schedule"]) == 24
+	advisor = response_payload["decision_advisor"]
+	assert advisor["advisor_source_id"] == "idm_policy_advisor"
+	assert advisor["candidate_decision"] == "abstain_to_lp"
+	assert advisor["market_execution_enabled"] is False
+	assert advisor["market_order_payload_emitted"] is False
+	assert advisor["promotion_gate_passed"] is False
+	assert advisor["dt_lava_ready"] is False
+	assert advisor["evidence_layers"] == ["NBEATSx", "TFT", "V2+", "AFL", "DFL", "DT"]
+
+
+def test_operator_recommendation_uses_forecast_for_unpublished_target_delivery_date(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	target_date = datetime(2026, 5, 20, tzinfo=UTC)
+	forecast_prices = [3100.0 + hour * 77.0 for hour in range(24)]
+	tft_prices = [2500.0 + (900.0 if 17 <= hour <= 21 else 0.0) for hour in range(24)]
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [target_date + timedelta(hours=hour) for hour in range(24)],
+				"predicted_price_uah_mwh": forecast_prices,
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="tft_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [target_date + timedelta(hours=hour) for hour in range(24)],
+				"predicted_price_uah_mwh": tft_prices,
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_v0",
+			"market_venue": "DAM",
+			"target_delivery_date": "2026-05-20",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["market_venue"] == "DAM"
+	assert response_payload["target_delivery_date"] == "2026-05-20"
+	assert response_payload["price_context_status"] == "pre_publication_forecast"
+	assert response_payload["policy_mode"] == "pre_publication_forecast_lp_preview"
+	assert response_payload["policy_readiness"] == "forecast_context_ready_preview_only"
+	assert response_payload["policy_forecast_context_source"] == "nbeatsx_official_v0"
+	assert response_payload["policy_forecast_context_row_count"] == 24
+	assert response_payload["policy_forecast_context_coverage_ratio"] == pytest.approx(1.0)
+	assert response_payload["forecast_source"] == (
+		"NBEATSx pre-publication forecast scenario routed through deterministic LP preview; "
+		"official OREE DAM row is not published for the target delivery date"
+	)
+	assert [
+		point["forecast_price_uah_mwh"]
+		for point in response_payload["recommendation_schedule"]
+	] == pytest.approx(forecast_prices)
+	advisor = response_payload["decision_advisor"]
+	assert advisor["advisor_source_id"] == "pre_publication_policy_advisor"
+	assert advisor["candidate_decision"] == "abstain_to_forecast_lp"
+	assert advisor["advisor_status"] == "forecast_scenario_ranked_abstained"
+	assert advisor["comparison_metrics"]["forecast_scenario_candidate_count"] == pytest.approx(2.0)
+	candidates = advisor["forecast_scenario_candidates"]
+	assert [candidate["rank"] for candidate in candidates] == [1, 2]
+	assert {candidate["model_name"] for candidate in candidates} == {"nbeatsx_official_v0", "tft_official_v0"}
+	assert {candidate["schedule_family"] for candidate in candidates} == {"deterministic_lp_forecast_scenario"}
+	assert {candidate["advisor_decision"] for candidate in candidates} == {"ranked_abstain_preview_only"}
+	assert {candidate["score_source"] for candidate in candidates} == {
+		"lp_schedule_value_regret_adapter_for_v2_plus_dfl_dt_advisor"
+	}
+	assert {candidate["gatekeeper_status"] for candidate in candidates} == {
+		"passed_lp_physical_constraints_preview_only"
+	}
+	assert sum(candidate["selected_for_operator_preview"] for candidate in candidates) == 1
+	assert all(candidate["market_execution_enabled"] is False for candidate in candidates)
+	assert all(candidate["market_order_payload_emitted"] is False for candidate in candidates)
+	assert advisor["market_execution_enabled"] is False
+	assert advisor["market_order_payload_emitted"] is False
+	assert advisor["promotion_gate_passed"] is False
+
+
+def test_operator_recommendation_keeps_official_target_row_ahead_of_forecast(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	target_date = datetime(2026, 5, 15, tzinfo=UTC)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [target_date + timedelta(hours=hour) for hour in range(24)],
+				"predicted_price_uah_mwh": [9900.0 + hour for hour in range(24)],
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_v0",
+			"target_delivery_date": "2026-05-15",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["target_delivery_date"] == "2026-05-15"
+	assert response_payload["price_context_status"] == "official_published"
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
+	assert response_payload["recommendation_schedule"][0]["forecast_price_uah_mwh"] == pytest.approx(2220.0)
+	assert response_payload["recommendation_schedule"][0]["forecast_price_uah_mwh"] != pytest.approx(9900.0)
+
+
+def test_operator_recommendation_blocks_unpublished_target_without_forecast_rows(
+	client: TestClient,
+) -> None:
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_v0",
+			"target_delivery_date": "2026-05-20",
+		},
+	)
+
+	assert response.status_code == 503
+	assert "pre-publication forecast rows are required" in response.json()["detail"]
+	assert "synthetic fallback is disabled" in response.json()["detail"]
+
+
+def test_operator_recommendation_uses_idm_forecast_for_unpublished_target_delivery_date(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	target_date = datetime(2026, 5, 20, tzinfo=UTC)
+	forecast_prices = [4200.0 + hour * 33.0 for hour in range(24)]
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_idm_v0",
+		forecast_frame=pl.DataFrame(
+			{
+				"forecast_timestamp": [target_date + timedelta(hours=hour) for hour in range(24)],
+				"predicted_price_uah_mwh": forecast_prices,
+			}
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_idm_v0",
+			"market_venue": "IDM",
+			"target_delivery_date": "2026-05-20",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["market_venue"] == "IDM"
+	assert response_payload["target_delivery_date"] == "2026-05-20"
+	assert response_payload["price_context_status"] == "pre_publication_forecast"
+	assert response_payload["policy_mode"] == "pre_publication_forecast_lp_preview"
+	assert response_payload["policy_forecast_context_source"] == "nbeatsx_official_idm_v0"
+	assert response_payload["forecast_source"] == (
+		"NBEATSx pre-publication forecast scenario routed through deterministic LP preview; "
+		"official OREE IDM row is not published for the target delivery date"
+	)
+	assert [
+		point["forecast_price_uah_mwh"]
+		for point in response_payload["recommendation_schedule"]
+	] == pytest.approx(forecast_prices)
+	assert response_payload["decision_advisor"]["candidate_decision"] == "abstain_to_forecast_lp"
+	assert all(point["market_venue"] == "IDM" for point in response_payload["bid_recommendation_preview"])
+
+
+def test_baseline_lp_preview_supports_source_backed_idm_hourly_preview(
+	client: TestClient,
+	fake_market_data_store: InMemoryMarketDataStore,
+) -> None:
+	_seed_official_oree_idm_rows(fake_market_data_store)
+
+	response = client.get(
+		"/dashboard/baseline-lp-preview",
+		params={"tenant_id": "client_003_dnipro_factory", "market_venue": "IDM"},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["market_venue"] == "IDM"
+	assert response_payload["market_scope"] == "idm_hourly_planning_preview"
+	assert response_payload["interval_minutes"] == 60
+	assert response_payload["market_execution_enabled"] is False
+	assert all(point["market_venue"] == "IDM" for point in response_payload["bid_recommendation_preview"])
+	assert len(response_payload["recommendation_schedule"]) == 24
+
+
+def test_operator_recommendation_blocks_idm_without_source_backed_rows(
+	client: TestClient,
+) -> None:
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={"tenant_id": "client_003_dnipro_factory", "market_venue": "IDM"},
+	)
+
+	assert response.status_code == 503
+	assert "Official observed OREE IDM rows are required" in response.json()["detail"]
+	assert "synthetic fallback is disabled" in response.json()["detail"]
+
+
 def test_operator_default_remains_v2_plus_when_dt_shadow_preview_exists(
 	client: TestClient,
 	monkeypatch: pytest.MonkeyPatch,
@@ -795,7 +1180,7 @@ def test_operator_default_remains_v2_plus_when_dt_shadow_preview_exists(
 	assert response.status_code == 200
 	response_payload = response.json()
 	assert response_payload["selected_strategy_id"] == "schedule_value_learner_v2_plus"
-	assert response_payload["policy_mode"] == "offline_strategy_promotion_preview"
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
 	assert "proposed_bid" not in response_payload
@@ -1227,7 +1612,7 @@ def test_dt_v2_plus_safe_switch_selector_shadow_preview_uses_current_evidence(
 	)
 	warnings = " ".join(response_payload["readiness_warnings"])
 	assert "Recovered 3 of 15" in warnings
-	assert "V2+ remains default/fallback" in " ".join(response_payload["boundary_labels"])
+	assert "V2+ remains confirmed offline comparator/evidence" in " ".join(response_payload["boundary_labels"])
 	assert "proposed_bid" not in response_payload
 	assert "market_order_payload" not in response_payload
 
@@ -2380,16 +2765,17 @@ def test_operator_recommendation_exposes_v2_plus_offline_strategy(
 	strict_payload = strict_response.json()
 	response_payload = response.json()
 	assert response_payload["selected_strategy_id"] == "schedule_value_learner_v2_plus"
-	assert response_payload["policy_mode"] == "offline_strategy_promotion_preview"
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
 	assert response_payload["selected_policy_id"] == "schedule_value_learner_v2_plus"
-	assert "read-model preview adapter" in response_payload["policy_explanation"].lower()
+	assert "official oree published dam prices" in response_payload["policy_explanation"].lower()
+	assert "offline/research context" in response_payload["policy_explanation"].lower()
 	assert "strict fallback" not in response_payload["policy_explanation"].lower()
 	assert "V2+" in response_payload["forecast_source"]
-	assert "read-model preview adapter" in response_payload["forecast_source"].lower()
+	assert "research evidence" in response_payload["forecast_source"].lower()
 	assert [
 		point["forecast_price_uah_mwh"]
 		for point in response_payload["recommendation_schedule"]
-	] != [
+	] == [
 		point["forecast_price_uah_mwh"]
 		for point in strict_payload["recommendation_schedule"]
 	]
@@ -2444,7 +2830,7 @@ def test_operator_recommendation_reports_dt_forecast_context_when_selected(
 	assert response.status_code == 200
 	response_payload = response.json()
 	assert response_payload["selected_strategy_id"] == "strict_similar_day"
-	assert response_payload["policy_mode"] == "baseline_lp_preview"
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
 	assert response_payload["v13_readiness"]["dt_lava_ready"] is False
 	assert response_payload["v13_readiness"]["gate_status"] == "data_acquisition_needed"
 	dt_option = next(
@@ -2936,11 +3322,15 @@ def test_operator_recommendation_routes_selected_official_forecast_into_lp_previ
 	assert response.status_code == 200
 	response_payload = response.json()
 	assert response_payload["selected_strategy_id"] == "nbeatsx_official_v0"
-	assert response_payload["policy_mode"] == "forecast_to_lp_preview"
-	assert response_payload["forecast_source"] == "official NBEATSx forecast candidate routed through Level 1 LP preview"
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
+	assert response_payload["forecast_source"] == (
+		"Official OREE published DAM delivery row routed through Level 1 LP preview; "
+		"NBEATSx remains forecast evidence"
+	)
 	assert response_payload["forecast_generated_at"] is not None
-	assert response_payload["recommendation_schedule"][0]["forecast_price_uah_mwh"] == pytest.approx(1800.0)
-	assert response_payload["recommendation_schedule"][1]["forecast_price_uah_mwh"] == pytest.approx(5200.0)
+	assert response_payload["recommendation_schedule"][0]["forecast_price_uah_mwh"] == pytest.approx(2220.0)
+	assert response_payload["recommendation_schedule"][1]["forecast_price_uah_mwh"] == pytest.approx(2262.0)
+	assert response_payload["forecast_model_series"][0]["points"][0]["forecast_price_uah_mwh"] == pytest.approx(1800.0)
 
 
 def test_operator_recommendation_blocks_out_of_cap_official_forecast_from_lp_preview(
@@ -2979,7 +3369,7 @@ def test_operator_recommendation_blocks_out_of_cap_official_forecast_from_lp_pre
 	assert nbeatsx_option["enabled"] is False
 	assert nbeatsx_option["reason"] == "official forecast rows need calibration: 1 out-of-cap rows"
 	assert response_payload["selected_strategy_id"] == "strict_similar_day"
-	assert response_payload["policy_mode"] == "baseline_lp_preview"
+	assert response_payload["policy_mode"] == "official_oree_dam_row_lp_preview"
 	assert any(
 		"Requested strategy nbeatsx_official_v0 is unavailable" in warning
 		for warning in response_payload["readiness_warnings"]

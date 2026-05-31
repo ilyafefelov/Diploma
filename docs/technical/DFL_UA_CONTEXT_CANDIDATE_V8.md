@@ -101,7 +101,7 @@ Materialized false-positive/tail-risk status:
   DT/LAVA target. The follow-up frame
   `dfl_v8_pruned_candidate_library_frame` is the concrete pruned candidate
   universe for future work. It keeps `12,520` rows: `1,570` strict fallback,
-  `1,825` V2+ default, and `9,125` monitored V7 generated rows. It removes the
+  `1,825` V2+ comparator rows, and `9,125` monitored V7 generated rows. It removes the
   blocked V8 generated, oracle/Poland/TFT shadow, and V7 strict-guarded rescue
   profiles from the next selector/DT target. If that universe becomes too
   sparse, the next branch is Ukrainian prior-context backfill, not a larger

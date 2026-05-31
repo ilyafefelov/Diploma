@@ -18,6 +18,7 @@ DEFAULT_TIMESTAMP_COLUMN: Final[str] = "timestamp"
 WEEKDAY_SIMILAR_DAY_LAG_HOURS: Final[int] = 24
 SPECIAL_DAY_SIMILAR_DAY_LAG_HOURS: Final[int] = 168
 LEVEL1_MARKET_VENUE: Final[str] = "DAM"
+SUPPORTED_HOURLY_PREVIEW_MARKET_VENUES: Final[frozenset[str]] = frozenset({"DAM", "IDM"})
 LEVEL1_INTERVAL_MINUTES: Final[int] = 60
 
 
@@ -36,9 +37,9 @@ class BaselineSolverConfig:
         if self.commit_interval_hours <= 0:
             raise ValueError("commit_interval_hours must be positive.")
         if self.interval_minutes != LEVEL1_INTERVAL_MINUTES:
-            raise ValueError("Level 1 baseline currently supports only hourly DAM intervals.")
-        if self.market_venue != LEVEL1_MARKET_VENUE:
-            raise ValueError("Level 1 baseline currently supports only DAM.")
+            raise ValueError("Level 1 baseline currently supports only hourly preview intervals.")
+        if self.market_venue not in SUPPORTED_HOURLY_PREVIEW_MARKET_VENUES:
+            raise ValueError("Level 1 baseline currently supports only DAM/IDM hourly previews.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -76,7 +77,7 @@ class BaselineSolveResult:
 
 
 class HourlyDamBaselineSolver:
-    """Canonical Level 1 LP baseline for hourly DAM operation."""
+    """Canonical Level 1 LP baseline for hourly DAM/IDM preview operation."""
 
     def __init__(self, config: BaselineSolverConfig | None = None) -> None:
         self._config = config or BaselineSolverConfig()

@@ -1,0 +1,195 @@
+.signal-grid {
+  display: grid;
+  gap: 0.78rem;
+}
+
+.signal-card {
+  --signal-card-border: var(--operator-card-border-strong);
+  --signal-card-highlight: color-mix(in oklab, var(--operator-control-foreground) 12%, transparent);
+  --signal-card-accent-wash: color-mix(in oklab, var(--operator-accent) 20%, transparent);
+  --signal-card-shadow: var(--operator-rail-panel-shadow);
+  --signal-card-hover-shadow: var(--operator-metric-capsule-hover-shadow);
+  --signal-card-inset: var(--operator-rail-panel-inset);
+  --signal-card-hover-inset: var(--operator-metric-capsule-hover-inset);
+  --signal-pill-surface: var(--operator-accent-wash);
+  --signal-pill-blue-surface: color-mix(in oklab, var(--operator-control-button-primary-gradient-top) 28%, transparent);
+  --signal-pill-berry-surface: color-mix(in oklab, var(--accent-berry) 24%, transparent);
+  --signal-pill-source-surface: color-mix(in oklab, var(--operator-tone-mint-gradient-top) 24%, transparent);
+  --signal-chart-border: var(--operator-card-border);
+  --signal-chart-gradient-top: var(--operator-frame-gradient-top);
+  --signal-chart-gradient-bottom: var(--operator-frame-gradient-bottom);
+  --signal-chart-inset: var(--operator-frame-inset);
+  --signal-fallback-border: var(--line-soft);
+  display: grid;
+  gap: 0.82rem;
+  min-width: 0;
+  padding: 0.85rem;
+  border: 1px solid var(--signal-card-border);
+  border-radius: 0.92rem;
+  background:
+    linear-gradient(180deg, var(--signal-card-highlight), transparent 42%),
+    radial-gradient(circle at top right, var(--signal-card-accent-wash), transparent 32%),
+    linear-gradient(
+      180deg,
+      var(--operator-rail-panel-gradient-top),
+      var(--operator-rail-panel-gradient-bottom)
+    );
+  box-shadow:
+    var(--signal-card-shadow),
+    var(--signal-card-inset);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.signal-card:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    var(--signal-card-hover-shadow),
+    var(--signal-card-hover-inset);
+}
+
+.signal-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.signal-card__eyebrow {
+  color: var(--operator-accent-soft);
+  font-size: 0.64rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.signal-card__title {
+  margin-top: 0.2rem;
+  color: var(--operator-control-foreground);
+  font-size: 1rem;
+  line-height: 1.15;
+  text-shadow: 0 2px 7px var(--operator-metric-value-shadow);
+}
+
+.signal-card__summary {
+  max-width: 38rem;
+  margin-top: 0.34rem;
+  color: var(--operator-text-muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.signal-card__meta {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: var(--signal-pill-surface);
+  padding: 0.32rem 0.5rem;
+  color: var(--operator-accent-soft);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.signal-card__guide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.signal-guide-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--signal-pill-surface);
+  padding: 0.34rem 0.56rem;
+  color: var(--operator-text-bright);
+  font-size: 0.66rem;
+  font-weight: 800;
+}
+
+.signal-guide-pill-blue {
+  background: var(--signal-pill-blue-surface);
+}
+
+.signal-guide-pill-berry {
+  background: var(--signal-pill-berry-surface);
+}
+
+.signal-guide-pill-source {
+  background: var(--signal-pill-source-surface);
+}
+
+.signal-chart {
+  height: 21rem;
+  min-height: 21rem;
+  border: 1px solid var(--signal-chart-border);
+  border-radius: 0.72rem;
+  background:
+    linear-gradient(180deg, var(--signal-chart-gradient-top), var(--signal-chart-gradient-bottom));
+  padding: 0.25rem 0;
+  box-shadow: var(--signal-chart-inset);
+}
+
+.signal-chart-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--signal-fallback-border);
+  border-radius: 1.25rem;
+  padding: 1rem;
+  color: var(--operator-text-muted);
+  text-align: center;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  touch-action: pan-y;
+}
+
+.signal-explainer-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.signal-explainer-card__eyebrow {
+  color: var(--ink-soft);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.signal-explainer-card__copy,
+.signal-explainer-card__formula {
+  color: var(--ink-strong);
+  font-size: 0.78rem;
+  line-height: 1.55;
+}
+
+.signal-explainer-card__formula {
+  color: var(--ink-strong);
+}
+
+.signal-explainer-card__copy-note {
+  color: var(--ink-soft);
+}
+
+@media (min-width: 960px) {
+  .signal-grid {
+    grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr);
+  }
+
+  .signal-explainer-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-contrast: more) {
+  .signal-card {
+    --signal-card-border: var(--operator-contrast-panel-border);
+    --signal-chart-border: var(--operator-contrast-panel-border);
+    --signal-fallback-border: var(--operator-contrast-frame-border);
+  }
+
+  .signal-card__summary,
+  .signal-guide-pill,
+  .signal-chart-fallback {
+    color: var(--operator-text-strong);
+  }
+}

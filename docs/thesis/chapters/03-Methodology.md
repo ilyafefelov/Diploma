@@ -20,6 +20,7 @@ Evidence pipeline наведено на рисунку 3.1.
 
 | Шар доказів | Дозволене твердження | Заборонене твердження |
 | --- | --- | --- |
+| Official OREE row first | Published DAM/IDM hourly row є price source для preview | Переугадувати already published row або називати forecast офіційною ціною |
 | Forecast adapter | Модель генерує price signal для LP candidate | Модель сама оптимізує ринковий bid |
 | LP/oracle evaluator | Schedule оцінено в однаковому strict contour | Oracle value доступний до рішення |
 | V2/V2+ selector | Offline/read-model Strategy Promotion | Автономна торгівля або dispatch |
@@ -38,9 +39,13 @@ Evidence pipeline наведено на рисунку 3.1.
 
 Рисунок 3.2 пояснює, чому validation не можна замінити випадковим train/test split. Для market data випадкове перемішування руйнує часову доступність ознак. Rolling-origin protocol зберігає причинний порядок і дозволяє чесно оцінити, що було відомо до decision time.
 
+3.3.1. Temporal availability rule для DAM/IDM preview
+
+У deployed/read-model path спочатку визначається publication state для `target_delivery_date`, `market_venue` і конкретних hourly rows. Якщо official OREE DAM або IDM row уже опубліковано для target hour, цей row є price source: LP solver отримує published price vector і будує feasible schedule, а ML stack не переугадує вже відому ціну. Якщо target horizon ще не має published row, наприклад дальший delivery day або незакритий source window, NBEATSx/TFT можуть створити complete forecast scenario vectors. Після цього LP перетворює кожний scenario на candidate schedule, а V2+/AFL/DFL/DT layers можуть ранжувати, пояснювати або abstain. Отже, Transformer у поточній межі не є live model dispatch і не є price authority; він є research/advisor layer над feasible schedules.
+
 3.4. LP schedule and value
 
-Нехай \(t\) (t) позначає погодинний інтервал, \(p_t\) (p_t) - realized DAM price, \(c_t\) (c_t) - charge power, \(d_t\) (d_t) - discharge power, \(\eta_c\) (eta_c) та \(\eta_d\) (eta_d) - efficiency, а \(e_t\) (e_t) - енергія в батареї. Економічну цінність schedule можна записати як:
+Нехай \(t\) (t) позначає погодинний інтервал, \(p_t\) (p_t) - realized або scenario price для вибраного market venue, \(c_t\) (c_t) - charge power, \(d_t\) (d_t) - discharge power, \(\eta_c\) (eta_c) та \(\eta_d\) (eta_d) - efficiency, а \(e_t\) (e_t) - енергія в батареї. Для headline packet market venue є DAM; для IDM preview той самий hourly формалізм є read-model lane без 15-minute bid/submission. Економічну цінність schedule можна записати як:
 
 V(s) = sum_t p_t * (d_t * eta_d - c_t / eta_c) - C_deg(s)    (3.1)
 
@@ -117,7 +122,8 @@ Candidate families, що використовуються або аналізу�
 | Candidate family | Джерело | Чому потрібна |
 | --- | --- | --- |
 | strict_similar_day | Заморожене історичне правило | Conservative fallback і контроль |
-| Raw NBEATSx | Official forecast adapter | Джерело price-signal candidates |
+| Official OREE DAM/IDM rows | Published market data | Price source для already published hourly preview |
+| Raw NBEATSx | Forecast adapter | Джерело price-scenario candidates для unpublished targets |
 | Calibrated NBEATSx | Prior-only horizon calibration | Зменшує regret-relevant bias |
 | V2/V2+ | Schedule/value selector | Вибирає candidate за downstream value |
 | TFT quantiles | p10/p50/p90 forecast lanes | Schedule diversity and uncertainty diagnostics |

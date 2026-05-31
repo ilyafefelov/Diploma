@@ -4,7 +4,7 @@
 
 Поточна межа цілі V13 зафіксована в
 [docs/technical/CURRENT_GOAL_BOUNDARY_V13.md](docs/technical/CURRENT_GOAL_BOUNDARY_V13.md):
-DAM delivery-day recommendation preview та offline/read-model strategy evidence
+DAM/IDM hourly recommendation preview та offline/read-model strategy evidence
 only, `market_execution_enabled=false`, без market-submittable bids, deployed
 Decision Transformer control або full differentiable DFL claim.
 
@@ -154,9 +154,9 @@ _Avoid_: DT/LAVA promotion, model-training permission, deployed Decision Transfo
 Boundary check proving that the current research packet keeps `market_execution_enabled=false` across attached V13, candidate-frame, and upstream promotion evidence. Passing it means non-execution is preserved, not that a **Market Execution Gate** has passed.
 _Avoid_: market-execution approval, bid-submission readiness, inverter dispatch permission
 
-**DAM Publication Receipt Source Lead**:
-Acquisition clue that may identify where explicit row-level DAM publication receipts could be obtained, such as a dataset page, API endpoint, or manual export path. It is not V13-ready evidence until it yields validated rows with `timestamp` and `source_publication_timestamp`.
-_Avoid_: receipt row, validated receipt CSV, source-readiness pass, DT/LAVA permission, market execution
+**OREE DAM/IDM Source/Publication Evidence Lead**:
+Acquisition clue that may identify where explicit OREE DAM/IDM source/publication evidence for preview could be obtained, such as a dataset page, API endpoint, or manual export path. It is not V13-ready evidence until it yields validated rows with `timestamp` and `source_publication_timestamp`.
+_Avoid_: validated evidence row, source-readiness pass, DT/LAVA permission, market execution, market-submission receipt
 
 **Effective-Dated Market Constraint**:
 Regulatory or market parameter whose value depends on the delivery/decision date, such as DAM/IDM/Balancing price caps, operator transaction tariffs, or fixed participation fees.

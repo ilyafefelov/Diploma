@@ -4,6 +4,7 @@ const runtimeConfig = useRuntimeConfig()
 useHead({
   meta: [
     { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+    { name: 'color-scheme', content: 'light' },
     { name: 'theme-color', content: '#0079c1' }
   ],
   link: [
@@ -26,11 +27,9 @@ useSeoMeta({
   ogDescription: description,
   ogSiteName: title,
   ogUrl: siteUrl,
-  ogImage: `${siteUrl}/social/week1-interactive-report.svg`,
   twitterTitle: title,
   twitterDescription: description,
-  twitterImage: `${siteUrl}/social/week1-interactive-report.svg`,
-  twitterCard: 'summary_large_image'
+  twitterCard: 'summary'
 })
 </script>
 

@@ -23,7 +23,7 @@ decision-value checks.
 | include | [Rethinking Evaluation in the Era of Time Series Foundation Models](https://huggingface.co/papers/2510.13654) | Strong guardrail for this project: prevent train/test overlap and temporal leakage; report truly out-of-sample rolling-origin evidence. |
 | watch | [TFMAdapter](https://huggingface.co/papers/2509.13906) | Relevant to Open-Meteo and future market-coupling covariates, but not needed until the benchmark/export protocol is unambiguous. |
 | watch | [Reverso](https://huggingface.co/papers/2602.17634) | Efficient zero-shot TSFM direction; evaluate later only through the same strict LP/oracle protocol. |
-| watch | [Distributional RL Energy Arbitrage](https://huggingface.co/papers/2401.00015) | Useful for later risk-sensitive/multi-venue strategy discussion; not a DAM-only Week 3/4 target. |
+| watch | [Distributional RL Energy Arbitrage](https://huggingface.co/papers/2401.00015) | Useful for later risk-sensitive/multi-venue strategy discussion; not a current Week 3/4 target. |
 
 ## Implementation Scope
 

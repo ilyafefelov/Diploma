@@ -40,6 +40,7 @@ const emit = defineEmits<{
     <label class="check-toggle">
       <input
         v-model="includePriceHistory"
+        aria-label="Include DAM price history in weather materialization"
         type="checkbox"
       >
       <span>Include DAM price history</span>
@@ -102,19 +103,19 @@ const emit = defineEmits<{
 
 .control-help-tooltip {
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 0.45rem);
+  inset-block-end: calc(100% + 0.45rem);
+  inset-inline-end: 0;
   z-index: 120;
   width: min(18rem, calc(100vw - 2rem));
-  border: 1px solid rgba(202, 249, 255, 0.9);
+  border: 1px solid var(--operator-tooltip-border);
   border-radius: 0.72rem;
-  background: linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 56, 112, 0.98));
+  background: linear-gradient(180deg, var(--operator-tooltip-gradient-top), var(--operator-tooltip-gradient-bottom));
   padding: 0.65rem;
-  color: rgba(238, 250, 255, 0.92);
+  color: var(--operator-text-bright);
   font-size: 0.72rem;
   font-weight: 750;
   line-height: 1.35;
-  box-shadow: 0 18px 32px rgba(0, 39, 82, 0.32);
+  box-shadow: var(--operator-tooltip-shadow);
   opacity: 0;
   pointer-events: none;
   transform: translateY(0.25rem) scale(0.98);
@@ -136,14 +137,14 @@ const emit = defineEmits<{
 .control-step-grid article {
   display: grid;
   gap: 0.2rem;
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid var(--operator-line-soft);
   border-radius: 0.62rem;
-  background: rgba(0, 61, 119, 0.24);
+  background: var(--operator-surface-soft);
   padding: 0.55rem;
 }
 
 .control-step-grid span {
-  color: #d7ff4f;
+  color: var(--operator-accent);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.12em;
@@ -152,7 +153,7 @@ const emit = defineEmits<{
 
 .control-step-grid p {
   margin: 0;
-  color: rgba(229, 249, 255, 0.82);
+  color: var(--operator-text-body);
   font-size: 0.72rem;
   font-weight: 750;
   line-height: 1.35;

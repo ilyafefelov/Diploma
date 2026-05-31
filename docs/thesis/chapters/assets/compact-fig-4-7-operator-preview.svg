@@ -8,8 +8,8 @@
   <g font-family="Arial, sans-serif">
     <rect x="70" y="150" width="500" height="410" rx="10" fill="#ecfdf5" stroke="#86efac"/>
     <text x="100" y="190" font-size="22" font-weight="700" fill="#166534">Allowed read-model evidence</text>
-    <text x="100" y="232" font-size="17" fill="#111827">Selected strategy: V2+</text>
-    <text x="100" y="268" font-size="17" fill="#111827">24 hourly DAM recommendation-preview rows</text>
+    <text x="100" y="232" font-size="17" fill="#111827">Selected evidence: V2+ comparator</text>
+    <text x="100" y="268" font-size="17" fill="#111827">DAM/IDM hourly preview rows</text>
     <text x="100" y="304" font-size="17" fill="#111827">BUY / SELL / HOLD explanation</text>
     <text x="100" y="340" font-size="17" fill="#111827">Regret/value comparison versus strict baseline</text>
     <text x="100" y="376" font-size="17" fill="#111827">Gate status and shadow diagnostics</text>

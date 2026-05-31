@@ -20,7 +20,7 @@ defineProps<{
           Preview scorer
         </p>
         <h2 class="rail-title">
-          DAM delivery-hour preference
+          DAM/IDM delivery-hour preference
         </h2>
       </div>
       <UIcon
@@ -30,8 +30,8 @@ defineProps<{
     </div>
 
     <p class="gatekeeper-copy">
-      Scores explain the selected DAM delivery-hour preference. They are not market bids or dispatch commands. A future
-      Pydantic Bid Gatekeeper validates ProposedBid payloads before any market submission path exists.
+      Scores explain the selected DAM/IDM delivery-hour preference. They are not market bids or dispatch commands. The
+      Pydantic Gatekeeper blocks unsafe preview output; ProposedBid and market-submission contracts are not emitted here.
     </p>
 
     <div class="gatekeeper-status-strip">
@@ -70,6 +70,8 @@ defineProps<{
 
     <div
       class="regret-ring"
+      role="group"
+      :aria-label="`Regret ${activeAlertCount === 0 ? '12 percent low regret' : '28 percent needs review'}`"
       tabindex="0"
     >
       <span>Regret</span>
@@ -90,7 +92,7 @@ defineProps<{
 .gatekeeper-copy {
   grid-column: 1 / -1;
   margin: 0;
-  color: rgba(229, 249, 255, 0.78);
+  color: var(--operator-text-muted);
   font-size: 0.74rem;
   font-weight: 750;
   line-height: 1.4;
@@ -101,14 +103,14 @@ defineProps<{
   display: grid;
   gap: 0.16rem;
   padding: 0.64rem 0.76rem;
-  border: 1px solid rgba(160, 226, 255, 0.22);
+  border: 1px solid var(--operator-line-faint);
   border-radius: 0.5rem;
-  background: rgba(0, 56, 106, 0.24);
-  color: rgba(229, 249, 255, 0.86);
+  background: var(--operator-surface-wash);
+  color: var(--operator-text-readable);
 }
 
 .gatekeeper-status-strip span {
-  color: #c9ff3d;
+  color: var(--operator-accent);
   font-size: 0.66rem;
   font-weight: 900;
   letter-spacing: 0.06em;
@@ -116,13 +118,13 @@ defineProps<{
 }
 
 .gatekeeper-status-strip strong {
-  color: #ffffff;
+  color: var(--operator-control-foreground);
   font-size: 1rem;
   line-height: 1;
 }
 
 .gatekeeper-status-strip small {
-  color: rgba(229, 249, 255, 0.74);
+  color: var(--operator-text-muted);
   font-size: 0.68rem;
   font-weight: 760;
   line-height: 1.25;

@@ -3,13 +3,14 @@
 Цей розділ залишено коротким, щоб пояснювальна записка не втрачала фокус основної частини. Повний словник технічних назв, evidence flags, endpoint names і довгих дослідницьких термінів перенесено в додаток. Нижче наведено лише ті скорочення, які використовуються для читання розділів 1-5.
 
 BESS - Battery Energy Storage System, система накопичення енергії на батареях.
-DAM - Day-Ahead Market, ринок на добу наперед; основний market scope у роботі.
+DAM - Day-Ahead Market, ринок на добу наперед; primary evaluated research scope і headline result у роботі.
+IDM - Intraday Market / ВДР, внутрішньодобовий ринок; у цій роботі доступний як повноцінний hourly recommendation preview/read-model lane. Live 15-minute bid, settlement, ProposedBid і market submission залишаються заблокованими.
 DFL - Decision-Focused Learning, підхід до оцінювання моделей за downstream decision value.
 DT - Decision Transformer, offline sequence-policy напрям, який у роботі має статус research-shadow.
 EPF - Electricity Price Forecasting, прогнозування цін електроенергії.
 LP - Linear Programming, лінійне програмування для побудови feasible schedule.
 MAE / RMSE - forecast-only метрики, які не є головним критерієм promotion.
-NBEATSx - time-series forecast adapter, використаний як source model для schedule candidates.
+NBEATSx - time-series forecast adapter, який може створювати price-scenario candidates для unpublished targets.
 SOC - State of Charge, стан заряду батареї.
 SOH - State of Health, стан здоров'я батареї; повний digital-twin шар лишається roadmap.
 TFT - Temporal Fusion Transformer, quantile forecasting model для shadow/complementarity evidence.

@@ -68,9 +68,10 @@ const VChart = defineAsyncComponent(async () => {
 .client-v-chart-shell {
   display: block;
   width: 100%;
-  height: 100%;
   min-width: 0;
   min-height: inherit;
+  pointer-events: none;
+  touch-action: pan-y;
 }
 
 .client-v-chart-shell__chart {
@@ -78,11 +79,15 @@ const VChart = defineAsyncComponent(async () => {
   width: 100%;
   height: 100%;
   min-height: inherit;
+  pointer-events: none;
+  touch-action: pan-y;
 }
 
 .client-v-chart-shell :deep(.echarts),
 .client-v-chart-shell :deep(canvas) {
   width: 100% !important;
   height: 100% !important;
+  pointer-events: none;
+  touch-action: pan-y;
 }
 </style>

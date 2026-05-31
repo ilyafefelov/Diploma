@@ -195,7 +195,7 @@ no-market-execution validation fail.
 
 Use `--operator-preview-json <operator-preview.json>` instead of `--tenant-id`
 when the operator preview payload has already been exported. The packet passes
-only the academic MVP gates: DAM delivery-day recommendation preview,
+only the academic MVP gates: DAM/IDM hourly recommendation preview,
 LAVA NPZ CI-smoke validation, V13-gated teacher-contract shape with `0`
 permitted training rows while receipts are blocked, offline challenger
 non-promotion evidence, and no-market-execution safety. It still reports
@@ -203,7 +203,7 @@ non-promotion evidence, and no-market-execution safety. It still reports
 `permits_model_training=false`, and `market_execution_enabled=false`.
 The summary now also includes `gate_passport`, which is the compact
 defense-facing map of passed and blocked gates: operator preview,
-non-submittable DAM bid preview, LAVA NPZ CI smoke, LAVA NPZ packet validation,
+non-submittable DAM/IDM hourly preview rows, LAVA NPZ CI smoke, LAVA NPZ packet validation,
 V13-gated teacher contract, offline challenger non-promotion, and
 no-market-execution safety pass for the credentialless MVP; market-submission
 receipts stay `blocked_external_access`, DT/LAVA training promotion stays
@@ -212,7 +212,7 @@ receipts stay `blocked_external_access`, DT/LAVA training promotion stays
 The operator-preview section also carries `bid_preview_summary` with BUY/SELL
 row counts, total preview MWh, indicative notional value, and fixed
 `market_execution_enabled=false` / `proposed_bid_emitted=false` flags so the
-thesis packet proves a DAM delivery-day schedule recommendation exists without
+thesis packet proves an hourly DAM/IDM recommendation-preview shape exists without
 turning it into a market-order payload.
 The offline challenger section carries `control_comparison_summary` from the
 Phase 3 packet: strict-reference, frozen V2+, and filtered behavior-cloning
@@ -452,19 +452,19 @@ Then export the thesis-facing packet:
   --teacher-contract-pickle .tmp_runtime\dt_lava_teacher\dfl_v13_gated_dt_lava_teacher_contract_frame_safe_switch_only.pkl `
   --output-root data\research_runs `
   --run-slug week3_v13_dt_lava_teacher_dataset_safe_switch_only `
-  --materialization-command "local materialize_v13_dt_lava_teacher_contract_from_candidate_frame.py from V13-tracked LAVA candidate rows plus safe-switch-only V13 readiness; DAM receipts still missing" `
+  --materialization-command "local materialize_v13_dt_lava_teacher_contract_from_candidate_frame.py from V13-tracked LAVA candidate rows plus safe-switch-only V13 readiness; OREE DAM/IDM source/publication evidence still missing" `
   --asset-check-status blocked_v13_explicit_dam_publication_receipts
 ```
 
 The current safe-switch-only export filters 70,945 candidate rows to 3,921
 V13-tracked rows and contains 3,741 `train_selection` rows, but has 0 permitted
-model-training rows because explicit DAM publication receipts still block the
+model-training rows because explicit OREE DAM/IDM source/publication evidence for preview still blocks the
 V13 training permission gate. It now reports the safe-switch floor separately:
 `safe_switch_covered_tenant_source_count=5`,
 `safe_switch_required_tenant_source_count=5`,
 `safe_switch_min_observed_prior_material_examples=20`, and
 `safe_switch_coverage_gate_passed=true`. This means the safe-switch count
-precondition is closed, while explicit DAM publication receipts still block
+precondition is closed, while explicit OREE DAM/IDM source/publication evidence for preview still blocks
 training permission. The packet passes only the teacher dataset and safe-switch
 coverage contract gates:
 `dt_action_target_contract=candidate_id_or_schedule_family`,
@@ -521,7 +521,7 @@ is correctly blocked and writes
 
 This is progress toward Phase 3 infrastructure, not a DT/LAVA promotion. It
 turns the offline challenger gate into a repeatable artifact and keeps the
-current blockers explicit: missing explicit DAM receipts and no residual/DT
+current blockers explicit: missing explicit OREE DAM/IDM source/publication evidence and no residual/DT
 challenger beating V2+ under strict LP/oracle evidence.
 
 ```powershell

@@ -220,7 +220,7 @@ Response example:
 Operational notes:
 
 - This endpoint is the narrow Slice 2 simulator for projected SOC, throughput, and degradation-aware UAH penalty.
-- The example above keeps the same throughput-based proxy as the Week 1 demo materials and scales cycle cost to the illustrated `4 MWh` battery, so the implied penalty stays near `842.2 UAH/MWh throughput`.
+- The example above keeps the same throughput-based proxy as the operator demo materials and scales cycle cost to the illustrated `4 MWh` battery, so the implied penalty stays near `842.2 UAH/MWh throughput`.
 - It accepts scenario overrides for offline/demo use, but omitted battery values now resolve from the selected tenant `energy_system` block in [simulations/tenants.yml](d:/School/GoIT/Courses/Diploma/simulations/tenants.yml), including capacity, max power, RTE, initial SOC, SOC window, and cycle-cost inputs.
 - The simulator enforces hourly Level 1 granularity, `soc_min`, `soc_max`, capacity, max power, and round-trip efficiency.
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
@@ -288,13 +288,14 @@ Request query example:
 
 ```text
 /dashboard/baseline-lp-preview?tenant_id=client_003_dnipro_factory
+/dashboard/baseline-lp-preview?tenant_id=client_003_dnipro_factory&market_venue=IDM
 ```
 
 Response shape:
 
-- `forecast`: hourly strict-similar-day price forecast in UAH/MWh
+- `forecast`: hourly official observed OREE DAM or IDM delivery-row prices in UAH/MWh
 - `recommendation_schedule`: hourly signed MW recommendation trace with projected SOC and per-slot economics
-- `bid_recommendation_preview`: non-submittable DAM BUY/SELL/HOLD preview derived from the recommendation schedule; each row keeps `preview_only=true`, `market_order_payload_emitted=false`, and `market_execution_enabled=false`
+- `bid_recommendation_preview`: non-submittable DAM/IDM BUY/SELL/HOLD preview derived from the recommendation schedule; each row keeps `preview_only=true`, `market_order_payload_emitted=false`, and `market_execution_enabled=false`
 - `projected_state`: projected SOC/throughput/degradation trace derived from the feasible schedule
 - `economics`: aggregated gross market value, degradation penalty, net value, and throughput in canonical UAH/MWh units
 - `starting_soc_source`: `telemetry_hourly` when a fresh hourly telemetry snapshot is available, otherwise `tenant_default`
@@ -303,8 +304,8 @@ Response shape:
 Operational notes:
 
 - This is a recommendation preview only. It does not return `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` contracts.
-- The read model is tenant-aware through location-resolved synthetic DAM history biasing and tenant-registry battery assumptions.
-- The LP runs at Level 1 hourly DAM granularity and reuses the same battery constraints as the projected-state simulator.
+- The read model is tenant-aware through tenant-registry battery assumptions; the OREE price row itself is not tenant-biased or synthetic.
+- The LP runs at Level 1 hourly DAM/IDM preview granularity and reuses the same battery constraints as the projected-state simulator. IDM remains hourly preview only, not 15-minute bid submission.
 - Degradation is calculated with the same equivalent-full-cycle throughput proxy documented in [BATTERY_DEGRADATION_AND_SIMULATION.md](d:/School/GoIT/Courses/Diploma/docs/technical/BATTERY_DEGRADATION_AND_SIMULATION.md).
 - On success, the API updates the persisted `baseline_lp` flow state to `completed`.
 
@@ -539,7 +540,7 @@ Response shape:
 
 - `market_price`: visible strict-similar-day price preview in `UAH/MWh`.
 - `weather_bias`: calibrated non-negative weather uplift in `UAH/MWh`.
-- `weather_sources`: source label per visible point, usually `OPEN_METEO` or `SYNTHETIC`.
+- `weather_sources`: source label per visible point, usually `OPEN_METEO` when weather rows are available.
 - `charge_intent`: simplified signed-MW visual preview derived from the weather-adjusted curve.
 - `regret`: MVP opportunity-score read model for the chart, not oracle regret.
 
@@ -549,7 +550,7 @@ Operational notes:
 - This remains a preview/read-model endpoint and does not create `Proposed Bid`, `Cleared Trade`, or `Dispatch Command` semantics.
 - The weather line is computed as `price_after_weather = market_price + weather_bias`.
 - `weather_bias` is estimated from cloud cover, precipitation, humidity excess, temperature gap, effective solar, and wind speed. `effective_solar = solar_radiation * (100 - cloudcover) / 100`.
-- This is an operator-facing weather-sensitivity explanation only. The baseline LP endpoint does not consume `weather_bias`; it still consumes the strict similar-day price forecast. Weather should enter dispatch only after it is part of a validated weather-aware forecast model and has been evaluated through rolling-origin realized-value/oracle-regret benchmarks.
+- This is an operator-facing weather-sensitivity explanation only. The baseline LP endpoint does not consume `weather_bias`; it consumes the official observed OREE DAM price row when available. Weather should enter dispatch only after it is part of a validated weather-aware forecast model and has been evaluated through rolling-origin realized-value/oracle-regret benchmarks.
 
 ### `GET /dashboard/operator-recommendation`
 
@@ -559,31 +560,37 @@ Request query example:
 
 ```text
 /dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory&strategy_id=risk_adjusted_value_gate_v0
+/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory&market_venue=IDM&strategy_id=nbeatsx_official_idm_v0
+/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory&strategy_id=nbeatsx_official_v0&target_delivery_date=2026-05-20
 ```
 
 Response shape:
 
-- `market_scope`, `market_venue`, `interval_minutes`: explicit current scope. The present operator contract is `dam_hourly_planning_preview`, `DAM`, `60`.
-- `anchor_timestamp`, `forecast_generated_at`, `target_delivery_window_start`, `target_delivery_window_end`: as-of timing and target delivery window metadata for the visible preview. `forecast_generated_at` may be `null` for deterministic strict-similar-day previews that do not come from persisted forecast-store rows.
+- `market_scope`, `market_venue`, `interval_minutes`: explicit current scope. DAM uses `dam_hourly_planning_preview`, `DAM`, `60`; IDM v1 uses `idm_hourly_planning_preview`, `IDM`, `60` as a planning/read-model lane, not a 15-minute bid lane.
+- `target_delivery_date`: optional requested delivery date. When omitted, the endpoint uses the latest complete official observed OREE DAM or IDM delivery row.
+- `price_context_status`: current price-source mode. `official_published` means the visible schedule is priced from the official OREE row. `pre_publication_forecast` means the requested target delivery date is not published yet and the schedule is an operator preview generated from complete NBEATSx/TFT forecast-store rows.
+- `anchor_timestamp`, `forecast_generated_at`, `target_delivery_window_start`, `target_delivery_window_end`: as-of timing and target delivery window metadata for the visible preview. The schedule price source is the target complete official observed OREE DAM or IDM delivery row when available. `forecast_generated_at` may be `null` because the schedule does not need an ML forecast when the official row is already available.
 - `market_execution_enabled`, `read_model_boundary`: execution boundary. Current value remains `false` with `operator_preview_no_market_submission`.
 - `market_gate_status`, `bid_eligibility_status`, `proposed_bid_status`: explicit non-bid status. Current values are preview-only/not-applicable because this endpoint does not evaluate market gate closure and does not emit `ProposedBid`.
 - `v13_readiness.source_governance_status`, `source_governance_label`, and `market_submission_receipt_gate_status`: source-governance status for the visible operator preview. Current value is `receipt_gated_for_market_submission` / `receipt-gated for market submission` with `blocked_external_access`; SCMO credentials are not required for the diploma MVP but remain relevant to market-submission-grade receipt proof.
-- `available_strategies`: materialized strategies the operator may inspect; unavailable future policies stay disabled.
+- `available_strategies`: materialized strategies the operator may inspect as evidence/benchmarks; unavailable future policies stay disabled. Selecting an ML strategy does not replace the official OREE row as the operator price source.
 - `selected_strategy_id`, `selected_policy_id`, `policy_mode`, `policy_readiness`: current selection and its safety/readiness boundary.
-- `policy_forecast_context_source`, `policy_forecast_context_row_count`, `policy_forecast_context_coverage_ratio`, `policy_forecast_context_warning`: DT forecast-state coverage copied into the operator read model; non-DT strategies return `not_applicable`.
-- `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when available, including per-series `out_of_dam_cap_rows` and `quality_boundary` so the operator can see whether an official forecast row is smoke-ready or needs calibration before value claims.
+- `policy_forecast_context_source`, `policy_forecast_context_row_count`, `policy_forecast_context_coverage_ratio`, `policy_forecast_context_warning`: DT forecast-state coverage copied into the operator read model. In `pre_publication_forecast` mode this identifies the NBEATSx/TFT forecast scenario used by deterministic LP.
+- `decision_advisor`: non-execution policy/advisor layer. Published DAM uses DT/V2+ safe-switch evidence when artifacts are available; IDM v1 exposes the NBEATSx/TFT/V2+/AFL/DFL/DT evidence stack and currently abstains to the deterministic LP schedule. Pre-publication DAM/IDM forecast mode builds complete NBEATSx/TFT forecast-scenario LP candidates, scores their decision value/regret through `lp_schedule_value_regret_adapter_for_v2_plus_dfl_dt_advisor`, exposes ranked `forecast_scenario_candidates` with gatekeeper status, and still abstains to the selected forecast-backed deterministic LP preview.
+- `forecast_model_series`: NBEATSx/TFT forecast paths for dashboard graphs when materialized, including per-series `out_of_dam_cap_rows` and `quality_boundary` so the operator can inspect research/benchmark evidence. The endpoint no longer fabricates compact fallback forecast series from LP prices.
 - `value_gap_series`: per-hour counterfactual value-gap preview for the selected schedule.
-- `bid_recommendation_preview`: operator-facing DAM BUY/SELL/HOLD recommendation preview derived from the feasible schedule. It is not a `ProposedBid`, does not include market-order payload fields, and repeats the non-execution boundary per row.
+- `bid_recommendation_preview`: operator-facing DAM or IDM BUY/SELL/HOLD recommendation preview derived from the feasible schedule. It is not a `ProposedBid`, does not include market-order payload fields, and repeats the non-execution boundary per row.
 - `load_forecast`, `pv_forecast`, `projected_soc`: tenant schedule, PV, and SOC context.
 - `daily_value_uah`, `hold_value_uah`, `value_vs_hold_uah`: operator economics against a no-arbitrage hold baseline.
 
 Operational notes:
 
-- This endpoint is the main `/operator` read model. It is a DAM-only hourly planning preview and does not submit bids.
-- IDM/ВДР data must not be presented as an active recommendation mode from this endpoint. Until a separate IDM model, validation target, market gate, and `ProposedBid` path exist, IDM belongs only in future-work or read-only context copy.
-- When `strategy_id` is `nbeatsx_official_v0` or `tft_official_v0` and forecast-store rows exist with all visible forecast prices inside the configured DAM caps, the endpoint routes those forecast prices through the deterministic Level 1 LP preview. Out-of-cap official rows remain visible in the forecast graph with `quality_boundary=needs_calibration_before_value_claim`, but the requested official strategy is disabled and the operator response falls back to `strict_similar_day`. The resulting schedule is still a preview, not market execution.
+- This endpoint is the main `/operator` read model. DAM remains the default hourly planning preview. IDM is available as a source-backed hourly planning/read-model lane and does not submit bids.
+- This endpoint is `official OREE published row first`: it requires observed OREE rows in `market_price_observations` with `market_venue=DAM` or `market_venue=IDM`, `source_kind=observed`, and OREE source metadata for the requested delivery date. If the target date is not published yet, a complete 24-hour NBEATSx/TFT forecast-store horizon may be used as `pre_publication_forecast`; otherwise the endpoint returns a source-readiness blocker instead of falling back to synthetic/demo prices.
+- IDM/ВДР follows the same source-backed rule with `market_venue=IDM`. IDM v1 is hourly preview only: NBEATSx/TFT provide scenario evidence, AFL/DFL provide decision-value evidence, and DT ranks or abstains as advisor metadata. 15-minute IDM `ProposedBid`, settlement, and live submission remain blocked.
+- When `strategy_id` is `nbeatsx_official_v0` or `tft_official_v0`, materialized forecast-store rows remain visible as evidence when available, but the feasible schedule is still optimized from the official OREE DAM delivery row. Out-of-cap official forecast rows remain visible in the forecast graph with `quality_boundary=needs_calibration_before_value_claim`, but they do not replace the published DAM row in the operator schedule.
 - This endpoint remains the default production-facing recommendation source. Manual DT/Poland/DFL shadow inspection is exposed through `GET /dashboard/shadow-recommendation-preview`, not by promoting those sources into the default selection path.
-- `strict_similar_day` remains the control comparator and safe fallback.
+- `strict_similar_day` remains a backward-compatible strategy id/control comparator label, but when a complete official OREE DAM row is present the visible operator schedule uses that row directly instead of re-forecasting it.
 
 ### `GET /dashboard/shadow-recommendation-preview`
 
@@ -626,7 +633,7 @@ Response shape:
 - `available_preview_sources`: dashboard strategy-switch options.
 - `boundary_labels` and `readiness_warnings`: display labels such as
   `DT Shadow`, `Not promoted`, `Preview only`, `No market execution`, and
-  `V2+ remains default/fallback`.
+  `V2+ remains confirmed offline comparator/evidence`.
 - `market_execution_enabled=false`, `market_order_payload_emitted=false`, and
   `proposed_bid_status=not_emitted_operator_preview`.
 
@@ -654,8 +661,8 @@ Operational notes:
   switches and `90 / 90` abstentions. It is not a default switch, DT/LAVA
   promotion, or market-execution permission.
 - `v13_dt_lava_promoted_training` intentionally returns blocked roadmap
-  evidence while explicit DAM publication receipts/source-readiness gates are
-  blocked.
+  evidence while explicit OREE DAM/IDM source/publication evidence for preview
+  and source-readiness gates are blocked.
 - This endpoint does not change the default strategy selected by
   `GET /dashboard/operator-recommendation`; V2+ remains teacher, comparator,
   and fallback until a future strict LP/oracle promotion gate passes.
@@ -663,9 +670,9 @@ Operational notes:
 ### `GET /dashboard/academic-mvp-readiness`
 
 Returns the materialized credentialless academic MVP readiness packet as a
-read-only dashboard/thesis artifact. This endpoint is for showing that the DAM
-operator preview and DT/LAVA prototype evidence gates have passed without OREE
-or SCMO credentials.
+read-only dashboard/thesis artifact. This endpoint is for showing that the
+DAM/IDM hourly recommendation preview and DT/LAVA prototype evidence gates have
+passed without OREE or SCMO credentials.
 
 Current expected packet state:
 
@@ -686,7 +693,7 @@ Current expected packet state:
   the sibling validation artifact also requires an
   `offline_challenger_packet_validation` gate.
 - `gate_passport`: single API/thesis gate map. It marks the operator preview,
-  non-submittable DAM bid preview, LAVA NPZ CI smoke, the separate LAVA NPZ
+  non-submittable DAM/IDM hourly preview rows, LAVA NPZ CI smoke, the separate LAVA NPZ
   packet-validation gate, V13-gated teacher contract, offline challenger
   non-promotion evidence, prototype evidence scorecard, and no-market-execution
   safety as passed. It also marks market-submission receipts as
@@ -700,7 +707,7 @@ Current expected packet state:
   `passed_non_promotion_evidence`, and full schedule-level DFL as
   `future_work_not_started`.
 - `prototype_evidence_scorecard`: compact thesis/dashboard scorecard derived
-  from the same packet sections. It exposes DAM bid-preview row count, LAVA NPZ
+  from the same packet sections. It exposes DAM/IDM hourly preview row count, LAVA NPZ
   validation status, V13-gated teacher row counts with `0` permitted model
   training rows, strict/V2+/behavior-cloning control coverage, deterministic
   safety projection, and the fixed non-execution flags. The same fields are
@@ -714,7 +721,7 @@ Current expected packet state:
   `market_availability_claim=false`,
   `research_shadow_not_promotable=true`, and
   `promotable_v13_permitted_training_rows=0`; promotion remains blocked by
-  missing explicit DAM publication receipts. Its `evaluation_metrics` report
+  missing explicit OREE DAM/IDM source/publication evidence for preview. Its `evaluation_metrics` report
   regret and value metrics for the DT shadow selection, strict LP/oracle
   reference, V2+ teacher/comparator/fallback, and behavior-cloning baseline;
   `accuracy_secondary` stays secondary evidence. Its forecast-family coverage

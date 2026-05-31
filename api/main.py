@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import cache
 import json
 import math
@@ -12,11 +12,10 @@ from typing import Any
 import dagster as dg
 from fastapi import FastAPI, HTTPException
 import polars as pl
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from smart_arbitrage.assets.bronze.market_weather import (
 	WeatherLocation,
-	build_synthetic_market_price_history,
 	build_weather_forecast_window,
 	build_weather_asset_run_config,
 	enrich_market_price_history_with_weather,
@@ -25,6 +24,7 @@ from smart_arbitrage.assets.bronze.market_weather import (
 	resolve_weather_location_for_tenant,
 )
 from smart_arbitrage.assets.gold.baseline_solver import (
+	BaselineSolverConfig,
 	DEFAULT_PRICE_COLUMN,
 	DEFAULT_TIMESTAMP_COLUMN,
 	LEVEL1_INTERVAL_MINUTES,
@@ -98,9 +98,6 @@ OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID = "schedule_value_learner_v2_plus"
 OFFLINE_V2_PLUS_MEAN_REGRET_UAH = 174.77
 OFFLINE_V2_PLUS_WIN_RATE = 1.0
 OFFLINE_V2_PLUS_LABEL = "Offline V2+ schedule/value learner"
-OFFLINE_V2_PLUS_PREVIEW_SPREAD_SCALE = 1.1
-OFFLINE_V2_PLUS_PREVIEW_RANK_DELTA_UAH_MWH = 120.0
-OFFLINE_V2_PLUS_PREVIEW_EXTREMA_COUNT = 3
 
 
 app = FastAPI(
@@ -133,18 +130,34 @@ FUTURE_STACK_FORECAST_MODEL_NAMES: tuple[str, ...] = (
 	"tft_official_v0",
 	"nbeatsx_silver_v0",
 	"tft_silver_v0",
+	"nbeatsx_official_idm_v0",
+	"tft_official_idm_v0",
 )
 OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS: tuple[str, ...] = (
 	"nbeatsx_official_v0",
 	"tft_official_v0",
 )
+IDM_OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS: tuple[str, ...] = (
+	"nbeatsx_official_idm_v0",
+	"tft_official_idm_v0",
+)
 FUTURE_STACK_DAM_PRICE_CAP_MIN_UAH_MWH = 10.0
 FUTURE_STACK_DAM_PRICE_CAP_MAX_UAH_MWH = 15_000.0
 OPERATOR_MARKET_SCOPE = "dam_hourly_planning_preview"
+OPERATOR_IDM_MARKET_SCOPE = "idm_hourly_planning_preview"
+OPERATOR_MARKET_SCOPES: dict[str, str] = {
+	"DAM": OPERATOR_MARKET_SCOPE,
+	"IDM": OPERATOR_IDM_MARKET_SCOPE,
+}
 OPERATOR_READ_MODEL_BOUNDARY = "operator_preview_no_market_submission"
 OPERATOR_MARKET_GATE_STATUS = "not_evaluated_preview_only"
 OPERATOR_BID_ELIGIBILITY_STATUS = "not_applicable_no_proposed_bid"
 OPERATOR_PROPOSED_BID_STATUS = "not_emitted_operator_preview"
+OFFICIAL_OREE_DAM_REQUIRED_DETAIL = (
+	"Official observed OREE DAM rows are required for dashboard price context; "
+	"materialize market_price_observations with market_venue=DAM, "
+	"source_kind=observed, and OREE source metadata. synthetic fallback is disabled."
+)
 V13_ACQUISITION_PACKET_JSON_ENV = "SMART_ARBITRAGE_V13_ACQUISITION_PACKET_JSON"
 V13_ACQUISITION_PACKET_JSON_DEFAULT = (
 	Path("data")
@@ -496,6 +509,7 @@ class BaselineLpPreviewResponse(BaseModel):
 	market_venue: str
 	market_scope: str
 	interval_minutes: int
+	target_delivery_date: date | None = None
 	anchor_timestamp: datetime
 	forecast_generated_at: datetime | None
 	target_delivery_window_start: datetime | None
@@ -1002,11 +1016,45 @@ class OperatorV13ReadinessResponse(BaseModel):
 	source_packet_path: str | None
 
 
+class OperatorForecastScenarioCandidateResponse(BaseModel):
+	candidate_id: str
+	model_name: str
+	schedule_family: str
+	rank: int
+	advisor_decision: str
+	score_source: str
+	decision_value_uah: float
+	regret_to_best_uah: float
+	total_throughput_mwh: float
+	gatekeeper_status: str
+	selected_for_operator_preview: bool
+	market_execution_enabled: bool
+	market_order_payload_emitted: bool
+
+
+class OperatorDecisionAdvisorResponse(BaseModel):
+	advisor_source_id: str
+	advisor_status: str
+	candidate_decision: str
+	selected_candidate_id: str | None
+	selected_schedule_family: str | None
+	reason: str
+	evidence_layers: list[str]
+	comparison_metrics: dict[str, float]
+	forecast_scenario_candidates: list[OperatorForecastScenarioCandidateResponse] = Field(default_factory=list)
+	market_execution_enabled: bool
+	market_order_payload_emitted: bool
+	promotion_gate_passed: bool
+	dt_lava_ready: bool
+
+
 class OperatorRecommendationResponse(BaseModel):
 	tenant_id: str
 	market_scope: str
 	market_venue: str
 	interval_minutes: int
+	target_delivery_date: date | None = None
+	price_context_status: str
 	anchor_timestamp: datetime
 	forecast_generated_at: datetime | None
 	target_delivery_window_start: datetime | None
@@ -1034,6 +1082,7 @@ class OperatorRecommendationResponse(BaseModel):
 	available_strategies: list[OperatorStrategyOptionResponse]
 	forecast_model_series: list[FutureForecastSeriesResponse]
 	value_gap_series: list[OperatorValueGapPointResponse]
+	decision_advisor: OperatorDecisionAdvisorResponse
 	load_forecast: list[OperatorLoadForecastPointResponse]
 	soc_projection: list[OperatorSocProjectionPointResponse]
 	recommendation_schedule: list[BaselineRecommendationPointResponse]
@@ -1187,6 +1236,19 @@ class OperatorSocResolution:
 	warnings: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class OfficialDamPriceContext:
+	market_venue: str
+	target_delivery_date: date
+	price_history: pl.DataFrame
+	delivery_forecast: list[BaselineForecastPoint]
+	anchor_timestamp: datetime
+	price_context_status: str = "official_published"
+	forecast_model_name: str | None = None
+	forecast_generated_at: datetime | None = None
+	forecast_context_row_count: int = 0
+
+
 @cache
 def _mvp_asset_index() -> dict[str, Any]:
 	from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
@@ -1230,26 +1292,17 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 	)
 	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
 	battery_metrics = battery_defaults.metrics
-	starting_soc_fraction = battery_defaults.initial_soc_fraction
-	price_history = _build_tenant_aware_price_history(resolved_location)
-	anchor_timestamp = _resolve_baseline_anchor(price_history)
-	historical_prices = _historical_prices_for_anchor(price_history, anchor_timestamp)
+	price_context = _build_official_oree_dam_price_context()
+	price_history = price_context.price_history
 	weather_frame = _build_signal_preview_weather_frame(
 		price_history=price_history,
 		resolved_location=resolved_location,
 	)
 	weather_bias_model = _calibrate_weather_bias_model(
-		historical_prices=historical_prices,
+		historical_prices=price_history,
 		weather_frame=weather_frame,
 	)
-	solver = HourlyDamBaselineSolver()
-	solve_result = solver.solve_next_dispatch(
-		historical_prices,
-		battery_metrics=battery_metrics,
-		current_soc_fraction=starting_soc_fraction,
-		anchor_timestamp=anchor_timestamp,
-	)
-	forecast_points = solve_result.forecast[::3][:6] or solve_result.forecast[:6]
+	forecast_points = price_context.delivery_forecast[::3][:6] or price_context.delivery_forecast[:6]
 	labels = [point.forecast_timestamp.strftime("%H:%M") for point in forecast_points]
 	label_timestamps = [point.forecast_timestamp for point in forecast_points]
 	market_price = [round(point.predicted_price_uah_mwh, 2) for point in forecast_points]
@@ -1258,7 +1311,7 @@ def _build_signal_preview(*, tenant_id: str, location_config_path: str | None) -
 		weather_frame=weather_frame,
 	)
 	weather_sources = [
-		str(weather_rows_by_timestamp.get(point.forecast_timestamp, {}).get("source", "SYNTHETIC"))
+		str(weather_rows_by_timestamp.get(point.forecast_timestamp, {}).get("source", "UNAVAILABLE"))
 		for point in forecast_points
 	]
 	weather_bias = [
@@ -1782,25 +1835,325 @@ def _default_projection_schedule(anchor_timestamp: datetime) -> list[ScheduledPo
 	]
 
 
-def _tenant_price_bias(location: WeatherLocation) -> float:
-	latitude_bias = (location.latitude - 49.0) * 28.0
-	longitude_bias = (location.longitude - 31.0) * 12.0
-	return latitude_bias + longitude_bias
+def _normalize_operator_market_venue(market_venue: str) -> str:
+	normalized = market_venue.strip().upper()
+	if normalized not in OPERATOR_MARKET_SCOPES:
+		raise HTTPException(status_code=400, detail=f"Unsupported market_venue: {market_venue}. Use DAM or IDM.")
+	return normalized
 
 
-def _build_tenant_aware_price_history(location: WeatherLocation) -> pl.DataFrame:
-	price_history = build_synthetic_market_price_history(history_hours=15 * 24, forecast_hours=24)
-	price_bias = _tenant_price_bias(location)
-	return price_history.with_columns(
-		(
-			pl.col(DEFAULT_PRICE_COLUMN)
-			+ pl.lit(price_bias)
-			+ pl.when(pl.col(DEFAULT_TIMESTAMP_COLUMN).dt.hour().is_between(18, 21, closed="both"))
-			.then(140.0)
-			.when(pl.col(DEFAULT_TIMESTAMP_COLUMN).dt.hour().is_between(0, 5, closed="both"))
-			.then(-90.0)
-			.otherwise(0.0)
-		).alias(DEFAULT_PRICE_COLUMN)
+def _build_official_oree_dam_price_context() -> OfficialDamPriceContext:
+	return _build_official_oree_price_context(market_venue=LEVEL1_MARKET_VENUE)
+
+
+def _build_official_oree_price_context(
+	*,
+	market_venue: str,
+	target_delivery_date: date | None = None,
+	selected_strategy_id: str = "strict_similar_day",
+) -> OfficialDamPriceContext:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	price_frame = get_market_data_store().list_market_price_frame(
+		market_venue=resolved_market_venue,
+		source_kind="observed",
+	)
+	price_history = _official_oree_price_frame(
+		price_frame,
+		market_venue=resolved_market_venue,
+		allow_missing=target_delivery_date is not None,
+	)
+	delivery_frame: pl.DataFrame | None = None
+	if target_delivery_date is not None and price_history.height:
+		delivery_frame = _official_oree_delivery_frame_for_date(
+			price_history,
+			target_delivery_date=target_delivery_date,
+		)
+	if target_delivery_date is None:
+		delivery_frame = _latest_complete_official_oree_delivery_frame(
+			price_history,
+			market_venue=resolved_market_venue,
+		)
+	if delivery_frame is None:
+		if target_delivery_date is None:
+			_raise_official_oree_required(market_venue=resolved_market_venue)
+		assert target_delivery_date is not None
+		return _build_pre_publication_forecast_price_context(
+			market_venue=resolved_market_venue,
+			target_delivery_date=target_delivery_date,
+			selected_strategy_id=selected_strategy_id,
+		)
+	delivery_rows = list(delivery_frame.sort(DEFAULT_TIMESTAMP_COLUMN).iter_rows(named=True))
+	first_delivery_timestamp = _datetime_row_value(
+		delivery_rows[0][DEFAULT_TIMESTAMP_COLUMN],
+		field_name=DEFAULT_TIMESTAMP_COLUMN,
+	)
+	return OfficialDamPriceContext(
+		market_venue=resolved_market_venue,
+		target_delivery_date=first_delivery_timestamp.date(),
+		price_history=price_history,
+		delivery_forecast=[
+			BaselineForecastPoint(
+				forecast_timestamp=_datetime_row_value(row[DEFAULT_TIMESTAMP_COLUMN], field_name=DEFAULT_TIMESTAMP_COLUMN),
+				source_timestamp=_datetime_row_value(row[DEFAULT_TIMESTAMP_COLUMN], field_name=DEFAULT_TIMESTAMP_COLUMN),
+				predicted_price_uah_mwh=float(row[DEFAULT_PRICE_COLUMN]),
+			)
+			for row in delivery_rows
+		],
+		anchor_timestamp=first_delivery_timestamp - timedelta(hours=1),
+		forecast_context_row_count=len(delivery_rows),
+	)
+
+
+def _official_oree_dam_price_frame(price_frame: pl.DataFrame) -> pl.DataFrame:
+	return _official_oree_price_frame(price_frame, market_venue=LEVEL1_MARKET_VENUE)
+
+
+def _official_oree_price_frame(
+	price_frame: pl.DataFrame,
+	*,
+	market_venue: str,
+	allow_missing: bool = False,
+) -> pl.DataFrame:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	required_columns = {
+		DEFAULT_TIMESTAMP_COLUMN,
+		DEFAULT_PRICE_COLUMN,
+		"source",
+		"source_kind",
+		"source_url",
+		"market_venue",
+	}
+	if price_frame.height == 0:
+		if allow_missing:
+			return pl.DataFrame()
+		_raise_official_oree_required(market_venue=resolved_market_venue)
+	missing_columns = required_columns.difference(price_frame.columns)
+	if missing_columns:
+		_raise_official_oree_required(
+			market_venue=resolved_market_venue,
+			extra_detail=f"Missing required columns: {', '.join(sorted(missing_columns))}.",
+		)
+
+	rows: list[dict[str, Any]] = []
+	for row in price_frame.iter_rows(named=True):
+		source_kind = str(row.get("source_kind", "")).strip().lower()
+		row_market_venue = str(row.get("market_venue", "")).strip().upper()
+		source_text = f"{row.get('source', '')} {row.get('source_url', '')}".strip().lower()
+		if source_kind != "observed" or row_market_venue != resolved_market_venue:
+			continue
+		if "oree" not in source_text or "synthetic" in source_text or "demo" in source_text:
+			continue
+		timestamp = _datetime_row_value(row[DEFAULT_TIMESTAMP_COLUMN], field_name=DEFAULT_TIMESTAMP_COLUMN)
+		try:
+			price_uah_mwh = float(row[DEFAULT_PRICE_COLUMN])
+		except (TypeError, ValueError) as error:
+			raise HTTPException(status_code=503, detail=_official_oree_required_detail(resolved_market_venue)) from error
+		rows.append(
+			{
+				DEFAULT_TIMESTAMP_COLUMN: timestamp,
+				DEFAULT_PRICE_COLUMN: price_uah_mwh,
+				"source": str(row.get("source", "")),
+				"source_kind": source_kind,
+				"source_url": str(row.get("source_url", "")),
+				"market_venue": row_market_venue,
+			}
+		)
+
+	if not rows:
+		if allow_missing:
+			return pl.DataFrame()
+		_raise_official_oree_required(market_venue=resolved_market_venue)
+
+	return (
+		pl.DataFrame(rows)
+		.unique(subset=[DEFAULT_TIMESTAMP_COLUMN], keep="last")
+		.sort(DEFAULT_TIMESTAMP_COLUMN)
+	)
+
+
+def _official_oree_delivery_frame_for_date(
+	price_history: pl.DataFrame,
+	*,
+	target_delivery_date: date,
+) -> pl.DataFrame | None:
+	rows_by_hour: dict[int, dict[str, Any]] = {}
+	for row in price_history.sort(DEFAULT_TIMESTAMP_COLUMN).iter_rows(named=True):
+		timestamp = _datetime_row_value(row[DEFAULT_TIMESTAMP_COLUMN], field_name=DEFAULT_TIMESTAMP_COLUMN)
+		if timestamp.date() != target_delivery_date:
+			continue
+		if timestamp.minute != 0 or timestamp.second != 0 or timestamp.microsecond != 0:
+			continue
+		rows_by_hour[timestamp.hour] = row
+	if not all(hour in rows_by_hour for hour in range(24)):
+		return None
+	return pl.DataFrame([rows_by_hour[hour] for hour in range(24)])
+
+
+def _latest_complete_official_oree_delivery_frame(
+	price_history: pl.DataFrame,
+	*,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+) -> pl.DataFrame:
+	rows_by_date: dict[date, dict[int, dict[str, Any]]] = {}
+	for row in price_history.sort(DEFAULT_TIMESTAMP_COLUMN).iter_rows(named=True):
+		timestamp = _datetime_row_value(row[DEFAULT_TIMESTAMP_COLUMN], field_name=DEFAULT_TIMESTAMP_COLUMN)
+		if timestamp.minute != 0 or timestamp.second != 0 or timestamp.microsecond != 0:
+			continue
+		rows_by_date.setdefault(timestamp.date(), {})[timestamp.hour] = row
+	complete_delivery_dates = [
+		delivery_date
+		for delivery_date, rows_by_hour in rows_by_date.items()
+		if all(hour in rows_by_hour for hour in range(24))
+	]
+	if not complete_delivery_dates:
+		_raise_official_oree_required(
+			market_venue=market_venue,
+			extra_detail=f"Need one complete 24-hour official {market_venue} delivery row.",
+		)
+	delivery_date = max(complete_delivery_dates)
+	return pl.DataFrame([rows_by_date[delivery_date][hour] for hour in range(24)])
+
+
+def _pre_publication_forecast_model_order(
+	*,
+	market_venue: str,
+	selected_strategy_id: str,
+) -> tuple[str, ...]:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	default_model_order = (
+		IDM_OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS
+		if resolved_market_venue == "IDM"
+		else OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS
+	)
+	if selected_strategy_id not in default_model_order:
+		return default_model_order
+	return (selected_strategy_id, *[model_name for model_name in default_model_order if model_name != selected_strategy_id])
+
+
+def _forecast_delivery_frame_for_date(
+	forecast_frame: pl.DataFrame,
+	*,
+	target_delivery_date: date,
+) -> pl.DataFrame | None:
+	if forecast_frame.height == 0:
+		return None
+	rows_by_hour: dict[int, dict[str, Any]] = {}
+	for row in forecast_frame.sort("forecast_timestamp").iter_rows(named=True):
+		timestamp = _datetime_row_value(row["forecast_timestamp"], field_name="forecast_timestamp")
+		if timestamp.date() != target_delivery_date:
+			continue
+		if timestamp.minute != 0 or timestamp.second != 0 or timestamp.microsecond != 0:
+			continue
+		rows_by_hour[timestamp.hour] = row
+	if not all(hour in rows_by_hour for hour in range(24)):
+		return None
+	return pl.DataFrame([rows_by_hour[hour] for hour in range(24)])
+
+
+def _build_pre_publication_forecast_price_context(
+	*,
+	market_venue: str,
+	target_delivery_date: date,
+	selected_strategy_id: str,
+) -> OfficialDamPriceContext:
+	price_contexts = _complete_pre_publication_forecast_price_contexts(
+		market_venue=market_venue,
+		target_delivery_date=target_delivery_date,
+		selected_strategy_id=selected_strategy_id,
+	)
+	if price_contexts:
+		return price_contexts[0]
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	raise HTTPException(
+		status_code=503,
+		detail=(
+			f"Official OREE {resolved_market_venue} row is not published for "
+			f"target_delivery_date={target_delivery_date.isoformat()}; pre-publication forecast rows are "
+			"required from NBEATSx/TFT forecast store. synthetic fallback is disabled."
+		),
+	)
+
+
+def _complete_pre_publication_forecast_price_contexts(
+	*,
+	market_venue: str,
+	target_delivery_date: date,
+	selected_strategy_id: str,
+) -> list[OfficialDamPriceContext]:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	model_order = _pre_publication_forecast_model_order(
+		market_venue=resolved_market_venue,
+		selected_strategy_id=selected_strategy_id,
+	)
+	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
+		model_names=model_order,
+		limit_per_model=168,
+	)
+	price_contexts: list[OfficialDamPriceContext] = []
+	for model_name in model_order:
+		model_frame = forecast_frame.filter(pl.col("model_name") == model_name)
+		delivery_frame = _forecast_delivery_frame_for_date(
+			model_frame,
+			target_delivery_date=target_delivery_date,
+		)
+		if delivery_frame is None:
+			continue
+		delivery_rows = list(delivery_frame.sort("forecast_timestamp").iter_rows(named=True))
+		first_delivery_timestamp = _datetime_row_value(
+			delivery_rows[0]["forecast_timestamp"],
+			field_name="forecast_timestamp",
+		)
+		generated_values = [
+			_datetime_row_value(row["generated_at"], field_name="generated_at")
+			for row in delivery_rows
+			if row.get("generated_at") is not None
+		]
+		forecast_generated_at = max(generated_values) if generated_values else None
+		price_contexts.append(
+			OfficialDamPriceContext(
+				market_venue=resolved_market_venue,
+				target_delivery_date=target_delivery_date,
+				price_history=pl.DataFrame(),
+				delivery_forecast=[
+					BaselineForecastPoint(
+						forecast_timestamp=_datetime_row_value(
+							row["forecast_timestamp"],
+							field_name="forecast_timestamp",
+						),
+						source_timestamp=forecast_generated_at
+						or _datetime_row_value(row["forecast_timestamp"], field_name="forecast_timestamp"),
+						predicted_price_uah_mwh=float(row["predicted_price_uah_mwh"]),
+					)
+					for row in delivery_rows
+				],
+				anchor_timestamp=first_delivery_timestamp - timedelta(hours=1),
+				price_context_status="pre_publication_forecast",
+				forecast_model_name=model_name,
+				forecast_generated_at=forecast_generated_at,
+				forecast_context_row_count=len(delivery_rows),
+			)
+		)
+	return price_contexts
+
+
+def _raise_official_oree_dam_required(extra_detail: str | None = None) -> None:
+	_raise_official_oree_required(market_venue=LEVEL1_MARKET_VENUE, extra_detail=extra_detail)
+
+
+def _raise_official_oree_required(*, market_venue: str, extra_detail: str | None = None) -> None:
+	detail = _official_oree_required_detail(market_venue)
+	if extra_detail:
+		detail = f"{detail} {extra_detail}"
+	raise HTTPException(status_code=503, detail=detail)
+
+
+def _official_oree_required_detail(market_venue: str) -> str:
+	if market_venue == LEVEL1_MARKET_VENUE:
+		return OFFICIAL_OREE_DAM_REQUIRED_DETAIL
+	return (
+		f"Official observed OREE {market_venue} rows are required for dashboard price context; "
+		f"materialize market_price_observations with market_venue={market_venue}, "
+		"source_kind=observed, and OREE source metadata. synthetic fallback is disabled."
 	)
 
 
@@ -1857,6 +2210,8 @@ def _bid_preview_side_and_action(net_power_mw: float) -> tuple[str, str]:
 
 def _to_bid_recommendation_preview(
 	recommendation_schedule: list[BaselineRecommendationPointResponse],
+	*,
+	market_venue: str = LEVEL1_MARKET_VENUE,
 ) -> list[BidRecommendationPreviewPointResponse]:
 	preview_points: list[BidRecommendationPreviewPointResponse] = []
 	for point in recommendation_schedule:
@@ -1865,7 +2220,7 @@ def _to_bid_recommendation_preview(
 			BidRecommendationPreviewPointResponse(
 				step_index=point.step_index,
 				interval_start=point.interval_start,
-				market_venue=LEVEL1_MARKET_VENUE,
+				market_venue=market_venue,
 				side=side,
 				operator_action=operator_action,
 				quantity_mw=abs(point.recommended_net_power_mw),
@@ -1891,7 +2246,11 @@ def _to_baseline_lp_preview_response(
 	solve_result: BaselineSolveResult,
 	projected_state: ProjectedBatteryStateResponse,
 	read_model_anchor_timestamp: datetime | None = None,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	target_delivery_date: date | None = None,
+	forecast_generated_at: datetime | None = None,
 ) -> BaselineLpPreviewResponse:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
 	total_gross_market_value_uah = sum(point.gross_market_value_uah for point in solve_result.schedule)
 	total_degradation_penalty_uah = sum(point.degradation_penalty_uah for point in solve_result.schedule)
 	total_net_value_uah = sum(point.net_objective_value_uah for point in solve_result.schedule)
@@ -1920,11 +2279,12 @@ def _to_baseline_lp_preview_response(
 	]
 	return BaselineLpPreviewResponse(
 		tenant_id=tenant_id,
-		market_venue=LEVEL1_MARKET_VENUE,
-		market_scope=OPERATOR_MARKET_SCOPE,
+		market_venue=resolved_market_venue,
+		market_scope=OPERATOR_MARKET_SCOPES[resolved_market_venue],
 		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		target_delivery_date=target_delivery_date,
 		anchor_timestamp=response_anchor_timestamp,
-		forecast_generated_at=None,
+		forecast_generated_at=forecast_generated_at,
 		target_delivery_window_start=target_delivery_window_start,
 		target_delivery_window_end=target_delivery_window_end,
 		market_execution_enabled=False,
@@ -1945,7 +2305,10 @@ def _to_baseline_lp_preview_response(
 			for point in solve_result.forecast
 		],
 		recommendation_schedule=recommendation_schedule,
-		bid_recommendation_preview=_to_bid_recommendation_preview(recommendation_schedule),
+		bid_recommendation_preview=_to_bid_recommendation_preview(
+			recommendation_schedule,
+			market_venue=resolved_market_venue,
+		),
 		projected_state=projected_state,
 		economics=BaselinePreviewEconomicsResponse(
 			total_gross_market_value_uah=total_gross_market_value_uah,
@@ -3912,7 +4275,9 @@ def _operator_strategy_options(
 	*,
 	tenant_id: str,
 	v13_readiness: OperatorV13ReadinessResponse,
+	market_venue: str = LEVEL1_MARKET_VENUE,
 ) -> list[OperatorStrategyOptionResponse]:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
 	benchmark_frame = get_strategy_evaluation_store().latest_real_data_benchmark_frame(tenant_id=tenant_id)
 	metrics_by_model = _operator_strategy_metrics_by_model(benchmark_frame)
 	forecast_store_cap_counts = _available_forecast_store_model_cap_counts()
@@ -3922,11 +4287,17 @@ def _operator_strategy_options(
 	)
 	policy_ready = _decision_policy_preview_is_ready(policy_preview_frame)
 	dt_enabled = policy_ready and v13_readiness.dt_lava_ready and not v13_readiness.market_execution_enabled
+	default_label = "Official OREE DAM row LP" if resolved_market_venue == "DAM" else "Official OREE IDM row hourly LP"
+	default_reason = (
+		"official OREE published DAM row routed through deterministic LP preview"
+		if resolved_market_venue == "DAM"
+		else "official OREE published IDM row routed through deterministic hourly LP preview"
+	)
 	options = [
 		_operator_strategy_option(
 			strategy_id="strict_similar_day",
-			label="Strict similar-day control",
-			reason="control baseline",
+			label=default_label,
+			reason=default_reason,
 			metrics_by_model=metrics_by_model,
 		),
 		OperatorStrategyOptionResponse(
@@ -3934,8 +4305,8 @@ def _operator_strategy_options(
 			label=OFFLINE_V2_PLUS_LABEL,
 			enabled=True,
 			reason=(
-				"frozen Offline Strategy Promotion comparator; preview uses a deterministic "
-				"V2+ read-model adapter and remains market-execution disabled"
+				"frozen Offline Strategy Promotion comparator evidence; official OREE DAM row "
+				"remains the operator price source and market execution stays disabled"
 			),
 			mean_regret_uah=OFFLINE_V2_PLUS_MEAN_REGRET_UAH,
 			win_rate=OFFLINE_V2_PLUS_WIN_RATE,
@@ -3986,6 +4357,29 @@ def _operator_strategy_options(
 			win_rate=1.0 if dt_enabled else None,
 		),
 	]
+	if resolved_market_venue == "IDM":
+		options.extend(
+			[
+				OperatorStrategyOptionResponse(
+					strategy_id="nbeatsx_official_idm_v0",
+					label="Official IDM NBEATSx",
+					enabled=True,
+					reason=(
+						"IDM NBEATSx scenario/evidence slot; official OREE IDM row remains "
+						"the hourly preview price source"
+					),
+				),
+				OperatorStrategyOptionResponse(
+					strategy_id="tft_official_idm_v0",
+					label="Official IDM TFT",
+					enabled=True,
+					reason=(
+						"IDM TFT scenario/evidence slot; official OREE IDM row remains "
+						"the hourly preview price source"
+					),
+				),
+			]
+		)
 	if not metrics_by_model:
 		options[0] = options[0].model_copy(update={"enabled": True, "mean_regret_uah": None, "win_rate": None})
 	return options
@@ -4054,7 +4448,7 @@ def _operator_forecast_store_strategy_option(
 		strategy_id=strategy_id,
 		label=label,
 		enabled=True,
-		reason="materialized forecast-store rows; values inside DAM caps",
+		reason="materialized forecast-store rows for evidence; official OREE DAM row remains the schedule price source",
 	)
 
 
@@ -4121,8 +4515,8 @@ def _select_operator_strategy(
 		return requested_option.strategy_id, f"manual strategy: {requested_option.label}", ()
 	return (
 		"strict_similar_day",
-		"fallback to strict similar-day control",
-		(f"Requested strategy {requested_strategy_id} is unavailable; using strict similar-day control.",),
+		"fallback to official OREE DAM row LP preview",
+		(f"Requested strategy {requested_strategy_id} is unavailable; using official OREE DAM row LP preview.",),
 	)
 
 
@@ -4171,24 +4565,64 @@ def _to_operator_soc_projection_points(
 	return points
 
 
-def _operator_forecast_source(strategy_id: str) -> str:
+def _operator_forecast_source(
+	strategy_id: str,
+	*,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	price_context: OfficialDamPriceContext | None = None,
+) -> str:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	if price_context is not None and price_context.price_context_status == "pre_publication_forecast":
+		model_name = price_context.forecast_model_name or strategy_id
+		if model_name.startswith("nbeatsx"):
+			model_family = "NBEATSx"
+		elif model_name.startswith("tft"):
+			model_family = "TFT"
+		else:
+			model_family = "Forecast-store"
+		return (
+			f"{model_family} pre-publication forecast scenario routed through deterministic LP preview; "
+			f"official OREE {resolved_market_venue} row is not published for the target delivery date"
+		)
+	if resolved_market_venue == "IDM":
+		if strategy_id == "nbeatsx_official_idm_v0":
+			return (
+				"Official OREE published IDM delivery row routed through hourly LP preview; "
+				"NBEATSx remains forecast/scenario evidence"
+			)
+		if strategy_id == "tft_official_idm_v0":
+			return (
+				"Official OREE published IDM delivery row routed through hourly LP preview; "
+				"TFT remains forecast/scenario evidence"
+			)
+		if strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
+			return (
+				"Official OREE published IDM delivery row routed through hourly LP preview; "
+				"V2+ remains historical decision evidence"
+			)
+		if strategy_id == "decision_transformer":
+			return (
+				"Official OREE published IDM delivery row routed through hourly LP preview; "
+				"Decision Transformer remains offline advisor evidence"
+			)
+		return "Official OREE published IDM delivery row routed through hourly LP preview"
 	if strategy_id == "strict_similar_day":
-		return "HourlyDamBaselineSolver / strict similar-day baseline"
+		return "Official OREE published DAM delivery row routed through Level 1 LP preview"
 	if strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
-		return "Ukrainian-only V2+ Offline Strategy Promotion evidence with read-model preview adapter"
+		return "Official OREE published DAM delivery row routed through Level 1 LP preview; V2+ remains research evidence"
 	if strategy_id == "nbeatsx_official_v0":
-		return "official NBEATSx forecast candidate routed through Level 1 LP preview"
+		return "Official OREE published DAM delivery row routed through Level 1 LP preview; NBEATSx remains forecast evidence"
 	if strategy_id == "tft_official_v0":
-		return "official TFT forecast candidate routed through Level 1 LP preview"
+		return "Official OREE published DAM delivery row routed through Level 1 LP preview; TFT remains forecast evidence"
 	if strategy_id == "tft_silver_v0":
-		return "compact TFT forecast candidate"
+		return "Official OREE published DAM delivery row routed through Level 1 LP preview; compact TFT remains benchmark evidence"
 	if strategy_id == "nbeatsx_silver_v0":
-		return "compact NBEATSx forecast candidate"
+		return "Official OREE published DAM delivery row routed through Level 1 LP preview; compact NBEATSx remains benchmark evidence"
 	if strategy_id in {CALIBRATED_VALUE_AWARE_ENSEMBLE_STRATEGY_KIND, RISK_ADJUSTED_VALUE_GATE_STRATEGY_KIND}:
-		return f"{strategy_id} / pre-anchor value-aware selector"
+		return f"Official OREE published DAM delivery row routed through Level 1 LP preview; {strategy_id} remains selector evidence"
 	if strategy_id == "decision_transformer":
-		return "NBEATSx/TFT forecast state plus offline Decision Transformer preview policy"
-	return "strict similar-day control"
+		return "Official OREE published DAM delivery row routed through Level 1 LP preview; Decision Transformer remains offline evidence"
+	return "Official OREE published DAM delivery row routed through Level 1 LP preview"
 
 
 def _decision_policy_preview_is_ready(policy_preview_frame: pl.DataFrame) -> bool:
@@ -4211,9 +4645,41 @@ def _operator_policy_context(
 	*,
 	selected_strategy_id: str,
 	policy_preview_frame: pl.DataFrame,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	price_context: OfficialDamPriceContext | None = None,
 ) -> dict[str, Any]:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	if price_context is not None and price_context.price_context_status == "pre_publication_forecast":
+		row_count = price_context.forecast_context_row_count
+		return {
+			"policy_mode": "pre_publication_forecast_lp_preview",
+			"selected_policy_id": selected_strategy_id,
+			"policy_explanation": (
+				f"Official OREE {resolved_market_venue} prices are not published for the target delivery date, "
+				"so the visible schedule is generated by deterministic LP over a NBEATSx/TFT forecast "
+				"scenario. V2+/AFL/DFL provide decision-value evidence and DT ranks or abstains as a "
+				"non-execution advisor."
+			),
+			"policy_readiness": "forecast_context_ready_preview_only",
+			"forecast_context_source": price_context.forecast_model_name or "forecast_store",
+			"forecast_context_row_count": row_count,
+			"forecast_context_coverage_ratio": row_count / 24 if row_count else 0.0,
+			"forecast_context_warning": None,
+		}
+	if resolved_market_venue == "IDM":
+		return {
+			"policy_mode": "official_oree_idm_row_lp_preview",
+			"selected_policy_id": selected_strategy_id,
+			"policy_explanation": (
+				"Official OREE published IDM prices are available for this hourly preview, so "
+				"the visible schedule is generated by deterministic LP. NBEATSx/TFT provide "
+				"scenario evidence, AFL/DFL provide decision-value evidence, and DT ranks or "
+				"abstains as a non-execution advisor."
+			),
+			"policy_readiness": "official_idm_row_ready_hourly_preview",
+			**_operator_policy_context_not_applicable(),
+		}
 	if selected_strategy_id == "decision_transformer" and _decision_policy_preview_is_ready(policy_preview_frame):
-		first_row = policy_preview_frame.sort(["created_at", "interval_start"]).row(0, named=True)
 		forecast_context_summary = _policy_forecast_context_summary(
 			[
 				row
@@ -4223,13 +4689,14 @@ def _operator_policy_context(
 			]
 		)
 		return {
-			"policy_mode": "decision_transformer_preview",
-			"selected_policy_id": str(first_row["policy_run_id"]),
+			"policy_mode": "official_oree_dam_row_lp_preview",
+			"selected_policy_id": selected_strategy_id,
 			"policy_explanation": (
-				"Offline Decision Transformer preview selected. Raw actions are projected through "
-				"deterministic battery SOC/power constraints and remain market-execution disabled."
+				"Official OREE published DAM prices are already available, so the operator schedule "
+				"uses those prices through deterministic LP. Decision Transformer rows are shown only "
+				"as offline evidence; market execution stays disabled."
 			),
-			"policy_readiness": str(first_row["readiness_status"]),
+			"policy_readiness": "official_dam_row_ready",
 			"forecast_context_source": forecast_context_summary["source"],
 			"forecast_context_row_count": forecast_context_summary["row_count"],
 			"forecast_context_coverage_ratio": forecast_context_summary["coverage_ratio"],
@@ -4237,36 +4704,37 @@ def _operator_policy_context(
 		}
 	if selected_strategy_id in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
 		return {
-			"policy_mode": "forecast_to_lp_preview",
+			"policy_mode": "official_oree_dam_row_lp_preview",
 			"selected_policy_id": selected_strategy_id,
 			"policy_explanation": (
-				"Official NBEATSx/TFT forecast rows are routed through the same deterministic "
-				"Level 1 LP and battery projection. This is still operator preview, not market execution."
+				"Official OREE published DAM prices are already available, so the operator schedule "
+				"uses those prices through deterministic LP. Official NBEATSx/TFT rows remain "
+				"forecast evidence only; no market order payload is emitted."
 			),
-			"policy_readiness": "forecast_to_lp_ready",
+			"policy_readiness": "official_dam_row_ready",
 			**_operator_policy_context_not_applicable(),
 		}
 	if selected_strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
 		return {
-			"policy_mode": "offline_strategy_promotion_preview",
+			"policy_mode": "official_oree_dam_row_lp_preview",
 			"selected_policy_id": OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
 			"policy_explanation": (
-				"Frozen Ukrainian-only V2+ Offline Strategy Promotion evidence is selected for "
-				"operator review. The visible schedule uses a deterministic V2+ read-model "
-				"preview adapter over current price context, then the same battery feasibility "
-				"LP; market execution stays disabled."
+				"Official OREE published DAM prices are already available, so the operator schedule "
+				"uses those prices through deterministic LP. Frozen Ukrainian-only V2+ evidence stays "
+				"as offline/research context; market execution stays disabled."
 			),
-			"policy_readiness": "offline_strategy_promotion_ready",
+			"policy_readiness": "official_dam_row_ready",
 			**_operator_policy_context_not_applicable(),
 		}
 	return {
-		"policy_mode": "baseline_lp_preview",
+		"policy_mode": "official_oree_dam_row_lp_preview",
 		"selected_policy_id": selected_strategy_id,
 		"policy_explanation": (
-			"Current operator schedule is generated by the Level 1 baseline LP preview. "
-			"NBEATSx/TFT and DT surfaces are shown as forecast/policy evidence when materialized."
+			"Current operator schedule is generated from the official OREE published DAM row "
+			"through the deterministic Level 1 LP preview. NBEATSx/TFT and DT surfaces are shown "
+			"only as evidence when materialized."
 		),
-		"policy_readiness": "lp_control_ready",
+		"policy_readiness": "official_dam_row_ready",
 		**_operator_policy_context_not_applicable(),
 	}
 
@@ -4278,6 +4746,216 @@ def _operator_policy_context_not_applicable() -> dict[str, Any]:
 		"forecast_context_coverage_ratio": 0.0,
 		"forecast_context_warning": None,
 	}
+
+
+def _operator_decision_advisor(
+	*,
+	tenant_id: str,
+	market_venue: str,
+	price_context: OfficialDamPriceContext | None = None,
+	battery_metrics: BatteryPhysicalMetrics | None = None,
+	starting_soc_fraction: float | None = None,
+) -> OperatorDecisionAdvisorResponse:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	if price_context is not None and price_context.price_context_status == "pre_publication_forecast":
+		forecast_candidates = _operator_pre_publication_forecast_scenario_candidates(
+			market_venue=resolved_market_venue,
+			price_context=price_context,
+			battery_metrics=battery_metrics,
+			starting_soc_fraction=starting_soc_fraction,
+		)
+		best_candidate = forecast_candidates[0] if forecast_candidates else None
+		selected_candidate = next(
+			(candidate for candidate in forecast_candidates if candidate.selected_for_operator_preview),
+			None,
+		)
+		comparison_metrics: dict[str, float] = {
+			"forecast_scenario_candidate_count": float(len(forecast_candidates)),
+			"dt_ranked_candidate_count": float(len(forecast_candidates)),
+		}
+		if best_candidate is not None:
+			comparison_metrics["best_decision_value_uah"] = best_candidate.decision_value_uah
+		if selected_candidate is not None:
+			comparison_metrics["selected_decision_value_uah"] = selected_candidate.decision_value_uah
+			comparison_metrics["selected_regret_to_best_uah"] = selected_candidate.regret_to_best_uah
+		return OperatorDecisionAdvisorResponse(
+			advisor_source_id="pre_publication_policy_advisor",
+			advisor_status="forecast_scenario_ranked_abstained"
+			if forecast_candidates
+			else "forecast_scenario_research_only",
+			candidate_decision="abstain_to_forecast_lp",
+			selected_candidate_id=None,
+			selected_schedule_family=None,
+			reason=(
+				f"Official OREE {resolved_market_venue} row is not published for the target delivery date; "
+				"NBEATSx/TFT forecast scenarios feed deterministic LP candidates, V2+/AFL/DFL score "
+				"decision value/regret, and DT remains a non-execution rank/abstain layer."
+			),
+			evidence_layers=["NBEATSx", "TFT", "V2+", "AFL", "DFL", "DT"],
+			comparison_metrics=comparison_metrics,
+			forecast_scenario_candidates=forecast_candidates,
+			market_execution_enabled=False,
+			market_order_payload_emitted=False,
+			promotion_gate_passed=False,
+			dt_lava_ready=False,
+		)
+	if resolved_market_venue == "IDM":
+		return OperatorDecisionAdvisorResponse(
+			advisor_source_id="idm_policy_advisor",
+			advisor_status="hourly_preview_research_only",
+			candidate_decision="abstain_to_lp",
+			selected_candidate_id=None,
+			selected_schedule_family=None,
+			reason=(
+				"IDM v1 is wired as source-backed hourly planning preview. NBEATSx/TFT/AFL/DFL/DT "
+				"are the evidence and ranking layers, but no IDM DT candidate is promoted yet; "
+				"the deterministic LP schedule remains active."
+			),
+			evidence_layers=["NBEATSx", "TFT", "V2+", "AFL", "DFL", "DT"],
+			comparison_metrics={},
+			market_execution_enabled=False,
+			market_order_payload_emitted=False,
+			promotion_gate_passed=False,
+			dt_lava_ready=False,
+		)
+	try:
+		shadow_preview = _operator_regret_aware_selector_shadow_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id="dt_v2_plus_safe_switch_selector_shadow",
+			label="DT V2+ safe-switch selector",
+			status="safe_switch_evidence_not_promoted",
+			selected_rows_path=DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SELECTED_ROWS_CSV_PATH,
+			teacher_rows_path=DT_V2_PLUS_SAFE_SWITCH_SELECTOR_TEACHER_ROWS_CSV_PATH,
+			summary_path=DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SUMMARY_JSON_PATH,
+			promotion_summary_path=DT_V2_PLUS_PROMOTION_EVIDENCE_SUMMARY_JSON_PATH,
+		)
+	except HTTPException:
+		return OperatorDecisionAdvisorResponse(
+			advisor_source_id="dt_v2_plus_safe_switch_selector_shadow",
+			advisor_status="blocked_missing_or_invalid_advisor_artifacts",
+			candidate_decision="abstain_to_lp",
+			selected_candidate_id=None,
+			selected_schedule_family=None,
+			reason="DT advisor artifacts are unavailable or invalid; deterministic official-row LP remains active.",
+			evidence_layers=["NBEATSx", "TFT", "V2+", "AFL", "DFL", "DT"],
+			comparison_metrics={},
+			market_execution_enabled=False,
+			market_order_payload_emitted=False,
+			promotion_gate_passed=False,
+			dt_lava_ready=False,
+		)
+	return OperatorDecisionAdvisorResponse(
+		advisor_source_id=shadow_preview.preview_source_id,
+		advisor_status=shadow_preview.preview_status,
+		candidate_decision="abstain_to_lp"
+		if shadow_preview.selected_schedule_family == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID
+		else "review_candidate",
+		selected_candidate_id=shadow_preview.selected_candidate_id,
+		selected_schedule_family=shadow_preview.selected_schedule_family,
+		reason="DT/V2+ safe-switch advisor is research-only; official-row LP remains the active operator schedule.",
+		evidence_layers=["NBEATSx", "TFT", "V2+", "AFL", "DFL", "DT"],
+		comparison_metrics=shadow_preview.comparison_metrics,
+		market_execution_enabled=False,
+		market_order_payload_emitted=False,
+		promotion_gate_passed=False,
+		dt_lava_ready=False,
+	)
+
+
+def _operator_pre_publication_forecast_scenario_candidates(
+	*,
+	market_venue: str,
+	price_context: OfficialDamPriceContext,
+	battery_metrics: BatteryPhysicalMetrics | None,
+	starting_soc_fraction: float | None,
+) -> list[OperatorForecastScenarioCandidateResponse]:
+	if battery_metrics is None or starting_soc_fraction is None or price_context.forecast_model_name is None:
+		return []
+	price_contexts = _complete_pre_publication_forecast_price_contexts(
+		market_venue=market_venue,
+		target_delivery_date=price_context.target_delivery_date,
+		selected_strategy_id=price_context.forecast_model_name,
+	)
+	solver = HourlyDamBaselineSolver(BaselineSolverConfig(market_venue=market_venue))
+	scored_candidates: list[tuple[OfficialDamPriceContext, BaselineSolveResult, float, float, str]] = []
+	for candidate_context in price_contexts:
+		try:
+			solve_result = solver.solve_dispatch_from_forecast(
+				forecast=candidate_context.delivery_forecast,
+				battery_metrics=battery_metrics,
+				current_soc_fraction=starting_soc_fraction,
+				anchor_timestamp=candidate_context.anchor_timestamp,
+				commit_reason=f"pre_publication_{market_venue.lower()}_forecast_scenario_lp_candidate",
+			)
+		except (RuntimeError, ValueError):
+			continue
+		decision_value_uah = sum(point.net_objective_value_uah for point in solve_result.schedule)
+		total_throughput_mwh = sum(point.throughput_mwh for point in solve_result.schedule)
+		gatekeeper_status = _operator_schedule_gatekeeper_status(
+			solve_result=solve_result,
+			battery_metrics=battery_metrics,
+		)
+		if gatekeeper_status != "passed_lp_physical_constraints_preview_only":
+			continue
+		scored_candidates.append(
+			(
+				candidate_context,
+				solve_result,
+				decision_value_uah,
+				total_throughput_mwh,
+				gatekeeper_status,
+			)
+		)
+	if not scored_candidates:
+		return []
+	best_decision_value_uah = max(candidate[2] for candidate in scored_candidates)
+	ranked_candidates = sorted(scored_candidates, key=lambda candidate: candidate[2], reverse=True)
+	return [
+		OperatorForecastScenarioCandidateResponse(
+			candidate_id=(
+				f"forecast_scenario:{market_venue}:"
+				f"{candidate_context.target_delivery_date.isoformat()}:{candidate_context.forecast_model_name}"
+			),
+			model_name=candidate_context.forecast_model_name or "forecast_store",
+			schedule_family="deterministic_lp_forecast_scenario",
+			rank=rank,
+			advisor_decision="ranked_abstain_preview_only",
+			score_source="lp_schedule_value_regret_adapter_for_v2_plus_dfl_dt_advisor",
+			decision_value_uah=decision_value_uah,
+			regret_to_best_uah=best_decision_value_uah - decision_value_uah,
+			total_throughput_mwh=total_throughput_mwh,
+			gatekeeper_status=gatekeeper_status,
+			selected_for_operator_preview=candidate_context.forecast_model_name == price_context.forecast_model_name,
+			market_execution_enabled=False,
+			market_order_payload_emitted=False,
+		)
+		for rank, (
+			candidate_context,
+			_solve_result,
+			decision_value_uah,
+			total_throughput_mwh,
+			gatekeeper_status,
+		) in enumerate(ranked_candidates, start=1)
+	]
+
+
+def _operator_schedule_gatekeeper_status(
+	*,
+	solve_result: BaselineSolveResult,
+	battery_metrics: BatteryPhysicalMetrics,
+) -> str:
+	max_power_mw = battery_metrics.max_power_mw
+	min_soc_mwh = battery_metrics.soc_min_fraction * battery_metrics.capacity_mwh
+	max_soc_mwh = battery_metrics.soc_max_fraction * battery_metrics.capacity_mwh
+	epsilon = 1e-6
+	for point in solve_result.schedule:
+		if point.charge_mw > max_power_mw + epsilon or point.discharge_mw > max_power_mw + epsilon:
+			return "blocked_physical_power_constraint_violation"
+		if point.soc_before_mwh < min_soc_mwh - epsilon or point.soc_after_mwh < min_soc_mwh - epsilon:
+			return "blocked_physical_soc_constraint_violation"
+		if point.soc_before_mwh > max_soc_mwh + epsilon or point.soc_after_mwh > max_soc_mwh + epsilon:
+			return "blocked_physical_soc_constraint_violation"
+	return "passed_lp_physical_constraints_preview_only"
 
 
 def _operator_forecast_model_series(
@@ -4306,61 +4984,7 @@ def _operator_forecast_model_series(
 		]
 		if series:
 			return series
-	return _fallback_forecast_model_series(solve_result)
-
-
-def _fallback_forecast_model_series(solve_result: BaselineSolveResult) -> list[FutureForecastSeriesResponse]:
-	forecast_points = list(solve_result.forecast[:24])
-	nbeatsx_points = [
-		FutureForecastPointResponse(
-			step_index=index,
-			interval_start=point.forecast_timestamp,
-			forecast_price_uah_mwh=point.predicted_price_uah_mwh,
-			actual_price_uah_mwh=None,
-			p10_price_uah_mwh=None,
-			p50_price_uah_mwh=point.predicted_price_uah_mwh,
-			p90_price_uah_mwh=None,
-			net_power_mw=None,
-			value_gap_uah=None,
-			price_cap_status=_future_forecast_price_cap_status(point.predicted_price_uah_mwh),
-		)
-		for index, point in enumerate(forecast_points)
-	]
-	tft_points = [
-		FutureForecastPointResponse(
-			step_index=index,
-			interval_start=point.forecast_timestamp,
-			forecast_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
-			actual_price_uah_mwh=None,
-			p10_price_uah_mwh=point.predicted_price_uah_mwh * 0.93,
-			p50_price_uah_mwh=point.predicted_price_uah_mwh * 1.01,
-			p90_price_uah_mwh=point.predicted_price_uah_mwh * 1.09,
-			net_power_mw=None,
-			value_gap_uah=None,
-			price_cap_status=_future_forecast_price_cap_status(point.predicted_price_uah_mwh * 1.01),
-		)
-		for index, point in enumerate(forecast_points)
-	]
-	return [
-		_future_forecast_series_response(
-			model_name="nbeatsx_silver_v0",
-			model_family="NBEATSx",
-			source_status="compact_fallback_from_lp_preview",
-			uncertainty_kind="trend_exogenous_proxy",
-			mean_regret_uah=None,
-			win_rate=None,
-			points=nbeatsx_points,
-		),
-		_future_forecast_series_response(
-			model_name="tft_silver_v0",
-			model_family="TFT",
-			source_status="compact_fallback_from_lp_preview",
-			uncertainty_kind="quantile_proxy",
-			mean_regret_uah=None,
-			win_rate=None,
-			points=tft_points,
-		),
-	]
+	return []
 
 
 def _operator_value_gap_series(baseline_preview: BaselineLpPreviewResponse) -> list[OperatorValueGapPointResponse]:
@@ -4399,7 +5023,7 @@ def _operator_shadow_preview_sources() -> list[ShadowPreviewSourceOptionResponse
 			is_default_strategy=True,
 			is_promoted_strategy=True,
 			market_execution_enabled=False,
-			reason="Uses the existing gate-passed operator recommendation; V2+ remains default/fallback.",
+			reason="Uses the existing gate-passed operator recommendation; V2+ remains confirmed offline comparator/evidence.",
 		),
 		ShadowPreviewSourceOptionResponse(
 			preview_source_id="dt_shadow",
@@ -4479,7 +5103,7 @@ def _operator_shadow_preview_sources() -> list[ShadowPreviewSourceOptionResponse
 			market_execution_enabled=False,
 			reason=(
 				"Corrected residual DT/V2+ shadow recovered 3 of 15 safe-switch opportunities "
-				"with 4 / 90 non-V2+ switches, zero tail-risk losses, and V2+ fallback/default preserved."
+				"with 4 / 90 non-V2+ switches, zero tail-risk losses, and V2+ comparator boundary preserved."
 			),
 		),
 		ShadowPreviewSourceOptionResponse(
@@ -4580,7 +5204,7 @@ def _operator_shadow_recommendation_preview_response(
 			status="blocked_source_readiness_roadmap",
 			warning=(
 				"V13/DT/LAVA remains blocked by source-readiness, "
-				"explicit DAM receipt, and promotion gates."
+				"explicit OREE DAM/IDM source/publication evidence, and promotion gates."
 			),
 		)
 	elif preview_source in {"poland_tft_shadow", "dfl_diagnostics"}:
@@ -4676,7 +5300,7 @@ def _blocked_shadow_recommendation_preview_response(
 			"Preview only",
 			"Not promoted",
 			"No market execution",
-			"V2+ remains default/fallback",
+			"V2+ remains confirmed offline comparator/evidence",
 		],
 		readiness_warnings=[warning],
 		artifact_paths={},
@@ -4770,11 +5394,11 @@ def _operator_dt_shadow_recommendation_preview_response(
 			"Not promoted",
 			"Preview only",
 			"No market execution",
-			"V2+ remains default/fallback",
+			"V2+ remains confirmed offline comparator/evidence",
 		],
 		readiness_warnings=[
 			f"{label} is diagnostic evidence only and is rendered even when it loses to V2+ or strict/oracle.",
-			"V13 explicit DAM publication receipts remain blocked for market-submission claims.",
+			"V13 explicit OREE DAM/IDM source/publication evidence remains blocked for market-submission claims.",
 		],
 		artifact_paths={
 			"selected_preview_json": str(packet_path),
@@ -4899,7 +5523,7 @@ def _operator_regret_aware_selector_shadow_preview_response(
 			"Not promoted",
 			"Preview only",
 			"No market execution",
-			"V2+ remains default/fallback",
+			"V2+ remains confirmed offline comparator/evidence",
 			"Conservative V2+ abstention/safe-switch guard",
 		],
 		readiness_warnings=_regret_aware_selector_readiness_warnings(
@@ -5008,7 +5632,7 @@ def _operator_artifact_shadow_recommendation_preview_response(
 			status,
 			"Preview only",
 			"No market execution",
-			"V2+ remains default/fallback",
+			"V2+ remains confirmed offline comparator/evidence",
 		],
 		readiness_warnings=[
 			f"{label} is manually selectable diagnostic evidence and is not the production default.",
@@ -5267,12 +5891,12 @@ def _regret_aware_selector_readiness_warnings(
 			f"Recovered {recovered} of {observed} safe-switch opportunities with {label}; "
 			f"{switches} / 90 non-V2+ switches and {losses} tail-risk losses.",
 			f"Mean regret improved by {improvement:.2f}% versus V2+ in offline final-holdout evidence, "
-			"but promotion_gate_passed=false and V2+ remains default/fallback.",
-			"V13 explicit DAM publication receipts remain blocked for market-submission claims.",
+			"but promotion_gate_passed=false and V2+ remains confirmed offline comparator/evidence.",
+			"V13 explicit OREE DAM/IDM source/publication evidence remains blocked for market-submission claims.",
 		]
 	return [
 		"Selector abstained to V2+ on the current packet; this is diagnostic evidence, not a default switch.",
-		"V13 explicit DAM publication receipts remain blocked for market-submission claims.",
+		"V13 explicit OREE DAM/IDM source/publication evidence remains blocked for market-submission claims.",
 	]
 
 
@@ -5691,7 +6315,7 @@ def _optional_int(value: Any) -> int | None:
 
 
 def _operator_forecast_generated_at(selected_strategy_id: str) -> datetime | None:
-	if selected_strategy_id not in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
+	if selected_strategy_id not in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS + IDM_OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
 		return None
 	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
 		model_names=[selected_strategy_id],
@@ -5707,51 +6331,59 @@ def _build_operator_recommendation_response(
 	*,
 	tenant_id: str,
 	strategy_id: str,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	target_delivery_date: date | None = None,
 ) -> OperatorRecommendationResponse:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
 	resolved_location = _resolve_requested_location(tenant_id=tenant_id, location_config_path=None)
 	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
 	battery_metrics = battery_defaults.metrics
-	price_history = _build_tenant_aware_price_history(resolved_location)
-	anchor_timestamp = _resolve_baseline_anchor(price_history)
-	delivery_anchor_timestamp = _operator_dam_delivery_anchor(anchor_timestamp)
-	historical_prices = _historical_prices_for_anchor(
-		price_history,
-		anchor_timestamp,
-		required_through_timestamp=delivery_anchor_timestamp,
+	v13_readiness = _operator_v13_readiness()
+	available_strategies = _operator_strategy_options(
+		tenant_id=tenant_id,
+		v13_readiness=v13_readiness,
+		market_venue=resolved_market_venue,
 	)
+	selected_strategy_id, selection_reason, selection_warnings = _select_operator_strategy(
+		requested_strategy_id=strategy_id,
+		options=available_strategies,
+	)
+	price_context = _build_official_oree_price_context(
+		market_venue=resolved_market_venue,
+		target_delivery_date=target_delivery_date,
+		selected_strategy_id=selected_strategy_id,
+	)
+	anchor_timestamp = price_context.anchor_timestamp
+	delivery_anchor_timestamp = price_context.anchor_timestamp
 	load_frame = _operator_load_frame(tenant_id=tenant_id, anchor_timestamp=delivery_anchor_timestamp)
 	soc_resolution = _resolve_operator_soc(
 		tenant_id=tenant_id,
 		battery_defaults=battery_defaults,
 		load_frame=load_frame,
 	)
-	v13_readiness = _operator_v13_readiness()
-	available_strategies = _operator_strategy_options(
-		tenant_id=tenant_id,
-		v13_readiness=v13_readiness,
-	)
-	selected_strategy_id, selection_reason, selection_warnings = _select_operator_strategy(
-		requested_strategy_id=strategy_id,
-		options=available_strategies,
-	)
-	solver = HourlyDamBaselineSolver()
+	solver = HourlyDamBaselineSolver(BaselineSolverConfig(market_venue=resolved_market_venue))
 	try:
-		baseline_solve_result = solver.solve_next_dispatch(
-			historical_prices,
+		solve_result = solver.solve_dispatch_from_forecast(
+			forecast=price_context.delivery_forecast,
 			battery_metrics=battery_metrics,
 			current_soc_fraction=soc_resolution.starting_soc_fraction,
 			anchor_timestamp=delivery_anchor_timestamp,
-		)
-		solve_result = _operator_solve_result_for_strategy(
-			selected_strategy_id=selected_strategy_id,
-			solver=solver,
-			baseline_solve_result=baseline_solve_result,
-			battery_metrics=battery_metrics,
-			current_soc_fraction=soc_resolution.starting_soc_fraction,
-			anchor_timestamp=delivery_anchor_timestamp,
+			commit_reason=f"official_oree_{resolved_market_venue.lower()}_published_row_lp_preview",
 		)
 	except (RuntimeError, ValueError) as error:
 		raise HTTPException(status_code=500, detail=str(error)) from error
+	selected_gatekeeper_status = _operator_schedule_gatekeeper_status(
+		solve_result=solve_result,
+		battery_metrics=battery_metrics,
+	)
+	if selected_gatekeeper_status != "passed_lp_physical_constraints_preview_only":
+		raise HTTPException(
+			status_code=503,
+			detail=(
+				"Operator recommendation candidate was blocked by the deterministic schedule gatekeeper: "
+				f"{selected_gatekeeper_status}. market execution remains disabled."
+			),
+		)
 
 	projected_simulation = simulate_projected_battery_state(
 		schedule=_to_scheduled_power_points(solve_result),
@@ -5773,6 +6405,9 @@ def _build_operator_recommendation_response(
 		solve_result=solve_result,
 		projected_state=projected_state,
 		read_model_anchor_timestamp=anchor_timestamp,
+		market_venue=resolved_market_venue,
+		target_delivery_date=price_context.target_delivery_date,
+		forecast_generated_at=price_context.forecast_generated_at,
 	)
 	daily_value_uah = baseline_preview.economics.total_net_value_uah
 	readiness_warnings = [*soc_resolution.warnings, *selection_warnings]
@@ -5783,17 +6418,22 @@ def _build_operator_recommendation_response(
 	policy_context = _operator_policy_context(
 		selected_strategy_id=selected_strategy_id,
 		policy_preview_frame=policy_preview_frame,
+		market_venue=resolved_market_venue,
+		price_context=price_context,
 	)
 	target_delivery_window_start, target_delivery_window_end = _operator_target_delivery_window(
 		baseline_preview.recommendation_schedule,
 	)
 	return OperatorRecommendationResponse(
 		tenant_id=tenant_id,
-		market_scope=OPERATOR_MARKET_SCOPE,
-		market_venue=LEVEL1_MARKET_VENUE,
+		market_scope=OPERATOR_MARKET_SCOPES[resolved_market_venue],
+		market_venue=resolved_market_venue,
 		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		target_delivery_date=price_context.target_delivery_date,
+		price_context_status=price_context.price_context_status,
 		anchor_timestamp=anchor_timestamp,
-		forecast_generated_at=_operator_forecast_generated_at(selected_strategy_id),
+		forecast_generated_at=price_context.forecast_generated_at
+		or _operator_forecast_generated_at(selected_strategy_id),
 		target_delivery_window_start=target_delivery_window_start,
 		target_delivery_window_end=target_delivery_window_end,
 		market_execution_enabled=False,
@@ -5804,7 +6444,11 @@ def _build_operator_recommendation_response(
 		v13_readiness=v13_readiness,
 		selected_strategy_id=selected_strategy_id,
 		selection_reason=selection_reason,
-		forecast_source=_operator_forecast_source(selected_strategy_id),
+		forecast_source=_operator_forecast_source(
+			selected_strategy_id,
+			market_venue=resolved_market_venue,
+			price_context=price_context,
+		),
 		soc_source=soc_resolution.source,
 		review_required=soc_resolution.review_required or bool(selection_warnings),
 		readiness_warnings=list(readiness_warnings),
@@ -5822,6 +6466,13 @@ def _build_operator_recommendation_response(
 			solve_result=solve_result,
 		),
 		value_gap_series=_operator_value_gap_series(baseline_preview),
+		decision_advisor=_operator_decision_advisor(
+			tenant_id=tenant_id,
+			market_venue=resolved_market_venue,
+			price_context=price_context,
+			battery_metrics=battery_metrics,
+			starting_soc_fraction=soc_resolution.starting_soc_fraction,
+		),
 		load_forecast=_to_operator_load_forecast_points(load_frame),
 		soc_projection=_to_operator_soc_projection_points(
 			load_frame=load_frame,
@@ -5836,102 +6487,6 @@ def _build_operator_recommendation_response(
 		value_vs_hold_uah=daily_value_uah,
 		economics=baseline_preview.economics,
 	)
-
-
-def _operator_solve_result_for_strategy(
-	*,
-	selected_strategy_id: str,
-	solver: HourlyDamBaselineSolver,
-	baseline_solve_result: BaselineSolveResult,
-	battery_metrics: BatteryPhysicalMetrics,
-	current_soc_fraction: float,
-	anchor_timestamp: datetime,
-) -> BaselineSolveResult:
-	if selected_strategy_id == OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID:
-		return solver.solve_dispatch_from_forecast(
-			forecast=_operator_v2_plus_preview_forecast(baseline_solve_result.forecast),
-			battery_metrics=battery_metrics,
-			current_soc_fraction=current_soc_fraction,
-			anchor_timestamp=anchor_timestamp,
-			commit_reason="schedule_value_learner_v2_plus_read_model_preview",
-		)
-
-	forecast = _operator_forecast_store_forecast(
-		model_name=selected_strategy_id,
-		anchor_timestamp=anchor_timestamp,
-	)
-	if not forecast:
-		return baseline_solve_result
-	return solver.solve_dispatch_from_forecast(
-		forecast=forecast,
-		battery_metrics=battery_metrics,
-		current_soc_fraction=current_soc_fraction,
-		anchor_timestamp=anchor_timestamp,
-		commit_reason=f"{selected_strategy_id}_forecast_to_lp_preview",
-	)
-
-
-def _operator_v2_plus_preview_forecast(
-	baseline_forecast: list[BaselineForecastPoint],
-) -> list[BaselineForecastPoint]:
-	"""Build a demo/read-model V2+ preview forecast without claiming live learned dispatch."""
-	if not baseline_forecast:
-		return []
-
-	prices = [point.predicted_price_uah_mwh for point in baseline_forecast]
-	mean_price = sum(prices) / len(prices)
-	ordered_indices = sorted(range(len(prices)), key=lambda index: prices[index])
-	extrema_count = min(OFFLINE_V2_PLUS_PREVIEW_EXTREMA_COUNT, max(1, len(ordered_indices) // 4))
-	low_indices = set(ordered_indices[:extrema_count])
-	high_indices = set(ordered_indices[-extrema_count:])
-	preview_forecast: list[BaselineForecastPoint] = []
-	for index, point in enumerate(baseline_forecast):
-		centered_price = point.predicted_price_uah_mwh - mean_price
-		adjusted_price = mean_price + centered_price * OFFLINE_V2_PLUS_PREVIEW_SPREAD_SCALE
-		if index in high_indices:
-			adjusted_price += OFFLINE_V2_PLUS_PREVIEW_RANK_DELTA_UAH_MWH
-		if index in low_indices:
-			adjusted_price -= OFFLINE_V2_PLUS_PREVIEW_RANK_DELTA_UAH_MWH
-		preview_forecast.append(
-			BaselineForecastPoint(
-				forecast_timestamp=point.forecast_timestamp,
-				source_timestamp=point.source_timestamp,
-				predicted_price_uah_mwh=max(
-					FUTURE_STACK_DAM_PRICE_CAP_MIN_UAH_MWH,
-					min(FUTURE_STACK_DAM_PRICE_CAP_MAX_UAH_MWH, adjusted_price),
-				),
-			)
-		)
-	return preview_forecast
-
-
-def _operator_forecast_store_forecast(
-	*,
-	model_name: str,
-	anchor_timestamp: datetime,
-) -> list[BaselineForecastPoint]:
-	if model_name not in OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS:
-		return []
-	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
-		model_names=[model_name],
-		limit_per_model=24,
-	)
-	if forecast_frame.height == 0:
-		return []
-	points: list[BaselineForecastPoint] = []
-	for row in forecast_frame.sort("forecast_timestamp").iter_rows(named=True):
-		payload = _forecast_store_horizon_payload(row)
-		points.append(
-			BaselineForecastPoint(
-				forecast_timestamp=_datetime_payload_value(
-					payload["interval_start"],
-					field_name="forecast_timestamp",
-				),
-				source_timestamp=anchor_timestamp,
-				predicted_price_uah_mwh=float(payload["forecast_price_uah_mwh"]),
-			)
-		)
-	return points
 
 
 def _to_operator_status_response(record: OperatorStatusRecord) -> OperatorStatusResponse:
@@ -6497,7 +7052,7 @@ def dashboard_simulated_live_trading(
 	summary="Get credentialless academic MVP readiness",
 	description=(
 		"Returns the materialized credentialless academic MVP readiness packet. "
-		"This is a read-only thesis/demo artifact: DAM operator preview and "
+		"This is a read-only thesis/demo artifact: DAM/IDM hourly recommendation preview and "
 		"DT/LAVA prototype gates may pass while market submission, DT training, "
 		"and market execution remain disabled."
 	),
@@ -6519,10 +7074,14 @@ def dashboard_academic_mvp_readiness() -> AcademicMvpReadinessResponse:
 def dashboard_operator_recommendation(
 	tenant_id: str,
 	strategy_id: str = "strict_similar_day",
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	target_delivery_date: date | None = None,
 ) -> OperatorRecommendationResponse:
 	response = _build_operator_recommendation_response(
 		tenant_id=tenant_id,
 		strategy_id=strategy_id,
+		market_venue=market_venue,
+		target_delivery_date=target_delivery_date,
 	)
 	_persist_operator_status(
 		tenant_id=tenant_id,
@@ -6569,7 +7128,10 @@ def dashboard_shadow_recommendation_preview(
 )
 def build_baseline_lp_preview(
 	tenant_id: str,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	target_delivery_date: date | None = None,
 ) -> BaselineLpPreviewResponse:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
 	resolved_location = _resolve_requested_location(tenant_id=tenant_id, location_config_path=None)
 	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
 	battery_metrics = battery_defaults.metrics
@@ -6578,21 +7140,20 @@ def build_baseline_lp_preview(
 		battery_defaults=battery_defaults,
 	)
 	starting_soc_fraction = starting_soc_resolution.starting_soc_fraction
-	price_history = _build_tenant_aware_price_history(resolved_location)
-	anchor_timestamp = _resolve_baseline_anchor(price_history)
-	delivery_anchor_timestamp = _operator_dam_delivery_anchor(anchor_timestamp)
-	historical_prices = _historical_prices_for_anchor(
-		price_history,
-		anchor_timestamp,
-		required_through_timestamp=delivery_anchor_timestamp,
+	price_context = _build_official_oree_price_context(
+		market_venue=resolved_market_venue,
+		target_delivery_date=target_delivery_date,
 	)
-	solver = HourlyDamBaselineSolver()
+	anchor_timestamp = price_context.anchor_timestamp
+	delivery_anchor_timestamp = price_context.anchor_timestamp
+	solver = HourlyDamBaselineSolver(BaselineSolverConfig(market_venue=resolved_market_venue))
 	try:
-		solve_result = solver.solve_next_dispatch(
-			historical_prices,
+		solve_result = solver.solve_dispatch_from_forecast(
+			forecast=price_context.delivery_forecast,
 			battery_metrics=battery_metrics,
 			current_soc_fraction=starting_soc_fraction,
 			anchor_timestamp=delivery_anchor_timestamp,
+			commit_reason=f"official_oree_{resolved_market_venue.lower()}_published_row_lp_preview",
 		)
 	except (RuntimeError, ValueError) as error:
 		raise HTTPException(status_code=500, detail=str(error)) from error
@@ -6617,6 +7178,9 @@ def build_baseline_lp_preview(
 		solve_result=solve_result,
 		projected_state=projected_state,
 		read_model_anchor_timestamp=anchor_timestamp,
+		market_venue=resolved_market_venue,
+		target_delivery_date=price_context.target_delivery_date,
+		forecast_generated_at=price_context.forecast_generated_at,
 	)
 	_persist_operator_status(
 		tenant_id=tenant_id,

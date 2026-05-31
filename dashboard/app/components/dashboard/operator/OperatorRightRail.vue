@@ -49,7 +49,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <aside class="operator-right-rail">
+  <aside
+    class="operator-right-rail"
+    aria-label="Operator controls and readiness"
+  >
     <OperatorMoodPanel
       :chips="moodChips"
       :active-alert-count="activeAlertCount"

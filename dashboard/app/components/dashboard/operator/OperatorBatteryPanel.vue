@@ -120,7 +120,7 @@ const safePowerMode = computed(() => {
       </article>
       <article class="metric-lens-card">
         <div class="metric-lens-card__label-row">
-          <p>First DAM action</p>
+          <p>First preview action</p>
           <UIcon
             class="metric-lens-card__icon"
             name="i-lucide-activity"
@@ -133,8 +133,8 @@ const safePowerMode = computed(() => {
           class="metric-lens-card__tooltip"
           role="tooltip"
         >
-          <span class="metric-lens-card__tooltip-title">DAM delivery-hour preview</span>
-          <span>Formula: preview_power = selected_schedule.recommended_net_power_mw for the first visible DAM action row.</span>
+          <span class="metric-lens-card__tooltip-title">DAM/IDM delivery-hour preview</span>
+          <span>Formula: preview_power = selected_schedule.recommended_net_power_mw for the first visible action row.</span>
           <span>Interpretation: positive power means discharge review, negative means charge review; this is not a dispatch command.</span>
         </span>
       </article>

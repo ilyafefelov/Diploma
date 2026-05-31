@@ -52,7 +52,7 @@ V12 uses the existing Ukrainian-only source paths first:
 It also records hooks for new Ukrainian data acquisition:
 
 - measured tenant load/PV telemetry imports;
-- explicit row-level DAM publication receipts;
+- explicit DAM/IDM source/publication evidence for preview;
 - richer grid/outage/event archive imports.
 
 If these optional sources are absent, V12 marks them as
@@ -95,8 +95,8 @@ and exported `week3_dfl_ua_context_v12_safe_teacher_backfill`.
 - Current Ukrainian context sources were only partially covered
   (`coverage_ratio=0.5933869526362824`) for OREE DAM history, Open-Meteo,
   tenant load/PV proxy, Ukrenergo grid events, and calendar/publication rules.
-- Optional acquisition hooks for measured tenant load/PV, explicit row-level DAM
-  publication receipts, and richer grid/outage archives remained
+- Optional acquisition hooks for measured tenant load/PV, explicit DAM/IDM
+  source/publication evidence for preview, and richer grid/outage archives remained
   `blocked_missing_source`.
 - V12 context rows: `1,825`; ready rows: `0`; decision:
   `blocked_missing_required_sources`.

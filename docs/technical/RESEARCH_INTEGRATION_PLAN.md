@@ -230,7 +230,7 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      weak false positive. The next ML branch should prune those risky families
      before training again. The pruned candidate-library frame keeps V2+ and
      strict fallback rows, removes blocked family profiles, and materialized as
-     `12,520` rows (`1,570` strict fallback, `1,825` V2+ default, `9,125`
+     `12,520` rows (`1,570` strict fallback, `1,825` V2+ comparator rows, `9,125`
      monitored V7 generated candidates). Backfill Ukrainian prior context only
      if that pruned universe is too sparse.
    - The pruned teacher-label rebuild and selector are now materialized. The
@@ -348,8 +348,8 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      `dfl_ua_low_tail_candidate_library_v12_frame`,
      `dfl_ua_low_tail_candidate_v12_strict_rescore_frame`, and
      `dfl_ua_v12_dt_lava_readiness_decision_frame`. The source inventory keeps
-     missing measured tenant load/PV, explicit row-level DAM publication
-     receipts, and richer grid/outage archives as blockers instead of
+     missing measured tenant load/PV, explicit row-level DAM/IDM
+     source/publication evidence for preview, and richer grid/outage archives as blockers instead of
      synthesizing features. Candidate generation is limited to micro V2+/strict
      blends, terminal-SOC-preserving schedules, low-throughput caps, and
      prior-supported +/-1 hour peak/trough alternatives. DT/LAVA remains blocked
@@ -359,7 +359,7 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
    - V12 materialized as blocked evidence
      (`d1712548-a4fa-4eca-955d-183d1c4f258c`). Current Ukrainian context
      sources reached only partial coverage (`0.593`), optional measured-load/PV,
-     explicit DAM-publication receipt, and richer grid/outage hooks remained
+     explicit DAM/IDM source/publication evidence, and richer grid/outage hooks remained
      unavailable, and no new V12 low-tail candidates were generated. The safe
      example counts stayed at `2-7 / 20` in that V12 packet, so
      `dt_lava_ready=false`. This moved the next real ML work from selector
@@ -368,11 +368,12 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      current safe-switch-only packet reports `ready_rows=0/5`,
      `data_acquisition_needed`, max prior safe-switch support `20 / 20`, and
      `market_execution_enabled=false`. The remaining required source-family
-     blocker is explicit row-level OREE DAM publication receipts. The optional
+     blocker is explicit OREE DAM/IDM source/publication evidence for preview. The optional
      `dfl_ua_dam_publication_receipts_overlay_frame` reads
      `oree_dam_publication_receipts_csv_path` and only marks
-     `explicit_dam_publication_receipts` ready when source-backed receipt
-     metadata exists; an empty path preserves the blocked result.
+     `explicit_dam_publication_receipts` ready when source-backed DAM-side
+     publication metadata exists; the broader preview source-readiness claim
+     remains DAM/IDM. An empty path preserves the blocked result.
      `dfl_ua_context_safe_switch_examples_v13_frame` similarly reads
      `ua_context_safe_switch_examples_csv_path` for incremental source-backed
      `train_selection` non-tail-risk material safe-switch examples. The current
@@ -393,7 +394,8 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      It can also attach the config-level acquisition preflight as
      `dfl_ua_context_v13_acquisition_input_preflight.json` and
      `acquisition_input_preflight_summary`; this records missing configured
-     DAM receipt and safe-switch CSV inputs, not model-training permission.
+     source/publication-evidence and safe-switch CSV inputs, not model-training
+     permission.
      It can now attach the sanitized SCMO WS-Security credential preflight via
      `--scmo-ws-security-preflight-json`, copying it as
      `dfl_ua_context_v13_scmo_ws_security_preflight.json` and surfacing
@@ -415,7 +417,7 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      `data\external_sources\v13\safe_switch_examples_v13_combined_lava_backfill_validated.csv`
      with `77` validated incremental rows. This projects every tenant/source
      to `20 / 20` safe-switch examples, but V13 still remains blocked by the
-     missing explicit DAM publication receipt CSV.
+     missing explicit OREE DAM/IDM source/publication evidence for preview.
      The generic OREE DAM receipt validator now rejects non-prior publication
      times and observation/download metadata columns, so OREE PXS observation
      files, Energy Map file metadata, workbook generated timestamps, and HTTP
@@ -440,7 +442,7 @@ Source: https://www.oree.com.ua/index.php/newsctr/n/32160
      Evaluations `Download` envelope for a delivery day. The 2026-05-25 live
      attempt returned the WSDL/security contract again instead of data, so it
      is recorded as `wsdl_response_returned_signed_download_required` and still
-     cannot satisfy explicit DAM publication receipts. A 2026-05-25 sweep over
+     cannot satisfy explicit OREE DAM/IDM source/publication evidence for preview. A 2026-05-25 sweep over
      all WSDL-advertised Evaluations `Download` request message codes (`807`,
      `810`, `831`, `934`, `941`, `951`, `961`) produced the same signed-download
      blocker and no `ISOTEDATA` response. The same probe now supports
@@ -505,7 +507,7 @@ These values should become effective-dated assumptions rather than timeless cons
   - Fixed software payment: `3,837.84 UAH`, without VAT.
   - Notice: https://www.oree.com.ua/index.php/newsctr/n/30795
 
-The current DAM-only MVP is not broken by the balancing cap mismatch, but any IDM/Balancing extension should resolve caps by delivery date.
+The current DAM/IDM hourly preview MVP is not broken by the balancing cap mismatch, but any balancing extension should resolve caps by delivery date.
 
 ## Dashboard Plan Inputs
 

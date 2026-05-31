@@ -47,6 +47,8 @@ defineProps<{
         :key="metric.label"
         class="research-metric"
         :class="`research-metric--${metric.tone}`"
+        role="group"
+        :aria-label="`${metric.label}: ${metric.value}. ${metric.meta}`"
         tabindex="0"
       >
         <span>{{ metric.label }}</span>
@@ -66,6 +68,8 @@ defineProps<{
     <div class="research-diagnostic-grid">
       <article
         class="research-diagnostic-card"
+        role="group"
+        :aria-label="`Forecast diagnosis: ${sensitivity?.row_count ?? 0} rows. ${sensitivity?.source_strategy_kind || 'not materialized'}`"
         tabindex="0"
       >
         <span>Forecast diagnosis</span>
@@ -85,6 +89,8 @@ defineProps<{
         v-for="bucket in sensitivity?.bucket_summary?.slice(0, 3) || []"
         :key="bucket.diagnostic_bucket"
         class="research-diagnostic-card"
+        role="group"
+        :aria-label="`${bucket.diagnostic_bucket}: ${bucket.rows} rows. ${formatUah(bucket.mean_regret_uah)} regret`"
         tabindex="0"
       >
         <span>{{ bucket.diagnostic_bucket }}</span>
@@ -103,6 +109,8 @@ defineProps<{
       <article
         v-if="activeErrorCount > 0"
         class="research-diagnostic-card research-diagnostic-card--warning"
+        role="group"
+        :aria-label="`Read-model gaps: ${activeErrorCount}. See defense route for endpoint details`"
         tabindex="0"
       >
         <span>Read-model gaps</span>
@@ -143,11 +151,11 @@ defineProps<{
   justify-content: center;
   gap: 0.4rem;
   min-height: 2.3rem;
-  border: 1px solid rgba(255, 255, 255, 0.34);
+  border: 1px solid var(--operator-line-subtle);
   border-radius: 0.62rem;
-  background: linear-gradient(180deg, #85ef41, #2b9b18);
+  background: linear-gradient(180deg, var(--operator-success-gradient-top), var(--operator-success-gradient-bottom));
   padding: 0.45rem 0.7rem;
-  color: white;
+  color: var(--operator-control-foreground);
   font-size: 0.74rem;
   font-weight: 900;
   text-decoration: none;
@@ -174,16 +182,16 @@ defineProps<{
   display: grid;
   gap: 0.28rem;
   min-width: 0;
-  border: 1px solid rgba(255, 255, 255, 0.26);
+  border: 1px solid var(--operator-research-card-border);
   border-radius: 0.72rem;
-  background: linear-gradient(180deg, rgba(13, 151, 218, 0.78), rgba(6, 82, 147, 0.78));
+  background: linear-gradient(180deg, var(--operator-research-card-gradient-top), var(--operator-research-card-gradient-bottom));
   padding: 0.65rem;
   overflow: visible;
 }
 
 .research-metric span,
 .research-diagnostic-card span {
-  color: rgba(229, 249, 255, 0.78);
+  color: var(--operator-text-muted);
   font-size: 0.68rem;
   font-weight: 900;
   letter-spacing: 0.08em;
@@ -193,38 +201,38 @@ defineProps<{
 .research-metric strong,
 .research-diagnostic-card strong {
   overflow-wrap: anywhere;
-  color: #b8ff32;
+  color: var(--operator-positive);
   font-size: 1rem;
   line-height: 1.12;
 }
 
 .research-metric small,
 .research-diagnostic-card small {
-  color: rgba(229, 249, 255, 0.82);
+  color: var(--operator-text-body);
   font-size: 0.72rem;
   font-weight: 750;
   line-height: 1.35;
 }
 
 .research-metric--green {
-  background: linear-gradient(180deg, rgba(52, 164, 28, 0.84), rgba(22, 101, 34, 0.84));
+  background: linear-gradient(180deg, var(--operator-tone-green-gradient-top), var(--operator-tone-green-gradient-bottom));
 }
 
 .research-metric--orange,
 .research-diagnostic-card--warning {
-  background: linear-gradient(180deg, rgba(236, 134, 14, 0.86), rgba(166, 74, 5, 0.86));
+  background: linear-gradient(180deg, var(--operator-tone-orange-gradient-top), var(--operator-tone-orange-gradient-bottom));
 }
 
 .research-metric--mint {
-  background: linear-gradient(180deg, rgba(31, 180, 185, 0.82), rgba(13, 105, 132, 0.86));
+  background: linear-gradient(180deg, var(--operator-tone-mint-gradient-top), var(--operator-tone-mint-gradient-bottom));
 }
 
 .research-metric--lime {
-  background: linear-gradient(180deg, rgba(82, 178, 35, 0.82), rgba(36, 111, 28, 0.86));
+  background: linear-gradient(180deg, var(--operator-tone-lime-gradient-top), var(--operator-tone-lime-gradient-bottom));
 }
 
 .research-metric--purple {
-  background: linear-gradient(180deg, rgba(124, 58, 237, 0.84), rgba(76, 29, 149, 0.86));
+  background: linear-gradient(180deg, var(--operator-tone-purple-gradient-top), var(--operator-tone-purple-gradient-bottom));
 }
 
 .research-tooltip {
@@ -235,12 +243,12 @@ defineProps<{
   display: grid;
   width: min(18rem, calc(100vw - 2rem));
   gap: 0.26rem;
-  border: 1px solid rgba(202, 249, 255, 0.9);
+  border: 1px solid var(--operator-tooltip-border);
   border-radius: 0.72rem;
-  background: linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 56, 112, 0.98));
+  background: linear-gradient(180deg, var(--operator-tooltip-gradient-top), var(--operator-tooltip-gradient-bottom));
   padding: 0.62rem 0.7rem;
-  color: rgba(238, 250, 255, 0.92);
-  box-shadow: 0 18px 32px rgba(0, 39, 82, 0.32);
+  color: var(--operator-text-bright);
+  box-shadow: var(--operator-tooltip-shadow);
   opacity: 0;
   pointer-events: none;
   transform: translateY(0.24rem) scale(0.97);
@@ -248,14 +256,14 @@ defineProps<{
 }
 
 .research-tooltip strong {
-  color: #d7ff4f;
+  color: var(--operator-accent);
   font-size: 0.74rem;
   font-weight: 900;
 }
 
 .research-tooltip span,
 .research-tooltip em {
-  color: rgba(238, 250, 255, 0.88);
+  color: var(--operator-text-bright-muted);
   font-size: 0.68rem;
   font-style: normal;
   font-weight: 700;
@@ -263,7 +271,7 @@ defineProps<{
 }
 
 .research-tooltip em {
-  color: #d7ff4f;
+  color: var(--operator-accent);
 }
 
 .research-metric:hover .research-tooltip,

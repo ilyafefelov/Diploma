@@ -5,6 +5,12 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 const serverUtilsPath = fileURLToPath(new URL('../../server/utils/controlPlaneProxy.ts', import.meta.url))
+const operatorRecommendationRoutePath = fileURLToPath(
+  new URL('../../server/api/control-plane/dashboard/operator-recommendation.get.ts', import.meta.url)
+)
+const baselinePreviewRoutePath = fileURLToPath(
+  new URL('../../server/api/control-plane/dashboard/baseline-lp-preview.get.ts', import.meta.url)
+)
 
 const optionalEvidenceRouteUrls = [
   '../../server/api/control-plane/dashboard/real-data-benchmark.get.ts',
@@ -32,6 +38,22 @@ describe('operator optional evidence proxy', () => {
       const route = readFileSync(routePath, 'utf8')
 
       expect(route).toContain('proxyOptionalControlPlane')
+    }
+  })
+
+  it('preserves source-backed blocker details for required market preview routes', () => {
+    const proxyUtils = readFileSync(serverUtilsPath, 'utf8')
+    const operatorRecommendationRoute = readFileSync(operatorRecommendationRoutePath, 'utf8')
+    const baselinePreviewRoute = readFileSync(baselinePreviewRoutePath, 'utf8')
+
+    expect(proxyUtils).toContain('toControlPlaneProxyError')
+    expect(proxyUtils).toContain('controlPlaneErrorMessage')
+    expect(proxyUtils).toContain('data?.detail')
+    expect(proxyUtils).toContain('return statusCode === null || Number.isNaN(statusCode)')
+
+    for (const route of [operatorRecommendationRoute, baselinePreviewRoute]) {
+      expect(route).toContain('proxyControlPlane')
+      expect(route).not.toContain('statusCode: 502')
     }
   })
 })

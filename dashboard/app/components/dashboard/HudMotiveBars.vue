@@ -22,6 +22,8 @@ const toneIcon: Record<string, string> = {
       :key="item.label"
       class="motive-row"
       :class="`motive-row--${item.tone}`"
+      role="group"
+      :aria-label="`${item.label}: ${item.value}% score. ${item.hint}`"
       tabindex="0"
     >
       <div class="motive-row__topline">
@@ -78,14 +80,15 @@ const toneIcon: Record<string, string> = {
 .motive-row:hover,
 .motive-row:focus-visible {
   transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.18);
+  background: color-mix(in oklab, var(--panel-strong) 22%, transparent);
   box-shadow:
-    0 16px 26px rgba(0, 42, 82, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    0 16px 26px color-mix(in oklab, var(--operator-surface) 22%, transparent),
+    inset 0 1px 0 var(--operator-card-border);
 }
 
 .motive-row:focus-visible {
-  outline: none;
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0.22rem;
 }
 
 .motive-row__topline {
@@ -128,9 +131,9 @@ const toneIcon: Record<string, string> = {
   overflow: hidden;
   height: 0.9rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.05);
+  background: var(--panel-base);
+  border: 2px solid var(--panel-strong);
+  box-shadow: inset 0 1px 4px color-mix(in oklab, var(--ink-strong) 6%, transparent);
 }
 
 .motive-fill {
@@ -145,21 +148,26 @@ const toneIcon: Record<string, string> = {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08));
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--panel-strong) 8%, transparent),
+    color-mix(in oklab, var(--panel-strong) 42%, transparent),
+    color-mix(in oklab, var(--panel-strong) 8%, transparent)
+  );
   transform: translateX(-100%);
   animation: motive-sheen 3.8s ease-in-out infinite;
 }
 
 .motive-fill--blue {
-  background: linear-gradient(90deg, #52b8ff 0%, var(--sims-blue) 100%);
+  background: linear-gradient(90deg, var(--operator-rail-mini-meter-blue-top) 0%, var(--sims-blue) 100%);
 }
 
 .motive-fill--green {
-  background: linear-gradient(90deg, #b6ff6d 0%, var(--plumbob-green) 100%);
+  background: linear-gradient(90deg, var(--operator-rail-mini-meter-green-top) 0%, var(--plumbob-green) 100%);
 }
 
 .motive-fill--orange {
-  background: linear-gradient(90deg, #ffb8d2 0%, var(--accent-berry) 100%);
+  background: linear-gradient(90deg, color-mix(in oklab, var(--accent-berry) 58%, var(--panel-strong)) 0%, var(--accent-berry) 100%);
 }
 
 .motive-row__hint {
@@ -176,12 +184,12 @@ const toneIcon: Record<string, string> = {
   display: grid;
   gap: 0.22rem;
   padding: 0.55rem 0.62rem;
-  border: 1px solid rgba(134, 219, 255, 0.35);
+  border: 1px solid var(--operator-tooltip-border);
   border-radius: 0.72rem;
   background:
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.16), transparent 36%),
-    linear-gradient(180deg, rgba(0, 129, 204, 0.98), rgba(0, 56, 112, 0.98));
-  color: rgba(238, 250, 255, 0.9);
+    radial-gradient(circle at top right, var(--operator-card-accent-wash), transparent 36%),
+    linear-gradient(180deg, var(--operator-tooltip-gradient-top), var(--operator-tooltip-gradient-bottom));
+  color: var(--operator-rail-tooltip-text);
   font-size: 0.68rem;
   line-height: 1.35;
   opacity: 0;
@@ -201,12 +209,12 @@ const toneIcon: Record<string, string> = {
   font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: rgba(215, 255, 79, 0.88);
+  color: var(--operator-accent-soft);
 }
 
 .motive-row__tooltip-body,
 .motive-row__tooltip-formula {
-  color: rgba(238, 250, 255, 0.88);
+  color: var(--operator-rail-tooltip-text-muted);
 }
 
 .motive-row__tooltip-formula {
@@ -221,6 +229,19 @@ const toneIcon: Record<string, string> = {
 
   45%, 55% {
     transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .motive-row,
+  .motive-fill,
+  .motive-row__tooltip {
+    transition: none;
+  }
+
+  .motive-fill::after {
+    animation: none;
+    transform: none;
   }
 }
 </style>
