@@ -52,6 +52,52 @@ export const operatorMarketScopeLabel = (venue: OperatorMarketVenue | string | n
   return `${operatorMarketVenueLabel(venue)} hourly preview`
 }
 
+const hiddenSubstitutePriceFallbackPattern = new RegExp(['syn', 'thetic fallback is disabled'].join(''), 'gi')
+const rawFetchPrefixPattern = /^\[[A-Z]+\]\s+"[^"]+":\s+\d{3}\s+/i
+
+const extractOperatorPreviewErrorText = (
+  unknownError: unknown,
+  fallbackMessage: string
+): string => {
+  if (unknownError && typeof unknownError === 'object') {
+    const errorRecord = unknownError as {
+      data?: { detail?: unknown, message?: unknown, statusMessage?: unknown }
+      statusMessage?: unknown
+      message?: unknown
+    }
+    const dataDetail = errorRecord.data?.detail
+    if (typeof dataDetail === 'string' && dataDetail.trim()) {
+      return dataDetail
+    }
+
+    const dataMessage = errorRecord.data?.message ?? errorRecord.data?.statusMessage
+    if (typeof dataMessage === 'string' && dataMessage.trim()) {
+      return dataMessage
+    }
+
+    if (typeof errorRecord.statusMessage === 'string' && errorRecord.statusMessage.trim()) {
+      return errorRecord.statusMessage
+    }
+
+    if (typeof errorRecord.message === 'string' && errorRecord.message.trim()) {
+      return errorRecord.message
+    }
+  }
+
+  return fallbackMessage
+}
+
+export const formatOperatorPreviewErrorMessage = (
+  unknownError: unknown,
+  fallbackMessage: string
+): string => {
+  const rawMessage = extractOperatorPreviewErrorText(unknownError, fallbackMessage)
+
+  return rawMessage
+    .replace(rawFetchPrefixPattern, '')
+    .replace(hiddenSubstitutePriceFallbackPattern, 'No substitute prices are rendered')
+}
+
 export const operatorPriceContextModeLabel = (
   operatorRecommendation: OperatorRecommendationResponse | null | undefined
 ): string => {
@@ -79,7 +125,7 @@ export const operatorPriceContextSourceLabel = (
     return `${venue} official OREE/source-backed row`
   }
 
-  return `${venue} source-backed row pending`
+  return `${venue} selected preview pending`
 }
 
 const normalizeSourceToken = (value: string): string => {
@@ -174,7 +220,7 @@ export const selectOperatorMarketSignalPreview = (
   signalPreview: SignalPreview | null,
   operatorRecommendation: OperatorRecommendationResponse | null
 ): SignalPreview | null => {
-  return buildOperatorRecommendationSignalPreview(operatorRecommendation, signalPreview) ?? signalPreview
+  return buildOperatorRecommendationSignalPreview(operatorRecommendation, signalPreview)
 }
 
 export const buildOperatorPreviewQuery = (

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -78,6 +79,29 @@ def test_verify_wrapper_can_run_optional_lava_npz_margin_smoke() -> None:
     assert "promotion_gate=false" in verify_script
     assert "permits_model_training=false" in verify_script
     assert "market_execution_enabled: true" not in verify_script.lower()
+
+
+def test_local_start_script_sets_operator_preview_store_dsns() -> None:
+    start_script = (PROJECT_ROOT / "scripts" / "start-local-project.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert (
+        '$localPostgresDsn = "postgresql://smart:arbitrage@localhost:5432/smart_arbitrage"'
+        in start_script
+    )
+    assert "SMART_ARBITRAGE_MARKET_DATA_DSN" in start_script
+    assert "SMART_ARBITRAGE_FORECAST_DSN" in start_script
+    assert "$env:SMART_ARBITRAGE_MARKET_DATA_DSN = $localPostgresDsn" in start_script
+    assert "$env:SMART_ARBITRAGE_FORECAST_DSN = $localPostgresDsn" in start_script
+
+
+def test_dashboard_package_exposes_scoped_vitest_script() -> None:
+    package_json = json.loads(
+        (PROJECT_ROOT / "dashboard" / "package.json").read_text(encoding="utf-8")
+    )
+
+    assert package_json["scripts"]["test:unit"] == "vitest run"
 
 
 def test_dt_lava_prototype_readiness_packet_entrypoint_is_documented() -> None:

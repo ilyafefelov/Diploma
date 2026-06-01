@@ -48,6 +48,10 @@ def test_in_memory_forecast_store_reads_latest_run_per_model() -> None:
     )
 
     assert latest_frame.height == 4
+    assert {"market_venue", "training_cutoff", "feature_cutoff", "horizon_start", "horizon_end"}.issubset(
+        set(latest_frame.columns)
+    )
+    assert set(latest_frame.select("market_venue").to_series().to_list()) == {"DAM"}
     nbeatsx_values = (
         latest_frame
         .filter(pl.col("model_name") == "nbeatsx_official_v0")

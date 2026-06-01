@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from functools import cache
 import json
 import os
@@ -15,10 +15,27 @@ _LATEST_FORECAST_OBSERVATION_SCHEMA: dict[str, Any] = {
     "run_id": pl.Utf8,
     "model_name": pl.Utf8,
     "generated_at": pl.Datetime,
+    "market_venue": pl.Utf8,
+    "training_cutoff": pl.Datetime,
+    "feature_cutoff": pl.Datetime,
+    "horizon_start": pl.Datetime,
+    "horizon_end": pl.Datetime,
+    "source_window_start": pl.Datetime,
+    "source_window_end": pl.Datetime,
     "forecast_timestamp": pl.Datetime,
     "predicted_price_uah_mwh": pl.Float64,
     "prediction_payload": pl.Utf8,
 }
+_FORECAST_RUN_METADATA_COLUMNS: tuple[str, ...] = (
+    "generated_at",
+    "market_venue",
+    "training_cutoff",
+    "feature_cutoff",
+    "horizon_start",
+    "horizon_end",
+    "source_window_start",
+    "source_window_end",
+)
 
 
 class ForecastStore(Protocol):
@@ -118,7 +135,7 @@ class InMemoryForecastStore:
                 .filter(pl.col("run_id") == latest_row["run_id"])
                 .sort("forecast_timestamp")
                 .head(limit_per_model)
-                .with_columns(pl.lit(latest_row["generated_at"]).alias("generated_at"))
+                .with_columns(_summary_metadata_columns(latest_row))
                 .select(list(_LATEST_FORECAST_OBSERVATION_SCHEMA))
             )
             if model_rows.height:
@@ -147,6 +164,13 @@ class PostgresForecastStore:
                         run_id TEXT PRIMARY KEY,
                         model_name TEXT NOT NULL,
                         generated_at TIMESTAMP NOT NULL,
+                        market_venue TEXT,
+                        training_cutoff TIMESTAMP,
+                        feature_cutoff TIMESTAMP,
+                        horizon_start TIMESTAMP,
+                        horizon_end TIMESTAMP,
+                        source_window_start TIMESTAMP,
+                        source_window_end TIMESTAMP,
                         horizon_rows INTEGER NOT NULL,
                         min_prediction_uah_mwh DOUBLE PRECISION NOT NULL,
                         max_prediction_uah_mwh DOUBLE PRECISION NOT NULL
@@ -165,6 +189,18 @@ class PostgresForecastStore:
                     )
                     """
                 )
+                for column_name, column_type in (
+                    ("market_venue", "TEXT"),
+                    ("training_cutoff", "TIMESTAMP"),
+                    ("feature_cutoff", "TIMESTAMP"),
+                    ("horizon_start", "TIMESTAMP"),
+                    ("horizon_end", "TIMESTAMP"),
+                    ("source_window_start", "TIMESTAMP"),
+                    ("source_window_end", "TIMESTAMP"),
+                ):
+                    cursor.execute(
+                        f"ALTER TABLE forecast_run_summaries ADD COLUMN IF NOT EXISTS {column_name} {column_type}"
+                    )
             connection.commit()
 
     def upsert_forecast_run(
@@ -196,15 +232,29 @@ class PostgresForecastStore:
                             run_id,
                             model_name,
                             generated_at,
+                            market_venue,
+                            training_cutoff,
+                            feature_cutoff,
+                            horizon_start,
+                            horizon_end,
+                            source_window_start,
+                            source_window_end,
                             horizon_rows,
                             min_prediction_uah_mwh,
                             max_prediction_uah_mwh
                         )
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (run_id)
                         DO UPDATE SET
                             model_name = EXCLUDED.model_name,
                             generated_at = EXCLUDED.generated_at,
+                            market_venue = EXCLUDED.market_venue,
+                            training_cutoff = EXCLUDED.training_cutoff,
+                            feature_cutoff = EXCLUDED.feature_cutoff,
+                            horizon_start = EXCLUDED.horizon_start,
+                            horizon_end = EXCLUDED.horizon_end,
+                            source_window_start = EXCLUDED.source_window_start,
+                            source_window_end = EXCLUDED.source_window_end,
                             horizon_rows = EXCLUDED.horizon_rows,
                             min_prediction_uah_mwh = EXCLUDED.min_prediction_uah_mwh,
                             max_prediction_uah_mwh = EXCLUDED.max_prediction_uah_mwh
@@ -247,7 +297,14 @@ class PostgresForecastStore:
                 SELECT DISTINCT ON (model_name)
                     run_id,
                     model_name,
-                    generated_at
+                    generated_at,
+                    market_venue,
+                    training_cutoff,
+                    feature_cutoff,
+                    horizon_start,
+                    horizon_end,
+                    source_window_start,
+                    source_window_end
                 FROM forecast_run_summaries
                 WHERE model_name IN ({placeholders})
                 ORDER BY model_name, generated_at DESC, run_id DESC
@@ -257,6 +314,13 @@ class PostgresForecastStore:
                     observations.run_id,
                     observations.model_name,
                     latest_runs.generated_at,
+                    latest_runs.market_venue,
+                    latest_runs.training_cutoff,
+                    latest_runs.feature_cutoff,
+                    latest_runs.horizon_start,
+                    latest_runs.horizon_end,
+                    latest_runs.source_window_start,
+                    latest_runs.source_window_end,
                     observations.forecast_timestamp,
                     observations.predicted_price_uah_mwh,
                     observations.prediction_payload::text AS prediction_payload,
@@ -272,6 +336,13 @@ class PostgresForecastStore:
                 run_id,
                 model_name,
                 generated_at,
+                market_venue,
+                training_cutoff,
+                feature_cutoff,
+                horizon_start,
+                horizon_end,
+                source_window_start,
+                source_window_end,
                 forecast_timestamp,
                 predicted_price_uah_mwh,
                 prediction_payload
@@ -309,11 +380,15 @@ def _summary_frame(
     predictions = forecast_frame.select(point_prediction_column).to_series()
     min_prediction: Any = predictions.min()
     max_prediction: Any = predictions.max()
+    metadata = _forecast_run_metadata(
+        model_name=model_name,
+        forecast_frame=forecast_frame,
+    )
     return pl.DataFrame(
         {
             "run_id": [run_id],
             "model_name": [model_name],
-            "generated_at": [datetime.now(UTC)],
+            **{column: [metadata[column]] for column in _FORECAST_RUN_METADATA_COLUMNS},
             "horizon_rows": [forecast_frame.height],
             "min_prediction_uah_mwh": [float(min_prediction)],
             "max_prediction_uah_mwh": [float(max_prediction)],
@@ -356,6 +431,91 @@ def _validate_forecast_frame(forecast_frame: pl.DataFrame, *, point_prediction_c
         raise ValueError(f"forecast frame is missing required columns: {sorted(missing_columns)}")
 
 
+def _forecast_run_metadata(*, model_name: str, forecast_frame: pl.DataFrame) -> dict[str, Any]:
+    forecast_timestamps = _frame_datetime_values(forecast_frame, "forecast_timestamp")
+    if not forecast_timestamps:
+        raise ValueError("forecast frame is missing forecast timestamps")
+    horizon_start = min(forecast_timestamps)
+    horizon_end = max(forecast_timestamps)
+    default_cutoff = horizon_start - timedelta(hours=1)
+    training_cutoff = _max_frame_datetime_value(forecast_frame, "training_cutoff") or default_cutoff
+    feature_cutoff = _max_frame_datetime_value(forecast_frame, "feature_cutoff") or training_cutoff
+    return {
+        "generated_at": _max_frame_datetime_value(forecast_frame, "generated_at") or datetime.now(UTC),
+        "market_venue": _frame_text_value(forecast_frame, "market_venue") or _infer_market_venue_from_model_name(model_name),
+        "training_cutoff": training_cutoff,
+        "feature_cutoff": feature_cutoff,
+        "horizon_start": _min_frame_datetime_value(forecast_frame, "horizon_start") or horizon_start,
+        "horizon_end": _max_frame_datetime_value(forecast_frame, "horizon_end") or horizon_end,
+        "source_window_start": _min_frame_datetime_value(forecast_frame, "source_window_start") or training_cutoff,
+        "source_window_end": _max_frame_datetime_value(forecast_frame, "source_window_end") or training_cutoff,
+    }
+
+
+def _summary_metadata_columns(row: dict[str, Any]) -> list[pl.Expr]:
+    return [
+        pl.lit(row["generated_at"], dtype=pl.Datetime).alias("generated_at"),
+        pl.lit(row.get("market_venue"), dtype=pl.Utf8).alias("market_venue"),
+        pl.lit(row.get("training_cutoff"), dtype=pl.Datetime).alias("training_cutoff"),
+        pl.lit(row.get("feature_cutoff"), dtype=pl.Datetime).alias("feature_cutoff"),
+        pl.lit(row.get("horizon_start"), dtype=pl.Datetime).alias("horizon_start"),
+        pl.lit(row.get("horizon_end"), dtype=pl.Datetime).alias("horizon_end"),
+        pl.lit(row.get("source_window_start"), dtype=pl.Datetime).alias("source_window_start"),
+        pl.lit(row.get("source_window_end"), dtype=pl.Datetime).alias("source_window_end"),
+    ]
+
+
+def _frame_datetime_values(forecast_frame: pl.DataFrame, column_name: str) -> list[datetime]:
+    if column_name not in forecast_frame.columns:
+        return []
+    values: list[datetime] = []
+    for raw_value in forecast_frame.select(column_name).to_series().to_list():
+        parsed_value = _optional_datetime(raw_value)
+        if parsed_value is not None:
+            values.append(parsed_value)
+    return values
+
+
+def _min_frame_datetime_value(forecast_frame: pl.DataFrame, column_name: str) -> datetime | None:
+    values = _frame_datetime_values(forecast_frame, column_name)
+    return min(values) if values else None
+
+
+def _max_frame_datetime_value(forecast_frame: pl.DataFrame, column_name: str) -> datetime | None:
+    values = _frame_datetime_values(forecast_frame, column_name)
+    return max(values) if values else None
+
+
+def _optional_datetime(value: Any) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        normalized = value.replace("Z", "+00:00")
+        try:
+            return datetime.fromisoformat(normalized)
+        except ValueError:
+            return None
+    return None
+
+
+def _frame_text_value(forecast_frame: pl.DataFrame, column_name: str) -> str | None:
+    if column_name not in forecast_frame.columns:
+        return None
+    for value in forecast_frame.select(column_name).to_series().to_list():
+        if value is None:
+            continue
+        text = str(value).strip()
+        if text:
+            return text.upper()
+    return None
+
+
+def _infer_market_venue_from_model_name(model_name: str) -> str:
+    return "IDM" if "_idm_" in model_name.lower() or model_name.lower().endswith("_idm_v0") else "DAM"
+
+
 def _append_or_replace(base_frame: pl.DataFrame, incoming_frame: pl.DataFrame, *, subset: list[str]) -> pl.DataFrame:
     if incoming_frame.height == 0:
         return base_frame
@@ -369,6 +529,13 @@ def _summary_values(row: dict[str, Any]) -> tuple[Any, ...]:
         row["run_id"],
         row["model_name"],
         row["generated_at"],
+        row["market_venue"],
+        row["training_cutoff"],
+        row["feature_cutoff"],
+        row["horizon_start"],
+        row["horizon_end"],
+        row["source_window_start"],
+        row["source_window_end"],
         row["horizon_rows"],
         row["min_prediction_uah_mwh"],
         row["max_prediction_uah_mwh"],

@@ -129,6 +129,7 @@ describe('operator future stack presentation helpers', () => {
       preview_source_id: 'dt_v2_plus_safe_switch_selector_shadow',
       comparison_metrics: {
         selector_mean_regret_uah: 168.156,
+        v2_plus_mean_regret_uah: 174.77,
         non_v2_plus_switch_count: 4,
         abstention_count: 86,
         recovered_safe_switch_opportunity_count: 3
@@ -159,6 +160,11 @@ describe('operator future stack presentation helpers', () => {
       label: 'DT safe-switch shadow',
       value: '168.16 UAH mean regret',
       meta: '4 switches / 86 V2+ abstentions / 3 recovered wins'
+    })
+    expect(buildShadowModelStoryItems([storyPreview])[3]).toEqual({
+      label: 'Research gate',
+      value: 'secondary evidence',
+      meta: '168.16 UAH vs V2+ 174.77 UAH; promotion=false / execution=false'
     })
   })
 

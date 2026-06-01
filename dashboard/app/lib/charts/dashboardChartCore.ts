@@ -144,9 +144,5 @@ export const formatWeatherSourceLabel = (source: string): string => {
     return 'Open-Meteo live'
   }
 
-  if (source === 'SYNTHETIC') {
-    return 'Synthetic fallback'
-  }
-
   return source.replaceAll('_', ' ').toLowerCase().replace(/(^|\s)\w/g, letter => letter.toUpperCase())
 }

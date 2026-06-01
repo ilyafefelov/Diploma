@@ -33,7 +33,7 @@ describe('operator shadow preview integration', () => {
     expect(presentation).toContain('return \'DT V2+ safe-switch\'')
     expect(strategyChartOptions).toContain('interval: 0')
     expect(strategyChartOptions).toContain('formatter: formatStrategyAxisLabel')
-    expect(page).toContain(':best-valid-recommendation="operatorRecommendation"')
+    expect(page).toContain(':best-valid-recommendation="selectedVisibleOperatorRecommendation"')
   })
 
   it('presents one schedule source switch and keeps strict baseline as context', () => {

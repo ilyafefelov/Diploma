@@ -186,6 +186,36 @@ def _seed_official_oree_idm_rows(
 	)
 
 
+def _forecast_frame(
+	*,
+	target_date: datetime,
+	values: list[float],
+	generated_at: datetime | None = None,
+	market_venue: str = "DAM",
+	training_cutoff: datetime | None = None,
+) -> pl.DataFrame:
+	resolved_training_cutoff = training_cutoff or target_date - timedelta(hours=1)
+	resolved_generated_at = generated_at or resolved_training_cutoff
+	horizon_end = target_date + timedelta(hours=len(values) - 1)
+	return pl.DataFrame(
+		{
+			"forecast_timestamp": [
+				target_date + timedelta(hours=hour)
+				for hour in range(len(values))
+			],
+			"predicted_price_uah_mwh": values,
+			"generated_at": [resolved_generated_at for _ in values],
+			"market_venue": [market_venue for _ in values],
+			"training_cutoff": [resolved_training_cutoff for _ in values],
+			"feature_cutoff": [resolved_training_cutoff for _ in values],
+			"horizon_start": [target_date for _ in values],
+			"horizon_end": [horizon_end for _ in values],
+			"source_window_start": [resolved_training_cutoff - timedelta(days=14) for _ in values],
+			"source_window_end": [resolved_training_cutoff for _ in values],
+		}
+	)
+
+
 def test_healthcheck_returns_ok(client: TestClient) -> None:
 	response = client.get("/health")
 
@@ -898,7 +928,7 @@ def test_operator_recommendation_blocks_when_official_oree_dam_rows_are_missing(
 
 	assert response.status_code == 503
 	assert "Official observed OREE DAM rows are required" in response.json()["detail"]
-	assert "synthetic fallback is disabled" in response.json()["detail"]
+	assert "No substitute prices are rendered" in response.json()["detail"]
 
 
 def test_operator_recommendation_supports_source_backed_idm_hourly_preview(
@@ -923,9 +953,11 @@ def test_operator_recommendation_supports_source_backed_idm_hourly_preview(
 	assert response_payload["interval_minutes"] == 60
 	assert response_payload["price_context_status"] == "official_published"
 	assert response_payload["policy_mode"] == "official_oree_idm_row_lp_preview"
-	assert response_payload["forecast_source"] == (
-		"Official OREE published IDM delivery row routed through hourly LP preview; "
-		"NBEATSx remains forecast/scenario evidence"
+	assert response_payload["selected_strategy_id"] == "strict_similar_day"
+	assert response_payload["forecast_source"] == "Official OREE published IDM delivery row routed through hourly LP preview"
+	assert any(
+		"Requested strategy nbeatsx_official_idm_v0 is unavailable" in warning
+		for warning in response_payload["readiness_warnings"]
 	)
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["proposed_bid_status"] == "not_emitted_operator_preview"
@@ -950,21 +982,21 @@ def test_operator_recommendation_uses_forecast_for_unpublished_target_delivery_d
 	tft_prices = [2500.0 + (900.0 if 17 <= hour <= 21 else 0.0) for hour in range(24)]
 	fake_forecast_store.upsert_forecast_run(
 		model_name="nbeatsx_official_v0",
-		forecast_frame=pl.DataFrame(
-			{
-				"forecast_timestamp": [target_date + timedelta(hours=hour) for hour in range(24)],
-				"predicted_price_uah_mwh": forecast_prices,
-			}
+		forecast_frame=_forecast_frame(
+			target_date=target_date,
+			values=forecast_prices,
+			generated_at=datetime(2026, 5, 19, 18, tzinfo=UTC),
+			market_venue="DAM",
 		),
 		point_prediction_column="predicted_price_uah_mwh",
 	)
 	fake_forecast_store.upsert_forecast_run(
 		model_name="tft_official_v0",
-		forecast_frame=pl.DataFrame(
-			{
-				"forecast_timestamp": [target_date + timedelta(hours=hour) for hour in range(24)],
-				"predicted_price_uah_mwh": tft_prices,
-			}
+		forecast_frame=_forecast_frame(
+			target_date=target_date,
+			values=tft_prices,
+			generated_at=datetime(2026, 5, 19, 18, tzinfo=UTC),
+			market_venue="DAM",
 		),
 		point_prediction_column="predicted_price_uah_mwh",
 	)
@@ -1069,7 +1101,38 @@ def test_operator_recommendation_blocks_unpublished_target_without_forecast_rows
 
 	assert response.status_code == 503
 	assert "pre-publication forecast rows are required" in response.json()["detail"]
-	assert "synthetic fallback is disabled" in response.json()["detail"]
+	assert "synthetic" not in response.json()["detail"].lower()
+
+
+def test_operator_recommendation_blocks_pre_publication_forecast_generated_after_delivery_start(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	target_date = datetime(2026, 6, 2, tzinfo=UTC)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=_forecast_frame(
+			target_date=target_date,
+			values=[4100.0 + hour for hour in range(24)],
+			generated_at=target_date + timedelta(hours=1),
+			market_venue="DAM",
+			training_cutoff=target_date - timedelta(hours=1),
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_v0",
+			"market_venue": "DAM",
+			"target_delivery_date": "2026-06-02",
+		},
+	)
+
+	assert response.status_code == 503
+	assert "point-in-time forecast metadata rejected" in response.json()["detail"]
 
 
 def test_operator_recommendation_uses_idm_forecast_for_unpublished_target_delivery_date(
@@ -1080,11 +1143,11 @@ def test_operator_recommendation_uses_idm_forecast_for_unpublished_target_delive
 	forecast_prices = [4200.0 + hour * 33.0 for hour in range(24)]
 	fake_forecast_store.upsert_forecast_run(
 		model_name="nbeatsx_official_idm_v0",
-		forecast_frame=pl.DataFrame(
-			{
-				"forecast_timestamp": [target_date + timedelta(hours=hour) for hour in range(24)],
-				"predicted_price_uah_mwh": forecast_prices,
-			}
+		forecast_frame=_forecast_frame(
+			target_date=target_date,
+			values=forecast_prices,
+			generated_at=datetime(2026, 5, 19, 18, tzinfo=UTC),
+			market_venue="IDM",
 		),
 		point_prediction_column="predicted_price_uah_mwh",
 	)
@@ -1118,6 +1181,54 @@ def test_operator_recommendation_uses_idm_forecast_for_unpublished_target_delive
 	assert all(point["market_venue"] == "IDM" for point in response_payload["bid_recommendation_preview"])
 
 
+def test_operator_recommendation_keeps_idm_forecast_evidence_venue_scoped(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+) -> None:
+	target_date = datetime(2026, 6, 2, tzinfo=UTC)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=_forecast_frame(
+			target_date=target_date,
+			values=[9100.0 + hour for hour in range(24)],
+			generated_at=datetime(2026, 6, 1, 9, tzinfo=UTC),
+			market_venue="DAM",
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_idm_v0",
+		forecast_frame=_forecast_frame(
+			target_date=target_date,
+			values=[4200.0 + hour for hour in range(24)],
+			generated_at=datetime(2026, 6, 1, 9, tzinfo=UTC),
+			market_venue="IDM",
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_idm_v0",
+			"market_venue": "IDM",
+			"target_delivery_date": "2026-06-02",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["policy_forecast_context_source"] == "nbeatsx_official_idm_v0"
+	assert {series["model_name"] for series in response_payload["forecast_model_series"]} == {
+		"nbeatsx_official_idm_v0"
+	}
+	assert all(
+		"official OREE DAM row" not in option["reason"]
+		for option in response_payload["available_strategies"]
+	)
+
+
 def test_baseline_lp_preview_supports_source_backed_idm_hourly_preview(
 	client: TestClient,
 	fake_market_data_store: InMemoryMarketDataStore,
@@ -1149,7 +1260,7 @@ def test_operator_recommendation_blocks_idm_without_source_backed_rows(
 
 	assert response.status_code == 503
 	assert "Official observed OREE IDM rows are required" in response.json()["detail"]
-	assert "synthetic fallback is disabled" in response.json()["detail"]
+	assert "No substitute prices are rendered" in response.json()["detail"]
 
 
 def test_operator_default_remains_v2_plus_when_dt_shadow_preview_exists(

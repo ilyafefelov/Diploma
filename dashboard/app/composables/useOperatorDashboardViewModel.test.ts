@@ -60,6 +60,46 @@ describe('useOperatorDashboardViewModel', () => {
     expect(viewModel.timelineSegments.value[0]?.tooltipBody).toContain('No DAM/IDM hourly schedule has loaded yet')
   })
 
+  it('does not derive gatekeeper action scores from stale general signal preview when selected preview is blocked', () => {
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      selectedMarketVenue: ref('IDM'),
+      signalPreview: ref({
+        tenant_id: 'client_003_dnipro_factory',
+        labels: ['31 May'],
+        label_timestamps: ['2026-05-31T12:00:00Z'],
+        market_price: [7100],
+        weather_bias: [0],
+        weather_sources: ['OREE_DAM_OLD'],
+        charge_intent: [0.45],
+        regret: [0],
+        resolved_location: {
+          latitude: 48.46,
+          longitude: 35.04,
+          timezone: 'Europe/Kyiv'
+        }
+      }),
+      baselinePreview: ref(null),
+      operatorRecommendation: ref(null),
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref('Official observed OREE IDM rows are required.'),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.gatekeeperActions.value).toEqual([])
+    expect(viewModel.latestRecommendedPowerLabel.value).toBe('0.0 MW')
+    expect(viewModel.batteryStatusLabel.value).toBe('IDM hold preview')
+  })
+
   it('keeps the schedule dock, right rail action, and headline economics aligned to the selected market preview', () => {
     const baselinePreview = ref({
       battery_metrics: {

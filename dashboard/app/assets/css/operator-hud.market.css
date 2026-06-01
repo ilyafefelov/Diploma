@@ -371,12 +371,15 @@
   font-size: 1.08rem;
   line-height: 1.05;
   color: var(--operator-positive);
+  overflow-wrap: anywhere;
 }
 
 .hud-mini-stat__meta {
   margin-top: -0.02rem;
   font-size: 0.72rem;
   color: var(--operator-text-muted);
+  line-height: 1.18;
+  overflow-wrap: anywhere;
 }
 
 .hud-mini-stat__tooltip {

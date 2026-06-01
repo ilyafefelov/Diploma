@@ -109,6 +109,13 @@ def materialize_operator_preview_forecast_runs(
         forecast_start=resolved_forecast_start,
         horizon_hours=horizon_hours,
     )
+    history = _source_history_frame(
+        source_frame=source_frame,
+        forecast_start=resolved_forecast_start,
+    )
+    training_cutoff = history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1)
+    source_window_start = history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0)
+    horizon_end = resolved_forecast_start + timedelta(hours=horizon_hours - 1)
     selected_builders = builders or OperatorPreviewForecastBuilders()
     nbeatsx_model_name, tft_model_name = operator_preview_forecast_model_names(resolved_market_venue)
     raw_frames = {
@@ -124,11 +131,18 @@ def materialize_operator_preview_forecast_runs(
         ),
     }
     forecast_frames = {
-        model_name: _complete_forecast_frame(
-            forecast_frame=_with_model_name(forecast_frame, model_name=model_name),
-            model_name=model_name,
+        model_name: _with_operator_preview_metadata(
+            forecast_frame=_complete_forecast_frame(
+                forecast_frame=_with_model_name(forecast_frame, model_name=model_name),
+                model_name=model_name,
+                forecast_start=resolved_forecast_start,
+                horizon_hours=horizon_hours,
+            ),
+            market_venue=resolved_market_venue,
             forecast_start=resolved_forecast_start,
-            horizon_hours=horizon_hours,
+            horizon_end=horizon_end,
+            training_cutoff=training_cutoff,
+            source_window_start=source_window_start,
         )
         for model_name, forecast_frame in raw_frames.items()
     }
@@ -334,6 +348,31 @@ def _with_model_name(forecast_frame: pl.DataFrame, *, model_name: str) -> pl.Dat
     return forecast_frame.with_columns(pl.lit(model_name).alias("model_name"))
 
 
+def _with_operator_preview_metadata(
+    *,
+    forecast_frame: pl.DataFrame,
+    market_venue: str,
+    forecast_start: datetime,
+    horizon_end: datetime,
+    training_cutoff: datetime,
+    source_window_start: datetime,
+) -> pl.DataFrame:
+    if forecast_frame.is_empty():
+        return forecast_frame
+    return forecast_frame.with_columns(
+        [
+            pl.lit(market_venue).alias("market_venue"),
+            pl.lit(training_cutoff).alias("training_cutoff"),
+            pl.lit(training_cutoff).alias("feature_cutoff"),
+            pl.lit(forecast_start).alias("horizon_start"),
+            pl.lit(horizon_end).alias("horizon_end"),
+            pl.lit(source_window_start).alias("source_window_start"),
+            pl.lit(training_cutoff).alias("source_window_end"),
+            pl.lit(OPERATOR_PREVIEW_FORECAST_CLAIM_BOUNDARY).alias("claim_boundary"),
+        ]
+    )
+
+
 def _point_prediction_column(forecast_frame: pl.DataFrame) -> str:
     if "predicted_price_p50_uah_mwh" in forecast_frame.columns:
         return "predicted_price_p50_uah_mwh"
@@ -351,4 +390,3 @@ def _normalize_market_venue(market_venue: str) -> str:
 
 def _naive_hour(value: datetime) -> datetime:
     return value.replace(tzinfo=None, minute=0, second=0, microsecond=0)
-

@@ -115,7 +115,7 @@ const formatBoundaryStatus = (value: string | null | undefined): string => {
 const hasMarketPreviewError = computed(() => props.marketPreviewError.trim().length > 0)
 
 const marketBoundaryItems = computed(() => {
-  const recommendation = hasMarketPreviewError.value ? null : props.operatorRecommendation
+  const recommendation = hasMarketPreviewError.value || props.isSignalPreviewLoading ? null : props.operatorRecommendation
   const responseVenue = operatorMarketVenueLabel(recommendation?.market_venue ?? props.selectedMarketVenue)
 
   return [

@@ -156,8 +156,7 @@ export function buildShadowModelStoryItems(
     ?? numericMetric(regretAwareMetrics.abstention_count)
     ?? 90
   const recoveredSwitches = numericMetric(safeSwitchMetrics.recovered_safe_switch_opportunity_count) ?? 0
-
-  return [
+  const storyItems: FutureStackSummaryItem[] = [
     {
       label: 'V2+ evidence',
       value: `${formatRegretMean(v2Regret)} mean regret`,
@@ -174,6 +173,16 @@ export function buildShadowModelStoryItems(
       meta: `${Math.round(switchCount).toLocaleString('en-GB')} switches / ${Math.round(abstentionCount).toLocaleString('en-GB')} V2+ abstentions / ${Math.round(recoveredSwitches).toLocaleString('en-GB')} recovered wins`
     }
   ]
+
+  if (shadowMetricsBySource.has('dt_v2_plus_safe_switch_selector_shadow')) {
+    storyItems.push({
+      label: 'Research gate',
+      value: `${formatResearchEvidenceLevel(selectorRegret)} evidence`,
+      meta: `${formatRegretMean(selectorRegret)} vs V2+ ${formatRegretMean(v2Regret)}; promotion=false / execution=false`
+    })
+  }
+
+  return storyItems
 }
 
 export function formatInputSignalTooltipValue(
@@ -284,6 +293,10 @@ export function numericMetric(value: number | null | undefined): number | null {
 
 export function formatRegretMean(value: number): string {
   return `${value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} UAH`
+}
+
+export function formatResearchEvidenceLevel(meanRegretUah: number): 'secondary' | 'fail' {
+  return meanRegretUah <= 178.26 ? 'secondary' : 'fail'
 }
 
 export function formatForecastSeriesLabel(modelName: string): string {

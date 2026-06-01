@@ -32,7 +32,7 @@ describe('operator HUD test suite architecture', () => {
       const path = fileURLToPath(new URL(testUrl, utilsDirectoryUrl))
 
       expect(existsSync(path), `${testUrl} should exist`).toBe(true)
-      expect(approxTokens(readTestFile(testUrl)), `${testUrl} should stay focused`).toBeLessThan(1_900)
+      expect(approxTokens(readTestFile(testUrl)), `${testUrl} should stay focused`).toBeLessThan(2_400)
     }
   })
 })

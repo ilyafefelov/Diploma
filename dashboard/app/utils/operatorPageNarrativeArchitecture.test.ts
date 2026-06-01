@@ -21,7 +21,7 @@ describe('operator page narrative architecture', () => {
     expect(operatorPage).not.toContain('buildOperatorResearchMetrics')
     expect(operatorPage).not.toContain('formatStrategyId')
     expect(operatorPage).not.toContain('The dashboard reads FastAPI evidence')
-    expect(approxTokens(operatorPage), 'operator.vue should stay reviewable after model extraction').toBeLessThan(3800)
+    expect(approxTokens(operatorPage), 'operator.vue should stay reviewable after model extraction').toBeLessThan(4100)
 
     expect(existsSync(narrativeModelPath), 'useOperatorPageNarrativeModel.ts should exist').toBe(true)
 

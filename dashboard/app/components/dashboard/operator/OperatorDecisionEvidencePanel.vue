@@ -193,8 +193,8 @@ const {
       <article>
         <span>Gatekeeper meaning</span>
         <p>
-          BUY/SELL/HOLD scores are selected DAM/IDM delivery-hour previews. The Gatekeeper blocks unsafe preview output;
-          ProposedBid, settlement, and market-submission contracts are not emitted from this dashboard.
+          BUY/SELL/HOLD scores appear only after the selected DAM/IDM recommendation loads. Forecast candidates are
+          advisory rank/abstain evidence; ProposedBid, settlement, and market-submission contracts are not emitted here.
         </p>
       </article>
       <article>

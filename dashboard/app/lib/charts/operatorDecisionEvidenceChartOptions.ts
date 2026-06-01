@@ -30,15 +30,19 @@ const darkLegend = (): EChartsOption['legend'] => ({
 
 const darkCategoryAxis = (
   data: string[],
-  rotate = 0
+  rotate = 0,
+  formatter?: (value: string) => string
 ): NonNullable<EChartsOption['xAxis']> => ({
   type: 'category',
   data,
   axisLabel: {
-    color: dashboardChartTokens.axisTextOnDark,
-    fontWeight: 800,
+      color: dashboardChartTokens.axisTextOnDark,
+      fontSize: 10,
+      fontWeight: 800,
+      hideOverlap: formatter ? false : true,
     interval: 0,
-    rotate
+    rotate,
+    formatter
   }
 })
 
@@ -91,8 +95,8 @@ export const buildDecisionStrategyEvidenceOption = (
     ].join('<br/>')
   }),
   legend: darkLegend(),
-  grid: { left: 54, right: 46, top: 42, bottom: 44, containLabel: true },
-  xAxis: darkCategoryAxis(rows.map(row => row.modelName), 18),
+  grid: { left: 54, right: 46, top: 42, bottom: 58, containLabel: true },
+  xAxis: darkCategoryAxis(rows.map(row => row.modelName), 28, formatStrategyAxisLabel),
   yAxis: [
     darkValueAxis('UAH'),
     darkValueAxis('win %', { min: 0, max: 100 })
@@ -116,6 +120,33 @@ export const buildDecisionStrategyEvidenceOption = (
     }
   ]
 })
+
+const formatStrategyAxisLabel = (value: string): string => {
+  const knownLabels: Record<string, string> = {
+    strict_similar_day: 'Strict',
+    risk_adjusted_value_gate_v0: 'Risk',
+    bra_schedule_aware_ensemble_v0: 'BRA',
+    schedule_value_learner_v2_plus: 'V2+',
+    nbeatsx_silver_v0: 'NBEATSx',
+    tft_silver_v0: 'TFT',
+    nbeatsx_official_v0: 'NBEATSx',
+    tft_official_v0: 'TFT',
+    nbeatsx_official_idm_v0: 'NBEATSx IDM',
+    tft_official_idm_v0: 'TFT IDM'
+  }
+
+  const knownLabel = knownLabels[value]
+  if (knownLabel) {
+    return knownLabel
+  }
+
+  const tokens = value.split('_').filter(Boolean)
+  if (tokens.length <= 2) {
+    return tokens.join(' ')
+  }
+
+  return tokens.slice(0, 2).join(' ')
+}
 
 export const buildDecisionControlRegretTimelineOption = (
   points: ControlRegretTimelinePoint[]

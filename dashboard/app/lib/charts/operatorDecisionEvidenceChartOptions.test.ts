@@ -53,10 +53,17 @@ describe('operator decision evidence chart options', () => {
     ]
 
     const option = buildDecisionStrategyEvidenceOption(rows)
+    const strategyXAxis = option.xAxis as {
+      axisLabel: { formatter: (value: string) => string, hideOverlap: boolean, rotate: number }
+    }
 
     expect(option.xAxis).toEqual(expect.objectContaining({
       data: ['strict_similar_day', 'schedule_value_learner_v2_plus']
     }))
+    expect(strategyXAxis.axisLabel.hideOverlap).toBe(false)
+    expect(strategyXAxis.axisLabel.rotate).toBe(28)
+    expect(strategyXAxis.axisLabel.formatter('schedule_value_learner_v2_plus')).toBe('V2+')
+    expect(strategyXAxis.axisLabel.formatter('nbeatsx_silver_v0')).toBe('NBEATSx')
     expect(option.series).toEqual([
       expect.objectContaining({
         name: 'Mean regret',

@@ -15,6 +15,9 @@ interface OperatorHeadlineMetricsInput {
   activeEconomics: BaselinePreviewEconomics | null
   selectedStrategyId: string | null
   weatherBiasAverage: number
+  priceContextStatusLabel: string
+  priceContextSourceMeta: string
+  priceContextFormula: string
   signalPreviewLastLoadedLabel: string
   equivalentCyclePreview: string
   availabilityPercent: number
@@ -68,14 +71,14 @@ export const buildOperatorHeadlineMetrics = (
     tooltipFormula: 'sum(hourly_dispatch_value) across the LP horizon'
   },
   {
-    label: 'Weather uplift',
-    value: `${input.weatherBiasAverage > 0 ? '+' : ''}${input.weatherBiasAverage.toFixed(1)} UAH/MWh`,
-    meta: input.signalPreviewLastLoadedLabel,
-    icon: 'i-lucide-cloud-sun',
+    label: 'Price source',
+    value: input.priceContextStatusLabel,
+    meta: input.priceContextSourceMeta || input.signalPreviewLastLoadedLabel,
+    icon: 'i-lucide-database-zap',
     tone: 'mint',
-    tooltipTitle: 'Weather uplift',
-    tooltipBody: 'Average calibrated weather effect applied to the MVP market forecast for the selected location.',
-    tooltipFormula: 'weather_bias = f(clouds, rain, humidity, temperature, solar, wind)'
+    tooltipTitle: 'Selected price source',
+    tooltipBody: 'Shows whether the selected DAM/IDM preview is backed by official source rows or ML forecast context.',
+    tooltipFormula: input.priceContextFormula
   },
   {
     label: 'Cycle preview',
@@ -111,7 +114,7 @@ export const buildOperatorMoodChips = (input: OperatorMoodChipInput): OperatorMo
     tone: 'green'
   },
   {
-    label: 'DAM volatility',
+    label: 'Market volatility',
     value: Math.abs(input.weatherBiasAverage) > 15 ? 'High' : 'Moderate',
     tone: Math.abs(input.weatherBiasAverage) > 15 ? 'orange' : 'blue'
   },
@@ -142,14 +145,14 @@ export const buildOperatorMarketRegimeChips = (
     icon: 'i-lucide-cloud',
     active: Math.abs(input.weatherBiasAverage) < 8,
     tooltipTitle: 'Low volatility',
-    tooltipBody: 'Weather uplift is small enough that the selected DAM window is treated as calmer.'
+    tooltipBody: 'The price/weather adjustment is small enough that the selected preview window is treated as calmer.'
   },
   {
     label: 'High vol',
     icon: 'i-lucide-activity',
     active: Math.abs(input.weatherBiasAverage) >= 8,
     tooltipTitle: 'High volatility',
-    tooltipBody: 'Weather uplift is large enough to mark the selected DAM window as more sensitive for operator review.'
+    tooltipBody: 'The price/weather adjustment is large enough to mark the selected preview window as more sensitive for operator review.'
   },
   {
     label: 'Recovery',

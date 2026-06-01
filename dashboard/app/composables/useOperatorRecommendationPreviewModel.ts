@@ -35,6 +35,7 @@ export const useOperatorRecommendationPreviewModel = ({
     isLoading: isOperatorRecommendationLoading,
     error: operatorRecommendationError,
     clearError: clearOperatorRecommendationError,
+    lastLoadedLabel: operatorRecommendationLastLoadedLabel,
     loadOperatorRecommendation
   } = useOperatorRecommendation(
     selectedTenantId,
@@ -64,11 +65,17 @@ export const useOperatorRecommendationPreviewModel = ({
     loadShadowComparisonPreviews
   } = useShadowRecommendationComparison(selectedTenantId, shadowDeliveryWindowStart)
 
-  const visibleOperatorRecommendation = computed(() => adaptShadowPreviewToOperatorRecommendation(
-    operatorRecommendation.value,
-    shadowPreview.value,
-    selectedPreviewSourceId.value
-  ))
+  const visibleOperatorRecommendation = computed(() => {
+    if (operatorRecommendationError.value) {
+      return null
+    }
+
+    return adaptShadowPreviewToOperatorRecommendation(
+      operatorRecommendation.value,
+      shadowPreview.value,
+      selectedPreviewSourceId.value
+    )
+  })
   const selectedPreviewSourceLabel = computed(() => previewModeLabel(
     selectedPreviewSourceId.value,
     shadowPreview.value
@@ -121,6 +128,7 @@ export const useOperatorRecommendationPreviewModel = ({
     loadRecommendationSurfaces,
     operatorRecommendation,
     operatorRecommendationError,
+    operatorRecommendationLastLoadedLabel,
     refreshVisibleRecommendation,
     selectedOperatorStrategyId,
     selectedPreviewSourceId,

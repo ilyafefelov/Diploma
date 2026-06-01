@@ -88,6 +88,7 @@ const {
   isShadowComparisonLoading,
   isShadowPreviewLoading,
   operatorRecommendation,
+  operatorRecommendationLastLoadedLabel,
   loadRecommendationSurfaces,
   operatorRecommendationError,
   refreshVisibleRecommendation,
@@ -125,6 +126,32 @@ const defenseGatekeeperValidationStatus = computed(() => defense.gatekeeperValid
 const defenseIsLoading = computed(() => defense.isLoading.value)
 const defenseLastLoadedLabel = computed(() => defense.lastLoadedLabel.value)
 const defenseActiveErrorCount = computed(() => defense.activeErrorCount.value)
+const selectedRecommendationBlocked = computed(() => {
+  return isOperatorRecommendationLoading.value
+    || Boolean(operatorRecommendationError.value)
+    || Boolean(baselinePreviewError.value)
+})
+const selectedVisibleOperatorRecommendation = computed(() => {
+  if (selectedRecommendationBlocked.value) {
+    return null
+  }
+
+  return visibleOperatorRecommendation.value
+})
+const selectedHourlyRecommendationRows = computed(() => {
+  if (selectedRecommendationBlocked.value) {
+    return []
+  }
+
+  return hourlyRecommendationRows.value
+})
+const selectedHourlyRecommendationEmptyMessage = computed(() => {
+  if (selectedRecommendationBlocked.value) {
+    return 'Selected DAM/IDM preview is pending or blocked; no BUY/SELL/HOLD preference is shown.'
+  }
+
+  return hourlyRecommendationEmptyMessage.value
+})
 
 const {
   activeAlertCount,
@@ -162,7 +189,7 @@ const {
   selectedMarketVenue,
   signalPreview,
   baselinePreview,
-  operatorRecommendation: visibleOperatorRecommendation,
+  operatorRecommendation: selectedVisibleOperatorRecommendation,
   batteryState: defense.batteryState,
   runConfig,
   materializeResult,
@@ -186,7 +213,7 @@ const {
   schedulePredictionHeadLabel
 } = useOperatorPageNarrativeModel({
   explanationMode,
-  visibleOperatorRecommendation,
+  visibleOperatorRecommendation: selectedVisibleOperatorRecommendation,
   selectedPreviewSourceLabel,
   modelRows: defense.modelRows,
   readinessRows: defense.researchReadinessRows,
@@ -310,8 +337,8 @@ onBeforeUnmount(() => {
             :selected-target-delivery-date="selectedTargetDeliveryDate"
             :selected-chart-horizon="selectedChartHorizon"
             :is-registry-loading="isLoading"
-            :is-signal-preview-loading="isSignalPreviewLoading"
-            :signal-preview-last-loaded-label="signalPreviewLastLoadedLabel"
+            :is-signal-preview-loading="isSignalPreviewLoading || isOperatorRecommendationLoading"
+            :signal-preview-last-loaded-label="operatorRecommendationLastLoadedLabel"
             @update:selected-market-venue="value => selectedMarketVenue = value"
             @update:selected-target-delivery-date="value => selectedTargetDeliveryDate = value"
             @update:selected-chart-horizon="value => selectedChartHorizon = value"
@@ -320,7 +347,7 @@ onBeforeUnmount(() => {
 
           <OperatorBaselineConsole
             :baseline-preview="baselinePreview"
-            :operator-recommendation="visibleOperatorRecommendation"
+            :operator-recommendation="selectedVisibleOperatorRecommendation"
             :selected-strategy-id="selectedOperatorStrategyId"
             :selected-chart-horizon="selectedChartHorizon"
             :is-loading="isBaselinePreviewLoading"
@@ -334,7 +361,7 @@ onBeforeUnmount(() => {
             :sensitivity="defenseSensitivity"
             :battery-state="defenseBatteryState"
             :baseline-preview="baselinePreview"
-            :operator-recommendation="visibleOperatorRecommendation"
+            :operator-recommendation="selectedVisibleOperatorRecommendation"
             :exogenous-signals="defenseExogenousSignals"
             :is-loading="defenseIsLoading || isOperatorRecommendationLoading"
             :active-error-count="operatorReadModelErrorCount"
@@ -343,8 +370,8 @@ onBeforeUnmount(() => {
           <OperatorFutureStackPanel
             :future-stack="defenseFutureStack"
             :decision-policy="defenseDecisionPolicyPreview"
-            :operator-recommendation="visibleOperatorRecommendation"
-            :best-valid-recommendation="operatorRecommendation"
+            :operator-recommendation="selectedVisibleOperatorRecommendation"
+            :best-valid-recommendation="selectedVisibleOperatorRecommendation"
             :shadow-preview="shadowPreview"
             :shadow-comparison-previews="shadowComparisonPreviews"
             :academic-mvp-readiness="defenseAcademicMvpReadiness"
@@ -411,8 +438,8 @@ onBeforeUnmount(() => {
         :delivery-window-label="deliveryWindowLabel"
         :selected-preview-source-label="selectedPreviewSourceLabel"
         :is-shadow-preview-mode="selectedPreviewSourceId !== 'best_valid'"
-        :hourly-recommendation-rows="hourlyRecommendationRows"
-        :hourly-empty-message="hourlyRecommendationEmptyMessage"
+        :hourly-recommendation-rows="selectedHourlyRecommendationRows"
+        :hourly-empty-message="selectedHourlyRecommendationEmptyMessage"
         :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
       />
     </div>

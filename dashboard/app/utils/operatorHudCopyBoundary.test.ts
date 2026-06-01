@@ -36,6 +36,7 @@ describe('operator HUD copy boundary', () => {
     const batteryPanel = readDashboardFixture('../components/dashboard/operator/OperatorBatteryPanel.vue')
     const gatekeeperPanel = readDashboardFixture('../components/dashboard/operator/OperatorGatekeeperPanel.vue')
     const moodPanel = readDashboardFixture('../components/dashboard/operator/OperatorMoodPanel.vue')
+    const weatherControlsPanel = readDashboardFixture('../components/dashboard/operator/OperatorWeatherControlsPanel.vue')
 
     expect(topBar).toContain('Operator Preview')
     expect(topBar).not.toContain('BESS Control')
@@ -47,7 +48,7 @@ describe('operator HUD copy boundary', () => {
     expect(marketConsole).toContain('Official/source row first')
     expect(marketConsole).toContain('marketPreviewError')
     expect(marketConsole).toContain('hasMarketPreviewError')
-    expect(marketConsole).toContain('hasMarketPreviewError.value ? null : props.operatorRecommendation')
+    expect(marketConsole).toContain('hasMarketPreviewError.value || props.isSignalPreviewLoading ? null : props.operatorRecommendation')
     expect(operatorPage).toContain(':operator-recommendation="operatorRecommendation"')
     expect(marketConsole).not.toContain('DAM / IDM arbitrage surface')
     expect(marketSignalHero).toContain('selectedMarketVenue')
@@ -75,6 +76,8 @@ describe('operator HUD copy boundary', () => {
     expect(moodPanel).toContain('Preview posture')
     expect(moodPanel).not.toContain('Operator mood')
     expect(moodPanel).not.toContain('Great')
+    expect(weatherControlsPanel).toContain('Include market price history')
+    expect(weatherControlsPanel).not.toContain('Include DAM price history')
     expect(pageNarrativeModel).toContain('DAM/IDM hourly preview / no ProposedBid / no market submission')
   })
 
@@ -116,17 +119,27 @@ describe('operator HUD copy boundary', () => {
       '../components/dashboard/operator/OperatorScheduleDock.vue',
       '../components/dashboard/HudSignalCharts.vue',
       '../components/dashboard/signal/HudSignalMarketExplainers.vue',
+      '../components/dashboard/operator/OperatorWeatherControlsPanel.vue',
       '../lib/charts/dashboardSignalMarketPulseChart.ts',
+      '../lib/charts/dashboardChartCore.ts',
       '../lib/charts/dashboardBaselineChartOptions.ts',
+      '../lib/operator-dashboard/operatorDashboardSignalModel.ts',
       '../lib/operator-dashboard/useOperatorTimelineModel.ts',
       '../lib/operator-future/operatorFutureForecastPanelModel.ts',
-      '../composables/useOperatorFutureStackPanelModel.ts'
+      '../composables/useOperatorFutureStackPanelModel.ts',
+      '../../server/api/control-plane/dashboard/signal-preview.get.ts'
     ].map(readDashboardFixture).join('\n')
 
     expect(currentFacingFiles).not.toContain('IDM disabled')
     expect(currentFacingFiles).not.toContain('DAM-only')
     expect(currentFacingFiles).not.toContain('no IDM recommendation mode')
     expect(currentFacingFiles).not.toContain('synthetic DAM history')
+    expect(currentFacingFiles).not.toContain('SYNTHETIC')
+    expect(currentFacingFiles).not.toContain('DEMO_STATIC_FALLBACK')
+    expect(currentFacingFiles).not.toContain('BASELINE_FALLBACK')
+    expect(currentFacingFiles).not.toContain('Synthetic fallback')
+    expect(currentFacingFiles).not.toContain('Weather uplift')
+    expect(currentFacingFiles).not.toContain('DAM price history')
     expect(currentFacingFiles).not.toContain('non-submittable DAM ')
     expect(currentFacingFiles).not.toContain('Current MVP path: HourlyDamBaselineSolver over tenant-aware DAM history')
   })

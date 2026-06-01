@@ -77,6 +77,13 @@ if (-not $SkipCompose) {
 
 $env:PYTHONPATH = @($repoRoot, $srcPath, $env:PYTHONPATH) -ne "" -join [System.IO.Path]::PathSeparator
 $env:SMART_ARBITRAGE_API_PORT = "$ApiPort"
+$localPostgresDsn = "postgresql://smart:arbitrage@localhost:5432/smart_arbitrage"
+if ([string]::IsNullOrWhiteSpace($env:SMART_ARBITRAGE_MARKET_DATA_DSN)) {
+    $env:SMART_ARBITRAGE_MARKET_DATA_DSN = $localPostgresDsn
+}
+if ([string]::IsNullOrWhiteSpace($env:SMART_ARBITRAGE_FORECAST_DSN)) {
+    $env:SMART_ARBITRAGE_FORECAST_DSN = $localPostgresDsn
+}
 
 if (Test-PortListening -Port $ApiPort) {
     Write-Host "FastAPI already listening on port $ApiPort; leaving it running." -ForegroundColor Yellow

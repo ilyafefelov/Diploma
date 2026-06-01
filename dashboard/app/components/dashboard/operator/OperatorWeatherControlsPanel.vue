@@ -40,15 +40,15 @@ const emit = defineEmits<{
     <label class="check-toggle">
       <input
         v-model="includePriceHistory"
-        aria-label="Include DAM price history in weather materialization"
+        aria-label="Include market price history in weather materialization"
         type="checkbox"
       >
-      <span>Include DAM price history</span>
+      <span>Include market price history</span>
       <span
         class="control-help-tooltip"
         role="tooltip"
       >
-        When enabled, materialization refreshes weather context together with DAM price history so later Silver features can join market and weather context.
+        When enabled, materialization refreshes weather context together with selected-market price history so later Silver features can join market and weather context.
       </span>
     </label>
 

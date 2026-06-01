@@ -53,6 +53,9 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
     ?? input.selectedMarketVenue?.value
     ?? input.baselinePreview.value?.market_venue
     ?? 'DAM')
+  const hasSelectedOperatorRecommendationSchedule = computed(() => {
+    return Boolean(input.operatorRecommendation?.value?.recommendation_schedule?.length)
+  })
 
   const batteryCapacityMwh = computed(() => input.baselinePreview.value?.battery_metrics.capacity_mwh ?? null)
 
@@ -86,7 +89,7 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
       return selectedPoint.recommended_net_power_mw
     }
 
-    return input.signalPreview.value?.charge_intent?.[0] ?? 0
+    return 0
   })
 
   const preferredGatekeeperAction = computed<OperatorGatekeeperActionLabel>(() => {
@@ -103,35 +106,41 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
     return 'HOLD'
   })
 
-  const gatekeeperActions = computed<OperatorGatekeeperAction[]>(() => [
-    {
-      label: 'BUY',
-      score: preferredGatekeeperAction.value === 'BUY' ? 87 : 32,
-      icon: 'i-lucide-download',
-      active: preferredGatekeeperAction.value === 'BUY',
-      tooltipTitle: 'Charge preview score',
-      tooltipBody: 'Higher BUY means the selected market delivery hour is a charging preview, reserving energy for a later price window.',
-      tooltipFormula: 'score = 50 + charge_bias * 35 - guardrail_penalty; charge_bias comes from negative recommended_net_power_mw'
-    },
-    {
-      label: 'SELL',
-      score: preferredGatekeeperAction.value === 'SELL' ? 87 : 38,
-      icon: 'i-lucide-upload',
-      active: preferredGatekeeperAction.value === 'SELL',
-      tooltipTitle: 'Discharge preview score',
-      tooltipBody: 'Higher SELL means the selected market delivery hour is a discharge preview; future bid validation still checks SOC and power limits.',
-      tooltipFormula: 'score = 50 + discharge_bias * 35 - guardrail_penalty; discharge_bias comes from positive recommended_net_power_mw'
-    },
-    {
-      label: 'HOLD',
-      score: preferredGatekeeperAction.value === 'HOLD' ? 82 : 41,
-      icon: 'i-lucide-pause',
-      active: preferredGatekeeperAction.value === 'HOLD',
-      tooltipTitle: 'Hold preview score',
-      tooltipBody: 'Higher HOLD means the selected market delivery-hour spread is weak or the safer review choice is to wait for a cleaner interval.',
-      tooltipFormula: 'score = 50 + idle_bias * 32 + uncertainty_penalty; idle_bias rises when recommended_net_power_mw is near zero'
+  const gatekeeperActions = computed<OperatorGatekeeperAction[]>(() => {
+    if (!hasSelectedOperatorRecommendationSchedule.value) {
+      return []
     }
-  ])
+
+    return [
+      {
+        label: 'BUY',
+        score: preferredGatekeeperAction.value === 'BUY' ? 87 : 32,
+        icon: 'i-lucide-download',
+        active: preferredGatekeeperAction.value === 'BUY',
+        tooltipTitle: 'Charge preview score',
+        tooltipBody: 'Higher BUY means the selected market delivery hour is a charging preview, reserving energy for a later price window.',
+        tooltipFormula: 'score = 50 + charge_bias * 35 - guardrail_penalty; charge_bias comes from negative recommended_net_power_mw'
+      },
+      {
+        label: 'SELL',
+        score: preferredGatekeeperAction.value === 'SELL' ? 87 : 38,
+        icon: 'i-lucide-upload',
+        active: preferredGatekeeperAction.value === 'SELL',
+        tooltipTitle: 'Discharge preview score',
+        tooltipBody: 'Higher SELL means the selected market delivery hour is a discharge preview; future bid validation still checks SOC and power limits.',
+        tooltipFormula: 'score = 50 + discharge_bias * 35 - guardrail_penalty; discharge_bias comes from positive recommended_net_power_mw'
+      },
+      {
+        label: 'HOLD',
+        score: preferredGatekeeperAction.value === 'HOLD' ? 82 : 41,
+        icon: 'i-lucide-pause',
+        active: preferredGatekeeperAction.value === 'HOLD',
+        tooltipTitle: 'Hold preview score',
+        tooltipBody: 'Higher HOLD means the selected market delivery-hour spread is weak or the safer review choice is to wait for a cleaner interval.',
+        tooltipFormula: 'score = 50 + idle_bias * 32 + uncertainty_penalty; idle_bias rises when recommended_net_power_mw is near zero'
+      }
+    ]
+  })
 
   const timelineSegments = computed<OperatorTimelineSegment[]>(() => {
     const schedule = selectedTimelineSchedulePoints.value

@@ -26,16 +26,17 @@ const props = defineProps<{
   explanationMode: 'mvp' | 'future'
 }>()
 
+const activeOperatorRecommendation = computed(() => props.isLoading ? null : props.operatorRecommendation)
 const selectedMarketSignalPreview = computed(() => selectOperatorMarketSignalPreview(
   props.signalPreview,
-  props.operatorRecommendation
+  activeOperatorRecommendation.value
 ))
 const visibleSignalPreview = computed(() => sliceSignalPreviewForChartHorizon(
   selectedMarketSignalPreview.value,
   props.selectedChartHorizon
 ))
 const visibleOperatorRecommendation = computed(() => sliceOperatorRecommendationForChartHorizon(
-  props.operatorRecommendation,
+  activeOperatorRecommendation.value,
   props.selectedChartHorizon
 ))
 const marketOption = computed(() => buildMarketPulseChartOption(
@@ -47,20 +48,24 @@ const dispatchOption = computed(() => buildSelectedStrategyDispatchChartOption(
   visibleSignalPreview.value
 ))
 const selectedStrategyLabel = computed(() => {
-  if (!props.operatorRecommendation) {
+  if (!activeOperatorRecommendation.value) {
     return 'selected strategy pending'
   }
 
-  const selectedOption = props.operatorRecommendation.available_strategies.find(strategy =>
-    strategy.strategy_id === props.operatorRecommendation?.selected_strategy_id
+  const selectedOption = activeOperatorRecommendation.value.available_strategies.find(strategy =>
+    strategy.strategy_id === activeOperatorRecommendation.value?.selected_strategy_id
   )
 
-  return selectedOption?.label || props.operatorRecommendation.selected_strategy_id
+  return selectedOption?.label || activeOperatorRecommendation.value.selected_strategy_id
 })
-const hasSelectedSchedule = computed(() => (props.operatorRecommendation?.recommendation_schedule.length || 0) > 0)
+const hasSelectedSchedule = computed(() => (activeOperatorRecommendation.value?.recommendation_schedule.length || 0) > 0)
 const hasMarketPreviewBlocker = computed(() => props.marketPreviewError.trim().length > 0)
-const priceContextModeLabel = computed(() => operatorPriceContextModeLabel(props.operatorRecommendation))
-const priceContextSourceLabel = computed(() => operatorPriceContextSourceLabel(props.operatorRecommendation))
+const hasSelectedMarketSignalData = computed(() => (visibleSignalPreview.value?.market_price.length ?? 0) > 0)
+const isPreparingSelectedPreview = computed(() => {
+  return !hasMarketPreviewBlocker.value && (props.isLoading || !hasSelectedMarketSignalData.value)
+})
+const priceContextModeLabel = computed(() => operatorPriceContextModeLabel(activeOperatorRecommendation.value))
+const priceContextSourceLabel = computed(() => operatorPriceContextSourceLabel(activeOperatorRecommendation.value))
 const weatherSourceBadge = computed(() => {
   const sources = selectedMarketSignalPreview.value?.weather_sources || []
 
@@ -129,10 +134,10 @@ const weatherSourceBadge = computed(() => {
         {{ marketPreviewError }}
       </div>
       <div
-        v-else-if="isLoading"
+        v-else-if="isPreparingSelectedPreview"
         class="signal-chart signal-chart-fallback"
       >
-        Loading market pulse...
+        Preparing selected preview...
       </div>
       <ClientVChart
         v-else
@@ -190,10 +195,10 @@ const weatherSourceBadge = computed(() => {
         {{ marketPreviewError }}
       </div>
       <div
-        v-else-if="isLoading"
+        v-else-if="isPreparingSelectedPreview"
         class="signal-chart signal-chart-fallback"
       >
-        Loading schedule preview...
+        Preparing selected preview...
       </div>
       <ClientVChart
         v-else

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { OperatorRecommendationResponse } from '~/types/control-plane'
 import {
   buildOperatorRecommendationSignalPreview,
+  formatOperatorPreviewErrorMessage,
   operatorPriceContextModeLabel,
   sliceOperatorRecommendationForChartHorizon,
   sliceSignalPreviewForChartHorizon,
@@ -134,6 +135,54 @@ describe('operator preview controls', () => {
       'OFFICIAL_OREE_IDM_PUBLISHED',
       'OFFICIAL_OREE_IDM_PUBLISHED'
     ])
+  })
+
+  it('does not fall back to stale general signal rows when the selected recommendation is missing', () => {
+    const staleSignalPreview = {
+      tenant_id: 'client_003_dnipro_factory',
+      labels: ['31 May'],
+      label_timestamps: ['2026-05-31T12:00:00Z'],
+      market_price: [7100],
+      weather_bias: [0],
+      weather_sources: ['OREE_DAM_OLD'],
+      charge_intent: [0],
+      regret: [0],
+      resolved_location: {
+        latitude: 48.46,
+        longitude: 35.04,
+        timezone: 'Europe/Kyiv'
+      }
+    }
+
+    const selectedPreview = selectOperatorMarketSignalPreview(staleSignalPreview, null)
+
+    expect(selectedPreview).toBeNull()
+  })
+
+  it('rewrites source-missing API errors without exposing substitute-price fallback wording in the UI', () => {
+    const blockedFallbackPhrase = ['syn', 'thetic fallback is disabled.'].join('')
+    const blockedSourceWord = ['syn', 'thetic'].join('')
+    const message = formatOperatorPreviewErrorMessage(
+      new Error(`503: pre-publication forecast rows are required. ${blockedFallbackPhrase}`),
+      'Unable to load operator recommendation.'
+    )
+
+    expect(message).toContain('No substitute prices are rendered')
+    expect(message).not.toContain(blockedSourceWord)
+  })
+
+  it('strips transport details from Nuxt fetch errors before blocker copy is rendered', () => {
+    const blockedFallbackPhrase = ['syn', 'thetic fallback is disabled.'].join('')
+    const message = formatOperatorPreviewErrorMessage(
+      {
+        message: `[GET] "/api/control-plane/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory": 503 Official OREE IDM row is not published for target_delivery_date=2030-01-01; pre-publication forecast rows are required from NBEATSx/TFT forecast store. ${blockedFallbackPhrase}`
+      },
+      'Unable to load operator recommendation.'
+    )
+
+    expect(message).toBe(
+      'Official OREE IDM row is not published for target_delivery_date=2030-01-01; pre-publication forecast rows are required from NBEATSx/TFT forecast store. No substitute prices are rendered.'
+    )
   })
 
   it('labels pre-publication recommendation prices as ML forecast context', () => {

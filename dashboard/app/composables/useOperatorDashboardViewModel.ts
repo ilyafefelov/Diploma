@@ -180,6 +180,56 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     return `${(throughput / (metrics.capacity_mwh * 2)).toFixed(2)} EFC`
   })
 
+  const priceContextStatusLabel = computed(() => {
+    const status = input.operatorRecommendation?.value?.price_context_status
+
+    if (status === 'official_published') {
+      return 'Official'
+    }
+
+    if (status === 'pre_publication_forecast') {
+      return 'ML forecast'
+    }
+
+    if (status) {
+      return 'Review'
+    }
+
+    return 'Pending'
+  })
+
+  const priceContextSourceMeta = computed(() => {
+    const recommendation = input.operatorRecommendation?.value
+
+    if (!recommendation) {
+      return input.signalPreviewLastLoadedLabel.value
+    }
+
+    if (recommendation.price_context_status === 'pre_publication_forecast') {
+      return recommendation.policy_forecast_context_source || 'forecast store'
+    }
+
+    if (recommendation.price_context_status === 'official_published') {
+      return 'OREE/source-backed row'
+    }
+
+    return recommendation.price_context_status || 'source pending'
+  })
+
+  const priceContextFormula = computed(() => {
+    const status = input.operatorRecommendation?.value?.price_context_status
+
+    if (status === 'pre_publication_forecast') {
+      return 'selected_price = complete ML forecast context rows'
+    }
+
+    if (status === 'official_published') {
+      return 'selected_price = official/source-backed market row'
+    }
+
+    return 'selected_price = unavailable until selected preview source is complete'
+  })
+
   const batteryAssetLabel = computed(() => {
     const metrics = input.baselinePreview.value?.battery_metrics
     if (!metrics) {
@@ -202,6 +252,9 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     activeEconomics: activeEconomics.value,
     selectedStrategyId: input.operatorRecommendation?.value?.selected_strategy_id ?? null,
     weatherBiasAverage: weatherBiasAverage.value,
+    priceContextStatusLabel: priceContextStatusLabel.value,
+    priceContextSourceMeta: priceContextSourceMeta.value,
+    priceContextFormula: priceContextFormula.value,
     signalPreviewLastLoadedLabel: input.signalPreviewLastLoadedLabel.value,
     equivalentCyclePreview: equivalentCyclePreview.value,
     availabilityPercent: availabilityPercent.value,

@@ -83,7 +83,7 @@ describe('operator HUD accessibility architecture', () => {
     expect(futureHeader).toContain('<UFormField')
     expect(futureHeader).toContain('label="Schedule shown"')
     expect(futureHeader).toContain('aria-label="Select schedule source preview"')
-    expect(weatherControls).toContain('aria-label="Include DAM price history in weather materialization"')
+    expect(weatherControls).toContain('aria-label="Include market price history in weather materialization"')
   })
 
   it('renders the hourly recommendation as semantic tabular data', () => {

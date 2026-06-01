@@ -16,10 +16,10 @@ export const buildMarketPulseChartOption = (
   marketVenue: OperatorMarketVenue | string = 'DAM'
 ): EChartsOption => {
   const signal = signalPreview || {
-    labels: ['06:00', '09:00', '12:00', '15:00', '18:00', '21:00'],
-    market_price: [0, 0, 0, 0, 0, 0],
-    weather_bias: [0, 0, 0, 0, 0, 0],
-    weather_sources: ['SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC', 'SYNTHETIC']
+    labels: [],
+    market_price: [],
+    weather_bias: [],
+    weather_sources: []
   }
   const adjustedMarketPrice = signal.market_price.map((price, index) => Number((price + (signal.weather_bias[index] || 0)).toFixed(2)))
   const timelineLabels = buildSignalTimelineLabels(signal)
@@ -51,7 +51,7 @@ export const buildMarketPulseChartOption = (
         const uplift = tooltipItems.find(item => item.seriesName === 'Weather effect')?.value ?? 0
         const adjusted = tooltipItems.find(item => item.seriesName === 'Price after weather')?.value ?? 0
         const dataIndex = tooltipItems[0]?.dataIndex ?? 0
-        const weatherSource = formatWeatherSourceLabel(signal.weather_sources[dataIndex] || 'SYNTHETIC')
+        const weatherSource = formatWeatherSourceLabel(signal.weather_sources[dataIndex] || 'SOURCE_UNAVAILABLE')
 
         return [
           formatTooltipAxisPeriod(tooltipItems[0]?.axisValueLabel || ''),

@@ -62,11 +62,13 @@ describe('dashboard chart theme', () => {
     const option = buildMarketSignalHeroChartOption(null, 'IDM') as {
       legend: { itemGap: number, textStyle: { fontSize: number } }
       grid: { top: number }
+      series: Array<{ data: number[] }>
     }
 
     expect(option.legend.itemGap).toBeLessThanOrEqual(12)
     expect(option.legend.textStyle.fontSize).toBeLessThanOrEqual(11)
     expect(option.grid.top).toBeGreaterThanOrEqual(72)
+    expect(option.series[0]?.data).toEqual([])
   })
 
   it('builds selected-strategy dispatch charts from operator recommendations', () => {

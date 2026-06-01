@@ -57,4 +57,16 @@ describe('operator shadow preview architecture', () => {
     expect(model).toContain('refreshVisibleRecommendation')
     expect(approxTokens(model), 'recommendation preview model should stay below 5000 approx tokens').toBeLessThan(5000)
   })
+
+  it('gates selected recommendation surfaces while the chosen preview is loading or blocked', () => {
+    const page = readFileSync(operatorPagePath, 'utf8')
+
+    expect(page).toContain('selectedRecommendationBlocked')
+    expect(page).toContain('isOperatorRecommendationLoading.value')
+    expect(page).toContain('operatorRecommendationError.value')
+    expect(page).toContain('baselinePreviewError.value')
+    expect(page).toContain('selectedVisibleOperatorRecommendation')
+    expect(page).toContain('operatorRecommendation: selectedVisibleOperatorRecommendation')
+    expect(page).toContain(':gatekeeper-actions="gatekeeperActions"')
+  })
 })

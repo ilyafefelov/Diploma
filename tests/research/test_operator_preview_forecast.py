@@ -69,6 +69,11 @@ def test_materialize_operator_preview_forecasts_persists_idm_model_names() -> No
     }
     assert latest_frame.select("forecast_timestamp").min().item() == datetime(2026, 6, 1)
     assert latest_frame.select("forecast_timestamp").max().item() == datetime(2026, 6, 3, 23)
+    assert set(latest_frame.select("market_venue").to_series().to_list()) == {"IDM"}
+    assert latest_frame.select("training_cutoff").min().item() == datetime(2026, 5, 31, 23)
+    assert latest_frame.select("feature_cutoff").min().item() == datetime(2026, 5, 31, 23)
+    assert latest_frame.select("horizon_start").min().item() == datetime(2026, 6, 1)
+    assert latest_frame.select("horizon_end").max().item() == datetime(2026, 6, 3, 23)
 
 
 def test_materialize_operator_preview_forecasts_refuses_synthetic_history() -> None:

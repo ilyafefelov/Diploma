@@ -44,7 +44,19 @@ defineProps<{
       </small>
     </div>
 
-    <div class="gatekeeper-grid">
+    <div
+      v-if="actions.length === 0"
+      class="gatekeeper-pending"
+      role="status"
+    >
+      <strong>Selected preview pending</strong>
+      <span>No BUY/SELL/HOLD preference is shown until the selected DAM/IDM recommendation has loaded.</span>
+    </div>
+
+    <div
+      v-else
+      class="gatekeeper-grid"
+    >
       <UButton
         v-for="action in actions"
         :key="action.label"
@@ -128,5 +140,29 @@ defineProps<{
   font-size: 0.68rem;
   font-weight: 760;
   line-height: 1.25;
+}
+
+.gatekeeper-pending {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 0.24rem;
+  padding: 0.78rem 0.84rem;
+  border: 1px solid var(--operator-line-faint);
+  border-radius: 0.5rem;
+  background: var(--operator-surface-wash);
+  color: var(--operator-text-readable);
+}
+
+.gatekeeper-pending strong {
+  color: var(--operator-control-foreground);
+  font-size: 0.88rem;
+  line-height: 1.1;
+}
+
+.gatekeeper-pending span {
+  color: var(--operator-text-muted);
+  font-size: 0.7rem;
+  font-weight: 760;
+  line-height: 1.35;
 }
 </style>
