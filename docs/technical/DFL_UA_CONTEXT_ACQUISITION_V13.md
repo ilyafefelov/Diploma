@@ -141,6 +141,46 @@ Attach that audit to the V13 packet with `--receipt-source-audit-json`; the
 exporter copies it as `dfl_ua_context_v13_receipt_source_audit.json` and adds a
 `receipt_source_audit_summary` block to the packet.
 
+To audit the wider public OREE pages and exports without promoting them into
+V13 readiness, run the candidate audit:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\audit_oree_v13_receipt_candidates.py `
+  --month 05.2026 `
+  --delivery-date 2026-05-25 `
+  --output-json .tmp_runtime\oree_receipt_probe\oree_v13_receipt_candidate_audit_2026-05-25.json `
+  --output-csv .tmp_runtime\oree_receipt_probe\oree_v13_receipt_candidate_audit_2026-05-25.csv
+```
+
+This probes `eu_prices`, `IDM_graphs`, `pricectr`, `price_DAM_IDM_05.2026.xls`,
+`indexes`, `control/results_mo/DAM`, `control/results_mo/IDM`, and the linked
+PXS hdata/download endpoints. The audit classifies artifacts as `price_only`,
+`observation_only`, `lead_only`, or `valid_receipt`. Only artifacts with an
+explicit source-side `source_publication_timestamp`-style field plus delivery
+timestamps can be `valid_receipt`; fetch `Date` headers, first-seen observations,
+and XLS download timestamps remain non-receipt evidence.
+
+If public OREE artifacts are observed but still lack row-level publication
+timestamps, materialize weak policy-deadline evidence separately:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\materialize_oree_policy_publication_deadline_evidence.py `
+  --candidate-audit-json .tmp_runtime\oree_receipt_probe\oree_v13_receipt_candidate_audit_2026-05-25.json `
+  --output-csv .tmp_runtime\oree_receipt_probe\oree_policy_publication_deadline_evidence_2026-05-25.csv `
+  --summary-json .tmp_runtime\oree_receipt_probe\oree_policy_publication_deadline_evidence_2026-05-25_summary.json
+```
+
+This computes `policy_publication_deadline_kyiv` from official OREE publication
+rules and joins it with observed public OREE presence. It is governance/context
+evidence only: `policy_publication_deadline_kyiv` is not
+`source_publication_timestamp`, and the summary must keep
+`can_satisfy_v13_explicit_receipts=false`,
+`source_publication_timestamp_available=false`,
+`validated_receipt_csv_ready=false`, `permits_model_training=false`, and
+`market_execution_enabled=false`. If attached to the V13 packet, pass the
+summary with `--policy-publication-evidence-json`; it does not unblock
+`explicit_dam_publication_receipts`.
+
 For external ecosystem leads such as alternate DAM dataset pages or download
 APIs, audit the lead before attempting a receipt CSV conversion:
 

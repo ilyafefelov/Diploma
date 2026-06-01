@@ -10,6 +10,7 @@ from smart_arbitrage.dfl.regret_aware_v2_plus_selector import (
     MODEL_KIND_HIST_GRADIENT_BOOSTING,
     MODEL_KIND_RANDOM_FOREST,
     build_regret_aware_v2_plus_selector_packet,
+    parse_selector_vector,
 )
 from scripts.materialize_regret_aware_v2_plus_selector_packet import (
     main as materialize_regret_aware_v2_plus_selector_packet,
@@ -144,6 +145,51 @@ def test_regret_aware_v2_plus_selector_cli_writes_research_shadow_packet(tmp_pat
     assert (output_dir / "regret_aware_v2_plus_selector_selected_rows.csv").exists()
     assert (output_dir / "regret_aware_v2_plus_selector_summary.md").exists()
     assert (output_dir / "regret_aware_v2_plus_selector_teacher_rows.csv").exists()
+
+
+def test_regret_aware_v2_plus_selector_reads_double_encoded_csv_vectors(
+    tmp_path,
+) -> None:
+    teacher_rows_csv = tmp_path / "teacher_rows.csv"
+    _csv_ready(_vector_only_signal_rows_for_regret_aware_selector()).write_csv(
+        teacher_rows_csv
+    )
+    frame = pl.read_csv(teacher_rows_csv, infer_schema_length=1000)
+
+    row = frame.row(0, named=True)
+    parsed_forecast = parse_selector_vector(row["forecast_price_uah_mwh_vector"])
+    parsed_dispatch = parse_selector_vector(row["dispatch_mw_vector"])
+    parsed_soc = parse_selector_vector(row["soc_fraction_vector"])
+
+    assert parsed_forecast == [1000.0, 1520.0]
+    assert parsed_dispatch == [0.1, -0.1]
+    assert parsed_soc == [0.52, 0.58]
+    assert parse_selector_vector('"not-a-list"') == []
+
+
+def test_regret_aware_v2_plus_selector_uses_csv_vector_features(tmp_path) -> None:
+    teacher_rows_csv = tmp_path / "teacher_rows.csv"
+    _csv_ready(_teacher_rows_for_regret_aware_selector()).write_csv(teacher_rows_csv)
+    frame = pl.read_csv(teacher_rows_csv, infer_schema_length=1000)
+
+    result = build_regret_aware_v2_plus_selector_packet(
+        frame,
+        run_slug="regret-aware-csv-vector-feature-test",
+        min_predicted_improvement_uah=5.0,
+        ridge_l2=0.01,
+    )
+
+    selected = result["selected_rows"].sort("anchor_timestamp")
+    high_signal = selected.row(0, named=True)
+    assert high_signal["selected_schedule_family"] == "safe_challenger"
+    assert result["summary"]["evaluation"]["selector_mean_regret_uah"] == 80.0
+
+
+def _vector_only_signal_rows_for_regret_aware_selector() -> pl.DataFrame:
+    return _teacher_rows_for_regret_aware_selector().with_columns(
+        pl.lit(0.0).alias("forecast_spread_uah_mwh"),
+        pl.lit(0.0).alias("selector_feature_forecast_spread_uah_mwh"),
+    )
 
 
 def _teacher_rows_for_regret_aware_selector() -> pl.DataFrame:

@@ -84,6 +84,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             "explicit local-wrapper fallback."
         ),
     )
+    parser.add_argument(
+        "--save-checkpoint",
+        action="store_true",
+        help=(
+            "Persist a non-promotable research-shadow model checkpoint and run "
+            "a load/forward smoke. This does not change V13 training permission "
+            "or market-execution gates."
+        ),
+    )
     args = parser.parse_args(argv)
 
     teacher_rows = pl.read_csv(args.teacher_rows_csv, try_parse_dates=True)
@@ -132,6 +141,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         distillation_weight=args.distillation_weight,
         min_predicted_improvement_uah=args.min_predicted_improvement_uah,
         max_family_tail_risk_probability=args.max_family_tail_risk_probability,
+        save_checkpoint=args.save_checkpoint,
     )
     selected_rows_csv_path = _write_selected_rows_csv(
         selected_preview_json_path=smoke_paths["selected_preview_json"],
@@ -168,6 +178,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 smoke_paths["evaluation_validation_json"]
             ),
             "selected_preview_json": str(smoke_paths["selected_preview_json"]),
+            "checkpoint_dir": str(smoke_paths["checkpoint_dir"])
+            if "checkpoint_dir" in smoke_paths
+            else "",
             "research_shadow_training_rows": packet["dataset_summary"][
                 "research_shadow_training_rows"
             ],

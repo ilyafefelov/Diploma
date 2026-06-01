@@ -13,6 +13,7 @@ from smart_arbitrage.dfl.ua_context_v13_acquisition_export import (
     UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME,
     UA_CONTEXT_V13_RECEIPT_SOURCE_AUDIT_JSON_ARTIFACT_NAME,
     UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME,
+    UA_CONTEXT_V13_POLICY_PUBLICATION_EVIDENCE_JSON_ARTIFACT_NAME,
     UA_CONTEXT_V13_SAFE_SWITCH_CANDIDATE_AUDITS_JSON_ARTIFACT_NAME,
     UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME,
     UA_CONTEXT_V13_SOURCE_ACQUISITION_BACKLOG_CSV_ARTIFACT_NAME,
@@ -35,6 +36,7 @@ def main() -> None:
     parser.add_argument("--readiness-csv", type=Path, default=None)
     parser.add_argument("--receipt-source-audit-json", type=Path, default=None)
     parser.add_argument("--receipt-source-lead-audit-json", type=Path, default=None)
+    parser.add_argument("--policy-publication-evidence-json", type=Path, default=None)
     parser.add_argument(
         "--safe-switch-candidate-audit-json",
         action="append",
@@ -71,6 +73,9 @@ def main() -> None:
     receipt_source_lead_audit = _load_optional_json(
         args.receipt_source_lead_audit_json
     )
+    policy_publication_evidence = _load_optional_json(
+        args.policy_publication_evidence_json
+    )
     safe_switch_candidate_audits = _load_json_list(
         args.safe_switch_candidate_audit_json
     )
@@ -87,6 +92,7 @@ def main() -> None:
         acquisition_source_evidence_frame=source_evidence,
         receipt_source_audit=receipt_source_audit,
         receipt_source_lead_audit=receipt_source_lead_audit,
+        policy_publication_evidence=policy_publication_evidence,
         safe_switch_candidate_audits=safe_switch_candidate_audits,
         acquisition_input_preflight=acquisition_input_preflight,
         scmo_ws_security_preflight=scmo_ws_security_preflight,
@@ -102,6 +108,7 @@ def main() -> None:
         acquisition_source_evidence_frame=source_evidence,
         receipt_source_audit=receipt_source_audit,
         receipt_source_lead_audit=receipt_source_lead_audit,
+        policy_publication_evidence=policy_publication_evidence,
         safe_switch_candidate_audits=safe_switch_candidate_audits,
         acquisition_input_preflight=acquisition_input_preflight,
         scmo_ws_security_preflight=scmo_ws_security_preflight,
@@ -153,6 +160,15 @@ def main() -> None:
                 / UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME
             )
             if receipt_source_lead_audit is not None
+            else None,
+            "policy_publication_evidence_summary": packet[
+                "policy_publication_evidence_summary"
+            ],
+            "policy_publication_evidence_json": str(
+                export_dir
+                / UA_CONTEXT_V13_POLICY_PUBLICATION_EVIDENCE_JSON_ARTIFACT_NAME
+            )
+            if policy_publication_evidence is not None
             else None,
             "safe_switch_candidate_audit_summary": packet[
                 "safe_switch_candidate_audit_summary"

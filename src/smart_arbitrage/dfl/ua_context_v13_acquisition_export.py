@@ -47,6 +47,9 @@ UA_CONTEXT_V13_ACQUISITION_INPUT_PREFLIGHT_JSON_ARTIFACT_NAME: Final[str] = (
 UA_CONTEXT_V13_SCMO_WS_SECURITY_PREFLIGHT_JSON_ARTIFACT_NAME: Final[str] = (
     "dfl_ua_context_v13_scmo_ws_security_preflight.json"
 )
+UA_CONTEXT_V13_POLICY_PUBLICATION_EVIDENCE_JSON_ARTIFACT_NAME: Final[str] = (
+    "dfl_ua_context_v13_policy_publication_evidence.json"
+)
 
 
 def build_dfl_ua_context_v13_acquisition_packet(
@@ -57,6 +60,7 @@ def build_dfl_ua_context_v13_acquisition_packet(
     acquisition_source_evidence_frame: pl.DataFrame | None = None,
     receipt_source_audit: Mapping[str, Any] | None = None,
     receipt_source_lead_audit: Mapping[str, Any] | None = None,
+    policy_publication_evidence: Mapping[str, Any] | None = None,
     safe_switch_candidate_audits: list[Mapping[str, Any]] | None = None,
     acquisition_input_preflight: Mapping[str, Any] | None = None,
     scmo_ws_security_preflight: Mapping[str, Any] | None = None,
@@ -72,6 +76,7 @@ def build_dfl_ua_context_v13_acquisition_packet(
         acquisition_source_evidence_frame=acquisition_source_evidence_frame,
         receipt_source_audit=receipt_source_audit,
         receipt_source_lead_audit=receipt_source_lead_audit,
+        policy_publication_evidence=policy_publication_evidence,
         safe_switch_candidate_audits=safe_switch_candidate_audits,
         acquisition_input_preflight=acquisition_input_preflight,
         scmo_ws_security_preflight=scmo_ws_security_preflight,
@@ -105,6 +110,10 @@ def build_dfl_ua_context_v13_acquisition_packet(
     if receipt_source_lead_audit is not None:
         attached_artifacts["receipt_source_lead_audit_json"] = (
             UA_CONTEXT_V13_RECEIPT_SOURCE_LEAD_AUDIT_JSON_ARTIFACT_NAME
+        )
+    if policy_publication_evidence is not None:
+        attached_artifacts["policy_publication_evidence_json"] = (
+            UA_CONTEXT_V13_POLICY_PUBLICATION_EVIDENCE_JSON_ARTIFACT_NAME
         )
     if safe_switch_candidate_audits is not None:
         attached_artifacts["safe_switch_candidate_audits_json"] = (
@@ -162,6 +171,9 @@ def build_dfl_ua_context_v13_acquisition_packet(
         "receipt_source_lead_audit_summary": _receipt_source_lead_audit_summary(
             receipt_source_lead_audit
         ),
+        "policy_publication_evidence_summary": _policy_publication_evidence_summary(
+            policy_publication_evidence
+        ),
         "safe_switch_candidate_audit_summary": (
             _safe_switch_candidate_audit_summary(safe_switch_candidate_audits)
         ),
@@ -184,6 +196,7 @@ def write_dfl_ua_context_v13_acquisition_packet(
     acquisition_source_evidence_frame: pl.DataFrame | None = None,
     receipt_source_audit: Mapping[str, Any] | None = None,
     receipt_source_lead_audit: Mapping[str, Any] | None = None,
+    policy_publication_evidence: Mapping[str, Any] | None = None,
     safe_switch_candidate_audits: list[Mapping[str, Any]] | None = None,
     acquisition_input_preflight: Mapping[str, Any] | None = None,
     scmo_ws_security_preflight: Mapping[str, Any] | None = None,
@@ -228,6 +241,17 @@ def write_dfl_ua_context_v13_acquisition_packet(
         ).write_text(
             json.dumps(
                 _jsonable(dict(receipt_source_lead_audit)),
+                indent=2,
+                sort_keys=True,
+            ),
+            encoding="utf-8",
+        )
+    if policy_publication_evidence is not None:
+        (
+            export_dir / UA_CONTEXT_V13_POLICY_PUBLICATION_EVIDENCE_JSON_ARTIFACT_NAME
+        ).write_text(
+            json.dumps(
+                _jsonable(dict(policy_publication_evidence)),
                 indent=2,
                 sort_keys=True,
             ),
@@ -285,6 +309,7 @@ def _validate_packet_inputs(
     acquisition_source_evidence_frame: pl.DataFrame | None,
     receipt_source_audit: Mapping[str, Any] | None,
     receipt_source_lead_audit: Mapping[str, Any] | None,
+    policy_publication_evidence: Mapping[str, Any] | None,
     safe_switch_candidate_audits: list[Mapping[str, Any]] | None,
     acquisition_input_preflight: Mapping[str, Any] | None,
     scmo_ws_security_preflight: Mapping[str, Any] | None,
@@ -349,6 +374,8 @@ def _validate_packet_inputs(
         raise ValueError("V13 packet refuses receipt audit market execution rows.")
     if receipt_source_lead_audit is not None:
         _validate_receipt_source_lead_audit(receipt_source_lead_audit)
+    if policy_publication_evidence is not None:
+        _validate_policy_publication_evidence(policy_publication_evidence)
     if safe_switch_candidate_audits is not None:
         _validate_safe_switch_candidate_audits(safe_switch_candidate_audits)
     if acquisition_input_preflight is not None:
@@ -513,6 +540,7 @@ def _packet_markdown(packet: dict[str, Any]) -> str:
     scmo_ws_security_preflight = packet.get("scmo_ws_security_preflight_summary")
     receipt_source_audit = packet.get("receipt_source_audit_summary")
     receipt_source_lead_audit = packet.get("receipt_source_lead_audit_summary")
+    policy_publication_evidence = packet.get("policy_publication_evidence_summary")
     safe_switch_candidate_audit = packet.get("safe_switch_candidate_audit_summary")
     status = (
         "V13 Candidate Generation Ready"
@@ -624,6 +652,7 @@ def _packet_markdown(packet: dict[str, Any]) -> str:
             *_scmo_ws_security_preflight_markdown(scmo_ws_security_preflight),
             *_receipt_source_audit_markdown(receipt_source_audit),
             *_receipt_source_lead_audit_markdown(receipt_source_lead_audit),
+            *_policy_publication_evidence_markdown(policy_publication_evidence),
             *_safe_switch_candidate_audit_markdown(safe_switch_candidate_audit),
         ]
     )
@@ -1056,6 +1085,38 @@ def _receipt_source_lead_audit_summary(
     }
 
 
+def _policy_publication_evidence_summary(
+    policy_publication_evidence: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    if policy_publication_evidence is None:
+        return None
+    return {
+        "all_policy_deadlines_have_observed_public_artifact": bool(
+            policy_publication_evidence.get(
+                "all_policy_deadlines_have_observed_public_artifact",
+                False,
+            )
+        ),
+        "can_satisfy_v13_explicit_receipts": False,
+        "claim_scope": str(policy_publication_evidence.get("claim_scope", "")),
+        "dt_lava_ready": False,
+        "market_execution_enabled": False,
+        "markets_observed": _string_list(
+            policy_publication_evidence.get("markets_observed", [])
+        ),
+        "observed_market_count": _safe_int(
+            policy_publication_evidence.get("observed_market_count", 0)
+        ),
+        "permits_model_training": False,
+        "policy_evidence_row_count": _safe_int(
+            policy_publication_evidence.get("policy_evidence_row_count", 0)
+        ),
+        "receipt_csv_generated": False,
+        "source_publication_timestamp_available": False,
+        "validated_receipt_csv_ready": False,
+    }
+
+
 def _safe_switch_candidate_audit_summary(
     safe_switch_candidate_audits: list[Mapping[str, Any]] | None,
 ) -> dict[str, Any] | None:
@@ -1276,6 +1337,26 @@ def _validate_receipt_source_lead_audit(
             )
 
 
+def _validate_policy_publication_evidence(
+    policy_publication_evidence: Mapping[str, Any],
+) -> None:
+    unsafe_true_fields = (
+        "can_satisfy_v13_explicit_receipts",
+        "dt_lava_ready",
+        "market_execution_enabled",
+        "permits_model_training",
+        "receipt_csv_generated",
+        "source_publication_timestamp_available",
+        "validated_receipt_csv_ready",
+    )
+    for field_name in unsafe_true_fields:
+        if bool(policy_publication_evidence.get(field_name, False)):
+            raise ValueError(
+                "V13 packet refuses policy publication evidence with "
+                f"{field_name}=true."
+            )
+
+
 def _validate_safe_switch_candidate_audits(
     safe_switch_candidate_audits: list[Mapping[str, Any]],
 ) -> None:
@@ -1431,6 +1512,37 @@ def _receipt_source_lead_audit_markdown(
         "- The lead audit is acquisition targeting only; it does not generate "
         "receipt rows, validate a receipt CSV, permit DT/LAVA training, or "
         "change `market_execution_enabled=false`.",
+        "",
+    ]
+
+
+def _policy_publication_evidence_markdown(
+    policy_publication_evidence: dict[str, Any] | None,
+) -> list[str]:
+    if policy_publication_evidence is None:
+        return []
+    markets = policy_publication_evidence["markets_observed"]
+    market_text = ", ".join(markets) if markets else ""
+    return [
+        "## Policy Publication Deadline Evidence",
+        "",
+        (
+            "- Policy evidence rows: "
+            f"`{policy_publication_evidence['policy_evidence_row_count']}` "
+            f"for markets `{market_text}`."
+        ),
+        (
+            "- Observed public artifacts cover all computed policy deadlines: "
+            f"`{policy_publication_evidence['all_policy_deadlines_have_observed_public_artifact']}`."
+        ),
+        (
+            "- Explicit source publication timestamp available: "
+            f"`{policy_publication_evidence['source_publication_timestamp_available']}`."
+        ),
+        "- This is weak policy-deadline evidence for governance narration. It "
+        "does not satisfy explicit DAM publication receipts, does not generate "
+        "receipt rows, does not permit DT/LAVA training, and does not change "
+        "`market_execution_enabled=false`.",
         "",
     ]
 

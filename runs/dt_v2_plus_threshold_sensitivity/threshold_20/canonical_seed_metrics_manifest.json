@@ -1,0 +1,42 @@
+{
+  "baseline_mean_regret": 174.7683983151615,
+  "baseline_seed_means_json": "runs\\v2plus\\baseline_seed_means.json",
+  "claim_scope": "canonical_offline_experiment_metrics_not_market_execution",
+  "market_execution_enabled": false,
+  "model_dir": "runs\\dt_v2_plus_threshold_sensitivity\\threshold_20",
+  "promotion_gate_passed": false,
+  "seed_metrics": [
+    "runs\\dt_v2_plus_threshold_sensitivity\\threshold_20\\seed_42\\metrics.json",
+    "runs\\dt_v2_plus_threshold_sensitivity\\threshold_20\\seed_2026\\metrics.json",
+    "runs\\dt_v2_plus_threshold_sensitivity\\threshold_20\\seed_7\\metrics.json"
+  ],
+  "seeds": [
+    42,
+    2026,
+    7
+  ],
+  "source_model_name": "nbeatsx_official_global_panel_horizon_calibrated_v1",
+  "teacher_rows_csv": "data\\research_runs\\week3_dt_v2_plus_safe_switch_selector_current\\regret_aware_v2_plus_selector_teacher_rows.csv",
+  "vector_parse_summary": {
+    "actual_price_uah_mwh_vector": {
+      "max_vector_length": 24,
+      "non_empty_vector_count": 720,
+      "row_count": 720
+    },
+    "dispatch_mw_vector": {
+      "max_vector_length": 24,
+      "non_empty_vector_count": 720,
+      "row_count": 720
+    },
+    "forecast_price_uah_mwh_vector": {
+      "max_vector_length": 24,
+      "non_empty_vector_count": 720,
+      "row_count": 720
+    },
+    "soc_fraction_vector": {
+      "max_vector_length": 24,
+      "non_empty_vector_count": 720,
+      "row_count": 720
+    }
+  }
+}

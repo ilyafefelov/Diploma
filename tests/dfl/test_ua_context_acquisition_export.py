@@ -729,6 +729,102 @@ def test_ua_context_v13_acquisition_packet_exports_data_acquisition_needed(
     assert exported_scmo_preflight["market_execution_enabled"] is False
 
 
+def test_ua_context_v13_packet_attaches_policy_deadline_evidence_without_unlock(
+    tmp_path: Path,
+) -> None:
+    source_inventory = pl.DataFrame(
+        [
+            {
+                "source_family": "explicit_dam_publication_receipts",
+                "source_status": "partial_context_rule_deadline_without_row_receipts",
+                "coverage_ratio": 0.0,
+                "required_for_v13_candidate_generation": True,
+                "market_execution_enabled": False,
+            }
+        ]
+    )
+    readiness = pl.DataFrame(
+        [
+            {
+                "tenant_id": "tenant_a",
+                "source_model_name": "model_a",
+                "v13_candidate_generation_ready": False,
+                "readiness_decision": "data_acquisition_needed",
+                "blocking_context_families": (
+                    "explicit_dam_publication_receipts:"
+                    "partial_context_rule_deadline_without_row_receipts"
+                ),
+                "prior_material_safe_switch_example_count": 20,
+                "min_prior_material_safe_switch_examples_for_dt": 20,
+                "dt_lava_ready": False,
+                "target_label_space": "v13_precondition_context_coverage",
+                "raw_hourly_action_imitation": False,
+                "market_execution_enabled": False,
+            }
+        ]
+    )
+    policy_publication_evidence = {
+        "claim_scope": "oree_policy_publication_deadline_evidence_not_v13_receipt",
+        "policy_evidence_row_count": 2,
+        "observed_market_count": 2,
+        "markets_observed": ["DAM", "IDM"],
+        "all_policy_deadlines_have_observed_public_artifact": True,
+        "can_satisfy_v13_explicit_receipts": False,
+        "source_publication_timestamp_available": False,
+        "receipt_csv_generated": False,
+        "validated_receipt_csv_ready": False,
+        "dt_lava_ready": False,
+        "permits_model_training": False,
+        "market_execution_enabled": False,
+    }
+
+    packet = build_dfl_ua_context_v13_acquisition_packet(
+        run_slug="test_v13_policy_deadline_evidence",
+        source_inventory_frame=source_inventory,
+        readiness_frame=readiness,
+        policy_publication_evidence=policy_publication_evidence,
+        asset_check_status="blocked_v13_explicit_dam_publication_receipts",
+    )
+    export_dir = write_dfl_ua_context_v13_acquisition_packet(
+        packet,
+        output_root=tmp_path,
+        source_inventory_frame=source_inventory,
+        readiness_frame=readiness,
+        policy_publication_evidence=policy_publication_evidence,
+    )
+
+    assert packet["v13_candidate_generation_ready"] is False
+    assert packet["policy_publication_evidence_summary"] == {
+        "all_policy_deadlines_have_observed_public_artifact": True,
+        "can_satisfy_v13_explicit_receipts": False,
+        "claim_scope": "oree_policy_publication_deadline_evidence_not_v13_receipt",
+        "dt_lava_ready": False,
+        "market_execution_enabled": False,
+        "markets_observed": ["DAM", "IDM"],
+        "observed_market_count": 2,
+        "permits_model_training": False,
+        "policy_evidence_row_count": 2,
+        "receipt_csv_generated": False,
+        "source_publication_timestamp_available": False,
+        "validated_receipt_csv_ready": False,
+    }
+    assert packet["attached_artifacts"]["policy_publication_evidence_json"] == (
+        "dfl_ua_context_v13_policy_publication_evidence.json"
+    )
+    policy_evidence_path = (
+        export_dir / "dfl_ua_context_v13_policy_publication_evidence.json"
+    )
+    assert policy_evidence_path.exists()
+    assert json.loads(policy_evidence_path.read_text(encoding="utf-8"))[
+        "can_satisfy_v13_explicit_receipts"
+    ] is False
+    markdown = (
+        export_dir / "dfl_ua_context_v13_acquisition_summary.md"
+    ).read_text(encoding="utf-8")
+    assert "Policy Publication Deadline Evidence" in markdown
+    assert "does not satisfy explicit DAM publication receipts" in markdown
+
+
 def test_ua_context_v13_acquisition_packet_cli_accepts_csv_inputs(
     tmp_path: Path,
 ) -> None:

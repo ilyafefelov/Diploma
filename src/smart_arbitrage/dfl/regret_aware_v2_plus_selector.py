@@ -8,6 +8,7 @@ explicit threshold. Otherwise it abstains back to the frozen V2+ comparator.
 
 from __future__ import annotations
 
+import ast
 from collections import Counter
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
@@ -131,6 +132,7 @@ def build_regret_aware_v2_plus_selector_packet(
     ridge_l2: float = 10.0,
     model_kind: str = MODEL_KIND_WEIGHTED_RIDGE,
     feature_set: str = FEATURE_SET_BASE,
+    random_seed: int = 1,
 ) -> dict[str, Any]:
     """Train/evaluate a regret-aware selector with explicit V2+ abstention."""
 
@@ -142,6 +144,7 @@ def build_regret_aware_v2_plus_selector_packet(
         ridge_l2=ridge_l2,
         model_kind=model_kind,
         feature_set=feature_set,
+        random_seed=random_seed,
     )
     frame = _normalized_teacher_rows(teacher_rows_frame)
     train_rows = [
@@ -173,6 +176,7 @@ def build_regret_aware_v2_plus_selector_packet(
         family_names=family_names,
         ridge_l2=ridge_l2,
         model_kind=model_kind,
+        random_seed=random_seed,
     )
     family_tail_risk = _family_tail_risk(
         train_rows,
@@ -206,6 +210,7 @@ def build_regret_aware_v2_plus_selector_packet(
         family_tail_risk=family_tail_risk,
         model_kind=model_kind,
         feature_set=feature_set,
+        random_seed=random_seed,
     )
     return {"selected_rows": selected_frame, "summary": summary, "model": model}
 
@@ -247,6 +252,7 @@ def _validate_config(
     ridge_l2: float,
     model_kind: str,
     feature_set: str,
+    random_seed: int,
 ) -> None:
     if not run_slug:
         raise ValueError("run_slug must be non-empty.")
@@ -266,6 +272,10 @@ def _validate_config(
         raise ValueError(f"unsupported regret-aware selector model_kind: {model_kind}")
     if feature_set not in {FEATURE_SET_BASE, FEATURE_SET_EXPANDED}:
         raise ValueError(f"unsupported regret-aware selector feature_set: {feature_set}")
+    if isinstance(random_seed, bool) or not isinstance(random_seed, int):
+        raise ValueError("random_seed must be an integer.")
+    if random_seed < 0:
+        raise ValueError("random_seed must be non-negative.")
 
 
 def _normalized_teacher_rows(frame: pl.DataFrame) -> pl.DataFrame:
@@ -489,6 +499,7 @@ def _fit_model(
     family_names: Sequence[str],
     ridge_l2: float,
     model_kind: str,
+    random_seed: int,
 ) -> dict[str, Any]:
     if model_kind == MODEL_KIND_WEIGHTED_RIDGE:
         return _fit_weighted_ridge(
@@ -503,11 +514,13 @@ def _fit_model(
             feature_names=feature_names,
             family_names=family_names,
             ridge_l2=ridge_l2,
+            random_seed=random_seed,
         )
     return _fit_random_forest(
         rows=rows,
         feature_names=feature_names,
         family_names=family_names,
+        random_seed=random_seed,
     )
 
 
@@ -566,6 +579,7 @@ def _fit_hist_gradient_boosting(
     feature_names: Sequence[str],
     family_names: Sequence[str],
     ridge_l2: float,
+    random_seed: int,
 ) -> dict[str, Any]:
     try:
         from sklearn.ensemble import HistGradientBoostingRegressor
@@ -587,7 +601,7 @@ def _fit_hist_gradient_boosting(
         learning_rate=0.05,
         max_iter=200,
         l2_regularization=ridge_l2,
-        random_state=1,
+        random_state=random_seed,
     )
     estimator.fit(x, y, sample_weight=weights)
     predictions = np.asarray(estimator.predict(x), dtype=float)
@@ -613,6 +627,7 @@ def _fit_random_forest(
     rows: Sequence[Mapping[str, Any]],
     feature_names: Sequence[str],
     family_names: Sequence[str],
+    random_seed: int,
 ) -> dict[str, Any]:
     try:
         from sklearn.ensemble import RandomForestRegressor
@@ -631,7 +646,7 @@ def _fit_random_forest(
         n_estimators=500,
         max_depth=6,
         min_samples_leaf=1,
-        random_state=1,
+        random_state=random_seed,
     )
     estimator.fit(x, y, sample_weight=weights)
     predictions = np.asarray(estimator.predict(x), dtype=float)
@@ -848,6 +863,7 @@ def _summary(
     family_tail_risk: Mapping[str, Mapping[str, float]],
     model_kind: str,
     feature_set: str,
+    random_seed: int,
 ) -> dict[str, Any]:
     selected_regrets = [_float(row["selected_regret_uah"]) for row in selected_rows]
     v2_regrets = [_float(row["v2_plus_regret_uah"]) for row in selected_rows]
@@ -872,6 +888,7 @@ def _summary(
         "target_column": "regret_delta_vs_v2_plus_uah",
         "model_kind": model_kind,
         "feature_set": feature_set,
+        "random_seed": random_seed,
         "feature_names": list(feature_names),
         "feature_leakage_guard": dict(leakage),
         "training": {
@@ -1114,7 +1131,9 @@ def _terminal_soc_delta(value: object) -> float:
     return values[-1] - values[0] if len(values) >= 2 else 0.0
 
 
-def _vector(value: object) -> list[float]:
+def parse_selector_vector(value: object) -> list[float]:
+    """Parse selector vector fields, including CSV double-encoded JSON lists."""
+
     if isinstance(value, pl.Series):
         return [_float(item) for item in value.to_list()]
     if isinstance(value, np.ndarray):
@@ -1122,13 +1141,26 @@ def _vector(value: object) -> list[float]:
     if isinstance(value, list | tuple):
         return [_float(item) for item in value]
     if isinstance(value, str):
-        try:
-            parsed = json.loads(value)
-        except json.JSONDecodeError:
-            return []
-        if isinstance(parsed, list):
+        parsed: object = value.strip()
+        for _ in range(3):
+            if not isinstance(parsed, str):
+                break
+            if not parsed:
+                return []
+            try:
+                parsed = json.loads(parsed)
+            except json.JSONDecodeError:
+                try:
+                    parsed = ast.literal_eval(cast(str, parsed))
+                except (SyntaxError, ValueError):
+                    return []
+        if isinstance(parsed, list | tuple):
             return [_float(item) for item in parsed]
     return []
+
+
+def _vector(value: object) -> list[float]:
+    return parse_selector_vector(value)
 
 
 def _feature_float(
@@ -1202,5 +1234,6 @@ __all__ = [
     "SUMMARY_MD_NAME",
     "SELECTED_ROWS_CSV_NAME",
     "build_regret_aware_v2_plus_selector_packet",
+    "parse_selector_vector",
     "write_regret_aware_v2_plus_selector_packet",
 ]

@@ -1,0 +1,166 @@
+{
+  "attached_artifacts": {
+    "selected_rows_csv": "regret_aware_v2_plus_selector_selected_rows.csv",
+    "summary_json": "regret_aware_v2_plus_selector_summary.json",
+    "summary_markdown": "regret_aware_v2_plus_selector_summary.md"
+  },
+  "boundary": {
+    "abstains_to_v2_plus_when_signal_is_weak": true,
+    "dt_lava_ready": false,
+    "dt_promotion_gate_passed": false,
+    "market_execution_enabled": false,
+    "mirrored_training_rows_possible": true,
+    "no_dashboard_api_default_switch": true,
+    "not_market_execution": true,
+    "out_of_sample_generalization_claim": false,
+    "permits_model_training": false,
+    "raw_hourly_buy_sell_hold_action_target": false,
+    "research_shadow_not_promotable": true
+  },
+  "claim_scope": "regret_aware_v2_plus_selector_shadow_not_promotable_not_market_execution",
+  "evaluation": {
+    "abstention_count": 86,
+    "control_summary": {
+      "raw_reference": {
+        "mean_regret_uah": 622.2489421796947,
+        "mean_value_uah": 3289.235342627423,
+        "median_regret_uah": 290.2201427564962,
+        "row_count": 90
+      },
+      "schedule_value_learner_v2_plus": {
+        "mean_regret_uah": 174.7683983151615,
+        "mean_value_uah": 3736.715886498357,
+        "median_regret_uah": 67.30027299009589,
+        "row_count": 90
+      },
+      "schedule_value_learner_v2_reference": {
+        "mean_regret_uah": 206.3667938276445,
+        "mean_value_uah": 3705.1174909858737,
+        "median_regret_uah": 96.02061414616037,
+        "row_count": 90
+      },
+      "strict_reference": {
+        "mean_regret_uah": 310.58280814033515,
+        "mean_value_uah": 3600.901476666783,
+        "median_regret_uah": 198.38615278850557,
+        "row_count": 90
+      }
+    },
+    "final_holdout_anchor_count": 90,
+    "final_holdout_row_count": 360,
+    "non_v2_plus_switch_count": 4,
+    "selected_family_counts": {
+      "schedule_value_learner_v2_plus": 86,
+      "strict_reference": 4
+    },
+    "selector_mean_regret_uah": 168.15664125116336,
+    "selector_mean_value_uah": 3743.327643562355,
+    "selector_median_regret_uah": 61.708534960034285,
+    "selector_minus_v2_plus_mean_regret_uah": -6.611757063998141,
+    "selector_minus_v2_plus_mean_value_uah": 6.611757063998084,
+    "v2_plus_mean_regret_uah": 174.7683983151615,
+    "v2_plus_mean_value_uah": 3736.715886498357,
+    "v2_plus_median_regret_uah": 67.30027299009589
+  },
+  "feature_leakage_guard": {
+    "forbidden_feature_tokens": [
+      "actual",
+      "decision_value",
+      "label",
+      "oracle",
+      "regret",
+      "return_to_go",
+      "schedule_value"
+    ],
+    "forbidden_features": [],
+    "selector_features_prior_context_only": true,
+    "uses_realized_regret_as_feature": false
+  },
+  "feature_names": [
+    "selector_feature_forecast_spread_uah_mwh",
+    "selector_feature_terminal_soc_delta_fraction",
+    "selector_feature_total_throughput_delta_mwh",
+    "selector_feature_total_degradation_penalty_uah",
+    "selector_feature_soc_min_slack_fraction",
+    "selector_feature_candidate_index",
+    "selector_feature_candidate_count",
+    "selector_feature_anchor_hour",
+    "selector_feature_anchor_day_of_year",
+    "selector_feature_anchor_month",
+    "selector_feature_anchor_day_of_month",
+    "selector_feature_forecast_mean_uah_mwh",
+    "selector_feature_forecast_std_uah_mwh",
+    "selector_feature_forecast_range_uah_mwh",
+    "selector_feature_forecast_top3_mean_uah_mwh",
+    "selector_feature_forecast_bottom3_mean_uah_mwh",
+    "selector_feature_forecast_peak_hour",
+    "selector_feature_forecast_trough_hour",
+    "selector_feature_forecast_peak_trough_gap_hours",
+    "selector_feature_forecast_objective_uah",
+    "selector_feature_dispatch_dot_centered_forecast",
+    "selector_feature_charge_hour_count",
+    "selector_feature_discharge_hour_count",
+    "selector_feature_first_charge_hour",
+    "selector_feature_first_discharge_hour",
+    "candidate_family=raw_reference",
+    "candidate_family=schedule_value_learner_v2_plus",
+    "candidate_family=schedule_value_learner_v2_reference",
+    "candidate_family=strict_reference"
+  ],
+  "feature_set": "expanded_prior_context_v1",
+  "generated_at": "2026-06-01T06:57:01+00:00",
+  "input_summary": {
+    "candidate_families": [
+      "raw_reference",
+      "schedule_value_learner_v2_plus",
+      "schedule_value_learner_v2_reference",
+      "strict_reference"
+    ],
+    "source_model_names": [
+      "nbeatsx_official_global_panel_horizon_calibrated_v1"
+    ],
+    "teacher_row_count": 720
+  },
+  "loss_function": "random_forest_regret_delta_vs_v2_plus",
+  "method": "Candidate-level random-forest residual selector over point-in-time DT-shadow teacher-row features with explicit V2+ abstention.",
+  "model_kind": "random_forest",
+  "random_seed": 2026,
+  "run_slug": "dt_v2_plus_canonical_seed_2026",
+  "sample_weight_formula": "1 + abs(regret_delta_vs_v2_plus_uah) / 100",
+  "selector_config": {
+    "max_family_tail_risk_probability": 0.5,
+    "min_predicted_improvement_uah": 5.0,
+    "tail_risk_loss_threshold_uah": 150.0
+  },
+  "target_column": "regret_delta_vs_v2_plus_uah",
+  "training": {
+    "family_tail_risk": {
+      "raw_reference": {
+        "mean_regret_delta_vs_v2_plus_uah": 447.4805438645333,
+        "tail_loss_count": 53.0,
+        "tail_risk_probability": 0.5888888888888889,
+        "train_row_count": 90.0
+      },
+      "schedule_value_learner_v2_reference": {
+        "mean_regret_delta_vs_v2_plus_uah": 31.598395512482988,
+        "tail_loss_count": 6.0,
+        "tail_risk_probability": 0.06666666666666667,
+        "train_row_count": 90.0
+      },
+      "strict_reference": {
+        "mean_regret_delta_vs_v2_plus_uah": 135.81440982517364,
+        "tail_loss_count": 31.0,
+        "tail_risk_probability": 0.34444444444444444,
+        "train_row_count": 90.0
+      }
+    },
+    "max_sample_weight": 61.05179817248141,
+    "mean_sample_weight": 2.63581219208276,
+    "min_sample_weight": 1.0,
+    "model_type": "random_forest_regression",
+    "ridge_l2": 10.0,
+    "train_anchor_count": 90,
+    "train_row_count": 360,
+    "train_weighted_rmse_uah": 291.01329425804107
+  }
+}

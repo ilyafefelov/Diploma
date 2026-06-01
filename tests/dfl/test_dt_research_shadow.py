@@ -573,6 +573,46 @@ def test_dt_research_shadow_smoke_reports_hf_backend_availability(tmp_path) -> N
     assert summary["dt_promotion_gate_passed"] is False
 
 
+def test_dt_research_shadow_smoke_saves_loadable_non_promotable_checkpoint(
+    tmp_path,
+) -> None:
+    packet = build_dt_research_shadow_sequence_packet(
+        teacher_rows_frame=_teacher_rows(),
+        run_slug="dt-shadow-checkpoint",
+        context_length=3,
+    )
+    paths = write_dt_research_shadow_sequence_packet(
+        output_dir=tmp_path,
+        packet=packet,
+        teacher_rows_frame=_teacher_rows(),
+    )
+
+    smoke = run_dt_research_shadow_smoke(
+        sequence_npz_path=paths["sequence_npz"],
+        output_dir=tmp_path,
+        max_epochs=1,
+        hidden_dim=16,
+        num_layers=1,
+        num_heads=2,
+        seed=23,
+        model_backbone="local",
+        save_checkpoint=True,
+    )
+
+    summary = json.loads(smoke["summary_json"].read_text(encoding="utf-8"))
+    checkpoint = summary["checkpoint"]
+
+    assert checkpoint["saved"] is True
+    assert checkpoint["format"] == "torch_state_dict"
+    assert checkpoint["load_smoke_passed"] is True
+    assert checkpoint["market_execution_enabled"] is False
+    assert checkpoint["dt_promotion_gate_passed"] is False
+    assert checkpoint["permits_model_training"] is False
+    assert smoke["checkpoint_dir"] == tmp_path / "dt_research_shadow_model_checkpoint"
+    assert (smoke["checkpoint_dir"] / "model_checkpoint.pt").exists()
+    assert (smoke["checkpoint_dir"] / "checkpoint_metadata.json").exists()
+
+
 def test_dt_research_shadow_cli_merges_candidate_library_context(tmp_path) -> None:
     teacher_csv = tmp_path / "teacher_rows.csv"
     candidate_library_csv = tmp_path / "tft_candidate_library_rows.csv"
@@ -649,6 +689,55 @@ def test_dt_research_shadow_cli_merges_candidate_library_context(tmp_path) -> No
     assert selected_preview["preview_rows"][0]["selected_candidate_id"]
     assert evaluation_validation["passed"] is True
     assert evaluation_validation["market_execution_enabled"] is False
+
+
+def test_dt_research_shadow_cli_can_persist_non_promotable_checkpoint(
+    tmp_path,
+) -> None:
+    teacher_csv = tmp_path / "teacher_rows.csv"
+    output_dir = tmp_path / "packet"
+    _csv_ready(_teacher_rows()).write_csv(teacher_csv)
+
+    exit_code = materialize_dt_research_shadow_packet(
+        [
+            "--teacher-rows-csv",
+            str(teacher_csv),
+            "--output-dir",
+            str(output_dir),
+            "--run-slug",
+            "dt-shadow-cli-checkpoint-test",
+            "--context-length",
+            "3",
+            "--max-epochs",
+            "1",
+            "--hidden-dim",
+            "16",
+            "--num-layers",
+            "1",
+            "--num-heads",
+            "2",
+            "--seed",
+            "29",
+            "--model-backbone",
+            "local",
+            "--save-checkpoint",
+        ]
+    )
+
+    smoke_summary = json.loads(
+        (output_dir / "dt_research_shadow_smoke_summary.json").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    assert exit_code == 0
+    assert smoke_summary["checkpoint"]["saved"] is True
+    assert smoke_summary["checkpoint"]["load_smoke_passed"] is True
+    assert smoke_summary["checkpoint"]["market_execution_enabled"] is False
+    assert smoke_summary["checkpoint"]["dt_promotion_gate_passed"] is False
+    assert (
+        output_dir / "dt_research_shadow_model_checkpoint" / "model_checkpoint.pt"
+    ).exists()
 
 
 def test_dt_research_shadow_adapts_real_v2_plus_strict_rows_for_apples_to_apples() -> None:

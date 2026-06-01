@@ -47,6 +47,9 @@ EVALUATION_SUMMARY_JSON_NAME: Final[str] = (
 EVALUATION_VALIDATION_JSON_NAME: Final[str] = (
     "dt_research_shadow_evaluation_validation.json"
 )
+CHECKPOINT_DIR_NAME: Final[str] = "dt_research_shadow_model_checkpoint"
+CHECKPOINT_METADATA_JSON_NAME: Final[str] = "checkpoint_metadata.json"
+CHECKPOINT_TORCH_STATE_DICT_NAME: Final[str] = "model_checkpoint.pt"
 OBJECTIVE_KIND_CROSS_ENTROPY: Final[str] = "cross_entropy_candidate_index"
 OBJECTIVE_KIND_DECISION_AWARE: Final[str] = (
     "decision_aware_regret_value_ranking"
@@ -738,6 +741,7 @@ def run_dt_research_shadow_smoke(
     max_family_tail_risk_probability: float = (
         DEFAULT_MAX_FAMILY_TAIL_RISK_PROBABILITY
     ),
+    save_checkpoint: bool = False,
 ) -> dict[str, Path]:
     """Train/evaluate a tiny DT research shadow with conservative V2+ fallback."""
 
@@ -1003,6 +1007,28 @@ def run_dt_research_shadow_smoke(
         selected_rows=selected_rows,
         metrics=metrics,
     )
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
+    checkpoint_summary = _dt_research_shadow_checkpoint_summary(
+        saved=False,
+        checkpoint_dir=output_path / CHECKPOINT_DIR_NAME,
+        selected_backbone=selected_backbone,
+    )
+    if save_checkpoint:
+        checkpoint_summary = _write_dt_research_shadow_model_checkpoint(
+            output_path=output_path,
+            model=model,
+            selected_backbone=selected_backbone,
+            states=states,
+            previous_actions=previous_actions,
+            returns_to_go=returns_to_go,
+            sample_indices=[int(index) for index in eval_indices[:1]],
+            action_dim=action_dim,
+            hidden_dim=hidden_dim,
+            context_length=states.shape[1],
+            num_layers=num_layers,
+            num_heads=num_heads,
+        )
     summary = {
         "claim_scope": DT_RESEARCH_SHADOW_SMOKE_CLAIM_SCOPE,
         "requested_model_backbone": model_backbone,
@@ -1072,6 +1098,7 @@ def run_dt_research_shadow_smoke(
         "deterministic_safety_projection_passed": bool(
             np.max(npz["candidate_safety_violation_count"]) == 0
         ),
+        "checkpoint": checkpoint_summary,
         "dt_promotion_gate_passed": False,
         "market_execution_enabled": False,
     }
@@ -1092,8 +1119,6 @@ def run_dt_research_shadow_smoke(
         "evaluation_summary_json": EVALUATION_SUMMARY_JSON_NAME,
         "selected_preview_json": SELECTED_PREVIEW_JSON_NAME,
     }
-    output_path = Path(output_dir)
-    output_path.mkdir(parents=True, exist_ok=True)
     summary_path = output_path / SMOKE_SUMMARY_JSON_NAME
     evaluation_path = output_path / EVALUATION_SUMMARY_JSON_NAME
     evaluation_validation_path = output_path / EVALUATION_VALIDATION_JSON_NAME
@@ -1120,12 +1145,15 @@ def run_dt_research_shadow_smoke(
         + "\n",
         encoding="utf-8",
     )
-    return {
+    paths = {
         "summary_json": summary_path,
         "evaluation_summary_json": evaluation_path,
         "evaluation_validation_json": evaluation_validation_path,
         "selected_preview_json": selected_preview_path,
     }
+    if save_checkpoint:
+        paths["checkpoint_dir"] = output_path / CHECKPOINT_DIR_NAME
+    return paths
 
 
 def _normalized_candidate_library_rows(frame: pl.DataFrame) -> pl.DataFrame:
@@ -1584,6 +1612,194 @@ def _dt_policy_logits(
         actions=previous_actions,
         returns_to_go=returns_to_go,
     )
+
+
+def _dt_research_shadow_checkpoint_summary(
+    *,
+    saved: bool,
+    checkpoint_dir: Path,
+    selected_backbone: str,
+) -> dict[str, Any]:
+    return {
+        "saved": saved,
+        "path": str(checkpoint_dir),
+        "format": (
+            "huggingface_save_pretrained"
+            if selected_backbone == "huggingface_decision_transformer_model"
+            else "torch_state_dict"
+        ),
+        "metadata_json": CHECKPOINT_METADATA_JSON_NAME,
+        "load_smoke_passed": False,
+        "claim_scope": DT_RESEARCH_SHADOW_SMOKE_CLAIM_SCOPE,
+        "permits_model_training": False,
+        "dt_promotion_gate_passed": False,
+        "market_execution_enabled": False,
+    }
+
+
+def _write_dt_research_shadow_model_checkpoint(
+    *,
+    output_path: Path,
+    model: nn.Module,
+    selected_backbone: str,
+    states: torch.Tensor,
+    previous_actions: torch.Tensor,
+    returns_to_go: torch.Tensor,
+    sample_indices: Sequence[int],
+    action_dim: int,
+    hidden_dim: int,
+    context_length: int,
+    num_layers: int,
+    num_heads: int,
+) -> dict[str, Any]:
+    checkpoint_dir = output_path / CHECKPOINT_DIR_NAME
+    checkpoint_dir.mkdir(parents=True, exist_ok=True)
+    summary = _dt_research_shadow_checkpoint_summary(
+        saved=True,
+        checkpoint_dir=checkpoint_dir,
+        selected_backbone=selected_backbone,
+    )
+    summary.update(
+        {
+            "state_dim": int(states.shape[-1]),
+            "action_dim": int(action_dim),
+            "hidden_dim": int(hidden_dim),
+            "context_length": int(context_length),
+            "num_layers": int(num_layers),
+            "num_heads": int(num_heads),
+        }
+    )
+    if selected_backbone == "huggingface_decision_transformer_model":
+        save_pretrained = getattr(model, "save_pretrained")
+        save_pretrained(checkpoint_dir)
+        summary["load_smoke_passed"] = _hf_checkpoint_load_smoke_passed(
+            checkpoint_dir=checkpoint_dir,
+            selected_backbone=selected_backbone,
+            states=states,
+            previous_actions=previous_actions,
+            returns_to_go=returns_to_go,
+            sample_indices=sample_indices,
+            action_dim=action_dim,
+        )
+    else:
+        checkpoint_path = checkpoint_dir / CHECKPOINT_TORCH_STATE_DICT_NAME
+        torch.save(
+            {
+                "model_state_dict": model.state_dict(),
+                "model_backbone": selected_backbone,
+                "state_dim": int(states.shape[-1]),
+                "action_dim": int(action_dim),
+                "hidden_dim": int(hidden_dim),
+                "context_length": int(context_length),
+                "num_layers": int(num_layers),
+                "num_heads": int(num_heads),
+                "claim_scope": DT_RESEARCH_SHADOW_SMOKE_CLAIM_SCOPE,
+                "permits_model_training": False,
+                "dt_promotion_gate_passed": False,
+                "market_execution_enabled": False,
+            },
+            checkpoint_path,
+        )
+        summary["weights_file"] = CHECKPOINT_TORCH_STATE_DICT_NAME
+        summary["load_smoke_passed"] = _torch_checkpoint_load_smoke_passed(
+            checkpoint_path=checkpoint_path,
+            selected_backbone=selected_backbone,
+            states=states,
+            previous_actions=previous_actions,
+            returns_to_go=returns_to_go,
+            sample_indices=sample_indices,
+            action_dim=action_dim,
+        )
+    metadata_path = checkpoint_dir / CHECKPOINT_METADATA_JSON_NAME
+    metadata_path.write_text(
+        json.dumps(_jsonable(summary), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return summary
+
+
+def _hf_checkpoint_load_smoke_passed(
+    *,
+    checkpoint_dir: Path,
+    selected_backbone: str,
+    states: torch.Tensor,
+    previous_actions: torch.Tensor,
+    returns_to_go: torch.Tensor,
+    sample_indices: Sequence[int],
+    action_dim: int,
+) -> bool:
+    from transformers import DecisionTransformerModel
+
+    loaded_model = DecisionTransformerModel.from_pretrained(checkpoint_dir)
+    return _checkpoint_forward_smoke_passed(
+        model=loaded_model,
+        selected_backbone=selected_backbone,
+        states=states,
+        previous_actions=previous_actions,
+        returns_to_go=returns_to_go,
+        sample_indices=sample_indices,
+        action_dim=action_dim,
+    )
+
+
+def _torch_checkpoint_load_smoke_passed(
+    *,
+    checkpoint_path: Path,
+    selected_backbone: str,
+    states: torch.Tensor,
+    previous_actions: torch.Tensor,
+    returns_to_go: torch.Tensor,
+    sample_indices: Sequence[int],
+    action_dim: int,
+) -> bool:
+    checkpoint = torch.load(
+        checkpoint_path,
+        map_location="cpu",
+        weights_only=False,
+    )
+    model = DecisionTransformerPolicy(
+        state_dim=int(checkpoint["state_dim"]),
+        action_dim=int(checkpoint["action_dim"]),
+        hidden_dim=int(checkpoint["hidden_dim"]),
+        context_length=int(checkpoint["context_length"]),
+        num_layers=int(checkpoint["num_layers"]),
+        num_heads=int(checkpoint["num_heads"]),
+    )
+    model.load_state_dict(checkpoint["model_state_dict"])
+    return _checkpoint_forward_smoke_passed(
+        model=model,
+        selected_backbone=selected_backbone,
+        states=states,
+        previous_actions=previous_actions,
+        returns_to_go=returns_to_go,
+        sample_indices=sample_indices,
+        action_dim=action_dim,
+    )
+
+
+def _checkpoint_forward_smoke_passed(
+    *,
+    model: nn.Module,
+    selected_backbone: str,
+    states: torch.Tensor,
+    previous_actions: torch.Tensor,
+    returns_to_go: torch.Tensor,
+    sample_indices: Sequence[int],
+    action_dim: int,
+) -> bool:
+    if len(sample_indices) == 0:
+        return False
+    model.eval()
+    indices = torch.tensor(list(sample_indices), dtype=torch.long)
+    with torch.no_grad():
+        logits = _dt_policy_logits(
+            model=model,
+            selected_backbone=selected_backbone,
+            states=states[indices],
+            previous_actions=previous_actions[indices],
+            returns_to_go=returns_to_go[indices],
+        )
+    return list(logits.shape) == [len(sample_indices), states.shape[1], action_dim]
 
 
 def _normalized_teacher_rows(frame: pl.DataFrame) -> pl.DataFrame:

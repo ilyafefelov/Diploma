@@ -1,0 +1,19 @@
+{
+  "claim_scope": "canonical_offline_experiment_metrics_not_market_execution",
+  "cmd": "python scripts/materialize_dt_v2_plus_canonical_seed_metrics.py --teacher-rows-csv data\\research_runs\\week3_dt_v2_plus_safe_switch_selector_current\\regret_aware_v2_plus_selector_teacher_rows.csv --model-dir runs\\dt_v2_plus_threshold_sensitivity\\threshold_20 --baseline-seed-means-json runs\\v2plus\\baseline_seed_means.json --seeds 42 2026 7 --model-kind random_forest --feature-set expanded_prior_context_v1 --min-predicted-improvement-uah 20",
+  "early_stop_epoch": 0,
+  "epoch": 0,
+  "git_commit": "c790fea3",
+  "gpu_hours": 0.0,
+  "market_execution_enabled": false,
+  "max_mem_gb": 0.0,
+  "model": "dt_v2_plus",
+  "promotion_gate_passed": false,
+  "run_id": "dt_v2_plus_canonical_seed_42",
+  "seed": 42,
+  "test_regret_mean": 168.15664125116336,
+  "test_regret_std": 306.90443793623757,
+  "val_regret_mean": 168.15664125116336,
+  "val_regret_std": 306.90443793623757,
+  "wall_time_s": 46.480192299997725
+}

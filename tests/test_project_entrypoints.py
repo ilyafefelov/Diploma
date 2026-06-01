@@ -497,6 +497,14 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     receipt_lead_audit_script = (
         PROJECT_ROOT / "scripts" / "audit_v13_dam_receipt_source_leads.py"
     ).read_text(encoding="utf-8")
+    public_oree_candidate_audit_script = (
+        PROJECT_ROOT / "scripts" / "audit_oree_v13_receipt_candidates.py"
+    ).read_text(encoding="utf-8")
+    policy_publication_evidence_script = (
+        PROJECT_ROOT
+        / "scripts"
+        / "materialize_oree_policy_publication_deadline_evidence.py"
+    ).read_text(encoding="utf-8")
     energy_map_metadata_probe_script = (
         PROJECT_ROOT / "scripts" / "probe_energy_map_dam_receipt_metadata.py"
     ).read_text(encoding="utf-8")
@@ -538,6 +546,7 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "--readiness-csv" in export_script
     assert "--receipt-source-audit-json" in export_script
     assert "--receipt-source-lead-audit-json" in export_script
+    assert "--policy-publication-evidence-json" in export_script
     assert "--safe-switch-candidate-audit-json" in export_script
     assert "--acquisition-input-preflight-json" in export_script
     assert "--scmo-ws-security-preflight-json" in export_script
@@ -604,6 +613,23 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "--input" in receipt_lead_audit_script
     assert "--output" in receipt_lead_audit_script
     assert "does not emit receipt rows" in receipt_lead_audit_script
+    assert "summarize_oree_v13_receipt_candidate_audit" in (
+        public_oree_candidate_audit_script
+    )
+    assert "--month" in public_oree_candidate_audit_script
+    assert "--delivery-date" in public_oree_candidate_audit_script
+    assert "--output-json" in public_oree_candidate_audit_script
+    assert "--output-csv" in public_oree_candidate_audit_script
+    assert "market execution" in public_oree_candidate_audit_script
+    assert "build_oree_policy_publication_deadline_evidence_frame" in (
+        policy_publication_evidence_script
+    )
+    assert "--candidate-audit-json" in policy_publication_evidence_script
+    assert "--output-csv" in policy_publication_evidence_script
+    assert "--summary-json" in policy_publication_evidence_script
+    assert "does not satisfy V13 explicit receipt readiness" in (
+        policy_publication_evidence_script
+    )
     assert "build_energy_map_dam_receipt_metadata_leads_v13_frame" in (
         energy_map_metadata_probe_script
     )
@@ -667,6 +693,11 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "oree_dam_publication_receipts_csv_path" in docs
     assert "probe_oree_dam_publication_receipts.py" in docs
     assert "audit_oree_dam_publication_receipt_sources.py" in docs
+    assert "audit_oree_v13_receipt_candidates.py" in docs
+    assert "materialize_oree_policy_publication_deadline_evidence.py" in docs
+    assert "price_DAM_IDM_05.2026.xls" in docs
+    assert "policy_publication_deadline_kyiv" in docs
+    assert "observation_only" in docs
     assert "audit_v13_dam_receipt_source_leads.py" in docs
     assert "probe_energy_map_dam_receipt_metadata.py" in docs
     assert "probe_scmo_dam_soap_download.py" in docs

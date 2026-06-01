@@ -2,17 +2,23 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import warnings
 
+import polars as pl
 import pytest
 
 from scripts.aggregate_canonical_experiment_metrics import (
     main as aggregate_canonical_experiment_metrics,
+)
+from scripts.materialize_dt_v2_plus_canonical_seed_metrics import (
+    main as materialize_dt_v2_plus_canonical_seed_metrics,
 )
 from smart_arbitrage.dfl.canonical_experiment_metrics import (
     BASELINE_V2_PLUS_MEAN_REGRET_UAH,
     classify_experiment_pass_level,
     canonical_metrics_from_dt_v2_plus_promotion_summary,
     validate_canonical_experiment_metrics_payload,
+    welch_t_pvalue,
 )
 
 
@@ -123,6 +129,67 @@ def test_aggregate_cli_writes_primary_summary_for_three_seed_model(tmp_path: Pat
     assert aggregate["baseline_mean_regret"] == pytest.approx(BASELINE_V2_PLUS_MEAN_REGRET_UAH)
 
 
+def test_welch_pvalue_returns_one_for_identical_seed_means_without_warning() -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        pvalue = welch_t_pvalue([174.77, 174.77, 174.77], [174.77, 174.77, 174.77])
+
+    assert pvalue == 1.0
+
+
+def test_dt_v2_plus_seed_metrics_cli_creates_required_aggregation_inputs(
+    tmp_path: Path,
+) -> None:
+    teacher_rows_csv = tmp_path / "teacher_rows.csv"
+    model_dir = tmp_path / "runs" / "dt_v2_plus"
+    baseline_path = tmp_path / "runs" / "v2plus" / "baseline_seed_means.json"
+    _csv_ready(_vector_only_teacher_rows_for_canonical_seed_metrics()).write_csv(
+        teacher_rows_csv
+    )
+
+    exit_code = materialize_dt_v2_plus_canonical_seed_metrics(
+        [
+            "--teacher-rows-csv",
+            str(teacher_rows_csv),
+            "--model-dir",
+            str(model_dir),
+            "--baseline-seed-means-json",
+            str(baseline_path),
+            "--seeds",
+            "42",
+            "2026",
+            "7",
+            "--model-kind",
+            "weighted_ridge",
+            "--feature-set",
+            "expanded_prior_context_v1",
+            "--min-predicted-improvement-uah",
+            "5",
+            "--ridge-l2",
+            "0.01",
+            "--git-commit",
+            "abc1234",
+        ]
+    )
+
+    assert exit_code == 0
+    assert json.loads(baseline_path.read_text(encoding="utf-8")) == [100.0, 100.0, 100.0]
+    manifest = json.loads(
+        (model_dir / "canonical_seed_metrics_manifest.json").read_text(encoding="utf-8")
+    )
+    vector_summary = manifest["vector_parse_summary"]
+    assert vector_summary["forecast_price_uah_mwh_vector"]["non_empty_vector_count"] == 8
+    assert vector_summary["forecast_price_uah_mwh_vector"]["max_vector_length"] == 2
+    for seed in (42, 2026, 7):
+        metrics_path = model_dir / f"seed_{seed}" / "metrics.json"
+        metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+        assert metrics["seed"] == seed
+        assert metrics["model"] == "dt_v2_plus"
+        assert metrics["test_regret_mean"] == pytest.approx(100.0)
+        assert metrics["market_execution_enabled"] is False
+        assert metrics["promotion_gate_passed"] is False
+
+
 def _metrics_payload(
     *,
     seed: int = 42,
@@ -144,3 +211,24 @@ def _metrics_payload(
         "git_commit": "a1b2c3d",
         "cmd": "python train.py --seed 42 --model dt_v2_plus_safe_switch",
     }
+
+
+def _teacher_rows_for_canonical_seed_metrics() -> pl.DataFrame:
+    from tests.dfl.test_regret_aware_v2_plus_selector import (
+        _teacher_rows_for_regret_aware_selector,
+    )
+
+    return _teacher_rows_for_regret_aware_selector()
+
+
+def _vector_only_teacher_rows_for_canonical_seed_metrics() -> pl.DataFrame:
+    return _teacher_rows_for_canonical_seed_metrics().with_columns(
+        pl.lit(0.0).alias("forecast_spread_uah_mwh"),
+        pl.lit(0.0).alias("selector_feature_forecast_spread_uah_mwh"),
+    )
+
+
+def _csv_ready(frame: pl.DataFrame) -> pl.DataFrame:
+    from tests.dfl.test_regret_aware_v2_plus_selector import _csv_ready as convert
+
+    return convert(frame)

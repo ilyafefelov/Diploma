@@ -236,6 +236,12 @@ def welch_t_pvalue(
         return 1.0
     if not all(math.isfinite(value) for value in [*candidate, *baseline]):
         raise ValueError("Welch t-test inputs must be finite.")
+    if pstdev(candidate) == 0.0 and pstdev(baseline) == 0.0:
+        return (
+            1.0
+            if math.isclose(mean(candidate), mean(baseline), rel_tol=0.0, abs_tol=1e-12)
+            else 0.0
+        )
 
     from scipy import stats
 

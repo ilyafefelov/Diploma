@@ -53,6 +53,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--ridge-l2", type=float, default=10.0)
     parser.add_argument("--model-kind", default=MODEL_KIND_WEIGHTED_RIDGE)
     parser.add_argument("--feature-set", default=FEATURE_SET_BASE)
+    parser.add_argument("--seed", type=int, default=1)
     args = parser.parse_args(argv)
 
     if args.teacher_rows_csv is None and args.strict_rows_csv is None:
@@ -75,6 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ridge_l2=args.ridge_l2,
         model_kind=args.model_kind,
         feature_set=args.feature_set,
+        random_seed=args.seed,
     )
     paths = write_regret_aware_v2_plus_selector_packet(
         output_dir=args.output_dir,
