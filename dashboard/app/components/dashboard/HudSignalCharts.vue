@@ -61,8 +61,22 @@ const selectedStrategyLabel = computed(() => {
 const hasSelectedSchedule = computed(() => (activeOperatorRecommendation.value?.recommendation_schedule.length || 0) > 0)
 const hasMarketPreviewBlocker = computed(() => props.marketPreviewError.trim().length > 0)
 const hasSelectedMarketSignalData = computed(() => (visibleSignalPreview.value?.market_price.length ?? 0) > 0)
+const selectedPreviewHasNoSchedule = computed(() => {
+  return Boolean(activeOperatorRecommendation.value) && !hasSelectedSchedule.value && !props.isLoading
+})
+const selectedPreviewBlockedMessage = computed(() => {
+  const warning = activeOperatorRecommendation.value?.readiness_warnings.find(readinessWarning =>
+    /blocked|no source-backed|no substitute prices|no trade preview|source rows/i.test(readinessWarning)
+  )
+  const status = activeOperatorRecommendation.value?.policy_readiness
+  const statusLabel = status && status !== 'ready' ? `${status}. ` : ''
+
+  return `${statusLabel}${warning || 'Selected preview has no hourly schedule rows for this delivery window.'} No trade preview is shown.`
+})
 const isPreparingSelectedPreview = computed(() => {
-  return !hasMarketPreviewBlocker.value && (props.isLoading || !hasSelectedMarketSignalData.value)
+  return !hasMarketPreviewBlocker.value
+    && !selectedPreviewHasNoSchedule.value
+    && (props.isLoading || !hasSelectedMarketSignalData.value)
 })
 const priceContextModeLabel = computed(() => operatorPriceContextModeLabel(activeOperatorRecommendation.value))
 const priceContextSourceLabel = computed(() => operatorPriceContextSourceLabel(activeOperatorRecommendation.value))
@@ -139,6 +153,12 @@ const weatherSourceBadge = computed(() => {
       >
         Preparing selected preview...
       </div>
+      <div
+        v-else-if="selectedPreviewHasNoSchedule && !hasSelectedMarketSignalData"
+        class="signal-chart signal-chart-fallback"
+      >
+        {{ selectedPreviewBlockedMessage }}
+      </div>
       <ClientVChart
         v-else
         :option="marketOption"
@@ -199,6 +219,12 @@ const weatherSourceBadge = computed(() => {
         class="signal-chart signal-chart-fallback"
       >
         Preparing selected preview...
+      </div>
+      <div
+        v-else-if="selectedPreviewHasNoSchedule"
+        class="signal-chart signal-chart-fallback"
+      >
+        {{ selectedPreviewBlockedMessage }}
       </div>
       <ClientVChart
         v-else

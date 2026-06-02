@@ -30,6 +30,9 @@ interface OperatorDashboardViewModelInput {
   baselinePreview: Readonly<Ref<BaselineLpPreview | null>>
   operatorRecommendation?: Readonly<Ref<OperatorRecommendationResponse | null>>
   selectedMarketVenue?: Readonly<Ref<OperatorMarketVenue>>
+  selectedTargetDeliveryDate?: Readonly<Ref<string | null>>
+  suppressBaselineFallback?: Readonly<Ref<boolean>>
+  isSelectedRecommendationLoading?: Readonly<Ref<boolean>>
   batteryState?: Readonly<Ref<DashboardBatteryStateResponse | null>>
   runConfig: Readonly<Ref<OperatorWeatherRunConfig | null>>
   materializeResult: Readonly<Ref<OperatorWeatherMaterializeResult | null>>
@@ -96,11 +99,15 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
   })
 
   const surfaceAlertCount = computed(() => {
+    const baselineError = input.suppressBaselineFallback?.value
+      ? ''
+      : input.baselinePreviewError.value
+
     return [
       input.registryError.value,
       input.weatherError.value,
       input.signalPreviewError.value,
-      input.baselinePreviewError.value
+      baselineError
     ].filter(Boolean).length
   })
 
@@ -128,7 +135,10 @@ export const useOperatorDashboardViewModel = (input: OperatorDashboardViewModelI
     signalPreview: input.signalPreview,
     baselinePreview: input.baselinePreview,
     operatorRecommendation: input.operatorRecommendation,
-    selectedMarketVenue: input.selectedMarketVenue
+    selectedMarketVenue: input.selectedMarketVenue,
+    selectedTargetDeliveryDate: input.selectedTargetDeliveryDate,
+    suppressBaselineFallback: input.suppressBaselineFallback,
+    isSelectedRecommendationLoading: input.isSelectedRecommendationLoading
   })
 
   const operatorBatteryDisplay = computed(() => buildOperatorBatteryDisplay({

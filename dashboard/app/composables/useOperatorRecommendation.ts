@@ -9,12 +9,14 @@ import {
 
 const DEFAULT_MARKET_VENUE: Readonly<{ value: OperatorMarketVenue }> = { value: 'DAM' }
 const DEFAULT_TARGET_DELIVERY_DATE: Readonly<{ value: string | null }> = { value: null }
+const DEFAULT_AUTO_LOAD: Readonly<{ value: boolean }> = { value: true }
 
 export const useOperatorRecommendation = (
   selectedTenantId: Readonly<{ value: string }>,
   selectedStrategyId: Readonly<{ value: string }>,
   selectedMarketVenue: Readonly<{ value: OperatorMarketVenue }> = DEFAULT_MARKET_VENUE,
-  selectedTargetDeliveryDate: Readonly<{ value: string | null }> = DEFAULT_TARGET_DELIVERY_DATE
+  selectedTargetDeliveryDate: Readonly<{ value: string | null }> = DEFAULT_TARGET_DELIVERY_DATE,
+  shouldAutoLoad: Readonly<{ value: boolean }> = DEFAULT_AUTO_LOAD
 ) => {
   const operatorRecommendation = ref<OperatorRecommendationResponse | null>(null)
   const isLoading = ref(false)
@@ -80,7 +82,14 @@ export const useOperatorRecommendation = (
     }
   }
 
-  watch([selectedTenantId, selectedStrategyId, selectedMarketVenue, selectedTargetDeliveryDate], async () => {
+  watch([selectedTenantId, selectedStrategyId, selectedMarketVenue, selectedTargetDeliveryDate, shouldAutoLoad], async () => {
+    if (!shouldAutoLoad.value) {
+      requestSequence += 1
+      operatorRecommendation.value = null
+      isLoading.value = false
+      error.value = ''
+      return
+    }
     await loadOperatorRecommendation()
   })
 

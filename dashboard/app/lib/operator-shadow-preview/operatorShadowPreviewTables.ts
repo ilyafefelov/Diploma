@@ -82,10 +82,50 @@ export const buildStrategyComparisonRows = (
 
   if (baseRecommendation) {
     rows.push(buildBestValidComparisonRow(baseRecommendation))
+  } else {
+    const metricOnlyComparator = buildMetricOnlyBestValidComparisonRow(shadowPreviews)
+    if (metricOnlyComparator) {
+      rows.push(metricOnlyComparator)
+    }
   }
 
   rows.push(...shadowPreviews.map(buildShadowComparisonRow))
   return rows
+}
+
+const buildMetricOnlyBestValidComparisonRow = (
+  shadowPreviews: ShadowRecommendationPreviewResponse[]
+): StrategyComparisonRow | null => {
+  const metricSource = shadowPreviews.find(preview => (
+    preview.preview_source_id === 'hf_live_safe_switch_value_aligned_shadow'
+    || preview.preview_source_id === 'hf_live_safe_switch_shadow'
+  )) ?? shadowPreviews.find(preview => typeof preview.comparison_metrics.v2_plus_mean_regret_uah === 'number')
+
+  if (!metricSource) {
+    return null
+  }
+
+  const meanRegret = numericMetric(metricSource.comparison_metrics.v2_plus_baseline_mean_regret_uah)
+    ?? numericMetric(metricSource.comparison_metrics.v2_plus_mean_regret_uah)
+    ?? null
+  const totalValue = numericMetric(metricSource.comparison_metrics.v2_plus_mean_value_uah)
+    ?? null
+
+  return {
+    sourceId: 'best_valid',
+    label: metricSource.default_strategy_label || 'Offline V2+ schedule/value learner',
+    status: 'same_window_comparator_metric_only',
+    scheduleRows: 0,
+    totalChargeMwh: 0,
+    totalDischargeMwh: 0,
+    meanRegretVsV2Uah: 0,
+    meanRegretVsStrictUah: meanRegret,
+    totalValueUah: totalValue,
+    marketExecutionEnabled: false,
+    isDefault: true,
+    isPromoted: false,
+    isBlocked: false
+  }
 }
 
 const buildBestValidComparisonRow = (
@@ -190,6 +230,10 @@ const averageNullable = (values: Array<number | null | undefined>): number | nul
     return null
   }
   return Math.round(numericValues.reduce((total, value) => total + value, 0) / numericValues.length)
+}
+
+const numericMetric = (value: number | null | undefined): number | null => {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
 
 const roundEnergy = (value: number): number => Number(value.toFixed(3))

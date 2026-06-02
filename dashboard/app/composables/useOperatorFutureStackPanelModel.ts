@@ -119,9 +119,23 @@ export const useOperatorFutureStackPanelModel = (input: Readonly<OperatorFutureS
     recommendationScheduleRows.value,
     valueGapRows.value
   ))
+  const selectedPolicyEmptyStateMessage = computed(() => {
+    if (!isShadowRecommendationMode.value || selectedRecommendationChartRows.value.length > 0) {
+      return undefined
+    }
+    return `${shadowPreviewLabel.value} is blocked or has no source-backed schedule rows for this delivery window. No trade preview is shown.`
+  })
   const selectedRecommendationProjectionSummary = computed(() => {
     if (selectedRecommendationChartRows.value.length === 0) {
-      return []
+      return isShadowRecommendationMode.value
+        ? [
+            {
+              label: 'Shadow preview',
+              value: '0/0',
+              meta: 'blocked or no chartable delivery windows'
+            }
+          ]
+        : []
     }
 
     const nonIdleRows = selectedRecommendationChartRows.value.filter(row => Math.abs(row.netPowerMw) >= 0.005).length
@@ -205,7 +219,8 @@ export const useOperatorFutureStackPanelModel = (input: Readonly<OperatorFutureS
     policyLabels: policyLabels.value,
     officialPolicyChartSeries: officialPolicyChartSeries.value,
     decisionPolicyChartSeries: decisionPolicyChartSeries.value,
-    selectedRecommendationChartSeries: selectedRecommendationChartSeries.value
+    selectedRecommendationChartSeries: selectedRecommendationChartSeries.value,
+    emptyStateMessage: selectedPolicyEmptyStateMessage.value
   }))
   const statusCards = computed(() => buildFutureStatusCards({
     selectedStrategyLabel: selectedStrategyLabel.value,

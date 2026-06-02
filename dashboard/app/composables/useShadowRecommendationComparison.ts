@@ -1,11 +1,24 @@
 import { ref, watch } from 'vue'
 
-import type { ShadowRecommendationPreviewResponse } from '~/types/control-plane'
-import { SHADOW_PREVIEW_SOURCE_IDS } from '~/utils/operatorShadowPreview'
+import type { ShadowRecommendationPreviewResponse } from '../types/control-plane'
+import type { OperatorMarketVenue } from '../types/operator-dashboard'
+import {
+  comparisonPreviewSourceIdsFor,
+  isLiveHfSafeSwitchPreviewSource,
+  resolveShadowPreviewTargetDeliveryDate,
+  type OperatorPreviewSourceId
+} from '../utils/operatorShadowPreview'
+
+const DEFAULT_MARKET_VENUE: Readonly<{ value: OperatorMarketVenue }> = { value: 'DAM' }
+const DEFAULT_TARGET_DELIVERY_DATE: Readonly<{ value: string | null }> = { value: null }
+const DEFAULT_PREVIEW_SOURCE: Readonly<{ value: OperatorPreviewSourceId }> = { value: 'best_valid' }
 
 export const useShadowRecommendationComparison = (
   selectedTenantId: Readonly<{ value: string }>,
-  targetDeliveryWindowStart: Readonly<{ value: string | null | undefined }>
+  targetDeliveryWindowStart: Readonly<{ value: string | null | undefined }>,
+  selectedMarketVenue: Readonly<{ value: OperatorMarketVenue }> = DEFAULT_MARKET_VENUE,
+  selectedTargetDeliveryDate: Readonly<{ value: string | null }> = DEFAULT_TARGET_DELIVERY_DATE,
+  selectedPreviewSourceId: Readonly<{ value: OperatorPreviewSourceId }> = DEFAULT_PREVIEW_SOURCE
 ) => {
   const shadowComparisonPreviews = ref<ShadowRecommendationPreviewResponse[]>([])
   const isLoading = ref(false)
@@ -24,15 +37,24 @@ export const useShadowRecommendationComparison = (
     isLoading.value = true
     error.value = ''
 
+    const targetDeliveryDate = resolveShadowPreviewTargetDeliveryDate(
+      selectedPreviewSourceId.value,
+      selectedTargetDeliveryDate.value
+    )
+    const usesDateBasedLiveHfComparison = isLiveHfSafeSwitchPreviewSource(selectedPreviewSourceId.value)
     const queryBase = {
       tenant_id: selectedTenantId.value,
-      ...(targetDeliveryWindowStart.value
+      market_venue: selectedMarketVenue.value,
+      ...(targetDeliveryDate
+        ? { target_delivery_date: targetDeliveryDate }
+        : {}),
+      ...(!usesDateBasedLiveHfComparison && targetDeliveryWindowStart.value
         ? { target_delivery_window_start: targetDeliveryWindowStart.value }
         : {})
     }
 
     const results = await Promise.allSettled(
-      SHADOW_PREVIEW_SOURCE_IDS.map(previewSource => $fetch<ShadowRecommendationPreviewResponse>(
+      comparisonPreviewSourceIdsFor(selectedPreviewSourceId.value).map(previewSource => $fetch<ShadowRecommendationPreviewResponse>(
         '/api/control-plane/dashboard/shadow-recommendation-preview',
         {
           query: {
@@ -58,7 +80,10 @@ export const useShadowRecommendationComparison = (
   watch(
     () => [
       selectedTenantId.value,
-      targetDeliveryWindowStart.value
+      targetDeliveryWindowStart.value,
+      selectedMarketVenue.value,
+      selectedTargetDeliveryDate.value,
+      selectedPreviewSourceId.value
     ] as const,
     async () => {
       await loadShadowComparisonPreviews()

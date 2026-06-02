@@ -3,7 +3,11 @@ import { computed } from 'vue'
 
 import type { ShadowRecommendationPreviewResponse } from '~/types/control-plane'
 import type { OperatorPreviewSourceId } from '~/utils/operatorShadowPreview'
-import { buildPreviewSourceSelectItems } from '~/utils/operatorFutureStackPresentation'
+import {
+  buildPreviewSourceSelectItems,
+  VALUE_ALIGNED_HF_SHADOW_DEMO_SCENARIOS,
+  type ValueAlignedHfShadowDemoScenarioId
+} from '~/utils/operatorFutureStackPresentation'
 
 const props = defineProps<{
   selectedPreviewSourceId: OperatorPreviewSourceId
@@ -16,6 +20,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:selectedPreviewSourceId': [value: OperatorPreviewSourceId]
   'refresh:shadowPreview': []
+  'select:hf-demo-scenario': [value: ValueAlignedHfShadowDemoScenarioId]
 }>()
 
 const readModelBadgeLabel = computed(() => {
@@ -27,6 +32,7 @@ const readModelBadgeLabel = computed(() => {
 })
 
 const previewSourceSelectItems = computed(() => buildPreviewSourceSelectItems(props.shadowPreview))
+const hfDemoScenarioItems = VALUE_ALIGNED_HF_SHADOW_DEMO_SCENARIOS
 
 const updateSelectedPreviewSource = (value: string | number | boolean | Record<string, unknown>): void => {
   if (typeof value === 'string') {
@@ -84,6 +90,27 @@ const updateSelectedPreviewSource = (value: string | number | boolean | Record<s
         <span>Default/fallback</span>
         <strong>V2+ schedule/value learner</strong>
         <small>DT and diagnostics stay manual preview only.</small>
+      </div>
+      <div
+        class="future-demo-scenarios"
+        aria-label="HF value-aligned demo scenarios"
+      >
+        <span>HF demo cases</span>
+        <div class="future-demo-scenarios__buttons">
+          <UButton
+            v-for="scenario in hfDemoScenarioItems"
+            :key="scenario.id"
+            class="future-demo-scenario-button"
+            icon="i-lucide-radio"
+            :label="scenario.label"
+            :title="scenario.boundaryCopy"
+            color="info"
+            variant="soft"
+            size="xs"
+            @click="emit('select:hf-demo-scenario', scenario.id)"
+          />
+        </div>
+        <small>Manual proof/abstention presets; no market execution.</small>
       </div>
       <UButton
         class="future-refresh-button"
@@ -144,6 +171,31 @@ const updateSelectedPreviewSource = (value: string | number | boolean | Record<s
   border-color: var(--operator-accent-faint);
 }
 
+.future-demo-scenarios {
+  display: grid;
+  gap: 0.2rem;
+  min-width: min(18rem, 100%);
+  max-width: 32rem;
+  border: 1px solid var(--operator-line-dim);
+  border-radius: 0.55rem;
+  background: var(--operator-control-surface-muted);
+  padding: 0.42rem 0.55rem;
+}
+
+.future-demo-scenarios__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+}
+
+.future-demo-scenario-button {
+  min-height: 1.7rem;
+  border-radius: 4px !important;
+  font-size: 0.68rem;
+  font-weight: 900;
+  white-space: normal;
+}
+
 .future-baseline-context strong {
   overflow-wrap: anywhere;
   color: var(--operator-surface-foreground);
@@ -153,6 +205,13 @@ const updateSelectedPreviewSource = (value: string | number | boolean | Record<s
 }
 
 .future-baseline-context small {
+  color: var(--operator-text-muted);
+  font-size: 0.62rem;
+  font-weight: 760;
+  line-height: 1.24;
+}
+
+.future-demo-scenarios small {
   color: var(--operator-text-muted);
   font-size: 0.62rem;
   font-weight: 760;
@@ -245,7 +304,8 @@ const updateSelectedPreviewSource = (value: string | number | boolean | Record<s
   }
 
   .future-control-stack .future-schedule-source-control,
-  .future-baseline-context {
+  .future-baseline-context,
+  .future-demo-scenarios {
     min-width: 0;
     width: 100%;
   }

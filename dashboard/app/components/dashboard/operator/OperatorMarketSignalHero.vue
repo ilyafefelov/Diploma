@@ -56,8 +56,22 @@ const hasSignalData = computed(() => {
   return !!visibleSignalPreview.value && visibleSignalPreview.value.market_price.length > 0
 })
 const hasMarketPreviewBlocker = computed(() => props.marketPreviewError.trim().length > 0)
+const selectedPreviewHasNoSourceRows = computed(() => {
+  return Boolean(activeOperatorRecommendation.value) && !props.isLoading && !hasSignalData.value
+})
+const selectedPreviewBlockedMessage = computed(() => {
+  const warning = activeOperatorRecommendation.value?.readiness_warnings.find(readinessWarning =>
+    /blocked|no source-backed|no substitute prices|no trade preview|source rows/i.test(readinessWarning)
+  )
+  const status = activeOperatorRecommendation.value?.policy_readiness
+  const statusLabel = status && status !== 'ready' ? `${status}. ` : ''
+
+  return `${statusLabel}${warning || 'Selected preview has no source-backed price rows for this delivery window.'} No trade preview is shown.`
+})
 const isPreparingSelectedPreview = computed(() => {
-  return !hasMarketPreviewBlocker.value && (props.isLoading || !hasSignalData.value)
+  return !hasMarketPreviewBlocker.value
+    && !selectedPreviewHasNoSourceRows.value
+    && (props.isLoading || !hasSignalData.value)
 })
 
 const formatNumber = (value: number): string => `${value.toFixed(2)}`
@@ -411,10 +425,16 @@ const forecastQualityMetaLabel = computed(() => {
         Preparing selected preview...
       </div>
       <div
+        v-else-if="selectedPreviewHasNoSourceRows"
+        class="chart-fallback"
+      >
+        {{ selectedPreviewBlockedMessage }}
+      </div>
+      <div
         v-else-if="!hasSignalData"
         class="chart-fallback"
       >
-        Preparing selected preview...
+        Selected preview has no source-backed price rows for this delivery window. No trade preview is shown.
       </div>
       <ClientVChart
         v-else

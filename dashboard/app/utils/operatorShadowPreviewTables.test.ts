@@ -9,7 +9,9 @@ import {
   applesToApplesDtShadowPreview,
   baseRecommendationWithSchedule,
   directDtShadowPreview,
+  distillationDtShadowPreview,
   dtShadowPreview,
+  hfLiveSafeSwitchValueAlignedPreview,
   regretAwareSelectorPreview,
   safeSwitchSelectorPreview
 } from './test-fixtures/operatorShadowPreviewFixtures'
@@ -87,5 +89,30 @@ describe('operator shadow preview table rows', () => {
     expect(rows[3]).toEqual(expect.objectContaining({ label: 'Regret-aware V2+ selector', meanRegretVsV2Uah: 0, meanRegretVsStrictUah: -136 }))
     expect(rows[4]).toEqual(expect.objectContaining({ label: 'DT V2+ safe-switch selector', meanRegretVsV2Uah: -7 }))
     expect(rows[6]).toEqual(expect.objectContaining({ label: 'V13/DT/LAVA blocked', scheduleRows: 0, isBlocked: true, marketExecutionEnabled: false }))
+  })
+
+  it('synthesizes a V2+ comparator row from live HF metrics when no LP-backed recommendation is loaded', () => {
+    const rows = buildStrategyComparisonRows(null, [
+      distillationDtShadowPreview(),
+      safeSwitchSelectorPreview(),
+      hfLiveSafeSwitchValueAlignedPreview()
+    ])
+
+    expect(rows.map(row => row.sourceId)).toEqual([
+      'best_valid',
+      'dt_v2_plus_distillation_shadow',
+      'dt_v2_plus_safe_switch_selector_shadow',
+      'hf_live_safe_switch_value_aligned_shadow'
+    ])
+    expect(rows[0]).toEqual(expect.objectContaining({
+      label: 'Offline V2+ schedule/value learner',
+      status: 'same_window_comparator_metric_only',
+      scheduleRows: 0,
+      meanRegretVsV2Uah: 0,
+      meanRegretVsStrictUah: 174.77,
+      marketExecutionEnabled: false,
+      isDefault: true,
+      isPromoted: false
+    }))
   })
 })

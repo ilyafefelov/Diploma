@@ -227,7 +227,7 @@ export interface ShadowRecommendationSchedulePointResponse {
   selected_candidate_id: string
   schedule_family: string
   expected_value_uah: number
-  regret_uah: number
+  regret_uah: number | null
   regret_vs_v2_plus_uah: number | null
   regret_vs_strict_uah: number | null
   value_vs_v2_plus_uah: number | null

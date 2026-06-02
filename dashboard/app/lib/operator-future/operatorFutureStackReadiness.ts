@@ -30,14 +30,20 @@ export const buildV13ReadinessItems = (
     ]
   }
 
-  const receiptInputMissing = readiness.missing_required_inputs.includes(
+  const missingRequiredInputs = Array.isArray(readiness.missing_required_inputs)
+    ? readiness.missing_required_inputs
+    : ['oree_dam_publication_receipts_csv_path']
+  const receiptInputMissing = missingRequiredInputs.includes(
     'oree_dam_publication_receipts_csv_path'
   )
-  const receiptProbeMonths = readiness.receipt_source_audit_months_probed
+  const receiptProbeMonths = Array.isArray(readiness.receipt_source_audit_months_probed)
+    ? readiness.receipt_source_audit_months_probed
+    : []
   const latestReceiptProbeMonth = receiptProbeMonths[receiptProbeMonths.length - 1]
-  const receiptAuditSummary = readiness.receipt_source_audit_probe_count > 0
+  const receiptSourceAuditProbeCount = safeNumber(readiness.receipt_source_audit_probe_count, 0)
+  const receiptAuditSummary = receiptSourceAuditProbeCount > 0
     ? [
-        `${readiness.receipt_source_audit_probe_count.toLocaleString('en-GB')} months probed`
+        `${receiptSourceAuditProbeCount.toLocaleString('en-GB')} months probed`
         + `${latestReceiptProbeMonth ? ` through ${latestReceiptProbeMonth}` : ''}`,
         readiness.receipt_source_audit_csv_generated
           ? 'receipt CSV generated'
@@ -50,17 +56,25 @@ export const buildV13ReadinessItems = (
   const receiptGatePrefix = readiness.source_governance_label
     ? `${readiness.source_governance_label}; `
     : ''
-  const topSafeSwitchTarget = readiness.safe_switch_acquisition_targets[0]
+  const safeSwitchAcquisitionTargets = Array.isArray(readiness.safe_switch_acquisition_targets)
+    ? readiness.safe_switch_acquisition_targets
+    : []
+  const topSafeSwitchTarget = safeSwitchAcquisitionTargets[0]
   const safeSwitchTargetSummary = topSafeSwitchTarget
     ? `; top target ${topSafeSwitchTarget.tenant_id} needs ${topSafeSwitchTarget.target_new_prior_material_safe_switch_examples.toLocaleString('en-GB')}`
     : ''
-  const sourceFamilyCount = `${readiness.ready_rows}/${readiness.readiness_rows}`
+  const sourceFamilyCount = `${safeNumber(readiness.ready_rows, 0)}/${safeNumber(readiness.readiness_rows, 0)}`
+  const missingSafeSwitchExamples = safeNumber(readiness.missing_safe_switch_examples, 0)
+  const gateStatus = readiness.gate_status || 'source_readiness_pending'
+  const topPriorityBlocker = readiness.top_priority_blocker || 'source_readiness_pending'
+  const marketExecutionEnabled = Boolean(readiness.market_execution_enabled)
+  const dtLavaReady = Boolean(readiness.dt_lava_ready)
   return [
     {
       label: 'V13 gate',
-      value: formatBoundaryValue(readiness.gate_status),
+      value: formatBoundaryValue(gateStatus),
       status: readiness.v13_candidate_generation_ready ? 'ready' : 'blocked',
-      reason: `${sourceFamilyCount} source families ready; top blocker ${readiness.top_priority_blocker}`
+      reason: `${sourceFamilyCount} source families ready; top blocker ${topPriorityBlocker}`
     },
     {
       label: 'OREE source evidence',
@@ -72,19 +86,19 @@ export const buildV13ReadinessItems = (
     },
     {
       label: 'Safe-switch evidence',
-      value: readiness.missing_safe_switch_examples > 0
-        ? `${readiness.missing_safe_switch_examples.toLocaleString('en-GB')} missing`
+      value: missingSafeSwitchExamples > 0
+        ? `${missingSafeSwitchExamples.toLocaleString('en-GB')} missing`
         : 'ready',
-      status: readiness.missing_safe_switch_examples > 0 ? 'blocked' : 'ready',
+      status: missingSafeSwitchExamples > 0 ? 'blocked' : 'ready',
       reason: `20 prior/train non-tail-risk material examples per tenant/source required${safeSwitchTargetSummary}`
     },
     {
       label: 'Execution boundary',
-      value: readiness.market_execution_enabled ? 'market enabled' : 'preview only',
-      status: readiness.market_execution_enabled ? 'blocked' : 'ready',
-      reason: readiness.market_execution_enabled
+      value: marketExecutionEnabled ? 'market enabled' : 'preview only',
+      status: marketExecutionEnabled ? 'blocked' : 'ready',
+      reason: marketExecutionEnabled
         ? 'V13 unexpectedly reports market_execution_enabled=true'
-        : `market_execution_enabled=false; DT/LAVA ${readiness.dt_lava_ready ? 'ready' : 'blocked'}`
+        : `market_execution_enabled=false; DT/LAVA ${dtLavaReady ? 'ready' : 'blocked'}`
     }
   ]
 }
@@ -142,6 +156,10 @@ export const buildAcademicMvpDtShadowComparisonRows = (
 }
 
 const formatBoundaryValue = (value: string): string => value.replaceAll('_', ' ').replaceAll('v13', 'V13')
+
+const safeNumber = (value: unknown, fallback: number): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : fallback
+)
 
 const asRecord = (value: unknown): Record<string, unknown> => {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {

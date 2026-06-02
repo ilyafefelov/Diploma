@@ -44,12 +44,27 @@ describe('operator HUD chart architecture', () => {
     expect(clientChart.indexOf('v-bind="$attrs"')).toBeLessThan(clientChart.indexOf('<ClientOnly>'))
   })
 
+  it('registers the ECharts graphic component for blocked chart empty states', () => {
+    const clientChart = readDashboardFixture('../components/dashboard/ClientVChart.vue')
+
+    expect(clientChart).toContain('componentsModule.GraphicComponent')
+  })
+
   it('keeps the shared chart shell from overriding caller-owned chart heights', () => {
     const clientChart = readDashboardFixture('../components/dashboard/ClientVChart.vue')
     const shellBlock = getSelectorBlock(clientChart, '.client-v-chart-shell')
 
     expect(shellBlock).not.toMatch(/(?:^|\n)\s*height:\s*100%/)
     expect(shellBlock).toContain('min-height: inherit')
+  })
+
+  it('shows selected source blockers in the market signal hero instead of preparing forever', () => {
+    const marketSignalHero = readDashboardFixture('../components/dashboard/operator/OperatorMarketSignalHero.vue')
+
+    expect(marketSignalHero).toContain('selectedPreviewHasNoSourceRows')
+    expect(marketSignalHero).toContain('selectedPreviewBlockedMessage')
+    expect(marketSignalHero).toContain('No trade preview is shown')
+    expect(marketSignalHero).toContain('!selectedPreviewHasNoSourceRows.value')
   })
 
   it('gives every operator ECharts surface an explicit rendered height', () => {

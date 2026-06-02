@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from functools import cache
 import json
+import logging
 import math
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
+from zoneinfo import ZoneInfo
 
 import dagster as dg
 from fastapi import FastAPI, HTTPException
@@ -48,6 +50,14 @@ from smart_arbitrage.dfl.schedule_value_promotion_gate import (
 	DFL_SCHEDULE_VALUE_PRODUCTION_GATE_CLAIM_SCOPE,
 	STRICT_DEFAULT_FALLBACK,
 )
+from smart_arbitrage.dfl.hf_live_safe_switch_preview import (
+	build_hf_live_safe_switch_candidate_rows,
+	template_grid_specs,
+)
+from smart_arbitrage.dfl.hf_safe_switch_scorer import (
+	load_hf_safe_switch_inference_bundle,
+	score_hf_safe_switch_candidate_rows,
+)
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 from smart_arbitrage.gatekeeper.bid_observability import (
 	HOLD_SEMANTICS,
@@ -81,6 +91,11 @@ from smart_arbitrage.resources.dfl_training_store import get_dfl_training_store
 from smart_arbitrage.resources.forecast_store import get_forecast_store
 from smart_arbitrage.resources.grid_event_store import get_grid_event_store
 from smart_arbitrage.resources.market_data_store import get_market_data_store
+from smart_arbitrage.research.operator_preview_forecast import (
+	OperatorPreviewForecastBuilders,
+	materialize_operator_preview_forecast_runs,
+	resolve_next_operator_preview_forecast_start,
+)
 from smart_arbitrage.resources.simulated_trade_store import get_simulated_trade_store
 from smart_arbitrage.resources.strategy_evaluation_store import get_strategy_evaluation_store
 from smart_arbitrage.strategy.ensemble_gate import (
@@ -98,6 +113,9 @@ OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID = "schedule_value_learner_v2_plus"
 OFFLINE_V2_PLUS_MEAN_REGRET_UAH = 174.77
 OFFLINE_V2_PLUS_WIN_RATE = 1.0
 OFFLINE_V2_PLUS_LABEL = "Offline V2+ schedule/value learner"
+
+logger = logging.getLogger(__name__)
+OPERATOR_PREVIEW_TIMEZONE = ZoneInfo("Europe/Kyiv")
 
 
 app = FastAPI(
@@ -141,6 +159,8 @@ IDM_OFFICIAL_FORECAST_TO_LP_STRATEGY_IDS: tuple[str, ...] = (
 	"nbeatsx_official_idm_v0",
 	"tft_official_idm_v0",
 )
+OPERATOR_PREVIEW_FORECAST_MIN_HORIZON_HOURS = 72
+OPERATOR_PREVIEW_FORECAST_MAX_HORIZON_HOURS = 168
 FUTURE_STACK_DAM_PRICE_CAP_MIN_UAH_MWH = 10.0
 FUTURE_STACK_DAM_PRICE_CAP_MAX_UAH_MWH = 15_000.0
 OPERATOR_MARKET_SCOPE = "dam_hourly_planning_preview"
@@ -273,6 +293,37 @@ DT_V2_PLUS_PROMOTION_EVIDENCE_SUMMARY_JSON_PATH = (
 	/ "research_runs"
 	/ "week3_dt_v2_plus_promotion_evidence_current"
 	/ "dt_v2_plus_promotion_evidence_summary.json"
+)
+HF_LIVE_SAFE_SWITCH_INFERENCE_RUN_DIR_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "week5_hf_live_safe_switch_inference_2026_06_01"
+)
+HF_LIVE_SAFE_SWITCH_INFERENCE_CHECKPOINT_DIR_PATH = (
+	HF_LIVE_SAFE_SWITCH_INFERENCE_RUN_DIR_PATH
+	/ "hf_safe_switch_scorer_model_checkpoint"
+)
+HF_LIVE_SAFE_SWITCH_INFERENCE_SUMMARY_JSON_PATH = (
+	HF_LIVE_SAFE_SWITCH_INFERENCE_RUN_DIR_PATH
+	/ "hf_safe_switch_scorer_summary.json"
+)
+HF_LIVE_SAFE_SWITCH_VALUE_ALIGNED_AUDIT_SUMMARY_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "hf_live_safe_switch_value_aligned_audit_2026_05_01_2026_06_01"
+	/ "summary.json"
+)
+HF_LIVE_SAFE_SWITCH_VALUE_ALIGNED_PROMOTION_PROOF_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "hf_live_safe_switch_value_aligned_shadow_promotion_proof_2026_05_01_2026_06_01"
+	/ "promotion_gate.json"
+)
+HF_LIVE_SAFE_SWITCH_FORECAST_GUARD_AUDIT_SUMMARY_JSON_PATH = (
+	Path("data")
+	/ "research_runs"
+	/ "hf_live_safe_switch_forecast_guard_audit_2026_06_02_2026_06_03"
+	/ "summary.json"
 )
 TFT_SHADOW_AUGMENTED_GATE_ROWS_CSV_PATH = (
 	Path("data")
@@ -1115,7 +1166,7 @@ class ShadowRecommendationSchedulePointResponse(BaseModel):
 	selected_candidate_id: str
 	schedule_family: str
 	expected_value_uah: float
-	regret_uah: float
+	regret_uah: float | None
 	regret_vs_v2_plus_uah: float | None
 	regret_vs_strict_uah: float | None
 	value_vs_v2_plus_uah: float | None
@@ -1247,6 +1298,7 @@ class OfficialDamPriceContext:
 	forecast_model_name: str | None = None
 	forecast_generated_at: datetime | None = None
 	forecast_context_row_count: int = 0
+	request_fallback_materialized: bool = False
 
 
 @cache
@@ -1851,6 +1903,8 @@ def _build_official_oree_price_context(
 	market_venue: str,
 	target_delivery_date: date | None = None,
 	selected_strategy_id: str = "strict_similar_day",
+	tenant_id: str = "client_003_dnipro_factory",
+	allow_same_day_forecast_refresh: bool = False,
 ) -> OfficialDamPriceContext:
 	resolved_market_venue = _normalize_operator_market_venue(market_venue)
 	price_frame = get_market_data_store().list_market_price_frame(
@@ -1881,6 +1935,8 @@ def _build_official_oree_price_context(
 			market_venue=resolved_market_venue,
 			target_delivery_date=target_delivery_date,
 			selected_strategy_id=selected_strategy_id,
+			tenant_id=tenant_id,
+			allow_same_day_forecast_refresh=allow_same_day_forecast_refresh,
 		)
 	delivery_rows = list(delivery_frame.sort(DEFAULT_TIMESTAMP_COLUMN).iter_rows(named=True))
 	first_delivery_timestamp = _datetime_row_value(
@@ -2057,23 +2113,180 @@ def _build_pre_publication_forecast_price_context(
 	market_venue: str,
 	target_delivery_date: date,
 	selected_strategy_id: str,
+	tenant_id: str,
+	allow_same_day_forecast_refresh: bool = False,
 ) -> OfficialDamPriceContext:
-	price_contexts = _complete_pre_publication_forecast_price_contexts(
+	metadata_rejection_detail: str | None = None
+	try:
+		price_contexts = _complete_pre_publication_forecast_price_contexts(
+			market_venue=market_venue,
+			target_delivery_date=target_delivery_date,
+			selected_strategy_id=selected_strategy_id,
+			allow_same_day_forecast_refresh=allow_same_day_forecast_refresh,
+		)
+	except HTTPException as error:
+		if not _is_pre_publication_forecast_metadata_rejection(error):
+			raise
+		metadata_rejection_detail = str(error.detail)
+	else:
+		if price_contexts:
+			return price_contexts[0]
+	materialization_reason = _try_materialize_pre_publication_forecast_rows(
 		market_venue=market_venue,
 		target_delivery_date=target_delivery_date,
-		selected_strategy_id=selected_strategy_id,
+		tenant_id=tenant_id,
 	)
-	if price_contexts:
-		return price_contexts[0]
+	if materialization_reason is None:
+		try:
+			price_contexts = _complete_pre_publication_forecast_price_contexts(
+				market_venue=market_venue,
+				target_delivery_date=target_delivery_date,
+				selected_strategy_id=selected_strategy_id,
+				allow_same_day_forecast_refresh=allow_same_day_forecast_refresh,
+			)
+		except HTTPException as error:
+			if not _is_pre_publication_forecast_metadata_rejection(error):
+				raise
+			metadata_rejection_detail = str(error.detail)
+		else:
+			if price_contexts:
+				return replace(price_contexts[0], request_fallback_materialized=True)
 	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	materialization_detail = (
+		f" Forecast materialization unavailable: {materialization_reason}."
+		if materialization_reason
+		else ""
+	)
+	metadata_rejection_message = (
+		f" Existing forecast metadata was rejected before fallback: {metadata_rejection_detail}."
+		if metadata_rejection_detail
+		else ""
+	)
 	raise HTTPException(
 		status_code=503,
 		detail=(
 			f"Official OREE {resolved_market_venue} row is not published for "
 			f"target_delivery_date={target_delivery_date.isoformat()}; pre-publication forecast rows are "
 			"required from NBEATSx/TFT forecast store. No substitute prices are rendered."
+			f"{metadata_rejection_message}{materialization_detail}"
 		),
 	)
+
+
+def _operator_preview_forecast_horizon_hours(
+	*,
+	forecast_start: datetime,
+	target_delivery_date: date,
+) -> int | None:
+	target_delivery_end = datetime.combine(
+		target_delivery_date + timedelta(days=1),
+		datetime.min.time(),
+	)
+	if target_delivery_end <= forecast_start:
+		return None
+	required_hours = int(math.ceil((target_delivery_end - forecast_start).total_seconds() / 3600.0))
+	if required_hours > OPERATOR_PREVIEW_FORECAST_MAX_HORIZON_HOURS:
+		return None
+	return max(OPERATOR_PREVIEW_FORECAST_MIN_HORIZON_HOURS, required_hours)
+
+
+def _build_source_backed_lag_operator_preview_forecast(
+	training_frame: pl.DataFrame,
+	*,
+	horizon_hours: int = OPERATOR_PREVIEW_FORECAST_MIN_HORIZON_HOURS,
+	**_: object,
+) -> pl.DataFrame:
+	if training_frame.is_empty() or "ds" not in training_frame.columns or "y" not in training_frame.columns:
+		return pl.DataFrame()
+	history_rows = (
+		training_frame
+		.filter(pl.col("is_train") & pl.col("y").is_not_null())
+		.sort("ds")
+		.iter_rows(named=True)
+	)
+	latest_price_by_hour: dict[int, float] = {}
+	for row in history_rows:
+		timestamp = _datetime_row_value(row["ds"], field_name="ds")
+		latest_price_by_hour[timestamp.hour] = float(row["y"])
+	future_timestamps = [
+		_datetime_row_value(row["ds"], field_name="ds")
+		for row in (
+			training_frame
+			.filter(pl.col("is_forecast"))
+			.sort("ds")
+			.head(horizon_hours)
+			.select("ds")
+			.iter_rows(named=True)
+		)
+	]
+	if not latest_price_by_hour or not future_timestamps:
+		return pl.DataFrame()
+	last_observed_price = latest_price_by_hour[max(latest_price_by_hour)]
+	predictions = [
+		latest_price_by_hour.get(timestamp.hour, last_observed_price)
+		for timestamp in future_timestamps
+	]
+	return pl.DataFrame(
+		{
+			"forecast_timestamp": future_timestamps,
+			"predicted_price_uah_mwh": predictions,
+			"adapter_scope": [
+				"source_backed_lag_operator_preview_not_market_execution"
+				for _ in future_timestamps
+			],
+		}
+	)
+
+
+def _try_materialize_pre_publication_forecast_rows(
+	*,
+	market_venue: str,
+	target_delivery_date: date,
+	tenant_id: str,
+) -> str | None:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	market_data_store = get_market_data_store()
+	forecast_store = get_forecast_store()
+	try:
+		forecast_start = resolve_next_operator_preview_forecast_start(
+			market_data_store=market_data_store,
+			market_venue=resolved_market_venue,
+		)
+	except ValueError as error:
+		return str(error)
+	horizon_hours = _operator_preview_forecast_horizon_hours(
+		forecast_start=forecast_start,
+		target_delivery_date=target_delivery_date,
+	)
+	if horizon_hours is None:
+		return (
+			f"target_delivery_date={target_delivery_date.isoformat()} is outside the "
+			f"{OPERATOR_PREVIEW_FORECAST_MAX_HORIZON_HOURS}-hour source-backed operator preview horizon"
+		)
+	try:
+		materialize_operator_preview_forecast_runs(
+			market_data_store=market_data_store,
+			forecast_store=forecast_store,
+			tenant_id=tenant_id,
+			market_venue=resolved_market_venue,
+			forecast_start=forecast_start,
+			horizon_hours=horizon_hours,
+			builders=OperatorPreviewForecastBuilders(
+				nbeatsx_builder=_build_source_backed_lag_operator_preview_forecast,
+				tft_builder=_build_source_backed_lag_operator_preview_forecast,
+			),
+			nbeatsx_max_steps=1,
+			tft_max_epochs=1,
+		)
+	except (ImportError, RuntimeError, ValueError) as error:
+		logger.warning(
+			"Operator preview forecast materialization failed for %s %s: %s",
+			resolved_market_venue,
+			target_delivery_date.isoformat(),
+			error,
+		)
+		return str(error)
+	return None
 
 
 def _complete_pre_publication_forecast_price_contexts(
@@ -2081,15 +2294,20 @@ def _complete_pre_publication_forecast_price_contexts(
 	market_venue: str,
 	target_delivery_date: date,
 	selected_strategy_id: str,
+	allow_same_day_forecast_refresh: bool = False,
 ) -> list[OfficialDamPriceContext]:
 	resolved_market_venue = _normalize_operator_market_venue(market_venue)
 	model_order = _pre_publication_forecast_model_order(
 		market_venue=resolved_market_venue,
 		selected_strategy_id=selected_strategy_id,
 	)
-	forecast_frame = get_forecast_store().latest_forecast_observation_frame(
+	delivery_window_start = datetime.combine(target_delivery_date, datetime.min.time())
+	delivery_window_end = datetime.combine(target_delivery_date + timedelta(days=1), datetime.min.time())
+	forecast_frame = get_forecast_store().forecast_observation_frame_for_window(
 		model_names=model_order,
-		limit_per_model=168,
+		window_start=delivery_window_start,
+		window_end=delivery_window_end,
+		limit_per_model=24,
 	)
 	price_contexts: list[OfficialDamPriceContext] = []
 	for model_name in model_order:
@@ -2106,6 +2324,7 @@ def _complete_pre_publication_forecast_price_contexts(
 			market_venue=resolved_market_venue,
 			target_delivery_date=target_delivery_date,
 			delivery_rows=delivery_rows,
+			allow_same_day_forecast_refresh=allow_same_day_forecast_refresh,
 		)
 		first_delivery_timestamp = _datetime_row_value(
 			delivery_rows[0]["forecast_timestamp"],
@@ -2117,6 +2336,16 @@ def _complete_pre_publication_forecast_price_contexts(
 			if row.get("generated_at") is not None
 		]
 		forecast_generated_at = max(generated_values) if generated_values else None
+		price_context_status = (
+			"same_day_forecast_refresh"
+			if allow_same_day_forecast_refresh
+			and target_delivery_date == _operator_preview_local_date()
+			and any(
+				_naive_utc_datetime(value) >= delivery_window_start
+				for value in generated_values
+			)
+			else "pre_publication_forecast"
+		)
 		price_contexts.append(
 			OfficialDamPriceContext(
 				market_venue=resolved_market_venue,
@@ -2135,7 +2364,7 @@ def _complete_pre_publication_forecast_price_contexts(
 					for row in delivery_rows
 				],
 				anchor_timestamp=first_delivery_timestamp - timedelta(hours=1),
-				price_context_status="pre_publication_forecast",
+				price_context_status=price_context_status,
 				forecast_model_name=model_name,
 				forecast_generated_at=forecast_generated_at,
 				forecast_context_row_count=len(delivery_rows),
@@ -2150,8 +2379,14 @@ def _validate_pre_publication_forecast_metadata(
 	market_venue: str,
 	target_delivery_date: date,
 	delivery_rows: list[dict[str, Any]],
+	allow_same_day_forecast_refresh: bool = False,
 ) -> None:
 	delivery_start = datetime.combine(target_delivery_date, datetime.min.time())
+	delivery_end = datetime.combine(target_delivery_date + timedelta(days=1), datetime.min.time())
+	allow_refresh_metadata = (
+		allow_same_day_forecast_refresh
+		and target_delivery_date == _operator_preview_local_date()
+	)
 	for row in delivery_rows:
 		row_market_venue = str(row.get("market_venue") or _forecast_market_venue_from_model_name(model_name)).upper()
 		if row_market_venue != market_venue:
@@ -2165,10 +2400,17 @@ def _validate_pre_publication_forecast_metadata(
 				model_name=model_name,
 				reason="forecast_generated_at is missing",
 			)
-		if _naive_utc_datetime(forecast_generated_at) >= delivery_start:
+			raise AssertionError("unreachable")
+		forecast_generated_at_naive = _naive_utc_datetime(forecast_generated_at)
+		if forecast_generated_at_naive >= delivery_start and not allow_refresh_metadata:
 			_raise_pre_publication_forecast_metadata_rejected(
 				model_name=model_name,
 				reason="forecast_generated_at is not before target delivery start",
+			)
+		if forecast_generated_at_naive >= delivery_end:
+			_raise_pre_publication_forecast_metadata_rejected(
+				model_name=model_name,
+				reason="forecast_generated_at is not before target delivery end",
 			)
 		for cutoff_field in ("training_cutoff", "feature_cutoff"):
 			cutoff_value = _optional_datetime_row_value(row.get(cutoff_field), field_name=cutoff_field)
@@ -2177,11 +2419,22 @@ def _validate_pre_publication_forecast_metadata(
 					model_name=model_name,
 					reason=f"{cutoff_field} is missing",
 				)
-			if _naive_utc_datetime(cutoff_value) >= delivery_start:
+				raise AssertionError("unreachable")
+			cutoff_value_naive = _naive_utc_datetime(cutoff_value)
+			if cutoff_value_naive >= delivery_start and not allow_refresh_metadata:
 				_raise_pre_publication_forecast_metadata_rejected(
 					model_name=model_name,
 					reason=f"{cutoff_field} is not before target delivery start",
 				)
+			if cutoff_value_naive >= delivery_end:
+				_raise_pre_publication_forecast_metadata_rejected(
+					model_name=model_name,
+					reason=f"{cutoff_field} is not before target delivery end",
+				)
+
+
+def _operator_preview_local_date() -> date:
+	return datetime.now(OPERATOR_PREVIEW_TIMEZONE).date()
 
 
 def _raise_pre_publication_forecast_metadata_rejected(*, model_name: str, reason: str) -> None:
@@ -2191,6 +2444,13 @@ def _raise_pre_publication_forecast_metadata_rejected(*, model_name: str, reason
 			"point-in-time forecast metadata rejected for "
 			f"{model_name}: {reason}. No substitute prices are rendered."
 		),
+	)
+
+
+def _is_pre_publication_forecast_metadata_rejection(error: HTTPException) -> bool:
+	return (
+		error.status_code == 503
+		and str(error.detail).startswith("point-in-time forecast metadata rejected")
 	)
 
 
@@ -5217,6 +5477,30 @@ def _operator_shadow_preview_sources() -> list[ShadowPreviewSourceOptionResponse
 			),
 		),
 		ShadowPreviewSourceOptionResponse(
+			preview_source_id="hf_live_safe_switch_shadow",
+			label="HF live safe-switch shadow",
+			status="live_shadow_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"Live OREE/forecast candidate-ranking preview with LP-free deterministic templates; "
+				"manual operator guidance only, not promoted and no market execution."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
+			preview_source_id="hf_live_safe_switch_value_aligned_shadow",
+			label="HF live safe-switch value-aligned shadow",
+			status="value_aligned_shadow_not_promoted",
+			is_default_strategy=False,
+			is_promoted_strategy=False,
+			market_execution_enabled=False,
+			reason=(
+				"Manual value-aligned HF live shadow using the read-only candidate-library audit; "
+				"not promoted and no market execution."
+			),
+		),
+		ShadowPreviewSourceOptionResponse(
 			preview_source_id="poland_tft_shadow",
 			label="Poland/TFT Shadow",
 			status="positive_not_promoted",
@@ -5251,6 +5535,8 @@ def _operator_shadow_recommendation_preview_response(
 	tenant_id: str,
 	preview_source: str,
 	target_delivery_window_start: datetime | None = None,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	target_delivery_date: date | None = None,
 ) -> ShadowRecommendationPreviewResponse:
 	response: ShadowRecommendationPreviewResponse
 	if preview_source == "dt_shadow":
@@ -5306,6 +5592,22 @@ def _operator_shadow_recommendation_preview_response(
 			summary_path=DT_V2_PLUS_SAFE_SWITCH_SELECTOR_SUMMARY_JSON_PATH,
 			promotion_summary_path=DT_V2_PLUS_PROMOTION_EVIDENCE_SUMMARY_JSON_PATH,
 		)
+	elif preview_source == "hf_live_safe_switch_shadow":
+		response = _operator_hf_live_safe_switch_shadow_preview_response(
+			tenant_id=tenant_id,
+			market_venue=market_venue,
+			target_delivery_date=target_delivery_date,
+		)
+	elif preview_source == "hf_live_safe_switch_value_aligned_shadow":
+		response = _operator_hf_live_safe_switch_shadow_preview_response(
+			tenant_id=tenant_id,
+			market_venue=market_venue,
+			target_delivery_date=target_delivery_date,
+			preview_source_id=preview_source,
+			label="HF live safe-switch value-aligned shadow",
+			status="value_aligned_shadow_not_promoted",
+			template_grid_id="candidate_library_value_aligned",
+		)
 	elif preview_source == "v13_dt_lava_promoted_training":
 		response = _blocked_shadow_recommendation_preview_response(
 			tenant_id=tenant_id,
@@ -5324,10 +5626,30 @@ def _operator_shadow_recommendation_preview_response(
 		)
 	else:
 		raise HTTPException(status_code=404, detail=f"Unknown shadow preview source: {preview_source}")
+	projection_window_start = _shadow_artifact_projection_window_start(
+		preview_source=preview_source,
+		target_delivery_window_start=target_delivery_window_start,
+		target_delivery_date=target_delivery_date,
+	)
 	return _project_shadow_preview_to_delivery_window(
 		response=response,
-		target_delivery_window_start=target_delivery_window_start,
+		target_delivery_window_start=projection_window_start,
 	)
+
+
+def _shadow_artifact_projection_window_start(
+	*,
+	preview_source: str,
+	target_delivery_window_start: datetime | None,
+	target_delivery_date: date | None,
+) -> datetime | None:
+	if target_delivery_window_start is not None:
+		return target_delivery_window_start
+	if target_delivery_date is None:
+		return None
+	if preview_source in {"hf_live_safe_switch_shadow", "hf_live_safe_switch_value_aligned_shadow"}:
+		return None
+	return datetime.combine(target_delivery_date, datetime.min.time())
 
 
 def _project_shadow_preview_to_delivery_window(
@@ -5362,7 +5684,7 @@ def _project_shadow_preview_to_delivery_window(
 			],
 			"readiness_warnings": [
 				*response.readiness_warnings,
-				"Shadow artifact actions are timestamp-projected onto the requested DAM delivery day for preview; "
+				"Shadow artifact actions are timestamp-projected onto the requested delivery day for preview; "
 				"the artifact anchor remains unchanged and this is not market execution.",
 			],
 		}
@@ -5376,7 +5698,22 @@ def _blocked_shadow_recommendation_preview_response(
 	label: str,
 	status: str,
 	warning: str,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	target_delivery_date: date | None = None,
+	comparison_metrics: dict[str, float] | None = None,
+	boundary_labels: list[str] | None = None,
 ) -> ShadowRecommendationPreviewResponse:
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	target_delivery_window_start = (
+		datetime.combine(target_delivery_date, datetime.min.time())
+		if target_delivery_date is not None
+		else None
+	)
+	target_delivery_window_end = (
+		target_delivery_window_start + timedelta(days=1)
+		if target_delivery_window_start is not None
+		else None
+	)
 	return ShadowRecommendationPreviewResponse(
 		tenant_id=tenant_id,
 		preview_source_id=preview_source_id,
@@ -5391,19 +5728,19 @@ def _blocked_shadow_recommendation_preview_response(
 		selected_candidate_id=None,
 		selected_schedule_family=None,
 		selected_candidate_index=None,
-		market_scope=OPERATOR_MARKET_SCOPE,
-		market_venue=LEVEL1_MARKET_VENUE,
+		market_scope=OPERATOR_MARKET_SCOPES[resolved_market_venue],
+		market_venue=resolved_market_venue,
 		interval_minutes=LEVEL1_INTERVAL_MINUTES,
 		anchor_timestamp=None,
-		target_delivery_window_start=None,
-		target_delivery_window_end=None,
+		target_delivery_window_start=target_delivery_window_start,
+		target_delivery_window_end=target_delivery_window_end,
 		market_execution_enabled=False,
 		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
 		market_order_payload_emitted=False,
 		promotion_gate_passed=False,
 		dt_lava_ready=False,
 		source_readiness_gate_passed=False,
-		comparison_metrics={},
+		comparison_metrics=comparison_metrics or {},
 		available_preview_sources=_operator_shadow_preview_sources(),
 		recommendation_schedule=[],
 		boundary_labels=[
@@ -5411,6 +5748,7 @@ def _blocked_shadow_recommendation_preview_response(
 			"Not promoted",
 			"No market execution",
 			"V2+ remains confirmed offline comparator/evidence",
+			*(boundary_labels or []),
 		],
 		readiness_warnings=[warning],
 		artifact_paths={},
@@ -5652,6 +5990,632 @@ def _operator_regret_aware_selector_shadow_preview_response(
 			),
 		},
 	)
+
+
+def _operator_hf_live_safe_switch_shadow_preview_response(
+	*,
+	tenant_id: str,
+	market_venue: str,
+	target_delivery_date: date | None,
+	preview_source_id: str = "hf_live_safe_switch_shadow",
+	label: str = "HF live safe-switch shadow",
+	status: str = "live_shadow_not_promoted",
+	template_grid_id: str = "default",
+) -> ShadowRecommendationPreviewResponse:
+	if not HF_LIVE_SAFE_SWITCH_INFERENCE_CHECKPOINT_DIR_PATH.exists():
+		return _blocked_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source_id,
+			label=label,
+			status="blocked_missing_hf_live_inference_bundle",
+			warning=(
+				"HF live safe-switch inference bundle is not materialized locally; "
+				"no synthetic recommendation is rendered."
+			),
+		)
+	resolved_market_venue = _normalize_operator_market_venue(market_venue)
+	battery_defaults = _resolve_tenant_battery_defaults(tenant_id=tenant_id)
+	try:
+		price_context = _build_official_oree_price_context(
+			market_venue=resolved_market_venue,
+			target_delivery_date=target_delivery_date,
+			selected_strategy_id="nbeatsx_official_idm_v0"
+			if resolved_market_venue == "IDM"
+			else "nbeatsx_official_v0",
+			tenant_id=tenant_id,
+			allow_same_day_forecast_refresh=True,
+		)
+	except HTTPException as error:
+		if error.status_code not in {404, 503}:
+			raise
+		error_detail = str(error.detail)
+		return _blocked_shadow_recommendation_preview_response(
+			tenant_id=tenant_id,
+			preview_source_id=preview_source_id,
+			label=label,
+			status="blocked_missing_source_backed_price_context",
+			warning=(
+				f"{label} blocked: selected date and venue were received, but no official "
+				f"OREE row or source-backed forecast rows were available. {error_detail}"
+			),
+			market_venue=resolved_market_venue,
+			target_delivery_date=target_delivery_date,
+			comparison_metrics={
+				"source_backed_price_context_available": 0.0,
+				"request_fallback_materialized": 0.0,
+				"forecast_rows_loaded": 0.0,
+				"forecast_context_pre_publication": 1.0
+				if target_delivery_date is not None
+				else 0.0,
+				"same_day_forecast_refresh": 0.0,
+				"forecast_context_same_day_refresh": 0.0,
+				"guard_abstained_to_safe_fallback": 1.0,
+				"forecast_guard_abstained_to_safe_fallback": 1.0
+				if target_delivery_date is not None
+				else 0.0,
+				"threshold_guard_failed_count": 0.0,
+				"predicted_tail_guard_failed_count": 0.0,
+				"safety_guard_failed_count": 0.0,
+				"market_execution_enabled": 0.0,
+				"market_order_payload_emitted": 0.0,
+				"promotion_gate_passed": 0.0,
+				"dt_lava_ready": 0.0,
+			},
+			boundary_labels=[
+				"Source-backed price context missing",
+				"No synthetic price fallback",
+			],
+		)
+	forecast_guard_context = _hf_live_forecast_guard_audit_context(
+		requested_template_grid_id=template_grid_id,
+		price_context_status=price_context.price_context_status,
+	)
+	effective_template_grid_id = str(forecast_guard_context["effective_template_grid_id"])
+	load_frame = _operator_load_frame(
+		tenant_id=tenant_id,
+		anchor_timestamp=price_context.anchor_timestamp,
+	)
+	soc_resolution = _resolve_operator_soc(
+		tenant_id=tenant_id,
+		battery_defaults=battery_defaults,
+		load_frame=load_frame,
+	)
+	try:
+		bundle = load_hf_safe_switch_inference_bundle(
+			HF_LIVE_SAFE_SWITCH_INFERENCE_CHECKPOINT_DIR_PATH
+		)
+		candidate_rows = build_hf_live_safe_switch_candidate_rows(
+			tenant_id=tenant_id,
+			source_model_name=price_context.forecast_model_name
+			or f"official_oree_{resolved_market_venue.lower()}_live",
+			anchor_timestamp=price_context.anchor_timestamp,
+			forecast=price_context.delivery_forecast,
+			battery_metrics=battery_defaults.metrics,
+			starting_soc_fraction=soc_resolution.starting_soc_fraction,
+			candidate_families=bundle.candidate_families,
+			template_specs=template_grid_specs(effective_template_grid_id),
+		)
+		score_result = score_hf_safe_switch_candidate_rows(
+			bundle=bundle,
+			candidate_rows=candidate_rows,
+		)
+	except (OSError, RuntimeError, ValueError) as error:
+		logger.exception("%s inference bundle or live candidate scoring failed.", label)
+		raise HTTPException(
+			status_code=500,
+			detail=f"{label} inference bundle or live candidate scoring failed.",
+		) from error
+	selected_candidate = dict(score_result["selected_candidate"])
+	selected_candidate_id = str(score_result["selected_candidate_id"])
+	selected_schedule_family = str(score_result["selected_schedule_family"])
+	selected_value = float(score_result["selected_schedule_value_uah"])
+	selection = {
+		"anchor_timestamp": price_context.anchor_timestamp,
+		"selected_candidate_id": selected_candidate_id,
+		"selected_schedule_family": selected_schedule_family,
+		"selected_candidate_index": _optional_int(
+			score_result.get("selected_candidate_index")
+		),
+		"dt_selected_regret_uah": None,
+		"dt_selected_value_uah": selected_value,
+		"v2_plus_regret_uah": None,
+		"v2_plus_value_uah": None,
+		"strict_regret_uah": None,
+		"strict_value_uah": None,
+		"abstained_to_v2_plus": bool(score_result["abstained_to_v2_plus"]),
+		"abstention_reason": str(score_result["selection_reason"]),
+		"market_execution_enabled": False,
+	}
+	schedule = _shadow_schedule_rows_from_candidate(
+		candidate_row=selected_candidate,
+		selection=selection,
+		selected_candidate_id=selected_candidate_id,
+		selected_schedule_family=selected_schedule_family,
+	)
+	target_start = schedule[0].interval_start if schedule else None
+	target_end = schedule[-1].interval_start + timedelta(minutes=LEVEL1_INTERVAL_MINUTES) if schedule else None
+	comparison_metrics = _hf_live_safe_switch_comparison_metrics(
+		score_result=score_result,
+		selected_value=selected_value,
+		template_grid_id=effective_template_grid_id,
+		price_context_status=price_context.price_context_status,
+		forecast_context_row_count=price_context.forecast_context_row_count,
+		request_fallback_materialized=price_context.request_fallback_materialized,
+	)
+	proof_context = _hf_live_value_aligned_shadow_promotion_context(
+		template_grid_id=template_grid_id
+	)
+	comparison_metrics.update(proof_context["comparison_metrics"])
+	comparison_metrics.update(forecast_guard_context["comparison_metrics"])
+	selection_diagnostics = dict(score_result.get("selection_diagnostics", {}))
+	best_nonfallback_family = str(
+		selection_diagnostics.get("best_safe_nonfallback_schedule_family")
+		or selection_diagnostics.get("best_nonfallback_schedule_family")
+		or ""
+	)
+	best_nonfallback_warning = (
+		[
+			(
+				f"Best non-fallback HF candidate: {best_nonfallback_family}; "
+				f"guard margin {comparison_metrics.get('threshold_margin_to_switch_uah', 0.0):.2f} UAH."
+			)
+		]
+		if best_nonfallback_family
+		else []
+	)
+	value_aligned_warning = (
+		[
+			(
+				"Value-aligned HF shadow; read-only audit passed; manual review required; "
+				f"candidate_template_grid_id={effective_template_grid_id}; no market execution."
+			)
+		]
+		if template_grid_id == "candidate_library_value_aligned"
+		else []
+	)
+	forecast_guard_warning = _hf_live_forecast_guard_abstention_warning(
+		price_context=price_context,
+		score_result=score_result,
+		comparison_metrics=comparison_metrics,
+	)
+	return ShadowRecommendationPreviewResponse(
+		tenant_id=tenant_id,
+		preview_source_id=preview_source_id,
+		preview_source_label=label,
+		preview_status=status,
+		preview_only=True,
+		is_default_strategy=False,
+		is_promoted_strategy=False,
+		research_shadow_not_promotable=True,
+		default_strategy_id=OFFLINE_V2_PLUS_OPERATOR_STRATEGY_ID,
+		default_strategy_label=OFFLINE_V2_PLUS_LABEL,
+		selected_candidate_id=selected_candidate_id,
+		selected_schedule_family=selected_schedule_family,
+		selected_candidate_index=_optional_int(score_result.get("selected_candidate_index")),
+		market_scope=OPERATOR_MARKET_SCOPES[resolved_market_venue],
+		market_venue=resolved_market_venue,
+		interval_minutes=LEVEL1_INTERVAL_MINUTES,
+		anchor_timestamp=price_context.anchor_timestamp,
+		target_delivery_window_start=target_start,
+		target_delivery_window_end=target_end,
+		market_execution_enabled=False,
+		proposed_bid_status=OPERATOR_PROPOSED_BID_STATUS,
+		market_order_payload_emitted=False,
+		promotion_gate_passed=False,
+		dt_lava_ready=False,
+		source_readiness_gate_passed=False,
+		comparison_metrics=comparison_metrics,
+		available_preview_sources=_operator_shadow_preview_sources(),
+		recommendation_schedule=schedule,
+		boundary_labels=[
+			label,
+			"Live shadow",
+			"Not promoted",
+			"Preview only",
+			"No market execution",
+			"No LP solver in live shadow request path",
+			f"Candidate template grid: {effective_template_grid_id}",
+			*(
+				[f"Requested candidate template grid: {template_grid_id}"]
+				if effective_template_grid_id != template_grid_id
+				else []
+			),
+			*proof_context["boundary_labels"],
+			*forecast_guard_context["boundary_labels"],
+			*(
+				["Request fallback materialized source-backed forecast rows"]
+				if price_context.request_fallback_materialized
+				else []
+			),
+			"V2+ remains internal comparator/fallback evidence only",
+		],
+		readiness_warnings=[
+			"HF live safe-switch shadow preview; not promoted; no market execution.",
+			*value_aligned_warning,
+			*proof_context["readiness_warnings"],
+			*forecast_guard_context["readiness_warnings"],
+			"Live actual regret is unavailable before delivery, so regret fields are intentionally null.",
+			(
+				f"Price context status: {price_context.price_context_status}; "
+				f"request_fallback_materialized={str(price_context.request_fallback_materialized).lower()}; "
+				"official OREE rows are used when published, otherwise source-backed forecast rows are required."
+			),
+			*forecast_guard_warning,
+			*best_nonfallback_warning,
+			*soc_resolution.warnings,
+		],
+		artifact_paths={
+			"checkpoint_dir": str(HF_LIVE_SAFE_SWITCH_INFERENCE_CHECKPOINT_DIR_PATH),
+			"summary_json": str(HF_LIVE_SAFE_SWITCH_INFERENCE_SUMMARY_JSON_PATH),
+			**(
+				{
+					"value_aligned_audit_summary_json": str(
+						HF_LIVE_SAFE_SWITCH_VALUE_ALIGNED_AUDIT_SUMMARY_JSON_PATH
+					)
+				}
+				if template_grid_id == "candidate_library_value_aligned"
+				else {}
+			),
+			**proof_context["artifact_paths"],
+			**forecast_guard_context["artifact_paths"],
+		},
+	)
+
+
+def _hf_live_safe_switch_comparison_metrics(
+	*,
+	score_result: dict[str, Any],
+	selected_value: float,
+	template_grid_id: str = "default",
+	price_context_status: str = "official_published",
+	forecast_context_row_count: int = 0,
+	request_fallback_materialized: bool = False,
+) -> dict[str, float]:
+	predicted_delta = float(score_result["predicted_regret_delta_vs_v2_plus_uah"])
+	predicted_tail = float(score_result["predicted_tail_risk_probability"])
+	abstained = 1.0 if bool(score_result["abstained_to_v2_plus"]) else 0.0
+	pre_publication_forecast = 1.0 if price_context_status == "pre_publication_forecast" else 0.0
+	same_day_forecast_refresh = 1.0 if price_context_status == "same_day_forecast_refresh" else 0.0
+	metrics = {
+		"hf_mean_regret_uah": 158.7121,
+		"canonical_safe_switch_mean_regret_uah": 168.1566,
+		"v2_plus_baseline_mean_regret_uah": 174.77,
+		"selected_operating_threshold_uah": 100.0,
+		"live_actual_regret_available": 0.0,
+		"forecast_context_pre_publication": pre_publication_forecast,
+		"same_day_forecast_refresh": same_day_forecast_refresh,
+		"forecast_context_same_day_refresh": same_day_forecast_refresh,
+		"official_context_published": 1.0 if price_context_status == "official_published" else 0.0,
+		"source_backed_price_context": 1.0,
+		"source_backed_price_context_available": 1.0,
+		"request_fallback_materialized": 1.0 if request_fallback_materialized else 0.0,
+		"forecast_rows_loaded": float(forecast_context_row_count),
+		"forecast_context_row_count": float(forecast_context_row_count),
+		"predicted_regret_delta_vs_v2_plus_uah": predicted_delta,
+		"predicted_tail_risk_probability": predicted_tail,
+		"abstained_to_v2_plus": abstained,
+		"guard_abstained_to_safe_fallback": abstained,
+		"forecast_guard_abstained_to_safe_fallback": (
+			(pre_publication_forecast + same_day_forecast_refresh) * abstained
+		),
+		"guard_selected_nonfallback": 0.0 if abstained else 1.0,
+		"dt_selected_mean_value_uah": selected_value,
+		"selected_candidate_estimated_value_uah": selected_value,
+		"dt_minus_v2_plus_regret_uah": 158.7121 - 174.77,
+		"hf_minus_canonical_safe_switch_mean_regret_uah": 158.7121 - 168.1566,
+		"hf_minus_v2_plus_baseline_mean_regret_uah": 158.7121 - 174.77,
+		"market_execution_enabled": 0.0,
+		"candidate_template_grid_default": 1.0 if template_grid_id == "default" else 0.0,
+		"candidate_template_grid_value_aligned": (
+			1.0 if template_grid_id == "candidate_library_value_aligned" else 0.0
+		),
+		"candidate_template_grid_forecast_guarded": (
+			1.0 if template_grid_id == "candidate_library_forecast_guarded" else 0.0
+		),
+	}
+	if template_grid_id == "candidate_library_value_aligned":
+		metrics.update(
+			{
+				"value_aligned_selected_value_improvement_uah": 645.3912023143322,
+				"value_aligned_value_gap_ratio_vs_default": 0.39748498175945224,
+				"value_aligned_tail_failure_delta_count": -16.0,
+				"value_aligned_safety_failure_count": 0.0,
+			}
+		)
+	diagnostics = score_result.get("selection_diagnostics")
+	if isinstance(diagnostics, dict):
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="raw_selected_predicted_regret_delta_vs_v2_plus_uah",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_nonfallback_predicted_regret_delta_vs_v2_plus_uah",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_nonfallback_predicted_tail_risk_probability",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_nonfallback_family_tail_risk_probability",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_nonfallback_threshold_margin_to_switch_uah",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_safe_nonfallback_predicted_regret_delta_vs_v2_plus_uah",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_safe_nonfallback_predicted_tail_risk_probability",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_safe_nonfallback_threshold_margin_to_switch_uah",
+			target_key="threshold_margin_to_switch_uah",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_template_schedule_value_uah",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="best_template_schedule_value_uah",
+			target_key="best_template_estimated_value_uah",
+		)
+		_metric_from_diagnostics(
+			metrics,
+			diagnostics,
+			source_key="selected_vs_best_template_value_gap_uah",
+		)
+		for count_key in (
+			"eligible_nonfallback_candidate_count",
+			"threshold_guard_failed_count",
+			"predicted_tail_guard_failed_count",
+			"family_tail_guard_failed_count",
+			"safety_guard_failed_count",
+		):
+			_metric_from_diagnostics(metrics, diagnostics, source_key=count_key)
+	return metrics
+
+
+def _hf_live_forecast_guard_abstention_warning(
+	*,
+	price_context: OfficialDamPriceContext,
+	score_result: dict[str, Any],
+	comparison_metrics: Mapping[str, float],
+) -> list[str]:
+	if price_context.price_context_status not in {
+		"pre_publication_forecast",
+		"same_day_forecast_refresh",
+	}:
+		return []
+	if not bool(score_result.get("abstained_to_v2_plus", False)):
+		return []
+	threshold_failures = int(comparison_metrics.get("threshold_guard_failed_count", 0.0))
+	tail_failures = int(comparison_metrics.get("predicted_tail_guard_failed_count", 0.0))
+	safety_failures = int(comparison_metrics.get("safety_guard_failed_count", 0.0))
+	value_gap = float(comparison_metrics.get("selected_vs_best_template_value_gap_uah", 0.0))
+	forecast_context_label = (
+		"same-day forecast refresh rows"
+		if price_context.price_context_status == "same_day_forecast_refresh"
+		else "pre-publication forecast rows"
+	)
+	return [
+		(
+			f"Selected target_delivery_date={price_context.target_delivery_date.isoformat()} "
+			f"loaded from source-backed {forecast_context_label}; HF selected the guarded fallback schedule because "
+			"non-fallback candidates failed threshold/tail-risk guards "
+			f"(threshold failures={threshold_failures}, tail-risk failures={tail_failures}, "
+			f"safety failures={safety_failures}, value gap={value_gap:.2f} UAH)."
+		)
+	]
+
+
+def _hf_live_forecast_guard_audit_context(
+	*,
+	requested_template_grid_id: str,
+	price_context_status: str,
+) -> dict[str, Any]:
+	if (
+		requested_template_grid_id != "candidate_library_value_aligned"
+		or price_context_status != "pre_publication_forecast"
+	):
+		return {
+			"effective_template_grid_id": requested_template_grid_id,
+			"comparison_metrics": {},
+			"readiness_warnings": [],
+			"boundary_labels": [],
+			"artifact_paths": {},
+		}
+	proof_path = HF_LIVE_SAFE_SWITCH_FORECAST_GUARD_AUDIT_SUMMARY_JSON_PATH
+	if not proof_path.exists():
+		return {
+			"effective_template_grid_id": requested_template_grid_id,
+			"comparison_metrics": {
+				"forecast_guard_audit_available": 0.0,
+				"forecast_guard_audit_passed": 0.0,
+			},
+			"readiness_warnings": [
+				"Forecast guard audit packet is not materialized; pre-publication HF remains on the current value-aligned template grid."
+			],
+			"boundary_labels": ["Forecast guard audit unavailable"],
+			"artifact_paths": {},
+		}
+	proof = _read_json_object(
+		proof_path,
+		not_found_detail="HF live safe-switch forecast guard audit artifact not found.",
+	)
+	_reject_executable_shadow_payload(
+		proof,
+		label="HF live safe-switch forecast guard audit",
+	)
+	candidate_grid_id = str(
+		proof.get("update_gate_candidate_template_grid_id", "")
+	)
+	gate_passed = (
+		_artifact_truthy(proof.get("forecast_candidate_library_update_gate_passed"))
+		and candidate_grid_id == "candidate_library_forecast_guarded"
+	)
+	effective_template_grid_id = (
+		"candidate_library_forecast_guarded"
+		if gate_passed
+		else requested_template_grid_id
+	)
+	if gate_passed:
+		warning = (
+			"Forecast guard audit passed; pre-publication HF value-aligned shadow uses "
+			"candidate_library_forecast_guarded for guarded future-date selection; "
+			"market execution remains disabled."
+		)
+		boundary = "Forecast guard audit passed for guarded pre-publication template use"
+	else:
+		warning = (
+			"Forecast guard audit is present but did not pass; pre-publication HF remains on "
+			"the current value-aligned template grid."
+		)
+		boundary = "Forecast guard audit did not pass"
+	return {
+		"effective_template_grid_id": effective_template_grid_id,
+		"comparison_metrics": {
+			"forecast_guard_audit_available": 1.0,
+			"forecast_guard_audit_passed": 1.0 if gate_passed else 0.0,
+			"forecast_guard_audit_scored_block_count": _numeric_proof_metric(
+				proof, "forecast_scored_block_count"
+			),
+			"forecast_guard_candidate_switch_count": _numeric_proof_metric(
+				proof, "candidate_library_forecast_guarded_switch_count"
+			),
+			"forecast_guard_selected_value_improvement_uah": _numeric_proof_metric(
+				proof, "candidate_library_forecast_guarded_selected_value_improvement_uah"
+			),
+			"forecast_guard_tail_failure_delta_count": _numeric_proof_metric(
+				proof, "candidate_library_forecast_guarded_tail_failure_delta_count"
+			),
+			"forecast_guard_safety_failure_count": _numeric_proof_metric(
+				proof, "candidate_library_forecast_guarded_safety_failure_count"
+			),
+		},
+		"readiness_warnings": [warning],
+		"boundary_labels": [boundary],
+		"artifact_paths": {"forecast_guard_audit_summary_json": str(proof_path)},
+	}
+
+
+def _hf_live_value_aligned_shadow_promotion_context(
+	*,
+	template_grid_id: str,
+) -> dict[str, Any]:
+	if template_grid_id != "candidate_library_value_aligned":
+		return {
+			"comparison_metrics": {},
+			"readiness_warnings": [],
+			"boundary_labels": [],
+			"artifact_paths": {},
+		}
+	proof_path = HF_LIVE_SAFE_SWITCH_VALUE_ALIGNED_PROMOTION_PROOF_JSON_PATH
+	if not proof_path.exists():
+		return {
+			"comparison_metrics": {
+				"shadow_promotion_gate_available": 0.0,
+				"shadow_promotion_gate_passed": 0.0,
+			},
+			"readiness_warnings": [
+				"Shadow promotion proof packet is not materialized; value-aligned HF remains manual review only."
+			],
+			"boundary_labels": ["Shadow promotion proof unavailable"],
+			"artifact_paths": {},
+		}
+	proof = _read_json_object(
+		proof_path,
+		not_found_detail="Value-aligned HF shadow promotion proof artifact not found.",
+	)
+	_reject_executable_shadow_payload(
+		proof,
+		label="Value-aligned HF shadow promotion proof",
+	)
+	if _artifact_truthy(proof.get("production_market_promotion_gate_passed")):
+		raise HTTPException(
+			status_code=500,
+			detail="Value-aligned HF shadow proof must keep production_market_promotion_gate_passed=false.",
+		)
+	gate_passed = _artifact_truthy(proof.get("shadow_promotion_gate_passed"))
+	warning = (
+		"Shadow promotion gate passed for demo candidate-library use; market execution remains disabled."
+		if gate_passed
+		else "Shadow promotion proof packet is materialized but did not pass; value-aligned HF remains manual review only."
+	)
+	return {
+		"comparison_metrics": {
+			"shadow_promotion_gate_available": 1.0,
+			"shadow_promotion_gate_passed": 1.0 if gate_passed else 0.0,
+			"shadow_promotion_source_backed_day_count": _numeric_proof_metric(
+				proof, "source_backed_day_count"
+			),
+			"shadow_promotion_switch_rate": _numeric_proof_metric(
+				proof, "value_aligned_switch_rate"
+			),
+			"shadow_promotion_nonfallback_day_count": _numeric_proof_metric(
+				proof, "selected_nonfallback_day_count"
+			),
+			"shadow_promotion_hf_minus_v2_plus_mean_regret_uah": _numeric_proof_metric(
+				proof, "hf_minus_v2_plus_mean_regret_uah"
+			),
+			"shadow_promotion_safety_failure_count": _numeric_proof_metric(
+				proof, "safety_failure_count"
+			),
+			"shadow_promotion_tail_failure_delta_count": _numeric_proof_metric(
+				proof, "tail_failure_delta_vs_default_count"
+			),
+			"shadow_promotion_value_gap_ratio_vs_default": _numeric_proof_metric(
+				proof, "value_gap_ratio_vs_default"
+			),
+		},
+		"readiness_warnings": [warning],
+		"boundary_labels": [
+			"Shadow promotion gate passed for demo candidate-library use"
+			if gate_passed
+			else "Shadow promotion gate not passed",
+			"Market execution remains disabled",
+		],
+		"artifact_paths": {
+			"value_aligned_shadow_promotion_gate_json": str(proof_path),
+		},
+	}
+
+
+def _numeric_proof_metric(proof: Mapping[str, Any], key: str) -> float:
+	value = proof.get(key, 0.0)
+	if isinstance(value, bool):
+		return 1.0 if value else 0.0
+	if isinstance(value, int | float | str):
+		return float(value)
+	return 0.0
+
+
+def _metric_from_diagnostics(
+	metrics: dict[str, float],
+	diagnostics: dict[str, Any],
+	*,
+	source_key: str,
+	target_key: str | None = None,
+) -> None:
+	value = diagnostics.get(source_key)
+	if isinstance(value, int | float):
+		metrics[target_key or source_key] = float(value)
 
 
 def _operator_artifact_shadow_recommendation_preview_response(
@@ -6198,7 +7162,9 @@ def _shadow_schedule_point(
 	selection: dict[str, Any],
 	candidate_row: dict[str, Any],
 ) -> ShadowRecommendationSchedulePointResponse:
-	selected_regret = _float_payload_value(selection.get("dt_selected_regret_uah", candidate_row.get("regret_uah", 0.0)))
+	selected_regret = _optional_float(
+		selection.get("dt_selected_regret_uah", candidate_row.get("regret_uah"))
+	)
 	selected_value = _float_payload_value(
 		selection.get("dt_selected_value_uah", candidate_row.get("schedule_value_uah", candidate_row.get("decision_value_uah", 0.0)))
 	)
@@ -6220,8 +7186,12 @@ def _shadow_schedule_point(
 		schedule_family=selected_schedule_family,
 		expected_value_uah=selected_value,
 		regret_uah=selected_regret,
-		regret_vs_v2_plus_uah=None if v2_regret is None else selected_regret - v2_regret,
-		regret_vs_strict_uah=None if strict_regret is None else selected_regret - strict_regret,
+		regret_vs_v2_plus_uah=None
+		if selected_regret is None or v2_regret is None
+		else selected_regret - v2_regret,
+		regret_vs_strict_uah=None
+		if selected_regret is None or strict_regret is None
+		else selected_regret - strict_regret,
 		value_vs_v2_plus_uah=None if v2_value is None else selected_value - v2_value,
 		value_vs_strict_uah=None if strict_value is None else selected_value - strict_value,
 		gate_status="accepted_shadow_preview" if safety_violation_count == 0 else "blocked_shadow_preview",
@@ -6463,6 +7433,7 @@ def _build_operator_recommendation_response(
 		market_venue=resolved_market_venue,
 		target_delivery_date=target_delivery_date,
 		selected_strategy_id=selected_strategy_id,
+		tenant_id=tenant_id,
 	)
 	anchor_timestamp = price_context.anchor_timestamp
 	delivery_anchor_timestamp = price_context.anchor_timestamp
@@ -7219,12 +8190,16 @@ def dashboard_shadow_recommendation_preview(
 	tenant_id: str,
 	preview_source: str = "dt_shadow",
 	target_delivery_window_start: datetime | None = None,
+	market_venue: str = LEVEL1_MARKET_VENUE,
+	target_delivery_date: date | None = None,
 ) -> ShadowRecommendationPreviewResponse:
 	_resolve_tenant_battery_defaults(tenant_id=tenant_id)
 	return _operator_shadow_recommendation_preview_response(
 		tenant_id=tenant_id,
 		preview_source=preview_source,
 		target_delivery_window_start=target_delivery_window_start,
+		market_venue=market_venue,
+		target_delivery_date=target_delivery_date,
 	)
 
 
@@ -7255,6 +8230,7 @@ def build_baseline_lp_preview(
 	price_context = _build_official_oree_price_context(
 		market_venue=resolved_market_venue,
 		target_delivery_date=target_delivery_date,
+		tenant_id=tenant_id,
 	)
 	anchor_timestamp = price_context.anchor_timestamp
 	delivery_anchor_timestamp = price_context.anchor_timestamp

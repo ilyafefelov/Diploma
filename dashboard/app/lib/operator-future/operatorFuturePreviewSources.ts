@@ -2,11 +2,69 @@ import type {
   ShadowPreviewSourceOptionResponse,
   ShadowRecommendationPreviewResponse
 } from '~/types/control-plane'
-import { previewSourceDisplayLabel } from '../../utils/operatorShadowPreview'
+import type { OperatorMarketVenue } from '~/types/operator-dashboard'
+import {
+  previewSourceDisplayLabel,
+  VALUE_ALIGNED_HF_SHADOW_PROOF_SWITCH_DELIVERY_DATE
+} from '../../utils/operatorShadowPreview'
 
 export interface PreviewSourceSelectItem {
   label: string
   value: string
+}
+
+export type ValueAlignedHfShadowDemoScenarioId
+  = | 'official_dam_proof'
+    | 'forecast_dam_action'
+    | 'forecast_dam_abstention'
+    | 'forecast_idm_abstention'
+
+export interface ValueAlignedHfShadowDemoScenario {
+  id: ValueAlignedHfShadowDemoScenarioId
+  label: string
+  marketVenue: OperatorMarketVenue
+  targetDeliveryDate: string
+  boundaryCopy: string
+}
+
+const OFFICIAL_DAM_PROOF_SCENARIO: ValueAlignedHfShadowDemoScenario = {
+  id: 'official_dam_proof',
+  label: 'Official DAM proof',
+  marketVenue: 'DAM',
+  targetDeliveryDate: VALUE_ALIGNED_HF_SHADOW_PROOF_SWITCH_DELIVERY_DATE,
+  boundaryCopy: 'Official DAM proof day; guarded non-fallback shadow preview; no market execution.'
+}
+
+export const VALUE_ALIGNED_HF_SHADOW_DEMO_SCENARIOS: readonly ValueAlignedHfShadowDemoScenario[] = [
+  OFFICIAL_DAM_PROOF_SCENARIO,
+  {
+    id: 'forecast_dam_action',
+    label: 'Forecast DAM action',
+    marketVenue: 'DAM',
+    targetDeliveryDate: '2026-06-02',
+    boundaryCopy: 'Forecast guarded action; source-backed NBEATSx/TFT context; no market execution.'
+  },
+  {
+    id: 'forecast_dam_abstention',
+    label: 'Forecast DAM abstention',
+    marketVenue: 'DAM',
+    targetDeliveryDate: '2026-06-03',
+    boundaryCopy: 'Forecast guarded abstention; HOLD is selected because non-fallback gates did not pass.'
+  },
+  {
+    id: 'forecast_idm_abstention',
+    label: 'IDM abstention',
+    marketVenue: 'IDM',
+    targetDeliveryDate: '2026-06-02',
+    boundaryCopy: 'IDM guarded abstention; wired preview evidence only, not promoted.'
+  }
+]
+
+export function resolveValueAlignedHfShadowDemoScenario(
+  scenarioId: ValueAlignedHfShadowDemoScenarioId
+): ValueAlignedHfShadowDemoScenario {
+  return VALUE_ALIGNED_HF_SHADOW_DEMO_SCENARIOS.find(scenario => scenario.id === scenarioId)
+    ?? OFFICIAL_DAM_PROOF_SCENARIO
 }
 
 export function formatPreviewSourceOptionLabel(
@@ -31,6 +89,12 @@ export function formatPreviewSourceOptionLabel(
   }
   if (previewSourceId === 'dt_v2_plus_safe_switch_selector_shadow') {
     return 'DT V2+ safe-switch selector (not promoted)'
+  }
+  if (previewSourceId === 'hf_live_safe_switch_shadow') {
+    return 'HF live safe-switch shadow (manual preview)'
+  }
+  if (previewSourceId === 'hf_live_safe_switch_value_aligned_shadow') {
+    return 'HF live safe-switch value-aligned shadow (manual preview)'
   }
   if (previewSourceId === 'poland_tft_shadow') {
     return 'Poland/TFT shadow (positive, not promoted)'
@@ -108,6 +172,24 @@ const DEFAULT_PREVIEW_SOURCE_OPTIONS: ShadowPreviewSourceOptionResponse[] = [
     label: 'DT V2+ safe-switch selector',
     status: 'safe_switch_evidence_not_promoted',
     reason: 'Corrected residual DT/V2+ shadow with safe-switch evidence and V2+ fallback.',
+    is_default_strategy: false,
+    is_promoted_strategy: false,
+    market_execution_enabled: false
+  },
+  {
+    preview_source_id: 'hf_live_safe_switch_shadow',
+    label: 'HF live safe-switch shadow',
+    status: 'live_shadow_not_promoted',
+    reason: 'Live OREE/forecast candidate-ranking preview; not promoted and no market execution.',
+    is_default_strategy: false,
+    is_promoted_strategy: false,
+    market_execution_enabled: false
+  },
+  {
+    preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
+    label: 'HF live safe-switch value-aligned shadow',
+    status: 'value_aligned_shadow_not_promoted',
+    reason: 'Value-aligned HF live candidate-ranking preview; manual review only and no market execution.',
     is_default_strategy: false,
     is_promoted_strategy: false,
     market_execution_enabled: false

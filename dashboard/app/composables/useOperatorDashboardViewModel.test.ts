@@ -194,6 +194,74 @@ describe('useOperatorDashboardViewModel', () => {
     expect(viewModel.dispatchModeLabel.value).toBe('Preview only')
   })
 
+  it('surfaces selected shadow actions even when HF power is below the generic DAM display threshold', () => {
+    const operatorRecommendation = ref({
+      selected_strategy_id: 'hf_live_safe_switch_value_aligned_shadow',
+      market_venue: 'DAM',
+      target_delivery_window_start: '2026-06-02T00:00:00',
+      target_delivery_window_end: '2026-06-03T00:00:00',
+      recommendation_schedule: [
+        schedulePoint('2026-06-02T00:00:00', 0),
+        schedulePoint('2026-06-02T01:00:00', 0),
+        schedulePoint('2026-06-02T10:00:00', -0.045),
+        schedulePoint('2026-06-02T20:00:00', 0.045)
+      ],
+      bid_recommendation_preview: [
+        bidPreviewPoint('2026-06-02T00:00:00', 'HOLD', 'hold', 0, 4300),
+        bidPreviewPoint('2026-06-02T01:00:00', 'HOLD', 'hold', 0, 4300),
+        bidPreviewPoint('2026-06-02T10:00:00', 'BUY', 'charge', 0.045, 2953),
+        bidPreviewPoint('2026-06-02T20:00:00', 'SELL', 'discharge', 0.045, 9129)
+      ],
+      economics: {
+        total_gross_market_value_uah: 900,
+        total_degradation_penalty_uah: 0,
+        total_net_value_uah: 900,
+        total_throughput_mwh: 0.09
+      }
+    })
+
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      signalPreview: ref(null),
+      baselinePreview: ref({
+        battery_metrics: {
+          capacity_mwh: 0.5,
+          max_power_mw: 0.25,
+          round_trip_efficiency: 0.9,
+          degradation_cost_per_cycle_uah: 1,
+          soc_min_fraction: 0.05,
+          soc_max_fraction: 0.95
+        }
+      }),
+      operatorRecommendation,
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref(''),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.timelineSegments.value.map(segment => segment.label)).toEqual(['Charge', 'Discharge'])
+    expect(viewModel.timelineSegments.value.map(segment => segment.marketSideLabel)).toEqual(['BUY', 'SELL'])
+    expect(viewModel.timelineSegments.value.map(segment => segment.time)).toEqual([
+      'Delivery 2 Jun, 10:00',
+      'Delivery 2 Jun, 20:00'
+    ])
+    expect(viewModel.timelineSegments.value.map(segment => segment.time)).not.toContain('Delivery 2 Jun, 00:00')
+    expect(viewModel.batteryStatusLabel.value).toBe('DAM charge preview')
+    expect(viewModel.gatekeeperActions.value.find(action => action.label === 'BUY')).toMatchObject({
+      active: true,
+      score: 87
+    })
+  })
+
   it('does not borrow baseline dock cards for a selected blocked shadow preview', () => {
     const baselinePreview = ref({
       battery_metrics: {
@@ -262,6 +330,108 @@ describe('useOperatorDashboardViewModel', () => {
     expect(viewModel.deliveryWindowLabel.value).toBe('Delivery window: Delivery 26 May, 00:00 -> Delivery 27 May, 00:00')
   })
 
+  it('does not borrow baseline dock cards while a live shadow preview is still loading', () => {
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      selectedMarketVenue: ref('DAM'),
+      selectedTargetDeliveryDate: ref('2026-06-02'),
+      signalPreview: ref(null),
+      baselinePreview: ref({
+        battery_metrics: {
+          capacity_mwh: 0.5,
+          max_power_mw: 0.25,
+          round_trip_efficiency: 0.9,
+          degradation_cost_per_cycle_uah: 1,
+          soc_min_fraction: 0.05,
+          soc_max_fraction: 0.95
+        },
+        recommendation_schedule: [
+          schedulePoint('2026-06-01T20:00:00', 0.25)
+        ],
+        bid_recommendation_preview: [
+          bidPreviewPoint('2026-06-01T20:00:00', 'SELL', 'discharge', 0.25, 9000)
+        ],
+        economics: {
+          total_gross_market_value_uah: 100,
+          total_degradation_penalty_uah: 0,
+          total_net_value_uah: 100,
+          total_throughput_mwh: 0.25
+        }
+      }),
+      operatorRecommendation: ref(null),
+      suppressBaselineFallback: ref(true),
+      isSelectedRecommendationLoading: ref(true),
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref(''),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.timelineSegments.value).toEqual([
+      expect.objectContaining({
+        time: 'Delivery window',
+        label: 'Preview pending',
+        value: 'No schedule loaded'
+      })
+    ])
+    expect(viewModel.timelineSegments.value.map(segment => segment.time)).not.toContain('Delivery 1 Jun, 20:00')
+    expect(viewModel.batteryStatusLabel.value).toBe('DAM hold preview')
+    expect(viewModel.latestRecommendedPowerLabel.value).toBe('0.0 MW')
+  })
+
+  it('uses the selected live shadow delivery date when schedule rows are blocked', () => {
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      selectedMarketVenue: ref('DAM'),
+      selectedTargetDeliveryDate: ref('2026-06-04'),
+      signalPreview: ref(null),
+      baselinePreview: ref({
+        battery_metrics: {
+          capacity_mwh: 0.5,
+          max_power_mw: 0.25,
+          round_trip_efficiency: 0.9,
+          degradation_cost_per_cycle_uah: 1,
+          soc_min_fraction: 0.05,
+          soc_max_fraction: 0.95
+        },
+        target_delivery_window_start: '2026-06-01T00:00:00',
+        target_delivery_window_end: '2026-06-02T00:00:00'
+      }),
+      operatorRecommendation: ref(null),
+      suppressBaselineFallback: ref(true),
+      isSelectedRecommendationLoading: ref(false),
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref(''),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.deliveryWindowLabel.value).toBe('Delivery window: Delivery 4 Jun, 00:00 -> Delivery 5 Jun, 00:00')
+    expect(viewModel.timelineSegments.value[0]?.time).toBe('Delivery window')
+    expect(viewModel.timelineSegments.value[0]).toMatchObject({
+      label: 'No trade preview',
+      value: 'Source rows missing',
+      marketSideLabel: 'BLOCKED',
+      indicativePriceLabel: 'no source-backed price rows'
+    })
+  })
+
   it('counts read-model gaps in the operator health ribbon', () => {
     const viewModel = useOperatorDashboardViewModel({
       tenants: ref([
@@ -297,6 +467,37 @@ describe('useOperatorDashboardViewModel', () => {
       label: 'Read-model health',
       value: '92.4%',
       meta: '3 read-model gap(s)'
+    })
+  })
+
+  it('does not count suppressed baseline comparator errors as active live HF alerts', () => {
+    const viewModel = useOperatorDashboardViewModel({
+      tenants: ref([]),
+      selectedTenant: ref(null),
+      selectedMarketVenue: ref('DAM'),
+      selectedTargetDeliveryDate: ref('2026-06-02'),
+      signalPreview: ref(null),
+      baselinePreview: ref(null),
+      operatorRecommendation: ref(null),
+      suppressBaselineFallback: ref(true),
+      isSelectedRecommendationLoading: ref(false),
+      batteryState: ref(null),
+      runConfig: ref(null),
+      materializeResult: ref(null),
+      operatorStatus: ref(null),
+      registryError: ref(''),
+      weatherError: ref(''),
+      signalPreviewError: ref(''),
+      baselinePreviewError: ref('point-in-time forecast metadata rejected for nbeatsx_official_v0'),
+      signalPreviewLastLoadedLabel: ref('Loaded 12:00'),
+      registryLastLoadedAt: ref(null),
+      isMaterializing: ref(false)
+    } as never)
+
+    expect(viewModel.activeAlertCount.value).toBe(0)
+    expect(viewModel.headlineMetrics.value.at(-1)).toMatchObject({
+      label: 'Read-model health',
+      meta: 'Preview sources loaded'
     })
   })
 })

@@ -6,35 +6,52 @@ import type {
   ShadowRecommendationPreviewResponse
 } from '../../types/control-plane'
 import type { OperatorPreviewSourceId } from './operatorShadowPreviewSources'
-import { previewSourceDisplayLabel } from './operatorShadowPreviewSources'
+import { isLiveHfSafeSwitchPreviewSource, previewSourceDisplayLabel } from './operatorShadowPreviewSources'
 
 export const adaptShadowPreviewToOperatorRecommendation = (
   baseRecommendation: OperatorRecommendationResponse | null,
   shadowPreview: ShadowRecommendationPreviewResponse | null,
   previewSourceId: OperatorPreviewSourceId
 ): OperatorRecommendationResponse | null => {
-  if (previewSourceId === 'best_valid' || !shadowPreview) {
+  if (previewSourceId === 'best_valid') {
     return baseRecommendation
   }
+  if (!shadowPreview) {
+    return null
+  }
 
-  const targetDeliveryWindowStart = shadowPreview.recommendation_schedule.length > 0
-    ? shadowPreview.target_delivery_window_start
-    : baseRecommendation?.target_delivery_window_start ?? shadowPreview.target_delivery_window_start ?? null
-  const targetDeliveryWindowEnd = shadowPreview.recommendation_schedule.length > 0
-    ? shadowPreview.target_delivery_window_end
-    : baseRecommendation?.target_delivery_window_end ?? shadowPreview.target_delivery_window_end ?? null
-  const recommendationSchedule = shadowPreview.recommendation_schedule.map((point): BaselineRecommendationPoint => ({
-    step_index: point.step_index,
-    interval_start: point.interval_start,
-    forecast_price_uah_mwh: point.forecast_price_uah_mwh,
-    recommended_net_power_mw: point.recommended_net_power_mw,
-    projected_soc_before_fraction: point.soc_before_fraction ?? 0,
-    projected_soc_after_fraction: point.soc_after_fraction ?? point.soc_before_fraction ?? 0,
-    throughput_mwh: Math.abs(point.recommended_net_power_mw),
-    degradation_penalty_uah: 0,
-    gross_market_value_uah: point.expected_value_uah,
-    net_value_uah: point.expected_value_uah
-  }))
+  const usesLiveHfPreview = isLiveHfSafeSwitchPreviewSource(previewSourceId)
+  const baseForShadow = usesLiveHfPreview
+    ? null
+    : baseRecommendation
+  const preferShadowWindow = usesLiveHfPreview || shadowPreview.recommendation_schedule.length > 0
+  const targetDeliveryWindowStart = preferShadowWindow
+    ? shadowPreview.target_delivery_window_start ?? baseForShadow?.target_delivery_window_start ?? null
+    : baseForShadow?.target_delivery_window_start ?? shadowPreview.target_delivery_window_start ?? null
+  const targetDeliveryWindowEnd = preferShadowWindow
+    ? shadowPreview.target_delivery_window_end ?? baseForShadow?.target_delivery_window_end ?? null
+    : baseForShadow?.target_delivery_window_end ?? shadowPreview.target_delivery_window_end ?? null
+  const targetDeliveryDate = targetDeliveryWindowStart
+    ? targetDeliveryWindowStart.slice(0, 10)
+    : baseForShadow?.target_delivery_date ?? null
+  const recommendationSchedule = shadowPreview.recommendation_schedule.map((point): BaselineRecommendationPoint => {
+    const rowNetValueUah = usesLiveHfPreview
+      ? point.recommended_net_power_mw * point.forecast_price_uah_mwh
+      : point.expected_value_uah
+
+    return {
+      step_index: point.step_index,
+      interval_start: point.interval_start,
+      forecast_price_uah_mwh: point.forecast_price_uah_mwh,
+      recommended_net_power_mw: point.recommended_net_power_mw,
+      projected_soc_before_fraction: point.soc_before_fraction ?? 0,
+      projected_soc_after_fraction: point.soc_after_fraction ?? point.soc_before_fraction ?? 0,
+      throughput_mwh: Math.abs(point.recommended_net_power_mw),
+      degradation_penalty_uah: 0,
+      gross_market_value_uah: rowNetValueUah,
+      net_value_uah: rowNetValueUah
+    }
+  })
   const bidPreview = shadowPreview.recommendation_schedule.map((point): BidRecommendationPreviewPoint => ({
     step_index: point.step_index,
     interval_start: point.interval_start,
@@ -60,19 +77,20 @@ export const adaptShadowPreviewToOperatorRecommendation = (
     metric_source: `${shadowPreview.preview_source_id}_vs_strict_reference`
   }))
   const totalThroughputMwh = recommendationSchedule.reduce((total, point) => total + point.throughput_mwh, 0)
-  const totalNetValueUah = recommendationSchedule.length
-    ? recommendationSchedule[0]?.net_value_uah ?? 0
-    : 0
+  const totalNetValueUah = usesLiveHfPreview
+    ? recommendationSchedule.reduce((total, point) => total + point.net_value_uah, 0)
+    : (recommendationSchedule.length ? recommendationSchedule[0]?.net_value_uah ?? 0 : 0)
   const warningSuffix = comparisonWarning(shadowPreview)
   const shadowDisplayLabel = previewSourceDisplayLabel(shadowPreview.preview_source_id, shadowPreview.preview_source_label)
 
   return {
-    ...(baseRecommendation ?? minimalBaseRecommendation(shadowPreview)),
+    ...(baseForShadow ?? minimalBaseRecommendation(shadowPreview)),
     tenant_id: shadowPreview.tenant_id,
     market_scope: shadowPreview.market_scope,
     market_venue: shadowPreview.market_venue,
     interval_minutes: shadowPreview.interval_minutes,
-    anchor_timestamp: shadowPreview.anchor_timestamp ?? baseRecommendation?.anchor_timestamp ?? '',
+    target_delivery_date: targetDeliveryDate,
+    anchor_timestamp: shadowPreview.anchor_timestamp ?? baseForShadow?.anchor_timestamp ?? '',
     target_delivery_window_start: targetDeliveryWindowStart,
     target_delivery_window_end: targetDeliveryWindowEnd,
     market_execution_enabled: false,
@@ -82,11 +100,11 @@ export const adaptShadowPreviewToOperatorRecommendation = (
     forecast_source: `${shadowDisplayLabel} candidate/schedule-family artifact`,
     review_required: true,
     readiness_warnings: [
-      ...(baseRecommendation?.readiness_warnings ?? []),
+      ...(baseForShadow?.readiness_warnings ?? []),
       `${shadowDisplayLabel} is preview only, not promoted, and no market execution is enabled.`,
       'V2+ remains confirmed offline schedule-value comparator.',
       ...(warningSuffix ? [warningSuffix] : []),
-      ...shadowPreview.readiness_warnings
+      ...(shadowPreview.readiness_warnings ?? [])
     ],
     policy_mode: `${shadowPreview.preview_source_id}_preview`,
     selected_policy_id: shadowPreview.selected_candidate_id ?? shadowPreview.preview_source_id,
@@ -171,7 +189,60 @@ const minimalBaseRecommendation = (
 })
 
 const comparisonWarning = (shadowPreview: ShadowRecommendationPreviewResponse): string => {
-  const regretDelta = shadowPreview.comparison_metrics.dt_minus_v2_plus_regret_uah
+  const comparisonMetrics = shadowPreview.comparison_metrics ?? {}
+  if (
+    shadowPreview.preview_source_id === 'hf_live_safe_switch_shadow'
+    || shadowPreview.preview_source_id === 'hf_live_safe_switch_value_aligned_shadow'
+  ) {
+    const threshold = comparisonMetrics.selected_operating_threshold_uah
+    const predictedDelta = comparisonMetrics.predicted_regret_delta_vs_v2_plus_uah
+    const thresholdLabel = typeof threshold === 'number'
+      ? `${Math.round(threshold).toLocaleString('en-GB')} UAH`
+      : 'the robust threshold'
+    const deltaLabel = typeof predictedDelta === 'number'
+      ? `; live predicted regret delta vs fallback ${Math.round(predictedDelta).toLocaleString('en-GB')} UAH`
+      : ''
+    const guardMargin = comparisonMetrics.threshold_margin_to_switch_uah
+    const valueGap = comparisonMetrics.selected_vs_best_template_value_gap_uah
+    const tailFailures = comparisonMetrics.predicted_tail_guard_failed_count
+    const thresholdFailures = comparisonMetrics.threshold_guard_failed_count
+    const forecastAbstained = comparisonMetrics.forecast_guard_abstained_to_safe_fallback
+    const shadowGatePassed = comparisonMetrics.shadow_promotion_gate_passed
+    const shadowSourceDays = comparisonMetrics.shadow_promotion_source_backed_day_count
+    const shadowSwitchDays = comparisonMetrics.shadow_promotion_nonfallback_day_count
+    const shadowRegretDelta = comparisonMetrics.shadow_promotion_hf_minus_v2_plus_mean_regret_uah
+    const guardMarginLabel = typeof guardMargin === 'number'
+      ? `; guard margin ${Math.round(guardMargin).toLocaleString('en-GB')} UAH`
+      : ''
+    const valueGapLabel = typeof valueGap === 'number'
+      ? `; template value gap ${Math.round(valueGap).toLocaleString('en-GB')} UAH`
+      : ''
+    const failureLabels = [
+      typeof thresholdFailures === 'number'
+        ? `${Math.round(thresholdFailures).toLocaleString('en-GB')} threshold`
+        : null,
+      typeof tailFailures === 'number'
+        ? `${Math.round(tailFailures).toLocaleString('en-GB')} tail-risk`
+        : null
+    ].filter(Boolean)
+    const failureLabel = failureLabels.length > 0
+      ? `; guard failures ${failureLabels.join(', ')}`
+      : ''
+    const shadowGateLabel = shadowGatePassed === 1
+      ? `; shadow gate passed over ${Math.round(shadowSourceDays ?? 0).toLocaleString('en-GB')} source-backed days / ${Math.round(shadowSwitchDays ?? 0).toLocaleString('en-GB')} non-fallback days`
+      : ''
+    const shadowRegretLabel = typeof shadowRegretDelta === 'number'
+      ? `; frozen HF vs V2+ ${Math.round(shadowRegretDelta).toLocaleString('en-GB')} UAH`
+      : ''
+    const forecastAbstentionLabel = forecastAbstained === 1
+      ? '; forecast-date guarded abstention: selected recommendation remains HOLD'
+      : ''
+    const sourceLabel = shadowPreview.preview_source_id === 'hf_live_safe_switch_value_aligned_shadow'
+      ? 'Value-aligned HF live safe-switch shadow preview'
+      : 'HF live safe-switch shadow preview'
+    return `${sourceLabel} uses live source-backed prices with ${thresholdLabel} guard${deltaLabel}${guardMarginLabel}${valueGapLabel}${failureLabel}${forecastAbstentionLabel}${shadowGateLabel}${shadowRegretLabel}.`
+  }
+  const regretDelta = comparisonMetrics.dt_minus_v2_plus_regret_uah
   if (typeof regretDelta !== 'number') {
     return ''
   }
@@ -180,8 +251,8 @@ const comparisonWarning = (shadowPreview: ShadowRecommendationPreviewResponse): 
   }
   if (regretDelta < 0) {
     if (shadowPreview.preview_source_id === 'dt_v2_plus_safe_switch_selector_shadow') {
-      const switches = shadowPreview.comparison_metrics.non_v2_plus_switch_count
-      const recovered = shadowPreview.comparison_metrics.recovered_safe_switch_opportunity_count
+      const switches = comparisonMetrics.non_v2_plus_switch_count
+      const recovered = comparisonMetrics.recovered_safe_switch_opportunity_count
       const switchLabel = typeof switches === 'number'
         ? `${Math.round(switches).toLocaleString('en-GB')} non-V2+ switches`
         : 'non-V2+ switches'
@@ -199,8 +270,8 @@ const comparisonWarning = (shadowPreview: ShadowRecommendationPreviewResponse): 
     return 'DT ties the V13 fallback row on this shadow packet.'
   }
   if (shadowPreview.preview_source_id === 'regret_aware_v2_plus_selector_shadow') {
-    const abstentions = shadowPreview.comparison_metrics.abstention_count
-    const switches = shadowPreview.comparison_metrics.non_v2_plus_switch_count
+    const abstentions = comparisonMetrics.abstention_count
+    const switches = comparisonMetrics.non_v2_plus_switch_count
     if (typeof abstentions === 'number' && typeof switches === 'number') {
       return `Regret-aware selector abstained to V2+ (${Math.round(abstentions).toLocaleString('en-GB')} abstentions, ${Math.round(switches).toLocaleString('en-GB')} non-V2+ switches).`
     }

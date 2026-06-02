@@ -25,6 +25,9 @@ interface OperatorTimelineModelInput {
   baselinePreview: Readonly<Ref<BaselineLpPreview | null>>
   operatorRecommendation?: Readonly<Ref<OperatorRecommendationResponse | null>>
   selectedMarketVenue?: Readonly<Ref<OperatorMarketVenue>>
+  selectedTargetDeliveryDate?: Readonly<Ref<string | null>>
+  suppressBaselineFallback?: Readonly<Ref<boolean>>
+  isSelectedRecommendationLoading?: Readonly<Ref<boolean>>
 }
 
 const TIMELINE_SEGMENT_LIMIT = 5
@@ -34,6 +37,9 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
     if (input.operatorRecommendation?.value) {
       return input.operatorRecommendation.value.recommendation_schedule ?? []
     }
+    if (input.suppressBaselineFallback?.value) {
+      return []
+    }
 
     return input.baselinePreview.value?.recommendation_schedule ?? []
   })
@@ -41,6 +47,9 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
   const activeBidRecommendationPreview = computed(() => {
     if (input.operatorRecommendation?.value) {
       return input.operatorRecommendation.value.bid_recommendation_preview ?? []
+    }
+    if (input.suppressBaselineFallback?.value) {
+      return []
     }
 
     return input.baselinePreview.value?.bid_recommendation_preview ?? []
@@ -61,11 +70,15 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
 
   const deliveryWindowLabel = computed(() => {
     const windowStart = input.operatorRecommendation?.value?.target_delivery_window_start
-      ?? input.baselinePreview.value?.target_delivery_window_start
+      ?? (input.suppressBaselineFallback?.value ? null : input.baselinePreview.value?.target_delivery_window_start)
       ?? null
     const windowEnd = input.operatorRecommendation?.value?.target_delivery_window_end
-      ?? input.baselinePreview.value?.target_delivery_window_end
+      ?? (input.suppressBaselineFallback?.value ? null : input.baselinePreview.value?.target_delivery_window_end)
       ?? null
+
+    if ((!windowStart || !windowEnd) && input.suppressBaselineFallback?.value && input.selectedTargetDeliveryDate?.value) {
+      return formatSelectedTargetDeliveryWindowLabel(input.selectedTargetDeliveryDate.value)
+    }
 
     if (!windowStart || !windowEnd) {
       return 'Delivery window: pending'
@@ -74,13 +87,22 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
     return `Delivery window: ${formatDamDeliveryLabel(windowStart)} -> ${formatDamDeliveryLabel(windowEnd)}`
   })
 
-  const activeEconomics = computed(() => input.operatorRecommendation?.value?.economics
-    ?? input.baselinePreview.value?.economics
-    ?? null)
+  const activeEconomics = computed(() => {
+    if (input.operatorRecommendation?.value?.economics) {
+      return input.operatorRecommendation.value.economics
+    }
+    if (input.suppressBaselineFallback?.value) {
+      return null
+    }
+    return input.baselinePreview.value?.economics ?? null
+  })
 
-  const selectedTimelineSchedulePoints = computed(() => selectTimelineSchedulePoints(activeRecommendationSchedule.value))
   const bidPreviewByInterval = computed(() => new Map(
     activeBidRecommendationPreview.value.map(point => [point.interval_start, point])
+  ))
+  const selectedTimelineSchedulePoints = computed(() => selectTimelineSchedulePoints(
+    activeRecommendationSchedule.value,
+    bidPreviewByInterval.value
   ))
 
   const latestRecommendedPowerMw = computed(() => {
@@ -91,9 +113,21 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
 
     return 0
   })
+  const latestRecommendedBidPreview = computed(() => {
+    const selectedPoint = selectedTimelineSchedulePoints.value[0]
+    if (!selectedPoint) {
+      return undefined
+    }
+
+    return bidPreviewByInterval.value.get(selectedPoint.interval_start)
+  })
+  const preferredTimelineLabel = computed(() => timelineLabelFromBidPreview(
+    latestRecommendedPowerMw.value,
+    latestRecommendedBidPreview.value
+  ))
 
   const preferredGatekeeperAction = computed<OperatorGatekeeperActionLabel>(() => {
-    const previewAction = powerToTimelineLabel(latestRecommendedPowerMw.value)
+    const previewAction = preferredTimelineLabel.value
 
     if (previewAction === 'Discharge') {
       return 'SELL'
@@ -146,6 +180,25 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
     const schedule = selectedTimelineSchedulePoints.value
 
     if (schedule.length === 0) {
+      if (
+        input.suppressBaselineFallback?.value
+        && input.selectedTargetDeliveryDate?.value
+        && !input.isSelectedRecommendationLoading?.value
+      ) {
+        return [
+          {
+            time: 'Delivery window',
+            label: 'No trade preview',
+            value: 'Source rows missing',
+            marketSideLabel: 'BLOCKED',
+            indicativePriceLabel: 'no source-backed price rows',
+            marketBoundaryLabel: 'No market payload',
+            tone: 'blue',
+            tooltipTitle: 'Live shadow preview blocked',
+            tooltipBody: 'The selected HF shadow source has no official or forecast-backed price rows for this delivery date, so no charge, discharge, HOLD schedule, ProposedBid, or market instruction is shown.'
+          }
+        ]
+      }
       return [
         {
           time: 'Delivery window',
@@ -162,8 +215,8 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
     }
 
     return schedule.map((point) => {
-      const label = powerToTimelineLabel(point.recommended_net_power_mw)
       const bidPreview = bidPreviewByInterval.value.get(point.interval_start)
+      const label = timelineLabelFromBidPreview(point.recommended_net_power_mw, bidPreview)
       const marketSideLabel = bidPreview?.side ?? marketSideFromTimelineLabel(label)
       const indicativePriceLabel = bidPreview
         ? `${Math.round(bidPreview.indicative_limit_price_uah_mwh).toLocaleString('en-GB')} UAH/MWh`
@@ -205,7 +258,7 @@ export const useOperatorTimelineModel = (input: OperatorTimelineModelInput) => {
   })
 
   const batteryStatusLabel = computed(() => {
-    const action = powerToTimelineLabel(latestRecommendedPowerMw.value)
+    const action = preferredTimelineLabel.value
 
     if (action === 'Discharge') {
       return `${activeMarketVenue.value} discharge preview`
@@ -283,8 +336,45 @@ const formatTimelineTooltipBody = (
   return `${scheduleBody} It is a non-submittable ${marketVenue} ${marketSideLabel} preview at ${indicativePriceLabel}; ${marketBoundaryLabel.toLowerCase()} and no ProposedBid.`
 }
 
-const selectTimelineSchedulePoints = <T extends { recommended_net_power_mw: number }>(schedule: T[]): T[] => {
-  const actionPoints = schedule.filter(point => Math.abs(point.recommended_net_power_mw) >= DAM_REVIEW_ACTION_THRESHOLD_MW)
+const timelineLabelFromBidPreview = (
+  powerMw: number,
+  bidPreview: BidRecommendationPreviewPoint | undefined
+): OperatorTimelineSegment['label'] => {
+  if (bidPreview?.side === 'SELL' || bidPreview?.operator_action === 'discharge') {
+    return 'Discharge'
+  }
+
+  if (bidPreview?.side === 'BUY' || bidPreview?.operator_action === 'charge') {
+    return 'Charge'
+  }
+
+  return powerToTimelineLabel(powerMw)
+}
+
+const hasActionBidPreview = (bidPreview: BidRecommendationPreviewPoint | undefined): boolean => {
+  return bidPreview?.side === 'SELL'
+    || bidPreview?.side === 'BUY'
+    || bidPreview?.operator_action === 'discharge'
+    || bidPreview?.operator_action === 'charge'
+}
+
+const formatSelectedTargetDeliveryWindowLabel = (targetDeliveryDate: string): string => {
+  const start = `${targetDeliveryDate}T00:00:00`
+  const endDate = new Date(`${targetDeliveryDate}T00:00:00Z`)
+  endDate.setUTCDate(endDate.getUTCDate() + 1)
+  const end = `${endDate.toISOString().slice(0, 10)}T00:00:00`
+  return `Delivery window: ${formatDamDeliveryLabel(start)} -> ${formatDamDeliveryLabel(end)}`
+}
+
+const selectTimelineSchedulePoints = <T extends { interval_start: string, recommended_net_power_mw: number }>(
+  schedule: T[],
+  bidPreviewByInterval: ReadonlyMap<string, BidRecommendationPreviewPoint>
+): T[] => {
+  const actionPoints = schedule.filter((point) => {
+    const bidPreview = bidPreviewByInterval.get(point.interval_start)
+    return hasActionBidPreview(bidPreview)
+      || Math.abs(point.recommended_net_power_mw) >= DAM_REVIEW_ACTION_THRESHOLD_MW
+  })
   if (actionPoints.length > 0) {
     return actionPoints.slice(0, TIMELINE_SEGMENT_LIMIT)
   }

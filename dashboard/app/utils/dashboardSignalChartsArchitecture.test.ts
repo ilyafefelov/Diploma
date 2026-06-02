@@ -59,4 +59,13 @@ describe('HUD signal charts architecture', () => {
     expect(fallbackBlock).toContain('pointer-events: none')
     expect(fallbackBlock).toContain('touch-action: pan-y')
   })
+
+  it('renders blocked selected shadow previews instead of preparing forever', () => {
+    const component = readFileSync(signalChartsPath, 'utf8')
+
+    expect(component).toContain('selectedPreviewHasNoSchedule')
+    expect(component).toContain('selectedPreviewBlockedMessage')
+    expect(component).toContain('No trade preview is shown')
+    expect(component).toContain('!selectedPreviewHasNoSchedule.value')
+  })
 })

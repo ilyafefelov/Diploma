@@ -12,6 +12,7 @@ interface OperatorPageNarrativeModelInput {
   explanationMode: ReadableRef<OperatorExplanationMode>
   visibleOperatorRecommendation: ReadableRef<OperatorRecommendationResponse | null>
   selectedPreviewSourceLabel: ReadableRef<string>
+  isShadowPreviewMode?: ReadableRef<boolean>
   modelRows: ReadableRef<OperatorResearchMetricsInput['modelRows']>
   readinessRows: ReadableRef<OperatorResearchMetricsInput['readinessRows']>
   offlineStrategyPromotion: ReadableRef<OperatorResearchMetricsInput['offlineStrategyPromotion']>
@@ -20,10 +21,15 @@ interface OperatorPageNarrativeModelInput {
 }
 
 export const useOperatorPageNarrativeModel = (input: OperatorPageNarrativeModelInput) => {
-  const explanationModeLabel = computed(() => input.explanationMode.value === 'mvp'
-    ? 'Selected V2+ evidence'
-    : 'Research roadmap'
-  )
+  const explanationModeLabel = computed(() => {
+    if (input.isShadowPreviewMode?.value) {
+      return input.selectedPreviewSourceLabel.value
+    }
+
+    return input.explanationMode.value === 'mvp'
+      ? 'Selected V2+ evidence'
+      : 'Research roadmap'
+  })
 
   const primaryBoundaryCopy = computed(() => input.explanationMode.value === 'mvp'
     ? 'The dashboard reads FastAPI evidence and previews the selected schedule. It does not execute trades or switch a live controller.'
@@ -55,6 +61,10 @@ export const useOperatorPageNarrativeModel = (input: OperatorPageNarrativeModelI
       }`
     }
 
+    if (input.isShadowPreviewMode?.value) {
+      return `Schedule source: ${input.selectedPreviewSourceLabel.value}`
+    }
+
     return input.explanationMode.value === 'mvp'
       ? 'Schedule source: strict_similar_day fallback'
       : 'Research branch: TFT/DT candidate review'
@@ -62,6 +72,9 @@ export const useOperatorPageNarrativeModel = (input: OperatorPageNarrativeModelI
 
   const scheduleMarketBoundaryLabel = computed(() => {
     if (!input.visibleOperatorRecommendation.value) {
+      if (input.isShadowPreviewMode?.value) {
+        return 'DAM/IDM hourly preview / no ProposedBid / no market submission'
+      }
       return 'DAM/IDM hourly preview / boundary loading'
     }
 

@@ -54,6 +54,15 @@ class ForecastStore(Protocol):
         limit_per_model: int = 24,
     ) -> pl.DataFrame: ...
 
+    def forecast_observation_frame_for_window(
+        self,
+        *,
+        model_names: Sequence[str],
+        window_start: datetime,
+        window_end: datetime,
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame: ...
+
 
 class NullForecastStore:
     def upsert_forecast_run(
@@ -71,6 +80,17 @@ class NullForecastStore:
         model_names: Sequence[str],
         limit_per_model: int = 24,
     ) -> pl.DataFrame:
+        return _empty_latest_forecast_observation_frame()
+
+    def forecast_observation_frame_for_window(
+        self,
+        *,
+        model_names: Sequence[str],
+        window_start: datetime,
+        window_end: datetime,
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame:
+        del model_names, window_start, window_end, limit_per_model
         return _empty_latest_forecast_observation_frame()
 
 
@@ -140,6 +160,75 @@ class InMemoryForecastStore:
             )
             if model_rows.height:
                 rows.append(model_rows)
+        if not rows:
+            return _empty_latest_forecast_observation_frame()
+        return pl.concat(rows, how="vertical").select(list(_LATEST_FORECAST_OBSERVATION_SCHEMA))
+
+    def forecast_observation_frame_for_window(
+        self,
+        *,
+        model_names: Sequence[str],
+        window_start: datetime,
+        window_end: datetime,
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame:
+        if self.summary_frame.is_empty() or self.observation_frame.is_empty() or not model_names:
+            return _empty_latest_forecast_observation_frame()
+        resolved_window_start = _naive_utc_datetime(window_start)
+        resolved_window_end = _naive_utc_datetime(window_end)
+        if resolved_window_end <= resolved_window_start:
+            return _empty_latest_forecast_observation_frame()
+        inclusive_window_end = resolved_window_end - timedelta(hours=1)
+        rows: list[pl.DataFrame] = []
+        for model_name in model_names:
+            model_summaries = self.summary_frame.filter(pl.col("model_name") == model_name)
+            if model_summaries.is_empty():
+                continue
+            candidate_summaries = sorted(
+                model_summaries.iter_rows(named=True),
+                key=lambda row: self._run_order_by_id.get(str(row["run_id"]), -1),
+                reverse=True,
+            )
+            for summary_row in candidate_summaries:
+                horizon_start = _optional_datetime(summary_row.get("horizon_start"))
+                horizon_end = _optional_datetime(summary_row.get("horizon_end"))
+                if horizon_start is None or horizon_end is None:
+                    continue
+                if _naive_utc_datetime(horizon_start) > resolved_window_start:
+                    continue
+                if _naive_utc_datetime(horizon_end) < inclusive_window_end:
+                    continue
+                selected_rows: list[dict[str, Any]] = []
+                for observation_row in (
+                    self.observation_frame
+                    .filter(pl.col("run_id") == summary_row["run_id"])
+                    .iter_rows(named=True)
+                ):
+                    forecast_timestamp = _optional_datetime(observation_row.get("forecast_timestamp"))
+                    if forecast_timestamp is None:
+                        continue
+                    normalized_timestamp = _naive_utc_datetime(forecast_timestamp)
+                    if resolved_window_start <= normalized_timestamp < resolved_window_end:
+                        selected_rows.append(
+                            {
+                                **observation_row,
+                                **{
+                                    column: summary_row.get(column)
+                                    for column in _FORECAST_RUN_METADATA_COLUMNS
+                                },
+                            }
+                        )
+                if not selected_rows:
+                    continue
+                model_rows = (
+                    pl.DataFrame(selected_rows)
+                    .sort("forecast_timestamp")
+                    .head(limit_per_model)
+                    .select(list(_LATEST_FORECAST_OBSERVATION_SCHEMA))
+                )
+                if model_rows.height:
+                    rows.append(model_rows)
+                    break
         if not rows:
             return _empty_latest_forecast_observation_frame()
         return pl.concat(rows, how="vertical").select(list(_LATEST_FORECAST_OBSERVATION_SCHEMA))
@@ -362,6 +451,106 @@ class PostgresForecastStore:
             orient="row",
         )
 
+    def forecast_observation_frame_for_window(
+        self,
+        *,
+        model_names: Sequence[str],
+        window_start: datetime,
+        window_end: datetime,
+        limit_per_model: int = 24,
+    ) -> pl.DataFrame:
+        if not model_names or window_end <= window_start:
+            return _empty_latest_forecast_observation_frame()
+        placeholders = ", ".join(["%s"] * len(model_names))
+        inclusive_window_end = window_end - timedelta(hours=1)
+        query = f"""
+            WITH complete_runs AS (
+                SELECT DISTINCT ON (model_name)
+                    run_id,
+                    model_name,
+                    generated_at,
+                    market_venue,
+                    training_cutoff,
+                    feature_cutoff,
+                    horizon_start,
+                    horizon_end,
+                    source_window_start,
+                    source_window_end
+                FROM forecast_run_summaries
+                WHERE model_name IN ({placeholders})
+                    AND horizon_start <= %s
+                    AND horizon_end >= %s
+                ORDER BY
+                    model_name,
+                    source_window_end DESC NULLS LAST,
+                    generated_at DESC,
+                    run_id DESC
+            ),
+            ranked_observations AS (
+                SELECT
+                    observations.run_id,
+                    observations.model_name,
+                    complete_runs.generated_at,
+                    complete_runs.market_venue,
+                    complete_runs.training_cutoff,
+                    complete_runs.feature_cutoff,
+                    complete_runs.horizon_start,
+                    complete_runs.horizon_end,
+                    complete_runs.source_window_start,
+                    complete_runs.source_window_end,
+                    observations.forecast_timestamp,
+                    observations.predicted_price_uah_mwh,
+                    observations.prediction_payload::text AS prediction_payload,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY observations.model_name
+                        ORDER BY observations.forecast_timestamp
+                    ) AS row_number
+                FROM price_forecast_observations observations
+                JOIN complete_runs
+                    ON complete_runs.run_id = observations.run_id
+                WHERE observations.forecast_timestamp >= %s
+                    AND observations.forecast_timestamp < %s
+            )
+            SELECT
+                run_id,
+                model_name,
+                generated_at,
+                market_venue,
+                training_cutoff,
+                feature_cutoff,
+                horizon_start,
+                horizon_end,
+                source_window_start,
+                source_window_end,
+                forecast_timestamp,
+                predicted_price_uah_mwh,
+                prediction_payload
+            FROM ranked_observations
+            WHERE row_number <= %s
+            ORDER BY model_name, forecast_timestamp
+        """
+        with self._connect() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    query,
+                    [
+                        *model_names,
+                        window_start,
+                        inclusive_window_end,
+                        window_start,
+                        window_end,
+                        limit_per_model,
+                    ],
+                )
+                records = cursor.fetchall()
+        if not records:
+            return _empty_latest_forecast_observation_frame()
+        return pl.DataFrame(
+            records,
+            schema=list(_LATEST_FORECAST_OBSERVATION_SCHEMA),
+            orient="row",
+        )
+
 
 def _forecast_run_id(model_name: str) -> str:
     return f"{model_name}:{datetime.now(UTC).strftime('%Y%m%dT%H%M%S')}:{uuid4().hex[:8]}"
@@ -498,6 +687,12 @@ def _optional_datetime(value: Any) -> datetime | None:
         except ValueError:
             return None
     return None
+
+
+def _naive_utc_datetime(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=None)
+    return value.astimezone(UTC).replace(tzinfo=None)
 
 
 def _frame_text_value(forecast_frame: pl.DataFrame, column_name: str) -> str | None:

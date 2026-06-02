@@ -12,6 +12,9 @@ import type { StrategyComparisonRow } from './operatorShadowPreview'
 export {
   buildPreviewSourceSelectItems,
   formatPreviewSourceOptionLabel,
+  resolveValueAlignedHfShadowDemoScenario,
+  VALUE_ALIGNED_HF_SHADOW_DEMO_SCENARIOS,
+  type ValueAlignedHfShadowDemoScenarioId,
   type PreviewSourceSelectItem
 } from '../lib/operator-future/operatorFuturePreviewSources'
 
@@ -139,8 +142,10 @@ export function buildShadowModelStoryItems(
   const applesMetrics = shadowMetricsBySource.get('dt_v2_plus_apples_to_apples_shadow') ?? {}
   const regretAwareMetrics = shadowMetricsBySource.get('regret_aware_v2_plus_selector_shadow') ?? {}
   const safeSwitchMetrics = shadowMetricsBySource.get('dt_v2_plus_safe_switch_selector_shadow') ?? {}
+  const hfValueAlignedMetrics = shadowMetricsBySource.get('hf_live_safe_switch_value_aligned_shadow') ?? {}
   const v2Regret = numericMetric(regretAwareMetrics.v2_plus_mean_regret_uah)
     ?? numericMetric(safeSwitchMetrics.v2_plus_mean_regret_uah)
+    ?? numericMetric(hfValueAlignedMetrics.v2_plus_baseline_mean_regret_uah)
     ?? numericMetric(applesMetrics.v2_plus_mean_regret_uah)
     ?? 174.77
   const dtRegret = numericMetric(applesMetrics.dt_selected_mean_regret_uah) ?? 460.30
@@ -179,6 +184,18 @@ export function buildShadowModelStoryItems(
       label: 'Research gate',
       value: `${formatResearchEvidenceLevel(selectorRegret)} evidence`,
       meta: `${formatRegretMean(selectorRegret)} vs V2+ ${formatRegretMean(v2Regret)}; promotion=false / execution=false`
+    })
+  }
+
+  if (shadowMetricsBySource.has('hf_live_safe_switch_value_aligned_shadow')) {
+    const hfRegret = numericMetric(hfValueAlignedMetrics.hf_mean_regret_uah) ?? 158.7121
+    const canonicalSafeSwitchRegret = numericMetric(hfValueAlignedMetrics.canonical_safe_switch_mean_regret_uah)
+      ?? selectorRegret
+    const gatePassed = numericMetric(hfValueAlignedMetrics.shadow_promotion_gate_passed) === 1
+    storyItems.push({
+      label: 'HF value-aligned shadow',
+      value: `${formatRegretMean(hfRegret)} mean regret`,
+      meta: `vs safe-switch ${formatRegretMean(canonicalSafeSwitchRegret)} / V2+ ${formatRegretMean(v2Regret)}; shadow gate ${gatePassed ? 'passed' : 'not passed'}; execution=false`
     })
   }
 
@@ -249,6 +266,12 @@ export function shortStrategyLabel(row: StrategyComparisonRow): string {
   if (row.sourceId === 'dt_v2_plus_safe_switch_selector_shadow') {
     return 'DT V2+ safe-switch'
   }
+  if (row.sourceId === 'hf_live_safe_switch_shadow') {
+    return 'HF live safe-switch'
+  }
+  if (row.sourceId === 'hf_live_safe_switch_value_aligned_shadow') {
+    return 'HF value-aligned'
+  }
   if (row.sourceId === 'poland_tft_shadow') {
     return 'Poland/TFT'
   }
@@ -268,6 +291,8 @@ export function formatStrategyAxisLabel(value: string): string {
     'Decision DT': 'Decision\nDT',
     'RA V2+': 'RA\nV2+',
     'DT V2+ safe-switch': 'DT V2+\nsafe-switch',
+    'HF live safe-switch': 'HF live\nsafe-switch',
+    'HF value-aligned': 'HF value\naligned',
     'Poland/TFT': 'Poland\nTFT',
     'DFL diag': 'DFL\ndiag',
     'V13 blocked': 'V13\nblocked'

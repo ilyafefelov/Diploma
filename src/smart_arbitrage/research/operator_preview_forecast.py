@@ -361,6 +361,7 @@ def _with_operator_preview_metadata(
         return forecast_frame
     return forecast_frame.with_columns(
         [
+            pl.lit(training_cutoff).alias("generated_at"),
             pl.lit(market_venue).alias("market_venue"),
             pl.lit(training_cutoff).alias("training_cutoff"),
             pl.lit(training_cutoff).alias("feature_cutoff"),

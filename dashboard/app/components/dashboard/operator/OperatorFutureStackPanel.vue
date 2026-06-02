@@ -9,6 +9,7 @@ import type {
 } from '~/types/control-plane'
 import type { OperatorChartHorizon } from '~/types/operator-dashboard'
 import type { OperatorPreviewSourceId } from '~/utils/operatorShadowPreview'
+import type { ValueAlignedHfShadowDemoScenarioId } from '~/utils/operatorFutureStackPresentation'
 import OperatorFutureChartGrid from './OperatorFutureChartGrid.vue'
 import OperatorFutureExplainerGrid from './OperatorFutureExplainerGrid.vue'
 import OperatorFutureHeaderControls from './OperatorFutureHeaderControls.vue'
@@ -34,6 +35,7 @@ const emit = defineEmits<{
   'update:selectedStrategyId': [value: string]
   'update:selectedPreviewSourceId': [value: OperatorPreviewSourceId]
   'refresh:shadowPreview': []
+  'select:hf-demo-scenario': [value: ValueAlignedHfShadowDemoScenarioId]
 }>()
 
 const {
@@ -75,6 +77,7 @@ const {
       :is-loading="isLoading"
       @update:selected-preview-source-id="emit('update:selectedPreviewSourceId', $event)"
       @refresh:shadow-preview="emit('refresh:shadowPreview')"
+      @select:hf-demo-scenario="emit('select:hf-demo-scenario', $event)"
     />
 
     <OperatorFutureReadinessStrips

@@ -259,6 +259,34 @@ describe('operator future stack chart options', () => {
     expect(policyOption.legend).toMatchObject({ show: false })
   })
 
+  it('adds a visible blocked-state message when selected shadow policy rows are empty', () => {
+    const policyOption = buildPolicyOption({
+      isOfficialPolicyMode: false,
+      usesDecisionPolicyPreview: false,
+      policyLabels: [],
+      officialPolicyChartSeries: [],
+      decisionPolicyChartSeries: [],
+      selectedRecommendationChartSeries: buildSelectedRecommendationChartSeries(
+        [],
+        {
+          netPower: 'Selected shadow net power (MW)',
+          valueGap: 'Value shortfall vs strict (UAH)',
+          priceContext: 'Artifact forecast price (UAH/MWh)'
+        }
+      ),
+      emptyStateMessage: 'HF shadow blocked: no source-backed rows for this delivery date.'
+    })
+
+    expect(policyOption.graphic).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        type: 'text',
+        style: expect.objectContaining({
+          text: expect.stringContaining('HF shadow blocked')
+        })
+      })
+    ]))
+  })
+
   it('builds strategy comparison options with preview-only tooltip copy', () => {
     const option = buildStrategyComparisonOption({
       strategyComparisonLabels: ['DT V2+ safe-switch'],

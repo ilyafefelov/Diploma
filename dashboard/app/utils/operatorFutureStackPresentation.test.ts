@@ -20,6 +20,10 @@ import type {
   OperatorRecommendationResponse,
   ShadowRecommendationPreviewResponse
 } from '../types/control-plane'
+import {
+  hfLiveSafeSwitchValueAlignedPreview,
+  safeSwitchSelectorPreview
+} from './test-fixtures/operatorShadowPreviewFixtures'
 
 describe('operator future stack presentation helpers', () => {
   it('builds selected recommendation chart rows with rounded schedule and value-gap fields', () => {
@@ -172,5 +176,18 @@ describe('operator future stack presentation helpers', () => {
     expect(formatForecastSeriesLabel('nbeatsx_silver_v0')).toBe('Compact NBEATSx')
     expect(formatForecastSeriesLabel('tft_official_v0')).toBe('Official TFT p50')
     expect(formatForecastSeriesLabel('custom_model')).toBe('custom_model')
+  })
+
+  it('adds HF value-aligned evidence to the strategy story when the selected comparison includes it', () => {
+    const items = buildShadowModelStoryItems([
+      safeSwitchSelectorPreview(),
+      hfLiveSafeSwitchValueAlignedPreview()
+    ])
+
+    expect(items).toContainEqual({
+      label: 'HF value-aligned shadow',
+      value: '158.71 UAH mean regret',
+      meta: 'vs safe-switch 168.16 UAH / V2+ 174.77 UAH; shadow gate passed; execution=false'
+    })
   })
 })

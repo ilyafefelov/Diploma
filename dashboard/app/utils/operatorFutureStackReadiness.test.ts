@@ -6,7 +6,7 @@ import {
   buildV13ReadinessItems
 } from './operatorFutureStack'
 
-import type { AcademicMvpReadinessResponse } from '~/types/control-plane'
+import type { AcademicMvpReadinessResponse, OperatorV13ReadinessResponse } from '~/types/control-plane'
 
 describe('operator future stack readiness helpers', () => {
   it('builds V13 source-readiness chips without implying DT or execution readiness', () => {
@@ -75,6 +75,35 @@ describe('operator future stack readiness helpers', () => {
         value: '77 missing',
         status: 'blocked',
         reason: '20 prior/train non-tail-risk material examples per tenant/source required; top target client_004_kharkiv_hospital needs 18'
+      },
+      {
+        label: 'Execution boundary',
+        value: 'preview only',
+        status: 'ready',
+        reason: 'market_execution_enabled=false; DT/LAVA blocked'
+      }
+    ])
+  })
+
+  it('keeps live shadow packets with partial V13 readiness from breaking the operator page', () => {
+    expect(buildV13ReadinessItems({} as unknown as OperatorV13ReadinessResponse)).toEqual([
+      {
+        label: 'V13 gate',
+        value: 'source readiness pending',
+        status: 'blocked',
+        reason: '0/0 source families ready; top blocker source_readiness_pending'
+      },
+      {
+        label: 'OREE source evidence',
+        value: 'blocked',
+        status: 'blocked',
+        reason: 'missing oree_dam_publication_receipts_csv_path; no receipt source audit attached'
+      },
+      {
+        label: 'Safe-switch evidence',
+        value: 'ready',
+        status: 'ready',
+        reason: '20 prior/train non-tail-risk material examples per tenant/source required'
       },
       {
         label: 'Execution boundary',

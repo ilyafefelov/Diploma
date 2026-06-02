@@ -54,9 +54,9 @@ export interface OperatorGatekeeperAction {
 
 export interface OperatorTimelineSegment {
   time: string
-  label: 'Charge' | 'Discharge' | 'Hold' | 'Preview pending'
+  label: 'Charge' | 'Discharge' | 'Hold' | 'Preview pending' | 'No trade preview'
   value: string
-  marketSideLabel: 'BUY' | 'SELL' | 'HOLD' | 'PENDING'
+  marketSideLabel: 'BUY' | 'SELL' | 'HOLD' | 'PENDING' | 'BLOCKED'
   indicativePriceLabel: string
   marketBoundaryLabel: string
   tone: 'blue' | 'green' | 'orange'

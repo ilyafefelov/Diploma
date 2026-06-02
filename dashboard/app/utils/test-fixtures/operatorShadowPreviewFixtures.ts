@@ -304,6 +304,88 @@ export function safeSwitchSelectorPreview(): ShadowRecommendationPreviewResponse
   }
 }
 
+export function hfLiveSafeSwitchPreview(): ShadowRecommendationPreviewResponse {
+  return {
+    ...dtShadowPreview(),
+    preview_source_id: 'hf_live_safe_switch_shadow',
+    preview_source_label: 'HF live safe-switch shadow',
+    preview_status: 'live_shadow_not_promoted',
+    selected_candidate_id: 'live-strict-reference',
+    selected_schedule_family: 'strict_reference',
+    selected_candidate_index: 3,
+    comparison_metrics: {
+      hf_mean_regret_uah: 158.7121,
+      canonical_safe_switch_mean_regret_uah: 168.1566,
+      v2_plus_baseline_mean_regret_uah: 174.77,
+      selected_operating_threshold_uah: 100,
+      live_actual_regret_available: 0,
+      predicted_regret_delta_vs_v2_plus_uah: -140,
+      predicted_tail_risk_probability: 0.2,
+      best_nonfallback_predicted_regret_delta_vs_v2_plus_uah: -140,
+      best_nonfallback_predicted_tail_risk_probability: 0.2,
+      threshold_margin_to_switch_uah: 0,
+      threshold_guard_failed_count: 2,
+      predicted_tail_guard_failed_count: 0,
+      family_tail_guard_failed_count: 0,
+      safety_guard_failed_count: 0,
+      selected_vs_best_template_value_gap_uah: 0,
+      dt_minus_v2_plus_regret_uah: -16.0579
+    },
+    recommendation_schedule: dtShadowPreview().recommendation_schedule.map(point => ({
+      ...point,
+      selected_candidate_id: 'live-strict-reference',
+      schedule_family: 'strict_reference',
+      expected_value_uah: 912,
+      regret_uah: null,
+      regret_vs_v2_plus_uah: null,
+      regret_vs_strict_uah: null,
+      value_vs_v2_plus_uah: null,
+      value_vs_strict_uah: null
+    })),
+    boundary_labels: ['HF live safe-switch shadow', 'Not promoted', 'Preview only', 'No market execution'],
+    readiness_warnings: ['HF live safe-switch shadow preview; not promoted; no market execution.']
+  }
+}
+
+export function hfLiveSafeSwitchValueAlignedPreview(): ShadowRecommendationPreviewResponse {
+  return {
+    ...hfLiveSafeSwitchPreview(),
+    preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
+    preview_source_label: 'HF live safe-switch value-aligned shadow',
+    preview_status: 'value_aligned_shadow_not_promoted',
+    comparison_metrics: {
+      ...hfLiveSafeSwitchPreview().comparison_metrics,
+      candidate_template_grid_default: 0,
+      candidate_template_grid_value_aligned: 1,
+      value_aligned_selected_value_improvement_uah: 645.3912,
+      value_aligned_value_gap_ratio_vs_default: 0.3975,
+      value_aligned_tail_failure_delta_count: -16,
+      value_aligned_safety_failure_count: 0,
+      selected_vs_best_template_value_gap_uah: 1417,
+      shadow_promotion_gate_available: 1,
+      shadow_promotion_gate_passed: 1,
+      shadow_promotion_source_backed_day_count: 32,
+      shadow_promotion_switch_rate: 0.625,
+      shadow_promotion_nonfallback_day_count: 20,
+      shadow_promotion_hf_minus_v2_plus_mean_regret_uah: -16.0579,
+      shadow_promotion_safety_failure_count: 0,
+      shadow_promotion_tail_failure_delta_count: -16,
+      shadow_promotion_value_gap_ratio_vs_default: 0.3975
+    },
+    readiness_warnings: [
+      'Value-aligned HF shadow; read-only audit passed; manual review required; no market execution.',
+      'Shadow promotion gate passed for demo candidate-library use; market execution remains disabled.'
+    ],
+    boundary_labels: [
+      'HF live safe-switch value-aligned shadow',
+      'Candidate template grid: candidate_library_value_aligned',
+      'Not promoted',
+      'Preview only',
+      'No market execution'
+    ]
+  }
+}
+
 export function distillationDtShadowPreview(): ShadowRecommendationPreviewResponse {
   return {
     ...dtShadowPreview(),

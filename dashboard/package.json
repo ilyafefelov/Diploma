@@ -8,6 +8,7 @@
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
     "lint": "eslint .",
+    "smoke:hf-value-aligned": "node ../scripts/smoke_hf_value_aligned_shadow_browser.mjs",
     "typecheck": "nuxt typecheck",
     "test:unit": "vitest run"
   },
@@ -23,6 +24,7 @@
   "devDependencies": {
     "@nuxt/eslint": "^1.15.2",
     "eslint": "^10.2.1",
+    "playwright": "^1.60.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.5",
     "vue-tsc": "^3.2.7"

@@ -40,6 +40,7 @@ const VChart = defineAsyncComponent(async () => {
     chartsModule.LineChart,
     chartsModule.ScatterChart,
     componentsModule.GridComponent,
+    componentsModule.GraphicComponent,
     componentsModule.LegendComponent,
     componentsModule.TooltipComponent
   ])

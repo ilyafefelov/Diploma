@@ -141,7 +141,15 @@ export function buildPolicyOption(input: {
   officialPolicyChartSeries: ChartSeries[]
   decisionPolicyChartSeries: ChartSeries[]
   selectedRecommendationChartSeries: ChartSeries[]
+  emptyStateMessage?: string
 }): ChartOption {
+  const selectedSeries = input.isOfficialPolicyMode
+    ? input.officialPolicyChartSeries
+    : input.usesDecisionPolicyPreview
+      ? input.decisionPolicyChartSeries
+      : input.selectedRecommendationChartSeries
+  const isEmptyChart = input.policyLabels.length === 0 || selectedSeries.every(series => series.data.length === 0)
+
   return {
     animationDuration: 500,
     backgroundColor: 'transparent',
@@ -176,10 +184,26 @@ export function buildPolicyOption(input: {
           valueAxis('UAH / UAH/MWh'),
           valueAxis('MW')
         ],
-    series: input.isOfficialPolicyMode
-      ? input.officialPolicyChartSeries
-      : input.usesDecisionPolicyPreview
-        ? input.decisionPolicyChartSeries
-        : input.selectedRecommendationChartSeries
+    series: selectedSeries,
+    ...(isEmptyChart
+      ? {
+          graphic: [
+            {
+              type: 'text',
+              left: 'center',
+              top: 'middle',
+              style: {
+                text: input.emptyStateMessage || 'Selected preview has no chartable delivery-hour rows.',
+                fill: dashboardChartTokens.legendTextOnDark,
+                fontSize: 14,
+                fontWeight: 800,
+                align: 'center',
+                width: 320,
+                overflow: 'break'
+              }
+            }
+          ]
+        }
+      : {})
   }
 }

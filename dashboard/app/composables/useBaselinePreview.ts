@@ -9,11 +9,13 @@ import {
 
 const DEFAULT_MARKET_VENUE: Readonly<{ value: OperatorMarketVenue }> = { value: 'DAM' }
 const DEFAULT_TARGET_DELIVERY_DATE: Readonly<{ value: string | null }> = { value: null }
+const DEFAULT_AUTO_LOAD: Readonly<{ value: boolean }> = { value: true }
 
 export const useBaselinePreview = (
   selectedTenantId: Readonly<{ value: string }>,
   selectedMarketVenue: Readonly<{ value: OperatorMarketVenue }> = DEFAULT_MARKET_VENUE,
-  selectedTargetDeliveryDate: Readonly<{ value: string | null }> = DEFAULT_TARGET_DELIVERY_DATE
+  selectedTargetDeliveryDate: Readonly<{ value: string | null }> = DEFAULT_TARGET_DELIVERY_DATE,
+  shouldAutoLoad: Readonly<{ value: boolean }> = DEFAULT_AUTO_LOAD
 ) => {
   const baselinePreview = ref<BaselineLpPreview | null>(null)
   const isLoading = ref(false)
@@ -38,6 +40,13 @@ export const useBaselinePreview = (
 
   const loadBaselinePreview = async (): Promise<void> => {
     const requestId = ++requestSequence
+
+    if (!shouldAutoLoad.value) {
+      baselinePreview.value = null
+      isLoading.value = false
+      error.value = ''
+      return
+    }
 
     if (!selectedTenantId.value) {
       baselinePreview.value = null
@@ -75,7 +84,15 @@ export const useBaselinePreview = (
     }
   }
 
-  watch([selectedTenantId, selectedMarketVenue, selectedTargetDeliveryDate], async () => {
+  watch([selectedTenantId, selectedMarketVenue, selectedTargetDeliveryDate, shouldAutoLoad], async () => {
+    if (!shouldAutoLoad.value) {
+      requestSequence += 1
+      baselinePreview.value = null
+      isLoading.value = false
+      error.value = ''
+      return
+    }
+
     await loadBaselinePreview()
   })
 
