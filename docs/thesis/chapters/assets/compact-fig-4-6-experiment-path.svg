@@ -1,81 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
-  <title id="title">Експериментальний шлях від baseline до operator preview</title>
-  <desc id="desc">Послідовність evidence gates: strict baseline, forecast adapters, LP scoring, V2/V2+ selection, shadow challengers і operator preview.</desc>
-  <rect width="1200" height="720" fill="#ffffff"/>
-  <text x="70" y="70" font-family="Arial, sans-serif" font-size="31" font-weight="700" fill="#111827">Експериментальний шлях: від baseline до preview</text>
-  <text x="70" y="104" font-family="Arial, sans-serif" font-size="18" fill="#475569">Немає нового live trading claim: кожний крок додає тільки offline/read-model evidence.</text>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Experiment path from baseline to live shadow preview</title>
+  <desc id="desc">Timeline of evidence development from strict baseline through V2+, DT/HF shadow, readiness, and future gates.</desc>
   <defs>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#0f766e"/>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 23px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 17px Arial, sans-serif; fill: #334155; }
+      .white { font: 800 18px Arial, sans-serif; fill: #fff; }
+      .line { stroke: #0284c7; stroke-width: 8; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/>
     </marker>
   </defs>
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <text x="72" y="88" class="title" style="font-size:42px">Experiment path: baseline to live shadow preview</text>
+  <text x="72" y="128" class="subtitle">Кожен крок додає не тільки модель, а й доказову межу: comparator, fallback, abstention, readiness.</text>
 
-  <g font-family="Arial, sans-serif">
-    <line x1="125" y1="290" x2="1075" y2="290" stroke="#99f6e4" stroke-width="8" stroke-linecap="round"/>
-    <g>
-      <circle cx="140" cy="290" r="34" fill="#fef3c7" stroke="#f59e0b" stroke-width="3"/>
-      <text x="124" y="298" font-size="24" font-weight="700" fill="#92400e">1</text>
-      <text x="140" y="365" text-anchor="middle" font-size="16" font-weight="700" fill="#111827">strict_similar_day</text>
-      <text x="140" y="392" text-anchor="middle" font-size="14" fill="#475569">leakage-free baseline</text>
-    </g>
+  <path class="line" d="M140 420 H1450"/>
 
-    <line x1="176" y1="290" x2="260" y2="290" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)"/>
-    <g>
-      <circle cx="300" cy="290" r="34" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/>
-      <text x="284" y="298" font-size="24" font-weight="700" fill="#1d4ed8">2</text>
-      <text x="300" y="365" text-anchor="middle" font-size="16" font-weight="700" fill="#111827">forecast adapters</text>
-      <text x="300" y="392" text-anchor="middle" font-size="14" fill="#475569">NBEATSx / TFT</text>
-    </g>
+  <g transform="translate(80 240)">
+    <rect width="230" height="250" rx="22" fill="#fff7ed" stroke="#f97316" stroke-width="3"/>
+    <text x="28" y="52" class="head">Strict LP/oracle</text>
+    <text x="28" y="105" class="body">310.58 UAH</text>
+    <text x="28" y="150" class="body">common scoring</text>
+    <text x="28" y="195" class="body">safe but rigid</text>
+  </g>
+  <g transform="translate(365 240)">
+    <rect width="230" height="250" rx="22" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="28" y="52" class="head">V2+</text>
+    <text x="28" y="105" class="body">174.77 UAH</text>
+    <text x="28" y="150" class="body">4 / 4 robustness</text>
+    <text x="28" y="195" class="body">headline evidence</text>
+  </g>
+  <g transform="translate(650 240)">
+    <rect width="230" height="250" rx="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <text x="28" y="52" class="head">DT safe-switch</text>
+    <text x="28" y="105" class="body">168.16 UAH</text>
+    <text x="28" y="150" class="body">secondary</text>
+    <text x="28" y="195" class="body">manual diagnostic</text>
+  </g>
+  <g transform="translate(935 240)">
+    <rect width="230" height="250" rx="22" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="28" y="52" class="head">HF shadow</text>
+    <text x="28" y="105" class="body">158.71 UAH</text>
+    <text x="28" y="150" class="body">candidate scoring</text>
+    <text x="28" y="195" class="body">live preview</text>
+  </g>
+  <g transform="translate(1220 240)">
+    <rect width="230" height="250" rx="22" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="28" y="52" class="head">Future gate</text>
+    <text x="28" y="105" class="body">V13 receipts</text>
+    <text x="28" y="150" class="body">LP/MIP teacher data</text>
+    <text x="28" y="195" class="body">execution contracts</text>
+  </g>
 
-    <line x1="336" y1="290" x2="420" y2="290" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)"/>
-    <g>
-      <circle cx="460" cy="290" r="34" fill="#ecfdf5" stroke="#22c55e" stroke-width="3"/>
-      <text x="444" y="298" font-size="24" font-weight="700" fill="#166534">3</text>
-      <text x="460" y="365" text-anchor="middle" font-size="16" font-weight="700" fill="#111827">LP scoring</text>
-      <text x="460" y="392" text-anchor="middle" font-size="14" fill="#475569">schedule + oracle</text>
-    </g>
-
-    <line x1="496" y1="290" x2="580" y2="290" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)"/>
-    <g>
-      <circle cx="620" cy="290" r="34" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
-      <text x="604" y="298" font-size="24" font-weight="700" fill="#166534">4</text>
-      <text x="620" y="365" text-anchor="middle" font-size="16" font-weight="700" fill="#111827">V2 / V2+</text>
-      <text x="620" y="392" text-anchor="middle" font-size="14" fill="#475569">90 anchors; 4 windows</text>
-    </g>
-
-    <line x1="656" y1="290" x2="740" y2="290" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)"/>
-    <g>
-      <circle cx="780" cy="290" r="34" fill="#fff7ed" stroke="#fb923c" stroke-width="3"/>
-      <text x="764" y="298" font-size="24" font-weight="700" fill="#c2410c">5</text>
-      <text x="780" y="365" text-anchor="middle" font-size="16" font-weight="700" fill="#111827">shadow lanes</text>
-      <text x="780" y="392" text-anchor="middle" font-size="14" fill="#475569">TFT / Poland / DT</text>
-    </g>
-
-    <line x1="816" y1="290" x2="900" y2="290" stroke="#0f766e" stroke-width="3" marker-end="url(#arrow)"/>
-    <g>
-      <circle cx="940" cy="290" r="34" fill="#ecfeff" stroke="#06b6d4" stroke-width="3"/>
-      <text x="924" y="298" font-size="24" font-weight="700" fill="#0e7490">6</text>
-      <text x="940" y="365" text-anchor="middle" font-size="16" font-weight="700" fill="#111827">operator preview</text>
-      <text x="940" y="392" text-anchor="middle" font-size="14" fill="#475569">read-model, no bid</text>
-    </g>
-
-    <rect x="70" y="475" width="330" height="96" rx="8" fill="#f8fafc" stroke="#dbe3ee"/>
-    <text x="92" y="512" font-size="18" font-weight="700" fill="#111827">Positive signal</text>
-    <text x="92" y="540" font-size="16" fill="#475569">V2+ lowers mean and median regret;</text>
-    <text x="92" y="565" font-size="16" fill="#475569">it also passes 4/4 rolling windows.</text>
-
-    <rect x="435" y="475" width="330" height="96" rx="8" fill="#fffbeb" stroke="#fcd34d"/>
-    <text x="457" y="512" font-size="18" font-weight="700" fill="#92400e">Near miss</text>
-    <text x="457" y="540" font-size="16" fill="#475569">Poland veto shows 4.41% improvement;</text>
-    <text x="457" y="565" font-size="16" fill="#475569">this stays below the 5% threshold.</text>
-
-    <rect x="800" y="475" width="330" height="96" rx="8" fill="#fef2f2" stroke="#fecaca"/>
-    <text x="822" y="512" font-size="18" font-weight="700" fill="#991b1b">Blocked claim</text>
-    <text x="822" y="540" font-size="16" fill="#475569">DT/LAVA and execution stay blocked;</text>
-    <text x="822" y="565" font-size="16" fill="#475569">OREE source evidence remains pending.</text>
-
-    <rect x="70" y="615" width="1060" height="55" rx="8" fill="#f0fdfa" stroke="#99f6e4"/>
-    <text x="92" y="649" font-size="17" fill="#134e4a">Academic point: the result is a controlled decision-quality story, not a list of model names.</text>
+  <g transform="translate(90 675)">
+    <rect width="1420" height="76" rx="20" fill="#0f172a"/>
+    <text x="34" y="34" class="white">Current endpoint: operator-facing read-model preview.</text>
+    <text x="34" y="58" class="white">Not V13 training, not production controller, not market execution.</text>
   </g>
 </svg>

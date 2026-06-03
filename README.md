@@ -1,311 +1,415 @@
 # Smart Energy Arbitrage 2026
 
-Research framework for BESS energy arbitrage in Ukraine. Current MVP is not a trading bot. It is a reproducible Dagster/FastAPI/Postgres/MLflow stack for observed DAM data, tenant weather, battery telemetry, Level 1 LP dispatch evaluation, forecast comparison, and thesis-safe regret analysis.
+Commission-ready operator-preview system for Ukrainian BESS energy arbitrage.
 
-## Current Status
+The repository combines a Dagster/FastAPI/Postgres/MLflow backend, a Nuxt
+operator dashboard, deterministic LP/V2+ comparators, and guarded DT/HF
+read-model evidence. The current product surface is a DAM/IDM hourly
+recommendation preview. It is not a trading bot, not a market-submission engine,
+and not production execution.
 
-- Current goal boundary: [docs/technical/CURRENT_GOAL_BOUNDARY_V13.md](docs/technical/CURRENT_GOAL_BOUNDARY_V13.md)
-  is the concise reference for the V13 scope: DAM/IDM hourly recommendation
-  preview and offline/read-model strategy evidence only, with
-  `market_execution_enabled=false`.
-- Real-data benchmark: observed OREE DAM prices plus tenant Open-Meteo weather.
-- Tenants: 5 simulated BESS tenants from `simulations/tenants.yml`.
-- Main control: `strict_similar_day`.
-- Forecast candidates: compact `nbeatsx_silver_v0` / `tft_silver_v0` for smoke diagnostics, official global-panel NBEATSx evidence for the current Schedule/Value Learner V2+ result, and an additive official global-panel TFT p10/p50/p90 quantile parity lane.
-- Research layer: forecast diagnostics, value-aware ensemble gate, calibrated horizon-aware ensemble gate, risk-adjusted selector diagnostics, DFL-ready training table, scalar and horizon-aware regret-weighted TFT/NBEATSx calibration, strict LP/oracle re-evaluation.
-- Latest DFL research challenger: official global-panel NBEATSx Schedule/Value Learner V2+ now passes the **Offline Strategy Promotion** / fallback gate on the 365-anchor Ukrainian evidence packet for read-model strategy evidence only. It improves over frozen V2 and `strict_similar_day`; both raw and horizon-calibrated official NBEATSx source rows pass 4/4 rolling strict-control windows, and `market_execution_enabled=false`; live market execution remains disabled. The follow-up pairwise schedule-value DFL v2 selector materialized as valid diagnostic evidence but matched/fell back to V2+ with 0.00% improvement, so V2+ remains the thesis headline.
-- Current model-improvement branch: Regret-Surrogate DFL v1/v2 materialized a learning-limit audit before another DT attempt. The latest final holdout has oracle-switch upside (`174.77` -> `161.38` UAH mean regret, `7.66%`) but only `8 / 90` final rows have any better candidate. Context V2 narrowed this to `5 / 90` material safe-switch rows and found all five lacked prior context support; the contextual selector selected `0 / 90` non-V2+ rows, matched V2+ at `174.77` / `67.30` UAH, and produced `0 / 4` rolling challenger windows. V2+ remains the thesis headline while the next research branch needs comparable context backfill or safer candidate families.
-- TFT improvement branch: `tft_official_global_panel_rolling_strict_lp_benchmark_frame` and `dfl_tft_augmented_v2_plus_strict_lp_benchmark_frame` give TFT a fair global-panel, quantile-aware schedule/value gate. TFT is evaluated as a contributor to lower strict LP/oracle regret, not as a raw forecast promotion; it must beat frozen Ukrainian-only V2+ before changing the thesis headline.
-- Market-coupling status: ENTSO-E/neighbor-market signals are prepared as governed exogenous feature columns only. They are not part of the current V2+ result, and the ablation path must emit `blocked_by_governance` until source-backed coverage, publication time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule mapping, and domain-shift checks pass.
-- New framework primitives: explicit Bronze/Silver/Gold asset tags, a real-data Silver benchmark feature bridge, SOTA-ready `unique_id`/`ds`/`y` training schema, differentiable relaxed-LP DFL pilot rows, a Silver NBEATSx/TFT forecast-context bridge for DT state, offline Decision Transformer trajectory rows, DT safety projection, DT policy-preview rows, and simulated paper-trading replay rows.
-- Direct DT candidate shadow: `scripts/materialize_dt_research_shadow_packet.py`
-  now has a fresh HF DecisionTransformer run at
-  `data/research_runs/week3_dt_direct_candidate_shadow_current/`. It trains on
-  candidate-index/schedule-family teacher targets without LAVA promotion and
-  ties the V13 fallback row in that packet (`627.04` UAH mean regret), while
-  remaining worse than strict/oracle (`310.58` UAH). The apples-to-apples DT
-  check against the real V2+ comparator shows DT at `460.30` UAH mean regret
-  versus V2+ at `174.77` UAH, so V2+ remains the headline. Both DT packets are
-  manually selectable shadow previews only and do not change the default
-  strategy or `market_execution_enabled=false`.
-- Dashboard UI now has separate `/operator` and `/defense` surfaces. `/operator` shows live/read-model status, NBEATSx/TFT forecast-stack graphs, DT policy-preview value-gap evidence, SOC/load context, configured MQTT telemetry ingest path, and strategy readiness without claiming market execution.
+![Operator preview dashboard](docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/operator_desktop_after_8s.png)
 
-## Pipeline And LP Baseline
+## Executive Summary
 
-The current operational core is a deterministic Level 1 LP baseline, not an ML
-policy. The pipeline is:
+This project answers one practical question: can a BESS operator in Ukraine see a
+clear, source-backed day-ahead or intraday charge/discharge/hold preview while
+the research system measures whether newer strategy layers are actually better
+than a safe baseline?
 
-```text
-Bronze market/weather/telemetry data
-  -> Silver hourly features and forecast inputs
-  -> strict similar-day forecast or ML forecast candidates
-  -> LP battery dispatch optimizer
-  -> Pydantic safety validation
-  -> oracle/regret benchmark and dashboard/API read models
+Current answer:
+
+| Layer | Result | Status |
+| --- | ---: | --- |
+| Strict LP/oracle comparator | 310.58 UAH mean regret | evaluator, not UI default |
+| V2 forecast selector | 206.37 UAH mean regret | historical baseline |
+| Schedule/Value Learner V2+ | 174.77 UAH mean regret | headline/default evidence |
+| DT/V2+ safe-switch | 168.16 UAH mean regret, 4 switches / 86 abstentions | secondary shadow evidence |
+| HF value-aligned shadow | 158.71 UAH frozen mean regret signal, 20/32 non-fallback days, 8/8 readiness | manual shadow/demo preview |
+
+Boundary: `market_execution_enabled=false`, no `ProposedBid`, no market order
+payload, no production LP replacement, and no V13 training claim.
+
+## What This Repository Proves
+
+The implementation is evidence-oriented rather than claim-oriented:
+
+- V2+ remains the validated headline/default strategy because it is robust,
+  source-backed, and safe under the frozen evaluator.
+- DT and HF improve research regret in selected packets, but stay behind manual
+  shadow gates because they are not production controllers.
+- HF value-aligned shadow can serve a live operator-preview flow for
+  `latest official`, `today`, `tomorrow`, and `day+2` across DAM and IDM when
+  source-backed official or forecast-store rows are available.
+- The dashboard shows selected price context, recommendation rows, abstention
+  reasons, strategy comparison, and non-execution boundaries.
+
+It does not prove market execution readiness, autonomous bidding, V13 source
+readiness, or a mathematically complete HF optimizer.
+
+## Decision-Ready Report
+
+### What Is Happening
+
+The system has matured from a pure LP/forecast experiment into a layered
+operator-preview product. The front office view now reads from source-backed
+DAM/IDM context, applies deterministic safety checks, and can compare V2+, DT
+safe-switch, and HF value-aligned shadow evidence on the same delivery window.
+
+The best current demo path is:
+
+1. Open `/operator`.
+2. Select tenant `client_003_dnipro_factory`.
+3. Select DAM or IDM and one of `latest official`, `today`, `tomorrow`, `day+2`.
+4. Select `HF live safe-switch value-aligned shadow`.
+5. Inspect whether the selected preview is a non-HOLD action schedule or a
+   guarded abstention back to HOLD/V2+ fallback.
+
+### Main Drivers
+
+- Source governance: official OREE rows are used for published days; forecast
+  store rows are used for unpublished horizons. Synthetic prices are blocked.
+- Candidate design: HF does not emit arbitrary raw actions. It ranks a finite
+  library of LP-free, safety-shaped schedule candidates.
+- Deterministic gates: value guard, tail-risk cap, SOC feasibility, and safety
+  violations decide whether a non-HOLD preview may be shown.
+- Same-window evaluation: strategy comparison is meaningful only when V2+, DT,
+  and HF are evaluated on the same market/date/window.
+- MLOps readiness: Dagster assets, packet exports, browser smoke tests, and
+  dashboard warnings make regressions visible.
+
+### Recommended Focus
+
+| Priority | Focus | Why |
+| --- | --- | --- |
+| 1 | Keep V2+ as the headline/default comparator | It has validated robustness and the cleanest production-adjacent evidence boundary. |
+| 2 | Use HF value-aligned as the main shadow demo challenger | It has the strongest research signal and the cleanest live preview UX, but remains manual and non-executable. |
+| 3 | Expand source-backed DAM/IDM forecast readiness | The live demo succeeds only when official or forecast-store rows are available. |
+| 4 | Improve candidate libraries before lowering guards | Better candidates are safer than weakening the 100 UAH/tail-risk gates. |
+| 5 | Keep V13 separate | V13 is a source-readiness/acquisition gate, not a modeling shortcut. |
+
+## Core Architecture
+
+```mermaid
+flowchart LR
+  A["OREE DAM/IDM rows"] --> B["Bronze source assets"]
+  A2["NBEATSx/TFT forecast-store rows"] --> B
+  T["Tenant battery/SOC context"] --> B
+  B --> C["Silver feature/readiness tables"]
+  C --> D["Strict LP/oracle evaluator"]
+  C --> E["Schedule/Value Learner V2+"]
+  C --> F["DT safe-switch shadow"]
+  C --> G["HF value-aligned shadow"]
+  D --> H["Regret/value evidence packets"]
+  E --> H
+  F --> H
+  G --> H
+  G --> I["FastAPI shadow preview endpoint"]
+  E --> I
+  I --> J["Nuxt operator dashboard"]
+  H --> K["Thesis tables, figures, demo packet"]
 ```
 
-The LP maximizes forecast market value minus degradation cost under SOC, power,
-capacity, and efficiency constraints. It solves a 24-hour DAM schedule but commits
-only the first interval in a rolling-horizon pattern. NBEATSx/TFT are research
-forecast candidates upstream of the LP; the LP itself does not train or learn.
+The production-facing surface is intentionally conservative: it renders
+recommendations and evidence, not market orders.
 
-Full formula, ML/non-ML boundaries, SOC handling, and academic support are documented
-in [docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md](docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md).
-The thesis methodology and results chapters are
-[docs/thesis/chapters/03-Methodology.md](docs/thesis/chapters/03-Methodology.md)
-and
-[docs/thesis/chapters/04-results-and-discussion.md](docs/thesis/chapters/04-results-and-discussion.md).
+### HF Value-Aligned Shadow
 
-## Operator Weather Signal
+![HF value-aligned shadow flow](docs/thesis/chapters/assets/hf-value-aligned-shadow-flow.png)
 
-The operator dashboard weather line is intentionally a read model, not the LP
-decision input. It shows:
+HF value-aligned shadow is a live read-model challenger. It works as a guarded
+candidate scorer:
 
-```text
-price_after_weather = market_price + weather_bias
+```mermaid
+flowchart LR
+  A["Operator selects tenant, DAM/IDM, date"] --> B["Source-backed 24h price curve"]
+  B --> C["LP-free candidate generator"]
+  C --> C1["V2+ HOLD/SOC-maintain fallback"]
+  C --> C2["Strict/reference templates"]
+  C --> C3["Balanced reference templates"]
+  C --> C4["Value-aligned action templates"]
+  C1 --> D["Feature block"]
+  C2 --> D
+  C3 --> D
+  C4 --> D
+  D --> E["HF safe-switch scorer"]
+  E --> F["Deterministic gates"]
+  F -->|passes value, tail-risk, safety, SOC| G["Non-HOLD preview"]
+  F -->|fails guard| H["Guarded abstention: HOLD/V2+ fallback"]
 ```
 
-`weather_bias` is a calibrated non-negative weather uplift in `UAH/MWh`, derived
-from cloud cover, precipitation, humidity excess, temperature gap, effective
-solar, and wind speed. This is fine for MVP explanation and supervisor demos, but
-it should not be described as a causal price model or routed directly into the LP.
-The planned upgrade path is weather-aware forecasting first, then LP dispatch:
+The model scores candidate schedules; it does not directly control the battery.
+If the selected candidate fails the guard, the correct output is HOLD/fallback.
+That is an abstention decision, not a dashboard failure.
 
-```text
-weather features -> NBEATSx/TFT/TimeXer-style price forecast -> LP schedule
-```
+## Evidence Visuals
 
-The academic boundary and exact formula are documented in
-[docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal](docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md#operator-weather-signal).
+### Regret Ladder
 
-Earlier compact forecast calibration result:
+![Regret ladder](docs/thesis/chapters/assets/compact-fig-4-1-regret-ladder.png)
 
-| Model | Rows | Mean regret UAH | Median regret UAH | Win rate |
-|---|---:|---:|---:|---:|
-| tft_horizon_regret_weighted_calibrated_v0 | 450 | 834.32 | 558.87 | 22.00% |
-| strict_similar_day | 450 | 851.04 | 535.62 | 38.00% |
-| calibrated_value_aware_ensemble_v0 | 450 | 913.92 | 565.50 | n/a |
-| risk_adjusted_value_gate_v0 | 450 | 918.76 | 566.70 | n/a |
-| nbeatsx_horizon_regret_weighted_calibrated_v0 | 450 | 941.74 | 653.24 | 17.78% |
-| tft_silver_v0 | 450 | 1,128.75 | 732.66 | 13.56% |
-| nbeatsx_silver_v0 | 450 | 1,164.17 | 833.18 | 8.67% |
+Lower regret is better. V2+ is the headline/default evidence; DT/HF are
+secondary/manual shadow challengers.
 
-Interpretation: horizon-aware TFT calibration was an earlier diagnostic to beat the strict control on mean regret, but strict similar-day still had better median regret and more rank-1 wins. The 365-anchor official Schedule/Value Learner V2 result became the first robust Offline Strategy Promotion evidence. The later V2+ evidence is now the thesis headline because it improves over frozen V2 and still passes 4/4 rolling robustness windows while preserving the strict fallback and disabled market execution boundary.
+### Architecture Progression
 
-## Future Stack Read Models
+![Architecture comparison](docs/thesis/chapters/assets/compact-fig-4-3-architecture-comparison.png)
 
-The current future-stack implementation is deliberately split into evidence surfaces:
+The main lesson is architectural: raw forecasts and raw neural actions are too
+brittle for operator defaults. The stronger pattern is source-backed context,
+candidate ranking, deterministic safety, and explicit abstention.
 
-```text
-NBEATSx/TFT forecast evidence
-  -> operator forecast graph and uncertainty path
-  -> Silver DT forecast context
-  -> DT policy preview / value-gap graph
-  -> deterministic battery projection and gatekeeper boundary
-```
+### HF Readiness Matrix
 
-New FastAPI read models:
+![HF readiness matrix](docs/thesis/chapters/assets/compact-fig-4-8-hf-readiness-matrix.png)
 
-- `GET /dashboard/future-stack-preview?tenant_id=...` returns NBEATSx/TFT forecast series, selected forecast model, backend availability for optional SOTA packages, runtime acceleration status, DAM-cap quality flags, and claim boundary text.
-- `GET /dashboard/decision-policy-preview?tenant_id=...` returns offline DT policy-preview rows with projected feasible actions, action labels, safety-projection status, value gap, gatekeeper status, and `market_execution_enabled=false`.
-- `GET /dashboard/operator-recommendation?tenant_id=...&strategy_id=...` now includes available materialized strategies, selected policy id, policy readiness, forecast model series, and value-gap series for the operator dashboard.
+The latest HF value-aligned readiness packet covers 8/8 operator-preview cases:
+DAM/IDM x latest official/today/tomorrow/day+2. All execution flags remain false.
 
-The `/operator` dashboard uses these live read models for the NBEATSx/TFT forecast graph and DT value-gap/action graph. When official NBEATSx/TFT forecast rows are materialized and all visible forecast prices stay inside the configured DAM caps, the operator can manually route that selected forecast path through the Level 1 LP preview, so the schedule becomes forecast-to-LP instead of silent strict-similar-day fallback. Out-of-cap official rows stay visible as forecast diagnostics but are disabled for operator LP routing until recalibrated. DT remains a preview-only policy surface until a full offline evaluation run proves safety and regret performance across all tenants.
+## Live Preview Modes
 
-The operator forecast graph now surfaces each model's forecast quality boundary. Rows with out-of-cap DAM prices are tagged `needs_calibration_before_value_claim`; rows inside the DAM cap are still smoke/read-model evidence until they pass the rolling-origin LP/oracle benchmark.
+| Mode | Price context | Expected output |
+| --- | --- | --- |
+| Latest official | Published official OREE rows | 24 hourly source-backed rows or blocked reason |
+| Today | Same-day forecast refresh when official row is not complete | 24 hourly forecast-backed rows or blocked reason |
+| Tomorrow | Pre-publication forecast-store rows | 24 hourly forecast-backed rows or blocked reason |
+| Day+2 | Pre-publication forecast-store rows | 24 hourly forecast-backed rows or blocked reason |
+| Unsupported far future | No source-backed row or forecast materialization | Clear blocked state, no synthetic prices |
 
-The DT preview state now includes SOC, SOH, market price, NBEATSx forecast, TFT forecast, forecast uncertainty/spread, time-of-day, degradation penalty, return target, and previous action context before deterministic battery projection. The Dagster lineage is explicit: `nbeatsx_price_forecast` and `tft_price_forecast` feed `decision_transformer_forecast_context_silver`, then `decision_transformer_trajectory_frame`. Existing rows without forecast fields fall back to the market-price context, so older preview runs remain readable. This keeps the operator explanation aligned with the target `forecast state + battery state + return target -> policy action trajectory` flow without claiming live market execution.
+Blocked states are part of the design. The dashboard should never silently fall
+back to stale proof dates, hidden LP calls, or fake prices.
 
-Official-backend status:
+## Quickstart
 
-- `nbeatsx_official_price_forecast` is registered as a Silver asset and uses Nixtla NeuralForecast NBEATSx only when the optional `sota` dependencies are installed.
-- `tft_official_price_forecast` is registered as a Silver asset and uses PyTorch Forecasting TFT with p10/p50/p90 quantile output when `pytorch-forecasting` and Lightning are available.
-- The official adapters use deliberately tiny CPU-safe smoke settings first. They create dashboard/read-model rows, not thesis-grade SOTA claims, until they are included in a full rolling-origin LP/oracle benchmark.
-- `/operator` and `/defense` now show whether the runtime is CPU, CUDA, or MPS. CPU-only is acceptable for smoke runs; full SOTA sweeps should wait for CUDA-enabled PyTorch or a remote GPU runner.
-- Install or refresh optional dependencies with `uv sync --extra dev --extra sota` before running the official backend experiment.
+### Prerequisites
 
-Latest local official-adapter smoke run:
+- Windows PowerShell
+- Docker Desktop
+- Python environment managed by `uv`
+- Node.js/npm for the Nuxt dashboard
+- Optional CUDA-capable GPU for heavier research runs
 
-```powershell
-.\.venv\Scripts\python.exe scripts\run_official_forecast_smoke.py --horizon-hours 6 --nbeatsx-max-steps 1 --tft-max-epochs 1
-```
-
-Add `--persist-forecast-store` when Postgres/`SMART_ARBITRAGE_FORECAST_DSN` is available and the smoke rows should feed `/dashboard/future-stack-preview` and the operator NBEATSx/TFT graph.
-
-The run wrote `reports/official_forecast_smoke/official_forecast_smoke_20260506T051503Z_summary.json` and forecast rows for both `nbeatsx_official_v0` and `tft_official_v0`. It confirms the optional backends execute on the current CPU-only environment, but it also flags the one-step NBEATSx smoke forecast as out-of-cap and therefore calibration-only. TFT stayed inside the DAM cap in this smoke run. This is implementation evidence, not a value benchmark.
-
-## Local Stack
+### Install Dependencies
 
 ```powershell
 uv sync --all-extras
+npm -C dashboard install
+```
+
+### Start The Local Stack
+
+Fast path for the supervisor/demo stack:
+
+```powershell
+.\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
+```
+
+Detached backend stack:
+
+```powershell
 docker compose up -d postgres mqtt mlflow dagster-webserver dagster-daemon api
+npm -C dashboard run dev
 ```
 
-If port `8000` is occupied by Windows `Manager`, run API on `8001`:
+Open:
+
+- API health: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- Operator dashboard: [http://127.0.0.1:64163/operator](http://127.0.0.1:64163/operator)
+- Defense dashboard: [http://127.0.0.1:64163/defense](http://127.0.0.1:64163/defense)
+- Dagster: [http://127.0.0.1:3001](http://127.0.0.1:3001)
+- MLflow: [http://127.0.0.1:5000](http://127.0.0.1:5000)
+
+### Seed Forecast-Store Rows For Preview
+
+Use these when the dashboard needs unpublished DAM/IDM horizons:
 
 ```powershell
-$env:SMART_ARBITRAGE_API_PORT='8001'
-docker compose up -d api dagster-webserver dagster-daemon
+.\.venv\Scripts\python.exe scripts\materialize_operator_preview_forecast_store.py --market-venue DAM --horizon-hours 72 --nbeatsx-max-steps 1 --tft-max-epochs 1
+.\.venv\Scripts\python.exe scripts\materialize_operator_preview_forecast_store.py --market-venue IDM --horizon-hours 72 --nbeatsx-max-steps 1 --tft-max-epochs 1
 ```
 
-Useful local URLs:
+These rows are operator-preview forecast rows only:
+`claim_boundary=operator_preview_forecast_rows_not_market_execution`.
 
-- FastAPI health: `http://localhost:8001/health`
-- Battery telemetry state: `http://localhost:8001/dashboard/battery-state?tenant_id=client_003_dnipro_factory`
-- Calibrated ensemble API: `http://localhost:8001/dashboard/calibrated-ensemble-benchmark?tenant_id=client_003_dnipro_factory`
-- Risk-adjusted value gate API: `http://localhost:8001/dashboard/risk-adjusted-value-gate?tenant_id=client_003_dnipro_factory`
-- Forecast-dispatch sensitivity API: `http://localhost:8001/dashboard/forecast-dispatch-sensitivity?tenant_id=client_003_dnipro_factory`
-- Relaxed DFL pilot API: `http://localhost:8001/dashboard/dfl-relaxed-pilot?tenant_id=client_003_dnipro_factory`
-- Offline DT trajectories API: `http://localhost:8001/dashboard/decision-transformer-trajectories?tenant_id=client_003_dnipro_factory`
-- DT policy preview API: `http://localhost:8001/dashboard/decision-policy-preview?tenant_id=client_003_dnipro_factory`
-- Future stack forecast API: `http://localhost:8001/dashboard/future-stack-preview?tenant_id=client_003_dnipro_factory`
-- Operator recommendation API: `http://localhost:8001/dashboard/operator-recommendation?tenant_id=client_003_dnipro_factory`
-- Shadow recommendation preview API: `http://localhost:8001/dashboard/shadow-recommendation-preview?tenant_id=client_003_dnipro_factory&preview_source=dt_direct_candidate_shadow`
-- Simulated live-trading API: `http://localhost:8001/dashboard/simulated-live-trading?tenant_id=client_003_dnipro_factory`
-- Dagster UI: `http://localhost:3001`
-- MLflow UI: `http://localhost:5000`
+## API Reference
 
-Telemetry note: `GET /dashboard/battery-state` returns `telemetry_ingest_source` with the configured MQTT host, port, and tenant topic `smart-arbitrage/{tenant_id}/battery/telemetry`. This is configuration metadata for operator diagnostics; it is not a broker health check.
+Base URL in local dev: `http://127.0.0.1:8000`.
 
-## Official Evidence Runs: Local vs HF Jobs
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Service liveness and basic dependency status |
+| `GET /tenants` | Tenant/site options for the dashboard |
+| `GET /dashboard/operator-status` | Operator surface status cards |
+| `GET /dashboard/operator-recommendation` | Baseline/V2+ operator recommendation preview |
+| `GET /dashboard/shadow-recommendation-preview` | Manual shadow preview sources, including HF value-aligned |
+| `GET /dashboard/future-stack-preview` | Forecast/read-model stack for charts |
+| `GET /dashboard/decision-policy-preview` | Research policy preview/read-model evidence |
+| `GET /dashboard/gatekeeper-validation-status` | Pydantic gatekeeper status and validation failures |
+| `GET /dashboard/projected-battery-state` | SOC/SOH/projection preview |
+| `GET /dashboard/academic-mvp-readiness` | Thesis/MVP readiness cards |
 
-Use one wrapper to switch where serious official NBEATSx/TFT evidence runs:
+Example HF value-aligned shadow request:
 
 ```powershell
-.\scripts\run-official-evidence.ps1 -Backend local
-.\scripts\run-official-evidence.ps1 -Backend hf
+Invoke-RestMethod "http://127.0.0.1:8000/dashboard/shadow-recommendation-preview?tenant_id=client_003_dnipro_factory&preview_source=hf_live_safe_switch_value_aligned_shadow&market_venue=DAM&target_delivery_date=2026-06-04"
 ```
 
-- `-Backend local -LocalMode compose` calls the resumable Docker/Dagster batch runner.
-- `-Backend local -LocalMode host` runs `.venv\Scripts\dagster.exe` directly,
-  which can use the host CUDA torch install.
-- `-Backend hf` builds a Hugging Face Jobs payload and writes a dry-run receipt.
-- Add `-Submit` only when the branch is pushed, `HF_TOKEN` is available, and the
-  artifact dataset repo is writable.
+Required response guarantees for HF shadow:
 
-Check runtime acceleration before serious runs:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\check_training_runtime.py --include-docker
-```
-
-Both backends preserve the same claim boundary: Offline Strategy Promotion
-evidence only, `strict_similar_day` fallback, and `market_execution_enabled=false`.
-The switch changes compute location; it does not enable live market execution.
+- nullable live `regret_uah`
+- `market_execution_enabled=false`
+- `promotion_gate_passed=false`
+- `dt_lava_ready=false`
+- no `proposed_bid`
+- no market order payload
 
 ## Verification
 
+Focused Python/API checks:
+
 ```powershell
-uv run ruff check .
-uv run mypy .
-uv run pytest -p no:cacheprovider tests
-uv run dg check defs
-uv run dg list defs --json
-docker compose config --quiet
+.\.venv\Scripts\python.exe -m pytest -q tests\dfl\test_hf_live_safe_switch_preview.py tests\dfl\test_hf_value_aligned_shadow_readiness.py tests\api\test_main.py -k "hf_live_safe_switch or shadow_recommendation_preview or hf_value_aligned"
 ```
 
-Current closure snapshot, 2026-05-25:
+Dashboard checks:
 
-| Command | Status |
-|---|---|
-| `uv run ruff check .` | passed |
-| `uv run mypy .` | passed: 247 source files |
-| `uv run pytest -p no:cacheprovider tests` | passed: 945 tests in 616.85s |
-| `uv run dg check defs` | passed |
-| `uv run dg list defs --json` | passed |
-| `docker compose config --quiet` | passed |
-| `npm run typecheck` in `dashboard` | passed |
-| `npm exec -- vitest run` in `dashboard` | passed: 12 files, 66 tests |
+```powershell
+npm -C dashboard run typecheck
+npm -C dashboard run test:unit
+npm -C dashboard run smoke:hf-value-aligned
+```
 
-The `/operator` dock occlusion fix is verified by Browser/Playwright evidence in
-`docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/`.
+Full repo wrapper when runtime permits:
 
-## Research Artifacts
+```powershell
+.\.venv\Scripts\Activate.ps1
+.\scripts\verify.ps1
+```
 
-- 2026-05-11 strategic architecture review packet: `docs/technical/deep-research-reports/2026-05-11-architecture-review/README.md`
-- Architecture and evidence registry: `docs/technical/ARCHITECTURE_AND_DATA_FLOW.md`
-- Thesis methodology chapter: `docs/thesis/chapters/03-Methodology.md`
-- Baseline LP and pipeline note: `docs/technical/BASELINE_LP_AND_DATA_PIPELINE.md`
-- Residual DFL + offline DT research challenger: `docs/technical/DFL_RESIDUAL_DT_RESEARCH_CHALLENGER.md`
-- Source-specific research challenger gate: `docs/technical/DFL_SOURCE_SPECIFIC_RESEARCH_CHALLENGER.md`
-- Offline Strategy Promotion gate: `docs/technical/DFL_PRODUCTION_PROMOTION_GATE.md`
-- Regime-gated TFT selector v2: `docs/technical/DFL_REGIME_GATED_TFT_SELECTOR_V2.md`
-- DFL schedule/value learner v2: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2.md`
-- DFL schedule/value learner v2 robustness: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_ROBUSTNESS.md`
-- DFL schedule/value learner v3 experiment: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V3.md`
-- DFL schedule/value learner V2+ evidence freeze and robustness gate: `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md`
-- V2+-anchored DFL/DT bridge negative evidence: `docs/technical/DFL_V2_PLUS_DFL_DT_BRIDGE.md`
-- DFL objective redesign plan: `docs/technical/DFL_OBJECTIVE_REDESIGN_PLAN.md`
-- Pairwise schedule-value DFL v2 objective: `docs/technical/DFL_SCHEDULE_VALUE_DFL_V2.md`
-- Candidate-Value DFL v3 objective: `docs/technical/DFL_CANDIDATE_VALUE_DFL_V3.md`
-- DFL plateau-breaker / Candidate-Value DFL v4 path: `docs/technical/DFL_PLATEAU_BREAKER_V4.md`
-- DFL point-in-time context repair / Candidate-Value DFL V5 gate: `docs/technical/DFL_POINT_IN_TIME_CONTEXT_REPAIR.md`
-- DFL Regret-Surrogate v1/v2 learning-limit gate: `docs/technical/DFL_REGRET_SURROGATE_V1.md`
-- DFL Sparse Safe-Switch V6 abstaining selector: `docs/technical/DFL_SPARSE_SAFE_SWITCH_V6.md`
-- DFL Opportunity Backfill V7 candidate-value gate: `docs/technical/DFL_OPPORTUNITY_BACKFILL_V7.md`
-- DFL schedule/value Offline Strategy Promotion gate: `docs/technical/DFL_SCHEDULE_VALUE_PRODUCTION_GATE.md`
-- Offline Strategy Promotion language contract: `docs/technical/OFFLINE_STRATEGY_PROMOTION_LANGUAGE.md`
-- Official NBEATSx/TFT schedule-value promotion gate: `docs/technical/DFL_OFFICIAL_SCHEDULE_VALUE_PROMOTION.md`
-- Official global-panel NBEATSx lane: `docs/technical/OFFICIAL_GLOBAL_PANEL_NBEATSX.md`
-- Official evidence-attempt interface: `docs/technical/OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md`
-- Official training compute and HF Jobs switch: `docs/technical/DFL_TRAINING_COMPUTE_OPTIONS.md`
-- Market-coupling exogenous feature interface: `docs/technical/MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md`
-- DFL market-coupling ablation v1: `docs/technical/DFL_MARKET_COUPLING_ABLATION_V1.md`
-- ENTSO-E Poland governance ablation: `docs/technical/DFL_ENTSOE_POLAND_GOVERNANCE_ABLATION.md`
-- ENTSO-E Poland governance runner: `scripts/run-entsoe-poland-governance-ablation.ps1`
-- UA backfill coverage recovery: `docs/technical/DFL_DATA_RECOVERY_ROADMAP.md`
-- Resumable official forecast and exogenous-governance PRD: `docs/technical/PRD_OFFICIAL_FORECAST_RESUME_AND_EXOGENOUS_GOVERNANCE.md`
-- Full DFL experiment loop plan: `docs/technical/DFL_FULL_PROMOTION_EXPERIMENT_PLAN.md`
-- Forecast pipeline truth audit: `docs/technical/DFL_FORECAST_PIPELINE_TRUTH_AUDIT.md`
-- Official forecast rolling-origin benchmark: `docs/technical/OFFICIAL_FORECAST_ROLLING_ORIGIN_BENCHMARK.md`
-- Current source-capture packages: `docs/sources/README.md`
-- Weekly release notes from merged PRs: `docs/release-notes/README.md`
-- Local official 365-anchor Offline Strategy Promotion registry:
-  `data/research_runs/week3_official_global_panel_365_strategy_promotion/`
-- Market-coupling temporal availability gate: `docs/technical/MARKET_COUPLING_TEMPORAL_AVAILABILITY.md`
-- ENTSO-E neighbor-market access gate: `docs/technical/ENTSOE_NEIGHBOR_MARKET_ACCESS_GATE.md`
-- Week 3 accepted evidence: `data/research_runs/week3_real_data_benchmark/` for the Dnipro 30-anchor thesis-grade benchmark.
-- Week 3 calibration preview: `data/research_runs/week3_calibration_preview_dnipro_90/` for prepared-ahead 90-anchor calibration/selector diagnostics.
-- Main report: `docs/technical/deep-research-reports/real-data-90-anchor-benchmark-report.md`
-- Latest exports: `data/research_runs/risk_gate_diagnostics_20260505T151401/`
-- Latest DB dump: `data/db_backups/smart_arbitrage_20260505_research_read_models.dump`
-- MLflow run: `smart-arbitrage-horizon-regret-weighted-dfl-expansion`, run `9d61ef79a0d34214b2de6617346a616e`
-- Calibrated ensemble MLflow run: `smart-arbitrage-calibrated-ensemble-gate`, run `661189d0b8a1497784e26f3831f77fc7`
-- Risk-adjusted gate MLflow run: `smart-arbitrage-risk-adjusted-value-gate`, run `e30a3095d8bd48eb9e01b317e6b60bc1`
+Browser smoke output is written under `.tmp_runtime\hf_value_aligned_shadow_browser_smoke\`.
 
-Latest read-model smoke:
+## Runtime Logs And Audit Trail
 
-| Output | Rows | Scope |
-|---|---:|---|
-| `dfl_relaxed_lp_pilot_runs` | 1 | differentiable relaxed LP primitive, not full DFL |
-| `decision_transformer_trajectories` | 6 | offline trajectory data, not live policy |
-| `decision_transformer_policy_steps` | optional | projected offline DT policy preview, market execution disabled |
-| `simulated_live_trading_rows` | 6 | simulated paper-trading replay, no settlement IDs |
+Useful commands during a demo or commission review:
 
-`data/` and `mlruns/` are local artifacts and are intentionally not tracked.
+```powershell
+docker compose logs -f api
+docker compose logs -f dagster-webserver dagster-daemon
+docker compose logs -f mlflow
+Get-ChildItem .tmp_runtime -Recurse | Select-Object -First 40
+```
 
-## Research Basis
+For a dashboard visual smoke, run:
 
-- DFL survey: <https://huggingface.co/papers/2307.13565>
-- Perturbed DFL for strategic energy storage: <https://arxiv.org/abs/2406.17085>
-- Decision-focused predict-then-bid for strategic energy storage: <https://arxiv.org/abs/2505.01551>
-- TimeXer for exogenous time-series forecasting: <https://huggingface.co/papers/2402.19072>
-- Time-Series-Library reference implementation: <https://huggingface.co/lwaekfjlk/Time-Series-Library>
+```powershell
+npm -C dashboard run smoke:hf-value-aligned
+```
+
+The browser smoke records screenshots and JSON summaries under
+`.tmp_runtime\hf_value_aligned_shadow_browser_smoke\`. Treat these as UI
+regression evidence, not training or market-execution evidence.
+
+## Evidence Packets
+
+| Artifact | What it is |
+| --- | --- |
+| [V2+ promotion evidence](docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md) | Headline V2+ regret, improvement, and robustness packet |
+| [DT/V2+ safe-switch evidence](docs/technical/DT_V2_PLUS_PROMOTION_EVIDENCE.md) | Secondary DT safe-switch comparison against V2+ |
+| [HF robustness summary](data/research_runs/week5_hf_safe_switch_scorer_robustness_2026_06_01/robustness_summary.json) | HF frozen mean regret signal and non-execution flags |
+| [HF value-aligned promotion proof](data/research_runs/hf_live_safe_switch_value_aligned_shadow_promotion_proof_2026_05_01_2026_06_01/promotion_gate.md) | Shadow/demo candidate-library proof gate |
+| [HF demo packet](data/research_runs/hf_live_safe_switch_value_aligned_shadow_demo_packet_2026_06_01/demo_packet.md) | Four operator scenarios: official DAM, forecast DAM action, forecast DAM abstention, IDM abstention |
+| [HF readiness matrix](data/research_runs/hf_value_aligned_forecast_readiness_2026-06-02/summary.json) | 8-case DAM/IDM readiness packet |
+| [Current V13 boundary](docs/technical/CURRENT_GOAL_BOUNDARY_V13.md) | Scope and non-execution contract |
+| [API endpoints](docs/technical/API_ENDPOINTS.md) | Backend endpoint reference |
+| [Demo script](docs/technical/DAM_IDM_OPERATOR_PREVIEW_DEMO_SCRIPT_2026_06_01.md) | Supervisor/demo walkthrough |
+
+## Presentation Materials
+
+Use these for commission review and thesis defense preparation:
+
+- Operator screenshot:
+  [operator_desktop_after_8s.png](docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/operator_desktop_after_8s.png)
+- Defense screenshot:
+  [defense_desktop.png](docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/defense_desktop.png)
+- Thesis figures:
+  [docs/thesis/chapters/assets](docs/thesis/chapters/assets)
+- Thesis chapters:
+  [docs/thesis/chapters](docs/thesis/chapters)
+- Weekly report and demo scripts:
+  [docs/thesis/weekly-reports](docs/thesis/weekly-reports)
+
+Recommended demo story:
+
+1. Show V2+ as the validated default.
+2. Show DT safe-switch as a cautious research challenger.
+3. Show HF value-aligned shadow as the most advanced live operator-preview
+   challenger.
+4. Show a non-HOLD HF case.
+5. Show a guarded HOLD/abstention case.
+6. End with the boundary: no market execution and no production LP replacement.
+
+## Repository Map
+
+| Path | Purpose |
+| --- | --- |
+| `api/` | FastAPI app and dashboard endpoints |
+| `dashboard/` | Nuxt operator and defense UI |
+| `src/smart_arbitrage/` | Core Python package: data, DFL, gatekeeper, services |
+| `scripts/` | Materializers, audits, smoke runs, demo helpers |
+| `configs/` | Benchmark, calibration, V13, and research configs |
+| `data/research_runs/` | Compact evidence packets and research outputs |
+| `docs/technical/` | Technical boundary, API, demo, and evidence docs |
+| `docs/thesis/` | Thesis chapters, figures, weekly reports, defense assets |
+| `tests/` | Python tests for API, DFL, gatekeeper, and research slices |
 
 ## Claim Boundaries
 
-- Week 3 accepted thesis evidence remains the Dnipro 30-anchor rolling-origin benchmark on observed OREE/Open-Meteo data. The Dnipro 90-anchor calibration run is a prepared-ahead preview for calibration/selector discussion.
-- `sota_forecast_training_frame` is a backend contract for full NeuralForecast NBEATSx and PyTorch-Forecasting TFT experiments. It is not itself a tuned SOTA model result.
-- `nbeatsx_official_price_forecast` and `tft_official_price_forecast` are adapter/readiness assets. They must not be cited as SOTA results until they materialize forecast rows and pass the rolling-origin LP/oracle benchmark.
-- `market_coupling_temporal_availability_frame` blocks ENTSO-E, PriceFM, OPSD, Ember, Nord Pool, and THieF rows from training until licensing, timezone, currency, market-rule, temporal-availability, and domain-shift mapping pass.
-- `entsoe_poland_feature_governance_frame` is the first concrete Poland readiness lane. It can approve only a point-in-time `entsoe_pl_day_ahead_price_uah_mwh` feature after source-backed sample, publication-time, timezone/DST, prior-known EUR/UAH FX, licensing, market-rule, and domain-shift gates pass.
-- `scripts/run-entsoe-poland-governance-ablation.ps1` is the repeatable runner for that lane; start with `-DryRun`, then run it after `ENTSOE_TOKEN` and the governance config are ready.
-- `official_forecast_exogenous_feature_route_frame` is the only route through which external market-coupling columns can enter official global-panel NBEATSx/TFT training; currently all external features are blocked, so the 365-anchor Offline Strategy Promotion result remains Ukrainian OREE/Open-Meteo evidence.
-- The latest Poland-specific packet is `data/research_runs/week3_dfl_entsoe_poland_feature_ablation_v1/`: it is `blocked_by_governance`, approved no feature columns, trained no market-coupled B variant, and kept `market_execution_enabled=false`.
-- `attempt_manifest.json` is the canonical local manifest for long official evidence attempts; it records the fixed generated timestamp, batch plan, resume rule, exact asset selections, and Offline Strategy Promotion claim boundary.
-- `entsoe_neighbor_market_query_spec_frame` prepares ENTSO-E `A44/A01` neighbor day-ahead price query specs, but fetch/training remains blocked unless a security token and no-leakage publication-time audit are present.
-- `dfl_relaxed_lp_pilot_frame` uses `cvxpylayers` as a differentiable relaxed LP primitive. Final thesis metrics must still come from the strict LP/simulator path.
-- `decision_transformer_forecast_context_silver`, `decision_transformer_trajectory_frame`, `decision_transformer_policy_preview_frame`, and `DecisionTransformerPolicy` provide forecast-conditioned offline return-conditioned policy scaffolding plus deterministic action projection. They are not a market-execution strategy until full offline evaluation is materialized and safety/regret checks pass across tenants.
-- `simulated_live_trading_frame` is paper-trading replay only. It never carries real settlement IDs and must not be described as market execution.
+Use the project language precisely:
 
-GPU note: machine has GTX 1050 Ti, but current Python env has CPU-only PyTorch (`torch 2.11.0+cpu`). Current workload is mostly small rolling-origin training, tiny LP solves, Polars transforms, and Dagster/process overhead. GPU is not expected to help this MVP slice materially. CUDA PyTorch becomes useful only for heavier NeuralForecast/PyTorch Forecasting/TimeXer experiments.
+| Do say | Do not say |
+| --- | --- |
+| DAM/IDM hourly recommendation preview | live trading bot |
+| source-backed official/forecast context | synthetic price fallback |
+| HF value-aligned shadow/read-model challenger | production controller |
+| V2+ fallback/comparator remains default | HF replaced V2+ in production |
+| LP-free live shadow request path | full LP replacement |
+| no `ProposedBid`, no market payload | market-submittable bid engine |
+| V13 is source-readiness/acquisition | V13 training passed |
+
+## Troubleshooting
+
+### HF Shows Only HOLD
+
+This can be correct. HF only shows non-HOLD when the selected candidate passes
+the value guard, tail-risk cap, deterministic safety checks, and SOC feasibility.
+If a guard fails, the selected preview abstains to HOLD/V2+ fallback.
+
+### Dashboard Says Price Context Is Missing
+
+Check whether the selected venue/date has official rows or forecast-store rows.
+Run the forecast materializer for DAM/IDM, then refresh the dashboard.
+
+### Far-Future Date Blocks
+
+Expected. Unsupported future dates should block cleanly instead of rendering
+synthetic prices.
+
+### Port Already In Use
+
+Use the local helper with alternative ports:
+
+```powershell
+.\scripts\start-local-project.ps1 -ApiPort 8010 -DashboardPort 64164
+```
+
+### Full Dependency Sync Is Slow
+
+Use `uv sync --extra dev` for most tests. Use `uv sync --all-extras` when running
+official NBEATSx/TFT adapters, full local stack refreshes, or thesis evidence
+materialization.
+
+## License And Academic Use
+
+This repository is a diploma/MVP research artifact for operator-preview and
+strategy-evidence work. Treat all market-facing claims as read-model evidence
+unless a future gate explicitly enables production execution.

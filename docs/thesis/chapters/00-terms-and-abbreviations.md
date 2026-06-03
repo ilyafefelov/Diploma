@@ -23,3 +23,6 @@ Operator preview - read-model поверхня для перегляду рек�
 Regret - втрачена цінність відносно oracle LP.
 strict_similar_day - frozen leakage-free baseline і fallback comparator.
 V2+ - підтверджений schedule/value selector у межах offline/read-model evidence.
+HF value-aligned shadow - manually selected safe-switch shadow preview, який ранжує LP-free candidate schedules через Hugging Face scorer і deterministic gates; не V13 training, не production controller і не market execution.
+Tail-risk guard - обмеження, що блокує candidate schedule, якщо predicted downside risk перевищує safe cap.
+Guarded abstention - стан, коли shadow model свідомо повертається до HOLD/V2+ fallback замість non-HOLD preview.

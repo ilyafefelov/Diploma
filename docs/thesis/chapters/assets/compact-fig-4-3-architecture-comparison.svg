@@ -1,74 +1,96 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" role="img" aria-labelledby="title desc">
-  <title id="title">Архітектурне порівняння raw, strict, V2+, DFL і DT</title>
-  <desc id="desc">Порівняння підходів за рівнем, на якому вони приймають рішення: прогноз, fallback, schedule/value selector або research-shadow model.</desc>
-  <rect width="1200" height="760" fill="#ffffff"/>
-  <text x="70" y="70" font-family="Arial, sans-serif" font-size="31" font-weight="700" fill="#111827">Чому V2+ сильніший: рішення на рівні schedule/value</text>
-  <text x="70" y="104" font-family="Arial, sans-serif" font-size="18" fill="#475569">Перевага виникає не з назви моделі, а з того, де саме стоїть decision layer.</text>
-
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Architecture comparison for raw, strict, V2+, DT, and HF shadow</title>
+  <desc id="desc">Comparison of forecast-only, strict LP, V2+, corrected DT safe-switch, and HF value-aligned shadow architectures.</desc>
   <defs>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#0f766e"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 25px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 18px Arial, sans-serif; fill: #334155; }
+      .small { font: 500 16px Arial, sans-serif; fill: #475569; }
+      .white { font: 800 18px Arial, sans-serif; fill: #fff; }
+      .arrow { stroke: #0284c7; stroke-width: 5; marker-end: url(#arrow); fill: none; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/>
     </marker>
   </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="70" y="88" class="title" style="font-size:42px">Architecture: raw forecast to guarded HF shadow</text>
+  <text x="70" y="128" class="subtitle">Краще працюють не "сирі" actions, а constrained candidate ranking + deterministic gates.</text>
 
-  <g font-family="Arial, sans-serif">
-    <rect x="70" y="150" width="196" height="420" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
-    <text x="95" y="188" font-size="20" font-weight="700" fill="#334155">Raw forecast</text>
-    <text x="95" y="226" font-size="16" fill="#111827">forecast scenario</text>
-    <text x="95" y="258" font-size="15" fill="#475569">price vector only</text>
-    <line x1="105" y1="292" x2="230" y2="292" stroke="#94a3b8" stroke-width="3" marker-end="url(#arrow)"/>
-    <text x="95" y="336" font-size="15" fill="#475569">LP receives scenario,</text>
-    <text x="95" y="360" font-size="15" fill="#475569">but no schedule-level</text>
-    <text x="95" y="384" font-size="15" fill="#475569">fallback learning.</text>
-    <rect x="95" y="455" width="145" height="55" rx="6" fill="#fee2e2" stroke="#fecaca"/>
-    <text x="118" y="488" font-size="16" font-weight="700" fill="#991b1b">High regret</text>
+  <g transform="translate(60 205)">
+    <rect width="260" height="430" rx="22" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="26" y="54" class="head">Raw forecast</text>
+    <text x="26" y="108" class="body">price vector</text>
+    <text x="26" y="146" class="body">без schedule gate</text>
+    <text x="26" y="184" class="body">немає fallback</text>
+    <rect x="26" y="252" width="208" height="58" rx="29" fill="#ef4444"/>
+    <text x="56" y="288" class="white">460.30 UAH DT</text>
+    <text x="26" y="358" class="small">Too brittle for BESS decisions.</text>
+  </g>
 
-    <rect x="292" y="150" width="196" height="420" rx="8" fill="#fffbeb" stroke="#fcd34d"/>
-    <text x="317" y="188" font-size="20" font-weight="700" fill="#92400e">Strict</text>
-    <text x="317" y="226" font-size="16" fill="#111827">similar-day LP</text>
-    <text x="317" y="258" font-size="15" fill="#475569">safe deterministic</text>
-    <text x="317" y="282" font-size="15" fill="#475569">control/fallback</text>
-    <line x1="327" y1="320" x2="452" y2="320" stroke="#d97706" stroke-width="3" marker-end="url(#arrow)"/>
-    <text x="317" y="360" font-size="15" fill="#475569">No learned</text>
-    <text x="317" y="384" font-size="15" fill="#475569">candidate switching.</text>
-    <rect x="317" y="455" width="145" height="55" rx="6" fill="#fff7ed" stroke="#fed7aa"/>
-    <text x="338" y="488" font-size="16" font-weight="700" fill="#92400e">Good baseline</text>
+  <path class="arrow" d="M340 420 H392"/>
 
-    <rect x="514" y="150" width="196" height="420" rx="8" fill="#ecfdf5" stroke="#86efac"/>
-    <text x="539" y="188" font-size="20" font-weight="700" fill="#166534">V2+</text>
-    <text x="539" y="226" font-size="16" fill="#111827">official row or</text>
-    <text x="539" y="258" font-size="15" fill="#475569">forecast scenario +</text>
-    <text x="539" y="282" font-size="15" fill="#475569">candidate library</text>
-    <line x1="549" y1="320" x2="674" y2="320" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow)"/>
-    <text x="539" y="360" font-size="15" fill="#475569">Prior-only selector</text>
-    <text x="539" y="384" font-size="15" fill="#475569">with V2 fallback.</text>
-    <rect x="539" y="455" width="145" height="55" rx="6" fill="#dcfce7" stroke="#86efac"/>
-    <text x="570" y="488" font-size="16" font-weight="700" fill="#166534">Best current</text>
+  <g transform="translate(400 205)">
+    <rect width="260" height="430" rx="22" fill="#fff7ed" stroke="#f97316" stroke-width="3"/>
+    <text x="26" y="54" class="head">Strict / LP</text>
+    <text x="26" y="108" class="body">feasible schedule</text>
+    <text x="26" y="146" class="body">oracle scoring contour</text>
+    <text x="26" y="184" class="body">safe but rigid</text>
+    <rect x="26" y="252" width="208" height="58" rx="29" fill="#f97316"/>
+    <text x="64" y="288" class="white">310.58 UAH</text>
+    <text x="26" y="358" class="small">Common regret/value evaluator.</text>
+  </g>
 
-    <rect x="736" y="150" width="196" height="420" rx="8" fill="#eff6ff" stroke="#93c5fd"/>
-    <text x="761" y="188" font-size="20" font-weight="700" fill="#1d4ed8">DFL shadow</text>
-    <text x="761" y="226" font-size="16" fill="#111827">regret-aware target</text>
-    <text x="761" y="258" font-size="15" fill="#475569">candidate value</text>
-    <text x="761" y="282" font-size="15" fill="#475569">or delta vs V2+</text>
-    <line x1="771" y1="320" x2="896" y2="320" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
-    <text x="761" y="360" font-size="15" fill="#475569">Current features</text>
-    <text x="761" y="384" font-size="15" fill="#475569">do not justify switch.</text>
-    <rect x="761" y="455" width="145" height="55" rx="6" fill="#dbeafe" stroke="#93c5fd"/>
-    <text x="783" y="488" font-size="16" font-weight="700" fill="#1d4ed8">Abstains</text>
+  <path class="arrow" d="M680 420 H732"/>
 
-    <rect x="958" y="150" width="172" height="420" rx="8" fill="#fef2f2" stroke="#fecaca"/>
-    <text x="983" y="188" font-size="20" font-weight="700" fill="#991b1b">DT shadow</text>
-    <text x="983" y="226" font-size="16" fill="#111827">sequence model</text>
-    <text x="983" y="258" font-size="15" fill="#475569">candidate-index</text>
-    <text x="983" y="282" font-size="15" fill="#475569">classifier</text>
-    <line x1="993" y1="320" x2="1088" y2="320" stroke="#dc2626" stroke-width="3" marker-end="url(#arrow)"/>
-    <text x="983" y="360" font-size="15" fill="#475569">Cross-entropy</text>
-    <text x="983" y="384" font-size="15" fill="#475569">is not regret loss.</text>
-    <rect x="983" y="455" width="122" height="55" rx="6" fill="#fee2e2" stroke="#fecaca"/>
-    <text x="1008" y="488" font-size="16" font-weight="700" fill="#991b1b">Blocked</text>
+  <g transform="translate(740 205)">
+    <rect width="260" height="430" rx="22" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="26" y="54" class="head">V2+</text>
+    <text x="26" y="108" class="body">schedule-family search</text>
+    <text x="26" y="146" class="body">prior-only switching</text>
+    <text x="26" y="184" class="body">fallback/comparator</text>
+    <rect x="26" y="252" width="208" height="58" rx="29" fill="#16a34a"/>
+    <text x="64" y="288" class="white">174.77 UAH</text>
+    <text x="26" y="358" class="small">Confirmed headline evidence.</text>
+  </g>
 
-    <rect x="70" y="620" width="1060" height="80" rx="8" fill="#f0fdfa" stroke="#99f6e4"/>
-    <text x="100" y="655" font-size="19" font-weight="700" fill="#134e4a">Analytical conclusion</text>
-    <text x="100" y="684" font-size="16" fill="#334155">V2+ wins because it combines feasible schedule families, prior-only selection, V2 fallback, and unchanged strict LP/oracle scoring.</text>
+  <path class="arrow" d="M1020 420 H1072"/>
+
+  <g transform="translate(1080 205)">
+    <rect width="220" height="430" rx="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <text x="24" y="54" class="head">DT safe-switch</text>
+    <text x="24" y="108" class="body">predicts delta</text>
+    <text x="24" y="146" class="body">abstains to V2+</text>
+    <text x="24" y="184" class="body">tail-risk guard</text>
+    <rect x="24" y="252" width="172" height="58" rx="29" fill="#0284c7"/>
+    <text x="47" y="288" class="white">168.16 UAH</text>
+    <text x="24" y="358" class="small">Secondary: 4 switches.</text>
+    <text x="24" y="382" class="small">86 abstentions.</text>
+  </g>
+
+  <path class="arrow" d="M1320 420 H1360"/>
+
+  <g transform="translate(1370 205)">
+    <rect width="170" height="430" rx="22" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="20" y="54" class="head">HF shadow</text>
+    <text x="20" y="108" class="body">LP-free</text>
+    <text x="20" y="136" class="body">candidate</text>
+    <text x="20" y="164" class="body">ranking</text>
+    <text x="20" y="208" class="body">live preview</text>
+    <rect x="20" y="252" width="130" height="58" rx="29" fill="#7c3aed"/>
+    <text x="37" y="288" class="white">158.71</text>
+    <text x="20" y="358" class="small">Manual shadow.</text>
+  </g>
+
+  <g transform="translate(90 740)">
+    <rect width="1420" height="74" rx="18" fill="#0f172a"/>
+    <text x="34" y="34" class="white">Architecture lesson: promote only constrained, source-backed, auditable layers.</text>
+    <text x="34" y="58" class="white">Raw neural actions stop before production defaults.</text>
   </g>
 </svg>

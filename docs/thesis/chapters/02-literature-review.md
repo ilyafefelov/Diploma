@@ -46,9 +46,10 @@
 | Storage optimization | LP schedule із SOC/power/efficiency [[51]](#source-51), [[10]](#source-10), [[5]](#source-5) | Settlement/live dispatch |
 | DFL / predict-then-optimize | Regret/value як decision-quality criterion [[4]](#source-4), [[29]](#source-29), [[28]](#source-28) | Full differentiable controller |
 | Offline RL / DT | Research-shadow sequence policy [[7]](#source-7), [[32]](#source-32) | DT/LAVA promotion/live policy |
+| Constrained neural decision layer | HF safe-switch scorer як candidate-ranking layer з fallback, tail-risk і deterministic gates | Raw transformer controller або bid engine |
 | Ukrainian market governance | DAM/IDM hourly preview і source-readiness blockers [[36]](#source-36), [[37]](#source-37), [[43]](#source-43) | Inferred receipts/submission claims |
 
-Таблиця 2.1 показує, що робота поєднує electricity price forecasting, storage optimization, DFL/predict-then-optimize і market governance. Водночас вона свідомо не заявляє full settlement, deployed DT або full differentiable controller. Це скорочує текст і робить межі дослідження прозорими.
+Таблиця 2.1 показує, що робота поєднує electricity price forecasting, storage optimization, DFL/predict-then-optimize, constrained sequence-policy evidence і market governance. Водночас вона свідомо не заявляє full settlement, deployed DT або full differentiable controller. Доданий HF value-aligned shadow належить саме до constrained neural decision layer: його академічна цінність не в тому, що transformer замінив optimizer, а в тому, що neural score використано лише для ранжування safe candidate schedules під deterministic gates. Це скорочує простір некоректних claims і робить межі дослідження прозорими.
 
 2.5. Storage optimization і LP як контрольний контур
 

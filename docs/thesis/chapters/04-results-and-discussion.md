@@ -12,6 +12,7 @@
 | Evidence | Offline/read-model packets | Результати відтворюються з repo artifacts |
 | Safety | market_execution_enabled=false | No ProposedBid, ClearedTrade або DispatchCommand |
 | V13 | Receipts blocked; safe-switch staged support 20/20 | DT/LAVA training remains blocked |
+| HF value-aligned shadow | Manual live shadow preview; candidate-library demo gate passed | Not production/default replacement, not market execution |
 
 Таблиця 4.1 задає рамку для всього розділу. Headline result може бути практично корисним для operator preview, але він не відкриває live market execution. Це особливо важливо для V13, де safe-switch staged support уже може бути достатнім для частини локальної evidence, але explicit OREE DAM/IDM source/publication evidence for preview залишається blocker для DT/LAVA training, а market-submission receipts залишаються окремим execution blocker.
 
@@ -32,17 +33,17 @@
 
 Ту саму різницю візуально наведено на рисунку 4.1.
 
-![Рисунок 4.1. Драбина mean regret для strict, V2 та V2+](assets/compact-fig-4-1-regret-ladder.png)
+![Рисунок 4.1. Драбина mean regret: V2+ і transformer shadow challengers](assets/compact-fig-4-1-regret-ladder.png)
 
-Рисунок 4.1. Драбина mean regret для strict, V2 та V2+
+Рисунок 4.1. Драбина mean regret: V2+ і transformer shadow challengers
 
 Рисунок 4.1 робить headline result зрозумілим без довгого переліку проміжних експериментів. Lower regret означає меншу втрату economic value відносно oracle. V2+ знижує mean regret на 43.73% проти strict baseline і на 15.31% проти frozen V2.
 
 Ключову result card наведено на рисунку 4.2.
 
-![Рисунок 4.2. Підсумковий V2+ result card](assets/compact-fig-4-2-v2plus-card.png)
+![Рисунок 4.2. V2+ headline result card і shadow boundary](assets/compact-fig-4-2-v2plus-card.png)
 
-Рисунок 4.2. Підсумковий V2+ result card
+Рисунок 4.2. V2+ headline result card і shadow boundary
 
 Рисунок 4.2 підкреслює, що result має три частини: lower regret, lower median regret і rolling robustness 4 / 4. Саме поєднання цих критеріїв дозволяє назвати результат offline/read-model Strategy Promotion. Водночас safety boundary залишається незмінною.
 
@@ -56,11 +57,11 @@ Raw NBEATSx і TFT можуть мати корисні price signals, але BE
 
 Схему архітектурної різниці між підходами наведено на рисунку 4.3.
 
-![Рисунок 4.3. Архітектурне порівняння raw, strict, V2+, DFL і DT](assets/compact-fig-4-3-architecture-comparison.png)
+![Рисунок 4.3. Архітектурне порівняння raw, strict, V2+, DT і HF shadow](assets/compact-fig-4-3-architecture-comparison.png)
 
-Рисунок 4.3. Архітектурне порівняння raw, strict, V2+, DFL і DT
+Рисунок 4.3. Архітектурне порівняння raw, strict, V2+, DT і HF shadow
 
-Рисунок 4.3 показує, що raw forecast зупиняється на price vector, strict_similar_day дає безпечний, але негнучкий fallback, а V2+ додає schedule-family search і conservative prior-only switching. DFL і Decision Transformer мають потенційно сильнішу форму навчання, але в поточному evidence set вони не мають достатнього prior-safe signal, щоб замінити V2+ без деградації.
+Рисунок 4.3 показує, що raw forecast зупиняється на price vector, strict_similar_day дає безпечний, але негнучкий fallback, а V2+ додає schedule-family search і conservative prior-only switching. Decision Transformer та HF value-aligned shadow мають потенційно сильнішу форму навчання, але в поточному evidence set вони лишаються constrained shadow challengers, а не заміною V2+ без окремого promotion/execution gate.
 
 Raw reference програє найчіткіше. Його mean regret становить 622.25 UAH, а median regret - 290.22 UAH, бо price forecast не дорівнює battery decision. Навіть якщо forecast вловлює загальний рівень ціни, LP може отримати неправильний порядок charge/discharge годин, terminal SOC pressure або надмірний throughput. V2+ зменшує цю проблему через schedule-level selection: він оцінює не абстрактну точність ряду, а downstream value після фізичних та економічних constraints.
 
@@ -72,11 +73,11 @@ Decision Transformer у поточному evidence set треба описув�
 
 Кількісне порівняння підходів наведено на рисунку 4.4.
 
-![Рисунок 4.4. Порівняння mean regret для raw, DT, strict, V2 і V2+](assets/compact-fig-4-4-method-regret-comparison.png)
+![Рисунок 4.4. Порівняння mean regret для raw, DT, strict, V2, V2+, DT/V2+ safe-switch і HF value-aligned shadow](assets/compact-fig-4-4-method-regret-comparison.png)
 
-Рисунок 4.4. Порівняння mean regret для raw, DT, strict, V2 і V2+
+Рисунок 4.4. Порівняння mean regret для raw, DT, strict, V2, V2+, DT/V2+ safe-switch і HF value-aligned shadow
 
-Рисунок 4.4 підкреслює головну логіку результату: нижчий regret має не найскладніша модель за назвою, а той підхід, який краще поєднує feasible schedules, prior-only selection і strict LP/oracle evaluation. V2+ перемагає в поточному evidence set саме як conservative decision layer, а не як claim про універсальну перевагу над усіма майбутніми DFL або DT варіантами.
+Рисунок 4.4 підкреслює головну логіку результату: нижчий regret має не найскладніша модель за назвою, а той підхід, який краще поєднує feasible schedules, fallback, prior-only selection і strict LP/oracle evaluation. V2+ перемагає як confirmed offline comparator, corrected DT/V2+ safe-switch дає secondary regret improvement, а HF value-aligned shadow показує ще нижчий frozen diagnostic signal лише у shadow/demo межі. Отже, графік не доводить production replacement; він показує, що constrained decision architecture працює краще за raw forecast або unconstrained sequence output.
 
 У практичній інтерпретації оператор отримує не "сирий прогноз", а пояснення: який schedule обрано, який regret очікується за backtest evidence, чому fallback не гірший і які gates пройдено. Така структура робить dashboard корисним для українського BESS owner, бо він бачить decision evidence, а не лише графік ціни.
 
@@ -92,6 +93,7 @@ Decision Transformer у поточному evidence set треба описув�
 | V4 plateau breaker | Діагностував failure-mode candidates | Not promoted |
 | V5 point-in-time repair | Покращив protocol clarity, але не замінив V2+ | Not promoted |
 | DT/V2+ safe-switch selector | Canonical 3-seed secondary aggregate: 168.16 UAH mean regret; 4 / 90 non-V2+ switches; 3 / 15 safe-switch opportunities recovered | Positive shadow evidence; V2+ remains confirmed offline comparator/evidence |
+| HF value-aligned shadow | 32 source-backed DAM days; 20 nonfallback days; switch rate 62.5%; safety failures 0 | Shadow/demo candidate-library gate passed; production market promotion remains false |
 
 Таблиця 4.3 показує, що подальші candidate-value кроки спочатку не дали safe replacement of V2+, але corrected safe-switch shadow знайшов рідкісні безпечні обходи V2+. Це не змінює default strategy автоматично: система демонструє здатність показати positive shadow evidence і водночас зупинити promotion, доки окремий gate не дозволить default switch. Для дипломної роботи важливо показати не лише success path, а й disciplined non-promotion.
 
@@ -99,9 +101,9 @@ Decision Transformer у поточному evidence set треба описув�
 
 Пояснення плато наведено на рисунку 4.5.
 
-![Рисунок 4.5. Діагностика плато V3/V4/V5](assets/compact-fig-4-3-plateau.png)
+![Рисунок 4.5. Gate-based plateau і non-promotion diagnostics](assets/compact-fig-4-3-plateau.png)
 
-Рисунок 4.5. Діагностика плато V3/V4/V5
+Рисунок 4.5. Gate-based plateau і non-promotion diagnostics
 
 Рисунок 4.5 фіксує логіку gate-based evidence. Якщо новий selector не має стійкого prior-only сигналу, abstention і fallback до V2+ є правильним рішенням. Якщо corrected selector знаходить невелику кількість safe switches, це можна показувати як research diagnostic, але не як production/default switch. Це зменшує ризик перебільшення claims і формує реалістичний roadmap майбутніх досліджень.
 
@@ -117,6 +119,7 @@ Decision Transformer у поточному evidence set треба описув�
 | Poland lag24 richer | 177.34 UAH mean regret, 39.46 UAH median regret | Median кращий, але mean гірший за V2+ на 2.58 UAH; not promoted |
 | Poland prior-only veto | 167.05 UAH mean regret, 55.97 UAH median regret; 34 challenger rows і 56 fallback rows | Near-miss: improvement 4.41% нижче порогу 5%; not promoted |
 | DT/V2+ safe-switch selector | Canonical 3-seed secondary result: 168.16 UAH mean regret проти V2+ 174.77 UAH; 4 / 90 non-V2+ switches; 3 / 15 safe-switch opportunities recovered; 0 tail-risk losses | Positive shadow evidence; V2+ remains confirmed offline comparator/evidence |
+| HF value-aligned shadow | Frozen HF mean regret 158.71 UAH проти V2+ baseline 174.77 UAH; 32 source-backed DAM days; value-aligned switch rate 62.5%; mean selected value 1174.29 UAH | Shadow/demo source manually selectable; no production promotion, no market payload |
 | DT apples-to-apples | 460.30 UAH mean regret; +285.53 UAH проти V2+ | Research-shadow only; not promoted |
 | V13 acquisition | Safe-switch support validated, але explicit OREE DAM/IDM source/publication evidence for preview missing | dt_lava_ready=false; permits_model_training=false |
 
@@ -124,27 +127,29 @@ Decision Transformer у поточному evidence set треба описув�
 
 Межу TFT наведено на рисунку 4.6.
 
-![Рисунок 4.6. TFT як complementary schedule expert](assets/compact-fig-4-4-tft.png)
+![Рисунок 4.6. TFT як complementary forecast context](assets/compact-fig-4-4-tft.png)
 
-Рисунок 4.6. TFT як complementary schedule expert
+Рисунок 4.6. TFT як complementary forecast context
 
 Рисунок 4.6 показує, що TFT не потрібно описувати як провал. Він дає uncertainty/diversity signal і може бути корисним у наступних ітераціях. Однак у поточному evidence set він не перемагає frozen Ukrainian-only V2+, тому його статус - complementary shadow lane.
 
 Межу Decision Transformer наведено на рисунку 4.7.
 
-![Рисунок 4.7. Decision Transformer shadow boundary](assets/compact-fig-4-5-dt.png)
+![Рисунок 4.7. DT/HF transformer non-promotion boundary](assets/compact-fig-4-5-dt.png)
 
-Рисунок 4.7. Decision Transformer shadow boundary
+Рисунок 4.7. DT/HF transformer non-promotion boundary
 
 Рисунок 4.7 відділяє working sequence-policy pipeline від deployed controller. Ранній apples-to-apples DT classifier дав regret 460.30 UAH і тому залишився negative evidence. Corrected DT/V2+ safe-switch shadow уже показав кращий final-holdout regret, ніж V2+ (168.16 проти 174.77 UAH), але тільки як offline/manual research diagnostic. Додатково V13 не дозволяє DT/LAVA training claims, доки explicit OREE DAM/IDM source/publication evidence for preview залишається blocker.
+
+Причини зупинки transformer challengers різні, але логіка однакова. Raw DT не промоутиться, бо його mean regret 460.30 UAH гірший за V2+ і він не має надійного V2+ fallback. Corrected DT/V2+ safe-switch із mean regret 168.16 UAH є позитивним secondary evidence, але не проходить primary threshold 166.0 UAH, має лише 4 / 90 non-V2+ switches, 86 / 90 abstentions і seed-level caveat для порівняння. HF value-aligned shadow має сильний frozen diagnostic signal 158.71 UAH і 20 / 32 nonfallback days, але це candidate-library/demo proof: він ранжує скінченний набір templates, а не розв'язує повний LP/MIP optimization space, і не має V13/source/execution readiness для production. Якщо б ці gates не зупиняли transformer paths, dashboard міг би непомітно замінити V2+, показати overfitted rare switches, допустити tail-risk schedules або змішати read-model preview з market-execution claim. Тому stop/abstain є не слабкістю, а частиною safety case.
 
 4.6. Шлях експериментів
 
 Експериментальний шлях у роботі можна стисло подати як послідовність контрольованих gates. Спочатку strict_similar_day задає leakage-free baseline. Далі raw NBEATSx/TFT forecast adapters створюють price signals, але не вважаються рішенням самі по собі. Потім LP contour перетворює forecast або selector output на feasible schedule, а regret/value scoring порівнює цей schedule з oracle. Після цього V2 і V2+ перевіряються на 5 tenants, 90 tenant-anchors і 4 rolling windows. Цю послідовність наведено на рисунку 4.8.
 
-![Рисунок 4.8. Експериментальний шлях від baseline до operator preview](assets/compact-fig-4-6-experiment-path.png)
+![Рисунок 4.8. Експериментальний шлях від baseline до live shadow preview](assets/compact-fig-4-6-experiment-path.png)
 
-Рисунок 4.8. Експериментальний шлях від baseline до operator preview
+Рисунок 4.8. Експериментальний шлях від baseline до live shadow preview
 
 Рисунок 4.8 показує, що кожний етап додає не "красивішу модель", а новий рівень доказовості. Raw forecast стає корисним тільки після LP scoring; V2+ стає headline лише після rolling robustness; shadow lanes залишаються diagnostics, якщо не проходять gate.
 
@@ -156,9 +161,9 @@ Decision Transformer у поточному evidence set треба описув�
 
 Склад такого operator-facing preview наведено на рисунку 4.9.
 
-![Рисунок 4.9. Що можна впевнено показувати оператору](assets/compact-fig-4-7-operator-preview.png)
+![Рисунок 4.9. Operator preview: read-model evidence без execution](assets/compact-fig-4-7-operator-preview.png)
 
-Рисунок 4.9. Що можна впевнено показувати оператору
+Рисунок 4.9. Operator preview: read-model evidence без execution
 
 Рисунок 4.9 відділяє дозволені read-model елементи від недозволених execution objects. Оператор може бачити schedule preview, regret/value comparison і gate status, але система не формує market-submittable bid або dispatch command.
 
@@ -176,6 +181,59 @@ Decision Transformer у поточному evidence set треба описув�
 
 Ці обмеження не зменшують цінність розділу, бо вони визначають чесну межу claims. V2+ можна описувати як strongest offline/read-model strategy result у наявному evidence set. Його не можна описувати як універсальну гарантію прибутку, market-ready bid engine або deployed DT/DFL controller. Така межа робить результат захищеним академічно й придатним для практичного roadmap.
 
-4.10. Висновок до розділу 4
+4.10. HF value-aligned shadow як live operator-preview challenger
 
-Головний результат роботи - V2+ schedule/value selector з mean regret 174.77 UAH, median regret 67.30 UAH, improvement 43.73% проти strict і 15.31% проти V2, а також rolling robustness 4 / 4. Corrected DT/V2+ safe-switch shadow показує практично важливий follow-up: canonical 3-seed mean regret 168.16 UAH, median regret 61.71 UAH, 4 / 90 safe switches, 3 / 15 recovered opportunities і 0 tail-risk losses. Але він лишається `secondary`, а не `primary`, бо не досягає 166.0 UAH threshold і не змінює headline/default без окремого promotion gate: V2+ є confirmed offline schedule-value evidence/comparator, dashboard/API показують DT shadow лише manual diagnostic, а operator preview path використовує official OREE row + deterministic LP. Підсумкова межа залишається незмінною: DAM/IDM hourly recommendation preview, offline/read-model evidence і no market execution.
+Фінальний HF value-aligned shadow packet показує, що transformer-based evidence може бути корисним не як raw controller, а як guarded candidate scorer. У цьому режимі dashboard вручну обирає `hf_live_safe_switch_value_aligned_shadow`, backend бере вибраний tenant, DAM/IDM venue і target delivery date, завантажує source-backed 24-hour price context, генерує LP-free candidate schedules і пропускає їх через HF safe-switch scorer та deterministic gates. Якщо gate проходить, оператор бачить non-HOLD preview; якщо ні, система чесно показує guarded HOLD/V2+ fallback. Live actual regret до delivery невідомий, тому `regret_uah` для live schedule rows лишається nullable.
+
+Простою мовою цей контур працює як контрольований відбір варіантів. Спочатку система бере не абстрактний датасет, а конкретний operational context: tenant, ринок DAM або IDM, target date і 24-годинну price curve. Далі вона не просить transformer одразу "вигадати" charge/discharge schedule. Замість цього створюється кілька безпечних кандидатів: fallback/V2+ HOLD або SOC-maintain, conservative strict/reference, balanced reference і value-aligned/action templates. Для кожного такого candidate обчислюються очікувана цінність, SOC path, throughput, degradation proxy і кількість deterministic safety violations. HF scorer оцінює, наскільки candidate може бути кращим за V2+ fallback і наскільки він ризиковий у tail scenarios. Gatekeeper після цього приймає просте рішення: якщо value delta проходить guard, tail-risk не перевищує cap, safety violations дорівнюють нулю і SOC path фізично допустимий, schedule можна показати як non-HOLD preview; інакше правильним результатом є HOLD/V2+ fallback. Тому "тільки HOLD" у цьому режимі не обов'язково означає поломку моделі: це може бути коректний guarded abstention.
+
+Схему нового live shadow path наведено на рисунку 4.10.
+
+![Рисунок 4.10. HF value-aligned shadow live operator-preview architecture](assets/hf-value-aligned-shadow-flow.png)
+
+Рисунок 4.10. HF value-aligned shadow live operator-preview architecture
+
+Рисунок 4.10 показує головну архітектурну різницю. V2+ залишається fallback/comparator, а HF не намагається самостійно розв'язати повну optimization problem. Він ранжує finite candidate library: fallback/V2+ HOLD або SOC-maintain, strict/reference, balanced reference і value-aligned templates. Feature block містить estimated value, SOC path, throughput, degradation proxy і safety violations. HF scorer прогнозує delta проти V2+ і tail-risk probability, а gatekeeper блокує non-HOLD preview, якщо value guard, tail-risk cap або deterministic safety не виконані.
+
+Карточки рисунка 4.10 розшифровано в таблиці 4.5.
+
+Таблиця 4.5. Архітектурні прийоми HF value-aligned shadow
+
+| Карточка / компонент | Реалізація в системі | Користь для ML-архітектури | Обмеження |
+| --- | --- | --- | --- |
+| Operator selection | `tenant_id`, `market_venue`, `target_delivery_date` у manual dashboard source | Усі графіки, chips і schedule rows прив'язані до одного selected window | Не є default strategy або автоматичним controller |
+| Source-backed price context | Official OREE rows або forecast-store/request fallback з явним source mode | Забороняє synthetic prices і робить preview auditable | Forecast rows не є publication receipts і не відкривають V13 training |
+| LP-free candidate generator | Hold/SOC-maintain fallback, strict/reference, balanced і value-aligned templates | Дає HF scorer обмежений фізично зрозумілий простір дій без LP у live path | Не перебирає повний optimization space |
+| Feature block | Value, SOC path, throughput, degradation proxy, safety violations | Перетворює schedule у decision-aware features, а не raw action labels | Feature quality залежить від source context і candidate design |
+| HF safe-switch scorer | Прогнозує delta проти V2+ і tail-risk probability | Модель ранжує candidates і може знаходити safe non-HOLD opportunities | Score не скасовує deterministic gates і не є proof of optimality |
+| Deterministic gates | Value guard, tail-risk cap, family-tail guard, safety=0, feasible SOC | Безпечніший failure mode: abstain замість ризикової дії | Блокує частину потенційно прибуткових, але недостатньо доказових candidates |
+| Non-HOLD preview | Charge/discharge/hold rows тільки після проходження gates | Робить transformer evidence видимим оператору в live dashboard | Preview не є ProposedBid або market command |
+| Guarded abstention | HOLD/V2+ fallback, якщо guards не пройдено | Негативний або слабкий signal стає чесним operator explanation | Може виглядати як "тільки HOLD", якщо не показати diagnostics |
+| No-execution boundary | `market_execution_enabled=false`, no market payload, no production promotion | Захищає thesis/demo від overclaiming і legal/operational confusion | Execution потребує окремого bounded context і receipts |
+
+Підсумок HF packets наведено в таблиці 4.6.
+
+Таблиця 4.6. HF value-aligned shadow evidence packets
+
+| Packet | Evidence scope | Result | Boundary |
+| --- | --- | --- | --- |
+| Candidate-library promotion proof | 2026-05-01..2026-06-01; 32 official OREE DAM days | Shadow gate passed; 20 nonfallback days; switch rate 62.5%; mean selected value 1174.29 UAH; value-gap ratio 0.397; tail-failure delta -16; safety failures 0 | Production market promotion false; no ProposedBid; `market_execution_enabled=false` |
+| Frozen HF comparison | Same proof packet plus robustness inputs | HF frozen mean regret 158.71 UAH проти V2+ baseline 174.77 UAH; delta -16.06 UAH | Demo/shadow evidence only; not V13 training |
+| Forecast readiness matrix | DAM/IDM x latest/today/tomorrow/day+2; 8 cases | 8 / 8 ready 24-row cases; 0 blocked; 6 cases with non-HOLD rows; source modes: 2 official, 1 same-day refresh, 5 pre-publication forecast | Readiness for dashboard preview, not market submission |
+| Demo evidence packet | 4 supervisor/demo cases | 4 / 4 passed; 2 nonfallback cases and 2 guarded abstentions | Manual source only; execution flags false |
+
+Readiness для live preview показано на рисунку 4.11.
+
+![Рисунок 4.11. HF value-aligned forecast readiness matrix](assets/compact-fig-4-8-hf-readiness-matrix.png)
+
+Рисунок 4.11. HF value-aligned forecast readiness matrix
+
+Рисунок 4.11 показує, що live readiness у цій роботі означає не "ринок готовий", а "dashboard може отримати 24 source-backed rows або explicit block для обраного DAM/IDM target". У proof packet всі 8 ручних випадків latest/today/tomorrow/day+2 повернули 24-row preview context, але це не змінює execution boundary: no synthetic prices, no ProposedBid, no market payload і `market_execution_enabled=false`.
+
+Ці числа пояснюють, чому HF value-aligned shadow можна показувати у demo як preferred HF shadow source, але не можна називати replacement of V2+ або LP. Порівняно з раннім raw DT classifier, який мав 460.30 UAH mean regret і не використовував V2+ fallback, нова архітектура працює краще саме через safe-switch framing: модель не зобов'язана діяти завжди, а може abstain. Порівняно з corrected DT/V2+ safe-switch selector, HF value-aligned має сильніший live dashboard path і ширший candidate-library proof, але його evidence все ще є shadow/demo, а не default strategy. Порівняно з V2+, він не замінює headline offline result; він є supervised challenger поверх V2+ fallback. Порівняно з LP, HF shadow є не математично повним optimizer-ом, а scorer-ом скінченної бібліотеки candidate schedules. Це корисно для швидкого live preview, але не є доказом глобальної оптимальності.
+
+Аналітично результат виник не від одного прийому, а від комбінації методів. Value-aligned candidate library збільшила ймовірність, що scorer бачить schedules із реальною економічною цінністю; tail-risk guard зупинив привабливі, але ризикові candidates; deterministic safety projection не дозволив ML score перевищити фізику батареї; source-backed-only policy не дала dashboard намалювати фейкові ціни; browser E2E smoke перевірив саме user-facing data flow: stale chips, wrong date, blank graphs і прихований `/dashboard/operator-recommendation` для HF source. Саме ці інженерні guardrails роблять transformer evidence практично показовим, хоча воно ще не є production optimizer.
+
+4.11. Висновок до розділу 4
+
+Головний результат роботи - V2+ schedule/value selector з mean regret 174.77 UAH, median regret 67.30 UAH, improvement 43.73% проти strict і 15.31% проти V2, а також rolling robustness 4 / 4. Corrected DT/V2+ safe-switch shadow показує практично важливий follow-up: canonical 3-seed mean regret 168.16 UAH, median regret 61.71 UAH, 4 / 90 safe switches, 3 / 15 recovered opportunities і 0 tail-risk losses. HF value-aligned shadow розширює цей follow-up у live dashboard direction: candidate-library demo gate passed на 32 source-backed DAM days, readiness matrix дала 8 / 8 24-row DAM/IDM cases для latest/today/tomorrow/day+2, а live path не викликає LP solver для HF shadow request. Але обидва transformer-based результати лишаються manual shadow evidence: V2+ є confirmed offline schedule-value evidence/comparator, dashboard/API показують DT/HF shadow лише як preview diagnostics, а production market promotion і market execution залишаються false. Підсумкова межа незмінна: DAM/IDM hourly recommendation preview, offline/read-model evidence і no market execution.

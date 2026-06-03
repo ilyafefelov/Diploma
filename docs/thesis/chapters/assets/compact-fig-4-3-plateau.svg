@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Gate-based plateau and non-promotion diagnostics</title>
+  <desc id="desc">Diagnostics explaining why experiments stop at gates instead of becoming production defaults.</desc>
+  <defs>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 25px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 19px Arial, sans-serif; fill: #334155; }
+      .small { font: 500 17px Arial, sans-serif; fill: #475569; }
+      .white { font: 800 19px Arial, sans-serif; fill: #fff; }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <text x="72" y="88" class="title" style="font-size:42px">Gate-based plateau: why challengers stop</text>
+  <text x="72" y="128" class="subtitle">Негативний результат не приховується: він стає evidence для abstention, fallback і roadmap.</text>
+
+  <g transform="translate(90 200)">
+    <rect width="430" height="390" rx="24" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="32" y="58" class="head">1. Raw / weak signal</text>
+    <text x="32" y="118" class="body">DT apples-to-apples: 460.30 UAH</text>
+    <text x="32" y="158" class="body">candidate-value variants tie V2+</text>
+    <text x="32" y="198" class="body">0 / 90 safe switches in early runs</text>
+    <rect x="32" y="265" width="330" height="54" rx="27" fill="#ef4444"/>
+    <text x="64" y="299" class="white">STOP: no promotion evidence</text>
+  </g>
+
+  <g transform="translate(585 200)">
+    <rect width="430" height="390" rx="24" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <text x="32" y="58" class="head">2. Secondary safe-switch</text>
+    <text x="32" y="118" class="body">Corrected DT/V2+: 168.16 UAH</text>
+    <text x="32" y="158" class="body">4 switches / 86 abstentions</text>
+    <text x="32" y="198" class="body">0 tail-risk losses</text>
+    <rect x="32" y="265" width="330" height="54" rx="27" fill="#0284c7"/>
+    <text x="70" y="299" class="white">HOLD: secondary only</text>
+  </g>
+
+  <g transform="translate(1080 200)">
+    <rect width="430" height="390" rx="24" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="32" y="58" class="head">3. HF shadow proof</text>
+    <text x="32" y="118" class="body">HF frozen signal: 158.71 UAH</text>
+    <text x="32" y="158" class="body">20 / 32 nonfallback days</text>
+    <text x="32" y="198" class="body">8 / 8 readiness, 0 safety failures</text>
+    <rect x="32" y="265" width="330" height="54" rx="27" fill="#7c3aed"/>
+    <text x="62" y="299" class="white">DEMO ONLY: no execution</text>
+  </g>
+
+  <g transform="translate(90 670)">
+    <rect width="1420" height="88" rx="22" fill="#0f172a"/>
+    <text x="34" y="34" class="white">If gates were skipped: overfit switches, tail-risk schedules, stale dashboard context.</text>
+    <text x="34" y="64" class="white">Correct behavior: abstain to V2+/HOLD until source, safety, and execution gates pass.</text>
+  </g>
+</svg>

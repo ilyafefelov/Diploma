@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Practical roadmap for Ukraine with HF shadow and execution gates</title>
+  <desc id="desc">Roadmap from evidence preview to source readiness, neural challengers, LP surrogate research, and supervised execution gate.</desc>
+  <defs>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 24px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 18px Arial, sans-serif; fill: #334155; }
+      .white { font: 800 19px Arial, sans-serif; fill: #fff; }
+      .line { stroke: #0284c7; stroke-width: 7; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <text x="72" y="88" class="title" style="font-size:42px">Roadmap: thesis evidence to supervised execution gate</text>
+  <text x="72" y="128" class="subtitle">Український DAM/IDM контур має рухатися через source governance, shadow validation і only-then execution contracts.</text>
+
+  <path class="line" d="M130 420 H1460"/>
+
+  <g transform="translate(70 235)">
+    <rect width="250" height="260" rx="22" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="24" y="52" class="head">1. Evidence MVP</text>
+    <text x="24" y="104" class="body">V2+ headline</text>
+    <text x="24" y="146" class="body">operator preview</text>
+    <text x="24" y="188" class="body">market_execution=false</text>
+  </g>
+  <g transform="translate(375 235)">
+    <rect width="250" height="260" rx="22" fill="#fef3c7" stroke="#d97706" stroke-width="3"/>
+    <text x="24" y="52" class="head">2. Source closure</text>
+    <text x="24" y="104" class="body">OREE/SCMO receipts</text>
+    <text x="24" y="146" class="body">point-in-time rows</text>
+    <text x="24" y="188" class="body">V13 readiness</text>
+  </g>
+  <g transform="translate(680 235)">
+    <rect width="250" height="260" rx="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <text x="24" y="52" class="head">3. Shadow challengers</text>
+    <text x="24" y="104" class="body">DT safe-switch</text>
+    <text x="24" y="146" class="body">HF value-aligned</text>
+    <text x="24" y="188" class="body">same-window evidence</text>
+  </g>
+  <g transform="translate(985 235)">
+    <rect width="250" height="260" rx="22" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="24" y="52" class="head">4. Near-LP research</text>
+    <text x="24" y="104" class="body">LP/MIP teachers</text>
+    <text x="24" y="146" class="body">projection/repair</text>
+    <text x="24" y="188" class="body">frozen LP oracle</text>
+  </g>
+  <g transform="translate(1290 235)">
+    <rect width="250" height="260" rx="22" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="24" y="52" class="head">5. Execution gate</text>
+    <text x="24" y="104" class="body">legal + operations</text>
+    <text x="24" y="146" class="body">market payloads</text>
+    <text x="24" y="188" class="body">monitoring/rollback</text>
+  </g>
+
+  <g transform="translate(90 690)">
+    <rect width="1420" height="78" rx="20" fill="#0f172a"/>
+    <text x="34" y="34" class="white">Recommended next step: keep HF as read-only challenger.</text>
+    <text x="34" y="58" class="white">Expand candidate library and source readiness; do not skip directly to bids.</text>
+  </g>
+</svg>

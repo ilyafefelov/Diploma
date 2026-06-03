@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="900" viewBox="0 0 1800 900" role="img" aria-labelledby="title desc">
+  <title id="title">HF value-aligned shadow live operator preview architecture</title>
+  <desc id="desc">A left-to-right architecture diagram showing operator inputs, source-backed price context, LP-free candidate generation, feature construction, HF safe-switch scoring, deterministic gates, non-HOLD preview, and guarded abstention fallback.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#031324"/>
+      <stop offset="0.48" stop-color="#062b46"/>
+      <stop offset="1" stop-color="#020914"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#0b4266"/>
+      <stop offset="1" stop-color="#041f37"/>
+    </linearGradient>
+    <linearGradient id="hf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#143d1c"/>
+      <stop offset="1" stop-color="#0b6d2c"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.55 0 0 0 0 1 0 0 0 0 0.12 0 0 0 0.85 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <style>
+      .bg-title { font: 800 44px Arial, sans-serif; fill: #f2fbff; }
+      .accent { fill: #a9ff22; }
+      .panel-title { font: 800 22px Arial, sans-serif; fill: #63e7ff; }
+      .small { font: 700 16px Arial, sans-serif; fill: #ccecff; }
+      .body { font: 700 18px Arial, sans-serif; fill: #f4fbff; }
+      .muted { font: 700 15px Arial, sans-serif; fill: #9bd1e5; }
+      .box { fill: #082b49; stroke: #19c6ef; stroke-width: 2; rx: 12; }
+      .green-box { fill: #173e14; stroke: #a9ff22; stroke-width: 2; rx: 12; }
+      .purple-box { fill: #201945; stroke: #b26bff; stroke-width: 2; rx: 12; }
+      .guard { fill: #073451; stroke: #80dfff; stroke-width: 2; rx: 12; }
+      .arrow { stroke: #28d9ff; stroke-width: 8; fill: none; marker-end: url(#arrowhead); }
+      .gate-arrow { stroke: #9cff1a; stroke-width: 9; fill: none; marker-end: url(#greenarrow); }
+      .fallback-arrow { stroke: #93a0aa; stroke-width: 8; fill: none; marker-end: url(#grayarrow); }
+      .boundary { font: 800 18px Arial, sans-serif; fill: #d7efff; }
+    </style>
+    <marker id="arrowhead" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#28d9ff"/>
+    </marker>
+    <marker id="greenarrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#9cff1a"/>
+    </marker>
+    <marker id="grayarrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 z" fill="#93a0aa"/>
+    </marker>
+  </defs>
+
+  <rect width="1800" height="900" fill="url(#bg)"/>
+  <path d="M1120 70 C1210 20, 1310 58, 1400 30 C1470 8, 1530 42, 1580 24" stroke="#13425f" stroke-width="3" opacity="0.6" fill="none"/>
+  <path d="M1120 118 C1240 78, 1360 136, 1540 88" stroke="#114b68" stroke-width="3" opacity="0.45" fill="none"/>
+
+  <circle cx="58" cy="58" r="34" fill="#06243d" stroke="#34e5ff" stroke-width="4"/>
+  <path d="M64 31 L42 67 H59 L52 86 L80 50 H63 Z" fill="#41e4ff"/>
+  <text x="110" y="69" class="bg-title">HF value-aligned shadow: <tspan class="accent">live operator preview</tspan></text>
+
+  <g transform="translate(22 150)">
+    <rect width="215" height="540" rx="14" fill="url(#panel)" stroke="#20d6ff" stroke-width="2"/>
+    <text x="20" y="46" class="panel-title">1. Оператор</text>
+    <text x="20" y="72" class="panel-title">обирає</text>
+    <rect class="box" x="18" y="130" width="178" height="70"/>
+    <text x="68" y="173" class="body">tenant</text>
+    <rect class="box" x="18" y="250" width="178" height="70"/>
+    <text x="55" y="293" class="body">DAM/IDM</text>
+    <rect class="box" x="18" y="370" width="178" height="70"/>
+    <text x="74" y="413" class="body">дата</text>
+  </g>
+
+  <path class="arrow" d="M247 420 H285"/>
+
+  <g transform="translate(287 150)">
+    <rect width="230" height="540" rx="14" fill="url(#panel)" stroke="#20d6ff" stroke-width="2"/>
+    <text x="22" y="46" class="panel-title">2. Source-backed</text>
+    <text x="22" y="72" class="panel-title">price context</text>
+    <rect class="green-box" x="22" y="136" width="185" height="80"/>
+    <text x="72" y="172" class="body">Official</text>
+    <text x="72" y="198" class="body">OREE rows</text>
+    <rect class="box" x="22" y="320" width="185" height="80"/>
+    <text x="66" y="353" class="body">Forecast-store</text>
+    <text x="66" y="379" class="body">rows</text>
+    <text x="22" y="495" class="small">без synthetic prices</text>
+  </g>
+
+  <path class="arrow" d="M527 420 H555"/>
+
+  <g transform="translate(558 150)">
+    <rect width="245" height="540" rx="14" fill="url(#panel)" stroke="#20d6ff" stroke-width="2"/>
+    <text x="22" y="46" class="panel-title">3. LP-free candidate</text>
+    <text x="22" y="72" class="panel-title">generator</text>
+    <rect class="purple-box" x="18" y="100" width="205" height="82"/>
+    <text x="82" y="132" class="body">V2+ fallback:</text>
+    <text x="82" y="158" class="body">HOLD/SOC maintain</text>
+    <rect class="box" x="18" y="214" width="205" height="70"/>
+    <text x="70" y="257" class="body">strict/reference</text>
+    <rect class="box" x="18" y="316" width="205" height="70"/>
+    <text x="72" y="346" class="body">balanced</text>
+    <text x="72" y="372" class="body">reference</text>
+    <rect class="green-box" x="18" y="418" width="205" height="72"/>
+    <text x="70" y="448" class="body">value-aligned</text>
+    <text x="70" y="474" class="body">templates</text>
+  </g>
+
+  <path class="arrow" d="M813 420 H842"/>
+
+  <g transform="translate(845 150)">
+    <rect width="205" height="540" rx="14" fill="url(#panel)" stroke="#20d6ff" stroke-width="2"/>
+    <text x="24" y="58" class="panel-title">4. Feature block</text>
+    <rect class="box" x="18" y="110" width="170" height="56"/>
+    <text x="78" y="146" class="body">value</text>
+    <rect class="box" x="18" y="194" width="170" height="56"/>
+    <text x="69" y="230" class="body">SOC path</text>
+    <rect class="box" x="18" y="278" width="170" height="56"/>
+    <text x="65" y="314" class="body">throughput</text>
+    <rect class="box" x="18" y="362" width="170" height="56"/>
+    <text x="48" y="398" class="body">degradation proxy</text>
+    <rect class="box" x="18" y="446" width="170" height="56"/>
+    <text x="50" y="482" class="body">safety violations</text>
+  </g>
+
+  <path class="arrow" d="M1060 420 H1088"/>
+
+  <g transform="translate(1090 150)" filter="url(#glow)">
+    <rect width="220" height="540" rx="14" fill="url(#hf)" stroke="#a9ff22" stroke-width="3"/>
+    <text x="20" y="46" class="panel-title" fill="#dfff71">5. HF safe-switch</text>
+    <text x="20" y="72" class="panel-title" fill="#dfff71">scorer</text>
+    <rect x="70" y="128" width="84" height="84" rx="16" fill="none" stroke="#d3ff55" stroke-width="7"/>
+    <circle cx="96" cy="154" r="11" fill="#d3ff55"/>
+    <circle cx="130" cy="166" r="11" fill="#d3ff55"/>
+    <circle cx="104" cy="196" r="11" fill="#d3ff55"/>
+    <circle cx="145" cy="198" r="11" fill="#d3ff55"/>
+    <path d="M96 154 L130 166 L104 196 L145 198 L130 166" stroke="#d3ff55" stroke-width="4" fill="none"/>
+    <rect class="green-box" x="18" y="300" width="184" height="70"/>
+    <text x="70" y="329" class="body">predicted delta</text>
+    <text x="70" y="355" class="body">vs V2+</text>
+    <rect class="green-box" x="18" y="408" width="184" height="70"/>
+    <text x="68" y="437" class="body">tail-risk</text>
+    <text x="68" y="463" class="body">probability</text>
+  </g>
+
+  <path class="arrow" d="M1320 420 H1347"/>
+
+  <g transform="translate(1350 150)">
+    <rect width="220" height="540" rx="14" fill="url(#panel)" stroke="#20d6ff" stroke-width="2"/>
+    <text x="22" y="46" class="panel-title">6. Deterministic</text>
+    <text x="22" y="72" class="panel-title">gates</text>
+    <rect class="guard" x="18" y="120" width="184" height="62"/>
+    <text x="68" y="158" class="body">value guard</text>
+    <rect class="guard" x="18" y="218" width="184" height="62"/>
+    <text x="64" y="256" class="body">tail-risk cap</text>
+    <rect class="guard" x="18" y="316" width="184" height="62"/>
+    <text x="66" y="354" class="body">safety = 0</text>
+    <rect class="guard" x="18" y="414" width="184" height="62"/>
+    <text x="62" y="452" class="body">feasible SOC</text>
+  </g>
+
+  <path class="gate-arrow" d="M1578 315 C1608 315, 1635 320, 1660 344"/>
+  <path class="fallback-arrow" d="M1550 520 C1590 545, 1605 585, 1618 620" transform="translate(-25 0)"/>
+
+  <g transform="translate(1580 150)">
+    <rect x="0" y="0" width="185" height="230" rx="18" fill="#126c10" stroke="#9cff5d" stroke-width="3"/>
+    <circle cx="92" cy="56" r="42" fill="#1a8e14" stroke="#bdff74" stroke-width="5"/>
+    <path d="M102 28 L74 69 H93 L83 94 L121 49 H99 Z" fill="#d6ff8a"/>
+    <text x="28" y="125" class="bg-title" style="font-size:26px">Non-HOLD</text>
+    <text x="28" y="158" class="bg-title" style="font-size:26px">preview</text>
+    <text x="28" y="194" class="small">charge / discharge</text>
+
+    <rect x="0" y="385" width="185" height="230" rx="18" fill="#2b343c" stroke="#93a0aa" stroke-width="3"/>
+    <text x="28" y="465" class="bg-title" style="font-size:26px">Guarded</text>
+    <text x="28" y="498" class="bg-title" style="font-size:26px">abstention</text>
+    <text x="32" y="548" class="body">HOLD / V2+</text>
+    <text x="48" y="576" class="body">fallback</text>
+  </g>
+
+  <g transform="translate(24 775)">
+    <rect width="1752" height="88" rx="12" fill="#05253e" stroke="#22d4ff" stroke-width="2"/>
+    <text x="96" y="54" class="boundary">Shadow/demo only</text>
+    <text x="385" y="54" class="boundary">no LP in live request</text>
+    <text x="705" y="54" class="boundary">no ProposedBid</text>
+    <text x="990" y="54" class="boundary">market_execution_enabled=false</text>
+    <text x="1360" y="54" class="boundary">not V13 training</text>
+  </g>
+</svg>

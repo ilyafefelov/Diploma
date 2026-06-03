@@ -1,37 +1,45 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
-  <title id="title">Що можна впевнено показувати оператору</title>
-  <desc id="desc">Схема відокремлює operator-facing read-model preview від market-submittable execution objects.</desc>
-  <rect width="1200" height="720" fill="#ffffff"/>
-  <text x="70" y="70" font-family="Arial, sans-serif" font-size="31" font-weight="700" fill="#111827">Operator-facing preview: що є результатом зараз</text>
-  <text x="70" y="104" font-family="Arial, sans-serif" font-size="18" fill="#475569">Поточний MVP пояснює рішення оператору, але не створює market-submittable bids.</text>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Operator preview allowed read-model and blocked execution objects</title>
+  <desc id="desc">Diagram showing what the operator preview may display and what remains blocked.</desc>
+  <defs>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 28px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 21px Arial, sans-serif; fill: #334155; }
+      .white { font: 800 20px Arial, sans-serif; fill: #fff; }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <text x="72" y="88" class="title" style="font-size:42px">Operator preview: show evidence, block execution</text>
+  <text x="72" y="128" class="subtitle">Dashboard може показати evidence-backed schedule preview, але не формує ринкову заявку або dispatch command.</text>
 
-  <g font-family="Arial, sans-serif">
-    <rect x="70" y="150" width="500" height="410" rx="10" fill="#ecfdf5" stroke="#86efac"/>
-    <text x="100" y="190" font-size="22" font-weight="700" fill="#166534">Allowed read-model evidence</text>
-    <text x="100" y="232" font-size="17" fill="#111827">Selected evidence: V2+ comparator</text>
-    <text x="100" y="268" font-size="17" fill="#111827">DAM/IDM hourly preview rows</text>
-    <text x="100" y="304" font-size="17" fill="#111827">BUY / SELL / HOLD explanation</text>
-    <text x="100" y="340" font-size="17" fill="#111827">Regret/value comparison versus strict baseline</text>
-    <text x="100" y="376" font-size="17" fill="#111827">Gate status and shadow diagnostics</text>
-    <text x="100" y="412" font-size="17" fill="#111827">V13 readiness blockers and audit trail</text>
+  <g transform="translate(100 205)">
+    <rect width="610" height="470" rx="28" fill="#dcfce7" stroke="#16a34a" stroke-width="4"/>
+    <text x="38" y="62" class="head">Allowed read-model surface</text>
+    <text x="48" y="130" class="body">✓ DAM/IDM 24 hourly recommendation rows</text>
+    <text x="48" y="185" class="body">✓ Official OREE or forecast-store source mode</text>
+    <text x="48" y="240" class="body">✓ V2+ comparator and fallback status</text>
+    <text x="48" y="295" class="body">✓ DT/HF shadow diagnostics and abstention reason</text>
+    <text x="48" y="350" class="body">✓ Nullable live regret before delivery</text>
+    <rect x="48" y="390" width="485" height="54" rx="27" fill="#16a34a"/>
+    <text x="82" y="424" class="white">operator decision support, not execution</text>
+  </g>
 
-    <rect x="105" y="455" width="410" height="58" rx="8" fill="#ffffff" stroke="#bbf7d0"/>
-    <text x="125" y="491" font-size="17" font-weight="700" fill="#166534">Decision support, not autonomous trading</text>
+  <g transform="translate(840 205)">
+    <rect width="610" height="470" rx="28" fill="#fee2e2" stroke="#ef4444" stroke-width="4"/>
+    <text x="38" y="62" class="head">Blocked execution surface</text>
+    <text x="48" y="130" class="body">✕ ProposedBid</text>
+    <text x="48" y="185" class="body">✕ Market order payload</text>
+    <text x="48" y="240" class="body">✕ Live IDM bid / settlement action</text>
+    <text x="48" y="295" class="body">✕ DispatchCommand to BESS</text>
+    <text x="48" y="350" class="body">✕ Production LP replacement by HF</text>
+    <rect x="48" y="390" width="485" height="54" rx="27" fill="#ef4444"/>
+    <text x="105" y="424" class="white">requires separate execution context</text>
+  </g>
 
-    <rect x="630" y="150" width="500" height="410" rx="10" fill="#fef2f2" stroke="#fecaca"/>
-    <text x="660" y="190" font-size="22" font-weight="700" fill="#991b1b">Blocked execution objects</text>
-    <text x="660" y="232" font-size="17" fill="#111827">ProposedBid payload</text>
-    <text x="660" y="268" font-size="17" fill="#111827">ClearedTrade or settlement claim</text>
-    <text x="660" y="304" font-size="17" fill="#111827">DispatchCommand to physical inverter</text>
-    <text x="660" y="340" font-size="17" fill="#111827">Deployed DT/LAVA controller</text>
-    <text x="660" y="376" font-size="17" fill="#111827">Market execution readiness claim</text>
-    <text x="660" y="412" font-size="17" fill="#111827">Guaranteed profit or universal arbitrage claim</text>
-
-    <rect x="665" y="455" width="410" height="58" rx="8" fill="#ffffff" stroke="#fecaca"/>
-    <text x="685" y="491" font-size="17" font-weight="700" fill="#991b1b">Requires separate legal, source, and safety gates</text>
-
-    <rect x="230" y="585" width="740" height="78" rx="10" fill="#fffbeb" stroke="#fcd34d"/>
-    <text x="265" y="623" font-size="20" font-weight="700" fill="#92400e">Boundary: market_execution_enabled=false</text>
-    <text x="265" y="651" font-size="16" fill="#475569">This flag is part of result interpretation, not a minor implementation detail.</text>
+  <g transform="translate(120 735)">
+    <rect width="1360" height="70" rx="20" fill="#0f172a"/>
+    <text x="34" y="44" class="white">Design rule: every non-HOLD preview must remain reversible, reviewable, source-backed, and non-submittable.</text>
   </g>
 </svg>

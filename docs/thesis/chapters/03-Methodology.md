@@ -25,9 +25,10 @@ Evidence pipeline наведено на рисунку 3.1.
 | LP/oracle evaluator | Schedule оцінено в однаковому strict contour | Oracle value доступний до рішення |
 | V2/V2+ selector | Offline/read-model Strategy Promotion | Автономна торгівля або dispatch |
 | TFT / Poland / DT shadow | Research-only diagnostics and future work | Replacement of V2+ без gate |
+| HF value-aligned shadow | Manual live shadow preview через LP-free candidate scoring і deterministic gates | Production controller, LP replacement або market-submittable bid |
 | V13 acquisition | Source-readiness blockers documented | DT/LAVA ready або market execution ready |
 
-Таблиця 3.1 потрібна для читання всіх наступних результатів. Вона відділяє дозволені offline/read-model claims від заборонених execution claims. Якщо результат проходить offline promotion gate, це означає thesis-facing strategy evidence, але не дозвіл на ринок.
+Таблиця 3.1 потрібна для читання всіх наступних результатів. Вона відділяє дозволені offline/read-model claims від заборонених execution claims. Якщо результат проходить offline promotion gate, це означає thesis-facing strategy evidence, але не дозвіл на ринок. Якщо HF shadow проходить manual demo gate, це означає лише готовність operator-preview contour: не V13 training, не default strategy і не market execution.
 
 3.3. Rolling-origin protocol
 
@@ -128,8 +129,18 @@ Candidate families, що використовуються або аналізу�
 | V2/V2+ | Schedule/value selector | Вибирає candidate за downstream value |
 | TFT quantiles | p10/p50/p90 forecast lanes | Schedule diversity and uncertainty diagnostics |
 | DT shadow | HF DecisionTransformerModel | Sequence-policy research only |
+| HF value-aligned shadow | Hugging Face safe-switch scorer over LP-free candidate templates | Manual live shadow preview: ranks candidate schedules, guards tail risk і abstains до V2+ |
+| Forecast readiness matrix | DAM/IDM x latest/today/tomorrow/day+2 source context | Перевіряє, що live shadow повертає 24 rows або explicit blocked reason |
 
-Таблиця 3.3 фіксує, що V2/V2+ є headline decision layer, тоді як TFT і DT мають інший статус. TFT додає uncertainty/diversity evidence, але не проходить portfolio promotion. DT підтверджує research-shadow feasibility, але не перемагає V2+ і не проходить V13.
+Таблиця 3.3 фіксує, що V2/V2+ є headline decision layer, тоді як TFT, DT і HF shadow мають інший статус. TFT додає uncertainty/diversity evidence, але не проходить portfolio promotion. DT підтверджує research-shadow feasibility, але не стає raw controller. HF value-aligned shadow є live/manual preview challenger поверх V2+, але також не проходить production execution boundary.
+
+3.7.1. HF value-aligned safe-switch shadow
+
+HF value-aligned shadow використовує transformer evidence не як прямий controller, а як scorer для обмеженого набору безпечних candidate schedules. У live request path він отримує `tenant_id`, `market_venue`, `target_delivery_date` і source-backed 24-hour price context. Для published targets таким context є official OREE row; для unpublished today/tomorrow/day+2 context надходить із forecast store або request-time forecast fallback і маркується як `pre_publication_forecast`, `same_day_forecast_refresh` або `request_fallback_materialized`. Якщо source-backed context неможливо отримати, response блокується; synthetic prices не використовуються.
+
+Candidate generator створює кілька LP-free сімейств: fallback/V2+ HOLD або SOC-maintain, conservative strict/reference, balanced reference і value-aligned/action templates. Для кожного candidate обчислюється feature block: estimated value, SOC path, throughput, degradation proxy і deterministic safety violation count. Hugging Face safe-switch scorer прогнозує `predicted_regret_delta_vs_v2_plus_uah` і tail-risk probability. Після цього deterministic gatekeeper дозволяє non-HOLD preview лише тоді, коли value guard проходить, tail-risk cap не перевищено, family-tail guard не блокує candidate, safety violations дорівнюють нулю і SOC path фізично feasible. Якщо хоча б один guard не проходить, коректним результатом є guarded abstention до V2+/HOLD.
+
+Методологічно цей підхід не є математично повним optimizer: він не шукає неперервний optimum у всьому просторі графіків, а ранжує скінченну candidate library. Його цінність у роботі полягає в іншому: він показує, як offline DT/HF evidence можна безпечно підключити до live dashboard, не викликаючи LP у HF request path, не створюючи `ProposedBid` і не змінюючи production/default strategy.
 
 3.8. Gatekeeper та read model
 
@@ -154,6 +165,8 @@ Gatekeeper має відокремити preview від execution. Після LP
 Реалізація організована як практична MLOps evidence system. Dagster відповідає за materialization assets і lineage; Polars використовується для швидкої табличної обробки; Pydantic strict contracts фіксують schema та safety boundaries; FastAPI віддає read-model endpoints; dashboard показує operator-facing preview і shadow diagnostics. Така архітектура не створює зайвої складності заради самої складності: кожен шар потрібний для відтворюваності або для безпечного пояснення рішення.
 
 Bronze layer зберігає source snapshots і audit trail. Silver layer нормалізує timezone, tenants, price rows і candidate features. Gold layer матеріалізує forecasts, LP scores, V2/V2+ selections і diagnostics. Read model не змінює рішення: він тільки показує materialized evidence у формі, придатній для аудиту й демонстрації.
+
+HF live shadow path додає read-model inference bundle: checkpoint, `feature_names`, `candidate_families`, нормалізацію ознак, operating threshold, tail-risk limits і non-execution flags. FastAPI віддає цей шлях через `/dashboard/shadow-recommendation-preview` для `hf_live_safe_switch_value_aligned_shadow`; dashboard для цього source пропускає `/dashboard/operator-recommendation`, тому live HF shadow request не приховано викликає LP solver. Усі поля execution/promotion лишаються false, а schedule rows мають статус preview, не bid payload.
 
 3.10. Висновок до розділу 3
 
