@@ -8,9 +8,11 @@ IDM - Intraday Market / ВДР, внутрішньодобовий ринок; �
 DFL - Decision-Focused Learning, підхід до оцінювання моделей за downstream decision value.
 DT - Decision Transformer, offline sequence-policy напрям, який у роботі має статус research-shadow.
 EPF - Electricity Price Forecasting, прогнозування цін електроенергії.
+LAVA - Loss via Adjacent Vertex Alignment, solver-free DFL/LAVA-style напрям для schedule-neighbor evidence; у роботі це лише prototype/readiness smoke, не production optimizer і не execution gate.
 LP - Linear Programming, лінійне програмування для побудови feasible schedule.
 MAE / RMSE - forecast-only метрики, які не є головним критерієм promotion.
 NBEATSx - time-series forecast adapter, який може створювати price-scenario candidates для unpublished targets.
+p10/p50/p90 - 10-й, 50-й і 90-й percentile forecast scenarios; використовуються як нижній, median і верхній price paths для uncertainty/schedule diagnostics, не як три окремі market price authorities.
 SOC - State of Charge, стан заряду батареї.
 SOH - State of Health, стан здоров'я батареї; повний digital-twin шар лишається roadmap.
 TFT - Temporal Fusion Transformer, quantile forecasting model для shadow/complementarity evidence.
@@ -19,6 +21,7 @@ V13 - source-readiness/acquisition gate; не modeling slice і не дозві�
 
 Ключові межі:
 market_execution_enabled=false - явний прапорець, що забороняє трактувати preview як live trading.
+C_deg(s) - degradation-cost penalty для schedule `s`; у роботі це proxy/штраф у value scoring, а не повний electrochemical SOH model.
 Operator preview - read-model поверхня для перегляду рекомендацій, а не market execution console.
 Regret - втрачена цінність відносно oracle LP.
 strict_similar_day - frozen leakage-free baseline і fallback comparator.

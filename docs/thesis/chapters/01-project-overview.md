@@ -28,7 +28,7 @@
 
 Рисунок 1.2. Межа системи: evidence та preview без market execution
 
-Рисунок 1.2 показує, що результат належить до allowed evidence: offline materialization, read-model dashboard, operator preview і reproducible packets. Заблокована зона містить ProposedBid, ClearedTrade, DispatchCommand, deployed DT/LAVA і будь-який claim, який потребує explicit market submission readiness. Така межа зберігає практичну корисність без переходу до невиправданого market execution.
+З рисунку 1.2 видно, що результат належить до allowed evidence: offline materialization, read-model dashboard, operator preview і reproducible packets. Заблокована зона містить ProposedBid, ClearedTrade, DispatchCommand, deployed DT/LAVA і будь-який claim, який потребує explicit market submission readiness. Така межа зберігає практичну корисність без переходу до невиправданого market execution.
 
 1.3. Мета і завдання
 

@@ -10,7 +10,7 @@ Evidence pipeline наведено на рисунку 3.1.
 
 Рисунок 3.1. Evidence pipeline від source snapshots до read-model preview
 
-Рисунок 3.1 показує послідовність: source snapshots надходять у normalized panel, forecast/candidate layer створює schedule options, strict LP/oracle evaluator оцінює decision quality, а FastAPI/dashboard read model показує operator preview. Жоден крок не створює market order payload; це принципова межа методології.
+Рисунок 3.1 ілюструє послідовність: source snapshots надходять у normalized panel, forecast/candidate layer створює schedule options, strict LP/oracle evaluator оцінює decision quality, а FastAPI/dashboard read model показує operator preview. Жоден крок не створює market order payload; це принципова межа методології.
 
 3.2. Evidence boundaries
 
@@ -46,11 +46,19 @@ Evidence pipeline наведено на рисунку 3.1.
 
 3.4. LP schedule and value
 
-Нехай \(t\) (t) позначає погодинний інтервал, \(p_t\) (p_t) - realized або scenario price для вибраного market venue, \(c_t\) (c_t) - charge power, \(d_t\) (d_t) - discharge power, \(\eta_c\) (eta_c) та \(\eta_d\) (eta_d) - efficiency, а \(e_t\) (e_t) - енергія в батареї. Для headline packet market venue є DAM; для IDM preview той самий hourly формалізм є read-model lane без 15-minute bid/submission. Економічну цінність schedule можна записати як:
+Нехай \(t\) (t) позначає погодинний інтервал, \(p_t\) (p_t) - realized або scenario price для вибраного market venue, \(c_t\) (c_t) - charge power на стороні мережі, \(d_t\) (d_t) - discharge power на стороні мережі, \(\eta_c\) (eta_c) та \(\eta_d\) (eta_d) - efficiency, \(e_t\) (e_t) - енергія в батареї, \(\Delta t\) (Delta t) - тривалість інтервалу, а \(\gamma\) (gamma) - degradation-cost coefficient за MWh throughput. Для headline packet market venue є DAM; для IDM preview той самий hourly формалізм є read-model lane без 15-minute bid/submission. У поточній реалізації LP оптимізує market-side charge/discharge power, тому efficiency входить у SOC dynamics, а не множиться вдруге в market-value term. Економічну цінність schedule можна записати як:
 
-V(s) = sum_t p_t * (d_t * eta_d - c_t / eta_c) - C_deg(s)    (3.1)
+V(s) = sum_t [p_t * (d_t - c_t) * Delta t - gamma * (c_t + d_t) * Delta t]    (3.1)
 
-LaTeX: \(V(s)=\sum_t p_t\left(d_t\eta_d-\frac{c_t}{\eta_c}\right)-C_{\mathrm{deg}}(s)\tag{3.1}\)
+LaTeX: \(V(s)=\sum_t\left[p_t(d_t-c_t)\Delta t-\gamma(c_t+d_t)\Delta t\right]\tag{3.1}\)
+
+У виразі (3.1) член \(\gamma(c_t+d_t)\Delta t\) є degradation-cost penalty для погодинного throughput: він наближено враховує wear cost від cycling у value scoring. У межах цієї роботи це не повний electrochemical SOH model, а явний штраф, щоб schedule value не ігнорував degradation proxy.
+
+SOC dynamics у LP задаються окремо:
+
+e_{t+1} = e_t + c_t * eta_c * Delta t - d_t * Delta t / eta_d
+
+Тому втрати ефективності впливають на feasible SOC path, power/SOC constraints і доступну енергію для майбутніх годин, тоді як revenue term відображає купівлю або продаж енергії на market-side price vector.
 
 Regret визначається як різниця між oracle value і value вибраного schedule:
 
@@ -78,7 +86,7 @@ LP scoring contour наведено на рисунку 3.3.
 
 Рисунок 3.3. LP schedule scoring contour
 
-Рисунок 3.3 показує, що candidate проходить один і той самий optimization path незалежно від того, чи прийшов він від strict rule, NBEATSx, TFT або selector. Це робить порівняння результатів стійким до зміни evaluator.
+З рисунку 3.3 видно, що candidate проходить один і той самий optimization path незалежно від того, чи прийшов він від strict rule, NBEATSx, TFT або selector. Це робить порівняння результатів стійким до зміни evaluator.
 
 3.5. Metrics and formula map
 
@@ -94,7 +102,7 @@ LP scoring contour наведено на рисунку 3.3.
 | Rolling robustness | (3.4) | Перевіряє стійкість у validation windows |
 | Gate decision | (3.7) | Фіксує, що promotion не дорівнює execution |
 
-Таблиця 3.2 показує, що головна метрика не є forecast-only. Schedule value і regret прив'язують метод до економічної задачі, а rolling robustness не дозволяє просувати результат, який спрацював лише в одному зручному slice.
+З таблиці 3.2 можна зробити висновок, що головна метрика не є forecast-only. Schedule value і regret прив'язують метод до економічної задачі, а rolling robustness не дозволяє просувати результат, який спрацював лише в одному зручному slice.
 
 3.6. Promotion gate
 
@@ -125,12 +133,14 @@ Candidate families, що використовуються або аналізу�
 | strict_similar_day | Заморожене історичне правило | Conservative fallback і контроль |
 | Official OREE DAM/IDM rows | Published market data | Price source для already published hourly preview |
 | Raw NBEATSx | Forecast adapter | Джерело price-scenario candidates для unpublished targets |
-| Calibrated NBEATSx | Prior-only horizon calibration | Зменшує regret-relevant bias |
+| Calibrated NBEATSx | Prior-only horizon calibration: калібрує horizon bias лише за prior rolling-window residuals, без поточного target і future rows | Зменшує regret-relevant bias |
 | V2/V2+ | Schedule/value selector | Вибирає candidate за downstream value |
-| TFT quantiles | p10/p50/p90 forecast lanes | Schedule diversity and uncertainty diagnostics |
+| TFT quantiles | p10/p50/p90 forecast lanes | 10-й, 50-й і 90-й percentile scenarios для schedule diversity and uncertainty diagnostics |
 | DT shadow | HF DecisionTransformerModel | Sequence-policy research only |
 | HF value-aligned shadow | Hugging Face safe-switch scorer over LP-free candidate templates | Manual live shadow preview: ranks candidate schedules, guards tail risk і abstains до V2+ |
 | Forecast readiness matrix | DAM/IDM x latest/today/tomorrow/day+2 source context | Перевіряє, що live shadow повертає 24 rows або explicit blocked reason |
+
+Prior-only horizon calibration означає, що поправка для forecast horizon оцінюється тільки за помилками попередніх rolling windows, які були доступні до anchor time. Поточний target або future realized rows не використовуються, тому calibration не створює leakage. p10/p50/p90 у TFT lanes означають нижній, median і верхній percentile price scenarios; вони потрібні для перевірки schedule diversity та uncertainty behavior, а не для заяви про три незалежні market-price sources.
 
 Таблиця 3.3 фіксує, що V2/V2+ є headline decision layer, тоді як TFT, DT і HF shadow мають інший статус. TFT додає uncertainty/diversity evidence, але не проходить portfolio promotion. DT підтверджує research-shadow feasibility, але не стає raw controller. HF value-aligned shadow є live/manual preview challenger поверх V2+, але також не проходить production execution boundary.
 
@@ -138,7 +148,7 @@ Candidate families, що використовуються або аналізу�
 
 HF value-aligned shadow використовує transformer evidence не як прямий controller, а як scorer для обмеженого набору безпечних candidate schedules. У live request path він отримує `tenant_id`, `market_venue`, `target_delivery_date` і source-backed 24-hour price context. Для published targets таким context є official OREE row; для unpublished today/tomorrow/day+2 context надходить із forecast store або request-time forecast fallback і маркується як `pre_publication_forecast`, `same_day_forecast_refresh` або `request_fallback_materialized`. Якщо source-backed context неможливо отримати, response блокується; synthetic prices не використовуються.
 
-Candidate generator створює кілька LP-free сімейств: fallback/V2+ HOLD або SOC-maintain, conservative strict/reference, balanced reference і value-aligned/action templates. Для кожного candidate обчислюється feature block: estimated value, SOC path, throughput, degradation proxy і deterministic safety violation count. Hugging Face safe-switch scorer прогнозує `predicted_regret_delta_vs_v2_plus_uah` і tail-risk probability. Після цього deterministic gatekeeper дозволяє non-HOLD preview лише тоді, коли value guard проходить, tail-risk cap не перевищено, family-tail guard не блокує candidate, safety violations дорівнюють нулю і SOC path фізично feasible. Якщо хоча б один guard не проходить, коректним результатом є guarded abstention до V2+/HOLD.
+Candidate generator створює чотири основні LP-free сімейства: fallback/V2+ HOLD або SOC-maintain, conservative strict/reference, balanced reference і value-aligned/action templates. Для кожного candidate обчислюється feature block: estimated value, SOC path, throughput, degradation proxy і deterministic safety violation count. Hugging Face safe-switch scorer прогнозує `predicted_regret_delta_vs_v2_plus_uah` і tail-risk probability. Після цього deterministic gatekeeper дозволяє non-HOLD preview лише тоді, коли value guard проходить, tail-risk cap не перевищено, family-tail guard не блокує candidate, safety violations дорівнюють нулю і SOC path фізично feasible. Якщо хоча б один guard не проходить, коректним результатом є guarded abstention до V2+/HOLD.
 
 Методологічно цей підхід не є математично повним optimizer: він не шукає неперервний optimum у всьому просторі графіків, а ранжує скінченну candidate library. Його цінність у роботі полягає в іншому: він показує, як offline DT/HF evidence можна безпечно підключити до live dashboard, не викликаючи LP у HF request path, не створюючи `ProposedBid` і не змінюючи production/default strategy.
 
@@ -150,7 +160,7 @@ Gatekeeper має відокремити preview від execution. Після LP
 
 Рисунок 3.4. Gatekeeper та read-model boundary
 
-Рисунок 3.4 показує, що deterministic checks не є декоративними. Якщо candidate порушує envelope або source readiness, система має записати це як robustness evidence, а не приховати або виконати дію. Для України така межа особливо важлива, бо реальна участь на ринку потребує верифікованої інфраструктури, а дипломний MVP має залишатися безпечним.
+З рисунку 3.4 випливає, що deterministic checks не є декоративними. Якщо candidate порушує envelope або source readiness, система має записати це як robustness evidence, а не приховати або виконати дію. Для України така межа особливо важлива, бо реальна участь на ринку потребує верифікованої інфраструктури, а дипломний MVP має залишатися безпечним.
 
 Зв'язок між виразами (3.1)-(3.7) і рішенням promotion gate наведено на рисунку 3.5.
 
@@ -158,7 +168,7 @@ Gatekeeper має відокремити preview від execution. Після LP
 
 Рисунок 3.5. Як метрики переходять у рішення gate
 
-Рисунок 3.5 показує, що value і regret самі по собі ще не є дозволом на execution. Вони стають частиною рішення лише разом із median check, rolling robustness, safety boundary і прапорцем market_execution_enabled=false.
+Рисунок 3.5 підкреслює, що value і regret самі по собі ще не є дозволом на execution. Вони стають частиною рішення лише разом із median check, rolling robustness, safety boundary і прапорцем market_execution_enabled=false.
 
 3.9. Архітектура реалізації
 

@@ -1,0 +1,668 @@
+Stealing accuracy: Predicting day-ahead electricity prices with
+temporal hierarchy forecasting (THieF)⋆
+Arkadiusz Lipiecki a, Kaja Bili´nska a, Nikolaos Kourentzes b, Rafał Weron c,∗
+aDepartment of Computational Social Science, Wrocław University of Science and Technology, Poland
+bSkövde AI Lab, University of Skövde, Sweden
+cDepartment of Operations Research and Business Intelligence, Wrocław University of Science and Technology,
+Poland
+Abstract
+We introduce the concept oftemporal hierarchy forecasting(THieF) in predicting day-ahead elec-
+tricity prices and show that reconciling forecasts for hourly products and 2- to 24-hour blocks
+can significantly (up to 13%) improve accuracy at all levels. These results remain consistent
+throughout a challenging 4-year test period (2021-2024) in the German and Spanish power mar-
+kets and across model architectures, including linear regression, shallow feedforward neural net-
+works, gradient-boosted decision trees, and a state-of-the-art, pretrained transformer. Given that
+(i) trading of block products is becoming more common and (ii) the computational cost of recon-
+ciliation is comparable to that of predicting hourly prices alone, we recommend using it in daily
+forecasting practice.
+Keywords:electricity price, temporal hierarchy forecasting (THieF), forecast reconciliation,
+regression, neural network, gradient-boosted decision tree, transformer
+1. Introduction
+Operational decisions often require tailored short-term forecasts that focus on different levels
+of detail and granularity (Petropoulos et al., 2022). For instance, models for hourly products in
+wholesale electricity markets can use different information sets than those for average daily prices
+(Weron, 2014; Maciejowska and Weron, 2016). These forecasts may not align, which can lead to
+suboptimal decisions. To cope with this, the forecasts from each temporal level of the hierarchy
+should be reconciled to be coherent.
+The last decade has seen an unprecedented growth in interest in forecast reconciliation (see
+Athanasopoulos et al., 2024, for a recent review) and the introduction oftemporal hierarchy fore-
+casting(THieF; Athanasopoulos et al., 2017). The latter can be applied to any time series by
+means of non-overlapping temporal aggregation – the predictions computed at all levels of the
+hierarchy are combined to yield temporally reconciled, accurate and robust forecasts. The concept
+⋆Forthcoming in theInternational Journal of Forecasting, 2026
+∗Corresponding author;email:rafal.weron@pwr.edu.pl
+arXiv:2508.11372v2  [q-fin.ST]  4 Mar 2026
+
+is new in energy forecasting and there are only a handful of publications on predicting electric
+load (Nystrup et al., 2020; Møller et al., 2024) or wind (Jeon et al., 2019; English and Abol-
+ghasemi, 2024; Sharma et al., 2024) and solar (Yang et al., 2017; Di Fonzo and Girolimetto, 2023)
+generation. More importantly, temporal hierarchies have not yet been applied toelectricity price
+forecasting(EPF). The only related study predicts aggregated demand and supply curves by ex-
+ploiting their intrinsic hierarchical structure (Ghelasi and Ziel, 2024), but is not concerned with
+temporal hierarchy forecasting nor EPF.
+To fill this gap and provide market participants with a universal tool to improve the predictions
+of hourly, block and baseload prices (i.e., daily average prices), we conduct an extensive study in-
+volving four classes of models and two 4-year test periods (2021-2024) from two major European
+power markets: Germany and Spain. We use a variety of base forecasting methods with increas-
+ing complexity and diverse modeling assumptions, ranging from a parsimonious expert model
+built on classical linear regression (Ziel and Weron, 2018; Serafin and Weron, 2025) to Amazon’s
+state-of-the-art tabular foundation model based on a 12-layer 72 million-parameter transformer
+architecture (Zhang and Robinson, 2025).
+To our best knowledge, we are the first to use pretrained foundation models not only for EPF,
+but also for temporal hierarchies. As such, we complement the literature that has focused on
+evaluating the benefits of THieF with conventional, relatively small, base forecasting methods. We
+find that temporal reconciliation leads to significant improvements in terms of the mean absolute
+error (MAE) and the root mean squared error (RMSE) across all classes of models and hierarchy
+levels considered: up to 5.5% for hourly and 13.4% for baseload prices.
+The remainder of the paper is structured as follows. In Section 2 we briefly review the THieF
+approach and discuss its application to electricity price forecasting. Next, in Section 3 we intro-
+duce the datasets and in Section 4 we explain how the base forecasts for the 24 hourly prices are
+determined using four classes of models: linear regression (→Section 4.2), committee machines
+of shallow feedforward neural networks (→Section 4.3), gradient-boosted decision trees (→Sec-
+tion 4.4), and a state-of-the-art, pretrained transformer (→Section 4.5). In Section 5 we discuss
+the results obtained. Finally, in Section 6, we conclude and speculate on how our approach can be
+extended in future studies.
+2. Temporal hierarchies and reconciliation
+THieF can be understood in three steps: (i) construct non-overlapping temporally aggregate
+time series (levels), (ii) generate base forecasts at these levels independently, (iii) reconcile the base
+forecasts to combine the diverse information (Athanasopoulos et al., 2017). Temporal aggregation
+is a moving average that filters and strengthens different aspects of the original signal, therefore,
+the combination of the base forecasts helps recover information that would otherwise be difficult
+to estimate (Kourentzes et al., 2014).
+The benefits of THieF primarily stem from three elements. First, it independently models
+different views of the time series, which is particularly advantageous in the presence of increased
+model misspecification (Athanasopoulos et al., 2017). Second, it relies on an implicit forecast
+combination, leveraging the relationships among temporally aggregated series (Kourentzes and
+2
+
+Figure 1: Stylized example of the impact of THieF on forecasts at four hierarchy levels (1H, 4H, 8H, 24H). Filled red
+circles denote reconciled (→THieF-XGB) and hollow circles unreconciled forecasts (→Base-XGB) obtained using
+eXtreme Gradient Boosting (see Section 4.4). Bars represent actual block prices, with light blue indicating the target
+day, i.e., Sunday, 7.02.2021, in the German EPEX-DE market.
+Athanasopoulos, 2019). Third, it uses restricted estimation of the implied combination weights,
+which reduces estimation uncertainty (Pritularga et al., 2021).
+In Figure 1 we plot the out-of-sample base and reconciled forecasts at four aggregation levels
+for a sample day, market, and model. THieF blends the information of the base forecasts, and the
+relatively low bias of the average daily price forecast helps to reduce the bias at all other levels.
+The combination achieved by THieF is affine, but not convex (weights sum to unity but can be
+negative). This can help to further improve forecasts.
+2.1. The summing matrix
+Letmbe the frequency of a time series, for instance,m=24 for hourly data. Letk={k i}p
+i=1
+be the divisors ofm, ordered such thatm=k p >k p−1 > ... >k 1 =1, andpis the number of
+factors. For example, for hourly data we havek i∈{24,12,8,6,4,3,2,1}andp=8. We define the
+summing matrixof size ( Pp
+i=1 ki)×mas:
+S=
+h
+ST
+kp
+...S T
+k1
+iT
+,(1)
+whereS T
+k is the transpose ofS k. EachS k is given by:
+Sk =s kIm/k⊗J 1,k,(2)
+i.e., the weights k = 1
+k multiplied by the Kronecker product between the identity matrixIm/k of size
+m
+k× m
+k and a row vectorJ 1,k of size 1×kwith all its elements equal to 1. For instance, for hourly
+3
+
+Figure 2: The summing matrixSdefined in Eq. (3). Blue blocks denote non-zero elements, and the shading indicates
+weights ranging froms 24 = 1
+24 forS 24 tos 1 =1 forS 1.
+4
+
+data we get:
+S=
+h
+ST
+24 ST
+12 ST
+8 ST
+6 ST
+4 ST
+3 ST
+2 ST
+1
+iT
+.(3)
+This is illustrated in Figure 2. The top rowS 24 represents the baseload block, i.e., the average of
+the 24 hourly prices. The two rows ofS 12 correspond to the 12-hour blocks, respectively for hours
+1-12 and hours 13-24. Analogously, the three rows ofS8 map the hourly prices to the average price
+for the first, middle and last 8-hourly blocks. The bottom-levelS 1 is a 24×24 identity matrix and
+corresponds to forecasts for the individual hours.
+The temporal aggregation levels prescribed bykare non-overlapping for two reasons. First,
+overlapping temporal aggregation introduces serial autocorrelation that would need to be captured
+by the base forecasting methods. This not only increases model complexity but can also obscure
+identification of the underlying signal. Second, under the reasonable assumption that the base
+models may be misspecified, such serial autocorrelation can further complicate reconciliation in
+THieF.
+2.2. Reconciliation
+Letp d be a column vector that contains the hourly observations for dayd, thenP d =Sp d im-
+plements step (i). Further, let ˆPd be a vector of unreconciled base forecasts→step (ii). Following
+Athanasopoulos et al. (2017), THieF reconciliation is performed each day by computing:
+˜Pd =S(S T W−1S)−1ST W−1 ˆPd,(4)
+whereWis the covariance matrix of the base forecast errors, estimated on the errors from the
+training sample→step (iii). Since the covariance matrix for our hierarchical forecasts is 60×60,
+the total number of elements to estimate (1800) is larger than the sample size (1085; see Section
+3). Therefore, we resort to regularized covariance matrix estimators.
+Note that our formulation differs from Athanasopoulos et al. (2017) by using the mean for the
+aggregation, as in Kourentzes et al. (2014). This is due to the effect of weightssk in the calculation
+of eachS k in Eq. (2). Effectively, this normalizesW.
+To see this, letS Σ be the summing matrix as in Athanasopoulos et al. (2017), which is con-
+structed using Eq. (1), but with alls k≡1. Further, we setΛ=diag(1/S Σ1) and use it to rescale
+sum-aggregates into mean-aggregates. SinceS=ΛS Σ andΛ T =Λ, we can rewrite Eq. (4) as:
+˜Pd =ΛS Σ
+
+ST
+Σ ΛW−1ΛSΣ
+−1
+ST
+Σ ΛW−1 ˆPd.(5)
+Given thatW−1
+Σ =(Λ−1WΛ−1)−1 =ΛW−1Λand multiplying both sides byΛ −1 we obtain:
+Λ−1 ˜Pd =
+h
+SΣ(ST
+Σ W−1
+Σ SΣ)−1ST
+Σ W−1
+Σ
+i
+Λ−1 ˆPd.(6)
+The terms within the square brackets are identical to the reconciliation usingSΣ in Athanasopoulos
+et al. (2017). Therefore, the use ofSinstead ofS Σ normalizesW, but otherwise results in the
+equivalent sum-aggregate forecasts.
+5
+
+2.3. Shrinkage
+We considered three shrinkage approaches for estimating the covariance matrixW, the con-
+stant correlation model (Ledoit and Wolf, 2004), the diagonal shrinkage target (Schäfer and Strim-
+mer, 2005), which has been shown to perform well in forecast reconciliation (Wickramasuriya
+et al., 2019), and the so-called ‘variance scaling’ (Athanasopoulos et al., 2017) that sets all off-
+diagonal elements to zero and corresponds to the Weighted Least Squares (WLS) estimator. We
+found that the two first approaches performed similarly well. The variance scaling also provided
+improvements, but more mediocre than the alternatives. In Section 5, we report the results for the
+less conservative, constant correlation shrinkage of Ledoit and Wolf (2004). The results for the
+remaining approaches are provided in Appendix A.
+3. Datasets
+To ensure a sound assessment of the THieF approach, we consider two major European power
+markets: EPEX-DE (Germany) and OMIE (Spain). Both datasets span seven years (05.01.2018-
+31.12.2024, see Figure 3) and include publicly available data:
+•three series specific to each market (hourly resolution) – day-ahead pricesp d,h, day-ahead
+load ˆLd,h and wind ˆWd,h generation forecasts ( ˆWd,h is the sum of on- and off-shore generation;
+source:https://transparency.entsoe.eu),
+•two series common to both markets (daily resolution) – the last known (hence thed−2
+subscripts) closing prices of the nearest to delivery monthly coal API d−2 and yearly natural
+gas TTFd−2 futures (source:https://www.investing.com/).
+Note that the EPEX-DE dataset is the same as used by Serafin and Weron (2025).
+The first 1092 days (until 31.12.2020) are the initial training window. Note that after account-
+ing for the lags in prices, see Eq. (7) below, this corresponds to 1092−7=1085 data points for
+training. Each day the training window is rolled forward by 24 hours.
+The remaining 4-year period (starting 01.01.2021) is a challenging test set that includes the
+COVID-19 pandemic (lockdowns in Germany and Spain began in March 2020, with 15.12.2020
+being the first day of hard lockdown in Germany), the Russian invasion of Ukraine (24.02.2022),
+and the soaring natural gas prices (Q4 2021-Q4 2022). This period is also marked by the appear-
+ance of negative price spikes in Germany. For instance, on Sunday 02.07.2023 at hour 15 the
+price dropped to−500 EUR/MWh due to low demand and high renewable generation. On the
+other hand, negative prices were not seen in the Spanish market before 2024, and even then, prices
+dropped only a few EUR below zero. However, near-zero prices were reached about 5% of the
+time in 2024.
+4. Computing base forecasts
+4.1. Preliminaries
+To demonstrate the versatility of our approach, we generate base forecasts using four models
+with four distinct architectures: linear regression, a shallow neural network, gradient boosting,
+6
+
+Germany (EPEX-DE)
+Spain (OMIE)
+Figure 3: German EPEX-DE (top panels) and Spanish OMIE (bottom panels) electricity market data: day-ahead
+prices (orangeorred) and day-ahead load (dark blue) and wind generation (light blue) forecasts. The shaded area
+marks the first training window, i.e., the data used for training the models to generate forecasts for the first day in the
+test period (1.1.2021).
+7
+
+and a transformer. The first two are often used as benchmarks in EPF (Uniejewski et al., 2018;
+Ziel and Weron, 2018; Hubicka et al., 2019; Maciejowska et al., 2021; Janczura and Wójcik,
+2022; Billé et al., 2023; Uniejewski and Maciejowska, 2023; Ghelasi and Ziel, 2025; Serafin and
+Weron, 2025). The third has been reported to perform well in numerous forecasting competitions,
+including M5 (Januschowski et al., 2022). The fourth uses a transformer architecture, which is still
+rare in EPF (Bottieau et al., 2023). It is AutoGluon’s new tabular foundation model calledMitra,
+which excels on datasets with less than 5,000 samples and 100 features (Zhang and Robinson,
+2025).
+All four models compute the electricity price forecast ˆpd,h for daydand blockhas a function
+of 20 features, as in Serafin and Weron (2025):
+ˆpd,h =f
+
+pd−1,h,...,p d−7,h,p min
+d−1,p max
+d−1, ˆLd,h,
+ˆWd,h,API d−2,TTF d−2,D (1)
+d ,...,D (7)
+d
+
+,(7)
+where
+•p d−i,h are the lagged prices of the same block in the last seven daysi=1,...,7,
+•p min
+d−1 andp max
+d−1 are the minimum and maximum hourly prices of the previous day,
+• ˆLd,h and ˆWd,h are the day-ahead load and wind generation forecasts for the target block,
+•API d−2 and TTFd−2 are the closing prices of the nearest to delivery monthly coal (API2) and
+yearly natural gas futures (TTF) from dayd−2, and
+•D (i)
+d are the weekday dummies.
+All models are trained independently for each blockhusing a 3-year window of past values; each
+day the window is rolled forward by one day. Overall, we consider 60 blocks: 24×1H (i.e., 24
+one-hour blocks), 12×2H, 8×3H, 6×4H, 4×6H, 3×8H, 2×12H, and 1×24H (i.e., baseload).
+For more robust parameter estimation, following Uniejewski et al. (2018) and Lago et al.
+(2021), before training the models, we preprocess the inputs using thearea hyperbolic sinetrans-
+formation: asinh
+
+(y−ˆµ y)/ˆσy
+
+, where ˆµy and ˆσy are the sample mean and sample standard devia-
+tion ofyestimated on the training set. More precisely,p d−i,h for alli=1,...,7 and each selected
+blockhare transformed with a common ˆµ y and ˆσy calculated for the vector [p d−1092,h,...,p d−1,h].
+The extremesp min
+d−1 andp max
+d−1 as well as the exogenous variables ˆLd,h, ˆWd,h, APId−2 and TTFd−2 are
+transformed independently, also using 3-year vectors of past values; weekday dummies are not
+transformed.
+4.2. AutoRegression with eXogenous inputs (ARX)
+This expert – in the sense of Ziel and Weron (2018) – model is estimated via ordinary least
+squares (OLS) and uses the same inputs as Serafin and Weron (2025) to allow for direct compar-
+isons. More precisely, the ARX model is given by:
+ˆpd,h =P7
+i=1βipd−i,h +β 8pmin
+d−1 +β 9pmax
+d−1 +β 10 ˆLd,h
++β 11 ˆWd,h +β 12APId−2 +β 13TTFd−2
++ P20
+i=14βiD(i)
+d .(8)
+8
+
+4.3. Nonlinear ARX (NARX)
+The nonlinear counterpart of ARX approximatesf(·) in Eq. (7) with a shallow feedforward
+neural network using the series-parallel architecture (Xie et al., 2009). As in Hubicka et al. (2019),
+the hidden layer consists of 5 neurons and uses hyperbolic tangent activation, with a linear function
+in the output layer. The weights are calculated in Matlab R2025a using the Levenberg-Marquardt
+algorithm with early stopping based on a 10% validation set. To mitigate the effects of parameter
+estimation uncertainty, we clip the network output to [−3,3] before applying the inverse transfor-
+mation (i.e., the hyperbolic sine, see Section 4.1) and use a committee machine of 10 networks
+(Marcjasz et al., 2019). More precisely, the final ˆpd,h is obtained by training the network 10 times
+for eachdandh, and averaging the 10 price forecasts; no hyperparameter optimization is per-
+formed.
+4.4. EXtreme Gradient Boosting (XGB)
+The third model is an ensemble of gradient-boosted decision trees (GBDT; Hastie et al., 2009).
+We use eXtreme GBDT implemented in the Python package XGBoost v3.0 (Chen and Guestrin,
+2016), with the mean squared error (MSE) as the loss function for training and hyperparameter
+tuning. The latter is carried out independently for each of the 60 blocks (see Section 4.1) us-
+ing Bayesian sequential optimization (Akiba et al., 2019) on the initial 3-year training window
+(05.01.2018-31.12.2024; see Figure 3) with a random 10% left out for validation. We select from
+the following set of hyperparameters: maximum depth of a single tree (between 2 and 10), learn-
+ing rate (between 10−4 and 1 on log scale), subsample ratio of the training instances (between 1
+2
+and 1), minimum sum of instance weight required for partitioning a leaf node (between 0 and 10),
+minimum loss reduction required for partioning a leaf node (between 0 and 1
+2), strengths of the L1
+and L2 regularization on model weights (each between 10 −3 and 10 on log scale). Additionally,
+we apply early stopping to limit the number of boosting rounds (capped at 1000). Since the hy-
+perparameter selection process is stochastic, we perform it 10 times and the final ˆp d,h is obtained
+by averaging the forecasts generated from 10 XGB instances with different hyperparameter sets.
+4.5. Mitra
+The final forecaster is Amazon’s state-of-the-art tabular foundation model calledMitra, re-
+leased with AutoGluon v1.4 in July 2025, based on a 12-layer 72 million-parameter transformer
+architecture (Zhang and Robinson, 2025). Since it is pre-trained on purely synthetic data, evalu-
+ating its performance on historic time series does not pose data contamination issues. Although
+Mitra is not specifically tailored to time series, our forecasting task requires only one-step-ahead
+predictions, with Eq. (7) being equivalent to a tabular regression problem.
+We generate forecasts inzero-shotmode, i.e., do not optimize the hyperparameters and rely
+on a pre-trained model specialized for regression tasks. We fit Mitra using AutoGluon’sTabu-
+larPredictorclass with finetuning turned offand other settings kept default. Mitra is based on the
+in-context learning paradigm, hence the training set acts as support examples that condition the
+prediction. A single forecast ˆp d,h is generated by passing input data, see Eq. (7), as a query. As
+with the other models considered in our study, we use Mitra in a rolling window approach and
+train one model for each daydand blockhin the test period.
+9
+
+Table 1: Mean absolute errors and root mean squared errors of the base (MAE, RMSE) and reconciled
+(MAER,RMSE R) forecasts with the respective gains from reconciliation (%) for all considered hierarchy levels over
+the 4-year test period in the German (left) and Spanish (right) markets. All reconciled forecasts are significantly more
+accurate than the corresponding unreconciled ones, as measured by the multivariate variant of the Diebold-Mariano
+test (Ziel and Weron, 2018; Lago et al., 2021) based on the L2-norm of forecast errors; see text for details.
+Germany (EPEX-DE) Spain (OMIE)
+Level Model MAE MAE R % RMSE RMSE R % MAE MAE R % RMSE RMSE R %
+ARX 26.93 26.17 2.8 39.83 38.75 2.7 16.72 16.57 0.9 24.40 24.38 0.1
+NARX 23.06 22.29 3.3 35.62 34.63 2.8 16.57 16.24 2.0 24.07 23.92 0.6
+XGB 23.33 22.30 4.4 37.05 35.02 5.5 16.54 15.98 3.4 24.57 23.67 3.71H
+Mitra 21.37 21.11 1.2 33.31 32.91 1.2 15.92 15.84 0.6 23.61 23.20 1.7
+ARX 26.44 25.68 2.9 38.95 37.86 2.8 16.41 16.25 1.0 23.96 23.92 0.2
+NARX 22.64 21.61 4.5 34.84 33.44 4.0 16.29 15.80 3.0 23.71 23.29 1.8
+XGB 22.74 21.66 4.8 35.87 33.88 5.6 16.19 15.56 3.9 24.11 23.09 4.22H
+Mitra 20.92 20.38 2.6 32.43 31.60 2.6 15.56 15.38 1.1 23.17 22.54 2.7
+ARX 26.11 25.35 2.9 38.28 37.17 2.9 16.16 16.01 1.0 23.60 23.52 0.3
+NARX 22.12 21.17 4.3 33.89 32.63 3.7 16.01 15.54 2.9 23.44 22.86 2.5
+XGB 22.26 21.24 4.6 35.10 33.09 5.7 15.93 15.27 4.2 23.75 22.67 4.53H
+Mitra 20.61 19.90 3.5 31.87 30.69 3.7 15.31 15.10 1.3 22.72 22.09 2.8
+ARX 25.65 24.85 3.1 37.50 36.33 3.1 15.88 15.71 1.1 23.25 23.17 0.4
+NARX 21.75 20.66 5.0 33.27 31.75 4.6 15.68 15.27 2.6 22.96 22.48 2.1
+XGB 22.01 20.72 5.8 34.24 32.19 6.0 15.78 14.95 5.3 23.60 22.26 5.74H
+Mitra 20.13 19.39 3.7 30.86 29.79 3.5 15.01 14.79 1.4 22.19 21.70 2.2
+ARX 25.14 24.35 3.1 36.42 35.30 3.1 15.60 15.45 1.0 22.77 22.64 0.6
+NARX 21.08 20.00 5.1 32.00 30.52 4.6 15.27 14.86 2.7 22.41 21.93 2.2
+XGB 21.52 20.15 6.4 33.38 31.05 7.0 15.41 14.60 5.3 22.93 21.74 5.26H
+Mitra 19.51 18.77 3.8 29.74 28.48 4.2 14.77 14.39 2.6 21.87 21.12 3.4
+ARX 24.37 23.65 2.9 35.59 34.35 3.5 15.14 14.99 1.0 22.12 21.99 0.6
+NARX 20.54 19.42 5.4 31.20 29.71 4.8 15.01 14.52 3.2 21.92 21.35 2.6
+XGB 21.06 19.63 6.8 32.94 30.24 8.2 15.10 14.18 6.1 22.50 21.08 6.38H
+Mitra 19.45 18.22 6.3 29.34 27.74 5.5 14.44 14.01 3.0 21.45 20.47 4.5
+ARX 22.81 22.14 2.9 32.68 31.79 2.7 14.27 14.22 0.4 20.83 20.77 0.3
+NARX 19.37 17.80 8.1 28.96 27.07 6.5 14.25 13.80 3.1 20.64 20.23 2.0
+XGB 19.70 17.95 8.9 30.55 27.55 9.8 14.29 13.49 5.6 21.24 19.99 5.912H
+Mitra 17.59 16.57 5.8 26.27 24.81 5.6 13.67 13.28 2.8 20.16 19.39 3.9
+ARX 20.92 20.50 2.0 30.28 29.27 3.4 13.57 13.40 1.2 19.50 19.39 0.6
+NARX 17.99 16.53 8.2 27.24 25.08 7.9 13.29 12.94 2.6 19.14 18.98 0.9
+XGB 18.80 16.59 11.7 29.50 25.54 13.4 13.25 12.58 5.1 19.61 18.66 4.824H
+Mitra 16.56 15.22 8.1 24.81 22.70 8.5 12.91 12.42 3.8 18.84 18.11 3.8
+5. Empirical results
+To measure the differences in predictive performance, we compute the mean absolute errors
+(MAE) and the root mean squared errors (RMSE) of the four models presented in Section 4 for
+both markets and over the entire 4-year test period. The errors and the respective percentage gains
+from forecast reconciliation are reported in Table 1. Additionally, the gains are plotted in Figure
+4. Clearly, THieF improves forecast accuracy across all aggregation levels, for every considered
+base model and for both markets.
+The relative gains in the German (EPEX-DE) market are in general greater than in the Spanish
+(OMIE) market; The highest accuracy improvements in MAE are obtained for the XGB model,
+with a 6.7% average gain in Germany and a 4.8% in Spain. XGB also enjoys the highest aver-
+age reconciliation gains in terms of RMSE, with improvements of 7.6% and 5.0%, respectively.
+Additionally, gains are typically higher for larger blocks, which is particularly relevant given the
+10
+
+quadrupling of the number of products in the European day-ahead market and the resulting impor-
+tance of block trading (European Commission, 2025).
+Importantly, all reconciled forecasts are significantly more accurate than the corresponding
+unreconciled ones, as measured by the multivariate variant of the Diebold-Mariano test (Ziel and
+Weron, 2018; Lago et al., 2021) based on the L2-norm of forecast errors. For the EPEX-DE
+market, the test indicated significance at the 1% level for each aggregation level (1H, 2H, 3H, 4H,
+6H, 8H, 12H, 24H) and model. The same holds for the OMIE market with the exception of three
+isolated cases: 1H NARX, 1H Mitra and 24H NARX, for which the differences in unconditional
+predictive ability were significant at the 5% level.
+The fact that the results are consistent across architectures ranging from parsimonious linear
+regression with 20 parameters to a state-of-the-art transformer with up to 72 million parameters is
+a strong argument in favor of using the THieF approach in day-ahead EPF. Moreover, the computa-
+tional overhead of implementing THieF in a forecasting pipeline scales linearly with the baseline.
+The cost of the reconciliation itself is negligible, hence the only relevant cost is estimating mod-
+els at additional aggregation levels. Overall, THieF increases the computational cost to about 2.5
+times that of the 24-hour baseline. This increase can be considered a minor overhead in the context
+of day-ahead electricity price forecasting, since the per-day runtime for a single ARX, NARX, or
+XGB model is sub-second on a consumer-grade CPU, whereas Mitra requires roughly one second
+on an NVIDIA RTX A600 GPU.
+Additionally, to analyze the reconciliation gains not only across different models but also
+across market regimes, Figure 4 provides a yearly breakdown of the RMSE-based gains reported
+in Table 1. Notably, THieF delivers accuracy gains in the German EPEX market across all years
+and blocks for ARX, XGB, and Mitra. For NARX, there are a few instances in which the recon-
+ciled forecasts are less accurate than the unreconciled ones, in particular for hourly forecasts in
+2023-2024 and for 3-, 4-, and 8-hour blocks in 2024.
+The results for the Spanish OMIE are less robust. While XGB is consistently improved by
+THieF in each year considered, ARX does not benefit in 2022 and loses accuracy in 2023. Sim-
+ilarly, the advantage of THieF is less evident for NARX in 2022 and for Mitra in 2023-2024.
+These findings may reflect how relevant the historical price dynamics from the 2022 energy crisis
+are for forecasting future prices in these two markets. Note that Spanish electricity prices exhibit
+lower volatility from 2022Q3 onward: after the significant spikes in the first half of 2022, prices
+remained below 300 EUR/MWh, with only a few spikes above 200 EUR/MWh in 2023-2024. Af-
+ter the extreme volatility during the crisis, the Spanish market entered a relatively calmer regime,
+whereas large price spikes were still observed in the EPEX market even in the final days of 2024.
+6. Conclusions
+In this study, we demonstrated the benefits oftemporal hierarchy forecasting(THieF) for pre-
+dicting electricity prices. We showed this for the German and Spanish power markets, using a
+variety of base forecasting methods with increasing complexity and diverse modeling assump-
+tions. We found a consistent and a statistically significant improvement from reconciliation in all
+setups – up to 5.5% for hourly and 13.4% for baseload prices – with increasing gains for higher
+aggregation levels (→larger blocks).
+11
+
+Figure 4: Percentage gains in RMSE from forecast reconciliation in the German EPEX (dark blue) and Spanish OMIE
+(light blue) markets for block sizes ranging from 1 to 24 hours, separately for each of the four models (left to right)
+and calendar years (top to bottom).
+12
+
+The latter is particularly relevant given the quadrupling of the number of products (European
+Commission, 2025). On 30 September 2025, the European day-ahead electricity markets moved
+from hourly (→24 products per day) to 15-minute trading intervals (→96 products per day).
+Although this finer granularity offers a more accurate representation of expected generation and
+demand, it also adds complexity to electricity trading, thereby increasing the importance of block
+trading and temporal reconciliation.
+In principle, if the base forecasts would have no misspecification, there would be limited space
+for THieF to improve accuracy. However, in practice, any forecasting method will have some de-
+gree of misspecification from the unknown underlying electricity price generating process. THieF
+augments these base forecasts by enabling them to better capture the different short and long-term
+dynamics present in the time series. An interesting finding is that the improvements are consistent
+for all base forecasts, including Mitra. The foundation model’s misspecification is arguably of a
+different nature because it is used in a zero-shot, pre-trained mode that does not involve estimat-
+ing model parameters. Moreover, our evaluation provides additional evidence of the usefulness
+of THieF when base forecasts use covariates, with the majority of applications in the literature
+focusing on the univariate case.
+There are various extensions that stem from this work. We applied the same base forecast to
+all aggregation levels, however, more diverse model selection could be beneficial, better leverag-
+ing the properties of each level, and thus minimizing computational overheads. Likewise, con-
+sidering a richer set of base models would be interesting, including the well-performing in EPF
+applications LASSO-Estimated AutoRegressions (LEAR; Lago et al., 2021) and Distributional
+Deep Neural Networks (DDNN; Marcjasz et al., 2023). Furthermore, investigating the impact of
+temporal reconciliation on probabilistic EPF is a useful extension. Beyond any accuracy gains,
+THieF provides reconciled forecasts across all levels, which can support the alignment of different
+decisions and potentially new strategies in energy markets. Finally, the temporal hierarchy was
+restricted to using aggregation levels based solely on factors ofm. Unequal aggregation blocks are
+relevant for decisions supported by EPF, and embedding these in THieF can be beneficial both for
+forecasting performance and decisions. These are fruitful avenues for future research.
+CRediT
+Conceptualization – NK, AL, RW; Data curation – AL; Formal analysis – NK, AL; Funding
+acquisition – NK, RW; Investigation – KB, AL; Methodology – NK, AL, RW; Software – KB,
+AL; Supervision – RW; Validation – NK, AL, RW; Visualization – AL; Writing (original draft) –
+KB, NK, AL, RW; Writing (review & editing) – NK, RW.
+Data and code availability
+The datasets and sources are described in Section 3. The replication package is publicly avail-
+able athttps://github.com/lipiecki/thief.
+13
+
+Acknowledgments
+The study was partially supported by the National Science Center (NCN, Poland) through
+grants no. 2018/30/A/HS4/00444 (to AL and KB) and 2021/43/I/HS4/02578 (to RW), and by
+Riksbankens Jubileumsfond (Sweden) through grant no. SAB22-0073 (to NK).
+Appendix A. Results for alternative covariance matrix approximations
+In Table A.2 we provide the results for the diagonal target shrinkage of Schäfer and Strimmer
+(2005). The results are very similar to those in Table 1 for the constant correlation shrinkage
+of Ledoit and Wolf (2004). For the EPEX-DE market, the multivariate variant of the Diebold-
+Mariano test (Ziel and Weron, 2018; Lago et al., 2021) indicated significance at the 1% level for
+each aggregation level (1H, 2H, 3H, 4H, 6H, 8H, 12H, 24H) and model. The same holds for the
+OMIE market with the exception of three isolated cases. However, this time the improvements in
+predictive ability for 1H NARX, 1H Mitra and 24H NARX are not significant at the 5% level.
+In Table A.3 we provide the results for the so-called ‘variance scaling’ (Athanasopoulos et al.,
+2017) that sets all off-diagonal elements to zero and corresponds to the WLS estimator. Clearly,
+in this case the gains from reconciliation are smaller, and in a few cases losses in accuracy can
+be observed. This indicates that incorporating the correlation of errors is necessary for effective
+reconciliation in day-ahead EPF.
+References
+Akiba, T., Sano, S., Yanase, T., Ohta, T., Koyama, M., 2019. Optuna: A next-generation hyperparameter optimization
+framework, in: Proceedings of the ACM SIGKDD International Conference on Knowledge Discovery and Data
+Mining, pp. 2623–2631. doi:10.1145/3292500.3330701.
+Athanasopoulos, G., Hyndman, R.J., Kourentzes, N., Panagiotelis, A., 2024. Forecast reconciliation: A review.
+International Journal of Forecasting 40, 430–456. doi:10.1016/j.ijforecast.2023.10.010.
+Athanasopoulos, G., Hyndman, R.J., Kourentzes, N., Petropoulos, F., 2017. Forecasting with temporal hierarchies.
+European Journal of Operational Research 262, 60–74. doi:10.1016/j.ejor.2017.02.046.
+Billé, A., Gianfreda, A., Del Grosso, F., Ravazzolo, F., 2023. Forecasting electricity prices with expert, linear, and
+nonlinear models. International Journal of Forecasting 39, 570–586. doi:10.1016/j.ijforecast.2022.01.
+003.
+Bottieau, J., Wang, Y ., De Grève, Z., Vallée, F., Toubeau, J.F., 2023. Interpretable transformer model for capturing
+regime switching effects of real-time electricity prices. IEEE Transactions on Power Systems 38, 2162–2176.
+doi:10.1109/TPWRS.2022.3195970.
+Chen, T., Guestrin, C., 2016. XGBoost: A scalable tree boosting system, in: Proceedings of the 22nd ACM SIGKDD
+International Conference on Knowledge Discovery and Data Mining, pp. 785–794. doi:10.1145/2939672.
+2939785.
+Di Fonzo, T., Girolimetto, D., 2023. Spatio-temporal reconciliation of solar forecasts. Solar Energy 251, 13–29.
+doi:10.1016/j.solener.2023.01.003.
+English, L., Abolghasemi, M., 2024. Improving the forecast accuracy of wind power by leveraging multiple hierar-
+chical structure. Sustainable Energy, Grids and Networks 40, 101517. doi:10.1016/j.segan.2024.101517.
+14
+
+Table A.2: Results for forecast reconciliation based on the diagonal target shrinkage of Schäfer and Strimmer (2005).
+Like in Table 1, we report mean absolute errors and root mean squared errors of the base (MAE, RMSE) and reconciled
+(MAER,RMSE R) forecasts with the respective gains from reconciliation (%) for all considered hierarchy levels over
+the 4-year test period in the German (left) and Spanish (right) markets.
+Germany (EPEX-DE) Spain (OMIE)
+Level Model MAE MAE R % RMSE RMSE R % MAE MAE R % RMSE RMSE R %
+ARX 26.93 26.08 3.1 39.83 38.56 3.2 16.72 16.52 1.2 24.4 24.28 0.5
+NARX 23.06 22.27 3.4 35.62 34.56 3.0 16.57 16.34 1.4 24.07 24.02 0.2
+XGB 23.33 22.36 4.2 37.05 35.13 5.2 16.54 16 3.2 24.57 23.7 3.51H
+MITRA 21.37 21.08 1.4 33.31 32.84 1.4 15.92 15.88 0.3 23.61 23.25 1.5
+ARX 26.44 25.6 3.2 38.95 37.66 3.3 16.41 16.2 1.2 23.96 23.82 0.6
+NARX 22.64 21.59 4.6 34.84 33.37 4.2 16.29 15.89 2.4 23.71 23.39 1.4
+XGB 22.74 21.72 4.5 35.87 33.99 5.3 16.19 15.59 3.7 24.11 23.13 4.12H
+MITRA 20.92 20.34 2.8 32.43 31.52 2.8 15.56 15.43 0.8 23.17 22.59 2.5
+ARX 26.11 25.26 3.2 38.28 36.98 3.4 16.16 15.96 1.3 23.59 23.43 0.7
+NARX 22.12 21.14 4.4 33.89 32.55 4.0 16.01 15.63 2.3 23.44 22.96 2.1
+XGB 22.26 21.3 4.3 35.1 33.2 5.4 15.93 15.29 4.0 23.75 22.71 4.43H
+MITRA 20.61 19.86 3.7 31.87 30.61 3.9 15.31 15.14 1.1 22.72 22.14 2.6
+ARX 25.65 24.76 3.4 37.5 36.13 3.6 15.88 15.67 1.3 23.25 23.07 0.8
+NARX 21.75 20.6 5.3 33.27 31.67 4.8 15.68 15.36 2.1 22.96 22.57 1.7
+XGB 22.01 20.78 5.6 34.24 32.29 5.7 15.78 14.97 5.2 23.6 22.29 5.54H
+MITRA 20.13 19.34 3.9 30.86 29.7 3.8 15.01 14.84 1.1 22.19 21.75 2.0
+ARX 25.14 24.28 3.4 36.42 35.12 3.6 15.6 15.39 1.3 22.77 22.55 1.0
+NARX 21.08 19.94 5.4 32 30.42 4.9 15.27 14.95 2.1 22.41 22.02 1.8
+XGB 21.52 20.2 6.2 33.38 31.15 6.7 15.41 14.61 5.2 22.93 21.77 5.06H
+MITRA 19.51 18.71 4.1 29.73 28.38 4.6 14.77 14.44 2.2 21.87 21.18 3.1
+ARX 24.37 23.59 3.2 35.59 34.15 4.0 15.14 14.95 1.3 22.12 21.9 1.0
+NARX 20.54 19.39 5.6 31.2 29.61 5.1 15 14.61 2.6 21.92 21.42 2.3
+XGB 21.06 19.68 6.6 32.94 30.34 7.9 15.1 14.2 6.0 22.5 21.12 6.28H
+MITRA 19.45 18.18 6.5 29.34 27.63 5.8 14.44 14.06 2.6 21.45 20.53 4.3
+ARX 22.81 22.1 3.1 32.68 31.64 3.2 14.27 14.19 0.6 20.83 20.68 0.7
+NARX 19.37 17.72 8.5 28.95 26.94 7.0 14.25 13.87 2.7 20.64 20.28 1.7
+XGB 19.7 17.98 8.7 30.55 27.61 9.6 14.29 13.5 5.5 21.24 20.01 5.812H
+MITRA 17.59 16.5 6.2 26.27 24.69 6.0 13.67 13.34 2.4 20.16 19.44 3.6
+ARX 20.92 20.52 1.9 30.28 29.15 3.8 13.57 13.36 1.5 19.5 19.31 1.0
+NARX 17.99 16.41 8.8 27.24 24.9 8.6 13.29 13 2.1 19.14 19.01 0.7
+XGB 18.8 16.63 11.5 29.5 25.6 13.2 13.25 12.57 5.1 19.61 18.66 4.824H
+MITRA 16.56 15.15 8.5 24.81 22.56 9.1 12.91 12.43 3.7 18.84 18.17 3.6
+15
+
+Table A.3: Results for the so-called ‘variance scaling’ (Athanasopoulos et al., 2017) that sets all off-diagonal elements
+to zero and corresponds to the WLS estimator. Like in Tables 1 and A.2, we report mean absolute errors and root
+mean squared errors of the base (MAE, RMSE) and reconciled (MAE R,RMSE R) forecasts with the respective gains
+from reconciliation (%) for all considered hierarchy levels over the 4-year test period in the German (left) and Spanish
+(right) markets.
+Germany (EPEX-DE) Spain (OMIE)
+Level Model MAE MAE R % RMSE RMSE R % MAE MAE R % RMSE RMSE R %
+ARX 26.93 26.92 0.0 39.83 39.82 0.0 16.72 16.72 0.0 24.4 24.43 -0.1
+NARX 23.06 22.99 0.3 35.62 35.55 0.2 16.57 16.49 0.5 24.07 24.03 0.2
+XGB 23.33 23.25 0.3 37.05 36.82 0.6 16.54 16.51 0.2 24.57 24.53 0.21H
+MITRA 21.37 21.42 -0.2 33.31 33.38 -0.2 15.92 15.88 0.3 23.61 23.54 0.3
+ARX 26.44 26.42 0.1 38.95 38.93 0.0 16.41 16.4 0.0 23.96 23.96 0.0
+NARX 22.64 22.29 1.5 34.84 34.36 1.4 16.29 16.06 1.4 23.71 23.39 1.4
+XGB 22.74 22.63 0.5 35.87 35.73 0.4 16.19 16.1 0.6 24.11 23.96 0.62H
+MITRA 20.92 20.64 1.3 32.43 32.01 1.3 15.56 15.39 1.1 23.17 22.84 1.4
+ARX 26.11 26.07 0.1 38.28 38.24 0.1 16.16 16.15 0.1 23.59 23.57 0.1
+NARX 22.12 21.88 1.1 33.89 33.55 1.0 16.01 15.79 1.4 23.44 22.96 2.0
+XGB 22.26 22.21 0.2 35.1 34.97 0.4 15.93 15.8 0.8 23.75 23.56 0.83H
+MITRA 20.61 20.19 2.1 31.87 31.09 2.4 15.31 15.09 1.4 22.72 22.38 1.5
+ARX 25.65 25.59 0.2 37.5 37.41 0.2 15.88 15.86 0.1 23.25 23.21 0.2
+NARX 21.75 21.37 1.7 33.27 32.68 1.8 15.68 15.49 1.2 22.96 22.58 1.6
+XGB 22.01 21.74 1.2 34.24 34.13 0.3 15.78 15.5 1.8 23.6 23.17 1.84H
+MITRA 20.13 19.64 2.4 30.86 30.16 2.3 15.01 14.8 1.4 22.19 21.99 0.9
+ARX 25.14 25.05 0.4 36.42 36.3 0.3 15.6 15.54 0.4 22.77 22.67 0.5
+NARX 21.08 20.79 1.4 32 31.45 1.7 15.27 15.13 1.0 22.41 22.03 1.7
+XGB 21.52 21.18 1.6 33.38 33 1.1 15.41 15.16 1.6 22.93 22.66 1.26H
+MITRA 19.51 18.99 2.7 29.73 28.84 3.0 14.77 14.39 2.5 21.87 21.39 2.2
+ARX 24.37 24.33 0.2 35.59 35.44 0.4 15.14 15.07 0.4 22.12 22.01 0.5
+NARX 20.54 20.16 1.8 31.2 30.66 1.8 15 14.77 1.5 21.92 21.45 2.1
+XGB 21.06 20.62 2.1 32.94 32.25 2.1 15.1 14.74 2.4 22.5 22.04 2.08H
+MITRA 19.45 18.47 5.0 29.34 28.07 4.3 14.44 13.97 3.2 21.45 20.74 3.3
+ARX 22.81 22.79 0.1 32.68 32.72 -0.1 14.27 14.26 0.1 20.83 20.75 0.4
+NARX 19.37 18.66 3.7 28.95 28.03 3.2 14.25 14.06 1.3 20.64 20.35 1.4
+XGB 19.7 19.08 3.2 30.55 29.8 2.4 14.29 14.05 1.7 21.24 20.99 1.212H
+MITRA 17.59 16.74 4.8 26.27 25.04 4.7 13.67 13.24 3.2 20.16 19.63 2.6
+ARX 20.92 21 -0.4 30.28 30.12 0.6 13.57 13.42 1.1 19.5 19.34 0.8
+NARX 17.99 17.37 3.5 27.24 26.13 4.1 13.29 13.19 0.7 19.14 19.1 0.2
+XGB 18.8 17.77 5.4 29.5 27.93 5.3 13.25 13.21 0.3 19.61 19.76 -0.824H
+MITRA 16.56 15.36 7.3 24.81 22.92 7.6 12.91 12.36 4.2 18.84 18.34 2.7
+16
+
+European Commission, 2025. EU electricity trading in the day-ahead markets becomes more dy-
+namic. URL: https://energy.ec.europa.eu/news/eu-electricity-trading-day-ahead-markets-becomes-more-dynamic-
+2025-10-01_en.
+Ghelasi, P., Ziel, F., 2024. Hierarchical forecasting for aggregated curves with an application to day-ahead electricity
+price auctions. International Journal of Forecasting 40, 581–596. doi:10.1016/j.ijforecast.2022.11.004.
+Ghelasi, P., Ziel, F., 2025. From day-ahead to mid and long-term horizons with econometric electricity price forecast-
+ing models. Renewable and Sustainable Energy Reviews 217, 115684. doi:10.1016/j.rser.2025.115684.
+Hastie, T., Tibshirani, R., Friedman, J., 2009. The Elements of Statistical Learning: Data Mining, Inference, and
+Prediction. Springer (2nd ed.).
+Hubicka, K., Marcjasz, G., Weron, R., 2019. A note on averaging day-ahead electricity price forecasts across calibra-
+tion windows. IEEE Transactions on Sustainable Energy 10, 321–323. doi:10.1109/TSTE.2018.2869557.
+Janczura, J., Wójcik, E., 2022. Dynamic short-term risk management strategies for the choice of electricity market
+based on probabilistic forecasts of profit and risk measures. The German and the Polish market case study. Energy
+Economics 110, 106015. doi:10.1016/j.eneco.2022.106015.
+Januschowski, T., Wang, Y ., Torkkola, K., Erkkilä, T., Hasson, H., Gasthaus, J., 2022. Forecasting with trees. Inter-
+national Journal of Forecasting 38, 1473–1481. doi:10.1016/j.ijforecast.2021.10.004.
+Jeon, J., Panagiotelis, A., Petropoulos, F., 2019. Probabilistic forecast reconciliation with applications to wind power
+and electric load. European Journal of Operational Research 279, 364–379. doi:10.1016/j.ejor.2019.05.020.
+Kourentzes, N., Athanasopoulos, G., 2019. Cross-temporal coherent forecasts for australian tourism. Annals of
+Tourism Research 75, 393–409. doi:10.1016/j.annals.2019.02.001.
+Kourentzes, N., Petropoulos, F., Trapero, J.R., 2014. Improving forecasting by estimating time series structural
+components across multiple frequencies. International Journal of Forecasting 30, 291–302. doi:10.1016/j.
+ijforecast.2013.09.006.
+Lago, J., Marcjasz, G., De Schutter, B., Weron, R., 2021. Forecasting day-ahead electricity prices: A review of state-
+of-the-art algorithms, best practices and an open-access benchmark. Applied Energy 293, 116983. doi:10.1016/
+j.apenergy.2021.116983.
+Ledoit, O., Wolf, M., 2004. Honey, I shrunk the sample covariance matrix. Journal of Portfolio Management 30,
+110–119. doi:10.3905/jpm.2004.110.
+Maciejowska, K., Nitka, W., Weron, T., 2021. Enhancing load, wind and solar generation for day-ahead forecasting
+of electricity prices. Energy Economics 99, 105273. doi:10.1016/j.eneco.2021.105273.
+Maciejowska, K., Weron, R., 2016. Short- and mid-term forecasting of baseload electricity prices in the U.K.: The
+impact of intra-day price relationships and market fundamentals. IEEE Transactions on Power Systems 31, 994–
+1005. doi:10.1109/TPWRS.2015.2416433.
+Marcjasz, G., Narajewski, M., Weron, R., Ziel, F., 2023. Distributional neural networks for electricity price forecast-
+ing. Energy Economics 125, 106843. doi:10.1016/j.eneco.2023.106843.
+Marcjasz, G., Uniejewski, B., Weron, R., 2019. On the importance of the long-term seasonal component in day-ahead
+electricity price forecasting with NARX neural networks. International Journal of Forecasting 35, 1520–1532.
+doi:10.1016/j.ijforecast.2017.11.009.
+17
+
+Møller, J.K., Nystrup, P., Madsen, H., 2024. Likelihood-based inference in temporal hierarchies. International Journal
+of Forecasting 40, 515–531. doi:10.1016/j.ijforecast.2022.12.005.
+Nystrup, P., Lindström, E., Pinson, P., Madsen, H., 2020. Temporal hierarchies with autocorrelation for load forecast-
+ing. European Journal of Operational Research 280, 876–888. doi:10.1016/j.ejor.2019.07.061.
+Petropoulos, F., Apiletti, D., Assimakopoulos, V ., Babai, M., Barrow, D., et al., 2022. Forecasting: Theory and
+practice. International Journal of Forecasting 38, 705–871. doi:10.1016/j.ijforecast.2021.11.001.
+Pritularga, K.F., Svetunkov, I., Kourentzes, N., 2021. Stochastic coherency in forecast reconciliation. International
+Journal of Production Economics 240, 108221. doi:10.1016/j.ijpe.2021.108221.
+Schäfer, J., Strimmer, K., 2005. A shrinkage approach to large-scale covariance matrix estimation and impli-
+cations for functional genomics. Statistical Applications in Genetics and Molecular Biology 4. doi:doi:
+10.2202/1544-6115.1175.
+Serafin, T., Weron, R., 2025. Loss functions in regression models: Impact on profits and risk in day-ahead electricity
+trading. Energy Economics 148, 108596. doi:10.1016/j.eneco.2025.108596.
+Sharma, N., Bhakar, R., Jain, P., 2024. Optimal reconciliation of hierarchical wind energy forecasts utilizing temporal
+correlation. Energy Conversion and Management 301, 118053. doi:10.1016/j.enconman.2023.118053.
+Uniejewski, B., Maciejowska, K., 2023. Lasso principal component averaging: A fully automated approach for point
+forecast pooling. International Journal of Forecasting 39, 1839–1852. doi:10.1016/j.ijforecast.2022.09.
+004.
+Uniejewski, B., Weron, R., Ziel, F., 2018. Variance stabilizing transformations for electricity spot price forecasting.
+IEEE Transactions on Power Systems 33, 2219–2229. doi:10.1109/TPWRS.2017.2734563.
+Weron, R., 2014. Electricity price forecasting: A review of the state-of-the-art with a look into the future. International
+Journal of Forecasting 30, 1030–1081. doi:10.1016/j.ijforecast.2014.08.008.
+Wickramasuriya, S.L., Athanasopoulos, G., Hyndman, R.J., 2019. Optimal forecast reconciliation for hierarchical
+and grouped time series through trace minimization. Journal of the American Statistical Association 114, 804–
+819. doi:10.1080/01621459.2018.1448825.
+Xie, H., Tang, H., Liao, Y .H., 2009. Time series prediction based on NARX neural networks: An advanced approach,
+in: 2009 International Conference on Machine Learning and Cybernetics, pp. 1275–1279.
+Yang, D., Quan, H., Disfani, V .R., Rodríguez-Gallegos, C.D., 2017. Reconciling solar forecasts: Temporal hierarchy.
+Solar Energy 158, 332–346. doi:10.1016/j.solener.2017.09.055.
+Zhang, X., Robinson, D.M., 2025. Mitra: Mixed synthetic priors for enhancing tabular founda-
+tion models. Technical Report. Amazon Science. URL:https://www.amazon.science/blog/
+mitra-mixed-synthetic-priors-for-enhancing-tabular-foundation-models.
+Ziel, F., Weron, R., 2018. Day-ahead electricity price forecasting with high-dimensional structures: Univariate vs.
+multivariate modeling frameworks. Energy Economics 70, 396–420. doi:10.1016/j.eneco.2017.12.016.
+18

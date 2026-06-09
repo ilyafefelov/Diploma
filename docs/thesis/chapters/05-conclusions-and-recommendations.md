@@ -15,7 +15,7 @@
 | Перевірити ML/DFL потенціал | V2+ став confirmed offline comparator/evidence, corrected DT/V2+ safe-switch shadow дав 168.16 UAH mean regret, HF value-aligned shadow пройшов shadow/demo gate на 32 source-backed DAM days | Система показує improvement і live shadow-readiness, але не overclaim-ить promotion |
 | Зберегти безпеку | market_execution_enabled=false і V13 blockers явні | Підхід придатний для академічної демонстрації в Україні |
 
-Таблиця 5.1 показує, що основні завдання виконано в межах безпечного scope. Робота не заявляє live market execution, але дає defendable academic MVP: source-backed offline evidence, dashboard/read-model preview, strict LP/oracle scoring і пояснювану межу V13.
+З таблиці 5.1 видно, що основні завдання виконано в межах безпечного scope. Робота не заявляє live market execution, але дає defendable academic MVP: source-backed offline evidence, dashboard/read-model preview, strict LP/oracle scoring і пояснювану межу V13.
 
 5.2. Основні висновки
 
@@ -39,7 +39,7 @@
 
 Рисунок 5.1. Roadmap від thesis evidence до supervised execution gate
 
-Рисунок 5.1 показує послідовний шлях: спочатку evidence and preview, потім OREE DAM/IDM source/publication evidence і point-in-time context, після цього shadow challengers під strict LP/oracle, і лише значно пізніше supervised execution gate. Такий порядок зменшує ризик overclaiming і робить систему придатною для поступового використання в українському контексті.
+Рисунок 5.1 окреслює послідовний шлях: спочатку evidence and preview, потім OREE DAM/IDM source/publication evidence і point-in-time context, після цього shadow challengers під strict LP/oracle, і лише значно пізніше supervised execution gate. Такий порядок зменшує ризик overclaiming і робить систему придатною для поступового використання в українському контексті.
 
 V2+ залишається confirmed offline schedule-value evidence/comparator, а TFT/DT/Poland lanes - shadow diagnostics. Operator preview path використовує official OREE row + deterministic LP для default/baseline preview; HF value-aligned shadow окремо показує, що transformer scorer може працювати live як manually selected read-model source без LP у HF request path. Corrected DT/V2+ safe-switch selector є перспективним candidate для майбутнього promotion, бо вже покращив mean regret на 3.78% проти V2+ на frozen packet, але потребує окремого promotion gate, source-readiness closure і повторної validation. HF value-aligned shadow є перспективним demo/challenger path, бо пройшов shadow candidate-library gate, 8-case readiness matrix для DAM/IDM latest/today/tomorrow/day+2 і browser smoke, але також потребує ширшого multi-tenant validation перед будь-якою default/promotion розмовою. Подальша робота зосереджується на explicit OREE DAM/IDM source/publication evidence for preview, richer point-in-time context, перевірці null coverage у зовнішніх features, LP-distillation/repair layer і окремому legal/operational design для market-submittable contours. До цього моменту жодний dashboard або API endpoint не описується як trading console.
 

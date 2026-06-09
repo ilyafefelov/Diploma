@@ -1,0 +1,2907 @@
+Data Platform – Open Power System Data 
+
+ About 
+
+ Background and history 
+
+ IT approach 
+
+ Step-by-step user guide 
+
+ Legal context 
+
+ Publications 
+
+ Contribute! 
+
+ Data packages 
+
+ Overview 
+
+ Conventional power plants 
+
+ National generation capacity 
+
+ Renewable power plants 
+
+ Time series 
+
+ Weather Data 
+
+ Contributed: Household data 
+
+ Contributed: Wind/solar profiles 
+
+ Contributed: When2Heat 
+
+ Team 
+
+ Lion Hirth (Neon) 
+
+ Jonathan Mühlenpfordt (Neon) 
+
+ Ingmar Schlecht (Neon) 
+
+ Juliane Reimann (Neon) 
+
+ Jens Weibezahn (TU Berlin) 
+
+ Richard Weinhold (TU Berlin) 
+
+ Mario Kendziorski (TU Berlin) 
+
+ Stefan Pfenninger (ETH Zürich) 
+
+ Wolf-Peter Schill (DIW) 
+
+ Former team members and student assistants 
+
+ External resources 
+
+ Related projects 
+
+ Data sources 
+
+ Workshops 
+
+ 4th Workshop (7/2017) 
+
+ 3rd Workshop (11/2016) 
+
+ 2nd Workshop (4/2016) 
+
+ OPSD at Openmod workshop Stockholm (4/2016) 
+
+ Webinar (11/2015) 
+
+ 1st Workshop (10/2015) 
+
+ OPSD at Openmod workshop London (9/2015) 
+
+ Contact 
+
+ Newsletter 
+
+ Write an email 
+
+ About OPSD 
+
+ Data Platform 
+
+ Jump to Data Package: 
+
+ Conventional power plants 
+
+ National generation capacity 
+
+ Renewable power plants 
+
+ Time series 
+
+ Weather Data 
+
+ Household Data 
+
+ Renewables.ninja PV and Wind Profiles 
+
+ When2Heat Heating Profiles 
+
+ Time series 
+
+ https://doi.org/10.25832/time_series/2020-10-06 
+
+ Package version 
+
+ 2020-10-06 (latest) 
+
+ 2019-06-05 
+
+ 2019-05-15 
+
+ 2018-06-30 
+
+ 2018-03-13 
+
+ 2017-07-09 
+
+ 2017-03-06 
+
+ 2016-10-28 
+
+ 2016-10-27 
+
+ 2016-07-14 
+
+ "latest" URL 
+
+ Description 
+ Load, wind and solar, prices in hourly resolution 
+
+ Notes 
+ This data package contains different kinds of timeseries data relevant for power system modelling, namely electricity prices, electricity consumption (load) as well as wind and solar power generation and capacities. The data is aggregated either by country, control area or bidding zone. Geographical coverage includes the EU and some neighbouring countries. All variables are provided in hourly resolution. Where original data is available in higher resolution (half-hourly or quarter-hourly), it is provided in separate files. This package version only contains data provided by TSOs and power exchanges via ENTSO-E Transparency, covering the period 2015-mid 2020. See previous versions for historical data from a broader range of sources. All data processing is conducted in Python/pandas and has been documented in the Jupyter notebooks linked below. 
+
+ Last changes 
+ Yearly update 
+
+ Geographical scope 
+ 32 European countries 
+
+ Documentation 
+
+ Documentation and script ( view on GitHub ) 
+
+ Download 
+
+ Data package (zip)
+
+ opsd-time_series-2020-10-06.zip 
+ (277 MB) 
+
+ Individual data files (csv, xlsx)
+
+ time_series.xlsx (198 MB) 
+ time_series_15min_singleindex.csv (107 MB) 
+ Alternative file formats 
+
+ Filter 
+
+ Filter for "time_series_15min_singleindex.csv" 
+
+ Start of timeperiod in Central European (Summer-) Time 
+
+ From 
+
+ To 
+
+ Region 
+
+ AT 
+ BE 
+ DE 
+ DE_50hertz 
+ DE_LU 
+ DE_amprion 
+ DE_tennet 
+ DE_transnetbw 
+ HU 
+ LU 
+ NL 
+
+ Variable 
+ Note: Not all variables exist for all countries. Missing fields to be expected. 
+
+ load_actual_entsoe_transparency 
+ load_forecast_entsoe_transparency 
+ price_day_ahead 
+ solar_capacity 
+ solar_generation_actual 
+ solar_profile 
+ wind_capacity 
+ wind_generation_actual 
+ wind_offshore_capacity 
+ wind_offshore_generation_actual 
+ wind_offshore_profile 
+ wind_onshore_capacity 
+ wind_onshore_generation_actual 
+ wind_onshore_profile 
+ wind_profile 
+
+ --> 
+
+ Alternative formats for "time_series_15min_singleindex.csv" 
+
+ We provide time series data in two file types (csv and xlsx), two granularities (15 min and 60 min), and three formats (singleindex, multiindex, stacked). They all have pros and cons. The three formats differ in the way data and variable names are organized: 
+
+ Singleindex (easy to read for humans, compatible with datapackage standard, small file size) 
+
+ Multiindex (easy to read into GAMS, not compatible with datapackage standard, small file size) 
+
+ Stacked (compatible with data package standard, large file size, many rows, too many for Excel) 
+
+ Download alternatives to "time_series_15min_singleindex.csv": 
+
+ csv 
+ xlsx 
+
+ Singleindex 
+
+ csv (107 MB) 
+
+ Multiindex 
+
+ csv (107 MB) 
+
+ xlsx (198 MB) 
+
+ Stacked 
+
+ csv (669 MB) 
+
+ time_series_30min_singleindex.csv (37 MB) 
+ Alternative file formats 
+
+ Filter 
+
+ Filter for "time_series_30min_singleindex.csv" 
+
+ Start of timeperiod in Central European (Summer-) Time 
+
+ From 
+
+ To 
+
+ Region 
+
+ CY 
+ GB_GBN 
+ GB_NIR 
+ GB_UKM 
+ IE 
+ IE_sem 
+
+ Variable 
+ Note: Not all variables exist for all countries. Missing fields to be expected. 
+
+ load_actual_entsoe_transparency 
+ load_forecast_entsoe_transparency 
+ price_day_ahead 
+ solar_capacity 
+ solar_generation_actual 
+ solar_profile 
+ wind_capacity 
+ wind_generation_actual 
+ wind_offshore_capacity 
+ wind_offshore_generation_actual 
+ wind_offshore_profile 
+ wind_onshore_capacity 
+ wind_onshore_generation_actual 
+ wind_onshore_profile 
+ wind_profile 
+
+ --> 
+
+ Alternative formats for "time_series_30min_singleindex.csv" 
+
+ We provide time series data in two file types (csv and xlsx), two granularities (15 min and 60 min), and three formats (singleindex, multiindex, stacked). They all have pros and cons. The three formats differ in the way data and variable names are organized: 
+
+ Singleindex (easy to read for humans, compatible with datapackage standard, small file size) 
+
+ Multiindex (easy to read into GAMS, not compatible with datapackage standard, small file size) 
+
+ Stacked (compatible with data package standard, large file size, many rows, too many for Excel) 
+
+ Download alternatives to "time_series_30min_singleindex.csv": 
+
+ csv 
+ xlsx 
+
+ Singleindex 
+
+ csv (37 MB) 
+
+ Multiindex 
+
+ csv (37 MB) 
+
+ xlsx (198 MB) 
+
+ Stacked 
+
+ csv (219 MB) 
+
+ time_series_60min_singleindex.csv (124 MB) 
+ Alternative file formats 
+
+ Filter 
+
+ Filter for "time_series_60min_singleindex.csv" 
+
+ Start of timeperiod in Central European (Summer-) Time 
+
+ From 
+
+ To 
+
+ Region 
+
+ AT 
+ BE 
+ BG 
+ CH 
+ CY 
+ CZ 
+ DE 
+ DE_50hertz 
+ DE_LU 
+ DE_amprion 
+ DE_tennet 
+ DE_transnetbw 
+ DK 
+ DK_1 
+ DK_2 
+ EE 
+ ES 
+ FI 
+ FR 
+ GB_GBN 
+ GB_NIR 
+ GB_UKM 
+ GR 
+ HR 
+ HU 
+ IE 
+ IE_sem 
+ IT 
+ IT_BRNN 
+ IT_CNOR 
+ IT_CSUD 
+ IT_FOGN 
+ IT_GR 
+ IT_NORD 
+ IT_NORD_AT 
+ IT_NORD_CH 
+ IT_NORD_FR 
+ IT_NORD_SI 
+ IT_PRGP 
+ IT_ROSN 
+ IT_SACO_AC 
+ IT_SACO_DC 
+ IT_SARD 
+ IT_SICI 
+ IT_SUD 
+ LT 
+ LU 
+ LV 
+ ME 
+ NL 
+ NO 
+ NO_1 
+ NO_2 
+ NO_3 
+ NO_4 
+ NO_5 
+ PL 
+ PT 
+ RO 
+ RS 
+ SE 
+ SE_1 
+ SE_2 
+ SE_3 
+ SE_4 
+ SI 
+ SK 
+ UA 
+
+ Variable 
+ Note: Not all variables exist for all countries. Missing fields to be expected. 
+
+ load_actual_entsoe_transparency 
+ load_forecast_entsoe_transparency 
+ price_day_ahead 
+ solar_capacity 
+ solar_generation_actual 
+ solar_profile 
+ wind_capacity 
+ wind_generation_actual 
+ wind_offshore_capacity 
+ wind_offshore_generation_actual 
+ wind_offshore_profile 
+ wind_onshore_capacity 
+ wind_onshore_generation_actual 
+ wind_onshore_profile 
+ wind_profile 
+
+ --> 
+
+ Alternative formats for "time_series_60min_singleindex.csv" 
+
+ We provide time series data in two file types (csv and xlsx), two granularities (15 min and 60 min), and three formats (singleindex, multiindex, stacked). They all have pros and cons. The three formats differ in the way data and variable names are organized: 
+
+ Singleindex (easy to read for humans, compatible with datapackage standard, small file size) 
+
+ Multiindex (easy to read into GAMS, not compatible with datapackage standard, small file size) 
+
+ Stacked (compatible with data package standard, large file size, many rows, too many for Excel) 
+
+ Download alternatives to "time_series_60min_singleindex.csv": 
+
+ csv 
+ xlsx 
+
+ Singleindex 
+
+ csv (124 MB) 
+
+ Multiindex 
+
+ csv (124 MB) 
+
+ xlsx (198 MB) 
+
+ Stacked 
+
+ csv (841 MB) 
+
+ Database (SQLite)
+
+ time_series.sqlite (216 MB) 
+
+ Meta data 
+
+ README.md 
+
+ datapackage.json 
+
+ Input data 
+
+ View original input data 
+
+ Sources 
+
+ ENTSO-E Transparency 
+
+ Report issue 
+
+ Report an issue on Github 
+
+ Contact 
+
+ Jonathan Muehlenpfordt 
+
+ Subscribe 
+
+ Get notified by email for updates 
+
+ Attribution in Chicago author-date style should be given as follows: "Open Power System Data. 2020. Data Package Time series. Version 2020-10-06. https://doi.org/10.25832/time_series/2020-10-06. (Primary data from various sources, for a complete list see URL)." 
+
+ <- back to overview 
+
+ Field documentation
+
+ time series 15min singleindex.csv
+
+ Field Name 
+ Type (Format) 
+ Description 
+ Source 
+
+ utc_timestamp 
+ datetime (fmt:%Y-%m-%dT%H%M%SZ) 
+ Start of timeperiod in Coordinated Universal Time 
+
+ cet_cest_timestamp 
+ datetime (fmt:%Y-%m-%dT%H%M%S%z) 
+ Start of timeperiod in Central European (Summer-) Time 
+
+ AT_load_actual_entsoe_transparency 
+ number 
+ Total load in Austria in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ AT_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Austria in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ AT_price_day_ahead 
+ number 
+ Day-ahead spot price for Austria in EUR 
+
+ ENTSO-E Transparency 
+
+ AT_solar_generation_actual 
+ number 
+ Actual solar generation in Austria in MW 
+
+ ENTSO-E Transparency 
+
+ AT_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Austria in MW 
+
+ ENTSO-E Transparency 
+
+ BE_load_actual_entsoe_transparency 
+ number 
+ Total load in Belgium in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ BE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Belgium in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_load_actual_entsoe_transparency 
+ number 
+ Total load in Germany in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Germany in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_solar_capacity 
+ number 
+ Electrical capacity of solar in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_solar_generation_actual 
+ number 
+ Actual solar generation in Germany in MW 
+
+ ENTSO-E Transparency 
+
+ DE_solar_profile 
+ number 
+ Share of solar capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_wind_capacity 
+ number 
+ Electrical capacity of wind in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_wind_generation_actual 
+ number 
+ Actual wind generation in Germany in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_wind_profile 
+ number 
+ Share of wind capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Germany in MW 
+
+ ENTSO-E Transparency 
+
+ DE_wind_offshore_profile 
+ number 
+ Share of wind_offshore capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Germany in MW 
+
+ ENTSO-E Transparency 
+
+ DE_wind_onshore_profile 
+ number 
+ Share of wind_onshore capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_50hertz_load_actual_entsoe_transparency 
+ number 
+ Total load in 50Hertz (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_50hertz_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in 50Hertz (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_50hertz_solar_generation_actual 
+ number 
+ Actual solar generation in 50Hertz (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_50hertz_wind_generation_actual 
+ number 
+ Actual wind generation in 50Hertz (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_50hertz_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in 50Hertz (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_50hertz_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in 50Hertz (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_LU_load_actual_entsoe_transparency 
+ number 
+ Total load in DE-LU (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_LU_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in DE-LU (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_LU_solar_generation_actual 
+ number 
+ Actual solar generation in DE-LU (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_LU_wind_generation_actual 
+ number 
+ Actual wind generation in DE-LU (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_LU_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in DE-LU (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_LU_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in DE-LU (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_amprion_load_actual_entsoe_transparency 
+ number 
+ Total load in Amprion (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_amprion_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Amprion (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_amprion_solar_generation_actual 
+ number 
+ Actual solar generation in Amprion (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_amprion_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Amprion (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_tennet_load_actual_entsoe_transparency 
+ number 
+ Total load in TenneT GER (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_tennet_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in TenneT GER (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_tennet_solar_generation_actual 
+ number 
+ Actual solar generation in TenneT GER (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_tennet_wind_generation_actual 
+ number 
+ Actual wind generation in TenneT GER (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_tennet_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in TenneT GER (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_tennet_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in TenneT GER (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_transnetbw_load_actual_entsoe_transparency 
+ number 
+ Total load in TransnetBW (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_transnetbw_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in TransnetBW (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DE_transnetbw_solar_generation_actual 
+ number 
+ Actual solar generation in TransnetBW (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ DE_transnetbw_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in TransnetBW (control area) in MW 
+
+ ENTSO-E Transparency 
+
+ HU_load_actual_entsoe_transparency 
+ number 
+ Total load in Hungary in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ HU_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Hungary in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ HU_solar_generation_actual 
+ number 
+ Actual solar generation in Hungary in MW 
+
+ ENTSO-E Transparency 
+
+ HU_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Hungary in MW 
+
+ ENTSO-E Transparency 
+
+ LU_load_actual_entsoe_transparency 
+ number 
+ Total load in Luxembourg in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ LU_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Luxembourg in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NL_load_actual_entsoe_transparency 
+ number 
+ Total load in Netherlands in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NL_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Netherlands in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NL_solar_generation_actual 
+ number 
+ Actual solar generation in Netherlands in MW 
+
+ ENTSO-E Transparency 
+
+ NL_wind_generation_actual 
+ number 
+ Actual wind generation in Netherlands in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ NL_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Netherlands in MW 
+
+ ENTSO-E Transparency 
+
+ NL_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Netherlands in MW 
+
+ ENTSO-E Transparency 
+
+ time series 30min singleindex.csv
+
+ Field Name 
+ Type (Format) 
+ Description 
+ Source 
+
+ utc_timestamp 
+ datetime (fmt:%Y-%m-%dT%H%M%SZ) 
+ Start of timeperiod in Coordinated Universal Time 
+
+ cet_cest_timestamp 
+ datetime (fmt:%Y-%m-%dT%H%M%S%z) 
+ Start of timeperiod in Central European (Summer-) Time 
+
+ CY_load_actual_entsoe_transparency 
+ number 
+ Total load in Cyprus in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ CY_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Cyprus in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ CY_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Cyprus in MW 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_load_actual_entsoe_transparency 
+ number 
+ Total load in Great Britain in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Great Britain in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_solar_capacity 
+ number 
+ Electrical capacity of solar in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_solar_generation_actual 
+ number 
+ Actual solar generation in Great Britain in MW 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_solar_profile 
+ number 
+ Share of solar capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_capacity 
+ number 
+ Electrical capacity of wind in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_generation_actual 
+ number 
+ Actual wind generation in Great Britain in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_GBN_wind_profile 
+ number 
+ Share of wind capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Great Britain in MW 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_wind_offshore_profile 
+ number 
+ Share of wind_offshore capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Great Britain in MW 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_wind_onshore_profile 
+ number 
+ Share of wind_onshore capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_NIR_load_actual_entsoe_transparency 
+ number 
+ Total load in Northern Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GB_NIR_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Northern Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GB_NIR_solar_capacity 
+ number 
+ Electrical capacity of solar in Northern Ireland in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_NIR_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Northern Ireland in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_NIR_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Northern Ireland in MW 
+
+ ENTSO-E Transparency 
+
+ GB_UKM_load_actual_entsoe_transparency 
+ number 
+ Total load in United Kingdom in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GB_UKM_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in United Kingdom in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GB_UKM_solar_capacity 
+ number 
+ Electrical capacity of solar in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_solar_generation_actual 
+ number 
+ Actual solar generation in United Kingdom in MW 
+
+ ENTSO-E Transparency 
+
+ GB_UKM_wind_capacity 
+ number 
+ Electrical capacity of wind in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_wind_generation_actual 
+ number 
+ Actual wind generation in United Kingdom in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_UKM_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in United Kingdom in MW 
+
+ ENTSO-E Transparency 
+
+ GB_UKM_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in United Kingdom in MW 
+
+ ENTSO-E Transparency 
+
+ IE_load_actual_entsoe_transparency 
+ number 
+ Total load in Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IE_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Ireland in MW 
+
+ ENTSO-E Transparency 
+
+ IE_sem_load_actual_entsoe_transparency 
+ number 
+ Total load in Ireland - (SEM) (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IE_sem_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Ireland - (SEM) (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IE_sem_price_day_ahead 
+ number 
+ Day-ahead spot price for Ireland - (SEM) (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IE_sem_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Ireland - (SEM) (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ time series 60min singleindex.csv
+
+ Field Name 
+ Type (Format) 
+ Description 
+ Source 
+
+ utc_timestamp 
+ datetime (fmt:%Y-%m-%dT%H%M%SZ) 
+ Start of timeperiod in Coordinated Universal Time 
+
+ cet_cest_timestamp 
+ datetime (fmt:%Y-%m-%dT%H%M%S%z) 
+ Start of timeperiod in Central European (Summer-) Time 
+
+ AT_load_actual_entsoe_transparency 
+ number 
+ Total load in Austria in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ AT_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Austria in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ AT_price_day_ahead 
+ number 
+ Day-ahead spot price for Austria in EUR 
+
+ own calculation based on ENTSO-E Transparency 
+
+ AT_solar_generation_actual 
+ number 
+ Actual solar generation in Austria in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ AT_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Austria in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ BE_load_actual_entsoe_transparency 
+ number 
+ Total load in Belgium in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ BE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Belgium in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ BE_solar_generation_actual 
+ number 
+ Actual solar generation in Belgium in MW 
+
+ ENTSO-E Transparency 
+
+ BE_wind_generation_actual 
+ number 
+ Actual wind generation in Belgium in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ BE_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Belgium in MW 
+
+ ENTSO-E Transparency 
+
+ BE_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Belgium in MW 
+
+ ENTSO-E Transparency 
+
+ BG_load_actual_entsoe_transparency 
+ number 
+ Total load in Bulgaria in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ BG_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Bulgaria in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ BG_solar_generation_actual 
+ number 
+ Actual solar generation in Bulgaria in MW 
+
+ ENTSO-E Transparency 
+
+ BG_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Bulgaria in MW 
+
+ ENTSO-E Transparency 
+
+ CH_load_actual_entsoe_transparency 
+ number 
+ Total load in Switzerland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ CH_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Switzerland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ CH_solar_capacity 
+ number 
+ Electrical capacity of solar in Switzerland in MW 
+
+ own calculation based on Swiss Bundesamt für Energie (BFE) 
+
+ CH_solar_generation_actual 
+ number 
+ Actual solar generation in Switzerland in MW 
+
+ ENTSO-E Transparency 
+
+ CH_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Switzerland in MW 
+
+ own calculation based on Swiss Bundesamt für Energie (BFE) 
+
+ CH_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Switzerland in MW 
+
+ ENTSO-E Transparency 
+
+ CY_load_actual_entsoe_transparency 
+ number 
+ Total load in Cyprus in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ CY_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Cyprus in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ CY_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Cyprus in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ CZ_load_actual_entsoe_transparency 
+ number 
+ Total load in Czech Republic in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ CZ_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Czech Republic in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ CZ_solar_generation_actual 
+ number 
+ Actual solar generation in Czech Republic in MW 
+
+ ENTSO-E Transparency 
+
+ CZ_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Czech Republic in MW 
+
+ ENTSO-E Transparency 
+
+ DE_load_actual_entsoe_transparency 
+ number 
+ Total load in Germany in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Germany in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_solar_capacity 
+ number 
+ Electrical capacity of solar in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_solar_generation_actual 
+ number 
+ Actual solar generation in Germany in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_solar_profile 
+ number 
+ Share of solar capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_wind_capacity 
+ number 
+ Electrical capacity of wind in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_wind_generation_actual 
+ number 
+ Actual wind generation in Germany in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_wind_profile 
+ number 
+ Share of wind capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Germany in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_wind_offshore_profile 
+ number 
+ Share of wind_offshore capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Germany in MW 
+
+ own calculation based on BNetzA and netztransparenz.de 
+
+ DE_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Germany in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_wind_onshore_profile 
+ number 
+ Share of wind_onshore capacity producing in Germany 
+
+ own calculation based on ENTSO-E Transparency and BNetzA and netztransparenz.de 
+
+ DE_50hertz_load_actual_entsoe_transparency 
+ number 
+ Total load in 50Hertz (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_50hertz_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in 50Hertz (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_50hertz_solar_generation_actual 
+ number 
+ Actual solar generation in 50Hertz (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_50hertz_wind_generation_actual 
+ number 
+ Actual wind generation in 50Hertz (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_50hertz_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in 50Hertz (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_50hertz_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in 50Hertz (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_LU_load_actual_entsoe_transparency 
+ number 
+ Total load in DE-LU (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_LU_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in DE-LU (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_LU_price_day_ahead 
+ number 
+ Day-ahead spot price for DE-LU (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ DE_LU_solar_generation_actual 
+ number 
+ Actual solar generation in DE-LU (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_LU_wind_generation_actual 
+ number 
+ Actual wind generation in DE-LU (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_LU_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in DE-LU (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_LU_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in DE-LU (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_amprion_load_actual_entsoe_transparency 
+ number 
+ Total load in Amprion (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_amprion_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Amprion (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_amprion_solar_generation_actual 
+ number 
+ Actual solar generation in Amprion (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_amprion_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Amprion (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_tennet_load_actual_entsoe_transparency 
+ number 
+ Total load in TenneT GER (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_tennet_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in TenneT GER (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_tennet_solar_generation_actual 
+ number 
+ Actual solar generation in TenneT GER (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_tennet_wind_generation_actual 
+ number 
+ Actual wind generation in TenneT GER (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_tennet_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in TenneT GER (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_tennet_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in TenneT GER (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_transnetbw_load_actual_entsoe_transparency 
+ number 
+ Total load in TransnetBW (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_transnetbw_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in TransnetBW (control area) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_transnetbw_solar_generation_actual 
+ number 
+ Actual solar generation in TransnetBW (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DE_transnetbw_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in TransnetBW (control area) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DK_load_actual_entsoe_transparency 
+ number 
+ Total load in Denmark in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DK_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Denmark in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DK_solar_capacity 
+ number 
+ Electrical capacity of solar in Denmark in MW 
+
+ own calculation based on Energinet.dk and Energistyrelsen 
+
+ DK_solar_generation_actual 
+ number 
+ Actual solar generation in Denmark in MW 
+
+ ENTSO-E Transparency 
+
+ DK_wind_capacity 
+ number 
+ Electrical capacity of wind in Denmark in MW 
+
+ own calculation based on Energinet.dk and Energistyrelsen 
+
+ DK_wind_generation_actual 
+ number 
+ Actual wind generation in Denmark in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DK_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in Denmark in MW 
+
+ own calculation based on Energinet.dk and Energistyrelsen 
+
+ DK_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Denmark in MW 
+
+ ENTSO-E Transparency 
+
+ DK_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Denmark in MW 
+
+ own calculation based on Energinet.dk and Energistyrelsen 
+
+ DK_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Denmark in MW 
+
+ ENTSO-E Transparency 
+
+ DK_1_load_actual_entsoe_transparency 
+ number 
+ Total load in DK1 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DK_1_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in DK1 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DK_1_price_day_ahead 
+ number 
+ Day-ahead spot price for DK1 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ DK_1_solar_generation_actual 
+ number 
+ Actual solar generation in DK1 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DK_1_wind_generation_actual 
+ number 
+ Actual wind generation in DK1 (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DK_1_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in DK1 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DK_1_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in DK1 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DK_2_load_actual_entsoe_transparency 
+ number 
+ Total load in DK2 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DK_2_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in DK2 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ DK_2_price_day_ahead 
+ number 
+ Day-ahead spot price for DK2 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ DK_2_solar_generation_actual 
+ number 
+ Actual solar generation in DK2 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DK_2_wind_generation_actual 
+ number 
+ Actual wind generation in DK2 (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ DK_2_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in DK2 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ DK_2_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in DK2 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ EE_load_actual_entsoe_transparency 
+ number 
+ Total load in Estonia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ EE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Estonia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ EE_solar_generation_actual 
+ number 
+ Actual solar generation in Estonia in MW 
+
+ ENTSO-E Transparency 
+
+ EE_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Estonia in MW 
+
+ ENTSO-E Transparency 
+
+ ES_load_actual_entsoe_transparency 
+ number 
+ Total load in Spain in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ ES_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Spain in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ ES_solar_generation_actual 
+ number 
+ Actual solar generation in Spain in MW 
+
+ ENTSO-E Transparency 
+
+ ES_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Spain in MW 
+
+ ENTSO-E Transparency 
+
+ FI_load_actual_entsoe_transparency 
+ number 
+ Total load in Finland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ FI_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Finland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ FI_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Finland in MW 
+
+ ENTSO-E Transparency 
+
+ FR_load_actual_entsoe_transparency 
+ number 
+ Total load in France in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ FR_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in France in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ FR_solar_generation_actual 
+ number 
+ Actual solar generation in France in MW 
+
+ ENTSO-E Transparency 
+
+ FR_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in France in MW 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_load_actual_entsoe_transparency 
+ number 
+ Total load in Great Britain in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_GBN_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Great Britain in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_GBN_price_day_ahead 
+ number 
+ Day-ahead spot price for Great Britain in GBP 
+
+ ENTSO-E Transparency 
+
+ GB_GBN_solar_capacity 
+ number 
+ Electrical capacity of solar in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_solar_generation_actual 
+ number 
+ Actual solar generation in Great Britain in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_GBN_solar_profile 
+ number 
+ Share of solar capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_capacity 
+ number 
+ Electrical capacity of wind in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_generation_actual 
+ number 
+ Actual wind generation in Great Britain in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_GBN_wind_profile 
+ number 
+ Share of wind capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Great Britain in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_GBN_wind_offshore_profile 
+ number 
+ Share of wind_offshore capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Great Britain in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_GBN_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Great Britain in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_GBN_wind_onshore_profile 
+ number 
+ Share of wind_onshore capacity producing in Great Britain 
+
+ own calculation based on ENTSO-E Transparency and UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_NIR_load_actual_entsoe_transparency 
+ number 
+ Total load in Northern Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_NIR_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Northern Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_NIR_solar_capacity 
+ number 
+ Electrical capacity of solar in Northern Ireland in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_NIR_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Northern Ireland in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_NIR_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Northern Ireland in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_UKM_load_actual_entsoe_transparency 
+ number 
+ Total load in United Kingdom in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_UKM_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in United Kingdom in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_UKM_solar_capacity 
+ number 
+ Electrical capacity of solar in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_solar_generation_actual 
+ number 
+ Actual solar generation in United Kingdom in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_UKM_wind_capacity 
+ number 
+ Electrical capacity of wind in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_wind_generation_actual 
+ number 
+ Actual wind generation in United Kingdom in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_UKM_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in United Kingdom in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GB_UKM_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in United Kingdom in MW 
+
+ own calculation based on UK Government Department of Business, Energy & Industrial Strategy (BEIS) 
+
+ GB_UKM_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in United Kingdom in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ GR_load_actual_entsoe_transparency 
+ number 
+ Total load in Greece in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GR_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Greece in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ GR_solar_generation_actual 
+ number 
+ Actual solar generation in Greece in MW 
+
+ ENTSO-E Transparency 
+
+ GR_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Greece in MW 
+
+ ENTSO-E Transparency 
+
+ HR_load_actual_entsoe_transparency 
+ number 
+ Total load in Croatia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ HR_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Croatia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ HR_solar_generation_actual 
+ number 
+ Actual solar generation in Croatia in MW 
+
+ ENTSO-E Transparency 
+
+ HR_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Croatia in MW 
+
+ ENTSO-E Transparency 
+
+ HU_load_actual_entsoe_transparency 
+ number 
+ Total load in Hungary in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ HU_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Hungary in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ HU_solar_generation_actual 
+ number 
+ Actual solar generation in Hungary in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ HU_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Hungary in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ IE_load_actual_entsoe_transparency 
+ number 
+ Total load in Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ IE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Ireland in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ IE_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Ireland in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ IE_sem_load_actual_entsoe_transparency 
+ number 
+ Total load in Ireland - (SEM) (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ IE_sem_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Ireland - (SEM) (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ IE_sem_price_day_ahead 
+ number 
+ Day-ahead spot price for Ireland - (SEM) (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IE_sem_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Ireland - (SEM) (bidding zone) in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ IT_load_actual_entsoe_transparency 
+ number 
+ Total load in Italy in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Italy in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_solar_generation_actual 
+ number 
+ Actual solar generation in Italy in MW 
+
+ ENTSO-E Transparency 
+
+ IT_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Italy in MW 
+
+ ENTSO-E Transparency 
+
+ IT_BRNN_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Brindisi (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_BRNN_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Brindisi (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_CNOR_load_actual_entsoe_transparency 
+ number 
+ Total load in IT-Centre-North (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_CNOR_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in IT-Centre-North (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_CNOR_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Centre-North (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_CNOR_solar_generation_actual 
+ number 
+ Actual solar generation in IT-Centre-North (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_CNOR_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Centre-North (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_CSUD_load_actual_entsoe_transparency 
+ number 
+ Total load in IT-Centre-South (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_CSUD_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in IT-Centre-South (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_CSUD_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Centre-South (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_CSUD_solar_generation_actual 
+ number 
+ Actual solar generation in IT-Centre-South (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_CSUD_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Centre-South (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_FOGN_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Foggia (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_FOGN_solar_generation_actual 
+ number 
+ Actual solar generation in IT-Foggia (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_FOGN_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Foggia (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_GR_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-GR (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_load_actual_entsoe_transparency 
+ number 
+ Total load in IT-North (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in IT-North (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-North (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_solar_generation_actual 
+ number 
+ Actual solar generation in IT-North (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-North (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_AT_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-North-AT (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_CH_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-North-CH (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_FR_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-North-FR (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_NORD_SI_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-North-SI (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_PRGP_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Priolo (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_PRGP_solar_generation_actual 
+ number 
+ Actual solar generation in IT-Priolo (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_PRGP_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Priolo (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_ROSN_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Rossano (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_ROSN_solar_generation_actual 
+ number 
+ Actual solar generation in IT-Rossano (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_ROSN_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Rossano (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_SACO_AC_price_day_ahead 
+ number 
+ Day-ahead spot price for Italy_Saco_AC (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_SACO_DC_price_day_ahead 
+ number 
+ Day-ahead spot price for Italy_Sacodc (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_SARD_load_actual_entsoe_transparency 
+ number 
+ Total load in IT-Sardinia (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_SARD_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in IT-Sardinia (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_SARD_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Sardinia (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_SARD_solar_generation_actual 
+ number 
+ Actual solar generation in IT-Sardinia (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_SARD_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Sardinia (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_SICI_load_actual_entsoe_transparency 
+ number 
+ Total load in IT-Sicily (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_SICI_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in IT-Sicily (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_SICI_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-Sicily (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_SICI_solar_generation_actual 
+ number 
+ Actual solar generation in IT-Sicily (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_SICI_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-Sicily (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_SUD_load_actual_entsoe_transparency 
+ number 
+ Total load in IT-South (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_SUD_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in IT-South (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ IT_SUD_price_day_ahead 
+ number 
+ Day-ahead spot price for IT-South (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ IT_SUD_solar_generation_actual 
+ number 
+ Actual solar generation in IT-South (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ IT_SUD_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in IT-South (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ LT_load_actual_entsoe_transparency 
+ number 
+ Total load in Lithuania in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ LT_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Lithuania in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ LT_solar_generation_actual 
+ number 
+ Actual solar generation in Lithuania in MW 
+
+ ENTSO-E Transparency 
+
+ LT_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Lithuania in MW 
+
+ ENTSO-E Transparency 
+
+ LU_load_actual_entsoe_transparency 
+ number 
+ Total load in Luxembourg in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ LU_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Luxembourg in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ LV_load_actual_entsoe_transparency 
+ number 
+ Total load in Latvia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ LV_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Latvia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ LV_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Latvia in MW 
+
+ ENTSO-E Transparency 
+
+ ME_load_actual_entsoe_transparency 
+ number 
+ Total load in Montenegro in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ ME_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Montenegro in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ ME_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Montenegro in MW 
+
+ ENTSO-E Transparency 
+
+ NL_load_actual_entsoe_transparency 
+ number 
+ Total load in Netherlands in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ NL_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Netherlands in MW as published on ENTSO-E Transparency Platform 
+
+ own calculation based on ENTSO-E Transparency 
+
+ NL_solar_generation_actual 
+ number 
+ Actual solar generation in Netherlands in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ NL_wind_generation_actual 
+ number 
+ Actual wind generation in Netherlands in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ NL_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Netherlands in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ NL_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Netherlands in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ NO_load_actual_entsoe_transparency 
+ number 
+ Total load in Norway in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Norway in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Norway in MW 
+
+ ENTSO-E Transparency 
+
+ NO_1_load_actual_entsoe_transparency 
+ number 
+ Total load in NO1 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_1_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in NO1 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_1_price_day_ahead 
+ number 
+ Day-ahead spot price for NO1 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ NO_1_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in NO1 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ NO_2_load_actual_entsoe_transparency 
+ number 
+ Total load in NO2 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_2_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in NO2 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_2_price_day_ahead 
+ number 
+ Day-ahead spot price for NO2 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ NO_2_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in NO2 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ NO_3_load_actual_entsoe_transparency 
+ number 
+ Total load in NO3 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_3_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in NO3 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_3_price_day_ahead 
+ number 
+ Day-ahead spot price for NO3 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ NO_3_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in NO3 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ NO_4_load_actual_entsoe_transparency 
+ number 
+ Total load in NO4 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_4_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in NO4 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_4_price_day_ahead 
+ number 
+ Day-ahead spot price for NO4 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ NO_4_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in NO4 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ NO_5_load_actual_entsoe_transparency 
+ number 
+ Total load in NO5 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_5_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in NO5 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ NO_5_price_day_ahead 
+ number 
+ Day-ahead spot price for NO5 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ NO_5_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in NO5 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ PL_load_actual_entsoe_transparency 
+ number 
+ Total load in Poland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ PL_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Poland in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ PL_solar_generation_actual 
+ number 
+ Actual solar generation in Poland in MW 
+
+ ENTSO-E Transparency 
+
+ PL_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Poland in MW 
+
+ ENTSO-E Transparency 
+
+ PT_load_actual_entsoe_transparency 
+ number 
+ Total load in Portugal in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ PT_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Portugal in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ PT_solar_generation_actual 
+ number 
+ Actual solar generation in Portugal in MW 
+
+ ENTSO-E Transparency 
+
+ PT_wind_generation_actual 
+ number 
+ Actual wind generation in Portugal in MW 
+
+ own calculation based on ENTSO-E Transparency 
+
+ PT_wind_offshore_generation_actual 
+ number 
+ Actual wind_offshore generation in Portugal in MW 
+
+ ENTSO-E Transparency 
+
+ PT_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Portugal in MW 
+
+ ENTSO-E Transparency 
+
+ RO_load_actual_entsoe_transparency 
+ number 
+ Total load in Romania in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ RO_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Romania in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ RO_solar_generation_actual 
+ number 
+ Actual solar generation in Romania in MW 
+
+ ENTSO-E Transparency 
+
+ RO_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Romania in MW 
+
+ ENTSO-E Transparency 
+
+ RS_load_actual_entsoe_transparency 
+ number 
+ Total load in Serbia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ RS_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Serbia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_load_actual_entsoe_transparency 
+ number 
+ Total load in Sweden in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Sweden in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_wind_capacity 
+ number 
+ Electrical capacity of wind in Sweden in MW 
+
+ own calculation based on Vindbrukskollen 
+
+ SE_wind_offshore_capacity 
+ number 
+ Electrical capacity of wind_offshore in Sweden in MW 
+
+ own calculation based on Vindbrukskollen 
+
+ SE_wind_onshore_capacity 
+ number 
+ Electrical capacity of wind_onshore in Sweden in MW 
+
+ own calculation based on Vindbrukskollen 
+
+ SE_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Sweden in MW 
+
+ ENTSO-E Transparency 
+
+ SE_1_load_actual_entsoe_transparency 
+ number 
+ Total load in SE1 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_1_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in SE1 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_1_price_day_ahead 
+ number 
+ Day-ahead spot price for SE1 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ SE_1_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in SE1 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ SE_2_load_actual_entsoe_transparency 
+ number 
+ Total load in SE2 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_2_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in SE2 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_2_price_day_ahead 
+ number 
+ Day-ahead spot price for SE2 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ SE_2_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in SE2 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ SE_3_load_actual_entsoe_transparency 
+ number 
+ Total load in SE3 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_3_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in SE3 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_3_price_day_ahead 
+ number 
+ Day-ahead spot price for SE3 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ SE_3_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in SE3 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ SE_4_load_actual_entsoe_transparency 
+ number 
+ Total load in SE4 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_4_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in SE4 (bidding zone) in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SE_4_price_day_ahead 
+ number 
+ Day-ahead spot price for SE4 (bidding zone) in EUR 
+
+ ENTSO-E Transparency 
+
+ SE_4_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in SE4 (bidding zone) in MW 
+
+ ENTSO-E Transparency 
+
+ SI_load_actual_entsoe_transparency 
+ number 
+ Total load in Slovenia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SI_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Slovenia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SI_solar_generation_actual 
+ number 
+ Actual solar generation in Slovenia in MW 
+
+ ENTSO-E Transparency 
+
+ SI_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Slovenia in MW 
+
+ ENTSO-E Transparency 
+
+ SK_load_actual_entsoe_transparency 
+ number 
+ Total load in Slovakia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SK_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Slovakia in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ SK_solar_generation_actual 
+ number 
+ Actual solar generation in Slovakia in MW 
+
+ ENTSO-E Transparency 
+
+ SK_wind_onshore_generation_actual 
+ number 
+ Actual wind_onshore generation in Slovakia in MW 
+
+ ENTSO-E Transparency 
+
+ UA_load_actual_entsoe_transparency 
+ number 
+ Total load in Ukraine in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ UA_load_forecast_entsoe_transparency 
+ number 
+ Day-ahead load forecast in Ukraine in MW as published on ENTSO-E Transparency Platform 
+
+ ENTSO-E Transparency 
+
+ <- back to overview 
+
+ About 
+
+ Text is licensed under CC-BY license.

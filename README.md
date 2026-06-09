@@ -204,11 +204,28 @@ Fast path for the supervisor/demo stack:
 .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
 ```
 
+If `start-local-project.ps1` prints `FastAPI already listening on port 8000`,
+it leaves that API process running. During active development, make sure the
+process on `:8000` is the current workspace API. A stale Docker API can make the
+fresh dashboard call routes that the old backend does not have.
+
+```powershell
+# Use this when dashboard shows 404/502 for recently added routes.
+docker compose stop api
+.\api\start-dev.ps1 -Port 8000
+```
+
 Detached backend stack:
 
 ```powershell
 docker compose up -d postgres mqtt mlflow dagster-webserver dagster-daemon api
 npm -C dashboard run dev
+```
+
+For container-based API testing after backend route changes, rebuild the image:
+
+```powershell
+docker compose up -d --build api
 ```
 
 Open:
@@ -400,6 +417,28 @@ Use the local helper with alternative ports:
 
 ```powershell
 .\scripts\start-local-project.ps1 -ApiPort 8010 -DashboardPort 64164
+```
+
+### Dashboard Shows 404/502 For New API Routes
+
+This usually means the dashboard is fresh but API `:8000` is stale. Confirm with:
+
+```powershell
+Invoke-WebRequest "http://127.0.0.1:8000/dashboard/shadow-recommendation-preview?tenant_id=client_003_dnipro_factory&preview_source=hf_live_safe_switch_value_aligned_shadow&market_venue=DAM" -UseBasicParsing
+```
+
+If it returns `404 Not Found`, stop the stale compose API and run the local API
+from the current workspace:
+
+```powershell
+docker compose stop api
+.\api\start-dev.ps1 -Port 8000
+```
+
+Or rebuild the compose image:
+
+```powershell
+docker compose up -d --build api
 ```
 
 ### Full Dependency Sync Is Slow

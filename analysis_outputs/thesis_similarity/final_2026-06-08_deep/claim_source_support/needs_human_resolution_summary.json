@@ -1,0 +1,28 @@
+{
+  "date": "2026-06-08",
+  "input_needs_human": 8,
+  "manual_reviewed": 8,
+  "manual_verdict_counts": {
+    "supported": 7,
+    "supported_after_text_edit": 1,
+    "full-text-needed": 0,
+    "wrong-source": 0,
+    "contradicted": 0,
+    "unsupported": 0
+  },
+  "text_edits": [
+    {
+      "location": "Table 2.1 / docs/thesis/chapters/02-literature-review.md",
+      "old_text": "DAM/IDM hourly preview і source-readiness blockers [3], [4], [8]",
+      "new_text": "DAM/IDM local market/operator context [3], [4]; market-coupling/source-readiness boundary [8]",
+      "google_doc_occurrences_changed": 1
+    }
+  ],
+  "post_manual_status": {
+    "full_text_needed": 0,
+    "confirmed_wrong_source": 0,
+    "confirmed_contradicted": 0,
+    "confirmed_unsupported": 0,
+    "claims_weakened_due_to_paywall": 0
+  }
+}

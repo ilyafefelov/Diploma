@@ -1,28 +1,31 @@
-# Baseline LP and Current Data Pipeline
+# Baseline LP and Current Read-Model Data Pipeline
 
 This note explains the current Level 1 decision pipeline, the linear programming
 (LP) formula used by the baseline, and where machine learning is present or absent.
-It is the canonical short explanation for supervisor reviews and README references.
+It is the canonical short explanation for supervisor reviews, thesis appendices,
+and README references.
 
 ## Current Pipeline
 
-The current implementation is a Medallion pipeline with a deterministic LP control
-core and separate research lanes for ML forecasts and future DFL.
+The current implementation is a Medallion pipeline with a deterministic LP
+read-model core and separate research lanes for ML forecasts, schedule selection,
+and future DFL. The LP produces feasible hourly recommendation previews and
+offline evaluator rows; it does not emit market-submittable bids.
 
 ```mermaid
 flowchart TD
   A["Bronze: market, weather, telemetry, grid events"] --> B["Silver: cleaned hourly features"]
-  B --> C["Strict similar-day forecast"]
+  B --> C["Official OREE row / strict similar-day comparator"]
   B --> D["Neural forecast feature frame"]
   D --> E["NBEATSx-style forecast"]
   D --> F["TFT-style forecast"]
 
-  C --> G["Baseline LP dispatch plan"]
+  C --> G["Baseline LP preview schedule"]
   E --> H["Forecast strategy comparison"]
   F --> H
   C --> H
 
-  G --> I["Pydantic dispatch gatekeeper"]
+  G --> I["Pydantic schedule gatekeeper"]
   G --> J["Oracle benchmark and regret tracking"]
   H --> K["DFL training frame and regret calibration"]
   K --> L["Differentiable relaxed-LP pilot"]
@@ -41,8 +44,8 @@ ML exists only in forecast and research branches:
 |---|---|---:|---|
 | Market/weather/telemetry ingestion | `dam_price_history`, `battery_telemetry_bronze`, `weather_forecast_bronze` | No | Load or synthesize source data. |
 | Hourly feature preparation | `battery_state_hourly_silver`, `neural_forecast_feature_frame` | No | Build model-ready and LP-ready features. |
-| Baseline forecast | `strict_similar_day_forecast` | No | Copy an analogous historical hour using the strict similar-day rule. |
-| Baseline dispatch | `baseline_dispatch_plan`, `HourlyDamBaselineSolver` | No | Solve a deterministic LP over the forecast horizon. |
+| Baseline price context | Official OREE DAM/IDM rows; `strict_similar_day_forecast` for historical comparator/replay | No | Use the published row when available; otherwise use a leakage-free comparator or explicit forecast scenario. |
+| Baseline LP preview | `baseline_dispatch_plan`, `HourlyDamBaselineSolver` | No | Solve a deterministic LP over the hourly forecast/context horizon. |
 | Forecast candidates | `nbeatsx_price_forecast`, `tft_price_forecast` | Yes | Train compact PyTorch research forecast candidates. |
 | Forecast evaluation | `forecast_strategy_comparison_frame` | Mixed | Route ML and non-ML forecasts through the same LP and score regret. |
 | DFL pilot | `dfl_relaxed_lp_pilot_frame` | ML-adjacent | Use `cvxpylayers` so a relaxed LP can support future gradient-based DFL. |
@@ -62,7 +65,7 @@ s_t = stored energy / SOC in MWh
 Given:
 
 ```text
-p_t = forecast DAM price in UAH/MWh
+p_t = forecast or published DAM/IDM hourly price in UAH/MWh
 Delta t = 1 hour
 C = battery capacity in MWh
 P_max = max charge/discharge power in MW
@@ -118,29 +121,41 @@ net_power_t < 0  => charge / buy energy
 net_power_t = 0  => hold
 ```
 
-The LP solves the full 24-hour horizon, but the baseline execution policy is
-rolling horizon: commit only the first interval, then recompute later from newer
-prices and newer SOC telemetry.
+The LP solves the full 24-hour horizon, but the current product boundary is a
+rolling read model: the first interval is exposed as an internal preview field and
+the schedule is recomputed later from newer price context and newer SOC telemetry.
+This is not market execution, not a `ProposedBid`, and not a dispatch command.
 
 ## SOC Handling
 
-Tenant SOC is not hard-coded if telemetry is available. The baseline API resolves
-starting SOC as follows:
+Tenant SOC is not hard-coded if telemetry is available. The current API has two
+related SOC resolution paths:
 
 ```text
-fresh hourly telemetry snapshot exists
-  => use latest soc_close
+operator recommendation path:
+  live telemetry exists
+    => use clamped current_soc with high confidence
+  fresh hourly telemetry snapshot exists
+    => use clamped soc_close with medium confidence
+  stale hourly snapshot exists
+    => project soc_close with first load/PV row, mark review_required
+  no telemetry exists
+    => use tenant initial_soc_fraction, mark review_required
 
-no snapshot or stale snapshot
-  => use tenant initial_soc_fraction from configuration
+baseline LP preview path:
+  fresh hourly telemetry snapshot exists
+    => use latest soc_close
+  no snapshot or stale snapshot
+    => use tenant initial_soc_fraction from configuration
 ```
 
 So there are three distinct SOC values:
 
 | SOC concept | Static? | Meaning |
 |---|---:|---|
-| Tenant default SOC | Yes | Fallback planning assumption. |
-| Telemetry SOC | No | Latest observed tenant battery state. |
+| Tenant default SOC | Yes | Fallback planning assumption from tenant configuration. |
+| Live telemetry SOC | No | Latest observed tenant battery state in the operator recommendation path. |
+| Hourly snapshot SOC | No | Latest fresh hourly aggregate, or stale aggregate used with review warning. |
 | Projected SOC | No | LP/simulator forecast of future SOC across the schedule. |
 
 ## Why This LP Is Academically Defensible
@@ -243,7 +258,7 @@ Current use:
 |---|---:|---|
 | Operator market pulse chart | Yes | Explain how weather may shift the visible price curve. |
 | Dashboard `charge_intent` preview | Yes | A simplified visual preview derived from the weather-adjusted curve. |
-| Baseline LP endpoint | No | LP still consumes strict similar-day price forecasts only. |
+| Baseline LP endpoint | No | LP consumes an explicit official-row/forecast/comparator price vector, not `weather_bias` directly. |
 | Gold forecast candidates | Indirect/future | Weather features belong upstream in NBEATSx/TFT/TimeXer-style forecast models. |
 
 Recommendation: keep the current dashboard signal for supervisor demos, but keep
@@ -252,8 +267,8 @@ model:
 
 ```text
 weather + market history + calendar
-  -> weather-aware price forecast
-  -> strict LP dispatch
+  -> validated weather-aware price forecast
+  -> deterministic LP preview schedule
   -> realized-value / oracle-regret benchmark
 ```
 
@@ -282,6 +297,8 @@ optimizer as if it were a proven price forecast.
 ## Code References
 
 - LP solver: `src/smart_arbitrage/assets/gold/baseline_solver.py`
+- Battery metrics and degradation coefficient: `src/smart_arbitrage/gatekeeper/schemas.py`
+- Projected SOC simulator: `src/smart_arbitrage/optimization/projected_battery_state.py`
 - MVP Dagster pipeline: `src/smart_arbitrage/assets/mvp_demo.py`
 - Neural forecast assets: `src/smart_arbitrage/assets/silver/neural_forecasts.py`
 - DFL research assets: `src/smart_arbitrage/assets/gold/dfl_research.py`

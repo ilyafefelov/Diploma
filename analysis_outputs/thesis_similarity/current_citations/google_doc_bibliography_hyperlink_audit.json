@@ -1,0 +1,853 @@
+{
+  "generated_at_local": "2026-06-06T15:16:11",
+  "document_id": "1jjja9ng99O-xCisijMUbPrEM-3UJi_hilwnFJY8nups",
+  "tab_id": "t.yjnmt9u1j0ux",
+  "html_export_path": ".tmp_runtime\\thesis_google_doc_export.html",
+  "expected_spans": 84,
+  "visible_url_spans": 61,
+  "doi_label_spans": 23,
+  "matching_anchors": 84,
+  "missing_anchors": 0,
+  "rows": [
+    {
+      "source": 1,
+      "kind": "url",
+      "text": "https://energy.ec.europa.eu/topics/markets-and-consumers/electricity-market-design_en",
+      "target": "https://energy.ec.europa.eu/topics/markets-and-consumers/electricity-market-design_en",
+      "expected_start": 89876,
+      "expected_end": 89961,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 2,
+      "kind": "url",
+      "text": "https://energy.ec.europa.eu/news/eu-electricity-trading-day-ahead-markets-becomes-more-dynamic-2025-10-01_en",
+      "target": "https://energy.ec.europa.eu/news/eu-electricity-trading-day-ahead-markets-becomes-more-dynamic-2025-10-01_en",
+      "expected_start": 90057,
+      "expected_end": 90165,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 3,
+      "kind": "url",
+      "text": "https://www.nerc.gov.ua/acts/pro-hranychni-tsiny-na-rynku-na-dobu-napered-vnutrishnodobovomu-rynku-ta-balansuiuchomu-rynku",
+      "target": "https://www.nerc.gov.ua/acts/pro-hranychni-tsiny-na-rynku-na-dobu-napered-vnutrishnodobovomu-rynku-ta-balansuiuchomu-rynku",
+      "expected_start": 90279,
+      "expected_end": 90401,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 4,
+      "kind": "url",
+      "text": "https://www.oree.com.ua/index.php/newsctr/n/30795?lang=english",
+      "target": "https://www.oree.com.ua/index.php/newsctr/n/30795?lang=english",
+      "expected_start": 90492,
+      "expected_end": 90554,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 5,
+      "kind": "url",
+      "text": "https://me.gov.ua/News/Detail?id=2642aff1-2328-4bad-b03f-6f0f7dc292c8&lang=uk-UA",
+      "target": "https://me.gov.ua/News/Detail?id=2642aff1-2328-4bad-b03f-6f0f7dc292c8&lang=uk-UA",
+      "expected_start": 90664,
+      "expected_end": 90744,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 6,
+      "kind": "url",
+      "text": "https://me.gov.ua/download/2cad4803-661e-4ae9-9748-3006d6eb3e1c/file.pdf",
+      "target": "https://me.gov.ua/download/2cad4803-661e-4ae9-9748-3006d6eb3e1c/file.pdf",
+      "expected_start": 90799,
+      "expected_end": 90871,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 7,
+      "kind": "url",
+      "text": "https://www.entsoe.eu/news/2022/03/16/continental-europe-successful-synchronisation-with-ukraine-and-moldova-power-systems/",
+      "target": "https://www.entsoe.eu/news/2022/03/16/continental-europe-successful-synchronisation-with-ukraine-and-moldova-power-systems/",
+      "expected_start": 90971,
+      "expected_end": 91094,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 8,
+      "kind": "url",
+      "text": "https://www.acer.europa.eu/news/acer-will-decide-electricity-market-coupling-integration-plan-energy-community",
+      "target": "https://www.acer.europa.eu/news/acer-will-decide-electricity-market-coupling-integration-plan-energy-community",
+      "expected_start": 91200,
+      "expected_end": 91310,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 9,
+      "kind": "doi_label",
+      "text": "DOI: 10.1016/j.apenergy.2022.119512",
+      "target": "https://doi.org/10.1016/j.apenergy.2022.119512",
+      "expected_start": 91431,
+      "expected_end": 91466,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 9,
+      "kind": "url",
+      "text": "https://doi.org/10.1016/j.apenergy.2022.119512",
+      "target": "https://doi.org/10.1016/j.apenergy.2022.119512",
+      "expected_start": 91468,
+      "expected_end": 91514,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 10,
+      "kind": "doi_label",
+      "text": "DOI: 10.1109/TEMPR.2024.3372656",
+      "target": "https://doi.org/10.1109/TEMPR.2024.3372656",
+      "expected_start": 91643,
+      "expected_end": 91674,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 10,
+      "kind": "url",
+      "text": "https://doi.org/10.1109/TEMPR.2024.3372656",
+      "target": "https://doi.org/10.1109/TEMPR.2024.3372656",
+      "expected_start": 91676,
+      "expected_end": 91718,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 11,
+      "kind": "doi_label",
+      "text": "DOI: 10.1016/j.apenergy.2021.116983",
+      "target": "https://doi.org/10.1016/j.apenergy.2021.116983",
+      "expected_start": 91864,
+      "expected_end": 91899,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 11,
+      "kind": "url",
+      "text": "https://doi.org/10.1016/j.apenergy.2021.116983",
+      "target": "https://doi.org/10.1016/j.apenergy.2021.116983",
+      "expected_start": 91901,
+      "expected_end": 91947,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 12,
+      "kind": "doi_label",
+      "text": "DOI: 10.1287/mnsc.2020.3922",
+      "target": "https://doi.org/10.1287/mnsc.2020.3922",
+      "expected_start": 92008,
+      "expected_end": 92035,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 12,
+      "kind": "url",
+      "text": "https://doi.org/10.1287/mnsc.2020.3922",
+      "target": "https://doi.org/10.1287/mnsc.2020.3922",
+      "expected_start": 92037,
+      "expected_end": 92075,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 13,
+      "kind": "doi_label",
+      "text": "DOI: 10.1109/TSG.2022.3166791",
+      "target": "https://doi.org/10.1109/TSG.2022.3166791",
+      "expected_start": 92188,
+      "expected_end": 92217,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 13,
+      "kind": "url",
+      "text": "https://doi.org/10.1109/TSG.2022.3166791",
+      "target": "https://doi.org/10.1109/TSG.2022.3166791",
+      "expected_start": 92238,
+      "expected_end": 92278,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 14,
+      "kind": "doi_label",
+      "text": "DOI: 10.1613/jair.1.15320",
+      "target": "https://doi.org/10.1613/jair.1.15320",
+      "expected_start": 92391,
+      "expected_end": 92416,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 14,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2307.13565",
+      "target": "https://arxiv.org/abs/2307.13565",
+      "expected_start": 92437,
+      "expected_end": 92469,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 15,
+      "kind": "doi_label",
+      "text": "DOI: 10.1016/j.ijforecast.2022.03.001",
+      "target": "https://doi.org/10.1016/j.ijforecast.2022.03.001",
+      "expected_start": 92594,
+      "expected_end": 92631,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 15,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2104.05522",
+      "target": "https://arxiv.org/abs/2104.05522",
+      "expected_start": 92633,
+      "expected_end": 92665,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 16,
+      "kind": "doi_label",
+      "text": "DOI: 10.48550/arXiv.1912.09363",
+      "target": "https://doi.org/10.48550/arXiv.1912.09363",
+      "expected_start": 92768,
+      "expected_end": 92798,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 16,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/1912.09363",
+      "target": "https://arxiv.org/abs/1912.09363",
+      "expected_start": 92800,
+      "expected_end": 92832,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 17,
+      "kind": "doi_label",
+      "text": "DOI: 10.3390/en10020207",
+      "target": "https://doi.org/10.3390/en10020207",
+      "expected_start": 92949,
+      "expected_end": 92972,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 17,
+      "kind": "url",
+      "text": "https://doi.org/10.3390/en10020207",
+      "target": "https://doi.org/10.3390/en10020207",
+      "expected_start": 92974,
+      "expected_end": 93008,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 18,
+      "kind": "doi_label",
+      "text": "DOI: 10.3390/en12060999",
+      "target": "https://doi.org/10.3390/en12060999",
+      "expected_start": 93134,
+      "expected_end": 93157,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 18,
+      "kind": "url",
+      "text": "https://doi.org/10.3390/en12060999",
+      "target": "https://doi.org/10.3390/en12060999",
+      "expected_start": 93159,
+      "expected_end": 93193,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 19,
+      "kind": "doi_label",
+      "text": "DOI: 10.1016/j.est.2024.112380",
+      "target": "https://doi.org/10.1016/j.est.2024.112380",
+      "expected_start": 93435,
+      "expected_end": 93465,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 19,
+      "kind": "url",
+      "text": "https://doi.org/10.1016/j.est.2024.112380",
+      "target": "https://doi.org/10.1016/j.est.2024.112380",
+      "expected_start": 93467,
+      "expected_end": 93508,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 20,
+      "kind": "doi_label",
+      "text": "DOI: 10.48550/arXiv.2106.01345",
+      "target": "https://doi.org/10.48550/arXiv.2106.01345",
+      "expected_start": 93594,
+      "expected_end": 93624,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 20,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2106.01345",
+      "target": "https://arxiv.org/abs/2106.01345",
+      "expected_start": 93626,
+      "expected_end": 93658,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 21,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2305.14550",
+      "target": "https://arxiv.org/abs/2305.14550",
+      "expected_start": 93778,
+      "expected_end": 93810,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 22,
+      "kind": "doi_label",
+      "text": "DOI: 10.1016/j.apenergy.2019.114360",
+      "target": "https://doi.org/10.1016/j.apenergy.2019.114360",
+      "expected_start": 93935,
+      "expected_end": 93970,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 22,
+      "kind": "url",
+      "text": "https://doi.org/10.1016/j.apenergy.2019.114360",
+      "target": "https://doi.org/10.1016/j.apenergy.2019.114360",
+      "expected_start": 93972,
+      "expected_end": 94018,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 23,
+      "kind": "doi_label",
+      "text": "DOI: 10.1109/ACCESS.2020.3035504",
+      "target": "https://doi.org/10.1109/ACCESS.2020.3035504",
+      "expected_start": 94166,
+      "expected_end": 94198,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 23,
+      "kind": "url",
+      "text": "https://doi.org/10.1109/ACCESS.2020.3035504",
+      "target": "https://doi.org/10.1109/ACCESS.2020.3035504",
+      "expected_start": 94200,
+      "expected_end": 94243,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 24,
+      "kind": "doi_label",
+      "text": "DOI: 10.1109/TSG.2020.2986333",
+      "target": "https://doi.org/10.1109/TSG.2020.2986333",
+      "expected_start": 94372,
+      "expected_end": 94401,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 24,
+      "kind": "url",
+      "text": "https://doi.org/10.1109/TSG.2020.2986333",
+      "target": "https://doi.org/10.1109/TSG.2020.2986333",
+      "expected_start": 94403,
+      "expected_end": 94443,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 25,
+      "kind": "doi_label",
+      "text": "DOI: 10.1016/j.rser.2022.112584",
+      "target": "https://doi.org/10.1016/j.rser.2022.112584",
+      "expected_start": 94605,
+      "expected_end": 94636,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 25,
+      "kind": "url",
+      "text": "https://doi.org/10.1016/j.rser.2022.112584",
+      "target": "https://doi.org/10.1016/j.rser.2022.112584",
+      "expected_start": 94638,
+      "expected_end": 94680,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 26,
+      "kind": "url",
+      "text": "https://www.nrel.gov/docs/fy21osti/78694.pdf",
+      "target": "https://www.nrel.gov/docs/fy21osti/78694.pdf",
+      "expected_start": 94797,
+      "expected_end": 94841,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 27,
+      "kind": "url",
+      "text": "https://atb.nrel.gov/electricity/2023/residential_battery_storage/utility-scale_pv-plus-battery",
+      "target": "https://atb.nrel.gov/electricity/2023/residential_battery_storage/utility-scale_pv-plus-battery",
+      "expected_start": 94917,
+      "expected_end": 95012,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 28,
+      "kind": "doi_label",
+      "text": "DOI: 10.1002/for.3084",
+      "target": "https://doi.org/10.1002/for.3084",
+      "expected_start": 95123,
+      "expected_end": 95144,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 28,
+      "kind": "url",
+      "text": "https://doi.org/10.1002/for.3084",
+      "target": "https://doi.org/10.1002/for.3084",
+      "expected_start": 95146,
+      "expected_end": 95178,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 29,
+      "kind": "doi_label",
+      "text": "DOI: 10.48550/arXiv.2402.19072",
+      "target": "https://doi.org/10.48550/arXiv.2402.19072",
+      "expected_start": 95283,
+      "expected_end": 95313,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 29,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2402.19072",
+      "target": "https://arxiv.org/abs/2402.19072",
+      "expected_start": 95315,
+      "expected_end": 95347,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 30,
+      "kind": "doi_label",
+      "text": "DOI: 10.48550/arXiv.2602.10071",
+      "target": "https://doi.org/10.48550/arXiv.2602.10071",
+      "expected_start": 95480,
+      "expected_end": 95510,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 30,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2602.10071",
+      "target": "https://arxiv.org/abs/2602.10071",
+      "expected_start": 95512,
+      "expected_end": 95544,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 31,
+      "kind": "doi_label",
+      "text": "DOI: 10.1002/for.70065",
+      "target": "https://doi.org/10.1002/for.70065",
+      "expected_start": 95667,
+      "expected_end": 95689,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 31,
+      "kind": "url",
+      "text": "https://doi.org/10.1002/for.70065",
+      "target": "https://doi.org/10.1002/for.70065",
+      "expected_start": 95691,
+      "expected_end": 95724,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 32,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2508.04875",
+      "target": "https://arxiv.org/abs/2508.04875",
+      "expected_start": 95833,
+      "expected_end": 95865,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 33,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2508.11372",
+      "target": "https://arxiv.org/abs/2508.11372",
+      "expected_start": 96009,
+      "expected_end": 96041,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 34,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2510.13654",
+      "target": "https://arxiv.org/abs/2510.13654",
+      "expected_start": 96187,
+      "expected_end": 96219,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 35,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2509.13906",
+      "target": "https://arxiv.org/abs/2509.13906",
+      "expected_start": 96367,
+      "expected_end": 96399,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 36,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2602.17634",
+      "target": "https://arxiv.org/abs/2602.17634",
+      "expected_start": 96509,
+      "expected_end": 96541,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 37,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2405.14719",
+      "target": "https://arxiv.org/abs/2405.14719",
+      "expected_start": 96668,
+      "expected_end": 96700,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 38,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2406.17085",
+      "target": "https://arxiv.org/abs/2406.17085",
+      "expected_start": 96824,
+      "expected_end": 96856,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 39,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2401.00015",
+      "target": "https://arxiv.org/abs/2401.00015",
+      "expected_start": 97001,
+      "expected_end": 97033,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 40,
+      "kind": "doi_label",
+      "text": "DOI: 10.48550/arXiv.1910.12430",
+      "target": "https://doi.org/10.48550/arXiv.1910.12430",
+      "expected_start": 97097,
+      "expected_end": 97127,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 40,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/1910.12430",
+      "target": "https://arxiv.org/abs/1910.12430",
+      "expected_start": 97129,
+      "expected_end": 97161,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 41,
+      "kind": "url",
+      "text": "https://proceedings.mlr.press/v70/amos17a.html",
+      "target": "https://proceedings.mlr.press/v70/amos17a.html",
+      "expected_start": 97304,
+      "expected_end": 97350,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 42,
+      "kind": "doi_label",
+      "text": "DOI: 10.48550/arXiv.2505.01551",
+      "target": "https://doi.org/10.48550/arXiv.2505.01551",
+      "expected_start": 97442,
+      "expected_end": 97472,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 42,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2505.01551",
+      "target": "https://arxiv.org/abs/2505.01551",
+      "expected_start": 97474,
+      "expected_end": 97506,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 43,
+      "kind": "url",
+      "text": "https://huggingface.co/docs/transformers/model_doc/decision_transformer",
+      "target": "https://huggingface.co/docs/transformers/model_doc/decision_transformer",
+      "expected_start": 97568,
+      "expected_end": 97639,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 44,
+      "kind": "url",
+      "text": "https://www.entsoe.eu/data/transparency-platform/",
+      "target": "https://www.entsoe.eu/data/transparency-platform/",
+      "expected_start": 97709,
+      "expected_end": 97758,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 45,
+      "kind": "url",
+      "text": "https://open-power-system-data.org/",
+      "target": "https://open-power-system-data.org/",
+      "expected_start": 97830,
+      "expected_end": 97865,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 46,
+      "kind": "url",
+      "text": "https://data.open-power-system-data.org/time_series/",
+      "target": "https://data.open-power-system-data.org/time_series/",
+      "expected_start": 97921,
+      "expected_end": 97973,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 47,
+      "kind": "url",
+      "text": "https://www.nordpoolgroup.com/en/services/power-market-data-services/dataportalregistration/",
+      "target": "https://www.nordpoolgroup.com/en/services/power-market-data-services/dataportalregistration/",
+      "expected_start": 98028,
+      "expected_end": 98120,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 48,
+      "kind": "url",
+      "text": "https://ember-energy.org/data/api",
+      "target": "https://ember-energy.org/data/api",
+      "expected_start": 98164,
+      "expected_end": 98197,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 49,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2101.05249",
+      "target": "https://arxiv.org/abs/2101.05249",
+      "expected_start": 98407,
+      "expected_end": 98439,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 50,
+      "kind": "doi_label",
+      "text": "DOI: 10.1109/PowerTech55446.2023.10202771",
+      "target": "https://doi.org/10.1109/PowerTech55446.2023.10202771",
+      "expected_start": 98554,
+      "expected_end": 98595,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 50,
+      "kind": "url",
+      "text": "https://doi.org/10.1109/PowerTech55446.2023.10202771",
+      "target": "https://doi.org/10.1109/PowerTech55446.2023.10202771",
+      "expected_start": 98597,
+      "expected_end": 98649,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 51,
+      "kind": "url",
+      "text": "https://arxiv.org/abs/2507.13250",
+      "target": "https://arxiv.org/abs/2507.13250",
+      "expected_start": 98815,
+      "expected_end": 98847,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 52,
+      "kind": "url",
+      "text": "https://nixtlaverse.nixtla.io/neuralforecast/docs/capabilities/exogenous_variables.html",
+      "target": "https://nixtlaverse.nixtla.io/neuralforecast/docs/capabilities/exogenous_variables.html",
+      "expected_start": 98923,
+      "expected_end": 99010,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 52,
+      "kind": "url",
+      "text": "https://nixtlaverse.nixtla.io/neuralforecast/models.nbeatsx.html",
+      "target": "https://nixtlaverse.nixtla.io/neuralforecast/models.nbeatsx.html",
+      "expected_start": 99015,
+      "expected_end": 99079,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 53,
+      "kind": "url",
+      "text": "https://open-meteo.com/en/docs",
+      "target": "https://open-meteo.com/en/docs",
+      "expected_start": 99125,
+      "expected_end": 99155,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 54,
+      "kind": "url",
+      "text": "https://open-meteo.com/en/docs/historical-weather-api",
+      "target": "https://open-meteo.com/en/docs/historical-weather-api",
+      "expected_start": 99211,
+      "expected_end": 99264,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 55,
+      "kind": "url",
+      "text": "https://docs.dagster.io/guides/build/assets",
+      "target": "https://docs.dagster.io/guides/build/assets",
+      "expected_start": 99318,
+      "expected_end": 99361,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 56,
+      "kind": "url",
+      "text": "https://mlflow.org/docs/latest/ml/tracking/",
+      "target": "https://mlflow.org/docs/latest/ml/tracking/",
+      "expected_start": 99399,
+      "expected_end": 99442,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 57,
+      "kind": "url",
+      "text": "https://fastapi.tiangolo.com/",
+      "target": "https://fastapi.tiangolo.com/",
+      "expected_start": 99480,
+      "expected_end": 99509,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 58,
+      "kind": "url",
+      "text": "https://docs.pydantic.dev/latest/concepts/strict_mode/",
+      "target": "https://docs.pydantic.dev/latest/concepts/strict_mode/",
+      "expected_start": 99552,
+      "expected_end": 99606,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 59,
+      "kind": "url",
+      "text": "https://docs.databricks.com/aws/en/lakehouse/medallion",
+      "target": "https://docs.databricks.com/aws/en/lakehouse/medallion",
+      "expected_start": 99670,
+      "expected_end": 99724,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    },
+    {
+      "source": 60,
+      "kind": "url",
+      "text": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+      "target": "https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai",
+      "expected_start": 99780,
+      "expected_end": 99853,
+      "actual_anchor_matches": 1,
+      "verdict": "ok"
+    }
+  ]
+}
