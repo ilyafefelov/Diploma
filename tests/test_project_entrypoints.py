@@ -96,6 +96,14 @@ def test_local_start_script_sets_operator_preview_store_dsns() -> None:
     assert "$env:SMART_ARBITRAGE_FORECAST_DSN = $localPostgresDsn" in start_script
 
 
+def test_local_start_script_exports_selected_api_port_to_dashboard() -> None:
+    start_script = (PROJECT_ROOT / "scripts" / "start-local-project.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert '$env:NUXT_API_BASE = "http://127.0.0.1:$ApiPort"' in start_script
+
+
 def test_dashboard_package_exposes_scoped_vitest_script() -> None:
     package_json = json.loads(
         (PROJECT_ROOT / "dashboard" / "package.json").read_text(encoding="utf-8")
