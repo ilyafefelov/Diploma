@@ -1,0 +1,64 @@
+@theme static {
+  --font-sans: 'Montserrat', 'Segoe UI', sans-serif;
+
+  --color-green-50: #EFFDF5;
+  --color-green-100: #D9FBE8;
+  --color-green-200: #B3F5D1;
+  --color-green-300: #75EDAE;
+  --color-green-400: #00DC82;
+  --color-green-500: #00C16A;
+  --color-green-600: #00A155;
+  --color-green-700: #007F45;
+  --color-green-800: #016538;
+  --color-green-900: #0A5331;
+  --color-green-950: #052E16;
+}
+
+:root {
+  --canvas-base: #dff4ff;
+  --canvas-top: #fdfefe;
+  --panel-base: rgba(255, 255, 255, 0.78);
+  --panel-strong: rgba(255, 255, 255, 0.92);
+  --line-soft: rgba(0, 121, 193, 0.14);
+  --ink-strong: #1b3551;
+  --ink-soft: #6c7c92;
+  --accent-cyan: #0079c1;
+  --accent-cyan-strong: #005f96;
+  --accent-berry: #ff6fae;
+  --sims-blue: #0079c1;
+  --sims-blue-hover: #008be0;
+  --sims-blue-deep: #10508f;
+  --plumbob-green: #7ed321;
+  --urgent-red: #d0021b;
+  --operator-surface: rgba(0, 43, 96, 0.93);
+  --operator-surface-muted: rgba(0, 61, 119, 0.5);
+  --operator-surface-foreground: #f2fbff;
+  --operator-line: rgba(202, 249, 255, 0.58);
+  --operator-line-bright: rgba(202, 249, 255, 0.9);
+  --operator-line-subtle: rgba(202, 249, 255, 0.34);
+  --operator-line-muted: rgba(202, 249, 255, 0.3);
+  --operator-line-dim: rgba(202, 249, 255, 0.28);
+  --operator-line-soft: rgba(202, 249, 255, 0.24);
+  --operator-line-faint: rgba(202, 249, 255, 0.22);
+  --operator-accent: #d7ff4f;
+  --operator-accent-border: rgba(215, 255, 79, 0.72);
+  --operator-accent-soft: rgba(215, 255, 79, 0.84);
+  --operator-accent-readable: rgba(215, 255, 79, 0.78);
+  --operator-accent-muted: rgba(215, 255, 79, 0.54);
+  --operator-accent-faint: rgba(215, 255, 79, 0.32);
+  --operator-accent-wash: rgba(215, 255, 79, 0.22);
+  --operator-accent-glow: rgba(215, 255, 79, 0.2);
+  --operator-accent-foreground: #00376e;
+  --operator-surface-wash: rgba(0, 61, 119, 0.22);
+  --operator-surface-soft: rgba(0, 61, 119, 0.28);
+  --operator-text-strong: rgba(229, 249, 255, 0.92);
+  --operator-text-readable: rgba(229, 249, 255, 0.86);
+  --operator-text-soft: rgba(229, 249, 255, 0.84);
+  --operator-text-body: rgba(229, 249, 255, 0.82);
+  --operator-text-muted: rgba(229, 249, 255, 0.76);
+  --operator-text-bright: rgba(238, 250, 255, 0.92);
+  --operator-text-bright-muted: rgba(238, 250, 255, 0.88);
+  --operator-positive: #b8ff32;
+  --operator-warning: #fff0c7;
+  --operator-warning-surface: rgba(119, 65, 9, 0.82);
+}

@@ -1,0 +1,64 @@
+# UA-context DT/LAVA candidate-index policy v1.
+#
+# This reuses the corrected Ukrainian-only V2+ comparator, UA context
+# oracle-gap features, and LAVA tail-risk labels. It predicts feasible
+# candidate indices/families, not hourly BUY/SELL/HOLD actions. Outputs remain
+# Offline Strategy Promotion evidence only: market_execution_enabled=false, no
+# live dispatch, no dashboard/API default switch, and no EU rows in Ukrainian
+# target rows.
+ops:
+  dfl_oracle_gap_safe_switch_label_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      tail_risk_delta_uah: 150.0
+  dfl_ua_context_lava_teacher_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      tail_risk_delta_uah: 150.0
+  dfl_ua_context_lava_candidate_policy_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_prior_safe_win_count: 1
+      max_prior_tail_loss_count: 0
+      min_prior_precision: 0.75
+      min_prior_mean_improvement_uah: 1.0
+      min_predicted_improvement_uah: 1.0
+      max_predicted_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate"
+      hard_blocked_candidate_families_csv: "rank_extrema_perturbation_v2_plus"
+      torch_hidden_size: 8
+      torch_max_epochs: 25
+      use_cuda_if_available: true
+      random_seed: 23
+  dfl_ua_context_lava_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      baseline_source_model_name: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_validation_tenant_anchor_count: 90
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_ua_context_lava_rolling_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      min_prior_safe_win_count: 1
+      max_prior_tail_loss_count: 0
+      min_prior_precision: 0.75
+      min_prior_mean_improvement_uah: 1.0
+      min_predicted_improvement_uah: 1.0
+      max_predicted_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate"
+      hard_blocked_candidate_families_csv: "rank_extrema_perturbation_v2_plus"
+      torch_hidden_size: 8
+      torch_max_epochs: 25
+      use_cuda_if_available: true
+      random_seed: 23
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05

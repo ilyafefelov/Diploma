@@ -2,6 +2,7 @@
 name = "smart-energy-arbitrage-2026"
 version = "0.1.0"
 description = "Decision-Focused Framework для енергоарбітражу BESS на ринку України"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # Оркестрація та MLOps
@@ -15,21 +16,26 @@ dependencies = [
     "psycopg[binary]",         # Lightweight Postgres gateway for operator-facing read models
     "pyyaml",                  # YAML-backed tenant and location config loading
     "uvicorn",                 # ASGI server for the FastAPI control plane
-    
     # Обробка даних та Валідація
     "polars",                  # Швидка обробка в Silver-шарі [7, 8]
     "pydantic>=2.0",           # Детермінований Gatekeeper [9, 10]
-    
     # AI та Диференційована Оптимізація
-    "torch",                   # Моделі NBEATSx, TFT, Decision Transformer [11, 12]
+    "torch==2.9.1",            # CUDA 12.6 wheel for local/HF official training stability [11, 12]
     "cvxpylayers",             # Реалізація теореми про неявну функцію [13, 14]
     "cvxpy",                   # Опис задач оптимізації [13, 14]
     "optuna",                  # Гіперпараметрична оптимізація стратегій [15-17]
-    
     # IoT та Інтеграція
     "paho-mqtt",               # Зв'язок з Victron/Huawei через MQTT [18, 19]
     "httpx",                   # Асинхронні запити до API Укренерго [20]
+    "signxml>=4.4.0",          # WS-Security SignedParts XML signatures for SCMO receipt probing
 ]
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [project.optional-dependencies]
 dev = [
@@ -39,6 +45,24 @@ dev = [
     "ruff",                   # Fast linting for active backend Python code
     "types-PyYAML",            # Type stubs for tenant/location YAML loading
 ]
+sota = [
+    "neuralforecast",          # Official Nixtla NBEATSx adapter path for thesis SOTA smoke runs
+    "pytorch-forecasting",     # Official Temporal Fusion Transformer adapter path
+    "lightning",               # PyTorch Forecasting trainer runtime
+]
+dt = [
+    "transformers>=4.53,<5",    # Hugging Face DecisionTransformerModel for research-shadow DT smoke
+]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cu126", marker = "sys_platform == 'linux' or sys_platform == 'win32'" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
 
 [tool.ruff]
 target-version = "py311"

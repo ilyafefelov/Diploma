@@ -1,0 +1,223 @@
+# DFL Training Compute Options
+
+Date: 2026-05-11
+
+This note records the compute decision after the serious official NBEATSx/TFT
+local CPU run proved too slow for blind 104-anchor retries.
+
+## Current Position
+
+The local official run persisted 20 chronological anchors per source before it
+was stopped. The partial result is not Offline Strategy Promotion-grade, but it is enough to show
+that a full local CPU run should not be the first diagnostic:
+
+| Model | Anchors | Mean regret | Median regret |
+|---|---:|---:|---:|
+| `strict_similar_day` | 20 | 341.84 | 187.99 |
+| `nbeatsx_official_v0` | 20 | 807.70 | 450.08 |
+| `tft_official_v0` | 20 | 1354.23 | 987.03 |
+
+The result supports a stronger engineering rule: screen recent anchors and one
+source model at a time before spending compute on the full promotion gate.
+
+## Local GTX 1050 Ti
+
+The GTX 1050 Ti can run small PyTorch CUDA jobs, but it is a weak training
+device for this repo:
+
+- 4 GB VRAM limits batch size and model size;
+- Pascal compute capability means no Tensor Cores;
+- Windows/Docker GPU passthrough adds setup friction;
+- current workload spends meaningful time in repeated rolling-origin data prep
+  and orchestration, not only tensor math.
+
+Use it for CUDA sanity checks and tiny screens, not as the main DFL/DT training
+platform.
+
+The repo distinguishes two local execution modes:
+
+- `compose`: the stable Docker/Dagster path. It is best for service parity and
+  Postgres/Dagster evidence runs, but it only uses GPU if the container image
+  and Docker runtime expose CUDA.
+- `host`: the Windows `.venv` path. It can use the local CUDA torch wheel and
+  the GTX 1050 Ti directly, but it depends on the host environment and the
+  same Postgres/MLflow services being reachable from Windows.
+
+Before choosing a mode, record the runtime receipt:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_training_runtime.py `
+  --output .tmp_runtime\official_evidence\training-runtime-preflight.json `
+  --include-docker
+```
+
+This makes the host-vs-container distinction explicit instead of assuming that
+installing CUDA torch in `.venv` automatically accelerates Docker Dagster.
+
+For host mode, the runner defaults Postgres DSNs to
+`postgresql://smart:arbitrage@localhost:5432/smart_arbitrage` and MLflow to
+`http://localhost:5000`. Override `-HostPostgresDsn` or
+`-HostMlflowTrackingUri` if Compose exposes different local ports. The receipt
+masks the DSN password.
+
+## Best Near-Term Cloud Path
+
+For the thesis workload, the most practical offload path is not Databricks first.
+It is a single packaged training command that can run on a cheap GPU box and
+return persisted evidence artifacts.
+
+Recommended provider order:
+
+1. **Modal**: best for script-like jobs and free monthly starter credits; good
+   target once the training command is stateless and artifact-based.
+2. **Hugging Face Jobs**: strong fit for reproducible ML jobs with Docker/UV,
+   but requires HF Pro or a Team/Enterprise organization.
+3. **RunPod or Vast.ai**: usually cheapest for RTX 3090/4090 class GPUs, but
+   reliability and image hygiene require more manual checking.
+4. **Lambda or Paperspace**: easier stable VM/notebook experience; somewhat
+   more expensive, but less marketplace risk.
+5. **Colab/Kaggle**: useful free experiments, weak for unattended/reproducible
+   evidence because availability and runtime limits fluctuate.
+6. **Databricks**: good for large Spark/MLflow organizations, overkill for the
+   current single-repo rolling-origin experiment.
+
+## Cost Envelope
+
+Expected small thesis runs should be cheap if they are screened first:
+
+- latest 18/36-anchor official screen: likely under a few dollars on T4/L4/A10
+  class hardware if packaged cleanly;
+- full 104-anchor source-specific run: likely a few dollars to low tens of
+  dollars depending on provider, retry rate, and whether both source models are
+  trained;
+- broad hyperparameter sweeps or DT experiments: only run after evidence shows
+  the source is close to `strict_similar_day`.
+
+## Implementation Rule
+
+Before paid compute, the repo needs one clean cloud/offload entrypoint:
+
+```powershell
+.\scripts\run-official-schedule-value-batches.ps1 `
+  -TotalAnchorsPerTenant 18 `
+  -BatchSize 4 `
+  -AnchorBatchOrder latest_first `
+  -EnabledOfficialModelsCsv tft_official_v0 `
+  -NbeatsxMaxSteps 25 `
+  -TftMaxEpochs 5 `
+  -SkipDownstreamGate
+```
+
+The same command should later be wrapped for HF Jobs, Modal, or a GPU VM. The
+training output should be artifact-first: write compact Parquet/JSON summaries
+and only merge back into Postgres after the evidence run is validated.
+
+## Hugging Face Jobs Payload
+
+The repo now has a non-submitting payload builder for Hugging Face Jobs. It is
+designed for a cheap GPU screen of the same official schedule/value evidence
+path, without storing any token in the generated payload:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\build_hf_official_schedule_value_job.py `
+  --git-ref codex/plan-next-slice-sunday-night-run `
+  --total-anchors-per-tenant 18 `
+  --batch-size 4 `
+  --anchor-batch-order latest_first `
+  --enabled-official-models-csv tft_official_v0 `
+  --nbeatsx-max-steps 25 `
+  --tft-max-epochs 5 `
+  --artifact-repo-id ilyafefelov/smart-arbitrage-official-evidence `
+  --output .tmp_runtime\hf_jobs\official_latest_tft_screen.json
+```
+
+The generated JSON contains:
+
+- a UV script that clones the requested git ref;
+- `uv sync --extra dev --extra sota`;
+- the official schedule/value Dagster materialization selection;
+- a generated Dagster config with latest-first batching;
+- artifact upload metadata for a Hugging Face dataset repo, guarded by the
+  runtime `HF_TOKEN` secret;
+- the same claim boundary: research/offline evidence only, not market
+  execution.
+
+The builder does not submit the job. Submission should happen only after the
+branch is pushed and the Hugging Face account or organization is ready for Jobs
+compute. Treat this as a cloud execution wrapper for screening, not as a
+replacement for the strict LP/oracle promotion gate.
+
+## Guarded HF Jobs Submission Wrapper
+
+The preferred switching entrypoint is:
+
+```powershell
+.\scripts\run-official-evidence.ps1 -Backend local
+.\scripts\run-official-evidence.ps1 -Backend hf
+```
+
+Use `-Backend local -LocalMode compose` for the stable container path. Use
+`-Backend local -LocalMode host` when the host `.venv` CUDA runtime should run
+the Dagster materialization directly. Use `-Backend hf` when the same official
+evidence run should be packaged for Hugging Face Jobs. All paths share anchor
+count, batch size, source model, NBEATSx/TFT training-limit, and run-slug
+parameters.
+
+The repo now has a receipt-first submission wrapper:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\submit_hf_official_schedule_value_job.py `
+  --payload .tmp_runtime\hf_jobs\official_latest_tft_screen.json `
+  --output .tmp_runtime\hf_jobs\official_latest_tft_screen_receipt.json
+```
+
+This default command is a dry run. It records the payload path, run slug,
+flavor, timeout, estimated timeout cost, artifact repo, and Offline Strategy
+Promotion claim boundary without contacting Hugging Face.
+
+Paid execution requires an explicit `--submit` flag:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\submit_hf_official_schedule_value_job.py `
+  --payload .tmp_runtime\hf_jobs\official_latest_tft_screen.json `
+  --output .tmp_runtime\hf_jobs\official_latest_tft_screen_receipt.json `
+  --submit
+```
+
+If the payload uploads artifacts, the wrapper resolves `HF_TOKEN` only in
+memory at submit time. The local receipt never stores the token or the
+`$HF_TOKEN` placeholder. Current HF pricing lists Nvidia T4 small at about
+`$0.40/hour`, so the default `t4-small`/`4h` screen has a nominal compute cap
+near `$1.60`, excluding account/subscription requirements and retries.
+
+Equivalent unified-runner examples:
+
+```powershell
+.\scripts\run-official-evidence.ps1 `
+  -Backend local `
+  -LocalMode host `
+  -TotalAnchorsPerTenant 18 `
+  -BatchSize 4 `
+  -EnabledOfficialModelsCsv tft_official_v0 `
+  -SkipDownstreamGate
+
+.\scripts\run-official-evidence.ps1 `
+  -Backend hf `
+  -TotalAnchorsPerTenant 18 `
+  -BatchSize 4 `
+  -EnabledOfficialModelsCsv tft_official_v0 `
+  -ArtifactRepoId ilyafefelov/smart-arbitrage-official-evidence
+```
+
+The second command builds the payload and writes a dry-run receipt. Add
+`-Submit` only after the branch is pushed, HF token/account permissions are
+ready, and the artifact dataset repo is writable.
+
+## Claim Boundary
+
+Cloud training does not change the academic claim by itself. Any official
+NBEATSx/TFT, DFL, or offline DT candidate must still pass the same strict
+LP/oracle promotion gate against frozen `strict_similar_day`.
+
+Source capture:
+[hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md](../sources/hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md).

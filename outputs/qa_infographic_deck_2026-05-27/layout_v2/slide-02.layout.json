@@ -1,0 +1,726 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/veyb44",
+    "id": "veyb44",
+    "slide": 2,
+    "layoutId": "1065da8d-e3e7-4b63-ad3b-50009064b832",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "5cd112ed-ba5a-45ea-b821-06de225866da",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display",
+      "Aptos Mono"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "1065da8d-e3e7-4b63-ad3b-50009064b832",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "5cd112ed-ba5a-45ea-b821-06de225866da",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "5cd112ed-ba5a-45ea-b821-06de225866da",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/d8bat47y",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "alt": "Strict Similar Benchmark",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "asset": {
+        "assetId": "3affc506-33f0-48bf-b84b-5f1ac4de36dc",
+        "contentType": "image/png",
+        "byteLength": 891104
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nih4byhg",
+      "id": "2",
+      "bbox": [
+        492,
+        38,
+        744,
+        644
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.97255)",
+      "lineColor": "#8ABCB8",
+      "lineWidth": 1.2
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yxobm58z",
+      "id": "3",
+      "bbox": [
+        534,
+        64,
+        58,
+        34
+      ],
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 18,
+        "typeface": "Aptos",
+        "color": "#087E79",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "typeface": "Aptos",
+            "color": "#087E79",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 18,
+              "typeface": "Aptos",
+              "color": "#087E79",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#E7F6F4",
+      "lineColor": "#9ED3CD",
+      "lineWidth": 1
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9cvixcze",
+      "id": "4",
+      "bbox": [
+        610,
+        60,
+        560,
+        48
+      ],
+      "geometry": "rect",
+      "text": "Strict Similar Benchmark",
+      "textPreview": "Strict Similar Benchmark",
+      "resolvedFontSize": 30,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 30,
+        "typeface": "Aptos Display",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Strict Similar Benchmark"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Strict Similar Benchmark",
+          "resolvedTextStyle": {
+            "fontSize": 30,
+            "typeface": "Aptos Display",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Strict Similar Benchmark",
+              "fontSize": 30,
+              "typeface": "Aptos Display",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gr2p8nqx",
+      "id": "5",
+      "bbox": [
+        536,
+        120,
+        646,
+        46
+      ],
+      "geometry": "rect",
+      "text": "Как считается regret и связь с oracle",
+      "textPreview": "Как считается regret и связь с oracle",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 17,
+        "typeface": "Aptos",
+        "color": "#40566B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Как считается regret и связь с oracle"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Как считается regret и связь с oracle",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#40566B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Как считается regret и связь с oracle",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#40566B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r65wjudg",
+      "id": "6",
+      "bbox": [
+        536,
+        184,
+        646,
+        78
+      ],
+      "geometry": "rect",
+      "text": "regret = oracle_value - achieved_value",
+      "textPreview": "regret = oracle_value - achieved_value",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 16,
+        "typeface": "Aptos Mono",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 12,
+          "right": 18,
+          "bottom": 10,
+          "left": 18
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "regret = oracle_value - achieved_value"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "regret = oracle_value - achieved_value",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "typeface": "Aptos Mono",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "regret = oracle_value - achieved_value",
+              "fontSize": 16,
+              "typeface": "Aptos Mono",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#F4F9FA",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ylc7u54z",
+      "id": "7",
+      "bbox": [
+        536,
+        286,
+        646,
+        142
+      ],
+      "geometry": "rect",
+      "text": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом LP строит schedule по этому прогнозу.",
+      "textPreview": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом...",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 23,
+        "typeface": "Aptos Display",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Strict benchmark не обучается. Он берет похожий прошлый"
+          },
+          {
+            "index": 2,
+            "text": "день как прогноз: для Tue-Fri чаще yesterday, иначе same"
+          },
+          {
+            "index": 3,
+            "text": "weekday last week. Потом LP строит schedule по этому прогнозу."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом LP строит schedule по этому прогнозу.",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "typeface": "Aptos Display",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом LP строит schedule по этому прогнозу.",
+              "fontSize": 23,
+              "typeface": "Aptos Display",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/90je9cvi",
+      "id": "8",
+      "bbox": [
+        550,
+        452,
+        620,
+        142
+      ],
+      "geometry": "rect",
+      "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices\n- oracle_value: тот же LP, но с actual future prices\n- oracle - это верхняя планка, не реальный доступный режим\n- Меньше regret = лучше decision quality",
+      "textPreview": "- achieved_value: schedule из strict forecast, оцененный на actual prices | - oracle_value: тот же LP, но с actual future prices | - orac...",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 17,
+        "typeface": "Aptos",
+        "color": "#14213D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices"
+          },
+          {
+            "index": 2,
+            "text": "- oracle_value: тот же LP, но с actual future prices"
+          },
+          {
+            "index": 3,
+            "text": "- oracle - это верхняя планка, не реальный доступный режим"
+          },
+          {
+            "index": 4,
+            "text": "- Меньше regret = лучше decision quality"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "- oracle_value: тот же LP, но с actual future prices",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- oracle_value: тот же LP, но с actual future prices",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "- oracle - это верхняя планка, не реальный доступный режим",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- oracle - это верхняя планка, не реальный доступный режим",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "- Меньше regret = лучше decision quality",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- Меньше regret = лучше decision quality",
+              "fontSize": 17,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gfmlkjm1",
+      "id": "9",
+      "bbox": [
+        536,
+        608,
+        454,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+      "textPreview": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+      "resolvedFontSize": 15,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 15,
+        "typeface": "Aptos",
+        "color": "#087E79",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Benchmark нужен как честный frozen comparator для V2+, DT и"
+          },
+          {
+            "index": 2,
+            "text": "forecast models."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+          "resolvedTextStyle": {
+            "fontSize": 15,
+            "typeface": "Aptos",
+            "color": "#087E79",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+              "fontSize": 15,
+              "typeface": "Aptos",
+              "color": "#087E79",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/65wjudg7",
+      "id": "10",
+      "bbox": [
+        972,
+        616,
+        210,
+        36
+      ],
+      "geometry": "rect",
+      "text": "market_execution_enabled=false",
+      "textPreview": "market_execution_enabled=false",
+      "resolvedFontSize": 10,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 10,
+        "typeface": "Aptos",
+        "color": "#C7372F",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4,
+          "right": 8,
+          "bottom": 4,
+          "left": 8
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "market_execution_enabled=false"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "market_execution_enabled=false",
+          "resolvedTextStyle": {
+            "fontSize": 10,
+            "typeface": "Aptos",
+            "color": "#C7372F",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "market_execution_enabled=false",
+              "fontSize": 10,
+              "typeface": "Aptos",
+              "color": "#C7372F",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(255, 241, 240, 0.9098)",
+      "lineColor": "#F0B3AD",
+      "lineWidth": 1
+    }
+  ],
+  "composeRuns": []
+}

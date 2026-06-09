@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="833" viewBox="0 0 1500 833" role="img" aria-labelledby="title desc">
+  <title id="title">Ukraine BESS/DAM/IDM context</title>
+  <desc id="desc">Схема показує практичний контекст BESS, DAM/IDM hourly signals, operator preview і no-execution boundary.</desc>
+  <rect width="1500" height="833" fill="#f8fafc"/>
+  <rect width="1500" height="80" fill="#2563be"/>
+  <text x="43" y="55" font-family="Arial, sans-serif" font-size="36" font-weight="700" fill="#ffffff">Ukraine BESS/DAM/IDM context</text>
+  <defs>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#2563be"/>
+    </marker>
+  </defs>
+  <g font-family="Arial, sans-serif" fill="#1f2937">
+    <rect x="80" y="146" width="300" height="184" rx="18" fill="#ffffff" stroke="#2563be" stroke-width="2"/>
+    <text x="104" y="189" font-size="24" font-weight="700">DAM/IDM signals</text>
+    <text x="104" y="226" font-size="20">Hourly rows create</text>
+    <text x="104" y="251" font-size="20">charge or discharge</text>
+    <text x="104" y="276" font-size="20">opportunities, але</text>
+    <text x="104" y="301" font-size="20">publication state is explicit.</text>
+
+    <line x1="380" y1="238" x2="426" y2="238" stroke="#2563be" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <rect x="441" y="146" width="300" height="184" rx="18" fill="#ffffff" stroke="#0f8b8d" stroke-width="2"/>
+    <text x="464" y="189" font-size="24" font-weight="700">BESS asset</text>
+    <text x="464" y="226" font-size="20">SOC, power, efficiency</text>
+    <text x="464" y="251" font-size="20">and degradation turn</text>
+    <text x="464" y="276" font-size="20">signal into a feasible</text>
+    <text x="464" y="301" font-size="20">hourly schedule.</text>
+
+    <line x1="741" y1="238" x2="786" y2="238" stroke="#2563be" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <rect x="802" y="146" width="300" height="184" rx="18" fill="#ffffff" stroke="#2563be" stroke-width="2"/>
+    <text x="824" y="189" font-size="24" font-weight="700">Operator</text>
+    <text x="824" y="226" font-size="20">Needs explainable preview,</text>
+    <text x="824" y="251" font-size="20">not autonomous trading,</text>
+    <text x="824" y="276" font-size="20">settlement or live IDM bid.</text>
+
+    <line x1="1102" y1="238" x2="1153" y2="238" stroke="#2563be" stroke-width="4" marker-end="url(#arrow)"/>
+
+    <rect x="1161" y="146" width="260" height="184" rx="18" fill="#fff7ed" stroke="#f59e0b" stroke-width="2"/>
+    <text x="1185" y="189" font-size="24" font-weight="700">Ukraine</text>
+    <text x="1185" y="226" font-size="20">Practical value: transparent</text>
+    <text x="1185" y="251" font-size="20">local evidence under</text>
+    <text x="1185" y="276" font-size="20">market-readiness limits.</text>
+
+    <text x="110" y="494" font-size="25" font-weight="700">Why not just forecast?</text>
+    <text x="128" y="541" font-size="24">- Published rows are price source; forecasts are scenarios only.</text>
+    <text x="128" y="589" font-size="24">- Forecast error is not equal to economic loss.</text>
+    <text x="128" y="637" font-size="24">- The thesis evaluates decisions through regret/value.</text>
+
+    <text x="820" y="494" font-size="25" font-weight="700">Why this matters in Ukraine</text>
+    <text x="838" y="541" font-size="24">- Shortage and volatility increase storage value.</text>
+    <text x="838" y="589" font-size="24">- Market integration requires auditable source readiness.</text>
+    <text x="838" y="637" font-size="24">- Operators need conservative tools before execution gates.</text>
+  </g>
+  <text x="42" y="820" font-family="Arial, sans-serif" font-size="16" fill="#64748b">Smart Energy Arbitrage thesis visuals | DAM/IDM hourly recommendation preview | no market execution</text>
+</svg>

@@ -4,8 +4,11 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   OperatorAlertBanner,
   OperatorBaselineConsole,
+  OperatorDecisionEvidencePanel,
+  OperatorFutureStackPanel,
   OperatorMarketConsole,
   OperatorMetricRibbon,
+  OperatorResearchPanel,
   OperatorRightRail,
   OperatorScheduleDock,
   OperatorSidebar,
@@ -14,8 +17,13 @@ import {
 import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
+import { useOperatorPageNarrativeModel } from '~/composables/useOperatorPageNarrativeModel'
+import { useOperatorRecommendationPreviewModel } from '~/composables/useOperatorRecommendationPreviewModel'
+import { useOperatorRootScrollRecovery } from '~/composables/useOperatorRootScrollRecovery'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
+import type { OperatorChartHorizon, OperatorMarketVenue } from '~/types/operator-dashboard'
+import { isLiveHfSafeSwitchPreviewSource } from '~/utils/operatorShadowPreview'
 
 const {
   tenants,
@@ -39,6 +47,11 @@ const {
   loadSignalPreview
 } = useSignalPreview(selectedTenantId)
 
+const selectedMarketVenue = ref<OperatorMarketVenue>('DAM')
+const selectedTargetDeliveryDate = ref<string | null>(null)
+const selectedChartHorizon = ref<OperatorChartHorizon>('24h')
+const shouldAutoLoadBaselinePreview = ref(true)
+
 const {
   baselinePreview,
   isLoading: isBaselinePreviewLoading,
@@ -46,7 +59,14 @@ const {
   clearError: clearBaselinePreviewError,
   lastLoadedLabel: baselinePreviewLastLoadedLabel,
   loadBaselinePreview
-} = useBaselinePreview(selectedTenantId)
+} = useBaselinePreview(
+  selectedTenantId,
+  selectedMarketVenue,
+  selectedTargetDeliveryDate,
+  shouldAutoLoadBaselinePreview
+)
+
+const defense = useDefenseDashboard(selectedTenantId)
 
 const {
   runConfig,
@@ -65,16 +85,148 @@ const {
 
 const includePriceHistory = ref(true)
 const explanationMode = ref<'mvp' | 'future'>('mvp')
+const {
+  clearOperatorRecommendationError,
+  clearShadowComparisonError,
+  clearShadowPreviewError,
+  hourlyRecommendationEmptyMessage,
+  hourlyRecommendationRows,
+  isOperatorRecommendationLoading,
+  isShadowComparisonLoading,
+  isShadowPreviewLoading,
+  operatorRecommendation,
+  operatorRecommendationLastLoadedLabel,
+  loadRecommendationSurfaces,
+  operatorRecommendationError,
+  refreshVisibleRecommendation,
+  selectPreviewSource,
+  selectValueAlignedHfShadowDemoScenario,
+  selectedOperatorStrategyId,
+  selectedPreviewSourceId,
+  selectedPreviewSourceLabel,
+  shadowComparisonError,
+  shadowComparisonPreviews,
+  shadowPreview,
+  shadowPreviewError,
+  shadowPreviewLastLoadedLabel,
+  visibleOperatorRecommendation
+} = useOperatorRecommendationPreviewModel({
+  selectedTenantId,
+  selectedMarketVenue,
+  selectedTargetDeliveryDate,
+  baselinePreview
+})
 
-const explanationModeLabel = computed(() => explanationMode.value === 'mvp' ? 'Current MVP logic' : 'Future production logic')
+const operatorReadModelErrorCount = computed(() => {
+  return defense.activeErrorCount.value
+    + (operatorRecommendationError.value ? 1 : 0)
+    + (shadowPreviewError.value ? 1 : 0)
+    + (shadowComparisonError.value ? 1 : 0)
+})
+const defenseBenchmark = computed(() => defense.benchmark.value ?? null)
+const defenseModelRows = computed(() => defense.modelRows.value)
+const defenseSensitivity = computed(() => defense.sensitivity.value ?? null)
+const defenseBatteryState = computed(() => defense.batteryState.value ?? null)
+const defenseExogenousSignals = computed(() => defense.exogenousSignals.value ?? null)
+const defenseFutureStack = computed(() => defense.futureStack.value ?? null)
+const defenseDecisionPolicyPreview = computed(() => defense.dtPolicyPreview.value ?? null)
+const defenseAcademicMvpReadiness = computed(() => defense.academicMvpReadiness.value ?? null)
+const defenseGatekeeperValidationStatus = computed(() => defense.gatekeeperValidationStatus.value ?? null)
+const defenseIsLoading = computed(() => defense.isLoading.value)
+const defenseLastLoadedLabel = computed(() => defense.lastLoadedLabel.value)
+const defenseActiveErrorCount = computed(() => defense.activeErrorCount.value)
+const isLiveHfShadowPreviewSelected = computed(() => isLiveHfSafeSwitchPreviewSource(selectedPreviewSourceId.value))
+
+watch(isLiveHfShadowPreviewSelected, (isSelected) => {
+  shouldAutoLoadBaselinePreview.value = !isSelected
+
+  if (isSelected) {
+    clearOperatorRecommendationError()
+    clearBaselinePreviewError()
+  }
+}, { immediate: true })
+
+const selectedRecommendationBlocked = computed(() => {
+  if (isLiveHfShadowPreviewSelected.value) {
+    return Boolean(shadowPreviewError.value)
+  }
+
+  return isOperatorRecommendationLoading.value
+    || Boolean(operatorRecommendationError.value)
+    || Boolean(baselinePreviewError.value)
+})
+const selectedVisibleOperatorRecommendation = computed(() => {
+  if (selectedRecommendationBlocked.value) {
+    return null
+  }
+
+  return visibleOperatorRecommendation.value
+})
+const selectedHourlyRecommendationRows = computed(() => {
+  if (selectedRecommendationBlocked.value) {
+    return []
+  }
+
+  return hourlyRecommendationRows.value
+})
+const selectedHourlyRecommendationEmptyMessage = computed(() => {
+  if (selectedRecommendationBlocked.value) {
+    return 'Selected DAM/IDM preview is pending or blocked; no BUY/SELL/HOLD preference is shown.'
+  }
+
+  return hourlyRecommendationEmptyMessage.value
+})
+const bestValidStrategyComparisonRecommendation = computed(() => {
+  if (isLiveHfShadowPreviewSelected.value) {
+    return null
+  }
+
+  return selectedVisibleOperatorRecommendation.value
+})
+const activeMarketPreviewError = computed(() => {
+  if (isLiveHfShadowPreviewSelected.value) {
+    return shadowPreviewError.value
+  }
+
+  return operatorRecommendationError.value || baselinePreviewError.value
+})
+const activeMarketPreviewLoading = computed(() => {
+  return isSignalPreviewLoading.value
+    || (isLiveHfShadowPreviewSelected.value ? isShadowPreviewLoading.value : isOperatorRecommendationLoading.value)
+})
+const activeMarketPreviewLastLoadedLabel = computed(() => {
+  return isLiveHfShadowPreviewSelected.value
+    ? shadowPreviewLastLoadedLabel.value
+    : operatorRecommendationLastLoadedLabel.value
+})
+const activeSurfaceErrorMessage = computed(() => {
+  const marketPreviewError = isLiveHfShadowPreviewSelected.value
+    ? shadowPreviewError.value
+    : operatorRecommendationError.value || baselinePreviewError.value || shadowPreviewError.value
+
+  return error.value
+    || weatherError.value
+    || signalPreviewError.value
+    || marketPreviewError
+    || shadowComparisonError.value
+})
 
 const {
   activeAlertCount,
   activeRegistrySummary,
+  batteryAssetLabel,
+  batteryCapacityContextLabel,
+  batterySocFormula,
   batterySocPercent,
+  batterySocSourceLabel,
+  batterySohFormula,
   batterySohProxyPercent,
+  batterySohSourceLabel,
   batteryStatusLabel,
+  batteryTelemetryIngestLabel,
+  batteryTelemetryIngestTooltip,
   dispatchModeLabel,
+  deliveryWindowLabel,
   gatekeeperActions,
   headlineMetrics,
   latestRecommendedPowerLabel,
@@ -92,8 +244,16 @@ const {
 } = useOperatorDashboardViewModel({
   tenants,
   selectedTenant,
+  selectedMarketVenue,
+  selectedTargetDeliveryDate,
   signalPreview,
   baselinePreview,
+  operatorRecommendation: selectedVisibleOperatorRecommendation,
+  suppressBaselineFallback: isLiveHfShadowPreviewSelected,
+  isSelectedRecommendationLoading: computed(() => (
+    isLiveHfShadowPreviewSelected.value ? isShadowPreviewLoading.value : isOperatorRecommendationLoading.value
+  )),
+  batteryState: defense.batteryState,
   runConfig,
   materializeResult,
   operatorStatus,
@@ -103,26 +263,28 @@ const {
   baselinePreviewError,
   signalPreviewLastLoadedLabel,
   registryLastLoadedAt: lastLoadedAt,
-  isMaterializing
+  isMaterializing,
+  readModelErrorCount: operatorReadModelErrorCount
 })
 
-const primaryBoundaryCopy = computed(() => explanationMode.value === 'mvp'
-  ? 'Browser requests stay same-origin and are forwarded by Nuxt to the control-plane API. That keeps the dashboard bright and simple while the data plumbing stays behind the glass.'
-  : 'The future surface should still keep the browser same-origin, but the meaning of the cards changes: forecast outputs come from dedicated models and dispatch intent comes from policy logic plus deterministic validation.'
-)
-
-const nextStepsItems = computed(() => explanationMode.value === 'mvp'
-  ? [
-      'Materialization controls for weather and bronze assets.',
-      'Feasible plan review with units, SOC guardrails, and operator-ready explanations.',
-      'Dispatch and regret signatures with bright Sims-style motion cues.'
-    ]
-  : [
-      'Forecast cards fed by NBEATSx and TFT with uncertainty bands and feature evidence.',
-      'Dispatch cards fed by DT or M3DT with policy intent, counterfactual value, and safety outcomes.',
-      'Benchmark views that keep the LP baseline visible as a comparison surface rather than the final decision layer.'
-    ]
-)
+const {
+  explanationModeLabel,
+  nextStepsItems,
+  operatorResearchMetrics,
+  primaryBoundaryCopy,
+  scheduleMarketBoundaryLabel,
+  schedulePredictionHeadLabel
+} = useOperatorPageNarrativeModel({
+  explanationMode,
+  visibleOperatorRecommendation: selectedVisibleOperatorRecommendation,
+  selectedPreviewSourceLabel,
+  isShadowPreviewMode: computed(() => selectedPreviewSourceId.value !== 'best_valid'),
+  modelRows: defense.modelRows,
+  readinessRows: defense.researchReadinessRows,
+  offlineStrategyPromotion: defense.offlineStrategyPromotion,
+  exogenousSignals: defense.exogenousSignals,
+  batteryState: defense.batteryState
+})
 
 const refreshRegistry = async (): Promise<void> => {
   await loadTenants()
@@ -149,11 +311,16 @@ const dismissSurfaceErrors = (): void => {
   clearWeatherError()
   clearSignalPreviewError()
   clearBaselinePreviewError()
+  clearOperatorRecommendationError()
+  clearShadowPreviewError()
+  clearShadowComparisonError()
 }
 
 const setSelectedTenantId = (tenantId: string): void => {
   selectedTenantId.value = tenantId
 }
+
+useOperatorRootScrollRecovery()
 
 watch(selectedTenantId, () => {
   clearWeatherError()
@@ -167,6 +334,8 @@ onMounted(async () => {
 
   await loadSignalPreview()
   await loadBaselinePreview()
+  await loadRecommendationSurfaces()
+  await defense.loadDefenseDashboard()
   await syncOperatorStatus(selectedTenantId.value)
   startAutoRefresh()
 })
@@ -177,11 +346,22 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="operator-shell">
+  <main
+    id="operator-content"
+    class="operator-shell"
+    tabindex="-1"
+  >
+    <a
+      class="operator-skip-link"
+      href="#operator-content"
+    >
+      Skip to operator dashboard
+    </a>
     <div class="operator-frame">
       <OperatorTopBar
         :clock-label="operatorClockLabel"
         :is-loading="isLoading"
+        :active-alert-count="activeAlertCount"
         :timezone-label="selectedTenant?.timezone || 'Timezone pending'"
         @refresh="refreshRegistry"
       />
@@ -189,8 +369,8 @@ onBeforeUnmount(() => {
       <OperatorMetricRibbon :metrics="headlineMetrics" />
 
       <OperatorAlertBanner
-        v-if="error || weatherError || signalPreviewError || baselinePreviewError"
-        :message="error || weatherError || signalPreviewError || baselinePreviewError"
+        v-if="activeSurfaceErrorMessage"
+        :message="activeSurfaceErrorMessage"
         @dismiss="dismissSurfaceErrors"
       />
 
@@ -200,6 +380,7 @@ onBeforeUnmount(() => {
           :selected-tenant-id="selectedTenantId"
           :nav-items="operatorNavItems"
           :active-registry-summary="activeRegistrySummary"
+          :battery-asset-label="batteryAssetLabel"
           :signal-preview="signalPreview"
           :baseline-preview="baselinePreview"
           @update:selected-tenant-id="setSelectedTenantId"
@@ -214,17 +395,68 @@ onBeforeUnmount(() => {
             :explanation-mode-label="explanationModeLabel"
             :market-regime-chips="marketRegimeChips"
             :signal-preview="signalPreview"
+            :operator-recommendation="selectedVisibleOperatorRecommendation"
+            :market-preview-error="activeMarketPreviewError"
+            :selected-market-venue="selectedMarketVenue"
+            :selected-target-delivery-date="selectedTargetDeliveryDate"
+            :selected-chart-horizon="selectedChartHorizon"
             :is-registry-loading="isLoading"
-            :is-signal-preview-loading="isSignalPreviewLoading"
-            :signal-preview-last-loaded-label="signalPreviewLastLoadedLabel"
+            :is-signal-preview-loading="activeMarketPreviewLoading"
+            :signal-preview-last-loaded-label="activeMarketPreviewLastLoadedLabel"
+            @update:selected-market-venue="value => selectedMarketVenue = value"
+            @update:selected-target-delivery-date="value => selectedTargetDeliveryDate = value"
+            @update:selected-chart-horizon="value => selectedChartHorizon = value"
             @update:explanation-mode="value => explanationMode = value"
           />
 
           <OperatorBaselineConsole
             :baseline-preview="baselinePreview"
+            :operator-recommendation="selectedVisibleOperatorRecommendation"
+            :selected-strategy-id="selectedOperatorStrategyId"
+            :selected-chart-horizon="selectedChartHorizon"
             :is-loading="isBaselinePreviewLoading"
             :last-loaded-label="baselinePreviewLastLoadedLabel"
             :explanation-mode="explanationMode"
+          />
+
+          <OperatorDecisionEvidencePanel
+            :benchmark="defenseBenchmark"
+            :model-rows="defenseModelRows"
+            :sensitivity="defenseSensitivity"
+            :battery-state="defenseBatteryState"
+            :baseline-preview="baselinePreview"
+            :operator-recommendation="selectedVisibleOperatorRecommendation"
+            :exogenous-signals="defenseExogenousSignals"
+            :is-loading="defenseIsLoading || isOperatorRecommendationLoading"
+            :active-error-count="operatorReadModelErrorCount"
+          />
+
+          <OperatorFutureStackPanel
+            :future-stack="defenseFutureStack"
+            :decision-policy="defenseDecisionPolicyPreview"
+            :operator-recommendation="selectedVisibleOperatorRecommendation"
+            :best-valid-recommendation="bestValidStrategyComparisonRecommendation"
+            :shadow-preview="shadowPreview"
+            :shadow-comparison-previews="shadowComparisonPreviews"
+            :academic-mvp-readiness="defenseAcademicMvpReadiness"
+            :selected-strategy-id="selectedOperatorStrategyId"
+            :selected-preview-source-id="selectedPreviewSourceId"
+            :selected-chart-horizon="selectedChartHorizon"
+            :is-loading="defenseIsLoading || isOperatorRecommendationLoading || isShadowPreviewLoading || isShadowComparisonLoading"
+            :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
+            :active-error-count="operatorReadModelErrorCount"
+            @update:selected-strategy-id="value => selectedOperatorStrategyId = value"
+            @update:selected-preview-source-id="selectPreviewSource"
+            @refresh:shadow-preview="refreshVisibleRecommendation"
+            @select:hf-demo-scenario="selectValueAlignedHfShadowDemoScenario"
+          />
+
+          <OperatorResearchPanel
+            :metrics="operatorResearchMetrics"
+            :sensitivity="defenseSensitivity"
+            :is-loading="defenseIsLoading"
+            :last-loaded-label="defenseLastLoadedLabel"
+            :active-error-count="defenseActiveErrorCount"
           />
         </section>
 
@@ -233,9 +465,16 @@ onBeforeUnmount(() => {
           :mood-chips="moodChips"
           :battery-status-label="batteryStatusLabel"
           :battery-soc-percent="batterySocPercent"
+          :battery-soc-source-label="batterySocSourceLabel"
+          :battery-soc-formula="batterySocFormula"
           :battery-soh-proxy-percent="batterySohProxyPercent"
+          :battery-soh-source-label="batterySohSourceLabel"
+          :battery-soh-formula="batterySohFormula"
+          :battery-telemetry-ingest-label="batteryTelemetryIngestLabel"
+          :battery-telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
           :latest-recommended-power-label="latestRecommendedPowerLabel"
           :gatekeeper-actions="gatekeeperActions"
+          :gatekeeper-status="defenseGatekeeperValidationStatus"
           :active-alert-count="activeAlertCount"
           :status-label="statusLabel"
           :is-preparing="isPreparing"
@@ -257,6 +496,16 @@ onBeforeUnmount(() => {
         :selected-tenant-badge="selectedTenantBadge"
         :timeline-segments="timelineSegments"
         :dispatch-mode-label="dispatchModeLabel"
+        :prediction-head-label="schedulePredictionHeadLabel"
+        :market-boundary-label="scheduleMarketBoundaryLabel"
+        :selected-market-venue="selectedMarketVenue"
+        :battery-capacity-context-label="batteryCapacityContextLabel"
+        :delivery-window-label="deliveryWindowLabel"
+        :selected-preview-source-label="selectedPreviewSourceLabel"
+        :is-shadow-preview-mode="selectedPreviewSourceId !== 'best_valid'"
+        :hourly-recommendation-rows="selectedHourlyRecommendationRows"
+        :hourly-empty-message="selectedHourlyRecommendationEmptyMessage"
+        :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
       />
     </div>
   </main>

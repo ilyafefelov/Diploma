@@ -1,70 +1,168 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, LegendComponent, TooltipComponent } from 'echarts/components'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import VChart from 'vue-echarts'
 
-import type { SignalPreview } from '~/types/control-plane'
+import ClientVChart from '~/components/dashboard/ClientVChart.vue'
+import type { OperatorRecommendationResponse, SignalPreview } from '~/types/control-plane'
+import type { OperatorChartHorizon, OperatorMarketVenue } from '~/types/operator-dashboard'
 import { buildMarketSignalHeroChartOption } from '~/utils/dashboardChartTheme'
-
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent, LegendComponent])
+import {
+  operatorPriceContextModeLabel,
+  operatorPriceContextSourceLabel,
+  operatorMarketVenueLabel,
+  selectOperatorMarketSignalPreview,
+  sliceSignalPreviewForChartHorizon
+} from '~/utils/operatorPreviewControls'
 
 const props = defineProps<{
   signalPreview: SignalPreview | null
+  operatorRecommendation: OperatorRecommendationResponse | null
+  selectedMarketVenue: OperatorMarketVenue
+  selectedTargetDeliveryDate: string | null
+  selectedChartHorizon: OperatorChartHorizon
+  marketPreviewError: string
   isLoading: boolean
   lastLoadedLabel: string
 }>()
 
-const chartOption = computed(() => buildMarketSignalHeroChartOption(props.signalPreview))
+const activeOperatorRecommendation = computed(() => props.isLoading ? null : props.operatorRecommendation)
+const selectedMarketSignalPreview = computed(() => selectOperatorMarketSignalPreview(
+  props.signalPreview,
+  activeOperatorRecommendation.value
+))
+const visibleSignalPreview = computed(() => sliceSignalPreviewForChartHorizon(
+  selectedMarketSignalPreview.value,
+  props.selectedChartHorizon
+))
+const marketVenueLabel = computed(() => operatorMarketVenueLabel(props.selectedMarketVenue))
+const chartOption = computed(() => buildMarketSignalHeroChartOption(
+  visibleSignalPreview.value,
+  props.selectedMarketVenue,
+  {
+    priceContextStatus: activeOperatorRecommendation.value?.price_context_status,
+    priceContextSourceLabel: operatorPriceContextSourceLabel(activeOperatorRecommendation.value)
+  }
+))
+const priceContextModeLabel = computed(() => operatorPriceContextModeLabel(activeOperatorRecommendation.value))
+const priceContextSourceLabel = computed(() => operatorPriceContextSourceLabel(activeOperatorRecommendation.value))
+const priceContextMetricLabel = computed(() => {
+  if (activeOperatorRecommendation.value?.price_context_status === 'pre_publication_forecast') {
+    return `${marketVenueLabel.value} ML forecast price`
+  }
+
+  return `${marketVenueLabel.value} official/source price`
+})
 
 const hasSignalData = computed(() => {
-  return !!props.signalPreview && props.signalPreview.market_price.length > 0
+  return !!visibleSignalPreview.value && visibleSignalPreview.value.market_price.length > 0
+})
+const hasMarketPreviewBlocker = computed(() => props.marketPreviewError.trim().length > 0)
+const selectedPreviewHasNoSourceRows = computed(() => {
+  return Boolean(activeOperatorRecommendation.value) && !props.isLoading && !hasSignalData.value
+})
+const selectedPreviewBlockedMessage = computed(() => {
+  const warning = activeOperatorRecommendation.value?.readiness_warnings.find(readinessWarning =>
+    /blocked|no source-backed|no substitute prices|no trade preview|source rows/i.test(readinessWarning)
+  )
+  const status = activeOperatorRecommendation.value?.policy_readiness
+  const statusLabel = status && status !== 'ready' ? `${status}. ` : ''
+
+  return `${statusLabel}${warning || 'Selected preview has no source-backed price rows for this delivery window.'} No trade preview is shown.`
+})
+const isPreparingSelectedPreview = computed(() => {
+  return !hasMarketPreviewBlocker.value
+    && !selectedPreviewHasNoSourceRows.value
+    && (props.isLoading || !hasSignalData.value)
 })
 
 const formatNumber = (value: number): string => `${value.toFixed(2)}`
 const formatPowerLabel = (value: number): string => `${value >= 0 ? '+' : ''}${value.toFixed(1)} UAH/MWh`
+const formatPeriodDateTime = (value: string | null | undefined): string => {
+  if (!value) {
+    return 'date pending'
+  }
 
-const latestMarketPrice = computed(() => {
-  if (!props.signalPreview?.market_price.length) {
+  const parsedDate = new Date(value)
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return 'date pending'
+  }
+
+  return new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: visibleSignalPreview.value?.timezone || visibleSignalPreview.value?.resolved_location.timezone || 'Europe/Kyiv'
+  }).format(parsedDate)
+}
+
+const latestPricePeriodLabel = computed(() => {
+  return `Hour: ${formatPeriodDateTime(visibleSignalPreview.value?.latest_price_timestamp || visibleSignalPreview.value?.forecast_window_end)}`
+})
+
+const selectedTargetWindowStart = computed(() => {
+  if (!props.selectedTargetDeliveryDate) {
     return null
   }
 
-  return props.signalPreview.market_price.at(-1) ?? null
+  return `${props.selectedTargetDeliveryDate}T00:00:00`
+})
+
+const selectedTargetWindowEnd = computed(() => {
+  if (!props.selectedTargetDeliveryDate) {
+    return null
+  }
+
+  const targetDate = new Date(`${props.selectedTargetDeliveryDate}T00:00:00`)
+  if (Number.isNaN(targetDate.getTime())) {
+    return null
+  }
+
+  targetDate.setDate(targetDate.getDate() + 1)
+  return targetDate.toISOString().slice(0, 19)
+})
+
+const forecastWindowPeriodLabel = computed(() => {
+  const startLabel = formatPeriodDateTime(
+    activeOperatorRecommendation.value?.target_delivery_window_start
+      || visibleSignalPreview.value?.forecast_window_start
+      || selectedTargetWindowStart.value
+  )
+  const endLabel = formatPeriodDateTime(
+    activeOperatorRecommendation.value?.target_delivery_window_end
+      || visibleSignalPreview.value?.forecast_window_end
+      || selectedTargetWindowEnd.value
+  )
+
+  if (startLabel === 'date pending' || endLabel === 'date pending') {
+    return 'Selected period pending'
+  }
+
+  return `${startLabel} → ${endLabel}`
+})
+
+const latestMarketPrice = computed(() => {
+  if (!visibleSignalPreview.value?.market_price.length) {
+    return null
+  }
+
+  return visibleSignalPreview.value.market_price.at(-1) ?? null
 })
 
 const maxMarketPrice = computed(() => {
-  if (!props.signalPreview?.market_price.length) {
+  if (!visibleSignalPreview.value?.market_price.length) {
     return null
   }
 
-  return Math.max(...props.signalPreview.market_price)
+  return Math.max(...visibleSignalPreview.value.market_price)
 })
 
 const minMarketPrice = computed(() => {
-  if (!props.signalPreview?.market_price.length) {
+  if (!visibleSignalPreview.value?.market_price.length) {
     return null
   }
 
-  return Math.min(...props.signalPreview.market_price)
-})
-
-const latestBias = computed(() => {
-  if (!props.signalPreview?.weather_bias.length) {
-    return null
-  }
-
-  return props.signalPreview.weather_bias.at(-1) ?? null
-})
-
-const avgBias = computed(() => {
-  if (!props.signalPreview?.weather_bias.length) {
-    return null
-  }
-
-  const avg = props.signalPreview.weather_bias.reduce((acc, value) => acc + value, 0) / props.signalPreview.weather_bias.length
-  return avg
+  return Math.min(...visibleSignalPreview.value.market_price)
 })
 
 const forecastSpread = computed(() => {
@@ -74,36 +172,108 @@ const forecastSpread = computed(() => {
 
   return maxMarketPrice.value - minMarketPrice.value
 })
+
+const contextRowCount = computed(() => visibleSignalPreview.value?.market_price.length ?? 0)
+const sourceContextRowCount = computed(() => {
+  if (!activeOperatorRecommendation.value) {
+    return 0
+  }
+
+  if (activeOperatorRecommendation.value.price_context_status === 'pre_publication_forecast') {
+    return activeOperatorRecommendation.value.policy_forecast_context_row_count
+  }
+
+  return activeOperatorRecommendation.value.recommendation_schedule.length
+})
+const sourceContextCoverageLabel = computed(() => {
+  if (!activeOperatorRecommendation.value) {
+    return 'coverage pending'
+  }
+
+  if (activeOperatorRecommendation.value.price_context_status === 'pre_publication_forecast') {
+    const coveragePercent = Math.round(activeOperatorRecommendation.value.policy_forecast_context_coverage_ratio * 100)
+    return `${sourceContextRowCount.value}/24 rows · ${coveragePercent}%`
+  }
+
+  return `${sourceContextRowCount.value}/24 source rows`
+})
+const contextRowStatusLabel = computed(() => {
+  if (!activeOperatorRecommendation.value) {
+    return 'preview pending'
+  }
+
+  if (activeOperatorRecommendation.value.price_context_status === 'pre_publication_forecast') {
+    return activeOperatorRecommendation.value.policy_forecast_context_source || 'forecast store'
+  }
+
+  if (activeOperatorRecommendation.value.price_context_status === 'official_published') {
+    return 'official/source-backed'
+  }
+
+  return activeOperatorRecommendation.value.price_context_status || 'source status pending'
+})
+
+const activeForecastSeries = computed(() => {
+  const source = activeOperatorRecommendation.value?.policy_forecast_context_source
+  if (!source) {
+    return null
+  }
+
+  return activeOperatorRecommendation.value?.forecast_model_series.find(series => series.model_name === source) ?? null
+})
+
+const formatGeneratedAtLabel = (value: string | null | undefined): string => {
+  if (!value) {
+    return 'generated time pending'
+  }
+
+  return `generated ${formatPeriodDateTime(value)}`
+}
+
+const forecastQualityValueLabel = computed(() => {
+  if (!activeOperatorRecommendation.value) {
+    return 'Pending'
+  }
+
+  if (activeOperatorRecommendation.value.price_context_status === 'official_published') {
+    return 'Official row'
+  }
+
+  return activeOperatorRecommendation.value.policy_forecast_context_source || 'Forecast store'
+})
+
+const forecastQualityMetaLabel = computed(() => {
+  if (!activeOperatorRecommendation.value) {
+    return 'selected preview not loaded'
+  }
+
+  if (activeOperatorRecommendation.value.price_context_status === 'official_published') {
+    return `${sourceContextCoverageLabel.value} · no ML price override`
+  }
+
+  const uncertaintyKind = activeForecastSeries.value?.uncertainty_kind || 'point'
+  const qualityBoundary = activeForecastSeries.value?.quality_boundary || 'quality evidence pending'
+  return `${sourceContextCoverageLabel.value} · ${uncertaintyKind} · ${formatGeneratedAtLabel(activeOperatorRecommendation.value.forecast_generated_at)} · ${qualityBoundary}`
+})
 </script>
 
 <template>
   <div class="market-signal-hero">
     <div class="market-signal-hero__toolbar">
       <div class="market-signal-hero__tabs">
-        <UButton
-          label="DAM"
-          color="info"
-          variant="ghost"
-          class="market-signal-hero__tab market-signal-hero__tab-active"
-        />
-        <UButton
-          label="IDM"
-          color="info"
-          variant="ghost"
+        <span
           class="market-signal-hero__tab"
-        />
-        <UButton
-          label="Both"
-          color="info"
-          variant="ghost"
+          :class="{ 'market-signal-hero__tab-active': selectedMarketVenue === 'DAM', 'market-signal-hero__tab-muted': selectedMarketVenue !== 'DAM' }"
+        >DAM hourly</span>
+        <span
           class="market-signal-hero__tab"
-        />
+          :class="{ 'market-signal-hero__tab-active': selectedMarketVenue === 'IDM', 'market-signal-hero__tab-muted': selectedMarketVenue !== 'IDM' }"
+        >IDM hourly preview</span>
       </div>
 
       <div class="market-signal-hero__range">
-        <span>24H</span>
-        <span>7D</span>
-        <span>30D</span>
+        <span>{{ selectedChartHorizon.toUpperCase() }}</span>
+        <span>{{ activeOperatorRecommendation?.target_delivery_date ?? selectedTargetDeliveryDate ?? 'latest' }}</span>
       </div>
 
       <UBadge
@@ -115,29 +285,73 @@ const forecastSpread = computed(() => {
     </div>
 
     <div
-      v-if="!isLoading"
+      v-if="hasMarketPreviewBlocker"
+      class="market-signal-hero__blocker"
+      role="status"
+    >
+      <p>Source-backed preview blocker</p>
+      <strong>{{ marketVenueLabel }} hourly preview cannot be charted as official/source-backed context.</strong>
+      <span>{{ marketPreviewError }}</span>
+    </div>
+
+    <div
+      v-else
+      class="market-signal-hero__context-strip"
+      aria-label="Selected market price context"
+    >
+      <span>
+        <strong>Selected period</strong>
+        {{ forecastWindowPeriodLabel }}
+      </span>
+      <span>
+        <strong>Price source</strong>
+        {{ priceContextSourceLabel }}
+      </span>
+      <span>
+        <strong>Mode</strong>
+        {{ priceContextModeLabel }}
+      </span>
+    </div>
+
+    <div
+      v-if="!hasMarketPreviewBlocker && !isPreparingSelectedPreview"
       class="market-signal-hero__metrics"
     >
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">DAM spot</p>
+      <article
+        class="hud-mini-stat"
+        role="group"
+        :aria-label="`${priceContextMetricLabel}: ${latestMarketPrice == null ? 'pending' : formatPowerLabel(latestMarketPrice)}. ${latestPricePeriodLabel}`"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          {{ priceContextMetricLabel }}
+        </p>
         <strong>{{ latestMarketPrice == null ? '—' : formatPowerLabel(latestMarketPrice) }}</strong>
         <p class="hud-mini-stat__meta">
-          Latest visible hour
+          {{ latestPricePeriodLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
           role="tooltip"
         >
-          <span class="hud-mini-stat__tooltip-title">Latest DAM price</span>
+          <span class="hud-mini-stat__tooltip-title">{{ priceContextMetricLabel }}</span>
           <span>Formula: P_t = market_price[t]</span>
-          <span>Definition: expected settlement level used in the current MVP preview.</span>
+          <span>Period: {{ latestPricePeriodLabel }}.</span>
+          <span>Definition: published windows use official/source-backed rows; unpublished windows use ML forecast evidence; not a market bid.</span>
         </span>
       </article>
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">Window spread</p>
+      <article
+        class="hud-mini-stat"
+        role="group"
+        :aria-label="`Window spread: ${forecastSpread == null ? 'pending' : `${formatNumber(forecastSpread)} UAH/MWh`}. ${forecastWindowPeriodLabel}`"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          Window spread
+        </p>
         <strong>{{ forecastSpread == null ? '—' : `${formatNumber(forecastSpread)} UAH/MWh` }}</strong>
         <p class="hud-mini-stat__meta">
-          Max-min in visible horizon
+          {{ forecastWindowPeriodLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
@@ -145,49 +359,84 @@ const forecastSpread = computed(() => {
         >
           <span class="hud-mini-stat__tooltip-title">Forecast band</span>
           <span>Formula: spread = max(price_i) − min(price_i)</span>
+          <span>Period: {{ forecastWindowPeriodLabel }}.</span>
           <span>Interpretation: higher spread usually gives higher arbitrage opportunity.</span>
         </span>
       </article>
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">Weather uplift</p>
-        <strong>{{ avgBias == null ? '—' : `${avgBias >= 0 ? '+' : ''}${formatNumber(avgBias)} UAH/MWh` }}</strong>
+      <article
+        class="hud-mini-stat"
+        role="group"
+        :aria-label="`Context rows: ${sourceContextRowCount}. ${contextRowStatusLabel}. ${sourceContextCoverageLabel}. ${forecastWindowPeriodLabel}`"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          Context rows
+        </p>
+        <strong>{{ sourceContextRowCount }}</strong>
         <p class="hud-mini-stat__meta">
-          Average across horizon
+          {{ sourceContextCoverageLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
           role="tooltip"
         >
-          <span class="hud-mini-stat__tooltip-title">Weather term</span>
-          <span>Formula: price_adj = market_price + weather_bias</span>
-          <span>Source: calibrated uplift from cloud, precipitation, humidity, solar, and wind.</span>
+          <span class="hud-mini-stat__tooltip-title">Selected preview rows</span>
+          <span>Formula: row_count = len(selected_price_context)</span>
+          <span>Period: {{ forecastWindowPeriodLabel }}.</span>
+          <span>Source: {{ contextRowStatusLabel }}; {{ sourceContextCoverageLabel }}.</span>
         </span>
       </article>
-      <article class="hud-mini-stat" tabindex="0">
-        <p class="hud-mini-stat__label">Signal count</p>
-        <strong>{{ hasSignalData ? props.signalPreview?.labels.length : '—' }}</strong>
+      <article
+        class="hud-mini-stat"
+        role="group"
+        :aria-label="`Forecast quality: ${forecastQualityValueLabel}. ${forecastQualityMetaLabel}. ${forecastWindowPeriodLabel}`"
+        tabindex="0"
+      >
+        <p class="hud-mini-stat__label">
+          Forecast QA
+        </p>
+        <strong>{{ forecastQualityValueLabel }}</strong>
         <p class="hud-mini-stat__meta">
-          Forecast horizon points
+          {{ forecastQualityMetaLabel }}
         </p>
         <span
           class="hud-mini-stat__tooltip"
           role="tooltip"
         >
-          <span class="hud-mini-stat__tooltip-title">Signal density</span>
-          <span>Formula: point_count = len(labels)</span>
-          <span>Interpretation: longer horizon gives smoother visual trend and confidence for dispatch alignment.</span>
+          <span class="hud-mini-stat__tooltip-title">Forecast quality boundary</span>
+          <span>Formula: quality = coverage + source/model + generated_at + calibration boundary</span>
+          <span>Period: {{ forecastWindowPeriodLabel }}.</span>
+          <span>Interpretation: official rows do not use ML price override; unpublished windows show forecast context and quality boundary only.</span>
         </span>
       </article>
     </div>
 
     <ClientOnly>
       <div
-        v-if="isLoading"
+        v-if="hasMarketPreviewBlocker"
         class="chart-fallback"
       >
-        Preparing market signals...
+        Waiting for source-backed {{ marketVenueLabel }} rows before rendering this venue as official context.
       </div>
-      <VChart
+      <div
+        v-else-if="isLoading"
+        class="chart-fallback"
+      >
+        Preparing selected preview...
+      </div>
+      <div
+        v-else-if="selectedPreviewHasNoSourceRows"
+        class="chart-fallback"
+      >
+        {{ selectedPreviewBlockedMessage }}
+      </div>
+      <div
+        v-else-if="!hasSignalData"
+        class="chart-fallback"
+      >
+        Selected preview has no source-backed price rows for this delivery window. No trade preview is shown.
+      </div>
+      <ClientVChart
         v-else
         class="market-signal-hero__chart"
         :option="chartOption"

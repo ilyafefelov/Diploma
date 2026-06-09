@@ -25,11 +25,14 @@ OREE returns the `data_view` response as JSON even when the HTTP `content-type` 
 ### Open-Meteo Weather Data
 
 - URL: https://api.open-meteo.com/v1/forecast
+- Historical URL: https://archive-api.open-meteo.com/v1/archive
 - Grain: hourly forecast rows by tenant latitude, longitude, and timezone
 - Current source markers:
   - `source=OPEN_METEO`
   - `source_kind=observed`
   - `source_url=https://api.open-meteo.com/v1/forecast`
+  - `source=OPEN_METEO_HISTORICAL` for historical benchmark rows
+  - `source_url=https://archive-api.open-meteo.com/v1/archive` for historical benchmark rows
 
 Weather is tenant/location-specific. The current tenant registry is [simulations/tenants.yml](../../simulations/tenants.yml).
 
@@ -75,6 +78,17 @@ Required before strong empirical claims:
 5. Add effective-dated NEURC price caps for the delivery date being evaluated.
 
 The benchmark should then feed `Forecast Strategy Evaluation` through a rolling-origin protocol: train or fit only on past rows, forecast the next horizon, solve LP, score against realized prices, and compare with oracle value/regret.
+
+## Implemented Real-Data Benchmark Slice
+
+The current branch adds a strict benchmark path alongside the demo/live-overlay path:
+
+- `observed_market_price_history_bronze`: OREE DAM backfill that fails when requested dates have no observed rows.
+- `tenant_historical_weather_bronze`: Open-Meteo historical weather by tenant coordinates.
+- `real_data_rolling_origin_benchmark_frame`: Gold rolling-origin benchmark for strict similar-day, NBEATSx, and TFT.
+- `GET /dashboard/real-data-benchmark`: latest benchmark summary/read model for the redesigned dashboard.
+
+Benchmark defaults are capped for diploma runtime: all tenant registry entries, 24-hour horizon, daily anchors, and up to 90 anchors. A result is thesis-grade only when the evaluated price rows are all `source_kind=observed`; synthetic or mixed provenance remains demo-grade and must not be described as measured market performance.
 
 ## Optional Database Persistence
 

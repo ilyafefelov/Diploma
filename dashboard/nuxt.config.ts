@@ -21,7 +21,7 @@ export default defineNuxtConfig({
   css: ['~/assets/css/main.css'],
 
   runtimeConfig: {
-    apiBase: env.NUXT_API_BASE || 'http://127.0.0.1:8010',
+    apiBase: env.NUXT_API_BASE || 'http://127.0.0.1:8000',
     public: {
       siteUrl,
       siteName: 'Smart Arbitrage Operator',

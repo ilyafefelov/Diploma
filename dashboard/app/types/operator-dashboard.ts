@@ -2,12 +2,17 @@ import type { BaselineLpPreview, OperatorStatus, SignalPreview, TenantSummary } 
 
 export type OperatorExplanationMode = 'mvp' | 'future'
 
+export type OperatorMarketVenue = 'DAM' | 'IDM'
+
+export type OperatorChartHorizon = '6h' | '12h' | '24h' | 'all'
+
 export type OperatorHudTone = 'blue' | 'green' | 'orange' | 'mint' | 'lime'
 
 export interface OperatorNavItem {
   label: string
   icon: string
   active: boolean
+  targetId: string
 }
 
 export interface OperatorHeadlineMetric {
@@ -49,9 +54,12 @@ export interface OperatorGatekeeperAction {
 
 export interface OperatorTimelineSegment {
   time: string
-  label: 'Charge' | 'Discharge' | 'Hold'
+  label: 'Charge' | 'Discharge' | 'Hold' | 'Preview pending' | 'No trade preview'
   value: string
-  tone: 'blue' | 'green'
+  marketSideLabel: 'BUY' | 'SELL' | 'HOLD' | 'PENDING' | 'BLOCKED'
+  indicativePriceLabel: string
+  marketBoundaryLabel: string
+  tone: 'blue' | 'green' | 'orange'
   tooltipTitle: string
   tooltipBody: string
 }

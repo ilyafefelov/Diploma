@@ -1,0 +1,21 @@
+# Source Captures
+
+This folder records current source-capture packages used while planning and
+executing thesis engineering slices.
+
+The long-running bibliography and local PDF archive remains
+[docs/thesis/sources/README.md](../thesis/sources/README.md). This folder is a
+lighter index for source notes that support a specific implementation or PRD.
+
+| Capture | Purpose |
+|---|---|
+| [architecture-review-source-capture-2026-05-11.md](architecture-review-source-capture-2026-05-11.md) | Regulatory, data-governance, market-coupling, AI-governance, and missing degradation-control sources from the 2026-05-11 architecture review matrix. |
+| [cloud-gpu-training-offload-source-capture-2026-05-11.md](cloud-gpu-training-offload-source-capture-2026-05-11.md) | Local GTX 1050 Ti feasibility, Hugging Face Jobs/Spaces, Colab/Kaggle, Modal, Lambda, Paperspace, RunPod, Vast.ai, and compute offload recommendation for official/DFL training. |
+| [entsoe-poland-lag24-nbu-source-capture-2026-05-20.md](entsoe-poland-lag24-nbu-source-capture-2026-05-20.md) | ENTSO-E Poland lag-24 feature route, NBU EUR/UAH metadata, full timestamp coverage, and approved-route-pending-materialization evidence. |
+| [hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md](hf-jobs-market-coupling-readiness-source-capture-2026-05-12.md) | Hugging Face Jobs submission wrapper, T4-small cost guard, and market-coupling readiness preflight source trail. |
+| [market-coupling-ablation-v1-source-capture-2026-05-16.md](market-coupling-ablation-v1-source-capture-2026-05-16.md) | Source trail and local evidence boundary for the governed V2+ neighbor-market ablation path. |
+| [market-coupling-exogenous-feature-interface-source-capture-2026-05-12.md](market-coupling-exogenous-feature-interface-source-capture-2026-05-12.md) | ENTSO-E, Nixtla, PriceFM, SciSpace, and DFL source trail for the guarded prior-only market-coupling feature route. |
+| [nixtla-neuralforecast-nbeatsx-source-capture-2026-05-11.md](nixtla-neuralforecast-nbeatsx-source-capture-2026-05-11.md) | Official NeuralForecast/NBEATSx usage, exogenous-variable governance, cross-validation screening, and calibrated official NBEATSx thesis path. |
+| [official-evidence-attempt-interface-source-capture-2026-05-12.md](official-evidence-attempt-interface-source-capture-2026-05-12.md) | Hugging Face Jobs and local runner source trail for resumable official evidence-attempt manifests. |
+| [official-forecast-exogenous-governance-source-capture-2026-05-11.md](official-forecast-exogenous-governance-source-capture-2026-05-11.md) | Official NBEATSx/TFT rolling-origin evidence, exogenous feature governance, and European dataset bridge status for the resumable 104-anchor run. |
+| [ua-context-acquisition-source-capture-2026-05-23.md](ua-context-acquisition-source-capture-2026-05-23.md) | OREE DAM publication-rule evidence, Ukrenergo archive pagination, and the source-backed V11 context-readiness packet. |

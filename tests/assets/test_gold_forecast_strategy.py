@@ -13,7 +13,28 @@ from smart_arbitrage.assets.gold.baseline_solver import (
 from smart_arbitrage.assets.gold.forecast_strategy import (
     FORECAST_STRATEGY_GOLD_ASSETS,
     ForecastStrategyComparisonAssetConfig,
+    OfficialGlobalPanelCalibrationAssetConfig,
+    OfficialGlobalPanelRollingAssetConfig,
+    OfficialForecastRollingOriginAssetConfig,
+    RealDataRollingOriginBenchmarkAssetConfig,
+    _daily_benchmark_anchors,
     forecast_strategy_comparison_frame,
+    nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame,
+    nbeatsx_official_global_panel_horizon_calibration_frame,
+    nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame,
+    nbeatsx_official_global_panel_rolling_horizon_calibration_frame,
+    nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame,
+    nbeatsx_official_global_panel_strict_lp_benchmark_frame,
+    official_forecast_rolling_origin_benchmark_frame,
+    official_forecast_strict_lp_benchmark_frame,
+    real_data_rolling_origin_benchmark_frame,
+    tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame,
+    tft_official_global_panel_horizon_quantile_calibration_frame,
+    tft_official_global_panel_rolling_strict_lp_benchmark_frame,
+)
+from smart_arbitrage.assets.silver.real_data_benchmark import (
+    REAL_DATA_BENCHMARK_SILVER_ASSETS,
+    real_data_benchmark_silver_feature_frame,
 )
 from smart_arbitrage.defs import defs
 from smart_arbitrage.resources.strategy_evaluation_store import (
@@ -96,6 +117,33 @@ def _tft_forecast_frame(price_history: pl.DataFrame) -> pl.DataFrame:
     )
 
 
+def _official_forecast_frame(
+    price_history: pl.DataFrame,
+    *,
+    model_name: str,
+    adjustment_uah_mwh: float,
+) -> pl.DataFrame:
+    anchor_timestamp = _anchor_timestamp(price_history)
+    actual_future = price_history.filter(
+        pl.col(DEFAULT_TIMESTAMP_COLUMN) > anchor_timestamp
+    ).head(24)
+    prices = [
+        float(value) + adjustment_uah_mwh
+        for value in actual_future.select(DEFAULT_PRICE_COLUMN).to_series().to_list()
+    ]
+    return pl.DataFrame(
+        {
+            "forecast_timestamp": actual_future.select(DEFAULT_TIMESTAMP_COLUMN)
+            .to_series()
+            .to_list(),
+            "model_name": [model_name for _ in range(actual_future.height)],
+            "backend_status": ["trained" for _ in range(actual_future.height)],
+            "predicted_price_uah_mwh": prices,
+            "predicted_price_p50_uah_mwh": prices,
+        }
+    )
+
+
 def test_forecast_strategy_comparison_asset_persists_gold_frame(monkeypatch) -> None:
     store = InMemoryStrategyEvaluationStore()
     price_history = _price_history()
@@ -127,9 +175,750 @@ def test_forecast_strategy_comparison_asset_persists_gold_frame(monkeypatch) -> 
     ]
 
 
+def test_official_forecast_strict_lp_benchmark_asset_persists_sidecar_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    price_history = _price_history()
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+
+    frame = official_forecast_strict_lp_benchmark_frame(
+        None,
+        ForecastStrategyComparisonAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory"
+        ),
+        price_history,
+        _strict_forecast_frame(price_history),
+        _official_forecast_frame(
+            price_history,
+            model_name="nbeatsx_official_v0",
+            adjustment_uah_mwh=25.0,
+        ),
+        _official_forecast_frame(
+            price_history,
+            model_name="tft_official_v0",
+            adjustment_uah_mwh=50.0,
+        ),
+    )
+
+    assert frame.height == 3
+    assert store.evaluation_frame.height == 3
+    assert set(frame.select("strategy_kind").to_series().to_list()) == {
+        "official_forecast_strict_lp_benchmark"
+    }
+    assert set(frame.select("forecast_model_name").to_series().to_list()) == {
+        "strict_similar_day",
+        "nbeatsx_official_v0",
+        "tft_official_v0",
+    }
+
+
 def test_forecast_strategy_gold_asset_is_registered() -> None:
     asset_keys = {asset.key.to_user_string() for asset in FORECAST_STRATEGY_GOLD_ASSETS}
+    silver_asset_keys = {asset.key.to_user_string() for asset in REAL_DATA_BENCHMARK_SILVER_ASSETS}
     registered_asset_keys = {asset.key.to_user_string() for asset in defs.assets or []}
+    benchmark_deps = {
+        asset_key.to_user_string()
+        for asset_key in real_data_rolling_origin_benchmark_frame.dependency_keys
+    }
+    official_deps = {
+        asset_key.to_user_string()
+        for asset_key in official_forecast_rolling_origin_benchmark_frame.dependency_keys
+    }
 
-    assert {"forecast_strategy_comparison_frame"}.issubset(asset_keys)
+    assert {
+        "forecast_strategy_comparison_frame",
+        "official_forecast_strict_lp_benchmark_frame",
+        "official_forecast_rolling_origin_benchmark_frame",
+        "nbeatsx_official_global_panel_strict_lp_benchmark_frame",
+        "nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame",
+        "nbeatsx_official_global_panel_horizon_calibration_frame",
+        "nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame",
+        "nbeatsx_official_global_panel_rolling_horizon_calibration_frame",
+        "nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame",
+        "tft_official_global_panel_rolling_strict_lp_benchmark_frame",
+        "tft_official_global_panel_horizon_quantile_calibration_frame",
+        "tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame",
+        "real_data_rolling_origin_benchmark_frame",
+    }.issubset(asset_keys)
+    assert {"real_data_benchmark_silver_feature_frame"}.issubset(silver_asset_keys)
     assert asset_keys.issubset(registered_asset_keys)
+    assert silver_asset_keys.issubset(registered_asset_keys)
+    assert "real_data_benchmark_silver_feature_frame" in benchmark_deps
+    assert "real_data_benchmark_silver_feature_frame" in official_deps
+    assert "tenant_historical_weather_bronze" not in benchmark_deps
+
+
+def test_official_forecast_rolling_asset_returns_persisted_resume_batch(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 12)
+    store.upsert_evaluation_frame(
+        pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="batch-0",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_v0",
+                    anchor_timestamp=datetime(2026, 4, 1, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+    )
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert kwargs["anchor_batch_start_index"] == 1
+        assert kwargs["anchor_batch_size"] == 1
+        assert kwargs["anchor_batch_order"] == "latest_first"
+        assert kwargs["enabled_official_model_names"] == ("tft_official_v0",)
+        assert kwargs["generated_at"] == generated_at
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="batch-1",
+                    tenant_id="client_004_kharkiv_hospital",
+                    model_name="tft_official_v0",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_forecast_rolling_origin_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = official_forecast_rolling_origin_benchmark_frame(
+        None,
+        OfficialForecastRollingOriginAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory,client_004_kharkiv_hospital",
+            max_eval_anchors_per_tenant=2,
+            anchor_batch_start_index=1,
+            anchor_batch_size=1,
+            anchor_batch_order="latest_first",
+            enabled_official_model_names_csv="tft_official_v0",
+            resume_generated_at_iso="2026-05-11T12:00:00",
+            merge_persisted_batches=True,
+        ),
+        pl.DataFrame(),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["batch-0", "batch-1"]
+
+
+def test_global_panel_nbeatsx_strict_lp_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 18)
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        nbeatsx_official_global_panel_price_forecast: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert kwargs["tenant_ids"] == ("client_003_dnipro_factory",)
+        assert real_data_benchmark_silver_feature_frame.height == 1
+        assert nbeatsx_official_global_panel_price_forecast.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_global_panel_v1",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_strict_lp_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = nbeatsx_official_global_panel_strict_lp_benchmark_frame(
+        None,
+        RealDataRollingOriginBenchmarkAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_anchors=1,
+        ),
+        pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
+        pl.DataFrame({"unique_id": ["client_003_dnipro_factory:DAM"]}),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["global-panel"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_global_panel_nbeatsx_rolling_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 20)
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert kwargs["tenant_ids"] == ("client_003_dnipro_factory",)
+        assert kwargs["max_eval_windows"] == 2
+        assert kwargs["horizon_hours"] == 24
+        assert kwargs["nbeatsx_max_steps"] == 3
+        assert kwargs["anchor_batch_order"] == "chronological"
+        assert kwargs["anchor_batch_start_index"] == 4
+        assert kwargs["anchor_batch_size"] == 8
+        assert kwargs["generated_at"] == generated_at
+        assert real_data_benchmark_silver_feature_frame.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel-rolling",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_global_panel_v1",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_rolling_strict_lp_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame(
+        None,
+        OfficialGlobalPanelRollingAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_eval_windows=2,
+            horizon_hours=24,
+            nbeatsx_max_steps=3,
+            anchor_batch_order="chronological",
+            anchor_batch_start_index=4,
+            anchor_batch_size=8,
+            resume_generated_at_iso=generated_at.isoformat(),
+        ),
+        pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
+        pl.DataFrame({"feature_name": ["entsoe_neighbor_day_ahead_price_context"]}),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["global-panel-rolling"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_global_panel_tft_rolling_asset_persists_quantile_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 20)
+
+    def fake_builder(
+        real_data_benchmark_silver_feature_frame: pl.DataFrame,
+        **kwargs: object,
+    ) -> pl.DataFrame:
+        assert kwargs["tenant_ids"] == ("client_003_dnipro_factory",)
+        assert kwargs["max_eval_windows"] == 2
+        assert kwargs["horizon_hours"] == 24
+        assert kwargs["tft_max_epochs"] == 3
+        assert kwargs["tft_max_steps"] == 9
+        assert kwargs["tft_batch_size"] == 16
+        assert kwargs["tft_hidden_size"] == 12
+        assert kwargs["tft_hidden_continuous_size"] == 6
+        assert kwargs["tft_accelerator"] == "auto"
+        assert kwargs["tft_devices"] == "auto"
+        assert kwargs["anchor_batch_order"] == "chronological"
+        assert kwargs["anchor_batch_start_index"] == 4
+        assert kwargs["anchor_batch_size"] == 8
+        assert kwargs["generated_at"] == generated_at
+        assert real_data_benchmark_silver_feature_frame.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel-tft-rolling",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="tft_official_global_panel_v1",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_tft_rolling_strict_lp_benchmark_frame",
+        fake_builder,
+    )
+
+    frame = tft_official_global_panel_rolling_strict_lp_benchmark_frame(
+        None,
+        OfficialGlobalPanelRollingAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_eval_windows=2,
+            horizon_hours=24,
+            tft_max_epochs=3,
+            tft_max_steps=9,
+            tft_batch_size=16,
+            anchor_batch_order="chronological",
+            anchor_batch_start_index=4,
+            anchor_batch_size=8,
+            resume_generated_at_iso=generated_at.isoformat(),
+        ),
+        pl.DataFrame({"tenant_id": ["client_003_dnipro_factory"]}),
+        pl.DataFrame({"feature_name": ["entsoe_neighbor_day_ahead_price_context"]}),
+    )
+
+    assert frame["evaluation_id"].to_list() == ["global-panel-tft-rolling"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_global_panel_tft_quantile_calibration_asset_builds_rows(monkeypatch) -> None:
+    rolling_frame = pl.DataFrame(
+        [
+            _official_rolling_row(
+                evaluation_id="global-panel-tft-raw",
+                tenant_id="client_003_dnipro_factory",
+                model_name="tft_official_global_panel_v1",
+                anchor_timestamp=datetime(2026, 4, 2, 23),
+                generated_at=datetime(2026, 5, 11, 19),
+            )
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_003_dnipro_factory",
+                "anchor_timestamp": datetime(2026, 4, 2, 23),
+                "source_forecast_model_name": "tft_official_global_panel_v1",
+                "corrected_forecast_model_name": (
+                    "tft_official_global_panel_v1_horizon_quantile_calibrated_v1"
+                ),
+                "source_quantile": "p50",
+                "horizon_biases_uah_mwh": [0.0],
+                "mean_horizon_bias_uah_mwh": 0.0,
+                "max_abs_horizon_bias_uah_mwh": 0.0,
+                "quantile_spread_scale": 1.0,
+                "prior_anchor_count": 0,
+                "calibration_window_anchor_count": 0,
+                "calibration_status": "insufficient_prior_history",
+                "data_quality_tier": "thesis_grade",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+
+    def fake_calibration_builder(frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        assert frame.height == 1
+        assert kwargs["min_prior_anchors"] == 3
+        assert kwargs["rolling_calibration_window_anchors"] == 7
+        return calibration_frame
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_tft_horizon_quantile_calibration_frame",
+        fake_calibration_builder,
+    )
+
+    calibration = tft_official_global_panel_horizon_quantile_calibration_frame(
+        None,
+        OfficialGlobalPanelCalibrationAssetConfig(
+            min_prior_anchors=3,
+            rolling_calibration_window_anchors=7,
+        ),
+        rolling_frame,
+    )
+
+    assert calibration["source_quantile"].to_list() == ["p50"]
+    assert calibration["calibration_status"].to_list() == ["insufficient_prior_history"]
+
+
+def test_global_panel_nbeatsx_calibrated_assets_build_and_persist_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 19)
+    strict_frame = pl.DataFrame(
+        [
+            _official_rolling_row(
+                evaluation_id="global-panel-raw",
+                tenant_id="client_003_dnipro_factory",
+                model_name="nbeatsx_official_global_panel_v1",
+                anchor_timestamp=datetime(2026, 4, 2, 23),
+                generated_at=generated_at,
+            )
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_003_dnipro_factory",
+                "anchor_timestamp": datetime(2026, 4, 2, 23),
+                "source_forecast_model_name": "nbeatsx_official_global_panel_v1",
+                "corrected_forecast_model_name": (
+                    "nbeatsx_official_global_panel_horizon_calibrated_v1"
+                ),
+                "horizon_biases_uah_mwh": [0.0],
+                "mean_horizon_bias_uah_mwh": 0.0,
+                "max_abs_horizon_bias_uah_mwh": 0.0,
+                "prior_anchor_count": 0,
+                "calibration_window_anchor_count": 0,
+                "calibration_status": "insufficient_prior_history",
+                "data_quality_tier": "thesis_grade",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+
+    def fake_calibration_builder(frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        assert frame.height == 1
+        assert kwargs["min_prior_anchors"] == 3
+        assert kwargs["rolling_calibration_window_anchors"] == 7
+        return calibration_frame
+
+    def fake_benchmark_builder(
+        evaluation_frame: pl.DataFrame,
+        calibration: pl.DataFrame,
+    ) -> pl.DataFrame:
+        assert evaluation_frame.height == 1
+        assert calibration.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel-calibrated",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_global_panel_horizon_calibrated_v1",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_horizon_calibration_frame",
+        fake_calibration_builder,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame",
+        fake_benchmark_builder,
+    )
+
+    calibration = nbeatsx_official_global_panel_horizon_calibration_frame(
+        None,
+        OfficialGlobalPanelCalibrationAssetConfig(
+            min_prior_anchors=3,
+            rolling_calibration_window_anchors=7,
+        ),
+        strict_frame,
+    )
+    benchmark = nbeatsx_official_global_panel_calibrated_strict_lp_benchmark_frame(
+        None,
+        strict_frame,
+        calibration,
+    )
+
+    assert calibration["calibration_status"].to_list() == ["insufficient_prior_history"]
+    assert benchmark["evaluation_id"].to_list() == ["global-panel-calibrated"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_global_panel_tft_quantile_calibrated_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 20)
+    rolling_frame = pl.DataFrame(
+        [
+            _official_rolling_row(
+                evaluation_id="global-panel-tft-raw",
+                tenant_id="client_003_dnipro_factory",
+                model_name="tft_official_global_panel_v1",
+                anchor_timestamp=datetime(2026, 4, 2, 23),
+                generated_at=generated_at,
+            )
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_003_dnipro_factory",
+                "anchor_timestamp": datetime(2026, 4, 2, 23),
+                "source_forecast_model_name": "tft_official_global_panel_v1",
+                "source_quantile": "p50",
+                "corrected_forecast_model_name": (
+                    "tft_official_global_panel_v1_horizon_quantile_calibrated_v1"
+                ),
+                "horizon_biases_uah_mwh": [20.0],
+                "mean_horizon_bias_uah_mwh": 20.0,
+                "max_abs_horizon_bias_uah_mwh": 20.0,
+                "quantile_spread_scale": 1.0,
+                "prior_anchor_count": 2,
+                "calibration_window_anchor_count": 2,
+                "calibration_status": "calibrated",
+                "data_quality_tier": "thesis_grade",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+
+    def fake_benchmark_builder(
+        evaluation_frame: pl.DataFrame,
+        calibration: pl.DataFrame,
+    ) -> pl.DataFrame:
+        assert evaluation_frame.height == 1
+        assert calibration.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel-tft-calibrated",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name=(
+                        "tft_official_global_panel_v1_horizon_quantile_calibrated_v1"
+                    ),
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_tft_horizon_quantile_calibrated_strict_lp_benchmark_frame",
+        fake_benchmark_builder,
+    )
+
+    benchmark = tft_official_global_panel_horizon_quantile_calibrated_strict_lp_benchmark_frame(
+        None,
+        rolling_frame,
+        calibration_frame,
+    )
+
+    assert benchmark["evaluation_id"].to_list() == ["global-panel-tft-calibrated"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_global_panel_nbeatsx_rolling_calibrated_assets_build_and_persist_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    generated_at = datetime(2026, 5, 11, 21)
+    rolling_frame = pl.DataFrame(
+        [
+            _official_rolling_row(
+                evaluation_id="global-panel-rolling-raw",
+                tenant_id="client_003_dnipro_factory",
+                model_name="nbeatsx_official_global_panel_v1",
+                anchor_timestamp=datetime(2026, 4, 2, 23),
+                generated_at=generated_at,
+            )
+        ]
+    )
+    calibration_frame = pl.DataFrame(
+        [
+            {
+                "tenant_id": "client_003_dnipro_factory",
+                "anchor_timestamp": datetime(2026, 4, 2, 23),
+                "source_forecast_model_name": "nbeatsx_official_global_panel_v1",
+                "corrected_forecast_model_name": (
+                    "nbeatsx_official_global_panel_horizon_calibrated_v1"
+                ),
+                "horizon_biases_uah_mwh": [25.0],
+                "mean_horizon_bias_uah_mwh": 25.0,
+                "max_abs_horizon_bias_uah_mwh": 25.0,
+                "prior_anchor_count": 2,
+                "calibration_window_anchor_count": 2,
+                "calibration_status": "calibrated",
+                "data_quality_tier": "thesis_grade",
+                "not_full_dfl": True,
+                "not_market_execution": True,
+            }
+        ]
+    )
+
+    def fake_calibration_builder(frame: pl.DataFrame, **kwargs: object) -> pl.DataFrame:
+        assert frame.height == 1
+        assert kwargs["min_prior_anchors"] == 2
+        assert kwargs["rolling_calibration_window_anchors"] == 3
+        return calibration_frame
+
+    def fake_benchmark_builder(
+        evaluation_frame: pl.DataFrame,
+        calibration: pl.DataFrame,
+    ) -> pl.DataFrame:
+        assert evaluation_frame.height == 1
+        assert calibration.height == 1
+        return pl.DataFrame(
+            [
+                _official_rolling_row(
+                    evaluation_id="global-panel-rolling-calibrated",
+                    tenant_id="client_003_dnipro_factory",
+                    model_name="nbeatsx_official_global_panel_horizon_calibrated_v1",
+                    anchor_timestamp=datetime(2026, 4, 2, 23),
+                    generated_at=generated_at,
+                )
+            ]
+        )
+
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_horizon_calibration_frame",
+        fake_calibration_builder,
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy."
+        "build_official_global_panel_nbeatsx_horizon_calibrated_strict_lp_benchmark_frame",
+        fake_benchmark_builder,
+    )
+
+    calibration = nbeatsx_official_global_panel_rolling_horizon_calibration_frame(
+        None,
+        OfficialGlobalPanelCalibrationAssetConfig(
+            min_prior_anchors=2,
+            rolling_calibration_window_anchors=3,
+        ),
+        rolling_frame,
+    )
+    benchmark = nbeatsx_official_global_panel_rolling_calibrated_strict_lp_benchmark_frame(
+        None,
+        rolling_frame,
+        calibration,
+    )
+
+    assert calibration["calibration_status"].to_list() == ["calibrated"]
+    assert benchmark["evaluation_id"].to_list() == ["global-panel-rolling-calibrated"]
+    assert store.evaluation_frame.height == 1
+
+
+def test_real_data_rolling_origin_benchmark_asset_persists_rows(monkeypatch) -> None:
+    store = InMemoryStrategyEvaluationStore()
+    price_history = build_synthetic_market_price_history(
+        history_hours=15 * 24 + 48,
+        forecast_hours=0,
+        now=datetime(2026, 5, 4, 12, 0),
+    ).with_columns(
+        [
+            pl.lit("observed").alias("source_kind"),
+            pl.lit("OREE_DATA_VIEW").alias("source"),
+        ]
+    )
+    monkeypatch.setattr(
+        "smart_arbitrage.assets.gold.forecast_strategy.get_strategy_evaluation_store",
+        lambda: store,
+    )
+
+    silver_frame = real_data_benchmark_silver_feature_frame(None, price_history, pl.DataFrame())
+    frame = real_data_rolling_origin_benchmark_frame(
+        None,
+        RealDataRollingOriginBenchmarkAssetConfig(
+            tenant_ids_csv="client_003_dnipro_factory",
+            max_anchors=1,
+        ),
+        silver_frame,
+    )
+
+    assert frame.height == 3
+    assert store.latest_real_data_benchmark_frame(tenant_id="client_003_dnipro_factory").height == 3
+    assert set(frame.select("strategy_kind").to_series().to_list()) == {
+        "real_data_rolling_origin_benchmark"
+    }
+
+
+def test_daily_benchmark_anchors_skip_incomplete_realized_horizons() -> None:
+    start_timestamp = datetime(2026, 1, 1)
+    end_timestamp = datetime(2026, 5, 4, 23)
+    missing_timestamp = datetime(2026, 3, 29, 23)
+    timestamps: list[datetime] = []
+    current_timestamp = start_timestamp
+    while current_timestamp <= end_timestamp:
+        if current_timestamp != missing_timestamp:
+            timestamps.append(current_timestamp)
+        current_timestamp += timedelta(hours=1)
+    price_history = pl.DataFrame(
+        {
+            DEFAULT_TIMESTAMP_COLUMN: timestamps,
+            DEFAULT_PRICE_COLUMN: [1000.0 for _ in timestamps],
+        }
+    )
+
+    anchors = _daily_benchmark_anchors(price_history, max_anchors=90)
+
+    assert len(anchors) == 90
+    assert datetime(2026, 3, 28, 23) not in anchors
+    assert datetime(2026, 3, 29, 23) not in anchors
+    assert datetime(2026, 4, 4, 23) not in anchors
+    assert datetime(2026, 4, 5, 23) in anchors
+    assert anchors[-1] == datetime(2026, 5, 3, 23)
+    available_timestamps = set(timestamps)
+    for anchor in anchors:
+        required_window = [
+            anchor - timedelta(hours=167) + timedelta(hours=step_index)
+            for step_index in range(192)
+        ]
+        assert all(timestamp in available_timestamps for timestamp in required_window)
+
+
+def _official_rolling_row(
+    *,
+    evaluation_id: str,
+    tenant_id: str,
+    model_name: str,
+    anchor_timestamp: datetime,
+    generated_at: datetime,
+) -> dict[str, object]:
+    return {
+        "evaluation_id": evaluation_id,
+        "tenant_id": tenant_id,
+        "forecast_model_name": model_name,
+        "strategy_kind": "official_forecast_rolling_origin_benchmark",
+        "market_venue": "DAM",
+        "anchor_timestamp": anchor_timestamp,
+        "generated_at": generated_at,
+        "horizon_hours": 24,
+        "starting_soc_fraction": 0.5,
+        "starting_soc_source": "tenant_default",
+        "decision_value_uah": 100.0,
+        "forecast_objective_value_uah": 100.0,
+        "oracle_value_uah": 125.0,
+        "regret_uah": 25.0,
+        "regret_ratio": 0.2,
+        "total_degradation_penalty_uah": 1.0,
+        "total_throughput_mwh": 1.0,
+        "committed_action": "hold",
+        "committed_power_mw": 0.0,
+        "rank_by_regret": 1,
+        "evaluation_payload": {
+            "claim_scope": "official_forecast_rolling_origin_benchmark_not_full_dfl",
+            "data_quality_tier": "thesis_grade",
+            "observed_coverage_ratio": 1.0,
+            "not_full_dfl": True,
+            "not_market_execution": True,
+        },
+    }

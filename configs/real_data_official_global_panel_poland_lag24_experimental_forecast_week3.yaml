@@ -1,0 +1,80 @@
+# Experimental official-forecast screen for prior-safe Poland lag-24 features.
+#
+# This route is not headline official training. It uses the governed
+# `approved_for_experimental_ablation` Poland lag-24 lane as known-future
+# covariates for official global-panel NBEATSx/TFT candidates, while keeping
+# `approved_for_official_training=false` until domain-shift validation passes.
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  entsoe_neighbor_market_feature_candidate_frame:
+    config:
+      sample_country_codes_csv: "PL"
+      sample_period_start_utc: "202412310000"
+      sample_period_end_utc: "202604300000"
+      fetch_enabled: true
+  nbu_eur_uah_fx_metadata_frame:
+    config:
+      lag_hours: 24
+      fetch_enabled: true
+  poland_neighbor_market_snapshot_bronze:
+    config:
+      snapshot_csv_path: ""
+      source_url: "https://transparencyplatform.zendesk.com/hc/en-us/articles/35960137882129-File-Library-Guide"
+      source_access_method: "entsoe_fms_file_library"
+      source_retrieved_at_utc: ""
+      source_publication_timestamp_utc: ""
+      source_license_status: "requires_entsoe_terms_mapping"
+      snapshot_kind: "day_ahead_price_eur_mwh"
+  poland_neighbor_market_snapshot_feature_candidate_frame:
+    config:
+      ua_decision_anchor_timestamp_utc: "2025-12-31T12:00:00+00:00"
+      prior_eur_uah_fx_rate: 0.0
+      prior_eur_uah_fx_timestamp_utc: ""
+      fx_rate_source: ""
+  entsoe_poland_feature_governance_frame:
+    config:
+      publication_timestamp_utc: ""
+      ua_decision_anchor_timestamp_utc: "2025-12-31T12:00:00+00:00"
+      prior_eur_uah_fx_rate: 0.0
+      prior_eur_uah_fx_timestamp_utc: ""
+      fx_rate_source: ""
+      timezone_dst_mapping_ready: true
+      licensing_approved: true
+      market_rules_mapped: true
+      domain_shift_validated: false
+  entsoe_poland_lagged_feature_candidate_frame:
+    config:
+      lag_hours: 24
+      prior_eur_uah_fx_rate: 0.0
+      prior_eur_uah_fx_timestamp_utc: ""
+      fx_rate_source: ""
+  official_global_panel_poland_lag24_experimental_training_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      horizon_hours: 24
+      temporal_scaler_type: "robust"
+  nbeatsx_official_global_panel_poland_lag24_experimental_price_forecast:
+    config:
+      horizon_hours: 24
+      max_steps: 20
+      random_seed: 20260520
+  tft_official_global_panel_poland_lag24_experimental_price_forecast:
+    config:
+      horizon_hours: 24
+      max_epochs: 5
+      max_steps: 8
+      batch_size: 8
+      learning_rate: 0.005
+      hidden_size: 8
+      hidden_continuous_size: 4
+      accelerator: "auto"
+      devices: "auto"

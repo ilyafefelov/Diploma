@@ -1,0 +1,145 @@
+.battery-stat-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.battery-ingest-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.32rem;
+  margin: 0.34rem 0 0.42rem;
+  border: 1px solid var(--operator-rail-ingest-border);
+  border-radius: 999px;
+  background: var(--operator-rail-ingest-surface);
+  padding: 0.26rem 0.52rem;
+  color: var(--operator-text-readable);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.battery-ingest-pill svg {
+  width: 0.82rem;
+  height: 0.82rem;
+  color: var(--operator-positive);
+}
+
+.battery-stat-grid article {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+  border-left: 1px solid var(--operator-rail-stat-divider);
+  padding-left: 0.55rem;
+}
+
+.battery-stat-grid article:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.metric-lens-card {
+  position: relative;
+  padding: 0.5rem;
+  overflow: visible;
+}
+
+.metric-lens-card__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.metric-lens-card__label-row p {
+  margin-bottom: 0;
+  color: var(--operator-text-muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.metric-lens-card__icon {
+  width: 1rem;
+  height: 1rem;
+  color: var(--operator-accent);
+}
+
+.metric-lens-card .metric-lens-card__kicker {
+  font-size: 0.66rem;
+  color: var(--operator-text-muted);
+  font-weight: 700;
+}
+
+.metric-lens-card__tooltip {
+  position: absolute;
+  left: 0.35rem;
+  top: calc(100% + 0.28rem);
+  z-index: 18;
+  display: none;
+  gap: 0.22rem;
+  width: min(19rem, calc(100vw - 3rem));
+  border: 1px solid var(--operator-rail-tooltip-border-soft);
+  border-radius: 0.72rem;
+  background:
+    radial-gradient(circle at top right, var(--operator-rail-tooltip-accent-wash-strong), transparent 36%),
+    linear-gradient(180deg, var(--operator-rail-tooltip-gradient-top), var(--operator-rail-tooltip-gradient-bottom));
+  padding: 0.56rem 0.65rem;
+  color: var(--operator-rail-tooltip-text);
+  font-size: 0.66rem;
+  line-height: 1.3;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.22rem) scale(0.98);
+  transition: opacity 140ms ease, transform 140ms ease;
+  visibility: hidden;
+}
+
+.metric-lens-card:hover .metric-lens-card__tooltip,
+.metric-lens-card:focus-visible .metric-lens-card__tooltip {
+  display: grid;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  visibility: visible;
+}
+
+.metric-lens-card__tooltip-title {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--operator-metric-tooltip-header-text);
+}
+
+.battery-stat-grid p {
+  color: var(--operator-text-muted);
+}
+
+.battery-stat-grid strong {
+  color: var(--operator-positive);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.battery-stat-grid__meta {
+  color: var(--operator-accent-readable);
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.mini-meter {
+  overflow: hidden;
+  height: 0.42rem;
+  border-radius: 999px;
+  background: var(--operator-rail-meter-surface);
+}
+
+.mini-meter span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--operator-rail-mini-meter-blue-top), var(--operator-rail-mini-meter-blue-bottom));
+}
+
+.mini-meter-green span {
+  background: linear-gradient(90deg, var(--operator-rail-mini-meter-green-top), var(--operator-rail-mini-meter-green-bottom));
+}

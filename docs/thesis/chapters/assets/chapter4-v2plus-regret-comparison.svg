@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Порівняння mean regret для основних стратегій</title>
+  <desc id="desc">Горизонтальна діаграма mean regret у гривнях: strict_similar_day, frozen V2, V2+ та пізніші V3-V5 gates.</desc>
+  <rect width="1200" height="720" fill="#ffffff"/>
+  <text x="70" y="70" font-family="Arial, sans-serif" font-size="31" font-weight="700" fill="#111827">Основний результат: Schedule/Value Learner V2+</text>
+  <text x="70" y="104" font-family="Arial, sans-serif" font-size="18" fill="#475569">Mean regret, UAH. Менше значення означає кращий offline schedule/value результат.</text>
+
+  <line x1="330" y1="150" x2="1040" y2="150" stroke="#e5e7eb" stroke-width="2"/>
+  <g font-family="Arial, sans-serif" font-size="13" fill="#64748b">
+    <text x="330" y="138">0</text>
+    <text x="500" y="138">100</text>
+    <text x="670" y="138">200</text>
+    <text x="840" y="138">300</text>
+  </g>
+  <g stroke="#eef2f7" stroke-width="1">
+    <line x1="330" y1="150" x2="330" y2="575"/>
+    <line x1="500" y1="150" x2="500" y2="575"/>
+    <line x1="670" y1="150" x2="670" y2="575"/>
+    <line x1="840" y1="150" x2="840" y2="575"/>
+  </g>
+
+  <g font-family="Arial, sans-serif" font-size="18" fill="#111827">
+    <text x="70" y="198">strict_similar_day control</text>
+    <rect x="330" y="172" width="528" height="34" rx="5" fill="#f59e0b"/>
+    <text x="875" y="196" font-weight="700">310.58</text>
+    <text x="960" y="196" font-size="15" fill="#64748b">baseline</text>
+
+    <text x="70" y="272">Frozen V2</text>
+    <rect x="330" y="246" width="351" height="34" rx="5" fill="#60a5fa"/>
+    <text x="698" y="270" font-weight="700">206.37</text>
+    <text x="785" y="270" font-size="15" fill="#64748b">33.55% better than strict</text>
+
+    <text x="70" y="346">V2+ calibrated headline</text>
+    <rect x="330" y="320" width="297" height="34" rx="5" fill="#16a34a"/>
+    <text x="644" y="344" font-weight="700">174.77</text>
+    <text x="730" y="344" font-size="15" fill="#166534">43.73% better than strict; 15.31% better than V2</text>
+
+    <text x="70" y="420">Candidate-Value DFL V3</text>
+    <rect x="330" y="394" width="297" height="34" rx="5" fill="#86efac"/>
+    <text x="644" y="418" font-weight="700">174.77</text>
+    <text x="730" y="418" font-size="15" fill="#64748b">matched V2+ through fallback</text>
+
+    <text x="70" y="494">Plateau V4 / Context V5</text>
+    <rect x="330" y="468" width="297" height="34" rx="5" fill="#bbf7d0"/>
+    <text x="644" y="492" font-weight="700">174.77</text>
+    <text x="730" y="492" font-size="15" fill="#64748b">0.00% improvement vs V2+</text>
+  </g>
+
+  <rect x="70" y="590" width="1060" height="74" rx="8" fill="#f8fafc" stroke="#dbe3ee"/>
+  <text x="92" y="624" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#111827">Claim boundary</text>
+  <text x="92" y="651" font-family="Arial, sans-serif" font-size="16" fill="#475569">V2+ є поточним thesis headline для Offline Strategy Promotion: 4/4 rolling windows, market_execution_enabled=false, без live execution.</text>
+</svg>

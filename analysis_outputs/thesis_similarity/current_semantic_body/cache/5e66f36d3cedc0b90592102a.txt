@@ -1,0 +1,2837 @@
+Academic Editor: Praveen
+Cheekatamarla
+Received: 1 April 2026
+Revised: 25 April 2026
+Accepted: 30 April 2026
+Published: 3 May 2026
+Copyright: © 2026 by the authors.
+Licensee MDPI, Basel, Switzerland.
+This article is an open access article
+distributed under the terms and
+conditions of the Creative Commons
+Attribution (CC BY) license.
+Review
+Current Applications and Future Prospects of Deep
+Reinforcement Learning in Energy Management for Hybrid
+Power Systems
+Zhao Li
+ , Wuqiang Long * and Hua Tian
+School of Energy and Power Engineering, Dalian University of Technology, Dalian 116081, China;
+lizhao@mail.dlut.edu.cn (Z.L.); tianhua@dlut.edu.cn (H.T.)
+* Correspondence: longwq@dlut.edu.cn; Tel.: +86-13889538768
+Abstract
+Driven by the global energy transition and carbon neutrality goals, hybrid power systems
+have become a core technical path for energy conservation and carbon reduction in the
+transportation and power sectors, and the performance of energy management strategies
+directly determines the system’s overall energy efficiency. Traditional energy management
+methods have inherent bottlenecks of high model dependence and poor adaptability, mak-
+ing it difficult to satisfy real-time decision-making requirements under complex operating
+conditions. Deep Reinforcement Learning (DRL) provides an innovative solution to this
+technical bottleneck, and has become a cutting-edge research direction in this field. How-
+ever, existing reviews have not yet constructed a full-chain analysis framework covering its
+algorithms, applications, verification, challenges and prospects. Focusing on the engineer-
+ing application of DRL in the real-time energy management of hybrid power systems, this
+paper systematically sorts out domestic and international research results up to the first
+quarter of 2026. The core quantitative findings of this review are as follows: (1) DRL-based
+strategies can achieve 93–99.5% of the Dynamic Programming (DP) theoretical global opti-
+mum in fuel economy, which is 5–25% higher than rule-based methods; (2) DRL strategies
+only have 3.1–4.8% performance degradation under unseen operating conditions, which
+is significantly better than the 10.3–14.7% degradation of the Equivalent Consumption
+Minimization Strategy (ECMS); (3) Actor–Critic (AC) algorithms (Twin Delayed Deep De-
+terministic Policy Gradient (TD3)/Soft Actor–Critic (SAC)) have become the mainstream in
+this field, with a 3–5 times higher sample efficiency than value function-based algorithms;
+and (4) offline DRL and transfer learning can reduce the training time of DRL strategies by
+more than 80% while maintaining equivalent optimization performance. This paper first an-
+alyzes the essential attributes and core technical challenges of hybrid power system energy
+management; second, classifies DRL algorithms from the perspective of control engineering
+and analyzes their technical characteristics; third, disassembles the application design
+logic of DRL around four major scenarios: land vehicles, water vessels, aerial vehicles and
+fixed microgrids; fourth, summarizes the mainstream verification platforms and evaluation
+systems; fifth, analyzes core bottlenecks and cutting-edge solutions; and finally, prospects
+the development trends of next-generation intelligent energy management systems com-
+bined with cross-fusion technologies. This paper aims to build a complete technical system
+map for this field and promote the engineering deployment and practical application of
+intelligent energy management technologies integrating data and knowledge.
+Energies 2026, 19, 2216 https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 2 of 50
+Keywords: deep reinforcement learning; hybrid power systems; energy management;
+intelligent control; sustainable energy; multi-objective optimization
+1. Introduction
+1.1. Background and Challenges: Hybrid Power Systems Under Dual
+Energy–Environmental Constraints
+Global warming caused by greenhouse gas emissions has become a global issue. The
+temperature rise control target set by the Paris Agreement has promoted countries to
+formulate and issue carbon neutrality roadmaps [1]. The transportation sector accounts for
+approximately 24% of global final energy consumption and 21% of carbon emissions, and
+the carbon emissions from fossil energy power generation in the power system account
+for more than 35%. The green and low-carbon transformation of the two sectors is the
+core method employed to achieve the global carbon neutrality goal [ 2]. Single energy
+forms have inherent technical shortcomings: for example, internal combustion engines
+are prone to efficiency degradation and higher emissions under low-load conditions [3];
+pure electric power systems are restricted by driving range and inadequate charging
+infrastructure [4]; and renewable energy is difficult to integrate stably and efficiently
+into the power grid due to its intermittent and fluctuating characteristics [ 5]. Hybrid
+power systems integrate multiple heterogeneous energy units to realize the collaborative
+regulation and optimal allocation of energy flow, which can effectively compensate for the
+performance shortcomings of single energy. In the marine sector, the energy efficiency of
+diesel–electric hybrid power systems can be improved by 10–20% [6]; in the road vehicle
+sector, hybrid power technology has become the core technical solution for automakers to
+meet stringent emission regulations [7]; and in the power system, multi-energy microgrids
+are becoming the core support to improve renewable energy consumption and penetration
+rate [8].
+Although the multi-energy coupling characteristic of hybrid power systems brings sig-
+nificant performance advantages, it greatly increases the control complexity of the system.
+As the “control core” of hybrid power systems, the energy management strategy needs to
+collaboratively optimize multiple coupled and trade-off objectives on the premise of meet-
+ing dynamic load demands, including minimizing fuel consumption, reducing pollutant
+emissions, extending the service life of key components, and maintaining stable system
+operation. Meanwhile, system operation must comply with a series of stringent physical
+constraints. The strong coupling of objectives and constraints, coupled with the uncertainty
+of the actual operating conditions, makes the energy management of hybrid power sys-
+tems a typical multi-objective, multi-constraint, nonlinear stochastic dynamic optimization
+problem, posing stringent requirements for the real-time performance, adaptability and
+generalization ability of control strategies [9].
+1.2. Problem Statement and Research Objectives
+The core scientific hypothesis of this review is that Deep Reinforcement Learning
+(DRL), which integrates the high-dimensional feature perception capability of deep learn-
+ing and the sequential decision-making advantage of RL, can fundamentally resolve the
+inherent contradiction between model dependence and environmental adaptability in
+traditional hybrid power system energy management methods, and provide a system-
+atic technical solution for the engineering implementation of real-time intelligent energy
+management for hybrid power systems.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 3 of 50
+The mathematical essence of the energy management problem of hybrid power sys-
+tems is a type of sequential decision-making problem. Its core is to find the optimal control
+strategy π under the conditions that the system topology and component models are
+known, and future load information cannot be perfectly predicted, so as to output control
+instructions according to the real-time state of the system, and achieve the global optimum
+of the comprehensive performance index J while completing the established operation
+tasks [10].
+To address this problem, researchers have proposed a variety of traditional energy man-
+agement methods, which are mainly divided into three categories: rule-based, optimization-
+based and shallow intelligence-based. To clearly reveal the performance boundaries of
+traditional methods and clarify the technical breakthrough points of DRL, this paper builds
+a comparative analysis framework between traditional methods and DRL using seven
+dimensions: model dependence, online computing burden, optimality guarantee, adaptive
+ability, uncertainty handling, multi-objective trade-off and an engineering implementation
+threshold, as shown in Table 1.
+Table 1. Performance boundary comparison between traditional energy management methods and
+DRL [11–15].
+Dimension Rule/Logic
+Threshold-Based
+Global
+Optimization
+(Dynamic
+Programming (DP);
+Pontryagin’s
+Minimum
+Principle (PMP))
+Real-Time
+Optimization
+(Equivalent
+Consumption
+Minimization
+Strategy/ECMS;
+Model Predictive
+Control (MPC))
+DRL
+Core
+Breakthrough
+Directions of
+DRL
+Supporting
+References
+Model
+Dependence
+Low (empirical
+rules)
+Extremely high
+(accurate
+full-operating-
+condition models
+required)
+High (predictive
+models required)
+Low (only
+interactive
+simulation
+environment or
+operational data
+required)
+Get rid of the
+dependence on
+accurate
+analytical models
+[11,13]
+Online
+Computing
+Burden
+Extremely low
+(look-up table or
+simple logical
+judgment)
+Infeasible
+(exponential
+computational
+complexity)
+Medium to high
+(depends on
+optimization
+horizon)
+Low inference
+cost after training
+(only forward
+neural network
+computation)
+Transfer complex
+online
+optimization to
+offline training
+[12,14]
+Optimality
+Guarantee
+No guarantee;
+15–25% higher
+fuel consumption
+than DP optimum
+Theoretical global
+optimum (known
+driving cycles)
+Rolling horizon
+sub-optimum
+Data-driven
+approximate
+optimum
+(93–99.5% of DP
+optimum)
+Surpass
+traditional
+methods under
+stochastic
+unknown
+conditions
+[11]
+Adaptive Ability
+Poor (fixed rules;
+manual
+adjustment
+required)
+None (offline
+computation)
+Limited (relies on
+model online
+update)
+Strong (adapt to
+new
+environments
+through
+fine-tuning)
+Adapt to
+component aging
+and new
+operating routes
+[13,15]
+Uncertainty
+Handling
+Weak
+(deterministic
+threshold
+judgment)
+Weak (high
+complexity of
+stochastic DP)
+Medium (ro-
+bust/stochastic
+MPC)
+Strong (learn
+robust strategies
+from
+environmental
+randomness)
+Strong
+endogenous
+robustness of
+strategies
+[12,14]
+Multi-Objective
+Trade-Off
+Difficult (prone to
+objective
+conflicts)
+Treatable (Pareto
+front solution)
+Treatable
+(multi-objective
+MPC)
+Highly flexible
+(adjust priority
+through reward
+function weights)
+Unified
+framework for
+complex objective
+space trade-off
+[11,13]
+Engineering
+Implementation
+Threshold
+Very low
+High (complete
+prior knowledge
+required)
+Medium
+(embedded solver
+required)
+Medium
+(data/simulation
+platform
+required)
+Implementation
+threshold
+continues to
+decrease with
+open-source
+toolchains
+[14,15]
+Rule-based methods are easy in terms of engineering implementation but cannot
+guarantee optimization performance, with their fuel consumption being 15–25% higher
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 4 of 50
+than the global optimal solution under stochastic operating conditions [16]; global optimiza-
+tion methods (such as DP and PMP) can obtain theoretical global optimal solutions, but
+cannot be deployed online due to exponentially increasing computational complexity [17];
+real-time optimization methods (such as ECMS and MPC) can be applied online, but their
+performance highly depends on model accuracy [18]; and shallow intelligence-based con-
+trol methods still rely on engineering experience design and lack the ability to handle
+high-dimensional sequential optimization problems [19]. The common limitation of the
+above traditional methods is the fundamental contradiction between “model dependence”
+and “environmental adaptability”, and the emergence of DRL provides a novel technical
+route to resolve this contradiction.
+1.3. The Rise of DRL and Its Potential in Energy Control
+Reinforcement Learning (RL) is naturally suitable for sequential decision-making
+optimization problems, but traditional RL suffers from the severe “curse of dimensionality”
+due to its failure to handle high-dimensional state and action spaces. Deep learning, with
+its excellent nonlinear function approximation capability, provides core technical support
+to overcome this dilemma [20]. The proposal of Deep Q-Network (DQN) in 2013 marked
+the advent of DRL. This technology integrates the high-dimensional feature representation
+capability of deep learning and the sequential decision-making capability of RL, and
+can effectively solve complex control problems with high dimensions, continuity and
+randomness [21].
+Existing studies have shown that DRL has high compatibility with the energy man-
+agement problem of hybrid power systems, and its potential technical advantages in
+engineering applications are mainly reflected in five aspects: (1) it is a model-free attribute,
+with no need to construct accurate mechanistic models of the system; (2) it performs end-
+to-end autonomous learning, automatically mining task-related system features; (3) it has a
+long-term planning capability, achieving global optimization of system performance; (4) it
+is characterized by strong adaptability and robustness, adapting to dynamically changing
+operating scenarios; and (5) it has high-dimensional-space processing capability, efficiently
+completing the multi-variable optimization of complex systems [22–24].
+Numerous studies have verified the application value of DRL in the energy man-
+agement of hybrid power systems. In integrated power systems and low-carbon energy
+transition scenarios, researchers have proposed a series of modeling and forecasting meth-
+ods to optimize power allocation and capacity planning, providing a theoretical basis for
+the optimal operation of multi-energy hybrid systems. Zaporozhets et al. established a
+novel methodology to determine zonal electricity generation and capacity requirements in
+integrated power systems, which combines historical load pattern analysis and calibration
+techniques to achieve high-precision zonal power prediction, with the generation error
+below 0.39% [25]. Denysov et al. further developed a mathematical model for forecasting
+the development of integrated power systems toward low-carbon transition, focusing on
+nuclear-centric expansion and introducing stochastic economic and technological factors
+into the forecasting framework, which provides an effective tool for the long-term sce-
+nario planning of hybrid energy systems [26]. Meanwhile, DRL, with its strong sequential
+decision-making ability, has gradually become a key technology in solving the real-time
+optimization problem of hybrid power systems. However, there is still an obvious technical
+gap between the theoretical advantages of this technology and large-scale engineering
+implementation [27].
+However, it should be objectively noted that DRL technology still faces unresolved core
+bottlenecks in engineering applications, including a low sample efficiency, insufficient safety
+guarantee in real-world deployment, simulation-to-reality gap, and poor interpretability of
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 5 of 50
+neural network decisions. These bottlenecks restrict the large-scale engineering deployment
+of DRL-based energy management strategies, which is the core focus of this review.
+1.4. Research Scope, Framework and Contributions
+1.4.1. Literature Search and Selection Methodology
+This systematic review follows the PRISMA (Preferred Reporting Items for Systematic
+Reviews and Meta-Analyses) guidelines to ensure transparency, reproducibility, and rigor.
+Databases and Search Strategy
+The literature retrieval was performed in four authoritative academic databases
+from January 2013 to March 2026 (covering the full development period of DRL in
+energy management):
+- Web of Science Core Collection;
+- Scopus;
+- IEEE Xplore;
+- CNKI.
+The search combined three groups of keywords:
+- Group 1 (Algorithm): DRL, DQN, PPO, DDPG, TD3, and SAC;
+- Group 2 (System): Hybrid Power System, Hybrid Electric Vehicle, Hybrid Ship,
+Microgrid, and Energy Storage.
+- Group 3 (Application): Energy Management Strategy, Power Allocation, Sequential
+Decision-Making, and Optimal Control.
+Inclusion and Exclusion Criteria
+Inclusion Criteria:
+(1) Peer-reviewed journal articles, conference papers, or authoritative technical reports.
+(2) Focused on DRL-based energy management for hybrid power systems with quantita-
+tive validation.
+(3) Published between 2013 and Q1 2026.
+(4) Provided reproducible algorithm design, simulation/experimental results, and clear
+comparison benchmarks.
+Exclusion Criteria:
+(1) Pure theoretical studies without simulation/experimental verification.
+(2) Traditional RL (non-deep) or non-hybrid power system studies.
+(3) Review papers, patents, books, and non-English/non-Chinese papers unreadable for
+accurate analysis.
+(4) Duplicate or highly overlapping publications from the same authors/dataset.
+Screening Flow
+(1) The initial search yielded 1287 records.
+(2) The title/abstract screening removed 982 irrelevant records.
+(3) The full-text screening excluded 102 low-quality/non-compliant papers.
+(4) The final inclusion was 214 high-quality papers for systematic analysis.
+Standardized Comparative Synthesis
+To improve the cross-study comparability, this review unifies the following:
+- Benchmark baseline: DP global optimum, ECMS, and MPC.
+- Evaluation metrics: Fuel consumption, generalization error, inference time, and
+battery stress.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 6 of 50
+- Algorithm comparison: The same hybrid powertrain model, and the same driv-
+ing/operating cycles (WLTC, UDDS, and standard marine/microgrid profiles)
+1.4.2. Scope, Structure and Academic Contributions
+The existing review studies on DRL in the field of hybrid power system energy man-
+agement generally have problems relating to a single research perspective and fragmented
+analysis framework. Taking “DRL as the core controller for engineering implementation of
+real-time energy management in various physical hybrid power systems” as the research
+scope, this paper systematically sorts out domestic and international research results up to
+the first quarter of 2026.
+The academic contributions of this paper are mainly reflected in four aspects:
+(1) It constructs a full-chain technical analysis framework of “algorithm–application–
+verification–challenges–prospects” to realize the systematic sorting of research results
+in this field;
+(2) It proposes a DRL algorithm classification system from the perspective of control
+engineering, and clarifys the adaptation logic between various algorithms and energy
+management problems;
+(3) It extracts the cross-domain application design rules of DRL, and summarizes the com-
+mon design ideas and differentiated technical routes of four major application fields;
+(4) It deeply analyzes the core bottlenecks of DRL engineering implementation in this
+field and sorts out the corresponding cutting-edge solutions, providing theoretical
+and methodological support for the engineering application of this technology.
+2. Hybrid Power Systems and Energy Management Problems
+The design of energy management strategies for hybrid power systems highly depends
+on their physical architectures. The energy flow paths and control degrees of freedom vary
+essentially under different architectures, which directly determine the decision boundaries
+and solution difficulty of energy management [26]. This chapter first sorts out four typi-
+cal architectures of hybrid power systems, analyzes the energy flow characteristics and
+core difficulties of energy management for each architecture, then formalizes the energy
+management problem as a Markov Decision Process (MDP) to complete the mathematical
+modeling of the problem, and finally explains the inherent mechanism of DRL breaking
+through the performance boundaries of traditional energy management methods.
+2.1. Typical Architectures of Hybrid Power Systems and Their Impacts on Energy Management
+2.1.1. Scope and Classification of Hybrid Power Systems Covered in This Review
+This review focuses on hybrid power systems that integrate two or more heteroge-
+neous energy/power generation units, with energy storage systems as the core regulation
+component, and realize collaborative energy flow optimization through energy manage-
+ment strategies. The types of hybrid power systems covered, and their corresponding load
+types, operating modes and core control requirements, are clearly defined as follows.
+Classification by Application Scenario and System Architecture
+The hybrid power systems covered in this review are divided into four major cate-
+gories, covering mobile power systems and stationary energy systems:
+(1) Land vehicle hybrid power systems: This includes passenger cars, light commercial
+vehicles, heavy-duty commercial vehicles, engineering machinery and special vehicles.
+The system architectures include series, parallel and series–parallel (power-split) types,
+with the core load being the vehicle traction load, and auxiliary loads including air
+conditioning, on-board electrical equipment, etc. The core control requirement is to
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 7 of 50
+realize the real-time torque/power distribution between the engine and motor under
+dynamic driving conditions, while meeting the constraints of fuel economy, emissions,
+battery life and driving smoothness.
+(2) Marine/watercraft hybrid power systems: This includes inland ferries, coastal ships,
+ocean-going vessels, cruise ships, offshore support vessels, tugboats and other special
+work vessels. The system architectures are mainly series diesel–electric hybrid and
+multi-energy integrated power systems, with the core load being the ship propulsion
+load, and auxiliary loads including shipboard electrical equipment, Heating, Ventila-
+tion, and Air Conditioning (HVAC) systems, etc. The core control requirement is to
+coordinate the operation of multiple generator sets and energy storage systems under
+complex sea conditions, while meeting the constraints of fuel economy, emissions,
+navigation safety and equipment life.
+(3) Aerial vehicle hybrid power systems: This includes electric Vertical Take-Off and
+Landing (eVTOL) aircraft and long-endurance Hybrid Unmanned Aerial Vehicles
+(HUAVs). The system architectures are mainly fuel cell–battery hybrid series systems,
+with the core load being the aircraft propulsion load and flight control system load.
+The core control requirement is to realize optimal energy allocation across flight
+phases, with the highest priority being on flight safety and fault tolerance, while
+meeting the endurance and stability requirements.
+(4) Stationary hybrid power systems (microgrids): This includes grid-connected micro-
+grids, off-grid/islanded microgrids, and Virtual Power Plants (VPPs) formed by
+multiple microgrids. This category covers the application scenarios mentioned in
+the existing research, as well as off-grid systems for remote and rural facilities (such
+as farms, pastoral areas, and island settlements), small commercial facilities, and in-
+dustrial parks. The system architecture is a multi-energy Direct Current/Alternating
+Current (DC/AC) microgrid with the DC bus as the core, integrating photovoltaic,
+wind power, diesel generators, fuel cells and other power generation units, as well as
+batteries, supercapacitors and other energy storage systems.
+Classification by Operating Mode, Load Type and Control Requirements for
+Stationary Microgrids
+For stationary hybrid power systems (microgrids), this review covers two core operat-
+ing modes, with corresponding load types and control requirements:
+(1) Grid-connected mode: The microgrid is interconnected with the utility grid, and can
+realize bidirectional power exchange with the grid. The load types include commercial
+building loads, industrial park loads, urban residential loads, and small business
+loads. The core control requirements include: maximizing the self-consumption of
+renewable energy, optimizing the electricity purchase/sale strategy according to the
+time-of-use electricity price, maintaining the stable operation of the DC/AC bus, and
+meeting the grid access and dispatching requirements of the utility grid.
+(2) Islanded/off-grid mode: The microgrid operates independently without the support
+of the utility grid, which is the only power source for the loads. The load types include
+remote rural residential loads, farm irrigation and production loads, island settlement
+loads, and off-grid communication base station loads. The core control requirements
+include: realizing the real-time power balance between generation and load, ensuring
+the continuous and reliable power supply of critical loads, maximizing the utilization
+of renewable energy to reduce the dependence on diesel generators, and maintaining
+the voltage and frequency stability of the microgrid under extreme conditions such as
+renewable energy output fluctuation and load sudden change.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 8 of 50
+All the DRL application cases and technical analysis in this review are carried out
+based on the above-defined scope of hybrid power systems, which covers the mainstream
+application scenarios of hybrid power systems at home and abroad.
+According to the coupling form of energy flow, as shown in Figure 1, hybrid power
+systems can be divided into three basic architectures: series, parallel and series–parallel
+(power-split), and further extended to multi-energy DC microgrids and integrated power
+systems. The control degree of freedom of the system increases with the improvement in
+architecture complexity, which also directly determines the difficulty of solving the energy
+management problem [27].
+ 
+(a) Series architecture. 
+ 
+(b) Parallel architecture. 
+ 
+(c) Series–parallel (power-split) architecture. 
+ 
+(d) Multi-energy DC microgrid architecture. 
+ 
+(e) Direction of energy ﬂow and connection types. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Figure 1. Schematic diagrams of topological structures of series, parallel, series–parallel and multi-
+energy DC microgrid hybrid power systems.
+2.1.2. Series Hybrid Power Architecture
+In the series architecture, the heat engine is fully decoupled from the driving wheels.
+The heat engine only generates electric energy by driving the generator, and the sys-
+tem energy flow follows the chain transmission path of “chemical energy → mechanical
+energy → electrical energy → mechanical energy”. Since the heat engine is decoupled from
+the load, it can be stably controlled to operate at a constant power in the high-efficiency
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 9 of 50
+zone, effectively avoiding low-efficiency operation. This architecture has significant advan-
+tages under urban low-speed and frequent start–stop conditions, but the system efficiency
+is low under high-speed conditions due to secondary energy conversion. The core of energy
+management for this architecture is power distribution decision-making, and the main
+technical difficulty lies in real-time decision-making of heat engine start–stop and output
+power, as well as suppressing load fluctuations with the help of energy storage systems.
+Typical application scenarios include urban buses, port tugboats, etc. [28,29].
+2.1.3. Parallel Hybrid Power Architecture
+The parallel architecture keeps the direct mechanical transmission path from the heat
+engine to the wheels, and is connected in parallel with an electric drive path. The two
+paths can drive the load collaboratively or independently. The diversity of energy flow
+makes the comprehensive energy efficiency of this architecture superior to that of the series
+architecture: direct mechanical drive reduces energy conversion losses, and the electric path
+provides control flexibility and regenerative braking capability for the system. The core of
+energy management for this architecture is torque distribution, which requires real-time
+decision-making of output torque of the heat engine and motor, and coordination of system
+operating mode switching. It is a typical multi-objective real-time optimization problem.
+Relying on full-operating-condition adaptability, the parallel architecture is widely used in
+passenger vehicles, conventional ships and other fields [30,31].
+2.1.4. Series–Parallel (Power-Split) Hybrid Power Architecture
+The series–parallel architecture decomposes the output power of the heat engine
+into two paths: mechanical transmission and electrical transmission through power-split
+devices such as planetary gear sets. By controlling the generator, the continuous adjustment
+of the heat engine speed and load is realized, maintaining the heat engine in the high-
+efficiency zone at all times. The energy flow of this architecture has both characteristics of
+the series and parallel architectures, with the highest controllability among the three basic
+architectures and the optimal comprehensive system performance. Its energy management
+needs to coordinate three coupled control variables, the heat engine throttle, generator
+torque and drive motor torque, simultaneously. The core technical challenge lies in real-
+time optimization of power-split ratio and multi-variable collaborative control. The Toyota
+Hybrid System (THS) is a model for the commercial application of this architecture [32].
+In marine, microgrid-related and other scenarios, the concept of hybrid power is
+further expanded to multi-energy integrated DC microgrids and integrated power systems.
+This architecture takes the DC bus as the energy router to realize networked coupling of mul-
+tiple power generation units, energy storage devices and loads. The energy management
+problem is upgraded to a multi-timescale optimization problem combining global energy
+scheduling (minute-level) and real-time power distribution (millisecond-level), facing
+challenges such as multi-timescale coupling, strong operational randomness, and multi-
+component collaborative control. Typical application scenarios include ship-integrated
+power systems, island microgrids, etc. [33,34].
+2.2. Mathematical Modeling of Energy Management Problems
+The energy management of hybrid power systems is a typical dynamic sequential
+decision-making problem, which can usually be formalized as an MDP . A standard MDP is
+defined by a five-tuple (S, A, P, R, γ), where S is the state space, A is the action space, P
+is the state transition function, R is the reward function, and γ is the discount factor [35].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 10 of 50
+2.2.1. State Space
+The state vector st ∈ S shall include all the observable system information related to
+energy management decision-making, usually consisting of four parts: the energy storage
+state, the prime mover state, load and operating condition information, and environmental
+information. Historical and predictive information is introduced in some studies to improve
+the forward-looking nature of decision-making [ 36]. The composition of typical state
+variables for energy management of hybrid power systems is shown in Table 2. The
+selection of state variables varies in different application scenarios, and state variables need
+to be normalized to improve the training efficiency of DRL.
+Table 2. Composition of typical state variables for energy management of hybrid power
+systems [37–41].
+Category of State
+Variables Typical Variables Physical Meaning and
+Decision Value
+Energy Storage State
+State of Charge (SOC) of
+battery, voltage of
+supercapacitor, rotational
+speed of flywheel
+Reflects the energy level of
+energy storage devices,
+serving as the core constraint
+for
+power/torque distribution
+Prime Mover State
+Rotational speed/torque of
+internal combustion engine,
+voltage of fuel cell stack,
+output power of
+photovoltaic array
+Reflects the real-time
+operating state of prime
+movers, providing a basis for
+optimizing operating points
+and avoiding
+inefficient operation
+Load and Operating
+Condition Information
+Demand power/torque,
+vehicle/ship speed, road
+gradient/draught,
+bus voltage
+Reflects the dynamic load
+demand and operating
+condition characteristics of
+the system, serving as the
+core decision basis for
+control actions
+Environmental
+Information
+Ambient temperature, solar
+irradiance, wind speed, sea
+state grade
+Provides a basis for
+renewable energy output
+prediction, equipment
+efficiency correction and
+operating condition analysis
+Historical and
+Predictive Information
+State sequence of the past N
+steps, demand power
+prediction of the future
+M steps
+Makes up for the partial
+observability of the system,
+improves decision-making
+foresight, and realizes
+predictive
+energy management
+2.2.2. Action Space
+The design of the action vector at ∈ A shall match the control degrees of freedom
+of the system and comply with the physical constraints of the equipment. According to
+the type of control instructions, the action space can be divided into continuous action
+space, discrete action space and hybrid action space. Most energy management problems
+of hybrid power systems in engineering practice are mixed-integer action spaces [42]. The
+typical forms and application scenarios of the three types of action spaces are shown in
+Table 3.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 11 of 50
+Table 3. Typical types of action spaces for energy management of hybrid power systems [43–45].
+Type of Action
+Space
+Typical Control
+Instructions
+Application
+Scenarios
+Core Design
+Requirements
+Continuous Action
+Space
+Target torque, target
+power, duty cycle of
+DC/DC converter
+Underlying precise
+control of
+series/parallel/
+series–parallel basic
+architectures
+Meet physical
+constraints, ensure
+smooth actions, and
+avoid actuator shocks
+Discrete Action
+Space
+Internal combustion
+engine start–stop
+command, operating
+mode selection,
+transmission gear,
+generator set
+combination
+High-level-mode
+decision-making of
+the system, energy
+management of
+simple architectures
+Complete mode
+division, avoid invalid
+mode switching, and
+ensure smooth mode
+switching
+Hybrid Action
+Space
+Mode (discrete)
++ power distribution
+(continuous)
+Most scenarios in
+engineering practice,
+multi-timescale
+control of
+multi-energy
+microgrids
+Collaborative
+optimization of discrete
+and continuous actions,
+discrete-mode
+decision-making
+provides constraints for
+continuous control
+2.2.3. State Transition and Reward Function
+The state transition function P describes how control actions affect the system state. As
+a model-free method, DRL does not need to explicitly construct this function, but implicitly
+learns the dynamic characteristics of the system through the interaction process with the
+system [46].
+The reward function R is a key bridge that transforms engineering optimization
+objectives into numerical signals understandable to agents, and its design directly de-
+termines the optimization performance of DRL strategies. The reward function for the
+energy management of hybrid power systems usually adopts the form of the weighted
+sum of multiple objectives, and the typical sub-item designs are shown in Table 4. The
+reward function design should follow the principle of “punishing negative behaviors and
+rewarding positive behaviors”, should avoid the sparse reward problem, and should guide
+the learning process of agents through reward shaping [47].
+Table 4. Typical sub-item design of the reward function for the energy management of hybrid power
+systems [48–53].
+Category of
+Sub-Reward Items Typical Design Form Engineering Significance Design Principle
+Economic Item −α1 ·
+.
+m f uel(t), −α2 · Cgrid (t) · Pgrid (t) Minimize fuel consumption
+and electricity purchase cost
+Negative reward; the
+greater the
+consumption/cost, the
+smaller the reward
+Emission Item −β1 ·
+.
+mNOx (t) − β2 ·
+.
+mSOx (t) − β3 ·
+.
+mPM (t) Minimize pollutant
+emissions
+Negative reward; the
+greater the emission, the
+smaller the reward
+Equipment Life and
+Health Item
+−γ1·
+Ibat
+ 
+t)2, −γ2 ·
+ 
+SOC(t) − 0.6)2,
+−γ3 · 1{ωice ∈Ωine f f
+Extend the service life of
+key components such as
+batteries and engines
+Punish behaviors such as
+a high current, SOC
+deviation from healthy
+range, and inefficient
+equipment operation
+System Safety and
+Stability Item
+
+0, SOCmin ≤ SOC(t) ≤ SOCmax
+−K, SOC(t) < SOCmin or SOC (t) > SOCmax
+(K is the penalty coefficient)
+Ensure the safety window
+of SOC and maintain stable
+bus voltage
+Impose large negative
+rewards on behaviors
+violating safety
+constraints
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 12 of 50
+Table 4. Cont.
+Category of
+Sub-Reward Items Typical Design Form Engineering Significance Design Principle
+Driveability and
+Smoothness Item −δ·
+at − at−1|2
+Avoid drastic changes in
+control instructions and
+ensure operational
+smoothness
+Punish rapid fluctuations
+of actions, reduce mode
+switching and torque
+shocks
+Task Completion Item η · 1{v(t)∈[v0−ε,v0+ε]}
+Ensure the system tracks the
+target speed
+Reward behaviors with
+high target speed tracking
+accuracy
+2.2.4. Optimization Objective
+The optimization objective of energy management for hybrid power systems is to find
+the optimal control strategy π∗ to maximize the expected cumulative discounted reward of
+the system; its mathematical expression is
+J(π) = Eτ∼π
+h
+∑
+T
+t=0 γtrt
+i
+, (1)
+where τ is the operating trajectory of the system, and γ is the discount factor, whose value
+determines the agent’s attention to short-term and long-term rewards [54].
+2.3. Performance Boundaries of Traditional Methods and Potential Breakthroughs of DRL
+The performance boundaries of traditional energy management methods essentially
+stem from the fundamental contradiction between the “model-driven” optimization idea
+and the “complex, stochastic and dynamic” actual operating scenarios. As a data-driven
+sequential decision-making optimization method, DRL’s core technical advantage lies in
+getting rid of the dependence on prior system models, and has irreplaceable application
+potential in the following four types of scenarios:
+(1) The system characteristics are too complex and highly nonlinear, making it difficult to
+accurately describe with concise mathematical models;
+(2) There is a lot of uncertainty in the system operating environment, which is difficult to
+accurately characterize through prediction methods;
+(3) The system has multiple optimization objectives with complex spatiotemporal cou-
+pling relationships;
+(4) Engineering applications expect the system to have lifelong learning and self-
+optimization capabilities.
+DRL fundamentally solves the contradiction between “model dependence” and “en-
+vironmental adaptability” that exists in traditional energy management methods, and
+has become a core technology to break through the performance boundaries of energy
+management for hybrid power systems [55–57].
+3. Fundamentals of DRL and Mainstream Algorithm System for Hybrid
+Power System Energy Management
+The energy management problem of hybrid power systems has been formalized
+as a MDP in Chapter 2, and DRL is a data-driven sequential decision-making method
+designed to solve this type of stochastic dynamic optimization problem [58]. This chapter
+abandons redundant pure theoretical derivation, focuses on the core requirements of hybrid
+power system energy management, clarifies the core logic of DRL to break through the
+performance bottleneck of traditional methods, classifies mainstream DRL algorithms from
+the perspective of control engineering, and clarifies the adaptation logic between each
+algorithm and energy management scenarios.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 13 of 50
+3.1. Core Theoretical Foundations of DRL for Energy Management
+3.1.1. Core Mapping Between MDP and Energy Management
+As defined in Section 2.2, the energy management MDP is a five-tuple (S, A, P, R, γ).
+For hybrid power system control, the core mapping between MDP elements and engineer-
+ing practice is as follows:
+(1) State space S: The observable system information related to decision-making (battery
+SOC, load demand, prime mover status, etc.), which is the input of the DRL controller;
+(2) Action space A: The controllable variables of the system (torque/power distribution,
+mode switching, etc.), which is the output of the DRL controller;
+(3) State transition P: The dynamic change law of the system after the control action is
+executed. DRL implicitly learns this law through data interaction without building
+an accurate mechanism model, which is its core advantage over traditional model-
+based methods;
+(4) Reward function R: The numerical mapping of engineering optimization objectives
+(fuel saving, emission reduction, battery life protection, etc.), which is the core guide
+for DRL strategy learning;
+(5) Discount factor γ: This determines the weight of long-term and short-term re-
+wards, and is used to balance the immediate fuel saving effect and long-term system
+health optimization.
+3.1.2. Core Value Functions for Strategy Optimization
+The value function is the theoretical cornerstone of DRL strategy optimization, and its
+core definition and engineering significance in energy management are shown in Table 5.
+We only retain the core functions directly related to strategy design, and abandon redundant
+pure mathematical derivation.
+Table 5. Core value functions of DRL and their engineering significance in energy management.
+Value Function Core Definition Engineering Significance in Energy
+Management
+State Value Function Vπ(s)
+Expected long-term cumulative
+reward of following strategy π in
+state s
+Quantifies the long-term benefit of the
+current system state (e.g., SOC level) to
+the global optimization goal [59]
+Action Value Function Qπ(s, a)
+Expected cumulative reward of
+executing action a in state s and
+then following π
+Directly quantifies the pros and cons of a
+specific control action (e.g., engine
+torque distribution), which is the basis
+for strategy optimization [60]
+Advantage Function Aπ(s, a) Aπ(s, a) = Qπ(s, a) − Vπ(s)
+Quantifies the additional benefit of the
+current action compared with the
+average level, providing the core
+direction for strategy update [61]
+The optimal strategy of the system can be obtained by solving the Bellman optimality
+equation, which is the theoretical basis for DRL to approach the global optimal energy
+management effect [62].
+3.2. Core Advantages of DRL over Traditional Tabular RL
+Traditional tabular RL (e.g., Q-Learning) suffers from the curse of dimensionality
+in energy management scenarios: the state and action spaces of hybrid power systems
+are high-dimensional and continuous (e.g., continuous SOC, vehicle speed, and torque
+demand), and the number of state-action pairs increases exponentially, making it impossible
+to solve effectively [63].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 14 of 50
+DRL uses deep neural networks to parameterize the value function or strategy func-
+tion, and fits the nonlinear mapping relationship between system states, actions and
+rewards through the powerful nonlinear approximation ability of neural networks, which
+fundamentally solves the curse of dimensionality. This enables DRL to handle the com-
+plex high-dimensional continuous optimization problem of hybrid power system energy
+management, which is the core premise for its engineering application [64].
+3.3. Mainstream DRL Algorithm Classification and Adaptability in Energy Management
+From the perspective of control engineering, mainstream DRL algorithms are divided
+into three categories: value function-based, policy gradient-based, and actor–critic methods.
+Figure 2 shows the basic principles, typical representatives and inter-relationships of
+the three categories of DRL algorithms, clearly reflecting the evolutionary context and
+improvement directions of the algorithms. The algorithm design always revolves around
+three core goals: improving continuous space processing capability, enhancing learning
+stability, and boosting sample efficiency, which are also the core requirements proposed by
+hybrid power system energy management for DRL algorithms [65–67]. This section focuses
+on the core characteristics of each algorithm and its adaptation logic in hybrid power system
+energy management, abandons redundant pure algorithm training process description,
+and directly aligns with the engineering application requirements of the review theme.
+Figure 2. Basic principles and relationships of value function-based, policy gradient-based and
+actor–critic DRL algorithms.
+3.3.1. Value Function-Based Algorithms
+Core Principle: They indirectly derive the optimal strategy by fitting the optimal action
+value function Q∗(s, a) of the system. The typical representative is DQN and its improved
+variants (Double DQN; Dueling DQN). The core innovations of DQN are the introduction
+of experience replay and target networks, which effectively solve the instability problem in
+the training process of traditional RL [68,69].
+Adaptability in Energy Management:
+(1) Naturally suitable for discrete action spaces, and can be directly applied to the high-
+level mode decision-making (engine start–stop; operating mode selection) of hybrid
+power systems;
+(2) Need to discretize the action space when dealing with continuous torque/power
+distribution problems, which will lead to optimization accuracy loss and action
+dimension explosion;
+(3) Not the mainstream algorithm for underlying continuous control of energy manage-
+ment, and is only used for simple system architecture or high-level mode switching
+scenarios [70].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 15 of 50
+3.3.2. Policy Gradient-Based Algorithms
+Core Principle: They directly parameterize the policy function πθ(a|s), and maximize
+the expected cumulative reward of the system through gradient ascent. The typical rep-
+resentative is Proximal Policy Optimization (PPO), which constrains the strategy update
+amplitude through clipping, and balances optimization performance and implementation
+simplicity [71].
+Adaptability in Energy Management [72]:
+(1) Can directly process continuous action spaces, and realize fine-grained control of
+torque/power distribution of hybrid power systems;
+(2) Has an extremely stable training process, strong robustness to hyperparameters, and
+low engineering implementation difficulty;
+(3) Is widely used in complex scenarios with strong uncertainty, such as marine hybrid
+power systems, multi-energy microgrids, and multi-agent collaborative optimization.
+3.3.3. Actor–Critic (AC) Methods
+The AC framework is the mainstream algorithm system in the field of hybrid power
+system energy management. It combines the advantages of value-based and policy gradient
+methods: the actor network parameterizes the strategy function and directly outputs control
+actions; the critic network parameterizes the value function and provides gradient update
+guidance for the actor network. It has both continuous space processing capability and a
+high sample efficiency [73].
+The typical representatives of this type of algorithm include DDPG, TD3, and SAC,
+and the comparison of their core architectures is shown in Figure 3.
+Figure 3. Core architecture comparison of DDPG, TD3 and SAC.
+The core representatives and their adaptation characteristics in energy management
+are shown in Table 6, and the core architecture comparison of the algorithms is supported
+by existing mainstream research [74–76].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 16 of 50
+Table 6. core AC algorithms and their adaptability in hybrid power system energy management.
+Algorithm Core Technical Characteristics Applicable Scenarios in Energy
+Management
+Deep Deterministic Policy Gradient
+(DDPG)
+Deterministic strategy, fast inference
+speed, simple network structure [77]
+Scenarios with extremely high
+real-time requirements and limited
+embedded hardware resources [78]
+Twin Delayed Deep Deterministic
+Policy Gradient (TD3)
+Double Q-learning to alleviate
+overestimation; delayed strategy
+update to improve training
+stability [79]
+The mainstream choice in this field,
+with the best comprehensive
+performance, suitable for most
+hybrid power system energy
+management scenarios [80]
+Soft Actor–Critic (SAC)
+Maximum entropy framework,
+stochastic strategy, strong exploration
+ability and robustness [81]
+Scenarios with strong operating
+condition uncertainty, high
+randomness of load/renewable
+energy output, and high
+requirements for strategy
+generalization [82]
+3.3.4. Hybrid Action Space Processing for Engineering Practice
+Most energy management problems in engineering practice involve hybrid action
+spaces (discrete mode selection + continuous power/torque control). The mainstream
+processing method in this field is the branched structure network method: the output
+layer of the network is designed as a multi-branch structure, where one branch outputs
+discrete action probability distribution, and the other branches output continuous control
+parameters. This method does not need to modify the core algorithm framework; it only
+adjusts the output layer structure, and supports end-to-end learning, which is the most
+widely used method in engineering practice [83]. Other mainstream methods include the
+parameterized action space method and hierarchical RL method, and their advantages and
+limitations have been fully discussed in existing research [84–86].
+3.3.5. Standardized Benchmark Comparison of Mainstream DRL Algorithms
+To eliminate the performance deviation caused by inconsistent models and operating
+conditions in different studies, this paper constructs a standardized benchmark test set for
+parallel hybrid electric vehicle energy management, which is the most widely used scenario
+in this field. The benchmark adopts a unified forward simulation model of a parallel hybrid
+passenger car, the worldwide harmonized light vehicles test cycle (WLTC) as the standard
+driving cycle, and the same state space, action space and reward function design for all
+algorithms. The core configuration of the benchmark is as follows:
+(1) System model: Parallel hybrid passenger car with 1.5 L gasoline engine + 110 kW
+drive motor + 1.2 kW·h lithium-ion battery;
+(2) State space: Battery SOC, vehicle speed, required torque, and engine speed;
+(3) Action space: Continuous torque distribution between engine and motor;
+(4) Reward function: Weighted sum of fuel consumption minimization, and SOC mainte-
+nance and control smoothness;
+(5) Training configuration: 100 training episodes, fixed random seed (42 seeds), same
+simulation step size (100 ms), and unified training hardware (NVIDIA RTX3090 GPU).
+The standardized quantitative comparison results of mainstream DRL algorithms
+under the same benchmark are shown in Table 7.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 17 of 50
+Table 7. Standardized benchmark comparison of mainstream DRL algorithms under the same hybrid
+power system model and data set.
+Algorithm
+Type Algorithm
+Fuel Con-
+sumption
+(L/100 km)
+Percentage of
+DP Optimum
+Single-Step
+Inference Time
+(ms)
+Training Time to
+Convergence (h)
+Generalization
+Error Under
+Unseen Cycles
+Value
+Function-Based DQN 5.82 91.2% 1.2 8.5 11.3%
+Policy
+Gradient-Based PPO 5.41 98.1% 1.8 4.2 4.5%
+Actor–Critic DDPG 5.47 97.0% 1.5 5.8 6.2%
+Actor–Critic TD3 5.35 99.2% 1.7 3.6 3.2%
+Actor–Critic SAC 5.38 98.7% 2.1 3.8 2.8%
+Global
+Optimization
+Benchmark
+DP 5.31 100% - - -
+Traditional
+Real-Time
+Method
+ECMS 5.56 95.5% 2.3 - 12.7%
+The comparison results under the standardized benchmark consistently verify the
+performance advantages of DRL over traditional methods, and clarify the performance
+boundaries of different types of DRL algorithms: TD3 and SAC have the best comprehen-
+sive optimization performance, approaching the DP global optimum; PPO has the most
+stable training process and strong generalization ability; and DQN has the fastest infer-
+ence speed but the lowest optimization accuracy, which is consistent with the application
+characteristics of various algorithms sorted out in this paper.
+3.4. Key Engineering Design Points of DRL for Physical System Control
+This section only retains the core design points directly related to the engineering
+implementation of hybrid power system energy management, and abandons redundant
+theoretical descriptions:
+(1) State Preprocessing and Normalization: Min–Max scaling is used to normalize all the
+state variables to the [−1, 1] or [0, 1] interval to eliminate the influence of dimension
+and numerical range differences on training efficiency, which is the most widely used
+preprocessing method in this field [87];
+(2) Reward Function Engineering: Dense instantaneous rewards are designed according
+to engineering optimization objectives to avoid sparse reward problems and balance
+the weight of multiple objectives (fuel consumption, battery life, emissions, etc.)
+through weighted sum. Reward shaping is the core link to guide the agent to learn
+the optimal strategy that meets the engineering requirements [88];
+(3) Exploration and Safety Balance: A physics-based safety monitor is added at the output
+end of the DRL strategy to correct or intercept dangerous actions in real time, which
+is the most engineering-friendly safety guarantee scheme at present. A constrained
+RL can also be used to explicitly add safety constraints to the optimization objective
+at the algorithm level [89];
+(4) Partial Observability Compensation: The past 5–10 historical observation sequences
+are concatenated as the input of the network, or use Long Short-Term Memory (LSTM)
+to learn the temporal characteristics of the system, to make up for the partial observ-
+ability of the actual physical system [90].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 18 of 50
+4. Applications of DRL in Energy Management of Various Hybrid Power
+Systems: Cases and Analyses
+The application design of DRL in the energy management of hybrid power systems
+follows no single fixed paradigm. The four major application domains—land vehicles,
+watercraft, aerial vehicles, and stationary microgrids—differ substantially in terms of their
+system architectures, operating profiles, optimization objectives, and constraint sets. These
+differences directly shape the distinct approaches to state–action space construction, reward
+function design, and training pipeline development for DRL in each domain. Meanwhile,
+high-dimensional state processing, continuous action optimization, and multi-objective
+trade-off represent universal core requirements across all fields [ 91–94]. This chapter
+systematically dissects the detailed application design, algorithmic modifications, and
+real-world performance of DRL for each of the four domains, extracting cross-domain
+common design principles and domain-specific technical routes.
+4.1. Land Vehicle Hybrid Power Systems
+Land vehicles represent the earliest and most mature application area of DRL for
+hybrid power system energy management, with a well-established standardized workflow:
+simulation training → Hardware-in-the-Loop (HIL) validation → real-vehicle testing [95].
+4.1.1. Passenger Cars and Light Commercial Vehicles
+Passenger cars and light commercial vehicles predominantly adopt parallel and power-
+split (series–parallel) hybrid architectures. The core of energy management is the refined
+real-time distribution of torque and power [96,97].
+Core Design Paradigm
+The state space integrates core variables including vehicle speed, acceleration, de-
+manded power, battery SOC, and engine status. A recent research focus is incorporating
+short-term (5–30 s) velocity/power prediction into the state vector, encoding predictive
+features via LSTM networks, and feeding them into the policy network to enable DRL with
+predictive decision-making capability [98]. Figure 4 illustrates a DRL energy management
+framework fused with future predictive information (using a hybrid electric vehicle as an
+example) [99].
+Figure 4. Schematic of a DRL energy management framework integrated with future prediction
+information (hybrid electric vehicle example).
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 19 of 50
+The action space is tailored to the system architecture: parallel/power-split layouts
+typically use a 2D continuous torque vector as the control action, while series layouts use
+a power distribution vector [ 100,101]. Some studies employ a hybrid action space that
+combines discrete operating-mode selection with continuous power/torque control [102].
+The reward function uses a weighted multi-objective sum, with the key terms covering fuel
+consumption, battery degradation, SOC maintenance, and control smoothness [103].
+Representative Research Results and Performance
+Numerous studies verify the significant performance advantages of DRL. Most DRL
+policies achieve a fuel economy close to the theoretical global optimum from DP , with the
+generalization ability far exceeding traditional methods such as ECMS and MPC [104]. Tang
+et al. applied DRL and DDRL to parallel hybrid electric vehicles, with the optimization
+objective of minimizing fuel consumption and maintaining battery SOC balance; their
+policies reached 99.45% and 97.67% of the DP theoretical optimum in fuel economy under
+the WLTC cycle, respectively [105]. Fang et al. embedded a battery aging model into the
+SAC reward function, gaining a 15% battery lifetime extension at a fuel economy penalty
+of less than 2% [106]. Wu et al. proposed a TD3 strategy with LSTM velocity prediction,
+improving fuel economy by 5.3% over a non-predictive DRL baseline. Generalization
+tests show that DRL policies suffer only 3.1–4.8% performance degradation under unseen
+driving cycles, compared with 10.3–14.7% for ECMS [107].
+4.1.2. Heavy-Duty Commercial Vehicles, Engineering Machinery, and Special Vehicles
+These vehicles exhibit unique operational characteristics, including severe transient
+load fluctuations, strong coupling among multiple systems, and stringent equipment lifes-
+pan requirements; as a result, their energy management is significantly more challenging
+than that of passenger cars and light commercial vehicles [108].
+Core Challenges and Design Features
+Energy management for such vehicles faces three core challenges:
+(1) Severe transient load fluctuations (e.g., power spikes in excavators);
+(2) Strong multi-system coupling (e.g., electro-hydraulic integration);
+(3) Stringent lifetime requirements for key components.
+Corresponding design features include targeted DRL training using repetitive duty
+cycles and strengthened component-protection weighting in the reward function [109].
+Typical Application Cases
+Hybrid excavators: Yoo et al. used TD3 to coordinate power allocation among the
+engine, supercapacitor, and main motor. A penalty for hydraulic pressure fluctuation
+was added to the reward function, and action timing was optimized for hydraulic flow
+coupling. The result was fuel savings of over 27% while hydraulic shock was reduced by
+42%, with robust performance validated across multiple operating modes [110]. Hybrid
+mining trucks: Tang et al. developed a DDPG-based strategy that incorporates continuous
+road grade and preceding-vehicle motion. Under real mine conditions, fuel economy
+improved by 7.1% over an MPC-DQN hierarchical method while maintaining car-following
+safety [111]. Military hybrid tracked vehicles: Han et al. used Double Deep Q-Network
+(DDQN) for energy management of a dual-motor drivetrain. Fuel economy rose by ~7.1%
+over conventional DQN, reaching 93.2% of the DP benchmark [112].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 20 of 50
+4.2. Watercraft Hybrid Power Systems
+Marine hybrid power systems operate under complex, highly variable loads,
+where the limitations of conventional energy management methods are especially
+pronounced—creating ample room for DRL adoption [113].
+4.2.1. Commercial Ships: From Inland Waterways to Ocean-Going Vessels
+DRL-based energy management for commercial ships is scenario-adaptive. The domi-
+nant algorithms are PPO, TD3, and SAC, with optimization objectives adapted to vessel
+type and operating environment [114–116].
+Inland ferries and coastal ships: Wu et al. used Double Q-learning for a plug-in fuel
+cell–battery ferry. The agent learned from continuous random power profiles without future
+preview, achieving 96.9% of the near-optimal cost performance [117]. Ocean container ships:
+Xiao et al. used knowledge-distillation-compressed DRL to co-optimize speed and energy
+scheduling for diesel–electric hybrids. Fuel consumption dropped by 4.2%, high-efficiency
+engine operation rose by 12%, and computational complexity fell by 30% [ 118]. Cruise
+ships: Guo et al. built a DDPG-based energy management strategy for multi-energy cruise
+hybrids. Compared with DQN, the scheme optimized diesel engine operation and cut the
+total fuel use by 3.6% [119].
+4.2.2. Special-Purpose Work Vessels
+Special marine vessels face extreme load swings and strict operational–performance
+requirements. Energy management must prioritize operational stability while maximizing
+efficiency [120].
+Offshore support vessels: Wang et al. used an improved K-means++ route-clustering
+method plus DDPG for power allocation. Fuel consumption was reduced by 2.3%, 5.5%,
+18.1%, and 20.1% relative to DQN, Q-learning-, HAAR-, and rule-based methods, respec-
+tively [121]. Tugboats: Gaber et al. applied an enhanced DDPG algorithm that accounts
+for photovoltaic uncertainty to balance hydrogen fuel cell and battery power. The total
+economic cost fell by 1.36% and 0.96% versus Double DQN and PPO, respectively [122].
+4.2.3. Technical Implementation Characteristics
+Marine DRL research presents two prominent characteristics:
+(1) A heavy reliance on high-fidelity simulation and digital twins, using tools such as
+MATLAB/Simulink (Simscape Marine) and DNV GL SESAM;
+(2) HIL testing as a critical bridge between simulated and real ship deployment, requiring
+seamless integration with the actual vessel power management system [123].
+4.3. Aerial Vehicles and Hybrid UAV Power Systems
+Aviation imposes extremely high safety requirements. DRL research in this domain
+remains exploratory, with a focus on eVTOL aircraft and long-endurance UAVs [124].
+4.3.1. eVTOL Aircraft
+Energy management for eVTOL focuses on optimal energy allocation and fault-tolerant
+control across flight phases. Optimal energy allocation: Liu et al. used an improved
+PPO algorithm to dynamically adjust thrust allocation under urban wind fields. Energy
+consumption fell by ~11% while preserving ride comfort and low noise [ 125]. Fault
+reconfiguration: Liu et al. trained a PPO-based fault-tolerant controller for quadrotor
+eVTOLs. Upon single-motor failure, thrust redistribution was completed within 150 ms,
+maintaining stable flight and mission completion [126].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 21 of 50
+4.3.2. Long-Endurance Hybrid UAVs
+Aviation DRL is still largely simulation-based, with limited real-flight testing.
+The chief bottlenecks are airworthiness certification and embedded deployment [ 127].
+Guo et al. proposed a DRL framework combining B-spline trajectory parameterization
+and Adaptive ECMS (A-ECMS) for hydrogen fuel cell–battery UAVs. Endurance increased
+by 18%, hydrogen consumption dropped by 12.3%, and environmental adaptability was
+enhanced via parameter identification [128].
+4.4. Microgrids and Distributed Energy Systems
+Microgrids are generalized hybrid energy systems whose energy management re-
+quires coordinated dispatch and a supply–demand balance across multiple energy sources.
+DRL—especially Multi-Agent Deep Reinforcement Learning (MARL)—has become a core
+research direction [129].
+4.4.1. Energy Dispatch for Off-Grid Microgrids
+The core objective is to balance generation and load in real time while maximiz-
+ing renewable penetration. Centralized DRL: Guo et al. used centralized PPO for
+diesel–battery–renewable off-grid microgrids. Diesel use fell by 15%, renewable con-
+sumption rose by 18%, and computation speed tripled versus traditional methods [130].
+Distributed MARL: Harrold et al. developed a Multi-Agent Deep Deterministic Policy Gra-
+dient (MADDPG) scheme for peer-to-peer energy trading. Renewable utilization improved
+by 21.4%, operating costs fell by 25%, and decisions relied only on local information [131].
+4.4.2. Grid-Connected Microgrids and VPPs
+Grid-connected microgrids optimize economic benefits using electricity price sig-
+nals [132]; VPPs coordinate multiple microgrids for global efficiency [ 133]. Chen et al.
+used multi-agent consensus control for distributed economic dispatch in grid-connected
+microgrids, cutting operating costs by 10% [134]. Yan et al. combined a two-layer electricity–
+carbon pricing framework with a multi-agent Stackelberg game for VPPs. The scheme
+optimized trading strategies in coupled electricity–carbon–green certificate markets and
+strengthened low-carbon performance [135].
+5. Experimental Validation Platforms, Simulation Tools, and
+Systematic Evaluation
+The research and engineering deployment of DRL in the energy management of hybrid
+power systems depend strongly on high-fidelity simulation environments, efficient train-
+ing frameworks, and rigorous verification procedures [136]. This chapter systematically
+reviews mainstream simulation tools, DRL training techniques, the four-stage verifica-
+tion process, and a comprehensive performance evaluation system in this field, providing
+methodological guidance for the engineering application of DRL.
+5.1. High-Fidelity System Simulation Environments
+A high-fidelity simulation environment is the foundation for DRL policy training. Its
+core requirement is that the dynamic characteristics of the simulation model closely match
+those of the physical system, ensuring the validity and reliability of simulation results [137].
+Simulation tools and modeling methods vary significantly across application domains.
+The mainstream high-fidelity simulation software and their interfaces with DRL training
+frameworks are summarized in Table 8.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 22 of 50
+Table 8. Mainstream high-fidelity simulation software and their interfaces with DRL training frame-
+works [138–143].
+Application Domain Core Simulation
+Software
+Core Functions and
+Modeling Accuracy
+DRL Training
+Interface Mode Applicable Scenarios
+Land Vehicles MATLAB/Simulink
+(Simscape)
+Component-level
+forward/backward
+modeling, including
+engine MAP , battery
+equivalent circuit, etc.
+S-Function, Python
+Engine, and Functional
+Mock-up Interface
+(FMI)/Functional
+Mock-up Unit (FMU)
+Powertrain simulation
+and DRL training for
+passenger vehicles,
+commercial vehicles,
+and engineering
+machinery
+Land Vehicles AVL CRUISETM,
+GT-SUITE, AMESim
+Engineering
+verification-grade
+modeling; simulation
+deviation < 5%
+Secondary
+development API and
+FMI/FMU
+Industrial-grade policy
+development and
+pre-real-vehicle
+validation
+Watercraft MATLAB/Simulink
+(Simscape Marine)
+Self-built marine
+powertrain model,
+integrating resistance,
+propeller, power grid,
+etc.
+S-Function and Python
+Engine
+Basic marine system
+simulation and
+algorithm validation
+Watercraft
+DET NORSKE
+VERITAS
+GERMANISCHER
+LLOYD (DNV GL)
+SESAM, Siemens
+Simcenter
+Multi-physics coupled
+simulation; accuracy
+meets real-ship
+requirements
+FMI/FMU and
+co-simulation interface
+Industrial-grade
+marine system design
+and engineering
+validation
+Microgrids and Power
+Systems
+MATLAB/Simulink
+(Simscape Electrical),
+PSCAD/EMTDC
+Electromagnetic
+transient simulation;
+microsecond-level
+timestep
+S-Function and
+real-time simulator
+interface
+Real-time power
+distribution for
+microgrid power
+electronic systems
+Microgrids and Power
+Systems
+OpenDSS, GridLAB-D,
+DIgSILENT
+Power flow and
+long-term dynamic
+simulation;
+minute-level timestep
+Software API, Python
+script, and FMI/FMU
+Global energy
+scheduling and
+long-term policy
+training for microgrids
+5.1.1. Land Vehicle System Simulation Environment
+Academic research predominantly uses MATLAB/Simulink for building component-
+level hybrid power system models. Industrial validation employs professional tools such as
+AVL CRUISETM and GT-SUITE, with simulation deviations from real-vehicle tests typically
+below 5%, meeting engineering validation requirements [144,145].
+5.1.2. Marine Powertrain Simulation Environment
+MATLAB/Simulink is commonly used for standalone marine powertrain simulation,
+with custom models built for specific vessel types [146]. Multi-physics coupled simulation
+relies on marine professional platforms such as DNV GL SESAM and Siemens Simcenter,
+enabling the collaborative simulation of marine propulsion, fluid dynamics, structural
+mechanics, and other physical fields [147,148].
+5.1.3. Microgrid and Power System Simulation Environment
+Electromagnetic transient simulation (microsecond-level) for microgrids focuses
+on real-time power distribution, with core tools including MATLAB/Simulink and
+PSCAD/EMTDC [149,150]. Power flow and long-term dynamic simulation (minute-level)
+targets global energy scheduling, using tools such as OpenDSS, GridLAB-D, and DIgSI-
+LENT [151].
+5.1.4. Standardized Construction of DRL Training Interfaces
+Mainstream interface methods between DRL training frameworks and simulation soft-
+ware include Simulink-specific interfaces (S-Function), FMI/FMU standard interfaces, and
+OpenAI Gym/Gymnasium environment encapsulation. The core requirement of interface
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 23 of 50
+design is to ensure real-time performance and the synchronization between simulation and
+training, avoiding the performance degradation caused by interface latency [152].
+5.2. DRL Algorithm Development and High-Performance Training
+Leveraging mainstream deep learning frameworks, high-level DRL libraries, dis-
+tributed training, and automated hyperparameter tuning can drastically improve DRL
+training efficiency and shorten development cycles [153].
+5.2.1. Mainstream DRL Development Frameworks and High-Level Libraries
+Deep learning frameworks constitute the foundation of DRL algorithm development.
+PyTorch is widely used for its flexibility in academic algorithm innovation [ 154], while
+TensorFlow offers high computational efficiency for industrial deployment [155]. High-
+level DRL libraries encapsulate classic algorithms to lower development barriers:
+(1) Stable-Baselines3: User-friendly and suitable for academic research [156];
+(2) Ray RLlib: Supports high-performance distributed training, and is ideal for industrial
+applications [157];
+(3) Tianshou: Modular design, and is convenient for algorithm innovation [158].
+5.2.2. Distributed Training Technology
+Distributed training is the core technique for improving DRL efficiency, adopting a
+parallel data collection and centralized model update paradigm [159]. The Actor–Learner
+architecture in Ray RLlib is a representative implementation: multiple Actors interact with
+the environment in parallel to collect samples, and a single Learner performs centralized
+model updates, reducing the training time from weeks to days [160].
+5.2.3. Automated Hyperparameter Tuning
+Hyperparameter selection directly affects DRL training stability and convergence
+speed. Traditional manual tuning is inefficient and subjective. Modern tools such as
+Optuna and Ray Tune use Bayesian optimization, genetic algorithms, and other intelligent
+methods to search for optimal hyperparameter combinations, improving tuning efficiency
+by 3–5 times compared with manual tuning [161].
+5.3. HIL and Physical Validation Processes
+The deployment of DRL policies from simulation to physical systems requires a strict
+four-stage validation flow, which gradually verifies functional correctness, engineering
+feasibility, and operational safety, as shown in Figure 5 [162].
+5.3.1. Model-in-the-Loop (MIL) Testing
+MIL testing is the foundational validation stage, verifying the functional correctness
+and performance rationality of DRL policies in a non-real-time simulation environment.
+Extensive simulation tests eliminate logical flaws and design defects in policies. This stage
+features low cost and high efficiency, serving as the basis for iterative policy optimiza-
+tion [163].
+5.3.2. Software-in-the-Loop (SIL) Testing
+SIL testing compiles DRL policy code into executable code (C/C++, etc.) for target
+hardware, and performs co-simulation with simulation models in a PC-based software
+environment. It validates the executability, robustness, and compatibility of policy code,
+providing software support for subsequent hardware deployment [164].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 24 of 50
+Figure 5. Schematic of the four-stage validation process for DRL energy management policies in
+hybrid power systems.
+5.3.3. HIL Testing
+HIL testing is a critical transition between simulation-based and physical deployment.
+DRL policies are deployed to real-time simulators or target embedded controllers, interfac-
+ing with the core hardware of physical systems (e.g., battery simulators, motor controllers,
+and generator set simulators) to build a closed-loop test environment. This stage vali-
+dates real-time performance, hardware compatibility, and operational safety under extreme
+conditions [165].
+5.3.4. Real-Vehicle/Real-Ship/Real-Aircraft Testing
+Real-world testing is the final validation stage, verifying the actual performance,
+robustness, and engineering practicality of DRL policies on physical systems. Strict safety
+protocols are required, and average performance is evaluated through repeated tests. Real-
+world test results serve as the final basis for large-scale engineering deployment [166].
+5.4. Comprehensive Performance Evaluation Index System
+A scientific and comprehensive evaluation system is essential for objectively measur-
+ing DRL policy performance and enabling cross-policy comparison. As shown in Table 9,
+this paper establishes a six-dimensional evaluation system covering economic, environ-
+mental, equipment lifetime, control quality, computational performance, and robustness
+aspects, tailored to the engineering objectives of hybrid power systems and the algorithmic
+characteristics of DRL.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 25 of 50
+Table 9. Comprehensive performance evaluation index system for the DRL-based energy manage-
+ment of hybrid power systems [167–177].
+Evaluation
+Dimension Core Indicators Calculation Method Baseline for
+Comparison
+Engineering
+Significance
+Supporting
+References
+Economy Total fuel
+consumption
+Total fuel over test
+cycle/voyage
+Rule-based control,
+ECMS, DP optimum
+Core optimization
+objective [167,168]
+Economy Equivalent total
+cost
+Monetary sum of
+fuel, degradation,
+maintenance,
+electricity, etc.
+Traditional operating
+cost
+Most
+comprehensive
+economic metric
+[168,172]
+Environmental
+Performance
+Total CO2, NOx,
+SOx, PM emissions
+Calculated via
+emission MAP or
+empirical models
+Regulatory limits,
+traditional policy
+performance
+Response to
+carbon neutrality
+and environmental
+regulations
+[169,173]
+Equipment
+Lifetime
+Battery stress
+index
+Weighted sum of
+current Root Mean
+Square (RMS),
+C-rate, SOC
+fluctuation,
+temperature
+Stress level under
+traditional policies
+Reduces lifecycle
+cost [168,174]
+Equipment
+Lifetime
+Engine operating
+point distribution
+Percentage of
+operation in
+high-efficiency
+region
+Distribution under
+traditional control
+Reflects equipment
+efficiency and wear [170,174]
+Control Quality Mode switching
+frequency
+Number of mode
+switches per unit
+time
+Switching frequency
+under rule-based
+control
+Reflects
+operational
+smoothness
+[167,175]
+Control Quality Torque/power
+change rate
+Statistical measure of
+control command
+variation
+Manual driving or
+traditional policies
+Reflects control
+smoothness [170,175]
+Control Quality Bus voltage
+fluctuation
+Standard deviation
+or maximum
+deviation of voltage
+System stability
+design requirements
+Reflects power
+system stability [169,171]
+Computational
+Performance
+Single-step
+inference time
+Time from state
+input to action
+output
+System control
+period
+Must be shorter
+than the control
+period
+[167,176]
+Computational
+Performance
+Model memory
+usage
+Size of neural
+network parameter
+file
+Storage capacity of
+target platform
+Must meet
+embedded
+hardware
+constraints
+[170,176]
+Robustness
+Operating
+condition
+generalization
+error
+Performance
+volatility under
+unseen conditions
+Volatility of ECMS
+and other methods
+Lower volatility
+indicates stronger
+generalization
+[167,177]
+Robustness
+Parameter
+perturbation
+robustness
+Performance
+degradation after
+parameter variation
+Performance under
+unperturbed
+conditions
+Smaller
+degradation
+indicates stronger
+robustness
+[169,177]
+5.4.1. Economic Indicators
+Economic performance is the core optimization objective of hybrid power system
+energy management. The key indicators include the total fuel consumption, total electricity
+cost, and equivalent total cost. The equivalent total cost monetizes fuel consumption,
+component degradation, maintenance, and electricity purchase, representing the most
+comprehensive economic evaluation metric [172].
+5.4.2. Environmental Indicators
+Environmental indicators include the total CO 2 emissions and pollutant emissions
+(NOx, SO x, and PM), which are critical for complying with carbon neutrality and en-
+vironmental regulations. Trade-offs often exist between environmental and economic
+performance, requiring balanced weight settings in the reward function [173].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 26 of 50
+5.4.3. Equipment Lifetime Indicators
+These indicators assess how DRL policies affect the service life of key components. The
+battery stress index integrates the current RMS, C-rate, SOC fluctuation, and temperature
+to evaluate aging. The engine operating point distribution measures the proportion of
+operation in high-efficiency regions, reflecting efficiency and wear. DRL can extend the com-
+ponent lifetime by optimizing operation toward high-efficiency, low-stress regions [174].
+5.4.4. Control Quality Indicators
+Control quality reflects operational smoothness and stability. Lower mode switch-
+ing frequency and smaller torque/power variation improve ride comfort. Bus voltage
+fluctuation directly indicates power system stability [175].
+5.4.5. Computational Performance Indicators
+Computational performance is critical for embedded deployment. The single-step
+inference time must be shorter than the system’s control cycle to satisfy real-time require-
+ments. The model size must fit the storage capacity of target hardware. Model compression
+techniques such as quantization, pruning, and knowledge distillation are used to optimize
+computational efficiency before deployment [176].
+5.4.6. Robustness Indicators
+Robustness characterizes the adaptability to dynamic and complex scenarios. The
+operating condition generalization error is the performance volatility under unseen cycles.
+Parameter perturbation robustness is the performance degradation caused by component
+parameter drift. DRL policies exhibit significantly stronger robustness than traditional
+model-dependent methods [177].
+5.4.7. Comprehensive Weighting and Decision-Making
+Trade-offs exist among the six dimensions (e.g., economy vs. lifetime; environment vs.
+economy). In engineering applications, weights are assigned based on scenario-specific
+priorities, and a comprehensive weighted scoring method is used to quantitatively evaluate
+and select DRL policies [178].
+6. Key Challenges, Open Issues, and Cutting-Edge Solutions
+DRL provides a promising optimization paradigm for hybrid power system energy
+management, but its engineering deployment still faces several coupled core bottlenecks.
+This chapter systematically analyzes the critical challenges and their intrinsic causes of
+DRL application in this field from five dimensions: algorithm training, engineering safety,
+environmental adaptation, decision interpretability, and multi-objective optimization, and
+sorts out the corresponding cutting-edge solutions.
+6.1. Sample Efficiency and Prohibitive Training Costs
+Low sample efficiency is an inherent drawback of DRL: policy convergence normally
+requires millions to tens of millions of environmental interaction samples. Meanwhile, the
+single-step time consumption of high-fidelity simulation is long, leading to DRL training
+cycles of several days to weeks and high training costs, which severely restrict the efficiency
+of engineering research and development [ 179]. At present, four leading solutions are
+adopted to improve sample efficiency and reduce training costs.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 27 of 50
+6.1.1. Offline RL
+Offline RL directly learns control policies from historical interaction data without
+online interaction with the environment, effectively cutting training costs. Conservative
+Q-Learning (CQL) is a representative algorithm of this type. When applied to the energy
+management of hybrid electric vehicles, offline RL policies trained on historical driving data
+reduce the training time by more than 80%, while achieving a fuel economy comparable
+to online-trained policies. The main challenge of this method is the distribution shift
+problem, which CQL and similar algorithms alleviate by making conservative estimations
+for unknown actions [180].
+6.1.2. Model-Based RL
+Model-based RL first learns a “world model” of environmental dynamics from a small
+number of samples, and then conducts policy exploration and optimization on this model
+to reduce interactions with the real environment. DreamerV3 is a representative method of
+this type. When applied to hybrid power system energy management, it improves training
+efficiency by 3–5 times. The core challenge is the model bias problem, i.e., discrepancies
+between the learned world model and real environmental dynamics that may degrade
+policy performance [181].
+6.1.3. Imitation Learning and Pre-Training
+Imitation learning uses expert demonstration data to provide high-quality initial
+values for DRL policies, and then completes policy optimization with a small amount of
+online fine-tuning, greatly boosting sample efficiency. Behavior Cloning (BC) is a basic
+method of imitation learning, where expert data can be derived from DP optimal trajectories
+or engineer experience decisions. When applied to hybrid power systems, this method
+improves sample efficiency by 80%. The core challenge is the compound error problem,
+which requires online fine-tuning to correct the policy [182].
+6.1.4. Transfer Learning and Meta-Learning
+Transfer learning reuses learning outcomes from source tasks to target tasks, reducing
+sample demand for target tasks. Meta-learning (e.g., Model-Agnostic Meta-Learning;
+MAML) equips agents with the ability to “learn how to learn”, enabling fast convergence
+with few samples on new tasks. Both methods effectively improve the sample efficiency of
+DRL in hybrid power system energy management. The main challenge is negative transfer,
+where performance drops sharply when the source and target tasks differ greatly [183].
+6.2. Safety, Reliability, and Verifiability
+Safety and reliability are imperative requirements for safety-critical physical systems,
+and the core bottleneck for the industrial landing of DRL in hybrid power system energy
+management. The “black-box” nature and random exploration behavior of DRL make it
+difficult to guarantee operational safety under all working conditions, and policy reliability
+cannot be verified by traditional methods [ 184]. Figure 6 shows a safe DRL framework
+with a safety layer and constrained optimization, which constructs a dual safety protec-
+tion system for DRL policies from algorithmic and engineering perspectives, and has
+become the mainstream design paradigm for safe DRL in hybrid power system energy
+management [185]. At present, four leading solutions are adopted.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 28 of 50
+Figure 6. Schematic of a safe DRL framework with safety layer and constrained optimization.
+6.2.1. Safety Layer/Shielding
+A physics rule-based safety monitor is added at the output of the DRL policy to correct
+or intercept dangerous control actions in real time. This method is simple to implement
+without modifying the DRL algorithm, making it the most engineering-friendly safety
+guarantee scheme at present. The core challenge is balancing system protection and policy
+exploration space when setting constraint boundaries [186].
+6.2.2. Constrained RL
+Safety constraints are explicitly added to the optimization objective of DRL to ensure
+the system’s operational safety at the algorithmic level. Constrained Policy Optimization
+(CPO) is a representative algorithm of this type. This method strictly satisfies safety
+constraints such as battery SOC, engine load, and bus voltage. The main challenge is
+high algorithmic complexity, and the natural trade-off between the system’s safety and
+optimization performance [187].
+6.2.3. Formal Verification and Robustness Analysis
+Formal verification uses mathematical logic to prove that neural network policies
+satisfy safety attributes for all input states. Robustness analysis quantifies the policy’s
+resistance to external disturbances. This method theoretically guarantees policy safety and
+reliability, but is currently only applicable to small-scale neural networks and simple safety
+attributes, representing a core direction for future DRL safety research [188].
+6.2.4. Distributed Fault-Tolerant Architecture
+A distributed “primary backup control” fault-tolerant architecture is adopted, where
+DRL serves as the primary controller and traditional control strategies act as backups. The
+DRL policy executes optimal control under normal working conditions, and the system
+immediately switches to the backup controller in case of faults or extreme conditions,
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 29 of 50
+ensuring safe operation. This architecture is the most accepted DRL deployment scheme in
+industry [189].
+6.2.5. Engineering Certification and Regulatory Compliance for Real-World Deployment
+The engineering deployment of DRL-based energy management strategies in safety-
+critical hybrid power systems must comply with strict industry certification standards
+and regulatory procedures, which is a core prerequisite for real-world application. The
+mainstream international certification standards, permit acquisition procedures, and key
+technical requirements are detailed as follows.
+Industry-Specific Functional Safety Certification Standards
+DRL-based controllers shall comply with the functional safety requirements of the
+corresponding industry; the core applicable standards include the following:
+(1) Automotive field: International Organization for Standardization 26262 (ISO 26262) [190]
+Road vehicles—Functional safety standard, which requires the DRL control system to
+meet the corresponding Automotive Safety Integrity Level (ASIL). For passenger car
+hybrid power system energy management, the minimum requirement is ASIL-B, and
+the powertrain safety-related functions need to meet ASIL-D. The standard requires
+the complete traceability of the DRL strategy development process, quantitative risk
+assessment, and fault injection testing to verify the safety of the strategy under all
+operating conditions [191];
+(2) Marine field: DNV GL Rules for Classification of Ships and INTERNATIONAL ELEC-
+TROTECHNICAL COMMISSION 61508 (IEC 61508) [192] Functional safety of electri-
+cal/electronic/programmable electronic safety-related systems. The marine hybrid
+power system controller must pass the type approval of the classification society, which
+requires HIL testing of the DRL strategy under extreme sea conditions and fault sce-
+narios, long-term stability verification, and compliance with the marine environmental
+protection and operational safety regulations [193];
+(3) Power system/microgrid field: INSTITUTE OF ELECTRICAL AND ELECTRONICS
+ENGINEERS 1547 (IEEE 1547) [194] Standard for Interconnection and Interoperability
+of Distributed Energy Resources with Associated Electric Power Systems Interfaces
+and IEC 61508. The grid-connected DRL energy management controller must pass the
+grid access certification, which requires verification of the strategy’s stability under
+grid voltage/frequency fluctuations, fault ride-through capability, and compliance
+with the grid dispatching rules [195].
+Practical Permit Acquisition Procedures for Real-World Deployment
+The practical permit acquisition process for DRL-based energy management systems
+in engineering applications usually includes five core steps:
+(1) Development phase compliance: Complete the development of the DRL strategy
+in accordance with the functional safety standard V-model, including requirement
+specification, system design, algorithm implementation, and verification planning,
+with full-process document traceability;
+(2) Simulation and HIL verification: Complete MIL/SIL/HIL testing under all operating
+conditions, including normal operating conditions, extreme scenarios, and fault in-
+jection tests, and provide a complete test report to prove that the strategy meets the
+safety and performance requirements;
+(3) Prototype testing: Deploy the DRL strategy to the physical prototype, complete the
+real-machine test under controllable scenarios, and verify the actual performance,
+stability and safety of the strategy in the real physical system;
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 30 of 50
+(4) Type approval/certification application: Submit the development documents, test
+reports, and prototype test data to the third-party certification body (such as TECHNIS-
+CHER ÜBERWACHUNGSVEREIN (TÜV) for automotive and DNV GL for marine)
+for type approval, and complete the required supplementary tests according to the
+certification body’s requirements;
+(5) Batch deployment permit: After obtaining the type approval certificate, complete the
+final compliance inspection of the batch products, and obtain the official deployment
+permit from the industry regulatory authority.
+Core Certification Challenges for AI-Based Controllers
+At present, the core challenge of DRL strategy certification lies in the “black-box”
+nature of neural networks, which cannot be verified by traditional test coverage methods.
+The industry’s mainstream solutions include the following:
+(1) Adopting the “primary backup” architecture, where the DRL strategy is used as the
+primary controller, and the certified traditional rule-based/MPC strategy is used as
+the safety backup controller, which has been widely accepted by certification bodies;
+(2) Using formal verification methods to mathematically prove the safety attributes of
+the DRL neural network, ensuring that the strategy will not output dangerous control
+actions under any input state;
+(3) Completing long-term shadow mode operation verification in the digital twin, accu-
+mulating massive operating data to prove the reliability of the strategy.
+6.3. Generalization and Environmental Adaptability
+DRL policies often undergo severe performance degradation under out-of-distribution
+working conditions and system parameter drift, and during the simulation-to-reality trans-
+fer, namely insufficient generalization and environmental adaptability, which is a major
+obstacle to DRL engineering deployment [196]. Figure 7 shows a technical roadmap for
+transfer learning and online continuous adaptive learning from simulation to reality, pro-
+viding a full-process technical solution for improving DRL policy generalization [197]. At
+present, three leading solutions are adopted.
+Figure 7. Roadmap of transfer learning and online continuous adaptive technology from simulation
+to reality.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 31 of 50
+6.3.1. Domain Randomization
+The system component parameters and operating conditions are randomized during
+simulation training, enabling DRL policies to learn general control laws independent of
+specific parameters and working conditions, thus enhancing policy generalization. The
+randomized parameters usually include the system mass, road gradient, component inter-
+nal resistance, and equipment efficiency. DRL policies trained with domain randomization
+reduce performance volatility under unseen working conditions from over 15% to 3–5%.
+The core challenge is reasonably designing the randomization range and probability distri-
+bution based on engineering practice [198].
+6.3.2. Online Adaptation and Continuous Learning
+Real-time operational data from physical systems are used to safely fine-tune DRL
+policies, adapting them to dynamic scenarios such as component aging and changing
+working conditions. Incremental learning and Bayesian learning are commonly used to
+achieve online continuous policy optimization. The core challenge is catastrophic forgetting,
+where policies may lose learned knowledge when acquiring new skills, requiring effective
+anti-forgetting mechanisms [199].
+6.3.3. High-Fidelity Simulation Environments and Digital Twins
+Multi-physics simulation, high-precision component modeling, and real working
+condition data are integrated to build high-fidelity simulation environments, narrowing
+the gap between simulation and reality. Digital twins synchronize with physical systems
+via real-time sensor data, providing a continuously interactive and safely iterative training
+carrier for DRL. DRL policies trained on digital twins improve real-machine performance
+by 5–8% compared with traditional simulation training [200].
+6.4. Interpretability and Decision Credibility
+The “black-box” nature of deep neural networks renders DRL decision logic uninter-
+pretable for engineers, leading to industrial caution toward large-scale deployment, namely
+insufficient interpretability and decision credibility, which is a major barrier to the scaled
+application of DRL in hybrid power system energy management [201]. At present, four
+leading solutions are adopted.
+6.4.1. Attention Mechanism Visualization
+An attention mechanism is introduced into the DRL policy network to visualize the
+weight of each state variable during policy decision-making. This method intuitively shows
+the decision focus of the policy and helps engineers to understand the decision basis, but
+only reflects “what the policy focuses on” rather than “why it focuses on it” [202].
+6.4.2. Counterfactual Analysis and Impact Factor Assessment
+State feature values are systematically modified to observe changes in control actions,
+quantifying the influence of each state feature on decisions. This method provides quantifi-
+able explanatory indicators for policy decisions and improves decision credibility. The core
+challenge is the high computational cost, making it unsuitable for real-time control [203].
+6.4.3. Policy Distillation
+Simple, highly interpretable models (e.g., decision trees and linear regression mod-
+els) are used to mimic the decision behavior of complex DRL policies, achieving fully
+interpretable decision logic at the cost of only 3–5% performance loss. This method is
+simple to implement and the most practical solution to improve DRL interpretability in
+engineering [204].
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 32 of 50
+6.4.4. Integration of Symbolic Knowledge and Hybrid AI
+Physical laws and engineering rules are embedded as hard constraints into deep neural
+networks to build a “gray-box” optimization model. For example, the engine optimal
+efficiency line and battery SOC safety constraints are embedded into the policy network,
+making policies naturally conform to physical intuition and fundamentally improving
+interpretability and decision credibility [205].
+6.4.5. Formal Verification Methodology for Interpretability and Safety in Critical Scenarios
+In safety-critical scenarios (such as vehicle powertrain control, ship integrated power
+system control, and microgrid-connected control), the interpretability of DRL strategies
+must be guaranteed by formal methods, which provide mathematical-level rigorous proof
+of the network’s decision logic and safety attributes, rather than just qualitative inter-
+pretability analysis. The core formal verification methodologies, technical implementation
+and engineering examples for DRL energy management strategies are detailed as follows.
+Core Formal Verification Principles for DRL Neural Networks
+The core goal of the formal verification of DRL energy management strategies is to
+prove that the neural network satisfies the predefined safety and interpretability specifi-
+cations for all possible input states within the system’s physical constraints. The formal
+specification of the DRL strategy can be defined as follows:
+For all system states s ∈ Ssa f e (the safe state space defined by physical constraints,
+such as battery SOC within [0.2, 0.8] and the engine speed within the high-efficiency range),
+the control action a = π(s) output by the DRL policy network must satisfy a ∈ Asa f e (the
+safe action space defined by physical constraints), and the decision logic must conform to
+the physical laws and engineering rules of the hybrid power system.
+The mainstream technical implementation paths of formal verification include
+the following:
+(1) Reachability analysis: Calculate the reachable output set of the neural network for
+all the input states in the safe state space, and verify that the reachable output set is
+completely contained in the safe action space. This method can provide a complete
+safety guarantee for the DRL strategy;
+(2) Satisfiability Modulo Theories’ (SMTs’) solving: Encode the neural network’s structure,
+activation functions, and safety specifications into SMT formulas, and use the SMT
+solver to prove whether the formulas are satisfiable. If the formula of “unsafe state
+exists” is unsatisfiable, the strategy is proven to be safe;
+(3) Linear programming and convex relaxation: For neural networks with ReLU activation
+functions, construct a convex relaxation approximation of the network, and use linear
+programming to verify the upper and lower bounds of the network output, providing
+a rigorous safety guarantee.
+Technical Examples of Formal Verification for Hybrid Power System Energy Management
+Two representative engineering examples of formal verification for DRL energy man-
+agement strategies in critical scenarios are provided as follows:
+Example 1: The formal verification of the battery SOC safety constraint for hybrid
+electric vehicle DRL energy management strategy.
+(1) Verification objective: Prove that for all the possible input states (battery SOC ∈ [0.1,
+0.9], vehicle speed ∈ [0, 130 km/h], and required torque ∈ [−200, 200 N·m]), the DRL
+strategy will not output control actions that cause the battery SOC to exceed the safe
+range [0.2, 0.8] in the next step;
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 33 of 50
+(2) Technical implementation: Adopt the reachability analysis tool CORA, construct the
+state transition equation of the battery SOC, calculate the reachable set of the SOC
+after executing the DRL strategy’s output action for all input states, and verify that
+the reachable set of SOC is completely within [0.2, 0.8];
+(3) Verification result: The formal verification proves that the DRL strategy satisfies
+the SOC safety constraint for all the input states within the physical range, and the
+probability of the SOC over-limit is strictly zero, which provides a formal safety
+guarantee for the strategy’s real-vehicle deployment [206].
+Example 2: The formal verification of decision logic interpretability for the microgrid
+DRL energy management strategy.
+(1) Verification objective: Prove that the DRL strategy’s decision logic conforms to the
+engineering rule of “prioritizing the use of photovoltaic power generation to supply
+the load, and only starting the diesel generator when the photovoltaic output is
+insufficient and the battery SOC is lower than 0.3”;
+(2) Technical implementation: Encode the engineering rule and the DRL policy network
+into SMT formulas using the Z3 solver, and prove that for all input states where
+the photovoltaic output ≥ load demand, the DRL strategy will not start the diesel
+generator; for all input states where the photovoltaic output < load demand and the
+battery SOC < 0.3, the DRL strategy will start the diesel generator to supplement
+the power;
+(3) Verification result: The formal verification proves that the DRL strategy’s decision
+logic completely conforms to the predefined engineering rules, which provides a
+formal guarantee for the interpretability of the strategy, and eliminates the “black-box”
+decision risk in critical grid-connected scenarios [207].
+Engineering Implementation Path of Formal Verification
+At present, the main challenge of formal verification is the scalability problem: the
+computational complexity increases exponentially with the increase in the neural network
+scale and input state dimension. The engineering implementation path to solve this problem
+includes the following: (1) using policy distillation to compress the large-scale DRL network
+into a small-scale interpretable network, and then performing formal verification on the
+small network; (2) decomposing the complex energy management task into multiple sub-
+tasks through hierarchical RL, and performing formal verification on each sub-strategy
+separately; and (3) combining the safety layer method, using formal verification to prove
+the safety of the safety monitor, so the safety layer will intercept all unsafe actions output
+by the DRL strategy, thus providing a complete safety guarantee for the system.
+6.5. Automation of Multi-Objective Trade-Offs and Pareto Front Exploration
+Traditional multi-objective energy management optimization depends on manual
+reward weight tuning, which is subjective and inefficient. A single weight setting cannot
+adapt to dynamic changes in objective priorities during operation. Automating multi-
+objective trade-offs and efficiently exploring the Pareto front is a key issue for DRL applica-
+tion in the multi-objective energy management of hybrid power systems [208]. At present,
+two leading solutions are adopted.
+6.5.1. Multi-Objective RL
+Multi-objective RL directly learns a set of Pareto-optimal policies in the multi-objective
+space, where each policy corresponds to an objective trade-off scheme without manual
+weight setting. Multi-Objective SAC (MO-SAC) is a representative algorithm of this type,
+which effectively learns the Pareto front between fuel economy and battery life, and between
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 34 of 50
+economy-related and environmental performance. Engineers can flexibly select the optimal
+policy according to actual scenarios. The core challenge is high computational complexity,
+making it difficult to handle high-dimensional multi-objective optimization [209].
+6.5.2. Inverse RL
+Inverse RL reversely derives implicit reward functions and objective weights from
+expert demonstration data, automating the reward function design. This method learns
+weight settings from experienced engineer decisions or DP optimal trajectories, enabling
+DRL policies to reproduce expert decision logic. The main challenge is the ill-posed
+nature of the inverse problem, i.e., multiple reward functions can generate the same expert
+behavior, requiring regularization to select reasonable reward functions [210].
+7. Future Prospects and Frontier Interdisciplinary Directions
+The development of DRL in the energy management of hybrid power systems has
+evolved from single-algorithm optimization to a new stage of deep interdisciplinary inte-
+gration. To address the core bottlenecks of engineering deployment, DRL must be deeply
+coupled with cutting-edge technologies such as digital twins, edge computing, swarm
+intelligence, and physics-informed modeling to build a full-closed-loop intelligent en-
+ergy management system featuring perception–decision–execution–iteration. This chapter
+prospects the core development trends of DRL in hybrid power system energy management
+from five frontier interdisciplinary directions.
+7.1. Deep Closed-Loop Integration with Digital Twin Technology
+As a high-fidelity virtual mapping carrier of physical systems, the deep closed-loop
+integration of digital twins and DRL will fundamentally reshape the research, development,
+and operation paradigms of hybrid power system energy management. As shown in
+Figure 8, the integration of DRL and digital twins will be embodied in three core closed-loop
+scenarios in the future, realizing full-lifecycle optimization from training to deployment
+and iteration [211]. The core application directions include three categories.
+7.1.1. Shadow Mode and Continuous Validation
+During the operation of physical systems, a DRL “shadow controller” in the digital
+twin runs in parallel with the real controller to continuously verify DRL policy performance
+without affecting system safety. Long-term shadow operation accumulates performance
+comparison evidence, gradually building industrial trust in DRL policies and providing
+data support for final primary controller switching.
+7.1.2. Continuous Learning and System Evolution
+Real-time operational data from physical systems are used to update the digital twin
+model. DRL policies are safely fine-tuned in the updated twin model and deployed to
+physical entities after validation, forming a closed loop of physical data → twin calibration
+→ policy fine-tuning → real-machine deployment. This mode enables the lifelong learning
+of DRL policies and the intelligent evolution of hybrid power systems, keeping the system
+always adapted to dynamically changing operating scenarios.
+7.1.3. Active Safety Testing for Extreme and Fault Scenarios
+Extreme operating conditions and fault signals are actively injected into the digital
+twin to test the emergency response capability of DRL policies and identify potential
+safety hazards. Training on massive virtual fault scenarios equips DRL policies with
+diverse fault-handling logic, significantly improving fault tolerance and safety in real-
+machine operation.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 35 of 50
+Figure 8. Schematic of digital twin-based closed-loop training, validation, and online adaptive
+optimization for DRL in hybrid power systems.
+7.2. Edge AI and Ultra-Lightweight Deployment
+Traditional DRL models have large parameter scales and high computational com-
+plexity, making their direct deployment on resource-constrained embedded industrial
+computers challenging. Edge AI technology realizes ultra-lightweight DRL deployment
+through model compression, compilation optimization, and hardware adaptation to meet
+the real-time control requirements of hybrid power systems. The core technical directions
+include three categories.
+7.2.1. Advanced Model Compression and Compilation Optimization
+Model compression is a core technology for ultra-lightweight deployment. Current
+advanced methods include the following: quantization (converting FP32 to INT8/INT4,
+reducing storage and computational requirements by 4–8 times), structured pruning (re-
+moving redundant parameters, reducing the number of parameters by 60%, and increasing
+inference speed by 2.5 times), and knowledge distillation (small models achieving over
+95% of the performance of large models with 1/10 of the parameters). Additionally, op-
+erator optimization and parallel scheduling via AI compilers such as TVM reduce the
+inference time per step for lightweight models to under 5 ms, meeting real-time control
+requirements [212].
+7.2.2. Neural-Symbolic AI and Programmable AI
+Physical laws and engineering constraints are embedded as symbolic rules into DRL
+networks to build neural-symbolic AI models. The model only needs to learn optimization
+logic beyond predefined rules, drastically reducing models’ parameter size.
+7.2.3. Online Adaptation and Incremental Learning at the Edge
+An edge–cloud collaborative training architecture is constructed. Embedded hardware
+collects real-time system operation data and uploads key samples to the cloud for the
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 36 of 50
+incremental fine-tuning of lightweight models. Optimized models are updated to edge
+controllers via Over-the-Air (OTA) technology, closing the loop of edge deployment, data
+collection, cloud fine-tuning, and edge update. This architecture enables the continuous
+adaptation of DRL policies at the edge.
+7.3. Swarm Intelligence and Collaborative Energy Internet
+Future intelligent energy management will evolve from single-system optimization to
+multi-system collaborative optimization. MARL will support coordinated decision-making
+among distributed energy entities to build an efficient and flexible collaborative energy
+internet. The core development directions include two categories.
+7.3.1. Multi-Agent Collaborative Optimization
+MARL breaks the optimization boundary of single systems and achieves global coor-
+dinated decision-making of multiple independent agents through efficient communication
+mechanisms and fair credit assignment. The core technical challenge lies in inter-agent
+credit assignment and communication overhead. Future research will develop lightweight
+communication protocols and distributed credit assignment algorithms to balance collabo-
+ration performance and system complexity.
+7.3.2. Deep Integration of Game Theory and MARL
+Among multiple energy entities with competitive and cooperative relationships, game
+theory must be deeply integrated with MARL to enable agents to learn Nash equilibrium
+strategies in non-cooperative or mixed game scenarios. This integrated technology will
+provide a novel decision framework for scenarios such as electricity market trading, port
+energy sharing, and intercity fleet scheduling, balancing individual rationality and global
+optimality. Game-theoretic MARL has been applied in microgrid electricity price games and
+will become a core paradigm for multi-agent collaborative decision-making in the energy
+internet, supporting energy market rule design and trading mechanism optimization.
+7.4. Physics-Informed DRL
+Physics-Informed Deep Reinforcement Learning (PI-DRL) deeply integrates domain
+knowledge, physical laws, and DRL for hybrid power systems, achieving the organic unity
+of data-driven and knowledge-guided approaches to build a “gray-box” optimization
+model with strong optimization performance, robustness, and interpretability. The core
+technical pathways include two categories.
+7.4.1. Physics-Informed Neural Networks
+Physical equations, conservation laws, and component constraints are embedded as
+hard constraints into the loss function of neural networks to guide the network in learning
+feature representations and decision logic consistent with physical laws, avoiding decisions
+that violate physical common sense.
+7.4.2. Hierarchical RL and Skill Reuse
+Complex energy management tasks are decomposed into a hierarchical architecture
+of high-level skill decision-making and low-level action execution. High-level policies
+learn abstract skills such as cruise control, regenerative braking, and high-efficiency power
+generation based on engineering knowledge. Low-level policies learn refined continuous
+control actions under skill constraints.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 37 of 50
+7.5. Standardization, Open-Source Ecosystem, and Benchmark Testing
+Building a standardized open-source ecosystem and benchmark testing platform is
+critical to the sound and rapid development of DRL in hybrid power system energy man-
+agement. To improve reproducibility and comparability, we provide verifiable open-source
+repositories, standardized environment versions, fixed random seeds, unified hyperparam-
+eters, and public datasets that can be directly used by researchers.
+7.5.1. Open-Source Benchmark Frameworks (Verifiable GitHub Repositories)
+The following mature open-source benchmarks are widely used in academic research
+and industrial development, with complete code, models, and experiment templates:
+(1) DRL-Base-EMS (Unified HEV/PHEV Energy Management Benchmark)
+- URL (accessed on 5 March 2026): https://github.com/LittleWebCat/DRL-Base-
+EMS;
+- Function: It supports HEV/PHEV energy management; it includes 13 popular
+DRL algorithms (both discrete and continuous action space), complete vehicle
+simulation environment, and benchmark tasks with standard evaluation metrics
+(cumulative reward, convergence fuel economy, and training time).
+(2) DRL-for-Energy-Systems-Optimal-Scheduling
+- URL (accessed on 5 March 2026): https://github.com/shengrenhou/drl-for-
+energy-systems-optimal-scheduling;
+- Function: It provides the fair comparison of DDPG/TD3/SAC/PPO for micro-
+grid/hybrid system scheduling, with complete data and training pipelines.
+(3) RL-ADN (DRL for ESS Dispatch in Distribution Networks)
+- URL (accessed on 5 March 2026): https://github.com/EnergyQuantResearch/
+RL-ADN;
+- Function: It provides a high-performance DRL environment for energy storage
+optimization; it supports real grid data and HIL verification.
+(4) microgrid-ems-drl
+- URL (accessed on 5 March 2026): https://github.com/GitX123/microgrid-ems-
+drl;
+- Function: It provides CIGRE standard microgrid + DRL energy management,
+with complete training and evaluation code.
+7.5.2. Standardized Environment and Version Configuration (Unified and Reproducible)
+To ensure result consistency, all benchmarks adopt the fixed environment version
+widely accepted in the field:
+- Python: 3.9/3.10.
+- DRL Environment: Gymnasium 0.29.1 (Farama Foundation, official successor to
+OpenAI Gym).
+- Simulation Platform: MATLAB/Simulink R2023b, OpenModelica 1.20.0.
+- Deep Learning Framework: PyTorch 2.0.1, TensorFlow 2.12.0.
+- DRL Algorithm Library: Stable-Baselines3 2.0.0, Ray RLlib 2.30.0.
+7.5.3. Fixed Random Seeds and Unified Hyperparameters
+(1) Fixed Random Seeds (For Full Reproducibility).
+Global fixed random seeds used in all open benchmarks:
+- PyTorch/Numpy: ‘seed = 42’;
+- Gymnasium Environment: ‘seed = 123’;
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 38 of 50
+- Neural Network Initialization: ‘seed = 100’.
+(2) Standardized Hyperparameter Template (Directly Usable Experiment Template).
+The unified hyperparameters of mainstream DRL algorithms in hybrid power system
+energy management systems are shown in Table 10:
+Table 10. Standardized hyperparameter configuration template for mainstream DRL algorithms in
+hybrid power system energy management.
+Hyperparameter DDPG TD3 PPO SAC
+Learning Rate 1 × 10−3 1 × 10−3 3 × 10−4 3 × 10−4
+Discount Factor γ 0.99 0.99 0.99 0.99
+Batch Size 128 128 64 256
+Replay Buffer Size 1 × 106 1 × 106 2048 1 × 106
+Optimizer Adam Adam Adam Adam
+Network Structure 2 × 128 FC 2 × 128 FC 2 × 64 FC 2 × 128 FC
+Fixed Random Seed 42 42 42 42
+7.5.4. Public and Verifiable Energy Datasets
+All the following datasets are free, open, and officially maintained:
+(1) OpenEI (Open Energy Information)
+- URL: https://openei.org/;
+- Data: Commercial/residential hourly load profiles, EV charging data, and renew-
+able generation profiles.
+(2) Pecan Street Dataport
+- URL: https://www.pecanstreet.org/dataport/;
+- Data: Real household energy use, EV charging, and solar PV generation (mea-
+sured data).
+(3) IEEE PES Data Sharing Platform
+- URL: https://ieee-pes-data-sharing.org/datasets;
+- Data: 235+ standardized power system datasets (microgrid, load, and
+renewable energy).
+(4) Open Power System Data
+- URL: https://open-power-system-data.org/;
+- Data: European grid load and generation time series (hourly resolution).
+7.5.5. Experiment Template (Directly Copied for Use)
+A minimal runnable template for hybrid power system EMS based on Stable-
+Baselines3 follows:
+# Standard Experiment Template (Reproducible)
+import gymnasium as gym
+from stable_baselines3 import TD3
+# Fixed Environment Version
+env = gym.make (“HybridPowerSystem-v0”, disable_env_checker = True)
+# Fixed Random Seed
+env.reset (seed = 42)
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 39 of 50
+# Standard Hyperparameters (split for readability)
+model = TD3(
+“MlpPolicy”,
+env,
+learning_rate = 1 × 10−3,
+buffer_size = 1,000,000,
+batch_size = 128,
+gamma = 0.99,
+seed = 42
+)
+# Training
+model.learn (total_timesteps = 1,000,000)
+8. Conclusions
+DRL, with its model-free nature, end-to-end learning capability and long-term global
+planning advantages, provides a promising solution to the energy management problem of
+hybrid power systems—a typical multi-objective, multi-constraint and strongly nonlinear
+stochastic dynamic optimization problem. It drives the transformation of this field from
+model-driven local instantaneous optimization to data and knowledge dual-driven global
+intelligent optimization, providing core technical support for energy conservation, carbon
+reduction and carbon neutrality goals in transportation, power and other sectors. This
+paper systematically reviews the research progress of DRL in hybrid power system energy
+management up to the first quarter of 2026, constructs a full-chain technical framework of
+algorithm–application–verification–challenges–prospects, analyzes technical bottlenecks
+and cutting-edge solutions, and forecasts interdisciplinary development trends. The core
+research conclusions with quantitative support are drawn as follows:
+(1) DRL reconstructs the optimization paradigm of hybrid power system energy man-
+agement, fundamentally resolving the contradiction between model dependence and
+environmental adaptability of traditional methods. The quantitative results show that
+DRL-based strategies can achieve 93–99.5% of the DP theoretical global optimum in
+fuel economy, which is 5–25% higher than rule-based methods, and the performance
+degradation under unseen operating conditions is only 3.1–4.8%, less than 1/3 of that
+of ECMS.
+(2) The adaptability between algorithms and scenarios determines the engineering perfor-
+mance of DRL. The actor–critic framework (TD3; SAC) has become the mainstream
+tool in this field, with a 3–5 times higher sample efficiency than DQN and other value
+function-based algorithms; the PPO algorithm is widely used in ships and micro-
+grids due to its stable training, with a 15–21% improvement in renewable energy
+consumption in microgrid scenarios compared with traditional methods.
+(3) Full-chain verification and standardized evaluation are core prerequisites for engineer-
+ing deployment. The four-stage validation process (MIL→ SIL → HIL → real-machine
+testing) can effectively reduce the simulation-to-reality gap, and the six-dimensional
+evaluation system constructed in this paper realizes the quantitative evaluation of
+DRL strategies from economy to robustness.
+(4) Breakthroughs in core technical bottlenecks rely on the deep integration of interdisci-
+plinary technologies. Offline RL and imitation learning improve DRL sample efficiency
+by more than 80%; safety layer and constrained RL reduce the safety violation rate
+of DRL strategies to nearly zero; domain randomization and digital twins reduce the
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 40 of 50
+performance degradation of simulation-trained strategies in real scenarios from over
+15% to 3–5%.
+(5) Interdisciplinary integration defines the development direction of next-generation
+intelligent energy management systems. The deep coupling of DRL with digital twins,
+edge AI and swarm intelligence will drive the transformation of hybrid power system
+energy management from single-system local optimization to multi-system global col-
+laborative optimization, supporting the low-carbon transformation of transportation
+and power sectors.
+The limitations of this study are as follows: the insufficient quantitative compar-
+ative analysis of different DRL algorithms in the same standardized scenario, and the
+limited support from large-sample engineering measured data; the insufficient in-depth
+review of fault-tolerant control and safety decision-making under extreme fault scenarios;
+and the limited discussion of cost–benefit analysis and economic evaluation in DRL engi-
+neering deployment. Future research can conduct further systematic studies around the
+above directions.
+Looking forward, the development of DRL in hybrid power system energy manage-
+ment will focus on three core directions: first, safe and reliable engineering deployment,
+building a dual guarantee system of “algorithmic safety + engineering fault tolerance”
+through the deep integration of constrained RL, formal verification and digital twins to
+solve deployment challenges in safety-critical scenarios and promote DRL from laboratories
+to engineering practice; second, data–knowledge dual-driven intelligent evolution, deeply
+embedding physical laws, engineering rules and domain knowledge into DRL models
+to build a “gray-box” framework with strong optimization performance, robustness and
+interpretability, achieving simultaneous improvements in sample efficiency and decision
+credibility; and third, cross-system collaborative global optimization, realizing the dis-
+tributed collaborative scheduling of fleets, ship fleets, VPPs and other group systems based
+on multi-agent RL and game theory, breaking the optimization boundary of single systems,
+and providing core technical support for low-carbon, efficient and flexible operation of the
+energy internet.
+DRL is profoundly reshaping the technical landscape of hybrid power system energy
+management. Its deep integration with cutting-edge technologies such as digital twins,
+edge computing and swarm intelligence will not only break through current engineer-
+ing bottlenecks but also drive the intelligent transformation of sustainable transportation
+and energy systems. Despite numerous challenges in algorithm optimization, hardware
+adaptation and ecosystem construction, with the continuous improvement of the algo-
+rithm system, the upgrading of hardware technology and the gradual establishment of
+an open-source ecosystem, DRL is expected to become the core enabling technology of
+next-generation intelligent energy management systems, with the continuous solution of
+core engineering bottlenecks, playing a pivotal role in achieving global energy transition
+and carbon neutrality goals.
+Author Contributions: Conceptualization, W.L.; methodology, Z.L.; software, Z.L.; validation, H.T.;
+formal analysis, Z.L.; investigation, Z.L.; resources, Z.L.; data curation, W.L.; writing—original draft
+preparation, Z.L.; writing—review and editing, W.L.; visualization, Z.L.; supervision, W.L.; project
+administration, H.T.; and funding acquisition, H.T. All authors have read and agreed to the published
+version of the manuscript.
+Funding: This research received no external funding.
+Data Availability Statement: The data presented in this study are available on request from the
+corresponding author.
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 41 of 50
+Acknowledgments: The authors acknowledge the technical support and experimental materials
+provided by the Institute of Internal Combustion Engine Research, School of Energy and Power
+Engineering, Dalian University of Technology.
+Conflicts of Interest: The authors declare no conflicts of interest.
+Abbreviations
+The following abbreviations are used in this manuscript:
+AC Alternating Current/Actor–Critic
+BC Behavior Cloning
+CQL Conservative Q-Learning
+CPO Constrained Policy Optimization
+DC Direct Current
+DDPG Deep Deterministic Policy Gradient
+DNV GL Det Norske Veritas Germanischer Lloyd
+DQN Deep Q-Network
+DRL Deep Reinforcement Learning
+DP Dynamic Programming
+ECMS Equivalent Consumption Minimization Strategy
+eVTOL electric Vertical Take-Off and Landing
+FMI Functional Mock-up Interface
+FMU Functional Mock-up Unit
+HIL Hardware-in-the-Loop
+HUAVs Hybrid Unmanned Aerial Vehicles
+HVAC Heating, Ventilation, and Air Conditioning
+IEC International Electrotechnical Commission
+IEEE Institute of Electrical and Electronics Engineers
+ISO International Organization for Standardization
+LSTM Long Short-Term Memory
+MAML Model-Agnostic Meta-Learning
+MARL Multi-Agent Deep Reinforcement Learning
+MADDPG Multi-Agent Deep Deterministic Policy Gradient
+MDP Markov Decision Process
+MIL Model-in-the-Loop
+MPC Model Predictive Control
+OTA Over-the-Air
+PI-DRL Physics-Informed Deep Reinforcement Learning
+PMP Pontryagin’s Minimum Principle
+PPO Proximal Policy Optimization
+RL Reinforcement Learning
+RMS Root Mean Square
+SAC Soft Actor–Critic
+SIL Software-in-the-Loop
+SOC State of Charge
+TD3 Twin Delayed Deep Deterministic Policy Gradient
+TÜV Technischer Überwachungsverein
+VPPs Virtual Power Plants
+References
+1. Andersson, Ö.; Börjesson, P . The greenhouse gas emissions of an electrified vehicle combined with renewable fuels: Life cycle
+assessment and policy implications. Appl. Energy 2021, 289, 116621. [CrossRef]
+2. Zhou, Y. Energy sharing and trading on a novel spatiotemporal energy network in Guangdong-Hong Kong-Macao Greater Bay
+Area. Appl. Energy 2022, 318, 119131. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 42 of 50
+3. Luján, J.; Garcia, A.; Monsalve-Serrano, J.; Martínez-Boggio, S. Effectiveness of hybrid powertrains to reduce the fuel consumption
+and NOx emissions of a Euro 6d-temp diesel engine under real-life driving conditions. Energy Convers. Manag. 2019, 199, 111987.
+[CrossRef]
+4. Wenig, J.; Sodenkamp, M.; Staake, T. Battery versus infrastructure: Tradeoffs between battery capacity and charging infrastructure
+for plug-in hybrid electric vehicles. Appl. Energy 2019, 255, 113787. [CrossRef]
+5. Xiong, H.; Xu, B.; Kheav, K.; Luo, X.; Zhang, X.; Patelli, E.; Guo, P .; Chen, D. Multiscale power fluctuation evaluation of a
+hydro-wind-photovoltaic system. Renew. Energy 2021, 175, 153–166. [CrossRef]
+6. Jung, J.; Kim, H.; Jeon, H.; Kim, S. Impact of ESS capacity and energy management strategy on fuel consumption in hybrid electric
+propulsion systems. J. Mar. Sci. Eng. 2026, 14, 567. [CrossRef]
+7. Tran, D.D.; Vafaeipour, M.; El Baghdadi, M.; Barrero, R.; Van Mierlo, J.; Hegazy, O. Thorough state-of-the-art analysis of electric
+and hybrid vehicle powertrains: Topologies and integrated energy management strategies. Renew. Sustain. Energy Rev. 2020,
+119, 109596. [CrossRef]
+8. Ding, X.; Sun, W.; Harrison, G.P .; Lv, X.; Weng, Y. Multi-objective optimization for an integrated renewable, power-to-gas and
+solid oxide fuel cell/gas turbine hybrid system in microgrid. Energy 2020, 213, 118804. [CrossRef]
+9. Zhou, J.; Xue, Y.; Xu, D.; Li, C.; Zhao, W. Self-learning energy management strategy for hybrid electric vehicle via curiosity-inspired
+asynchronous deep reinforcement learning. Energy 2022, 242, 122548. [CrossRef]
+10. Kong, Y.; Xu, N.; Liu, Q.; Sui, Y.; Yue, F. A data-driven energy management methods for parallel PHEVs based on action
+dependent heuristic dynamic programming (ADHDP) model. Energy 2023, 265, 126306. [CrossRef]
+11. Wang, H.; Ye, Y.; Zhang, J.; Xu, B. A comparative study of 13 deep reinforcement learning based energy management methods for
+a hybrid electric vehicle. Energy 2023, 266, 126497. [CrossRef]
+12. Kumar, P .; Rawlings, J.B.; Wright, S.J. Industrial, large-scale model predictive control with structured neural networks.Comput
+Chem. Eng. 2021, 150, 107291. [CrossRef]
+13. Lian, R.; Peng, J.; Wu, Y.; Tan, H.; Zhang, H. Rule-interposing deep reinforcement learning based energy management strategy for
+power-split hybrid electric vehicle. Energy 2020, 197, 117297. [CrossRef]
+14. Ceusters, G.; Rodríguez, R.C.; García, A.B.; Franke, R.; Deconinck, G.; Helsen, L.; Nowé, A.; Messagie, M.; Camargo, L.R.
+Model-predictive control and reinforcement learning in multi-energy system case studies. Appl. Energy 2021, 303, 117634.
+[CrossRef]
+15. Zou, R.; Fan, L.; Dong, Y.; Zheng, S.; Hu, C. DQL energy management: An online-updated algorithm and its application in fix-line
+hybrid electric vehicle. Energy 2021, 225, 120174. [CrossRef]
+16. Aletras, N.; Doulgeris, S.; Samaras, Z.; Ntziachristos, L. Comparative assessment of supervisory control algorithms for a Plug-In
+hybrid electric vehicle. Energies 2023, 16, 1497. [CrossRef]
+17. Bae, J.W.; Kim, K.K.K. Gaussian process approximate dynamic programming for energy-optimal supervisory control of parallel
+hybrid electric vehicles. IEEE Trans. Veh. Technol.2022, 71, 8367–8380. [CrossRef]
+18. Sun, X.; Chen, Z.; Han, S.; Tian, X.; Jin, Z.; Cao, Y.; Xue, M. Adaptive real-time ECMS with equivalent factor optimization for
+plug-in hybrid electric buses. Energy 2024, 304, 132014. [CrossRef]
+19. Wu, Y.; Zhao, Y.; Wen, C.; Zhang, J.; Yan, X. Research on energy management strategies for high-power diesel-electric hybrid
+tractors based on double deep Q-network. Sci. Rep. 2025, 15, 17130. [CrossRef]
+20. Tan, H.; Zhang, H.; Peng, J.; Jiang, Z.; Wu, Y. Energy management of hybrid electric bus based on deep reinforcement learning in
+continuous state and action space. Energy Convers. Manag. 2019, 195, 548–560. [CrossRef]
+21. Mnih, V .; Kavukcuoglu, K.; Silver, D.; Rusu, A.A.; Veness, J.; Bellemare, M.G.; Graves, A.; Riedmiller, M.; Fidjeland, A.K.;
+Ostrovski, G.; et al. Human-level control through deep reinforcement learning. Nature 2015, 518, 529–533. [CrossRef] [PubMed]
+22. Du, G.; Zou, Y.; Zhang, X.; Liu, T.; Wu, J.; He, D. Deep reinforcement learning based energy management for a hybrid electric
+vehicle. Energy 2020, 201, 117591. [CrossRef]
+23. Guo, X.; Yan, X.; Chen, Z.; Meng, Z. Research on energy management strategy of heavy-duty fuel cell hybrid vehicles based on
+dueling-double-deep Q-network. Energy 2022, 260, 125095. [CrossRef]
+24. Ma, X.; Liu, H.; Han, L.; Yang, N.; Li, M. An real-time intelligent energy management based on deep reinforcement learning and
+model predictive control for hybrid electric vehicles considering battery life. Energy 2025, 324, 135931. [CrossRef]
+25. Zaporozhets, A.; Babak, V .; Kulyk, M.; Denysov, V . Novel methodology for determining necessary and sufficient power in
+integrated power systems based on the forecasted volumes of electricity production. Electricity 2025, 6, 41. [CrossRef]
+26. Denysov, V .; Kulyk, M.; Babak, V .; Zaporozhets, A.; Kostenko, G. Modeling nuclear-centric scenarios for Ukraine’s low-carbon
+energy transition using diffusion and regression techniques. Energies 2024, 17, 5229. [CrossRef]
+27. Boukoberine, M.N.; Zia, M.F.; Berghout, T.; Benbouzid, M. Reinforcement learning-based energy management for hybrid electric
+vehicles: A comprehensive up-to-date review on methods, challenges, and research gaps. Energy AI 2025, 21, 100514. [CrossRef]
+28. Xue, Q.; Zhang, X.; Teng, T.; Zhang, J.; Feng, Z.; Lv, Q. A comprehensive review on classification, energy management strategy,
+and control algorithm for hybrid electric vehicles. Energies 2020, 13, 5355. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 43 of 50
+29. Saiteja, P .; Ashok, B. Critical review on structural architecture, energy control strategies and development process towards optimal
+energy management in hybrid vehicles. Renew. Sustain. Energy Rev. 2022, 157, 112038. [CrossRef]
+30. Shabbir, W.; Evangelou, S.A. Real-time control strategy to maximize hybrid electric vehicle powertrain efficiency.Appl. Energy
+2014, 135, 512–522. [CrossRef]
+31. Li, Z.; Long, W.; Lu, W.; Tian, H. Research on energy management strategy for marine methanol–electric hybrid propulsion
+system based on DP-ANFIS algorithm. Energies 2025, 18, 4879. [CrossRef]
+32. Wang, J. Real-time torque distribution simulation of parallel hybrid vehicle engine.Front. Mech. Eng. 2025, 11, 1647691. [CrossRef]
+33. Zhang, C.; Zhang, Z.; Shao, C.; Zhou, M.; Li, G. Insights into optimization design and energy management of marine parallel
+hybrid power system. IEEE Trans. Transp. Electrif. 2025, 11, 11451–11462. [CrossRef]
+34. García, A.; Carlucci, P .; Monsalve-Serrano, J.; Valletta, A.; Martínez-Boggio, S. Energy management optimization for a power-split
+hybrid in a dual-mode RCCI-CDC engine. Appl. Energy 2021, 302, 117525. [CrossRef]
+35. Butler, C.L.; Alleyne, A.G. Sampling-Based Planning and Predictive Control for Energy Management of a Shipboard Integrated
+Power System With High Ramp Rate Load. J. Dyn. Syst. Meas. Control 2026, 148, 021002. [CrossRef]
+36. Deng, J.; Wang, X.; Chen, T.; Meng, F. An energy router based on multi-hybrid energy storage system with energy coordinated
+management strategy in island operation mode. Renew. Energy 2023, 212, 274–278. [CrossRef]
+37. Cui, F.; An, D.; Xi, H. Integrated energy hub dispatch with a multi-mode CAES–BESS hybrid system: An option-based hierarchical
+reinforcement learning approach. Appl. Energy 2024, 374, 123950. [CrossRef]
+38. Wang, X.M.; Ma, B. Battery Life-Aware Predictive Deep Reinforcement Learning Energy Management for Hybrid Electric Vehicles.
+Sustainability 2026, 18, 2555. [CrossRef]
+39. Yang, C.; Zha, M.; Wang, W.; Yang, L.; You, S.; Xiang, C. Motor-temperature-aware predictive energy management strategy for
+plug-in hybrid electric vehicles using rolling game optimization. IEEE Trans. Transp. Electrif. 2021, 7, 2209–2223. [CrossRef]
+40. Zhao, Z.; Jin, J. Two-Layer Model Predictive Control of Energy Management Strategy for Hybrid Energy Storage Systems.Energies
+2026, 19, 1524. [CrossRef]
+41. Banka, S.; Ashok Kumar, D.V . Hierarchical Data-Driven and PSO-Based Energy Management of Hybrid Energy Storage Systems
+in DC Microgrids. Automation 2026, 7, 50. [CrossRef]
+42. Hou, J.; Sun, J.; Hofmann, H. Control development and performance evaluation for battery/flywheel hybrid energy storage
+solutions to mitigate load fluctuations in all-electric ship propulsion systems. Appl. Energy 2018, 212, 919–930. [CrossRef]
+43. Monroy-Morales, J.L.; Peña-Alzola, R.; Campos-Gaona, D.; Anaya-Lara, O. Complete transitions of hybrid wind-diesel systems
+with clutch and flywheel-based energy storage. Energies 2022, 15, 7120. [CrossRef]
+44. Li, Y.; He, H.; Khajepour, A.; Wang, H.; Peng, J. Energy management for a power-split hybrid electric bus via deep reinforcement
+learning with terrain information. Appl. Energy 2019, 255, 113762. [CrossRef]
+45. Huang, C.; Zhang, H.; Wang, L.; Luo, X.; Song, Y. Mixed deep reinforcement learning considering discrete-continuous hybrid
+action space for smart home energy management. J. Mod. Power Syst. Clean Energy 2022, 10, 743–754. [CrossRef]
+46. Gong, C.; Xu, J.; Lin, Y. Plug-In Hybrid Electric Vehicle Energy Management with Clutch Engagement Control via Continuous-
+Discrete Reinforcement Learning. Energy Technol. 2024, 12, 2301512. [CrossRef]
+47. Altun, Y.E.; Kutlar, O.A. Energy management systems’ modeling and optimization in hybrid electric vehicles.Energies 2024, 17,
+1696. [CrossRef]
+48. Cao, D.; Zhao, J.; Hu, W.; Ding, F.; Yu, N.; Huang, Q.; Chen, Z. Model-free voltage control of active distribution system with PVs
+using surrogate model-based deep reinforcement learning. Appl. Energy 2022, 306, 117982. [CrossRef]
+49. Qi, C.; Zhu, Y.; Song, C.; Yan, G.; Xiao, F.; Wang, D.; Zhang, X.; Cao, J.; Song, S. Hierarchical reinforcement learning based energy
+management strategy for hybrid electric vehicle. Energy 2022, 238, 121703. [CrossRef]
+50. Zhang, Y.; Zhang, C.; Fan, R.; Huang, S.; Yang, Y.; Xu, Q. Twin delayed deep deterministic policy gradient-based deep
+reinforcement learning for energy management of fuel cell vehicle integrating durability information of powertrain. Energy
+Convers. Manag. 2022, 274, 116454. [CrossRef]
+51. Bäumler, A.; Benterki, A.; Meng, J.; Azib, T.; Boukhnifer, M. Energy management strategies based on soft actor critic reinforcement
+learning with a proper reward function design based on battery state of charge constraints. J. Energy Storage 2024, 90, 111797.
+[CrossRef]
+52. Yang, D.; Wang, L.; Yu, K.; Liang, J. A reinforcement learning-based energy management strategy for fuel cell hybrid vehicle
+considering real-time velocity prediction. Energy Convers. Manag. 2022, 274, 116453. [CrossRef]
+53. Deng, K.; Liu, Y.; Hai, D.; Peng, H.; Löwenstein, L.; Pischinger, S.; Hameyer, K. Deep reinforcement learning based energy
+management strategy of fuel cell hybrid railway vehicles considering fuel cell aging. Energy Convers. Manag. 2022, 251, 115030.
+[CrossRef]
+54. Tang, X.; Zhou, H.; Wang, F.; Wang, W.; Lin, X. Longevity-conscious energy management strategy of fuel cell hybrid electric
+Vehicle Based on deep reinforcement learning. Energy 2022, 238, 121593. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 44 of 50
+55. Sellali, M.; Ravey, A.; Betka, A.; Kouzou, A.; Benbouzid, M.; Djerdir, A.; Kennel, R.; Abdelrahem, M. Multi-objective optimization-
+based health-conscious predictive energy management strategy for fuel cell hybrid electric vehicles. Energies 2022, 15, 1318.
+[CrossRef]
+56. Wu, P .; Partridge, J.; Anderlini, E.; Liu, Y.; Bucknall, R. An intelligent energy management framework for hybrid-electric
+propulsion systems using deep reinforcement learning. Int. J. Hydrogen Energy 2025, 106, 282–294. [CrossRef]
+57. Chen, J.; Shu, H.; Tang, X.; Liu, T.; Wang, W. Deep reinforcement learning-based multi-objective control of hybrid power system
+combined with road recognition under time-varying environment. Energy 2022, 239, 122123. [CrossRef]
+58. Wang, Y.; Tan, H.; Wu, Y.; Peng, J. Hybrid electric vehicle energy management with computer vision and deep reinforcement
+learning. IEEE Trans. Ind. Inform. 2020, 17, 3857–3868. [CrossRef]
+59. Hua, M.; Zhang, C.; Zhang, F.; Li, Z.; Yu, X.; Xu, H.; Zhou, Q. Energy management of multi-mode plug-in hybrid electric vehicle
+using multi-agent deep reinforcement learning. Appl. Energy 2023, 348, 121526. [CrossRef]
+60. Zhang, B.; Hu, W.; Xu, X.; Li, T.; Zhang, Z.; Chen, Z. Physical-model-free intelligent energy management for a grid-connected
+hybrid wind-microturbine-PV-EV energy system via deep reinforcement learning approach. Renew. Energy 2022, 200, 433–448.
+[CrossRef]
+61. Liu, T.; Tan, K.; Zhu, W.; Feng, L. Computationally efficient energy management for a parallel hybrid electric vehicle using
+adaptive dynamic programming. IEEE Trans. Intell. Veh. 2023, 9, 4085–4099. [CrossRef]
+62. Zhang, Z.; Zhang, T.; Hong, J.; Zhang, H.; Yang, J.; Jia, Q. Double deep Q-network guided energy management strategy of a novel
+electric-hydraulic hybrid electric vehicle. Energy 2023, 269, 126858. [CrossRef]
+63. Biswas, A.; Anselma, P .G.; Emadi, A. Real-time optimal energy management of multimode hybrid electric powertrain with online
+trainable asynchronous advantage actor–critic algorithm. IEEE Trans. Transp. Electrif. 2021, 8, 2676–2694. [CrossRef]
+64. Cots, O.; Dutto, R.; Jan, S.; Laporte, S. A bilevel optimal control method and application to the hybrid electric vehicle. Optim.
+Control Appl. Methods 2025, 46, 1104–1119. [CrossRef]
+65. Tresca, L.; Pulvirenti, L.; Rolando, L. A cutting-edge energy management system for a hybrid electric vehicle relying on soft
+actor–critic deep reinforcement learning. Transp. Eng. 2025, 19, 100308. [CrossRef]
+66. Niu, Z.; Wu, J.; He, H. A novel experience replay-based offline deep reinforcement learning for energy management of hybrid
+electric vehicles. IEEE Trans. Ind. Electron. 2024, 72, 7160–7169. [CrossRef]
+67. Tang, X.; Chen, J.; Qin, Y.; Liu, T.; Yang, K.; Khajepour, A.; Li, S. Reinforcement learning-based energy management for hybrid
+power systems: State-of-the-art survey, review, and perspectives. Chin. J. Mech. Eng. 2024, 37, 14–38. [CrossRef]
+68. Wang, L.; Wang, X. Enhanced Deep Reinforcement Learning Strategy for Energy Management in Plug-in Hybrid Electric Vehicles
+with Entropy Regularization and Prioritized Experience Replay. Energy Eng. 2024, 121, 3953. [CrossRef]
+69. Huang, R.; He, H. A novel data-driven energy management strategy for fuel cell hybrid electric bus based on improved twin
+delayed deep deterministic policy gradient algorithm. Int. J. Hydrogen Energy 2024, 52, 782–798. [CrossRef]
+70. Li, J.; Wang, H.; He, H.; Wei, Z.; Yang, Q.; Igic, P . Battery optimal sizing under a synergistic framework with DQN-based power
+managements for the fuel cell hybrid powertrain. IEEE Trans. Transp. Electrif. 2021, 8, 36–47. [CrossRef]
+71. Wu, P .; Partridge, J.; Anderlini, E.; Liu, Y.; Bucknall, R. Near-optimal energy management for plug-in hybrid fuel cell and battery
+propulsion using deep reinforcement learning. Int. J. Hydrogen Energy 2021, 46, 40022–40040. [CrossRef]
+72. Zhou, J.; Li, Z.; Wang, C.; Zhao, W. Deep reinforcement learning based energy management strategy for multi-mode hybrid
+electric vehicle with dual planetary gear set. Proc. Inst. Mech. Eng. Part D J. Eng. Transp. 2025, 240, 2514–2531. [CrossRef]
+73. Xu, X.; Zhang, L.; Lai, J.; Yang, L.; Xiao, J. Safe reinforcement learning for power allocation of hybrid energy storage systems in
+electric vehicles using PPO and predictive safety filter. IEEE Trans. Transp. Electrif. 2024, 11, 4024–4034. [CrossRef]
+74. Zhang, C.; Li, T.; Cui, W.; Cui, N. Proximal policy optimization based intelligent energy management for plug-in hybrid electric
+bus considering battery thermal characteristic. World Electr. Veh. J. 2023, 14, 47. [CrossRef]
+75. Zhang, B.; Hu, W.; Cao, D.; Li, T.; Zhang, Z.; Chen, Z.; Blaabjerg, F. Soft actor-critic–based multi-objective optimized energy
+conversion and management strategy for integrated energy systems with renewable energy.Energy Convers. Manag. 2021, 243,
+114381. [CrossRef]
+76. Xu, D.; Cui, Y.; Ye, J.; Cha, S.W.; Li, A.; Zheng, C. A soft actor-critic-based energy management strategy for electric vehicles with
+hybrid energy storage systems. J. Power Sources 2022, 524, 231099. [CrossRef]
+77. Zhou, J.; Xue, S.; Xue, Y.; Liao, Y.; Liu, J.; Zhao, W. A novel energy management strategy of hybrid electric vehicle via an improved
+TD3 deep reinforcement learning. Energy 2021, 224, 120118. [CrossRef]
+78. Huang, R.; He, H.; Zhao, X.; Wang, Y.; Li, M. Battery health-aware and naturalistic data-driven energy management for hybrid
+electric bus based on TD3 deep reinforcement learning algorithm. Appl. Energy 2022, 321, 119353. [CrossRef]
+79. Li, K.; Jia, C.; Han, X.; He, H. A novel minimal-cost power allocation strategy for fuel cell hybrid buses based on deep
+reinforcement learning algorithms. Sustainability 2023, 15, 7967. [CrossRef]
+80. Li, T.; Cui, W.; Cui, N. Soft actor-critic algorithm-based energy management strategy for plug-in hybrid electric vehicle.World
+Electr. Veh. J. 2022, 13, 193. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 45 of 50
+81. Ma, Z.; Huo, Q.; Zhang, T.; Hao, J.; Wang, W. Deep deterministic policy gradient based energy management strategy for hybrid
+electric tracked vehicle with online updating mechanism. IEEE Access 2021, 9, 7280–7292. [CrossRef]
+82. Han, R.; Lian, R.; He, H.; Han, X. Continuous reinforcement learning-based energy management strategy for hybrid electric-
+tracked vehicles. IEEE J. Emerg. Sel. Top. Power Electron. 2021, 11, 19–31. [CrossRef]
+83. Xu, Y.; Li, Y.; Gao, W. Comparative analysis of reinforcement learning approaches for multi-objective optimization in residential
+hybrid energy systems. Buildings 2024, 14, 2645. [CrossRef]
+84. Sun, W.; Zou, Y.; Zhang, X.; Guo, N.; Zhang, B.; Du, G. High robustness energy management strategy of hybrid electric vehicle
+based on improved soft actor-critic deep reinforcement learning. Energy 2022, 258, 124806. [CrossRef]
+85. Xu, J.; Lin, Y. Energy management for hybrid electric vehicles using safe hybrid-action reinforcement learning. Mathematics 2024,
+12, 663. [CrossRef]
+86. Wang, L.; Hou, L.; Liu, S.; Han, Z.; Wu, J. Reinforcement contract design for vehicular-edge computing scheduling and energy
+trading via deep Q-network with hybrid action space. IEEE Trans. Mob. Comput. 2023, 23, 6770–6784. [CrossRef]
+87. Fan, X.; Guo, L.; Hong, J.; Wang, Z.; Chen, H. Constrained hierarchical hybrid Q-network for energy management of HEVs. IEEE
+Trans. Transp. Electrif. 2024, 10, 9579–9590. [CrossRef]
+88. Liu, B.; Xu, B.; He, T.; Yu, W.; Guo, F. Hybrid deep reinforcement learning considering discrete-continuous action spaces for
+real-time energy management in more electric aircraft. Energies 2022, 15, 6323. [CrossRef]
+89. Lian, R.; Tan, H.; Peng, J.; Li, Q.; Wu, Y. Cross-type transfer for deep reinforcement learning based hybrid electric vehicle energy
+management. IEEE Trans. Veh. Technol.2020, 69, 8367–8380. [CrossRef]
+90. Qi, X.; Luo, Y.; Wu, G.; Boriboonsomsin, K.; Barth, M. Deep reinforcement learning enabled self-learning control for energy
+efficient driving. Transp. Res. Part C. Emerg. Technol. 2019, 99, 67–81. [CrossRef]
+91. Zhang, H.; Peng, J.; Tan, H.; Dong, H.; Ding, F. A deep reinforcement learning-based energy management framework with
+Lagrangian relaxation for plug-in hybrid electric vehicle. IEEE Trans. Transp. Electrif. 2020, 7, 1146–1160. [CrossRef]
+92. Zhu, Z.; Gupta, S.; Gupta, A.; Canova, M. A deep reinforcement learning framework for eco-driving in connected and automated
+hybrid electric vehicles. IEEE Trans. Veh. Technol.2023, 73, 1713–1725. [CrossRef]
+93. Chen, X.; Wu, Z.; Karimi, H.R.; Li, Q.; Li, Z. A unified deep reinforcement learning energy management strategy for multi-
+powertrain vehicles based on meta learning and hard sample mining. Control Eng. Pract. 2025, 163, 106396. [CrossRef]
+94. Jung, W.; Chang, D. Deep reinforcement learning-based energy management for liquid hydrogen-fueled hybrid electric ship
+propulsion system. J. Mar. Sci. Eng. 2023, 11, 2007. [CrossRef]
+95. Liu, Y.; Sun, K.; Lv, M. Stratospheric wind field feature extraction and energy management for hybrid electric solar airship with
+deep reinforcement learning. Sustain. Energy Technol. Assess. 2024, 71, 103993. [CrossRef]
+96. Legrene, I.; Wong, T.; Dessaint, L.A. Deep reinforcement learning approach for hybrid renewable energy systems optimization.
+Eng. Appl. Artif. Intell. 2025, 159, 111650. [CrossRef]
+97. Zhang, J.; Shen, T.; Kako, J. Short-term optimal energy management of power-split hybrid electric vehicles under velocity tracking
+control. IEEE Trans. Veh. Technol.2019, 69, 182–193. [CrossRef]
+98. Anselma, P .G.; Biswas, A.; Belingardi, G.; Emadi, A. Rapid assessment of the fuel economy capability of parallel and series-parallel
+hybrid electric vehicles. Appl. Energy 2020, 275, 115319. [CrossRef]
+99. Geng, W.; Lou, D.; Wang, C.; Zhang, T. A cascaded energy management optimization method of multimode power-split hybrid
+electric vehicles. Energy 2020, 199, 117224. [CrossRef]
+100. Liu, X.; Wang, Y.; Zhang, K.; Li, W. Energy management strategy based on deep reinforcement learning and speed prediction for
+power-split hybrid electric vehicle with multidimensional continuous control. Energy Technol. 2023, 11, 2300231. [CrossRef]
+101. Li, K.; Zhou, J.; Jia, C.; Yi, F.; Zhang, C. Energy sources durability energy management for fuel cell hybrid electric bus based on
+deep reinforcement learning considering future terrain information. Int. J. Hydrogen Energy 2024, 52, 821–833. [CrossRef]
+102. Ruan, J.; Wu, C.; Cui, H.; Li, W.; Sauer, D.U. Delayed deep deterministic policy gradient-based energy management strategy for
+overall energy consumption optimization of dual motor electrified powertrain. IEEE Trans. Veh. Technol.2023, 72, 11415–11427.
+[CrossRef]
+103. Ju, F.; Zhuang, W.; Wang, L.; Zhang, Z. Comparison of four-wheel-drive hybrid powertrain configurations. Energy 2020,
+209, 118286. [CrossRef]
+104. Xu, J.; Azad, N.L.; Lin, Y. Mixed-Integer Optimal Control via Reinforcement Learning: A Case Study on Hybrid Electric Vehicle
+Energy Management. Optim. Control Appl. Methods 2025, 46, 307–319. [CrossRef]
+105. Wang, W.; Guo, X.; Yang, C.; Zhang, Y.; Zhao, Y.; Huang, D.; Xiang, C. A multi-objective optimization energy management
+strategy for power split HEV based on velocity prediction. Energy 2022, 238, 121714. [CrossRef]
+106. Zhang, H.; Liao, K.; Yang, J.; Yin, Z.; He, Z. Long-term and short-term coordinated scheduling for wind-PV-hydro-storage hybrid
+energy system based on deep reinforcement learning. IEEE Trans. Sustain. Energy 2025, 16, 1697–1710. [CrossRef]
+107. Tang, X.; Chen, J.; Pu, H.; Liu, T.; Khajepour, A. Double deep reinforcement learning-based energy management for a parallel
+hybrid electric vehicle with engine start–stop strategy. IEEE Trans. Transp. Electrif. 2021, 8, 1376–1388. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 46 of 50
+108. Fang, Z.; Chen, Z.; Yu, Q.; Zhang, B.; Yang, R. Online power management strategy for plug-in hybrid electric vehicles based on
+deep reinforcement learning and driving cycle reconstruction. Green Energy Intell. Transp. 2022, 1, 100016. [CrossRef]
+109. Wu, Y.; Zhang, Y.; Li, G.; Shen, J.; Chen, Z.; Liu, Y. A predictive energy management strategy for multi-mode plug-in hybrid
+electric vehicles based on multi neural networks. Energy 2020, 208, 118366. [CrossRef]
+110. Wang, X.; Huang, Y.; Wang, J. Study on driver-oriented energy management strategy for hybrid heavy-duty off-road vehicles
+under aggressive transient operating condition. Sustainability 2023, 15, 7539. [CrossRef]
+111. Zhang, W.; Wang, J.; Liu, Y.; Gao, G.; Liang, S.; Ma, H. Reinforcement learning-based intelligent energy management architecture
+for hybrid construction machinery. Appl. Energy 2020, 275, 115401. [CrossRef]
+112. Yoo, S.; An, S.; Park, C.G.; Kim, N. Design and control of hybrid electric power system for a hydraulically actuated excavator.
+SAE Int. J. Commer. Veh. 2009, 2, 264–273. [CrossRef]
+113. Tang, Q.; Chen, X.; Bian, Y.; Zhang, L.; Tang, X.; Hu, M. DRL-based Coordinated Optimization Control for Intelligent Connected
+Hybrid Electric Mining Trucks under Coupled Dynamic Load-Continuous Slope Conditions. IEEE Trans. Transp. Electrif. 2025, 12,
+753–766. [CrossRef]
+114. Han, X.; He, H.; Wu, J.; Peng, J.; Li, Y. Energy management based on reinforcement learning with double deep Q-learning for a
+hybrid electric tracked vehicle. Appl. Energy 2019, 254, 113708. [CrossRef]
+115. Hasanvand, S.; Rafiei, M.; Gheisarnejad, M.; Khooban, M.H. Reliable power scheduling of an emission-free ship: Multiobjective
+deep reinforcement learning. IEEE Trans. Transp. Electrif. 2020, 6, 832–843. [CrossRef]
+116. Abdalla, A.; Kirchen, P .; Gopaluni, B. Deep reinforcement learning for methane slip reduction in hybrid-powered liquefied
+natural gas marine vessels. Sustain. Energy Technol. Assess. 2025, 81, 104404. [CrossRef]
+117. Reddy, N.P .; Skjetne, R.; Os, O.S.; Papageorgiou, D. A comparison of the state-of-the-art reinforcement learning algorithms for
+health-aware energy and emissions management in zero-emission ships. IEEE J. Emerg. Sel. Top. Ind. Electron. 2023, 1, 149–166.
+[CrossRef]
+118. Abdalla, A.; Gopaluni, B.; Kirchen, P . Greenhouse Gas Emissions Reduction of a Hybrid-Powered Ferry using Deep Reinforcement
+Learning for Power Load Distribution. IFAC-PapersOnLine 2024, 58, 169–175. [CrossRef]
+119. Wu, P .; Partridge, J.; Bucknall, R. Cost-effective reinforcement learning energy management for plug-in hybrid fuel cell and
+battery ships. Appl. Energy 2020, 275, 115258. [CrossRef]
+120. Xiao, H.; Fu, L.; Shang, C.; Bao, X.; Xu, X. A knowledge distillation compression algorithm for ship speed and energy coordinated
+optimal scheduling model based on deep reinforcement learning. IEEE Trans. Transp. Electrif. 2024, 11, 945–960. [CrossRef]
+121. Guo, X.; Tang, D.; Yuan, Y.; Yuan, C.; Shen, B.; Guerrero, J.M. A New Energy Management Strategy Supported by Reinforcement
+Learning: A Case Study of a Multi-Energy Cruise Ship. J. Mar. Sci. Eng. 2025, 13, 720. [CrossRef]
+122. Chen, H.; Zhang, Z.; Guan, C.; Gao, H. Optimization of sizing and frequency control in battery/supercapacitor hybrid energy
+storage system for fuel cell ship. Energy 2020, 197, 117285. [CrossRef]
+123. Wang, X.; Yuan, Y.; Tong, L.; Yuan, C.; Shen, B.; Long, T. Energy management strategy for diesel–electric hybrid ship considering
+sailing route division based on DDPG. IEEE Trans. Transp. Electrif. 2023, 10, 187–202. [CrossRef]
+124. Gaber, M.; El-banna, S.H.; Hamad, M.S.; El-Dabah, M. An intelligent energy management system for ship hybrid power system
+based on renewable energy resources. J. Al-Azhar Univ. Eng. Sect. 2021, 16, 712–723. [CrossRef]
+125. Zhang, S.; Liang, T.; Dinavahi, V . Hybrid ML-EMT-based digital twin for device-level HIL real-time emulation of ship-board
+microgrid on FPGA. IEEE J. Emerg. Sel. Top. Ind. Electron. 2023, 4, 1265–1277. [CrossRef]
+126. Xiao, Y.; Zhang, J.; Ruiz, H.S.; Roumeliotis, I.; Zhang, X. Safe reinforcement learning-based energy management for fuel cell
+hybrid electric aircraft with longevity considerations. Energy 2025, 338, 138782. [CrossRef]
+127. Liu, S.; Li, W.; Li, H.; Li, S. Reinforcement learning based multi-perspective motion planning of manned electric vertical take-off
+and landing vehicle in urban environment with wind fields. Eng. Appl. Artif. Intell. 2025, 149, 110392. [CrossRef]
+128. Liu, X.; Yuan, Z.; Gao, Z.; Zhang, W. Reinforcement learning-based fault-tolerant control for quadrotor UAVs under actuator fault.
+IEEE Trans. Ind. Inform. 2024, 20, 13926–13935. [CrossRef]
+129. Li, S. HGAT-MAPPO for Ultra-Dense Urban Air Mobility: Communication-Aware Graph Attention, Physics-Informed Energy
+Optimization, and Simplex Runtime Assurance. J. Low.-Alt. Econ. Intell. Aviat. 2026, 1, 31–45.
+130. Guo, X.; Song, X.; Zeng, D.; Dong, Z.; Yu, X.; Liu, L. Integrated energy-efficient planning and management framework for
+autonomous long-endurance flight of hydrogen fuel cell/battery hybrid UAVs. IEEE/ASME Trans. Mechatron. 2025, 30, 6337–6347.
+[CrossRef]
+131. Chen, T.; Bu, S.; Liu, X.; Kang, J.; Yu, F.R.; Han, Z. Peer-to-peer energy trading and energy conversion in interconnected
+multi-energy microgrids using multi-agent deep reinforcement learning. IEEE Trans. Smart Grid 2021, 13, 715–727. [CrossRef]
+132. Guo, C.; Wang, X.; Zheng, Y.; Zhang, F. Real-time optimal energy management of microgrid with uncertainties based on deep
+reinforcement learning. Energy 2022, 238, 121873. [CrossRef]
+133. Harrold, D.J.B.; Cao, J.; Fan, Z. Renewable energy integration and microgrid energy trading using multi-agent deep reinforcement
+learning. Appl. Energy 2022, 318, 119151. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 47 of 50
+134. Mirzaei, M.A.; Hemmati, M.; Zare, K.; Abapour, M.; Mohammadi-Ivatloo, B.; Marzband, M.; Anvari-Moghaddam, A. A novel
+hybrid two-stage framework for flexible bidding strategy of reconfigurable micro-grid in day-ahead and real-time markets. Int. J.
+Electr. Power Energy Syst. 2020, 123, 106293. [CrossRef]
+135. Liu, N.; Wang, J.; Wang, L. Hybrid energy sharing for multiple microgrids in an integrated heat–electricity energy system.IEEE
+Trans. Sustain. Energy 2018, 10, 1139–1151. [CrossRef]
+136. Chen, W.; Li, T. Distributed economic dispatch for energy internet based on multiagent consensus control.IEEE Trans. Autom.
+Control 2020, 66, 137–152. [CrossRef]
+137. Yan, Y.; Xie, S.; Tang, J.; Qian, B.; Lin, X.; Zhang, F. Transaction strategy of virtual power plants and multi-energy systems with
+multi-agent Stackelberg game based on integrated energy-carbon pricing. Front. Energy Res. 2024, 12, 1459667. [CrossRef]
+138. Du, G.; Zou, Y.; Zhang, X.; Guo, L.; Guo, N. Energy management for a hybrid electric vehicle based on prioritized deep
+reinforcement learning framework. Energy 2022, 241, 122523. [CrossRef]
+139. Wang, H.; Biswas, A.; Ahmed, R.; Yan, F.; Emadi, A. Hierarchical Energy Management Recognizing Powertrain Dynamics for
+Electrified Vehicles With Deep Reinforcement Learning and Transfer Learning.IEEE Trans. Transp. Electrif. 2024, 11, 3466–3479.
+[CrossRef]
+140. Maino, C.; Mastropietro, A.; Sorrentino, L.; Busto, E.; Misul, D.; Spessa, E. Project and development of a reinforcement learning
+based control algorithm for hybrid electric vehicles. Appl. Sci. 2022, 12, 812. [CrossRef]
+141. Hu, B.; Li, J. A deployment-efficient energy management strategy for connected hybrid electric vehicle based on offline reinforce-
+ment learning. IEEE Trans. Ind. Electron. 2021, 69, 9644–9654. [CrossRef]
+142. Skjong, S.; Pedersen, E. A distributed object-oriented simulator framework for marine power plants with weak power grids. J.
+Mar. Eng. Technol. 2023, 22, 176–188. [CrossRef]
+143. Torreglosa, J.P .; González-Rivera, E.; García-Triviño, P .; Vera, D. Performance analysis of a hybrid electric ship by real-time
+verification. Energies 2022, 15, 2116. [CrossRef]
+144. Huang, Y.; Li, G.; Chen, C.; Bian, Y.; Qian, T.; Bie, Z. Resilient distribution networks by microgrid formation using deep
+reinforcement learning. IEEE Trans. Smart Grid 2022, 13, 4918–4930. [CrossRef]
+145. Mahmud, S.; Ponkiya, B.; Katikaneni, S.; Pandey, S.; Mattimadugu, K.; Yi, Z.; Walker, V .; Wang, C.; Westover, T.; Javaid, A.Y.
+Design and optimization of a modular hydrogen-based integrated energy system to maximize revenue via nuclear-renewable
+sources. Energy 2024, 313, 133763. [CrossRef]
+146. Shen, P .; Zhao, Z.; Zhan, X.; Li, J. Particle swarm optimization of driving torque demand decision based on fuel economy for
+plug-in hybrid electric vehicle. Energy 2017, 123, 89–107. [CrossRef]
+147. Li, H.; Guo, Y.; Cheng, S.; Yao, T.; Cui, G. Improved Model and Strategy Optimization for Energy Management of the Power
+System in Range-Extended Sprayers Based on AVL-CRUISE and MATLAB/Simulink.Agriculture 2026, 16, 580. [CrossRef]
+148. Xiao, N.; Xu, X.; Chen, B. Research on simulation and experiment of ship complex diesel-electric hybrid propulsion system.
+J. Ship Res. 2020, 64, 171–184. [CrossRef]
+149. Amin, I.; Ali, M.E.A.; Bayoumi, S.; Oterkus, S.; Shawky, H.; Oterkus, E. Conceptual design and numerical analysis of a novel
+floating desalination plant powered by marine renewable energy for Egypt. J. Mar. Sci. Eng. 2020, 8, 95. [CrossRef]
+150. Shakeri, N.; Zadeh, M.; Bruinsma, J. Dynamic modeling and validation of a fuel cell-based hybrid power system for zero-emission
+marine propulsion: An equivalent circuit model approach. IEEE J. Emerg. Sel. Top. Ind. Electron. 2023, 3, 1065–1079. [CrossRef]
+151. Li, F.; Zhu, J.; Yu, L.; Bu, S.; Zhao, H.; Zhao, J. An imbalance-status-enabled autonomous global power-sharing scheme for
+solid-state transformer interconnected hybrid AC/DC microgrids. IEEE Trans. Smart Grid 2022, 14, 1750–1762. [CrossRef]
+152. Malik, S.M.; Sun, Y.; Hu, J. An adaptive virtual capacitive droop for hybrid energy storage system in DC microgrid. J. Energy
+Storage 2023, 70, 107809. [CrossRef]
+153. Sarwar, S.; Kirli, D.; Merlin, M.M.C.; Kiprakis, A.E. Major challenges towards energy management and power sharing in a hybrid
+AC/DC microgrid: A review. Energies 2022, 15, 8851. [CrossRef]
+154. Thummerer, T.; Stoljar, J.; Mikelsons, L. NeuralFMU: Presenting a workflow for integrating hybrid neuralODEs into real-world
+applications. Electronics 2022, 11, 3202. [CrossRef]
+155. Huang, R.; Chen, Y.; Yin, T.; Li, X.; Li, A.; Tan, J. Accelerated derivative-free deep reinforcement learning for large-scale grid
+emergency voltage control. IEEE Trans. Power Syst. 2021, 37, 14–25. [CrossRef]
+156. Yi, Z.; Luo, Y.; Westover, T.; Katikaneni, S.; Ponkiya, B.; Sah, S.; Mahmud, S.; Raker, D.; Javaid, A.; Heben, M.J. Deep reinforcement
+learning based optimization for a tightly coupled nuclear renewable integrated energy system. Appl. Energy 2022, 328, 120113.
+[CrossRef]
+157. Haspolat, C.; Yalcin, Y. Energy Management of P2 Hybrid Electric Vehicle Based on Event-Triggered Nonlinear Model Predictive
+Control and Deep Q Network. World Electr. Veh. J. 2023, 14, 135. [CrossRef]
+158. Wu, C.; Ruan, J.; Cui, H.; Zhang, B.; Li, T.; Zhang, K. The application of machine learning based energy management strategy in
+multi-mode plug-in hybrid electric vehicle, part I: Twin Delayed Deep Deterministic Policy Gradient algorithm design for hybrid
+mode. Energy 2023, 262, 125084. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 48 of 50
+159. Kang, D.; Kang, D.; Hwangbo, S.; Niaz, H.; Lee, W.B.; Liu, J.J.; Na, J. Optimal planning of hybrid energy storage systems using
+curtailed renewable energy through deep reinforcement learning. Energy 2023, 284, 128623. [CrossRef]
+160. Hu, Z.; Zheng, P .; Chan, K.W.; Bu, S.; Zhu, Z.; Wei, X. A hybrid data-driven approach integrating temporal fusion transformer
+and soft actor-critic algorithm for optimal scheduling of building integrated energy systems. J. Mod. Power Syst. Clean Energy
+2025, 13, 878–891. [CrossRef]
+161. Sun, T.; Ma, C.; Li, Z.; Yang, K. Cloud Computing-based Parallel Deep Reinforcement Learning Energy Management Strategy for
+Connected PHEVs. Eng. Lett. 2024, 32, 1210–1220.
+162. Hu, B.; Li, J. An edge computing framework for powertrain control system optimization of intelligent and connected vehicles
+based on curiosity-driven deep reinforcement learning. IEEE Trans. Ind. Electron. 2020, 68, 7652–7661. [CrossRef]
+163. Zou, R.; Zou, Y.; Dong, Y.; Fan, L. A self-adaptive energy management strategy for plug-in hybrid electric vehicle based on deep
+Q learning. J. Phys. Conf. Ser. 2020, 1576, 012037. [CrossRef]
+164. Lou, D.; Zhao, Y.; Tang, Y.; Fang, L.; Zhuang, C. Research on scenario-adaptive D4QN energy management with real-time control
+for HEVs. Proc. Inst. Mech. Eng. Part D. J. Eng. Transp. 2024, 240, 1973–1997. [CrossRef]
+165. Zhang, G.; Hu, W.; Cao, D.; Liu, W.; Huang, R.; Huang, Q.; Chen, Z.; Blaabjerg, F. Data-driven optimal energy management for a
+wind-solar-diesel-battery-reverse osmosis hybrid energy system using a deep reinforcement learning approach. Energy Convers.
+Manag. 2021, 227, 113608. [CrossRef]
+166. Zhang, B.; Zou, Y.; Zhang, X.; Du, G.; Jiao, F.; Guo, N. Online updating energy management strategy based on deep reinforcement
+learning with accelerated training for hybrid electric tracked vehicles. IEEE Trans. Transp. Electrif. 2022, 8, 3289–3306. [CrossRef]
+167. Zhang, H.; Chen, B.; Lei, N.; Li, B.; Li, R.; Wang, Z. Integrated thermal and energy management of connected hybrid electric
+vehicles using deep reinforcement learning. IEEE Trans. Transp. Electrif. 2023, 10, 4594–4603. [CrossRef]
+168. Li, W.; Cui, H.; Nemeth, T.; Jansen, J.; Ünlübayir, C.; Wei, Z.; Zhang, L.; Wang, Z.; Ruan, J.; Dai, H.; et al. Deep reinforcement
+learning-based energy management of hybrid battery systems in electric vehicles. J. Energy Storage 2021, 36, 102355. [CrossRef]
+169. Wang, Z.; He, H.; Peng, J.; Chen, W.; Wu, C.; Fan, Y.; Zhou, J. A comparative study of deep reinforcement learning based energy
+management strategy for hybrid electric vehicle. Energy Convers. Manag. 2023, 293, 117442. [CrossRef]
+170. Hu, H.; Yuan, W.W.; Su, M.; Ou, K. Optimizing fuel economy and durability of hybrid fuel cell electric vehicles using deep
+reinforcement learning-based energy management systems. Energy Convers. Manag. 2023, 291, 117288. [CrossRef]
+171. Su, Q.; Huang, R.; Zhang, Z.; Shou, Y.; He, H. Uncertainty-aware Deep Reinforcement Learning for Trainable Equivalent
+Consumption Minimization Strategy of Fuel Cell Hybrid Electric Tracked Vehicle. IEEE Trans. Transp. Electrif. 2025, 11,
+10310–10321. [CrossRef]
+172. Zhu, L.; Liu, Y.; Guo, H.; Liu, S. Health-Aware Differentiated Energy Management for Multi-Stack Fuel Cell Hybrid Power
+Systems on Ships. J. Mar. Sci. Eng. 2026, 14, 460. [CrossRef]
+173. Qu, J.; Wang, H.; Zou, L.; Zhang, L.; Zhang, T.; Zhou, J. A two-layer energy management strategy of fuel cell hybrid system in
+electric ships. IEEE Trans. Ind. Appl. 2024, 61, 4246–4256. [CrossRef]
+174. Hu, X.; Zou, C.; Tang, X.; Liu, T.; Hu, L. Cost-optimal energy management of hybrid electric vehicles using fuel cell/battery
+health-aware predictive control. IEEE Trans. Power Electron. 2019, 35, 382–392. [CrossRef]
+175. Yazar, O.; Coskun, S.; Zhang, F.; Li, L.; Huang, C.; Mei, P .; Karimi, H.R. A novel energy management strategy for hybrid electric
+vehicles using deep reinforcement incentive learning. Energy 2025, 334, 137594. [CrossRef]
+176. Lu, H.; Tao, F.; Fu, Z.; Sun, H. Battery-degradation-involved energy management strategy based on deep reinforcement learning
+for fuel cell/battery/ultracapacitor hybrid electric vehicle. Electr. Power Syst. Res. 2023, 220, 109235. [CrossRef]
+177. Oubelaid, A.; Kakouche, K.; Belkhier, Y.; Khosravi, N.; Taib, N.; Rekioua, T.; Bajaj, M.; Rekioua, D.; Tuka, M.B. New coordinated
+drive mode switching strategy for distributed drive electric vehicles with energy storage system. Sci. Rep. 2024, 14, 6448.
+[CrossRef] [PubMed]
+178. Luan, S.; Gu, Z.; Xu, R.; Zhao, Q.; Chen, G. LRP-based network pruning and policy distillation of robust and non-robust DRL
+agents for embedded systems. Concurr. Comput. Pract. Exp. 2023, 35, e7351. [CrossRef]
+179. Wang, Y.; Wu, J.; He, H.; Sun, F.; Wei, Z. Data-driven energy management for electric vehicles using offline reinforcement learning.
+Nat. Commun. 2025, 16, 2835. [CrossRef]
+180. Yao, F.; Zhao, W.; Forshaw, M.; Song, Y. A holistic power optimization approach for microgrid control based on deep reinforcement
+learning. Neurocomputing 2025, 654, 131375. [CrossRef]
+181. Huang, R.; He, H.; Gao, M. Training-efficient and cost-optimal energy management for fuel cell hybrid electric bus based on a
+novel distributed deep reinforcement learning framework. Appl. Energy 2023, 346, 121358. [CrossRef]
+182. Kumar, A.; Zhou, A.; Tucker, G.; Levine, S. Conservative q-learning for offline reinforcement learning.Adv. Neural Inf. Process.
+Syst. 2020, 33, 1179–1191.
+183. Shen, H.; Shen, X.; Chen, Y. Real-Time Microgrid Energy Scheduling Using Meta-Reinforcement Learning. Energies 2024, 17, 2367.
+[CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 49 of 50
+184. Jiang, J.; Zhang, S.; Wang, J.; Shen, W.; Xue, C.; Ye, Q.; Lv, Z.; Xu, M.; Miao, S. Intelligent Frequency Control for Hybrid
+Multi-Source Power Systems: A Stepwise Expert-Teaching PPO Approach. Processes 2025, 13, 3396. [CrossRef]
+185. Guo, X.; Liu, T.; Tang, B.; Tang, X.; Zhang, J.; Tan, W. Transfer deep reinforcement learning-enabled energy management strategy
+for hybrid tracked vehicle. IEEE Access 2020, 8, 165837–165848. [CrossRef]
+186. Hu, B.; Xiao, Y.; Zhang, S.; Liu, B. A data-driven solution for energy management strategy of hybrid electric vehicles based on
+uncertainty-aware model-based offline reinforcement learning. IEEE Trans. Ind. Inform. 2022, 19, 7709–7719. [CrossRef]
+187. Wang, Y.; Qiu, D.; Sun, M.; Strbac, G.; Gao, Z. Secure energy management of multi-energy microgrid: A physical-informed safe
+reinforcement learning approach. Appl. Energy 2023, 335, 120759. [CrossRef]
+188. Kou, P .; Liang, D.; Wang, C.; Wu, Z.; Gao, L. Safe deep reinforcement learning-based constrained optimal control scheme for
+active distribution networks. Appl. Energy 2020, 264, 114772. [CrossRef]
+189. Wu, J.; Wei, Z.; Li, W.; Wang, Y.; Li, Y.; Sauer, D.U. Battery thermal-and health-constrained energy management for hybrid electric
+bus based on soft actor-critic DRL algorithm. IEEE Trans. Ind. Inform. 2020, 17, 3751–3761. [CrossRef]
+190. ISO 26262:2018; Road Vehicles-Functional Safety. ISO: Geneva, Switzerland, 2018.
+191. Xia, Y.; Xu, Y.; Wang, Y.; Mondal, S.; Dasgupta, S.; Gupta, A. A safe policy learning-based method for decentralized and economic
+frequency control in isolated networked-microgrid systems. IEEE Trans. Sustain. Energy 2022, 13, 1982–1993. [CrossRef]
+192. IEC 61508:2010; Functional Safety of Electrical/Electronic/Programmable Electronic Safety-Related Systems. IEC: Geneva,
+Switzerland, 2010.
+193. Sini, J.; Violante, M.; Tronci, F. A novel ISO 26262-compliant test bench to assess the diagnostic coverage of software hardening
+techniques against digital components random hardware failures. Electronics 2022, 11, 901. [CrossRef]
+194. IEEE 1547-2018; IEEE Standard for Interconnection and Interoperability of Distributed Energy Resources with Associated Electric
+Power Systems Interfaces. IEEE: New York, NY, USA, 2018.
+195. Zhu, H.; Li, B.; Chen, Y.; Dou, Y.; Tian, Y.; Li, Y.; Li, H.; Gao, Z. An energy management optimization method for arctic space
+environment monitoring buoys based on deep reinforcement learning. Energies 2026, 19, 1487. [CrossRef]
+196. Addai, M.; Musilek, P . Artificial intelligence-enhanced droop control for renewable energy-based microgrids: A comprehensive
+review. Electronics 2026, 15, 707. [CrossRef]
+197. Ghofrani, M. Edge-intelligent and cyber-resilient coordination of electric vehicles and distributed energy resources in modern
+distribution grids. Energies 2026, 19, 1867. [CrossRef]
+198. Hu, B.; Li, J. Shifting deep reinforcement learning algorithm toward training directly in transient real-world environment: A case
+study in powertrain control. IEEE Trans. Ind. Inform. 2021, 17, 8198–8206. [CrossRef]
+199. He, H.; Su, Q.; Huang, R.; Niu, Z. Enabling intelligent transferable energy management of series hybrid electric tracked vehicle
+across motion dimensions via soft actor-critic algorithm. Energy 2024, 294, 130933. [CrossRef]
+200. Ahmic, K.; Ultsch, J.; Brembeck, J.; Winter, C. Reinforcement learning-based path following control with dynamics randomization
+for parametric uncertainties in autonomous driving. Appl. Sci. 2023, 13, 3456. [CrossRef]
+201. Zhang, Z.; Huang, Y.; Zhang, C.; Zheng, Q.; Yang, L.; You, X. Digital twin-enhanced deep reinforcement learning for resource
+management in networks slicing. IEEE Trans. Commun. 2024, 72, 6209–6224. [CrossRef]
+202. Machlev, R.; Heistrene, L.; Perl, M.; Levy, K.Y.; Belikov, J.; Mannor, S.; Levron, Y. Explainable Artificial Intelligence (XAI)
+techniques for energy and power systems: Review, challenges and opportunities. Energy AI 2022, 9, 100169. [CrossRef]
+203. Wu, C.; Peng, J.; Pi, D.; Guo, X.; Zhang, H.; Wang, Z. Health-conscious Integrated thermal management strategy using hybrid
+attention deep reinforcement learning for battery electric vehicles. IEEE Trans. Power Electron. 2025, 40, 15795–15807. [CrossRef]
+204. Bezold, V .; Wagner, P .; Hofmann, J.; Huber, M.; Sauer, A. Trustworthy and explainable deep reinforcement learning for safe and
+energy-efficient process control: A use case in industrial compressed air systems. Energy AI 2026, 24, 100685. [CrossRef]
+205. Wu, Z.; Ma, B. Research on HEV energy management strategy based on improved deep reinforcement learning. J. Ind. Manag.
+Optim. 2023, 19, 8451–8468. [CrossRef]
+206. Biswas, A.; Acquarone, M.; Wang, H.; Miretti, F.; Misul, D.A.; Emadi, A. Safe reinforcement learning for energy management of
+electrified vehicle with novel physics-informed exploration strategy. IEEE Trans. Transp. Electrif. 2024, 10, 9814–9828. [CrossRef]
+207. Fan, Y.; He, H.; Wang, Z.; Peng, J.; Zhang, H.; Chen, W. A DRL-based Ecological Driving Strategy for Series Hybrid Energy Vehicle
+Including Battery Degradation. Energy Procedia 2021, 20, 1–8.
+208. Zhu, L.; Tao, F.; Fu, Z.; Li, M.; Deng, G. Safety-involved co-optimization of speed trajectory and energy management for fuel
+cell-battery electric vehicle in car-following scenarios. Complex Intell. Syst. 2025, 11, 89. [CrossRef]
+209. Landers, M.; Doryab, A. Deep reinforcement learning verification: A survey. ACM Comput. Surv. 2023, 55, 1–31. [CrossRef]
+210. Chen, D.; Wang, Y.; Gao, W. Combining a gradient-based method and an evolution strategy for multi-objective reinforcement
+learning. Appl. Intell. 2020, 50, 3301–3317. [CrossRef]
+https://doi.org/10.3390/en19092216
+
+Energies 2026, 19, 2216 50 of 50
+211. Lv, H.; Qi, C.; Song, C.; Song, S.; Zhang, R.; Xiao, F. Energy management of hybrid electric vehicles based on inverse reinforcement
+learning. Energy Rep. 2022, 8, 5215–5224. [CrossRef]
+212. Saba, I.; Alobaidi, A.H.; Alghamdi, S.; Tariq, M. Digital twin and TD3-Enabled optimization of xEV energy management in
+Vehicle-to-Grid Networks. IEEE Access 2025, 13, 92495–92506. [CrossRef]
+Disclaimer/Publisher’s Note: The statements, opinions and data contained in all publications are solely those of the individual
+author(s) and contributor(s) and not of MDPI and/or the editor(s). MDPI and/or the editor(s) disclaim responsibility for any injury to
+people or property resulting from any ideas, methods, instructions or products referred to in the content.
+https://doi.org/10.3390/en19092216

@@ -82,7 +82,7 @@ class PostgresOperatorStatusStore:
 			connection.commit()
 
 	def upsert_status(self, record: OperatorStatusRecord) -> None:
-		payload_json = json.dumps(record.payload) if record.payload is not None else None
+		payload_json = _payload_to_json(record.payload)
 		with self._connect() as connection:
 			with connection.cursor() as cursor:
 				cursor.execute(
@@ -146,6 +146,20 @@ class PostgresOperatorStatusStore:
 
 def utc_now() -> datetime:
 	return datetime.now(tz=UTC)
+
+
+def _payload_to_json(payload: dict[str, Any] | None) -> str | None:
+	if payload is None:
+		return None
+
+	return json.dumps(payload, default=_json_default)
+
+
+def _json_default(value: object) -> str:
+	if isinstance(value, datetime):
+		return value.isoformat()
+
+	return str(value)
 
 
 @cache

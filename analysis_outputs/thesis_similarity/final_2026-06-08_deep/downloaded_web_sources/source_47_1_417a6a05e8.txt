@@ -1,0 +1,419 @@
+Data Portal | Nord Pool 
+
+ Trading 
+
+ Join our markets 
+
+ Contact us 
+
+ Becoming a customer 
+
+ Membership list 
+
+ Operational messages 
+
+ Day-ahead trading 
+
+ Order types 
+
+ Price calculation 
+
+ Preliminary prices and exchange rates 
+
+ Capacities 
+
+ Ramping 
+
+ Loss functionality 
+
+ Curtailment, price thresholds and decoupling 
+
+ Intraday trading 
+
+ Order types 
+
+ Capacities 
+
+ Euronext Nord Pool Power Futures 
+
+ Clearing 
+
+ Settlement 
+
+ Collateral 
+
+ Trading Models 
+
+ API 
+
+ ISV partners 
+
+ Rules and regulations 
+
+ Market surveillance 
+
+ Market Surveillance Newsletter 
+
+ Expert reports 
+
+ Intraday Auctions 
+
+ Nordic Flow-Based Day-Ahead Market Coupling 
+
+ Impact of Nordic Flow-Based on the Nordic System Price 
+
+ System price results 
+
+ Transition to 15-minute Market Time Unit (MTU) 
+
+ FAQ 
+
+ EPAD auctions 
+
+ Services 
+
+ Power Data Services 
+
+ Day-Ahead Auctions 
+
+ Intraday Auctions 
+
+ Intraday Continuous 
+
+ Data Portal 
+
+ Electricity retailers 
+
+ BESS Market - Clean Horizon Storage Index 
+
+ Other products 
+
+ FAQ 
+
+ Inquire and Order 
+
+ Nord Pool Consulting 
+
+ Recent projects and Stakeholders 
+
+ Services for Power Exchanges 
+
+ Services for TSO 
+
+ Nord Pool Academy 
+
+ The Physical and Financial Power Markets Course 
+
+ Nord Pool Certified Compliance Course 
+
+ Nord Pool Certified Day-Ahead Trader Course 
+
+ Nord Pool Certified Intraday Trader Course 
+
+ Compliance 
+
+ REMIT UMM 
+
+ REMIT transaction reporting service 
+
+ REMIT Best Practice Report 
+
+ News & Events 
+
+ Newsroom 
+
+ Press releases 
+
+ Newsletters 
+
+ Markets Monthly Report 
+
+ Market Surveillance Newsletters 
+
+ TSO news 
+
+ Whitepapers 
+
+ Articles 
+
+ Subscribe to Press releases 
+
+ Subscribe to Updates 
+
+ Events 
+
+ On-demand webinars 
+
+ Nord Pool Market Data Services Webinar 
+
+ Photos 
+
+ Media contacts 
+
+ About us 
+
+ Our business 
+
+ Organisation 
+
+ CEO 
+
+ Strategy & Products 
+
+ Operations, Risk, Clearing & Settlement 
+
+ Public Affairs, Communication & Marketing 
+
+ Legal, Regulatory & Market Coupling Operation 
+
+ Product Development & Innovation 
+
+ Nordic, Baltic & UK​ 
+
+ Western & Central Europe 
+
+ Board of Directors 
+
+ Careers 
+
+ History 
+
+ Terms and conditions for use of website 
+
+ ESG 
+
+ Product offerings 
+
+ The Norwegian Transparency Act 
+
+ Social 
+
+ Governance 
+
+ Contact us 
+
+ Oslo, Norway 
+
+ Stockholm, Sweden 
+
+ Espoo, Finland 
+
+ London, UK 
+
+ Berlin, Germany 
+
+ Vilnius, Lithuania 
+
+ Data portal 
+
+ Power Data Services 
+
+ Day-Ahead Auctions 
+
+ Intraday Auctions 
+
+ Intraday Continuous 
+
+ Data Portal 
+
+ Electricity retailers 
+
+ BESS Market - Clean Horizon Storage Index 
+
+ Other products 
+
+ FAQ 
+
+ Inquire and Order 
+
+ Nord Pool Consulting 
+
+ Recent projects and Stakeholders 
+
+ Services for Power Exchanges 
+
+ Services for TSO 
+
+ Nord Pool Academy 
+
+ The Physical and Financial Power Markets Course 
+
+ Nord Pool Certified Compliance Course 
+
+ Nord Pool Certified Day-Ahead Trader Course 
+
+ Nord Pool Certified Intraday Trader Course 
+
+ Compliance 
+
+ REMIT UMM 
+
+ REMIT transaction reporting service 
+
+ REMIT Best Practice Report 
+
+ Data Portal 
+
+ Data Portal is a web platform provided by Nord Pool, where users can access detailed electricity market data. It serves as a centralized hub for viewing, analyzing, and downloading information related to power trading across the Nord Pool market and serviced areas.
+
+ Interested in purchasing? Have questions? Send us an inquiry!
+
+ Inquire now 
+
+ Nord Pool Data Portal is organized into various sections, covering a wide range of market and system data, offering a rich resource for analysis.
+
+ Auctions – Includes Day-Ahead, Intraday Auctions and EPAD Auctions.
+
+ UK Auctions – Includes N2EX Day-Ahead Auction, SEB-GB and GB Half Hour Auction.
+
+ Intraday – Provides insights into continuous intraday trading.
+
+ Power System Data – Gathers information from Balancing Markets (mFRR), Production, Consumption, and Hydro Reservoir Reserves.
+
+ Reports - allows users to easily create customized reports and export them as CSV or Excel files. Historical datasets are available dating back to 1992.
+
+ List of reports available can be consulted here. (Attached in separate email).
+
+ Access to the Data Portal 
+
+ SOLO subscription - €1200 per calendar year
+
+ LITE subscription - €2200 per calendar year
+
+ PREMIUM subscription up to 10 users - €4500 per calendar year
+
+ ENTERPRISE subscription up to 25 users - €9000 per calendar year
+
+ ENTERPRISE PRO subscription - unlimited users - available only under discussion 
+
+ Interested in purchasing? Have questions? Send us an inquiry!
+
+ Inquire now 
+
+ Invoicing & Redistribution Policy 
+
+ Nord Pool Data Services users pay a pre-determined access fee “Data Fee” charged annually to access to a given data feed. All fees are charged per calendar year and excluding VAT.
+
+ Each customer will be entitled to one (1) API account included with their Nord Pool API subscriptions, regardless of the number of subscriptions held. This account will provide access to all subscriptions purchased by the customer, thereby simplifying access management and reducing the need for multiple API credentials. Additional API accounts may be purchased separately if required.
+
+ A redistribution fee is applied in addition to the data fee, where applicable, in accordance with Euronext Group Data Product Agreement – Master Terms and the relevant Product Terms for each Nord Pool market data redistribution use case.
+
+ Special terms apply to trading members, students, researchers, and members of academic entities. 
+
+ The general terms and conditions for all our data products can be found here. 
+
+ Nord Pool AS
+
+ Tel. +47 6710 9100
+
+ P.O. Box 121
+
+ 1325 Lysaker, Norway
+
+ Market Data 
+
+ Day-ahead 
+
+ Intraday 
+
+ Power system data 
+
+ Map 
+
+ Trading 
+
+ Join our markets 
+
+ Operational messages 
+
+ Day-ahead trading 
+
+ Intraday trading 
+
+ Clearing 
+
+ API 
+
+ Rules & regulations 
+
+ Market surveillance 
+
+ Customers have their say 
+
+ Services 
+
+ Premium Data Services 
+
+ Compliance 
+
+ Consulting 
+
+ Nord Pool Academy 
+
+ German mini-site 
+
+ French mini-site 
+
+ The Power Market 
+
+ Day-ahead market 
+
+ Intraday market 
+
+ CACM regulation 
+
+ Benchmark regulation - Nordic system price 
+
+ Market members 
+
+ Bidding areas 
+
+ Social media 
+
+Quick links 
+
+ UMM 
+
+ Auction 
+
+ Intraday Web 
+
+ CASS 
+
+ Intraday and GB Half Hourly auctions 
+
+ Media 
+
+ Press 
+
+ Newsroom 
+
+ Download center 
+
+ About us 
+
+ Careers 
+
+ Advisory board 
+
+ History 
+
+ Organisation 
+
+ Corporate Compliance Policy 
+
+ Contact us 
+
+ Norway 
+
+ Sweden 
+
+ Finland 
+
+ Estonia 
+
+ UK 
+
+ Germany 
+
+ © Nord Pool 2020 | Imprint, Data Policy, Legal Notice, How We Treat Personal Data

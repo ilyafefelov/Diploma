@@ -1,0 +1,37 @@
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_003_dnipro_factory"
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  real_data_rolling_origin_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_003_dnipro_factory"
+      max_anchors: 90
+  dfl_training_frame:
+    config:
+      require_thesis_grade: true
+  regret_weighted_forecast_calibration_frame:
+    config:
+      forecast_model_names_csv: "tft_silver_v0,nbeatsx_silver_v0"
+      min_prior_anchors: 14
+      rolling_calibration_window_anchors: 28
+  horizon_regret_weighted_forecast_calibration_frame:
+    config:
+      forecast_model_names_csv: "tft_silver_v0,nbeatsx_silver_v0"
+      min_prior_anchors: 14
+      rolling_calibration_window_anchors: 28
+  offline_dfl_experiment_frame:
+    config:
+      tenant_id: "client_003_dnipro_factory"
+      forecast_model_names_csv: "tft_silver_v0,nbeatsx_silver_v0"
+      validation_fraction: 0.2
+      max_train_anchors: 32
+      max_validation_anchors: 18
+      epoch_count: 8
+      learning_rate: 10.0

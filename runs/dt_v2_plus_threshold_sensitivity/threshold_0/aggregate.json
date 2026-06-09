@@ -1,0 +1,21 @@
+{
+  "alpha": 0.05,
+  "baseline_mean_regret": 174.77,
+  "baseline_seed_count": 3,
+  "claim_scope": "canonical_offline_experiment_metrics_not_market_execution",
+  "market_execution_enabled": false,
+  "mean_test_regret": 168.1566,
+  "model": "threshold_0",
+  "n_seeds": 3,
+  "pass_level": "secondary",
+  "primary_success_threshold": 166.0,
+  "promotion_gate_passed": false,
+  "secondary_success_threshold": 178.26,
+  "seeds": [
+    2026,
+    42,
+    7
+  ],
+  "std_test_regret": 0.0,
+  "t_pvalue_vs_v2plus": 0.0
+}

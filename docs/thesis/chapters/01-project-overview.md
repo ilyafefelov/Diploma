@@ -1,98 +1,68 @@
-# Розділ 1. Загальна характеристика проєкту
+Розділ 1. Вступ
 
-> Перший submission-ready варіант розділу 1 для подання керівнику. Текст уже можна використовувати як базу для Week 1 package, supervisor review та подальшої фінальної версії пояснювальної записки без зміни базової архітектурної логіки.
+1.1. Актуальність теми
 
-## 1.1. Проблема та актуальність
+Українська енергосистема у 2026 році потребує інструментів, які допомагають працювати з волатильністю, дефіцитом маневровості та зростанням ролі систем накопичення енергії. BESS може переносити енергію між годинами з різною ціною, але практична цінність такого переносу виникає лише тоді, коли рішення одночасно враховує ринковий сигнал, фізичні обмеження батареї, часову доступність даних і операційну безпеку. Сам прогноз ціни не є достатнім результатом: модель може мати прийнятну forecast error, але створити schedule з поганим SOC timing або низькою економічною цінністю.
 
-Battery energy storage systems (BESS) стають ключовим елементом сучасної енергетики, оскільки дають змогу згладжувати піки навантаження, інтегрувати нестабільну генерацію та створювати додаткову економічну цінність через енергоарбітраж. Однак практична побудова автономної системи для арбітражу є складною задачею: потрібно одночасно працювати з волатильними цінами, фізичними обмеженнями батареї, ризиком деградації, ринковими правилами та вимогою до відтворюваного engineering pipeline.
+Тому в роботі розглянуто не задачу автономної ринкової торгівлі, а задачу побудови evidence system для DAM/IDM hourly recommendation preview. Така система пояснює оператору, чому певний hourly schedule є доцільним, які дані були доступні до моменту рішення, як результат порівнюється з conservative baseline і чому він не перетворюється автоматично на market-submittable bid. DAM залишається primary evaluated thesis scope, а IDM розглядається як такий самий operator-facing hourly preview/read-model lane без live intraday bidding. Ця межа важлива академічно й практично: без неї дипломний результат легко перебільшити до live trading або deployed Decision Transformer control, хоча наявна доказова база цього не дозволяє.
 
-Для українського контексту 2026 року ця задача є особливо актуальною. Ринок має власні обмеження, прайс-кепи, часову структуру торгів і валютну специфіку, тому систему неможливо просто перенести з абстрактних paper-setting у production-подібний контур без адаптації. Саме це і робить тему диплома придатною як для інженерного проєкту, так і для дослідницького внеску.
+Ключове практичне правило таке: коли official OREE DAM/IDM hourly row для target date/hour уже опубліковано, саме цей row є price source для preview, а ML не переугадує опубліковану ціну. Коли target delivery horizon ще не має опублікованого row, NBEATSx/TFT можуть створювати scenario price context для deterministic LP. У двох випадках LP будує feasible hourly schedule, а V2+/DFL/DT layers можуть тільки ранжувати, пояснювати або abstain як evidence/advisor metadata. Окремий HF value-aligned shadow path є live read-model challenger поверх цієї логіки: він не викликає LP у live request path, генерує обмежений набір LP-free candidate schedules, оцінює їх safe-switch scorer-ом і показує лише manual shadow preview.
 
-Актуальність також підтверджується state of practice в Україні: АТ «Оператор ринку» у березні 2026 року повідомив, що понад 180 компаній тестують його Economic Dispatch Platform для BESS-арбітражу на DAM/IDM. Це означає, що тема не є лише академічною симуляцією; ринок уже потребує інструментів, які поєднують ціни, SOC-aware planning, обмеження батареї та зрозумілий operator workflow.
+Логіку переходу від проблеми до рішення наведено на рисунку 1.1.
 
-## 1.2. Що саме будується в межах диплома
+![Рисунок 1.1. Карта переходу від українського DAM/IDM signal до operator preview](assets/compact-fig-1-1-problem-solution.png)
 
-Поточний дипломний проєкт будується як система автономного енергоарбітражу для BESS на ринку України 2026. Її завдання — перетворювати дані про ціни, погодні фактори, обмеження батареї та стан системи на operator-facing recommendation preview, а в цільовій версії — на market-aware decision pipeline.
+Рисунок 1.1. Карта переходу від українського DAM/IDM signal до operator preview
 
-У цьому контексті термін «автономний» не означає, що вже на поточному етапі система виконує повний цикл від прогнозу до фізичної dispatch-команди без жодної участі оператора. Натомість він означає архітектурну мету: система має бути здатною самостійно генерувати коректні рішення в межах формалізованих ринкових і safety-обмежень. Поточний demo-stage реалізує operator-facing recommendation preview як перший контрольований крок до цієї повної автономії.
+Рисунок 1.1 узагальнює центральну ідею роботи. Ціновий сигнал DAM/IDM стає корисним лише після deterministic optimization і strict evidence gate. Саме тому головний внесок полягає не в додаванні ще однієї нейронної моделі, а в побудові чесного контуру, де official rows, forecast scenarios, schedule optimization, regret evaluation і source-governance працюють разом.
 
-На рівні канонічної мови, зафіксованої в [CONTEXT.md](../../../CONTEXT.md), проєкт розрізняє кілька рівнів сутностей: baseline forecast, baseline strategy, target strategy, projected battery state, bid feasibility envelope, proposed bid, cleared trade та dispatch command. Це важливо, тому що диплом свідомо не змішує аналітичний preview, ринкову заявку і фізичне виконання в одну нечітку сутність.
+1.2. Проблема, що вирішується
 
-## 1.3. Чому це інженерний диплом із дослідницькою траєкторією
+Проблема має три рівні. Перший рівень - ринковий: погодинні ціни DAM/IDM можуть створювати можливість арбітражу, але реальна можливість залежить від spread shape, local price regime, publication state і доступності source-backed evidence. Другий рівень - інженерний: BESS не можна розглядати як абстрактний фінансовий актив, бо schedule має проходити SOC, power, efficiency і degradation-aware обмеження. Третій рівень - науковий: оцінювати модель за MAE/RMSE недостатньо, якщо рішення використовується для storage arbitrage; потрібна decision-aware метрика, що вимірює regret або value після optimization.
 
-Формально ця робота є інженерним проєктом, оскільки в центрі стоїть побудова працездатної системи з чіткими API, пайплайнами, dashboard-поверхнею, тестами та demo-ready артефактами. Водночас проєкт має виражену дослідницьку траєкторію, бо його фінальна ціль не обмежується простим rule-based або LP-based scheduling. Він спрямований на перехід до Decision-Focused Learning (DFL), де система навчається не лише прогнозувати, а й оптимізувати фінансовий результат з урахуванням market response та degradation-aware objective.
+У роботі ці три рівні зведено в один offline/read-model contour. Price forecasts та candidate schedules оцінюються через однаковий strict LP/oracle evaluator. Learned або heuristic candidates можуть бути корисними лише тоді, коли вони знижують regret проти frozen baseline, не погіршують median behavior, проходять rolling robustness і не порушують safety/source gates. Якщо challenger не проходить gate, це не приховується: негативна evidence залишається частиною наукового результату й пояснює, чому система не просуває слабший метод.
 
-Саме така комбінація і робить тему сильною для диплома: вже на ранньому етапі є перевірюваний інженерний результат, але водночас існує чітка research gap, яку не закриває поточний MVP.
+Межу системи наведено на рисунку 1.2.
 
-## 1.4. Поточний підтверджений рівень: MVP baseline
+![Рисунок 1.2. Межа системи: evidence та preview без market execution](assets/compact-fig-1-2-boundary.png)
 
-Станом на поточний етап у репозиторії вже реалізовано MVP baseline для Level 1 сценарію. Його ключові характеристики:
+Рисунок 1.2. Межа системи: evidence та preview без market execution
 
-- ринок обмежено погодинним DAM;
-- канонічна валюта від початку зафіксована як UAH;
-- базовий forecast реалізовано через strict similar-day rule;
-- основна стратегія — детермінований LP baseline;
-- економіка включає throughput-based degradation penalty;
-- дані та проміжні результати оркеструються через Dagster assets;
-- експериментальні результати й regret логуються в MLflow;
-- контракти й safety semantics описано через strict Pydantic schemas.
+З рисунку 1.2 видно, що результат належить до allowed evidence: offline materialization, read-model dashboard, operator preview і reproducible packets. Заблокована зона містить ProposedBid, ClearedTrade, DispatchCommand, deployed DT/LAVA і будь-який claim, який потребує explicit market submission readiness. Така межа зберігає практичну корисність без переходу до невиправданого market execution.
 
-Цей рівень є навмисно обмеженим. Його завдання — не продемонструвати «найрозумнішу» модель, а створити стабільний контрольний контур, який можна тестувати, пояснювати і порівнювати з майбутньою Target Strategy.
+1.3. Мета і завдання
 
-Окремий deep-research review уточнює академічну межу цього рівня: поточний MVP є переконливим engineering prototype, але ще не є повноцінним empirical market study, доки історичний market/weather шар суттєво спирається на synthetic fallback. Тому наступний дослідницький крок полягає не в негайному ускладненні моделі, а в побудові real-data Ukraine DAM benchmark із rolling-origin evaluation.
+Мета роботи - спроєктувати, реалізувати та оцінити evidence system для DAM/IDM hourly recommendation preview у задачі BESS-арбітражу в Україні, де якість моделей оцінюється за downstream decision value, а не лише за forecast-only метриками. Науковий headline залишається DAM/V2+ evidence, а практична read-model capability охоплює DAM і IDM як hourly recommendation preview. Практична мета полягає в тому, щоб оператор або власник BESS отримував зрозумілу картину: які hourly recommendations пропонуються, чим вони кращі або гірші за conservative baseline, які gates пройдено і чому система не подає заявку на ринок.
 
-## 1.5. Поточний demo-stage: operator-facing MVP
+Для досягнення цієї мети виконано такі завдання: сформовано market/problem framing для українського DAM/IDM preview; побудовано pipeline source snapshots -> normalized panel -> official-row/forecast-scenario context -> strict LP/oracle scoring -> dashboard/read model; визначено метрики regret/value та rolling robustness; перевірено Schedule/Value Learner V2 і V2+ проти strict_similar_day; проаналізовано TFT, Poland lag24 / prior-only veto, DT/V2+ safe-switch shadow і HF value-aligned shadow як дослідницькі/manual preview гілки, але не default/execution гілки; перевірено live shadow-readiness для DAM/IDM latest/today/tomorrow/day+2 без LP у live HF path; зафіксовано V13 source-readiness blockers і прапорець market_execution_enabled=false.
 
-Окрім baseline-контурy, у проєкті вже з’явився demo-stage operator surface. Це означає, що система має не лише backend-логіку, а й пояснюваний інтерфейс, через який можна показати supervisor-ready сценарій роботи.
+1.4. Об'єкт, предмет і межі дослідження
 
-На цьому рівні реалізовано:
+Об'єктом є система прийняття рішень для BESS у primary DAM delivery-day planning scenario з окремою IDM hourly recommendation preview/read-model lane. Предметом є методологія побудови й оцінювання forecast-to-schedule candidates через strict LP/oracle contour та decision-aware regret/value metrics. У роботі не досліджується live market bidding, 15-minute IDM submission, settlement, balancing-market participation, physical inverter dispatch або юридична процедура участі на ринку. Такі елементи потребують окремих operational gates, credentials, signed submissions, explicit OREE DAM/IDM source/publication evidence for preview і market-submission receipts для execution contour.
 
-- FastAPI control-plane з read models для operator-facing flows;
-- backend-owned operator status для стабільного відображення стану в UI;
-- same-origin Nuxt dashboard proxy;
-- tenant-aware weather control flow;
-- baseline LP recommendation preview з projected SOC та UAH economics.
+Межа market_execution_enabled=false проходить через усю роботу. Вона означає, що навіть коли offline evidence показує кращий regret, система не створює market order payload. Це дає можливість академічно оцінити практичну придатність методу для України без небезпечного змішування демонстраційного preview з торговою системою.
 
-На цьому етапі шар батареї коректніше описувати не як повноцінну фізичну симуляцію, а як feasibility-and-economics preview model. Поточний контур прогнозує допустимий стан батареї на погодинному горизонті, враховує SOC-вікно, ліміт потужності, спрощений round-trip efficiency та throughput-based degradation penalty. Такий рівень моделі достатній для operator-facing recommendation preview, baseline evaluation і regret-aware порівняння, але ще не є digital twin у строгому фізичному сенсі.
+1.5. Наукова новизна і практична цінність
 
-Для current demo-profile цей penalty параметризується як public-source capex-throughput proxy, а не як довільна локальна константа: `210 USD/kWh` з видимого capex anchor у Grimaldi et al., `15-year lifetime` і `~1 cycle/day` з NREL ATB та курс НБУ `43.9129 UAH/USD` на `04.05.2026`. Для demo battery `10 MWh` це дає `16,843.3 UAH/cycle`, тобто `842.2 UAH/MWh throughput`.
+Наукова новизна полягає у фокусі на decision-quality evidence для BESS arbitrage: forecast candidates оцінюються не ізольовано, а через LP schedule та regret відносно oracle value. Додатково робота демонструє, як negative evidence, corrected safe-switch shadow evidence або blocked V13 acquisition можуть бути академічно коректними artifacts, якщо вони запобігають overclaiming. Практична цінність для України полягає в тому, що system design може бути використаний як консервативний операторський preview: він показує економічну логіку рішення, залишає audit trail і не потребує market-submission credentials для academic MVP.
 
-Критично важливо, що demo-stage не видається за повний market execution engine. Поточна dashboard-поверхня демонструє recommendation preview та operator review, але не претендує на завершену реалізацію `Proposed Bid`, `Cleared Trade` або `Dispatch Command`.
+Додаткова практична новизна полягає у введенні HF value-aligned shadow як безпечного містка між offline Decision Transformer evidence і live operator preview. На відміну від raw DT controller, цей шар не емітить hourly action безпосередньо, а ранжує LP-free candidate schedules, застосовує value/tail-risk/safety gates і показує або non-HOLD preview, або guarded abstention до V2+/HOLD. Це дозволило показати transformer-based evidence у dashboard без зміни production/default strategy.
 
-## 1.6. Фінальна planned version
+1.6. Структура роботи
 
-Цільова версія системи виходить за межі поточного MVP і demo-stage. Вона передбачає:
+Розділ 2 стисло розглядає ринковий та методологічний контекст, включно з constrained neural decision layers. Розділ 3 описує методологію, математичні вирази, evidence boundaries і архітектуру. Розділ 4 подає головні результати V2/V2+, robustness, DT/HF shadow evidence і live preview-readiness. Розділ 5 формулює висновки й рекомендації як аналіз архітектурних прийомів: fallback, abstention, source-backed context, deterministic gates і no-execution boundary. Детальні glossary, API traceability, довгі evidence manifests і shadow diagnostics винесено в додатки, щоб основна частина залишалася зосередженою на main story.
 
-- перехід від simple baseline forecast до сильнішого prediction layer на базі NBEATSx і TFT;
-- перехід від Predict-then-Optimize baseline до predict-then-bid / Decision-Focused Learning;
-- differentiable або surrogate-based market clearing як частину навчального контуру;
-- learned strategy layer на кшталт Decision Transformer;
-- глибший digital twin батареї з точнішим обліком фізичних процесів деградації;
-- поступове розширення з DAM-only scope до venue-aware і, за потреби, multi-venue сценаріїв;
-- більш production-ready persistence, auditability та control-plane infrastructure.
 
-Отже, фінальна planned version не заперечує поточний MVP, а спирається на нього. Baseline тут виступає контрольним контуром, а не тимчасовим «чернетковим» рішенням без наукової цінності.
+1.7. Практичний контекст для українського оператора
 
-## 1.7. Роль Dagster, MLflow, FastAPI, dashboard і MCP-інструментів
+Практичний користувач такої системи не починає з питання, яка neural architecture є наймоднішою. Його перше питання простіше: чи можна довіряти рекомендації, коли ціна завтра може суттєво відрізнятися від історичного патерну, а батарея має реальні обмеження? Тому в роботі акцент зроблено на прозорості контуру. Оператор має бачити не лише "купити" або "продати", а й те, що recommendation прийшла з відтворюваного evidence packet, пройшла deterministic checks і не є ринковою заявкою.
 
-Архітектурно проєкт поєднує кілька інфраструктурних шарів, кожен із яких виконує окрему функцію:
+Для України це особливо важливо через різницю між академічною демонстрацією та промисловою інтеграцією. У промисловому контурі потрібні credentials, юридична відповідальність, receipt evidence, settlement reconciliation і диспетчерські процедури. У дипломному контурі інженерний підхід демонструє чесне ставлення до таких меж: без explicit OREE DAM/IDM source/publication evidence система не маскує blocker красивим dashboard, а навіть corrected DT/V2+ shadow з кращим regret не називається контролером або default strategy без окремого promotion gate.
 
-- Dagster відповідає за orchestration, lineage і керування asset graph;
-- MLflow фіксує експерименти, метрики та regret-aware evaluation;
-- FastAPI дає contract-first control plane для operator-facing read models;
-- Nuxt dashboard забезпечує пояснювану demo-surface для керівника та майбутнього користувача;
-- MCP- та agent-based tooling використовується як допоміжний research workflow для пошуку джерел, навігації репозиторієм та пришвидшення документування.
+Таке формулювання робить роботу прикладною, але не ризиковою. Вона не обіцяє автономної торгівлі; вона показує, як можна прийти до неї поступово: спочатку offline evidence, потім operator trust, потім source readiness, і лише після цього execution gate. У цьому сенсі результат корисний не тільки як кодовий MVP, а як методологічний шаблон для подібних українських energy-tech систем.
 
-В академічному позиціюванні важливо підкреслити, що предметом диплома є не сам MCP. MCP/agent tooling тут — допоміжна інженерна інфраструктура, яка підтримує процес розробки, але не становить головної наукової новизни роботи.
+1.8. Відмінність між науковим результатом і інженерним артефактом
 
-## 1.8. Як цей проєкт співвідноситься з дипломом
+Науковий результат у роботі - це не просто наявність dashboard або факт, що pipeline запускається. Науковий результат полягає в доведенні, що schedule/value selector може зменшити downstream regret у строгому порівнянні з baseline, а також у доведенні меж, де інші candidates не проходять gate. Інженерний артефакт підтримує цей результат: Dagster materialization, FastAPI read model, Pydantic contracts і dashboard роблять evidence відтворюваною та зрозумілою.
 
-Для дипломної роботи цей проєкт цінний з кількох причин. По-перше, він має чітку прикладну проблему і реалістичний engineering contour. По-друге, він містить природну дослідницьку прогалину між baseline-рішенням і decision-focused target architecture. По-третє, він дозволяє поетапно демонструвати прогрес: спочатку концепцію і baseline, далі demo-stage operator surface, а потім перехід до learned strategy.
-
-Отже, диплом не зводиться до «дашборду для батареї» і не зводиться до «чергової ML-моделі». Його змістовне ядро — це побудова відтворюваної архітектури автономного енергоарбітражу, у якій baseline, operator demo і фінальна DFL-траєкторія пов’язані в один логічний контур.
-
-## 1.9. Перехід до огляду літератури
-
-Щоб обґрунтувати такий вибір архітектури, потрібно окремо розглянути state of the art у forecasting, optimization, degradation-aware economics, DFL та інженерній оркестрації. Саме це робиться в [02-literature-review.md](./02-literature-review.md), де пояснюється, чому поточна поетапна логіка розвитку системи є дослідницьки та інженерно виправданою.
-
-Після deep-research update ця поетапна логіка формулюється ще точніше: спочатку реальний історичний benchmark, потім порівняння strict similar-day, NBEATSx і TFT за decision value та oracle regret, далі robustness аналіз деградації/fees/SOC assumptions, і лише після цього DFL pilot.
+Це розмежування допомагає уникнути двох крайнощів. Перша крайність - описати роботу як чистий software project без наукової оцінки. Друга - описати її як research paper без практичного MVP. У роботі обрано середній шлях: практичний проєкт має науково обґрунтований evaluation contour, а дослідницька частина має робочий інженерний носій.

@@ -1,0 +1,164 @@
+{
+  "generatedAt": "2026-05-25T18:52:52.023Z",
+  "note": "Browser viewport capability produced CSS dimensions at about 2x requested width/height, so these calibrated requests target CSS-equivalent 1440x1100 and 390x844.",
+  "results": [
+    {
+      "label": "desktop_css_1440x1100",
+      "requestedViewport": {
+        "width": 720,
+        "height": 550
+      },
+      "screenshotPath": "D:/School/GoIT/Courses/Diploma/docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/operator_c1_desktop_css_1440x1100.png",
+      "metrics": {
+        "devicePixelRatio": 0.5,
+        "dock": {
+          "bottom": 1088,
+          "height": 423.1875,
+          "top": 664.8125,
+          "width": 1408,
+          "x": 1,
+          "y": 664.8125
+        },
+        "dockExceedsReservedPadding": true,
+        "dockVisibleViewportCoverageRatio": 0.3847159090909091,
+        "elementsAtDockTop": [
+          {
+            "className": "schedule-dock__heading",
+            "tag": "DIV",
+            "text": "DAM delivery day reviewNo tenant selected / No active lot Capacity pendingDelive"
+          },
+          {
+            "className": "schedule-dock",
+            "tag": "FOOTER",
+            "text": "DAM delivery day reviewNo tenant selected / No active lot Capacity pendingDelive"
+          },
+          {
+            "className": "tenant-card__ukraine-map-surface",
+            "tag": "DIV",
+            "text": ""
+          },
+          {
+            "className": "tenant-card__ukraine-map",
+            "tag": "DIV",
+            "text": "🌤️No lot selectedWeather pendingWaitingWaitingLocation pendingSource pendingAct"
+          },
+          {
+            "className": "tenant-card",
+            "tag": "SECTION",
+            "text": "Tenant / site  Awaiting registryBattery size loadingLocation pending🌤️No lot se"
+          },
+          {
+            "className": "operator-sidebar",
+            "tag": "ASIDE",
+            "text": "Tenant / site  Awaiting registryBattery size loadingLocation pending🌤️No lot se"
+          },
+          {
+            "className": "operator-body",
+            "tag": "DIV",
+            "text": "Tenant / site  Awaiting registryBattery size loadingLocation pending🌤️No lot se"
+          },
+          {
+            "className": "operator-frame",
+            "tag": "DIV",
+            "text": "BESS read model  Operator Preview Clock syncing Preview ready Timezone pendingNe"
+          }
+        ],
+        "hasHorizontalOverflow": false,
+        "hasMarketExecutionDisabled": true,
+        "hasMarketExecutionEnabledTrue": false,
+        "scroll": {
+          "clientHeight": 1100,
+          "clientWidth": 1410,
+          "height": 4789,
+          "width": 1410
+        },
+        "shellPaddingBottomPx": "192px",
+        "viewport": {
+          "height": 1100,
+          "width": 1440
+        },
+        "waitingCount": 5
+      },
+      "logs": []
+    },
+    {
+      "label": "mobile_css_390x844",
+      "requestedViewport": {
+        "width": 195,
+        "height": 422
+      },
+      "screenshotPath": "D:/School/GoIT/Courses/Diploma/docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/operator_c1_mobile_css_390x844.png",
+      "metrics": {
+        "devicePixelRatio": 0.5,
+        "dock": {
+          "bottom": 832,
+          "height": 710.15625,
+          "top": 121.84375,
+          "width": 448,
+          "x": 1,
+          "y": 121.84375
+        },
+        "dockExceedsReservedPadding": true,
+        "dockVisibleViewportCoverageRatio": 0.8414173578199052,
+        "elementsAtDockTop": [
+          {
+            "className": "schedule-dock__heading",
+            "tag": "DIV",
+            "text": "DAM delivery day reviewDnipro Manufacturing Plant / industrial lot Battery: 0.50"
+          },
+          {
+            "className": "schedule-dock",
+            "tag": "FOOTER",
+            "text": "DAM delivery day reviewDnipro Manufacturing Plant / industrial lot Battery: 0.50"
+          },
+          {
+            "className": "operator-topbar",
+            "tag": "HEADER",
+            "text": "BESS read model  Operator Preview 25 May, 21:52 Preview ready Europe/Kyiv"
+          },
+          {
+            "className": "operator-frame",
+            "tag": "DIV",
+            "text": "BESS read model  Operator Preview 25 May, 21:52 Preview ready Europe/KyivNet pla"
+          },
+          {
+            "className": "operator-shell",
+            "tag": "MAIN",
+            "text": "BESS read model  Operator Preview 25 May, 21:52 Preview ready Europe/KyivNet pla"
+          },
+          {
+            "className": "min-h-screen",
+            "tag": "MAIN",
+            "text": "BESS read model  Operator Preview 25 May, 21:52 Preview ready Europe/KyivNet pla"
+          },
+          {
+            "className": "isolate",
+            "tag": "DIV",
+            "text": "BESS read model  Operator Preview 25 May, 21:52 Preview ready Europe/KyivNet pla"
+          },
+          {
+            "className": "",
+            "tag": "BODY",
+            "text": "BESS read model  Operator Preview 25 May, 21:52 Preview ready Europe/KyivNet pla"
+          }
+        ],
+        "hasHorizontalOverflow": false,
+        "hasMarketExecutionDisabled": true,
+        "hasMarketExecutionEnabledTrue": false,
+        "scroll": {
+          "clientHeight": 844,
+          "clientWidth": 450,
+          "height": 17847,
+          "width": 450
+        },
+        "shellPaddingBottomPx": "248px",
+        "viewport": {
+          "height": 844,
+          "width": 480
+        },
+        "waitingCount": 0
+      },
+      "logs": []
+    }
+  ]
+}

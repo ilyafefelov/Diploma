@@ -1,0 +1,343 @@
+import { describe, expect, it } from 'vitest'
+
+import {
+  buildDefenseModelRows,
+  buildResearchReadinessRows,
+  CURRENT_BILINGUAL_STRATEGY_EXPLAINER,
+  CURRENT_DASHBOARD_EXPERIMENTS,
+  CURRENT_DT_LAVA_NEXT_STEPS,
+  CURRENT_POLAND_LAG24_SHADOW_CHALLENGER,
+  CURRENT_REGRET_LADDER,
+  CURRENT_TFT_SAFE_SELECTION_EXPLAINER,
+  CURRENT_TFT_PORTFOLIO_DIAGNOSTICS,
+  CURRENT_TFT_PORTFOLIO_CLOSURE,
+  CURRENT_TFT_USE_DECISION,
+  CURRENT_V2_PLUS_IMPROVEMENT_STORY,
+  summarizeDefenseBenchmark,
+  summarizeScheduleValuePromotionReadModel
+} from './defenseDataset'
+import type {
+  DecisionPolicyPreviewResponse,
+  DecisionTransformerTrajectoryResponse,
+  DflRelaxedPilotResponse,
+  DflScheduleValueProductionGateResponse,
+  RealDataBenchmarkResponse,
+  SimulatedLiveTradingResponse
+} from '../types/control-plane'
+
+const benchmarkResponse: RealDataBenchmarkResponse = {
+  tenant_id: 'client_003_dnipro_factory',
+  market_venue: 'DAM',
+  generated_at: '2026-05-05T12:00:00Z',
+  data_quality_tier: 'thesis_grade',
+  anchor_count: 2,
+  model_count: 2,
+  best_model_name: 'strict_similar_day',
+  mean_regret_uah: 18,
+  median_regret_uah: 15,
+  rows: [
+    {
+      evaluation_id: 'eval-001',
+      anchor_timestamp: '2026-05-03T20:00:00Z',
+      forecast_model_name: 'strict_similar_day',
+      decision_value_uah: 120,
+      oracle_value_uah: 130,
+      regret_uah: 10,
+      regret_ratio: 0.0769,
+      total_degradation_penalty_uah: 4,
+      total_throughput_mwh: 0.2,
+      committed_action: 'HOLD',
+      committed_power_mw: 0,
+      rank_by_regret: 1,
+      evaluation_payload: { data_quality_tier: 'thesis_grade' }
+    },
+    {
+      evaluation_id: 'eval-002',
+      anchor_timestamp: '2026-05-04T20:00:00Z',
+      forecast_model_name: 'strict_similar_day',
+      decision_value_uah: 118,
+      oracle_value_uah: 140,
+      regret_uah: 22,
+      regret_ratio: 0.1571,
+      total_degradation_penalty_uah: 5,
+      total_throughput_mwh: 0.25,
+      committed_action: 'DISCHARGE',
+      committed_power_mw: 0.1,
+      rank_by_regret: 2,
+      evaluation_payload: { data_quality_tier: 'thesis_grade' }
+    },
+    {
+      evaluation_id: 'eval-003',
+      anchor_timestamp: '2026-05-03T20:00:00Z',
+      forecast_model_name: 'tft_silver_v0',
+      decision_value_uah: 100,
+      oracle_value_uah: 130,
+      regret_uah: 30,
+      regret_ratio: 0.2308,
+      total_degradation_penalty_uah: 4,
+      total_throughput_mwh: 0.2,
+      committed_action: 'HOLD',
+      committed_power_mw: 0,
+      rank_by_regret: 2,
+      evaluation_payload: { data_quality_tier: 'thesis_grade' }
+    },
+    {
+      evaluation_id: 'eval-004',
+      anchor_timestamp: '2026-05-04T20:00:00Z',
+      forecast_model_name: 'tft_silver_v0',
+      decision_value_uah: 126,
+      oracle_value_uah: 140,
+      regret_uah: 14,
+      regret_ratio: 0.1,
+      total_degradation_penalty_uah: 5,
+      total_throughput_mwh: 0.25,
+      committed_action: 'DISCHARGE',
+      committed_power_mw: 0.1,
+      rank_by_regret: 1,
+      evaluation_payload: { data_quality_tier: 'thesis_grade' }
+    }
+  ]
+}
+
+describe('defense dataset summaries', () => {
+  it('summarizes benchmark evidence without inventing fallback data', () => {
+    const summary = summarizeDefenseBenchmark(benchmarkResponse)
+
+    expect(summary).toMatchObject({
+      tenantId: 'client_003_dnipro_factory',
+      marketVenue: 'DAM',
+      dataQualityTier: 'thesis_grade',
+      anchorCount: 2,
+      modelCount: 2,
+      bestModelName: 'strict_similar_day',
+      meanRegretUah: 18,
+      medianRegretUah: 15,
+      sourceMode: 'fastapi_live'
+    })
+  })
+
+  it('groups model rows and keeps strict similar-day as control first', () => {
+    const rows = buildDefenseModelRows(benchmarkResponse)
+
+    expect(rows.map(row => row.modelName)).toEqual(['strict_similar_day', 'tft_silver_v0'])
+    expect(rows[0]).toMatchObject({
+      modelName: 'strict_similar_day',
+      role: 'control',
+      anchorCount: 2,
+      winRate: 0.5,
+      meanRegretUah: 16,
+      medianRegretUah: 16
+    })
+    expect(rows.at(1)?.meanRegretUah).toBe(22)
+  })
+
+  it('marks DFL and DT as research primitives, not live trading claims', () => {
+    const dfl: DflRelaxedPilotResponse = {
+      tenant_id: 'client_003_dnipro_factory',
+      row_count: 12,
+      mean_relaxed_regret_uah: 42,
+      academic_scope: 'differentiable_relaxed_lp_pilot_not_final_dfl',
+      rows: []
+    }
+    const dt: DecisionTransformerTrajectoryResponse = {
+      tenant_id: 'client_003_dnipro_factory',
+      row_count: 96,
+      episode_count: 4,
+      academic_scope: 'offline_dt_training_trajectory_not_live_policy',
+      rows: []
+    }
+    const live: SimulatedLiveTradingResponse = {
+      tenant_id: 'client_003_dnipro_factory',
+      row_count: 24,
+      simulated_only: true,
+      rows: []
+    }
+    const dtPolicy: DecisionPolicyPreviewResponse = {
+      tenant_id: 'client_003_dnipro_factory',
+      row_count: 24,
+      policy_run_id: 'dt-preview-1',
+      created_at: '2026-05-05T12:00:00Z',
+      policy_readiness: 'ready_for_operator_preview',
+      live_policy_claim: false,
+      market_execution_enabled: false,
+      constraint_violation_count: 0,
+      mean_value_gap_uah: 17,
+      total_value_vs_hold_uah: 114,
+      forecast_context_source: 'nbeatsx_tft_forecast_context',
+      forecast_context_row_count: 24,
+      forecast_context_coverage_ratio: 1,
+      forecast_context_warning: null,
+      policy_state_features: ['SOC', 'SOH', 'market price'],
+      policy_value_interpretation: 'value_gap = oracle - expected',
+      operator_boundary: 'preview_only_requires_gatekeeper_and_operator_review',
+      academic_scope: 'offline_dt_policy_preview_not_market_execution',
+      rows: []
+    }
+
+    const rows = buildResearchReadinessRows({ dfl, dt, dtPolicy, live })
+
+    expect(rows).toEqual([
+      {
+        label: 'DFL',
+        status: 'pilot',
+        metric: '42 UAH relaxed regret',
+        boundary: 'not full DFL'
+      },
+      {
+        label: 'Decision Transformer',
+        status: 'trajectory data',
+        metric: '4 episodes / 96 rows',
+        boundary: 'not live policy'
+      },
+      {
+        label: 'DT policy preview',
+        status: 'ready_for_operator_preview',
+        metric: '17 UAH mean value gap / 100% forecast-conditioned',
+        boundary: 'preview only'
+      },
+      {
+        label: 'Paper trading',
+        status: 'simulated only',
+        metric: '24 rows',
+        boundary: 'not market execution'
+      }
+    ])
+  })
+
+  it('summarizes offline strategy promotion without implying market execution', () => {
+    const response: DflScheduleValueProductionGateResponse = {
+      generated_at: '2026-05-11T02:54:50Z',
+      row_count: 2,
+      production_promote_count: 2,
+      promoted_source_model_names: ['nbeatsx_silver_v0', 'tft_silver_v0'],
+      fallback_strategy: 'strict_similar_day_default_fallback',
+      market_execution_enabled: false,
+      claim_scope: 'dfl_schedule_value_production_gate_offline_strategy_not_market_execution',
+      claim_boundary: 'offline_read_model_strategy_evidence_only_not_market_execution',
+      academic_scope: 'Offline Strategy Promotion evidence only.',
+      rows: []
+    }
+
+    expect(summarizeScheduleValuePromotionReadModel(response)).toBe(
+      '2/2 offline rows passed, market execution disabled'
+    )
+  })
+
+  it('keeps current demo evidence focused on V2+ and closed TFT portfolio evidence', () => {
+    expect(CURRENT_TFT_PORTFOLIO_CLOSURE).toMatchObject({
+      latestTenantAnchors: 90,
+      tftBetterCandidateCount: 24,
+      selectorFallbackCount: 90,
+      rollingPassCount: 0,
+      rollingWindowCount: 4,
+      status: 'negative_evidence'
+    })
+
+    expect(CURRENT_DASHBOARD_EXPERIMENTS.map(experiment => experiment.label)).toEqual([
+      'Headline',
+      'TFT portfolio',
+      'Poland shadow',
+      'Next branch'
+    ])
+    expect(CURRENT_POLAND_LAG24_SHADOW_CHALLENGER).toMatchObject({
+      latestHoldoutMeanRegretUah: 169.24,
+      frozenV2PlusMeanRegretUah: 174.77,
+      passingFeatureCount: 17,
+      featureCount: 24,
+      rollingPassCount: 1,
+      rollingWindowCount: 4,
+      status: 'positive_not_promoted'
+    })
+    expect(CURRENT_DASHBOARD_EXPERIMENTS.find(experiment => experiment.label === 'Poland shadow')?.meta).toContain(
+      'not promoted'
+    )
+
+    expect(CURRENT_REGRET_LADDER.map(point => point.label)).toEqual([
+      'strict_similar_day',
+      'Frozen V2',
+      'Raw V2+',
+      'Calibrated V2+',
+      'V3/V4/V5',
+      'Official bridge DFL/DT'
+    ])
+    expect(CURRENT_REGRET_LADDER.find(point => point.status === 'headline')).toMatchObject({
+      label: 'Calibrated V2+',
+      meanRegretUah: 174.77
+    })
+    expect(CURRENT_REGRET_LADDER.find(point => point.label === 'Calibrated V2+')?.note).toContain(
+      'Prior-only forecast correction'
+    )
+    expect(CURRENT_TFT_PORTFOLIO_DIAGNOSTICS.map(point => `${point.numerator}/${point.denominator}`)).toEqual([
+      '24/90',
+      '90/90',
+      '0/4'
+    ])
+    expect(CURRENT_TFT_USE_DECISION.map(point => point.label)).toEqual([
+      'What worked',
+      'Why not use now',
+      'Promotion blocker',
+      'How to make TFT usable'
+    ])
+    expect(CURRENT_TFT_USE_DECISION.find(point => point.label === 'Why not use now')?.body).toContain(
+      'prior-only selector'
+    )
+    expect(CURRENT_TFT_USE_DECISION.find(point => point.label === 'Promotion blocker')?.body).toContain(
+      'leak final-holdout'
+    )
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.map(point => point.label)).toEqual([
+      '24 good schedules',
+      'Why not select them',
+      'Prior-only selector',
+      'Why it failed',
+      'What next'
+    ])
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.find(point => point.label === 'Why not select them')?.englishBody).toContain(
+      'leakage'
+    )
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.find(point => point.label === 'Prior-only selector')?.ukrainianBody).toContain(
+      'realized prices'
+    )
+    expect(CURRENT_TFT_SAFE_SELECTION_EXPLAINER.find(point => point.label === 'Why it failed')?.ukrainianBody).toContain(
+      '90/90'
+    )
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY.map(point => point.label)).toEqual([
+      'Frozen V2 to V2+',
+      'Better schedule map',
+      'Safe fallback',
+      'What it proves'
+    ])
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY[0]?.value).toBe('206.37 -> 174.77 UAH')
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY.find(point => point.label === 'Better schedule map')?.englishBody).toContain(
+      'terminal-SOC'
+    )
+    expect(CURRENT_V2_PLUS_IMPROVEMENT_STORY.find(point => point.label === 'What it proves')?.ukrainianBody).toContain(
+      'raw forecast'
+    )
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.map(point => point.label)).toEqual([
+      'Teacher data',
+      'Prediction target',
+      'LAVA-style layer',
+      'Promotion gate'
+    ])
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Promotion gate')?.body).toContain(
+      'market_execution_enabled=false'
+    )
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Prediction target')?.body).toContain(
+      'BUY/SELL/HOLD'
+    )
+    expect(CURRENT_DT_LAVA_NEXT_STEPS.find(point => point.label === 'Teacher data')?.body).toContain(
+      'V10'
+    )
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER.map(section => section.label)).toEqual([
+      'Offline vs online',
+      'V2+ pipeline',
+      'Governance to recommendation',
+      'Path to DT/LAVA'
+    ])
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[0]?.englishBody).toContain('not automatic market bidding')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[0]?.ukrainianBody).toContain('не автоматичною біржовою заявкою')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[1]?.englishBullets.join(' ')).toContain('174.77 UAH')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[3]?.ukrainianTitle).toContain('DT/LAVA')
+    expect(CURRENT_BILINGUAL_STRATEGY_EXPLAINER[3]?.englishBody).toContain('V10')
+  })
+})

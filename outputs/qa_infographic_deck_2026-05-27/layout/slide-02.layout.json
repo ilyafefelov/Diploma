@@ -1,0 +1,854 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/lxhz58",
+    "id": "lxhz58",
+    "slide": 2,
+    "layoutId": "613f4a95-d60c-4048-a56d-e80bd3e77249",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "97ffb965-4f90-4736-8a57-fa15fcddd985",
+    "masterLayoutName": "Master",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "Aptos",
+      "Aptos Display",
+      "Aptos Mono"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "613f4a95-d60c-4048-a56d-e80bd3e77249",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "97ffb965-4f90-4736-8a57-fa15fcddd985",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "97ffb965-4f90-4736-8a57-fa15fcddd985",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/al87ed8b",
+      "id": "1",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "alt": "Strict Similar Benchmark",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "asset": {
+        "assetId": "9ca0a468-7e5b-4feb-810a-07781bd31ef1",
+        "contentType": "image/png",
+        "byteLength": 904353
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cj6tovah",
+      "id": "2",
+      "bbox": [
+        0,
+        0,
+        1280,
+        720
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.33333)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/54zidony",
+      "id": "3",
+      "bbox": [
+        34,
+        30,
+        398,
+        660
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.91765)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/upwb2hwf",
+      "id": "4",
+      "bbox": [
+        60,
+        54,
+        72,
+        44
+      ],
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 24,
+        "typeface": "Aptos",
+        "color": "#087E79",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "typeface": "Aptos",
+            "color": "#087E79",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 24,
+              "typeface": "Aptos",
+              "color": "#087E79",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#E6F5F3",
+      "lineColor": "#9ED3CD",
+      "lineWidth": 1
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nap4r65w",
+      "id": "5",
+      "bbox": [
+        60,
+        112,
+        330,
+        92
+      ],
+      "geometry": "rect",
+      "text": "Strict Similar Benchmark",
+      "textPreview": "Strict Similar Benchmark",
+      "resolvedFontSize": 34,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 34,
+        "typeface": "Aptos Display",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Strict Similar"
+          },
+          {
+            "index": 2,
+            "text": "Benchmark"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Strict Similar Benchmark",
+          "resolvedTextStyle": {
+            "fontSize": 34,
+            "typeface": "Aptos Display",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Strict Similar Benchmark",
+              "fontSize": 34,
+              "typeface": "Aptos Display",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/cvixczed",
+      "id": "6",
+      "bbox": [
+        60,
+        210,
+        330,
+        92
+      ],
+      "geometry": "rect",
+      "text": "Как считается regret и связь с oracle",
+      "textPreview": "Как считается regret и связь с oracle",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 18,
+        "typeface": "Aptos",
+        "color": "#40566B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Как считается regret и связь с oracle"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Как считается regret и связь с oracle",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "typeface": "Aptos",
+            "color": "#40566B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Как считается regret и связь с oracle",
+              "fontSize": 18,
+              "typeface": "Aptos",
+              "color": "#40566B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5gbq1ory",
+      "id": "7",
+      "bbox": [
+        60,
+        328,
+        330,
+        130
+      ],
+      "geometry": "rect",
+      "text": "regret = oracle_value - achieved_value",
+      "textPreview": "regret = oracle_value - achieved_value",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 17,
+        "typeface": "Aptos Mono",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 14,
+          "right": 16,
+          "bottom": 12,
+          "left": 16
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "regret = oracle_value - achieved_value"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "regret = oracle_value - achieved_value",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "typeface": "Aptos Mono",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "regret = oracle_value - achieved_value",
+              "fontSize": 17,
+              "typeface": "Aptos Mono",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(247, 250, 251, 0.93725)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/u18jqh0f",
+      "id": "8",
+      "bbox": [
+        60,
+        492,
+        330,
+        130
+      ],
+      "geometry": "rect",
+      "text": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+      "textPreview": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 18,
+        "typeface": "Aptos",
+        "color": "#087E79",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Benchmark нужен как честный frozen"
+          },
+          {
+            "index": 2,
+            "text": "comparator для V2+, DT и forecast models."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "typeface": "Aptos",
+            "color": "#087E79",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Benchmark нужен как честный frozen comparator для V2+, DT и forecast models.",
+              "fontSize": 18,
+              "typeface": "Aptos",
+              "color": "#087E79",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jm1cfa9w",
+      "id": "9",
+      "bbox": [
+        460,
+        54,
+        760,
+        228
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.91765)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/b6xkf6dc",
+      "id": "10",
+      "bbox": [
+        492,
+        84,
+        700,
+        174
+      ],
+      "geometry": "rect",
+      "text": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом LP строит schedule по этому прогнозу.",
+      "textPreview": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом...",
+      "resolvedFontSize": 27,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 27,
+        "typeface": "Aptos Display",
+        "color": "#14213D",
+        "bold": true,
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Strict benchmark не обучается. Он берет похожий прошлый"
+          },
+          {
+            "index": 2,
+            "text": "день как прогноз: для Tue-Fri чаще yesterday, иначе same"
+          },
+          {
+            "index": 3,
+            "text": "weekday last week. Потом LP строит schedule по этому"
+          },
+          {
+            "index": 4,
+            "text": "прогнозу."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом LP строит schedule по этому прогнозу.",
+          "resolvedTextStyle": {
+            "fontSize": 27,
+            "typeface": "Aptos Display",
+            "color": "#14213D",
+            "bold": true,
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Strict benchmark не обучается. Он берет похожий прошлый день как прогноз: для Tue-Fri чаще yesterday, иначе same weekday last week. Потом LP строит schedule по этому прогнозу.",
+              "fontSize": 27,
+              "typeface": "Aptos Display",
+              "color": "#14213D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/il0rqd4v",
+      "id": "11",
+      "bbox": [
+        460,
+        312,
+        760,
+        288
+      ],
+      "geometry": "rect",
+      "fillColor": "rgba(255, 255, 255, 0.91765)",
+      "lineColor": "#D6E0E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tcj6tova",
+      "id": "12",
+      "bbox": [
+        496,
+        342,
+        688,
+        230
+      ],
+      "geometry": "rect",
+      "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices\n- oracle_value: тот же LP, но с actual future prices\n- oracle - это верхняя планка, не реальный доступный режим\n- Меньше regret = лучше decision quality",
+      "textPreview": "- achieved_value: schedule из strict forecast, оцененный на actual prices | - oracle_value: тот же LP, но с actual future prices | - orac...",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 22,
+        "typeface": "Aptos",
+        "color": "#14213D",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 4,
+        "lines": [
+          {
+            "index": 1,
+            "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices"
+          },
+          {
+            "index": 2,
+            "text": "- oracle_value: тот же LP, но с actual future prices"
+          },
+          {
+            "index": 3,
+            "text": "- oracle - это верхняя планка, не реальный доступный режим"
+          },
+          {
+            "index": 4,
+            "text": "- Меньше regret = лучше decision quality"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- achieved_value: schedule из strict forecast, оцененный на actual prices",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "- oracle_value: тот же LP, но с actual future prices",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- oracle_value: тот же LP, но с actual future prices",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 3,
+          "text": "- oracle - это верхняя планка, не реальный доступный режим",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- oracle - это верхняя планка, не реальный доступный режим",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 4,
+          "text": "- Меньше regret = лучше decision quality",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "typeface": "Aptos",
+            "color": "#14213D",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "- Меньше regret = лучше decision quality",
+              "fontSize": 22,
+              "typeface": "Aptos",
+              "color": "#14213D"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0rqd4vmt",
+      "id": "13",
+      "bbox": [
+        492,
+        628,
+        520,
+        34
+      ],
+      "geometry": "rect",
+      "text": "DAM recommendation preview / offline evidence / no market execution",
+      "textPreview": "DAM recommendation preview / offline evidence / no market execution",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 1,
+        "fontSize": 14,
+        "typeface": "Aptos",
+        "color": "#40566B",
+        "alignment": "left",
+        "verticalAlignment": "top",
+        "insets": {
+          "top": 0,
+          "right": 0,
+          "bottom": 0,
+          "left": 0
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "DAM recommendation preview / offline evidence / no market execution"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "DAM recommendation preview / offline evidence / no market execution",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "Aptos",
+            "color": "#40566B",
+            "alignment": "left"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "DAM recommendation preview / offline evidence / no market execution",
+              "fontSize": 14,
+              "typeface": "Aptos",
+              "color": "#40566B"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(0, 0, 0, 0)",
+      "lineColor": "rgba(0, 0, 0, 0)",
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/byhgn29g",
+      "id": "14",
+      "bbox": [
+        1012,
+        620,
+        178,
+        42
+      ],
+      "geometry": "rect",
+      "text": "market_execution_enabled=false",
+      "textPreview": "market_execution_enabled=false",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 14,
+        "typeface": "Aptos",
+        "color": "#C7372F",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4,
+          "right": 8,
+          "bottom": 4,
+          "left": 8
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "market_execution_enabled"
+          },
+          {
+            "index": 2,
+            "text": "=false"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "market_execution_enabled=false",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "typeface": "Aptos",
+            "color": "#C7372F",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "market_execution_enabled=false",
+              "fontSize": 14,
+              "typeface": "Aptos",
+              "color": "#C7372F",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "rgba(255, 241, 240, 0.9098)",
+      "lineColor": "#F0B3AD",
+      "lineWidth": 1
+    }
+  ],
+  "composeRuns": []
+}

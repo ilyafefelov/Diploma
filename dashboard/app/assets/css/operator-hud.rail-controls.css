@@ -1,0 +1,176 @@
+.action-button-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.field-select {
+  width: 100%;
+  border: 2px solid var(--operator-rail-field-border);
+  border-radius: 0.55rem;
+  background: linear-gradient(180deg, var(--operator-rail-field-gradient-top), var(--operator-rail-field-gradient-bottom));
+  padding: 0.82rem 0.9rem;
+  color: var(--ink-strong);
+  box-shadow: var(--operator-rail-field-shadow);
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.field-select-compact {
+  padding: 0.45rem 0.55rem;
+  font-size: 0.82rem;
+}
+
+.field-select:focus-visible,
+.dock-select:focus-visible {
+  outline: 2px solid var(--operator-metric-capsule-focus-outline);
+  outline-offset: 3px;
+  border-color: var(--operator-rail-field-focus-border);
+  box-shadow: var(--operator-rail-field-focus-shadow);
+}
+
+.check-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--operator-text-bright-muted);
+  font-size: 0.84rem;
+  font-weight: 800;
+}
+
+.check-toggle input {
+  inline-size: 1rem;
+  block-size: 1rem;
+  accent-color: var(--plumbob-green);
+}
+
+.control-meta {
+  color: var(--operator-text-muted);
+  line-height: 1.45;
+}
+
+.note-block__copy,
+.note-list {
+  color: var(--operator-text-readable);
+  line-height: 1.55;
+}
+
+.operator-frame .notes-panel .collapsible-card {
+  background:
+    radial-gradient(circle at top right, var(--operator-rail-notes-card-accent-wash), transparent 34%),
+    linear-gradient(180deg, var(--operator-rail-notes-card-gradient-top), var(--operator-rail-notes-card-gradient-bottom)) !important;
+  color: var(--operator-rail-notes-card-text) !important;
+}
+
+.operator-frame .notes-panel .collapsible-card[open] {
+  border-color: var(--operator-rail-notes-card-open-border) !important;
+  background:
+    radial-gradient(circle at top right, var(--operator-rail-notes-card-open-accent-wash), transparent 34%),
+    linear-gradient(180deg, var(--operator-rail-notes-card-open-gradient-top), var(--operator-rail-notes-card-open-gradient-bottom)) !important;
+}
+
+.operator-frame .notes-panel .collapsible-card__summary,
+.operator-frame .notes-panel .collapsible-card__title,
+.operator-frame .notes-panel .collapsible-card__body,
+.operator-frame .notes-panel .note-block__copy,
+.operator-frame .notes-panel .note-list {
+  color: var(--operator-rail-notes-card-text) !important;
+}
+
+.operator-frame .notes-panel .collapsible-card__eyebrow {
+  color: var(--operator-accent) !important;
+}
+
+.note-list {
+  padding-left: 1rem;
+}
+
+.config-preview {
+  overflow: auto;
+  max-height: 10rem;
+  border-radius: 0.7rem;
+  background: var(--operator-rail-config-surface);
+  padding: 0.75rem;
+  color: var(--operator-rail-config-text);
+  font-size: 0.76rem;
+  line-height: 1.55;
+}
+
+.chart-fallback {
+  display: flex;
+  min-height: 18rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--operator-rail-fallback-border);
+  border-radius: 0.85rem;
+  color: var(--operator-rail-fallback-text);
+  pointer-events: none;
+  touch-action: pan-y;
+}
+
+.chart-fallback-compact {
+  min-height: 13rem;
+}
+
+.control-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 2.55rem;
+  border: 1px solid var(--operator-control-button-border);
+  border-radius: 0.68rem;
+  padding: 0.68rem 0.82rem;
+  color: var(--operator-control-foreground);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease, opacity 160ms ease;
+}
+
+.control-button .icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+.control-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.control-button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.control-button-primary {
+  background: linear-gradient(180deg, var(--operator-control-button-primary-gradient-top), var(--operator-control-button-primary-gradient-bottom));
+  box-shadow: var(--operator-control-button-primary-shadow);
+}
+
+.control-button-green {
+  background: linear-gradient(180deg, var(--operator-control-button-success-gradient-top), var(--operator-control-button-success-gradient-bottom));
+  box-shadow: var(--operator-control-button-success-shadow);
+}
+
+.control-button-secondary {
+  background: linear-gradient(180deg, var(--operator-control-button-danger-gradient-top), var(--operator-control-button-danger-gradient-bottom));
+  box-shadow: var(--operator-control-button-danger-shadow);
+}
+
+.workspace-alert {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  justify-content: space-between;
+  border: 1px solid var(--operator-rail-alert-border);
+  border-radius: 0.85rem;
+  background: linear-gradient(180deg, var(--operator-rail-alert-gradient-top), var(--operator-rail-alert-gradient-bottom));
+  padding: 1rem 1.25rem;
+  color: var(--operator-rail-alert-text);
+}
+
+.workspace-alert__copy {
+  margin-top: 0.45rem;
+  line-height: 1.6;
+}

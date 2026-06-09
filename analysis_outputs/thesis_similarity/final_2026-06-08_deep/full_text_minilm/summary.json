@@ -1,0 +1,15 @@
+{
+  "thesis_files": [
+    "analysis_outputs\\thesis_similarity\\final_2026-06-08_deep\\inputs\\google_doc_export_2026-06-08-current.txt"
+  ],
+  "source_files": 74,
+  "internal_files": 239,
+  "thesis_chunks": 163,
+  "external_source_chunks": 5163,
+  "internal_source_chunks": 2045,
+  "external_hits": 85,
+  "internal_hits": 4,
+  "citation_issues": 0,
+  "semantic_note": "semantic model: sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "extraction_errors": []
+}

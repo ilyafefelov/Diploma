@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">TFT as complementary forecast context</title>
+  <desc id="desc">TFT contributes uncertainty and scenario context but is not promoted over V2+.</desc>
+  <defs>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 27px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 20px Arial, sans-serif; fill: #334155; }
+      .small { font: 500 17px Arial, sans-serif; fill: #475569; }
+      .white { font: 800 19px Arial, sans-serif; fill: #fff; }
+      .line { fill: none; stroke-width: 6; }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <text x="72" y="88" class="title" style="font-size:42px">TFT as complementary forecast context</text>
+  <text x="72" y="128" class="subtitle">Forecast model корисний для uncertainty/diversity, але не стає default strategy без downstream value gate.</text>
+
+  <g transform="translate(90 210)">
+    <rect width="620" height="430" rx="24" fill="#ecfeff" stroke="#0891b2" stroke-width="3"/>
+    <text x="34" y="58" class="head">Forecast lane</text>
+    <polyline class="line" stroke="#06b6d4" points="60,300 140,240 220,280 300,170 380,220 460,120 540,180"/>
+    <polyline class="line" stroke="#f97316" stroke-dasharray="14 12" points="60,330 140,270 220,310 300,205 380,255 460,160 540,220"/>
+    <text x="60" y="364" class="body">Scenario shape, volatility,</text>
+    <text x="60" y="398" class="body">and horizon context.</text>
+  </g>
+
+  <g transform="translate(790 210)">
+    <rect width="330" height="430" rx="24" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="34" y="58" class="head">Where it helps</text>
+    <text x="34" y="122" class="body">1. Unpublished horizons</text>
+    <text x="34" y="170" class="body">2. Scenario diversity</text>
+    <text x="34" y="218" class="body">3. Operator context</text>
+    <text x="34" y="266" class="body">4. Read-model dashboard</text>
+    <rect x="34" y="324" width="260" height="54" rx="27" fill="#16a34a"/>
+    <text x="73" y="358" class="white">context, not bid</text>
+  </g>
+
+  <g transform="translate(1190 210)">
+    <rect width="320" height="430" rx="24" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="34" y="58" class="head">Why not promoted</text>
+    <text x="34" y="122" class="body">No better headline regret</text>
+    <text x="34" y="170" class="body">No default switch gate</text>
+    <text x="34" y="218" class="body">No market execution</text>
+    <text x="34" y="266" class="body">No publication receipts</text>
+    <rect x="34" y="324" width="240" height="54" rx="27" fill="#ef4444"/>
+    <text x="72" y="358" class="white">shadow lane</text>
+  </g>
+
+  <text x="90" y="760" class="small">Interpretation: TFT is not failure; it is useful exogenous context until decision-value gates show a safer replacement.</text>
+</svg>

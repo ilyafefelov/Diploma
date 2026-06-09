@@ -89,12 +89,19 @@ export const useWeatherControls = () => {
     }
 
     try {
-      operatorStatus.value = await $fetch<OperatorStatus>('/api/control-plane/dashboard/operator-status', {
+      operatorStatus.value = await $fetch<OperatorStatus | null>('/api/control-plane/dashboard/operator-status', {
         query: {
           tenant_id: tenantId,
           flow_type: 'weather_control'
         }
       })
+
+      if (!operatorStatus.value) {
+        runConfig.value = null
+        materializeResult.value = null
+        error.value = ''
+        return
+      }
 
       const payload = operatorStatus.value.payload
       if (isWeatherRunConfigPayload(payload)) {

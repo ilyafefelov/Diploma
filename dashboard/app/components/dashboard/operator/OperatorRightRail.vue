@@ -4,6 +4,7 @@ import OperatorGatekeeperPanel from '~/components/dashboard/operator/OperatorGat
 import OperatorMoodPanel from '~/components/dashboard/operator/OperatorMoodPanel.vue'
 import OperatorNotesPanel from '~/components/dashboard/operator/OperatorNotesPanel.vue'
 import OperatorWeatherControlsPanel from '~/components/dashboard/operator/OperatorWeatherControlsPanel.vue'
+import type { GatekeeperValidationStatusResponse } from '~/types/control-plane'
 import type {
   OperatorGatekeeperAction,
   OperatorMoodChip,
@@ -18,9 +19,16 @@ defineProps<{
   moodChips: OperatorMoodChip[]
   batteryStatusLabel: string
   batterySocPercent: number
+  batterySocSourceLabel: string
+  batterySocFormula: string
   batterySohProxyPercent: number
+  batterySohSourceLabel: string
+  batterySohFormula: string
+  batteryTelemetryIngestLabel: string
+  batteryTelemetryIngestTooltip: string
   latestRecommendedPowerLabel: string
   gatekeeperActions: OperatorGatekeeperAction[]
+  gatekeeperStatus: GatekeeperValidationStatusResponse | null
   activeAlertCount: number
   statusLabel: string
   isPreparing: boolean
@@ -41,18 +49,31 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <aside class="operator-right-rail">
-    <OperatorMoodPanel :chips="moodChips" />
+  <aside
+    class="operator-right-rail"
+    aria-label="Operator controls and readiness"
+  >
+    <OperatorMoodPanel
+      :chips="moodChips"
+      :active-alert-count="activeAlertCount"
+    />
 
     <OperatorBatteryPanel
       :status-label="batteryStatusLabel"
       :soc-percent="batterySocPercent"
+      :soc-source-label="batterySocSourceLabel"
+      :soc-formula="batterySocFormula"
       :soh-percent="batterySohProxyPercent"
+      :soh-source-label="batterySohSourceLabel"
+      :soh-formula="batterySohFormula"
+      :telemetry-ingest-label="batteryTelemetryIngestLabel"
+      :telemetry-ingest-tooltip="batteryTelemetryIngestTooltip"
       :power-label="latestRecommendedPowerLabel"
     />
 
     <OperatorGatekeeperPanel
       :actions="gatekeeperActions"
+      :gatekeeper-status="gatekeeperStatus"
       :active-alert-count="activeAlertCount"
     />
 

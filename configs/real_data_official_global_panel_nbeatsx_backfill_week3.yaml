@@ -1,0 +1,73 @@
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2025-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2025-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  official_global_panel_training_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      horizon_hours: 24
+      temporal_scaler_type: "robust"
+  nbeatsx_official_global_panel_rolling_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      max_eval_windows: 365
+      anchor_batch_start_index: 0
+      anchor_batch_size: 4
+      horizon_hours: 24
+      nbeatsx_max_steps: 25
+      nbeatsx_random_seed: 20260511
+      anchor_batch_order: "chronological"
+      resume_generated_at_iso: "2026-05-11T20:00:00+00:00"
+      merge_persisted_batches: true
+  nbeatsx_official_global_panel_rolling_horizon_calibration_frame:
+    config:
+      min_prior_anchors: 14
+      rolling_calibration_window_anchors: 28
+  dfl_official_global_panel_schedule_candidate_library_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "nbeatsx_official_global_panel_v1,nbeatsx_official_global_panel_horizon_calibrated_v1"
+      final_validation_anchor_count_per_tenant: 18
+      perturb_spread_scale_grid_csv: "0.9,1.1"
+      perturb_mean_shift_grid_uah_mwh_csv: "-250.0,250.0"
+  dfl_official_global_panel_schedule_candidate_library_v2_frame:
+    config:
+      blend_weights_csv: "0.25,0.5,0.75"
+      residual_min_prior_anchors: 14
+      min_final_holdout_tenant_anchor_count_per_source_model: 90
+  dfl_official_global_panel_schedule_value_learner_v2_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "nbeatsx_official_global_panel_v1,nbeatsx_official_global_panel_horizon_calibrated_v1"
+      final_validation_anchor_count_per_tenant: 18
+      min_validation_tenant_anchor_count_per_source_model: 90
+  dfl_official_global_panel_schedule_value_learner_v2_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "nbeatsx_official_global_panel_v1,nbeatsx_official_global_panel_horizon_calibrated_v1"
+      final_validation_anchor_count_per_tenant: 18
+      min_validation_tenant_anchor_count_per_source_model: 90
+  dfl_official_global_panel_schedule_value_learner_v2_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      forecast_model_names_csv: "nbeatsx_official_global_panel_v1,nbeatsx_official_global_panel_horizon_calibrated_v1"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      min_robust_passing_windows: 3
+      min_validation_tenant_anchor_count_per_source_model: 90
+  dfl_official_global_panel_schedule_value_production_gate_frame:
+    config:
+      source_model_names_csv: "nbeatsx_official_global_panel_v1,nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_tenant_count: 5
+      min_validation_tenant_anchor_count_per_source_model: 90
+      min_mean_regret_improvement_ratio: 0.05
+      min_rolling_window_count: 4
+      min_rolling_strict_pass_windows: 3

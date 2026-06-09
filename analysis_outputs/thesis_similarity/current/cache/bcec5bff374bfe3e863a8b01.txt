@@ -1,0 +1,675 @@
+Decision-Focused Forecasting:
+A Differentiable
+Multistage Optimisation Architecture
+Egon Peršak E.Persak@sms.ed.ac.uk
+School of Mathematics
+University of Edinburgh
+Miguel F. Anjos
+School of Mathematics
+University of Edinburgh
+Abstract
+Most decision-focused learning work has focused on single stage problems
+whereas many real-world decision problems are more appropriately modelled
+using multistage optimisation. In multistage problems contextual information
+is revealed over time, decisions have to be taken sequentially, and decisions now
+have an intertemporal effect on future decisions. Decision-focused forecasting
+is a recurrent differentiable optimisation architecture that expresses a fully
+differentiable multistage optimisation approach. This architecture enables
+us to account for the intertemporal decision effects of forecasts. We show
+what gradient adjustments are made to account for the state-path caused by
+forecasting. We apply the model to multistage problems in energy storage
+arbitrage and portfolio optimisation and report that our model outperforms
+existing approaches.
+1 Introduction
+Many real world decision problems are recurrent and decisions taken now have a bearing on
+future decisions. Since information about such problems is revealed over time it is preferable
+to model them as having multiple stages so each set of decisions considers the most recently
+available contextual information. The broad utility of being able to systematically solve such
+problems is obvious. It is utilised as a core decision making technology in applications as
+varied as energy systems planning, finance, radiotherapy, and supply chain management.
+The mathematical optimisation of multistage problems is computationally intense and often
+relies on specialised decomposition algorithms due to the size of real-world problems and
+scenario trees needed to capture them. This is further complicated by the fact that problem
+parameters are often not known before decisions have to be made and that prediction in the
+time series domain is famously difficult.
+1
+arXiv:2405.14719v2  [math.OC]  28 May 2025
+
+The multistage setting inherits the alignment problem of contextual optimisation: the perfor-
+mance on the prediction task is not necessarily aligned with performance on the downstream
+decision task. Decisions are often highly sensitive to errors in problem parametrisation.
+This alignment problem is hard to account for a priori to the decision task as we do not
+have access to the conditional distribution of the unknown parameters. Decision-focused
+learning emerged to solve the alignment problem problem by training predictive pipelines
+with respect to downstream decision performance and in doing so implicitly learning the
+contextual sensitivity structure of the problem. In the case of multistage optimisation the
+prediction problem is harder and decision taken now propagate to future decision-making
+exacerbating the alignment problem.
+We propose a model that expresses the deterministic policy multistage optimisation approach
+as a fully differentiable computation to tackle the alignment problem in multistage decision
+problems. The deterministic policy approach is a simple approach in which only one predic-
+tion/forecast is made at each stage. The relative ease of computation in this approach enables
+the use of differentiable optimisation and consequently an extension of the decision-focused
+paradigm to multistage problems.
+Our main contributions are as follows:
+• We propose the first decision-focused model for continual multistage optimisation
+problems. Our model expresses a fully differentiable deterministic policy approach to
+multistage optimisation.
+• We analyse the gradients computed by our model to illustrate why this method
+improves on conventional DFL in multistage settings. In contrast to conventional
+DFL our approach adjusts for the state-path the prediction model causes enabling
+intertemporal alignment.
+• We present two experiments in which we implement our model and show it successfully
+compares with DFL and the more conventional prediction-focused approach.
+2 Background
+Setting We focus on structured decision problems under parameter uncertainty which have
+to be resolved over discrete time. The temporal structure of the process is as follows: at
+staget we have an existing statest−1∈R|s|and access to contextzt∈Rct. We need to make
+decisions xt∈Rd before the uncertain parametersθt∈Rp for the stage are revealed. This
+temporal structure is often referred to as here-and-now decisions. We assume the state is
+certain so not determined by the realisation ofθt−1 and that the uncertainty is only in the
+objective. The state is a subset of decision variablesst⊆xt. The contextzt is a catch-all
+term which includes all past realisations of the unknown parameters and previous auxiliary
+contexts. The decisions at each stage are constrained to a setxt∈Xt(st−1) determined
+only by the previous state. We restrict ourselves to sets which are expressible with convex
+optimisation compliant constraints. We assume that this set is non-empty for any value of
+s also known as relatively complete recourse. The decisions at each stage are scored using
+2
+
+a stage-wise objective function determined by the uncertain parameters which we denote
+as f(xt,θt). Let the indext :t +H−1 denote the matrix of variables corresponding toH
+stages t to t +H−1 for examplext:t+H−1∈Rd×H. Assuming a risk neutral decision maker
+the decision task for a task horizon ofH stages is:
+minxt:t+H− 1
+E
+θt:t+H− 1
+[∑H−1
+i=0 f(xt+i,θt+i)
+]
+s.t. xt+i∈Xt+i(st+i−1) ∀i∈{0 :H−1}
+(1)
+This problem is difficult to solve even when the exact (conditional) distribution ofθt:t+h−1 is
+known for all but the simplest distributions. In practiceθt is a multivariate time series with
+complex dependency structures making problem (1) intractable. Multistage optimisation is
+primarily concerned with finding good approximations to this problem.
+Multistage Optimisation The multistage optimisation method zoo is vast and there is
+no dominant method as tasks differ in nature and scope. The expectation is approximated
+using sampling which can be simple or have more intricate structure such as scenario trees.
+In multi-scenario approaches a significant feature are non-anticipativity constraints meaning
+decision variables have to take the same value in each scenario for a given stage. Methods
+differ by how many scenarios they consider and how they treat non-anticipativity constraints
+(Wang et al., 2022). The simplest multistage optimisation approach is having a single scenario
+at each stage known as the deterministic policy approach. Two-stage approaches relax
+non-anticipativity constraints for stages after the current stage meaning the decisions taken
+now reflect flexibility later. Multi-scenario approaches increase the problem size with the
+number of scenarios in terms on the number of constraints and the number of variables
+in the case of two-stage approaches. The increased problem size often requires the use of
+decomposition algorithms. A popular family of approaches constrains possible future decision
+making to linear decision rules, which results in a significantly easier optimisation problem.
+The distribution of the unknown parameters is typically not known and has to be estimated
+based on past observations of context and realisations. The forecasting problem with a
+forecast horizon ofh is finding a mappingmh(zt;W ) = ˆθt:t+h−1 which optimises some loss
+criterion when compared with true realisationsθt:t+h−1. We useW to denote the learnable
+parameters of the prediction model. This prediction problem is difficult due to the nature of
+the data generating process (DGP) in time series. The unknown parametersθt are typically
+highly temporally dependent (either locally or periodically) and the dynamics of the DGP
+often change over time (non-stationarity). Time series tend to have fewer observations
+available than other learning tasks. Forecasting is difficult even for single scenario point
+estimates, forecasting/simulating multiple scenarios is even more challenging.
+Given that new contextual information is available at each stage it is sensible to update
+the forecast and solve the problem approximation at each stage to obtain decisions for
+the current stage. This also provides a solution to problems which are continual and do
+not have a finite task horizon. Since solving and infinite horizon problem directly is not
+computationally tractable we instead tackle it by repeatedly solving the same problem but
+only for the stages in a set fixed planning horizon. We refer to this clipped version of the
+problem as the planning problem. We denote the planning horizon ash to distinguish it
+3
+
+from the task horizonh≤H. Minor adjustments are often added to the planning problem
+to reflect the continual nature of the overall task such as forcing the final state to be the
+same as the initial state or assigning value to the terminal state. Determining the optimal
+planning horizon in contextual multistage optimisation is a hard problem as it has to balance
+the myopia of decision planning with the limited predictability of unknown parameters for
+longer forecasting horizons.
+Decision-F ocused Learning The key difficulty in contextual optimisation is that the per-
+formance on the prediction task does not necessarily align with performance the decision task.
+This alignment depends on the local sensitivity of the optimal solution to errors in prediction
+and the unobserved conditional uncertainty of the DGP. Even very low generalisation error
+in prediction models can result in highly suboptimal decision making. It is hard to account
+for the alignment factors ex ante analytically due to combinatorially large feasible spaces and
+lack of information about the DGP. Decision-focused learning (DFL) solves this alignment
+problem by explicitly training the prediction model for performance on the decision task.
+DFL models learn the contextual alignment dynamics of the decision problem. We use regret
+as our measure for decision quality. LetF be the whole objective function andx∗(ˆθ) the
+optimal solution given parametersˆθ, regret is defined as how much objective value is lost as
+a result of our prediction versus having perfect information:
+Lregret =F (x∗(ˆθ),θ)−F (x∗(θ),θ) (2)
+Mathematically optimising for this loss function is difficult because it requires differentiating
+across an implicit functionx∗which has anarg min operator. Differentiable optimisation
+(DO) has seen a lot of recent attention (Amos & Kolter, 2017; Elmachtoub & Grigas, 2022;
+Mandi et al., 2023). Our examples contend with quadratic programming (QP) problems
+for which gradients can be obtained analytically by solving a linear system of optimality
+condition differentials. In our implementation we employ cvxpylayers (Agrawal et al., 2019a),
+which extends this method to general conic programs (Agrawal et al., 2019b) of which QP is
+a special case. Not all DO methods can be used as a layer as some compute or approximate
+∂L
+∂ˆθinstead of ∂x∗
+∂ˆθfor efficiency or mathematical reasons. We refer to methods which can be
+used as a layer as implicit layers. Mandi et al. (2023) present an excellent recent survey on
+the area. From now on we use the notationx∗:Rp×h↦→Rd×h for differentiable optimisation
+layers andx∗
+t∈Rd to as the solution for the current statet.
+In multistage optimisation decisions taken now have an effect on downstream decision making.
+In our setting this is transmitted by the state variables. The intertemporal effect makes
+the alignment problem harder as errors in prediction now also have an effect on decisions
+later. Extending the decision-focused paradigm to multistage problems is therefore highly
+desirable. This work does not develop new DO methods, instead proposing decision-focused
+forecasting (DFF) a novel neural architecture composed of many implicit layers which
+expresses multistage optimisation in a fully differentiable computation. We express the
+simplest multistage optimisation approach: deterministic policy. This choice is motivated by
+two factors: the relative difficulty of learning simulators compared to point predictors, and
+the fact that implicit layers typically require at least one solver call per instance making the
+4
+
+larger multi-scenario optimisation problems computationally burdensome. Our architecture
+is extendable to two-stage multistage approaches with the use of differentiable simulators.
+2.1 Existing Work
+There have been limited attempts to extend DFL to multistage settings. Hu et al. (2024a)
+propose a two-stage approach for solving mixed-integer linear programs with parameter
+uncertainty in constraints. They focus on problems where recourse is available after the
+observation of true parameters and model this by adding a second stage penalty function
+which reflect the cost of the recourse adjustment to feasibility. While originally designed for
+packing and covering linear programs the framework generalises to the simplest multistage
+optimisation case of a single scenario with two stages. This approach was later extended in
+Hu et al. (2024b) to finite multistage settings by training a decision-focused prediction model
+for each stage. It is not clear how well this non-recursive architecture extends to continual
+settings.
+Deterministic policy approaches are highly reminiscent of model predictive control (MDP)
+from engineering. Differentiable optimisation has been applied to learn the structure of model
+predictive control problems (East et al., 2020). The objective of the learning in MDP is a set
+of parameters directly describing the problem dynamics using imitation learning whereas we
+aim to learn how to contextually predict problem parameters.
+Some multistage stochastic optimisation approaches integrate contextual/covariate/side
+information. Ban et al. (2019) use a regularised regression model to construct scenario trees
+informed by contextual information. This approach is not decision-focused but provides great
+insight in how to construct scenario trees for cold-start forecasting problems. Bertsimas et al.
+(2023) use non-parametric machine learning approaches to assess similarity between a given
+context and contexts in the training set and approximates the true problem by weighing
+past realisations, which are treated as scenarios, based on the similarity score. In addition
+a norm ball around each scenario is considered to account for aleatoric uncertainty. The
+theoretical version of this modelling approach has nice asymptotic convergence properties.
+The problem is approximated using linear decision rules in a two-stage manner allowing for
+multiple policies. This approach is more decision-focused but completely relies on existing
+observations being sufficiently similar to future observations. It does not attempt to learn the
+latent structure of the DGP to generalise to new contexts which is necessary in situations
+with limited data.
+Multistage optimisation problems can be cast as Markov decision problems and therefore
+solved with (deep) reinforcement learning (RL). Given the structure of the problem is known
+exactly an RL approach is at a disadvantage since it has to learn the problem dynamics
+implicitly in value/action/policy functions on top of the alignment dynamics. Generally RL
+is used in multistage decision problems when the structure of the problem is not known
+exactly but interactions with the problem environment can be simulated/observed or the
+problem size is computationally intractable. For a more complete discussion of approaches to
+sequential decision making we refer the reader to the unified framework proposed by Powell
+(2022).
+5
+
+Figure 1: DFF: A deterministic policy approach expressed as a recurrent neural architecture.
+3 Decision-Focused Forecasting
+The iterated optimisation in multistage approaches for continual problems can be expressed
+as a recurrent neural architecture. In the deterministic policy approach an optimisation
+problem with a planning horizon ofh solved at staget contains two groups of uncertain
+parameters: the current statest−1 which is part of the solution to the previous stage and
+the forecast ˆθt:t+h−1 based on the contextzt at the current stage. We can express this as a
+neural architecture by using a DO layer as a recurrent layer which takes as inputs a part
+of the output of the previous layer and the outputs of a prediction model. We name this
+recurrent architecture decision-focused forecasting (DFF). Note that the DO layer does not
+contain any learnable parameters and that the learning is restricted to the forecasting model
+parameterised byW. The architecture is illustrated in Figure 1.
+We want to derive a policy driven by forecasts which performs well on a continual version of
+the problem. In most cases we only have one continual observation of the underlying process.
+The crux of DFF is passing gradient information across stages. The training scheme therefore
+has to balance having enough different shorter tasks with each task featuring enough stages
+to express intertemporal effects. We use a sliding window approach to partition a series into
+H−h−l +1 different subtasks.h is the planning horizon and we also use it as our forecasting
+horizon. Thel is the lookback horizon of how many most recent past stages we include as
+context. For convenience we set the task horizon of each subtask ash. Note that the length
+of each individual subtask horizon can be made longer or shorter than the planning horizon,
+we did not experiment with what effect that would have on training but speculate that the
+generalisation of the method could be improved by training on multiple subtask horizons.
+We fix the initial state as a constant which is the same for all subtasks. This is not wholly
+representable of the problem and one potential way the training set of subtasks could be
+bolstered is by generating multiple valid initial states for each subtask. The pseudocode for
+DFF is presented in algorithm 1. Note the recursive nature of the computation: the decision
+x∗
+t+h−1 directly depends on the forecastˆθt+h−1:t+2h−2 and recursively through previous states
+on all previous forecasts.
+6
+
+Algorithm 1 Epoch of DFF Training
+Model Components: forecasting modelmh(z;W),
+optimisation layerx∗(s, ˆθ).
+Input: planning horizonh, problem horizonH, contextzt:t+H−1, true parametersθt:t+H−1,
+batch sizeB, learning rateη.
+repeat
+DrawB indices from 0 to H−1−h without replacement.
+Initialise initial statesst+b−1 for b∈B.
+Forward: {Batched for subtasks inB}
+for i = 0 to h−1 do
+ψ=t +b +i.
+mh(zψ) = ˆθψ:ψ+h−1 {Forecast}
+x∗
+ψ(sψ−1, ˆθψ:ψ+h−1) =xψ {Optimisation}
+Savexψand sψ⊆xψ.
+return: x b =xt+b:t+b+h−1, Θb =θt+b:t+b+h−1
+Backward:
+L =F (xb, Θb)
+ω=t +b +h−1
+∂L
+∂W= 1
+|B|
+∑
+b∈B
+∂
+∂W
+[∑h−1
+i=0 f(xω−i,θw−i)
+]
+where xω−i =x∗
+ω−i(sω−i−1,mh(zω−i,W ))
+W←W−η∂L
+∂W
+until All indices drawn
+3.1 Analysis of Gradients
+Differentiating through this sequential, forecast determined optimisation procedure results in
+much more complex gradients compared to conventional DFL. The prediction model weights
+are optimised using gradient descent which relies on estimating the gradient∂L
+∂W. We analyse
+the computation of this gradient for a subtask starting at staget. Since the objective function
+is additive we can express it as:
+∂L
+∂W=
+h−1∑
+i=0
+∂f(xt+i,θt+i)
+∂W (3)
+Denote the forecast forh stages at staget +i as ˆθt+i:t+i+h−1 = ˆΘt+i. The term fori = 0 is
+the most straightforward case as the initial statest−1 is a constant.
+∂f(xt,θt)
+∂W = ∂f(x∗
+t (mh(zt;W ),st−1),θt)
+∂W = (4)
+= ∂f(xt,θt)
+∂xt
+∂x∗
+t (st−1, ˆΘt)
+∂W (5)
+∂x∗
+t
+∂W= ∂x∗
+t (st−1, ˆΘt)
+∂ˆΘt
+∂mh(xt;W )
+∂W (6)
+7
+
+The difficult term to compute is the DO Jacobian∂x∗
+∂ˆΘ : determining how changes in predicted
+parameters affect the solution to the optimisation problem. Note that only keeping a subset of
+the decisions from an optimisation layer is equivalent to all other decisions always mapping to
+0 in the loss function and thus not being relevant in the gradient computation. Fori≥1 the
+input st+i−1 to the optimisation layer recursively depends on previous forecasts and decisions.
+We state the gradient terms fori≥1 recursively:
+∂f(xt+i,θt+i)
+∂W = ∂f(xt+i,θt+i)
+∂xt+i
+∂x∗
+t+i(st+i−1, ˆΘt+i)
+∂W (7)
+∂x∗
+t+i
+∂W= ∂x∗
+t+i
+∂ˆΘt+i
+∂mh(zt+i;W)
+∂W + ∂x∗
+t+i
+∂st+i−1
+∂s∗
+t+i−1
+∂W (8)
+State-Path Gradient Adjustment Everything up to equation (8) is the same as for
+conventional DFL. Our model differs by adding the term
+∂x∗
+t+i
+∂st+i− 1
+∂s∗
+t+i− 1
+∂W . We name this gradient
+adjustment the state-path adjustment. It accounts for the downstream decision effects of
+previous forecasting transmitted through the state variables. The state-path adjustment
+reflects that the forecasts have intertemporal effects. The adjustment term is recursive so the
+state-path adjustment will consist of an increasing number of terms for later stage decisions
+in a given subtask. This additional computation is needed to account for the propagation
+of intertemporal alignment errors in this recursive model. The state-path links the stages
+and enables the network to learn to induce policies which are future-decision-focused. The
+adjustment requires additional computation compared to conventional DFL with uncertainty
+in the objective as the intertemporal gradient
+∂x∗
+t+i
+∂st+i− 1
+would not be computed.
+Intertemporal Gradient For this analysis we restrict ourselves to settings which permit
+analytic differentiation. Analytic DO gradients are obtained by solving a linear system of the
+differentials of the KKT optimality conditions. The expensive aspect of this computation
+is that one solver call is required to obtain the linear system. Solving the linear system to
+obtain
+∂x∗
+t+i
+∂st+i− 1
+in addition to the usual DFL gradient
+∂x∗
+t+i
+∂ˆΘ t+i
+is relatively inexpensive.
+The constraintxt+i∈Xt+i(st+i−1) for the problem at staget +i is parameterised by the
+solution to the previous stage. Analytic differentiation of convex optimisation problems
+with respect to parameters in constraints is well known (Amos & Kolter, 2017; Agrawal
+et al., 2019b). The constraint set is composed of equalities and inequalities. Inequality
+constraints can lead to instability in DFF training as they are not necessarily active. In
+the optimal solution the intertemporal gradient
+∂x∗
+t+i
+∂sL
+t+i− 1
+for the subset of state variables
+sL
+t+i−1⊆st+i−1 which are not part of any active constraints is a zero matrix. This is because
+small perturbations to those constraints will not change the optimal solution. Conversely,
+the intertemporal gradient is almost always a non-zero matrix when the constraints are
+active. If the optimal solution given true parameters has a non-emptysL
+t+i−1 then there is no
+intertemporal effect forsL
+t+i−1 at that stage. However, if the predicted parameters result in a
+solution in which some ofsL
+t+i−1 are part of active constraints the estimated intertemporal
+gradient for those variables is non-zero. This mismatch is likely given a random initialisation
+of the prediction model. The recursive nature of the state-path adjustment means the effect
+8
+
+of this mismatch is potentially substantial and can lead to instability in training. We do not
+implement this but note that at the cost of one extra solver call per stage (substantial) the
+intertemporal gradient at that stage could be set to0 for state variables not exhibiting an
+intertemporal effect in the optimal solution given true parameters.
+4 Experiments
+4.1 Battery Storage
+The battery storage arbitrage task is an evolved version of the third experiment in Donti
+et al. (2017). The code implementation is available here. At each stage a decision has to
+be made about how much to charge or discharge a battery over the next hour in advance of
+knowing the market price. The price needs to be predicted based on the available context
+at each stage. The objective is to maximise trading profit over time with problem specific
+penalties. The original experiment applied DFL in the setting of a single stage stochastic
+programming approach with an assumption on the distribution of prices. Our version evolves
+the experiment to a continual setting by adding a term which approximates terminal value at
+the end of the planning horizon and evaluates the resulting policy on a rolling basis over the
+test set.
+Task Details We set a planning horizon ofh = 48. At each staget we need to decide
+how much energy to chargexin
+t or discharge xout
+t . This determines our statest which reflects
+how much energy is stored in the battery at the end of the stage. In addition to maximising
+profit the objective contains quadratic penalties on the size ofxin
+t , xout
+t as larger movements
+are worse for battery health, a quadratic penalty on how far the state is from being half-full
+which acts as guidance to promote being in more reactive states, and an adjustment to reflect
+the continual nature of the problem. The planning problemx∗at staget given predicted
+parameters ˆθt:t+h−1 and the initial statest−1 is:
+x∗(st−1, ˆΘt) = arg min
+s,xin,xout
+∑h−1
+i=0 (ˆθt+i[xin
+i −xout
+i ]
++λ[si−B
+2 ]2 +ϵ[xin
+i ]2
++ϵ[xout
+i ]2)
++ˆθt+h−1st+h−1
+s.t. s−1 =st−1
+∀i∈0,...,h−1 si = si−1 +γxin
+i −xout
+i
+0≤si≤B
+0≤zin
+i ≤cin,
+0≤zout
+i ≤cout.
+(9)
+Where λ= 0.1 is the penalty parameter for being away from a flexible state,ϵ= 0.05
+penalises faster charging and discharging in the name of battery health, andγ= 0.9 is the
+charging efficiency parameter. The final term in the objective is the value of the energy
+currently stored at market prices, an approximation of the value of the terminal state. The
+9
+
+equality constraints describe the charging and discharging dynamics from stage to stage. The
+inequality constraints describe the limits to chargingcin = 0.5, dischargingcout = 0.2 and the
+total battery capacityB = 1. We set the initial state value of each planning problem asB
+2.
+We predict the prices ˆΘt ∈ R48 based on a contextual input zt which is composed of
+observed past and some predicted variables of prices and temperature. Another important
+hyperparameter is the lookback horizonl: the number of most recent stages from which
+parameter realisations are taken as context. In this task we setl to be the same as the
+forecast horizonh. All inputs are normalised before being passed into the neural network
+mh(zt;W) = ˆΘt. We use a simple feedforward neural network with two hidden layers. We
+set the latent dimension to be2h, use ReLU activation functions, and dropout of0.1 after
+the hidden layers. This is by no means an endorsement of such networks for forecasting in
+practice. DFF can be employed with any differentiable forecasting architecture.
+T raining and Evaluation From the 6 years of available hourly data for electricity prices we
+use the first0.8 of the data for training and the remainder for testing leading to approximately
+42k subtasks in the training set. While the training is performed on subtasks, the evaluation
+on the test set is for the policy produced by the model across the entire task horizon. The
+test problem contains just over10k stages or just over 14 months of energy storage arbitrage.
+For DFF we train the model for8 epochs on an Apple M2 using the Adam optimiser
+with a batch size of64 subtasks using a learning rate of1e−3. In addition we train two
+more prediction models with the same neural architecture: a two-stage (2S) model which
+is optimised for RMSE scored prediction performance, and a DFL model optimised for
+empirical regret but treating each subtask as a separate single stage optimisation problem.
+We evaluate the policies from the models for comparison in two ways: ’S’ means we only
+make decisions everyh stages effectively partitioning the continual problem into separate
+single stage problems and ’M’ reflecting the same multistage approach employed in DFF
+where only the decisions for a given stage are made at that stage. This is to check that
+there is no bias against DFL as it was not trained for the M setting. A training run of8
+epochs across all three models took about a day on average. An epoch of DFF training
+took approximately five times as long as DFL training, whereas the training time for 2S is
+insignificant in comparison. To account for the additional computation performed in DFF
+due to its recursive gradients we trained 2S and DFL for a total of50 epochs.
+Results We present the results for the task in Figure 2. We performed the experiment 5
+times and display the 2-sigma error bars. DFF trains much faster. This can be explained by
+the state-path adjustments which can be interpreted as increasing the batch size. Even with
+the additional 42 epochs the other two approaches do not even begin to approach the DFF
+results. The variance of DFF policy results diminishes significantly after about five epochs
+potentially indicating some form of convergence on this task. 2S approaches outperform DFL
+approaches which indicates that intertemporal alignment is important for this task. In this
+experiment mean DFF relative regret is6.7% lower than the best performing alternative 2S
+M. The performance gains from training would likely continue across all models, but with
+decreasing marginal gains.
+10
+
+Figure 2: Development of test losses over training on the battery storage arbitrage task.
+2-sigma error bars from five training runs. 2S denotes a two stage approach. The M refers
+to multistage optimisation, the S refers to single-stage optimisation. DFF was trained for 8
+epochs, the other two for 50 to balance the relative intensity of computation.
+Note that the battery storage arbitrage problem is an ideal problem for DFF: it exhibits a
+high degree of intertemporality, its core dynamics are governed by equality constraints, and
+the stochastic process of the market clearing price for electricity has a relatively high degree
+of predictability. It is also made simpler by only having one uncertain parameter in every
+stage.
+Analysis of Forecasts We present the forecasts produced by one of the training runs in
+Figure 3. The salient feature is that the forecasts produced by DFF are completely alien
+in scale and shape. DFL while somewhat off in scale still largely mimics the shape of the
+2S and true values. The forecasts produced by DFF appear to mostly preserve their shape
+over stages. This relative stability phenomenon persists across all five experiments with each
+exhibiting a unique shape.
+Taking the perspective that optimisation is a layer in a broader neural architecture mapping
+context to decisions the forecasts can be interpreted as latent representations. The repre-
+sentations that decision-focused approaches create to parametrise decision problems reflect
+something about the structure of the contextual optimisation problem. Mandi et al. (2022)
+observe that DFL applied to combinatorial optimisation can be equivalently cast as a learning
+to rank problem. The underlying structure expressed by decision-focused representations is
+not easily interpretable, especially for complex settings like multistage optimisation. Our
+hypothesis is that on this task DFF finds a stable guiding representation which is possible
+due to the relative predictability of the DGP or the relative simplicity of the optimisation
+problem. The model effectively finds a high performing local minimum on the planning
+11
+
+Figure 3: Forecasts produced by the tested model for the battery storage task following one
+of the experiments. For DFF we also plot the forecasts for contextsi stages after the original
+one to demonstrate the relative stability of the representation, a phenomenon not shared
+with other models.
+problem. Exploring what patterns emerge for different multistage problems may produce
+new understanding about their underlying structure.
+4.2 Portfolio Optimisation
+Our second experiment is a portfolio optimisation problem. In contrast with the battery stor-
+age problem, this problem is not ideal for DFF: it has a relatively low degree of predictability,
+and its intertemporality is transient. We use a slightly modified version of the dataset from
+Hoseinzade & Haratizadeh (2019) which compiles the daily returns from five large stock
+indices along with a range of contextual data in the form of economic and technical indices.
+We set a planning horizon ofh = 7 days and a lookback horizon ofl = 21 days. The decision
+task is to allocate portfolio weightsst∈R5 across the five indices each day such that the sum
+of returns over time is maximised less a variance penalty given a set of trading constraints.
+The planning problem is at staget is:
+x∗(st−1, ˆΘt) = arg min
+s,∆
+∑h−1
+i=0−ˆθt+isi +γsT
+i Σ si
+s.t. s−1 =st−1
+∀i∈0,...,h−1 ∆ i = si−si−1
+1 si≤1 si≥0
+∥∆ i∥2≤Λ .
+(10)
+The covariance matrixΣ is fixed and calculated from the training set. We set the variance
+penalty γ= 1
+2. The variable ∆ i tracks the asset-wise changes from stage to stage. The
+12
+
+trading constraints in the penultimate line prohibit shorting or leverage. The final trading
+constraint is that the change in portfolio from period to period can at most have a euclidean
+distance of Λ = 0.2. This is a highly simplified and relatively arbitrary restriction on large
+movements in the composition in the portfolio. Without this constraint this problem is not
+intertemporal as nothing else links the stages. We note that it is an inequality constraint
+which may lead to some instability in the training as outlined in the previous section. Each
+subtask is initialised with a portfolio of equal weights.
+In this task we predict the returns of the5 individual assets for the next7 days so ˆΘt∈R7×5.
+We use a more complex neural network with eight hidden layers which alternate between
+dropout and layer normalisation. The implicit regularisation is added to stabilise training as
+the DGP for asset returns exhibits a high degree of noise.
+T raining and Evaluation The training set contains1.4k subtasks which are evaluated on
+a test task of the final 126 days approximately corresponding to half of the trading days in a
+year. We use a learning rate of1e−4 for the 2S and DFL training, and divide the learning
+rate by
+√
+h for DFF to roughly account for the increase in the size of the gradients as a result
+of the state-path adjustment and stabilise training. We train all models for25 epochs over
+15 training runs. In contrast with the battery storage task the improvements in 2S and DFL
+performance do not seem to occur at a different pace to DFF which may be explainable by
+the learning rate adjustment.
+Results We present the evolution of performance over training in Figure 4. We note the
+objective value from simply keeping the original equally weighted portfolio (EWP). The
+mean test task scores from 2S oscillate around the EWP result, not exhibiting a meaningful
+improvement in performance. DFL shows improvement more often and some individual
+results are competitive. In contrast, mean DFF performance steadily improves after the tenth
+epoch. The performance of DFF on this task is evidence that the approach has merit on
+tasks with less friendly DGPs. However, the variance of DFF results is high and more work
+is needed to stabilise training.
+The relative stability phenomenon between DFF forecasts as observed in the battery storage
+task appears to a lesser extent in this task: rough high level patterns can be deduced. This
+can be interpreted to reflect the relative difficulty of this task and the relative importance of
+contextual information.
+5 Discussion
+Training Stability The training stability in the portfolio optimisation task is poor. This
+could be due to the inequality constraint defining the intertemporality which can be tackled
+by looking at whether the constraint is binding in the optimal solution given true parameters
+and updating the state-path gradient adjustment accordingly.
+The choice of setting the subtask horizon to equal the planning horizon is likely suboptimal.
+Training could be enhanced by including subtasks of varying lengths in the training set.
+Furthermore, initialising subtasks with different feasible initial states should improve training
+13
+
+Figure 4: Development of test losses over training on the portfolio optimisation task. 2-sigma
+error bars from15 training runs. 1/N denotes the performance of a portfolio with equal
+weights.
+by increasing the diversity of subtasks in the training set. These two directions alone can
+increase the size of a training set by several orders of magnitude.
+A natural algorithmic development would be to extend the decision-focused paradigm to
+multi-scenario multistage optimisation. This would enable greater representational power on
+the predictive side, enable more hedging in the planning problem, but make each planning
+problem substantially more expensive computationally. One potential implementation is to
+generate forecasts/scenarios with different planning horizons and solve them in the same
+planning problem enabling predictive models to specialise for different degrees of foresight.
+Computational Cost The model we propose is significantly slower in training and has
+unfavourable scaling properties in terms of the size of the planning problem. Note that this is
+not a problem at test time. Compared to DFL (which is already slow compared to 2S), each
+subtask requires sequentially solvingh planning problems. For the battery storage problem,
+we solve approximately2 million planning problems each epoch. Implicit layers cannot be
+parallelised in the same way as ordinary layers due to the sequential nature of mathematical
+optimisation. On the other hand, the planning problems solved in DFF have a high degree
+of similarity. Amortised optimisation methods (Amos et al., 2023) aim to infer the optimal
+solution of a problem from parameter inputs based on a set of problem solution observations
+presenting a potential way of reducing computational expense in DFF training.
+14
+
+6 Conclusion
+We propose and positively evaluate the first decision-focused approach for continual multistage
+optimisation. The recurrent implicit layer architecture enables a prediction model to account
+for the intertemporal effect of forecasts made now on decisions made later. While DFF
+training is computationally expensive early results suggest a significant improvement in
+performance on certain continual decision problems. The key areas for improvement are
+algorithmic innovations for training stability, extending the decision-focused paradigm to
+more multistage optimisation approaches, and less computationally intense DO techniques.
+Decision-focused forecasting produces representations which reveal a fascinating underlying
+structure of contextual multistage optimisation, the precise nature of which is yet to be
+determined.
+References
+A. Agrawal, B. Amos, S. Barratt, S. Boyd, S. Diamond, and Z. Kolter. Differentiable convex
+optimization layers. InAdvances in Neural Information Processing Systems, 2019a.
+Akshay Agrawal, Shane Barratt, Stephen Boyd, Enzo Busseti, and Walaa M Moursi. Differ-
+entiating through a cone program.arXiv preprint arXiv:1904.09043, 2019b.
+Brandon Amos and J Zico Kolter. Optnet: Differentiable optimization as a layer in neural
+networks. InInternational Conference on Machine Learning, pp. 136–145. PMLR, 2017.
+Brandon Amos et al. Tutorial on amortized optimization.Foundations and Trends® in
+Machine Learning, 16(5):592–732, 2023.
+Gah-Yi Ban, Jérémie Gallien, and Adam J Mersereau. Dynamic procurement of new products
+with covariate information: The residual tree method.Manufacturing & Service Operations
+Management, 21(4):798–815, 2019.
+Dimitris Bertsimas, Christopher McCord, and Bradley Sturt. Dynamic optimization with
+side information. European Journal of Operational Research, 304(2):634–651, 2023.
+Priya Donti, Brandon Amos, and J Zico Kolter. Task-based end-to-end model learning in
+stochastic optimization. Advances in neural information processing systems, 30, 2017.
+Sebastian East, Marco Gallieri, Jonathan Masci, Jan Koutnik, and Mark Cannon. Infinite-
+horizon differentiable model predictive control.arXiv preprint arXiv:2001.02244, 2020.
+Adam N Elmachtoub and Paul Grigas. Smart “predict, then optimize”.Management Science,
+68(1):9–26, 2022.
+Ehsan Hoseinzade and Saman Haratizadeh. Cnnpred: Cnn-based stock market prediction
+using a diverse set of variables.Expert Systems with Applications, 129:273–285, 2019.
+Xinyi Hu, Jasper Lee, and Jimmy Lee. Two-stage predict+ optimize for milps with unknown
+parameters in constraints.Advances in Neural Information Processing Systems, 36, 2024a.
+15
+
+Xinyi Hu, Jasper Lee, Jimmy Lee, and Peter Stuckey. Multi-stage predict+ optimize for
+(mixed integer) linear programs.Advances in Neural Information Processing Systems, 37:
+64794–64827, 2024b.
+Jayanta Mandi, Vıctor Bucarey, Maxime Mulamba Ke Tchomba, and Tias Guns. Decision-
+focused learning: Through the lens of learning to rank. InInternational conference on
+machine learning, pp. 14935–14947. PMLR, 2022.
+Jayanta Mandi, James Kotary, Senne Berden, Maxime Mulamba, Victor Bucarey, Tias
+Guns, and Ferdinando Fioretto. Decision-focused learning: Foundations, state of the art,
+benchmark and future opportunities.arXiv preprint arXiv:2307.13565, 2023.
+Warren B Powell.Reinforcement Learning and Stochastic Optimization: A Unified Framework
+for Sequential Decisions. Wiley, 2022. ISBN 9781119815051.
+Juyoung Wang, Mucahit Cevik, and Merve Bodur. On the impact of deep learning-based
+time-series forecasts on multistage stochastic programming policies.INFOR: Information
+Systems and Operational Research, 60(2):133–164, 2022.
+16

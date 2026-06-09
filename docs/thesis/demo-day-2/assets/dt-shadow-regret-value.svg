@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">DT shadow regret and value comparison</title>
+  <desc id="desc">Comparison of mean regret and value for DT shadow, V2 plus, strict reference, and behavior cloning.</desc>
+  <rect width="1200" height="720" fill="#ffffff"/>
+  <text x="70" y="74" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#111827">HF DT Shadow vs Controls</text>
+  <text x="70" y="108" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">Primary metric is regret/value. Lower regret is better; higher value is better.</text>
+
+  <g font-family="Arial, sans-serif">
+    <text x="70" y="158" font-size="22" font-weight="700" fill="#111827">Mean regret UAH</text>
+    <line x1="330" y1="175" x2="1080" y2="175" stroke="#e5e7eb"/>
+    <text x="330" y="164" font-size="13" fill="#6b7280">0</text>
+    <text x="680" y="164" font-size="13" fill="#6b7280">255</text>
+    <text x="1045" y="164" font-size="13" fill="#6b7280">511</text>
+
+    <text x="70" y="214" font-size="18" fill="#111827">DT shadow</text>
+    <rect x="330" y="192" width="746" height="28" rx="5" fill="#8b5cf6"/>
+    <text x="1090" y="214" font-size="18" fill="#111827">507.90</text>
+
+    <text x="70" y="274" font-size="18" fill="#111827">V2+ fallback</text>
+    <rect x="330" y="252" width="750" height="28" rx="5" fill="#2563eb"/>
+    <text x="1090" y="274" font-size="18" fill="#111827">510.82</text>
+
+    <text x="70" y="334" font-size="18" fill="#111827">Strict reference</text>
+    <rect x="330" y="312" width="634" height="28" rx="5" fill="#059669"/>
+    <text x="978" y="334" font-size="18" fill="#111827">431.70</text>
+
+    <text x="70" y="394" font-size="18" fill="#111827">Behavior cloning</text>
+    <rect x="330" y="372" width="750" height="28" rx="5" fill="#64748b"/>
+    <text x="1090" y="394" font-size="18" fill="#111827">510.82</text>
+
+    <text x="70" y="468" font-size="22" font-weight="700" fill="#111827">Mean value UAH</text>
+    <line x1="330" y1="485" x2="1080" y2="485" stroke="#e5e7eb"/>
+    <text x="330" y="474" font-size="13" fill="#6b7280">0</text>
+    <text x="673" y="474" font-size="13" fill="#6b7280">1740</text>
+    <text x="1042" y="474" font-size="13" fill="#6b7280">3480</text>
+
+    <text x="70" y="524" font-size="18" fill="#111827">DT shadow</text>
+    <rect x="330" y="502" width="734" height="28" rx="5" fill="#8b5cf6"/>
+    <text x="1078" y="524" font-size="18" fill="#111827">3403.59</text>
+
+    <text x="70" y="584" font-size="18" fill="#111827">V2+ fallback</text>
+    <rect x="330" y="562" width="733" height="28" rx="5" fill="#2563eb"/>
+    <text x="1077" y="584" font-size="18" fill="#111827">3400.67</text>
+
+    <text x="70" y="644" font-size="18" fill="#111827">Strict reference</text>
+    <rect x="330" y="622" width="750" height="28" rx="5" fill="#059669"/>
+    <text x="1094" y="644" font-size="18" fill="#111827">3479.78</text>
+
+    <text x="730" y="690" font-size="16" fill="#7f1d1d">Interpretation: DT smoke runs, but strict still wins; no promotion.</text>
+  </g>
+</svg>

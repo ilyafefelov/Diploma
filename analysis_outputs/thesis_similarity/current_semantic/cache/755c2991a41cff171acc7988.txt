@@ -1,0 +1,1385 @@
+1
+A Decision-Focused Predict-then-Bid Framework
+for Strategic Energy Storage
+Ming Yi, Member, IEEE, Yiqian Wu, Student Member, IEEE, Saud Alghumayjan, Student Member, IEEE,
+James Anderson, Senior Member, IEEE, Bolun Xu, Member, IEEE
+Abstract—This paper introduces a novel decision-focused
+framework for energy storage arbitrage bidding. Inspired by
+the bidding process for energy storage in electricity markets, we
+propose a “predict-then-bid” end-to-end method incorporating
+the storage arbitrage optimization and market clearing models.
+This is achieved through a tri-layer framework that combines a
+price prediction layer with a two-stage optimization problem:
+an energy storage optimization layer and a market-clearing
+optimization layer. We leverage the implicit function theorem for
+gradient computation in the first optimization layer and incor-
+porate a perturbation-based approach into the decision-focused
+loss function to ensure differentiability in the market-clearing
+layer. Numerical experiments using electricity market data from
+New York demonstrate that our bidding design substantially
+outperforms existing methods, achieving the highest profits and
+showcasing the effectiveness of the proposed approach.
+Index Terms—Decision-Focused Learning, Energy Storage Ar-
+bitrage Bidding, Implicit Function Theorem, Perturbation-Based
+Differentiability
+I. I NTRODUCTION
+Energy storage systems are becoming a mainstream resource
+in electricity markets, reaching more than 13 GW in Califor-
+nia [1] and 6 GW in Texas [2]. To participate in electricity
+markets, storage resources submit bid offer curves that reflect
+their willingness to charge or discharge at different prices.
+These bidding curves should capture the storage system’s
+willingness to charge or discharge based on the market clearing
+price, accounting for physical operating constraints and antic-
+ipated future price opportunities [3]. Over the past decade,
+as storage hardware technologies have matured and become
+more cost-effective, numerous studies and industry practices
+have highlighted the importance of effective bidding strategies
+both for maintaining competitiveness in electricity markets and
+for facilitating social welfare [4], [5].
+A common approach to energy storage bidding adopts a
+predict-then-bid framework: a forecast model predicts future
+prices and the storage operator designs the offer curve based on
+these forecasts. This decoupling often leads to inefficiencies,
+because predictors optimized only for accuracy may misalign
+with the operational objectives of energy storage, resulting
+This work was supported in part by the Data Science Institute in Columbia
+University and in part by the National Science Foundation under award ECCS-
+2239046. (Corresponding author: Ming Yi.)
+Ming Yi is with Data Science Institute, Columbia University, New York,
+NY 10027, USA; Saud Alghumayjan, and Bolun Xu are with Earth and
+Environmental Engineering, Columbia University, New York, NY 10027,
+USA; Yiqian Wu, and James Anderson are with Electrical Engineering,
+Columbia University, New York, NY 10027, USA. Email:{my2826, yw3740,
+saa2244, ja3451, bx2177}@columbia.edu.
+in suboptimal charge and discharge strategies. Accurately
+predicting electricity prices is especially challenging due to
+their high volatility, driven by the need to maintain instan-
+taneous supply-demand balance and address local network
+constraints [6]. Moreover, most forecasting techniques aim to
+minimize the mean squared error which focuses on the ac-
+curacy of average prices, rather than pointwise-in-time differ-
+ences. However, energy storage arbitrage hinges on exploiting
+price differences, making the identification of price peaks and
+valleys much more critical.
+A decision-focused learning approach integrates decision-
+making criteria into the end-to-end training process, enhancing
+decision quality by training prediction models that align with
+operational goals. This approach has demonstrated improved
+performance when applied to self-scheduling energy storage
+arbitrage, as shown in our previous work [7], as well as in
+other studies [8], where it directly generates storage charge
+and discharge decisions. However, these methods cannot be
+directly adapted to generate price-quantity offer curves for
+bid design. Additionally, the market-clearing process, which
+settles the market based on submitted offer curves and deter-
+mines dispatch decisions, introduces a feedback loop between
+bidding strategies and market-clearing outcomes.
+This paper connects price predictions, bidding strategies,
+and real-time market clearance decisions to generate storage
+market bids within a decision-focused framework. The contri-
+butions are as follows:
+• We propose a tri-layer end-to-end framework to produce
+optimal arbitrage decisions through bid design, including
+1) price prediction based on input features; 2) bid design
+based on price predictions; and 3) market clearing based
+on designed bids.
+• We link the storage opportunity dual variable with bid-
+ding design in an end-to-end framework, and prove this
+produces a differentiable implicit layer.
+• We enable efficient backpropagation for the decision-
+focused loss function through the implicit function theo-
+rem and perturbation methods.
+• Numerical experiments on NYISO datasets demonstrate
+that our approach outperforms benchmark methods.
+The paper is organized as follows: Section II reviews the
+related work, Section III introduces the problem formulation,
+and Section IV presents our proposed framework and the
+gradient computation for backward propagation. Simulation
+results are presented in Section V .
+arXiv:2505.01551v2  [eess.SY]  6 May 2025
+
+2
+II. R ELATED WORK
+A. Learning-Aided Energy Storage Operation
+Storage participation in electricity markets can be grouped
+into two categories: self-scheduling and bidding. The self-
+scheduling option is often limited to small-scale batteries,
+typically under 1 MW, and yields lower profit expectations.
+This approach requires dispatch decisions to be made ahead
+of market clearing, reducing flexibility to adjust based on
+market results. Utility-scale energy storage systems typically
+submit charge/discharge bids, allowing participants to express
+varying supply willingness across different price levels [9],
+[10] and embed risk preferences under market uncertainty [11],
+[12]. Although economically efficient and theoretically robust,
+this approach is far more computationally intensive than
+self-scheduling. For storage systems, bids must capture both
+operational and opportunity costs, reflecting the future market
+value of stored energy—an inherently challenging task due to
+temporal coupling [13], [14].
+Opportunity cost calculation often employs stochastic dy-
+namic programming (SDP) to account for probabilistic market
+conditions, albeit at high computational expense [15], [16].
+Model predictive control (MPC) offers an alternative, lever-
+aging rolling-horizon flexibility to manage uncertainty while
+integrating deterministic constraints [17], [18]. Building on
+these methods, energy storage operators can submit either
+energy- or state-of-charge (SoC)-based bids [3]. Energy-based
+bids are simpler and align directly with market clearing but
+may overlook inter-temporal constraints. In contrast, SoC-
+based bids explicitly incorporate the storage system’s state
+evolution, enabling more precise operational decisions at the
+cost of increased market complexity.
+B. Decision-Focused Learning
+MPC-based methods typically train machine learning pre-
+dictors to minimize prediction error, without considering how
+the predictions will be used in subsequent optimization prob-
+lems. Decision-focused learning has emerged as a promising
+approach to overcome the limitations of traditional MPC-
+based methods by embedding optimization constraints and
+objectives directly into supervised learning models, enabling
+end-to-end training that improves decision quality. Several
+frameworks have been proposed within this domain, including
+smart predict-then-optimize approaches [19], [20], learning-
+by-experience methods [21], [22], and black-box differentiable
+optimizers [23].
+The effectiveness of decision-focused learning has been
+demonstrated in self-scheduling energy storage arbitrage [7],
+[8], [24]. However, as discussed in the Introduction, utility-
+scale energy storage systems cannot directly charge or dis-
+charge. Instead, they must submit market bids, requiring a
+more complex framework that integrates bid design and a
+market-clearing layer to determine charge/discharge decisions.
+Extending a decision-focused framework from self-scheduling
+to economic bidding is therefore non-trivial.
+Our approach distinguishes itself from existing methods by
+outputting the dual variable of the SoC evolution constraint,
+which reflects the marginal opportunity value of energy and
+Fig. 1: The bi-level framework illustrates the upper-level energy stor-
+age arbitrage problem and the lower-level market clearing process.
+informs more strategic bid design. Additionally, we incorpo-
+rate a market-clearing layer, which calibrates price predic-
+tions after price information is revealed to achieve optimal
+charge/discharge decisions. This approach is particularly ben-
+eficial for market participants, such as storage operators, who
+do not directly control the charge or discharge of storage
+assets, but instead participate in the market by submitting
+bids ahead of time. By calibrating these bids after the price
+is revealed, our framework enhances bidding quality and im-
+proves alignment with actual market conditions. Consequently,
+we generalize decision-focused learning into a more adaptive
+framework for strategic energy storage market participation.
+III. P ROBLEM FORMULATION
+A. Bi-Level Storage Bidding Model
+We consider a bi-level framework to build a storage bidding
+strategy, in which the upper level determines the optimal bids,
+and the lower level simulates the market-clearing process. Fig-
+ure 1 illustrates the overall bi-level structure. The storage oper-
+ator submits price–quantity segment curves for both discharge
+and charge, each indexed by j ∈ N. The discharge/supply
+curve at time t, represented by pairs {St,j, Pj}, is mono-
+tonically increasing in j (i.e., St,j−1 ≤ St,j), indicating the
+storage will discharge segment Pj whenever the market price
+exceeds St,j. The charge/demand curve {Dt,j, Bj} is also
+monotonic in j, capturing a willingness to charge more as
+the price drops. To simplify the design process, we assume
+the segment quantity Pj and Bj are prefixed (for example,
+equally divide the power rating into N segments). Hence, the
+decision variables of the upper-level include only St,j and
+Dt,j. The upper-level (UL) bidding problem then uses future
+price predictions over a look-ahead period of T to design
+the bids. The lower-level (LL) problem clears all submitted
+bids and determines the corresponding charge and discharge
+dispatch. The bi-level problem is formulated as:
+UL : max
+St,Dt
+TX
+t=1
+ˆλt(p∗
+t − b∗
+t ) − c(p∗
+t , b∗
+t ) (1a)
+s.t. 0 ≤ p∗
+t ≤ R : ut, ¯ut (1b)
+0 ≤ b∗
+t ≤ R : vt, ¯vt (1c)
+0 ≤ et ≤ E : wt, ¯wt (1d)
+
+3
+et − et−1 = −p∗
+t /η + b∗
+t η : ¯θt (1e)
+LL : p∗
+t , b∗
+t ∈ argmin
+pt,bt,gt
+Gt(gt) +
+NX
+j=1
+(St,jpt,j − Dt,jbt,j)
+(1f)
+s.t. pt =
+NX
+j=1
+pt,j, b t =
+NX
+j=1
+bt,j (1g)
+0 ≤ pt,j ≤ Pj (1h)
+0 ≤ bt,j ≤ Bj (1i)
+− et−1 ≤ btη − pt
+η ≤ E − et−1 (1j)
+gt +
+NX
+j=1
+pt,j = Lt +
+NX
+j=1
+bt,j : λt (1k)
+where
+• ˆλt: Predicted price at time t, generated by a pre-trained
+predictor gw(x), where ˆλ = gw(x). This function g(x)
+represents future price predictions with input features x,
+such as historical load and prices.
+• p∗
+t , b∗
+t : Optimal discharge and charge decisions at time t.
+Note these optimal decisions should be a function of St
+and Dt based on the lower-level market clearing results.
+• c(p∗
+t , b∗
+t ): Convex cost function related to storage opera-
+tion.
+• et: State of charge of storage at time t.
+• R: Maximum power rating of the storage system.
+• E: Maximum energy capacity of the storage system.
+• η: Efficiency factor of the storage system.
+• ¯θt: Dual variable associated with the SoC dynamic con-
+straint representing the marginal opportunity value of the
+stored energy.
+• Dual variables associated with (1b)–(1d) are indicated
+following the respective equations, which will later be
+used for theoretical analysis.
+• Gt(gt): Aggregated generation cost at time t excluding
+the target storage.
+• gt: Net generation at time t excluding the target storage.
+• pt,j, bt,j: Supply and demand quantity for segment j at
+time t.
+• Pj, Bj: Supply and demand capacity for segment j.
+• Lt: Total load at time t.
+• λt: Dual variable associated with the supply-demand
+balance constraint representing market clearing price at
+time t.
+In the upper-level (1a)-(1e), the objective function (1a)
+aims to maximize the expected arbitrage profit including
+the predicted market revenue and the associated operational
+cost c(p∗
+t , b∗
+t ). (1b) and (1c) enforce the power limits on
+discharging and charging. (1d) enforces that the stored energy
+remains within its capacity limits E. (1e) models the dynamic
+behavior of the energy storage adjusted by efficiency η. In the
+following sections, we denote the constraints (1b) to (1e) as the
+feasibility set X1. This bid design can be derived analytically
+from the storage arbitrage problem (1a)-(1e), which will be
+detailed in Section IV-A.
+In the lower-level (1f)-(1k), note that each time period t ∈ T
+has a corresponding market clearing problem and, for simplic-
+ity, we assume they share a uniform form as we consider uni-
+form time steps and normalize all power variables/parameters
+such as p∗
+t , b∗
+t with the time step. The objective of market
+clearing is to minimize the aggregated system cost, here, for
+simplicity, we represent the rest of the market using an ag-
+gregated convex objective function including the supply curve
+from other resources in the system and the congestion impacts
+(since we target a single storage at a fixed node). Therefore,
+the objective function (1f) minimizes the aggregated system
+cost Gt(gt) plus the net cost of storage charge and discharge,
+weighted by the corresponding bid prices St,j and Dt,j. (1g)
+models the total charge and discharge power as the sum of
+all segments. (1h) and (1i) limit power supply and demand
+within predefined segment bounds Pj and Bj. (1j) ensures
+that charge and discharge operations respect the energy bounds
+and account for efficiency losses. (1k) enforces power balance
+with the associated dual variable λt representing the market
+clearing price.
+B. Price-Taker and Price-Maker Reformulation
+The challenge to solving the bi-level problem (1) is the
+aggregated system cost function Gt is unknown to the storage
+operator, and hence, we cannot solve the problem exactly. To
+solve this issue, we first present two reformulations of LL
+the arbitrage problem based on price-taker and price-maker
+assumptions for more convenient integration into our decision-
+focused learning pipeline.
+Price-Taker Settings. A price-taker setting assumes that
+energy storage has a negligible impact on the supply-demand
+balance and, consequently, on real-time prices. Historical price
+data is used to simulate how the energy storage system would
+have been cleared in the electricity market. In this scenario,
+we apply a Lagrangian relaxation to (1k), incorporating the
+supply-demand constraint into the objective function. As a
+result, the lower-level market clearing problem under the
+price-taker assumption is equivalent to the following storage
+arbitrage problem:
+max
+pt,j ,bt,j
+λt
+NX
+j=1
+(pt,j − bt,j) −
+NX
+j=1
+(St,jpt,j − Dt,jbt,j) (2)
+s.t. (1g) − (1j)
+Price-Maker Settings. A price-maker setting assumes that
+energy storage will impact the supply-demand balance and,
+consequently, influence real-time prices. In this case, historical
+price data cannot be used to simulate how the energy storage
+system would have been cleared in the electricity market. We
+still apply a Lagrangian relaxation to (1k), embedding the
+supply-demand constraint into the objective function. Under
+the price-maker assumption, the market clearing problem
+becomes equivalent to the following storage arbitrage problem:
+max
+pt,j ,bt,j
+λt(pt, bt)
+NX
+j=1
+(pt,j − bt,j) −
+NX
+j=1
+(St,jpt,j − Dt,jbt,j)
+(3)
+
+4
+Fig. 2: The proposed pipeline begins with a neural network-based predictor that forecasts electricity prices from the input features. The
+optimization layer then leverages the predicted prices, treated as a hidden reward, to solve an optimization problem and compute the dual
+variable of the state of charge (SoC). This dual variable is linearly transformed into charge/discharge bids. A subsequent market-clearing
+optimization layer processes these bids to generate charge/discharge dispatches. The algorithm employs backpropagation through both
+optimization layers to update the predictor’s weights.
+s.t. (1g) − (1j)
+The key in the price-maker reformulation is to model the
+market clearing price as a function of charge and discharge
+power with a sensitivity function as:
+λt(pt, bt) = λt − f(pt − bt) (4)
+where λt = dGt(Lt) represents the market clearing price with-
+out our storage, which is the marginal cost of the aggregated
+cost function to supply the demand Lt. f(·) is a monotonic
+increasing function with f(0) = 0 representing the impact of
+the storage action over the market price. Ideally, λt−f(pt−bt)
+should be equivalent to dGt(Lt + bt − pt) representing the
+change in the system marginal cost, yet the proposed formu-
+lation highlights that Gt is not fully observable.
+C. Problem Statement and Learning Pipeline
+We now propose the main decision-focused framework
+using two-stage optimization. In stage one, predicted prices
+generate charge/discharge bids via an energy storage opti-
+mization model. In stage two, these bids feed into a market-
+clearing optimization. A loss function minimizes the difference
+between decisions from predicted bids and optimal decisions,
+backpropagating through both stages to update the price pre-
+dictor. The end-to-end training policy maps the input features
+to the energy storage dispatches (p∗, b∗) as follows:
+x 7→ (p∗, b∗) = fL (fU (gw (x))) (5)
+where x represents input features and gw (x) is the neural
+network model for price prediction. fU(·) represents the
+UL problem, which maps the price prediction to the bids
+(St,j, Dt,j), and fU(·) represents the LL problem which maps
+the bids and the actual price to the storage dispatch (p∗, b∗),
+where the LL problem can use either the price-taker or price-
+maker formulation described in Section III.B.
+Note that the final output from this learning pipeline are the
+storage bids that the storage operator will eventually submit
+to the market, while the storage decision is used for defining
+the loss function.
+Training Dataset. We collect input features and build a
+dataset as follows:
+D = {(x1, ¯y1), (x2, ¯y2), ...,(xn, ¯yn)} (6)
+where x includes historical electricity prices, demand profiles,
+and other contextual information. ¯y denotes the optimal energy
+storage decisions ( ¯p, ¯b). n is the number of data samples.
+{¯y1, ¯y2, ..., ¯yn} represents the set of optimal charge/discharge
+decisions obtained from historical real-time prices, which can
+be generated by solving:
+max
+pt,bt∈X1
+TX
+t=1
+λt(pt − bt) − c(pt, bt). (7)
+IV. M ETHODOLOGY
+We propose a “predict-then-bid” approach, linking the
+bidding design to the dual variable of the SoC evolution
+constraint (1e). The framework has three components: a pre-
+diction layer that forecasts electricity prices using historical
+features (e.g., DAP and RTP), an energy storage optimization
+layer using these forecasts, and a market clearing layer that
+simulates dispatch based on submitted bids. Two-stage opti-
+mization layers support both forward and backward passes,
+ensuring weight alignment and updating the prediction layer.
+An overview is provided in Fig. 2.
+A. Bidding Design Based on Opportunity Value
+For the online operation of energy storage, a rolling horizon
+approach is used to predict future electricity prices over a finite
+time horizon from t to T . To design the charge/discharge
+bid at time t, the energy storage system must account for
+the marginal cost of opportunity value and degradation cost.
+Specifically, the opportunity value represents the objective
+function with respect to the optimal charge/discharge decisions
+from t+1 to T . To model the marginal opportunity value with
+respect to charge and discharge, it is first necessary to express
+the opportunity value as a function of the state of charge at
+time t. The marginal cost with respect to charge and discharge
+then follows from the chain rule. This leads to Proposition 1.
+Proposition 1. Marginal cost of the opportunity value func-
+tion. Consider the predict-then-bid energy storage arbitrage
+problem given in (1a)–(1e), assuming that both the primal and
+dual problems have non-empty feasible sets. The marginal cost
+of the opportunity value function Vt+1 with respect to the state
+
+5
+of charge at time t is defined by the dual variable of the SoC
+transition equation (1e) at time t + 1:
+∂Vt+1
+∂et
+= ¯θt+1.
+The marginal costs with respect to discharge pt and charge bt
+at time t are
+• ∂Vt+1
+∂pt
+= ∂Vt+1
+∂et
+· ∂et
+∂pt
+= −¯θt+1 · 1
+η ,
+• ∂Vt+1
+∂bt
+= ∂Vt+1
+∂et
+· ∂et
+∂bt
+= ¯θt+1 · η.
+where ¯θt+1 denotes the dual variable corresponding to the SoC
+dynamic constraint in equation (1e) at time t + 1.
+The proof is provided in the Appendix. The value of ¯θt+1
+is dependent on SoC et. For bidding design, it is crucial
+to account for opportunity costs across different SoC levels.
+Thus, we discretize the state of charge et,j from 0 to E in N
+segments and compute the corresponding segment of θt+1,j.
+The discharge bid incorporates both discharge costs and
+opportunity costs:
+ˆSt,j = ∂c(pt, bt)
+∂pt
++ ¯θt+1,j · 1
+η (8a)
+where ∂c(pt, bt)/∂pt = C when energy storage has linear cost
+term c(pt, bt) = Cp t. Similarly, the charge bid considers both
+charge costs and opportunity costs:
+ˆDt,j = ∂c(pt, bt)
+∂bt
++ ¯θt+1,j · η (8b)
+B. Differentiation of Energy Storage Optimization Layer
+After showing that the optimal storage bids depend on the
+dual ¯θt+1,j, our next step is to develop a differentiable layer
+to integrate the dual variable into the learning pipeline. We
+apply the implicit function theorem, as first introduced in
+OptNet [25], to compute the gradient of the dual variable
+of SoC dynamic constraint with respect to price prediction.
+While many existing works focus on computing the gradi-
+ent of primal solutions [24], [26], few have explored the
+gradients of dual variable with respect to price predictions.
+Our objective is to compute the gradient of the dual variable
+for the SoC transition with respect to the price prediction,
+∂θ/∂ˆλλλ, to enable backpropagation of the decision-focused
+loss. θ = [θ1, θ2...θN] ∈ RN denotes the SoC dual variables
+associated with the charge/discharge bid formation. Proposi-
+tion 2 formalizes the gradient computation of the dual variable
+using the implicit function theorem.
+Proposition 2. Differentiation of the dual variable of SoC
+transition. Consider the Lagrangian associated with the opti-
+mization problem (1a)–(1e). Let µ denote the dual variables
+corresponding to all inequality constraints. ¯θt denotes the dual
+variable of equality constraints of SoC transition. The Karush-
+Kuhn-Tucker (KKT) conditions define the function:
+F(p, b, e, ˆλ, ¯θt, µ) = 0.
+Based on the implicit function theorem and chain rule, differ-
+entiating the KKT system with respect to ˆλ gives:
+∂F
+∂ ˆλ
++ ∂F
+∂ ¯θt
+∂ ¯θt
+∂ ˆλ
+= 0.
+Rearrange this equation to obtain the derivative:
+∂ ¯θt
+∂ ˆλ
+= −
+ ∂F
+∂ ¯θt
+−1 ∂F
+∂ ˆλ
+.
+The detailed proof is provided in the Appendix. After com-
+puting the matrix ∂¯θθθt/∂ˆλλλ ∈ RT ×T , we extract its first row
+and repeat this process for each of the N initial SoC levels.
+The resulting gradients from all segments are then stacked to
+construct the final Jacobian matrix ∂θθθ/∂ˆλλλ ∈ RN ×T .
+C. Perturbed Decision-Focused Loss Function
+Given the predicted bids, we aim to ensure that the resulting
+charge and discharge dispatch is as close as possible to the
+optimal dispatch. To achieve this, we employ the Fenchel-
+Young loss [27], and define the perturbed loss function as
+follows:
+LDF
+ϵ
+= E
+h
+max
+pt,j,bt,j∈X2
+λt
+NX
+j=1
+(pt,j − bt,j) −
+NX
+j=1
+( ˜St,jpt,j − ˜Dt,jbt,j)
+i
+−
+
+λt
+NX
+j=1
+(¯pt,j − ¯bt,j) −
+NX
+j=1
+( ˆSt,j ¯pt,j − ˆDt,j¯bt,j)
+
+
+(9a)
+where recall that pt,j, bt,j are the decision variable, λt is the
+historical price (or price sensitivity functions λt(pt,j, bt,j) in
+the price-maker case), ¯pt,j,¯bt,j are the hindsight optimal solu-
+tion generated using historical price data as in (7), ( ˆSt,j, ˆDt,j)
+are the predicted bids based on the aforementioned dual
+approach as in (8), and ( ˜St,j, ˜Dt,j) are the perturbed predicted
+bids
+˜St,j = ∂c(pt, bt)
+∂pt
++ (¯θt+1,j + ϵZ) · 1
+η (9b)
+˜Dt,j = ∂c(pt, bt)
+∂bt
++ (¯θt+1,j + ϵZ) · η (9c)
+where Z is additive Gaussian noise N (0, 1). ϵ > 0 is
+a scaling parameter. E[·] denotes the expectation over the
+random variable Z.
+The reason we need to add perturbation to the bids predic-
+tion is to improve the differentiability, as the bids are piece-
+wise linear. Small changes to the charge or discharge bids
+typically do not affect the final dispatch decisions; In rare
+cases, such variations may lead to abrupt changes in the deci-
+sions. Consequently, the gradient is almost zero everywhere,
+or it becomes undefined at points where decisions jump.
+This discontinuity introduces computational difficulties when
+applying backpropagation to update the weights of neural
+network models. We employ the perturbation approach [22]
+to address this challenge by introducing additive noise to the
+dual variable θt+1,j.
+Correspondingly, the resulting perturbed market clearing
+model is defined as:
+max
+pt,bt∈X2
+λt
+NX
+j=1
+(pt,j − bt,j) −
+NX
+j=1
+( ˜St,jpt,j − ˜Dt,jbt,j) (10)
+
+6
+Algorithm 1 Decision-Focused Energy Storage Bidding
+Require: The rolling horizon window T ; energy storage
+parameters, including the cost function c(pt, bt), power
+rating P , efficiency η, and energy capacity E; the pre-
+trained price forecasting model; the maximum number
+of training epochs Mmax; the training dataset D =
+{(x1, ¯y1), (x2, ¯y2), . . . ,(xn, ¯yn)}; and the testing dataset
+ˆD = {ˆx1, ˆx2, . . . , ˆxn}.
+Initialization: Initialize the weights w of the predictor
+gw(x) using the pre-trained model.
+Training stage:
+1: for Epochs < Mmax do
+2: for Each batch in D do
+3: The predictor outputs the electricity price: ˆλ =
+gw(x);
+4: Forward pass ˆλ to the optimization problem (1a)-(1e)
+to compute the dual variable ¯θt of the SoC transition;
+5: Compute the perturbed discharge and charge bids
+using (9b) and (9c);
+6: Compute the perturbed loss LDF
+ϵ by equation (11);
+7: Compute the gradient using (12) and perform back-
+propagation to update the predictor’s weights w;
+8: end for
+9: end for
+Testing stage:
+10: The predictor outputs the electricity price: ˆλ = gw(ˆx);
+11: Forward pass ˆλ to the optimization problem (1a)-(1e) to
+compute the dual variable ¯θt of the SoC transition;
+12: Compute the discharge and charge bids ˆSt, ˆDt using (9b)
+and (9c);
+13: return Predicted energy storage bids ( ˆSt, ˆDt).
+For convenience or later deviations, we use F2,ϵ( ¯θt+1) to
+denote (10). The perturbed optimal solution is denoted as
+(p∗
+ϵ , b∗
+ϵ). The differentiability of the perturbed loss function
+follows from the differentiability of F2,ϵ( ¯θt+1). The result is
+formalized in Proposition 3.
+Proposition 3. Differentiability of loss function with perturbed
+bid. Assume the noise Z follows a Gaussian distribution
+with density ϑ(Z) ∝ exp(−ψ(Z)). For notational simplicity,
+define y∗
+ϵ = p∗
+ϵ − b∗
+ϵ .
+• The perturbed loss function LDF
+ϵ is twice differentiable,
+and ∇¯θt+1 F2,ϵ( ¯θt+1) = y∗
+ϵ ( ¯θt+1) = E[y∗( ¯θt+1+ϵZ)] =
+E[F2( ¯θt+1 + ϵZ)∇Zψ(Z)/ϵ]
+• y∗
+ϵ is differentiable, and Jθy∗
+ϵ = E[F2( ¯θt+1 +
+ϵZ)(ϑ(Z)ϑ⊤(Z) − ∇2ϑ(Z))/ϵ]
+The proof is provided in the Appendix. Proposition 3 estab-
+lishes that the perturbed loss function is differentiable and
+further demonstrates that the perturbed optimal solution is
+differentiable with respect to the bids.
+D. Algorithm Implementation
+We now assemble the final algorithm for training and testing
+the proposed framework. Since the exact computation of the
+expectation in (9a) is intractable, we approximate it using
+Monte Carlo sampling. The perturbed loss function can thus
+be estimated as:
+LDF
+ϵ ≈ 1
+K
+KX
+m=1
+
+max
+pt,j ,bt,j ∈X2
+λt
+NX
+j=1
+(pt,j − bt,j)
+−
+NX
+j=1
+( ˜S(m)
+t,j pt,j − ˜D(m)
+t,j bt,j)
+
+−
+
+λt
+NX
+j=1
+(¯pt,j − ¯bt,j) −
+NX
+j=1
+( ˆSt,j ¯pt,j − ˆDt,j¯bt,j)
+
+
+(11)
+where K represents the total number of Monte Carlo samples
+used for the approximation.
+Backpropagation computes the gradient of the loss function
+with respect to the neural network weights w by applying the
+chain rule:
+∂LDF
+ϵ
+∂w = ∂LDF
+ϵ
+∂θ
+∂θ
+∂ ˆλ
+∂ ˆλ
+∂w (12)
+where the gradient of the perturbed loss function with respect
+to θ is given as:
+∂LDF
+ϵ
+∂θ =
+ ¯p
+η − ¯bη
+
+−
+ppp∗
+ϵ
+η − bbb∗
+ϵ η
+
+. (13)
+The second term ∂θ/∂ ˆλ can be calculated according to results
+from Proposition 2. The third term ∂ ˆλ/∂w represents the Ja-
+cobian matrix of the price prediction model with respect to the
+weights w, which can be efficiently computed using automatic
+differentiation provided by deep learning frameworks such as
+PyTorch or TensorFlow [28].
+Algorithm 1 shows the full decision-focused energy storage
+bidding pipeline. Our method can be trained from random
+initialization; but we recommend a pre-trained electricity price
+forecasting model that minimizes forecasting error for optimal
+performance.
+V. E XPERIMENTS
+The experiments are conducted using PyTorch [29] and
+the PyEPO package [30] on a desktop equipped with a 3.0
+GHz Intel Core i9 processor, an NVIDIA 4080 GPU with
+16 GB of memory, and 32 GB of RAM. The differentiable
+optimization layer is implemented using the cvxpylayer pack-
+age [31]. The optimization problems are solved by the CVXPY
+package [32]. The energy storage arbitrage model is configured
+with the following parameters: power rating P = 0 .5 MW,
+efficiency η = 0.9, storage capacity E = 1 MWh and initial
+SoC e0 = 0.5 MWh. The prediction horizon is set to 24 hours
+(T = 24) and the number of Monte Carlo samples is K = 1.
+We employ a convolutional LSTM (ConvLSTM) network.
+The architecture features three 1D convolutional layers with
+64, 128, and 64 filters, respectively, each using a kernel size of
+3. Each convolutional layer is followed by a ReLU activation
+and a max pooling layer. The feature representation is reshaped
+and passed to a two-layer bidirectional LSTM, with each layer
+having a hidden size of 100 and a dropout rate of 0.5. A final
+fully connected layer maps the LSTM output to the target
+
+7
+prediction. The model is trained using the Adam optimizer
+with a learning rate of 10−4. The dataset is sampled at hourly
+resolution, and each input consists of a 24-hour window of
+historical real-time prices, day-ahead prices, and load data. The
+network is trained to predict real-time prices for the subsequent
+24 hours. A rolling horizon strategy with a one-hour step size
+is used to augment the training set.
+A. Energy Storage Bidding Under Price-Taker Setting
+We start with a price-taker case study. The price forecasting
+window spans 24 hours and is updated hourly, enabling the
+bid design to adapt dynamically. The electricity price and
+load data are sourced from the New York Independent System
+Operator (NYISO), utilizing data from 2017–2018 for training
+and 2019 for testing. Historical data for Real-Time Price
+(RTP), Day-Ahead Price (DAP), and load are collected at
+an hourly resolution. The dataset contains both input features
+and corresponding optimal decision values, where the optimal
+decisions are obtained by solving (7) using the ground truth
+real-time prices.
+In the testing stage, the profit is computed as follows:
+PT
+t=1 λt(p∗
+t − b∗
+t ) − c(p∗
+t , b∗
+t ) (14)
+where λt represents the actual real-time price at time t; p∗
+t
+and b∗
+t denote the discharge and charge amounts, respectively,
+after market clearing.
+(a)
+ (b)
+Fig. 3: Annual cumulative profit comparison for the price-taker case,
+5-minute resolution real-time price data in New York City. The energy
+storage model considers (a) a linear cost term, and (b) a combination
+of linear and quadratic cost terms.
+We evaluate the performance of our proposed method by
+comparing the cumulative profit from 2019 against two bench-
+mark methods. The first benchmark method is called Three-
+Stage, it uses a ConvLSTM network for RTP prediction but
+the price prediction, bid generation, and market clearing are
+handled separately. The second benchmark method is called
+OVP, it uses ground-truth price data to generate the historical
+optimal opportunity value through dynamic programming,
+then trains a neural network to predict the opportunity value
+for the next time step and designs bids accordingly [16].
+We consider an energy storage model with linear cost and
+a model with both linear and quadratic costs to evaluate the
+performance of our proposed method. The linear cost function
+is defined as c(pt, bt) = C1pt, where C1 = 10. The linear and
+(a)
+ (b)
+Fig. 4: Annual cumulative profit comparison for the price-taker case.
+The energy storage model is a linear cost term for (a) Long Island
+and (b) Western NY in NYISO.
+(a)
+ (b)
+Fig. 5: Annual cumulative profit comparison for the price-maker case,
+considering (a) a linear price sensitivity model and (b) a cubic price
+sensitivity model.
+quadratic cost function is defined as c(pt, bt) = C1pt + C2p2
+t ,
+where C1 = 5 and C2 = 5.
+Fig. 3 presents the cumulative profit of the proposed method
+compared to two benchmark methods under both energy
+storage models, using 5-minute resolution price data in New
+York City. The proposed method consistently outperforms
+the benchmarks, achieving a performance improvement of
+approximately 21% and 5% with the linear cost model, and
+15% and 7% with the linear and quadratic cost model. We
+also compare the profit performance of the three methods
+in two additional NYISO zones, Long Island and Western
+NY , in Fig. 4. Our method consistently achieves the highest
+performance. The proposed method demonstrates consistent
+improvements over the benchmarks.
+B. Energy Storage Bidding Under Price-Maker Setting
+We conduct experiments on energy storage bidding under
+the price-maker setting. In this setting, the energy storage
+system can influence electricity prices by increasing prices
+through charging (raising demand) and decreasing prices
+through discharging (lowering demand). We use the same real-
+time price data from New York City in NYISO as described
+in the price-taker setting. The dataset includes both input
+features and optimal decision values, with optimal decisions
+
+8
+obtained by solving (3) using the price-maker real-time price
+sensitivity model. Because the OVP method does not sup-
+port the price-maker setting, we compare our method only
+with the Three-Stage method. Specifically, we consider two
+price sensitivity models: a linear price sensitivity model,
+λt(pt, bt) = λt − α(pt − bt), and a cubic price sensitivity
+model, λt(pt, bt) = λt − α(pt − bt)3. Both models incorporate
+a linear degradation cost function, using the same degradation
+cost parameter as in the price-taker setting.
+In the testing stage, the profit is computed as follows:
+PT
+t=1 λt(p∗
+t , b∗
+t )(p∗
+t − b∗
+t ) − c(p∗
+t , b∗
+t ) (15)
+where p∗
+t and b∗
+t denote the discharge and charge amounts,
+respectively, after market clearing at time t. The sensitivity
+parameter is set to α = 10 for linear model and α = 100 for
+cubic model.
+Fig. 5 compares the arbitrage performance of the proposed
+method with the Three-Stage method under price-maker set-
+tings using two price sensitivity models. The proposed method
+consistently outperforms the benchmark, showcasing its abil-
+ity to integrate optimal decision-making under price-maker
+conditions. Furthermore, our end-to-end pipeline demonstrates
+robustness across varying sensitivity models.
+VI. C ONCLUSIONS
+This paper presents a decision-focused framework for en-
+ergy storage bidding that integrates a physical storage layer
+and a market-clearing layer into machine learning pipelines.
+We propose a predict-then-bid strategy and effectively link
+the dual variable of the SoC transition to bid design. The tri-
+layer framework, consisting of price prediction, energy storage
+optimization, and market clearing, enables optimal bidding
+strategies through end-to-end training. Numerical experiments
+with real-world NYISO data demonstrate that our framework
+achieves higher profits than existing methods, validating its
+effectiveness in enhancing energy storage bidding performance
+in electricity markets. In future work, we plan to extend our
+framework to multi-agent energy storage bidding by incorpo-
+rating multi-locational marginal prices. Additionally, we will
+explore using the framework to infer sensitivity parameters in
+price-maker models.
+REFERENCES
+[1] Office of the Governor of California, “California exceeds
+another clean energy milestone,” October 15 2024, accessed:
+2025-02-28. [Online]. Available: https://www.gov.ca.gov/2024/10/15/
+california-exceeds-another-clean-energy-milestone/
+[2] Chron, “Texas is U.S. leader in renewable energy gen-
+eration, says data,” January 2025, accessed: 2025-02-28.
+[Online]. Available: https://www.chron.com/news/houston-texas/article/
+texas-energy-solar-battery-california-20030398.php
+[3] N. Zheng, Q. Xin, W. Di, G. Murtaugh, and B. Xu, “Energy storage
+state-of-charge market model,” IEEE Transactions on Energy Markets,
+Policy and Regulation, vol. 1, no. 1, pp. 11–22, 2023.
+[4] X. Qin, B. Xu, I. Lestas, Y . Guo, and H. Sun, “The role of electricity
+market design for energy storage in cost-efficient decarbonization,”
+Joule, vol. 7, no. 6, pp. 1227–1240, 2023.
+[5] R. Sioshansi, P. Denholm, J. Arteaga, S. Awara, S. Bhattacharjee, A. Bot-
+terud, W. Cole, A. Cortes, A. De Queiroz, J. DeCarolis et al., “Energy-
+storage modeling: State-of-the-art and future research directions,” IEEE
+transactions on power systems , vol. 37, no. 2, pp. 860–875, 2021.
+[6] Y . Wang, Y . Dvorkin, R. Fernández-Blanco, B. Xu, and D. S. Kirschen,
+“Impact of local transmission congestion on energy storage arbitrage
+opportunities,” in 2017 IEEE Power & Energy Society General Meeting.
+IEEE, 2017, pp. 1–5.
+[7] M. Yi, S. Alghumayjan, and B. Xu, “Perturbed decision-focused learning
+for modeling strategic energy storage,” IEEE Transactions on Smart
+Grid, vol. 16, no. 3, pp. 2574–2586, 2025.
+[8] L. Sang, Y . Xu, H. Long, Q. Hu, and H. Sun, “Electricity price prediction
+for energy storage system arbitrage: A decision-focused approach,”IEEE
+Transactions on Smart Grid , vol. 13, no. 4, pp. 2822–2832, 2022.
+[9] C. Ruiz, A. J. Conejo, and Y . Smeers, “Equilibria in an oligopolistic
+electricity pool with stepwise offer curves,”IEEE Transactions on Power
+Systems, vol. 27, no. 2, pp. 752–761, 2012.
+[10] B. Hu, Y . Gong, C. Y . Chung, B. F. Noble, and G. Poelzer, “Price-maker
+bidding and offering strategies for networked microgrids in day-ahead
+electricity markets,” IEEE Transactions on Smart Grid , vol. 12, no. 6,
+pp. 5201–5211, 2021.
+[11] S. Chen, Q. Chen, and Y . Xu, “Strategic bidding and compensation
+mechanism for a load aggregator with direct thermostat control capabil-
+ities,” IEEE Transactions on Smart Grid , vol. 9, no. 3, pp. 2327–2336,
+2018.
+[12] R. Zhang, T. Jiang, F. Li, G. Li, H. Chen, and X. Li, “Coordinated
+bidding strategy of wind farms and power-to-gas facilities using a
+cooperative game approach,” IEEE Transactions on Sustainable Energy,
+vol. 11, no. 4, pp. 2545–2555, 2020.
+[13] S. Shafiee, H. Zareipour, A. M. Knight, N. Amjady, and B. Mohammadi-
+Ivatloo, “Risk-constrained bidding and offering strategy for a merchant
+compressed air energy storage plant,” IEEE Transactions on Power
+Systems, vol. 32, no. 2, pp. 946–957, 2017.
+[14] S. Shafiee, H. Zareipour, and A. M. Knight, “Developing bidding and
+offering curves of a price-maker energy storage facility based on robust
+optimization,” IEEE Transactions on Smart Grid , vol. 10, no. 1, pp.
+650–660, 2019.
+[15] N. Zheng, J. Jaworski, and B. Xu, “Arbitraging variable efficiency
+energy storage using analytical stochastic dynamic programming,” IEEE
+Transactions on Power Systems , vol. 37, no. 6, pp. 4785–4795, 2022.
+[16] Y . Baker, N. Zheng, and B. Xu, “Transferable energy storage bidder,”
+IEEE Transactions on Power Systems , 2023.
+[17] K. Abdulla, J. De Hoog, V . Muenzel, F. Suits, K. Steer, A. Wirth,
+and S. Halgamuge, “Optimal operation of energy storage systems
+considering forecasts and battery degradation,” IEEE Transactions on
+Smart Grid, vol. 9, no. 3, pp. 2086–2096, 2016.
+[18] H. Chitsaz, P. Zamani-Dehkordi, H. Zareipour, and P. P. Parikh, “Elec-
+tricity price forecasting for operational scheduling of behind-the-meter
+storage systems,” IEEE Transactions on Smart Grid , vol. 9, no. 6, pp.
+6612–6622, 2017.
+[19] A. N. Elmachtoub and P. Grigas, “Smart “predict, then optimize”,”
+Management Science, vol. 68, no. 1, pp. 9–26, 2022.
+[20] A. N. Elmachtoub, J. C. N. Liang, and R. McNellis, “Decision trees
+for decision-making under the predict-then-optimize framework,” in
+International conference on machine learning. PMLR, 2020, pp. 2858–
+2867.
+[21] L. Baty, K. Jungel, P. S. Klein, A. Parmentier, and M. Schiffer,
+“Combinatorial optimization-enriched machine learning to solve the
+dynamic vehicle routing problem with time windows,” Transportation
+Science, 2024.
+[22] Q. Berthet, M. Blondel, O. Teboul, M. Cuturi, J.-P. Vert, and F. Bach,
+“Learning with differentiable pertubed optimizers,” Advances in neural
+information processing systems , vol. 33, pp. 9508–9519, 2020.
+[23] M. V . Pogan ˇci´c, A. Paulus, V . Musil, G. Martius, and M. Rolinek,
+“Differentiation of blackbox combinatorial solvers,” in International
+Conference on Learning Representations , 2020.
+[24] P. Donti, B. Amos, and J. Z. Kolter, “Task-based end-to-end model
+learning in stochastic optimization,” Advances in neural information
+processing systems, vol. 30, 2017.
+[25] B. Amos and J. Z. Kolter, “OptNet: Differentiable optimization as a layer
+in neural networks,” in Proceedings of the 34th International Conference
+on Machine Learning , 2017, pp. 136–145.
+[26] Y . Shi and B. Xu, “Demand-side price-responsive flexibility and baseline
+estimation through end-to-end learning,” IET Renewable Power Gener-
+ation, vol. 18, no. 3, pp. 361–371, 2024.
+[27] M. Blondel, A. F. Martins, and V . Niculae, “Learning with fenchel-young
+losses,” The Journal of Machine Learning Research , vol. 21, no. 1, pp.
+1314–1382, 2020.
+[28] A. Paszke, S. Gross, S. Chintala, G. Chanan, E. Yang, Z. DeVito, Z. Lin,
+A. Desmaison, L. Antiga, and A. Lerer, “Automatic differentiation in
+PyTorch,” 2017.
+
+9
+[29] A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan,
+T. Killeen, Z. Lin, N. Gimelshein, L. Antiga et al. , “Pytorch: An
+imperative style, high-performance deep learning library,” Advances in
+neural information processing systems , vol. 32, 2019.
+[30] B. Tang and E. B. Khalil, “PyEPO: A PyTorch-based end-to-end
+predict-then-optimize library for linear and integer programming,” arXiv
+preprint arXiv:2206.14234, 2022.
+[31] A. Agrawal, B. Amos, S. Barratt, S. Boyd, S. Diamond, and J. Z.
+Kolter, “Differentiable convex optimization layers,” Advances in neural
+information processing systems , vol. 32, 2019.
+[32] S. Diamond and S. Boyd, “CVXPY: A Python-embedded modeling lan-
+guage for convex optimization,” Journal of Machine Learning Research,
+vol. 17, no. 83, pp. 1–5, 2016.
+[33] M. Carter, Foundations of mathematical economics . MIT press, 2001.
+APPENDIX
+A. Proof of Proposition 1
+Consider the energy storage arbitrage problem over the
+horizon from t + 1 to T :
+max
+pk,bk∈X1
+TX
+k=t+1
+
+ˆλk (pk − bk) − c(pk, bk)
+
+. (16)
+The Lagrangian function of this problem is given by:
+L(p, b, e)
+=
+TX
+k=t+1
+
+ˆλk(pk − bk) − c(pk, bk)
+
+−
+TX
+k=t+1
+¯θk
+
+ek − ek−1 + pk
+η − bkη
+
+−
+TX
+k=t+1
+(¯uk(pk − P ) − ukpk + ¯vk(bk − P ) − vkbk)
+−
+TX
+k=t+1
+( ¯wk(ek − E) − wkek) . (17)
+Let p∗
+k, b∗
+k, e∗
+k, ¯θ∗
+k, ¯u∗
+k, u∗
+k, ¯w∗
+k, w∗
+k denote the optimal solu-
+tions that maximize the objective function under constraints.
+Substituting these values into (17) to obtain L∗(p, b, e). The
+value function is then defined as:
+Vt+1 =
+TX
+k=t+1
+
+ˆλk(p∗
+k − b∗
+k) − c(p∗
+k, b∗
+k)
+
+= L∗(p, b, e) (18)
+The equality Vt+1 = L∗(p, b, e) holds because the inequal-
+ity constraints (1b)-(1d) satisfy complementary slackness. To
+compute the marginal cost of the opportunity value with
+respect to et, note that changes in bt and pt influence et,
+thereby affecting future energy levels. According to the enve-
+lope theorem [33], at the optimum, only the direct effect of
+et on the objective function needs to be considered. Thus, the
+partial derivative of Vt+1 with respect to et is given by:
+∂Vt+1
+∂et
+= ∂L∗(p, b, e)
+∂et
+(19)
+= ∂
+∂et
+ 
+−
+TX
+k=t+1
+¯θk
+
+ek − ek−1 + pk
+η − bkη
+
+−
+TX
+k=t+1
+( ¯wk(ek − E) − wkek)
+!
+= ¯θt+1 (20)
+Because charge and discharge influence the state of charge
+through efficiency, the marginal cost of the opportunity value
+with respect to pt and bt is derived using the chain rule:
+∂Vt+1
+∂pt
+= ∂Vt+1
+∂et
+∂et
+∂pt
+= − ∂Vt+1
+∂et
+· 1
+η = −¯θt+1 · 1
+η (21a)
+∂Vt+1
+∂bt
+= ∂Vt+1
+∂et
+∂et
+∂bt
+= ∂Vt+1
+∂et
+· η = ¯θt+1 · η (21b)
+where ¯θt+1 denotes the dual variable corresponding to the SoC
+dynamic constraint in equation (1e) at time t + 1.
+B. Proof of Proposition 2
+Given the storage arbitrage model (1a)–(1e), the Lagrangian
+function can be expressed as:
+L =
+TX
+k=t
+
+ˆλk(pk − bk) − c(pk, bk)
+
+−
+TX
+k=t
+¯θk
+ pk
+η − bkη
+
+−
+TX
+k=t
+(¯uk(pk − R) − ukpk + ¯vk(bk − R) − vkbk)
++
+TX
+k=t
+¯wkE +
+T −1X
+k=t
+ 
+−¯θk + ¯θk+1 − ¯wk + wk
+
+ek
++ (−θT − ¯wT + wT )eT + θtet−1 (22a)
+The KKT conditions F(p, b, e, ˆλ, ¯θt, µ) can be written as
+follows:
+∇pt L = ˆλt − ∂c(pt, bt)
+∂pt
+−
+¯θt
+η − ¯ut + ut = 0, (23a)
+∇bt L = −ˆλt − ∂c(pt, bt)
+∂bt
++ ¯θtη − ¯vt + vt = 0, (23b)
+∇et L = −¯θt + ¯θt+1 − ¯wt + wt = 0, (23c)
+∇eT L = −¯θT − ¯wT + wT = 0, (23d)
+et − et−1 = − pt
+η + btη, 0 ≤ et ≤ E, (23e)
+0 ≤ pt ≤ R, 0 ≤ bt ≤ R, (23f)
+¯ut, ut, ¯vt, vt, ¯wt, wt ≥ 0, (23g)
+¯ut(R − pt) = 0, u t(pt) = 0, (23h)
+¯vt(R − bt) = 0, v t(bt) = 0, (23i)
+¯wt(E − et) = 0, w t(et) = 0 (23j)
+where equations (23a)–(23d) denote the stationarity conditions
+of the arbitrage problem (1a)–(1e); (23e)–(23f) specify the
+primal feasibility conditions; (23g) denotes the dual feasibility
+condition; and (23h)–(23j) represent the complementary slack-
+ness conditions.
+The total derivative of the KKT conditions (23a)–(23j) is
+taken as follows:
+dˆλλλ − d¯θθθt
+η − d¯uuu + duuu = 000, (25a)
+− dˆλλλ + d¯θθθtη − d¯vvv + dvvv = 000, (25b)
+(Γ − III)d¯θθθt − d¯www + dwww = 000, (25c)
+(III − Γ⊤)deee + 1
+η dppp − ηdbbb = 0, (25d)
+
+10
+
+
+000 0 00 0 00 − 1
+η III −III I II 000 0 00 0 00 0 00
+000 0 00 0 00 ηIII 000 0 00 −III I II 000 0 00
+000 0 00 0 00 ( Γ − III) 0 00 0 00 0 00 0 00 −III I II
+1
+η III −ηIII (III − Γ⊤) 0 00 0 00 0 00 0 00 0 00 0 00 0 00
+−Λ(¯uuu) 0 00 0 00 0 00 Λ( 1R − ppp) 0 00 0 00 0 00 0 00 0 00
+Λ(uuu) 0 00 0 00 0 00 0 00 Λ( ppp) 0 00 0 00 0 00 0 00
+000 −Λ(¯vvv) 0 00 0 00 0 00 0 00 Λ( 1R − bbb) 0 00 0 00 0 00
+000 Λ( vvv) 0 00 0 00 0 00 0 00 0 00 Λ( bbb) 0 00 0 00
+000 0 00 −Λ(¯www) 0 00 0 00 0 00 0 00 0 00 Λ( 1E − eee) 0 00
+000 0 00 Λ( www) 0 00 0 00 0 00 0 00 0 00 0 00 Λ( eee)
+
+
+| {z }
+A
+
+
+dppp
+dbbb
+deee
+d¯θθθt
+d¯uuu
+duuu
+d¯vvv
+dvvv
+d¯www
+dwww
+
+
+=
+
+
+−dˆλλλ
+dˆλλλ
+000
+000
+000
+000
+000
+000
+000
+
+
+(24)
+Λ(1R − ppp)d¯uuu + Λ(¯uuu)(−dppp) = 000, Λ(ppp)duuu + Λ(uuu)dppp = 000,
+(25e)
+Λ(1R − bbb)d¯vvv + Λ(¯vvv)(−dbbb) = 000, Λ(bbb)dvvv + Λ(vvv)dbbb = 000,
+(25f)
+Λ(1E − eee)d¯www + Λ(¯www)(−deee) = 000, Λ(eee)dwww + Λ(www)deee = 000
+(25g)
+where 1 ∈ RT denotes an all-one vector. ¯θθθt = [¯θt, ¯θt+1, ..., ¯θT ]
+and ¯θθθt+1 = [¯θt+1, ¯θt+2, ..., ¯θT , 0]. The notation Λ(.) represents
+the operation of creating a diagonal matrix from a given vector.
+Γ is a shift matrix to link the state at one-time step to the
+next state in (23c) and (23d). Then dθθθt+1 = Γd¯θθθt, and the
+difference dθθθt+1 − d¯θθθt becomes Γd¯θθθt − d¯θθθt. The matrix Γ is
+defined as:
+Γ =
+
+
+0 1 0 · · · 0
+0 0 1 · · · 0
+0 0 0 ... 0
+... ... ... ... 1
+0 0 0 · · · 0
+
+
+The equations (25a)–(25g) can be written in a compact
+matrix form as in (24), where we denote A as the left-hand
+side coefficient matrix in (24). Both sides of (24) are divided
+by dˆλλλ and multiplied by A−1 to obtain the gradient with
+respect to the price prediction:
+
+dppp
+dˆλλλ , dbbb
+dˆλλλ , deee
+dˆλλλ , d¯θθθt
+dˆλλλ , d¯uuu
+dˆλλλ , duuu
+dˆλλλ , d¯vvv
+dˆλλλ , dvvv
+dˆλλλ , d¯www
+dˆλλλ , dwww
+dˆλλλ
+T
+= A−1 −1, 1,000,000,000,000,000,000,000T
+(26)
+The matrix ∂¯θθθt
+∂ˆλλλ ∈ RT ×T is obtained as the fourth component
+in (26). We extract its first row and repeat this process for
+each of the N initial SoC levels. The resulting gradients from
+all segments are then stacked to construct the final Jacobian
+matrix ∂θθθ
+∂ˆλλλ ∈ RN ×T .
+C. Proof of Proposition 3
+The key to proving that the perturbed loss function is
+differentiable with respect to the bid is to show differentiability
+in terms of F2,ϵ( ¯θt+1).
+We define:
+G = ¯θt+1 + ϵZ, (27)
+which leads to:
+Z = G − ¯θt+1
+ϵ (28)
+Differentiate both sides, we obtain:
+dZ = dG
+ϵ (29)
+Use the definition of Fϵ( ¯θt+1) and apply the change of
+variables, we have:
+F2,ϵ( ¯θt+1) = E[F2( ¯θt+1 + ϵZ)]
+=
+Z
+F2( ¯θt+1 + ϵZ)ϑ(Z)dZ
+= 1
+ϵ
+Z
+F2(G)ϑ
+ G − ¯θt+1
+ϵ
+
+dG.
+(30)
+Since the noise Z follows a Gaussian distribution, ψ(Z) is
+differentiable, and we have:
+∇ϑ(Z) = −ϑ(Z)∇ψ(Z). (31)
+Differentiate with respect to ¯θt+1 and reverse the change of
+variables, we obtain:
+∇¯θt+1 F2,ϵ( ¯θt+1)
+= 1
+ϵ
+Z
+F2(G)∇¯θt+1 ϑ
+ G − ¯θt+1
+ϵ
+
+dG
+= 1
+ϵ2
+Z
+F2(G)ϑ
+ G − ¯θt+1
+ϵ
+
+∇¯θt+1 ψ
+ G − ¯θt+1
+ϵ
+
+dG
+= 1
+ϵ
+Z
+F2( ¯θt+1 + ϵZ)ϑ(Z)∇Zψ(Z)dZ
+= E
+
+F2( ¯θt+1 + ϵZ)∇Zψ(Z)/ϵ
+
+.
+(32)
+If ψ(Z) is twice differentiable, then:
+∇2ϑ(Z) = (ϑ(Z)ϑ⊤(Z) − ∇2ϑ(Z))ϑ(Z). (33)
+Thus, differentiating ∇¯θt+1 F2,ϵ( ¯θt+1) once more:
+∇2
+¯θt+1
+F2,ϵ( ¯θt+1)
+= 1
+ϵ
+Z
+F2(G)∇2
+¯θt+1
+ϑ2
+ G − ¯θt+1
+ϵ
+
+dG
+= 1
+ϵ
+Z
+F2( ¯θt+1 + ϵZ)
+ 
+ϑ(Z)ϑ⊤(Z) − ∇2ϑ(Z)
+
+ϑ(Z)dZ
+= E
+
+F2( ¯θt+1 + ϵZ)
+ 
+ϑ(Z)ϑ⊤(Z) − ∇2ϑ(Z)
+
+/ϵ
+
+.
+(34)
+Since these derivatives are continuous, we conclude that the
+loss function is differentiable, and the solution is well-defined.

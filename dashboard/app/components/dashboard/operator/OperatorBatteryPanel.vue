@@ -4,8 +4,14 @@ import { computed } from 'vue'
 const props = defineProps<{
   statusLabel: string
   socPercent: number
+  socSourceLabel: string
+  socFormula: string
   sohPercent: number
+  sohSourceLabel: string
+  sohFormula: string
   powerLabel: string
+  telemetryIngestLabel: string
+  telemetryIngestTooltip: string
 }>()
 
 const socBandLabel = computed(() => {
@@ -38,11 +44,14 @@ const safePowerMode = computed(() => {
 </script>
 
 <template>
-  <section class="surface-panel battery-panel">
+  <section
+    id="operator-battery"
+    class="surface-panel battery-panel"
+  >
     <div class="rail-heading">
       <div>
         <p class="eyebrow">
-          Battery status
+          Battery readiness
         </p>
         <h2 class="rail-title">
           {{ statusLabel }}
@@ -52,6 +61,14 @@ const safePowerMode = computed(() => {
         class="rail-heading__icon"
         name="i-lucide-battery-charging"
       />
+    </div>
+
+    <div
+      class="battery-ingest-pill"
+      :title="telemetryIngestTooltip"
+    >
+      <UIcon name="i-lucide-radio-tower" />
+      <span>{{ telemetryIngestLabel }}</span>
     </div>
 
     <div class="battery-stat-grid">
@@ -65,6 +82,7 @@ const safePowerMode = computed(() => {
         </div>
         <strong>{{ socPercent }}%</strong>
         <small class="metric-lens-card__kicker">{{ socBandLabel }}</small>
+        <span class="battery-stat-grid__meta">{{ socSourceLabel }}</span>
         <div class="mini-meter">
           <span :style="{ width: `${socPercent}%` }" />
         </div>
@@ -73,8 +91,8 @@ const safePowerMode = computed(() => {
           role="tooltip"
         >
           <span class="metric-lens-card__tooltip-title">State of charge</span>
-          <span>Formula: SOC = projected_soc_after_fraction × 100%</span>
-          <span>Interpretation: current battery charge readiness for the next dispatch slice.</span>
+          <span>Formula: {{ socFormula }}</span>
+          <span>Source priority: latest 5-minute telemetry, then hourly Silver snapshot, then baseline LP starting SOC.</span>
         </span>
       </article>
       <article class="metric-lens-card">
@@ -87,6 +105,7 @@ const safePowerMode = computed(() => {
         </div>
         <strong>{{ sohPercent }}%</strong>
         <small class="metric-lens-card__kicker">Health estimate</small>
+        <span class="battery-stat-grid__meta">{{ sohSourceLabel }}</span>
         <div class="mini-meter mini-meter-green">
           <span :style="{ width: `${sohPercent}%` }" />
         </div>
@@ -95,28 +114,28 @@ const safePowerMode = computed(() => {
           role="tooltip"
         >
           <span class="metric-lens-card__tooltip-title">Degradation proxy</span>
-          <span>Formula: SOH_proxy = 96.2 - throughput × 0.12</span>
-          <span>Interpretation: estimated remaining battery health as a soft constraint signal.</span>
+          <span>Formula: {{ sohFormula }}</span>
+          <span>Interpretation: physical telemetry when present; otherwise Level 1 throughput proxy for operator context.</span>
         </span>
       </article>
       <article class="metric-lens-card">
         <div class="metric-lens-card__label-row">
-          <p>Latest power intent</p>
+          <p>First preview action</p>
           <UIcon
             class="metric-lens-card__icon"
-            name="i-lucide-wave-square"
+            name="i-lucide-activity"
           />
         </div>
         <strong>{{ powerLabel }}</strong>
         <small class="metric-lens-card__kicker">{{ safePowerMode }}</small>
-        <span class="battery-stat-grid__meta">Limit ±100 MW</span>
+        <span class="battery-stat-grid__meta">Review only</span>
         <span
           class="metric-lens-card__tooltip"
           role="tooltip"
         >
-          <span class="metric-lens-card__tooltip-title">Intent to dispatch</span>
-          <span>Formula: power_cmd = clamp((price_gap / max_deviation) × max_power_mw, -max_power_mw, +max_power_mw)</span>
-          <span>Interpretation: positive power is export, negative means import/charge intent.</span>
+          <span class="metric-lens-card__tooltip-title">DAM/IDM delivery-hour preview</span>
+          <span>Formula: preview_power = selected_schedule.recommended_net_power_mw for the first visible action row.</span>
+          <span>Interpretation: positive power means discharge review, negative means charge review; this is not a dispatch command.</span>
         </span>
       </article>
     </div>

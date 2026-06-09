@@ -1,14 +1,17 @@
 import json
 from datetime import date, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 
 import dagster as dg
 import polars as pl
 
 from smart_arbitrage.assets.bronze import market_weather
 from smart_arbitrage.assets.bronze.market_weather import (
+    ObservedMarketBackfillConfig,
     WeatherLocationConfig,
     _fetch_oree_data_view_prices,
+    build_observed_historical_weather_frame,
+    build_observed_market_price_history,
     build_synthetic_market_price_history,
     weather_forecast_bronze,
 )
@@ -89,6 +92,86 @@ def test_oree_data_view_parser_accepts_json_wrapped_in_html_content_type(
     assert rows[0]["market_zone"] == "IPS"
 
 
+def test_oree_data_view_parser_can_request_idm_rows(monkeypatch) -> None:
+    table_html = _build_oree_table_html(target_date="04.05.2026")
+    response_text = json.dumps({"content": table_html}).replace("</", "<\\/")
+    recorded_posts: list[dict[str, Any]] = []
+
+    class FakeResponse:
+        text = response_text
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, str]:
+            return {"content": table_html}
+
+    class FakeClient:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            return None
+
+        def __enter__(self) -> "FakeClient":
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            return None
+
+        def post(self, url: str, *, data: dict[str, str], headers: dict[str, str]) -> FakeResponse:
+            recorded_posts.append({"url": url, "data": data, "headers": headers})
+            return FakeResponse()
+
+    monkeypatch.setattr(market_weather.httpx, "Client", FakeClient)
+
+    rows = _fetch_oree_data_view_prices(date(2026, 5, 4), market_venue="IDM")
+
+    assert rows is not None
+    assert len(rows) == 24
+    assert recorded_posts[0]["data"] == {"date": "05.2026", "market": "IDM", "zone": "IPS"}
+    assert {row["market_venue"] for row in rows} == {"IDM"}
+
+
+def test_oree_data_view_month_fetch_retries_transient_empty_response(monkeypatch) -> None:
+    table_html = _build_oree_table_html(target_date="04.05.2026")
+    responses = iter(["", json.dumps({"content": table_html}).replace("</", "<\\/")])
+    requested_dates: list[str] = []
+
+    class FakeResponse:
+        headers = {"content-type": "text/html; charset=windows-1251"}
+
+        def __init__(self, text: str) -> None:
+            self.text = text
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict[str, str]:
+            if not self.text:
+                return {}
+            return json.loads(self.text)
+
+    class FakeClient:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            return None
+
+        def __enter__(self) -> "FakeClient":
+            return self
+
+        def __exit__(self, *args: Any) -> None:
+            return None
+
+        def post(self, url: str, *, data: dict[str, str], headers: dict[str, str]) -> FakeResponse:
+            requested_dates.append(data["date"])
+            return FakeResponse(next(responses))
+
+    monkeypatch.setattr(market_weather.httpx, "Client", FakeClient)
+
+    rows = market_weather._fetch_oree_data_view_month_prices(date(2026, 5, 1))
+
+    assert rows is not None
+    assert len(rows) == 24
+    assert requested_dates == ["05.2026", "05.2026"]
+
+
 def test_weather_asset_tags_and_persists_tenant_specific_observations(
     monkeypatch,
 ) -> None:
@@ -118,11 +201,14 @@ def test_weather_asset_tags_and_persists_tenant_specific_observations(
     monkeypatch.setattr(market_weather, "get_market_data_store", lambda: store)
     context = dg.build_asset_context()
 
-    weather_frame = weather_forecast_bronze(
-        context,
-        WeatherLocationConfig(
-            tenant_id="client_002_lviv_office",
-            location_config_path="simulations/tenants.yml",
+    weather_frame = cast(
+        pl.DataFrame,
+        weather_forecast_bronze(
+            context,
+            WeatherLocationConfig(
+                tenant_id="client_002_lviv_office",
+                location_config_path="simulations/tenants.yml",
+            ),
         ),
     )
 
@@ -152,6 +238,44 @@ def test_market_price_observations_preserve_synthetic_provenance() -> None:
     assert observations[0].source_url == market_weather.SYNTHETIC_MARKET_SOURCE_URL
     assert observations[0].market_venue == "DAM"
     assert observations[0].market_zone == "IPS"
+
+
+def test_observed_idm_price_history_asset_persists_source_backed_rows(monkeypatch) -> None:
+    store = _RecordingMarketDataStore()
+
+    def fake_fetch_month_prices(month_date: date, *, market_venue: str = "DAM") -> list[dict[str, Any]]:
+        assert month_date == date(2026, 5, 1)
+        assert market_venue == "IDM"
+        return [
+            market_weather._build_market_row(
+                timestamp=datetime(2026, 5, 1, hour_index),
+                price_eur_mwh=52.0 + hour_index,
+                price_uah_mwh=2100.0 + hour_index,
+                volume_mwh=850.0,
+                source="OREE_DATA_VIEW",
+                source_kind="observed",
+                source_url=market_weather.OREE_DATA_VIEW_URL,
+                market_venue="IDM",
+            )
+            for hour_index in range(24)
+        ]
+
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", fake_fetch_month_prices)
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date, *, market_venue="DAM": None)
+    monkeypatch.setattr(market_weather, "get_market_data_store", lambda: store)
+
+    price_history = cast(
+        pl.DataFrame,
+        market_weather.observed_idm_price_history_bronze(
+            dg.build_asset_context(),
+            ObservedMarketBackfillConfig(start_date="2026-05-01", end_date="2026-05-01"),
+        ),
+    )
+
+    assert price_history.height == 24
+    assert {row.market_venue for row in store.market_observations} == {"IDM"}
+    assert {row.source_kind for row in store.market_observations} == {"observed"}
+    assert {row.source for row in store.market_observations} == {"OREE_DATA_VIEW"}
 
 
 def test_live_market_overlay_preserves_requested_history_window(monkeypatch) -> None:
@@ -187,6 +311,172 @@ def test_live_market_overlay_preserves_requested_history_window(monkeypatch) -> 
     assert "OREE_DATA_VIEW" in set(price_history.select("source").to_series().to_list())
 
 
+def test_observed_market_price_history_rejects_synthetic_fallback(monkeypatch) -> None:
+    def fake_fetch_oree_prices(target_date: date) -> list[dict[str, Any]] | None:
+        if target_date == date(2026, 5, 1):
+            return [
+                market_weather._build_market_row(
+                    timestamp=datetime(2026, 5, 1, hour_index),
+                    price_eur_mwh=50.0 + hour_index,
+                    price_uah_mwh=2000.0 + hour_index,
+                    volume_mwh=900.0,
+                    source="OREE_DATA_VIEW",
+                    source_kind="observed",
+                    source_url=market_weather.OREE_DATA_VIEW_URL,
+                )
+                for hour_index in range(24)
+            ]
+        return None
+
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", lambda month_date: None)
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", fake_fetch_oree_prices)
+
+    price_history = build_observed_market_price_history(
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+    )
+
+    assert price_history.height == 24
+    assert set(price_history.select("source_kind").to_series().to_list()) == {"observed"}
+    assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0) == datetime(2026, 5, 1)
+
+
+def test_observed_market_backfill_default_window_uses_stable_contiguous_month(monkeypatch) -> None:
+    def fake_fetch_month_prices(month_date: date) -> list[dict[str, Any]] | None:
+        if month_date != date(2026, 1, 1):
+            return None
+        return [
+            market_weather._build_market_row(
+                timestamp=datetime(2026, 1, day, hour_index),
+                price_eur_mwh=50.0 + hour_index,
+                price_uah_mwh=2000.0 + hour_index,
+                volume_mwh=900.0,
+                source="OREE_DATA_VIEW",
+                source_kind="observed",
+                source_url=market_weather.OREE_DATA_VIEW_URL,
+            )
+            for day in range(1, 32)
+            for hour_index in range(24)
+        ]
+
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", fake_fetch_month_prices)
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date: None)
+
+    config = ObservedMarketBackfillConfig()
+    weather_config = market_weather.TenantHistoricalWeatherConfig()
+    assert weather_config.start_date == config.start_date
+    assert weather_config.end_date == config.end_date
+
+    price_history = build_observed_market_price_history(
+        start_date=date.fromisoformat(config.start_date),
+        end_date=date.fromisoformat(config.end_date),
+    )
+
+    assert price_history.height == 31 * 24
+    assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(0) == datetime(2026, 1, 1)
+    assert price_history.select(DEFAULT_TIMESTAMP_COLUMN).to_series().item(-1) == datetime(2026, 1, 31, 23)
+
+
+def test_observed_market_backfill_paces_monthly_oree_requests(monkeypatch) -> None:
+    requested_months: list[date] = []
+    pauses: list[float] = []
+
+    def fake_fetch_month_prices(month_date: date) -> list[dict[str, Any]]:
+        requested_months.append(month_date)
+        next_month = date(month_date.year, month_date.month + 1, 1)
+        return [
+            market_weather._build_market_row(
+                timestamp=datetime(month_date.year, month_date.month, day, hour_index),
+                price_eur_mwh=50.0 + hour_index,
+                price_uah_mwh=2000.0 + hour_index,
+                volume_mwh=900.0,
+                source="OREE_DATA_VIEW",
+                source_kind="observed",
+                source_url=market_weather.OREE_DATA_VIEW_URL,
+            )
+            for day in range(1, (next_month - month_date).days + 1)
+            for hour_index in range(24)
+        ]
+
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", fake_fetch_month_prices)
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date: None)
+    monkeypatch.setattr(
+        market_weather,
+        "_pause_between_oree_month_requests",
+        lambda: pauses.append(2.0),
+        raising=False,
+    )
+
+    price_history = build_observed_market_price_history(
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 2, 28),
+    )
+
+    assert requested_months == [date(2026, 1, 1), date(2026, 2, 1)]
+    assert pauses == [2.0]
+    assert price_history.height == (31 + 28) * 24
+
+
+def test_observed_market_price_history_fails_when_required_day_missing(monkeypatch) -> None:
+    monkeypatch.setattr(market_weather, "_fetch_oree_data_view_month_prices", lambda month_date: None)
+    monkeypatch.setattr(market_weather, "_fetch_oree_prices", lambda target_date: None)
+
+    try:
+        build_observed_market_price_history(
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 5, 1),
+        )
+    except ValueError as error:
+        assert "observed OREE DAM rows" in str(error)
+    else:
+        raise AssertionError("Expected observed-only backfill to reject missing OREE data.")
+
+
+def test_observed_historical_weather_frame_tags_tenant_and_source(monkeypatch) -> None:
+    def fake_fetch_historical_weather(
+        latitude: float,
+        longitude: float,
+        timezone: str,
+        *,
+        start_date: date,
+        end_date: date,
+    ) -> list[dict[str, Any]]:
+        assert latitude == 49.84
+        assert longitude == 24.03
+        assert timezone == "Europe/Kyiv"
+        assert start_date == date(2026, 5, 1)
+        assert end_date == date(2026, 5, 1)
+        return [
+            {
+                DEFAULT_TIMESTAMP_COLUMN: datetime(2026, 5, 1, 10),
+                "temperature": 16.0,
+                "solar_radiation": 300.0,
+                "wind_speed": 5.0,
+                "cloudcover": 20.0,
+                "precipitation": 0.0,
+                "pressure": 1012.0,
+                "humidity": 55.0,
+                "source": "OPEN_METEO_HISTORICAL",
+                "source_kind": "observed",
+                "source_url": market_weather.OPEN_METEO_HISTORICAL_URL,
+            }
+        ]
+
+    monkeypatch.setattr(market_weather, "_fetch_openmeteo_historical_data", fake_fetch_historical_weather)
+
+    weather_frame = build_observed_historical_weather_frame(
+        tenant_id="client_002_lviv_office",
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+        location_config_path="simulations/tenants.yml",
+    )
+
+    assert weather_frame.height == 1
+    assert weather_frame.row(0, named=True)["tenant_id"] == "client_002_lviv_office"
+    assert weather_frame.row(0, named=True)["source"] == "OPEN_METEO_HISTORICAL"
+    assert weather_frame.row(0, named=True)["source_kind"] == "observed"
+
+
 def test_dam_price_history_asset_persists_market_observations(monkeypatch) -> None:
     store = _RecordingMarketDataStore()
     price_history = build_synthetic_market_price_history(
@@ -209,7 +499,7 @@ def test_dam_price_history_asset_persists_market_observations(monkeypatch) -> No
     )
     monkeypatch.setattr(mvp_demo, "get_market_data_store", lambda: store)
 
-    result = mvp_demo.dam_price_history(dg.build_asset_context(), pl.DataFrame())
+    result = cast(pl.DataFrame, mvp_demo.dam_price_history(dg.build_asset_context(), pl.DataFrame()))
 
     assert result.height == 2
     assert len(store.market_observations) == 2

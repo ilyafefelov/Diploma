@@ -1,0 +1,66 @@
+ops:
+  poland_neighbor_market_snapshot_bronze:
+    config:
+      snapshot_csv_path: ""
+      source_url: "https://transparencyplatform.zendesk.com/hc/en-us/articles/35960137882129-File-Library-Guide"
+      source_access_method: "manual_export_csv"
+      source_retrieved_at_utc: ""
+      source_publication_timestamp_utc: ""
+      source_license_status: "review_required"
+      snapshot_kind: "day_ahead_price_eur_mwh"
+  poland_neighbor_market_snapshot_feature_candidate_frame:
+    config:
+      ua_decision_anchor_timestamp_utc: "2025-12-31T12:00:00+00:00"
+      prior_eur_uah_fx_rate: 0.0
+      prior_eur_uah_fx_timestamp_utc: ""
+      fx_rate_source: ""
+  entsoe_neighbor_market_sample_audit_frame:
+    config:
+      sample_country_codes_csv: "PL"
+      sample_period_start_utc: "202601010000"
+      sample_period_end_utc: "202601020000"
+      fetch_enabled: false
+  entsoe_neighbor_market_feature_candidate_frame:
+    config:
+      sample_country_codes_csv: "PL"
+      sample_period_start_utc: "202601010000"
+      sample_period_end_utc: "202601020000"
+      fetch_enabled: false
+  entsoe_poland_feature_governance_frame:
+    config:
+      publication_timestamp_utc: ""
+      ua_decision_anchor_timestamp_utc: "2025-12-31T12:00:00+00:00"
+      prior_eur_uah_fx_rate: 0.0
+      prior_eur_uah_fx_timestamp_utc: ""
+      fx_rate_source: ""
+      timezone_dst_mapping_ready: false
+      licensing_approved: false
+      market_rules_mapped: false
+      domain_shift_validated: false
+  entsoe_neighbor_market_aligned_feature_panel_frame:
+    config:
+      country_codes_csv: "PL"
+  dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame:
+    config:
+      strict_control_strategy_kind: "strict_similar_day"
+      validation_split: "final_holdout"
+      promotion_mean_improvement_threshold: 0.05
+      source_model: "nbeatsx_official_global_panel_v0"
+      candidate_strategy_kinds_csv: "official_global_panel_nbeatsx_schedule_value_learner_v2_plus,official_global_panel_nbeatsx_calibrated_schedule_value_learner_v2_plus"
+  dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame:
+    config:
+      source_models_csv: "nbeatsx_official_global_panel_v0"
+      candidate_strategy_kinds_csv: "official_global_panel_nbeatsx_schedule_value_learner_v2_plus,official_global_panel_nbeatsx_calibrated_schedule_value_learner_v2_plus"
+      validation_window_count: 4
+      validation_window_anchors: 18
+      min_prior_anchors: 30
+      strict_control_strategy_kind: "strict_similar_day"
+      v2_strategy_kind: "official_global_panel_nbeatsx_schedule_value_learner_v2"
+      promotion_mean_improvement_threshold: 0.05
+  dfl_market_coupling_v2_plus_ablation_frame:
+    config:
+      baseline_mean_regret_uah: 174.77
+      baseline_median_regret_uah: 100.52
+      baseline_improvement_vs_strict_pct: 43.73
+      baseline_rolling_pass_windows: 4
+      required_rolling_pass_windows: 4

@@ -1,0 +1,88 @@
+:root {
+  --operator-schedule-dock-border: rgba(255, 255, 255, 0.68);
+  --operator-schedule-dock-gradient-top: rgba(0, 144, 220, 0.98);
+  --operator-schedule-dock-gradient-bottom: rgba(0, 93, 162, 0.98);
+  --operator-schedule-dock-shadow: 0 16px 34px rgba(0, 91, 149, 0.24);
+  --operator-schedule-dock-inset: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  --operator-schedule-divider: rgba(255, 255, 255, 0.2);
+  --operator-schedule-chip-surface: rgba(0, 43, 96, 0.34);
+  --operator-schedule-segment-gradient-top: rgba(28, 166, 224, 0.9);
+  --operator-schedule-segment-gradient-bottom: rgba(4, 91, 157, 0.9);
+  --operator-schedule-segment-hover-shadow: 0 14px 24px rgba(0, 43, 87, 0.28);
+  --operator-schedule-segment-hover-ring: 0 0 0 2px rgba(215, 255, 79, 0.18);
+  --operator-schedule-scrollbar-thumb: rgba(215, 255, 79, 0.78);
+  --operator-schedule-scrollbar-track: rgba(0, 43, 96, 0.42);
+  --operator-schedule-table-border: rgba(255, 191, 82, 0.45);
+  --operator-schedule-table-surface: rgba(0, 61, 119, 0.5);
+  --operator-schedule-table-row-surface: rgba(4, 91, 157, 0.62);
+  --operator-schedule-table-empty-text: #fff0c7;
+  --operator-responsive-panel-border: rgba(202, 249, 255, 0.58);
+  --operator-responsive-panel-gradient-top: rgba(0, 118, 178, 0.76);
+  --operator-responsive-panel-gradient-bottom: rgba(0, 43, 96, 0.93);
+  --operator-responsive-panel-shadow: 0 16px 34px rgba(0, 35, 78, 0.24);
+  --operator-responsive-panel-inset-top: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  --operator-responsive-panel-inset-bottom: inset 0 -1px 0 rgba(0, 0, 0, 0.28);
+  --operator-contrast-frame-border: #f2fbff;
+  --operator-contrast-frame-gradient-top: rgba(236, 250, 255, 0.98);
+  --operator-contrast-frame-gradient-bottom: rgba(177, 226, 255, 0.96);
+  --operator-contrast-panel-border: #d7ff4f;
+  --operator-contrast-panel-ring: 0 0 0 1px rgba(0, 43, 96, 0.75);
+  --operator-contrast-panel-inset: inset 0 0 0 1px rgba(255, 255, 255, 0.42);
+  --operator-tenant-map-border-top: rgba(141, 244, 255, 0.34);
+  --operator-tenant-map-border-bottom: rgba(61, 255, 152, 0.22);
+  --operator-tenant-map-surface-glow: rgba(57, 255, 152, 0.08);
+  --operator-tenant-map-surface-top: rgba(4, 22, 43, 0.78);
+  --operator-tenant-map-surface-bottom: rgba(1, 8, 23, 0.94);
+  --operator-tenant-map-surface-shadow: rgba(2, 9, 26, 0.62);
+  --operator-tenant-map-surface-green-shadow: rgba(36, 255, 149, 0.06);
+  --operator-tenant-map-surface-ring: rgba(141, 244, 255, 0.08);
+  --operator-tenant-map-grid-line: rgba(141, 244, 255, 0.05);
+  --operator-tenant-map-grid-line-soft: rgba(141, 244, 255, 0.04);
+  --operator-tenant-map-outline-glow: rgba(141, 244, 255, 0.58);
+  --operator-tenant-map-outline-glow-soft: rgba(35, 205, 255, 0.22);
+  --operator-tenant-map-marker-border: rgba(222, 249, 255, 0.95);
+  --operator-tenant-map-marker-highlight: rgba(204, 237, 255, 0.95);
+  --operator-tenant-map-marker-fill: rgba(19, 126, 226, 0.94);
+  --operator-tenant-map-marker-ring: rgba(10, 51, 97, 0.44);
+  --operator-tenant-map-marker-shadow: rgba(3, 10, 24, 0.45);
+  --operator-tenant-map-marker-hover-ring: rgba(78, 255, 114, 0.72);
+  --operator-tenant-map-marker-hover-shadow: rgba(12, 24, 58, 0.55);
+  --operator-tenant-map-active-shadow: rgba(20, 58, 17, 0.44);
+  --operator-tenant-map-active-hover-shadow: rgba(66, 255, 73, 0.46);
+  --operator-tenant-map-active-gradient-top: #b6ff38;
+  --operator-tenant-map-active-gradient-mid: #35f56f;
+  --operator-tenant-map-active-gradient-bottom: #119346;
+  --operator-tenant-map-active-inset-shadow: rgba(8, 48, 13, 0.35);
+  --operator-tenant-map-active-inset-light: rgba(255, 255, 255, 0.52);
+  --operator-tenant-map-active-foot: rgba(2, 37, 10, 0.48);
+  --operator-tenant-map-active-glow-ring: rgba(89, 255, 122, 0.22);
+  --operator-tenant-map-active-glow-shadow: rgba(14, 56, 22, 0.28);
+  --operator-tenant-map-active-glow-light: rgba(255, 255, 255, 0.7);
+  --operator-tenant-map-active-glow-ring-strong: rgba(89, 255, 122, 0.38);
+  --operator-tenant-map-meta-text: rgba(218, 249, 255, 0.78);
+  --operator-tenant-map-card-border: rgba(164, 246, 255, 0.24);
+  --operator-tenant-map-card-surface: rgba(1, 15, 35, 0.46);
+  --operator-tenant-map-card-highlight: rgba(255, 255, 255, 0.14);
+  --operator-tenant-map-card-shadow: rgba(0, 9, 25, 0.26);
+  --operator-tenant-map-weather-border: rgba(255, 255, 255, 0.18);
+  --operator-tenant-map-weather-gradient-top: rgba(22, 76, 112, 0.82);
+  --operator-tenant-map-weather-gradient-bottom: rgba(6, 26, 50, 0.86);
+  --operator-tenant-map-weather-highlight: rgba(255, 255, 255, 0.2);
+  --operator-tenant-map-weather-source-text: rgba(220, 246, 255, 0.62);
+  --native-accent: var(--accent-cyan);
+  --scrollbar-thumb: rgba(0, 95, 150, 0.68);
+  --scrollbar-track: rgba(255, 255, 255, 0.5);
+  --focus-ring: rgba(215, 255, 79, 0.95);
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --line-soft: rgba(0, 55, 110, 0.42);
+    --native-accent: #00376e;
+    --scrollbar-thumb: #00376e;
+    --scrollbar-track: #ffffff;
+    --focus-ring: #00376e;
+    --operator-schedule-scrollbar-thumb: #d7ff4f;
+    --operator-schedule-scrollbar-track: #00376e;
+  }
+}

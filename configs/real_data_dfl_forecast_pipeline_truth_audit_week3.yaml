@@ -1,0 +1,24 @@
+# Forecast-pipeline truth audit before serious official forecast / DFL reruns.
+#
+# Claim boundary: diagnostics only. This does not promote a controller, does
+# not claim full DFL, and does not enable market execution.
+ops:
+  observed_market_price_history_bronze:
+    config:
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+  tenant_historical_weather_bronze:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      start_date: "2026-01-01"
+      end_date: "2026-04-30"
+      location_config_path: "simulations/tenants.yml"
+  real_data_rolling_origin_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      max_anchors: 104
+  forecast_pipeline_truth_audit_frame:
+    config:
+      price_floor_uah_mwh: 0.0
+      price_cap_uah_mwh: 16000.0
+      horizon_shift_offsets_csv: "-2,-1,0,1,2"

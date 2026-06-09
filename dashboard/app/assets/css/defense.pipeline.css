@@ -1,0 +1,339 @@
+.defense-shell {
+  --defense-pipeline-body: color-mix(in oklab, var(--defense-text-muted) 82%, var(--defense-text));
+  --defense-pipeline-card-shadow: color-mix(in oklab, var(--ink-strong) 12%, transparent);
+  --defense-pipeline-caution: color-mix(in oklab, var(--urgent-red) 44%, var(--plumbob-green));
+  --defense-pipeline-caution-tint: color-mix(in oklab, var(--defense-pipeline-caution) 16%, var(--defense-panel));
+  --defense-pipeline-hero-border: color-mix(in oklab, var(--panel-strong) 24%, transparent);
+  --defense-pipeline-hero-muted: color-mix(in oklab, var(--panel-strong) 82%, var(--defense-accent));
+  --defense-pipeline-hero-shadow: color-mix(in oklab, var(--ink-strong) 32%, transparent);
+  --defense-pipeline-hero-surface: linear-gradient(135deg, color-mix(in oklab, var(--defense-accent) 48%, var(--ink-strong)), color-mix(in oklab, var(--defense-accent) 64%, var(--ink-strong)));
+  --defense-pipeline-hero-text: var(--panel-strong);
+  --defense-pipeline-info-tint: color-mix(in oklab, var(--defense-accent) 14%, var(--defense-panel));
+  --defense-pipeline-info-tint-strong: color-mix(in oklab, var(--defense-accent) 18%, var(--defense-panel));
+  --defense-pipeline-label: color-mix(in oklab, var(--defense-text-muted) 82%, var(--defense-text));
+  --defense-pipeline-label-strong: color-mix(in oklab, var(--defense-text-muted) 58%, var(--defense-text));
+  --defense-pipeline-muted-tint: color-mix(in oklab, var(--defense-text-muted) 12%, var(--defense-panel));
+  --defense-pipeline-muted-tint-strong: color-mix(in oklab, var(--defense-text-muted) 18%, var(--defense-panel));
+  --defense-pipeline-panel-soft: color-mix(in oklab, var(--defense-panel) 90%, var(--canvas-base));
+  --defense-pipeline-success: var(--plumbob-green);
+  --defense-pipeline-success-text: color-mix(in oklab, var(--defense-pipeline-success) 44%, var(--defense-text));
+  --defense-pipeline-success-tint: color-mix(in oklab, var(--defense-pipeline-success) 16%, var(--defense-panel));
+  --defense-pipeline-warning: color-mix(in oklab, var(--urgent-red) 48%, var(--plumbob-green));
+  --defense-pipeline-warning-tint: color-mix(in oklab, var(--defense-pipeline-warning) 16%, var(--defense-panel));
+}
+
+.pipeline-visual-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.62fr) minmax(420px, 1fr);
+  gap: 1rem;
+  border: 1px solid var(--defense-border);
+  border-radius: 0.9rem;
+  background: var(--defense-pipeline-hero-surface);
+  padding: 1rem;
+  color: var(--defense-pipeline-hero-text);
+  overflow: hidden;
+}
+
+.pipeline-visual-copy {
+  display: grid;
+  align-content: center;
+  gap: 0.9rem;
+}
+
+.pipeline-visual-panel .eyebrow,
+.pipeline-visual-panel .section-explainer {
+  color: var(--defense-pipeline-hero-muted);
+}
+
+.pipeline-visual-panel h2 {
+  font-size: 1.65rem;
+}
+
+.pipeline-stat-strip {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.pipeline-stat-strip article {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid var(--defense-pipeline-hero-border);
+  border-radius: 0.65rem;
+  background: color-mix(in oklab, var(--defense-accent) 40%, transparent);
+  padding: 0.75rem;
+}
+
+.pipeline-stat-strip span {
+  color: var(--defense-pipeline-success);
+  font-size: 0.72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.pipeline-stat-strip strong {
+  font-size: 1.05rem;
+}
+
+.pipeline-stat-strip small {
+  color: var(--defense-pipeline-hero-muted);
+  line-height: 1.4;
+}
+
+.pipeline-figure {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.pipeline-figure img {
+  width: 100%;
+  min-height: 22rem;
+  max-height: 35rem;
+  border: 1px solid var(--defense-pipeline-hero-border);
+  border-radius: 0.8rem;
+  object-fit: cover;
+  box-shadow: 0 24px 52px var(--defense-pipeline-hero-shadow);
+}
+
+.pipeline-figure figcaption {
+  color: var(--defense-pipeline-hero-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.bilingual-explainer-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 1380px;
+  margin: 0 auto 1rem;
+  border: 1px solid var(--defense-border);
+  border-radius: 0.9rem;
+  background: var(--defense-panel);
+  padding: 1rem;
+}
+
+.bilingual-explainer-grid {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.bilingual-explainer-card {
+  display: grid;
+  gap: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--defense-accent) 18%, transparent);
+  border-radius: 0.72rem;
+  background: linear-gradient(135deg, var(--defense-pipeline-info-tint), var(--defense-panel));
+  padding: 0.85rem;
+}
+
+.bilingual-explainer-card header span {
+  color: var(--defense-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.language-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.language-column {
+  display: grid;
+  align-content: start;
+  gap: 0.48rem;
+  border: 1px solid color-mix(in oklab, var(--defense-border) 62%, transparent);
+  border-radius: 0.62rem;
+  background: var(--defense-panel);
+  padding: 0.78rem;
+}
+
+.language-column--ua {
+  background: var(--defense-pipeline-success-tint);
+}
+
+.language-kicker {
+  margin: 0;
+  color: var(--defense-pipeline-label);
+  font-size: 0.7rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.language-column h3 {
+  margin: 0;
+  color: var(--defense-text);
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.language-column p:not(.language-kicker) {
+  margin: 0;
+  color: var(--defense-pipeline-body);
+  font-size: 0.84rem;
+  line-height: 1.56;
+}
+
+.language-column ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.15rem 0 0;
+  padding-left: 1.05rem;
+}
+
+.language-column li {
+  color: color-mix(in oklab, var(--defense-text) 88%, var(--defense-text-muted));
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
+.offline-promotion-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.92fr) minmax(320px, 0.62fr);
+  gap: 1rem;
+  border: 1px solid color-mix(in oklab, var(--defense-pipeline-success) 28%, transparent);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, var(--defense-pipeline-success-tint), var(--defense-panel));
+  padding: 1rem;
+}
+
+.offline-promotion-metrics,
+.offline-promotion-rows {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.offline-promotion-metrics article,
+.offline-promotion-rows article {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid color-mix(in oklab, var(--defense-border) 72%, transparent);
+  border-radius: 0.7rem;
+  background: var(--defense-panel);
+  padding: 0.72rem;
+}
+
+.offline-promotion-metrics span,
+.offline-promotion-rows span {
+  color: var(--defense-pipeline-success-text);
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.offline-promotion-metrics strong,
+.offline-promotion-rows strong {
+  overflow-wrap: anywhere;
+  color: var(--defense-text);
+  font-size: 1rem;
+}
+
+.offline-promotion-rows {
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.evidence-scope-note {
+  display: grid;
+  grid-template-columns: 1.15rem minmax(0, 1fr);
+  gap: 0.62rem;
+  align-items: start;
+  border: 1px solid color-mix(in oklab, var(--defense-accent) 18%, transparent);
+  border-radius: 0.65rem;
+  background: var(--defense-pipeline-info-tint);
+  padding: 0.72rem;
+}
+
+.evidence-scope-note--wide {
+  grid-column: 1 / -1;
+}
+
+.evidence-scope-note svg {
+  margin-top: 0.08rem;
+  color: var(--defense-accent);
+}
+
+.evidence-scope-note p {
+  margin: 0;
+  color: var(--defense-pipeline-body);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.offline-promotion-rows small {
+  color: var(--defense-pipeline-body);
+  line-height: 1.4;
+}
+
+.latest-experiment-panel {
+  display: grid;
+  gap: 1rem;
+  max-width: 1380px;
+  margin: 0 auto 1rem;
+  border: 1px solid var(--defense-border);
+  border-radius: 0.75rem;
+  background: var(--defense-panel);
+  padding: 1rem;
+}
+
+.latest-experiment-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.latest-experiment-card {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 8rem;
+  border: 1px solid var(--defense-border);
+  border-radius: 0.5rem;
+  background: linear-gradient(180deg, var(--defense-pipeline-muted-tint), var(--defense-panel));
+  padding: 0.85rem;
+}
+
+.latest-experiment-card span {
+  color: var(--defense-pipeline-label);
+  font-size: 0.74rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.latest-experiment-card strong {
+  color: var(--defense-text);
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.latest-experiment-card small {
+  color: var(--defense-pipeline-label-strong);
+  line-height: 1.45;
+}
+
+.latest-experiment-card--headline {
+  border-color: color-mix(in oklab, var(--defense-pipeline-success) 30%, transparent);
+  background: linear-gradient(180deg, var(--defense-pipeline-success-tint), var(--defense-panel));
+}
+
+.latest-experiment-card--closed {
+  border-color: color-mix(in oklab, var(--defense-pipeline-caution) 28%, transparent);
+  background: linear-gradient(180deg, var(--defense-pipeline-caution-tint), var(--defense-panel));
+}
+
+.latest-experiment-card--shadow {
+  border-color: color-mix(in oklab, var(--defense-pipeline-warning) 32%, transparent);
+  background: linear-gradient(180deg, var(--defense-pipeline-warning-tint), var(--defense-panel));
+}
+
+.latest-experiment-card--blocked {
+  border-color: color-mix(in oklab, var(--defense-text-muted) 30%, transparent);
+  background: linear-gradient(180deg, var(--defense-pipeline-muted-tint-strong), var(--defense-panel));
+}
+
+.latest-experiment-card--next {
+  border-color: color-mix(in oklab, var(--defense-accent) 30%, transparent);
+  background: linear-gradient(180deg, var(--defense-pipeline-info-tint-strong), var(--defense-panel));
+}

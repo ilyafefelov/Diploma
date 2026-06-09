@@ -1,0 +1,84 @@
+@media (max-width: 1080px) {
+  .defense-hero,
+  .section-grid,
+  .pipeline-visual-panel,
+  .language-columns,
+  .chart-grid,
+  .offline-promotion-panel,
+  .dt-shadow-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .narrative-band,
+  .bucket-grid,
+  .context-grid,
+  .latest-experiment-grid,
+  .v2-plus-improvement-grid,
+  .future-stack-grid,
+  .dt-shadow-status-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tft-use-grid,
+  .tft-safe-language-row,
+  .section-note-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .defense-shell {
+    padding: 0.75rem;
+  }
+
+  .defense-topbar,
+  .topbar-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .tenant-picker select,
+  .icon-button,
+  .brand-link {
+    width: 100%;
+  }
+
+  .defense-hero {
+    min-height: auto;
+  }
+
+  .defense-shell h1 {
+    font-size: 2.1rem;
+  }
+
+  .metric-grid,
+  .narrative-band,
+  .bucket-grid,
+  .context-grid,
+  .latest-experiment-grid,
+  .v2-plus-improvement-grid,
+  .future-stack-grid,
+  .dt-shadow-status-grid,
+  .dt-shadow-phase-list,
+  .offline-promotion-rows,
+  .tft-use-grid,
+  .tft-safe-language-row,
+  .section-note-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .regret-row,
+  .dt-shadow-comparison-row {
+    grid-template-columns: 1fr;
+  }
+
+  .regret-row strong,
+  .dt-shadow-comparison-row strong,
+  .dt-shadow-comparison-row em {
+    text-align: left;
+  }
+
+  .pipeline-figure img {
+    min-height: 14rem;
+  }
+}

@@ -1,0 +1,187 @@
+{
+  "generatedAt": "2026-05-25T18:52:03.616Z",
+  "targetUrl": "http://localhost:64163/operator",
+  "browserPath": "Codex in-app Browser plugin",
+  "results": [
+    {
+      "label": "desktop_1440x1100",
+      "screenshotPath": "D:/School/GoIT/Courses/Diploma/docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/operator_c1_desktop_1440x1100.png",
+      "metrics": {
+        "dock": {
+          "bottom": 2188,
+          "height": 393.1875,
+          "top": 1794.8125,
+          "width": 1888,
+          "x": 481,
+          "y": 1794.8125
+        },
+        "elementsAtDockTop": [
+          {
+            "className": "schedule-dock__heading",
+            "tag": "DIV",
+            "text": "DAM delivery day reviewNo tenant selected / No active lot Capacity pendingDelive"
+          },
+          {
+            "className": "schedule-dock",
+            "tag": "FOOTER",
+            "text": "DAM delivery day reviewNo tenant selected / No active lot Capacity pendingDelive"
+          },
+          {
+            "className": "operator-body",
+            "tag": "DIV",
+            "text": "Tenant / site  Awaiting registryBattery size loadingLocation pending🌤️No lot se"
+          },
+          {
+            "className": "operator-frame",
+            "tag": "DIV",
+            "text": "BESS read model  Operator Preview Clock syncing Preview ready Timezone pendingNe"
+          },
+          {
+            "className": "operator-shell",
+            "tag": "MAIN",
+            "text": "BESS read model  Operator Preview Clock syncing Preview ready Timezone pendingNe"
+          },
+          {
+            "className": "min-h-screen",
+            "tag": "MAIN",
+            "text": "BESS read model  Operator Preview Clock syncing Preview ready Timezone pendingNe"
+          },
+          {
+            "className": "isolate",
+            "tag": "DIV",
+            "text": "BESS read model  Operator Preview Clock syncing Preview ready Timezone pendingNe"
+          },
+          {
+            "className": "",
+            "tag": "BODY",
+            "text": "BESS read model  Operator Preview Clock syncing Preview ready Timezone pendingNe"
+          }
+        ],
+        "fixedCount": 2,
+        "hasHorizontalOverflow": false,
+        "hasMarketExecutionDisabled": false,
+        "hasMarketExecutionEnabledTrue": false,
+        "main": {
+          "bottom": 3826.203125,
+          "height": 3817.40625,
+          "width": 1888,
+          "x": 481,
+          "y": 8.796875
+        },
+        "scroll": {
+          "clientHeight": 2200,
+          "clientWidth": 2850,
+          "height": 4018,
+          "width": 2850
+        },
+        "shellPaddingBottomPx": "192px",
+        "stickyCount": 1,
+        "title": "Smart Arbitrage Operator",
+        "topbar": {
+          "height": 70.78125,
+          "width": 1864.40625,
+          "x": 492.796875,
+          "y": 20.59375
+        },
+        "url": "http://localhost:64163/operator",
+        "viewport": {
+          "height": 2200,
+          "width": 2880
+        },
+        "visibleTextExcerpt": "BESS READ MODEL\n\nOperator Preview\nClock syncing\nPreview ready\nTimezone pending\n\nNET PLAN VALUE\n\nWaiting\n\nBaseline LP preview\n\nMETRIC CARD\n\nNet plan value\n\nOperator-facing value after the selected preview schedule subtracts battery degradation from gross market revenue.\n\nnet_value = gross_market_value - degradation_penalty\n\nENERGY ARBITRAGE\n\nWaiting\n\nGross market value\n\nMETRIC CARD\n\nEnergy arbitrage\n\nProjected gross value from moving battery energy through the visible price spread before degradation cost is applied.\n\nsum(hourly_dispatch_value) across the LP horizon\n\nWEATHER UPLIFT\n\n0.0 UAH/MWh\n\nNot loaded yet\n\nMETRIC CARD\n\nWeather uplift\n\nAverage calibrated weather effect applied to the MVP market forecast for the selected location.\n\nweather_bias = f(clouds, rain, humidity, temperature, solar, wind)\n\nCYCLE PREVIEW\n\nWaiting\n\nThroughput-aware\n\nMETRIC CARD\n\nEquivalent full cycles\n\nA quick wear proxy showing how much of a full charge-discharge cycle the preview schedule consumes.\n\nEFC = throughput_mwh / (capacity_mwh * 2)\n\nREAD-MODEL HEALTH\n\n0.0%\n\nPreview sources loaded\n\nMETRIC CARD\n\nRead-model health\n\nA display health signal for required FastAPI read models and local operator surfaces. Gaps mean review-only evidence may be incomplete.\n\nhealth = preview_sources_loaded - read_model_gap_penalty\n\nTENANT / SITE\n\n \nAwaiting registry\nBattery size loading\nLocation pending\n🌤️\nNo lot selected\nWeather pending\nWaiting\nWaiting\nLocation pending\n\nSource Pending\n\nActive\ngreen diamond\nOther\nblue",
+        "waitingCount": 5
+      },
+      "logs": []
+    },
+    {
+      "label": "mobile_390x844",
+      "screenshotPath": "D:/School/GoIT/Courses/Diploma/docs/technical/deep-research-reports/2026-05-25-full-project-review/assets/operator_c1_mobile_390x844.png",
+      "metrics": {
+        "dock": {
+          "bottom": 1676,
+          "height": 513.578125,
+          "top": 1162.421875,
+          "width": 748,
+          "x": 1,
+          "y": 1162.421875
+        },
+        "elementsAtDockTop": [
+          {
+            "className": "schedule-dock__heading",
+            "tag": "DIV",
+            "text": "DAM delivery day reviewNo tenant selected / No active lot Capacity pendingDelive"
+          },
+          {
+            "className": "schedule-dock",
+            "tag": "FOOTER",
+            "text": "DAM delivery day reviewNo tenant selected / No active lot Capacity pendingDelive"
+          },
+          {
+            "className": "tenant-card__ukraine-map-surface",
+            "tag": "DIV",
+            "text": ""
+          },
+          {
+            "className": "tenant-card__ukraine-map",
+            "tag": "DIV",
+            "text": "🌤️No lot selectedWeather pendingWaitingWaitingLocation pendingSource pendingAct"
+          },
+          {
+            "className": "tenant-card",
+            "tag": "SECTION",
+            "text": "Tenant / site  Awaiting registryBattery size loadingLocation pending🌤️No lot se"
+          },
+          {
+            "className": "operator-sidebar",
+            "tag": "ASIDE",
+            "text": "Tenant / site  Awaiting registryBattery size loadingLocation pending🌤️No lot se"
+          },
+          {
+            "className": "operator-body",
+            "tag": "DIV",
+            "text": "Tenant / site  Awaiting registryBattery size loadingLocation pending🌤️No lot se"
+          },
+          {
+            "className": "operator-frame",
+            "tag": "DIV",
+            "text": "BESS read model  Operator Preview Clock syncing Preview ready Timezone pendingNe"
+          }
+        ],
+        "fixedCount": 2,
+        "hasHorizontalOverflow": false,
+        "hasMarketExecutionDisabled": false,
+        "hasMarketExecutionEnabledTrue": false,
+        "main": {
+          "bottom": 9706.8125,
+          "height": 9701.21875,
+          "width": 738.8125,
+          "x": 5.59375,
+          "y": 5.59375
+        },
+        "scroll": {
+          "clientHeight": 1688,
+          "clientWidth": 750,
+          "height": 9955,
+          "width": 750
+        },
+        "shellPaddingBottomPx": "248px",
+        "stickyCount": 0,
+        "title": "Smart Arbitrage Operator",
+        "topbar": {
+          "height": 123.796875,
+          "width": 715.21875,
+          "x": 17.390625,
+          "y": 17.390625
+        },
+        "url": "http://localhost:64163/operator",
+        "viewport": {
+          "height": 1688,
+          "width": 780
+        },
+        "visibleTextExcerpt": "BESS READ MODEL\n\nOperator Preview\nClock syncing\nPreview ready\nTimezone pending\n\nNET PLAN VALUE\n\nWaiting\n\nBaseline LP preview\n\nMETRIC CARD\n\nNet plan value\n\nOperator-facing value after the selected preview schedule subtracts battery degradation from gross market revenue.\n\nnet_value = gross_market_value - degradation_penalty\n\nENERGY ARBITRAGE\n\nWaiting\n\nGross market value\n\nMETRIC CARD\n\nEnergy arbitrage\n\nProjected gross value from moving battery energy through the visible price spread before degradation cost is applied.\n\nsum(hourly_dispatch_value) across the LP horizon\n\nWEATHER UPLIFT\n\n0.0 UAH/MWh\n\nNot loaded yet\n\nMETRIC CARD\n\nWeather uplift\n\nAverage calibrated weather effect applied to the MVP market forecast for the selected location.\n\nweather_bias = f(clouds, rain, humidity, temperature, solar, wind)\n\nCYCLE PREVIEW\n\nWaiting\n\nThroughput-aware\n\nMETRIC CARD\n\nEquivalent full cycles\n\nA quick wear proxy showing how much of a full charge-discharge cycle the preview schedule consumes.\n\nEFC = throughput_mwh / (capacity_mwh * 2)\n\nREAD-MODEL HEALTH\n\n0.0%\n\nPreview sources loaded\n\nMETRIC CARD\n\nRead-model health\n\nA display health signal for required FastAPI read models and local operator surfaces. Gaps mean review-only evidence may be incomplete.\n\nhealth = preview_sources_loaded - read_model_gap_penalty\n\nTENANT / SITE\n\n \nAwaiting registry\nBattery size loading\nLocation pending\n🌤️\nNo lot selected\nWeather pending\nWaiting\nWaiting\nLocation pending\n\nSource Pending\n\nActive\ngreen diamond\nOther\nblue",
+        "waitingCount": 5
+      },
+      "logs": []
+    }
+  ]
+}

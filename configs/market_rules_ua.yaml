@@ -1,0 +1,27 @@
+regimes:
+  - regime_id: ua_project_default_pre_621
+    resolution: "Project default before NEURC Resolution No. 621 effective date"
+    effective_from: "2020-01-01T00:00:00"
+    venues:
+      DAM:
+        min_price_uah_mwh: 0.0
+        max_price_uah_mwh: 15000.0
+      IDM:
+        min_price_uah_mwh: 0.0
+        max_price_uah_mwh: 15000.0
+      BALANCING:
+        min_price_uah_mwh: 0.0
+        max_price_uah_mwh: 16000.0
+  - regime_id: ua_neurc_621_2026
+    resolution: "NEURC Resolution No. 621 dated 2026-04-23; effective 2026-04-30"
+    effective_from: "2026-04-30T00:00:00"
+    venues:
+      DAM:
+        min_price_uah_mwh: 10.0
+        max_price_uah_mwh: 15000.0
+      IDM:
+        min_price_uah_mwh: 10.0
+        max_price_uah_mwh: 15000.0
+      BALANCING:
+        min_price_uah_mwh: 0.01
+        max_price_uah_mwh: 17000.0

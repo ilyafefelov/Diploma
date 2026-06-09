@@ -1,0 +1,5 @@
+[features]
+codex_hooks = true
+shell_snapshot = true
+apps = true
+memories = true

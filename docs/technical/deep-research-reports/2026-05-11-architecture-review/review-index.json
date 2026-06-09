@@ -1,0 +1,75 @@
+{
+  "review_date": "2026-05-11",
+  "scope": "Dagster, Docker, data ingestion, forecast strategy, DFL/DT research lanes, regulatory and scientific context",
+  "production_code_modified": false,
+  "runtime_snapshot": {
+    "dagster_assets": 109,
+    "dagster_asset_checks": 25,
+    "dagster_jobs": 2,
+    "dagster_schedules": 2,
+    "dagster_sensors": 0,
+    "compose_config_quiet": "passed",
+    "api_health": "ok",
+    "postgres": "running_healthy",
+    "dagster_daemon_risk": "heartbeat_shutdown_warnings"
+  },
+  "data_snapshot": {
+    "market_price_observed_rows": 3061,
+    "market_price_observed_range": "2026-01-01..2026-05-09",
+    "market_price_cap_violations": 0,
+    "battery_telemetry_source_kind": "synthetic",
+    "battery_telemetry_future_rows_per_tenant": 55575,
+    "weather_coverage_risk": "tenant_latest_timestamps_are_not_uniform",
+    "grid_event_rows": 15
+  },
+  "strategy_snapshot": {
+    "current_fallback": "strict_similar_day",
+    "official_nbeatsx_status": "blocked_out_of_cap",
+    "official_tft_status": "inside_dam_cap_in_persisted_rows",
+    "schedule_value_gate": "offline_read_model_promoted_market_execution_false",
+    "decision_transformer": "offline_preview_only",
+    "full_dfl": "blocked"
+  },
+  "highest_priority_risks": [
+    {
+      "id": "future-synthetic-telemetry",
+      "severity": "high",
+      "summary": "Synthetic telemetry advances faster than wall clock and can be returned as latest live SOC."
+    },
+    {
+      "id": "official-nbeatsx-out-of-cap",
+      "severity": "high",
+      "summary": "Persisted official NBEATSx rows are all outside DAM caps and need quarantine before value claims."
+    },
+    {
+      "id": "dagster-daemon-heartbeat",
+      "severity": "high",
+      "summary": "Dagster daemon logs repeated heartbeat shutdown warnings."
+    },
+    {
+      "id": "uneven-weather-panel",
+      "severity": "medium",
+      "summary": "Tenant weather coverage windows are not aligned."
+    },
+    {
+      "id": "forecast-store-primary-key",
+      "severity": "medium",
+      "summary": "Forecast store primary key omits model_name, which may collide if multiple models share a run_id and timestamp."
+    }
+  ],
+  "artifacts": {
+    "report": "review.md",
+    "source_matrix": "source-matrix.md",
+    "presentation": "presentation.md",
+    "powerpoint": "architecture-review-deck.pptx",
+    "site": "site/index.html",
+    "infographic": "assets/ml-architecture-review-infographic.png"
+  },
+  "claim_boundaries": [
+    "not_live_market_execution",
+    "not_full_dfl",
+    "not_deployed_decision_transformer",
+    "not_full_electrochemical_digital_twin",
+    "official_forecasts_adapter_readiness_only_until_value_gates_pass"
+  ]
+}

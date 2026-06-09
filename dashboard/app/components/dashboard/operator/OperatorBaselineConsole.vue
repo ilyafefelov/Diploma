@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import HudBaselinePreview from '~/components/dashboard/HudBaselinePreview.vue'
-import type { BaselineLpPreview } from '~/types/control-plane'
-import type { OperatorExplanationMode } from '~/types/operator-dashboard'
+import type { BaselineLpPreview, OperatorRecommendationResponse } from '~/types/control-plane'
+import type { OperatorChartHorizon, OperatorExplanationMode } from '~/types/operator-dashboard'
 
 defineProps<{
   baselinePreview: BaselineLpPreview | null
+  operatorRecommendation: OperatorRecommendationResponse | null
+  selectedStrategyId: string
+  selectedChartHorizon: OperatorChartHorizon
   isLoading: boolean
   lastLoadedLabel: string
   explanationMode: OperatorExplanationMode
@@ -15,6 +18,9 @@ defineProps<{
   <ClientOnly>
     <HudBaselinePreview
       :baseline-preview="baselinePreview"
+      :operator-recommendation="operatorRecommendation"
+      :selected-strategy-id="selectedStrategyId"
+      :selected-chart-horizon="selectedChartHorizon"
       :is-loading="isLoading"
       :last-loaded-label="lastLoadedLabel"
       :explanation-mode="explanationMode"

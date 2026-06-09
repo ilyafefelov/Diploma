@@ -1,0 +1,339 @@
+.tenant-card__ukraine-map {
+  grid-column: 1 / -1;
+  width: calc(100% + 1.44rem);
+  margin-top: 0.54rem;
+  margin-inline: -0.72rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  overflow: visible;
+  position: relative;
+}
+
+.tenant-card__ukraine-map-surface {
+  position: relative;
+  width: 100%;
+  min-height: 8.35rem;
+  aspect-ratio: 1 / 0.72;
+  padding-inline: 4px;
+  overflow: clip;
+  border-top: 1px solid var(--operator-tenant-map-border-top);
+  border-bottom: 1px solid var(--operator-tenant-map-border-bottom);
+  border-inline: 0;
+  border-radius: 0;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 56% 54%, var(--operator-tenant-map-surface-glow), transparent 34%),
+    linear-gradient(180deg, var(--operator-tenant-map-surface-top), var(--operator-tenant-map-surface-bottom));
+  box-shadow:
+    inset 0 10px 26px var(--operator-tenant-map-surface-shadow),
+    inset 0 -14px 24px var(--operator-tenant-map-surface-green-shadow),
+    inset 0 0 0 1px var(--operator-tenant-map-surface-ring);
+  backdrop-filter: blur(10px);
+}
+
+.tenant-card__ukraine-map-surface::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(var(--operator-tenant-map-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--operator-tenant-map-grid-line-soft) 1px, transparent 1px);
+  background-size: 2.2rem 2.2rem;
+  mask-image: radial-gradient(circle at 50% 50%, black 32%, transparent 78%);
+  pointer-events: none;
+}
+
+.tenant-card__ukraine-outline {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  opacity: 0.96;
+  filter:
+    drop-shadow(0 0 8px var(--operator-tenant-map-outline-glow))
+    drop-shadow(0 0 18px var(--operator-tenant-map-outline-glow-soft));
+}
+
+.tenant-card__tenant-markers {
+  position: absolute;
+  inset: 0 4px;
+}
+
+.tenant-card__tenant-marker {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  width: 0.62rem;
+  height: 0.62rem;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 2px solid var(--operator-tenant-map-marker-border);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 26% 24%, var(--operator-tenant-map-marker-highlight), var(--operator-tenant-map-marker-fill) 68%);
+  box-shadow:
+    0 0 0 2px var(--operator-tenant-map-marker-ring),
+    0 6px 12px var(--operator-tenant-map-marker-shadow);
+  cursor: pointer;
+  transform-origin: center;
+  transition: transform 0.28s ease, box-shadow 0.28s ease;
+  z-index: 3;
+}
+
+.tenant-card__tenant-marker:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 4px;
+}
+
+.tenant-card__tenant-marker:hover,
+.tenant-card__tenant-marker:focus-visible {
+  transform: translate(-50%, -50%) scale(1.28);
+  box-shadow:
+    0 0 0 3px var(--operator-tenant-map-marker-hover-ring),
+    0 10px 20px var(--operator-tenant-map-marker-hover-shadow);
+}
+
+.tenant-card__tenant-marker-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+
+.tenant-card__tenant-marker--active {
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 0;
+  background: transparent;
+  animation:
+    sims-active-drift 3.4s ease-in-out infinite;
+  filter:
+    drop-shadow(0 14px 16px var(--operator-tenant-map-active-shadow));
+  z-index: 4;
+}
+
+.tenant-card__tenant-marker--active:hover,
+.tenant-card__tenant-marker--active:focus-visible {
+  animation:
+    sims-active-hover-bounce 0.72s ease-in-out infinite;
+  filter:
+    drop-shadow(0 16px 20px var(--operator-tenant-map-active-hover-shadow));
+}
+
+.tenant-card__tenant-marker--active .tenant-card__tenant-marker-icon {
+  position: relative;
+  border-radius: 0.16rem;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  background:
+    linear-gradient(
+      135deg,
+      var(--operator-tenant-map-active-gradient-top) 0%,
+      var(--operator-tenant-map-active-gradient-mid) 48%,
+      var(--operator-tenant-map-active-gradient-bottom) 100%
+    );
+  box-shadow:
+    inset -6px -6px 14px var(--operator-tenant-map-active-inset-shadow),
+    inset 3px 4px 12px var(--operator-tenant-map-active-inset-light);
+  animation:
+    sims-active-spin 4.6s linear infinite,
+    sims-active-glow 2.4s ease-in-out infinite alternate;
+}
+
+.tenant-card__tenant-marker--active .tenant-card__tenant-marker-icon::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 78%;
+  width: 56%;
+  height: 14%;
+  transform: translateX(-50%) rotate(45deg);
+  border-radius: 999px;
+  background: var(--operator-tenant-map-active-foot);
+  filter: blur(2px);
+  z-index: -1;
+}
+
+.tenant-card__ukraine-map-meta {
+  list-style: none;
+  padding: 0.42rem 0.72rem 0;
+  margin: 0;
+  color: var(--operator-tenant-map-meta-text);
+  font-size: 0.58rem;
+  line-height: 1.35;
+  border: 0;
+  background: transparent;
+  display: flex;
+  gap: 0.42rem;
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.tenant-card__ukraine-map-meta li {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.tenant-card__ukraine-map-meta .icon {
+  flex: 0 0 auto;
+  color: var(--operator-positive);
+}
+
+.tenant-card__location-weather {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.52rem;
+  margin: 0 0.72rem 0.48rem;
+  padding: 0.55rem 0.58rem;
+  border: 1px solid var(--operator-tenant-map-card-border);
+  border-radius: 0.72rem;
+  background: var(--operator-tenant-map-card-surface);
+  box-shadow:
+    inset 0 1px 0 var(--operator-tenant-map-card-highlight),
+    0 12px 26px var(--operator-tenant-map-card-shadow);
+  backdrop-filter: blur(14px) saturate(1.15);
+}
+
+.tenant-card__weather-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid var(--operator-tenant-map-weather-border);
+  border-radius: 0.64rem;
+  background:
+    linear-gradient(180deg, var(--operator-tenant-map-weather-gradient-top), var(--operator-tenant-map-weather-gradient-bottom));
+  font-size: 1.12rem;
+  box-shadow: inset 0 1px 0 var(--operator-tenant-map-weather-highlight);
+}
+
+.tenant-card__weather-copy {
+  display: grid;
+  min-width: 0;
+  gap: 0.3rem;
+}
+
+.tenant-card__weather-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  gap: 0.35rem;
+}
+
+.tenant-card__weather-stats {
+  display: flex;
+  gap: 0.26rem;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.tenant-card__weather-source {
+  margin: 0;
+  color: var(--operator-tenant-map-weather-source-text);
+  font-size: 0.58rem;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.tenant-card__selection-info__name {
+  font-weight: 700;
+  font-size: 0.72rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+:deep(.tenant-card__location-weather .badge),
+:deep(.tenant-card__ukraine-map-meta .badge) {
+  max-width: 100%;
+}
+
+@keyframes sims-active-drift {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(-6deg);
+  }
+  25% {
+    transform: translate(-50%, -50%) rotate(-2deg) translateX(-1px);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(6deg) translateX(1px);
+  }
+  75% {
+    transform: translate(-50%, -50%) rotate(2deg) translateX(-1px);
+  }
+}
+
+@keyframes sims-active-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-8deg);
+  }
+  50% {
+    transform: rotate(8deg);
+  }
+  80% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(12deg);
+  }
+}
+
+@keyframes sims-active-glow {
+  from {
+    box-shadow:
+      inset -6px -6px 14px var(--operator-tenant-map-active-inset-shadow),
+      inset 3px 4px 12px var(--operator-tenant-map-active-inset-light),
+      0 0 0 3px var(--operator-tenant-map-active-glow-ring);
+  }
+
+  to {
+    box-shadow:
+      inset -4px -4px 18px var(--operator-tenant-map-active-glow-shadow),
+      inset 2px 2px 20px var(--operator-tenant-map-active-glow-light),
+      0 0 0 6px var(--operator-tenant-map-active-glow-ring-strong);
+  }
+}
+
+@keyframes sims-active-hover-bounce {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) rotate(-8deg) scale(1.08);
+  }
+
+  35% {
+    transform: translate(-50%, -56%) rotate(10deg) scale(1.24);
+  }
+
+  70% {
+    transform: translate(-50%, -47%) rotate(-4deg) scale(1.14);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tenant-card__tenant-marker,
+  .tenant-card__tenant-marker--active,
+  .tenant-card__tenant-marker--active .tenant-card__tenant-marker-icon {
+    animation: none;
+    transition: none;
+  }
+
+  .tenant-card__tenant-marker--active,
+  .tenant-card__tenant-marker--active:hover,
+  .tenant-card__tenant-marker--active:focus-visible {
+    transform: translate(-50%, -50%);
+  }
+}

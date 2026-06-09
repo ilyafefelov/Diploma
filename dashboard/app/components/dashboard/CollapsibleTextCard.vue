@@ -47,43 +47,47 @@ const props = withDefaults(defineProps<{
   gap: 0;
   padding: 0.72rem 0.85rem;
   overflow: hidden;
-  border: 1px solid rgba(134, 219, 255, 0.34);
+  border: 1px solid var(--operator-line-subtle);
   border-radius: 0.75rem;
   background:
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.13), transparent 30%),
-    linear-gradient(180deg, rgba(12, 128, 199, 0.58), rgba(3, 74, 137, 0.56));
+    radial-gradient(circle at top right, var(--operator-card-accent-wash), transparent 30%),
+    linear-gradient(180deg, var(--operator-card-gradient-top), var(--operator-card-gradient-bottom));
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 10px 20px rgba(0, 42, 82, 0.14);
+    inset 0 1px 0 var(--operator-card-border),
+    0 10px 20px color-mix(in oklab, var(--operator-surface) 16%, transparent);
   transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
 }
 
 .collapsible-card[open] {
   gap: 0.62rem;
   background:
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.16), transparent 30%),
-    linear-gradient(180deg, rgba(232, 248, 255, 0.96), rgba(197, 234, 255, 0.92));
-  border-color: rgba(255, 255, 255, 0.74);
+    radial-gradient(circle at top right, color-mix(in oklab, var(--plumbob-green) 16%, transparent), transparent 30%),
+    linear-gradient(
+      180deg,
+      color-mix(in oklab, var(--canvas-top) 96%, var(--accent-cyan) 4%),
+      color-mix(in oklab, var(--canvas-base) 88%, var(--accent-cyan) 12%)
+    );
+  border-color: var(--panel-strong);
 }
 
 .collapsible-card-accent {
-  border-color: rgba(126, 211, 33, 0.24);
+  border-color: color-mix(in oklab, var(--plumbob-green) 28%, transparent);
 }
 
 .collapsible-card-rose {
-  border-color: rgba(255, 111, 174, 0.24);
+  border-color: color-mix(in oklab, var(--accent-berry) 28%, transparent);
 }
 
 .collapsible-card-blue {
-  border-color: rgba(83, 178, 234, 0.34);
+  border-color: color-mix(in oklab, var(--accent-cyan) 34%, transparent);
 }
 
 .collapsible-card-green {
-  border-color: rgba(126, 211, 33, 0.34);
+  border-color: color-mix(in oklab, var(--plumbob-green) 34%, transparent);
 }
 
 .collapsible-card-orange {
-  border-color: rgba(245, 166, 35, 0.34);
+  border-color: var(--operator-warning-border-muted);
 }
 
 .collapsible-card__summary {
@@ -104,7 +108,7 @@ const props = withDefaults(defineProps<{
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(219, 246, 255, 0.76);
+  color: var(--operator-text-muted);
 }
 
 .collapsible-card[open] .collapsible-card__eyebrow {
@@ -115,7 +119,7 @@ const props = withDefaults(defineProps<{
   margin-top: 0.08rem;
   font-size: 0.82rem;
   font-weight: 800;
-  color: white;
+  color: var(--operator-control-foreground);
   line-height: 1.2;
 }
 
@@ -126,8 +130,8 @@ const props = withDefaults(defineProps<{
 .collapsible-card__chevron {
   width: 0.72rem;
   height: 0.72rem;
-  border-right: 2px solid rgba(215, 255, 79, 0.92);
-  border-bottom: 2px solid rgba(215, 255, 79, 0.92);
+  border-right: 2px solid var(--operator-accent);
+  border-bottom: 2px solid var(--operator-accent);
   transform: rotate(45deg);
   transition: transform 160ms ease;
   flex: 0 0 auto;

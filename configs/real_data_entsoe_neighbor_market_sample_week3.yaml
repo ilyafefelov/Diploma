@@ -1,0 +1,7 @@
+ops:
+  entsoe_neighbor_market_sample_audit_frame:
+    config:
+      sample_country_codes_csv: "PL"
+      sample_period_start_utc: "202601010000"
+      sample_period_end_utc: "202601020000"
+      fetch_enabled: false

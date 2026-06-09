@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Architecture comparison for raw, strict, V2+, DT, and HF shadow</title>
+  <desc id="desc">Comparison of forecast-only, strict LP, V2+, corrected DT safe-switch, and HF value-aligned shadow architectures.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 25px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 18px Arial, sans-serif; fill: #334155; }
+      .small { font: 500 16px Arial, sans-serif; fill: #475569; }
+      .white { font: 800 18px Arial, sans-serif; fill: #fff; }
+      .arrow { stroke: #0284c7; stroke-width: 5; marker-end: url(#arrow); fill: none; }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="70" y="88" class="title" style="font-size:42px">Architecture: raw forecast to guarded HF shadow</text>
+  <text x="70" y="128" class="subtitle">Краще працюють не "сирі" actions, а constrained candidate ranking + deterministic gates.</text>
+
+  <g transform="translate(60 205)">
+    <rect width="260" height="430" rx="22" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="26" y="54" class="head">Raw forecast</text>
+    <text x="26" y="108" class="body">price vector</text>
+    <text x="26" y="146" class="body">без schedule gate</text>
+    <text x="26" y="184" class="body">немає fallback</text>
+    <rect x="26" y="252" width="208" height="58" rx="29" fill="#ef4444"/>
+    <text x="56" y="288" class="white">460.30 UAH DT</text>
+    <text x="26" y="358" class="small">Too brittle for BESS decisions.</text>
+  </g>
+
+  <path class="arrow" d="M340 420 H392"/>
+
+  <g transform="translate(400 205)">
+    <rect width="260" height="430" rx="22" fill="#fff7ed" stroke="#f97316" stroke-width="3"/>
+    <text x="26" y="54" class="head">Strict / LP</text>
+    <text x="26" y="108" class="body">feasible schedule</text>
+    <text x="26" y="146" class="body">oracle scoring contour</text>
+    <text x="26" y="184" class="body">safe but rigid</text>
+    <rect x="26" y="252" width="208" height="58" rx="29" fill="#f97316"/>
+    <text x="64" y="288" class="white">310.58 UAH</text>
+    <text x="26" y="358" class="small">Common regret/value evaluator.</text>
+  </g>
+
+  <path class="arrow" d="M680 420 H732"/>
+
+  <g transform="translate(740 205)">
+    <rect width="260" height="430" rx="22" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="26" y="54" class="head">V2+</text>
+    <text x="26" y="108" class="body">schedule-family search</text>
+    <text x="26" y="146" class="body">prior-only switching</text>
+    <text x="26" y="184" class="body">fallback/comparator</text>
+    <rect x="26" y="252" width="208" height="58" rx="29" fill="#16a34a"/>
+    <text x="64" y="288" class="white">174.77 UAH</text>
+    <text x="26" y="358" class="small">Confirmed headline evidence.</text>
+  </g>
+
+  <path class="arrow" d="M1020 420 H1072"/>
+
+  <g transform="translate(1080 205)">
+    <rect width="220" height="430" rx="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <text x="24" y="54" class="head">DT safe-switch</text>
+    <text x="24" y="108" class="body">predicts delta</text>
+    <text x="24" y="146" class="body">abstains to V2+</text>
+    <text x="24" y="184" class="body">tail-risk guard</text>
+    <rect x="24" y="252" width="172" height="58" rx="29" fill="#0284c7"/>
+    <text x="47" y="288" class="white">168.16 UAH</text>
+    <text x="24" y="358" class="small">Secondary: 4 switches.</text>
+    <text x="24" y="382" class="small">86 abstentions.</text>
+  </g>
+
+  <path class="arrow" d="M1320 420 H1360"/>
+
+  <g transform="translate(1370 205)">
+    <rect width="170" height="430" rx="22" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="20" y="54" class="head">HF shadow</text>
+    <text x="20" y="108" class="body">LP-free</text>
+    <text x="20" y="136" class="body">candidate</text>
+    <text x="20" y="164" class="body">ranking</text>
+    <text x="20" y="208" class="body">live preview</text>
+    <rect x="20" y="252" width="130" height="58" rx="29" fill="#7c3aed"/>
+    <text x="37" y="288" class="white">158.71</text>
+    <text x="20" y="358" class="small">Manual shadow.</text>
+  </g>
+
+  <g transform="translate(90 740)">
+    <rect width="1420" height="74" rx="18" fill="#0f172a"/>
+    <text x="34" y="34" class="white">Architecture lesson: promote only constrained, source-backed, auditable layers.</text>
+    <text x="34" y="58" class="white">Raw neural actions stop before production defaults.</text>
+  </g>
+</svg>

@@ -1,0 +1,399 @@
+# Official NBEATSx/TFT Schedule-Value Offline Strategy Promotion Gate
+
+Date: 2026-05-11
+
+This slice routes serious official NBEATSx/TFT rolling-origin forecasts through
+the same feasible schedule library, Schedule/Value Learner V2, rolling
+robustness check, and Offline Strategy Promotion gate used by the compact in-repo
+forecast candidates.
+
+Claim boundary: official forecasts remain research evidence. This is not live
+market execution, not a deployed Decision Transformer controller, and not a full
+end-to-end DFL claim. The frozen `strict_similar_day` control remains the
+fallback unless the strict LP/oracle Offline Strategy Promotion gate passes.
+
+## Rationale
+
+The official model path is necessary because compact in-repo candidates are
+diagnostics, not a fair final test of the external forecasting libraries.
+Nixtla NeuralForecast expects long tabular series with `unique_id`, `ds`, and
+`y`, while the project already exports the matching SOTA-ready training frame.
+NBEATSx is the exogenous-variable variant of N-BEATS, and TFT is a
+multi-horizon transformer architecture with interpretable covariate selection.
+
+Recent offline sequence-model work, including Decision Transformer variants,
+supports a later trajectory-learning path, but the immediate thesis-safe step is
+still forecast-to-schedule evidence: train official forecasts with masked future
+targets, strict-score their schedules, then let the same prior-only
+schedule/value learner decide whether any official source can beat the frozen
+control.
+
+## Assets
+
+| Asset | Purpose |
+|---|---|
+| `official_forecast_rolling_origin_benchmark_frame` | Retrains official NBEATSx/TFT per rolling anchor using only prior rows and strict-scores the forecasts. |
+| `dfl_official_schedule_candidate_library_frame` | Converts official strict LP/oracle rows into strict/raw/perturbation schedule candidates. |
+| `dfl_official_schedule_candidate_library_v2_frame` | Adds strict/raw blend and prior-residual schedule candidates. |
+| `dfl_official_schedule_value_learner_v2_frame` | Selects the schedule-scoring profile from train-selection anchors only. |
+| `dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame` | Emits strict/raw/learner final-holdout rows for the official sources. |
+| `dfl_official_schedule_value_learner_v2_robustness_frame` | Replays the learner over four prior-only rolling validation windows. |
+| `dfl_official_schedule_value_production_gate_frame` | Emits the final Offline Strategy Promotion / fallback decision per official source. |
+| `dfl_official_schedule_value_production_gate_evidence` | Dagster asset check for claim flags, coverage, and disabled market execution. |
+
+The official global-panel lane now also has an additive V2+ experiment:
+`dfl_official_global_panel_schedule_candidate_library_v2_plus_frame`,
+`dfl_official_global_panel_schedule_value_regret_decomposition_frame`,
+`dfl_official_global_panel_schedule_value_learner_v2_plus_frame`, and
+`dfl_official_global_panel_schedule_value_learner_v2_plus_strict_lp_benchmark_frame`.
+The V2+ robustness lane adds
+`dfl_official_global_panel_schedule_value_learner_v2_plus_robustness_frame`.
+V2+ now improves over frozen V2 and passes the same strict LP/oracle gate plus
+four rolling windows, so it is the stronger Offline Strategy Promotion headline.
+See
+[DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md](DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md).
+
+Tracked config:
+[configs/real_data_official_schedule_value_promotion_week3.yaml](../../configs/real_data_official_schedule_value_promotion_week3.yaml).
+
+Screening config:
+[configs/real_data_official_forecast_latest_screen_week3.yaml](../../configs/real_data_official_forecast_latest_screen_week3.yaml).
+
+## Promotion Semantics
+
+The official source models are evaluated independently:
+
+- `nbeatsx_official_v0`;
+- `tft_official_v0`.
+
+The gate requires:
+
+- five canonical tenants;
+- 90 final validation tenant-anchors per source model;
+- thesis-grade observed OREE/Open-Meteo provenance;
+- zero safety violations;
+- no train/final leakage;
+- at least 5% mean regret improvement versus `strict_similar_day`;
+- median regret not worse than `strict_similar_day`;
+- at least three of four rolling strict-control windows passing.
+
+`market_execution_enabled` remains `false` even if an official source passes.
+
+### Thesis evidence freeze
+
+On 2026-05-12 the thesis-facing language was frozen as **Offline Strategy
+Promotion**. The existing internal field name `production_promote` remains
+stable for code/read-model compatibility, but docs should read it as an offline
+strategy-evidence gate, not as live execution permission.
+
+The market-coupling feature route added after the 365-anchor result does not
+change this evidence. No ENTSO-E, OPSD, Ember, Nord Pool, PriceFM, or THieF row
+was used in the promoted official schedule/value result; external features must
+first pass the guarded route in
+[MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md](MARKET_COUPLING_EXOGENOUS_FEATURE_INTERFACE.md).
+
+## Materialization
+
+Rebuild the backend/Dagster services so the new assets and config are visible:
+
+```powershell
+docker compose config --quiet
+docker compose up -d --build postgres mlflow dagster-webserver dagster-daemon api
+```
+
+Then materialize:
+
+```powershell
+docker compose exec -T dagster-webserver uv run dagster asset materialize -m smart_arbitrage.defs --select observed_market_price_history_bronze,tenant_historical_weather_bronze,real_data_benchmark_silver_feature_frame,official_forecast_rolling_origin_benchmark_frame,dfl_official_schedule_candidate_library_frame,dfl_official_schedule_candidate_library_v2_frame,dfl_official_schedule_value_learner_v2_frame,dfl_official_schedule_value_learner_v2_strict_lp_benchmark_frame,dfl_official_schedule_value_learner_v2_robustness_frame,dfl_official_schedule_value_production_gate_frame -c configs/real_data_official_schedule_value_promotion_week3.yaml
+```
+
+The config asks for 104 rolling anchors per tenant because the robustness gate
+needs four 18-anchor validation windows plus at least 30 prior anchors. This is
+expected to be a long CPU run. If the optional official backends or local runtime
+cannot complete it, the result should be documented as adapter/runtime evidence,
+not silently replaced by compact-model rows.
+
+### Unified local/HF runner
+
+For new official evidence attempts, prefer the unified runner and choose the
+backend explicitly:
+
+```powershell
+.\scripts\run-official-evidence.ps1 -Backend local
+.\scripts\run-official-evidence.ps1 -Backend hf
+```
+
+The local backend has two modes. `-LocalMode compose` calls the resumable
+Compose/Dagster batch runner described below. `-LocalMode host` runs
+`.venv\Scripts\dagster.exe` directly, so the host CUDA torch install can be used
+for small official screens. Host mode defaults store access to local Compose
+ports; use `-HostPostgresDsn` if Postgres is exposed on a non-default port. The
+HF backend builds a Hugging Face Jobs payload and writes a dry-run receipt by
+default; paid cloud execution requires `-Submit`, `HF_TOKEN`, a pushed branch,
+and a writable artifact dataset repo. Both paths preserve the same Offline
+Strategy Promotion boundary and keep
+`market_execution_enabled=false`.
+
+Record the runtime before serious runs:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\check_training_runtime.py --include-docker
+```
+
+This confirms whether CUDA is visible to the host `.venv`, the Dagster
+container, or both.
+
+### Resumable 104-anchor runner
+
+For unattended local CPU execution, prefer the resumable batch runner:
+
+```powershell
+.\scripts\run-official-schedule-value-batches.ps1 `
+  -TotalAnchorsPerTenant 104 `
+  -BatchSize 4 `
+  -BatchTimeoutSeconds 10800
+```
+
+The runner assigns one fixed `GeneratedAtIso` to the whole evidence attempt,
+materializes the official rolling-origin asset in anchor batches, persists each
+batch through `forecast_strategy_evaluations`, and then materializes the
+downstream official schedule/value gate. Logs are written under
+`.tmp_runtime/official_schedule_value_batches/`.
+
+As of 2026-05-12 the runner also writes `attempt_manifest.json` before the first
+batch starts. The manifest records the planned anchor batches, resume rule,
+asset selections, downstream gate selection, and Offline Strategy Promotion
+claim boundary. The shared contract is documented in
+[OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md](OFFICIAL_EVIDENCE_ATTEMPT_INTERFACE.md).
+
+If a batch fails, rerun with the same `-GeneratedAtIso` and the failed
+`-StartAnchorIndex`. Already persisted batches are merged back into the asset
+output when `merge_persisted_batches=true`, so the next successful batch resumes
+the same evidence run instead of starting over.
+
+### Latest-window screening mode
+
+The full 104-anchor official run is required only for Offline Strategy Promotion-grade rolling
+robustness. It should not be the first diagnostic when local CPU runtime is the
+main bottleneck. The official rolling asset now supports three screening knobs:
+
+- `anchor_batch_order="latest_first"` starts from the most recent eligible
+  anchors instead of spending the first hours on the oldest selected anchors.
+- `enabled_official_model_names_csv` can run only `nbeatsx_official_v0` or only
+  `tft_official_v0`, while still strict-scoring the frozen `strict_similar_day`
+  control beside the selected source.
+- `nbeatsx_max_steps` and `tft_max_epochs` remain config-driven, so cheap
+  screens can use small budgets before a full serious attempt.
+
+Recommended local protocol:
+
+1. Run the latest 18-anchor screen with reduced budgets.
+2. If neither official source is close to `strict_similar_day`, stop and record
+   the result as official-adapter evidence, not a promotion attempt.
+3. If one source is close or better on the latest window, rerun that source only
+   with the serious budget.
+4. Spend the full 104-anchor run only after the latest-window screen is
+   promising.
+
+Example:
+
+```powershell
+.\scripts\run-official-schedule-value-batches.ps1 `
+  -TotalAnchorsPerTenant 18 `
+  -BatchSize 4 `
+  -AnchorBatchOrder latest_first `
+  -EnabledOfficialModelsCsv tft_official_v0 `
+  -NbeatsxMaxSteps 25 `
+  -TftMaxEpochs 5 `
+  -SkipDownstreamGate
+```
+
+## Current Status
+
+Implementation is additive:
+
+- no public FastAPI/dashboard contract changes;
+- no changes to existing compact DFL asset keys;
+- no changes to Pydantic schemas, resources, IO managers, or dependencies;
+- official Offline Strategy Promotion evidence is not persisted into the existing compact
+  schedule/value read model.
+
+Verification completed before runtime execution:
+
+- `.\.venv\Scripts\python.exe -m pytest -p no:cacheprovider tests\dfl\test_official_schedule_value.py tests\dfl\test_schedule_value_learner.py tests\dfl\test_schedule_value_learner_robustness.py tests\dfl\test_schedule_value_promotion_gate.py tests\strategy\test_official_forecast_rolling.py`
+- `.\.venv\Scripts\Activate.ps1; .\scripts\verify.ps1`
+- `uv run dg list defs --json`
+- `uv run dg check defs`
+- `docker compose config --quiet`
+- `git diff --check`
+
+Runtime execution attempt:
+
+| Field | Value |
+|---|---|
+| Attempted run id | `2d85501d-3024-4c10-b983-3aca40bfa288` |
+| Command scope | full 104-anchor official NBEATSx/TFT path plus schedule/value gate |
+| Result | failed after Codex shell timeout at 3600 seconds |
+| Last active step | `official_forecast_rolling_origin_benchmark_frame` |
+| Completed in that run | observed market bronze, tenant weather bronze, real-data benchmark silver |
+| Not completed in that run | official rolling forecast benchmark, official schedule library, official schedule/value learner, robustness frame, Offline Strategy Promotion gate |
+
+The timeout is a runtime capacity finding, not a promotion result. The serious
+official path is now wired and verified, but the local CPU-backed Compose run did
+not finish enough official rolling-origin anchors to create Offline Strategy Promotion-grade
+metrics. Until a longer unattended/GPU-backed run completes, the official
+NBEATSx/TFT models remain adapter-ready research candidates, not promoted
+controllers.
+
+Downstream smoke validation:
+
+| Field | Value |
+|---|---|
+| Smoke run id | `bea10f88-ed52-4f7d-b85b-93b149262c51` |
+| Input official benchmark | existing 4-anchor official rolling-origin artifact |
+| Scope | official schedule library, library v2, learner v2, strict LP benchmark, robustness, Offline Strategy Promotion gate |
+| Result | run succeeded |
+| Promotion-grade? | no; only 10 latest validation tenant-anchors per source and 2 rolling windows |
+
+Smoke gate summary:
+
+| Source | Latest validation tenant-anchors | Mean-regret improvement vs strict | Median not worse | Rolling strict-pass windows | Internal `production_promote` | Market execution enabled | Blocker |
+|---|---:|---:|---|---:|---|---|---|
+| `nbeatsx_official_v0` | 10 | 0.0% | yes | 0 / 2 | false | false | `mean_improvement_below_threshold` |
+| `tft_official_v0` | 10 | 0.0% | yes | 0 / 2 | false | false | `mean_improvement_below_threshold` |
+
+The smoke result proves the official rows can now flow through the same
+schedule/value candidate library and gate. It does not change the thesis claim:
+the official models still need a completed 104-anchor or larger rolling-origin
+run before they can be compared fairly with the compact schedule/value
+promotion evidence.
+
+Interrupted serious batch attempt:
+
+| Field | Value |
+|---|---|
+| Generated timestamp | `2026-05-11T09:53:24` |
+| Persisted anchors per source | `20` |
+| Persisted rows per source | `100` |
+| Anchor range | `2026-01-08 23:00` through `2026-01-27 23:00` |
+| `strict_similar_day` mean / median regret | `341.84` / `187.99` UAH |
+| `nbeatsx_official_v0` mean / median regret | `807.70` / `450.08` UAH |
+| `tft_official_v0` mean / median regret | `1354.23` / `987.03` UAH |
+| Decision | full CPU run stopped; switch to latest-window screening before any full 104-anchor retry |
+
+This is not Offline Strategy Promotion-grade because it covers only 20 chronological anchors and
+does not include the latest holdout or rolling robustness windows. It is still
+useful operational evidence: the serious official path is expensive enough that
+screening order and model filtering are required before running a full local CPU
+promotion attempt.
+
+Follow-up execution protocol:
+
+- use the resumable batch runner for the next 104-anchor attempt;
+- keep the outer per-batch timeout at least three hours on local CPU;
+- record the generated timestamp and failed anchor index if a resume is needed;
+- do not treat partial official rows as Offline Strategy Promotion-grade evidence.
+
+## 365-Anchor Registry Export
+
+The completed official global-panel 365-anchor Ukrainian backfill run is now
+packaged as a local evidence registry:
+
+| Field | Value |
+|---|---|
+| Run directory | `.tmp_runtime/official_global_panel_batches/official-global-panel-2026-05-11T203000-0000/` |
+| Fixed generated timestamp | `2026-05-11 20:30:00+00:00` |
+| Strategy rows | `3,650` raw official global-panel rows and `5,475` horizon-calibrated rows |
+| Anchors | `365` distinct anchors across five tenants |
+| Registry export | `data/research_runs/week3_official_global_panel_365_strategy_promotion/` |
+| Manifest | `attempt_manifest.json` copied into the registry export |
+| Monitor snapshot | `resume-summary.json` copied into the registry export |
+| Learner V2 trace | `dfl_schedule_value_learner_v2_trace_summary.json` and `.md` copied into the registry export |
+| Market execution | `false` |
+
+For reproducible reruns, create the monitor snapshot before exporting the
+registry and pass both attachments into
+`scripts/materialize_schedule_value_production_gate_registry.py`:
+
+```powershell
+.\scripts\monitor-official-evidence-attempt.ps1 `
+  -ManifestPath .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  -StrategyKind official_global_panel_nbeatsx_rolling_strict_lp_benchmark `
+  -OutputPath .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json
+
+.\.venv\Scripts\python.exe scripts\materialize_schedule_value_production_gate_registry.py `
+  --gate-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_production_gate_frame.pkl `
+  --run-slug week3_official_global_panel_365_strategy_promotion `
+  --attempt-manifest .tmp_runtime\official_global_panel_batches\<run-slug>\attempt_manifest.json `
+  --monitor-snapshot .tmp_runtime\official_global_panel_batches\<run-slug>\resume-summary.json `
+  --learner-frame-pickle data\research_runs\<run-slug>\dfl_official_global_panel_schedule_value_learner_v2_frame.pkl
+```
+
+Registry summary:
+
+| Source | Latest validation tenant-anchors | Strict mean / median | Learner mean / median | Improvement | Rolling strict passes | Internal `production_promote` |
+|---|---:|---:|---:|---:|---:|---|
+| `nbeatsx_official_global_panel_v1` | 90 | 310.583 / 198.386 | 225.437 / 109.692 | 27.41% | 4 / 4 | `true` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 90 | 310.583 / 198.386 | 206.367 / 96.021 | 33.55% | 4 / 4 | `true` |
+
+Learner V2 trace summary:
+
+| Source | Selected weight profiles | Final selected family counts |
+|---|---|---|
+| `nbeatsx_official_global_panel_v1` | `prior_regret_value`, `spread_value`, `strict_guarded_prior_value` | `strict_control=19`, `strict_prior_residual_v2=7`, `strict_raw_blend_v2=64` |
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | `prior_regret_value` | `strict_control=16`, `strict_prior_residual_v2=19`, `strict_raw_blend_v2=55` |
+
+The learner trace confirms that the 365-anchor result is not a raw-forecast
+superiority claim. It records which fixed scoring profile was selected from
+prior anchors for each tenant/source and which schedule families were selected
+on the final holdout. The final holdout has 900 candidate schedules per source
+model; early train anchors have 9 candidates per anchor, rising to 10 when the
+prior-residual candidate becomes available.
+
+This registry is the strongest official-forecast evidence package so far, but
+the claim remains unchanged: **Offline Strategy Promotion** for
+offline/read-model strategy evidence only. It is not live market execution, not a
+dashboard default switch, and not a claim that raw official NBEATSx alone beats
+`strict_similar_day`.
+
+## Schedule/Value Learner V2+ Evidence Freeze
+
+V2+ was materialized and exported on 2026-05-15 as a separate comparison packet:
+`data/research_runs/week3_official_global_panel_schedule_value_v2_plus_comparison/`.
+The reusable exporter is
+`scripts/materialize_schedule_value_v2_plus_comparison.py`, so future packets do
+not depend on a one-off notebook or manual CSV assembly.
+
+Strict-gate run:
+`b09194b2-8bf7-42fb-bcc7-1567ca47037c`.
+
+Rolling robustness run:
+`8832f41e-e605-4107-ab6d-028676faa223`.
+
+| Source | Latest V2+ mean regret | Latest improvement vs strict | Latest improvement vs frozen V2 | Rolling windows |
+|---|---:|---:|---:|---:|
+| `nbeatsx_official_global_panel_horizon_calibrated_v1` | 174.77 UAH | 43.73% | 15.31% | 4 / 4 |
+| `nbeatsx_official_global_panel_v1` | 193.36 UAH | 37.74% | 14.23% | 4 / 4 |
+
+The calibrated V2+ source is now the thesis-facing Offline Strategy Promotion
+headline because it beats both `strict_similar_day` and frozen V2 in the latest
+holdout and in all four rolling windows. The production/live boundary does not
+change: `market_execution_enabled=false`, `strict_similar_day` remains the
+fallback/control, and no dashboard/API default switch is made.
+
+## Schedule/Value Learner V3 Experiment
+
+The V3 additive experiment remains useful as a traceable ranker comparison, but
+it did not replace frozen V2 and was superseded by the V2+ candidate-library
+route:
+
+- `dfl_official_global_panel_schedule_value_learner_v3_frame`;
+- `dfl_official_global_panel_schedule_value_learner_v3_strict_lp_benchmark_frame`;
+- config:
+  `configs/real_data_official_global_panel_schedule_value_v3_week3.yaml`.
+
+V3 fits a deterministic prior-only ridge-style schedule ranker over the same
+candidate library used by frozen V2. The current evidence says the next headline
+should be V2+, not V3, because V2+ directly expanded the feasible schedule
+library around observed regret modes and passed the stricter V2 non-degradation
+gate.

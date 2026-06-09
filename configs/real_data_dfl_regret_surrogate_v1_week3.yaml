@@ -1,0 +1,154 @@
+# Learning-limit audit + regret-surrogate DFL v1/v2 context repair + sparse
+# abstaining safe-switch V6.
+#
+# This consumes the corrected Ukrainian-only V2+ comparator plus UA-context
+# oracle-gap candidate features. It predicts candidate-value/regret deltas and
+# safe-switch context support, not raw hourly BUY/SELL/HOLD actions. Outputs
+# remain Offline Strategy Promotion evidence only: market_execution_enabled=false,
+# no live dispatch, no dashboard/API default switch, and no EU rows as Ukrainian
+# target rows.
+ops:
+  dfl_oracle_gap_safe_switch_label_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      tail_risk_delta_uah: 150.0
+  dfl_v2_plus_learning_limit_audit_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      tail_risk_delta_uah: 150.0
+      min_oracle_improvement_ratio_vs_v2_plus: 0.05
+  dfl_regret_surrogate_forecast_correction_v1_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_prior_safe_win_count: 1
+      min_prior_mean_improvement_uah: 1.0
+      min_predicted_improvement_uah: 1.0
+      max_predicted_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+      use_cuda_if_available: true
+  dfl_regret_surrogate_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_validation_tenant_anchor_count: 90
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_regret_surrogate_rolling_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      min_prior_safe_win_count: 1
+      min_prior_mean_improvement_uah: 1.0
+      min_predicted_improvement_uah: 1.0
+      max_predicted_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+      use_cuda_if_available: true
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_regret_surrogate_safe_switch_context_audit_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      high_v2_regret_uah: 500.0
+      high_forecast_spread_uah_mwh: 10000.0
+      min_material_schedule_distance: 0.02
+      min_context_prior_safe_win_count: 1
+      min_context_prior_mean_improvement_uah: 1.0
+      max_context_tail_risk_probability: 0.25
+  dfl_regret_surrogate_teacher_label_panel_v2_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      high_v2_regret_uah: 500.0
+      high_forecast_spread_uah_mwh: 10000.0
+      min_material_schedule_distance: 0.02
+  dfl_regret_surrogate_contextual_candidate_value_v2_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_context_prior_support_count: 1
+      min_context_prior_safe_win_count: 1
+      min_context_prior_mean_improvement_uah: 1.0
+      min_predicted_improvement_uah: 1.0
+      max_context_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+  dfl_regret_surrogate_contextual_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_validation_tenant_anchor_count: 90
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_regret_surrogate_contextual_rolling_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      material_switch_delta_uah: 25.0
+      high_v2_regret_uah: 500.0
+      high_forecast_spread_uah_mwh: 10000.0
+      min_material_schedule_distance: 0.02
+      min_context_prior_support_count: 1
+      min_context_prior_safe_win_count: 1
+      min_context_prior_mean_improvement_uah: 1.0
+      min_predicted_improvement_uah: 1.0
+      max_context_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_sparse_safe_switch_opportunity_audit_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      max_prior_neighbor_distance: 1.5
+      min_neighbor_safe_win_count: 1
+      max_neighbor_tail_risk_probability: 0.25
+      nearest_neighbor_count: 5
+  dfl_sparse_safe_switch_teacher_label_panel_v6_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      material_switch_delta_uah: 25.0
+      max_prior_neighbor_distance: 1.5
+      nearest_neighbor_count: 5
+  dfl_sparse_safe_switch_abstention_model_v6_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      max_prior_neighbor_distance: 1.5
+      min_neighbor_safe_win_count: 1
+      min_predicted_improvement_uah: 1.0
+      max_neighbor_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+  dfl_sparse_safe_switch_strict_lp_benchmark_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      min_validation_tenant_anchor_count: 90
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05
+      min_mean_regret_improvement_ratio_vs_strict: 0.05
+  dfl_sparse_safe_switch_rolling_robustness_frame:
+    config:
+      tenant_ids_csv: "client_001_kyiv_mall,client_002_lviv_office,client_003_dnipro_factory,client_004_kharkiv_hospital,client_005_odesa_hotel"
+      source_model_names_csv: "nbeatsx_official_global_panel_horizon_calibrated_v1"
+      validation_window_count: 4
+      validation_anchor_count: 18
+      min_prior_anchors_before_window: 30
+      material_switch_delta_uah: 25.0
+      max_prior_neighbor_distance: 1.5
+      min_neighbor_safe_win_count: 1
+      min_predicted_improvement_uah: 1.0
+      max_neighbor_tail_risk_probability: 0.25
+      allowed_candidate_sources_csv: "oracle_gap_candidate,poland_shadow_candidate,tft_shadow_candidate,ua_context_candidate,lava_candidate"
+      min_mean_regret_improvement_ratio_vs_v2_plus: 0.05

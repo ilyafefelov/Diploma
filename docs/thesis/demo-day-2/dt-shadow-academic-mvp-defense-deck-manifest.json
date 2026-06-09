@@ -1,0 +1,34 @@
+{
+  "output": "D:\\School\\GoIT\\Courses\\Diploma\\docs\\thesis\\demo-day-2\\dt-shadow-academic-mvp-defense-deck.pptx",
+  "outputBytes": 213315,
+  "slideCount": 9,
+  "contactSheet": "D:\\School\\GoIT\\Courses\\Diploma\\docs\\thesis\\demo-day-2\\dt-shadow-academic-mvp-defense-contact-sheet.png",
+  "contactSheetError": null,
+  "googleSlidesUrl": "https://docs.google.com/presentation/d/1uIJV-tj4SOTf7QKLD9p-Eo_igDVj1HshJPWCHfgeKOM",
+  "googleSlidesTitle": "DT Shadow Academic MVP Defense Deck - Verified",
+  "googleSlidesSlideCount": 9,
+  "claimBoundary": "DAM/IDM hourly recommendation preview only; DT shadow is not promoted; market_execution_enabled=false; no ProposedBid; no market order payload.",
+  "sourceEvidence": {
+    "academicMvpGatePassed": true,
+    "modelBackbone": "huggingface_decision_transformer_model",
+    "hfDecisionTransformerAvailable": true,
+    "researchShadowTrainingRows": 97431,
+    "promotableV13PermittedTrainingRows": 0,
+    "dtPromotionGatePassed": false,
+    "dtLavaTrainingReady": false,
+    "marketExecutionEnabled": false
+  },
+  "metrics": {
+    "accuracy_secondary": 0.36363636363636365,
+    "behavior_cloning_mean_regret_uah": 510.81761310895286,
+    "behavior_cloning_mean_value_uah": 3400.6666816711427,
+    "dt_selected_mean_regret_uah": 507.8984354548984,
+    "dt_selected_mean_value_uah": 3403.585858069526,
+    "eval_cross_entropy_loss": 0.969727098941803,
+    "infeasible_action_prediction_count": 0,
+    "strict_mean_regret_uah": 431.70332263477354,
+    "strict_mean_value_uah": 3479.7809729682076,
+    "v2_plus_mean_regret_uah": 510.81761310895286,
+    "v2_plus_mean_value_uah": 3400.6666816711427
+  }
+}

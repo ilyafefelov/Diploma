@@ -2,57 +2,31 @@
 
 @import "tailwindcss";
 @import "@nuxt/ui";
+@import "./design-tokens.css";
 @import "./operator-hud.css";
-
-@theme static {
-  --font-sans: 'Montserrat', 'Segoe UI', sans-serif;
-
-  --color-green-50: #EFFDF5;
-  --color-green-100: #D9FBE8;
-  --color-green-200: #B3F5D1;
-  --color-green-300: #75EDAE;
-  --color-green-400: #00DC82;
-  --color-green-500: #00C16A;
-  --color-green-600: #00A155;
-  --color-green-700: #007F45;
-  --color-green-800: #016538;
-  --color-green-900: #0A5331;
-  --color-green-950: #052E16;
-}
-
-:root {
-  --canvas-base: #dff4ff;
-  --canvas-top: #fdfefe;
-  --panel-base: rgba(255, 255, 255, 0.78);
-  --panel-strong: rgba(255, 255, 255, 0.92);
-  --line-soft: rgba(0, 121, 193, 0.14);
-  --ink-strong: #1b3551;
-  --ink-soft: #6c7c92;
-  --accent-cyan: #0079c1;
-  --accent-cyan-strong: #005f96;
-  --accent-berry: #ff6fae;
-  --sims-blue: #0079c1;
-  --sims-blue-hover: #008be0;
-  --sims-blue-deep: #10508f;
-  --plumbob-green: #7ed321;
-  --urgent-red: #d0021b;
-}
 
 * {
   box-sizing: border-box;
 }
 
 html {
+  color-scheme: light;
+  accent-color: var(--native-accent);
+  overflow-y: auto;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
   background:
-    radial-gradient(circle at top left, rgba(0, 121, 193, 0.16), transparent 26%),
-    radial-gradient(circle at top right, rgba(126, 211, 33, 0.16), transparent 20%),
-    radial-gradient(circle at bottom left, rgba(83, 178, 234, 0.18), transparent 24%),
-    radial-gradient(circle at 78% 72%, rgba(255, 111, 174, 0.12), transparent 18%),
+    linear-gradient(color-mix(in oklab, var(--panel-strong) 26%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklab, var(--accent-cyan) 11%, transparent) 1px, transparent 1px),
     linear-gradient(180deg, var(--canvas-top) 0%, var(--canvas-base) 100%);
+  background-attachment: fixed;
+  background-size: 44px 44px, 44px 44px, auto;
 }
 
 body {
-  min-height: 100vh;
+  margin: 0;
+  min-height: 100dvh;
   color: var(--ink-strong);
   font-family: var(--font-sans);
 }
@@ -62,40 +36,93 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  opacity: 0.36;
+  opacity: 0.32;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.18) 1px, transparent 1px);
-  background-size: 32px 32px;
+    linear-gradient(180deg, color-mix(in oklab, var(--panel-strong) 38%, transparent), transparent 34%),
+    linear-gradient(120deg, transparent 0 42%, color-mix(in oklab, var(--panel-strong) 20%, transparent) 42% 43%, transparent 43% 100%);
+  background-size: 100% 100%, 18rem 18rem;
   mix-blend-mode: soft-light;
-}
-
-body::after {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 20% 12%, rgba(255, 255, 255, 0.8), transparent 0.18rem),
-    radial-gradient(circle at 82% 18%, rgba(255, 255, 255, 0.6), transparent 0.16rem),
-    radial-gradient(circle at 70% 70%, rgba(255, 255, 255, 0.55), transparent 0.14rem),
-    linear-gradient(130deg, rgba(255, 255, 255, 0) 35%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0) 65%);
-  opacity: 0.7;
 }
 
 #__nuxt {
   isolation: isolate;
+  min-height: 100dvh;
+}
+
+html.operator-scroll-root {
+  height: auto !important;
+  min-height: 100dvh;
+  overflow-y: auto !important;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.operator-scroll-root body {
+  height: auto !important;
+  min-height: 100dvh;
+  overflow: visible !important;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.operator-scroll-root {
+  height: auto !important;
+  min-height: 100dvh;
+  overflow: visible !important;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+html.operator-scroll-root #__nuxt,
+body.operator-scroll-root #__nuxt {
+  height: auto !important;
+  min-height: 100dvh;
+  overflow: visible !important;
+}
+
+html.operator-scroll-root .min-h-screen,
+html.operator-scroll-root .operator-shell,
+body.operator-scroll-root .min-h-screen,
+body.operator-scroll-root .operator-shell {
+  height: auto !important;
+  min-height: 100dvh;
+  overflow: visible !important;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+:where(a:any-link, button, input, select, textarea, summary, [role='button'], [tabindex]:not([tabindex='-1'])):focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+@supports not (scrollbar-color: auto) {
+  html::-webkit-scrollbar {
+    width: 0.75rem;
+    height: 0.75rem;
+  }
+
+  html::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+  }
+
+  html::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
 }
 
 .surface-panel {
-  border: 2px solid rgba(255, 255, 255, 0.92);
+  border: 2px solid var(--panel-strong);
   border-radius: 1.6rem;
   background: var(--panel-base);
   padding: 1.25rem;
   backdrop-filter: blur(20px);
   box-shadow:
-    0 22px 55px rgba(0, 121, 193, 0.09),
-    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+    0 22px 55px color-mix(in oklab, var(--accent-cyan) 9%, transparent),
+    inset 0 1px 0 var(--panel-strong);
 }
 
 .surface-panel-strong {
@@ -103,9 +130,15 @@ body::after {
 }
 
 .surface-panel-blue {
-  border-color: rgba(255, 255, 255, 0.65);
+  border-color: color-mix(in oklab, var(--panel-strong) 72%, transparent);
 }
 
 ::selection {
-  background: rgba(0, 121, 193, 0.18);
+  background: var(--line-soft);
+}
+
+@media (prefers-contrast: more) {
+  body::before {
+    opacity: 0.16;
+  }
 }

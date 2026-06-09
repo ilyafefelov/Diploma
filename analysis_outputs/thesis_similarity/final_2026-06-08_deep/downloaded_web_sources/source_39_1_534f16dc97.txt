@@ -1,0 +1,251 @@
+[2401.00015] Distributional Reinforcement Learning-based Energy Arbitrage Strategies in Imbalance Settlement Mechanism 
+
+ Skip to main content 
+
+ Learn about arXiv becoming an independent nonprofit. 
+
+ We gratefully acknowledge support from the Simons Foundation, member institutions , and all contributors. 
+ Donate 
+
+ > cs > arXiv:2401.00015
+
+ Help | Advanced Search 
+
+ All fields 
+ Title 
+ Author 
+ Abstract 
+ Comments 
+ Journal reference 
+ ACM classification 
+ MSC classification 
+ Report number 
+ arXiv identifier 
+ DOI 
+ ORCID 
+ arXiv author ID 
+ Help pages 
+ Full text 
+
+ Search 
+
+ GO 
+
+ quick links
+
+ Login 
+
+ Help Pages 
+
+ About 
+
+--> 
+
+ Computer Science > Machine Learning
+
+ arXiv:2401.00015 (cs)
+
+ [Submitted on 23 Dec 2023]
+
+ Title: Distributional Reinforcement Learning-based Energy Arbitrage Strategies in Imbalance Settlement Mechanism
+
+ Authors: Seyed Soroush Karimi Madahi , Bert Claessens , Chris Develder 
+ View a PDF of the paper titled Distributional Reinforcement Learning-based Energy Arbitrage Strategies in Imbalance Settlement Mechanism, by Seyed Soroush Karimi Madahi and 2 other authors
+
+ View PDF 
+ HTML (experimental) 
+
+ Abstract: Growth in the penetration of renewable energy sources makes supply more uncertain and leads to an increase in the system imbalance. This trend, together with the single imbalance pricing, opens an opportunity for balance responsible parties (BRPs) to perform energy arbitrage in the imbalance settlement mechanism. To this end, we propose a battery control framework based on distributional reinforcement learning (DRL). Our proposed control framework takes a risk-sensitive perspective, allowing BRPs to adjust their risk preferences: we aim to optimize a weighted sum of the arbitrage profit and a risk measure while constraining the daily number of cycles for the battery. We assess the performance of our proposed control framework using the Belgian imbalance prices of 2022 and compare two state-of-the-art RL methods, deep Q learning and soft actor-critic. Results reveal that the distributional soft actor-critic method can outperform other methods. Moreover, we note that our fully risk-averse agent appropriately learns to hedge against the risk related to the unknown imbalance price by (dis)charging the battery only when the agent is more certain about the price.
+
+ Subjects: 
+
+ Machine Learning (cs.LG) ; Artificial Intelligence (cs.AI); Systems and Control (eess.SY) 
+
+ Cite as: 
+ arXiv:2401.00015 [cs.LG] 
+
+ (or 
+ arXiv:2401.00015v1 [cs.LG] for this version)
+
+ https://doi.org/10.48550/arXiv.2401.00015 
+
+ Focus to learn more 
+
+ arXiv-issued DOI via DataCite
+
+ Submission history
+ From: Seyed Soroush Karimi Madahi [ view email ] 
+ [v1] 
+ Sat, 23 Dec 2023 15:38:31 UTC (3,607 KB)
+
+ Full-text links: 
+ Access Paper:
+
+View a PDF of the paper titled Distributional Reinforcement Learning-based Energy Arbitrage Strategies in Imbalance Settlement Mechanism, by Seyed Soroush Karimi Madahi and 2 other authors
+ View PDF 
+ HTML (experimental) 
+ TeX Source
+
+ view license 
+
+ Current browse context:
+
+ cs.LG
+
+ < prev 
+
+   |   
+ next > 
+
+ new 
+ | 
+ recent 
+ | 2024-01 
+
+ Change to browse by:
+
+ cs 
+ cs.AI 
+ cs.SY 
+ eess 
+ eess.SY 
+
+ References & Citations
+
+ NASA ADS 
+ Google Scholar 
+
+ Semantic Scholar 
+
+ export BibTeX citation 
+ Loading... 
+
+ BibTeX formatted citation
+
+ × 
+
+ loading... 
+
+ Data provided by: 
+
+ Bookmark
+
+ Bibliographic Tools 
+
+ Bibliographic and Citation Tools
+
+ Bibliographic Explorer Toggle 
+
+ Bibliographic Explorer ( What is the Explorer? ) 
+
+ Connected Papers Toggle 
+
+ Connected Papers ( What is Connected Papers? ) 
+
+ Litmaps Toggle 
+
+ Litmaps ( What is Litmaps? ) 
+
+ scite.ai Toggle 
+
+ scite Smart Citations ( What are Smart Citations? ) 
+
+ Code, Data, Media 
+
+ Code, Data and Media Associated with this Article
+
+ alphaXiv Toggle 
+
+ alphaXiv ( What is alphaXiv? ) 
+
+ Links to Code Toggle 
+
+ CatalyzeX Code Finder for Papers ( What is CatalyzeX? ) 
+
+ DagsHub Toggle 
+
+ DagsHub ( What is DagsHub? ) 
+
+ GotitPub Toggle 
+
+ Gotit.pub ( What is GotitPub? ) 
+
+ Huggingface Toggle 
+
+ Hugging Face ( What is Huggingface? ) 
+
+ ScienceCast Toggle 
+
+ ScienceCast ( What is ScienceCast? ) 
+
+ Demos 
+
+ Demos
+
+ Replicate Toggle 
+
+ Replicate ( What is Replicate? ) 
+
+ Spaces Toggle 
+
+ Hugging Face Spaces ( What is Spaces? ) 
+
+ Spaces Toggle 
+
+ TXYZ.AI ( What is TXYZ.AI? ) 
+
+ Related Papers 
+
+ Recommenders and Search Tools
+
+ Link to Influence Flower 
+
+ Influence Flower ( What are Influence Flowers? ) 
+
+ Core recommender toggle 
+
+ CORE Recommender ( What is CORE? ) 
+
+ IArxiv recommender toggle 
+
+ IArxiv Recommender 
+ ( What is IArxiv? ) 
+
+ Author 
+
+ Venue 
+
+ Institution 
+
+ Topic 
+
+ About arXivLabs
+
+ arXivLabs: experimental projects with community collaborators
+
+ arXivLabs is a framework that allows collaborators to develop and share new arXiv features directly on our website.
+
+ Both individuals and organizations that work with arXivLabs have embraced and accepted our values of openness, community, excellence, and user data privacy. arXiv is committed to these values and only works with partners that adhere to them.
+
+ Have an idea for a project that will add value for arXiv's community? Learn more about arXivLabs .
+
+ Which authors of this paper are endorsers? |
+ Disable MathJax ( What is MathJax? )
+
+ About 
+
+ Help 
+
+ contact arXiv Click here to contact arXiv 
+ Contact 
+
+ subscribe to arXiv mailings Click here to subscribe 
+ Subscribe 
+
+ Copyright 
+
+ Privacy Policy 
+
+ Web Accessibility Assistance 
+
+ arXiv Operational Status

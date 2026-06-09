@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Experiment path from baseline to live shadow preview</title>
+  <desc id="desc">Timeline of evidence development from strict baseline through V2+, DT/HF shadow, readiness, and future gates.</desc>
+  <defs>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 23px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 17px Arial, sans-serif; fill: #334155; }
+      .white { font: 800 18px Arial, sans-serif; fill: #fff; }
+      .line { stroke: #0284c7; stroke-width: 8; fill: none; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0284c7"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <text x="72" y="88" class="title" style="font-size:42px">Experiment path: baseline to live shadow preview</text>
+  <text x="72" y="128" class="subtitle">Кожен крок додає не тільки модель, а й доказову межу: comparator, fallback, abstention, readiness.</text>
+
+  <path class="line" d="M140 420 H1450"/>
+
+  <g transform="translate(80 240)">
+    <rect width="230" height="250" rx="22" fill="#fff7ed" stroke="#f97316" stroke-width="3"/>
+    <text x="28" y="52" class="head">Strict LP/oracle</text>
+    <text x="28" y="105" class="body">310.58 UAH</text>
+    <text x="28" y="150" class="body">common scoring</text>
+    <text x="28" y="195" class="body">safe but rigid</text>
+  </g>
+  <g transform="translate(365 240)">
+    <rect width="230" height="250" rx="22" fill="#dcfce7" stroke="#16a34a" stroke-width="3"/>
+    <text x="28" y="52" class="head">V2+</text>
+    <text x="28" y="105" class="body">174.77 UAH</text>
+    <text x="28" y="150" class="body">4 / 4 robustness</text>
+    <text x="28" y="195" class="body">headline evidence</text>
+  </g>
+  <g transform="translate(650 240)">
+    <rect width="230" height="250" rx="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <text x="28" y="52" class="head">DT safe-switch</text>
+    <text x="28" y="105" class="body">168.16 UAH</text>
+    <text x="28" y="150" class="body">secondary</text>
+    <text x="28" y="195" class="body">manual diagnostic</text>
+  </g>
+  <g transform="translate(935 240)">
+    <rect width="230" height="250" rx="22" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="28" y="52" class="head">HF shadow</text>
+    <text x="28" y="105" class="body">158.71 UAH</text>
+    <text x="28" y="150" class="body">candidate scoring</text>
+    <text x="28" y="195" class="body">live preview</text>
+  </g>
+  <g transform="translate(1220 240)">
+    <rect width="230" height="250" rx="22" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="28" y="52" class="head">Future gate</text>
+    <text x="28" y="105" class="body">V13 receipts</text>
+    <text x="28" y="150" class="body">LP/MIP teacher data</text>
+    <text x="28" y="195" class="body">execution contracts</text>
+  </g>
+
+  <g transform="translate(90 675)">
+    <rect width="1420" height="76" rx="20" fill="#0f172a"/>
+    <text x="34" y="34" class="white">Current endpoint: operator-facing read-model preview.</text>
+    <text x="34" y="58" class="white">Not V13 training, not production controller, not market execution.</text>
+  </g>
+</svg>

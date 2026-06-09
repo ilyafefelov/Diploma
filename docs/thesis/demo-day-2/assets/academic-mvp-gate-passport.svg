@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">Credentialless Academic MVP gate passport</title>
+  <desc id="desc">Gate passport showing operator preview and research-smoke gates passing while market submission and DT promotion remain blocked.</desc>
+  <rect width="1200" height="720" fill="#ffffff"/>
+  <text x="70" y="74" font-family="Arial, sans-serif" font-size="32" font-weight="700" fill="#111827">Academic MVP Gate Passport</text>
+  <text x="70" y="108" font-family="Arial, sans-serif" font-size="18" fill="#4b5563">Credentialless diploma boundary: operator recommendation preview, offline evidence, no market execution.</text>
+
+  <g font-family="Arial, sans-serif">
+    <rect x="70" y="150" width="500" height="86" rx="8" fill="#ecfdf5" stroke="#34d399"/>
+    <circle cx="112" cy="193" r="16" fill="#059669"/>
+    <text x="106" y="199" font-size="18" font-weight="700" fill="#ffffff">P</text>
+    <text x="145" y="184" font-size="20" font-weight="700" fill="#064e3b">DAM preview gate</text>
+    <text x="145" y="210" font-size="16" fill="#065f46">24 recommendation rows: 1 buy, 2 sell, 21 hold</text>
+
+    <rect x="630" y="150" width="500" height="86" rx="8" fill="#ecfdf5" stroke="#34d399"/>
+    <circle cx="672" cy="193" r="16" fill="#059669"/>
+    <text x="666" y="199" font-size="18" font-weight="700" fill="#ffffff">P</text>
+    <text x="705" y="184" font-size="20" font-weight="700" fill="#064e3b">LAVA NPZ CI smoke</text>
+    <text x="705" y="210" font-size="16" fill="#065f46">Packet validation passes, training still not permitted</text>
+
+    <rect x="70" y="268" width="500" height="86" rx="8" fill="#ecfdf5" stroke="#34d399"/>
+    <circle cx="112" cy="311" r="16" fill="#059669"/>
+    <text x="106" y="317" font-size="18" font-weight="700" fill="#ffffff">P</text>
+    <text x="145" y="302" font-size="20" font-weight="700" fill="#064e3b">DT shadow smoke</text>
+    <text x="145" y="328" font-size="16" fill="#065f46">HF DecisionTransformerModel, research rows 97,431</text>
+
+    <rect x="630" y="268" width="500" height="86" rx="8" fill="#fef2f2" stroke="#f87171"/>
+    <circle cx="672" cy="311" r="16" fill="#dc2626"/>
+    <text x="666" y="317" font-size="18" font-weight="700" fill="#ffffff">B</text>
+    <text x="705" y="302" font-size="20" font-weight="700" fill="#7f1d1d">Receipt readiness</text>
+    <text x="705" y="328" font-size="16" fill="#991b1b">Blocked for market-submission claims</text>
+
+    <rect x="70" y="386" width="500" height="86" rx="8" fill="#fef2f2" stroke="#f87171"/>
+    <circle cx="112" cy="429" r="16" fill="#dc2626"/>
+    <text x="106" y="435" font-size="18" font-weight="700" fill="#ffffff">B</text>
+    <text x="145" y="420" font-size="20" font-weight="700" fill="#7f1d1d">DT/LAVA promotion</text>
+    <text x="145" y="446" font-size="16" fill="#991b1b">0 promotable V13 rows while receipts are blocked</text>
+
+    <rect x="630" y="386" width="500" height="86" rx="8" fill="#f8fafc" stroke="#94a3b8"/>
+    <circle cx="672" cy="429" r="16" fill="#475569"/>
+    <text x="666" y="435" font-size="18" font-weight="700" fill="#ffffff">O</text>
+    <text x="705" y="420" font-size="20" font-weight="700" fill="#0f172a">Market execution</text>
+    <text x="705" y="446" font-size="16" fill="#475569">Out of scope, market_execution_enabled=false</text>
+  </g>
+
+  <rect x="70" y="535" width="1060" height="94" rx="8" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="100" y="572" font-family="Arial, sans-serif" font-size="21" font-weight="700" fill="#111827">Defense claim</text>
+  <text x="100" y="602" font-family="Arial, sans-serif" font-size="17" fill="#334155">The system is a source-governed DAM operator-preview MVP with offline DT evidence.</text>
+  <text x="100" y="628" font-family="Arial, sans-serif" font-size="17" fill="#334155">It does not claim live DAM/IDM bidding, deployed DT control, full differentiable DFL, or market execution.</text>
+</svg>

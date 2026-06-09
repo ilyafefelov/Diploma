@@ -1,0 +1,1348 @@
+A Review of Lithium-Ion Battery Models in
+Techno-economic Analyses of Power Systems
+Anton V. Vykhodtsev a, Darren Jang b, Qianpu Wangb, Hamidreza Zareipour a,
+William D. Rosehart a
+aDepartment of Electrical and Software Engineering, University of Calgary, Canada
+bEnergy, Mining and Environment Research Centre, National Research Council of Canada,
+Canada
+Abstract
+The penetration of the lithium-ion battery energy storage system (BESS) into
+the power system environment occurs at a colossal rate worldwide. This is
+mainly because it is considered as one of the major tools to decarbonize, digi-
+talize, and democratize the electricity grid. The economic viability and technical
+reliability of projects with batteries require appropriate assessment because of
+high capital expenditures, deterioration in charging/discharging performance
+and uncertainty with regulatory policies. Most of the power system economic
+studies employ a simple power-energy representation coupled with an empiri-
+cal description of degradation to model the lithium-ion battery. This approach
+to modelling may result in violations of the safe operation and misleading esti-
+mates of the economic beneﬁts. Recently, the number of publications on techno-
+economic analysis of BESS with more details on the lithium-ion battery perfor-
+mance has increased. The aim of this review paper is to explore these publica-
+tions focused on the grid-scale BESS applications and to discuss the impacts of
+using more sophisticated modelling approaches. First, an overview of the three
+most popular battery models is given, followed by a review of the applications
+Email addresses: anton.vykhodtsev@ucalgary.ca (Anton V. Vykhodtsev),
+Darren.Jang@nrc-cnrc.gc.ca (Darren Jang), Qianpu.Wang@nrc-cnrc.gc.ca (Qianpu Wang),
+hzareipo@ucalgary.ca (Hamidreza Zareipour), rosehart@ucalgary.ca (William D.
+Rosehart)
+Preprint submitted to Elsevier June 17, 2021
+arXiv:2106.08702v1  [eess.SY]  16 Jun 2021
+
+of such models. The possible directions of future research of employing detailed
+battery models in power systems’ techno-economic studies are then explored.
+Keywords: Li-ion battery, modelling, battery operation, battery planning,
+power system economics
+1. Introduction
+The number of lithium-ion BESS projects in operation, under construction,
+and in the planning stage grows steadily around the world due to the im-
+provements of technology [1], economy of scale [2], bankability [3], and new
+regulatory initiatives [4]. It is projected that by 2040 there will be about
+1,095GW/2,850GWh of stationary energy storage in operation mostly in the
+forms of batteries [5]. Although the private investor in energy storage for grid
+applications encounters high capital cost compared with conventional solutions,
+deteriorating battery characteristics, and revenue risk associated with changing
+regulatory policies, the economic value of such projects is mostly assessed using a
+simplistic black-box representation of the battery operation [6] and an empirical
+relationship to characterize ageing [7]. A black-box modelling of a lithium-ion
+battery is reasonable if the large-scale optimization is solved where additional
+state variables characterizing a battery would further increase computational
+complexity. However, short-term operation and long-term planning for the in-
+dividual storage owner will beneﬁt from detailed models of BESS [8, 9]. For
+example, when a lithium-ion battery storage is used to provide multiple services
+for the electrical grid for better asset utilization and economic beneﬁts for the
+owner [10], the optimal market participation calculated using a simplistic model
+may lead to the execution of infeasible operations and an erroneous estimate
+of economic beneﬁts [11]. This occurs because a simple battery model can not
+reﬂect the physical processes inside a lithium-ion cell, which is the main com-
+ponent of BESS. This can be more pronounced if the operation and planning
+2
+
+of BESS for the power system will be performed over multiscale time horizons:
+control strategy for participating in the electricity and ancillary services markets
+encompasses hours/minutes/seconds, degradation occurs every second and ac-
+cumulates over years, and both the planning horizon and the replacement plan
+should be calculated for years [12]. The linkage of these timescales will likely
+be inaccurate if a simple black-box model is used since it operates with power
+in MW over an hour time interval. The scarce experimental data supports the
+importance to consider more detailed models for operation [8, 11] as well as for
+the long-term performance [13].
+In a pioneering work published in 1985, the techno-economic assessment of
+BESS application was performed by Sobieski [14] where the author compared
+BESS with combustion turbines for peak shaving capacity expansion and for
+spinning reserve. Over the years since, the strategic battery operation in various
+decision-making studies in power systems have been modelled using generic
+models without a reference to a particular battery technology. Miletic and co-
+workers [15] summarized and structured optimization frameworks and market
+models for stationary energy storage used in operation and planning problems
+on the transmission and distribution levels. A standard power-energy model
+and its various modiﬁcations were discussed as well. However, the impact of
+including additional details into the simple battery model was not assessed.
+The lithium-ion battery community suggests a variety of models with dif-
+ferent levels of accuracy and computational complexity for simulation [16] and
+characterization of ageing [17]. These models are usually employed in the bat-
+tery management system (BMS) to predict battery behaviour and to estimate
+state-of-charge or state-of-health of the battery [18]. Until recently the strate-
+gic operation of stationary BESS was derived using advanced battery models
+by only a few researchers[13, 19]. The critical review of three models of BESS,
+3
+
+namely the energy reservoir model, the charge reservoir model, and the concen-
+tration based model, were provided to the power system research community by
+Rosewater et al. [20] where they used them to calculate the optimal schedule
+of a BESS for a peak shaving application. The authors outlined the advantages
+and disadvantages of each model from a computational point of view but they
+mostly reviewed references outside of typical system-level grid applications of
+BESS.
+The contribution of the present review paper is to provide a detailed overview
+of alternative battery models and how they have been used to represent grid-
+scale BESS in electrical power system studies. In particular, we focus on papers
+that have integrated transmission-connected BESS into grid operation and plan-
+ning techno-economic studies. This paper builds on previous works; for example,
+it extends the work presented in [20] where the models were presented but no
+discussions of their application in techno-economic optimization problems were
+conducted. Compared with[15], where diﬀerent optimization models for BESS
+operation and planning were summarized, and with [18], where optimization
+protocols and frameworks for BESS applications were addressed, in this review
+paper, various applications were examined from the perspective of how the bat-
+tery was described and represented. The review work [21] was focused on the
+battery models for the BMS and the architecture of BESS and BMS. Their
+case study only addressed optimal charging scheduling for the combined BESS-
+photovoltaic generation plant considering physics-based model whereas in this
+paper a broader range of BESS applications is examined.
+The remainder of this paper is structured as follows: the next section gives
+an overview of BESS models, the third section presents examples of economic
+studies with BESS providing diﬀerent services, the fourth section discusses and
+summarizes the impact of BESS models on the strategic operation and planning.
+4
+
+The last section presents the conclusion.
+2. An overview of the lithium-ion battery modelling approaches
+A battery is an electrochemical device that is able to store electrical energy
+in the form of chemical energy and to convert it back to electrical energy when
+it is needed. Since their invention in 1800 by Alessandro Volta, various bat-
+tery technologies have emerged; however, in this work, we are focused on the
+lithium-ion technology. This type of battery was pioneered by Whittingham
+[22], signiﬁcantly improved by Goodenough [23], and brought to the market
+by Sony in early the 1990s. Today, the term battery is often used to refer to
+the electrochemical storage as a whole system. In fact, each battery consists
+of a pack of elementary electrochemical units – cells. The way the cells are
+connected in the battery (in parallel and in series) determines the battery’s
+nameplate ratings. A cell is a physical place where the conversion occurs and
+where the electrochemical energy is stored.
+The battery models by the extent of description of the physical processes and
+corresponding safety constraints can be divided into black-box, phenomenologi-
+cal, and physical models [24, 25]. In the black-box model (Figure 1a), a battery
+is replaced with a reservoir or a bucket, where energy comes in and comes out.
+This model does not consider a description of the physical phenomena inside
+the cell. If the phenomenological model is used (Figure 1b), the battery is re-
+placed with the system that was empirically built to replicate the response of the
+battery to the control commands [16]. The electrochemical process inside the
+battery and the response of the cell to external factors are accurately described
+using the physical model (Figure 1c) [24].
+The long-term performance of the battery deteriorates with time (calen-
+dar ageing) and with the number of charging/discharging cycles (cycle age-
+5
+
+(a) Power-Energy
+Model
+(b) Voltage-Current Model
+ (c) Concentration-Current
+Model
+Figure 1: The lithium-ion battery models used in techno-economic analysis of power system.
+ing). There are several mechanical and electrochemical processes that gradually
+deteriorate either energy capacity, rated charging/discharging power, or both.
+The ageing of the lithium-ion cells is impacted by environmental conditions,
+such as high and low temperatures, operating conditions, such as high charg-
+ing/discharging current and high/low state-of-charge, and even when the battery
+is at rest [26]. The degradation of the lithium-ion cell is usually accompanied by
+loss of lithium inventory or loss of active material of an electrode. The lithium
+inventory is consumed by various side reactions. The decline of the number of
+cyclable lithium leads to a decrease in energy capacity and by-products of these
+parasitic reactions create additional internal resistance of the cell that reduces
+the available charging/discharging power capacity. Examples of such processes
+are solid electrolyte interphase (SEI) ﬁlm growth and lithium plating. The SEI
+formation is considered as a dominant degradation mechanism [17]. The SEI
+is mostly formed on the surface of the negative electrode during charging since
+6
+
+these conditions favour electrochemical decomposition of electrolyte [27]. The
+lithium ions can also be converted to metallic lithium which is deposited on the
+electrode through the lithium plating process. The structural changes, such as
+cracks in the electrode particles or dissolution of material in electrolyte, lead to
+loss of electrode active material. More detailed information on the degradation
+mechanisms in the lithium-ion cell can be found in [26], [28], and [17].
+In this section, the battery models that can be found in power system oper-
+ation and planning papers are reviewed.
+2.1. Power-Energy Model
+The simplest model of the battery assumes that the battery can be seen as
+an energy reservoir in which the energy is pumped to store and from which the
+energy is drawn to consume (Figure 1a). If such a model is used for analysis
+there is no need to distinguish elementary electrochemical units or the type of
+electrochemistry within the battery. This is the most popular model to charac-
+terize the operation of the battery in techno-economic studies in power systems.
+It is likely that this modelling approach has come from the mature pumped hy-
+dro energy storage modelling that was around for a long time [29]. The control
+variables for this model are charging, cht, and discharging, dist powers whereas
+state-of-energy,SoE t, is the only state variable. The state-of-energy indicates
+the present value of energy (often in MWh in power systems literature) stored in
+the battery. The BESS is not an ideal system, thus there will be losses during
+the charging/discharging cycling. The loss in a Power-Energy Model is com-
+monly considered through the introduction of the energy eﬃciency factor which
+can be assigned either separately for both charging, ηch, and discharging, ηdis,
+operations [30] or as a round-trip energy eﬃciency for the whole cycle [31, 32].
+The generic Power-Energy Model assumes ﬁxed energy eﬃciencies and constant
+rated charging/discharging power that do not depend on SoEt. The evolution
+7
+
+of state-of-energy is a core of the Power-Energy Model and the relationship be-
+tween two consecutive observations ofSoEt with a time step τ between them is
+expressed as
+SoEt =SoEt−1 +τ(ηchcht − dist
+ηdis ). (1)
+The technical aspects of the BESS are considered by enforcing limits on the
+charging and discharging maximum power and allowing only to store energy
+until the rated energy capacity is reached. Expression for state-of-energy (1) al-
+lows the schedule with simultaneous charging and discharging (e.g., that may be
+realized for electricity market cases with negative nodal energy prices or for ideal
+batteries with eﬃciencies equal to unity [33]). In this case, to avoid simulta-
+neous charging and discharging, binary variables are introduced [34]. However,
+when the cost of BESS operation is included in the objective and eﬃciencies are
+less than unity, simultaneous charging and discharging is suboptimal and should
+not appear in the optimal solution [31, 35]. The Power-Energy Model can be
+updated by adding some features of the lithium-ion cell operation through the
+functional dependencies of maximum permissible charging/discharging power on
+state-of-energy as in [36, 8], or energy eﬃciency on state-of-energy and charg-
+ing/discharging power as in [37, 38], or both dependencies as in [37, 39, 9].
+A simple Power-Energy Model can also be coupled with degradation descrip-
+tion of the battery as result of cycling or calendar ageing. In power system
+economics studies, degradation is mostly modelled either enforcing operation
+limits [40, 41], or using the energy throughput model [42], or employing the
+cycle-counting model [7]. The last two approaches can be included in the opti-
+mization framework by assigning the cost of degradation in the cost function or
+by limiting degradation through the introduction of additional constraints to a
+Power-Energy Model. References for each method are summarized in Table 1.
+8
+
+In the energy throughput or power-based method, there is a linear depen-
+dence between the energy capacity fade and the energy throughput [42, 43, 41,
+44]. It is assumed that the amount of energy that can be stored and delivered
+by BESS throughout its lifespan is ﬁxed. A battery is often deﬁned as healthy
+until it reaches the End-of-life (EoL) state that occurs when the battery has
+lost 20% of the original capacity. The framework can be built by incorporating
+degradation cost in the objective [42] or by limiting the number of full charg-
+ing/discharging cycles per day [40] or per year [41]. The energy throughput
+technique for ageing assessment works properly for one charging/discharging
+cycle per day [12]. The cycle-counting degradation model relies on the nonlin-
+ear ageing occurred from cycling: cycles with smaller depth-of-discharge (DoD)
+contribute less into the degradation of the battery [7]. The cycles are extracted
+from a state-of-energy proﬁle using the rainﬂow cycle-counting algorithm [45].
+Each cycle with a certain DoD is assigned with a ﬁxed amount of degradation
+to the energy capacity according to the cycle depth ageing stress function that
+can be obtained from the experimental data. The cycle-counting method is
+incorporated into the optimization framework by including the cost of degrada-
+tion into the objective function. This cost is calculated by benchmarking the
+amount of degradation with the battery replacement cost [46]. Although the
+cycle-based degradation model is more advanced than the energy throughput
+method, both techniques do not consider the eﬀect of the average state-of-energy
+around which the charging/discharging cycle occurs [47]. Another limitation of
+the cycle-counting degradation model with rainﬂow algorithm is that it only
+has a recursive form. Several approximations suitable for the optimization en-
+vironment were suggested [48, 46, 49]. Some authors also employed empirical
+nonlinear degradation models [47, 50] where the cumulative degradation cost
+function was constructed for diﬀerent state-of-energy and the current rates for
+9
+
+Table 1: Literature survey on empirical degradation models.
+Decision horizon Operational
+limits
+Energy
+through-
+put
+method
+Cycle-
+counting
+method
+Other
+< 1 week [42], [35],[40] [42] [7], [49], [48] [47], [50]
+< 1 year [9] [41], [44],
+[43], [9]
+[46], [53]
+< 20 year [12]
+charge/discharge.
+The energy eﬃciency and maximum power capacity of the BESS also de-
+grades with cycling or when the battery ages over time [51]. The eﬀect of ageing
+on the energy eﬃciency and maximum charging/discharging power was explored
+in [52] and [9]. A linear relationship between the fading capacity and maximum
+charging/discharging power was assumed in [9] and the growth of the cell inter-
+nal resistance was explored in [52]. The coupling of long-term performance with
+a Power-Energy Model brought problems with computational tractability and is
+solved either for short optimization horizons (Table 1) or employing sequential
+approaches [53, 47].
+The incorporation of a generic Power-Energy Model within power system
+optimization frameworks usually leads to a linear programming problem [41] or
+a linear mixed integer programming problem [37] that can be easily solved with
+standard commercial solvers.
+2.2. Voltage-Current Model
+The charging/discharging schedule calculated using a Power-Energy Model
+may lead to the operation of the battery out of permissible range for current and
+voltage [8]. If this occurs the “optimized” operation will be corrected by BMS
+[18]. This will lead to a deviation from estimated ﬁnancial beneﬁts and grid
+service commitment in power systems studies. The formulation of the battery
+10
+
+model can be improved if some details of the battery operation are incorporated.
+A phenomenological model, such as the equivalent-circuit model, is designed to
+replicate the battery’s charging/discharging performance and is usually used
+in BMS [54]. The description of BESS operation based on the electric circuit
+presents an attractive option to model the cell using the Kirchhoﬀ equations.
+The equivalent-circuit model by its nature does not model the dynamics of
+the internal processes inside the cell but characterizes the measurable response
+of the cell to the external inﬂuence. The charging/discharging performance
+curves show how the voltage, which is the state variable, across the cell changes
+with the current, which is the control variable, ﬂowing through the cell while
+charging/discharging. With regard to the decision variables when an equivalent-
+circuit model is employed for the optimal control in the power system, the model
+can be referred to as a Voltage-Current Model. The impedance parameters of
+the Voltage-Current Model are obtained from ﬁtting an experimental data or the
+manufacturer’s speciﬁcation to the governing equation of the suggested circuit
+model.
+There are various conﬁgurations of an electric circuit for a Voltage-Current
+Model [55]; the choice depends on the accuracy requirement, the level of toler-
+ance to the computational complexity, and the cell chemistry. The ﬁrst-order
+approximation consists of two elements: voltage source and resistance [24]. A
+more advanced Voltage-Current Model usually consists of a set of resistors and
+capacitors in series or parallel, current sources, and special nonlinear elements.
+The simple electric circuit that captures the main processes in the cell is shown
+in Figure 1b. This model was derived using [24] and is based on empirical
+observations. The variable voltage source changes its output as a function of
+state-of-charge. This voltage is sometimes referred to as an open-circuit volt-
+age [24] and is supplied by the electrode chemistry. The nonideality of the
+11
+
+cell is modelled through resistor R0. This resistor also ensures that the output
+voltage drops relatively to the open-circuit voltage when the load is connected,
+and increases above the open-circuit voltage during charging operation. The
+lithium ions do not immediately stop ﬂowing when the charging/discharging
+is interrupted. To model this diﬀusion process, a resistor, Rd, and capacitor,
+Cd, in parallel are employed. The nonlinear elements are used to simulate the
+so-called hysteresis eﬀect when an open-circuit voltage reaches diﬀerent values
+for the same state-of-charge as a consequence of thermodynamic hysteresis or
+mechanical hysteresis [56]. The latter is a consequence of mechanical stress on
+electrodes from lithiation and delithiation and the former originates from the
+variation of the lithium intercalation rates between particles of active electrode
+material.
+The control variable for the Voltage-Current Model is current through the
+cell It. It is chosen to be positive during the discharge for consistency of the
+description. The state variables, in this model, are the state-of-charge measured
+in Ah, the operating voltage Vt, and the diﬀusion voltage V d
+t , i.e., the voltage
+across a capacitor. The evolution of the state-of-charge is given as:
+SoCt =SoCt−1 −ηcItτ, (2)
+where τ corresponds to the time step between two estimates of SoCt, and ηc
+stands for the coulombic eﬃciency that reﬂects how much charge is lost during
+the charging/discharging cycle.
+Using Kirchhoﬀ’s Law for voltage, the following expression can be derived
+to relate voltages in the circuit [24]:
+OCV t(SoCt) =ItR +V d
+t +Vt. (3)
+12
+
+Using Kirchhoﬀ’s Law for current, the relationship for currents in a parallel
+RC branch is given as [24]:
+It = V d
+t
+Rd
++Cd
+dV d
+t
+dt . (4)
+If the derivative dV d
+t
+dt is approximated using ﬁnite diﬀerences, the diﬀusion
+voltageV dt can be calculated as:
+V d
+t = RdCd
+τ +RdCd
+V d
+t−1 + τR d
+τ +RdCd
+It. (5)
+The Voltage-Current Model is formulated using the single cell perspective
+which assumes that all cells within the battery show the same performance
+[57]. Although the battery balancing scheme provided by BMS is intended to
+maintain variation between the cells of the battery pack at minimum [58], in
+general, this statement requires additional investigation [59, 20]. DC Voltage
+and current are not typical variables in power system economic studies, but both
+of these can be employed naturally to ﬁnd the power supplied or consumed by
+a BESS that consists of N lithium-ion cells in series and in parallel, as follows:
+Pt =NI tVt. (6)
+The Voltage-Current Model allows for the restrictions speciﬁed by the pro-
+ducer of the lithium-ion cell in the box constraint on current and voltage, as
+follows:
+V M in ≤Vt ≤V M ax (7)
+−I M axCh ≤It ≤I M axDis, (8)
+13
+
+whereV M in andV M ax identify operational limits for voltage, and I M axCh and
+I M axDis are maximum absolute values of continuous charging and discharging
+currents. The range of SoCt is limited from one side by nominal capacityQM ax
+in [Ah], as follows:
+0 ≤SoCt ≤QM ax (9)
+The model presented above is discussed in more detail in [24] and was used in
+the optimization framework by [57]. In contrast, Tayloret al. [11] used a simpler
+electric circuit composed of the voltage source and a resistor in their work to
+derive a strategic operation of BESS. Other electric circuits that can be used
+in optimization frameworks can be taken from [55]. The examples of the other
+equivalent-circuit models derived from the physics-based models can be found
+in [60, 61, 62]. The degradation can be included in the Voltage-Current Model
+using the energy throughput as in [57, 62]. The Voltage-Current model can
+also be built without a reference to the underlying electric circuit and operates
+using empirical relationships. For instance in [63], the voltage of the lithium-
+ion cell, as a function of charging/discharging current and state-of-charge, was
+constructed using bi-variate cubic splines.
+The incorporation of a Voltage-Current Model, which is governed by equa-
+tions (2),(3),(5)-(8), into the optimization framework leads to a nonlinear pro-
+gramming problem because of a nonlinear relationship between open-circuit
+voltage and state-of-charge. The ﬁnal problem can be solved with various oﬀ-
+the-shelf nonlinear solvers such as IPOPT [64] or using linearization techniques
+combined with the commercial linear solvers.
+2.3. Concentration-Current Model
+Despite having a number of advantages over the Power-Energy Model, the
+Voltage-Current Model does not provide information about the physical process
+14
+
+inside the battery and can produce errors if it is used outside of the operating
+conditions for which it was empirically built [24]. In contrast, the physics-based
+electrochemical model of a lithium-ion cell can achieve better accuracy [57].
+The enhanced model of a lithium-ion cell is able to characterize the transport
+of charge carriers, interfacial reactions, thermal eﬀects, and their mutual eﬀects
+on each other [24]. The most rigorous model is too complex for the optimization
+framework because the model contains coupled partial diﬀerential equations and
+nonlinear algebraic expressions [8].
+The trade-oﬀ between accuracy and possibility to implement a more ad-
+vanced model in the optimization framework can be found in the single parti-
+cle model of the lithium-ion cell (Figure 1c). The single particle model limits
+its consideration to the physical principles such as the transport of lithium
+in the active material of electrodes and the kinetics of the lithium intercala-
+tion/deintercalation reactions [65]. The model originates from the porous elec-
+trode theory [66], which is used to quantify electrode processes within the porous
+electrodes. The single particle model is built on several assumptions [67]. First,
+the active material of both electrodes is composed of uniform spherical elec-
+trode particles, which all have an equal radius Ri (the superscript i is replaced
+by p for positive electrode and it is changed to n for negative electrode). A
+single electrode particle is employed to simulate the transport of lithium in the
+active material of the electrode. Second, the concentration of the lithium ions
+in the electrolyte is assumed to be uniform and constant. Finally, the rate of
+electrode reaction at the electrode/electrolyte interface does not change from
+one electrode particle to another. The second and third assumptions are valid
+in cases of low to medium current through the cell [65] when the impact of the
+electrolyte potential is negligible [68].
+The movement of lithium under the concentration gradient in the electrode
+15
+
+particle with radius Ri is described by a one-dimensional parabolic partial dif-
+ferential equation in spherical coordinates, as follows [67]:
+∂ci
+∂t = Di
+ri2
+∂
+∂r i (ri2∂ci
+∂r i ), (10)
+whereci stands for the concentration of lithium atoms in the electrode particle,
+ri is a radial coordinate, and Di is the diﬀusion coeﬃcient of lithium in the
+electrode active material. The homogeneous Neumann boundary condition is
+applied at the center of the electrode particle to conserve symmetry, as follows
+[65]:
+(Di∂ci
+∂t )ri=0 = 0 (11)
+The molar ﬂux of lithium ions, i.e., the reaction rate of the deintercala-
+tion/intercalation process, J i on the surface of the electrode sets the Neumann
+boundary condition for the diﬀusion equation, as follows [69]:
+(Di∂ci
+∂t )ri=Ri = −J i. (12)
+The initial condition is deﬁned as [67]:
+(ci(ri,t ))t=0 =ci
+0(ri), (13)
+whereci
+0(ri) stands for the initial concentration of lithium in the electrode. This
+concentration depends on the initial state-of-charge of the lithium-ion cell. The
+diﬀusion equation with the boundary conditions presents a challenge for incor-
+porating it as a constraint in the optimization framework. The “optimization-
+wise” formulation can be derived through the ﬁnite diﬀerences of the original
+partial diﬀerential equations [24] or their approximations based on the ordinary
+16
+
+diﬀerential equations [70, 71], or using the Chebyshev collocation method [65].
+The electrode reaction is characterized by the Butler-Volmer kinetics equa-
+tion [69]. This expression describes the rate of the electrode reaction, i.e., the
+molar ﬂux of lithium ions, at which lithium ion consumes electron and converts
+to neutral atom inside the electrode or vice versa and is expressed as:
+J i = 2ji
+0 sinh(Fη i
+2RT ), (14)
+where F is the Faraday constant, R is the gas constant, and T is temperature.
+The activation overpotential ηi is responsible for driving the current that was
+generated at the electrode during the lithium intercalation/deintercalation pro-
+cess. The exchange current density ji
+0 represents the oxidation and reduction
+currents without external impact and is given as:
+ji
+0 =kiF
+√
+(cM ax,i −csurf,i)csurf,icel, (15)
+where ki denotes the reaction rate constant, csurf,i stands for the lithium con-
+centration at the surface of the electrode particle, cM ax,i is the maximum con-
+centration of lithium atoms in the electrode particle, and cel is the electrolyte
+concentration (constant for single particle model).
+Another parameter to characterize the lithium-ion cell is the so-called equi-
+librium potential or the open-circuit potential of the electrode that shows how
+the Gibbs free energy changes when lithium ions enter/leave the electrode [72].
+The functional dependence between the concentration of lithium on the surface
+of the electrode, csurf,i, and open-circuit potential, OCP i, is determined exper-
+imentally for each type of electrode chemistry when there is no current ﬂowing
+through the cell (equilibrium state). When the cell is charging or discharging,
+the potential of the electrode deviates from the open-circuit potential, and is
+17
+
+known as the solid-phase potential, φi, and is expressed as:
+φi =ηi +OCP i(csurf,i) +I iZ i, (16)
+whereI i is the total current through electrode and Z i stands for the resistance
+of the ﬁlm on the electrode surface. Finally, the single particle model relates
+the applied charging/discharging current with the rate of the electrode reac-
+tion through equation (17) for the positive electrode and equation (18) for the
+negative electrode respectively, as follows:
+J p = − IR p
+3νpεpF (17)
+J n = IR n
+3νnεnF, (18)
+whereεp andεn denote the volume fraction of active material in the correspond-
+ing electrode, nup and nun are the volumes of each electrode.
+Finally, the voltage of the lithium-ion cell is given as:
+Vt =φp −φn. (19)
+From an optimization perspective the single particle model [57, 19] intro-
+duces current and concentration as decision variables, thus it will be referred to
+in this work as the Concentration-Current Model. Similar to a Voltage-Current
+Model, the Concentration-Current Model represents only one lithium-ion cell
+and the projection of this model on the whole battery requires an assumption
+that all cells behave identically. The supplied and consumed power by a bat-
+tery composed of N lithium ion cell is derived through applied current and the
+18
+
+voltage across the cell:
+P =NI tVt (20)
+The Concentration-Current Model allows introducing speciﬁcations of the
+cell in the box constraint form, as follows:
+V M in ≤Vt ≤V M ax (21)
+−I M axCh ≤It ≤I M axDis, (22)
+where V min and V max identify operational limits for voltage, and I max
+ch and
+I max
+dis are maximum continuous charging and discharging currents.
+The capacity of the cell is constrained in the Concentration-Current Model
+through the lithium concentration in both electrodes:
+ci,M in ≤ci
+t ≤ci,M ax (23)
+where cM in,i and cM ax,i are limits for lithium concentration in an electrode.
+The state-of-charge is not employed in the Concentration-Current Model as
+a state variable, but it can be used for comparison with other battery models.
+It can be derived from the instantaneous lithium concentration in one of the
+electrodes, for example in the negative electrode [24], it is given as:
+SoC = csurf,n
+t −cM in,n
+cM ax,n −cM in,nQ, (24)
+where Q is the rated capacity of the lithium-ion cell.
+When the Concentration-Current Model (10)-(23) is a part of the optimiza-
+tion framework, the whole decision-making problem is a nonlinear programming
+problem. This problem can be solved using a nonlinear commercial solver such
+19
+
+as IPOPT [64].
+The Concentration-Current Model can be naturally updated to include the
+physical description of the degradation [24]. The growth of SEI is selected as
+a principal contributor to the degradation process [73]. The SEI mathematical
+model employed here was taken from [74, 67]. The rate of the side reaction
+responsible for the formation of SEI is governed by the Tafel equation, as follows:
+J sei = jsei
+0
+F exp( F
+2RTηsei), (25)
+where ηsei is the overpotential of the side reaction and jsei
+0 stands for the ex-
+change current for the side reaction. The overpotential ηsei is expressed as:
+ηsei =φn −OCP sei −I nZ n, (26)
+whereOCP sei is the open-circuit potential of the side reaction. The total current
+through the negative electrode is composed of the intercalation/deintercalation
+current and the side reaction current density and is given as:
+J sei +J Li,n =J n (27)
+The resistance of the SEI ﬁlm on the surface of the negative electrode in-
+creases as SEI forms [67] and is expressed as:
+Z n =Z 0,n + δsei(t)
+κ , (28)
+where δsei refers to the thickness of SEI ﬁlm and κ is the ionic conductivity of
+SEI. It can be reasonably assumed that the rate of SEI growth is proportional
+20
+
+to the rate of the side reaction [74] and is given as:
+dδsei(t)
+dt = −J seiM
+ρ , (29)
+whereM denotes the molar mass of SEI, ρ is the density of SEI. Equation (29)
+can be converted to the discretized version when including in the optimization
+framework. The increase in Z n will lead to the decline in charging/discharging
+power. Finally, the loss in the lithium inventory due to the SEI formation during
+charging can be estimated as:
+Closs = −
+∫ t2
+t1
+3εpνpJ sei
+Rp dt, (30)
+where [t1,t 2] is the time interval during which the cell was charging.
+Equations (25)-(30) can be included into nonlinear optimization frameworks.
+The single particle model can be improved by adding description of the lithium-
+ion transport in electrolyte as in [75] to derive the optimal charging protocol
+or as in [76] for assessing revenue in the capacity market under given operation
+schedule.
+2.4. Summary
+The reviewed battery models are found to be employed in the decision-
+making problems that include stationary lithium-ion battery storage for power
+system level applications; those applications are discussed in the next section.
+These three models can be converted to one another: the Power-Energy Model
+can be seen as the Voltage-Current Model with constant voltage that is equal to
+the nominal voltage of the cell [63]; the Voltage-Current Model can be obtained
+from the Concentration-Current Model by matching the physical process inside
+the cell with the corresponding circuit component [60].
+21
+
+Figure 2: Number of publications in techno-economic studies of Power System with the
+battery model diﬀerent from a simple power-energy model
+The interest to the models that describe the dynamics of the processes in-
+side the battery has increased recently (Figure 2). All the papers in power
+system economic studies employing either the Voltage-Current Model or the
+Concentration-Current Model were published in the last three years [57, 13, 19,
+11, 20, 63]. This can be linked with the appearance of the experimental data
+to benchmark the results of the “optimal” schedule [13, 11]. Nonetheless, the
+Voltage-Current Model and the Concentration-Current Model are computation-
+ally expensive because of the number of constraints [20] and a need for more
+time steps to improve stability [57].
+3. Alternative Battery Models in Power Systems Studies
+In this section, publications, where optimal charging/discharging schedules
+were identiﬁed for diﬀerent BESS applications, are reviewed with the scope to
+deﬁne how BESS was modelled. The objectives of both system operators and
+independent storage owners are examined. The list of BESS applications is
+limited to system-level grid applications of BESS, namely: energy arbitrage,
+frequency regulation, operating reserve, peak shaving, renewable integration
+assistance, and transmission upgrade deferral. Papers that are used in this
+section are classiﬁed by the operation and degradation models in Table 2 and
+22
+
+Table 2: Literature survey on the battery grid applications (operation models).
+Application Power-Energy
+Model
+V oltage-Current
+Model
+Concentration-
+Current Model
+Energy arbitrage [6, 77, 78, 42, 41,
+47, 43, 44, 37, 8, 39,
+52]
+[57] [13, 57]
+Frequency regulation [79, 80, 49, 7, 48,
+12]
+[19]
+Operating reserve [46, 50, 49]
+Peak shaving [53] [11] [20]
+Renewable integration as-
+sistance
+[81, 82, 83, 9]
+Transmission upgrade de-
+ferral
+[84, 85, 86, 87]
+Table 3: Literature survey on the battery grid applications (degradation models).
+Application Without degra-
+dation
+Empirical model Physics-based
+model
+Energy arbitrage [6, 77, 78, 37, 8, 39] [42, 41, 47, 43, 44,
+52]
+[57, 13]
+Frequency regulation [79, 80] [49, 7, 48, 12] [19]
+Operating reserve [38] [46, 50, 49]
+Peak shaving [11] [53] [20]
+Renewable integration as-
+sistance
+[81, 82] [83, 9]
+Transmission upgrade de-
+ferral
+[84, 85, 86, 87]
+Table 3 respectively.
+3.1. Energy arbitrage
+Energy arbitrage is exploited by an independent BESS operator to generate
+revenue by charging the battery under the low-price conditions and by dis-
+charging when prices are higher. The economic analysis of the energy arbitrage
+application of BESS was accelerated by the restructuring and deregulation in
+the electric utility industry, and one of the ﬁrst works on this topic was done
+by Graves et al. [88].
+Most works that estimate economic beneﬁts of exploiting energy arbitrage
+23
+
+by BESS employ a simple Power-Energy Model. In [6], perfect information
+about price and demand and a price-taker model were used to assess the eco-
+nomic beneﬁts of incorporating energy storage into the New York electricity
+market. The eﬀect of large-scale energy storage on electricity price formation
+was examined in [77]. The strategic behavior of a BESS operator under price
+uncertainty in day-ahead and real-time electricity markets was addressed in
+[78]. Several studies [42, 41, 47, 43, 44] combined a Power-Energy Model with
+an empirical degradation model to estimate BESS proﬁtability for energy ar-
+bitrage. The empirical based degradation formulation for the energy capacity
+with the assumption of linear dependence between energy throughput and extent
+of capacity fading signiﬁcantly changed the cost-eﬀectiveness of BESS invest-
+ment [42]. In [41], the analysis of energy arbitrage is performed with so-called
+equivalent full cycles. In their market settings, they demonstrated that an ex-
+tended calendar life is more proﬁtable than an extended cycle life. The BESS
+operator would choose charging/discharging cycles with greater arbitrage trad-
+ing proﬁt if a longer calendar life is possible. Maheshwari and co-workers [47]
+applied their own experimental data with lithium-ion cells to derive their non-
+linear degradation model. They claimed that DoD combined with cycle life and
+energy throughput quantiﬁcation techniques for degradation fails to acknowl-
+edge the impact of state-of-energy and applied current, which were employed
+in their work through linear interpolation of their experimental data. In [43],
+the optimal value of maximum charging/discharging power was selected for the
+ﬁxed capacity considering its degradation over the battery lifespan. Mohsenian-
+Rad [40] introduced charging and discharging bidding strategies in a stochastic
+framework for self-schedule and economic bids. Using short-term marginal cost
+per unit of degradation, which was derived from energy throughput and capital
+cost of the battery, He et al. [44] obtained a more accurate estimate of the
+24
+
+energy arbitrage business case for the California day-ahead electricity market.
+Overall, the energy arbitrage operation considering ageing of the battery gives a
+better estimate in the cost/beneﬁt analysis, but methods to characterize ageing
+are completely empirical and the results were not validated with real experience.
+Some attempts have been made in order to improve the accuracy of the
+Power-Energy Model description for BESS representation used in energy arbi-
+trage. It included the functional dependence between energy eﬃciency, state-of-
+energy, and maximum charging/discharging power. Sakti et al. [37] updated a
+Power-Energy Model by considering the nonlinear dependence of the maximum
+charging/discharging power limits and energy eﬃciency on state-of-energy. Al-
+though the model was empirical by the formulation, authors aﬃrmed that a
+simple Power-Energy Model of BESS may overestimate the earnings from en-
+ergy arbitrage by 10% compared with their most sophisticated model for a more
+volatile price signal resolution over the 7-day decision horizon. The authors of
+[8] applied the results of their experimental ﬁndings to better deﬁne the lim-
+its of available charging power to reﬂect the constant-current/constant-voltage
+charging operation of the lithium-ion cell. The available charging power de-
+pends on the state-of-energy. If a generic Power-Energy Model is used for BESS
+characterization the optimal schedule in the energy arbitrage application may
+overestimate the proﬁt by 300% compared with the actual output obtained from
+scaled laboratory BESS that executed an “optimal” schedule for their case study.
+Authors of [39] studied the optimal operation of BESS deployed in the IEEE-14
+system to exploit arbitrage opportunities. Similar to [37], their BESS model
+was an upgrade of a simple Power-Energy Model where ﬁxed parameters were
+replaced with state-of-energy dependent ones. The use of nonlinear dependence
+between energy eﬃciency, charging/discharging power limits and state-of-energy
+was justiﬁed by the Voltage-Current Model as suggested by [60]. Using empir-
+25
+
+ical charging/discharging curves, authors concluded that for their case study a
+simplistic Power-Energy Model overestimated economic opportunities by 15%
+and resulted in the operation of the battery beyond the recommended operat-
+ing envelope. He et al. [52] combined a simple Power-Energy Model and energy
+throughput method for degradation description to derive the economic EoL of
+BESS. The term economic EoL was used by He to refer to the stage of the BESS
+state-of-health where the proﬁt opportunities are vanished. In his optimization
+protocol energy eﬃciency, power, and energy capacity declined over time and
+as a result of cycling.
+The energy arbitrage application is also a favourable choice to verify the
+robustness of more detailed operation models of BESS. Reniers et al. [57] cal-
+culated economic beneﬁts from energy arbitrage over one year of operation for
+three diﬀerent battery models, i.e., a Power-Energy Model, a Voltage-Current
+Model and a Concentration-Current Model and three diﬀerent degradation for-
+mulations. The authors compared these degradation descriptions with the ex-
+perimental data and concluded that the concentration-current model was the
+most precise. They found that the energy arbitrage market participation strat-
+egy obtained for the Concentration-Current Model was considerably more prof-
+itable and with less degradation. In a more recent publication by the same
+authors [13] the optimal charging/discharging dispatch for energy arbitrage
+with Power-Energy Model and Concentration-Current Model were used to cycle
+lithium-ion cells in the laboratory conditions. The proﬁt and the capacity loss
+were more accurately predicted by the Concentration-Current model. More-
+over, physics-based approach for battery operation and ageing characterization
+reduced degradation by 30% and improved revenue by 20% compared with con-
+ventional Power-Energy Model with empirical degradation.
+26
+
+3.2. Frequency regulation
+Frequency regulation is one of the ancillary service products and it is needed
+to keep frequency within an acceptable range when there is a mismatch between
+supply and demand. The fast ramping capabilities of BESS make it a favourable
+choice for frequency regulation: for example, 75% of large-scale BESS power ca-
+pacity in US is used for the balancing of momentary ﬂuctuations in the system
+[89]. The frequency regulation application of BESS in power system economics
+studies is rarely examined solely and it is usually combined with energy arbi-
+trage.
+The BESS is mostly modelled through a generic Power-Energy Model [79, 80]
+for charging/discharging performance whereas the degradation is characterized
+by means of an empirical relationship [49, 7, 48, 12]. In [79], the authors investi-
+gated two-level, planning and operation, strategy for BESS owner to maximize
+proﬁt from the frequency regulation market. Zhu et al. [80] derived strate-
+gic operation for an aggregator coordinated BESS. Xu [7] found the optimal
+control policy for BESS deployed in their case study to boost proﬁt from the
+performance-based frequency regulation market using a chance-constraint op-
+timization. The author used the cycle counting algorithm to characterize the
+long-term performance. The optimal bidding strategy in the frequency reg-
+ulation market for the electric vehicle aggregator with diﬀerent participation
+scenarios was outlined in [36]. Their model was able to simulate the transition
+from constant current mode to constant voltage mode of charging operation.
+They highlighted that their representation of the lithium-ion battery resulted in
+a more accurate estimate of ﬁnancial beneﬁts: there was up to 20% diﬀerence
+compared with a generic Power-Energy Model associated with BESS. Shi and
+co-workers [48] coupled a Power-Energy Model with three diﬀerent degradation
+models, namely, the ﬁxed cost of degradation, the energy throughput method,
+27
+
+and cycle-based model based on the rainﬂow algorithm, to explore the ﬁnancial
+beneﬁts of frequency regulation for the BESS owner in the their case study.
+It was shown that the rainﬂow cycle-based degradation model projects up to
+27.6% growth in revenue, and thus a greater return on investment, and almost
+85% increase in battery life expectancy. In [12], a Power-Energy Model cou-
+pled with the energy throughput ageing quantiﬁcation technique was used to
+ﬁnd the optimal energy capacity of BESS, which proﬁts from energy arbitrage
+and frequency regulation with compensation for capacity and energy provided
+in the California day-ahead and real-time energy and ancillary services mar-
+kets. Assuming a constant degradation rate, the loss of capacity was directly
+incorporated into the operation framework as a constraint.
+In [19], a Concentration-Current Model was employed to ﬁnd the optimal
+schedule of BESS for the frequency regulation market. The strategy was com-
+pared with one obtained using a Power-Energy Model with degradation cost,
+which was proportional to capacity committed to frequency regulation, in the
+objective function and with one where degradation was calculated using the
+SEI method in postprocessing of the optimal schedule. The authors reported
+a 143% increase in lifetime and 35% growth in proﬁt compared to a generic
+Power-Energy Model.
+3.3. Operating reserve
+The operating reserve is intended for the grid frequency management if a
+signiﬁcant unpredictable deviation to the supply/demand balance occurs in the
+system. The operating reserve revenue stream for the BESS owner is usually
+considered as an additional source of revenue and it is bundled with other BESS
+applications in power system economic analysis [32].
+The strategic operation of BESS that provides operating reserve services is
+usually derived with a simple Power-Energy Model bundled with empirical age-
+28
+
+ing models [46, 50, 49]. Xu et al. [46] proposed a dispatch strategy for BESS
+considering the cost of battery degradation that was formulated using the Rain-
+ﬂow cycle counting algorithm. In [50], the optimal strategy for BESS operator
+that submits the bids into both the energy and operating reserve market was
+derived by combining the impact of DoD and the discharge rate in the degra-
+dation cost function. Reference [49] modelled optimal market participation of
+BESS in three day-ahead markets: energy, frequency regulation and operating
+reserve markets. The proﬁt of BESS was calculated on a daily basis and pro-
+rated by the number of the battery’s daily equivalent 100%-DoD cycles. Nguyen
+et al. [38] replaced the ﬁxed energy eﬃciency of a generic Power-Energy Model
+with one that nonlinearly depends on the charging/discharging power and state-
+of-energy. The parameters for their empirical model were calculated from the
+charging/discharging curve provided by the cell manufacturer. The proposed
+nonlinear model estimated almost 17% less of the total revenue over one year
+compared with simple Power-Energy Model if it was installed in their market
+environment. Perez et al. [35] examined the impact of applying practical box
+constraints on state-of-energy to limit degradation on the ﬁnancial potential of
+BESS providing several services including OR. Although there was a drop in
+revenue from energy arbitrage, the net revenue has increased from operating
+reserve and frequency regulation contributions because of extended lifespan.
+3.4. Peak shaving
+A BESS can replace the need to construct a new peaking generation capacity
+that would meet the peak demand from a highly volatile load. If a BESS
+is installed on the load side it could also work as a peak shaver to minimize
+the total electricity bill. There are several works where charging/discharging
+decisions were found for the peak shaving application.
+Schneider et al. [53] investigated a strategic investment into BESS for a
+29
+
+bundled peak shaving and energy arbitrage business model. Their optimization
+framework included Power-Energy Model, Rainﬂow cycle counting paradigm for
+battery degradation and it was solved heuristically through three stages: on the
+ﬁrst stage, the daily scheduling maximizes energy arbitrage revenue corrected
+by a degradation penalty term, on the second stage the total monthly revenue
+from peak shaving and energy arbitrage is calculated, the third stage is used to
+deﬁne the optimal schedule over the year. Taylor [11] employed Voltage-Current
+Model formulation for BESS and compared it with Power-Energy Model. The
+parameters of the Voltage-Current Model were measured from their own lab
+experiments with lithium iron phosphate battery cells. First, the accuracy of
+the model was demonstrated by comparison with the experiment. Second, the
+optimal schedule of BESS based on the Voltage-Current Model formulation out-
+performed the results with Power-Energy Model when the optimal schedule of
+each model was processed by the battery hardware simulation tool. Although
+simulation was carried out at only two ﬁxed levels of the current rate, it was
+clear that a generic Power-Energy Model model did not ensure reliable per-
+formance. In the review of battery models for the optimal control [20], the
+control strategy for BESS installed to reduce the total electricity bill over 24-
+hour decision horizon was obtained for three diﬀerent battery models, namely a
+Power-Energy Model, a Voltage-Current Model and the Concentration-Current
+Model. The cost reduction in the bill was conducted using energy arbitrage and
+peak shaving applications of BESS. The degradation of the lithium-ion cell was
+not a part of the analysis. Although the net reduction in the electricity bill
+was almost the same for all models and stood at about 8%, the authors claimed
+that the control strategy for the Power-Energy Model was likely infeasible. The
+Voltage-Current Model and Concentration-Current Model gave similar results
+for the state variables such as voltage and current.
+30
+
+3.5. Renewable integration assistance
+BESS can also accelerate the integration of intermittent renewable capacity
+to the grid by mitigating its natural ﬂuctuation and can increase the return
+on investment in a renewable generation project if it is combined with a BESS
+[89]. The objective of the optimization problems with this application can be
+either ﬁnding the optimal operation schedule or the planning problem where
+the optimized BESS size is explored to maximize return on investment over the
+projected lifespan of a battery.
+Similar to operation studies with other BESS applications, the renewable
+integration assistance application of BESS is mostly modelled with a simple
+Power-Energy Model [81, 82]. In [81] the size and optimal dispatch were deter-
+mined for BESS paired with a wind farm. The solution enhanced the operational
+stability and economic feasibility of the wind power project. Bhattacharjee et
+al. [82] used a generic Power-Energy Model to optimally size energy storage and
+transmission interconnector, which were coupled with a wind power facility, for
+the strategic participation in the energy market. Recently more works [83, 9]
+have been presented with BESS models that can ensure reliable performance
+and characterize capacity and power fading. Using a heuristic algorithm Shin
+[83] investigated the impact of BESS size on degradation while searching for
+the optimal BESS capacity supplementing photovoltaic generation for two sce-
+narios of battery use: constant usable energy capacity and a ﬁxed DoD. Jafari
+[9] studied the economic impact of pairing oﬀshore wind farm with BESS. This
+model of BESS included varying energy eﬃciency and power limits. Calendar
+and cycling ageing of capacity were also incorporated in the model by a linear
+decline assumption for calendar ageing and combination of the energy through-
+put with the number of equivalent full cycles for cycling ageing respectively. The
+revenue from the optimal schedule with enhanced Power-Energy Model with-
+31
+
+out degradation was 4% less than for the schedule obtained with a simplistic
+Power-Energy Model. When one of the degradation models was added to the
+optimization framework the estimated revenue decreased by 35%. The Voltage-
+Current model was employed in [63] to determine the optimal schedule of BESS
+over 36-hour optimization horizon while minimizing the electricity bill of the
+user with on-site photovoltaic generation. The authors showed that this model
+avoids unsafe operation compared to the power-energy model.
+3.6. Transmission upgrade deferral
+Another BESS application that brings signiﬁcant changes to how the long-
+term planning of the power system is performed, is a deferral or replacement of
+the traditional power system infrastructure – transmission lines. When BESS is
+installed downstream of a congested transmission corridor it can relieve conges-
+tion by discharging to meet the additional demand from the load. This is why,
+BESS is considered as a virtual transmission for the future grid. The strategic
+deployment of BESS can increase the asset utilization rate in the grid if it is
+planned correctly [90].
+The class of planning problems from the system operator perspective, where
+the optimal size of BESS and its location in the grid are determined, is usually
+solved with the objective to minimize the sum of the capital cost of BESS and
+the operating costs of the system. A simple Power-Energy Model without degra-
+dation is usually incorporated into these optimization problems. For example,
+in [84], a static investment model was used to ﬁnd siting and sizing decisions
+within the Western Electricity Coordinating Council interconnection by means
+of the stochastic programming. Falugi and co-workers [85] studied the dynamic
+planning problem of the joint transmission and BESS deployment in the IEEE
+118-bus system for the planning horizon of 16 years. The optimal decision plan
+was updated every four years.
+32
+
+The BESS that provides transmission services should be paid through the
+rate-based compensation. However, if BESS also provides other services to the
+grid it should be additionally compensated through the market. Such multiple
+service operation of BESS and corresponding compensation scheme currently
+face several regulatory barriers. The market model and corresponding policies
+for storage as a transmission asset are investigated by several utilities [91]. The
+operation strategy for energy storage that provided congestion relief service and
+also obtained revenue from energy arbitrage is examined in [86]. The optimal
+premium paid to the BESS owner as a rate-based compensation to relieve con-
+gestion is explored in [87]. Both papers utilized a generic Power-Energy Model
+without degradation.
+4. Discussion
+The system-level operational and planning studies predominantly employed
+generic Power-Energy Models to characterize the BESS charging/discharging
+performance and various empirical models to quantify degradation. The reason
+for this is the simplicity and linearity of Power-Energy Models. From the re-
+viewed literature it can be concluded that advanced battery models can provide
+more accurate estimates for the economic potential of BESS, feasible charg-
+ing/discharging schedule, and more precise projection of the capacity and charg-
+ing/discharging power fading.
+Several authors [37, 8, 36, 39] enhance a simplistic Power-Energy Model
+with the functional dependences between energy eﬃciency, maximum charg-
+ing/discharging power and state-of-energy to better model typical characteris-
+tics of the lithium-ion cell. The linear approximation was applied for all men-
+tioned relationships to make them solvable for the optimization problems used
+in those studies. However, only in the case of [37] the ﬁnal problem was a
+33
+
+mix-integer linear problem whereas authors of [8, 36, 39] ﬁnished with a lin-
+ear programming problem. The optimal schedule for BESS with a simplistic
+Power-Energy Model, in general, overestimated economic valuations.
+The energy arbitrage application was used for the assessment of BESS mod-
+els from [37, 8, 39] whereas the frequency regulation service revenue stream was
+assessed in [36]. The common drawback for these models is that they are phe-
+nomenological by their nature: limited experimental data were used to ﬁt their
+mathematical models for selected operating conditions. Moreover, all models
+were run over the narrow optimization horizon of one to seven days. The degra-
+dation of BESS was not considered as only charging/discharging performance
+was an objective for the improvement. In [9], the strategic sizing of BESS with
+renewable generation was not part of the problem, but they claimed a simpliﬁed
+model could exaggerate the revenue by 35%. This is a signiﬁcant error in the
+evaluation of the economic feasibility and may lead to misleading conclusions
+in [82] where a simplistic model of BESS for planning studies was used.
+An increasing number of studies for diﬀerent BESS applications such as [47]
+for energy arbitrage, [53] for peak shaving, [7] for frequency regulation, and [50]
+for operating reserve showed that the economic viability of the project with
+BESS is not overestimated if the degradation models were used. However, vari-
+ous empirical degradation formulations, which are limited by their formulation,
+were used in the mentioned works.
+Among three models to simulate the charging/discharging proﬁle, the Concentration-
+Current Model can be seen as the most promising since it characterizes the dy-
+namics of physical processes inside the cell and can be coupled with the physics-
+based degradation model such as SEI formation. The cost-beneﬁt analysis of
+BESS with Concentration-Current Model was performed only for a discrete bat-
+tery application such as energy arbitrage in [57], frequency regulation [19], and
+34
+
+peak shaving [20]. The co-optimization of various BESS applications was not
+considered when this model is employed. This high-ﬁdelity model was also not
+used for optimal sizing of BESS for the transmission services or renewable in-
+tegration assistance. As the optimization problem with Concentration-Current
+Model is computationally expensive, authors of [20] only considered a 24 hour
+interval for their case study whereas authors of [57] and [19] utilized the model
+predictive control scheme for 24 hours and 1 hour respectively.
+Based on these observations, several directions are suggested for future de-
+velopment:
+• The impact of the detailed model of BESS without degradation on the
+proﬁt-maximizing operation of BESS for various grid applications was
+quantiﬁed by many researchers. However, there is no consensus on how a
+more detailed model is crucial for short-term operation. For example, in
+[8], the high-level model overestimated the proﬁt by 20%, 4% was demon-
+strated in [9], and no diﬀerence was stated by [13].
+• An economic feasibility for only energy arbitrage, frequency regulation,
+and peak shaving was done with the concentration-current models. The
+analysis for the case of other services or several stacked application of
+BESS was out of consideration.
+• The physics-based model has never been considered for planning studies
+as the system-level planning studies predominantly employed a generic
+Power-Energy model to characterize the BESS charging/discharging per-
+formance. As the lifespan of the lithium-ion cell component of a BESS
+is a quarter or half of traditional transmission and generation assets, the
+integration of BESS into the grid requires a multistage planning approach,
+where a replacement schedule is a part of the implementation plan and
+35
+
+investment. The long-term multistage battery planning with replacement
+is completely out of consideration in the literature.
+• The increased number of variables and constraints in the optimization
+framework brought by voltage-current and concentration-current models
+should be tackled with parallel computing as it was performed for a longer
+decision-making horizon with a Power-Energy model considering degrada-
+tion in [12].
+• The stochastic formulation of the strategic operation of BESS is a compu-
+tationally expensive problem by itself. The need in using a more detailed
+battery model for this optimization framework should be justiﬁed.
+• A highly eﬃcient, time-saving algorithm is needed for the nonlinear opti-
+mization problem of the planning and scheduling of the grid level appli-
+cations if a sophisticated physics-based lithium-ion model is employed.
+5. Conclusion
+In this paper, three BESS models for operation with diﬀerent level of details
+were reviewed and their governing equations that are appropriate for the opti-
+mization framework are presented. Several degradation models were discussed
+and their diﬀerences were highlighted. The comprehensive literature review of
+research papers where optimal operation and planning decisions were derived
+for the business cases with battery storage for various system-level applications
+was performed. This research review showed that a more sophisticated battery
+description ensures more accurate estimates of BESS economic beneﬁts, longer
+projected lifespan and operation within safety limits. Currently, the number of
+research papers with the detailed physics-based model of a BESS is limited. The
+integration of such models in a broader spectrum of problems with the strategic
+operation and planning presents an attractive direction for the future research.
+36
+
+References
+[1] M. S. Ziegler, J. E. Trancik, Re-examining rates of lithium-ion battery
+technology improvement and cost decline, Energy Environ. Sci. (2021) –.
+[2] L. Mauler, F. Duﬀner, J. Leker, Economies of scale in battery cell manu-
+facturing: The impact of material and process innovations, Applied Energy
+286 (2021).
+[3] P. Robson, D. Bonomi, Growing the battery storage market 2020, Technical
+Report, 2020.
+[4] The USA Federal Energy Regulatory Commission, Electric storage par-
+ticipation in markets operated by regional transmission organizations and
+independent system operators, Technical Report, 2018.
+[5] Bloomberg New Energy Finance, New Energy Outlook 2019, Technical
+Report, 2019.
+[6] R. Walawalkar, J. Apt, R. Mancini, Economics of electric energy storage
+for energy arbitrage and regulation in New York, Energy Policy 35 (2007)
+2558–2568.
+[7] B. Xu, Y. Shi, D. Kirschen, B. Zhang, Optimal battery participation in
+frequency regulation markets, IEEE Transactions on Power Systems 33
+(2018) 6715–6725.
+[8] H. Pandˇ zi´ c, V. Bobanac, H. Pandzic, V. Bobanac, An Accurate Charging
+Model of Battery, IEEE Transactions on Power Systems 34 (2019) 1416–
+1426.
+[9] M. Jafari, A. Botterud, A. Sakti, Estimating revenues from oﬀshore wind-
+storage systems: The importance of advanced battery models, Applied
+Energy 276 (2020).
+37
+
+[10] G. Fitzgerald, J. Mandel, J. Morris, H. Touati, The Economics of Battery
+Energy Storage: How multi-use, customer-sited batteries deliverthe most
+services and value to customers and the grid, Technical Report, Rocky
+Mountain Institute, 2015.
+[11] Z. Taylor, H. Akhavan-Hejazi, H. Mohsenian-Rad, Optimal Operation of
+Grid-Tied Energy Storage Systems Considering Detailed Device-Level Bat-
+tery Models, IEEE Transactions on Industrial Informatics 16 (2020) 3928–
+3941.
+[12] F. Sorourifar, V. Zavala, A. Dowling, Integrated Multiscale Design, Mar-
+ket Participation, and Replacement Strategies for Battery Energy Storage
+Systems, IEEE Transactions on Sustainable Energy 11 (2020) 84–92.
+[13] J. M. Reniers, G. Mulder, D. A. Howey, Unlocking extra value from grid
+batteries using advanced models, Journal of Power Sources 487 (2021)
+229355.
+[14] D. W. Sobieski, M. P. Bhavaraju, An economic assessment of battery
+storage in electric utility systems, IEEE Transactions on Power Apparatus
+and Systems PAS-104 (1985) 3453–3459.
+[15] M. Mileti´ c, H. Pandˇ zi´ c, D. Yang, Operating and investment models for
+energy storage systems, Energies 13 (2020).
+[16] V. Ramadesigan, P. Northrop, S. De, S. Santhanagopalan, R. Braatz,
+V. Subramanian, Modeling and simulation of lithium-ion batteries from
+a systems engineering perspective, Journal of the Electrochemical Society
+159 (2012).
+[17] J. M. Reniers, G. Mulder, D. A. Howey, Review and Performance Compari-
+38
+
+son of Mechanical-Chemical Degradation Models for Lithium-Ion Batteries,
+Journal of The Electrochemical Society 166 (2019) A3189–A3200.
+[18] R. Byrne, T. Nguyen, D. Copp, B. Chalamala, I. Gyuk, Energy Manage-
+ment and Optimization Methods for Grid Energy Storage Systems, IEEE
+Access 6 (2017) 13231–13260.
+[19] Y. Cao, S. Lee, V. Subramanian, V. Zavala, Multiscale model predictive
+control of battery systems for frequency regulation markets using physics-
+based models, Journal of Process Control 90 (2020) 46–55.
+[20] D. Rosewater, D. Copp, T. Nguyen, R. Byrne, S. Santoso, Battery Energy
+Storage Models for Optimal Control, IEEE Access 7 (2019) 178357–178391.
+[21] M. T. Lawder, B. Suthar, P. W. Northrop, S. De, C. M. Hoﬀ, O. Leit-
+ermann, M. L. Crow, S. Santhanagopalan, V. R. Subramanian, Battery
+energy storage system (BESS) and battery management system (BMS) for
+grid-scale applications, Proceedings of the IEEE 102 (2014).
+[22] M. S. Whittingham, Electrical energy storage and intercalation chemistry,
+Science 192 (1976).
+[23] K. Mizushima, P. Jones, P. Wiseman, J. Goodenough, LixCoO2 (0<x<-1):
+A new cathode material for batteries of high energy density, Materials
+Research Bulletin 15 (1980) 783–789.
+[24] G. Plett, Battery Management Systems, Volume I: Battery Modeling,
+Artech House Publishers, 2015.
+[25] A. Jokar, B. Rajabloo, M. D´ esilets, M. Lacroix, Review of simpliﬁed
+Pseudo-two-Dimensional models of lithium-ion batteries, Journal of Power
+Sources 327 (2016) 44–55.
+39
+
+[26] M. Woody, M. Arbabzadeh, G. Lewis, G. Keoleian, A. Stefanopoulou,
+Strategies to limit degradation and maximize Li-ion battery service life-
+time - Critical review and guidance for stakeholders, Journal of Energy
+Storage 28 (2020).
+[27] J. Arteaga, H. Zareipour, V. Thangadurai, Overview of Lithium-Ion Grid-
+Scale Energy Storage Systems, Current Sustainable/Renewable Energy
+Reports 4 (2017).
+[28] C. Birkl, M. Roberts, E. McTurk, P. Bruce, D. Howey, Degradation diag-
+nostics for lithium ion cells, Journal of Power Sources 341 (2017) 373–386.
+[29] E. Bainbridge, J. McNamee, D. Robinson, R. Nevison, Hydrothermal dis-
+patch with pumped storage, IEEE Transactions on Power Apparatus and
+Systems PAS-85 (1966) 472–485.
+[30] Y. Dvorkin, R. Fernandez-Blanco, D. Kirschen, H. Pandzic, J.-P. Watson,
+C. Silva-Monroy, Ensuring Proﬁtability of Energy Storage, IEEE Transac-
+tions on Power Systems 32 (2017) 611–623.
+[31] B. Zhao, A. Conejo, R. Sioshansi, Using electrical energy storage to mit-
+igate natural gas-supply shortages, IEEE Transactions on Power Systems
+33 (2018) 7076–7086.
+[32] J. Arteaga, H. Zareipour, A Price-Maker/Price-Taker Model for the Opera-
+tion of Battery Storage Systems in Electricity Markets, IEEE Transactions
+on Smart Grid 10 (2019).
+[33] J. A. Taylor, Financial storage rights, IEEE Transactions on Power Systems
+30 (2015).
+[34] R. Go, F. Munoz, J.-P. Watson, Assessing the economic value of co-
+40
+
+optimized grid-scale energy storage investments in supporting high renew-
+able portfolio standards, Applied Energy 183 (2016) 902–913.
+[35] A. Perez, R. Moreno, R. Moreira, M. Orchard, G. Strbac, Eﬀect of Battery
+Degradation on Multi-Service Portfolios of Energy Storage, IEEE Trans-
+actions on Sustainable Energy 7 (2016) 1718–1729.
+[36] S. Vagropoulos, A. Bakirtzis, Optimal bidding strategy for electric vehicle
+aggregators in electricity markets, IEEE Transactions on Power Systems
+28 (2013) 4031–4041.
+[37] A. Sakti, K. Gallagher, N. Sepulveda, C. Uckun, C. Vergara, F. de Sisternes,
+D. Dees, A. Botterud, Enhanced representations of lithium-ion batteries in
+power systems models and their eﬀect on the valuation of energy arbitrage
+applications, Journal of Power Sources 342 (2017) 279–291.
+[38] T. A. Nguyen, D. A. Copp, R. H. Byrne, B. R. Chalamala, Market Eval-
+uation of Energy Storage Systems Incorporating Technology-Speciﬁc Non-
+linear Models, IEEE Transactions on Power Systems 34 (2019) 3706–3715.
+[39] A. Gonzalez-Castellanos, D. Pozo, A. Bischi, Detailed Li-ion battery char-
+acterization model for economic operation, International Journal of Elec-
+trical Power and Energy Systems 116 (2020) 105561.
+[40] H. Mohsenian-Rad, Optimal bidding, scheduling, and deployment of bat-
+tery systems in California day-ahead energy market, IEEE Transactions
+on Power Systems 31 (2016).
+[41] R. Fares, M. Webber, What are the tradeoﬀs between battery energy
+storage cycle life and calendar life in the energy arbitrage application?,
+Journal of Energy Storage 16 (2018) 37–45.
+41
+
+[42] F. Wankm¨ uller, P. Thimmapuram, K. Gallagher, A. Botterud, Impact
+of battery degradation on energy arbitrage revenue of grid-level energy
+storage, Journal of Energy Storage 10 (2017) 56–66.
+[43] ´A. Arcos-Vargas, D. Canca, F. N´ u˜ nez, Impact of battery technological
+progress on electricity arbitrage: An application to the Iberian market,
+Applied Energy 260 (2020).
+[44] G. He, Q. Chen, P. Moutis, S. Kar, J. Whitacre, An intertemporal decision
+framework for electrochemical energy storage management, Nature Energy
+3 (2018) 404–412.
+[45] B. Xu, A. Oudalov, A. Ulbig, G. Andersson, D. Kirschen, Modeling of
+lithium-ion battery degradation for cell life assessment, IEEE Transactions
+on Smart Grid 9 (2018) 1131–1140.
+[46] B. Xu, J. Zhao, T. Zheng, E. Litvinov, D. Kirschen, Factoring the Cycle
+Aging Cost of Batteries Participating in Electricity Markets, IEEE Trans-
+actions on Power Systems 33 (2018) 2248–2259.
+[47] A. Maheshwari, N. Paterakis, M. Santarelli, M. Gibescu, Optimizing the
+operation of energy storage using a non-linear lithium-ion battery degra-
+dation model, Applied Energy 261 (2020).
+[48] Y. Shi, B. Xu, Y. Tan, B. Zhang, A Convex Cycle-based Degradation
+Model for Battery Energy Storage Planning and Operation, Proceedings
+of the American Control Conference 2018-June (2018) 4590–4596.
+[49] G. He, Q. Chen, C. Kang, P. Pinson, Q. Xia, Optimal Bidding Strategy of
+Battery Storage in Power Markets Considering Performance-Based Regu-
+lation and Battery Cycle Life, IEEE Transactions on Smart Grid 7 (2016)
+2359–2367.
+42
+
+[50] N. Padmanabhan, M. Ahmed, K. Bhattacharya, Battery Energy Storage
+Systems in Energy and Reserve Markets, IEEE Transactions on Power
+Systems 35 (2020) 215–226.
+[51] E. Redondo-Iglesias, P. Venet, S. Pelissier, Eﬃciency Degradation Model of
+Lithium-Ion Batteries for Electric Vehicles, IEEE Transactions on Industry
+Applications 55 (2019).
+[52] G. He, R. Ciez, P. Moutis, S. Kar, J. Whitacre, The economic end of life
+of electrochemical energy storage, Applied Energy 273 (2020).
+[53] S. F. Schneider, P. Novak, T. Kober, Rechargeable batteries for simultane-
+ous demand peak shaving and price arbitrage business, IEEE Transactions
+on Sustainable Energy XX (2020) 1–1.
+[54] Z. Geng, S. Wang, M. J. Lacey, D. Brandell, T. Thiringer, Bridging physics-
+based and equivalent circuit models for lithium-ion batteries, Electrochim-
+ica Acta 372 (2021) 137829.
+[55] X. Hu, S. Li, H. Peng, A comparative study of equivalent circuit models
+for Li-ion batteries, Journal of Power Sources 198 (2012) 359–367.
+[56] V. Ovejas, A. Cuadras, Eﬀects of cycling on lithium-ion battery hysteresis
+and overvoltage, Scientiﬁc Reports 9 (2019).
+[57] J. Reniers, G. Mulder, S. Ober-Bl¨ obaum, D. Howey, Improving optimal
+control of grid-connected lithium-ion batteries through more accurate bat-
+tery and degradation modelling, Journal of Power Sources 379 (2018) 91–
+102.
+[58] Z. B. Omariba, L. Zhang, D. Sun, Review of Battery Cell Balancing
+Methodologies for Optimizing Battery Pack Performance in Electric Ve-
+hicles, IEEE Access 7 (2019).
+43
+
+[59] T. L. Fantham, D. T. Gladwin, Impact of cell balance on grid scale battery
+energy storage systems, in: Energy Reports, volume 6, 2020. doi: 10.1016/
+j.egyr.2020.03.026.
+[60] A. Berrueta, A. Urtasun, A. Urs´ ua, P. Sanchis, A comprehensive model for
+lithium-ion batteries: From the physical principles to an electrical model,
+Energy 144 (2018) 286–300.
+[61] M. Varini, P. Campana, G. Lindbergh, A semi-empirical, electrochemistry-
+based model for Li-ion battery performance prediction over lifetime, Jour-
+nal of Energy Storage 25 (2019).
+[62] Y. Li, M. Vilathgamuwa, S. Choi, T. Farrell, N. Tran, J. Teague, Develop-
+ment of a degradation-conscious physics-based lithium-ion battery model
+for use in power system planning studies, Applied Energy 248 (2019) 512–
+525.
+[63] P. Aaslid, F. Geth, M. Korp˚ as, M. M. Belsnes, O. B. Fosso, Non-linear
+charge-based battery storage optimization model with bi-variate cubic
+spline constraints, Journal of Energy Storage 32 (2020) 101979.
+[64] A. W¨ achter, L. T. Biegler, On the implementation of an interior-point ﬁlter
+line-search algorithm for large-scale nonlinear programming, Mathematical
+Programming 106 (2006).
+[65] A. M. Bizeray, J. H. Kim, S. R. Duncan, D. A. Howey, Identiﬁability and
+Parameter Estimation of the Single Particle Lithium-Ion Battery Model,
+IEEE Transactions on Control Systems Technology 27 (2018) 1862–1877.
+[66] J. Newman, W. Tiedemann, Porous-electrode theory with battery applica-
+tions, AIChE Journal 21 (1975) 25–41.
+44
+
+[67] G. Ning, B. Popov, Cycle life modeling of lithium-ion batteries, Journal of
+the Electrochemical Society 151 (2004).
+[68] A. P. Schmidt, M. Bitzer, ´A. W. Imre, L. Guzzella, Experiment-driven
+electrochemical modeling and systematic parameterization for a lithium-
+ion battery cell, Journal of Power Sources 195 (2010).
+[69] M. Guo, G. Sikha, R. White, Single-particle model for a lithium-ion cell:
+Thermal behavior, Journal of the Electrochemical Society 158 (2011).
+[70] V. Subramanian, J. Ritter, R. White, Approximate Solutions for Galvano-
+static Discharge of Spherical Particles: I. Constant Diﬀusion Coeﬃcient,
+Journal of the Electrochemical Society 148 (2001).
+[71] C. Wang, W. Gu, B. Liaw, Micro-macroscopic coupled modeling of batteries
+and fuel cells: I. Model development, Journal of the Electrochemical Society
+145 (1998) 3407–3417.
+[72] C. Liu, Z. Neale, G. Cao, Understanding electrochemical potentials of
+cathode materials in rechargeable batteries, Materials Today 19 (2016)
+109–123.
+[73] M. Pinsona, M. Bazant, Theory of SEI formation in rechargeable batteries:
+Capacity fade, accelerated aging and lifetime prediction, Journal of the
+Electrochemical Society 160 (2013).
+[74] P. Ramadass, B. Haran, P. Gomadam, R. White, B. Popov, Development
+of First Principles Capacity Fade Model for Li-Ion Cells, Journal of the
+Electrochemical Society 151 (2004).
+[75] H. Perez, X. Hu, S. Moura, Optimal charging of batteries via a single
+particle model with electrolyte and thermal dynamics, in: Proceedings of
+45
+
+the American Control Conference, volume 2016-July, 2016, pp. 4000–4005.
+doi:10.1109/ACC.2016.7525538.
+[76] A. Gailani, M. Al-Greer, M. Short, T. Crosbie, N. Dawood, Lifetime degra-
+dation cost analysis for Li-ion batteries in capacity markets using accurate
+physics-based models, Energies 13 (2020).
+[77] A. D. Lamont, Assessing the economic value and optimal structure of large-
+scale electricity storage, IEEE Transactions on Power Systems 28 (2013)
+911–921.
+[78] A. Awad, J. Fuller, T. El-Fouly, M. Salama, Impact of energy storage sys-
+tems on electricity market equilibrium, IEEE Transactions on Sustainable
+Energy 5 (2014) 875–885.
+[79] Y. Zhang, C. Zhao, W. Tang, S. Low, Proﬁt-maximizing planning and
+control of battery energy storage systems for primary frequency control,
+IEEE Transactions on Smart Grid 9 (2018) 712–723.
+[80] D. Zhu, Y.-J. Zhang, Optimal coordinated control of multiple battery en-
+ergy storage systems for primary frequency regulation, IEEE Transactions
+on Power Systems 34 (2019) 555–565.
+[81] M. Dicorato, G. Forte, M. Pisani, M. Trovato, Planning and operating
+combined wind-storage system in electricity market, IEEE Transactions on
+Sustainable Energy 3 (2012).
+[82] S. Bhattacharjee, R. Sioshansi, H. Zareipour, Beneﬁts of Strategically Siz-
+ing Wind-Integrated Energy Storage and Transmission, IEEE Transactions
+on Power Systems (2020).
+[83] H. Shin, J. H. Roh, Framework for Sizing of Energy Storage System Supple-
+46
+
+menting Photovoltaic Generation in Consideration of Battery Degradation,
+IEEE Access 8 (2020).
+[84] R. Fern´ andez-Blanco, Y. Dvorkin, B. Xu, Y. Wang, D. Kirschen, Optimal
+Energy Storage Siting and Sizing: A WECC Case Study, IEEE Transac-
+tions on Sustainable Energy 8 (2017) 733–743.
+[85] P. Falugi, I. Konstantelos, G. Strbac, Planning with Multiple Transmission
+and Storage Investment Options under Uncertainty: A Nested Decomposi-
+tion Approach, IEEE Transactions on Power Systems 33 (2018) 3559–3572.
+[86] H. Khani, M. Zadeh, A. Hajimiragha, Transmission Congestion Relief Us-
+ing Privately Owned Large-Scale Energy Storage Systems in a Competitive
+Electricity Market, IEEE Transactions on Power Systems 31 (2016) 1449–
+1458.
+[87] J. Arteaga, H. Zareipour, N. Amjady, Energy storage as a service: Optimal
+sizing for transmission congestion relief, Applied Energy 298 (2021) 117095.
+[88] F. Graves, T. Jenkin, D. Murphy, Opportunities for Electricity Storage in,
+The Electricity Journal 12 (1999) 46–56.
+[89] The USA Energy Information Administration, Battery storage in the
+United States: an update on market trends, Technical Report, 2020.
+[90] H. Pandzic, Y. Wang, T. Qiu, Y. Dvorkin, D. S. Kirschen, Near-Optimal
+Method for Siting and Sizing of Distributed Storage in a Transmission
+Network, IEEE Transactions on Power Systems 30 (2015).
+[91] California Independent System Operator, Second Revised Straw Proposal:
+Storage as a Transmission Asset, Technical Report, 2018.
+47

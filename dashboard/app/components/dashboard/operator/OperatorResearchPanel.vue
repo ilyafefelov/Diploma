@@ -1,0 +1,298 @@
+<script setup lang="ts">
+import type { ForecastDispatchSensitivityResponse } from '~/types/control-plane'
+import type { OperatorResearchMetric } from '~/utils/operatorResearchMetrics'
+import { formatUah } from '~/utils/defenseDataset'
+
+defineProps<{
+  metrics: OperatorResearchMetric[]
+  sensitivity?: ForecastDispatchSensitivityResponse | null
+  isLoading: boolean
+  lastLoadedLabel: string
+  activeErrorCount: number
+}>()
+</script>
+
+<template>
+  <section
+    id="operator-research"
+    class="surface-panel operator-research-panel"
+  >
+    <div class="console-heading">
+      <div>
+        <p class="eyebrow">
+          Research-backed controls
+        </p>
+        <h2 class="section-title">
+          Benchmark, telemetry, and risk context
+        </h2>
+      </div>
+
+      <div class="research-actions">
+        <span class="status-badge">
+          {{ isLoading ? 'Refreshing' : `Loaded ${lastLoadedLabel}` }}
+        </span>
+        <NuxtLink
+          class="research-link"
+          to="/defense"
+        >
+          <UIcon name="i-lucide-presentation" />
+          Defense
+        </NuxtLink>
+      </div>
+    </div>
+
+    <div class="research-metric-grid">
+      <article
+        v-for="metric in metrics"
+        :key="metric.label"
+        class="research-metric"
+        :class="`research-metric--${metric.tone}`"
+        role="group"
+        :aria-label="`${metric.label}: ${metric.value}. ${metric.meta}`"
+        tabindex="0"
+      >
+        <span>{{ metric.label }}</span>
+        <strong>{{ metric.value }}</strong>
+        <small>{{ metric.meta }}</small>
+        <span
+          class="research-tooltip"
+          role="tooltip"
+        >
+          <strong>{{ metric.tooltipTitle }}</strong>
+          <span>{{ metric.tooltipBody }}</span>
+          <em>{{ metric.tooltipFormula }}</em>
+        </span>
+      </article>
+    </div>
+
+    <div class="research-diagnostic-grid">
+      <article
+        class="research-diagnostic-card"
+        role="group"
+        :aria-label="`Forecast diagnosis: ${sensitivity?.row_count ?? 0} rows. ${sensitivity?.source_strategy_kind || 'not materialized'}`"
+        tabindex="0"
+      >
+        <span>Forecast diagnosis</span>
+        <strong>{{ sensitivity?.row_count ?? 0 }} rows</strong>
+        <small>{{ sensitivity?.source_strategy_kind || 'not materialized' }}</small>
+        <span
+          class="research-tooltip"
+          role="tooltip"
+        >
+          <strong>Forecast diagnosis</strong>
+          <span>Rows are grouped by why forecast-to-LP performance changed: raw price error, low regret, spread mismatch, or LP sensitivity.</span>
+          <em>diagnostic_bucket = f(forecast_error, spread_error, regret)</em>
+        </span>
+      </article>
+
+      <article
+        v-for="bucket in sensitivity?.bucket_summary?.slice(0, 3) || []"
+        :key="bucket.diagnostic_bucket"
+        class="research-diagnostic-card"
+        role="group"
+        :aria-label="`${bucket.diagnostic_bucket}: ${bucket.rows} rows. ${formatUah(bucket.mean_regret_uah)} regret`"
+        tabindex="0"
+      >
+        <span>{{ bucket.diagnostic_bucket }}</span>
+        <strong>{{ bucket.rows }} rows</strong>
+        <small>{{ formatUah(bucket.mean_regret_uah) }} regret</small>
+        <span
+          class="research-tooltip"
+          role="tooltip"
+        >
+          <strong>{{ bucket.diagnostic_bucket }}</strong>
+          <span>This bucket explains a subset of benchmark rows with similar error-to-decision behavior.</span>
+          <em>mean_regret and MAE are averaged inside this bucket only</em>
+        </span>
+      </article>
+
+      <article
+        v-if="activeErrorCount > 0"
+        class="research-diagnostic-card research-diagnostic-card--warning"
+        role="group"
+        :aria-label="`Read-model gaps: ${activeErrorCount}. See defense route for endpoint details`"
+        tabindex="0"
+      >
+        <span>Read-model gaps</span>
+        <strong>{{ activeErrorCount }}</strong>
+        <small>see defense route for endpoint details</small>
+        <span
+          class="research-tooltip"
+          role="tooltip"
+        >
+          <strong>Read-model gaps</strong>
+          <span>Required operator read models failed to respond. Optional research primitives are not counted as gaps.</span>
+          <em>gaps = failed required FastAPI endpoints</em>
+        </span>
+      </article>
+    </div>
+  </section>
+</template>
+
+<style scoped>
+.operator-research-panel {
+  display: grid;
+  gap: 0.8rem;
+  padding: 0.8rem;
+  min-width: 0;
+}
+
+.research-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.research-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.3rem;
+  border: 1px solid var(--operator-line-subtle);
+  border-radius: 0.62rem;
+  background: linear-gradient(180deg, var(--operator-success-gradient-top), var(--operator-success-gradient-bottom));
+  padding: 0.45rem 0.7rem;
+  color: var(--operator-control-foreground);
+  font-size: 0.74rem;
+  font-weight: 900;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.research-metric-grid,
+.research-diagnostic-grid {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.research-metric-grid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.research-diagnostic-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.research-metric,
+.research-diagnostic-card {
+  position: relative;
+  display: grid;
+  gap: 0.28rem;
+  min-width: 0;
+  border: 1px solid var(--operator-research-card-border);
+  border-radius: 0.72rem;
+  background: linear-gradient(180deg, var(--operator-research-card-gradient-top), var(--operator-research-card-gradient-bottom));
+  padding: 0.65rem;
+  overflow: visible;
+}
+
+.research-metric span,
+.research-diagnostic-card span {
+  color: var(--operator-text-muted);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.research-metric strong,
+.research-diagnostic-card strong {
+  overflow-wrap: anywhere;
+  color: var(--operator-positive);
+  font-size: 1rem;
+  line-height: 1.12;
+}
+
+.research-metric small,
+.research-diagnostic-card small {
+  color: var(--operator-text-body);
+  font-size: 0.72rem;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.research-metric--green {
+  background: linear-gradient(180deg, var(--operator-tone-green-gradient-top), var(--operator-tone-green-gradient-bottom));
+}
+
+.research-metric--orange,
+.research-diagnostic-card--warning {
+  background: linear-gradient(180deg, var(--operator-tone-orange-gradient-top), var(--operator-tone-orange-gradient-bottom));
+}
+
+.research-metric--mint {
+  background: linear-gradient(180deg, var(--operator-tone-mint-gradient-top), var(--operator-tone-mint-gradient-bottom));
+}
+
+.research-metric--lime {
+  background: linear-gradient(180deg, var(--operator-tone-lime-gradient-top), var(--operator-tone-lime-gradient-bottom));
+}
+
+.research-metric--purple {
+  background: linear-gradient(180deg, var(--operator-tone-purple-gradient-top), var(--operator-tone-purple-gradient-bottom));
+}
+
+.research-tooltip {
+  position: absolute;
+  left: 0.45rem;
+  bottom: calc(100% + 0.35rem);
+  z-index: 120;
+  display: grid;
+  width: min(18rem, calc(100vw - 2rem));
+  gap: 0.26rem;
+  border: 1px solid var(--operator-tooltip-border);
+  border-radius: 0.72rem;
+  background: linear-gradient(180deg, var(--operator-tooltip-gradient-top), var(--operator-tooltip-gradient-bottom));
+  padding: 0.62rem 0.7rem;
+  color: var(--operator-text-bright);
+  box-shadow: var(--operator-tooltip-shadow);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(0.24rem) scale(0.97);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.research-tooltip strong {
+  color: var(--operator-accent);
+  font-size: 0.74rem;
+  font-weight: 900;
+}
+
+.research-tooltip span,
+.research-tooltip em {
+  color: var(--operator-text-bright-muted);
+  font-size: 0.68rem;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.34;
+}
+
+.research-tooltip em {
+  color: var(--operator-accent);
+}
+
+.research-metric:hover .research-tooltip,
+.research-metric:focus-visible .research-tooltip,
+.research-diagnostic-card:hover .research-tooltip,
+.research-diagnostic-card:focus-visible .research-tooltip {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+@media (max-width: 1320px) {
+  .research-metric-grid,
+  .research-diagnostic-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .research-metric-grid,
+  .research-diagnostic-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>

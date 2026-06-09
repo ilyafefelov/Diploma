@@ -15,7 +15,7 @@ ClearedTradeProvenance = Literal["simulated", "observed"]
 MARKET_PRICE_CAPS_UAH_PER_MWH: dict[MarketVenue, float] = {
     "DAM": 15000.0,
     "IDM": 15000.0,
-    "BALANCING": 16000.0,
+    "BALANCING": 17000.0,
 }
 
 VENUE_ALLOWED_DURATION_MINUTES: dict[MarketVenue, set[int]] = {

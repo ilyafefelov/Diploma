@@ -1,0 +1,188 @@
+Electricity Market Transparency Browse 
+ Network Codes & CEP 
+ Data & Standardisation 
+ Innovation 
+ Outlooks 
+ Regions 
+ Publications 
+ About 
+ Login 
+
+ Network Codes & CEP 
+ Data & Standardisation 
+ Innovation 
+ Outlooks 
+ Regions 
+ Publications 
+ About 
+ Transparency Platform 
+ Common Information Model 
+ Standardisation 
+ EU Grid Map 
+ News 
+ Events 
+ Careers 
+ Our Staff 
+ Extranet 
+
+ Go to Network Codes 
+ News 
+ Stakeholder Committees 
+ Consultations 
+ Active Library 
+ Monitoring & Reports 
+ Network Codes Development Process 
+
+ Connection --> DCC 
+ HVDC 
+ RFG 
+
+ Operations --> ER 
+ SOGL 
+
+ Market --> CACM 
+ EB 
+ FCA 
+
+ Cep --> CEP 
+
+ Nccs --> NCCS 
+
+ Go to Data & Standardisation 
+ Grid Map 
+ Transparency Platform 
+ EIC Codes 
+ Power Statistics 
+ ECCo SP 
+ OPC / STA 
+
+ Go to Innovation 
+ Projects 
+ Technopedia 
+ Innovation Hub 
+ RDI Reports 
+
+ Go to Outlooks 
+ Seasonal 
+ ERAA 
+ Longterm - TYNDP 
+ Offshore Hub 
+ Scenarios 
+ Regional Investment Plans 
+ Grid Planning Hub 
+
+ Go to Regions 
+ FAQs on Regional Coordination 
+ CCR Regions 
+ CCR Regions Map 
+ CCR Core 
+ CCR CE 
+ CCR IN 
+
+ Go to Publications 
+ Position Papers 
+ Offshore Development 
+ Vision 
+ Market 
+ Research & Innovation 
+ Development 
+ TYNDP 
+ Operations 
+ TSO/DSO 
+ CIM 
+
+ Go to News 
+ News 
+ Events 
+ Former Associations 
+
+ Go to About 
+ Market 
+ Research & Innovation 
+ System Development 
+ Operations 
+ Information and Communication Technologies 
+ Legal 
+ Careers 
+
+ Grid Map 
+ Transparency Platform 
+ EIC Codes 
+ Power Statistics 
+ ECCo SP 
+ OPC / STA 
+
+ Home 
+ Data & Standardisation 
+ Electricity Market Transparency 
+ On this page
+ The ENTSO-E Transparency Platform 
+ Information Published 
+ Related Links 
+
+ Electricity Market Transparency
+ ​Transparency has improved markedly in Europe over the past few years, culminating in Regulation (EU) No 5 43/2013 of 14 June 2013 on submission and publication of data in electricity markets. Through this Regulation, it has now become mandatory for European Member State data providers and owners to submit fundamental information related to electricity generation, load, transmission and balancing for publication through the ENTSO-E Transparency Platform. 
+ Transparency is essential for the implementation of the Internal Electricity Market (IEM) and for the creation of efficient, liquid and competitive wholesale markets. It is also critical for creating a level playing field between market participants and avoiding the scope for market power (if it exists) to be abused.This platform enables the provision of the required electricity market information for the future and further facilitates the development of efficient and competitive energy markets across Europe. Such developments support the steady evolution of electricity markets across Europe in terms of integration, competition
+ The ENTSO-E Transparency Platform
+ In accordance with Regulation 543/2013, the ENTSO-E Transparency Platform was launched on 5 January 2015.
+ ENTSO-E also published the Manual of Procedures , which provides information necessary to submit or extract data to or from the Platform. For more information, visit the dedicated page .
+
+ Following the launch of the new platform, the https://transparency.entsoe.eu/ website, on which TSOs had voluntarily published some market data since 2011, was de-commissioned in March 2015. The historical data from 2011-2014, which was previously published on entsoe.net, is available to download from the Transparency Platform: the Data Pre-5.1.15 section 
+
+ In March 2015, the ENTSO-E Transparency User Group was formed to analyse user feedback and requirements and formulate recommendations as input to further improvements to the ENTSO-E Transparency Platform’s user interface and to its future development. For more information, visit the dedicated page .
+
+ Information Published
+ The information published by ENTSO-E is collected from data providers such as TSOs, power exchanges or other qualified third parties. Information on the generation, load, transmission and balancing data which is specified in the Transparency Regulation is described in further detail in the Detailed Data Descriptions , as referenced in the Manual of Procedures.
+ Related Links
+ The ENTSO-E Transparency Platform 
+ Manual of Procedures 
+ Information for Data Providers 
+ ENTSO-E Transparency User Group (ETUG) 
+
+ GET THE MOST POWERFUL NEWSLETTER IN BRUSSELS 
+
+ Please enter a valid email address.
+
+ Please fill in your email address.
+
+ First Name * Please enter your first name.
+
+ Last Name * Please enter your last name.
+
+ Organisation * Please enter your organisation.
+
+ By subscribing, I consent to the processing of my personal data for the purpose of sending the newsletter. * You must consent to data processing to subscribe.
+
+ I read and accept the Data Protection Policy * You must accept the Data Protection Policy to subscribe.
+
+ Sign up for press updates 
+
+ Our Work
+
+ Network Codes 
+ Outlooks 
+ Transparency Platform 
+ Power Regions 
+ Common Information Model 
+ Position Papers 
+ Standardisation 
+ EU Grid Map 
+ Association
+
+ About 
+
+ News 
+ Events 
+ Members 
+ Careers 
+ Governance 
+ Our Staff 
+ Contact 
+ Extranet 
+ Stay updated
+
+ LinkedIn 
+ YouTube 
+
+ © 2009-2026  ENTSO-E
+ Sitemap Suppliers Disclaimer Privacy Policy Cookie Policy Whistleblowing Policy Website feedback to info@entsoe.eu

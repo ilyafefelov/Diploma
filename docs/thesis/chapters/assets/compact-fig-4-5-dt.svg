@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Decision Transformer and HF non-promotion boundary</title>
+  <desc id="desc">Reasons why DT safe-switch and HF value-aligned transformer evidence is stopped before production promotion.</desc>
+  <defs>
+    <style>
+      .title { font: 800 50px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 23px Arial, sans-serif; fill: #475569; }
+      .head { font: 800 25px Arial, sans-serif; fill: #0f172a; }
+      .body { font: 600 19px Arial, sans-serif; fill: #334155; }
+      .white { font: 800 18px Arial, sans-serif; fill: #fff; }
+      .small { font: 500 17px Arial, sans-serif; fill: #475569; }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f8fafc"/>
+  <text x="72" y="88" class="title" style="font-size:42px">Why DT/HF transformers are not promoted</text>
+  <text x="72" y="128" class="subtitle">Lower diagnostic regret is promising, but promotion requires source, robustness, safety, and execution gates.</text>
+
+  <g transform="translate(80 200)">
+    <rect width="330" height="410" rx="22" fill="#fee2e2" stroke="#ef4444" stroke-width="3"/>
+    <text x="28" y="58" class="head">Raw DT</text>
+    <text x="28" y="120" class="body">460.30 UAH regret</text>
+    <text x="28" y="168" class="body">No V2+ fallback</text>
+    <text x="28" y="216" class="body">Weak action semantics</text>
+    <rect x="28" y="292" width="230" height="54" rx="27" fill="#ef4444"/>
+    <text x="60" y="326" class="white">negative evidence</text>
+  </g>
+
+  <g transform="translate(455 200)">
+    <rect width="330" height="410" rx="22" fill="#e0f2fe" stroke="#0284c7" stroke-width="3"/>
+    <text x="28" y="58" class="head">Corrected DT/V2+</text>
+    <text x="28" y="120" class="body">168.16 UAH</text>
+    <text x="28" y="168" class="body">4 switches / 86 abstain</text>
+    <text x="28" y="216" class="body">0 tail-risk losses</text>
+    <rect x="28" y="292" width="230" height="54" rx="27" fill="#0284c7"/>
+    <text x="64" y="326" class="white">secondary only</text>
+  </g>
+
+  <g transform="translate(830 200)">
+    <rect width="330" height="410" rx="22" fill="#f5f3ff" stroke="#7c3aed" stroke-width="3"/>
+    <text x="28" y="58" class="head">HF value-aligned</text>
+    <text x="28" y="120" class="body">158.71 UAH signal</text>
+    <text x="28" y="168" class="body">20 / 32 nonfallback</text>
+    <text x="28" y="216" class="body">8 / 8 readiness</text>
+    <rect x="28" y="292" width="230" height="54" rx="27" fill="#7c3aed"/>
+    <text x="60" y="326" class="white">shadow/demo</text>
+  </g>
+
+  <g transform="translate(1205 200)">
+    <rect width="315" height="410" rx="22" fill="#fff7ed" stroke="#f97316" stroke-width="3"/>
+    <text x="28" y="58" class="head">If not stopped</text>
+    <text x="28" y="120" class="body">1. Overfit rare windows</text>
+    <text x="28" y="168" class="body">2. Tail-risk schedules</text>
+    <text x="28" y="216" class="body">3. Stale live context</text>
+    <text x="28" y="264" class="body">4. Hidden execution claim</text>
+    <rect x="28" y="318" width="240" height="54" rx="27" fill="#f97316"/>
+    <text x="56" y="352" class="white">gate prevents this</text>
+  </g>
+
+  <g transform="translate(88 705)">
+    <rect width="1424" height="76" rx="20" fill="#0f172a"/>
+    <text x="34" y="34" class="white">Promotion stops because source receipts, primary threshold, LP optimality,</text>
+    <text x="34" y="58" class="white">and market-execution contracts are not satisfied.</text>
+  </g>
+</svg>

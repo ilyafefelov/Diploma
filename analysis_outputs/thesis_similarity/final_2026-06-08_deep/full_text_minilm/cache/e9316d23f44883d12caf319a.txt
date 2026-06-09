@@ -1,0 +1,2157 @@
+Citation: Rahman, T.; Alharbi, T.
+Exploring Lithium-Ion Battery
+Degradation: A Concise Review of
+Critical Factors, Impacts, Data-Driven
+Degradation Estimation Techniques,
+and Sustainable Directions for Energy
+Storage Systems. Batteries 2024, 10,
+220. https://doi.org/10.3390/
+batteries10070220
+Academic Editor: Xiaolei Bian
+Received: 28 March 2024
+Revised: 18 May 2024
+Accepted: 27 May 2024
+Published: 22 June 2024
+Copyright: © 2024 by the authors.
+Licensee MDPI, Basel, Switzerland.
+This article is an open access article
+distributed under the terms and
+conditions of the Creative Commons
+Attribution (CC BY) license (https://
+creativecommons.org/licenses/by/
+4.0/).
+batteries
+Review
+Exploring Lithium-Ion Battery Degradation: A Concise Review
+of Critical Factors, Impacts, Data-Driven Degradation Estimation
+Techniques, and Sustainable Directions for Energy
+Storage Systems
+T uhibur Rahman1 and Talal Alharbi 2,*
+1 Department of Electrical and Electronics Engineering, Green University of Bangladesh,
+Kanchon 1460, Bangladesh; tuhibur.rahman@gmail.com
+2 Department of Electrical Engineering, College of Engineering, Qassim University, Qassim,
+Buraydah 52571, Saudi Arabia
+* Correspondence: atalal@qu.edu.sa
+Abstract: Batteries play a crucial role in the domain of energy storage systems and electric vehicles
+by enabling energy resilience, promoting renewable integration, and driving the advancement of
+eco-friendly mobility. However, the degradation of batteries over time remains a significant challenge.
+This paper presents a comprehensive review aimed at investigating the intricate phenomenon of
+battery degradation within the realm of sustainable energy storage systems and electric vehicles
+(EVs). This review consolidates current knowledge on the diverse array of factors influencing battery
+degradation mechanisms, encompassing thermal stresses, cycling patterns, chemical reactions, and
+environmental conditions. The key degradation factors of lithium-ion batteries such as electrolyte
+breakdown, cycling, temperature, calendar aging, and depth of discharge are thoroughly discussed.
+Along with the key degradation factor, the impacts of these factors on lithium-ion batteries including
+capacity fade, reduction in energy density, increase in internal resistance, and reduction in overall
+efficiency have also been highlighted throughout the paper. Additionally, the data-driven approaches
+of battery degradation estimation have taken into consideration. Furthermore, this paper delves
+into the multifaceted impacts of battery degradation on the performance, longevity, and overall
+sustainability of energy storage systems and EVs. Finally, the main drawbacks, issues and challenges
+related to the lifespan of batteries are addressed. Recommendations, best practices, and future
+directions are also provided to overcome the battery degradation issues towards sustainable energy
+storage system.
+Keywords: degradation; electric vehicles; energy storage; battery management systems; electric
+batteries; lithium-ion batteries; mathematical model
+1. Introduction
+Batteries serve as indispensable energy storage devices, converting chemical energy
+into electrical energy, thereby powering numerous aspects of modern life [1]. These batteries
+enable the consistent supply of electricity, overcoming the intermittency of renewable
+energy production, and ensuring a reliable power source even during periods of low
+generation [2]. Moreover, batteries are the heart of electric vehicles, powering their engines
+and enabling them to function without reliance on traditional fossil fuels. The development
+of high-capacity, durable, and fast-charging batteries has been instrumental in driving the
+adoption of electric vehicles, significantly reducing greenhouse gas emissions and paving
+the way for a more sustainable future in transportation [3]. As technological advancements
+continue to improve battery efficiency and capacity, their role in both energy storage systems
+and electric vehicles becomes increasingly pivotal in the global shift towards cleaner and
+Batteries 2024, 10, 220. https://doi.org/10.3390/batteries10070220 https://www.mdpi.com/journal/batteries
+
+Batteries 2024, 10, 220 2 of 32
+more efficient energy utilization [2]. Battery technologies, despite their widespread use
+and critical role in modern society, grapple with several significant drawbacks [4]. One of
+the primary limitations is the degradation of batteries over time. This constraint impacts
+their efficiency, notably in applications like electric vehicles and portable electronics, where
+battery life and increased extended range are paramount. Additionally, the capacity
+degradation of batteries presents a crucial challenge, leading to reduced performance and
+the eventual need for replacement or recycling.
+Battery degradation refers to the progressive loss of a battery’s capacity and perfor-
+mance over time, presenting a significant challenge in various applications relying on stored
+energy [5]. Figure 1 shows the battery degradation mechanism. Several factors contribute
+to battery degradation. One primary cause is cycling, where the repeated charging and
+discharging of a battery causes chemical and physical changes within the battery cells. This
+leads to the gradual breakdown of electrode materials, diminishing the ability of the battery
+to hold a charge. Elevated temperature, another factor that accelerates chemical reactions
+within the battery, hastens degradation [6]. Overcharging or deep discharging a battery
+beyond its recommended voltage limits can also accelerate degradation by causing physical
+stress on the electrodes or electrolyte [3]. Additionally, storage conditions and the type of
+battery chemistry play crucial roles; some chemistries are more prone to degradation than
+others. As batteries degrade, their overall capacity diminishes, reducing their ability to
+provide power, ultimately leading to decreased performance and the need for replacement
+or refurbishment [7]. Strategies such as optimal charging practices, temperature manage-
+ment, and advancements in battery chemistry aim to mitigate degradation and extend
+battery lifespan.
+Batteries 2024, 10, 220 2 of 34 
+ 
+advancements continue to improve battery effic iency and capacity, their role in both en-
+ergy storage systems and electric vehicles becomes increasingly pivotal in the global shift 
+towards cleaner and more efficient energy util ization [2]. Battery technologies, despite 
+their widespread use and critical role in modern society, grapple with several significant 
+drawbacks [4]. One of the primary limitations is the degradation of batteries over time. 
+This constraint impacts their efficiency, notably in applications like electric vehicles and 
+portable electronics, where battery life and increased extended range are paramount. Ad-
+ditionally, the capacity degradation of batter ies presents a crucial challenge, leading to 
+reduced performance and the eventual need for replacement or recycling. 
+Battery degradation refers to the progressive loss of a battery’s capacity and perfor-
+mance over time, presenting a significant challenge in various applications relying on 
+stored energy [5]. Figure 1 shows the battery degradation mechanism. Several factors con-
+tribute to battery degradation. One primary cause is cycling, where the repeated charging 
+and discharging of a battery causes chemical and physical changes within the battery cells. 
+This leads to the gradual breakdown of electrode materials, diminishing the ability of the 
+battery to hold a charge. Elevated temperatur e, another factor that accelerates chemical 
+reactions within the battery, hastens degradation [6]. Overcharging or deep discharging a 
+battery beyond its recommended voltage limits can also accelerate degradation by causing 
+physical stress on the electrodes or electrol yte [3]. Additionally, storage conditions and 
+the type of battery chemistry play crucial roles; some chemistries are more prone to deg-
+radation than others. As batteries degrade, their overall capacity diminishes, reducing 
+their ability to provide power, ultimately leading to decreased performance and the need 
+for replacement or refurbishment [7]. Strategies such as optimal charging practices, tem-
+perature management, and advancements in battery chemistry aim to mitigate degrada-
+tion and extend battery lifespan. 
+ 
+Figure 1. Degradation mechanism of lithium-ion battery [8]. 
+Battery degradation significantly impacts energy storage systems, compromising 
+their efficiency and reliability over time [9]. As batteries degrade, their capacity to store 
+and deliver energy diminishes, resulting in re duced overall energy storage capabilities. 
+This degradation translates into shorter operational lifespans for energy storage systems, 
+requiring more frequent replacements or refurbishments, which escalates operational 
+costs. Moreover, decreased storage capacity limits the amount of renewable energy that 
+can be stored, affecting the system’s ability to provide consistent power during peak de-
+mand or when renewable sources are not actively generating energy [10]. This fluctuation 
+in storage capacity due to degradation can create challenges in maintaining a stable and 
+reliable power supply from renewable sources, impacting grid stability and the integra-
+tion of renewable energy into the electrical grid. 
+Figure 1. Degradation mechanism of lithium-ion battery [8].
+Battery degradation significantly impacts energy storage systems, compromising
+their efficiency and reliability over time [9]. As batteries degrade, their capacity to store
+and deliver energy diminishes, resulting in reduced overall energy storage capabilities.
+This degradation translates into shorter operational lifespans for energy storage systems,
+requiring more frequent replacements or refurbishments, which escalates operational costs.
+Moreover, decreased storage capacity limits the amount of renewable energy that can be
+stored, affecting the system’s ability to provide consistent power during peak demand
+or when renewable sources are not actively generating energy [ 10]. This fluctuation in
+storage capacity due to degradation can create challenges in maintaining a stable and
+reliable power supply from renewable sources, impacting grid stability and the integration
+of renewable energy into the electrical grid.
+The performance, range, and general usability of electric vehicles (EV) are all signif-
+icantly impacted by battery deterioration [ 11]. The driving range of an electric vehicle
+(EV) decreases with battery deterioration, affecting the amount of distance it can drive
+between charges. Degradation-related reduction in battery capacity also results in a drop
+
+Batteries 2024, 10, 220 3 of 32
+in power output, which impacts the vehicle’s acceleration and general performance. In
+addition, EV drivers must charge their cars more frequently to go the same distance as
+their battery’s capacity decreases, which raises operating costs and annoyance [12]. Fur-
+thermore, a deteriorating battery that has to be replaced may turn off potential buyers,
+which lowers the resale value of electric vehicles. Addressing battery degradation through
+technological advancements, efficient battery management systems, and improvements
+in battery chemistry remains crucial to prolonging the lifespan of EV batteries and en-
+suring the long-term viability and attractiveness of electric vehicles in the transportation
+sector [13]. The lithium-ion (Li-ion) battery is a form of intercalation-type battery that is
+mostly utilized in electric vehicles (EVs). Intercalation-type batteries are a specific category
+of rechargeable batteries where the energy storage mechanism involves the insertion and
+extraction of ions or molecules into the crystal structure of the electrode material during
+charging and discharging cycles. Consequently, the most-often utilized batteries in EVs
+are intercalation-type batteries, most especially Li-ion batteries. So, this study will mainly
+focus on the intercalation types of batteries. In recent years, data-driven approaches have
+emerged as powerful tools for estimating battery degradation. Leveraging vast amounts
+of historical and real-time data, these techniques offer a holistic understanding of battery
+health and degradation patterns [14]. By harnessing advanced analytics, machine learn-
+ing algorithms, and statistical modeling, data-driven methods enable precise predictions
+of degradation rates, allowing stakeholders to proactively address issues and optimize
+operational parameters [15].
+Recently, battery degradation became an issue of great concern among the researchers
+around the world [ 16]. Xiong et al. presented a review about the aging mechanism of
+lithium-ion batteries [17]. Authors have claimed that the degradation mechanism of lithium-
+ion batteries affected anode, cathode and other battery structures, which are influenced
+by some external factors such as temperature. However, the effect of battery degradation
+on EV and energy storage system has not been taken into consideration. Jialong et al.
+investigated battery degradation behavior at a low temperature using destructive and
+nano-destructive methods, where it has been found that a high charging rate accelerates the
+battery aging at a low temperature [18]. The rate of aging of a battery charging at 0.6 ◦C is
+higher than a battery charging at 0.8 ◦C. Although the aging rate at a low temperature has
+been investigated, what the situation will be at a high temperature has not been explained.
+Further study is still required. Guo et al. presented a review about the aging mechanism of
+lithium-ion batteries in EV where the aging behavior of lithium-ion batteries in charging,
+stand-by, and driving modes are reviewed [19]. Xu et al. proposed a data-driven battery
+degradation estimation model. The authors explained the estimation method with accuracy;
+however, the battery degradation effect on energy storage systems and electric vehicles still
+needs to be investigated [14]. Wankmüller et al. presented a case study about the impact of
+battery degradation on energy storage systems; however, the authors did not investigate the
+case of electric vehicles [20]. In another work, Ou explained in detail the impact of battery
+aging on EV [21]. The author claimed that battery degradation can be delayed by around
+0.5% with the help of a battery thermal management system. Higher outside temperatures
+enhance the use of BEV batteries. For example, compared to the New England area, the
+Los Angeles area has 6% higher battery capacity; however, this paper does not provide
+any information about the degradation mechanism of EV batteries [ 21]. Kaliaperumal
+et al. presented a review about the mitigation techniques of battery degradation where the
+authors claimed that the use of extra protective mechanisms, fire suppression, ventilation,
+and intrinsic safety as mitigation techniques in LiB can help them overcome the failure
+modes; however, the issues and challenges of these techniques have not been taken into
+consideration [22]. Further study is still required in this regard. Table 1 summarizes the
+current research status of battery degradation.
+
+Batteries 2024, 10, 220 4 of 32
+Table 1. Current research status of battery degradation for EVs and energy storage systems.
+Goal Key Findings Research Gap Reference
+Degradation
+mechanism of
+lithium-ion batteries
+Lithium-ion batteries degraded over time
+when used. External factors such as
+temperature can influence the degradation
+mechanism.
+The authors have presented a review
+about the degradation mechanism;
+however, the effects of battery
+degradation are still required for better
+understanding.
+[17]
+Battery aging at lower
+temperature.
+A high charging rate accelerates the battery
+aging at a low temperature. The rate of aging
+of the battery charging at 0.6 °C is higher
+than the battery charging at 0.8 °C
+Although the aging rate at a low
+temperature has been investigated, what
+the situation will be at a high
+temperature has not been explained.
+[18]
+Aging mechanism of
+lithium-ion batteries
+for EVS
+It is possible to extend the battery life by
+reducing exposure to the factors that most
+quickly age batteries. Low temperatures
+expedite the metallization of lithium on the
+anode, whereas high temperatures will result
+in side reactions in the battery.
+More study is still needed on the issue of
+battery deterioration, particularly in
+relation to the operation of EVs. There is
+currently relatively little research on
+battery performance deterioration and
+the identification of the aging mechanism
+that follows.
+[19]
+Data-driven battery
+aging mechanism
+approach.
+Different battery degradation factor such as
+temperature, charge cut off voltage, charge
+current, discharge cut off voltage, discharge
+current have great influence on battery
+degradation and depend on how the battery
+degradation varies in different aging phases.
+Although the authors presented a model
+for estimating battery degradation
+accurately, the impact of battery
+degradation on EVs and energy storage
+systems has not been taken into
+consideration.
+[14]
+Impact of battery
+degradation on the
+energy storage system.
+Depending on the degradation model and
+EOL criteria for a C-rate of 1C, the revenue
+drop resulting from deterioration ranges
+from 12 to 46%.
+The effect of battery degradation on
+energy storage systems has been carefully
+investigated; however, the case of EVs
+still needs to be investigated.
+[20]
+Long-term impact of
+battery degradation on
+electric vehicles.
+The battery degradation can be delayed by
+around 0.5% with the help of the battery
+thermal management system. Higher outside
+temperatures enhance the use of BEV
+batteries. Compared to the New England
+area, the Los Angeles area has 6% higher
+battery capacity.
+Although having a contribution on the
+impact of battery degradation for EV , this
+paper ignores the battery degradation
+mechanism for electric vehicles.
+[21]
+Battery degradation
+mitigation techniques.
+The use of extra protective mechanisms, fire
+suppression, ventilation, and intrinsic safety
+as mitigation techniques in LiBs can help
+them overcome the failure modes.
+This paper provides a lot of information
+about mitigation techniques for battery
+degradation; however, the issues and
+challenges regarding this have not been
+addressed.
+[22]
+To bridge the gaps in the field of battery degradation, this paper will provide a compre-
+hensive review for the degradation factors, aging mechanisms, and the data-driven approaches
+to the modeling of battery degradation, considering both electric vehicles and energy storage
+systems. Future research directions in this field will also be a part of this work.
+This paper is divided into six sections. Section 2 presents the battery degradation
+mechanism in brief. Key degradation factors are shown in Section 3. In Section 4, the
+effects of battery degradation in EVs and energy storage systems are reported. Data-driven
+algorithms, strategies, and approaches regarding battery degradation are highlighted in
+Section 5. Lastly, the conclusion and future directions are suggested in Section 6.
+2. Battery Degradation Mechanism
+The degradation of lithium-ion battery can be mainly seen in the anode and the
+cathode. In the anode, the formation of a solid electrolyte interphase (SEI) increases the
+impendence which degrades the battery capacity. Mechanical stress results in a crack in the
+
+Batteries 2024, 10, 220 5 of 32
+surface layer, and lithium plating makes the formation of dendrite on the surface of anode
+layer. On the other hand, cathode degradation occurs due to a film on the cathode surface
+layer, stress, and dissolution of transition material.
+2.1. Degradation in Anode
+To create improved anodes for rechargeable lithium batteries, a great deal of research
+has been conducted during the last three decades. Negative electrodes, or battery anodes,
+are typically composed of silicon, lithium metal, titanate, graphite, or various composite
+materials [22]. Commercial batteries use graphite-based anodes, including graphite anodes
+and graphite–silicon composite anodes [23]. Carbon materials have dominated the market
+for negative electrode materials due to their high electronic/ionic conductivity, affordability,
+availability of raw materials, and suitable mechanical and thermal qualities [24]. This is
+particularly true of graphite with consistent performance. Degradation in the battery anode
+mainly occurs due to SEI, lithium plating, and stress.
+2.1.1. Degradation in the Layer of Solid Electrolyte Interphase
+Graphite is used as the main anode material in most lithium-ion batteries. Graphite
+anodes operate in the 0.05–1 V range, which is beyond the 1–4.5 V window for organic
+electrolyte stability [25]. Because of this, graphite-based LIBs produce a reductive electrolyte
+breakdown process due to their thermodynamic instability. Li+ ions are consumed in this
+process, which also creates a surface layer on the anode that leads to loss of active material
+(LAM) [26] and loss of lithium inventory (LLI) [27]. The rapid reaction rate, particularly in
+the initial few cycles, produces a surface layer that is permeable to Li ions but less permeable
+to electrolyte components. As a result, there is less degradation and subsequent electrode
+corrosion [28,29]. Nonetheless, throughout the life of the battery, solvated lithium and
+other electrolyte components are still transported through this semipermeable layer even
+while the reaction rate decreases. This reaction mostly takes place in the solid electrolyte
+interphase (SEI) layer, which is the interphase between the electrolyte and the anode. The
+primary cause of graphite anode aging is frequently the expansion of the SEI layer. It
+lowers the capacity of the battery to hold energy and its ability to handle power. Another
+kind of anode surface layer, known as the non-SEI layer, is known to form on the basal
+plane surface and is impervious to Li ions [30]. It is common to refer to both the SEI and
+non-SEI layers as the SEI layer [31]. Thus, the same custom is also adhered to here. The
+SEI keeps growing once it first forms, both when it is cycling and when it is not. The
+operational circumstances of the cell determine how quickly the SEI layer develops [32].
+Agubra et al. presented the main factor of SEI formation which are electrolyte flow rate,
+electrolyte composition, charging current, voltage, and pressure [33]. Figure 2 shows the
+formation of SEI on a lithium-ion battery. Temperature and SOC are the primary drivers of
+SEI development under idle circumstances. More Li ions are intercalated into the anode
+at a greater SOC, which lowers the anode potential and speeds up the reductive reaction
+rate [34]. Agubra et al. claimed that SEI formation undergoes a very critical evolution of
+pre-formation, self-improvement, and gradual decay in succession at 25 ◦C [33]. At high
+temperature, a film of LiF and Li2CO2 forms which increases the impedance and triggers
+the anode towards degradation. The ionic conductivity of the SEI layer is further reduced
+by rising temperatures, which can speed up the reaction rate and may convert less stable
+organic SEI components into more stable inorganic compounds. Not even thermal runaway
+can prevent the cell from exploding or catching fire at severe temperatures exceeding60 ◦C.
+The volume variations brought on by the (de)intercalation of Li ions during cycling, in
+addition to SOC and temperature, put mechanical stress on the electrodes. These variations
+in volume have the ability to breach the SEI and initiate new reactions. This fracture and
+repair cause the SEI to keep expanding, which leads to more LLI [26] and LAM [27].
+In addition, cycling produces a more porous SEI layer than idling, especially at
+high C-rates [35]. While a denser SEI layer lowers the reaction rate, this greater porosity
+permits more reductive processes to occur. Electrolyte composition and electrode balance
+
+Batteries 2024, 10, 220 6 of 32
+are other parameters that impact the pace of reaction [ 36]. There are two competing
+hypotheses on how SEI form: (1) According to the first hypothesis, formation occurs at
+the electrode–electrolyte interface, and the SEI’s electrical conductivity ought to be the
+formation’s limiting factor [17]. (2) According to the second hypothesis, solvent diffusion
+limits SEI production, which occurs at the anode–SEI contact [37]. Nonetheless, the aging
+behavior resulting from both hypotheses follows a time connection, which is consistent
+with the passivation character of the SEI layer and is frequently shown in tests.
+Batteries 2024, 10, 220 6 of 34 
+ 
+less stable organic SEI components into more stable inorganic compounds. Not even ther-
+mal runaway can prevent the cell from exploding or catching fire at severe temperatures 
+exceeding 60 °C. The volume variations brought on by the (de)intercalation of Li ions dur-
+ing cycling, in addition to SOC and temperature, put mechanical stress on the electrodes. 
+These variations in volume have the ability to breach the SEI and initiate new reactions. 
+This fracture and repair cause the SEI to keep expanding, which leads to more LLI [26] 
+and LAM [27]. 
+In addition, cycling produces a more porous SEI layer than idling, especially at high 
+C-rates [35]. While a denser SEI layer lowers the reaction rate, this greater porosity permits 
+more reductive processes to occur. Electrolyte composition and electrode balance are 
+other parameters that impact the pace of reaction [36]. There are two competing hypothe-
+ses on how SEI form: (1) According to the firs t hypothesis, formation occurs at the elec-
+trode–electrolyte interface, and the SEI’s electrical conductivity ought to be the for-
+mation’s limiting factor [17]. (2) According to the second hypothesis, solvent diffusion 
+limits SEI production, which occurs at the anode–SEI contact [37]. Nonetheless, the aging 
+behavior resulting from both hypotheses follows a time connection, which is consistent 
+with the passivation character of the SEI layer and is frequently shown in tests. 
+ 
+Figure 2. Process of SEI film production in the electr olyte based on EC. Snapshots of the reaction 
+products taken every 25 ns throughout a 100 ns period. Bulk EC and 𝑃𝐹଺-anions are not displayed 
+for viewing reasons. Li+ that have not participated in any reactions are magenta in color [38]. 
+At the electrode–SEI interface, the solvent and lithium ions pass through the SEI layer 
+and react with the surface electrons to prod uce an insoluble product. Different SEI mod-
+eling techniques have been presented in [39–41]. According to Fick’s second law, solvent 
+diffusion through the SEI layer will be as follows [39]: 
+𝛿𝐶௦
+𝛿𝑡 =𝐷 ௦
+𝛿ଶ𝐶௦ 
+𝛿𝑧ଶ  (1)
+where 𝐶௦ is the concentration of the solvent in pores and 𝐷௦ is the effective diffusivity of 
+the solvents. The liquid electrolyte fills the holes in the SEI and reaches the electrode sur-
+face because the SEI layer has a porous struct ure. Thus, the first boundary condition is 
+determined by the effective solvent concentrat ion at the electrolyte/SEI, which is as fol-
+lows [39]: 
+𝑎𝑡 𝑧 = 0 𝐶௦ =𝜀 𝐶௦଴ (2)
+Figure 2. Process of SEI film production in the electrolyte based on EC. Snapshots of the reaction
+products taken every 25 ns throughout a 100 ns period. Bulk EC and PF6-anions are not displayed for
+viewing reasons. Li+ that have not participated in any reactions are magenta in color [38].
+At the electrode–SEI interface, the solvent and lithium ions pass through the SEI
+layer and react with the surface electrons to produce an insoluble product. Different SEI
+modeling techniques have been presented in [ 39–41]. According to Fick’s second law,
+solvent diffusion through the SEI layer will be as follows [39]:
+δCs
+δt = Ds
+δ2Cs
+δz2 (1)
+where Cs is the concentration of the solvent in pores and Ds is the effective diffusivity
+of the solvents. The liquid electrolyte fills the holes in the SEI and reaches the electrode
+surface because the SEI layer has a porous structure. Thus, the first boundary condition
+is determined by the effective solvent concentration at the electrolyte/SEI, which is as
+follows [39]:
+at z = 0 Cs = εC0
+s (2)
+where ε represents the porosity of the layer, andC0
+s is the concentration of the bulk solution.
+The kinetics of the irreversible formation process of the product are expressed using a Tafel
+expression as follows [39]:
+at z = L(t)JSEI = −kSEI Csexp
+ 
+−αcF
+ 
+Eeq(SOC) − USEI
+
+RT
+!
+(3)
+where USEI is the reaction of solvent reduction equilibrium potential and kSEI is its rate
+constant. Moreover, Eeq which depends on SOC, is the anode’s open circuit potential. The
+rate of the solvent reduction process, JSEI , and the growth rate of the SEI layer brought on
+
+Batteries 2024, 10, 220 7 of 32
+by the creation of the insoluble product, determine the solvent flow at the SEI/electrode
+interface [39].
+−Ds
+δCs
+δz |z=L(t) = −JSEI = CP
+dL
+dt (4)
+where L is the thickness of the SEI layer and CP is the molar density of the reaction product.
+The ratio of the number of lost lithium ions in the SEI to the number of starting lithium
+ions is known as the capacity loss, or x(t) [40].
+x(t) = ZPCPAAnode
+N0
+L(t) (5)
+where N0 is the starting number of moles of lithium ions in the cell, AAnode is the anode
+surface area, and ZP is the number of Li atoms in the product.
+2.1.2. Lithium Plating
+Lithium plating, which happens during charging when lithium ions unevenly de-
+posit on the anode, generating metallic lithium, is one major cause for concern in battery
+degradation [41]. The mechanism of lithium plating is shown in Figure 3. Exposure to low
+temperatures or rapid charging frequently intensifies this effect. For example, charging a
+7.5 Ah cell at 1 C rate at 0 ◦C would result in a significant 3.6% capacity loss [42]. The three
+following main variables cause the power and energy densities of a lithium-ion battery
+to decrease at low temperatures, especially when charging: 1. inadequate charge-transfer
+rate; 2. low solid diffusivity of lithium ions in the electrode; and 3. reduced ionic conduc-
+tivity in the electrolyte [ 43–45]. Ionic conductivity in the electrolyte diminishes, which
+causes an increase in cell internal resistance; nevertheless, this is not the primary issue with
+low-temperature charging. Lithium plating at low temperatures, where lithium ions collect
+at the interface between carbon particles and electrolytes, may be primarily caused by
+poor Li+ diffusivity inside the electrodes [46,47]. Dendrite development, which can result
+in internal short circuits, overheating, or even explosions, increases internal resistance,
+capacity loss, and safety issues associated with lithium plating [48,49]. Lower temperatures,
+often below 20 ◦C, cause the intercalation potential of graphite material to approach that
+of metallic lithium and decrease the diffusion rate of lithium into the anode or electrolyte.
+As a result, metallic lithium plating could happen. High C-rates, low temperatures, and
+low SOC are particularly conducive to lithium plating [ 43]. During fast charging, there
+is a greater chance that the charging rate will surpass the intercalation rate. The quantity
+of Li+ ions transferred during the charge-transfer process from the cathode to the anode
+per unit of time rises at a high C-rate [ 44]. High SOC has a great impact on the lithium
+plating. The impact of high SOC on graphite/LCO 5 Ah pouch cells at different cutoff
+voltages ranging from 4.2 V to 4.8 V was investigated by Juarez-Robles et al. [45]. Significant
+capacity decline, lithium plating, electrolyte breakdown, and volume expansion were seen
+in cells charged over 4.5 V . The cells that were charged to 4.6 V , 4.7 V , and 4.8 V showed
+dendritic structures [45]. Moreover, the anode resistance may approach a critical limit
+beyond a particular age. Lithium plating begins at this limit, where the anode potential
+falls below 0 V against Li/Li+ [46]. Lithium plating, in contrast to SEI layer development,
+is a positive reinforcing event whereby the deposits on the anode reduce the active surface
+area, which raises the current density at the remaining accessible pores and increases the
+metal plating. This leads to the observation of a knee point in the deterioration behavior
+at the age of lithium plating. Lithium plating results in LLI and may make the cell less
+safe since it can induce internal short circuits by allowing lithium dendrites to form [17].
+Various modeling techniques of lithium plating have been presented in [50–53]. Lithium
+plating can be estimated using the Butler–Volmer equation [ 47]. Zhao et al. utilized a
+reduced order model to consider the lithium plating evolution as shown in the following
+equations [54]:
+JLi
+total = Jli + JLi
+Plating (6)
+
+Batteries 2024, 10, 220 8 of 32
+JLi
+Plating = asi0,p
+
+exp
+ αa,pFηp
+RT
+
+− exp
+
+− αc,pFηLi
+RT
+ 
+(7)
+Batteries 2024, 10, 220 8 of 34 
+ 
+increases the metal plating. This leads to the observation of a knee point in the deteriora-
+tion behavior at the age of lithium plating. Lithium plating results in LLI and may make 
+the cell less safe since it can induce internal short circuits by allowing lithium dendrites to 
+form [17]. Various modeling techniques of lithium plating have been presented in [50–53]. 
+Lithium plating can be estimated using the Bu tler–Volmer equation [47]. Zhao et al. uti-
+lized a reduced order model to consider the lithium plating evolution as shown in the 
+following equations [54]: 
+𝐽௧௢௧௔௟
+௅௜ = 𝐽௟௜ + 𝐽௉௟௔௧௜௡௚
+௅௜  (6)
+ 𝐽௉௟௔௧௜௡௚
+௅௜ =𝑎 ௦𝑖଴,௣ ൤exp ൬𝛼௔,௣𝐹𝜂௣
+𝑅𝑇  ൰ − exp ൬−𝛼௖,௣𝐹𝜂௅௜
+𝑅𝑇 ൰ ൨ (7)
+ 
+Figure 3. Degradation mechanism in anode due to lithium plating [55]. 
+2.1.3. Stress 
+One of the main factors contributing to lithium-ion battery degradation is mechanical 
+stress at the anode [56]. There is a number of negative consequences that might arise from 
+mechanical stress on the anode. Initially, the anode material may experience physical 
+damage from the stress, such as deformation or cracking, which would compromise its 
+structural integrity and lessen its capacity to store and release lithium ions during cycles 
+of charging and discharging [57]. Wang et al. investigated the mechanical stress on the 
+anode and cathode and found cracks in both surface and cross-sectional areas [58], as 
+shown in Figure 4. This damage may cause the internal resistance to rise, which would 
+lower its overall performance and efficiency. Furthermore, mechanical stress could permit 
+the electrolyte to penetrate the anode material and start chemical reactions that eventually 
+weaken the anode and reduce battery capacity  [50]. Moreover, internal short circuits 
+brought on by stress-induced dendritic formation—a process in which microscopic lith-
+ium metal fibers protrude from the anode su rface—can enter the separator and result in 
+safety hazards like thermal runaway, overheatin g, or even explosions [51–53,59]. As the 
+particles go through a phase transition, the intercalation of lithium ions into the anode 
+may cause sudden variations in volume [60,61]. As more lithium is added, the orientation 
+of the molecules shifts during a phase transition, producing distinct geometrical and elec-
+trical features. This results in mechanical stress brought on by a volume shift, which can 
+Figure 3. Degradation mechanism in anode due to lithium plating [55].
+2.1.3. Stress
+One of the main factors contributing to lithium-ion battery degradation is mechanical
+stress at the anode [ 56]. There is a number of negative consequences that might arise
+from mechanical stress on the anode. Initially, the anode material may experience physical
+damage from the stress, such as deformation or cracking, which would compromise its
+structural integrity and lessen its capacity to store and release lithium ions during cycles of
+charging and discharging [57]. Wang et al. investigated the mechanical stress on the anode
+and cathode and found cracks in both surface and cross-sectional areas [ 58], as shown
+in Figure 4. This damage may cause the internal resistance to rise, which would lower
+its overall performance and efficiency. Furthermore, mechanical stress could permit the
+electrolyte to penetrate the anode material and start chemical reactions that eventually
+weaken the anode and reduce battery capacity [ 50]. Moreover, internal short circuits
+brought on by stress-induced dendritic formation—a process in which microscopic lithium
+metal fibers protrude from the anode surface—can enter the separator and result in safety
+hazards like thermal runaway, overheating, or even explosions [51–53,59]. As the particles
+go through a phase transition, the intercalation of lithium ions into the anode may cause
+sudden variations in volume [ 60,61]. As more lithium is added, the orientation of the
+molecules shifts during a phase transition, producing distinct geometrical and electrical
+features. This results in mechanical stress brought on by a volume shift, which can cause
+contact loss with the composite electrode (CL), surface layer cracking (LLI and LAM),
+and anode structural damage (LAM) [ 62]. Electrode porosity, which is necessary for
+the electrolyte to reach the electrode’s bulk, may also decrease as a result of the active
+material’s volume change [21,63]. Different modeling techniques of stress factors of lithium-
+ion batteries have been presented in [ 64–67]. The hydrostatic stress of an anode can be
+evaluated using the following equations [59,68]:
+σ(h) = σ1 + σ2 + σ3
+3 = σr + 2σc
+3 = 2ΩE
+9(1 − V) [ 3
+R3
+Z R
+0
+C(r)r2dr − C(r)] (8)
+
+Batteries 2024, 10, 220 9 of 32
+where the volume fluctuation of the intercalated lithium and solution host material is
+described by the partial molar volume, or Ω. The particle’s lithium concentration field is
+denoted by C. The Young modulus (E) and Poisson ratio (ν) are used, respectively.
+Batteries 2024, 10, 220 9 of 34 
+ 
+cause contact loss with the composite electr ode (CL), surface layer cracking (LLI and 
+LAM), and anode structural damage (LAM) [ 62]. Electrode porosity, which is necessary 
+for the electrolyte to reach the electrode’s bulk, may also decrease as a result of the active 
+material’s volume change [21,63]. Different modeling techniques of stress factors of lith-
+ium-ion batteries have been presented in [64 –67]. The hydrostatic stress of an anode can 
+be evaluated using the following equations [59,68]: 
+𝜎(ℎ) = 𝜎ଵ +𝜎 ଶ +𝜎 ଷ
+3 = 𝜎௥ +2 𝜎௖
+3 = 2Ω𝐸
+9(1 − 𝑉)ሾ 3
+𝑅ଷ න𝐶 (𝑟)𝑟ଶ𝑑𝑟 − 𝐶(𝑟)ሿ 
+ோ
+଴
+ (8)
+where the volume fluctuation of the intercalated lithium and solution host material is de-
+scribed by the partial molar volume, or Ω. The particle’s lithium concentration field is 
+denoted by C. The Young modulus (E) and Poisson ratio (𝜈) are used, respectively. 
+ 
+Figure 4. Impact of stress in both anode and cathode of lithium-ion battery [58]. 
+2.2. Degradation in Cathode 
+Battery degradation in the cathode of lithium-ion batteries involves mechanisms 
+such as transition metal dissolution, formatio n of surface layer film, stress, and particle 
+cracking. These processes contribute to capacity loss, reduced cycling stability, decreased 
+energy density, and decreased battery performance over time. 
+2.2.1. Film on Cathode Surface Layer 
+Surface layer films, sometimes called cathode electrolyte interphase (CEI) layers, can 
+develop on the cathode owing to electrolyte oxidation and salt deposition, much like they 
+can on the anode [69]. Using direct STEM (E ELS) measurements, Roy et al. investigated 
+structural and compositional changes at the surfaces of 𝐿𝑖𝑀𝑛ଶ𝑂ସ epitaxial films at the 
+atomic level [70]. The findings unequivocally demonstrate that O deficiency near the pure 
+LiMn2O4 surface is linked to Li deficiency and a mean Mn oxidation state that is lower 
+than predicted by the classical intercalation mechanism. A thin surface layer with an ap-
+proximate 𝐿𝑖௫𝑀𝑛ଶ𝑂ସ௬  composition that fluctuates progressively down to a depth of 
+around 15 nm is produced by this non-stoichiometry. When Li is removed, Jahn–Teller 
+𝑀𝑛ଷାions oxidize to smaller 𝑀𝑛ସା ions, causing a decrease in lattice volume inside the 
+film and a significant rise in strain on the surficial layer during the first charge. In this 
+state, the highly strained surficial layer is unstable and reconstructs to create 𝑀𝑛
+ଷ𝑂ସ at a 
+depth of 2–3 nm with additional oxygen loss; during the first cycle, 𝑀𝑛ଶା dissolution 
+and/or spallation of the strained selvedge cause a significant reduction in specific capacity. 
+The cathode surface layer has poor lithium-ion conductivity, which raises the impedance, 
+in contrast to the SEI layer. Additionally, gas evolution is conceivable [71]. Several mod-
+eling techniques have been introduced by [72–75]. SEI film layer formation rate can be 
+Figure 4. Impact of stress in both anode and cathode of lithium-ion battery [58].
+2.2. Degradation in Cathode
+Battery degradation in the cathode of lithium-ion batteries involves mechanisms such
+as transition metal dissolution, formation of surface layer film, stress, and particle cracking.
+These processes contribute to capacity loss, reduced cycling stability, decreased energy
+density, and decreased battery performance over time.
+2.2.1. Film on Cathode Surface Layer
+Surface layer films, sometimes called cathode electrolyte interphase (CEI) layers, can
+develop on the cathode owing to electrolyte oxidation and salt deposition, much like they
+can on the anode [69]. Using direct STEM (EELS) measurements, Roy et al. investigated
+structural and compositional changes at the surfaces of LixMn2O4y epitaxial films at the
+atomic level [ 70]. The findings unequivocally demonstrate that O deficiency near the
+pure LiMn2O4 surface is linked to Li deficiency and a mean Mn oxidation state that is
+lower than predicted by the classical intercalation mechanism. A thin surface layer with
+an approximate LiMn2O4 composition that fluctuates progressively down to a depth of
+around 15 nm is produced by this non-stoichiometry. When Li is removed, Jahn–Teller
+Mn3+ ions oxidize to smaller Mn 4+ ions, causing a decrease in lattice volume inside the
+film and a significant rise in strain on the surficial layer during the first charge. In this state,
+the highly strained surficial layer is unstable and reconstructs to create Mn3O4 at a depth
+of 2–3 nm with additional oxygen loss; during the first cycle, Mn 2+ dissolution and/or
+spallation of the strained selvedge cause a significant reduction in specific capacity. The
+cathode surface layer has poor lithium-ion conductivity, which raises the impedance, in
+contrast to the SEI layer. Additionally, gas evolution is conceivable [71]. Several modeling
+techniques have been introduced by [72–75]. SEI film layer formation rate can be described
+by Tafel equation [76]. The formation rate of the particle on site can be described by the
+following equation:
+Г f orm,i = K exp(− F
+2RT ηs,i) (9)
+where
+K = Js,i0a0Na
+2F (10)
+ηs,i = ϕs,i − Us (11)
+ϕs,i= ϕn −
+ 
+Jn
+kα
++ Js
+kβ
+!
+δi
+An
+(12)
+
+Batteries 2024, 10, 220 10 of 32
+Here, ϕs,i is the potential site of I, and Us is the local equilibrium of SEI formation.
+Kemeny et al. state that organic compounds produced at the anode by reduction may also
+be carried to the cathode, where they undergo oxidation and deposit on the cathode surface
+to produce LAM and LLI [60]. Similar conclusions were reached in [61]. Unfortunately, it is
+more challenging to detect this surface film layer because of the greater cathode voltage.
+2.2.2. Stress
+Similar to the anode, the cathode may experience phase transitions that lead to LAM
+and CL during the intercalation and deintercalation of Li ions. Depending on the chem-
+istry, there are different amounts of volume changes. For instance, LFP cells only have a
+two-phase regime with FePO 4 and LiFePO4 [64]. Different chemistries exhibit various
+transitions of phase in the anode and cathode voltage profiles, such as NMC or NCA [65].
+As a result, the shape transitions from cubic to tetragonal. This can raise the cathode
+volume in the case of LMO by around 16% [66], producing more LAM [67]. Low SOC is
+when the Jahn–Teller distortion happens. Capacity fading brought on the volume variation
+can be lessened by adding dopants and adjusting the end-of-discharge voltage (EODV).
+Kim and Huang performed an experimental study where it has been shown that under
+high C-rate, the electrode is fully saturated in a shorter period of time and mechanical
+stress dramatically increased in lithium intercalation areas which significantly increased
+the capacity fade [77]. The stress of the lithium-ion battery can be modeled by the following
+equations [78]:
+δc
+δt
++ ∇.Г = 0 (13)
+where
+Г = −D
+
+∇c − Ωc
+RT
+
+∇σh (14)
+σh = σ11 + σ22 + σ33
+3 (15)
+Here, σh is the hydrostatic stress.
+2.2.3. Dissolution of Transition Metals
+Transition metal oxides, such those based on manganese, nickel, and cobalt, are fre-
+quently used as cathode materials in LIB [79]. These transition metal ions can dissolve into
+the electrolyte during the battery’s repeated cycles of charging and discharging, especially
+in extreme weather or at high temperatures. The development of soluble metal species
+at the cathode contact is the result of side reactions that cause this dissolution [ 72]. The
+transition metal ions that have been dissolved then go to the anode, where they may plate
+and form metallic deposits known as “dendrites”. These dendrites have the ability to pierce
+the separator, resulting in internal short circuits, lowering the battery’s total capacity and
+jeopardizing the lithium-ion battery’s functionality and safety.LiPF6 salt is included in most
+battery electrolytes [73]. These cells can produce hydrogen fluoride (HF) from impuri-
+ties within the electrolyte during cycling and storage, especially at high cell voltages and
+temperatures [74]. Liao et al. presented the oxidization carbonates at the Li xNi0.5Mn0.5O2
+where the formation of HF usually includes the hydrolysis of LiPF 6 from the incidental
+electrolyte water, as shown in Equation (16) [79].
+LiPF6 − →LiF + PF6
+H2O
+− →PF3 + 2HF (16)
+The synthesis of λ − MnO2 and the presence of HF have been coupled by Mikheenkova
+et al. to explain Mn migration to the negative electrode, as demonstrated by
+Equation (17) [75].
+
+Batteries 2024, 10, 220 11 of 32
+Li1−xMn2O4 + 2(1 − x)HF
+− →
+  3+x
+4
+
+λMn2O4 + (1 − x)LiF + (1 − x)H2O +
+ 
+1 − x
+2
+
+MnF2
+(17)
+Mn2+ may migrate from the electrolyte to the negative electrode via this hypothesized
+pathway. The Li(Ni0.5Mn0.3Co0.2)O2 mechanism has been expanded to incorporate high
+cell voltage operation. This raises the electrolyte’s acidity. The resultant HF raises the
+impedance and causes capacity fading by dissolving the transition metals and corroding
+the cathode. It also contributes to various degradation processes in the anode and cathode.
+First, structural deterioration of the cathode (LAM) due to metal dissolution might lower
+the cathode’s capacity to insert lithium [79]. Moreover, upon dissolution, the metals may
+migrate through the electrolyte and settle on the anode, where they will serve as catalysts
+for the reductive breakdown event that produces the formation of the SEI layer [ 80].
+Lastly, lithium metal dendrites (LLI and LAM) may develop on the deposited metals
+as a result of the transition metals that are formed on the anode during this reductive
+process. A serious safety issue arises from the possibility of internal short circuits caused
+by these dendrites. Transition metal dissolution can be particularly harmful to spinel-
+containing chemistries like LiMn2O4, since the degree of dissolution can be significantly
+higher and cause more structural damage of the cathode (LAM) [ 81]. Transition metal
+dissolution during the charging process is inevitable, but it may be minimized by lowering
+the electrolyte’s impurity level, employing dopants, and utilizing protective coatings to
+lessen direct contact between the cathode and the electrolyte [82]. Krupp et al. claim that at
+potentials higher than 4.6 V , a significant increase in the rate of manganese dissolution was
+observed. Regardless of the charge level, manganese deposits on the graphite electrode
+were always in the oxidation state +2 while the system was in operation [83]. Transition
+metal ion dissolution often occurs in the presence of acidic species in the electrolytes. It
+is commonly known that LiPF 6 may include traces of hydrogen fluoride (HF), and that
+HF can be produced when LiPF 6 combines with traces of water or alcohol in carbonate
+solvents [84,85]. Degradation in cathode due to dissolution of transition materials has been
+shown in Figure 5.
+Batteries 2024, 10, 220 12 of 34 
+ 
+ 
+Figure 5. Degradation mechanism in cathode due to transition material dissolution [82]. 
+3. Key Degradation Factor 
+Despite being popular and effective, lithium-ion batteries deteriorate over time for a 
+number of reasons. Cycling, or the charge–discharge cycle that a battery experiences 
+throughout its lifespan, is one important co mponent. Every cycle alters the composition 
+of a battery physically and chemically, brea king down the electrode materials and form-
+ing undesirable compounds that lower the ba ttery performance and capacity [86]. An-
+other important degrading element is temperature. Higher temperatures hasten chemical 
+processes in the battery, which speed up the deterioration of the electrolytes and electrode 
+materials. In the same way, low temperature, SOC, DOD, and calendar aging also play a 
+vital role in battery degradation. Reduced energy efficiency, capacity loss, and even safety 
+risks like thermal runaway might result from this. 
+3.1. Cycling Degradation 
+Cycling degradation in lithium-ion batteries refers to the progressive deterioration in 
+performance that occurs as the battery unde rgoes repeated charge and discharge cycles 
+during its operational life [87]. With each cy cle, various physical and chemical processes 
+contribute to the gradual degradation of th e battery components [88]. Mechanical stress 
+resulting from the expansion and contraction of electrode materials, particularly in the 
+anode, can lead to structural damage and decreased capacity [85]. Xu et al. presented an 
+empirical model of degradation prediction of lithium-ion batteries and the authors also 
+claim that five stress factors (temperature, DOD, charging C rate, discharging C rate, and 
+middle SOC) have a great influence on the cycling aging [89]. Additionally, chemical re-
+actions at the electrode–electrolyte interface can form a solid–electrolyte interface (SEI) 
+layer, hindering ion transport and increasing internal resistance [90]. Wang et al. presents 
+a post mortem study of a lithium-ion battery using neutron depth profiling (NDP) where 
+it has been shown that SEI grow logarithmically with cycle number starting with the main 
+formation of the initial cycle [71]. Transition metal dissolution from the cathode, electro-
+lyte decomposition, and thermal effects further contribute to capacity fade and reduced 
+overall efficiency [72]. Lee presented the impact of transition metal dissolution on cycling 
+aging where 𝐿𝑖𝑀𝑛
+ଶ𝑂ସ is used as transition metal [91]. In this study, 5, 50, and 500 ppm 
+concentrations of Mn are dissolved in the el ectrolyte which is used as the input of the 
+Figure 5. Degradation mechanism in cathode due to transition material dissolution [82].
+
+Batteries 2024, 10, 220 12 of 32
+3. Key Degradation Factor
+Despite being popular and effective, lithium-ion batteries deteriorate over time for
+a number of reasons. Cycling, or the charge–discharge cycle that a battery experiences
+throughout its lifespan, is one important component. Every cycle alters the composition of
+a battery physically and chemically, breaking down the electrode materials and forming
+undesirable compounds that lower the battery performance and capacity [86]. Another im-
+portant degrading element is temperature. Higher temperatures hasten chemical processes
+in the battery, which speed up the deterioration of the electrolytes and electrode materials.
+In the same way, low temperature, SOC, DOD, and calendar aging also play a vital role in
+battery degradation. Reduced energy efficiency, capacity loss, and even safety risks like
+thermal runaway might result from this.
+3.1. Cycling Degradation
+Cycling degradation in lithium-ion batteries refers to the progressive deterioration in
+performance that occurs as the battery undergoes repeated charge and discharge cycles
+during its operational life [87]. With each cycle, various physical and chemical processes
+contribute to the gradual degradation of the battery components [88]. Mechanical stress
+resulting from the expansion and contraction of electrode materials, particularly in the anode,
+can lead to structural damage and decreased capacity [85]. Xu et al. presented an empirical
+model of degradation prediction of lithium-ion batteries and the authors also claim that five
+stress factors (temperature, DOD, charging C rate, discharging C rate, and middle SOC)
+have a great influence on the cycling aging [ 89]. Additionally , chemical reactions at the
+electrode–electrolyteinterface can form a solid–electrolyte interface (SEI) layer, hindering ion
+transport and increasing internal resistance [90]. Wang et al. presents a post mortem study
+of a lithium-ion battery using neutron depth profiling (NDP) where it has been shown that
+SEI grow logarithmically with cycle number starting with the main formation of the initial
+cycle [71]. Transition metal dissolution from the cathode, electrolyte decomposition, and
+thermal effects further contribute to capacity fade and reduced overall efficiency [72]. Lee
+presented the impact of transition metal dissolution on cycling aging where LiMn2O4 is used
+as transition metal [91]. In this study , 5, 50, and 500 ppm concentrations of Mn are dissolved
+in the electrolyte which is used as the input of the experiment and the results show that the
+higher dissolution rate caused severe fraction and volume losses during the cycling.
+Lithium-ion battery cycling deterioration results from a combination of chemical and
+physical reactions that take place during repeated cycles of charging and discharging. The
+mechanical stress that the electrode materials, particularly in the anode, endure during the
+volume changes that occur during charging and discharging, is one of the main contributing
+factors. The cycle deterioration of lithium-ion batteries is caused by the combined impacts of
+mechanical, electrochemical, and thermal stressors [92]. This degradation affects the batteries’
+capacity , energy retention, and overall performance throughout the course of their operational
+lives. There are several models for estimating the cycling aging estimation [93–96]. Cycling
+degradation can be estimated from the following equations:
+LCyc = ∑
+N
+i ni fc(σi, δi, Tc,i) (18)
+where N is the number of cycles, ni mentioned that i is a full cycle or half, δi is the depth
+of discharge, σi is the average SOC of the cycle, and Tc,i is the average cell temperature.
+The cycling aging problem of lithium-ion batteries can be mitigated by adopting different
+techniques. Wood et al. present an aging level-based charging strategy which may slow
+down the capacity fade by 3.84% and increase the life time by 40 cycles to 50 cycles [97].
+3.2. Electrolyte Breakdown
+Electrolyte breakdown is the chemical reaction and deterioration of the electrolyte. Re-
+peated cycles, high temperatures, or overcharging are some of the reasons that might cause
+this breakdown and result in the development of undesirable byproducts [98]. Increased
+internal resistance, capacity decline, and decreased overall performance in lithium-ion
+
+Batteries 2024, 10, 220 13 of 32
+batteries are caused by electrolyte degradation [99]. The breakdown of the electrolyte, an
+essential aspect that facilitates ion transport between the positive and negative electrodes
+in lithium-ion batteries is a complicated process involving a variety of chemical and elec-
+trochemical events that affect the electrolyte’s usefulness and stability. The creation of a
+solid–electrolyte interface during the battery’s repeated cycles of charge and discharge is
+one important factor [100]. Even while the SEI is necessary for a battery to function nor-
+mally, its constant expansion can obstruct ion transport and cause electrolyte degradation.
+Furthermore, high voltages can cause electrolyte breakdown, producing heat, gas, and
+unwanted chemical species that exacerbate breakdown, particularly when overcharging or
+at high temperatures.
+Chemical reactions inside the electrolyte can be accelerated by thermal stress from
+internal and external heat sources in combination with undesirable side reactions at
+the electrode–electrolyte contact. Investigating low- and high-Ni content NMC using
+single-solvent LiPF6-based electrolytes by Zhang et al. has revealed new information re-
+garding the higher interfacial reactivity for charged Ni-rich NMC cathodes and the crucial
+impact the electrolyte solvent plays [ 101]. This study reveals that there is an inherent
+connection between the deterioration of the cathode surface and sub-surfaces and the
+amount of lattice oxygen loss from NMC, which was shown to be dependent on both
+the Ni-content and the electrolyte solvent. The number of charge–discharge cycles that
+occur once a battery’s usable capacity drops to 80% of its initial value is known as the
+cycle life. LIBs typically display two-phase capacity degradation behavior, which denotes
+that the capacity first deteriorates slowly before experiencing an accelerated degrada-
+tion that begins at a specific beginning point. This phase, which is sometimes referred
+to as the knee point, is crucial to the cell cycle as a whole. The combination of internal
+chemical reaction, external charging/discharging circumstances, and battery environment
+affects the development of knee point [102]. Following this, the capacity will quickly drop
+very significantly.
+3.3. Temperature
+Lithium-ion battery performance and deterioration are significantly influenced by
+temperature. Temperature variations can have an effect on the electrochemical processes
+taking place inside the battery, hence compromising its general health.
+3.3.1. High Temperature
+High temperatures have a significant impact on lithium-ion battery performance and
+safety in a number of different ways. The battery’s chemical processes are accelerated by
+elevated temperatures, which can be caused by external factors or internal heat produced
+during cycles of charging and discharging. This involves the electrolyte breaking down
+and an increase in electrode–electrolyte interface reactions, which increases the possibility
+of thermal runaway. Furthermore, on electrode surfaces, high temperatures hasten the
+creation and expansion of the solid–electrolyte interface. While the SEI is necessary for
+battery operation, too much development can increase internal resistance and reduce the
+efficiency of ion transport. Furthermore, the elevated temperature raises the possibility of
+dendrite development, particularly in lithium metal anodes. LiCoO2 and LiMn2O4 cathode
+capacity variation was investigated by Gao et al. [ 103]. Thermal aging was applied to
+the LiCoO2 and LiMn2O4 cathodes for 10 and 6 days, respectively, at 75 ◦C. Following
+age treatment, discharge patterns of these two cathodes demonstrated a significant loss
+of capacity. Almeida et al. [104] examined the aging process of LIBs based on Li (Ni, Mn,
+Co)O2 (NMC). The tested battery’s capacity lost 7.5% when it was cycled at 85 ◦C and 22%
+when it was cycled at 120 ◦C. Two potential explanations for the aging deterioration were
+presented by means of characterization techniques that allowed for the assessment of the
+binder and SEI changes during the aging process. The anode surface had been moved to by
+the polyvinylidene fluoride (PVDF) binder, which prevented the intercalation of lithium
+ions. Conversely, at high temperatures, the carbonates species vanished, and the inorganic
+
+Batteries 2024, 10, 220 14 of 32
+species multiplied at the SEI layers, increasing the internal resistance of the batteries. Kalaga
+et al. [105] examined the impact of temperature on the rate of capacity deterioration of a
+Sony Prismatic LIB during aging from 25 ◦C to 55 ◦C using the electrochemistry-based
+electrical (ECBE) model. Increasing the temperature within the measured range partly
+boosted the battery’s capacity but also sped up the rate at which the capacity degraded
+during cycling [106].
+3.3.2. Low Temperature
+Lithium-ion battery performance is significantly impacted by cold temperatures, pri-
+marily impacting internal resistance and ion mobility. The mobility of lithium ions in the
+battery is reduced in cold environments, which slows down electrochemical processes.
+At a temperature of 0 or below that, lithium-ion batteries started to degrade [ 107]. Ac-
+cording to Naga Subramanian, Panasonic 18,650 LIBs had power and energy densities of
+about 800 W/L and 100 Wh/L at 25 ◦C. At −40 ◦C, these values decreased by 98.75% and
+95% to less than 10 W/L and ~5 Wh/L. When the operating temperature dropped from
+25 ◦C to −15 ◦C [103], it was also discovered that the state of charge (SOC) of a LIB, which
+is defined as the ratio of the current residual capacity to the overall available capacity, re-
+duced by almost 23% [104]. An improved electrolyte formulation of 1.0 M LiPF6 in ethylene
+carbonate (EC)−propylene carbonate (PC)−ethyl methyl carbonate (EMC) (1:1:8 by wt)
+with 0.05 M CsPF6 was also reported by Tang et al. [108]. For the batteries tested at −40 ◦C,
+this formulation allowed for a capacity retention of 68%, whereas the batteries with the
+standard formulation only demonstrated a 20% capacity retention. Lithium difluoro phos-
+phate (LiPO2F2) is one particular electrolyte addition that has been shown to be useful in
+enhancing LIB performance at low temperatures [109]. Another significant element that
+plays a role in the performance reduction in LIB at low temperatures is the rise in charge-
+transfer resistance. It has been observed that LiFePO4-based cathodes exhibit a three-fold
+increase in charge-transfer resistance at −20 ◦C compared to ambient temperature [105].
+Reduced capacity and power production result from slow ion movement, which is espe-
+cially noticeable during discharge cycles. Furthermore, the battery’s internal resistance
+increases in a cold environment, obstructing the free passage of ions [110]. Particularly in
+scenarios with high demand, the higher internal resistance lowers overall efficiency and
+causes voltage dips. Moreover, the electrolyte may partially solidify in extremely low tem-
+peratures, which would impair its capacity to efficiently promote ion mobility [93,94]. The
+battery’s performance is further hindered by this solidification, which eventually causes
+capacity reduction.
+Several temperature modeling techniques has been shown in [98,111,112]. The tem-
+perature of the lithium-ion battery could be assumed from the simplified energy balance
+which is shown in the following equation [93]:
+qT = I.
+ 
+V − Uavg
+
++ I.T δUavg
+δT (19)
+where, I is the cell current, V is the cell voltage, Uavg is the open circuit voltage, T is the
+absolute temperature,
+ 
+V − Uavg
+
+is the cell over potential, I.
+ 
+V − Uavg
+
+is the polarization
+heat, and I.T δUavg
+δT is the reversible entropic heat.
+3.4. Calendar Aging
+The slow deterioration of a lithium-ion battery performance over time, even when it is
+not in use, is known as calendar aging [25]. Calendar aging is related to time passing, as
+opposed to cycle aging, which is caused by charging and discharging cycles [95]. Calendar
+aging is greatly influenced by variables including temperature, charge level, and storage
+circumstances. Keli et al. shows that calendar aging strongly depends on the graphite
+electrode which is the main driver of capacity fade [ 25]. This study also revealed that
+if the graphite anode lithiated more than 50%, the low anode potential will accelerate
+the loss of cyclable lithium. As the battery ages, slow-moving chemical processes take
+
+Batteries 2024, 10, 220 15 of 32
+place inside it, forming solid–electrolyte interphase (SEI) and other degradation products.
+Alsagri et al. demonstrated that the loss of cycleable lithium as a result of SEI layer
+formation is the primary cause of capacity decline during calendar aging [ 96]. When
+compared to a fresh cell, this might explain the thermal behavior of the electrodes in
+their older form. Because the previous state’s SEI layer is more prominent and undergoes
+exothermic breakdown, the onset temperature is lowered. Simultaneously, the aged anode
+releases a lot less total energy. This is because there is less intercalated lithium in the aged
+anode’s charged state, which might react with the electrolyte during the thermal tests. This
+procedure may cause the battery’s capacity to decrease, its internal resistance to rise, and
+its overall performance to decline [ 113]. However, because the old cathode’s potential
+in the charged state remains unchanged, the aged cathode/electrolyte process does not
+exhibit any appreciable divergence from its thermal behavior. The aged lithium-ion cell’s
+somewhat higher heating rate over 200 C can be attributed to the cathode’s larger surface
+area. Increased internal resistance is a result of the solid–electrolyte interphase (SEI) layer
+on the electrode surfaces forming and rebuilding over time.
+The degradation of active materials in batteries is caused by unwanted side reactions,
+which have an adverse effect on the battery’s overall performance. The effective surface
+area for electrochemical reactions can be decreased and the battery’s capacity affected by the
+agglomeration and development of active material particles as well as lithium plating on the
+anode under specific circumstances [114,115]. Since these aging processes are accelerated
+by elevated temperatures, temperature regulation is essential for reducing calendar aging.
+Manufacturers concentrate on developing efficient electrolytes, optimizing battery materials,
+and putting in place cutting-edge battery management systems in order to overcome these
+obstacles and increase the longevity and functionality of lithium-ion batteries [116]. Several
+calendar aging modeling techniques have been shown in [117–120]. Suri et al. presented a brief
+review about the electrochemical, semi-empirical, and data-driven models [121]. Calendar
+aging of lithium-ion battery can be explained by the Arrhenius equation [121].
+Qloss = f (SOC)exp
+
+−Ea
+(SOC)
+RTs
+
+.tz (20)
+where, both f (SOC) and Ea(SOC) are the SOC dependent terms, R is the gas constant, and
+z is the power law parameter used to denote the dependence of time parameters.
+3.5. State of Charge
+In lithium-ion batteries, battery degradation due to SOC is the result of keeping the
+battery at a certain charge level for lengthy periods of time, either high or low. This
+causes the general health of battery to gradually deteriorate. Long-term full-charge times
+(high SOC) can lead to the production of unwanted byproducts such the solid–electrolyte
+interphase (SEI) layer on the electrode surfaces. The ongoing development of this layer
+may raise internal resistance, restricting the movement of ions and electrons within the
+battery and eventually lowering its capacity. However, persistently using the battery at low
+SOC levels may cause lithium plating, or the accumulation of lithium metal on the anode.
+Bui et al. performed an experimental investigation on five cells subjected to calendar aging
+for 12 months and the results indicate that the worst calendar aging conditions are 45 ◦C
+and 50% SOC [122]. The SOC gradually increases with continuous voltage charging until
+the battery is almost at capacity. When the voltage is maintained during charging, the SOC
+rises until it reaches almost full charge, at which point the voltage is kept constant while
+the SOC moves closer to saturation. Guena et al. found that 90% of the cycling degradation
+occurs due to the constant voltage [123]. There is a strong relationship between SOC and
+battery degradation. Many studies find that increasing degradation can be seen in the
+lower SOC [124–126]. This can be explained by the fact that when the cell discharges the
+impedance of the cell will be increased, which results in more self-heating and reduces
+power capabilities. Lin et al. presented the effect of minimum SOC on a battery at 30 ◦C
+with 25–45% minimum SOC and the results show an exponential increase in degradation
+
+Batteries 2024, 10, 220 16 of 32
+at higher SOC [127]. However, in [128], a negligible degradation is found with higher SOC
+cycled with a C rate of 10 C. The authors used the Arrhenius equation for modeling which
+is given below.
+Qloss = (αSOC + β)exp −Ea + ηI
+R9273.15 + T Ah2 (21)
+The safety and capacity of the battery are adversely affected by lithium plating. There
+are several charging strategies which may mitigate this degradation. Wright et al. proposed
+a state-of-charge pre-conditioning model and this method does not accelerate the battery
+degradation and was also able to mitigate battery degradation by 7.3% to 26.7% for the first
+100 days of operation [111].
+3.6. Depth of Discharge
+The depth of discharge in a lithium-ion battery is the proportion of its total capac-
+ity that has been utilized during a single discharge cycle, expressed as a percentage.
+For instance, if a battery with a capacity of 100 ampere-hours has been discharged by
+50 ampere-hours, the DOD is 50%. The monitoring and managing of DOD are critical for
+optimizing the performance and lifespan of lithium-ion batteries. Generally, shallower
+discharges (lower DOD) contribute to extended battery life, and battery management sys-
+tems often regulate DOD to strike a balance between maximizing energy storage capacity
+and preserving the longevity of the battery. Many studies found that an increasing DOD
+reduces the cycle life of a lithium-ion battery, which triggers the fast degradation of the
+lithium-ion battery [129–131]. Guana and Lebnac presented an experimental investigation
+on the effect of DOD on the battery cycle life of a lithium-ion battery and the results indicate
+that that increased DOD reduces the cycle life and increases the capacity fade, which is
+closely related to battery degradation [112]. This study also found that over a four-month
+period, microcycling at a capacity of 0.6% did not result in any performance impairment.
+Thirty-two full cycles were completed at this time. Furthermore, about sixteen thousand
+0.6% microdischarges were carried out.
+Effective DOD management is essential in various applications, including electric
+vehicles and portable electronics. Deep discharge cycles increase the risk of lithium plating
+forming on the anode of a battery, which can result in dendrite formation and risk its
+capacity and safety. Deeper discharge cycles also put more stress on the active materials
+in the electrode, which can lead to chemical and physical changes such as cracking and
+electrode structural degradation. Youksek and Alkaya illustrated a complex relationship
+between DOD and battery degradation [112]. The authors claim that battery degradation
+and lifetime is directly impacted by DOD. Higher DoD levels, which are indicative of
+deeper discharges, put the battery under more stress throughout each charge–discharge
+cycle. Increased mechanical stress, heat production, chemical reactions, capacity fading,
+and shorter cycle life are all caused by this increased stress. Many studies claimed that
+DOD can be modeled based on the Wohler curve and according to their findings, model
+degradation is exponentially dependent on the DOD. The equations are as follows [112]:
+CL(DOD) = aeb.DOD + ced.DOD (22)
+where,CL(DOD) is the cycle life as a function of DOD anda, b, c, d are the curve fit parameters.
+Increased internal resistance is a result of the solid–electrolyte interphase (SEI) layer on
+the electrode surfaces repeatedly forming and reconstructing during discharge and recharge
+cycles, especially at high DOD [32]. This eventually results in decreased performance as
+the battery’s ability to transport ions is diminished [132]. Deeper discharges also increase
+the battery’s temperature, which speeds up chemical reactions and encourages degradation
+processes. Tables 2–4 shows the impact of DOD on battery life cycle, comparison of
+performance parameter of different types of lithium ion battery and Cycle life of different
+kinds of lithium-ion batteries respectively.
+
+Batteries 2024, 10, 220 17 of 32
+Table 2. Impact of DOD on the cycle and the lifetime of lithium-ion battery [112].
+DOD Number of Cycle
+to Date
+Number of
+Full Discharge
+to Date
+Cumulative
+Discharge Capacity to
+Date
+Expected Number of
+Cycle to Reach EOL
+Equivalent Number
+of Full Cycle to Reach
+EOL
+50% 407 15 11,760 Ah 1300 650
+60% 351 13 11,930 Ah 680 400
+70% 305 12 11,820 Ah 680 400
+80% 276 10 12,380 Ah 300 240
+90% 110 10 5600 Ah 300 250
+100% 60 60 3030 Ah 180 150
+Table 3. Comparison of the performance parameters of the different types of batteries [133].
+Parameters Lead-Acid Ni-Cd Ni-MH Lithium-Ion
+Energy density(W/kg) 30–50 45–80 60–120 110–160
+Power density 180 150 250–100 1800
+Nominal voltage 2 V 1.25 V 1.25 V 3.6 V
+Overcharge tolerance High Moderate Low Very Low
+Self-discharge Low Moderate High Very Low
+Operating temperature −20–60 ◦C −40–60 ◦C −20–60 ◦C −20–60 ◦C
+Cycle life 200–300 1500 300–500 500–1000
+Table 4. Cycle life of different kinds of lithium-ion batteries.
+Reference Battery Type Factors Temperature DOD SOC C-Rate Throughput
+[117] LFP SOC, DOD, C, T 25–40 ◦C 12.5–75% 30–70% 1–1.82 900 FEC
+[134] NMC SOC, DOD, C, T −10–50 ◦C 10–100% 20–80% 1/3–2 900–1 K FEC
+[135] LMO SOC, DOD, T 20 ◦C 50–75% 75–100% 1 4 k–8 k FEC
+[136] NCA T, C 40–50 ◦C 20–65% 60–85% 18 4 K FEC
+[118] LCO SOC, DOD, T 0–60 ◦C 3–80% 0–100% 1/5 10 k FEC
+4. Key Effect of Battery Degradation on EVs and Energy Storage Systems
+Battery degradation poses significant challenges for energy storage systems, impacting
+their overall efficiency and performance. Over time, the gradual loss of capacity in batteries
+reduces the system’s ability to store and deliver the expected amount of energy. This
+capacity loss, coupled with increased internal resistance and voltage fade, leads to decreased
+energy density and efficiency. As a result, energy storage systems experience a shortened
+cycle life, reduced power output, and increased maintenance costs.
+4.1. Capacity Fade
+The steady decline in a battery’s capacity to store and release energy over time is
+referred to as capacity fade in battery energy storage systems (BESS). This phenomenon
+is especially important for rechargeable batteries used in energy storage systems, grid
+storage, and electric vehicles, among other applications. Numerous reasons contribute to
+degradation, including the impact of high operating temperatures, structural changes in
+electrodes, unintentional side reactions producing byproducts that interfere with normal
+functioning, and chemical and electrochemical processes during charge and discharge
+cycles [31,137]. The amount of regular charge and discharge cycles, or cycling depth, in
+addition to the charge level, might affect how quickly capacity fades.
+Battery degradation affects each battery cell in the battery energy storage system
+(BESS), which in turn causes capacity fading throughout the system. Waldmann et al.
+estimated an 18% capacity fade in lithium Li0.89NiCoO2 during the first charge discharge
+cycle [44]. Generally, BESS is made up of multiple interconnected batteries, and the system’s
+total performance and storage capacity are impacted by the individual cells’ deterioration
+
+Batteries 2024, 10, 220 18 of 32
+combined. The interior components of a battery cell gradually change as a result of the
+chemical and electrochemical processes that occur during charge and discharge cycles.
+Within individual cells, accumulation of byproducts takes place, such as the development
+of solid–electrolyte interfaces (SEI) or dendritic growth [119]. Li et al. said that the SEI layer
+growth is the major contributor of the capacity fade of a lithium-ion battery [ 120]. This
+study also found that after 1000 cycles, 4.45% and 4.46% capacity fade has been observed
+for the regenerative and non-regenerative cases, respectively. The ability of each cell to
+store energy decreases as a result of this degeneration. Temperature has a great impact
+on the capacity fading of a lithium-ion battery. Lam and Bauer investigated capacity fade
+at different temperatures such as −20 ◦C, 0 ◦C, 25 ◦C, and 40 ◦C and the results of this
+temperature stress factor study excluded the cell that cycled at −20 ◦C due to extreme
+capacity fading, which made it impossible to define the rate of fading. The total effect of
+several cells experiencing capacity fade is a decrease in the BESS’s capacity to store and
+distribute energy. Degraded capacity cells may not contribute as efficiently to the system’s
+overall energy production, which might result in decreased system dependability and
+overall performance [124,138]. Various models used to estimate capacity fade have been
+found in different studies [25,139,140]. Wood et al. used the following equation to estimate
+the capacity fade of the lithium-ion battery [97]:
+Q = a.exp(b.k) + c.exp(d.k) (23)
+where Q is the battery capacity, K is the number of cycles, a and b is the constant related
+to the internal impedance and c and d indicate the aging rate. Figure 6 illustrates a cross-
+sectional view of a lithium-ion battery.
+Batteries 2024, 10, 220 19 of 34 
+ 
+where Q is the battery capacity, K is the number of cycles, a and b is the constant related 
+to the internal impedance and c and d indicate the aging rate. Figure 6 illustrates a cross-
+sectional view of a lithium-ion battery. 
+ 
+Figure 6. Cross-sectional image of capacity fade of lithium-ion battery, ( a) fresh, (b) 1000, (c) 2000, 
+and (d) 3000 cycles [119]. 
+4.2. Reduction in Energy Density 
+A battery may only go through a certain nu mber of charge and discharge cycles be-
+fore its capacity decreases to a certain point [125,126]. This is known as the limited cycle 
+life of a battery energy storage system, or BESS. As it establishes the maximum number of 
+times a battery may be charged and discharged without compromising performance, cy-
+cle life is an important aspect of energy storage systems’ efficacy and lifespan [124]. The 
+cycle life of a battery is frequently shorten ed by internal processes that take place with 
+each cycle, including mechanical deterioration, heat stress, and chemical and electrochem-
+ical reactions [141]. The ability of a BESS to supply energy storage consistently and stead-
+ily over an extended length of time is impact ed as its overall efficacy and reliability are 
+undermined as its cycle life shortens. Tröltzsch, et al. investigated the efficiency degrada-
+tion of two types of lithium cell: NMC and LFP, which are affected by the calendar aging, 
+[142]. Comparison of efficiency degradation of NMC and LFP have shown in Figure 7. In 
+this study, the cells are experimented in 60 °C and 100% SOC, where it has been observed 
+that after 190 days, the overall efficiency of the cell is reduced by 9% for the NMC and 1% 
+for the LFP cell, and the capacity fade reached 37%. The composition and arrangement of 
+the batteries’ active components vary as a result of chemical processes that occur through-
+out each cycle of charging and discharging. The slow deterioration of the battery cells can 
+be accelerated by this aging process, which ca n frequently be accele rated by factors like 
+temperature changes and cycling depth [143]. Gradually, the accumulation of aging ef-
+fects in individual cells reduces the BESS’s overall capacity to store energy. The aging 
+process of the overall energy storage system is accelerated by the growth of dendrites, the 
+formation of solid–electrolyte interfaces, and thermal stress. 
+Figure 6. Cross-sectional image of capacity fade of lithium-ion battery, (a) fresh, (b) 1000, (c) 2000,
+and (d) 3000 cycles [119].
+4.2. Reduction in Energy Density
+A battery may only go through a certain number of charge and discharge cycles before
+its capacity decreases to a certain point [125,126]. This is known as the limited cycle life of
+a battery energy storage system, or BESS. As it establishes the maximum number of times
+a battery may be charged and discharged without compromising performance, cycle life
+is an important aspect of energy storage systems’ efficacy and lifespan [ 124]. The cycle
+
+Batteries 2024, 10, 220 19 of 32
+life of a battery is frequently shortened by internal processes that take place with each
+cycle, including mechanical deterioration, heat stress, and chemical and electrochemical
+reactions [141]. The ability of a BESS to supply energy storage consistently and steadily over
+an extended length of time is impacted as its overall efficacy and reliability are undermined
+as its cycle life shortens. Tröltzsch, et al. investigated the efficiency degradation of two types
+of lithium cell: NMC and LFP , which are affected by the calendar aging, [142]. Comparison
+of efficiency degradation of NMC and LFP have shown in Figure 7. In this study, the cells
+are experimented in 60 ◦C and 100% SOC, where it has been observed that after 190 days,
+the overall efficiency of the cell is reduced by 9% for the NMC and 1% for the LFP cell, and
+the capacity fade reached 37%. The composition and arrangement of the batteries’ active
+components vary as a result of chemical processes that occur throughout each cycle of
+charging and discharging. The slow deterioration of the battery cells can be accelerated by
+this aging process, which can frequently be accelerated by factors like temperature changes
+and cycling depth [143]. Gradually, the accumulation of aging effects in individual cells
+reduces the BESS’s overall capacity to store energy. The aging process of the overall energy
+storage system is accelerated by the growth of dendrites, the formation of solid–electrolyte
+interfaces, and thermal stress.
+Batteries 2024, 10, 220 20 of 34 
+ 
+ 
+Figure 7. Efficiency degradation of lithium-ion cell due to calendar aging of (a) NMC and (b) LFP 
+[124]. 
+4.3. Increase in Internal Resistance 
+The performance of a battery energy storage system (BESS) can be greatly impacted 
+by increased internal resistance, which can result from a number of different causes. This 
+increase in resistance is frequently the result of the battery aging and degrading, a process 
+that is sped up by frequent cycles of charge and discharge. Battery degradation also affects 
+EV batteries. Fanoro et al. finds great fluctuations in voltage and increasing internal re-
+sistance of EV batteries for lithium polymer batteries which are comparatively higher 
+them any other batteries [129]. The observed rise  in internal resistance is attributed to a 
+number of factors, including the creation of solid–electrolyte interfaces (SEI), high operat-
+ing temperatures, cycling depth, and dendritic growth in some chemistries, such as lith-
+ium-ion batteries. Increased internal resistance has a variety of effects. Yang et al. claimed 
+that internal resistance increased mostly at 82% of SOH for an EV battery [130]. Because 
+more energy is lost in the battery during operation, the BESS’s overall efficiency is de-
+creased. Voltage stability is also impacted by  a voltage drop across the battery terminals 
+during high-current applications. The heat produced by the resistance presents problems 
+for thermal control and may hasten the deterioration process. 
+An increasing amount of internal resistance frequently results in capacity fade, which 
+is characterized by a progressive decrease in the BESS’s ability to store energy [131]. The 
+internal resistance of the lithium ion can be estimated by the following equations [144]: 
+Figure 7. Efficiency degradation of lithium-ion cell due to calendar aging of ( a) NMC
+and (b) LFP [124].
+
+Batteries 2024, 10, 220 20 of 32
+4.3. Increase in Internal Resistance
+The performance of a battery energy storage system (BESS) can be greatly impacted
+by increased internal resistance, which can result from a number of different causes. This
+increase in resistance is frequently the result of the battery aging and degrading, a process
+that is sped up by frequent cycles of charge and discharge. Battery degradation also affects
+EV batteries. Fanoro et al. finds great fluctuations in voltage and increasing internal
+resistance of EV batteries for lithium polymer batteries which are comparatively higher
+them any other batteries [129]. The observed rise in internal resistance is attributed to a
+number of factors, including the creation of solid–electrolyte interfaces (SEI), high operating
+temperatures, cycling depth, and dendritic growth in some chemistries, such as lithium-ion
+batteries. Increased internal resistance has a variety of effects. Yang et al. claimed that
+internal resistance increased mostly at 82% of SOH for an EV battery [130]. Because more
+energy is lost in the battery during operation, the BESS’s overall efficiency is decreased.
+Voltage stability is also impacted by a voltage drop across the battery terminals during
+high-current applications. The heat produced by the resistance presents problems for
+thermal control and may hasten the deterioration process.
+An increasing amount of internal resistance frequently results in capacity fade, which
+is characterized by a progressive decrease in the BESS’s ability to store energy [131]. The
+internal resistance of the lithium ion can be estimated by the following equations [144]:
+(
+Batteries 2024, 10, x FOR PEER REVIEW 21 of 34 
+ 
+൜  𝑥ු௘ේ  = 𝐴௘𝑥ු௘ +𝐵 ௘𝑢+𝐿 ௘(𝑦 − 𝑦ු)
+𝑦ු= 𝑓௘(𝑥ු௘,𝑢 )  (24)
+𝑓௘(𝑥ු௘,𝑢 ) =𝑉௢௖(𝑧̌) −𝑉ଵෙ −𝑉ଶේ −𝑅 ௦ේ𝑢 (25)
+When the extended state estimation 𝑅௦ is multiplied by the input 𝑢, and it might 
+make fine-tuning the feedback gain 𝐿௘  more challenging, 𝐿௘  represents the extended 
+state’s dynamics. 
+4.4. Reduction in Overall Efficiency 
+Through several interconnected factors, battery degradation poses a serious threat to 
+a battery energy storage system’s overall efficiency. In an experimental study Kassem et 
+al. showed a complex relationship between degradation and efficiency [145]. Authors ex-
+perimented with two different types of lithium-ion batteries; NMC and LFP batteries 
+where it has been shown that NMC and LFP cells age differently from one another. While 
+the degradation curves of NMC cells show a two-phase concave degradation tendency, 
+those of LFP cells exhibit a typical convex form. However, in both cases, loss of active 
+material not only reduces lithium inventory but also quickens battery deterioration and 
+lowers columbic efficiency (CE) values which leads to an overall efficiency reduction. The 
+increase in internal resistance that occurs because of aging, chemical changes, and thermal 
+stress during charge and discharge cycles is one important component. Because more en-
+ergy is lost as heat as a result of this increased internal resistance, the overall efficiency of 
+the battery is decreased. 
+Battery degradation also impacts on the overall efficiency of EVs. Table 3 presents a 
+summary of the performance parameters of different types of lithium-ion battery. Darma 
+et al. claimed that battery degradation decreases the travel range of EVs which leads to a 
+decrease in the overall efficiency of EVs [146]. Another aspect of deterioration is capacity 
+fade, which over time reduces the battery’s capacity to store and distribute energy and 
+has an immediate effect on the BESS’s energy efficiency [9,147]. Older batteries may also 
+have reduced energy retention, faster rates of self-discharge, and less stored energy acces-
+sible for use when needed [139,140]. Voltag e instabilities, stemming from degradation-
+induced fluctuations, further undermine the efficiency of power conversion systems 
+within the BESS [148,149]. Moreover, increased heat generation during degradation pro-
+cesses contributes to thermal stress, exacerbating efficiency losses. An analysis applies the 
+state-level operation condition to the EV energy operation model by considering the bat-
+tery degradation effect on mid-size EVs with a 24 kWh lithium-ion manganese oxide 
+(LMO) battery pack in order to investigate th e impacts of battery degradation on the en-
+ergy consumption and GHG emissions of EVs in the USA. According to the study, due to 
+a 10-year battery deterioration, the unit energy consumption and GHG emission increases 
+vary from 29.2 Wh/km in Alaska to 127.4 Wh/km in Mississippi, and 0.2 g CO
+2/km in Ver-
+mont to 56.9 g CO2/km in Indiana, respectively [137,150,151]. A summary of the impact of 
+degradation factors on lithium-ion batteries has been presented in Table 5 [152]. 
+Table 5. Impact of degradation factors on battery anode and cathode. 
+Degradation Factor Affected Battery 
+Parts Effects Reference 
+High Temperature Anode 
+1. Decomposition of the blinder causes mechanical 
+instability. 
+2. Increased SEI layer and reduced accessible sur-
+face area as a result of SEI. 
+3. Decomposition of the electrolyte yielding the cy-
+cleable lithium ion and further SEI development. 
+[28,93,124,153,154] 
+ˇy = fe( ˇxe, u)
+(24)
+fe( ˇxe, u) = Voc( ˇz) − ˇV1 − ˇV2 − ˇRsu (25)
+When the extended state estimation Rs is multiplied by the input u, and it might
+make fine-tuning the feedback gain Le more challenging, Le represents the extended state’s
+dynamics.
+4.4. Reduction in Overall Efficiency
+Through several interconnected factors, battery degradation poses a serious threat
+to a battery energy storage system’s overall efficiency. In an experimental study Kassem
+et al. showed a complex relationship between degradation and efficiency [145]. Authors
+experimented with two different types of lithium-ion batteries; NMC and LFP batteries
+where it has been shown that NMC and LFP cells age differently from one another. While
+the degradation curves of NMC cells show a two-phase concave degradation tendency,
+those of LFP cells exhibit a typical convex form. However, in both cases, loss of active
+material not only reduces lithium inventory but also quickens battery deterioration and
+lowers columbic efficiency (CE) values which leads to an overall efficiency reduction. The
+increase in internal resistance that occurs because of aging, chemical changes, and thermal
+stress during charge and discharge cycles is one important component. Because more
+energy is lost as heat as a result of this increased internal resistance, the overall efficiency of
+the battery is decreased.
+Battery degradation also impacts on the overall efficiency of EVs. Table 3 presents a
+summary of the performance parameters of different types of lithium-ion battery. Darma
+et al. claimed that battery degradation decreases the travel range of EVs which leads to a
+decrease in the overall efficiency of EVs [146]. Another aspect of deterioration is capacity
+fade, which over time reduces the battery’s capacity to store and distribute energy and has
+an immediate effect on the BESS’s energy efficiency [9,147]. Older batteries may also have
+reduced energy retention, faster rates of self-discharge, and less stored energy accessible
+for use when needed [139,140]. Voltage instabilities, stemming from degradation-induced
+fluctuations, further undermine the efficiency of power conversion systems within the
+BESS [148,149]. Moreover, increased heat generation during degradation processes con-
+tributes to thermal stress, exacerbating efficiency losses. An analysis applies the state-level
+operation condition to the EV energy operation model by considering the battery degrada-
+
+Batteries 2024, 10, 220 21 of 32
+tion effect on mid-size EVs with a 24 kWh lithium-ion manganese oxide (LMO) battery pack
+in order to investigate the impacts of battery degradation on the energy consumption and
+GHG emissions of EVs in the USA. According to the study, due to a 10-year battery deterio-
+ration, the unit energy consumption and GHG emission increases vary from 29.2 Wh/km
+in Alaska to 127.4 Wh/km in Mississippi, and 0.2 g CO2/km in Vermont to 56.9 g CO2/km
+in Indiana, respectively [137,150,151]. A summary of the impact of degradation factors on
+lithium-ion batteries has been presented in Table 5 [152].
+Table 5. Impact of degradation factors on battery anode and cathode.
+Degradation Factor Affected Battery Parts Effects Reference
+High Temperature
+Anode
+1. Decomposition of the blinder causes
+mechanical instability.
+2. Increased SEI layer and reduced accessible
+surface area as a result of SEI.
+3. Decomposition of the electrolyte yielding
+the cycleable lithium ion and further SEI
+development.
+4. Phase change brought on by material
+dissolution in an active material.
+[28,93,124,153,154]
+Cathode
+1. Elevation in phase transitions within
+active materials.
+2. Gas evolution and loss of cycleable lithium
+as a result of electrolyte oxidation.
+3. Blinder decomposition.
+[144,155]
+Low Temperature Anode Lithium plating at high SOC during
+charging. [43,129,156]
+Depth of Discharge (DOD) Both anode and Cathode
+1. Fragmentation brought on by mechanical
+stress.
+2. Because of the value change while cycling,
+it comes into contact with the LAM particle.
+[157–159]
+High SOC
+Anode Lithium plating at high charging rates. [158,160]
+Cathode Current collector corrosion.
+Both Anode and Cathode 1. Electrolyte decomposition.
+2. Formation of blinders.
+Low SOC
+Anode Current collector corrosion. [161,162]
+Cathode Transition metal dissolution.
+Both Anode and Cathode 1. Electrolyte decomposition
+2. Formation of blinders.
+Calendar Aging
+Anode
+1. Due to calendar aging, anode material
+degraded which results in capacity fade.
+2. Increase internal resistance.
+3. Capacity fade.
+[135,163]
+Cathode
+1. Increase in voltage irreversibility.
+2. Degradation of electrolyte compatibility.
+3. Changes in the cathode material which
+results the cracking, phase transition, and
+formation of surface film.
+[152,164]
+5. Data-Driven Approaches for Estimation of Battery Degradation
+5.1. Support Vector Machines (SVM)
+Battery deterioration is predicted using a machine learning approach called support
+vector machines (SVM). SVM models anticipate the degree of battery degradation or
+estimate the battery’s remaining usable life by using historical data and battery performance
+
+Batteries 2024, 10, 220 22 of 32
+characteristics, including voltage, current, temperature, and cycle count [ 165]. SVMs
+function by determining the best hyperplane with the largest margin that divides data
+points from several classes or regression objectives. With kernel functions, they provide
+robustness against overfitting, efficiency in high-dimensional areas, and the capacity to
+manage nonlinear interactions [166]. Li et al. presented a novel SVM-based technique for
+battery degradation prediction by RUL and the results indicate that the proposed model
+is 99.89% accurate and RMSE is 0.11% [153]. Chen et al. proposed a capacity degradation
+prediction model for a lithium-ion battery based on SVMs and the authors claimed that
+the artificial bee colony and support vector regression model can predict more accurately
+compared to other state-of-the-art algorithms [165].
+5.2. Relevance Vector Machines (RVM)
+Battery degradation prediction using relevance vector machines (RVMs) is a machine
+learning technique that leverages historical data and pertinent characteristics taken from
+battery performance indicators to estimate battery deterioration and remaining usable
+life. Support vector machines (SVM) and Relevance vector machine (RVMs) function
+similarly; however, RVMs’ probabilistic structure and their sparsity of model parameters are
+different. With benefits including automated feature selection and prediction uncertainty
+calculation, RVMs seek to identify the most pertinent data points (vectors) to forecast battery
+deterioration [154]. Cong et al. proposed a hybrid model (Broad Leaning–Relevance Vector
+Machine) for RUL prediction of lithium-ion batteries and the results indicate that the
+proposed model has higher accuracy and strong long-term predictive capability [ 167].
+This study also revealed that the RMSE of the model is 0.01. In another study, Nash et al.
+proposed another hybrid model to predict the RUL of a battery, where the authors showed
+the model has a relative prediction error of 3.3% and 3.21%, respectively, for two unseen
+datasets [168].
+5.3. Gaussian Process Regression (GPR)
+Modeling the link between input parameters and degradation levels, Gaussian Process
+Regression (GPR) is a machine learning approach used to forecast battery deterioration.
+GPR is capable of estimating the output’s mean and variance at every given input point
+since it is predicated on the idea that the output data have a Gaussian distribution [169].
+GPR forecasts the degree of deterioration and calculates the battery’s remaining usable
+life by utilizing past data on battery performance characteristics, such as voltage, current,
+temperature, and cycle count. Chinomona et al. presented a GPR-based battery degradation
+diagnosis model for lithium-ion battery [170]. This study reveals that the use of an aging
+dataset, C rates variation data, temperature, and user profiles leads to higher prediction
+accuracy. This model had a mean absolute error of less than 0.1 and a coefficient of
+determinant greater than 0.9. In another study, Sengupta et al. proposed a GPR-based
+hybrid model of battery capacity degradation [171]. The mean absolute percentage errors
+of predicted battery capacity degradation were less than 0.4%.
+5.4. Deep Learning
+By using neural network architectures, most often deep neural networks (DNN), deep
+learning is used to estimate battery deterioration and remaining usable life based on past
+data as well as several performance characteristics. Depending on the unique features
+of the battery degradation data, these models might be convolutional neural networks
+(CNN), recurrent neural networks (RNNs), or mixtures of the two. Nutakki et al. presented
+a review of the different deep learning techniques of different degradation prediction
+models [172]. Compared to the other degradation models, the deep learning method
+showed higher prediction accuracy which is 90%. Using a typical long short-term memory
+(LSTM) model, May et al. [156] created a technique for estimating the remaining useful life
+(RUL) of lithium-ion batteries. The study used a systematic sampling strategy to efficiently
+gather battery data features from many metrics and provide a full 31-dimensional dataset.
+
+Batteries 2024, 10, 220 23 of 32
+Pang et al. [157] trained the LSTM model with the 18 characteristics that were obtained
+using a statistical sampling technique. Almuhaylan et al. proposed a model for battery
+degradation trajectory prediction and the model shows that with normal data, the lifetime
+median prediction error is 1.1%, while with noisy data, it is 1.3% [158].
+5.4.1. Artificial Neural Network (ANN)
+The modeling of battery deterioration made possible by artificial neural networks
+(ANN) is a strong foundation for forecasting battery health and remaining usability. Ar-
+tificial neural networks can efficiently learn complicated correlations between several
+parameters, including voltage, current, temperature, and cycle count, by gathering and
+preprocessing data from battery-monitoring systems or experiments [159,160]. The main
+components of a simple artificial neural network model are usually one input layer, one
+hidden layer, and one output layer. The input layer receives input data initially, processes
+them, forwards them to the hidden layer, and then the output layer generates results [161].
+Jafari et al. presented a new ANN-based model to predict the degradation of lithium-ion
+battery [162]. The results indicate that the new model showed robustness against varying
+temperature and varying loads [ 163]. Lu et al. proposed a novel ANN-based battery
+degradation prediction model for lithium-ion batteries and the authors claimed that the
+proposed model is able predict battery degradation with 5.9% error [173].
+5.4.2. Long Short-Term Memory Neural Network
+Recurrent neural networks (RNN) with long short-term memory (LSTM) architecture
+are particularly good at modeling sequential input and capturing long-term relationships.
+Based on past performance data, LSTM networks are used in the context of battery degra-
+dation prediction to anticipate the deterioration and remaining usable life of batteries.
+Because LSTM networks are capable of capturing temporal patterns and dependencies
+in the behavior of the battery over time, including voltage profiles, current fluctuations,
+temperature changes, and cycle counts, they are a good fit for this purpose. LSTM net-
+works may learn intricate correlations and accurately estimate future deterioration levels or
+remaining lifespan by examining sequential data. Ren et al. presents a CNN-LSTM model
+and the model achieved 99.6% accuracy in partial discharge voltage and its prediction error
+is greater than 99% for capacity estimation prediction [174].
+5.4.3. Gated Recurrent Unit Neural Network
+Sequential data modeling is a strong fit for the gated recurrent unit (GRU) kind of
+recurrent neural network (RNN) architecture. GRU networks are used in the context of
+battery degradation prediction in order to anticipate the deterioration process and calculate
+the batteries’ remaining usable life based on past performance data [ 175]. Because they
+can record long-term dependencies and temporal patterns in the battery’s activity over
+time, such as voltage swings, current profiles, temperature changes, and cycle counts,
+GRU networks are especially well suited for this purpose. GRU networks may discover
+complex correlations and forecast future battery degradation levels or remaining lifespan
+by examining sequential data [ 176]. Haris et al. presented a case study about a battery
+degradation prediction model based on recurrent neural network, where 77 commercial
+batteries are used as test sample [177]. The experimental results showed that the median
+root means square error of this model were 2.4% for the NMC/graphite batteries and 2.3%
+for LFP/graphite batteries, using only 3.8% of data regarding the whole battery life.
+5.4.4. Convolution Neural Network
+The capabilities of CNN architectures—which were first created for image processing
+tasks—are utilized by convolutional neural networks (CNN) for battery deterioration
+prediction, which analyzes sequential battery performance data. CNNs are used in this
+context to extract pertinent characteristics from the input data, which usually consist
+of time-series data like voltage, current, temperature, and cycle count [ 52]. CNNs are
+
+Batteries 2024, 10, 220 24 of 32
+able to extract both spatial and temporal patterns from the battery performance data by
+utilizing convolutional layers. These patterns could be an indication of usage patterns,
+deterioration tendencies, or other elements affecting battery health. CNNs can forecast
+future deterioration levels or calculate the amount of battery life left by using existing
+data. A convolution neural network-based model has been presented in [175] for battery
+degradation diagnosis and prediction, and the results illustrate that the root mean square
+error is around 2% for 100 duty cycles, which is 2.64% to 7.27% better than the other
+algorithms. In another study, a degradation curve prediction model for lithium-ion batteries
+has been presented [174]. This study shows that the proposed model is successfully able
+to predict the degradation of a lithium-ion battery, with the root mean square error being
+0.005 and the mean absolute percentage error being 0.416. Table 3 shows the summary
+of recent progress on data-driven techniques of battery degradation estimation. Table 6
+summarizes the different data-driven approaches.
+Table 6. Various kinds of data-driven approaches for battery degradation prediction.
+Techniques Accuracy Advantages Disadvantages Reference
+ANN Error 5.9%
+In order to support proactive
+maintenance plans, ANN can
+effectively anticipate degradation,
+adapt to a variety of battery types,
+and capture complicated
+correlations in battery data.
+When it comes to effectively simulating
+the changing behavior and degradation
+processes seen in battery systems over
+time, artificial neural networks fall short
+in their intrinsic ability to grasp
+temporal dependencies and long-term
+trends in time series data.
+[173]
+SVM
+Root mean
+square error is
+0.11%.
+Model
+accuracy is
+99.89%.
+SVM is useful for precise estimation
+of battery deterioration because it is
+good at handling high-dimensional
+data, resilient against overfitting,
+and successful in nonlinear
+relationships.
+The primary drawback of using support
+vector machines (SVM) to estimate
+battery deterioration is that it is very
+dependent on the kernel function
+selected and requires parameter
+adjustment, which can lead to a
+computationally complicated and
+complex model.
+[166]
+RVM
+Relative
+prediction
+error 3.3%
+Relevance vector machines offer
+sparse solutions, which maximize
+computational efficiency and
+improve model interpretability. This
+is the fundamental benefit of using
+RVMs to estimate battery
+deterioration.
+relevance vector machines are less
+appropriate for big datasets or real-time
+applications due to their computational
+complexity and longer training times
+when compared to simpler models like
+SVM. This is the fundamental drawback
+of using RVMs to estimate battery
+deterioration.
+[168]
+GPR
+Mean
+absolute
+percentage
+error 0.4%
+The capacity to provide probabilistic
+forecasts, which provide insights
+into uncertainty levels and facilitate
+better-informed decision-making in
+battery health management, is the
+primary benefit of gaussian process
+regression (GPR) for estimating
+battery deterioration.
+Due to its high memory needs and
+computational complexity, gaussian
+process regression is not as useful for
+anticipating battery deterioration in
+real-time scenarios, especially when
+dealing with huge datasets.
+[171]
+DL
+Median
+prediction
+error 1.1%
+The capacity of deep learning to
+automatically identify complicated
+patterns and correlations from
+complex battery performance data is
+its most significant benefit for
+evaluating battery degradation. This
+ability to produce precise forecasts
+and facilitate proactive maintenance
+plans makes deep learning an
+invaluable tool.
+The primary drawback of deep learning
+for battery degradation estimation is
+that it is susceptible to overfitting,
+especially when there is a dearth of
+training data. Because deep learning
+models are complicated, large quantities
+of data may be needed to generalize
+properly and prevent them from
+producing predictions that are unduly
+particular.
+[158]
+
+Batteries 2024, 10, 220 25 of 32
+Table 6. Cont.
+Techniques Accuracy Advantages Disadvantages Reference
+LSTM
+Model
+accuracy is
+99.6%
+The fundamental benefit of using a
+long short-term memory network to
+estimate battery deterioration is that
+it can accurately forecast
+degradation levels and remaining
+usable life by capturing long-term
+dependencies and temporal patterns
+in battery performance data.
+When trained on sparse data, LSTM
+models are especially vulnerable to
+overfitting, which happens when the
+model learns to recall the training data
+rather than generalizing to new
+examples.
+[174]
+GRU
+Root mean
+square error is
+2.4%
+GRU methods are particularly good
+at identifying long-term
+relationships in time series data,
+which makes it possible for them to
+study how battery behavior and
+degradation patterns change over
+time.
+GRU networks are excellent at
+capturing long-term associations, but
+they may struggle to recall specifics over
+very lengthy periods.
+This may limit their use in modeling
+complex battery characteristics or
+extended deterioration patterns.
+[177]
+6. Conclusions and Future Directions
+Battery degradation can significantly impact BMSs and EVs. This review illuminates
+the complex factors influencing lithium-ion battery degradation, stressing its crucial im-
+plications for sustainable energy storage and EVs. This paper offers insights into the
+multifaceted nature of battery degradation, examining its impacts on performance metrics
+like capacity fade, increased internal resistance, and reduced energy density. Various degra-
+dation mechanisms, including electrolyte breakdown, SEI formation, temperature, SOC,
+and DOD variation, cycling, and calendar aging, are thoroughly analyzed. SEI formation in-
+creases battery impedance, leading to capacity fade, while factors such as high temperature
+and depth of discharge contribute to electrolyte breakdown, increasing internal resistance
+and reducing capacity. SOC saturation accounts for 90% of cycling degradation. Acknowl-
+edging the importance of addressing degradation challenges, this review underscores
+the need for innovative, data-driven strategies to model degradation effects and improve
+battery system longevity and sustainability. Based on critical discussion, information, and
+analysis, this study proposes the following suggestions and future directions:
+■ Electrolyte breakdown and the formation of SEI are key factors contributing to bat-
+tery degradation. Research into novel electrode materials, electrolytes, and coatings
+can potentially result in batteries with enhanced durability, stability, and resistance
+to degradation mechanisms such as electrode dissolution, electrolyte decomposi-
+tion, and SEI formation. Integration of advanced nanomaterials, solid-state elec-
+trolytes, and multifunctional coatings has the potential to improve battery perfor-
+mance
+and longevity.
+■ The detrimental effects of heat stress and overheating in EV batteries can be mitigated
+through enhanced thermal management systems, which incorporate active cooling,
+thermal insulation, and temperature regulation. Longer battery life spans and optimal
+operating temperatures can be attained by integrating advanced cooling technologies
+such as liquid immersion cooling, thermoelectric cooling, and phase change materials.
+■ Energy consumption in EV batteries can be maximized, and degradation effects
+reduced by implementing dynamic load-balancing strategies, adaptive energy man-
+agement algorithms, and intelligent charging profiles. BMS can decrease losses caused
+by deterioration and enhance overall battery performance by adjusting charging pa-
+rameters in response to environmental conditions and battery status.
+■ The integration of AI and ML algorithms holds great potential for predictive modeling
+and optimization of battery degradation under diverse operating conditions. Lever-
+aging data-driven approaches can enable proactive maintenance strategies, predictive
+
+Batteries 2024, 10, 220 26 of 32
+failure analysis, and adaptive control algorithms, thereby enhancing the efficiency
+and reliability of the battery systems.
+■ Real-time monitoring of battery degradation and health can be facilitated by imple-
+menting advanced diagnostic techniques such as electrochemical impedance spec-
+troscopy (EIS), voltammetry, and impedance spectroscopy. Lithium-ion battery sys-
+tems can benefit from proactive maintenance and management enabled by the inte-
+gration of sensor technologies and data analytics platforms.
+Author Contributions: Conceptualization, T.R. and T.A.; methodology, T.A.; formal analysis, T.R.
+and T.A.; investigation, T.R. and T.A.; resources, T.A.; data curation, T.R.; writing—original draft
+preparation, T.R. and T.A.; writing—review and editing, T.A.; visualization, T.R.; supervision, T.A.;
+funding acquisition, T.A. All authors have read and agreed to the published version of the manuscript.
+Funding: The Researchers would like to thank the Deanship of Graduate Studies and Scientific
+Research at Qassim University for financial support (QU-APC-2024-9/1).
+Conflicts of Interest: The authors declare no conflicts of interest.
+References
+1. Huang, W.C.; Zhang, Q.; You, F. Impacts of battery energy storage technologies and renewable integration on the energy transition
+in the New York State. Adv. Appl. Energy 2022, 9, 100126. [CrossRef]
+2. Lipu, M.S.H.; Mamun, A.A.; Ansari, S.; Miah, M.S.; Hasan, K.; Meraj, S.T.; Abdolrasol, M.G.M.; Rahman, T.; Maruf, M.H.; Sarker,
+M.R.; et al. Battery Management, Key Technologies, Methods, Issues, and Future Trends of Electric Vehicles: A Pathway toward
+Achieving Sustainable Development Goals. Batteries 2022, 8, 119. [CrossRef]
+3. Huang, P .; Zeng, G.; He, Y.; Liu, S.; Li, E.; Bai, Z. Damage evolution mechanism and early warning using long short-term memory
+networks for battery slight overcharge cycles. Renew. Energy 2023, 127, 119171. [CrossRef]
+4. Habib, A.K.M.A.; Hasan, M.K.; Issa, G.F.; Singh, D.; Islam, S.; Ghazal, T.M. Lithium-Ion Battery Management System for Electric
+Vehicles: Constraints, Challenges, and Recommendations. Batteries 2023, 9, 152. [CrossRef]
+5. Edge, J.S.; O’Kane, S.; Prosser, R.; Kirkaldy, N.D.; Patel, A.N.; Hales, A.; Ghosh, A.; Ai, W.; Chen, J.; Yang, J.; et al. Lithium ion
+battery degradation: What you need to know. Phys. Chem. Chem. Phys. 2021, 23, 8200–8221. [CrossRef]
+6. Spitthoff, L.; Wahl, M.S.; Lamb, J.J.; Shearing, P .R.; Vie, P .J.S.; Burheim, O.S. On the Relations between Lithium-Ion Battery
+Reaction Entropy, Surface Temperatures and Degradation.Batteries 2023, 9, 249. [CrossRef]
+7. Sarkar, J.; Bhattacharyya, S. Application of graphene and graphene-based materials in clean energy-related devices Minghui.
+Arch. Thermodyn. 2012, 33, 23–40. [CrossRef]
+8. Birkl, C.R.; Roberts, M.R.; McTurk, E.; Bruce, P .G.; Howey, D.A. Degradation diagnostics for lithium ion cells.J. Power Sources
+2017, 341, 373–386. [CrossRef]
+9. Perez, A.; Moreno, R.; Moreira, R.; Orchard, M.E.; Strbac, G. Effect of Battery Degradation—Policy invest by imperial. IEEE
+2018, 1–11.
+10. Amini, M.; Nazari, M.H.; Hosseinian, S.H. Predictive energy management strategy for battery energy storage considering battery
+degradation cost. IET Renew. Power Gener. 2023, 17, 1119–1138. [CrossRef]
+11. Timilsina, L.; Badr, P .R.; Hoang, P .H.; Ozkan, G.; Papari, B.; Edrington, C.S. Battery Degradation in Electric and Hybrid Electric
+Vehicles: A Survey Study. IEEE Access 2023, 11, 42431–42462. [CrossRef]
+12. Cui, J.; Tan, Q.; Liu, L.; Li, J. Environmental Benefit Assessment of Second-Life Use of Electric Vehicle Lithium-Ion Batteries
+in Multiple Scenarios Considering Performance Degradation and Economic Value. Environ. Sci. Technol. 2023, 57, 8559–8567.
+[CrossRef] [PubMed]
+13. Pasini, G.; Lutzemberger, G.; Ferrari, L. Renewable Electricity for Decarbonisation of Road Transport: Batteries or E-Fuels?
+Batteries 2023, 9, 135. [CrossRef]
+14. Xu, R.; Wang, Y.; Chen, Z. Data-Driven Battery Aging Mechanism Analysis and Degradation Pathway Prediction.Batteries 2023,
+9, 129. [CrossRef]
+15. Chen, Y.; Miao, Q.; Zheng, B.; Wu, S.; Pecht, M. Quantitative analysis of lithium-ion battery capacity prediction via adaptive
+bathtub-shaped function. Energies 2013, 6, 3082–3096. [CrossRef]
+16. Lipu, M.S.H.; Miah, M.S.; Jamal, T.; Rahman, T.; Ansari, S.; Rahman, M.S.; Ashique, R.H.; Shihavuddin, A.S.M.; Shakib, M.N.
+Artificial Intelligence Approaches for Advanced Battery Management System in Electric Vehicle Applications: A Statistical
+Analysis towards Future Research Opportunities. Vehicles 2023, 6, 22–70. [CrossRef]
+17. Xiong, R.; Pan, Y.; Shen, W.; Li, H.; Sun, F. Lithium-ion battery aging mechanisms and diagnosis method for automotive
+applications: Recent advances and perspectives. Renew. Sustain. Energy Rev. 2020, 131, 110048. [CrossRef]
+18. Liu, J.; Zhou, L.; Zhang, Y.; Wang, J.; Wang, Z. Aging behavior and mechanisms of lithium-ion battery under multi-aging path.J.
+Clean. Prod. 2023, 423, 138678. [CrossRef]
+
+Batteries 2024, 10, 220 27 of 32
+19. Liu, D.; Song, Y.; Li, L.; Liao, H.; Peng, Y.; Guo, J.; Li, Y.; Pedersen, K.; Stroe, D.; Sarkar, J.; et al. Lithium-Ion Battery Operation,
+Degradation, and Aging Mechanism in Electric Vehicles: An Overview. Energies 2021, 14, 5220. [CrossRef]
+20. Wankmüller, F.; Thimmapuram, P .R.; Gallagher, K.G.; Botterud, A. Impact of battery degradation on energy arbitrage revenue of
+grid-level energy storage. J. Energy Storage 2017, 10, 56–66. [CrossRef]
+21. Ou, S. Estimate long-term impact on battery degradation by considering electric vehicle real-world end-use factors. J. Power
+Sources 2023, 573, 233133. [CrossRef]
+22. Kaliaperumal, M.; Dharanendrakumar, M.S.; Prasanna, S.; Abhishek, K.V .; Chidambaram, R.K.; Adams, S.; Zaghib, K.; Reddy,
+M.V . Cause and mitigation of lithium-ion battery failure—A review.Materials 2021, 14, 5676. [CrossRef] [PubMed]
+23. Afzal, A.; Bhutto, J.K.; Alrobaian, A.; Kaladgi, A.R.; Khan, S.A. Modelling and computational experiment to obtain optimized
+neural network for battery thermal management data. Energies 2021, 14, 7370. [CrossRef]
+24. Sun, J.; Ye, L.; Zhao, X.; Zhang, P .; Yang, J. Electronic Modulation and Structural Engineering of Carbon-Based Anodes for
+Low-Temperature Lithium-Ion Batteries: A Review. Molecules 2023, 28, 2108. [CrossRef]
+25. Keil, P .; Schuster, S.F.; Wilhelm, J.; Travi, J.; Hauser, A.; Karl, R.C.; Jossen, A. Calendar Aging of Lithium-Ion Batteries. J.
+Electrochem. Soc. 2016, 163, A1872–A1880. [CrossRef]
+26. Ohzuku, T.; Iwakoshi, Y.; Sawai, K. Formation of Lithium-Graphite Intercalation Compounds in Nonaqueous Electrolytes and
+Their Application as a Negative Electrode for a Lithium Ion (Shuttlecock) Cell.J. Electrochem. Soc. 1993, 140, 2490–2498. [CrossRef]
+27. Barré, A.; Deguilhem, B.; Grolleau, S.; Gérard, M.; Suard, F.; Riu, D. A review on lithium-ion battery ageing mechanisms and
+estimations for automotive applications. J. Power Sources 2013, 241, 680–689. [CrossRef]
+28. Atalay, S.; Sheikh, M.; Mariani, A.; Merla, Y.; Bower, E.; Widanage, W.D. Theory of battery ageing in a lithium-ion battery:
+Capacity fade, nonlinear ageing and lifetime prediction. J. Power Sources 2020, 478, 229026. [CrossRef]
+29. Carnovale, A.; Li, X. A modeling and experimental study of capacity fade for lithium-ion batteries. Energy AI 2020, 2, 100032.
+[CrossRef]
+30. Pantenburg, I.; Cronau, M.; Boll, T.; Duncker, A.; Roling, B. Challenging Prevalent Solid Electrolyte Interphase (SEI) Models: An
+Atom Probe Tomography Study on a Commercial Graphite Electrode. ACS Nano 2023, 17, 21531–21538. [CrossRef]
+31. Luo, G.; Zhang, Y.; Tang, A. Capacity Degradation and Aging Mechanisms Evolution of Lithium-Ion Batteries under Different
+Operation Conditions. Energies 2023, 16, 4232. [CrossRef]
+32. Maheshwari, A. Modelling, Aging and Optimal Operation of Lithium-Ion Batteries; Eindhoven University of Technology: Eindhoven,
+The Netherlands, 2018; ISBN 9789038646077.
+33. Agubra, V .A.; Fergus, J.W. The formation and stability of the solid electrolyte interface on the graphite anode.J. Power Sources
+2014, 268, 153–162. [CrossRef]
+34. Zhang, Q.; Wang, D.; Schaltz, E.; Stroe, D.I.; Gismero, A.; Yang, B. Lithium-ion battery calendar aging mechanism analysis and
+impedance-based State-of-Health estimation method. J. Energy Storage 2023, 64, 107029. [CrossRef]
+35. Deckenbach, D.; Schneider, J.J. A Long-Overlooked Pitfall in Rechargeable Zinc–Air Batteries: Proper Electrode Balancing. Adv.
+Mater. Interfaces 2023, 10, 2202494. [CrossRef]
+36. Cheng, L.; Wan, Y.; Zhou, Y.; Gao, D.W. Operational Reliability Modeling and Assessment of Battery Energy Storage Based on
+Lithium-ion Battery Lifetime Degradation. J. Mod. Power Syst. Clean Energy 2022, 10, 1738–1749. [CrossRef]
+37. Köbbing, L.; Latz, A.; Horstmann, B. Growth of the solid-electrolyte interphase: Electron diffusion versus solvent diffusion. J.
+Power Sources 2023, 561, 232651. [CrossRef]
+38. Alzate-Vargas, L.; Blau, S.M.; Spotte-Smith, E.W.C.; Allu, S.; Persson, K.A.; Fattebert, J.L. Insight into SEI Growth in Li-Ion
+Batteries using Molecular Dynamics and Accelerated Chemical Reactions. J. Phys. Chem. C 2021, 125, 18588–18596. [CrossRef]
+39. Kamyab, N.; Weidner, J.W.; White, R.E. Mixed Mode Growth Model for the Solid Electrolyte Interface (SEI).J. Electrochem. Soc.
+2019, 166, A334–A341. [CrossRef]
+40. Ploehn, H.J.; Ramadass, P .; White, R.E. Solvent Diffusion Model for Aging of Lithium-Ion Battery Cells.J. Electrochem. Soc. 2004,
+151, A456. [CrossRef]
+41. Smith, A.J.; Fang, Y.; Mikheenkova, A.; Ekström, H.; Svens, P .; Ahmed, I.; Lacey, M.J.; Lindbergh, G.; Furó, I.; Lindström, R.W.
+Localized lithium plating under mild cycling conditions in high-energy lithium-ion batteries. J. Power Sources 2023, 573, 233118.
+[CrossRef]
+42. Campbell, I.D.; Marzook, M.; Marinescu, M.; Offer, G.J. How Observable Is Lithium Plating? Differential Voltage Analysis to
+Identify and Quantify Lithium Plating Following Fast Charging of Cold Lithium-Ion Batteries. J. Electrochem. Soc. 2019, 166,
+A725–A739. [CrossRef]
+43. Ando, K.; Matsuda, T.; Miwa, T.; Kawai, M.; Imamura, D. Degradation mechanism of all-solid-state lithium-ion batteries with
+argyrodite Li7−xPS6−xClx sulfide through high-temperature cycling test. Batter. Energy 2023, 2, 20220052. [CrossRef]
+44. Waldmann, T.; Hogg, B.I.; Wohlfahrt-Mehrens, M. Li plating as unwanted side reaction in commercial Li-ion cells—A review.J.
+Power Sources 2018, 384, 107–124. [CrossRef]
+45. Juarez-Robles, D.; Vyas, A.A.; Fear, C.; Jeevarajan, J.A.; Mukherjee, P .P . Overcharge and Aging Analytics of Li-ion Cells. J.
+Electrochem. Soc. 2020, 167, 090547. [CrossRef]
+46. Che, Y.; Zheng, Y.; Forest, F.E.; Sui, X.; Hu, X.; Teodorescu, R. Predictive health assessment for lithium-ion batteries with
+probabilistic degradation prediction and accelerating aging detection. Reliab. Eng. Syst. Saf. 2024, 241, 109603. [CrossRef]
+
+Batteries 2024, 10, 220 28 of 32
+47. Janakiraman, U.; Garrick, T.R.; Fortier, M.E. Review—Lithium Plating Detection Methods in Li-Ion Batteries. J. Electrochem. Soc.
+2020, 167, 160552. [CrossRef]
+48. Ren, Y.; Widanage, D.; Marco, J. A Plating-Free Charging Scheme for Battery Module Based on Anode Potential Estimation to
+Prevent Lithium Plating. Batteries 2023, 9, 294. [CrossRef]
+49. Koleti, U.R.; Rajan, A.; Tan, C.; Moharana, S.; Dinh, T.Q.; Marco, J. A study on the influence of lithium plating on battery
+degradation. Energies 2020, 13, 3458. [CrossRef]
+50. Diallo, M.S.; Shi, T.; Zhang, Y.; Peng, X.; Shozib, I.; Wang, Y.; Miara, L.J.; Scott, M.C.; Tu, Q.H.; Ceder, G. Effect of solid-electrolyte
+pellet density on failure of solid-state batteries. Nat. Commun. 2024, 15, 858. [CrossRef]
+51. Gu, J.; Chen, X.; He, Z.; Liang, Z.; Lin, Y.; Shi, J.; Yang, Y. Decoding Internal Stress-Induced Micro-Short Circuit Events in
+Sulfide-Based All-Solid-State Li-Metal Batteries via Operando Pressure Measurements. Adv. Energy Mater. 2023, 13, 2302643.
+[CrossRef]
+52. Agubra, V .; Fergus, J. Lithium ion battery anode aging mechanisms. Materials 2013, 6, 1310–1325. [CrossRef] [PubMed]
+53. Wang, H.; Whitacre, J.F. Inhomogeneous aging of cathode materials in commercial 18650 lithium ion battery cells. J. Energy
+Storage 2021, 35, 102244. [CrossRef]
+54. Zhao, X.; Yin, Y.; Hu, Y.; Choe, S.Y. Electrochemical-thermal modeling of lithium plating/stripping of Li(Ni0.6Mn0.2Co0.2)O2/Carbon
+lithium-ion batteries at subzero ambient temperatures. J. Power Sources 2019, 418, 61–73. [CrossRef]
+55. Zhang, G.; Wei, X.; Han, G.; Dai, H.; Zhu, J.; Wang, X.; Tang, X.; Ye, J. Lithium plating on the anode for lithium-ion batteries
+during long-term low temperature cycling. J. Power Sources 2021, 484, 229312. [CrossRef]
+56. Saxena, S.; Roman, D.; Robu, V .; Flynn, D.; Pecht, M. Battery stress factor ranking for accelerated degradation test planning using
+machine learning. Energies 2021, 14, 723. [CrossRef]
+57. Liu, G.; Wan, W.; Nie, Q.; Zhang, C.; Chen, X.; Lin, W.; Wei, X.; Huang, Y.; Li, J.; Wang, C. Controllable Long-term Lithium
+Replenishment for Enhancing Energy Density and Cycle Life of Lithium-ion Batteries. Energy Environ. Sci. 2024, 17, 1163–1174.
+[CrossRef]
+58. Wang, L.; Yin, S.; Zhang, C.; Huan, Y.; Xu, J. Mechanical characterization and modeling for anodes and cathodes in lithium-ion
+batteries. J. Power Sources 2018, 392, 265–273. [CrossRef]
+59. Fathiannasab, H.; Zhu, L.; Chen, Z. Chemo-mechanical modeling of stress evolution in all-solid-state lithium-ion batteries using
+synchrotron transmission X-ray microscopy tomography. J. Power Sources 2021, 483, 229028. [CrossRef]
+60. Kemeny, M.; Ondrejka, P .; Mikolasek, M. Comprehensive Degradation Analysis of NCA Li-Ion Batteries via Methods of
+Electrochemical Characterisation for Various Stress-Inducing Scenarios. Batteries 2023, 9, 33. [CrossRef]
+61. Han, X.; Lu, L.; Zheng, Y.; Feng, X.; Li, Z.; Li, J.; Ouyang, M. A review on the key issues of the lithium ion battery degradation
+among the whole life cycle. eTransportation 2019, 1, 100005. [CrossRef]
+62. Xu, J. Critical Review on cathode–electrolyte Interphase Toward High-Voltage Cathodes for Li-Ion Batteries.Nano-Micro Lett.
+2022, 14, 166. [CrossRef] [PubMed]
+63. Gao, X.; Ikuhara, Y.H.; Fisher, C.A.J.; Huang, R.; Kuwabara, A.; Moriwake, H.; Kohama, K.; Ikuhara, Y. Oxygen loss and surface
+degradation during electrochemical cycling of lithium-ion battery cathode material LiMn2O4.J. Mater. Chem. A 2019, 7, 8845–8854.
+[CrossRef]
+64. Arabolla Rodríguez, R.; González Montiel, M.; Della Santina Mohallem, N.; Mosqueda Laffita, Y.; Andrey Montoro, L.; Avila
+Santos, M.; León Ramírez, H.; Pérez-Cappe, E.L. The role of defects on the Jahn-teller effect and electrochemical charge storage in
+nanometric LiMn2O4 material. Solid State Ion. 2021, 369, 115707. [CrossRef]
+65. Kim, S.; Huang, H.Y.S. Mechanical stresses at the cathode-electrolyte interface in lithium-ion batteries. J. Mater. Res. 2016, 31,
+3506–3512. [CrossRef]
+66. Gao, X.; He, P .; Ren, J.; Xu, J. Modeling of contact stress among compound particles in high energy lithium-ion battery.Energy
+Storage Mater. 2019, 18, 23–33. [CrossRef]
+67. Son, S.B.; Zhang, Z.; Gim, J.; Johnson, C.S.; Tsai, Y.; Kalensky, M.; Lopykinski, S.; Kahvecioglu, O.; Yang, Z.; Montoya, A.T.; et al.
+Transition Metal Dissolution in Lithium-Ion Cells: A Piece of the Puzzle. J. Phys. Chem. C 2023, 127, 1767–1775. [CrossRef]
+68. Frankenberger, M.; Trunk, M.; Seidlmayer, S.; Dinter, A.; Dittloff, J.; Werner, L.; Gernhäuser, R.; Revay, Z.; Märkisch, B.; Gilles, R.;
+et al. SEI growth impacts of lamination, formation and cycling in lithium ion batteries. Batteries 2020, 6, 21. [CrossRef]
+69. Shinagawa, C.; Ushiyama, H.; Yamashita, K. Multiscale Simulations for Lithium-Ion Batteries: SEI Film Growth and Capacity
+Fading. J. Electrochem. Soc. 2017, 164, A3018–A3024. [CrossRef]
+70. Roy, P .K.; Shahjalal, M.; Shams, T.; Fly, A.; Stoyanov, S.; Ahsan, M.; Haider, J. A Critical Review on Battery Aging and State
+Estimation Technologies of Lithium-Ion Batteries: Prospects and Issues. Electronics 2023, 12, 4105. [CrossRef]
+71. Wang, L.F.; Geng, M.M.; Ding, X.N.; Fang, C.; Zhang, Y.; Shi, S.S.; Zheng, Y.; Yang, K.; Zhan, C.; Wang, X.D. Research progress of
+the electrochemical impedance technique applied to the high-capacity lithium-ion battery. Int. J. Miner. Metall. Mater. 2021, 28,
+538–552. [CrossRef]
+72. Hunter, J.C. Preparation of a new crystal form of manganese dioxide: λ-MnO2. J. Solid State Chem. 1994, 48, 173–174. [CrossRef]
+73. Li, W. Review—An Unpredictable Hazard in Lithium-ion Batteries from Transition Metal Ions: Dissolution from Cathodes,
+Deposition on Anodes and Elimination Strategies. J. Electrochem. Soc. 2020, 167, 090514. [CrossRef]
+74. Vermeer, W.; Chandra Mouli, G.R.; Bauer, P . A Comprehensive Review on the Characteristics and Modeling of Lithium-Ion
+Battery Aging. IEEE Trans. Transp. Electrif. 2022, 8, 2205–2232. [CrossRef]
+
+Batteries 2024, 10, 220 29 of 32
+75. Mikheenkova, A.; Gustafsson, O.; Misiewicz, C.; Brant, W.R.; Hahlin, M.; Lacey, M.J. Resolving high potential structural
+deterioration in Ni-rich layered cathode materials for lithium-ion batteries operando. J. Energy Storage 2023, 57, 106211. [CrossRef]
+76. Love, C.T.; Korovina, A.; Patridge, C.J.; Swider-Lyons, K.E.; Twigg, M.E.; Ramaker, D.E. Review of LiFePO 4 Phase Transition
+Mechanisms and New Observations from X-ray Absorption Spectroscopy. J. Electrochem. Soc. 2013, 160, A3153–A3161. [CrossRef]
+77. Zhan, C.; Wu, T.; Lu, J.; Amine, K. Dissolution, migration, and deposition of transition metal ions in Li-ion batteries exemplified
+by Mn-based cathodes-A critical review. Energy Environ. Sci. 2018, 11, 243–257. [CrossRef]
+78. Vu, T.T.; Cheon, H.J.; Shin, S.Y.; Jeong, G.; Wi, E.; Chang, M. Hybrid electrolytes for solid-state lithium batteries: Challenges,
+progress, and prospects. Energy Storage Mater. 2023, 61, 102876. [CrossRef]
+79. Liao, X.; Huang, Q.; Mai, S.; Wang, X.; Xu, M.; Xing, L.; Liao, Y.; Li, W. Understanding self-discharge mechanism of layered nickel
+cobalt manganese oxide at high potential. J. Power Sources 2015, 286, 551–556. [CrossRef]
+80. Wandt, J.; Freiberg, A.; Thomas, R.; Gorlin, Y.; Siebel, A.; Jung, R.; Gasteiger, H.A.; Tromp, M. Transition metal dissolution and
+deposition in Li-ion batteries investigated by operando X-ray absorption spectroscopy. J. Mater. Chem. A 2016, 4, 18300–18305.
+[CrossRef]
+81. Rynearson, L.; Antolini, C.; Jayawardana, C.; Yeddala, M.; Hayes, D.; Lucht, B.L. Speciation of Transition Metal Dissolution in
+Electrolyte from Common Cathode Materials. Angew. Chem. 2024, 136, e202317109. [CrossRef]
+82. Huang, D.; Engtrakul, C.; Nanayakkara, S.; Mulder, D.W.; Han, S.D.; Zhou, M.; Luo, H.; Tenent, R.C. Understanding Degradation
+at the Lithium-Ion Battery Cathode/Electrolyte Interface: Connecting Transition-Metal Dissolution Mechanisms to Electrolyte
+Composition. ACS Appl. Mater. Interfaces 2021, 13, 11930–11939. [CrossRef]
+83. Krupp, A.; Beckmann, R.; Diekmann, T.; Ferg, E.; Schuldt, F.; Agert, C. Calendar aging model for lithium-ion batteries considering
+the influence of cell characterization. J. Energy Storage 2022, 45, 103506. [CrossRef]
+84. Dai, Q.; Kelly, J.C.; Gaines, L.; Wang, M. Life Cycle Analysis of Lithium-Ion Batteries for Automotive Applications. Batteries 2019,
+5, 48. [CrossRef]
+85. Hou, J.; Qu, S.; Yang, M.; Zhang, J. Materials and electrode engineering of high capacity anodes in lithium ion batteries. J. Power
+Sources 2020, 450, 227697. [CrossRef]
+86. Lucu, M.; Martinez-Laserna, E.; Gandiaga, I.; Liu, K.; Camblong, H.; Widanage, W.D.; Marco, J. Data-driven nonparametric Li-ion
+battery ageing model aiming at learning from real operation data—Part B: Cycling operation. J. Energy Storage 2020, 30, 101410.
+[CrossRef]
+87. Serhan, M.; Sprowls, M.; Jackemeyer, D.; Long, M.; Perez, I.D.; Maret, W.; Tao, N.; Forzani, E. Total iron measurement in human
+serum with a smartphone. In Proceedings of the AIChE Annual Meeting Conference Proceedings, San Francisco, CA, USA, 15–20
+November 2019; pp. 1–3.
+88. Lee, Y.K. Effect of transition metal ions on solid electrolyte interphase layer on the graphite electrode in lithium ion battery.J.
+Power Sources 2021, 484, 229270. [CrossRef]
+89. Xu, B.; Oudalov, A.; Ulbig, A.; Andersson, G.; Kirschen, D.S. Modeling of lithiumion battery degradation for cell life assessment.
+IEEE Trans. Smart Grid 2018, 9, 1131–1140. [CrossRef]
+90. Lee, C.H.; Wu, Z.Y.; Hsu, S.H.; Jiang, J.A. Cycle Life Study of Li-Ion Batteries with an Aging-Level-Based Charging Method. IEEE
+Trans. Energy Convers. 2020, 35, 1475–1484. [CrossRef]
+91. Campion, C.L.; Li, W.; Lucht, B.L. Thermal Decomposition of LiPF6-Based Electrolytes for Lithium-Ion Batteries. J. Electrochem.
+Soc. 2005, 152, A2327. [CrossRef]
+92. Xu, J.; Deshpande, R.D.; Pan, J.; Cheng, Y.-T.; Battaglia, V .S. Electrode Side Reactions, Capacity Loss and Mechanical Degradation
+in Lithium-Ion Batteries. J. Electrochem. Soc. 2015, 162, A2026–A2035. [CrossRef]
+93. Pinson, M.B.; Bazant, M.Z. Theory of SEI Formation in Rechargeable Batteries: Capacity Fade, Accelerated Aging and Lifetime
+Prediction. ECS Meet. Abstr. 2013, MA2013-01, 405. [CrossRef]
+94. Alsagri, A.S. An innovative design of solar-assisted carnot battery for multigeneration of power, cooling, and process heating:
+Techno-economic analysis and optimization. Renew. Energy 2023, 210, 375–385. [CrossRef]
+95. Alsagri, A.S.; Rahbari, H.R.; Wang, L.; Arabkoohsar, A. Thermo-economic optimization of an innovative integration of thermal
+energy storage and supercritical CO2 cycle using artificial intelligence techniques. Process Saf. Environ. Prot. 2024, 186, 1373–1386.
+[CrossRef]
+96. Alsagri, A.S.; Arabkoohsar, A.; Khosravi, M.; Alrobaian, A.A. Efficient and cost-effective district heating system with decentralized
+heat storage units, and triple-pipes. Energy 2019, 188, 116035. [CrossRef]
+97. Wood, S.M.; Fang, C.; Dufek, E.J.; Nagpure, S.C.; Sazhin, S.V .; Liaw, B.; Meng, Y.S. Predicting Calendar Aging in Lithium Metal
+Secondary Batteries: The Impacts of Solid Electrolyte Interphase Composition and Stability. Adv. Energy Mater. 2018, 8. [CrossRef]
+98. Dose, W.M.; Temprano, I.; Allen, J.P .; Björklund, E.; O’Keefe, C.A.; Li, W.; Mehdi, B.L.; Weatherup, R.S.; De Volder, M.F.L.; Grey,
+C.P . Electrolyte Reactivity at the Charged Ni-Rich Cathode Interface and Degradation in Li-Ion Batteries. ACS Appl. Mater.
+Interfaces 2022, 14, 13206–13222. [CrossRef]
+99. Fermín-Cueto, P .; McTurk, E.; Allerhand, M.; Medina-Lopez, E.; Anjos, M.F.; Sylvester, J.; dos Reis, G. Identification and machine
+learning prediction of knee-point and knee-onset in capacity degradation curves of lithium-ion cells. Energy AI 2020, 1. [CrossRef]
+100. Aris, A.M.; Shabani, B. An Experimental Study of a Lithium Ion Cell Operation at Low Temperature Conditions. Energy Procedia
+2017, 110, 128–135. [CrossRef]
+
+Batteries 2024, 10, 220 30 of 32
+101. Zhang, X.; Zhang, W.; Li, H.; Zhang, M. Review on state of charge estimation methods for Li-ion batteries. Trans. Electr. Electron.
+Mater. 2017, 18, 136–140. [CrossRef]
+102. Li, Q.; Jiao, S.; Luo, L.; Ding, M.S.; Zheng, J.; Cartmell, S.S.; Wang, C.M.; Xu, K.; Zhang, J.G.; Xu, W. Wide-Temperature Electrolytes
+for Lithium-Ion Batteries. ACS Appl. Mater. Interfaces 2017, 9, 18826–18835. [CrossRef]
+103. Gao, F.; Tang, Z. Kinetic behavior of LiFePO4/C cathode material for lithium-ion batteries. Electrochim. Acta 2008, 53, 5071–5075.
+[CrossRef]
+104. Almeida, C.S. Analysis of the co-dispersion structure of health-related indicators, the center of the subject’s sense of health, and
+the elderly people living at home. Rev. Bras. Linguística Apl. 2016, 5, 1689–1699.
+105. Kalaga, K.; Rodrigues, M.T.F.; Trask, S.E.; Shkrob, I.A.; Abraham, D.P . Calendar-life versus cycle-life aging of lithium-ion cells
+with silicon-graphite composite electrodes. Electrochim. Acta 2018, 280, 221–228. [CrossRef]
+106. Yang, B.; Zhang, H.; Yu, L.; Fan, W.Z.; Huang, D. Lithium difluorophosphate as an additive to improve the low temperature
+performance of LiNi0.5Co0.2Mn0.3O2/graphite cells. Electrochim. Acta 2016, 221, 107–114. [CrossRef]
+107. Ren, D.; Smith, K.; Guo, D.; Han, X.; Feng, X.; Lu, L.; Ouyang, M.; Li, J. Investigation of Lithium Plating-Stripping Process in
+Li-Ion Batteries at Low Temperature Using an Electrochemical Model. J. Electrochem. Soc. 2018, 165, A2167–A2178. [CrossRef]
+108. Tang, X.; Wang, Y.; Zou, C.; Yao, K.; Xia, Y.; Gao, F. A novel framework for Lithium-ion battery modeling considering uncertainties
+of temperature and aging. Energy Convers. Manag. 2019, 180, 162–170. [CrossRef]
+109. Hahn, S.L.; Storch, M.; Swaminathan, R.; Obry, B.; Bandlow, J.; Birke, K.P . Quantitative validation of calendar aging models for
+lithium-ion batteries. J. Power Sources 2018, 400, 402–414. [CrossRef]
+110. Röder, P .; Stiaszny, B.; Ziegler, J.C.; Baba, N.; Lagaly, P .; Wiemhöfer, H.D. The impact of calendar aging on the thermal stability of
+a LiMn2O4-Li(Ni1/3Mn1/3Co1/3)O2/graphite lithium-ion cell. J. Power Sources 2014, 268, 315–325. [CrossRef]
+111. Wright, R.B.; Motloch, C.G.; Belt, J.R.; Christophersen, J.P .; Ho, C.D.; Richardson, R.A.; Bloom, I.; Jones, S.A.; Battaglia, V .S.;
+Henriksen, G.L.; et al. Calendar- and cycle-life studies of advanced technology development program generation 1 lithium-ion
+batteries. J. Power Sources 2002, 110, 445–470. [CrossRef]
+112. Thomas, E.V .; Bloom, I.; Christophersen, J.P .; Battaglia, V .S. Statistical methodology for predicting the life of lithium-ion cells via
+accelerated degradation testing. J. Power Sources 2008, 184, 312–317. [CrossRef]
+113. Liu, K.; Ashwin, T.R.; Hu, X.; Lucu, M.; Widanage, W.D. An evaluation study of different modelling techniques for calendar
+ageing prediction of lithium-ion batteries. Renew. Sustain. Energy Rev. 2020, 131, 110017. [CrossRef]
+114. Gismero, A.; Stroe, D.I.; Schaltz, E. Calendar Aging Lifetime Model for NMC-based Lithium-ion Batteries Based on EIS
+Measurements. In Proceedings of the 2019 Fourteenth International Conference on Ecological Vehicles and Renewable Energies,
+Monte-Carlo, Monaco, 8–10 May 2019. [CrossRef]
+115. Ning, G.; Haran, B.; Popov, B.N. Capacity fade study of lithium-ion batteries cycled at high discharge rates. J. Power Sources 2003,
+117, 160–169. [CrossRef]
+116. Cordoba-Arenas, A.; Onori, S.; Guezennec, Y.; Rizzoni, G. Capacity and power fade cycle-life model for plug-in hybrid electric
+vehicle lithium-ion battery cells containing blended spinel and layered-oxide positive electrodes. J. Power Sources 2015, 278,
+473–483. [CrossRef]
+117. Lam, L.; Bauer, P . Practical capacity fading model for Li-ion battery cells in electric vehicles.IEEE Trans. Power Electron. 2013, 28,
+5910–5918. [CrossRef]
+118. Sun, T.; Xu, B.; Cui, Y.; Feng, X.; Han, X.; Zheng, Y. A sequential capacity estimation for the lithium-ion batteries combining
+incremental capacity curve and discrete Arrhenius fading model. J. Power Sources 2021, 484, 229248. [CrossRef]
+119. Kim, J.H.; Woo, S.C.; Park, M.S.; Kim, K.J.; Yim, T.; Kim, J.S.; Kim, Y.J. Capacity fading mechanism of LiFePO4-based lithium
+secondary batteries for stationary energy storage. J. Power Sources 2013, 229, 190–197. [CrossRef]
+120. Li, J.; Gee, A.M.; Zhang, M.; Yuan, W. Analysis of battery lifetime extension in a SMES-battery hybrid energy storage system
+using a novel battery lifetime model. Energy 2015, 86, 175–185. [CrossRef]
+121. Suri, G.; Onori, S. A control-oriented cycle-life model for hybrid electric vehicle lithium-ion batteries. Energy 2016, 96, 644–653.
+[CrossRef]
+122. Bui, T.M.N.; Sheikh, M.; Dinh, T.Q.; Gupta, A.; Widanalage, D.W.; Marco, J. A Study of Reduced Battery Degradation through
+State-of-Charge Pre-Conditioning for Vehicle-to-Grid Operations. IEEE Access 2021, 9, 155871–155896. [CrossRef]
+123. Guena, T.; Leblanc, P . How depth of discharge affects the cycle life of lithium-metal-polymer batteries. In Proceedings of the
+INTELEC 06-Twenty-Eighth International Telecommunications Energy Conference, Providence, RI, USA, 10–14 September 2006.
+[CrossRef]
+124. Redondo-Iglesias, E.; Venet, P .; Pelissier, S. Efficiency Degradation Model of Lithium-Ion Batteries for Electric Vehicles.IEEE
+Trans. Ind. Appl. 2019, 55, 1932–1940. [CrossRef]
+125. Madani, S.S.; Schaltz, E.; Kær, S.K. Effect of current rate and prior cycling on the coulombic efficiency of a lithium-ion battery.
+Batteries 2019, 5, 57. [CrossRef]
+126. Chiang, Y.H.; Sean, W.Y.; Ke, J.C. Online estimation of internal resistance and open-circuit voltage of lithium-ion batteries in
+electric vehicles. J. Power Sources 2011, 196, 3921–3932. [CrossRef]
+127. Lin, N.; Jia, Z.; Wang, Z.; Zhao, H.; Ai, G.; Song, X.; Bai, Y.; Battaglia, V .; Sun, C.; Qiao, J.; et al. Understanding the crack formation
+of graphite particles in cycled commercial lithium-ion batteries by focused ion beam—Scanning electron microscopy.J. Power
+Sources 2017, 365, 235–239. [CrossRef]
+
+Batteries 2024, 10, 220 31 of 32
+128. Chen, X.; Shen, W.; Vo, T.T.; Cao, Z.; Kapoor, A. An overview of lithium-ion batteries for electric vehicles. In Proceedings of the
+2012 10th International Power & Energy Conference (IPEC), Ho Chi Minh City, Vietnam, 12–14 December 2012; pp. 230–235.
+[CrossRef]
+129. Fanoro, M.; Božani´ c, M.; Sinha, S. A Review of the Impact of Battery Degradation on Energy Management Systems with a Special
+Emphasis on Electric Vehicles. Energies 2022, 15, 5889. [CrossRef]
+130. Yang, F.; Xie, Y.; Deng, Y.; Yuan, C. Impacts of battery degradation on state-level energy consumption and GHG emissions from
+electric vehicle operation in the United States. Procedia CIRP 2019, 80, 530–535. [CrossRef]
+131. Vetter, J.; Nov ák, P .; Wagner, M.R.; Veit, C.; Möller, K.C.; Besenhard, J.O.; Winter, M.; Wohlfahrt-Mehrens, M.; Vogler, C.;
+Hammouche, A. Ageing mechanisms in lithium-ion batteries. J. Power Sources 2005, 147, 269–281. [CrossRef]
+132. Hall, J.C.; Lin, T.; Brown, G.; Biensan, P .; Bonhomme, F. Decay processes and life predictions for lithium ion satellite cells. In
+Proceedings of the Collection Technology Paper, 4th International Energy Conversion Engineering Conference and Exhibit
+(IECEC), San Diego, CA, USA, 26–29 June 2006; Volume 1, pp. 632–642. [CrossRef]
+133. Marongiu, A.; Roscher, M.; Sauer, D.U. Influence of the vehicle-to-grid strategy on the aging behavior of lithium battery electric
+vehicles. Appl. Energy 2015, 137, 899–912. [CrossRef]
+134. Ziv, B.; Borgel, V .; Aurbach, D.; Kim, J.-H.; Xiao, X.; Powell, B.R. Investigation of the Reasons for Capacity Fading in Li-Ion Battery
+Cells. J. Electrochem. Soc. 2014, 161, A1672–A1680. [CrossRef]
+135. Lawder, M.T.; Northrop, P .W.C.; Subramanian, V .R. Model-Based SEI Layer Growth and Capacity Fade Analysis for EV and
+PHEV Batteries and Drive Cycles. J. Electrochem. Soc. 2014, 161, A2099–A2108. [CrossRef]
+136. Sun, T.; Jiang, S.; Li, X.; Cui, Y.; Lai, X.; Wang, X.; Ma, Y.; Zheng, Y. A Novel Capacity Estimation Approach for Lithium-Ion
+Batteries Combining Three-Parameter Capacity Fade Model with Constant Current Charging Curves. IEEE Trans. Energy Convers.
+2021, 36, 2574–2584. [CrossRef]
+137. Myung, S.T.; Hitoshi, Y.; Sun, Y.K. Electrochemical behavior and passivation of current collectors in lithium-ion batteries.J. Mater.
+Chem. 2011, 21, 9891–9911. [CrossRef]
+138. Fares, R.L.; Webber, M.E. What are the tradeoffs between battery energy storage cycle life and calendar life in the energy arbitrage
+application? J. Energy Storage 2018, 16, 37–45. [CrossRef]
+139. Tomaszewska, A.; Chu, Z.; Feng, X.; O’Kane, S.; Liu, X.; Chen, J.; Ji, C.; Endler, E.; Li, R.; Liu, L.; et al. Lithium-ion battery fast
+charging: A review. eTransportation 2019, 1, 100011. [CrossRef]
+140. Noelle, D.J.; Wang, M.; Le, A.V .; Shi, Y.; Qiao, Y. Internal resistance and polarization dynamics of lithium-ion batteries upon
+internal shorting. Appl. Energy 2018, 212, 796–808. [CrossRef]
+141. Canals Casals, L.; Schiffer Gonzalez, A.M.; Garcia, B.; Llorca, J. PHEV Battery Aging Study Using Voltage Recovery and Internal
+Resistance from Onboard Data. IEEE Trans. Veh. Technol.2016, 65, 4209–4216. [CrossRef]
+142. Tröltzsch, U.; Kanoun, O.; Tränkler, H.R. Characterizing aging effects of lithium ion batteries by impedance spectroscopy.
+Electrochim. Acta 2006, 51, 1664–1672. [CrossRef]
+143. Yang, F.; Wang, D.; Zhao, Y.; Tsui, K.L.; Bae, S.J. A study of the relationship between coulombic efficiency and capacity degradation
+of commercial lithium-ion batteries. Energy 2018, 145, 486–495. [CrossRef]
+144. Patil, M.A.; Tagade, P .; Hariharan, K.S.; Kolake, S.M.; Song, T.; Yeo, T.; Doo, S. A novel multistage Support Vector Machine based
+approach for Li ion battery remaining useful life estimation. Appl. Energy 2015, 159, 285–297. [CrossRef]
+145. Kassem, M.; Delacourt, C. Postmortem analysis of calendar-aged graphite/LiFePO4 cells. J. Power Sources 2013, 235, 159–171.
+[CrossRef]
+146. Darma, M.S.D.; Lang, M.; Kleiner, K.; Mereacre, L.; Liebau, V .; Fauth, F.; Bergfeldt, T.; Ehrenberg, H. The influence of cycling
+temperature and cycling rate on the phase specific degradation of a positive electrode in lithium ion batteries: A post mortem
+analysis. J. Power Sources 2016, 327, 714–725. [CrossRef]
+147. Palacín, M.R. Understanding ageing in Li-ion batteries: A chemical issue. Chem. Soc. Rev. 2018, 47, 4924–4933. [CrossRef]
+[PubMed]
+148. Uddin, K.; Perera, S.; Widanage, W.D.; Somerville, L.; Marco, J. Characterising lithium-ion battery degradation through the
+identification and tracking of electrochemical battery model parameters. Batteries 2016, 2, 13. [CrossRef]
+149. Bandhauer, T.M.; Garimella, S.; Fuller, T.F. A Critical Review of Thermal Issues in Lithium-Ion Batteries.J. Electrochem. Soc. 2011,
+158, R1. [CrossRef]
+150. Zhang, X.; Winget, B.; Doeff, M.; Evans, J.W.; Devine, T.M. Corrosion of Aluminum Current Collectors in Lithium-Ion Batteries
+with Electrolytes Containing LiPF6. J. Electrochem. Soc. 2005, 152, B448. [CrossRef]
+151. Lewerenz, M.; Fuchs, G.; Becker, L.; Sauer, D.U. Irreversible calendar aging and quantification of the reversible capacity loss
+caused by anode overhang. J. Energy Storage 2018, 18, 149–159. [CrossRef]
+152. Guo, W.; He, M. An optimal relevance vector machine with a modified degradation model for remaining useful lifetime prediction
+of lithium-ion batteries. Appl. Soft Comput. 2022, 124, 108967. [CrossRef]
+153. Zhao, J.; Zhu, Y.; Zhang, B.; Liu, M.; Wang, J.; Liu, C.; Zhang, Y. Method of Predicting SOH and RUL of Lithium-Ion Battery Based
+on the Combination of LSTM and GPR. Sustainability 2022, 14, 11865. [CrossRef]
+154. Tagade, P .; Hariharan, K.S.; Ramachandran, S.; Khandelwal, A.; Naha, A.; Kolake, S.M.; Han, S.H. Deep Gaussian process
+regression for lithium-ion battery health prognosis and degradation mode diagnosis.J. Power Sources 2020, 445, 227281. [CrossRef]
+
+Batteries 2024, 10, 220 32 of 32
+155. Rauf, H.; Khalid, M.; Arshad, N. Machine learning in state of health and remaining useful life estimation: Theoretical and
+technological development in battery degradation modelling. Renew. Sustain. Energy Rev. 2022, 156, 111903. [CrossRef]
+156. May, G.; El-Shahat, A. Battery-degradation model based on the ANN regression function for EV applications. In Proceedings of
+the 2017 IEEE Global Humanitarian Technology Conference (GHTC), San Jose, CA, USA, 19–22 October 2017; pp. 1–3. [CrossRef]
+157. Pang, B.; Chen, L.; Dong, Z. Data-Driven Degradation Modeling and SOH Prediction of Li-Ion Batteries. Batteries 2022, 15, 5580.
+[CrossRef]
+158. MAlmuhaylan, M.R.; Ghumman, A.R.; Al-Salamah, I.S.; Ahmad, A.; Ghazaw, Y.M.; Haider, H.; Shafiquzzaman, M. Evaluating the
+impacts of pumping on aquifer depletion in arid regions using MODFLOW, ANFIS and ANN. Water 2020, 12, 2297. [CrossRef]
+159. Kang, L.W.; Zhao, X.; Ma, J. A new neural network model for the state-of-charge estimation in the battery degradation process.
+Appl. Energy 2014, 121, 20–27. [CrossRef]
+160. Zhao, C.; Li, X. Microgrid Optimal Energy Scheduling Considering Neural Network Based Battery Degradation. IEEE Trans.
+Power Syst. 2024, 39, 1594–1606. [CrossRef]
+161. Li, W.; Li, Y.; Garg, A.; Guo, L. Enhancing real-time degradation prediction of lithium-ion battery: A digital twin framework with
+CNN-LSTM-attention model. Energy 2024, 124, 129681. [CrossRef]
+162. Jafari, S.; Byun, Y.C. A CNN-GRU Approach to the Accurate Prediction of Batteries’ Remaining Useful Life from Charging
+Profiles. Computers 2023, 12, 219. [CrossRef]
+163. Cui, S.; Joe, I. A Dynamic Spatial-Temporal Attention-Based GRU Model with Healthy Features for State-of-Health Estimation of
+Lithium-Ion Batteries. IEEE Access 2021, 9, 27374–27388. [CrossRef]
+164. Nan, J.; Deng, B.; Cao, W.; Tan, Z. Prediction for the Remaining Useful Life of Lithium–Ion Battery Based on RVM-GM with
+Dynamic Size of Moving Window. World Electr. Veh. J. 2022, 13, 25. [CrossRef]
+165. Chen, Z.; Shi, N.; Ji, Y.; Niu, M.; Wang, Y. Lithium-ion batteries remaining useful life prediction based on BLS-RVM.Energy 2021,
+234, 121269. [CrossRef]
+166. Li, X.; Zhang, L.; Wang, Z.; Dong, P . Remaining useful life prediction for lithium-ion batteries based on a hybrid model combining
+the long short-term memory and Elman neural networks. J. Energy Storage 2019, 21, 510–518. [CrossRef]
+167. Cong, X.; Zhang, C.; Jiang, J.; Zhang, W.; Jiang, Y. A Hybrid Method for the Prediction of the Remaining Useful Life of Lithium-Ion
+Batteries with Accelerated Capacity Degradation. IEEE Trans. Veh. Technol.2020, 69, 12775–12785. [CrossRef]
+168. Nash, W.; Drummond, T.; Birbilis, N. A review of deep learning in the study of materials degradation.npj Mater. Degrad. 2018,
+2, 37. [CrossRef]
+169. Park, K.; Choi, Y.; Choi, W.J.; Ryu, H.Y.; Kim, H. LSTM-Based Battery Remaining Useful Life Prediction with Multi-Channel
+Charging Profiles. IEEE Access 2020, 8, 20786–20798. [CrossRef]
+170. Chinomona, B.; Chung, C.; Chang, L.K.; Su, W.C.; Tsai, M.C. Long short-term memory approach to estimate battery remaining
+useful life using partial data. IEEE Access 2020, 8, 165419–165431. [CrossRef]
+171. Li, W.; Sengupta, N.; Dechent, P .; Howey, D.; Annaswamy, A.; Sauer, D.U. One-shot battery degradation trajectory prediction
+with deep learning. J. Power Sources 2021, 506, 230024. [CrossRef]
+172. Nutakki, T.U.; Alghassab, M.A.; Dutta, A.K.; Abdullaeva, B.S.; Alkhalaf, S.; Alharbi, F.S.; Ghandour, R.; Al Barakeh, Z.; Knani, S.
+Thermo-environmental multi- investigation and ANN-based optimization of a novel heat integration criteria system integrated
+with a marine engine generating liquefied hydrogen. Case Stud. Therm. Eng. 2024, 56, 104240. [CrossRef]
+173. Lu, J.; Xiong, R.; Tian, J.; Wang, C.; Hsu, C.W.; Tsou, N.T.; Sun, F.; Li, J. Battery degradation prediction against uncertain future
+conditions with recurrent neural network enabled deep learning. Energy Storage Mater. 2022, 50, 139–151. [CrossRef]
+174. Ren, L.; Dong, J.; Wang, X.; Meng, Z.; Zhao, L.; Deen, M.J. A Data-Driven Auto-CNN-LSTM Prediction Model for Lithium-Ion
+Battery Remaining Useful Life. IEEE Trans. Ind. Inform. 2021, 17, 3478–3487. [CrossRef]
+175. Li, Z.; Liu, F.; Yang, W.; Peng, S.; Zhou, J. A Survey of Convolutional Neural Networks: Analysis, Applications, and Prospects.
+IEEE Trans. Neural Netw. Learn. Syst. 2022, 33, 6999–7019. [CrossRef]
+176. Costa, N.; Sánchez, L.; Anseán, D.; Dubarry, M. Li-ion battery degradation modes diagnosis via Convolutional Neural Networks.
+J. Energy Storage 2022, 55, 105558. [CrossRef]
+177. Haris, M.; Hasan, M.N.; Qin, S. Degradation Curve Prediction of Lithium-Ion Batteries Based on Knee Point Detection Algorithm
+and Convolutional Neural Network. IEEE Trans. Instrum. Meas. 2022, 71, 1–10. [CrossRef]
+Disclaimer/Publisher’s Note: The statements, opinions and data contained in all publications are solely those of the individual
+author(s) and contributor(s) and not of MDPI and/or the editor(s). MDPI and/or the editor(s) disclaim responsibility for any injury to
+people or property resulting from any ideas, methods, instructions or products referred to in the content.

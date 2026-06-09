@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Regret ladder with headline V2+ and shadow challengers</title>
+  <desc id="desc">Mean regret comparison for strict, V2, V2+, corrected DT safe-switch, and HF value-aligned shadow with promotion boundaries.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#e0f2fe"/>
+    </linearGradient>
+    <style>
+      .title { font: 800 54px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 500 24px Arial, sans-serif; fill: #475569; }
+      .axis { stroke: #64748b; stroke-width: 2; }
+      .grid { stroke: #cbd5e1; stroke-width: 1; }
+      .label { font: 700 23px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 500 18px Arial, sans-serif; fill: #475569; }
+      .value { font: 800 24px Arial, sans-serif; fill: #0f172a; }
+      .badge { font: 800 19px Arial, sans-serif; fill: #ffffff; }
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="url(#bg)"/>
+  <text x="70" y="88" class="title" style="font-size:42px">Mean regret ladder: V2+ vs DT/HF shadow</text>
+  <text x="70" y="128" class="subtitle">Нижче regret краще. V2+ залишається headline/default; DT/HF - manual shadow evidence.</text>
+
+  <g transform="translate(110 190)">
+    <line x1="0" y1="500" x2="1340" y2="500" class="axis"/>
+    <line x1="0" y1="0" x2="0" y2="500" class="axis"/>
+    <g class="grid">
+      <line x1="0" y1="100" x2="1340" y2="100"/>
+      <line x1="0" y1="200" x2="1340" y2="200"/>
+      <line x1="0" y1="300" x2="1340" y2="300"/>
+      <line x1="0" y1="400" x2="1340" y2="400"/>
+    </g>
+    <text x="-50" y="506" class="small">0</text>
+    <text x="-65" y="406" class="small">100</text>
+    <text x="-65" y="306" class="small">200</text>
+    <text x="-65" y="206" class="small">300</text>
+    <text x="-65" y="106" class="small">400</text>
+    <text x="0" y="-24" class="small">UAH regret</text>
+
+    <g transform="translate(80 0)">
+      <rect x="0" y="112" width="170" height="388" rx="10" fill="#ef4444"/>
+      <text x="14" y="94" class="value">310.58</text>
+      <text x="32" y="544" class="label">Strict</text>
+      <text x="8" y="572" class="small">oracle comparator</text>
+    </g>
+    <g transform="translate(330 0)">
+      <rect x="0" y="242" width="170" height="258" rx="10" fill="#f59e0b"/>
+      <text x="18" y="224" class="value">206.37</text>
+      <text x="60" y="544" class="label">V2</text>
+      <text x="16" y="572" class="small">first selector</text>
+    </g>
+    <g transform="translate(580 0)">
+      <rect x="0" y="281" width="170" height="219" rx="10" fill="#22c55e"/>
+      <text x="18" y="263" class="value">174.77</text>
+      <text x="43" y="544" class="label">V2+</text>
+      <text x="-2" y="572" class="small">headline/default</text>
+      <rect x="-18" y="602" width="206" height="36" rx="18" fill="#16a34a"/>
+      <text x="42" y="626" class="badge">HEADLINE</text>
+    </g>
+    <g transform="translate(830 0)">
+      <rect x="0" y="290" width="170" height="210" rx="10" fill="#38bdf8"/>
+      <text x="18" y="272" class="value">168.16</text>
+      <text x="10" y="544" class="label">DT safe-switch</text>
+      <text x="12" y="572" class="small">secondary only</text>
+      <rect x="-18" y="602" width="206" height="36" rx="18" fill="#0284c7"/>
+      <text x="34" y="626" class="badge">NO DEFAULT</text>
+    </g>
+    <g transform="translate(1080 0)">
+      <rect x="0" y="302" width="170" height="198" rx="10" fill="#8b5cf6"/>
+      <text x="18" y="284" class="value">158.71</text>
+      <text x="22" y="544" class="label">HF shadow</text>
+      <text x="10" y="572" class="small">demo/read-model</text>
+      <rect x="-18" y="602" width="206" height="36" rx="18" fill="#6d28d9"/>
+      <text x="36" y="626" class="badge">NO EXECUTE</text>
+    </g>
+  </g>
+
+  <g transform="translate(72 820)">
+    <rect width="1456" height="56" rx="20" fill="#0f172a"/>
+    <text x="30" y="24" class="badge" style="font-size:17px">Boundary: lower DT/HF diagnostic regret is not production promotion.</text>
+    <text x="30" y="45" class="badge" style="font-size:17px">No ProposedBid, no market payload, market_execution_enabled=false.</text>
+  </g>
+</svg>

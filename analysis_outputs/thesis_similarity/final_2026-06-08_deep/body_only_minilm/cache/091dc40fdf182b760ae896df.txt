@@ -1,0 +1,607 @@
+Academic Editors: Muhammed
+Cavus, Margaret Carol Bell and
+Pascal Venet
+Received: 1 September 2025
+Revised: 20 October 2025
+Accepted: 21 October 2025
+Published: 24 October 2025
+Citation: Kampker, A.; Späth, B.;
+Song, X.; Wang, D. Modelling of
+Battery Energy Storage Systems
+Under Real-World Applications and
+Conditions. Batteries 2025, 11, 392.
+https://doi.org/10.3390/
+batteries11110392
+Copyright: © 2025 by the authors.
+Licensee MDPI, Basel, Switzerland.
+This article is an open access article
+distributed under the terms and
+conditions of the Creative Commons
+Attribution (CC BY) license
+(https://creativecommons.org/
+licenses/by/4.0/).
+Article
+Modelling of Battery Energy Storage Systems Under Real-World
+Applications and Conditions
+Achim Kampker 1
+ , Benedikt Späth 1,*
+ , Xiaoxuan Song 1,2, * and Datao Wang 2
+1 Chair of Production Engineering of E-Mobility Components (PEM), RWTH Aachen University,
+52072 Aachen, Germany
+2 Huawei Technologies Duesseldorf GmbH, 40549 Düsseldorf, Germany
+* Correspondence: b.spaeth@pem.rwth-aachen.de (B.S.); xiaoxuan.song@rwth-aachen.de (X.S.)
+Abstract
+Understanding the degradation behavior of lithium-ion batteries under realistic application
+conditions is critical for the design and operation of Battery Energy Storage Systems (BESS).
+This research presents a modular, cell-level simulation framework that integrates electrical,
+thermal, and aging models to evaluate system performance in representative utility and
+residential scenarios. The framework is implemented using Python and allows time-series
+simulations to be performed under different state of charge (SOC), depth of discharge
+(DOD), C-rate, and ambient temperature conditions. Simulation results reveal that high-
+SOC windows, deep cycling, and elevated temperatures significantly accelerate capacity
+fade, with distinct aging behavior observed between residential and utility profiles. In
+particular, frequency modulation and deep-cycle self-consumption use cases impose more
+severe aging stress compared to microgrid or medium-cycle conditions. The study provides
+interpretable degradation metrics and visualizations, enabling targeted aging analysis
+under different load conditions. The results highlight the importance of thermal effects and
+cell-level stress variability, offering insights for lifetime-aware BESS control strategies. This
+framework serves as a practical tool to support the aging-resilient design and operation of
+grid-connected storage systems.
+Keywords: BESS; lithium-ion battery modeling; thermal–aging coupling
+1. Introduction
+Stationary lithium-ion batteries have an enabling function for integrating intermit-
+tent renewables and providing grid services [1]. The stationary BESS market has grown
+strongly, with applications ranging from grid-assisted services like frequency modula-
+tion to customer-level solar self-consumption [2]. This wide range of applications—from
+peak shaving and price arbitrage to residential solar offset—makes direct comparisons
+and standard evaluation difficult [ 3]. Compared with the automotive industry (which
+uses standard drive cycles), stationary storage lacks a standard use case [4] and, therefore,
+requires realistic simulation under representative load profiles to assess technical and
+economic performance.
+Battery degradation strongly depends on operating conditions: high currents (C-rate),
+deep cycling, high SOC, and high temperature all accelerate aging [5,6]. Therefore, accurate
+lifetime estimation requires simulating the way that a given load profile drives cell stress
+over multiple cycles. Simplified assumptions (e.g., constant cycling) can underestimate
+or miss important effects. For example, Leng et al. (2015) demonstrated that elevated
+Batteries 2025, 11, 392 https://doi.org/10.3390/batteries11110392
+
+Batteries 2025, 11, 392 2 of 12
+temperatures (25–55 ◦C) increase the rate of capacity fade in Li-ion batteries, largely owing
+to electrode film growth and impedance rise, particularly under high current cycling [7]. Re-
+cent works build on this: a multi-stage aging dataset by Stroebl et al. (2024) show that both
+cycle count and calendar time contribute measurably to capacity loss even under moderate
+SOC swings, temperature, and C-rates [8]. Similarly, Roy et al. (2024) provide evidence that
+increasing discharge rates from 0.5C to 0.8C at 25◦C reduce cycle life by over 50%, highlight-
+ing non-linear effects of C-rate on aging [9]. In addition, a review by Madani et al. (2025)
+quantified the combined influence of temperature, DOD, and C-rate in empirical cycles
+across many commercial lithium iron phosphate (LFP)/graphite cells, finding that high
+DOD and high–average SOC drive disproportionately faster degradation [10].
+To address these challenges, holistic simulation platforms have been developed. Sim-
+SES (v15.09.2024) is an open-source Python (v3.13) framework designed for time-series
+techno-economic analysis of BESS. SimSES is founded upon an extensible, modular ar-
+chitecture that enables extensive topology and component options along with detailed
+techno-analysis and -economics [11]. The current approach extends SimSES and develops a
+detailed multi-physics BESS simulation that connects electrical equivalent circuit models
+with thermal networks and aging algorithms. This paper describes an extensible Python-
+based framework and its application using realistic load profiles, demonstrating its ability
+to reproduce known degradation modes under different stress conditions. While SimSES
+provides a robust techno-economic framework with integrated cell models and empirical
+aging functions, its main focus lies on system-level analysis. In contrast, the present work
+develops a Python-based framework that emphasizes cell-level detail: (i) a semi-empirical
+aging model parameterized for LFP cells, (ii) an RC-based electrical sub-model that captures
+dynamic voltage response, and (iii) a modular integration of electrical, thermal, and aging
+processes. This design enables transparent parameterization and direct experimental valida-
+tion, offering more interpretability than existing black-box approaches. Validation against
+constant–current cycling confirms good agreement in both voltage (<15 mV RMSE) and
+temperature (<1 ◦C RMSE). The framework thus provides a flexible basis for aging-aware
+BESS evaluation under realistic operating scenarios.
+2. Methods
+In order to achieve the main goal of this research—to develop a robust framework for
+simulating the performance of BESS under real conditions—a comprehensive methodology
+was adopted. The methodology integrates empirical modeling, data-driven simulation,
+and advanced data analysis techniques. From Figure 1, these methods were structured to
+address each specific research objective as follows:
+ 
+ 
+Figure 1. Methodology process diagram.
+
+Batteries 2025, 11, 392 3 of 12
+2.1. Generation of Real-World Load Profiles
+To generate representative load profiles for BESS applications from stress factor distri-
+butions and features observed under real-world work conditions, data-driven and empirical
+energy system modeling was employed. These approaches include the use of look-up
+tables and empirical models derived from the open-source simulation framework SimSES
+to simulate real-world load profiles. All relevant components of an energy system are
+considered, such as photovoltaic, households, power converters, grid, etc. These models
+will be extended in the research by injecting different operating condition features to accu-
+rately simulate load dynamics under various usage scenarios. There are two representative
+scenarios: residential PV-coupled home energy systems and utility-scale applications. The
+residential profile is derived from anonymized household consumption data with added
+PV production (midday generation and evening discharge). The utility profile simulates
+a commercial load with different peaks (e.g., peak shaving, microgrid, and frequency
+modulation). These curves are generated over time and ensure realistic features such as
+daily peaks, weekday/weekend variations, and seasonal trends.
+2.2. The Lithium-Ion Battery Simulation Model
+A modular, Python-based battery simulation framework that integrates electrical,
+thermal, and aging sub-models was developed. The electrical model is based on an
+equivalent circuit approach, incorporating open-circuit voltage (OCV) characteristics, ohmic
+resistance. The thermal model considers reversible (entropy), irreversible (resistance)
+thermal effects, and dissipation through thermal resistance and capacitance.
+A semi-empirical aging model controls capacity fade and internal resistance growth.
+Cycling degradation is modeled as a function of charge throughput and ∆SOC, while
+calendar aging follows the temperature-dependent Arrhenius law. All sub-models inter-
+act bidirectionally, e.g., temperature feeds back into degradation rates. This integrated
+approach ensures that stress factors such as SOC, C-rate, temperature, and DOD jointly
+influence aging outcomes, reflecting the cell-to-cell variations, thus enabling a realistic
+simulation of the degradation dynamics of the battery system.
+2.3. Scenario-Based Simulation and Validation
+The overall simulation is structured around timestep integration. At each time step,
+the target power is applied from the synthesized profile, and battery voltage, temperature,
+and degradation state are updated in sequence. The simulation tracks both cell-level and
+pack-level outputs like energy throughput, efficiency, and capacity metrics.
+In performance and trend analysis for battery aging, statistical technologies such
+as time-series analysis and data visualization (e.g., violin plots, heatmaps) were utilized.
+Simulation results were also compared with experimental datasets to evaluate the precision,
+especially in voltage and thermal dynamics for various SOC and C-rate conditions.
+3. Modeling Framework
+To analyze the long-term degradation behavior of lithium-ion BESS under realistic
+conditions, a modular simulation framework was developed. The framework combines
+a physics-informed battery model with empirical aging mechanisms and enables the
+simulation of different application scenarios using real-world load profiles. Implemented
+in Python, the framework supports rapid scenario generation, component customization,
+and parameter variability analysis.
+
+Batteries 2025, 11, 392 4 of 12
+3.1. Overall Simulation Architecture
+To capture the lifetime behavior of BESS under real-world operational conditions,
+a hierarchical and modular Python-based simulation framework was developed. This
+framework expands upon a validated LFP battery model to simulate full BESS operation,
+integrating system-level scheduling, cell-level physical behavior, and realistic variability.
+As illustrated in Figure 2, the simulation is composed of two main layers: the system
+layer (BESS simulation manager) and the battery layer (pack/cell sub-models). At the top
+level, a control module named “structure_combine” coordinates the entire BESS simulation.
+It acts as the scheduler, linking scenario-level input data, such as load profiles, ambient
+conditions, and duration, with the battery sub-models. This control layer also handles cell
+parameter initialization and assigns variability among individual cells using a dedicated
+“Initdata” class.
+Figure 2. BESS simulation framework schematic.
+3.1.1. BESS Input Configuration
+Each simulation scenario is defined by a set of realistic load conditions derived from
+open-source grid-scale models SimSES. These include:
+• Current vs. Time Profiles: Time-resolved charge/discharge patterns at the system level.
+• Ambient Conditions: Temperature and cooling assumptions.
+• Initial Settings: SOC, capacity, resistance, and temperature, with user-defined spread.
+• Simulation Parameters: Time step, run duration, save intervals.
+To reflect cell-to-cell variability, the “Initdata” class samples slightly different initial
+parameters per cell, including SOC, capacity, resistance, and initial temperature. These
+distributions are calibrated based on field data provided by industry partners, ensuring a
+non-homogeneous pack representation.
+3.1.2. Simulation Execution Flow
+Once initialized, the “structure_combine” module dispatches simulation tasks across
+the pack. Each virtual cell is independently simulated by invoking the Pack and Cell
+classes, which comprise the core electro-thermal–aging models. These models operate on
+10s resolution and track each cell’s SOC, terminal voltage, cell temperature, and capacity.
+This cell-level data is collected, stored, and exported for each simulation case, enabling
+scenario-level statistical analysis of degradation, energy throughput, thermal behavior, and
+cell divergence.
+3.1.3. Modularity and Scalability
+Each cell object comprises three key submodules:
+• Electrical module: OCV-R-based voltage model with rate-sensitive surface SOC correction.
+• Thermal module: Collective parameter model capturing heat generation and dissipation.
+• Aging module: Semi-empirical degradation sub-models based on cycling and calen-
+dar effects.
+
+Batteries 2025, 11, 392 5 of 12
+• Variability injection: Parameter distributions handled externally for statistical
+batch simulation.
+The framework also supports extension of other BESS-level elements (e.g., inverter
+efficiency models, HVAC modules, control algorithms), making it suitable for broader
+techno-economic or multi-domain simulation studies.
+3.2. Electrical Module
+The cell-level electrical behavior is represented using an equivalent circuit model
+(ECM) composed of an ohmic resistance R0 model, a parallel RC branch (R1, C1), and the
+OCV curve as a function of SOC. The OCV-R0 model captures the static voltage response,
+while the RC branch accounts for short-term polarization and surface SOC dynamics
+under transient current conditions. This design ensures that dynamic overpotentials and
+Joule heating are realistically represented, which are important drivers of thermal rise and
+subsequent degradation, even though the RC dynamics are not directly linked to long-term
+aging. SOC integration is computed using Coulomb counting with Coulombic efficiency
+factors for charging/discharging.
+Parameterization of R0, R1, C1 and the OCV curve was performed using laboratory
+galvanostatic pulse-relaxation tests on an LFP/graphite cell. Current pulses were applied
+at different SOC levels and the relaxation phases were used to resolve polarization and
+resistance components. Curve fitting was conducted using Python SciPy non-linear least
+squares algorithms, ensuring consistency with electrochemical response.
+An additional simplified equivalent element capacitor model (EECM) was integrated
+in series with the RC block to reproduce short-term diffusion lag at high current transients.
+This element is not a physical capacitor but a phenomenological representation to improve
+fidelity under dynamic load profiles.
+3.3. Thermal Module
+Thermal dynamics are captured using a lumped-parameter model, accounting for
+reversible and irreversible heat generation and limited cooling via convection [12]:
+Qirrev (t) = I(t) · ∆U (1)
+Qrev(t) = I(t) · T · δ(SOC) (2)
+Qloss = h · A · (T − Tamb ) (3)
+T(t + ∆t) = T(t) + Qirrev + Qrev − Qloss
+mcp
+(4)
+where Qloss describes heat dissipation through simplified convective cooling. The model
+tracks internal cell temperature evolution and feeds it back into both the electrical and
+aging modules, enabling temperature-dependent behavior.
+Temperature is updated for each cell at every timestep, with heat capacity cp, mass
+m, surface area A, and heat transfer coefficient h defined as cell-specific constants. This
+module enables a realistic prediction of thermal rise during high C-rate discharges or poor
+cooling conditions.
+3.4. Aging Module
+Long-term degradation is modeled using a semi-empirical approach adapted from
+Wang et al. [13]. Although more recent empirical functions are integrated within SimSES,
+this formulation was deliberately chosen for two reasons. First, it enables consistent
+parameterization with the experimental dataset available for the selected LFP cells, thereby
+ensuring a coherent validation procedure across electrical, thermal, and aging modules.
+
+Batteries 2025, 11, 392 6 of 12
+Second, the model structure, explicitly linking temperature, C-rate, and DOD, facilitates its
+adaptation to time-varying profiles through numerical integration, which is less transparent
+in black-box empirical fits. This model considers both calendar aging and cycling aging,
+with sensitivities to key factors such as temperature, C-rate, range of SOC fluctuation, and
+DOD. Although the original work is based on constant current and temperature conditions,
+it is adapted here for time-varying simulation using trapezoidal integration. The rate of
+capacity degradation dQloss/dt is expressed as
+dQloss
+dt = ( 15
+Crate
+)
+1
+3
+·10000·e
+(−31700 + 370.3·Crate )/R·T·0.55·Ah−0.45·Crate
+2
+3 (5)
+Cycling degradation is expressed as a function of cumulative charge throughput (Ah)
+and SOC range. Although ∆SOC does not appear explicitly in the simplified form of
+Equation (5), its effect is embedded in the charge throughput and cycling amplitude terms.
+Here, Ah denotes the integrated current over time, normalized to ampere-hours.
+Calendar degradation follows a temperature-dependent Arrhenius relationship, with
+activation energy calibrated for LFP systems. The reversible (entropic) and irreversible
+(ohmic) contributions to heat generation are considered, with the entropic coefficientδ(SOC)
+approximated from literature data [13] and included to account for reversible heat effects.
+Resistance growth due to aging is applied to the ohmic resistance R0, representing
+electronic and ionic transport losses, while R1 in the RC branch is kept constant since
+it primarily serves to capture short-term polarization rather than aging effects. This ap-
+proach allows a realistic link between accumulated stress factors and their manifestation in
+increased ohmic loss and reduced available capacity.
+3.5. Model Validation
+The developed ECM–thermal–aging framework was validated against laboratory
+cycling data obtained from commercial LFP cells (nominal capacity 280 Ah). Tests included
+constant current charge/discharge at C-rates from 0.1C to 1C under controlled ambient
+temperature (25 ◦C). The simulation was configured with fixed initial parameters (capacity,
+resistance, thermal constants), and only the initial SOC was varied across test segments.
+• Electrical validation:
+The ECM parameters (R0, R1, C1) were fitted using current pulse and CC cycling
+data. Voltage prediction was benchmarked against experimental results, yielding
+RMSE below 15 mV over the full SOC range, with increased error (~37 mV) only near
+95–98% SOC, where OCV slope is steep.
+• Thermal validation:
+Thermal parameters (mass, heat capacity, surface area, heat transfer coefficient) were
+obtained from manufacturer data and calibration tests. Simulated temperature rise
+closely followed experimental trends, with RMSE < 1.0 ◦C across all C-rates.
+• Integration check:
+The validated ECM and thermal modules were then coupled with the aging module
+to ensure consistent feedback of temperature- and SOC-dependent behavior.
+This validation confirms that the model reliably reproduces both steady-state and
+transient cell responses, forming a robust basis for long-term BESS degradation simulations.
+Figures 3 and 4 illustrate representative comparisons of voltage and temperature
+profiles under different C-rates for both charging and discharging. The simulation captures
+key dynamic behaviors, such as voltage plateaus and thermal rise, with strong consistency
+across SOC levels and current conditions.
+
+Batteries 2025, 11, 392 7 of 12
+  
+(a) ( b) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Figure 3. Voltage comparison. Real vs. simulation at different C-rates: ( a) voltage comparison at
+charging segments; (b) voltage comparison at discharging segments.
+ 
+(a) ( b) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Figure 4. Temperature comparison. Real vs. simulation at different C-rates: (a) temperature compari-
+son at charging segments; (b) temperature comparison at discharging segments.
+Quantitatively, RMSE was calculated across four SOC intervals:
+Voltage prediction: RMSE remained less than 15 mV over the full 0–100% SOC range,
+with most intervals (10–35% and 35–95%) achieving sub-10 mV accuracy. Notably, a slight
+error increase (up to ~37 mV) was observed near the 95–98% SOC range at high C-rates,
+due to steeper OCV slopes and increased resistance effects.
+Temperature prediction: Across all C-rates, the thermal model achievedRMSE < 1.0 ◦C,
+with best accuracy (RMSE < 0.5 ◦C) in the 35–95% SOC range. Slightly higher errors oc-
+curred during initial charging stages (10–35% SOC) due to rapid Joule heating and transient
+thermal lag.
+These results demonstrate the model’s reliability in reproducing both electrical and
+thermal responses across a wide operating envelope, validating its use in long-term, real-
+world scenario simulations.
+4. Results
+To evaluate the impact of real-world load profiles on battery degradation, the proposed
+BESS model was simulated under multiple utility-scale and residential-scale operating
+scenarios. For each condition, simulations were performed using a simplified pack of two
+series-connected cells with parameter-level variability introduced to reflect experimental
+inconsistency. Twenty samples per condition were generated to capture statistical variation.
+Each scenario was simulated at four ambient temperatures (10 ◦C, 25 ◦C, 45 ◦C, and 60 ◦C),
+and capacity retention was assessed over a 30-day or 90-day operation period, depending
+on use case characteristics.
+Tables 1 and 2 summarize the key simulation outcomes, including charge/discharge
+rates, DOD ranges, SOC bands, voltage behavior, and resulting capacity retention at differ-
+
+Batteries 2025, 11, 392 8 of 12
+ent temperatures. These results reflect the cumulative aging effect induced by both cycling
+and temperature stress, while time-domain behavior- and sample-specific trajectories are
+omitted here for brevity.
+Table 1. Summary of utility conditions: mean range of voltage, current, SOC, DOD, and average
+capacity retention.
+Conditions Charge
+C-Rate
+Discharge
+C-Rate
+DOD
+Range
+Main
+SOC
+Range
+Voltage
+Distribution Duration Retention
+at 10 ◦C
+Retention
+at 25 ◦C
+Retention
+at 45 ◦C
+Retention
+at 60 ◦C
+Peak
+Shaving ~0.5C ~0.2C–0.5C 90–100% 0–100% ~2.6 V–3.6 V 30 Days 98.8% 97.9% 96.3% 95.4%
+Microgrid
+with high
+DOD
+~0.1C ~0.01C 75–95% 0–100% ~2.95 V–3.5 V 30 Days 98.9% 97.8% 95.5% 93.0%
+Microgrid
+with low
+DOD
+~0.1C ~0.1C 45–65% ~40–70% ~3.24 V–3.38 V 30 Days 99.2% 98.4% 96.7% 94.6%
+Frequency
+modulation
+with high
+DOD
+~0.5C ~0.001C 55–80% ~40–100% ~3.25 V–3.5 V 30 Days 99.2% 98.6% 97.4% 96.0%
+Frequency
+modulation
+with low
+DOD
+~0.3C ~0.001C 25–30% ~80–100% ~3.2 V–3.45 V 30 Days 99.4% 98.9% 97.9% 96.7%
+Table 2. Summary of residential conditions: mean range of voltage, current, SOC, DOD, and average
+capacity retention.
+Conditions Charge
+C-Rate
+Discharge
+C-Rate
+DOD
+Range
+Main
+SOC
+Range
+Voltage
+Distribution Duration Retention
+at 10 ◦C
+Retention
+at 25 ◦C
+Retention
+at 45 ◦C
+Retention
+at 60 ◦C
+Deep charge
+and discharge ~0.2C ~0.1C 85–100% 0–100% ~2.8 V–3.65 V
+30 Days 98.0% 96.1% 91.2% 85.0%
+90 Days 96.3% 92.8% 84.0% 72.5%
+Semi-deep
+charge and
+discharge
+~0.15C ~0.04C ~80% ~15–100% ~3.15 V–3.38 V 30 Days 98.0% 96.1% 91.3% 85.0%
+High-SOC
+cycle ~0.035C ~0.01C 25–30% ~70–100% ~3.28 V~3.65 V
+30 Days 98.6% 97.2% 93.7% 89.2%
+90 Days 97.3% 94.8% 88.4% 80.0%
+Medium–high-
+SOC cycle ~0.15C ~0.02C 55–60% ~40–100% ~3.24 V~3.6 V
+30 Days 98.2% 96.4% 92.0% 86.3%
+90 Days 96.6% 93.4% 85.3% 74.7%
+Medium- and
+low-SOC cycle ~0.09C ~0.02C 45–55% ~10–70% ~3.18 V–3.37 V 30 Days 98.2% 96.5% 92.2% 86.7%
+Low-SOC cycle ~0.08C ~0.015C 20–30% ~15–40% ~3.16 V –3.325 V
+30 Days 98.6% 97.2% 93.7% 89.2%
+90 Days 97.3% 94.8% 88.3% 80.0%
+4.1. Utility-Scale Scenarios
+Five utility-relevant load cases were simulated to emulate grid-oriented BESS applica-
+tions such as peak shaving, microgrid support, and frequency modulation. As shown in
+Table 1, capacity retention after 30 days of simulated operation ranged from 99.4% (low-
+DOD frequency modulation) to 93.0% (high-DOD microgrid), with aging trends strongly
+influenced by discharge depth and cell voltage range.
+4.2. Residential-Scale Scenarios
+Six residential use cases were evaluated to represent various solar self-consumption
+and home backup behaviors, characterized by different SOC bands and cycling depths.
+
+Batteries 2025, 11, 392 9 of 12
+Table 2 presents the aging results over both 30-day and 90-day durations. Deep and semi-
+deep cycling at high DOD and wide SOC range caused the most severe capacity fade, up
+to 15% over 90 days at 60 ◦C. In contrast, low-DOD, high-SOC cycles showed reduced
+degradation under the same thermal stress.
+5. Discussion
+The simulation results presented in Section 3 reveal distinct degradation trends under
+different real-world BESS use cases. This section discusses the key influencing factors,
+comparative analysis between utility and residential scenarios, and implications for model
+application and system design.
+5.1. Impact of Depth of Discharge and Temperature
+Across both utility and residential scenarios, DOD emerged as a dominant factor in
+capacity fade. Use cases involving high DOD, such as deep charge/discharge in residential
+settings and microgrid support with high DOD in utility scenarios, exhibited accelerated
+degradation. For instance, in the residential deep cycling case, capacity retention dropped
+to 72.5% after 90 days at 60 ◦C, indicating a compounding effect of thermal stress and
+deep cycling.
+Conversely, low-DOD cycles, especially under high-SOC bands (e.g., frequency modu-
+lation and high-SOC residential cycling), resulted in relatively minor capacity fade (<5%
+at 60 ◦C in 30 days). These results align with experimental findings in the literature,
+reinforcing the validity of the implemented semi-empirical aging model.
+In all cases, temperature played a critical role, amplifying both calendar- and cycle-
+induced degradation. While 10 ◦C and 25 ◦C yielded minimal fade (<3%), high-temperature
+cases (45–60 ◦C) showed significant retention loss, especially in scenarios with high voltage
+exposure and long dwell times at full charge. These results highlight the importance of
+thermal management, particularly in warmer climates or poorly ventilated installations.
+5.2. Operational Profile Characteristics and Aging Behavior
+The SOC operating window also influenced aging. Cycles confined to the mid-to-high-
+SOC range tended to cause greater resistance growth and fade than mid-range operations
+with limited voltage stress. This behavior can be attributed to electrochemical stress mecha-
+nisms at high SOC. Operating close to the upper voltage limit increases electrode potential,
+which promotes electrolyte oxidation and transition-metal dissolution, thereby accelerating
+SEI growth and impedance rise. Recent experimental work in LFP cells confirms that
+voltage cutoff (i.e., maximum SOC/voltage limit) is among the top aging factors, nearly as
+important as temperature under many cycling protocols [14]. Large SOC swing combined
+with high average SOC increases capacity fade even under moderate C-rate and tempera-
+ture conditions [15]. Moreover, the recent review by Wang et al. (2025) synthesized evidence
+that elevated SOC windows (especially above ~80–90%) lead to non-linear increases in
+parasitic side reactions and loss of lithium inventory [ 16]. Consequently, the high-SOC
+cycle in residential applications showed greater degradation than the medium–low-SOC
+cycle, despite involving a smaller DOD. Charge/discharge rate asymmetry was another
+subtle yet impactful factor. Cases with slow discharge and moderate charging (e.g., fre-
+quency modulation and home backup) exhibited better retention than profiles involving
+sustained or rapid discharges, even at similar DOD. This supports the observation that
+current-induced overpotentials and heating during discharge play a role in accelerating
+degradation mechanisms such as lithium plating or SEI growth.
+
+Batteries 2025, 11, 392 10 of 12
+5.3. Utility vs. Residential Scenario Comparison
+Overall, residential scenarios exhibited more severe aging compared to utility use
+cases. This is primarily due to higher average DOD, especially in self-consumption and
+daily deep cycling, more time spent at high SOC or voltage, and longer durations and
+higher operating temperatures in some configurations.
+For example, while frequency modulation in the utility case involved shallow cycles,
+its total energy throughput and temperature exposure were modest, resulting in <4%
+capacity loss even at 60 ◦C. In contrast, deep residential cycles resulted in >15% capacity
+loss at the same temperature over longer durations.
+These findings suggest that residential BESS deployments are more susceptible to
+rapid degradation, especially when operated without thermal or usage optimization. This
+underscores the importance of adaptive control strategies and potentially revised warranty
+models in behind-the-meter applications.
+5.4. Model Utility and Limitations
+The simulation framework successfully captured the interplay between electrical
+load dynamics, thermal conditions, and aging responses. Its modular structure allows
+for flexibility in scenario configuration and facilitates use in early-stage design assess-
+ment or operational planning. However, limitations exist. The current aging model does
+not capture:
+• Gas evolution or swelling effects.
+• Electrolyte decomposition.
+• Effects of BMS balancing or thermal runaway risk in abnormal events.
+Additionally, the simplified pack configuration (two-cell model) may not fully reflect
+large-scale pack-level heterogeneity or thermal gradients. Future work may extend the
+framework to integrate multi-cell thermal coupling, real-world temperature sensors, and
+state estimation algorithms.
+6. Conclusions
+This paper presents a modular, physics-informed simulation framework for analyzing
+lithium-ion battery degradation in BESS under realistic residential and utility operating con-
+ditions. Through the incorporation of the electrical, thermal, and aging sub-models into a
+Python-cell-level simulation framework, the architecture provides for high-resolution mon-
+itoring of the voltage, SOC, temperature, and capacity fade under dynamic load profiles.
+Simulation results verify that degradation is strongly affected by key operational
+parameters such as SOC window, DOD, C-rate, and temperature. In utility-scale scenarios,
+aggressive cycling, such as high-DOD frequency modulation, induces faster aging com-
+pared to microgrid or low-DOD conditions. Similarly, residential use cases with deep or
+semi-deep cycle operating conditions at the high-SOC ranges exhibit rapid capacity fade, es-
+pecially at high temperatures. Multi-case study analysis also demonstrates the role played
+by inconsistency on the cell level and thermal stress in increasing aging, emphasizing the
+importance of managing both electrical and thermal operating conditions.
+The proposed framework not only enables scenario-driven aging analysis but also pro-
+vides interpretable outputs through time-series visualization, capacity retention heatmaps,
+and summary metrics. These features support actionable insights into aging-aware opera-
+tion and design of BESS. Future work will extend the framework to include system-level
+controls, larger-scale pack simulation, and long-term degradation forecasting for techno-
+economic analysis.
+
+Batteries 2025, 11, 392 11 of 12
+Author Contributions: Conceptualization, B.S. and X.S.; methodology, B.S. and X.S.; investigation,
+B.S. and X.S.; writing—original draft, B.S. and X.S.; writing—review and editing, A.K. and D.W.;
+supervision, A.K. All authors have read and agreed to the published version of the manuscript.
+Funding: This research received no external funding.
+Data Availability Statement: The data presented in this study are available on request from the
+corresponding authors.
+Conflicts of Interest: Authors Xiaoxuan Song and Datao Wang were employed by the company
+Huawei Technologies Duesseldorf GmbH. The remaining authors declare that the research was
+conducted in the absence of any commercial or financial relationships that could be construed as a
+potential conflict of interest.
+Abbreviations
+The following abbreviations are used in this manuscript:
+BESS Battery Energy Storage System
+SOC State of Charge
+DOD Depth of Discharge
+ECM Equivalent Circuit Model
+LFP Lithium iron Phosphate
+CC Constant Current
+RMSE Root–Mean–Square Error
+OCV Open-Circuit Voltage
+EECM Equivalent Element Capacitor Model
+References
+1. Singha, S.; Singha, R. Advancements in Battery and Energy Storage Materials: Paving the Way for Sustainable Energy Solutions.
+In Innovations in Next-Generation Energy Storage Solutions; Mhadhbi, M., Ed.; IGI Global Scientific Publishing: Hershey, PA, USA,
+2025; pp. 451–488.
+2. Figgener, J.; Stenzel, P . The development of stationary battery storage systems in Germany—A market review.J. Energy Storage
+2020, 29, 101153. [CrossRef]
+3. Malhotra, A.; Battke, B.; Beuse, M.; Stephan, A.; Schmidt, T.S. Use cases for stationary battery technologies: A review of the
+literature and existing projects. Renew. Sustain. Energy Rev. 2016, 56, 705–721. [CrossRef]
+4. Renewable Energy Institute, Battery Storage to Efficiently Achieve Renewable Energy Integration. 2023. Available online:
+https://www.renewable-ei.org/pdfdownload/activities/REI_BatteryStorage_EN.pdf (accessed on 10 February 2025).
+5. Tawfik, M.I.; Ali, A.; Asfoor, M. A combined trade-off strategy of battery degradation, charge retention, and driveability for
+electric vehicles. Sci. Rep. 2024, 14, 21995. [CrossRef] [PubMed]
+6. Yarimca, G.; Cetkin, E. Review of Cell Level Battery (Calendar and Cycling) Aging Models: Electric Vehicles. Batteries 2024,
+10, 374. [CrossRef]
+7. Leng, F.; Tan, C.; Pecht, M. Effect of Temperature on the Aging Rate of Li Ion Battery Operating above Room Temperature.Sci.
+Rep. 2015, 5, 12967. [CrossRef] [PubMed]
+8. Stroebl, F.; Petersohn, R.; Schricker, B.; Schaeufl, F.; Bohlen, O.; Palm, H. A multi-stage lithium-ion battery aging dataset using
+various experimental design methodologies. Sci. Data 2024, 11, 1020. [CrossRef] [PubMed]
+9. Roy, A.; Meshram, S.; Patil, R.B.; Arun, S.; Kore, A. Life cycle testing and reliability analysis of prismatic lithium-iron-phosphate
+cells. Int. J. Sustain. Energy 2024, 43, 2337439. [CrossRef]
+10. Madani, S.S.; Shabeer, Y.; Allard, F.; Fowler, M.; Ziebert, C.; Wang, Z.; Panchal, S.; Chaoui, H.; Mekhilef, S.; Dou, S.X.; et al. A
+Comprehensive Review on Lithium-Ion Battery Lifetime Prediction and Aging Mechanism Analysis. Batteries 2025, 11, 127.
+[CrossRef]
+11. Möller, M.; Kucevic, D. SimSES: A holistic simulation framework for modeling and analyzing stationary energy storage systems.
+J. Energy Storage 2022, 49, 103743. [CrossRef]
+12. Battery Design from Chemistry to Pack—Thermal. Available online: https://www.batterydesign.net/thermal/ (accessed on
+15 February 2025).
+13. Wang, J.; Liu, P . Cycle-life model for graphite-LiFePO 4 cells. J. Power Sources 2011, 196, 3942–3948. [CrossRef]
+
+Batteries 2025, 11, 392 12 of 12
+14. Xiong, R.; Wang, P .; Jia, Y.; Shen, W.; Sun, F. Multi-factor aging in Lithium Iron phosphate batteries: Mechanisms and insights.
+Appl. Energy 2025, 382, 125250. [CrossRef]
+15. Luo, G.; Zhang, Y.; Tang, A. Capacity Degradation and Aging Mechanisms Evolution of Lithium-Ion Batteries under Different
+Operation Conditions. Energies 2023, 16, 4232. [CrossRef]
+16. Wang, T.; Wang, H.; Shen, X.; Lu, C.; Pei, L.; Xu, Y.; Wang, W.; Li, H. Review of Aging Mechanism and Diagnostic Methods for
+Lithium-Ion Batteries. Energies 2025, 18, 3884. [CrossRef]
+Disclaimer/Publisher’s Note: The statements, opinions and data contained in all publications are solely those of the individual
+author(s) and contributor(s) and not of MDPI and/or the editor(s). MDPI and/or the editor(s) disclaim responsibility for any injury to
+people or property resulting from any ideas, methods, instructions or products referred to in the content.
