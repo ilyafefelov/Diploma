@@ -1,6 +1,22 @@
 # docs/
 
-Ця папка містить всю документацію проєкту: технічну, академічну та навчальну.
+Ця папка містить технічну, академічну та навчальну документацію проєкту.
+
+## Final GitHub Review Entry Points
+
+Для фінальної здачі репозиторію починайте з цих файлів:
+
+| Роль | Основний файл |
+| --- | --- |
+| Комісія / швидкий огляд | [../README.md](../README.md) |
+| Live demo | [technical/FINAL_DEFENSE_RUNBOOK.md](technical/FINAL_DEFENSE_RUNBOOK.md) |
+| Evidence review | [technical/FINAL_EVIDENCE_INDEX.md](technical/FINAL_EVIDENCE_INDEX.md) |
+| API review | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) |
+| Thesis/source boundary | [technical/CURRENT_GOAL_BOUNDARY_V13.md](technical/CURRENT_GOAL_BOUNDARY_V13.md) |
+
+Поточна межа залишається незмінною: DAM/IDM hourly recommendation preview,
+offline/read-model evidence, `market_execution_enabled=false`, no `ProposedBid`,
+no market order payload.
 
 ---
 
@@ -108,7 +124,7 @@ docs/
 
 ---
 
-## 📌 Поточний стан (May 2026)
+## 📌 Поточний стан (June 2026)
 
 - ✅ Week 3 accepted real-data benchmark — Dnipro factory, OREE observed prices + tenant Open-Meteo weather, 30 rolling-origin anchors, thesis-grade provenance.
 - ✅ Prepared-ahead 90-anchor calibration preview — Dnipro selector/calibration evidence for the next demo path, not the Week 3 headline.

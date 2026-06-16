@@ -1,21 +1,46 @@
+# Python
 __pycache__/
 *.py[cod]
 *.egg-info/
+.venv/
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment and local runtime
 .env
 .env.*
+.tmp_dagster_home*/
+.tmp_runtime/
+.uv-cache/
+tmp_uv_cache*/
+mlruns/
+lightning_logs/
+checkpoints/
+*.log
+.demo-api.err.log
+.demo-api.out.log
+
+# Local data and generated analysis
 data/
+analysis_outputs/
+output/
+outputs/
+reports/
+
+# Node / dashboard build output
+node_modules/
+dashboard/node_modules/
+dashboard/.nuxt/
+dashboard/.output/
+dashboard/.tmp_runtime/
+dashboard/.vercel/
+dashboard/output/
+dashboard/*.log
+
+# Local agent and legacy workspace material
 AGENTS.md
 *\agents.md
 docs\agents.md
 master_execution_prompt.md
-.gitignore
-.git
-_legacy_smart-energy-ai
-mlruns
-lightning_logs/
-checkpoints/
-.tmp_dagster_home*/
-.tmp_runtime/
-.demo-api.err.log
-.demo-api.out.log
+_legacy_smart-energy-ai/

@@ -1,6 +1,7 @@
 export { default as OperatorAlertBanner } from './OperatorAlertBanner.vue'
 export { default as OperatorBaselineConsole } from './OperatorBaselineConsole.vue'
 export { default as OperatorBatteryPanel } from './OperatorBatteryPanel.vue'
+export { default as OperatorBoundaryStrip } from './OperatorBoundaryStrip.vue'
 export { default as OperatorDecisionEvidencePanel } from './OperatorDecisionEvidencePanel.vue'
 export { default as OperatorFutureStackPanel } from './OperatorFutureStackPanel.vue'
 export { default as OperatorGatekeeperPanel } from './OperatorGatekeeperPanel.vue'

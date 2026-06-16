@@ -1,25 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import {
-  OperatorAlertBanner,
-  OperatorBaselineConsole,
-  OperatorDecisionEvidencePanel,
-  OperatorFutureStackPanel,
-  OperatorMarketConsole,
-  OperatorMetricRibbon,
-  OperatorResearchPanel,
-  OperatorRightRail,
-  OperatorScheduleDock,
-  OperatorSidebar,
-  OperatorTopBar
-} from '~/components/dashboard/operator'
+import { OperatorAlertBanner, OperatorBaselineConsole, OperatorBoundaryStrip, OperatorDecisionEvidencePanel, OperatorFutureStackPanel, OperatorMarketConsole, OperatorMetricRibbon, OperatorResearchPanel, OperatorRightRail, OperatorScheduleDock, OperatorSidebar, OperatorTopBar } from '~/components/dashboard/operator'
 import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
+import { useDefenseDashboardPanelRefs } from '~/composables/useDefenseDashboardPanelRefs'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
 import { useOperatorPageNarrativeModel } from '~/composables/useOperatorPageNarrativeModel'
 import { useOperatorRecommendationPreviewModel } from '~/composables/useOperatorRecommendationPreviewModel'
 import { useOperatorRootScrollRecovery } from '~/composables/useOperatorRootScrollRecovery'
+import { useSelectedOperatorPreviewState } from '~/composables/useSelectedOperatorPreviewState'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
 import type { OperatorChartHorizon, OperatorMarketVenue } from '~/types/operator-dashboard'
@@ -94,7 +84,6 @@ const {
   isOperatorRecommendationLoading,
   isShadowComparisonLoading,
   isShadowPreviewLoading,
-  operatorRecommendation,
   operatorRecommendationLastLoadedLabel,
   loadRecommendationSurfaces,
   operatorRecommendationError,
@@ -123,92 +112,51 @@ const operatorReadModelErrorCount = computed(() => {
     + (shadowPreviewError.value ? 1 : 0)
     + (shadowComparisonError.value ? 1 : 0)
 })
-const defenseBenchmark = computed(() => defense.benchmark.value ?? null)
-const defenseModelRows = computed(() => defense.modelRows.value)
-const defenseSensitivity = computed(() => defense.sensitivity.value ?? null)
-const defenseBatteryState = computed(() => defense.batteryState.value ?? null)
-const defenseExogenousSignals = computed(() => defense.exogenousSignals.value ?? null)
-const defenseFutureStack = computed(() => defense.futureStack.value ?? null)
-const defenseDecisionPolicyPreview = computed(() => defense.dtPolicyPreview.value ?? null)
-const defenseAcademicMvpReadiness = computed(() => defense.academicMvpReadiness.value ?? null)
-const defenseGatekeeperValidationStatus = computed(() => defense.gatekeeperValidationStatus.value ?? null)
-const defenseIsLoading = computed(() => defense.isLoading.value)
-const defenseLastLoadedLabel = computed(() => defense.lastLoadedLabel.value)
-const defenseActiveErrorCount = computed(() => defense.activeErrorCount.value)
+const {
+  defenseAcademicMvpReadiness,
+  defenseActiveErrorCount,
+  defenseBatteryState,
+  defenseBenchmark,
+  defenseDecisionPolicyPreview,
+  defenseExogenousSignals,
+  defenseFutureStack,
+  defenseGatekeeperValidationStatus,
+  defenseIsLoading,
+  defenseLastLoadedLabel,
+  defenseModelRows,
+  defenseSensitivity
+} = useDefenseDashboardPanelRefs(defense)
 const isLiveHfShadowPreviewSelected = computed(() => isLiveHfSafeSwitchPreviewSource(selectedPreviewSourceId.value))
 
-watch(isLiveHfShadowPreviewSelected, (isSelected) => {
-  shouldAutoLoadBaselinePreview.value = !isSelected
-
-  if (isSelected) {
-    clearOperatorRecommendationError()
-    clearBaselinePreviewError()
-  }
-}, { immediate: true })
-
-const selectedRecommendationBlocked = computed(() => {
-  if (isLiveHfShadowPreviewSelected.value) {
-    return Boolean(shadowPreviewError.value)
-  }
-
-  return isOperatorRecommendationLoading.value
-    || Boolean(operatorRecommendationError.value)
-    || Boolean(baselinePreviewError.value)
-})
-const selectedVisibleOperatorRecommendation = computed(() => {
-  if (selectedRecommendationBlocked.value) {
-    return null
-  }
-
-  return visibleOperatorRecommendation.value
-})
-const selectedHourlyRecommendationRows = computed(() => {
-  if (selectedRecommendationBlocked.value) {
-    return []
-  }
-
-  return hourlyRecommendationRows.value
-})
-const selectedHourlyRecommendationEmptyMessage = computed(() => {
-  if (selectedRecommendationBlocked.value) {
-    return 'Selected DAM/IDM preview is pending or blocked; no BUY/SELL/HOLD preference is shown.'
-  }
-
-  return hourlyRecommendationEmptyMessage.value
-})
-const bestValidStrategyComparisonRecommendation = computed(() => {
-  if (isLiveHfShadowPreviewSelected.value) {
-    return null
-  }
-
-  return selectedVisibleOperatorRecommendation.value
-})
-const activeMarketPreviewError = computed(() => {
-  if (isLiveHfShadowPreviewSelected.value) {
-    return shadowPreviewError.value
-  }
-
-  return operatorRecommendationError.value || baselinePreviewError.value
-})
-const activeMarketPreviewLoading = computed(() => {
-  return isSignalPreviewLoading.value
-    || (isLiveHfShadowPreviewSelected.value ? isShadowPreviewLoading.value : isOperatorRecommendationLoading.value)
-})
-const activeMarketPreviewLastLoadedLabel = computed(() => {
-  return isLiveHfShadowPreviewSelected.value
-    ? shadowPreviewLastLoadedLabel.value
-    : operatorRecommendationLastLoadedLabel.value
-})
-const activeSurfaceErrorMessage = computed(() => {
-  const marketPreviewError = isLiveHfShadowPreviewSelected.value
-    ? shadowPreviewError.value
-    : operatorRecommendationError.value || baselinePreviewError.value || shadowPreviewError.value
-
-  return error.value
-    || weatherError.value
-    || signalPreviewError.value
-    || marketPreviewError
-    || shadowComparisonError.value
+const {
+  activeMarketPreviewError: pError,
+  activeMarketPreviewLastLoadedLabel: pLoaded,
+  activeMarketPreviewLoading: pBusy,
+  activeSurfaceErrorMessage,
+  bestValidStrategyComparisonRecommendation,
+  selectedHourlyRecommendationEmptyMessage: hMsg,
+  selectedHourlyRecommendationRows: hRows,
+  selectedVisibleOperatorRecommendation
+} = useSelectedOperatorPreviewState({
+  isLiveHfShadowPreviewSelected,
+  isOperatorRecommendationLoading,
+  isShadowPreviewLoading,
+  isSignalPreviewLoading,
+  operatorRecommendationError,
+  baselinePreviewError,
+  shadowPreviewError,
+  error,
+  weatherError,
+  signalPreviewError,
+  shadowComparisonError,
+  operatorRecommendationLastLoadedLabel,
+  shadowPreviewLastLoadedLabel,
+  visibleOperatorRecommendation,
+  hourlyRecommendationRows,
+  hourlyRecommendationEmptyMessage,
+  shouldAutoLoadBaselinePreview,
+  clearBaselinePreviewError,
+  clearOperatorRecommendationError
 })
 
 const {
@@ -286,10 +234,6 @@ const {
   batteryState: defense.batteryState
 })
 
-const refreshRegistry = async (): Promise<void> => {
-  await loadTenants()
-}
-
 const handlePrepareRunConfig = async (): Promise<void> => {
   if (!selectedTenantId.value) {
     return
@@ -363,10 +307,12 @@ onBeforeUnmount(() => {
         :is-loading="isLoading"
         :active-alert-count="activeAlertCount"
         :timezone-label="selectedTenant?.timezone || 'Timezone pending'"
-        @refresh="refreshRegistry"
+        @refresh="loadTenants"
       />
 
       <OperatorMetricRibbon :metrics="headlineMetrics" />
+
+      <OperatorBoundaryStrip />
 
       <OperatorAlertBanner
         v-if="activeSurfaceErrorMessage"
@@ -396,13 +342,13 @@ onBeforeUnmount(() => {
             :market-regime-chips="marketRegimeChips"
             :signal-preview="signalPreview"
             :operator-recommendation="selectedVisibleOperatorRecommendation"
-            :market-preview-error="activeMarketPreviewError"
+            :market-preview-error="pError"
             :selected-market-venue="selectedMarketVenue"
             :selected-target-delivery-date="selectedTargetDeliveryDate"
             :selected-chart-horizon="selectedChartHorizon"
             :is-registry-loading="isLoading"
-            :is-signal-preview-loading="activeMarketPreviewLoading"
-            :signal-preview-last-loaded-label="activeMarketPreviewLastLoadedLabel"
+            :is-signal-preview-loading="pBusy"
+            :signal-preview-last-loaded-label="pLoaded"
             @update:selected-market-venue="value => selectedMarketVenue = value"
             @update:selected-target-delivery-date="value => selectedTargetDeliveryDate = value"
             @update:selected-chart-horizon="value => selectedChartHorizon = value"
@@ -503,8 +449,8 @@ onBeforeUnmount(() => {
         :delivery-window-label="deliveryWindowLabel"
         :selected-preview-source-label="selectedPreviewSourceLabel"
         :is-shadow-preview-mode="selectedPreviewSourceId !== 'best_valid'"
-        :hourly-recommendation-rows="selectedHourlyRecommendationRows"
-        :hourly-empty-message="selectedHourlyRecommendationEmptyMessage"
+        :hourly-recommendation-rows="hRows"
+        :hourly-empty-message="hMsg"
         :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
       />
     </div>

@@ -123,8 +123,8 @@ def template_grid_specs(
                 power_fraction=0.18,
             ),
             "schedule_value_learner_v2_plus": LiveSafeSwitchTemplateSpec(
-                active_hour_count=2,
-                power_fraction=0.12,
+                active_hour_count=0,
+                power_fraction=0.0,
             ),
             "schedule_value_learner_v2_reference": LiveSafeSwitchTemplateSpec(
                 active_hour_count=2,

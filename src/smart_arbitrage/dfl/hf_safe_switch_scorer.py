@@ -875,7 +875,7 @@ def _load_materialized_decision_transformer_model(
             "HF safe-switch checkpoint still contains meta tensors after explicit "
             "CPU state-dict materialization."
         )
-    model.to(torch.device("cpu"))
+    model.to(torch.device("cpu"))  # type: ignore[arg-type]
     model.eval()
     return model
 

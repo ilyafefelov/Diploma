@@ -6,6 +6,7 @@ import type {
   OperatorValueGapPointResponse,
   ShadowRecommendationPreviewResponse
 } from '~/types/control-plane'
+import { formatHour } from '../lib/operator-future/operatorFutureStackLabels'
 import { formatRuntimeAccelerationLabel } from './operatorFutureStack'
 import type { StrategyComparisonRow } from './operatorShadowPreview'
 
@@ -17,8 +18,9 @@ export {
   type ValueAlignedHfShadowDemoScenarioId,
   type PreviewSourceSelectItem
 } from '../lib/operator-future/operatorFuturePreviewSources'
+export { formatHour, formatStrategyAxisLabel } from '../lib/operator-future/operatorFutureStackLabels'
 
-export type PolicyValueMode = 'selected' | 'official'
+export type PolicyValueMode='selected'|'official'
 
 export interface FutureStackSummaryItem {
   label: string
@@ -281,26 +283,6 @@ export function shortStrategyLabel(row: StrategyComparisonRow): string {
   return 'V13 blocked'
 }
 
-export function formatStrategyAxisLabel(value: string): string {
-  const wrappedLabels: Record<string, string> = {
-    'Best valid': 'Best\nvalid',
-    'DT Shadow': 'DT\nShadow',
-    'Direct DT': 'Direct\nDT',
-    'DT/V2+': 'DT/V2+',
-    'DT distill': 'DT\ndistill',
-    'Decision DT': 'Decision\nDT',
-    'RA V2+': 'RA\nV2+',
-    'DT V2+ safe-switch': 'DT V2+\nsafe-switch',
-    'HF live safe-switch': 'HF live\nsafe-switch',
-    'HF value-aligned': 'HF value\naligned',
-    'Poland/TFT': 'Poland\nTFT',
-    'DFL diag': 'DFL\ndiag',
-    'V13 blocked': 'V13\nblocked'
-  }
-
-  return wrappedLabels[value] ?? value
-}
-
 export function formatEnergy(value: number): string {
   return `${value.toFixed(2)} MWh`
 }
@@ -341,10 +323,3 @@ export function formatForecastSeriesLabel(modelName: string): string {
 }
 
 export const roundOptionalPrice = (value: number | null): number | null => value === null ? null : Math.round(value)
-
-export const formatHour = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {
-  day: '2-digit',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit'
-})

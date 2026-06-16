@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this repository or its evidence artifacts, please cite it as below."
+title: "Smart Energy Arbitrage 2026: Source-Backed DAM/IDM Operator Preview for Ukrainian BESS"
+type: software
+authors:
+  - family-names: Fefelov
+    given-names: Ilya
+repository-code: "https://github.com/ilyafefelov/smart-energy-arbitrage-2026"
+abstract: "A diploma MVP and research artifact for source-backed DAM/IDM hourly BESS operator recommendation preview, deterministic safety boundaries, and offline strategy evidence."
+keywords:
+  - battery energy storage
+  - energy arbitrage
+  - decision-focused learning
+  - operator preview
+  - Ukraine
+license: MIT
+date-released: "2026-06-16"

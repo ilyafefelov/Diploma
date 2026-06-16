@@ -49,7 +49,7 @@ describe('operator HUD copy boundary', () => {
     expect(marketConsole).toContain('marketPreviewError')
     expect(marketConsole).toContain('hasMarketPreviewError')
     expect(marketConsole).toContain('hasMarketPreviewError.value || props.isSignalPreviewLoading ? null : props.operatorRecommendation')
-    expect(operatorPage).toContain(':operator-recommendation="operatorRecommendation"')
+    expect(operatorPage).toContain(':operator-recommendation="selectedVisibleOperatorRecommendation"')
     expect(marketConsole).not.toContain('DAM / IDM arbitrage surface')
     expect(marketSignalHero).toContain('selectedMarketVenue')
     expect(marketSignalHero).toContain('marketVenueLabel')
