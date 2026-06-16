@@ -88,6 +88,20 @@ net_power_t = d_t - c_t
 | Чи є binary/MILP decision? | Ні, поточний Level 1 contour є LP без binary unit-commitment змінних | `charge_mw`, `discharge_mw`, `soc_mwh` як continuous variables |
 | Чи є market execution? | Ні, API повертає preview/read model і `market_execution_enabled=false` | `/dashboard/operator-recommendation` |
 
+Б.3.1. Code summary LP solver
+
+Основна реалізація LP solver знаходиться у `src/smart_arbitrage/assets/gold/baseline_solver.py` і зосереджена навколо класу `HourlyDamBaselineSolver`. Конфігурація `BaselineSolverConfig` задає default horizon `24` години, `commit_interval_hours=1`, hourly interval `60` minutes і дозволені market venues `DAM` та `IDM`. Якщо horizon або interval некоректні, конфігурація зупиняється через `ValueError`, тому solver не переходить у неявний режим з іншою часовою сіткою.
+
+Solver має два входи. Перший шлях, `solve_next_dispatch`, сам будує strict similar-day forecast з price history: для Tuesday-Friday використовується price source з `t-24h`, для інших днів - `t-168h`; для цього потрібно щонайменше `168` hourly observations. Другий шлях, `solve_dispatch_from_forecast`, приймає вже підготовлений список `BaselineForecastPoint`; саме цей шлях використовують operator/API surfaces, коли price context уже зібрано з official OREE DAM/IDM row або forecast-store scenario.
+
+У `_solve_schedule` solver створює три `cvxpy` variables: non-negative `charge_mw`, non-negative `discharge_mw` і `soc_mwh` довжиною `horizon + 1`. Objective максимізує суму `market_value_uah - degradation_penalty_uah`, де market value рахується як `price * (discharge_mw - charge_mw) * dt`, а degradation penalty - як throughput penalty з `BatteryPhysicalMetrics.degradation_cost_per_mwh_throughput_uah`. Constraints фіксують початковий SOC, enforce SOC transition з efficiency, тримають SOC у межах `soc_min_fraction` / `soc_max_fraction` і обмежують charge/discharge power через `max_power_mw`.
+
+Після `cvxpy.Problem(...).solve()` код приймає тільки `OPTIMAL` або `OPTIMAL_INACCURATE`; інші statuses піднімають `RuntimeError`. Результат перетворюється на список `BaselineSchedulePoint`, де кожна година містить forecast price, charge/discharge MW, SOC before/after, throughput, degradation penalty, gross market value і net objective value. Signed operator schedule визначається як `net_power_mw = discharge_mw - charge_mw`: додатне значення означає discharge/sell preview, від'ємне - charge/buy preview, нульове - hold.
+
+API-шар у `api/main.py` не трактує цей output як executable bid. `/dashboard/baseline-lp-preview` резолвить tenant battery metrics, starting SOC і official OREE/forecast price context, викликає `solve_dispatch_from_forecast`, запускає projected SOC simulation і формує response з forecast rows, recommendation schedule, bid-style preview rows та economics. У response явно виставлено `market_execution_enabled=false`, `market_order_payload_emitted=false` і `preview_only=true`, тому навіть перша година з `committed_dispatch` лишається read-model preview, а не market-submittable `ProposedBid`.
+
+Поточне тестове покриття перевіряє solver не лише ізольовано, а й у pipeline context. `tests/optimization/test_degradation_accounting.py` підтверджує, що LP degradation penalty узгоджена з throughput/EFC формулою. `tests/dfl/test_relaxed_dispatch.py` порівнює relaxed differentiable dispatch із strict LP fixture. `tests/strategy/test_forecast_strategy_evaluation.py` проганяє strict similar-day, NBEATSx і TFT forecast candidates через однаковий LP/oracle regret contour. `tests/api/test_main.py` перевіряє API behavior baseline preview, включно з використанням fresh hourly telemetry SOC.
+
 Б.4. SOC handling
 
 Таблиця Б.3. Джерела starting SOC

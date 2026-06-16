@@ -192,16 +192,16 @@ def read_text_file(path: Path) -> str:
 def extract_pdf_text(path: Path) -> str:
     errors: list[str] = []
     try:
-        from pypdf import PdfReader
+        from pypdf import PdfReader as PypdfPdfReader
 
-        reader = PdfReader(str(path))
+        reader = PypdfPdfReader(str(path))
         return "\n\n".join(page.extract_text() or "" for page in reader.pages)
     except Exception as exc:  # pragma: no cover - fallback depends on local PDFs
         errors.append(f"pypdf: {exc}")
     try:
-        from PyPDF2 import PdfReader
+        from PyPDF2 import PdfReader as PyPdf2PdfReader
 
-        reader = PdfReader(str(path))
+        reader = PyPdf2PdfReader(str(path))
         return "\n\n".join(page.extract_text() or "" for page in reader.pages)
     except Exception as exc:  # pragma: no cover - fallback depends on local PDFs
         errors.append(f"PyPDF2: {exc}")

@@ -2882,7 +2882,7 @@ def test_hf_live_safe_switch_value_aligned_shadow_reports_forecast_guard_abstent
 	response_payload = response.json()
 	assert response_payload["market_venue"] == "DAM"
 	assert response_payload["selected_schedule_family"] == "schedule_value_learner_v2_plus"
-	assert any(point["action"] != "hold" for point in response_payload["recommendation_schedule"])
+	assert all(point["action"] == "hold" for point in response_payload["recommendation_schedule"])
 	assert response_payload["comparison_metrics"]["forecast_context_pre_publication"] == pytest.approx(1.0)
 	assert response_payload["comparison_metrics"]["candidate_template_grid_forecast_guarded"] == pytest.approx(1.0)
 	assert response_payload["comparison_metrics"]["guard_abstained_to_safe_fallback"] == pytest.approx(1.0)

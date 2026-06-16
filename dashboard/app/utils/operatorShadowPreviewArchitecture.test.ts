@@ -10,6 +10,9 @@ const operatorPagePath = fileURLToPath(new URL('../pages/operator.vue', import.m
 const recommendationPreviewModelPath = fileURLToPath(
   new URL('../composables/useOperatorRecommendationPreviewModel.ts', import.meta.url)
 )
+const selectedPreviewStatePath = fileURLToPath(
+  new URL('../composables/useSelectedOperatorPreviewState.ts', import.meta.url)
+)
 const expectedModules = [
   'operatorShadowPreviewSources.ts',
   'operatorShadowPreviewAdapter.ts',
@@ -60,11 +63,13 @@ describe('operator shadow preview architecture', () => {
 
   it('gates selected recommendation surfaces while the chosen preview is loading or blocked', () => {
     const page = readFileSync(operatorPagePath, 'utf8')
+    const selectedPreviewState = readFileSync(selectedPreviewStatePath, 'utf8')
 
-    expect(page).toContain('selectedRecommendationBlocked')
-    expect(page).toContain('isOperatorRecommendationLoading.value')
-    expect(page).toContain('operatorRecommendationError.value')
-    expect(page).toContain('baselinePreviewError.value')
+    expect(page).toContain('useSelectedOperatorPreviewState')
+    expect(selectedPreviewState).toContain('selectedRecommendationBlocked')
+    expect(selectedPreviewState).toContain('isOperatorRecommendationLoading.value')
+    expect(selectedPreviewState).toContain('operatorRecommendationError.value')
+    expect(selectedPreviewState).toContain('baselinePreviewError.value')
     expect(page).toContain('selectedVisibleOperatorRecommendation')
     expect(page).toContain('operatorRecommendation: selectedVisibleOperatorRecommendation')
     expect(page).toContain(':gatekeeper-actions="gatekeeperActions"')
