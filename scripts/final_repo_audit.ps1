@@ -62,8 +62,8 @@ function Test-GeneratedArtifactsNotTracked {
 function Test-SourcePdfsNotTracked {
   $tracked = @(
     git ls-files `
-      "docs/thesis/sources/*.pdf" `
-      "docs/technical/papers/*.pdf" | Where-Object { $_ }
+      "docs/thesis/sources" `
+      "docs/technical/papers" | Where-Object { $_ -match '\.pdf$' }
   )
 
   if ($tracked.Count -gt 0) {

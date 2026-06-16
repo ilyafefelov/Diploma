@@ -14,6 +14,8 @@ const SOURCE_PRIORITY: Record<string, number> = {
   compact: 2
 }
 
+const OFFSETLESS_ISO_LOCAL_HOUR = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?$/
+
 const MODEL_PRIORITY: Record<string, number> = {
   nbeatsx: 0,
   tft: 1
@@ -245,10 +247,30 @@ const roundSocPercent = (value: number | null | undefined): number | null => {
   return Math.round(value * 100)
 }
 
-export const formatWindowTimestamp = (timestamp: string): string => new Date(timestamp).toLocaleString('en-GB', {
-  day: '2-digit',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-  timeZone: 'Europe/Kyiv'
-})
+export const formatWindowTimestamp = (timestamp: string): string => {
+  const offsetlessMatch = OFFSETLESS_ISO_LOCAL_HOUR.exec(timestamp)
+  if (offsetlessMatch) {
+    const [, year, month, day, hour, minute] = offsetlessMatch
+    return new Date(Date.UTC(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hour),
+      Number(minute)
+    )).toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC'
+    })
+  }
+
+  return new Date(timestamp).toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Kyiv'
+  })
+}
