@@ -36,9 +36,10 @@ function Test-GeneratedArtifactsNotTracked {
       .codex-remote-attachments `
       .env `
       .obsidian `
-      .tmp_dagster_home_verify `
+      .tmp_dagster_home* `
       .tmp_runtime `
-      .tmp_uv_cache `
+      .tmp_uv_cache* `
+      tmp_uv_cache* `
       .uv-cache `
       AGENTS.md `
       master_execution_prompt.md `
