@@ -19,14 +19,14 @@ route.
 
 ## Thesis Literature Used
 
-| Source | Local archive | Relevance |
+| Source | Public source | Relevance |
 |---|---|---|
-| Decision-Focused Learning survey | [../thesis/sources/2307.13565v4-decision-focused-learning-survey.pdf](../thesis/sources/2307.13565v4-decision-focused-learning-survey.pdf) | Supports evaluating forecast features by downstream decision value, not only forecast error. |
-| ESS arbitrage DFL | [../thesis/sources/2305.00362v1-electricity-price-prediction-ess-arbitrage-dfl.pdf](../thesis/sources/2305.00362v1-electricity-price-prediction-ess-arbitrage-dfl.pdf) | Supports strict regret/net-value evaluation for storage arbitrage. |
-| Multistage storage DFL | [../thesis/sources/2405.14719v2.pdf](../thesis/sources/2405.14719v2.pdf) | Reinforces that SOC path and intertemporal decisions matter. |
-| Perturbed DFL storage | [../thesis/sources/2406.17085v2-perturbed-decision-focused-learning-energy-storage.pdf](../thesis/sources/2406.17085v2-perturbed-decision-focused-learning-energy-storage.pdf) | Supports future decision-aligned DFL after the feature route is governed. |
-| PriceFM | [../thesis/sources/2508.04875-pricefm-electricity-price-forecasting.pdf](../thesis/sources/2508.04875-pricefm-electricity-price-forecasting.pdf) | Remains external-validation and market-coupling context only, not Ukrainian training input. |
-| THieF | [../thesis/sources/2508.11372-thief-day-ahead-electricity-price-forecasting.pdf](../thesis/sources/2508.11372-thief-day-ahead-electricity-price-forecasting.pdf) | Remains research context for future temporal hierarchy features. |
+| Decision-Focused Learning survey | [arXiv:2307.13565](https://arxiv.org/abs/2307.13565) | Supports evaluating forecast features by downstream decision value, not only forecast error. |
+| ESS arbitrage DFL | [arXiv:2305.00362](https://arxiv.org/abs/2305.00362) | Supports strict regret/net-value evaluation for storage arbitrage. |
+| Multistage storage DFL | [arXiv:2405.14719](https://arxiv.org/abs/2405.14719) | Reinforces that SOC path and intertemporal decisions matter. |
+| Perturbed DFL storage | [arXiv:2406.17085](https://arxiv.org/abs/2406.17085) | Supports future decision-aligned DFL after the feature route is governed. |
+| PriceFM | [arXiv:2508.04875](https://arxiv.org/abs/2508.04875) | Remains external-validation and market-coupling context only, not Ukrainian training input. |
+| THieF | [arXiv:2508.11372](https://arxiv.org/abs/2508.11372) | Remains research context for future temporal hierarchy features. |
 
 ## Claim Boundary
 

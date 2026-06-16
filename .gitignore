@@ -12,6 +12,7 @@ __pycache__/
 .env.*
 .tmp_dagster_home*/
 .tmp_runtime/
+.tmp_uv_cache*/
 .uv-cache/
 tmp_uv_cache*/
 mlruns/
@@ -27,6 +28,8 @@ analysis_outputs/
 output/
 outputs/
 reports/
+docs/thesis/sources/*.pdf
+docs/technical/papers/*.pdf
 
 # Node / dashboard build output
 node_modules/
@@ -42,5 +45,7 @@ dashboard/*.log
 AGENTS.md
 *\agents.md
 docs\agents.md
+.codex-remote-attachments/
+.obsidian/
 master_execution_prompt.md
 _legacy_smart-energy-ai/
