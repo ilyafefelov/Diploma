@@ -234,7 +234,7 @@ const {
   batteryState: defense.batteryState
 })
 
-const handlePrepareRunConfig = async (): Promise<void> => {
+const handlePrepareRunConfig = async () => {
   if (!selectedTenantId.value) {
     return
   }
@@ -242,7 +242,7 @@ const handlePrepareRunConfig = async (): Promise<void> => {
   await prepareRunConfig(selectedTenantId.value)
 }
 
-const handleMaterializeWeather = async (): Promise<void> => {
+const handleMaterializeWeather = async () => {
   if (!selectedTenantId.value) {
     return
   }
@@ -250,7 +250,7 @@ const handleMaterializeWeather = async (): Promise<void> => {
   await materializeWeatherAssets(selectedTenantId.value, includePriceHistory.value)
 }
 
-const dismissSurfaceErrors = (): void => {
+const dismissSurfaceErrors = () => {
   clearError()
   clearWeatherError()
   clearSignalPreviewError()
@@ -260,7 +260,7 @@ const dismissSurfaceErrors = (): void => {
   clearShadowComparisonError()
 }
 
-const setSelectedTenantId = (tenantId: string): void => {
+const setSelectedTenantId = (tenantId: string) => {
   selectedTenantId.value = tenantId
 }
 

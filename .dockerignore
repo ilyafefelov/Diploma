@@ -11,6 +11,7 @@ __pycache__
 .ruff_cache
 .tmp_dagster_home*
 .tmp_runtime
+.tmp_uv_cache*
 .uv-cache
 tmp_uv_cache*
 
@@ -19,6 +20,8 @@ analysis_outputs
 output
 outputs
 reports
+docs/thesis/sources/*.pdf
+docs/technical/papers/*.pdf
 mlruns
 lightning_logs
 checkpoints
@@ -32,5 +35,7 @@ dashboard/.vercel
 dashboard/output
 
 AGENTS.md
+.codex-remote-attachments
+.obsidian
 master_execution_prompt.md
 _legacy_smart-energy-ai

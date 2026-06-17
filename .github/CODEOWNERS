@@ -18,4 +18,12 @@
 /docs/ @ilyafefelov
 /README.md @ilyafefelov
 /CONTEXT.md @ilyafefelov
-/AGENTS.md @ilyafefelov
+
+# Repository automation and local-agent metadata that is intentionally tracked.
+/.codex/ @ilyafefelov
+/.github/ @ilyafefelov
+/.gitignore @ilyafefelov
+/.dockerignore @ilyafefelov
+/CITATION.cff @ilyafefelov
+/LICENSE @ilyafefelov
+/NOTICE.md @ilyafefelov
