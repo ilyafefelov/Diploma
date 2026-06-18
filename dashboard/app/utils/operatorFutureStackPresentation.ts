@@ -10,6 +10,9 @@ import { formatHour } from '../lib/operator-future/operatorFutureStackLabels'
 import { formatRuntimeAccelerationLabel } from './operatorFutureStack'
 import type { StrategyComparisonRow } from './operatorShadowPreview'
 
+const SS = 'dt_v2_plus_safe_switch_selector_shadow'
+const HFV = 'hf_live_safe_switch_value_aligned_shadow'
+
 export {
   buildPreviewSourceSelectItems,
   formatPreviewSourceOptionLabel,
@@ -143,8 +146,8 @@ export function buildShadowModelStoryItems(
   )
   const applesMetrics = shadowMetricsBySource.get('dt_v2_plus_apples_to_apples_shadow') ?? {}
   const regretAwareMetrics = shadowMetricsBySource.get('regret_aware_v2_plus_selector_shadow') ?? {}
-  const safeSwitchMetrics = shadowMetricsBySource.get('dt_v2_plus_safe_switch_selector_shadow') ?? {}
-  const hfValueAlignedMetrics = shadowMetricsBySource.get('hf_live_safe_switch_value_aligned_shadow') ?? {}
+  const safeSwitchMetrics = shadowMetricsBySource.get(SS) ?? {}
+  const hfValueAlignedMetrics = shadowMetricsBySource.get(HFV) ?? {}
   const v2Regret = numericMetric(regretAwareMetrics.v2_plus_mean_regret_uah)
     ?? numericMetric(safeSwitchMetrics.v2_plus_mean_regret_uah)
     ?? numericMetric(hfValueAlignedMetrics.v2_plus_baseline_mean_regret_uah)
@@ -181,7 +184,7 @@ export function buildShadowModelStoryItems(
     }
   ]
 
-  if (shadowMetricsBySource.has('dt_v2_plus_safe_switch_selector_shadow')) {
+  if (shadowMetricsBySource.has(SS)) {
     storyItems.push({
       label: 'Research gate',
       value: `${formatResearchEvidenceLevel(selectorRegret)} evidence`,
@@ -189,7 +192,7 @@ export function buildShadowModelStoryItems(
     })
   }
 
-  if (shadowMetricsBySource.has('hf_live_safe_switch_value_aligned_shadow')) {
+  if (shadowMetricsBySource.has(HFV)) {
     const hfRegret = numericMetric(hfValueAlignedMetrics.hf_mean_regret_uah) ?? 158.7121
     const canonicalSafeSwitchRegret = numericMetric(hfValueAlignedMetrics.canonical_safe_switch_mean_regret_uah)
       ?? selectorRegret
@@ -265,11 +268,11 @@ export function shortStrategyLabel(row: StrategyComparisonRow): string {
   if (row.sourceId === 'regret_aware_v2_plus_selector_shadow') {
     return 'RA V2+'
   }
-  if (row.sourceId === 'dt_v2_plus_safe_switch_selector_shadow') {
+  if (row.sourceId === SS) {
     return 'DT V2+ safe-switch'
   }
   if (row.sourceId === 'hf_live_safe_switch_shadow') return 'HF live safe-switch'
-  if (row.sourceId === 'hf_live_safe_switch_value_aligned_shadow') return 'HF value-aligned'
+  if (row.sourceId === HFV) return 'HF value-aligned'
   if (row.sourceId === 'hfdt_live_shadow_preview') return 'HFDT live'
   if (row.sourceId === 'poland_tft_shadow') {
     return 'Poland/TFT'
