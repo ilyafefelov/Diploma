@@ -10,29 +10,40 @@ trading bot, not a market-submission engine, and not production dispatch.
 
 ![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
 
-Open first:
+Open first during a live review:
 
-1. [README](README.md) for the product/evidence summary.
-2. `/operator` for the primary demo surface.
-3. `/defense` for evidence and explanation panels.
-4. FastAPI `/docs` for read-model endpoint contracts.
-5. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
+1. `/operator` for the primary demo surface.
+2. `/defense` for evidence and explanation panels.
+3. FastAPI `/docs` for read-model endpoint contracts.
+4. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
    for the 50-point software/experimental rubric.
+5. [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md)
+   for the exact fallback path if the live stack is unavailable.
 
-MacBook / Linux fast start from the repository root:
+## Table Of Contents
 
-```bash
-# Prerequisites: Docker Desktop on macOS, or Docker Engine on Linux;
-# uv, Node.js, and npm available on PATH.
-uv sync --extra dev
-npm -C dashboard install
-bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
-```
+Recommended reading order for the commission:
 
-Open `http://127.0.0.1:64163/operator`, `http://127.0.0.1:64163/defense`,
-and `http://127.0.0.1:8000/docs`. The script starts the local support
-services when Docker is available and keeps the same read-model/no-execution
-boundary as the rest of the repository.
+- [Commission Review Checklist](#commission-review-checklist) maps the project
+  to the 50-point software/experimental rubric.
+- [Commission 90-Second Path](#commission-90-second-path) gives the shortest
+  defense walkthrough.
+- [What It Proves](#what-it-proves) states the measured evidence and the
+  non-execution boundary.
+- [Demo Path](#demo-path) shows the live `/operator` and `/defense` sequence.
+- [Architecture](#architecture) explains the source-to-dashboard read model.
+- [Evidence Visuals](#evidence-visuals) collects screenshots, diagrams, and
+  regret/readiness figures.
+- [Primary Vs Supporting Lanes](#primary-vs-supporting-lanes) separates the
+  final product surface from archived research context.
+- [Quickstart](#quickstart) covers Windows, MacBook, and Linux local startup.
+- [API Reference](#api-reference) lists the read-model endpoints.
+- [Verification](#verification) gives the commands used for tests and audits.
+- [Repository Map](#repository-map) explains where reviewers should look.
+- [Claim Boundaries](#claim-boundaries) lists approved wording.
+- [Troubleshooting](#troubleshooting) covers common demo blockers.
+- [License And Academic Use](#license-and-academic-use) explains repository
+  usage terms.
 
 ## Commission Review Checklist
 
@@ -208,13 +219,16 @@ heavy research materializations.
 
 ### Start The Demo Stack
 
+Run these from the repository root after `uv sync --extra dev` and
+`npm -C dashboard install`.
+
 Windows:
 
 ```powershell
 .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
 ```
 
-macOS/Linux:
+MacBook/macOS or Linux:
 
 ```bash
 bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
