@@ -10,6 +10,10 @@ from smart_arbitrage.assets.bronze.poland_neighbor_snapshot import (
 from smart_arbitrage.assets.bronze.tenant_load import TENANT_LOAD_BRONZE_ASSETS
 from smart_arbitrage.assets.checks import DFL_EVIDENCE_ASSET_CHECKS
 from smart_arbitrage.assets.mvp_demo import MVP_DEMO_ASSETS
+from smart_arbitrage.assets.operator_preview_refresh import (
+    OPERATOR_PREVIEW_REFRESH_JOBS,
+    OPERATOR_PREVIEW_REFRESH_SCHEDULES,
+)
 from smart_arbitrage.assets.gold.forecast_strategy import (
     FORECAST_STRATEGY_GOLD_ASSETS,
     FORECAST_STRATEGY_GOLD_SCHEDULES,
@@ -48,7 +52,12 @@ defs = Definitions(
         *DFL_RESEARCH_GOLD_ASSETS,
         *SIMULATED_TRADE_TRAINING_ASSETS,
     ],
-    schedules=[*BATTERY_TELEMETRY_SCHEDULES, *FORECAST_STRATEGY_GOLD_SCHEDULES],
+    schedules=[
+        *BATTERY_TELEMETRY_SCHEDULES,
+        *FORECAST_STRATEGY_GOLD_SCHEDULES,
+        *OPERATOR_PREVIEW_REFRESH_SCHEDULES,
+    ],
+    jobs=[*OPERATOR_PREVIEW_REFRESH_JOBS],
     asset_checks=[*DFL_EVIDENCE_ASSET_CHECKS, *BID_GATEKEEPER_ASSET_CHECKS],
 )
 

@@ -96,6 +96,9 @@ export function formatPreviewSourceOptionLabel(
   if (previewSourceId === 'hf_live_safe_switch_value_aligned_shadow') {
     return 'HF live safe-switch value-aligned shadow (manual preview)'
   }
+  if (previewSourceId === 'hfdt_live_shadow_preview') {
+    return 'HFDT live shadow preview (forecast candidate)'
+  }
   if (previewSourceId === 'poland_tft_shadow') {
     return 'Poland/TFT shadow (positive, not promoted)'
   }

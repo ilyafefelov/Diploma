@@ -1255,6 +1255,22 @@ def test_dfl_research_assets_are_registered() -> None:
         == "evaluation"
     )
     assert (
+        tags_by_key["dfl_schedule_candidate_library_v2_plus_frame"]["dfl_v2_plus"]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_official_global_panel_schedule_value_learner_v2_plus_frame"][
+            "dfl_v2_plus"
+        ]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"][
+            "dfl_dt_v2_plus"
+        ]
+        == "true"
+    )
+    assert (
         tags_by_key["dfl_official_global_panel_v2_plus_trajectory_dataset_frame"][
             "ml_stage"
         ]
@@ -1265,6 +1281,60 @@ def test_dfl_research_assets_are_registered() -> None:
             "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
         ]["ml_stage"]
         == "evaluation"
+    )
+    assert (
+        tags_by_key[
+            "dfl_official_global_panel_v2_plus_dfl_dt_bridge_strict_lp_benchmark_frame"
+        ]["dfl_dt_v2_plus"]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_dt_research_shadow_decision_aware_frame"]["dfl_hfdt"]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_dt_research_shadow_decision_aware_frame"][
+            "hfdt_live_shadow_preview"
+        ]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_dt_research_shadow_decision_aware_frame"]["dfl_dt_v2_plus"]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_dt_v2_plus_distillation_shadow_frame"]["dfl_hfdt"]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_dt_v2_plus_distillation_shadow_frame"][
+            "hfdt_live_shadow_preview"
+        ]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_dt_v2_plus_distillation_shadow_frame"][
+            "read_model_boundary"
+        ]
+        == "not_market_execution"
+    )
+    assert (
+        tags_by_key["dfl_schedule_value_learner_v2_plus_frame"][
+            "operator_preview"
+        ]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_dt_v2_plus_safe_switch_selector_frame"][
+            "operator_preview"
+        ]
+        == "true"
+    )
+    assert (
+        tags_by_key["dfl_ua_context_acquisition_readiness_v13_frame"][
+            "operator_preview"
+        ]
+        == "true"
     )
     assert (
         tags_by_key["dfl_official_v2_plus_bridge_failure_audit_frame"]["ml_stage"]

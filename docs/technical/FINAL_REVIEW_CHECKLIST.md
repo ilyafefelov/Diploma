@@ -9,6 +9,8 @@ live defense demo.
 
 - Confirm `git status --short` contains only intentional final-submission
   changes.
+- Strict clean-tree submission gate: after the final commit or final reviewed
+  staging boundary, `git status --short` must be empty.
 - Keep unrelated thesis edits separate unless they are part of the final
   repository package.
 - Confirm generated/runtime artifacts are not tracked:
@@ -17,6 +19,19 @@ live defense demo.
   small curated summaries under `docs/technical/final-evidence/`.
 - Do not run line-ending normalization across the repository during final
   packaging.
+
+## 1a. Primary-vs-supporting lane boundary
+
+- Primary demo path: README, `/operator`, `/defense`, FastAPI `/docs`,
+  `FINAL_DEFENSE_RUNBOOK.md`, and `FINAL_EVIDENCE_INDEX.md`.
+- Legacy code is extraction/archive context only; do not open it as the final
+  product.
+- DFL/DT/V13/HF research lanes are supporting evidence unless the final runbook
+  explicitly calls for them.
+- Any unfinished lane must be labeled as blocked, future work, manual shadow, or
+  source-readiness evidence, not as the main delivered product.
+- If a reviewer asks about repository size, explain the split: compact final
+  entry points first, deep research archive second.
 
 ## 2. README Review
 
@@ -71,6 +86,13 @@ Run the lightweight final audit first:
 
 ```powershell
 .\scripts\final_repo_audit.ps1 -SkipFullVerify -SkipSmoke
+```
+
+Run the strict clean-tree submission gate after final staging/commit:
+
+```powershell
+.\scripts\final_repo_audit.ps1 -RequireCleanWorkingTree -SkipFullVerify -SkipSmoke
+git status --short
 ```
 
 Then run the full verification when runtime permits:

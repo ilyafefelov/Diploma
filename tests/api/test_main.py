@@ -32,6 +32,7 @@ from smart_arbitrage.resources.market_data_store import (
 )
 from smart_arbitrage.resources.dfl_training_store import InMemoryDflTrainingStore
 from smart_arbitrage.resources.forecast_store import InMemoryForecastStore
+from smart_arbitrage.research.operator_preview_refresh import OperatorPreviewEnsureResult
 from smart_arbitrage.resources.simulated_trade_store import InMemorySimulatedTradeStore
 from smart_arbitrage.resources.strategy_evaluation_store import InMemoryStrategyEvaluationStore
 
@@ -1238,6 +1239,128 @@ def test_operator_recommendation_materializes_fast_source_backed_forecast_for_se
 	assert "market_order_payload" not in response_payload
 
 
+def test_operator_preview_ensure_endpoint_returns_read_model_materialization_status(
+	client: TestClient,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	monkeypatch.setattr(
+		api_main,
+		"ensure_operator_preview_window",
+		lambda **_: OperatorPreviewEnsureResult(
+			tenant_id="client_003_dnipro_factory",
+			market_venue="DAM",
+			target_delivery_date=datetime(2026, 5, 24).date(),
+			status="materialized",
+			stage="forecast_materialization",
+			message="source-backed forecast-store rows materialized for operator preview; market execution remains disabled",
+			latest_observed_timestamp=datetime(2026, 5, 23, 23),
+			forecast_start=datetime(2026, 5, 24),
+			forecast_horizon_end=datetime(2026, 5, 30, 23),
+			horizon_hours=168,
+			source_refresh_rows=192,
+			source_refresh_dates=tuple(f"2026-05-{day:02d}" for day in range(16, 24)),
+			forecast_rows=336,
+			forecast_run_ids={
+				"nbeatsx_official_v0": "nbeatsx_official_v0:test",
+				"tft_official_v0": "tft_official_v0:test",
+			},
+		),
+		raising=False,
+	)
+
+	response = client.post(
+		"/dashboard/operator-preview/ensure",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"market_venue": "DAM",
+			"target_delivery_date": "2026-05-24",
+		},
+	)
+
+	assert response.status_code == 200
+	payload = response.json()
+	assert payload["status"] == "materialized"
+	assert payload["stage"] == "forecast_materialization"
+	assert payload["source_refresh_rows"] == 192
+	assert payload["forecast_rows"] == 336
+	assert payload["market_execution_enabled"] is False
+	assert payload["read_model_boundary"] == "operator_preview_no_market_submission"
+	assert "proposed_bid" not in payload
+	assert "market_order_payload" not in payload
+
+
+def test_operator_recommendation_uses_source_refresh_when_target_exceeds_current_preview_horizon(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+	monkeypatch: pytest.MonkeyPatch,
+) -> None:
+	ensure_calls: list[dict[str, Any]] = []
+
+	def _fake_ensure_operator_preview_window(**kwargs: Any) -> OperatorPreviewEnsureResult:
+		ensure_calls.append(
+			{
+				"tenant_id": kwargs["tenant_id"],
+				"market_venue": kwargs["market_venue"],
+				"target_delivery_date": kwargs["target_delivery_date"],
+			}
+		)
+		forecast_start = datetime(2026, 5, 24)
+		for model_name in ("nbeatsx_official_v0", "tft_official_v0"):
+			fake_forecast_store.upsert_forecast_run(
+				model_name=model_name,
+				forecast_frame=_forecast_frame(
+					target_date=forecast_start,
+					values=[2700.0 + hour_index * 25.0 for hour_index in range(72)],
+					generated_at=datetime(2026, 5, 23, 23),
+					training_cutoff=datetime(2026, 5, 23, 23),
+				),
+				point_prediction_column="predicted_price_uah_mwh",
+			)
+		return OperatorPreviewEnsureResult(
+			tenant_id=kwargs["tenant_id"],
+			market_venue=kwargs["market_venue"],
+			target_delivery_date=kwargs["target_delivery_date"],
+			status="materialized",
+			stage="forecast_materialization",
+			message="source-backed forecast-store rows materialized for operator preview; market execution remains disabled",
+			forecast_start=forecast_start,
+			forecast_horizon_end=datetime(2026, 5, 26, 23),
+			horizon_hours=72,
+			forecast_rows=144,
+			forecast_run_ids={
+				"nbeatsx_official_v0": "nbeatsx_official_v0:test",
+				"tft_official_v0": "tft_official_v0:test",
+			},
+		)
+
+	monkeypatch.setattr(api_main, "ensure_operator_preview_window", _fake_ensure_operator_preview_window)
+
+	response = client.get(
+		"/dashboard/operator-recommendation",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"strategy_id": "nbeatsx_official_v0",
+			"market_venue": "DAM",
+			"target_delivery_date": "2026-05-24",
+		},
+	)
+
+	assert response.status_code == 200
+	assert ensure_calls == [
+		{
+			"tenant_id": "client_003_dnipro_factory",
+			"market_venue": "DAM",
+			"target_delivery_date": datetime(2026, 5, 24).date(),
+		}
+	]
+	response_payload = response.json()
+	assert response_payload["price_context_status"] == "pre_publication_forecast"
+	assert response_payload["target_delivery_date"] == "2026-05-24"
+	assert response_payload["market_execution_enabled"] is False
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
 def test_operator_recommendation_uses_complete_forecast_run_for_selected_date(
 	client: TestClient,
 	fake_forecast_store: InMemoryForecastStore,
@@ -1353,6 +1476,18 @@ def test_operator_recommendation_blocks_unpublished_target_without_source_histor
 	monkeypatch: pytest.MonkeyPatch,
 ) -> None:
 	del fake_market_data_store
+	monkeypatch.setattr(
+		api_main,
+		"ensure_operator_preview_window",
+		lambda **kwargs: OperatorPreviewEnsureResult(
+			tenant_id=kwargs["tenant_id"],
+			market_venue=kwargs["market_venue"],
+			target_delivery_date=kwargs["target_delivery_date"],
+			status="blocked_source_unavailable",
+			stage="source_refresh",
+			message="source-backed rows unavailable from OREE",
+		),
+	)
 	monkeypatch.setattr(
 		api_main,
 		"materialize_operator_preview_forecast_runs",
@@ -2415,6 +2550,7 @@ def test_hf_live_safe_switch_value_aligned_shadow_materializes_forecast_for_sele
 	assert response_payload["comparison_metrics"]["source_backed_price_context_available"] == pytest.approx(1.0)
 	assert response_payload["comparison_metrics"]["request_fallback_materialized"] == pytest.approx(1.0)
 	assert response_payload["comparison_metrics"]["forecast_rows_loaded"] == pytest.approx(24.0)
+	assert response_payload["comparison_metrics"]["market_order_payload_emitted"] == pytest.approx(0.0)
 	assert materialize_calls == [
 		{
 			"tenant_id": "client_003_dnipro_factory",
@@ -2426,6 +2562,152 @@ def test_hf_live_safe_switch_value_aligned_shadow_materializes_forecast_for_sele
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["market_order_payload_emitted"] is False
 	assert response_payload["promotion_gate_passed"] is False
+	assert "proposed_bid" not in response_payload
+	assert "market_order_payload" not in response_payload
+
+
+def test_hfdt_live_shadow_preview_uses_forecast_v2_plus_candidate_when_guard_abstains(
+	client: TestClient,
+	fake_forecast_store: InMemoryForecastStore,
+	monkeypatch: pytest.MonkeyPatch,
+	tmp_path: Path,
+) -> None:
+	target_date = datetime(2026, 5, 20, tzinfo=UTC)
+	fake_forecast_store.upsert_forecast_run(
+		model_name="nbeatsx_official_v0",
+		forecast_frame=_forecast_frame(
+			target_date=target_date,
+			values=[
+				9000.0,
+				7600.0,
+				6900.0,
+				6500.0,
+				6200.0,
+				6100.0,
+				11800.0,
+				7200.0,
+				4700.0,
+				3600.0,
+				1800.0,
+				250.0,
+				700.0,
+				740.0,
+				780.0,
+				840.0,
+				2800.0,
+				7700.0,
+				14900.0,
+				15100.0,
+				15000.0,
+				14950.0,
+				14980.0,
+				14960.0,
+			],
+			generated_at=datetime(2026, 5, 19, 18, tzinfo=UTC),
+			market_venue="DAM",
+		),
+		point_prediction_column="predicted_price_uah_mwh",
+	)
+	checkpoint_dir = tmp_path / "hf_live_checkpoint"
+	checkpoint_dir.mkdir()
+	monkeypatch.setattr(
+		api_main,
+		"HF_LIVE_SAFE_SWITCH_INFERENCE_CHECKPOINT_DIR_PATH",
+		checkpoint_dir,
+	)
+	monkeypatch.setattr(
+		api_main,
+		"HF_LIVE_SAFE_SWITCH_FORECAST_GUARD_AUDIT_SUMMARY_JSON_PATH",
+		tmp_path / "missing_forecast_guard_summary.json",
+		raising=False,
+	)
+	monkeypatch.setattr(
+		api_main,
+		"load_hf_safe_switch_inference_bundle",
+		lambda checkpoint_path: SimpleNamespace(
+			checkpoint_path=str(checkpoint_path),
+			candidate_families=(
+				"raw_reference",
+				"schedule_value_learner_v2_plus",
+				"schedule_value_learner_v2_reference",
+				"strict_reference",
+			),
+		),
+	)
+
+	def _fake_score(*, bundle: object, candidate_rows: list[dict[str, object]]) -> dict[str, object]:
+		del bundle
+		fallback = next(
+			row
+			for row in candidate_rows
+			if row["dt_schedule_family_target"] == "schedule_value_learner_v2_plus"
+		)
+		dispatch = [float(value) for value in cast(list[float], fallback["dispatch_mw_vector"])]
+		assert any(abs(value) > 1e-9 for value in dispatch)
+		assert float(cast(float, fallback["schedule_value_uah"])) > 0.0
+		return {
+			"selected_candidate": fallback,
+			"selected_candidate_id": fallback["dt_candidate_id_target"],
+			"selected_schedule_family": fallback["dt_schedule_family_target"],
+			"selected_candidate_index": fallback["dt_candidate_index_target"],
+			"selected_schedule_value_uah": fallback["schedule_value_uah"],
+			"predicted_regret_delta_vs_v2_plus_uah": 0.0,
+			"predicted_tail_risk_probability": 0.21,
+			"abstained_to_v2_plus": True,
+			"selection_reason": "guard_abstained_to_safe_fallback",
+			"live_actual_regret_available": False,
+			"selection_diagnostics": {
+				"reported_selected_predicted_regret_delta_vs_v2_plus_uah": 0.0,
+				"raw_selected_predicted_regret_delta_vs_v2_plus_uah": 0.0,
+				"best_nonfallback_schedule_family": "strict_reference",
+				"best_nonfallback_predicted_regret_delta_vs_v2_plus_uah": -85.0,
+				"best_nonfallback_predicted_tail_risk_probability": 0.21,
+				"best_nonfallback_family_tail_risk_probability": 0.0,
+				"best_nonfallback_threshold_margin_to_switch_uah": -15.0,
+				"best_safe_nonfallback_schedule_family": "strict_reference",
+				"best_safe_nonfallback_predicted_regret_delta_vs_v2_plus_uah": -85.0,
+				"best_safe_nonfallback_predicted_tail_risk_probability": 0.21,
+				"best_safe_nonfallback_threshold_margin_to_switch_uah": -15.0,
+				"best_value_schedule_family": "strict_reference",
+				"best_template_schedule_value_uah": float(cast(float, fallback["schedule_value_uah"])) + 100.0,
+				"selected_vs_best_template_value_gap_uah": 100.0,
+				"eligible_nonfallback_candidate_count": 0.0,
+				"threshold_guard_failed_count": 3.0,
+				"predicted_tail_guard_failed_count": 0.0,
+				"family_tail_guard_failed_count": 0.0,
+				"safety_guard_failed_count": 0.0,
+			},
+			"scored_candidates": candidate_rows,
+		}
+
+	monkeypatch.setattr(api_main, "score_hf_safe_switch_candidate_rows", _fake_score)
+
+	response = client.get(
+		"/dashboard/shadow-recommendation-preview",
+		params={
+			"tenant_id": "client_003_dnipro_factory",
+			"preview_source": "hfdt_live_shadow_preview",
+			"market_venue": "DAM",
+			"target_delivery_date": "2026-05-20",
+		},
+	)
+
+	assert response.status_code == 200
+	response_payload = response.json()
+	assert response_payload["preview_source_id"] == "hfdt_live_shadow_preview"
+	assert response_payload["selected_schedule_family"] == "schedule_value_learner_v2_plus"
+	assert any(point["action"] != "hold" for point in response_payload["recommendation_schedule"])
+	assert response_payload["comparison_metrics"]["hfdt_live_shadow_preview"] == pytest.approx(1.0)
+	assert response_payload["comparison_metrics"]["v2_plus_forecast_candidate_available"] == pytest.approx(1.0)
+	assert response_payload["comparison_metrics"]["forecast_context_pre_publication"] == pytest.approx(1.0)
+	assert response_payload["comparison_metrics"]["source_backed_price_context_available"] == pytest.approx(1.0)
+	warnings = " ".join(response_payload["readiness_warnings"])
+	assert "HFDT live shadow ranks source-backed forecast candidate rows" in warnings
+	assert "V2+ forecast fallback candidate uses deterministic LP preview rows" in warnings
+	assert response_payload["market_execution_enabled"] is False
+	assert response_payload["market_order_payload_emitted"] is False
+	assert response_payload["promotion_gate_passed"] is False
+	assert response_payload["dt_lava_ready"] is False
 	assert "proposed_bid" not in response_payload
 	assert "market_order_payload" not in response_payload
 
@@ -2538,6 +2820,7 @@ def test_hf_live_safe_switch_value_aligned_shadow_accepts_same_day_forecast_refr
 	assert response_payload["comparison_metrics"]["source_backed_price_context_available"] == pytest.approx(1.0)
 	assert response_payload["comparison_metrics"]["request_fallback_materialized"] == pytest.approx(0.0)
 	assert response_payload["comparison_metrics"]["forecast_rows_loaded"] == pytest.approx(24.0)
+	assert response_payload["comparison_metrics"]["market_order_payload_emitted"] == pytest.approx(0.0)
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["market_order_payload_emitted"] is False
 	assert "proposed_bid" not in response_payload
@@ -2650,6 +2933,7 @@ def test_hf_live_safe_switch_value_aligned_shadow_materializes_after_stale_inval
 	assert response_payload["comparison_metrics"]["source_backed_price_context_available"] == pytest.approx(1.0)
 	assert response_payload["comparison_metrics"]["request_fallback_materialized"] == pytest.approx(1.0)
 	assert response_payload["comparison_metrics"]["forecast_rows_loaded"] == pytest.approx(24.0)
+	assert response_payload["comparison_metrics"]["market_order_payload_emitted"] == pytest.approx(0.0)
 	assert materialize_calls
 	assert response_payload["market_execution_enabled"] is False
 	assert response_payload["market_order_payload_emitted"] is False

@@ -52,6 +52,25 @@ const waitForText = async (page, text, timeout = 30000) => {
   await page.getByText(text, { exact: false }).first().waitFor({ timeout })
 }
 
+const waitForSelectedPreviewUi = async (page) => {
+  await page.waitForFunction(() => {
+    const bodyText = document.body.innerText
+    return bodyText.includes('HF live safe-switch value-aligned shadow')
+      && !bodyText.includes('Preparing selected preview...')
+  }, { timeout: 45000 })
+}
+
+const captureSmokeScreenshot = async (page, screenshotPath) => {
+  try {
+    await page.screenshot({ path: screenshotPath, fullPage: true })
+    return 'full_page'
+  }
+  catch (error) {
+    await page.screenshot({ path: screenshotPath, fullPage: false })
+    return `viewport_fallback_after_${error.name ?? 'screenshot_error'}`
+  }
+}
+
 const selectHfValueAlignedSource = async (page) => {
   const directButton = page.getByText('HF live safe-switch value-aligned shadow', { exact: false }).first()
   if (await directButton.count()) {
@@ -175,10 +194,11 @@ const main = async () => {
     assert(metrics.forecast_rows_loaded === 24, `${smokeCase.id} did not load 24 forecast/price rows`)
     assert((payload.recommendation_schedule ?? []).length === 24, `${smokeCase.id} did not return 24 schedule rows`)
 
-    await page.waitForTimeout(750)
+    const nonHoldRows = scheduleActionCount(payload.recommendation_schedule)
+    await waitForSelectedPreviewUi(page)
     const bodyText = await page.locator('body').innerText({ timeout: 10000 })
     const screenshotPath = path.join(screenshotDir, `${smokeCase.id}.png`)
-    await page.screenshot({ path: screenshotPath, fullPage: true })
+    const screenshotMode = await captureSmokeScreenshot(page, screenshotPath)
 
     const uiHasHfLabel = bodyText.includes('HF live safe-switch value-aligned shadow')
     const uiHasControlIssue = bodyText.includes('CONTROL SURFACE ISSUE')
@@ -186,19 +206,26 @@ const main = async () => {
     const uiHasStaleProofDate = bodyText.includes('2026-05-02')
     const uiHasBlankPolicyGraph = bodyText.includes('No trade preview is shown')
       || bodyText.includes('Preview pending')
+    const shouldAssertChartEvidence = smokeCase.id === 'dam_today'
+    const uiHasProjectedScheduleCount = bodyText.includes(`Shadow preview: ${nonHoldRows}/24`)
+    const uiHasMeanShortfall = bodyText.includes('Mean shortfall vs strict:')
 
     assert(uiHasHfLabel, `${smokeCase.id} did not show the selected HF label`)
     assert(!uiHasControlIssue, `${smokeCase.id} showed a control-surface issue`)
     assert(!uiHasStaleV2Chip, `${smokeCase.id} still showed stale Selected V2+ chip`)
     assert(!uiHasStaleProofDate, `${smokeCase.id} showed stale 2026-05-02 proof fallback`)
     assert(!uiHasBlankPolicyGraph, `${smokeCase.id} showed a blank/pending policy graph`)
+    if (shouldAssertChartEvidence) {
+      assert(uiHasProjectedScheduleCount, `${smokeCase.id} did not show projected action-row count`)
+      assert(uiHasMeanShortfall, `${smokeCase.id} did not show mean regret/shortfall evidence`)
+    }
 
     caseResults.push({
       id: smokeCase.id,
       venue: smokeCase.venue,
       target_date: smokeCase.targetDate ?? 'latest_official',
       api_rows: payload.recommendation_schedule.length,
-      api_non_hold_rows: scheduleActionCount(payload.recommendation_schedule),
+      api_non_hold_rows: nonHoldRows,
       source_context: metrics.official_published === 1
         ? 'official_published'
         : metrics.same_day_forecast_refresh === 1
@@ -207,7 +234,8 @@ const main = async () => {
             ? 'request_fallback_materialized'
             : 'pre_publication_forecast',
       guard_abstained_to_safe_fallback: metrics.guard_abstained_to_safe_fallback ?? null,
-      screenshot_path: screenshotPath
+      screenshot_path: screenshotPath,
+      screenshot_mode: screenshotMode
     })
   }
 

@@ -77,6 +77,11 @@ describe('operator future stack presentation helpers', () => {
       'safe_switch_evidence_not_promoted',
       'DT V2+ safe-switch selector'
     )).toBe('DT V2+ safe-switch selector (not promoted)')
+    expect(formatPreviewSourceOptionLabel(
+      'hfdt_live_shadow_preview',
+      'forecast_candidate_library_shadow_not_promoted',
+      'HFDT live shadow preview'
+    )).toBe('HFDT live shadow preview (forecast candidate)')
 
     expect(shortStrategyLabel({
       sourceId: 'regret_aware_v2_plus_selector_shadow',
@@ -93,6 +98,21 @@ describe('operator future stack presentation helpers', () => {
       status: 'research-shadow',
       isBlocked: false
     })).toBe('RA V2+')
+    expect(shortStrategyLabel({
+      sourceId: 'hfdt_live_shadow_preview',
+      label: 'HFDT live shadow preview',
+      scheduleRows: 24,
+      totalChargeMwh: 1,
+      totalDischargeMwh: 1,
+      meanRegretVsStrictUah: null,
+      meanRegretVsV2Uah: 0,
+      totalValueUah: 1200,
+      marketExecutionEnabled: false,
+      isDefault: false,
+      isPromoted: false,
+      status: 'forecast-candidate',
+      isBlocked: false
+    })).toBe('HFDT live')
 
     expect(formatStrategyAxisLabel('DT V2+ safe-switch')).toBe('DT V2+\nsafe-switch')
   })
@@ -105,6 +125,8 @@ describe('operator future stack presentation helpers', () => {
       .toBe('Best valid schedule (V2+ comparator/fallback)')
     expect(items.find(item => item.value === 'dt_v2_plus_safe_switch_selector_shadow')?.label)
       .toBe('DT V2+ safe-switch selector (not promoted)')
+    expect(items.find(item => item.value === 'hfdt_live_shadow_preview')?.label)
+      .toBe('HFDT live shadow preview (forecast candidate)')
     expect(items.find(item => item.value === 'v13_dt_lava_promoted_training')?.label)
       .toBe('V13/DT/LAVA blocked (no schedule)')
   })

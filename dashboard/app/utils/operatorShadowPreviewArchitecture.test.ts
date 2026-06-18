@@ -13,6 +13,9 @@ const recommendationPreviewModelPath = fileURLToPath(
 const selectedPreviewStatePath = fileURLToPath(
   new URL('../composables/useSelectedOperatorPreviewState.ts', import.meta.url)
 )
+const pagePreviewSurfacePath = fileURLToPath(
+  new URL('../composables/useOperatorPagePreviewSurface.ts', import.meta.url)
+)
 const expectedModules = [
   'operatorShadowPreviewSources.ts',
   'operatorShadowPreviewAdapter.ts',
@@ -63,9 +66,11 @@ describe('operator shadow preview architecture', () => {
 
   it('gates selected recommendation surfaces while the chosen preview is loading or blocked', () => {
     const page = readFileSync(operatorPagePath, 'utf8')
+    const pagePreviewSurface = readFileSync(pagePreviewSurfacePath, 'utf8')
     const selectedPreviewState = readFileSync(selectedPreviewStatePath, 'utf8')
 
-    expect(page).toContain('useSelectedOperatorPreviewState')
+    expect(page).toContain('useOperatorPagePreviewSurface')
+    expect(pagePreviewSurface).toContain('useSelectedOperatorPreviewState')
     expect(selectedPreviewState).toContain('selectedRecommendationBlocked')
     expect(selectedPreviewState).toContain('isOperatorRecommendationLoading.value')
     expect(selectedPreviewState).toContain('operatorRecommendationError.value')

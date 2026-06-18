@@ -42,6 +42,66 @@ describe('operator market preview request wiring', () => {
     )
   })
 
+  it('ensures source-backed forecast rows and retries operator recommendation for recoverable blockers', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce({
+        data: {
+          detail: 'Official OREE DAM row is not published for target_delivery_date=2026-06-19; pre-publication forecast rows are required from NBEATSx/TFT forecast store. No substitute prices are rendered.'
+        }
+      })
+      .mockResolvedValueOnce({
+        tenant_id: 'client_003_dnipro_factory',
+        market_venue: 'DAM',
+        target_delivery_date: '2026-06-19',
+        status: 'materialized',
+        stage: 'forecast_materialization',
+        message: 'source-backed forecast-store rows materialized for operator preview; market execution remains disabled',
+        source_refresh_rows: 72,
+        source_refresh_dates: ['2026-06-16', '2026-06-17', '2026-06-18'],
+        forecast_rows: 336,
+        forecast_run_ids: {},
+        claim_boundary: 'operator_preview_forecast_rows_not_market_execution',
+        read_model_boundary: 'operator_preview_no_market_submission',
+        market_execution_enabled: false
+      })
+      .mockResolvedValueOnce({
+        market_venue: 'DAM',
+        target_delivery_date: '2026-06-19',
+        market_execution_enabled: false
+      })
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const {
+      operatorPreviewEnsure,
+      operatorRecommendation,
+      loadOperatorRecommendation
+    } = useOperatorRecommendation(
+      ref('client_003_dnipro_factory'),
+      ref('schedule_value_learner_v2_plus'),
+      ref('DAM'),
+      ref('2026-06-19')
+    )
+
+    await loadOperatorRecommendation()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/control-plane/dashboard/operator-preview/ensure',
+      {
+        method: 'POST',
+        query: {
+          tenant_id: 'client_003_dnipro_factory',
+          strategy_id: 'schedule_value_learner_v2_plus',
+          market_venue: 'DAM',
+          target_delivery_date: '2026-06-19'
+        }
+      }
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(operatorPreviewEnsure.value?.status).toBe('materialized')
+    expect(operatorRecommendation.value?.target_delivery_date).toBe('2026-06-19')
+  })
+
   it('sends market venue and target date to the HF live shadow preview endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       preview_source_id: 'hf_live_safe_switch_shadow',
@@ -469,4 +529,5 @@ describe('operator market preview request wiring', () => {
     }
     expect(queries.some(query => 'target_delivery_window_start' in query)).toBe(false)
   })
+
 })

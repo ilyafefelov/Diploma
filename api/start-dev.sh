@@ -2,12 +2,21 @@
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 REPO_ROOT="$(cd -- "$SCRIPT_DIR/.." >/dev/null 2>&1 && pwd)"
-PYTHON_PATH="$REPO_ROOT/.venv/Scripts/python.exe"
+POSIX_PYTHON_PATH="$REPO_ROOT/.venv/bin/python"
+WINDOWS_PYTHON_PATH="$REPO_ROOT/.venv/Scripts/python.exe"
+PYTHON_PATH="$POSIX_PYTHON_PATH"
 PORT="${SMART_ARBITRAGE_API_PORT:-8000}"
 SRC_PATH="$REPO_ROOT/src"
 
+if [ ! -f "$PYTHON_PATH" ] && [ -f "$WINDOWS_PYTHON_PATH" ]; then
+  PYTHON_PATH="$WINDOWS_PYTHON_PATH"
+fi
+
 if [ ! -f "$PYTHON_PATH" ]; then
   echo "Project virtual environment not found at $PYTHON_PATH"
+  echo "Expected one of:"
+  echo "  $POSIX_PYTHON_PATH"
+  echo "  $WINDOWS_PYTHON_PATH"
   exit 1
 fi
 

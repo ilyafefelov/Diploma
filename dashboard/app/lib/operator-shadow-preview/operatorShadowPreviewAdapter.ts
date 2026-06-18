@@ -66,15 +66,12 @@ export const adaptShadowPreviewToOperatorRecommendation = (
     proposed_bid_status: shadowPreview.proposed_bid_status,
     read_model_boundary: 'operator_preview_no_market_submission'
   }))
+  const liveHfMeanRegretEvidenceUah = previewSourceId === 'hf_live_safe_switch_value_aligned_shadow'
+    || previewSourceId === 'hfdt_live_shadow_preview'
+    ? numericComparisonMetric(shadowPreview.comparison_metrics?.hf_mean_regret_uah)
+    : null
   const valueGapSeries = shadowPreview.recommendation_schedule.map((point): OperatorValueGapPointResponse => ({
-    step_index: point.step_index,
-    interval_start: point.interval_start,
-    chosen_value_uah: point.expected_value_uah,
-    best_visible_value_uah: point.value_vs_strict_uah == null
-      ? point.expected_value_uah
-      : point.expected_value_uah - point.value_vs_strict_uah,
-    value_gap_uah: point.value_vs_strict_uah == null ? 0 : Math.max(0, -point.value_vs_strict_uah),
-    metric_source: `${shadowPreview.preview_source_id}_vs_strict_reference`
+    ...buildShadowValueGapPoint(point, shadowPreview.preview_source_id, liveHfMeanRegretEvidenceUah)
   }))
   const totalThroughputMwh = recommendationSchedule.reduce((total, point) => total + point.throughput_mwh, 0)
   const totalNetValueUah = usesLiveHfPreview
@@ -188,11 +185,49 @@ const minimalBaseRecommendation = (
   }
 })
 
+const buildShadowValueGapPoint = (
+  point: ShadowRecommendationPreviewResponse['recommendation_schedule'][number],
+  previewSourceId: string,
+  liveHfMeanRegretEvidenceUah: number | null
+): OperatorValueGapPointResponse => {
+  const strictValueGapUah = point.value_vs_strict_uah == null
+    ? null
+    : Math.max(0, -point.value_vs_strict_uah)
+  const strictRegretGapUah = point.regret_vs_strict_uah == null
+    ? null
+    : Math.max(0, point.regret_vs_strict_uah)
+  const fallbackMeanRegretUah = strictValueGapUah == null && strictRegretGapUah == null
+    ? liveHfMeanRegretEvidenceUah
+    : null
+  const valueGapUah = strictValueGapUah ?? strictRegretGapUah ?? fallbackMeanRegretUah ?? 0
+  const metricSource = fallbackMeanRegretUah == null
+    ? `${previewSourceId}_vs_strict_reference`
+    : `${previewSourceId}_comparison_metrics_mean_regret_evidence`
+
+  return {
+    step_index: point.step_index,
+    interval_start: point.interval_start,
+    chosen_value_uah: point.expected_value_uah,
+    best_visible_value_uah: point.expected_value_uah + valueGapUah,
+    value_gap_uah: valueGapUah,
+    metric_source: metricSource
+  }
+}
+
+const numericComparisonMetric = (value: unknown): number | null => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null
+  }
+
+  return value
+}
+
 const comparisonWarning = (shadowPreview: ShadowRecommendationPreviewResponse): string => {
   const comparisonMetrics = shadowPreview.comparison_metrics ?? {}
   if (
     shadowPreview.preview_source_id === 'hf_live_safe_switch_shadow'
     || shadowPreview.preview_source_id === 'hf_live_safe_switch_value_aligned_shadow'
+    || shadowPreview.preview_source_id === 'hfdt_live_shadow_preview'
   ) {
     const threshold = comparisonMetrics.selected_operating_threshold_uah
     const predictedDelta = comparisonMetrics.predicted_regret_delta_vs_v2_plus_uah
@@ -237,9 +272,11 @@ const comparisonWarning = (shadowPreview: ShadowRecommendationPreviewResponse): 
     const forecastAbstentionLabel = forecastAbstained === 1
       ? '; forecast-date guarded abstention: selected recommendation remains HOLD'
       : ''
-    const sourceLabel = shadowPreview.preview_source_id === 'hf_live_safe_switch_value_aligned_shadow'
-      ? 'Value-aligned HF live safe-switch shadow preview'
-      : 'HF live safe-switch shadow preview'
+    const sourceLabel = shadowPreview.preview_source_id === 'hfdt_live_shadow_preview'
+      ? 'HFDT live shadow preview'
+      : shadowPreview.preview_source_id === 'hf_live_safe_switch_value_aligned_shadow'
+        ? 'Value-aligned HF live safe-switch shadow preview'
+        : 'HF live safe-switch shadow preview'
     return `${sourceLabel} uses live source-backed prices with ${thresholdLabel} guard${deltaLabel}${guardMarginLabel}${valueGapLabel}${failureLabel}${forecastAbstentionLabel}${shadowGateLabel}${shadowRegretLabel}.`
   }
   const regretDelta = comparisonMetrics.dt_minus_v2_plus_regret_uah

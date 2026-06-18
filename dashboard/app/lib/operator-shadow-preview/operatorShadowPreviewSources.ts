@@ -11,6 +11,7 @@ export type OperatorPreviewSourceId
     | 'dt_v2_plus_safe_switch_selector_shadow'
     | 'hf_live_safe_switch_shadow'
     | 'hf_live_safe_switch_value_aligned_shadow'
+    | 'hfdt_live_shadow_preview'
     | 'poland_tft_shadow'
     | 'dfl_diagnostics'
     | 'v13_dt_lava_promoted_training'
@@ -25,6 +26,7 @@ export const SHADOW_PREVIEW_SOURCE_IDS: OperatorPreviewSourceId[] = [
   'dt_v2_plus_safe_switch_selector_shadow',
   'hf_live_safe_switch_shadow',
   'hf_live_safe_switch_value_aligned_shadow',
+  'hfdt_live_shadow_preview',
   'poland_tft_shadow',
   'dfl_diagnostics',
   'v13_dt_lava_promoted_training'
@@ -44,6 +46,12 @@ export const HF_VALUE_ALIGNED_SHADOW_COMPARISON_PREVIEW_SOURCE_IDS: OperatorPrev
   'dt_v2_plus_distillation_shadow',
   'dt_v2_plus_safe_switch_selector_shadow',
   'hf_live_safe_switch_value_aligned_shadow'
+]
+
+export const HFDT_LIVE_SHADOW_COMPARISON_PREVIEW_SOURCE_IDS: OperatorPreviewSourceId[] = [
+  'dt_v2_plus_distillation_shadow',
+  'dt_v2_plus_safe_switch_selector_shadow',
+  'hfdt_live_shadow_preview'
 ]
 
 export const VALUE_ALIGNED_HF_SHADOW_PROOF_SWITCH_DELIVERY_DATE = '2026-05-02'
@@ -86,6 +94,7 @@ export const isLiveHfSafeSwitchPreviewSource = (
 ): boolean => {
   return previewSourceId === 'hf_live_safe_switch_shadow'
     || previewSourceId === 'hf_live_safe_switch_value_aligned_shadow'
+    || previewSourceId === 'hfdt_live_shadow_preview'
 }
 
 export const comparisonPreviewSourceIdsFor = (
@@ -93,6 +102,9 @@ export const comparisonPreviewSourceIdsFor = (
 ): OperatorPreviewSourceId[] => {
   if (selectedPreviewSourceId === 'hf_live_safe_switch_value_aligned_shadow') {
     return HF_VALUE_ALIGNED_SHADOW_COMPARISON_PREVIEW_SOURCE_IDS
+  }
+  if (selectedPreviewSourceId === 'hfdt_live_shadow_preview') {
+    return HFDT_LIVE_SHADOW_COMPARISON_PREVIEW_SOURCE_IDS
   }
   if (selectedPreviewSourceId === 'hf_live_safe_switch_shadow') {
     return HF_LIVE_SHADOW_COMPARISON_PREVIEW_SOURCE_IDS
@@ -140,6 +152,9 @@ export const previewSourceDisplayLabel = (
   }
   if (previewSourceId === 'hf_live_safe_switch_value_aligned_shadow') {
     return fallbackLabel || 'HF live safe-switch value-aligned shadow'
+  }
+  if (previewSourceId === 'hfdt_live_shadow_preview') {
+    return fallbackLabel || 'HFDT live shadow preview'
   }
   if (previewSourceId === 'dt_v2_plus_distillation_shadow') {
     return fallbackLabel || 'DT V2+ distillation shadow'

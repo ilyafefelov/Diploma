@@ -74,6 +74,15 @@ export const DEFAULT_PREVIEW_SOURCE_OPTIONS: ShadowPreviewSourceOptionResponse[]
     market_execution_enabled: false
   },
   {
+    preview_source_id: 'hfdt_live_shadow_preview',
+    label: 'HFDT live shadow preview',
+    status: 'forecast_candidate_library_shadow_not_promoted',
+    reason: 'Ranks source-backed forecast candidate rows with V2+ forecast fallback; manual preview only.',
+    is_default_strategy: false,
+    is_promoted_strategy: false,
+    market_execution_enabled: false
+  },
+  {
     preview_source_id: 'poland_tft_shadow',
     label: 'Poland-TFT Shadow',
     status: 'positive_not_promoted',

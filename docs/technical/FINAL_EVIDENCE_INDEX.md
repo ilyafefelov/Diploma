@@ -36,6 +36,7 @@ Global boundary:
 | [final-evidence/hf_value_aligned_forecast_readiness_summary.md](final-evidence/hf_value_aligned_forecast_readiness_summary.md) | Shows 8/8 DAM/IDM readiness cases for latest/today/tomorrow/day+2. |
 | [final-evidence/hf_live_safe_switch_value_aligned_shadow_demo_packet.md](final-evidence/hf_live_safe_switch_value_aligned_shadow_demo_packet.md) | Gives the short operator demo packet for commission review. |
 | [FINAL_METRICS_ATLAS.md](FINAL_METRICS_ATLAS.md) | Maps final README/defense numbers to source artifacts and claim boundaries. |
+| [FINAL_UNIVERSITY_RUBRIC_MATRIX.md](FINAL_UNIVERSITY_RUBRIC_MATRIX.md) | Maps the university 50-point software/experimental rubric to demo steps, evidence, verification, and risk controls. |
 | [FINAL_REVIEW_CHECKLIST.md](FINAL_REVIEW_CHECKLIST.md) | Gives the final GitHub, dashboard, API, evidence, and verification checklist. |
 | [BUSINESS_VALUE_NOTE.md](BUSINESS_VALUE_NOTE.md) | Frames the business value without claiming live market execution or ROI. |
 | [final-demo-assets/README.md](final-demo-assets/README.md) | Defines the tracked screenshots used for the GitHub-facing demo package. |

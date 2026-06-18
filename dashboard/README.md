@@ -57,11 +57,23 @@ Final defense source ids:
 | --- | --- | --- |
 | `dt_v2_plus_safe_switch_selector_shadow` | DT/V2+ safe-switch selector | Corrected canonical secondary evidence: `168.16` UAH mean regret, `4 / 90` switches, `86 / 90` abstentions, not promoted. |
 | `hf_live_safe_switch_value_aligned_shadow` | HF live safe-switch value-aligned shadow | Manual shadow/demo challenger: `158.71` UAH frozen mean regret signal, 8/8 DAM/IDM readiness, not a production controller. |
+| `hfdt_live_shadow_preview` | HFDT live shadow preview | Source-backed forecast candidate-library preview: ranks HFDT candidates while V2+ fallback uses deterministic forecast-LP rows; not promoted and no market execution. |
 | `v13_dt_lava_promoted_training` | V13/DT/LAVA blocked | Roadmap/source-readiness blocker only, no schedule rows. |
 
 Historical sources may remain available for diagnostics, but they should not be
 used as the main defense path unless the final runbook explicitly calls for
 them.
+
+Dagster evidence tags for the same defense story:
+
+```powershell
+uv run dg list defs --assets "tag:operator_preview=true"
+uv run dg list defs --assets "tag:hfdt_live_shadow_preview=true"
+uv run dg list defs --assets "tag:read_model_boundary=not_market_execution"
+```
+
+These tags identify evidence assets, not executable dashboard actions. The
+runtime source selector remains the FastAPI `preview_source` query parameter.
 
 Every shadow preview keeps:
 
@@ -91,4 +103,11 @@ restart the current-workspace API:
 ```powershell
 docker compose stop api
 .\api\start-dev.ps1 -Port 8000
+```
+
+On macOS/Linux:
+
+```bash
+docker compose stop api
+SMART_ARBITRAGE_API_PORT=8000 bash ./api/start-dev.sh
 ```

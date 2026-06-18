@@ -25,6 +25,20 @@ export const proxyControlPlane = async <T>(
   }
 }
 
+export const proxyControlPlanePost = async <T>(
+  event: H3Event,
+  endpoint: string,
+  failureMessage: string
+): Promise<T> => {
+  const query = getQuery(event) as ControlPlaneQuery
+
+  try {
+    return await fetchControlPlane<T>(endpoint, { query, method: 'POST' })
+  } catch (error) {
+    throw toControlPlaneProxyError(error, failureMessage)
+  }
+}
+
 export const proxyOptionalControlPlane = async <T>(
   event: H3Event,
   endpoint: string,

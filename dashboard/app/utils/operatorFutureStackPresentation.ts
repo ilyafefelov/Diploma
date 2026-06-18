@@ -268,12 +268,9 @@ export function shortStrategyLabel(row: StrategyComparisonRow): string {
   if (row.sourceId === 'dt_v2_plus_safe_switch_selector_shadow') {
     return 'DT V2+ safe-switch'
   }
-  if (row.sourceId === 'hf_live_safe_switch_shadow') {
-    return 'HF live safe-switch'
-  }
-  if (row.sourceId === 'hf_live_safe_switch_value_aligned_shadow') {
-    return 'HF value-aligned'
-  }
+  if (row.sourceId === 'hf_live_safe_switch_shadow') return 'HF live safe-switch'
+  if (row.sourceId === 'hf_live_safe_switch_value_aligned_shadow') return 'HF value-aligned'
+  if (row.sourceId === 'hfdt_live_shadow_preview') return 'HFDT live'
   if (row.sourceId === 'poland_tft_shadow') {
     return 'Poland/TFT'
   }

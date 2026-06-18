@@ -18,15 +18,34 @@ execution gate changes the project boundary.
 
 ## Local Start
 
+Windows:
+
 ```powershell
 .\api\start-dev.ps1 -Port 8000
 ```
 
-Or through the local demo helper:
+macOS/Linux:
+
+```bash
+SMART_ARBITRAGE_API_PORT=8000 bash ./api/start-dev.sh
+```
+
+Or through the local demo helper.
+
+Windows:
 
 ```powershell
 .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
 ```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
+```
+
+The local demo helper checks Docker daemon readiness before Compose and attempts
+to start Docker Desktop/service when available.
 
 If the dashboard is fresh but API routes return `404` or `502`, restart the API
 from the current workspace:
@@ -34,6 +53,13 @@ from the current workspace:
 ```powershell
 docker compose stop api
 .\api\start-dev.ps1 -Port 8000
+```
+
+On macOS/Linux:
+
+```bash
+docker compose stop api
+SMART_ARBITRAGE_API_PORT=8000 bash ./api/start-dev.sh
 ```
 
 ## Endpoint Groups
@@ -69,7 +95,22 @@ Key query parameters:
 - `target_delivery_date`: optional `YYYY-MM-DD`; can route to published official
   OREE rows or complete forecast-store rows for unpublished horizons.
 - `preview_source`: for shadow preview, for example
-  `hf_live_safe_switch_value_aligned_shadow`.
+  `hf_live_safe_switch_value_aligned_shadow` for fixed demo proof cases or
+  `hfdt_live_shadow_preview` for source-backed forecast candidate-library
+  ranking with deterministic V2+ forecast fallback.
+
+Related Dagster discovery tags:
+
+```powershell
+uv run dg list defs --assets "tag:operator_preview=true"
+uv run dg list defs --assets "tag:hfdt_live_shadow_preview=true"
+uv run dg list defs --assets "tag:read_model_boundary=not_market_execution"
+```
+
+The API `preview_source=hfdt_live_shadow_preview` is the runtime read-model
+selector. The Dagster tag `hfdt_live_shadow_preview=true` marks the HFDT shadow
+evidence assets that support the defense story; it does not indicate market
+execution or a promoted controller.
 
 Required operator-preview guarantees:
 
@@ -129,6 +170,12 @@ HF value-aligned shadow for an unpublished horizon:
 
 ```powershell
 Invoke-RestMethod "http://127.0.0.1:8000/dashboard/shadow-recommendation-preview?tenant_id=client_003_dnipro_factory&preview_source=hf_live_safe_switch_value_aligned_shadow&market_venue=DAM&target_delivery_date=2026-06-04"
+```
+
+HFDT live shadow with V2+ forecast fallback for a selected future date:
+
+```powershell
+Invoke-RestMethod "http://127.0.0.1:8000/dashboard/shadow-recommendation-preview?tenant_id=client_003_dnipro_factory&preview_source=hfdt_live_shadow_preview&market_venue=DAM&target_delivery_date=2026-06-19"
 ```
 
 Academic MVP readiness:

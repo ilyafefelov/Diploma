@@ -63,6 +63,20 @@ describe('operator shadow preview adapter live HF scenarios', () => {
     }))
   })
 
+  it('carries HF mean-regret evidence into chart value gaps when hourly strict gaps are unavailable', () => {
+    const visible = adaptShadowPreviewToOperatorRecommendation(
+      null,
+      hfLiveSafeSwitchValueAlignedPreview(),
+      'hf_live_safe_switch_value_aligned_shadow'
+    )
+
+    expect(visible?.value_gap_series[0]).toEqual(expect.objectContaining({
+      value_gap_uah: 158.7121,
+      metric_source: 'hf_live_safe_switch_value_aligned_shadow_comparison_metrics_mean_regret_evidence'
+    }))
+    expect(visible?.value_gap_series.every(point => point.value_gap_uah > 0)).toBe(true)
+  })
+
   it('charts HF live rows with hourly signed dispatch value instead of repeated candidate total', () => {
     const visible = adaptShadowPreviewToOperatorRecommendation(
       null,

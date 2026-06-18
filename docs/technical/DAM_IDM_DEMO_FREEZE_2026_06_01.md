@@ -18,8 +18,16 @@ This note freezes the current local demo state for the operator-facing
 
 Use the local helper:
 
+Windows:
+
 ```powershell
 .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163 -SkipCompose
+```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163 --skip-compose
 ```
 
 The helper sets these local Postgres DSNs when they are not already present:

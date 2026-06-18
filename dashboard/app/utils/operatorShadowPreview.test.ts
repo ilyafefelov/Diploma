@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 
 import {
   adaptShadowPreviewToOperatorRecommendation,
+  comparisonPreviewSourceIdsFor,
+  isLiveHfSafeSwitchPreviewSource,
   previewModeLabel,
   resolveShadowPreviewTargetDeliveryDate,
   shouldLoadShadowPreview
@@ -29,6 +31,8 @@ describe('operator shadow preview source metadata', () => {
     })).toBe('V13/DT/LAVA blocked')
     expect(shouldLoadShadowPreview('hf_live_safe_switch_shadow')).toBe(true)
     expect(shouldLoadShadowPreview('hf_live_safe_switch_value_aligned_shadow')).toBe(true)
+    expect(shouldLoadShadowPreview('hfdt_live_shadow_preview')).toBe(true)
+    expect(isLiveHfSafeSwitchPreviewSource('hfdt_live_shadow_preview')).toBe(true)
     expect(previewModeLabel('hf_live_safe_switch_shadow', {
       ...dtShadowPreview(),
       preview_source_id: 'hf_live_safe_switch_shadow',
@@ -39,6 +43,16 @@ describe('operator shadow preview source metadata', () => {
       preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
       preview_source_label: 'HF live safe-switch value-aligned shadow'
     })).toBe('HF live safe-switch value-aligned shadow')
+    expect(previewModeLabel('hfdt_live_shadow_preview', {
+      ...dtShadowPreview(),
+      preview_source_id: 'hfdt_live_shadow_preview',
+      preview_source_label: 'HFDT live shadow preview'
+    })).toBe('HFDT live shadow preview')
+    expect(comparisonPreviewSourceIdsFor('hfdt_live_shadow_preview')).toEqual([
+      'dt_v2_plus_distillation_shadow',
+      'dt_v2_plus_safe_switch_selector_shadow',
+      'hfdt_live_shadow_preview'
+    ])
   })
 
   it('defines four manual value-aligned HF demo scenarios', () => {

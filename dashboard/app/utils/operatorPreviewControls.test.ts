@@ -5,6 +5,7 @@ import {
   buildOperatorRecommendationSignalPreview,
   formatOperatorPreviewErrorMessage,
   operatorPriceContextModeLabel,
+  operatorTargetDateShortcutsForPreview,
   sliceOperatorRecommendationForChartHorizon,
   sliceSignalPreviewForChartHorizon,
   selectOperatorMarketSignalPreview
@@ -12,6 +13,35 @@ import {
 import { baseRecommendationWithSchedule } from './test-fixtures/operatorShadowPreviewFixtures'
 
 describe('operator preview controls', () => {
+  it('uses real calendar date shortcuts outside manual HF value-aligned mode', () => {
+    const shortcuts = operatorTargetDateShortcutsForPreview(
+      'best_valid',
+      new Date('2026-06-17T12:00:00+03:00')
+    )
+
+    expect(shortcuts.map(shortcut => [shortcut.label, shortcut.value])).toEqual([
+      ['Latest official', null],
+      ['Today', '2026-06-17'],
+      ['Tomorrow', '2026-06-18'],
+      ['Day +2', '2026-06-19']
+    ])
+  })
+
+  it('routes HF value-aligned date chips to curated source-backed action and abstention windows', () => {
+    const shortcuts = operatorTargetDateShortcutsForPreview(
+      'hf_live_safe_switch_value_aligned_shadow',
+      new Date('2026-06-17T12:00:00+03:00')
+    )
+
+    expect(shortcuts.map(shortcut => [shortcut.label, shortcut.value])).toEqual([
+      ['Latest official', null],
+      ['Today', '2026-06-02'],
+      ['Tomorrow', '2026-06-03'],
+      ['Day +2', '2026-06-04']
+    ])
+    expect(shortcuts[1]?.detail).toContain('source-backed demo preset')
+  })
+
   it('filters visible signal rows for chart horizon without changing source data', () => {
     const signalPreview = {
       tenant_id: 'client_003_dnipro_factory',

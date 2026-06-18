@@ -205,6 +205,26 @@ export interface OperatorRecommendationResponse {
   economics: BaselinePreviewEconomics
 }
 
+export interface OperatorPreviewEnsureResponse {
+  tenant_id: string
+  market_venue: string
+  target_delivery_date: string
+  status: 'ready' | 'materialized' | 'blocked_source_unavailable' | 'blocked_outside_policy_horizon' | 'failed' | string
+  stage: string
+  message: string
+  latest_observed_timestamp: string | null
+  forecast_start: string | null
+  forecast_horizon_end: string | null
+  horizon_hours: number | null
+  source_refresh_rows: number
+  source_refresh_dates: string[]
+  forecast_rows: number
+  forecast_run_ids: Record<string, string>
+  claim_boundary: string
+  read_model_boundary: string
+  market_execution_enabled: boolean
+}
+
 export interface ShadowPreviewSourceOptionResponse {
   preview_source_id: string
   label: string

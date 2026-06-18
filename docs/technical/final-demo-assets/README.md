@@ -20,8 +20,16 @@ without console errors. Keep screenshots small enough for GitHub review.
 
 1. Start:
 
+   Windows:
+
    ```powershell
    .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
+   ```
+
+   macOS/Linux:
+
+   ```bash
+   bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
    ```
 
 2. Open `http://127.0.0.1:64163/operator`.

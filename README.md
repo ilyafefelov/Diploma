@@ -36,9 +36,12 @@ The canonical scope document is
 5. Compare `latest official`, `today`, `tomorrow`, and `day+2`.
 6. Point to the first-viewport boundary strip: preview only, no `ProposedBid`,
    no market payload, human review required.
-7. Select `HF live safe-switch value-aligned shadow`.
-8. Show one non-HOLD preview and one guarded HOLD/abstention.
-9. End with the boundary: preview/read model only, no market execution.
+7. Select `HF live safe-switch value-aligned shadow` for the fixed proof/demo cases.
+8. Select `HFDT live shadow preview` for an arbitrary future date; it ranks
+   source-backed forecast candidates while the V2+ fallback still shows
+   deterministic forecast-LP actions when HFDT abstains.
+9. Show one non-HOLD preview and one guarded HOLD/abstention.
+10. End with the boundary: preview/read model only, no market execution.
 
 The full defense runbook is in
 [docs/technical/FINAL_DEFENSE_RUNBOOK.md](docs/technical/FINAL_DEFENSE_RUNBOOK.md).
@@ -85,8 +88,26 @@ guardrails. It does not emit market bids or dispatch commands.
 Curated evidence is indexed in
 [docs/technical/FINAL_EVIDENCE_INDEX.md](docs/technical/FINAL_EVIDENCE_INDEX.md).
 
+## Primary Vs Supporting Lanes
+
+The primary defense path is the operator-preview product surface:
+
+- README first screen;
+- `/operator`;
+- `/defense`;
+- FastAPI `/docs`;
+- [final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md);
+- [final evidence index](docs/technical/FINAL_EVIDENCE_INDEX.md).
+
+The long DFL/DT/V13 documents, HF/DT shadow packets, and historical weekly
+reports are supporting evidence. They are useful for questions, but they are
+not the legacy workspace or unfinished research lanes to open as the main demo.
+`_legacy_smart-energy-ai` is extraction/archive context only, not the delivered
+product surface.
+
 Final review helpers:
 
+- [University rubric matrix](docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md)
 - [Metrics atlas](docs/technical/FINAL_METRICS_ATLAS.md)
 - [Repository review checklist](docs/technical/FINAL_REVIEW_CHECKLIST.md)
 - [Business value note](docs/technical/BUSINESS_VALUE_NOTE.md)
@@ -96,8 +117,8 @@ Final review helpers:
 
 ### Prerequisites
 
-- Windows PowerShell
-- Docker Desktop
+- Windows PowerShell or Bash on macOS/Linux
+- Docker Desktop on Windows/macOS, or Docker Engine on Linux
 - Python dependencies managed by `uv`
 - Node.js/npm for the Nuxt dashboard
 - Optional CUDA-capable GPU for heavier research runs
@@ -114,9 +135,21 @@ heavy research materializations.
 
 ### Start The Demo Stack
 
+Windows:
+
 ```powershell
 .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
 ```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
+```
+
+The helper probes Docker with `docker info`, attempts to start Docker
+Desktop/service when available, starts the Compose support services, then starts
+FastAPI and the Nuxt dashboard.
 
 Open:
 
@@ -127,12 +160,34 @@ Open:
 - Dagster: [http://127.0.0.1:3001](http://127.0.0.1:3001)
 - MLflow: [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
+Dagster asset search shortcuts:
+
+```powershell
+uv run dg list defs --assets "tag:operator_preview=true"
+uv run dg list defs --assets "tag:hfdt_live_shadow_preview=true"
+uv run dg list defs --assets "tag:read_model_boundary=not_market_execution"
+```
+
+In the Dagster UI, use `tag:dfl_v2_plus=true`, `tag:dfl_dt_v2_plus=true`,
+`tag:dfl_hfdt=true`, `tag:hfdt_live_shadow_preview=true`,
+`tag:operator_preview=true`, and
+`tag:read_model_boundary=not_market_execution` to find V2+, DT/V2+,
+HFDT shadow evidence, final operator-preview evidence assets, and explicit
+read-model/non-execution assets.
+
 If a fresh dashboard returns `404` or `502` for current backend routes, suspect a
 stale API on `:8000` first:
 
 ```powershell
 docker compose stop api
 .\api\start-dev.ps1 -Port 8000
+```
+
+On macOS/Linux:
+
+```bash
+docker compose stop api
+SMART_ARBITRAGE_API_PORT=8000 bash ./api/start-dev.sh
 ```
 
 For container-based API testing after route changes:
@@ -203,6 +258,13 @@ Final repository audit:
 
 ```powershell
 .\scripts\final_repo_audit.ps1 -SkipFullVerify -SkipSmoke
+```
+
+Strict final submission gate after the final commit/stage boundary:
+
+```powershell
+.\scripts\final_repo_audit.ps1 -RequireCleanWorkingTree -SkipFullVerify -SkipSmoke
+git status --short
 ```
 
 Full wrapper when runtime permits:

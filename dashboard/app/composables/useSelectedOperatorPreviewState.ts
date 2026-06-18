@@ -90,8 +90,11 @@ export const useSelectedOperatorPreviewState = ({
       : operatorRecommendationError.value || baselinePreviewError.value
   })
   const activeMarketPreviewLoading = computed(() => {
-    return isSignalPreviewLoading.value
-      || (isLiveHfShadowPreviewSelected.value ? isShadowPreviewLoading.value : isOperatorRecommendationLoading.value)
+    if (isLiveHfShadowPreviewSelected.value) {
+      return isShadowPreviewLoading.value
+    }
+
+    return isSignalPreviewLoading.value || isOperatorRecommendationLoading.value
   })
   const activeMarketPreviewLastLoadedLabel = computed(() => {
     return isLiveHfShadowPreviewSelected.value

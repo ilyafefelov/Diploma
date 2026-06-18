@@ -59,6 +59,90 @@ describe('operator shadow preview table rows', () => {
     }))
   })
 
+  it('surfaces actionful shadow rows before chronological hold rows in the review table', () => {
+    const basePoint = hfLiveSafeSwitchValueAlignedPreview().recommendation_schedule[0]!
+    const preview = {
+      ...hfLiveSafeSwitchValueAlignedPreview(),
+      recommendation_schedule: [
+        {
+          ...basePoint,
+          step_index: 0,
+          interval_start: '2026-06-02T00:00:00',
+          action: 'hold',
+          quantity_mw: 0,
+          recommended_net_power_mw: 0
+        },
+        {
+          ...basePoint,
+          step_index: 1,
+          interval_start: '2026-06-02T01:00:00',
+          action: 'hold',
+          quantity_mw: 0,
+          recommended_net_power_mw: 0
+        },
+        {
+          ...basePoint,
+          step_index: 11,
+          interval_start: '2026-06-02T11:00:00',
+          action: 'charge',
+          quantity_mw: -0.07,
+          recommended_net_power_mw: -0.07
+        },
+        {
+          ...basePoint,
+          step_index: 20,
+          interval_start: '2026-06-02T20:00:00',
+          action: 'discharge',
+          quantity_mw: 0.07,
+          recommended_net_power_mw: 0.07
+        }
+      ]
+    }
+
+    const rows = buildShadowHourlyRecommendationRows(preview, 0.5, 60)
+
+    expect(rows.map(row => row.action)).toEqual(['charge', 'discharge', 'hold', 'hold'])
+    expect(rows.map(row => row.timestamp)).toEqual([
+      '2026-06-02T11:00:00',
+      '2026-06-02T20:00:00',
+      '2026-06-02T00:00:00',
+      '2026-06-02T01:00:00'
+    ])
+  })
+
+  it('surfaces actionful best-valid rows before hold rows in the review table', () => {
+    const base = baseRecommendationWithSchedule()
+    const firstPoint = base.recommendation_schedule[0]!
+    const secondPoint = base.recommendation_schedule[1]!
+    const rows = buildOperatorHourlyRecommendationRows({
+      ...base,
+      recommendation_schedule: [
+        {
+          ...firstPoint,
+          step_index: 0,
+          interval_start: '2026-06-18T00:00:00',
+          recommended_net_power_mw: 0,
+          throughput_mwh: 0,
+          net_value_uah: 0
+        },
+        {
+          ...secondPoint,
+          step_index: 10,
+          interval_start: '2026-06-18T10:00:00',
+          recommended_net_power_mw: 0.2
+        }
+      ],
+      bid_recommendation_preview: [],
+      value_gap_series: []
+    }, 0.5)
+
+    expect(rows.map(row => row.action)).toEqual(['discharge', 'hold'])
+    expect(rows.map(row => row.timestamp)).toEqual([
+      '2026-06-18T10:00:00',
+      '2026-06-18T00:00:00'
+    ])
+  })
+
   it('builds a comparison surface including direct DT, worse DT, and blocked previews', () => {
     const rows = buildStrategyComparisonRows(baseRecommendationWithSchedule(), [
       directDtShadowPreview(),
