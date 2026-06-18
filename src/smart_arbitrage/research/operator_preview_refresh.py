@@ -114,6 +114,7 @@ def ensure_operator_preview_window(
             target_delivery_date=target_delivery_date,
             current_source_frame=source_frame,
             source_history_fetcher=source_history_fetcher,
+            max_horizon_hours=max_horizon_hours,
         )
         if refresh_result.status != "ready":
             return OperatorPreviewEnsureResult(
@@ -319,6 +320,7 @@ def build_source_backed_lag_operator_preview_forecast(
     if training_frame.is_empty() or "ds" not in training_frame.columns or "y" not in training_frame.columns:
         return pl.DataFrame()
     latest_price_by_hour: dict[int, float] = {}
+    last_observed_price: float | None = None
     for row in (
         training_frame
         .filter(pl.col("is_train") & pl.col("y").is_not_null())
@@ -326,7 +328,9 @@ def build_source_backed_lag_operator_preview_forecast(
         .iter_rows(named=True)
     ):
         timestamp = _datetime_value(row["ds"])
-        latest_price_by_hour[timestamp.hour] = float(row["y"])
+        observed_price = float(row["y"])
+        latest_price_by_hour[timestamp.hour] = observed_price
+        last_observed_price = observed_price
     future_timestamps = [
         _datetime_value(row["ds"])
         for row in (
@@ -340,7 +344,7 @@ def build_source_backed_lag_operator_preview_forecast(
     ]
     if not latest_price_by_hour or not future_timestamps:
         return pl.DataFrame()
-    last_observed_price = latest_price_by_hour[max(latest_price_by_hour)]
+    assert last_observed_price is not None
     return pl.DataFrame(
         {
             "forecast_timestamp": future_timestamps,
@@ -358,7 +362,7 @@ def build_source_backed_lag_operator_preview_forecast(
 
 @dataclass(frozen=True, slots=True)
 class _SourceRefreshResult:
-    status: Literal["ready", "blocked_source_unavailable"]
+    status: Literal["ready", "blocked_source_unavailable", "blocked_outside_policy_horizon"]
     stage: str
     message: str
     source_refresh_rows: int = 0
@@ -372,6 +376,7 @@ def _refresh_source_history(
     target_delivery_date: date,
     current_source_frame: pl.DataFrame,
     source_history_fetcher: SourceHistoryFetcher,
+    max_horizon_hours: int,
 ) -> _SourceRefreshResult:
     missing_dates = _missing_source_dates_for_target(
         current_source_frame,
@@ -382,6 +387,19 @@ def _refresh_source_history(
             status="ready",
             stage="source_refresh",
             message="source-backed observed rows already cover the refresh window",
+        )
+
+    max_refresh_days = _max_source_refresh_days(max_horizon_hours)
+    if len(missing_dates) > max_refresh_days:
+        return _SourceRefreshResult(
+            status="blocked_outside_policy_horizon",
+            stage="forecast_horizon",
+            message=(
+                f"target_delivery_date={target_delivery_date.isoformat()} is outside the "
+                f"{max_horizon_hours}-hour source-backed operator preview horizon; "
+                f"source refresh would require {len(missing_dates)} observed delivery days, "
+                f"above the bounded {max_refresh_days}-day refresh window"
+            ),
         )
 
     start_date = min(missing_dates)
@@ -444,6 +462,10 @@ def _complete_delivery_dates(source_frame: pl.DataFrame) -> set[date]:
         .to_series()
         .to_list()
     )
+
+
+def _max_source_refresh_days(max_horizon_hours: int) -> int:
+    return max(MIN_OPERATOR_PREVIEW_SOURCE_HISTORY_DAYS, int(ceil(max_horizon_hours / 24.0))) + 1
 
 
 def _forecast_store_covers_target(

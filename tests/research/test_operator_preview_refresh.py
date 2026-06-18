@@ -4,7 +4,10 @@ from datetime import date, datetime, timedelta
 
 import polars as pl
 
-from smart_arbitrage.research.operator_preview_refresh import ensure_operator_preview_window
+from smart_arbitrage.research.operator_preview_refresh import (
+    build_source_backed_lag_operator_preview_forecast,
+    ensure_operator_preview_window,
+)
 from smart_arbitrage.resources.forecast_store import InMemoryForecastStore
 from smart_arbitrage.resources.market_data_store import (
     InMemoryMarketDataStore,
@@ -93,6 +96,68 @@ def test_ensure_operator_preview_window_blocks_without_substitute_rows_when_sour
         model_names=["nbeatsx_official_idm_v0", "tft_official_idm_v0"],
         limit_per_model=24,
     ).is_empty()
+
+
+def test_lag_operator_preview_forecast_carries_latest_observed_row_for_missing_hour() -> None:
+    training_frame = pl.DataFrame(
+        {
+            "ds": [
+                datetime(2026, 5, 1, 23),
+                datetime(2026, 5, 2, 1),
+                datetime(2026, 5, 2, 5),
+            ],
+            "y": [23000.0, 1010.0, None],
+            "is_train": [True, True, False],
+            "is_forecast": [False, False, True],
+        }
+    )
+
+    forecast = build_source_backed_lag_operator_preview_forecast(training_frame, horizon_hours=1)
+
+    assert forecast.select("forecast_timestamp").item() == datetime(2026, 5, 2, 5)
+    assert forecast.select("predicted_price_uah_mwh").item() == 1010.0
+
+
+def test_ensure_operator_preview_window_blocks_far_future_target_before_source_refresh() -> None:
+    market_store = InMemoryMarketDataStore()
+    market_store.upsert_market_prices(
+        market_price_observations_from_frame(
+            _source_backed_market_frame(
+                market_venue="DAM",
+                start_timestamp=datetime(2026, 5, 1),
+                hours=15 * 24,
+            )
+        )
+    )
+    forecast_store = InMemoryForecastStore()
+    fetch_calls: list[tuple[date, date, str]] = []
+
+    def _unexpected_fetch_source_window(
+        *,
+        start_date: date,
+        end_date: date,
+        market_venue: str,
+    ) -> pl.DataFrame:
+        fetch_calls.append((start_date, end_date, market_venue))
+        return _fetch_source_window(start_date=start_date, end_date=end_date, market_venue=market_venue)
+
+    result = ensure_operator_preview_window(
+        market_data_store=market_store,
+        forecast_store=forecast_store,
+        tenant_id="client_003_dnipro_factory",
+        market_venue="DAM",
+        target_delivery_date=date(2030, 1, 1),
+        source_history_fetcher=_unexpected_fetch_source_window,
+        nbeatsx_builder=_fake_forecast,
+        tft_builder=_fake_forecast,
+        cache_horizon_hours=168,
+    )
+
+    assert result.status == "blocked_outside_policy_horizon"
+    assert result.stage == "forecast_horizon"
+    assert "outside the 168-hour source-backed operator preview horizon" in result.message
+    assert fetch_calls == []
+    assert result.market_execution_enabled is False
 
 
 def _source_backed_market_frame(
