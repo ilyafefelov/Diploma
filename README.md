@@ -1,19 +1,29 @@
 # Smart Energy Arbitrage 2026
 
-Commission-ready operator-preview system for Ukrainian BESS energy arbitrage.
+Commission proof pack for a Ukrainian BESS energy-arbitrage operator preview.
 
 This repository implements a source-backed DAM/IDM hourly recommendation
-preview for a human BESS operator. It combines a Dagster/FastAPI/Postgres
-backend, a Nuxt operator dashboard, deterministic LP/V2+ evidence, and guarded
-DT/HF shadow research. It is not a trading bot, not a market-submission engine,
-and not production dispatch.
+preview for a human BESS operator. The defensible product is a read-model
+evidence system: Dagster/FastAPI/Postgres backend, Nuxt operator dashboard,
+deterministic LP/V2+ evidence, and guarded DT/HF shadow research. It is not a
+trading bot, not a market-submission engine, and not production dispatch.
 
 ![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
+
+Open first:
+
+1. [README](README.md) for the product/evidence summary.
+2. `/operator` for the primary demo surface.
+3. `/defense` for evidence and explanation panels.
+4. FastAPI `/docs` for read-model endpoint contracts.
+5. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
+   for the 50-point software/experimental rubric.
 
 ## Commission Review Checklist
 
 Use this repository as a product/evidence walkthrough, not as a raw research
-workspace. The fastest way to grade the 50% software/experimental criterion is:
+workspace. The fastest way to grade the 50% software/experimental criterion is
+to inspect criteria coverage, evidence links, and verification output:
 
 | University criterion | What to inspect first | Evidence in this repo |
 | --- | --- | --- |
@@ -29,6 +39,19 @@ limits -> demo bridge -> conclusion. The rubric mapping is in
 [docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md](docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md).
 For a tighter commission walkthrough, use the
 [software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md).
+
+## Commission 90-Second Path
+
+1. State the product boundary: DAM/IDM hourly operator preview, read-model only.
+2. Show the hero dashboard screenshot, then open `/operator` live if the stack is
+   running.
+3. Point to tenant, venue, date, source-readiness, and no-execution controls.
+4. Show `/defense` or the evidence visuals below for regret, readiness, and
+   guarded shadow evidence.
+5. Open [Verification](#verification) or the GitHub Actions check and show that
+   typecheck, unit tests, link checks, and final repo audit pass.
+6. Close with: `market_execution_enabled=false`, no `ProposedBid`, no market
+   payload, human review required.
 
 ## What It Proves
 
@@ -93,6 +116,16 @@ guardrails. It does not emit market bids or dispatch commands.
 
 ## Evidence Visuals
 
+### Operator And Defense Surfaces
+
+![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
+
+![Defense dashboard](docs/technical/final-demo-assets/defense-dashboard-desktop.png)
+
+### Data And Decision Pipeline
+
+![Data pipeline](docs/thesis/chapters/assets/compact-fig-3-1-pipeline.png)
+
 ### Regret Ladder
 
 ![Regret ladder](docs/thesis/chapters/assets/compact-fig-4-1-regret-ladder.png)
@@ -104,6 +137,10 @@ guardrails. It does not emit market bids or dispatch commands.
 ### HF Readiness Matrix
 
 ![HF readiness matrix](docs/thesis/chapters/assets/compact-fig-4-8-hf-readiness-matrix.png)
+
+### HF Shadow Flow
+
+![HF value-aligned shadow flow](docs/thesis/chapters/assets/hf-value-aligned-shadow-flow.png)
 
 Curated evidence is indexed in
 [docs/technical/FINAL_EVIDENCE_INDEX.md](docs/technical/FINAL_EVIDENCE_INDEX.md).
