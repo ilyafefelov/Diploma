@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import { OperatorAlertBanner, OperatorBaselineConsole, OperatorBoundaryStrip, OperatorDecisionEvidencePanel, OperatorFutureStackPanel, OperatorMarketConsole, OperatorMetricRibbon, OperatorResearchPanel, OperatorRightRail, OperatorScheduleDock, OperatorSidebar, OperatorTopBar } from '~/components/dashboard/operator'
 import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useDefenseDashboardPanelRefs } from '~/composables/useDefenseDashboardPanelRefs'
@@ -395,7 +394,7 @@ onBeforeUnmount(() => {
             :is-loading="defenseIsLoading || isOperatorRecommendationLoading || isShadowPreviewLoading || isShadowComparisonLoading"
             :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
             :active-error-count="operatorReadModelErrorCount"
-            @update:selected-strategy-id="value => selectedOperatorStrategyId = value"
+            @update:selected-strategy-id="(value: string) => selectedOperatorStrategyId = value"
             @update:selected-preview-source-id="selectPreviewSource"
             @refresh:shadow-preview="refreshVisibleRecommendation"
             @select:hf-demo-scenario="selectValueAlignedHfShadowDemoScenario"

@@ -17,6 +17,8 @@ live defense demo.
   `outputs/`, `output/`, `analysis_outputs/`, `reports/`, `node_modules/`.
 - Do not re-track local experiment packets unless they have been converted into
   small curated summaries under `docs/technical/final-evidence/`.
+- Keep third-party paper PDFs out of Git; preserve source metadata in
+  `docs/thesis/sources/README.md` and source-capture notes.
 - Do not run line-ending normalization across the repository during final
   packaging.
 
@@ -117,5 +119,7 @@ npm -C dashboard run smoke:hf-value-aligned
   from Git.
 - Do not include local `.env`, runtime logs, caches, or unreviewed thesis
   scratch outputs.
+- Do not include tracked third-party source PDFs under `docs/thesis/sources/`
+  or `docs/technical/papers/`.
 - Re-run `git diff --check` immediately before commit.
 
