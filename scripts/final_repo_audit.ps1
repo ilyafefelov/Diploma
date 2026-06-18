@@ -34,6 +34,10 @@ function Test-GeneratedArtifactsNotTracked {
       output `
       analysis_outputs `
       reports `
+      .agents `
+      .codex `
+      .code `
+      .github `
       .codex-remote-attachments `
       .env `
       .obsidian `
