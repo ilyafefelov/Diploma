@@ -19,6 +19,21 @@ Open first:
 5. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
    for the 50-point software/experimental rubric.
 
+MacBook / Linux fast start from the repository root:
+
+```bash
+# Prerequisites: Docker Desktop on macOS, or Docker Engine on Linux;
+# uv, Node.js, and npm available on PATH.
+uv sync --extra dev
+npm -C dashboard install
+bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
+```
+
+Open `http://127.0.0.1:64163/operator`, `http://127.0.0.1:64163/defense`,
+and `http://127.0.0.1:8000/docs`. The script starts the local support
+services when Docker is available and keeps the same read-model/no-execution
+boundary as the rest of the repository.
+
 ## Commission Review Checklist
 
 Use this repository as a product/evidence walkthrough, not as a raw research
