@@ -9,6 +9,7 @@
 | Роль | Основний файл |
 | --- | --- |
 | Комісія / швидкий огляд | [../README.md](../README.md) |
+| Комісія / 50% програмна частина | [technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md](technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md) |
 | Live demo | [technical/FINAL_DEFENSE_RUNBOOK.md](technical/FINAL_DEFENSE_RUNBOOK.md) |
 | Evidence review | [technical/FINAL_EVIDENCE_INDEX.md](technical/FINAL_EVIDENCE_INDEX.md) |
 | API review | [technical/API_ENDPOINTS.md](technical/API_ENDPOINTS.md) |
@@ -17,6 +18,11 @@
 Поточна межа залишається незмінною: DAM/IDM hourly recommendation preview,
 offline/read-model evidence, `market_execution_enabled=false`, no `ProposedBid`,
 no market order payload.
+
+Long research histories and legacy extraction notes are supporting context.
+They should not be treated as the main defense route. For the final repository
+review, use the entry points above first; open DFL/DT/V13/legacy material only
+when answering detailed methodology or future-work questions.
 
 ---
 
@@ -141,6 +147,7 @@ docs/
 - ✅ Calibration QA manifest — research-layer exports now write `research_layer_manifest.json` with tenant/strategy freshness, row/anchor counts, source links, and conservative claim flags.
 - ✅ Manifested calibration evidence registry — latest Dnipro 90-anchor calibration preview is indexed in [MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md](technical/MANIFESTED_CALIBRATION_EVIDENCE_REGISTRY.md), with manifest/API/Postgres agreement and generated `data/` artifacts kept local.
 - ✅ Dagster evidence checks and DFL readiness gate — thesis-grade, no-leakage, selector-cardinality, and claim-boundary checks are registered in Dagster and documented in [DFL_READINESS_GATE.md](technical/DFL_READINESS_GATE.md).
+- ✅ Dagster final-defense discovery tags — use `tag:operator_preview=true` for final operator-preview evidence assets, `tag:hfdt_live_shadow_preview=true` for HFDT shadow evidence assets, and `tag:read_model_boundary=not_market_execution` for assets that must stay read-model/non-execution evidence.
 - ✅ Offline DFL experiment started — `offline_dfl_experiment_frame` materializes a bounded relaxed-LP training experiment on the gated Dnipro 90-anchor evidence; the first held-out result is negative and documented as research-only in [OFFLINE_DFL_EXPERIMENT.md](technical/OFFLINE_DFL_EXPERIMENT.md).
 - ✅ All-tenant offline DFL panel — `offline_dfl_panel_experiment_frame` materializes five tenants × 90 anchors with a 90 tenant-anchor final holdout per model; v2 checkpointed relaxed-LP evidence is documented in [OFFLINE_DFL_PANEL_EXPERIMENT.md](technical/OFFLINE_DFL_PANEL_EXPERIMENT.md) and remains not full DFL / not market execution.
 - ✅ Week 3 deep-research source map — the new report intake is indexed in [technical/deep-research-reports/week3 research/README.md](<technical/deep-research-reports/week3 research/README.md>) and mapped to implementation claims in [source-map.md](<technical/deep-research-reports/week3 research/source-map.md>).

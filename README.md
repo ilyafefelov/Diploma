@@ -1,14 +1,72 @@
 # Smart Energy Arbitrage 2026
 
-Commission-ready operator-preview system for Ukrainian BESS energy arbitrage.
+Commission proof pack for a Ukrainian BESS energy-arbitrage operator preview.
 
 This repository implements a source-backed DAM/IDM hourly recommendation
-preview for a human BESS operator. It combines a Dagster/FastAPI/Postgres
-backend, a Nuxt operator dashboard, deterministic LP/V2+ evidence, and guarded
-DT/HF shadow research. It is not a trading bot, not a market-submission engine,
-and not production dispatch.
+preview for a human BESS operator. The defensible product is a read-model
+evidence system: Dagster/FastAPI/Postgres backend, Nuxt operator dashboard,
+deterministic LP/V2+ evidence, and guarded DT/HF shadow research. It is not a
+trading bot, not a market-submission engine, and not production dispatch.
 
 ![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
+
+Open first:
+
+1. [README](README.md) for the product/evidence summary.
+2. `/operator` for the primary demo surface.
+3. `/defense` for evidence and explanation panels.
+4. FastAPI `/docs` for read-model endpoint contracts.
+5. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
+   for the 50-point software/experimental rubric.
+
+MacBook / Linux fast start from the repository root:
+
+```bash
+# Prerequisites: Docker Desktop on macOS, or Docker Engine on Linux;
+# uv, Node.js, and npm available on PATH.
+uv sync --extra dev
+npm -C dashboard install
+bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
+```
+
+Open `http://127.0.0.1:64163/operator`, `http://127.0.0.1:64163/defense`,
+and `http://127.0.0.1:8000/docs`. The script starts the local support
+services when Docker is available and keeps the same read-model/no-execution
+boundary as the rest of the repository.
+
+## Commission Review Checklist
+
+Use this repository as a product/evidence walkthrough, not as a raw research
+workspace. The fastest way to grade the 50% software/experimental criterion is
+to inspect criteria coverage, evidence links, and verification output:
+
+| University criterion | What to inspect first | Evidence in this repo |
+| --- | --- | --- |
+| Declared-task fit | `/operator` tenant/venue/date preview and fail-closed source blockers | [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md) |
+| Correct methods | LP/oracle comparator, source-first price context, Pydantic non-execution contracts | [API reference](docs/technical/API_ENDPOINTS.md), [metrics atlas](docs/technical/FINAL_METRICS_ATLAS.md) |
+| Technical complexity | Dagster assets, forecast-store rows, FastAPI read models, Nuxt dashboard, multi-strategy evidence | [Architecture/data flow](docs/technical/ARCHITECTURE_AND_DATA_FLOW.md) |
+| Code/experiment quality | Clean entry points, documented evidence, explicit primary-vs-supporting lanes | [Repository checklist](docs/technical/FINAL_REVIEW_CHECKLIST.md) |
+| Testing/validation | Typecheck, unit tests, Dagster definitions, final repo audit, smoke checks | [Verification](#verification) |
+
+For the 20% presentation/defense criterion, the deck follows the same path:
+problem -> evidence gates -> LP mechanism -> regret results -> DT/HF shadow
+limits -> demo bridge -> conclusion. The rubric mapping is in
+[docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md](docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md).
+For a tighter commission walkthrough, use the
+[software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md).
+
+## Commission 90-Second Path
+
+1. State the product boundary: DAM/IDM hourly operator preview, read-model only.
+2. Show the hero dashboard screenshot, then open `/operator` live if the stack is
+   running.
+3. Point to tenant, venue, date, source-readiness, and no-execution controls.
+4. Show `/defense` or the evidence visuals below for regret, readiness, and
+   guarded shadow evidence.
+5. Open [Verification](#verification) or the GitHub Actions check and show that
+   typecheck, unit tests, link checks, and final repo audit pass.
+6. Close with: `market_execution_enabled=false`, no `ProposedBid`, no market
+   payload, human review required.
 
 ## What It Proves
 
@@ -36,9 +94,12 @@ The canonical scope document is
 5. Compare `latest official`, `today`, `tomorrow`, and `day+2`.
 6. Point to the first-viewport boundary strip: preview only, no `ProposedBid`,
    no market payload, human review required.
-7. Select `HF live safe-switch value-aligned shadow`.
-8. Show one non-HOLD preview and one guarded HOLD/abstention.
-9. End with the boundary: preview/read model only, no market execution.
+7. Select `HF live safe-switch value-aligned shadow` for the fixed proof/demo cases.
+8. Select `HFDT live shadow preview` for an arbitrary future date; it ranks
+   source-backed forecast candidates while the V2+ fallback still shows
+   deterministic forecast-LP actions when HFDT abstains.
+9. Show one non-HOLD preview and one guarded HOLD/abstention.
+10. End with the boundary: preview/read model only, no market execution.
 
 The full defense runbook is in
 [docs/technical/FINAL_DEFENSE_RUNBOOK.md](docs/technical/FINAL_DEFENSE_RUNBOOK.md).
@@ -70,6 +131,16 @@ guardrails. It does not emit market bids or dispatch commands.
 
 ## Evidence Visuals
 
+### Operator And Defense Surfaces
+
+![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
+
+![Defense dashboard](docs/technical/final-demo-assets/defense-dashboard-desktop.png)
+
+### Data And Decision Pipeline
+
+![Data pipeline](docs/thesis/chapters/assets/compact-fig-3-1-pipeline.png)
+
 ### Regret Ladder
 
 ![Regret ladder](docs/thesis/chapters/assets/compact-fig-4-1-regret-ladder.png)
@@ -82,11 +153,34 @@ guardrails. It does not emit market bids or dispatch commands.
 
 ![HF readiness matrix](docs/thesis/chapters/assets/compact-fig-4-8-hf-readiness-matrix.png)
 
+### HF Shadow Flow
+
+![HF value-aligned shadow flow](docs/thesis/chapters/assets/hf-value-aligned-shadow-flow.png)
+
 Curated evidence is indexed in
 [docs/technical/FINAL_EVIDENCE_INDEX.md](docs/technical/FINAL_EVIDENCE_INDEX.md).
 
+## Primary Vs Supporting Lanes
+
+The primary defense path is the operator-preview product surface:
+
+- README first screen;
+- `/operator`;
+- `/defense`;
+- FastAPI `/docs`;
+- [final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md);
+- [final evidence index](docs/technical/FINAL_EVIDENCE_INDEX.md).
+
+The long DFL/DT/V13 documents, HF/DT shadow packets, and historical weekly
+reports are supporting evidence. They are useful for questions, but they are
+not the legacy workspace or unfinished research lanes to open as the main demo.
+`_legacy_smart-energy-ai` is extraction/archive context only, not the delivered
+product surface.
+
 Final review helpers:
 
+- [University rubric matrix](docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md)
+- [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
 - [Metrics atlas](docs/technical/FINAL_METRICS_ATLAS.md)
 - [Repository review checklist](docs/technical/FINAL_REVIEW_CHECKLIST.md)
 - [Business value note](docs/technical/BUSINESS_VALUE_NOTE.md)
@@ -96,8 +190,8 @@ Final review helpers:
 
 ### Prerequisites
 
-- Windows PowerShell
-- Docker Desktop
+- Windows PowerShell or Bash on macOS/Linux
+- Docker Desktop on Windows/macOS, or Docker Engine on Linux
 - Python dependencies managed by `uv`
 - Node.js/npm for the Nuxt dashboard
 - Optional CUDA-capable GPU for heavier research runs
@@ -114,9 +208,21 @@ heavy research materializations.
 
 ### Start The Demo Stack
 
+Windows:
+
 ```powershell
 .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
 ```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
+```
+
+The helper probes Docker with `docker info`, attempts to start Docker
+Desktop/service when available, starts the Compose support services, then starts
+FastAPI and the Nuxt dashboard.
 
 Open:
 
@@ -127,12 +233,34 @@ Open:
 - Dagster: [http://127.0.0.1:3001](http://127.0.0.1:3001)
 - MLflow: [http://127.0.0.1:5000](http://127.0.0.1:5000)
 
+Dagster asset search shortcuts:
+
+```powershell
+uv run dg list defs --assets "tag:operator_preview=true"
+uv run dg list defs --assets "tag:hfdt_live_shadow_preview=true"
+uv run dg list defs --assets "tag:read_model_boundary=not_market_execution"
+```
+
+In the Dagster UI, use `tag:dfl_v2_plus=true`, `tag:dfl_dt_v2_plus=true`,
+`tag:dfl_hfdt=true`, `tag:hfdt_live_shadow_preview=true`,
+`tag:operator_preview=true`, and
+`tag:read_model_boundary=not_market_execution` to find V2+, DT/V2+,
+HFDT shadow evidence, final operator-preview evidence assets, and explicit
+read-model/non-execution assets.
+
 If a fresh dashboard returns `404` or `502` for current backend routes, suspect a
 stale API on `:8000` first:
 
 ```powershell
 docker compose stop api
 .\api\start-dev.ps1 -Port 8000
+```
+
+On macOS/Linux:
+
+```bash
+docker compose stop api
+SMART_ARBITRAGE_API_PORT=8000 bash ./api/start-dev.sh
 ```
 
 For container-based API testing after route changes:
@@ -203,6 +331,13 @@ Final repository audit:
 
 ```powershell
 .\scripts\final_repo_audit.ps1 -SkipFullVerify -SkipSmoke
+```
+
+Strict final submission gate after the final commit/stage boundary:
+
+```powershell
+.\scripts\final_repo_audit.ps1 -RequireCleanWorkingTree -SkipFullVerify -SkipSmoke
+git status --short
 ```
 
 Full wrapper when runtime permits:

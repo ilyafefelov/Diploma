@@ -1,6 +1,7 @@
 param(
     [int]$ApiPort = 8000,
     [int]$DashboardPort = 64163,
+    [int]$DockerStartupTimeoutSeconds = 120,
     [switch]$SkipCompose,
     [switch]$WithTelemetry
 )
@@ -21,6 +22,48 @@ function Test-CommandExists {
 function Test-PortListening {
     param([int]$Port)
     return [bool](Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue)
+}
+
+function Test-DockerDaemonReady {
+    $null = & docker info 2>$null
+    return $LASTEXITCODE -eq 0
+}
+
+function Start-DockerDesktopIfAvailable {
+    $dockerDesktopCandidates = @()
+    if (-not [string]::IsNullOrWhiteSpace($env:ProgramFiles)) {
+        $dockerDesktopCandidates += Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
+    }
+    if (-not [string]::IsNullOrWhiteSpace(${env:ProgramFiles(x86)})) {
+        $dockerDesktopCandidates += Join-Path ${env:ProgramFiles(x86)} "Docker\Docker\Docker Desktop.exe"
+    }
+    if (-not [string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
+        $dockerDesktopCandidates += Join-Path $env:LOCALAPPDATA "Docker\Docker Desktop.exe"
+    }
+
+    foreach ($candidate in $dockerDesktopCandidates) {
+        if (Test-Path $candidate) {
+            Write-Host "Docker daemon is not reachable; starting Docker Desktop." -ForegroundColor Yellow
+            Start-Process -FilePath $candidate -WindowStyle Hidden | Out-Null
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function Wait-DockerDaemon {
+    param([int]$TimeoutSeconds)
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-DockerDaemonReady) {
+            return
+        }
+        Start-Sleep -Seconds 2
+    }
+
+    throw "Docker did not become ready within $TimeoutSeconds seconds. Start Docker Desktop manually or rerun with -SkipCompose."
 }
 
 function Start-LoggedProcess {
@@ -57,7 +100,14 @@ Set-Location $repoRoot
 
 if (-not $SkipCompose) {
     if (-not (Test-CommandExists "docker")) {
-        throw "docker was not found on PATH. Start Docker Desktop or rerun with -SkipCompose."
+        throw "docker was not found on PATH. Install Docker Desktop or rerun with -SkipCompose."
+    }
+
+    if (-not (Test-DockerDaemonReady)) {
+        if (-not (Start-DockerDesktopIfAvailable)) {
+            throw "Docker daemon is not reachable. Start Docker Desktop manually or rerun with -SkipCompose."
+        }
+        Wait-DockerDaemon -TimeoutSeconds $DockerStartupTimeoutSeconds
     }
 
     $composeServices = @(

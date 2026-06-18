@@ -17423,7 +17423,68 @@ def risk_adjusted_value_gate_frame(
     return gate_frame
 
 
-DFL_RESEARCH_GOLD_ASSETS = [
+_DFL_HFDT_ASSET_KEYS = frozenset(
+    {
+        "dfl_dt_research_shadow_decision_aware_frame",
+        "dfl_dt_v2_plus_distillation_shadow_frame",
+    }
+)
+
+_DFL_OPERATOR_PREVIEW_ASSET_KEYS = frozenset(
+    {
+        "dfl_schedule_value_learner_v2_plus_frame",
+        "dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame",
+        "dfl_schedule_value_learner_v2_plus_robustness_frame",
+        "dfl_dt_v2_plus_safe_switch_selector_frame",
+        "dfl_dt_v2_plus_promotion_evidence_frame",
+        "dfl_dt_research_shadow_decision_aware_frame",
+        "dfl_dt_v2_plus_distillation_shadow_frame",
+        "dfl_ua_context_safe_switch_examples_v13_frame",
+        "dfl_ua_context_safe_switch_readiness_overlay_v13_frame",
+        "dfl_ua_context_acquisition_readiness_v13_frame",
+    }
+)
+
+_DFL_DT_V2_PLUS_ASSET_KEY_MARKERS = (
+    "dt_research_shadow_decision_aware",
+    "dt_v2_plus",
+    "regret_aware_v2_plus_selector_shadow",
+    "v2_plus_dfl_dt",
+    "official_global_panel_v2_plus_trajectory_dataset",
+    "official_global_panel_v2_plus_residual_schedule_value_model",
+    "official_global_panel_v2_plus_offline_dt_candidate",
+    "official_v2_plus_bridge_failure_audit",
+)
+
+
+def _dfl_discovery_tags_for_asset_key(asset_key: str) -> dict[str, str]:
+    tags: dict[str, str] = {}
+    if "v2_plus" in asset_key:
+        tags["dfl_v2_plus"] = "true"
+    if any(marker in asset_key for marker in _DFL_DT_V2_PLUS_ASSET_KEY_MARKERS):
+        tags["dfl_dt_v2_plus"] = "true"
+    if asset_key in _DFL_HFDT_ASSET_KEYS:
+        tags["dfl_hfdt"] = "true"
+        tags["hfdt_live_shadow_preview"] = "true"
+        tags["read_model_boundary"] = "not_market_execution"
+    if asset_key in _DFL_OPERATOR_PREVIEW_ASSET_KEYS:
+        tags["operator_preview"] = "true"
+        tags["read_model_boundary"] = "not_market_execution"
+    return tags
+
+
+def _add_dfl_discovery_tags_to_spec(spec: dg.AssetSpec) -> dg.AssetSpec:
+    discovery_tags = _dfl_discovery_tags_for_asset_key(spec.key.to_user_string())
+    if not discovery_tags:
+        return spec
+    return spec.merge_attributes(tags=discovery_tags)
+
+
+def _with_dfl_discovery_tags(asset: dg.AssetsDefinition) -> dg.AssetsDefinition:
+    return asset.map_asset_specs(_add_dfl_discovery_tags_to_spec)
+
+
+_DFL_RESEARCH_GOLD_ASSETS = [
     real_data_value_aware_ensemble_frame,
     dfl_training_frame,
     dfl_training_example_frame,
@@ -17710,6 +17771,10 @@ DFL_RESEARCH_GOLD_ASSETS = [
     calibrated_value_aware_ensemble_frame,
     forecast_dispatch_sensitivity_frame,
     risk_adjusted_value_gate_frame,
+]
+
+DFL_RESEARCH_GOLD_ASSETS = [
+    _with_dfl_discovery_tags(asset) for asset in _DFL_RESEARCH_GOLD_ASSETS
 ]
 
 

@@ -2,6 +2,7 @@ import type {
   OperatorRecommendationResponse,
   ShadowRecommendationPreviewResponse
 } from '../../types/control-plane'
+import { DAM_REVIEW_ACTION_THRESHOLD_MW } from '../../utils/operatorTimeline'
 import type {
   OperatorPreviewSourceId,
   ShadowHourlyRecommendationRow,
@@ -14,7 +15,10 @@ export const buildShadowHourlyRecommendationRows = (
   batteryCapacityMwh: number | null = null,
   intervalMinutes = 60
 ): ShadowHourlyRecommendationRow[] => {
-  return shadowPreview?.recommendation_schedule.map(point => ({
+  return prioritizeReviewRows(
+    shadowPreview?.recommendation_schedule ?? [],
+    point => isActionLabel(point.action) || isActionPower(point.recommended_net_power_mw)
+  ).map(point => ({
     timestamp: point.interval_start,
     action: point.action,
     quantityLabel: formatQuantity(point.quantity_mw, batteryCapacityMwh, intervalMinutes),
@@ -48,7 +52,13 @@ export const buildOperatorHourlyRecommendationRows = (
   const isV2PlusRecommendation = recommendation.selected_strategy_id.includes('v2_plus')
     || recommendation.selected_policy_id.includes('v2_plus')
 
-  return recommendation.recommendation_schedule.map((point) => {
+  return prioritizeReviewRows(recommendation.recommendation_schedule, (point) => {
+    const bidPreview = bidPreviewByInterval.get(point.interval_start)
+    return isActionLabel(bidPreview?.operator_action)
+      || bidPreview?.side === 'BUY'
+      || bidPreview?.side === 'SELL'
+      || isActionPower(point.recommended_net_power_mw)
+  }).map((point) => {
     const bidPreview = bidPreviewByInterval.get(point.interval_start)
     const valueGap = valueGapByInterval.get(point.interval_start)
 
@@ -73,6 +83,24 @@ export const buildOperatorHourlyRecommendationRows = (
     }
   })
 }
+
+const prioritizeReviewRows = <T>(
+  rows: T[],
+  isActionful: (row: T) => boolean
+): T[] => {
+  const actionRows = rows.filter(isActionful)
+
+  if (actionRows.length === 0) {
+    return rows
+  }
+
+  const holdRows = rows.filter(row => !isActionful(row))
+  return [...actionRows, ...holdRows]
+}
+
+const isActionLabel = (action: string | undefined): boolean => action === 'charge' || action === 'discharge'
+
+const isActionPower = (powerMw: number): boolean => Math.abs(powerMw) >= DAM_REVIEW_ACTION_THRESHOLD_MW
 
 export const buildStrategyComparisonRows = (
   baseRecommendation: OperatorRecommendationResponse | null,
@@ -99,6 +127,7 @@ const buildMetricOnlyBestValidComparisonRow = (
   const metricSource = shadowPreviews.find(preview => (
     preview.preview_source_id === 'hf_live_safe_switch_value_aligned_shadow'
     || preview.preview_source_id === 'hf_live_safe_switch_shadow'
+    || preview.preview_source_id === 'hfdt_live_shadow_preview'
   )) ?? shadowPreviews.find(preview => typeof preview.comparison_metrics.v2_plus_mean_regret_uah === 'number')
 
   if (!metricSource) {

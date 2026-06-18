@@ -104,6 +104,64 @@ def test_local_start_script_exports_selected_api_port_to_dashboard() -> None:
     assert '$env:NUXT_API_BASE = "http://127.0.0.1:$ApiPort"' in start_script
 
 
+def test_local_start_script_bootstraps_docker_desktop_before_compose() -> None:
+    start_script = (PROJECT_ROOT / "scripts" / "start-local-project.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Test-DockerDaemonReady" in start_script
+    assert "Start-DockerDesktopIfAvailable" in start_script
+    assert "Wait-DockerDaemon" in start_script
+    assert "& docker info" in start_script
+    assert "Docker Desktop.exe" in start_script
+    assert "Docker daemon is not reachable" in start_script
+    assert "Docker did not become ready within" in start_script
+    assert "docker compose up -d @composeServices" in start_script
+
+
+def test_posix_local_start_script_exists_for_mac_linux() -> None:
+    start_script = (PROJECT_ROOT / "scripts" / "start-local-project.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "#!/usr/bin/env bash" in start_script
+    assert "--api-port" in start_script
+    assert "--dashboard-port" in start_script
+    assert "PYTHON_PATH=\"$REPO_ROOT/.venv/bin/python\"" in start_script
+    assert "WINDOWS_PYTHON_PATH=\"$REPO_ROOT/.venv/Scripts/python.exe\"" in (
+        start_script
+    )
+    assert "docker compose up -d \"${compose_services[@]}\"" in start_script
+    assert "npm -C dashboard run dev -- --host 127.0.0.1 --port" in start_script
+    assert "NUXT_API_BASE=\"http://127.0.0.1:$API_PORT\"" in start_script
+
+
+def test_posix_local_start_script_bootstraps_docker_daemon() -> None:
+    start_script = (PROJECT_ROOT / "scripts" / "start-local-project.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "docker info" in start_script
+    assert "start_docker_if_available" in start_script
+    assert "wait_for_docker" in start_script
+    assert "open -a Docker" in start_script
+    assert "systemctl start docker" in start_script
+    assert "Docker daemon is not reachable" in start_script
+    assert "Docker did not become ready within" in start_script
+
+
+def test_api_start_dev_sh_accepts_posix_virtualenv_path() -> None:
+    start_script = (PROJECT_ROOT / "api" / "start-dev.sh").read_text(
+        encoding="utf-8"
+    )
+
+    assert "POSIX_PYTHON_PATH=\"$REPO_ROOT/.venv/bin/python\"" in start_script
+    assert "WINDOWS_PYTHON_PATH=\"$REPO_ROOT/.venv/Scripts/python.exe\"" in (
+        start_script
+    )
+    assert "PYTHON_PATH=\"$POSIX_PYTHON_PATH\"" in start_script
+
+
 def test_dashboard_package_exposes_scoped_vitest_script() -> None:
     package_json = json.loads(
         (PROJECT_ROOT / "dashboard" / "package.json").read_text(encoding="utf-8")

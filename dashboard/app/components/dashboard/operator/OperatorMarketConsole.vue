@@ -7,9 +7,11 @@ import type {
   OperatorChartHorizon,
   OperatorExplanationMode,
   OperatorMarketRegimeChip,
-  OperatorMarketVenue
+  OperatorMarketVenue,
+  OperatorTargetDateShortcut
 } from '~/types/operator-dashboard'
 import {
+  operatorDefaultTargetDateShortcuts,
   operatorChartHorizonOptions,
   operatorMarketScopeLabel,
   operatorMarketVenueLabel,
@@ -29,6 +31,7 @@ const props = defineProps<{
   selectedMarketVenue: OperatorMarketVenue
   selectedTargetDeliveryDate: string | null
   selectedChartHorizon: OperatorChartHorizon
+  targetDateShortcuts?: OperatorTargetDateShortcut[]
   isRegistryLoading: boolean
   isSignalPreviewLoading: boolean
   signalPreviewLastLoadedLabel: string
@@ -44,39 +47,7 @@ const emit = defineEmits<{
 const marketVenueOptions = operatorMarketVenueOptions
 const chartHorizonOptions = operatorChartHorizonOptions
 
-const formatDateInputValue = (date: Date): string => {
-  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
-  return localDate.toISOString().slice(0, 10)
-}
-
-const addDays = (days: number): string => {
-  const date = new Date()
-  date.setDate(date.getDate() + days)
-  return formatDateInputValue(date)
-}
-
-const targetDateShortcuts = computed(() => [
-  {
-    label: 'Latest official',
-    value: null,
-    detail: 'Official/source row first'
-  },
-  {
-    label: 'Today',
-    value: addDays(0),
-    detail: 'current delivery date'
-  },
-  {
-    label: 'Tomorrow',
-    value: addDays(1),
-    detail: 'next delivery date'
-  },
-  {
-    label: 'Day +2',
-    value: addDays(2),
-    detail: 'pre-publication planning'
-  }
-])
+const targetDateShortcuts = computed(() => props.targetDateShortcuts ?? operatorDefaultTargetDateShortcuts())
 
 const updateTargetDateFromInput = (event: Event): void => {
   const target = event.target

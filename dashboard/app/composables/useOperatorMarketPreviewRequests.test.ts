@@ -8,6 +8,13 @@ import { useShadowRecommendationComparison } from './useShadowRecommendationComp
 import { useShadowRecommendationPreview } from './useShadowRecommendationPreview'
 import { hfLiveSafeSwitchValueAlignedPreview } from '../utils/test-fixtures/operatorShadowPreviewFixtures'
 
+const TENANT_ID = 'client_003_dnipro_factory'
+const HF_VALUE_SOURCE = 'hf_live_safe_switch_value_aligned_shadow'
+const HF_VALUE_LABEL = 'HF live safe-switch value-aligned shadow'
+const HF_VALUE_STATUS = 'value_aligned_shadow_not_promoted'
+const OPERATOR_ENDPOINT = '/api/control-plane/dashboard/operator-recommendation'
+const SHADOW_ENDPOINT = '/api/control-plane/dashboard/shadow-recommendation-preview'
+
 describe('operator market preview request wiring', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
@@ -21,7 +28,7 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
 
     const { loadOperatorRecommendation } = useOperatorRecommendation(
-      ref('client_003_dnipro_factory'),
+      ref(TENANT_ID),
       ref('schedule_value_learner_v2_plus'),
       ref('IDM'),
       ref('2026-05-20')
@@ -30,16 +37,76 @@ describe('operator market preview request wiring', () => {
     await loadOperatorRecommendation()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/operator-recommendation',
+      OPERATOR_ENDPOINT,
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
+          tenant_id: TENANT_ID,
           strategy_id: 'schedule_value_learner_v2_plus',
           market_venue: 'IDM',
           target_delivery_date: '2026-05-20'
         }
       }
     )
+  })
+
+  it('ensures source-backed forecast rows and retries operator recommendation for recoverable blockers', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce({
+        data: {
+          detail: 'Official OREE DAM row is not published for target_delivery_date=2026-06-19; pre-publication forecast rows are required from NBEATSx/TFT forecast store. No substitute prices are rendered.'
+        }
+      })
+      .mockResolvedValueOnce({
+        tenant_id: TENANT_ID,
+        market_venue: 'DAM',
+        target_delivery_date: '2026-06-19',
+        status: 'materialized',
+        stage: 'forecast_materialization',
+        message: 'source-backed forecast-store rows materialized for operator preview; market execution remains disabled',
+        source_refresh_rows: 72,
+        source_refresh_dates: ['2026-06-16', '2026-06-17', '2026-06-18'],
+        forecast_rows: 336,
+        forecast_run_ids: {},
+        claim_boundary: 'operator_preview_forecast_rows_not_market_execution',
+        read_model_boundary: 'operator_preview_no_market_submission',
+        market_execution_enabled: false
+      })
+      .mockResolvedValueOnce({
+        market_venue: 'DAM',
+        target_delivery_date: '2026-06-19',
+        market_execution_enabled: false
+      })
+    vi.stubGlobal('$fetch', fetchMock)
+
+    const {
+      operatorPreviewEnsure,
+      operatorRecommendation,
+      loadOperatorRecommendation
+    } = useOperatorRecommendation(
+      ref(TENANT_ID),
+      ref('schedule_value_learner_v2_plus'),
+      ref('DAM'),
+      ref('2026-06-19')
+    )
+
+    await loadOperatorRecommendation()
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      '/api/control-plane/dashboard/operator-preview/ensure',
+      {
+        method: 'POST',
+        query: {
+          tenant_id: TENANT_ID,
+          strategy_id: 'schedule_value_learner_v2_plus',
+          market_venue: 'DAM',
+          target_delivery_date: '2026-06-19'
+        }
+      }
+    )
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(operatorPreviewEnsure.value?.status).toBe('materialized')
+    expect(operatorRecommendation.value?.target_delivery_date).toBe('2026-06-19')
   })
 
   it('sends market venue and target date to the HF live shadow preview endpoint', async () => {
@@ -50,7 +117,7 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
 
     const { loadShadowRecommendationPreview } = useShadowRecommendationPreview(
-      ref('client_003_dnipro_factory'),
+      ref(TENANT_ID),
       ref('hf_live_safe_switch_shadow'),
       ref(null),
       ref('IDM'),
@@ -60,10 +127,10 @@ describe('operator market preview request wiring', () => {
     await loadShadowRecommendationPreview()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/shadow-recommendation-preview',
+      SHADOW_ENDPOINT,
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
+          tenant_id: TENANT_ID,
           preview_source: 'hf_live_safe_switch_shadow',
           market_venue: 'IDM',
           target_delivery_date: '2026-06-03'
@@ -74,14 +141,14 @@ describe('operator market preview request wiring', () => {
 
   it('does not use the value-aligned HF proof switch day for normal source selection without a target date', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
+      preview_source_id: HF_VALUE_SOURCE,
       recommendation_schedule: []
     })
     vi.stubGlobal('$fetch', fetchMock)
 
     const { loadShadowRecommendationPreview } = useShadowRecommendationPreview(
-      ref('client_003_dnipro_factory'),
-      ref('hf_live_safe_switch_value_aligned_shadow'),
+      ref(TENANT_ID),
+      ref(HF_VALUE_SOURCE),
       ref(null),
       ref('DAM'),
       ref(null)
@@ -90,11 +157,11 @@ describe('operator market preview request wiring', () => {
     await loadShadowRecommendationPreview()
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/shadow-recommendation-preview',
+      SHADOW_ENDPOINT,
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
-          preview_source: 'hf_live_safe_switch_value_aligned_shadow',
+          tenant_id: TENANT_ID,
+          preview_source: HF_VALUE_SOURCE,
           market_venue: 'DAM'
         }
       }
@@ -112,7 +179,7 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
 
     const model = useOperatorRecommendationPreviewModel({
-      selectedTenantId: ref('client_003_dnipro_factory'),
+      selectedTenantId: ref(TENANT_ID),
       selectedMarketVenue: ref('DAM'),
       selectedTargetDeliveryDate: ref('2026-06-03'),
       baselinePreview: ref(null)
@@ -122,14 +189,14 @@ describe('operator market preview request wiring', () => {
     await model.refreshVisibleRecommendation()
 
     expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/operator-recommendation',
+      OPERATOR_ENDPOINT,
       expect.anything()
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/shadow-recommendation-preview',
+      SHADOW_ENDPOINT,
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
+          tenant_id: TENANT_ID,
           preview_source: 'hf_live_safe_switch_shadow',
           market_venue: 'DAM',
           target_delivery_date: '2026-06-03'
@@ -145,7 +212,7 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
     const shouldAutoLoad = ref(true)
     const { error, loadOperatorRecommendation } = useOperatorRecommendation(
-      ref('client_003_dnipro_factory'),
+      ref(TENANT_ID),
       ref('schedule_value_learner_v2_plus'),
       ref('DAM'),
       ref('2026-06-04'),
@@ -163,34 +230,34 @@ describe('operator market preview request wiring', () => {
 
   it('does not call the LP-backed operator recommendation endpoint for manual value-aligned HF live shadow refresh', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
-      preview_source_label: 'HF live safe-switch value-aligned shadow',
-      preview_status: 'value_aligned_shadow_not_promoted',
+      preview_source_id: HF_VALUE_SOURCE,
+      preview_source_label: HF_VALUE_LABEL,
+      preview_status: HF_VALUE_STATUS,
       recommendation_schedule: [],
       available_preview_sources: []
     })
     vi.stubGlobal('$fetch', fetchMock)
 
     const model = useOperatorRecommendationPreviewModel({
-      selectedTenantId: ref('client_003_dnipro_factory'),
+      selectedTenantId: ref(TENANT_ID),
       selectedMarketVenue: ref('DAM'),
       selectedTargetDeliveryDate: ref('2026-06-03'),
       baselinePreview: ref(null)
     })
-    model.selectedPreviewSourceId.value = 'hf_live_safe_switch_value_aligned_shadow'
+    model.selectedPreviewSourceId.value = HF_VALUE_SOURCE
 
     await model.refreshVisibleRecommendation()
 
     expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/operator-recommendation',
+      OPERATOR_ENDPOINT,
       expect.anything()
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/shadow-recommendation-preview',
+      SHADOW_ENDPOINT,
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
-          preview_source: 'hf_live_safe_switch_value_aligned_shadow',
+          tenant_id: TENANT_ID,
+          preview_source: HF_VALUE_SOURCE,
           market_venue: 'DAM',
           target_delivery_date: '2026-06-03'
         }
@@ -200,20 +267,20 @@ describe('operator market preview request wiring', () => {
 
   it('explains missing source-backed rows for blocked value-aligned HF live shadow packets', async () => {
     vi.stubGlobal('$fetch', vi.fn().mockResolvedValue({
-      preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
-      preview_source_label: 'HF live safe-switch value-aligned shadow',
+      preview_source_id: HF_VALUE_SOURCE,
+      preview_source_label: HF_VALUE_LABEL,
       preview_status: 'blocked_missing_source_backed_price_context',
       recommendation_schedule: [],
       available_preview_sources: []
     }))
 
     const model = useOperatorRecommendationPreviewModel({
-      selectedTenantId: ref('client_003_dnipro_factory'),
+      selectedTenantId: ref(TENANT_ID),
       selectedMarketVenue: ref('DAM'),
       selectedTargetDeliveryDate: ref('2026-06-04'),
       baselinePreview: ref(null)
     })
-    model.selectedPreviewSourceId.value = 'hf_live_safe_switch_value_aligned_shadow'
+    model.selectedPreviewSourceId.value = HF_VALUE_SOURCE
 
     await model.refreshVisibleRecommendation()
 
@@ -225,9 +292,9 @@ describe('operator market preview request wiring', () => {
 
   it('loads value-aligned HF demo scenarios through the shadow endpoint only', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
-      preview_source_label: 'HF live safe-switch value-aligned shadow',
-      preview_status: 'value_aligned_shadow_not_promoted',
+      preview_source_id: HF_VALUE_SOURCE,
+      preview_source_label: HF_VALUE_LABEL,
+      preview_status: HF_VALUE_STATUS,
       recommendation_schedule: [],
       available_preview_sources: []
     })
@@ -236,7 +303,7 @@ describe('operator market preview request wiring', () => {
     const selectedTargetDeliveryDate = ref<string | null>(null)
 
     const model = useOperatorRecommendationPreviewModel({
-      selectedTenantId: ref('client_003_dnipro_factory'),
+      selectedTenantId: ref(TENANT_ID),
       selectedMarketVenue,
       selectedTargetDeliveryDate,
       baselinePreview: ref(null)
@@ -244,19 +311,19 @@ describe('operator market preview request wiring', () => {
 
     await model.selectValueAlignedHfShadowDemoScenario('forecast_dam_action')
 
-    expect(model.selectedPreviewSourceId.value).toBe('hf_live_safe_switch_value_aligned_shadow')
+    expect(model.selectedPreviewSourceId.value).toBe(HF_VALUE_SOURCE)
     expect(selectedMarketVenue.value).toBe('DAM')
     expect(selectedTargetDeliveryDate.value).toBe('2026-06-02')
     expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/operator-recommendation',
+      OPERATOR_ENDPOINT,
       expect.anything()
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/shadow-recommendation-preview',
+      SHADOW_ENDPOINT,
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
-          preview_source: 'hf_live_safe_switch_value_aligned_shadow',
+          tenant_id: TENANT_ID,
+          preview_source: HF_VALUE_SOURCE,
           market_venue: 'DAM',
           target_delivery_date: '2026-06-02'
         }
@@ -266,9 +333,9 @@ describe('operator market preview request wiring', () => {
 
   it('preserves the operator-selected market and date when value-aligned HF is selected from the source dropdown', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
-      preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
-      preview_source_label: 'HF live safe-switch value-aligned shadow',
-      preview_status: 'value_aligned_shadow_not_promoted',
+      preview_source_id: HF_VALUE_SOURCE,
+      preview_source_label: HF_VALUE_LABEL,
+      preview_status: HF_VALUE_STATUS,
       recommendation_schedule: [],
       available_preview_sources: []
     })
@@ -277,27 +344,27 @@ describe('operator market preview request wiring', () => {
     const selectedTargetDeliveryDate = ref<string | null>('2026-06-04')
 
     const model = useOperatorRecommendationPreviewModel({
-      selectedTenantId: ref('client_003_dnipro_factory'),
+      selectedTenantId: ref(TENANT_ID),
       selectedMarketVenue,
       selectedTargetDeliveryDate,
       baselinePreview: ref(null)
     })
 
-    await model.selectPreviewSource('hf_live_safe_switch_value_aligned_shadow')
+    await model.selectPreviewSource(HF_VALUE_SOURCE)
 
-    expect(model.selectedPreviewSourceId.value).toBe('hf_live_safe_switch_value_aligned_shadow')
+    expect(model.selectedPreviewSourceId.value).toBe(HF_VALUE_SOURCE)
     expect(selectedMarketVenue.value).toBe('IDM')
     expect(selectedTargetDeliveryDate.value).toBe('2026-06-04')
     expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/operator-recommendation',
+      OPERATOR_ENDPOINT,
       expect.anything()
     )
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/control-plane/dashboard/shadow-recommendation-preview',
+      SHADOW_ENDPOINT,
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
-          preview_source: 'hf_live_safe_switch_value_aligned_shadow',
+          tenant_id: TENANT_ID,
+          preview_source: HF_VALUE_SOURCE,
           market_venue: 'IDM',
           target_delivery_date: '2026-06-04'
         }
@@ -308,9 +375,9 @@ describe('operator market preview request wiring', () => {
   it('clears stale selected shadow rows while loading a new shadow preview', async () => {
     const pendingFetch = new Promise(resolve => {
       setTimeout(() => resolve({
-        preview_source_id: 'hf_live_safe_switch_value_aligned_shadow',
-        preview_source_label: 'HF live safe-switch value-aligned shadow',
-        preview_status: 'value_aligned_shadow_not_promoted',
+        preview_source_id: HF_VALUE_SOURCE,
+        preview_source_label: HF_VALUE_LABEL,
+        preview_status: HF_VALUE_STATUS,
         recommendation_schedule: [],
         available_preview_sources: []
       }), 0)
@@ -322,15 +389,15 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
 
     const { shadowPreview, loadShadowRecommendationPreview } = useShadowRecommendationPreview(
-      ref('client_003_dnipro_factory'),
-      ref('hf_live_safe_switch_value_aligned_shadow'),
+      ref(TENANT_ID),
+      ref(HF_VALUE_SOURCE),
       ref(null),
       ref('DAM'),
       ref('2026-06-02')
     )
 
     await loadShadowRecommendationPreview()
-    expect(shadowPreview.value?.preview_source_id).toBe('hf_live_safe_switch_value_aligned_shadow')
+    expect(shadowPreview.value?.preview_source_id).toBe(HF_VALUE_SOURCE)
 
     const loadingPromise = loadShadowRecommendationPreview()
 
@@ -352,7 +419,7 @@ describe('operator market preview request wiring', () => {
     let selectedHfCallCount = 0
     const fetchMock = vi.fn((_url, options) => {
       const previewSource = options.query.preview_source
-      if (previewSource === 'hf_live_safe_switch_value_aligned_shadow') {
+      if (previewSource === HF_VALUE_SOURCE) {
         selectedHfCallCount += 1
         return selectedHfCallCount === 1
           ? Promise.reject(new Error('primary selected shadow did not settle'))
@@ -369,7 +436,7 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
 
     const model = useOperatorRecommendationPreviewModel({
-      selectedTenantId: ref('client_003_dnipro_factory'),
+      selectedTenantId: ref(TENANT_ID),
       selectedMarketVenue: ref('DAM'),
       selectedTargetDeliveryDate: ref(null),
       baselinePreview: ref(null)
@@ -378,7 +445,7 @@ describe('operator market preview request wiring', () => {
     await model.selectValueAlignedHfShadowDemoScenario('forecast_dam_action')
 
     expect(model.visibleOperatorRecommendation.value?.selected_strategy_id).toBe(
-      'hf_live_safe_switch_value_aligned_shadow'
+      HF_VALUE_SOURCE
     )
     expect(model.visibleOperatorRecommendation.value?.target_delivery_date).toBe('2026-06-02')
     expect(model.hourlyRecommendationRows.value).toHaveLength(selectedPreview.recommendation_schedule.length)
@@ -392,7 +459,7 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
 
     const { loadBaselinePreview } = useBaselinePreview(
-      ref('client_003_dnipro_factory'),
+      ref(TENANT_ID),
       ref('IDM'),
       ref(null)
     )
@@ -403,7 +470,7 @@ describe('operator market preview request wiring', () => {
       '/api/control-plane/dashboard/baseline-lp-preview',
       {
         query: {
-          tenant_id: 'client_003_dnipro_factory',
+          tenant_id: TENANT_ID,
           market_venue: 'IDM'
         }
       }
@@ -417,7 +484,7 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
     const shouldAutoLoad = ref(true)
     const { error, loadBaselinePreview } = useBaselinePreview(
-      ref('client_003_dnipro_factory'),
+      ref(TENANT_ID),
       ref('DAM'),
       ref('2026-06-02'),
       shouldAutoLoad
@@ -445,11 +512,11 @@ describe('operator market preview request wiring', () => {
     vi.stubGlobal('$fetch', fetchMock)
 
     const { loadShadowComparisonPreviews } = useShadowRecommendationComparison(
-      ref('client_003_dnipro_factory'),
+      ref(TENANT_ID),
       ref(null),
       ref('IDM'),
       ref('2026-06-03'),
-      ref('hf_live_safe_switch_value_aligned_shadow')
+      ref(HF_VALUE_SOURCE)
     )
 
     await loadShadowComparisonPreviews()
@@ -458,15 +525,16 @@ describe('operator market preview request wiring', () => {
     expect(queries.map(query => query.preview_source)).toEqual([
       'dt_v2_plus_distillation_shadow',
       'dt_v2_plus_safe_switch_selector_shadow',
-      'hf_live_safe_switch_value_aligned_shadow'
+      HF_VALUE_SOURCE
     ])
     for (const query of queries) {
       expect(query).toEqual(expect.objectContaining({
-        tenant_id: 'client_003_dnipro_factory',
+        tenant_id: TENANT_ID,
         market_venue: 'IDM',
         target_delivery_date: '2026-06-03'
       }))
     }
     expect(queries.some(query => 'target_delivery_window_start' in query)).toBe(false)
   })
+
 })

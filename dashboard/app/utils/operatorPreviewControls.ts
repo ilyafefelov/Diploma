@@ -5,7 +5,8 @@ import type {
 } from '~/types/control-plane'
 import type {
   OperatorChartHorizon,
-  OperatorMarketVenue
+  OperatorMarketVenue,
+  OperatorTargetDateShortcut
 } from '~/types/operator-dashboard'
 
 export const operatorMarketVenueOptions: Array<{ label: string, value: OperatorMarketVenue, description: string }> = [
@@ -27,6 +28,76 @@ export const operatorChartHorizonOptions: Array<{ label: string, value: Operator
   { label: '24H', value: '24h' },
   { label: 'All', value: 'all' }
 ]
+
+const formatDateInputValue = (date: Date): string => {
+  const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+  return localDate.toISOString().slice(0, 10)
+}
+
+const addDays = (date: Date, days: number): string => {
+  const nextDate = new Date(date)
+  nextDate.setDate(nextDate.getDate() + days)
+  return formatDateInputValue(nextDate)
+}
+
+export const operatorDefaultTargetDateShortcuts = (
+  baseDate: Date = new Date()
+): OperatorTargetDateShortcut[] => [
+  {
+    label: 'Latest official',
+    value: null,
+    detail: 'Official/source row first'
+  },
+  {
+    label: 'Today',
+    value: addDays(baseDate, 0),
+    detail: 'current delivery date'
+  },
+  {
+    label: 'Tomorrow',
+    value: addDays(baseDate, 1),
+    detail: 'next delivery date'
+  },
+  {
+    label: 'Day +2',
+    value: addDays(baseDate, 2),
+    detail: 'pre-publication planning'
+  }
+]
+
+const valueAlignedHfDemoTargetDateShortcuts: OperatorTargetDateShortcut[] = [
+  {
+    label: 'Latest official',
+    value: null,
+    detail: 'Latest source-backed HF shadow row'
+  },
+  {
+    label: 'Today',
+    value: '2026-06-02',
+    detail: 'HF action proof window; source-backed demo preset'
+  },
+  {
+    label: 'Tomorrow',
+    value: '2026-06-03',
+    detail: 'HF abstention proof window; source-backed demo preset'
+  },
+  {
+    label: 'Day +2',
+    value: '2026-06-04',
+    detail: 'HF action proof window; source-backed demo preset'
+  }
+]
+
+export const operatorTargetDateShortcutsForPreview = (
+  previewSourceId: string,
+  baseDate: Date = new Date()
+): OperatorTargetDateShortcut[] => {
+  if (previewSourceId === 'hf_live_safe_switch_value_aligned_shadow') {
+    return valueAlignedHfDemoTargetDateShortcuts
+  }
+
+  return operatorDefaultTargetDateShortcuts(baseDate)
+}
 
 export const operatorChartHorizonPointLimit = (horizon: OperatorChartHorizon): number | null => {
   if (horizon === '6h') {
@@ -96,6 +167,15 @@ export const formatOperatorPreviewErrorMessage = (
   return rawMessage
     .replace(rawFetchPrefixPattern, '')
     .replace(hiddenSubstitutePriceFallbackPattern, 'No substitute prices are rendered')
+}
+
+export const isRecoverableOperatorPreviewMaterializationError = (message: string): boolean => {
+  const normalizedMessage = message.toLowerCase()
+
+  return normalizedMessage.includes('pre-publication forecast rows are required')
+    || normalizedMessage.includes('outside the 168-hour source-backed operator preview horizon')
+    || normalizedMessage.includes('source-backed observed oree history has no complete')
+    || normalizedMessage.includes('source-backed observed oree rows are required')
 }
 
 export const operatorPriceContextModeLabel = (

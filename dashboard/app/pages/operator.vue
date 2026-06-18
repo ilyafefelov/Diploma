@@ -1,19 +1,18 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
-import { OperatorAlertBanner, OperatorBaselineConsole, OperatorBoundaryStrip, OperatorDecisionEvidencePanel, OperatorFutureStackPanel, OperatorMarketConsole, OperatorMetricRibbon, OperatorResearchPanel, OperatorRightRail, OperatorScheduleDock, OperatorSidebar, OperatorTopBar } from '~/components/dashboard/operator'
 import { useBaselinePreview } from '~/composables/useBaselinePreview'
 import { useControlPlaneRegistry } from '~/composables/useControlPlaneRegistry'
 import { useDefenseDashboardPanelRefs } from '~/composables/useDefenseDashboardPanelRefs'
 import { useOperatorDashboardViewModel } from '~/composables/useOperatorDashboardViewModel'
 import { useOperatorPageNarrativeModel } from '~/composables/useOperatorPageNarrativeModel'
+import { useOperatorPagePreviewSurface } from '~/composables/useOperatorPagePreviewSurface'
 import { useOperatorRecommendationPreviewModel } from '~/composables/useOperatorRecommendationPreviewModel'
 import { useOperatorRootScrollRecovery } from '~/composables/useOperatorRootScrollRecovery'
-import { useSelectedOperatorPreviewState } from '~/composables/useSelectedOperatorPreviewState'
 import { useSignalPreview } from '~/composables/useSignalPreview'
 import { useWeatherControls } from '~/composables/useWeatherControls'
 import type { OperatorChartHorizon, OperatorMarketVenue } from '~/types/operator-dashboard'
-import { isLiveHfSafeSwitchPreviewSource } from '~/utils/operatorShadowPreview'
+import { operatorTargetDateShortcutsForPreview } from '~/utils/operatorPreviewControls'
 
 const {
   tenants,
@@ -47,8 +46,10 @@ const {
   isLoading: isBaselinePreviewLoading,
   error: baselinePreviewError,
   clearError: clearBaselinePreviewError,
+  isEnsuringPreview: isBaselinePreviewEnsuring,
   lastLoadedLabel: baselinePreviewLastLoadedLabel,
-  loadBaselinePreview
+  loadBaselinePreview,
+  operatorPreviewEnsureMessage: baselinePreviewEnsureMessage
 } = useBaselinePreview(
   selectedTenantId,
   selectedMarketVenue,
@@ -82,11 +83,13 @@ const {
   hourlyRecommendationEmptyMessage,
   hourlyRecommendationRows,
   isOperatorRecommendationLoading,
+  isOperatorPreviewEnsuring,
   isShadowComparisonLoading,
   isShadowPreviewLoading,
   operatorRecommendationLastLoadedLabel,
   loadRecommendationSurfaces,
   operatorRecommendationError,
+  operatorPreviewEnsureMessage,
   refreshVisibleRecommendation,
   selectPreviewSource,
   selectValueAlignedHfShadowDemoScenario,
@@ -106,12 +109,6 @@ const {
   baselinePreview
 })
 
-const operatorReadModelErrorCount = computed(() => {
-  return defense.activeErrorCount.value
-    + (operatorRecommendationError.value ? 1 : 0)
-    + (shadowPreviewError.value ? 1 : 0)
-    + (shadowComparisonError.value ? 1 : 0)
-})
 const {
   defenseAcademicMvpReadiness,
   defenseActiveErrorCount,
@@ -126,19 +123,27 @@ const {
   defenseModelRows,
   defenseSensitivity
 } = useDefenseDashboardPanelRefs(defense)
-const isLiveHfShadowPreviewSelected = computed(() => isLiveHfSafeSwitchPreviewSource(selectedPreviewSourceId.value))
 
 const {
+  activePreviewEnsureMessage,
   activeMarketPreviewError: pError,
   activeMarketPreviewLastLoadedLabel: pLoaded,
   activeMarketPreviewLoading: pBusy,
   activeSurfaceErrorMessage,
   bestValidStrategyComparisonRecommendation,
+  isLiveHfShadowPreviewSelected,
+  isPreviewEnsuring,
+  operatorReadModelErrorCount,
   selectedHourlyRecommendationEmptyMessage: hMsg,
   selectedHourlyRecommendationRows: hRows,
   selectedVisibleOperatorRecommendation
-} = useSelectedOperatorPreviewState({
-  isLiveHfShadowPreviewSelected,
+} = useOperatorPagePreviewSurface({
+  selectedPreviewSourceId,
+  operatorPreviewEnsureMessage,
+  baselinePreviewEnsureMessage,
+  isOperatorPreviewEnsuring,
+  isBaselinePreviewEnsuring,
+  defenseActiveErrorCount,
   isOperatorRecommendationLoading,
   isShadowPreviewLoading,
   isSignalPreviewLoading,
@@ -158,6 +163,9 @@ const {
   clearBaselinePreviewError,
   clearOperatorRecommendationError
 })
+const targetDateShortcuts = computed(() => (
+  operatorTargetDateShortcutsForPreview(selectedPreviewSourceId.value)
+))
 
 const {
   activeAlertCount,
@@ -260,10 +268,6 @@ const dismissSurfaceErrors = () => {
   clearShadowComparisonError()
 }
 
-const setSelectedTenantId = (tenantId: string) => {
-  selectedTenantId.value = tenantId
-}
-
 useOperatorRootScrollRecovery()
 
 watch(selectedTenantId, () => {
@@ -315,21 +319,23 @@ onBeforeUnmount(() => {
       <OperatorBoundaryStrip />
 
       <OperatorAlertBanner
-        v-if="activeSurfaceErrorMessage"
-        :message="activeSurfaceErrorMessage"
+        v-if="activePreviewEnsureMessage || activeSurfaceErrorMessage"
+        :title="activePreviewEnsureMessage ? 'Preparing source-backed preview' : 'Control surface issue'"
+        :message="activePreviewEnsureMessage || activeSurfaceErrorMessage"
+        :is-loading="isPreviewEnsuring"
+        :dismissible="!activePreviewEnsureMessage"
         @dismiss="dismissSurfaceErrors"
       />
 
       <div class="operator-body">
         <OperatorSidebar
           :tenants="tenants"
-          :selected-tenant-id="selectedTenantId"
+          v-model:selected-tenant-id="selectedTenantId"
           :nav-items="operatorNavItems"
           :active-registry-summary="activeRegistrySummary"
           :battery-asset-label="batteryAssetLabel"
           :signal-preview="signalPreview"
           :baseline-preview="baselinePreview"
-          @update:selected-tenant-id="setSelectedTenantId"
         />
 
         <section class="operator-main-stage">
@@ -337,22 +343,19 @@ onBeforeUnmount(() => {
             :tenants="tenants"
             :selected-tenant-id="selectedTenantId"
             :registry-envelope="registryEnvelope"
-            :explanation-mode="explanationMode"
             :explanation-mode-label="explanationModeLabel"
             :market-regime-chips="marketRegimeChips"
             :signal-preview="signalPreview"
             :operator-recommendation="selectedVisibleOperatorRecommendation"
             :market-preview-error="pError"
-            :selected-market-venue="selectedMarketVenue"
-            :selected-target-delivery-date="selectedTargetDeliveryDate"
-            :selected-chart-horizon="selectedChartHorizon"
+            :target-date-shortcuts="targetDateShortcuts"
+            v-model:selected-market-venue="selectedMarketVenue"
+            v-model:selected-target-delivery-date="selectedTargetDeliveryDate"
+            v-model:selected-chart-horizon="selectedChartHorizon"
+            v-model:explanation-mode="explanationMode"
             :is-registry-loading="isLoading"
-            :is-signal-preview-loading="pBusy"
+            :is-signal-preview-loading="pBusy || isPreviewEnsuring"
             :signal-preview-last-loaded-label="pLoaded"
-            @update:selected-market-venue="value => selectedMarketVenue = value"
-            @update:selected-target-delivery-date="value => selectedTargetDeliveryDate = value"
-            @update:selected-chart-horizon="value => selectedChartHorizon = value"
-            @update:explanation-mode="value => explanationMode = value"
           />
 
           <OperatorBaselineConsole
@@ -391,7 +394,7 @@ onBeforeUnmount(() => {
             :is-loading="defenseIsLoading || isOperatorRecommendationLoading || isShadowPreviewLoading || isShadowComparisonLoading"
             :shadow-preview-last-loaded-label="shadowPreviewLastLoadedLabel"
             :active-error-count="operatorReadModelErrorCount"
-            @update:selected-strategy-id="value => selectedOperatorStrategyId = value"
+            @update:selected-strategy-id="(value: string) => selectedOperatorStrategyId = value"
             @update:selected-preview-source-id="selectPreviewSource"
             @refresh:shadow-preview="refreshVisibleRecommendation"
             @select:hf-demo-scenario="selectValueAlignedHfShadowDemoScenario"

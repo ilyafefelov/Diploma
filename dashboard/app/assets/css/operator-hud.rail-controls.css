@@ -174,3 +174,8 @@
   margin-top: 0.45rem;
   line-height: 1.6;
 }
+
+.workspace-alert__progress {
+  margin-top: 0.85rem;
+  max-width: 28rem;
+}

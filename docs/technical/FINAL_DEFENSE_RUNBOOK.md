@@ -15,12 +15,34 @@ system:
 3. It compares strategy evidence against strict baselines.
 4. It keeps execution disabled: no `ProposedBid`, no market payload, no dispatch.
 
+For the university 50-point software/experimental rubric, use
+[FINAL_UNIVERSITY_RUBRIC_MATRIX.md](FINAL_UNIVERSITY_RUBRIC_MATRIX.md). It maps
+each scoring criterion to the demo path, repository evidence, verification
+commands, and wording boundaries.
+
+Primary path only:
+
+- Start from README, `/operator`, `/defense`, and FastAPI `/docs`.
+- Do not open legacy or unfinished research lanes as the main demo.
+- Use DFL/DT/V13/HF research documents only as supporting evidence after the
+  product boundary is already clear.
+- If asked about legacy, say it is extraction/archive context and not the
+  delivered product surface.
+
 ## Start
 
 From the repository root:
 
+Windows:
+
 ```powershell
 .\scripts\start-local-project.ps1 -ApiPort 8000 -DashboardPort 64163
+```
+
+macOS/Linux:
+
+```bash
+bash ./scripts/start-local-project.sh --api-port 8000 --dashboard-port 64163
 ```
 
 Open:
@@ -36,6 +58,13 @@ docker compose stop api
 .\api\start-dev.ps1 -Port 8000
 ```
 
+On macOS/Linux:
+
+```bash
+docker compose stop api
+SMART_ARBITRAGE_API_PORT=8000 bash ./api/start-dev.sh
+```
+
 ## Optional Forecast-Store Seed
 
 Run this only if tomorrow/day+2 preview rows are unavailable:
@@ -49,6 +78,20 @@ Expected boundary:
 
 - `claim_boundary=operator_preview_forecast_rows_not_market_execution`
 - `market_execution_enabled=false`
+
+## Dagster Evidence Filters
+
+Use these in Dagster UI search or with `dg list defs` when the commission asks
+which assets support the final operator-preview story:
+
+```powershell
+uv run dg list defs --assets "tag:operator_preview=true"
+uv run dg list defs --assets "tag:hfdt_live_shadow_preview=true"
+uv run dg list defs --assets "tag:read_model_boundary=not_market_execution"
+```
+
+These filters expose read-model evidence assets only. They do not indicate
+market execution, production promotion, or `ProposedBid` emission.
 
 ## Main Demo Script
 
@@ -130,6 +173,13 @@ Lightweight final audit:
 
 ```powershell
 .\scripts\final_repo_audit.ps1 -SkipFullVerify -SkipSmoke
+```
+
+Strict clean-tree submission gate after the final commit/stage boundary:
+
+```powershell
+.\scripts\final_repo_audit.ps1 -RequireCleanWorkingTree -SkipFullVerify -SkipSmoke
+git status --short
 ```
 
 Full verification:

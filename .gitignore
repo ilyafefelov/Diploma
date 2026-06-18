@@ -45,6 +45,10 @@ dashboard/*.log
 AGENTS.md
 *\agents.md
 docs\agents.md
+.agents/
+.codex/
+.code/
+.github/
 .codex-remote-attachments/
 .obsidian/
 master_execution_prompt.md

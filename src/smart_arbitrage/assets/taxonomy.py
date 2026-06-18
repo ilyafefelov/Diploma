@@ -56,6 +56,9 @@ def asset_tags(
     evidence_scope: EvidenceScope,
     backend: str | None = None,
     market_venue: str | None = None,
+    dfl_v2_plus: bool = False,
+    dfl_dt_v2_plus: bool = False,
+    dfl_hfdt: bool = False,
 ) -> dict[str, str]:
     """Build the standard Dagster tag set used for asset discovery and selection."""
 
@@ -70,4 +73,10 @@ def asset_tags(
         tags["backend"] = backend
     if market_venue is not None:
         tags["market_venue"] = market_venue
+    if dfl_v2_plus:
+        tags["dfl_v2_plus"] = "true"
+    if dfl_dt_v2_plus:
+        tags["dfl_dt_v2_plus"] = "true"
+    if dfl_hfdt:
+        tags["dfl_hfdt"] = "true"
     return tags
