@@ -10,6 +10,24 @@ and not production dispatch.
 
 ![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
 
+## Commission Review Checklist
+
+Use this repository as a product/evidence walkthrough, not as a raw research
+workspace. The fastest way to grade the 50% software/experimental criterion is:
+
+| University criterion | What to inspect first | Evidence in this repo |
+| --- | --- | --- |
+| Declared-task fit | `/operator` tenant/venue/date preview and fail-closed source blockers | [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md) |
+| Correct methods | LP/oracle comparator, source-first price context, Pydantic non-execution contracts | [API reference](docs/technical/API_ENDPOINTS.md), [metrics atlas](docs/technical/FINAL_METRICS_ATLAS.md) |
+| Technical complexity | Dagster assets, forecast-store rows, FastAPI read models, Nuxt dashboard, multi-strategy evidence | [Architecture/data flow](docs/technical/ARCHITECTURE_AND_DATA_FLOW.md) |
+| Code/experiment quality | Clean entry points, documented evidence, explicit primary-vs-supporting lanes | [Repository checklist](docs/technical/FINAL_REVIEW_CHECKLIST.md) |
+| Testing/validation | Typecheck, unit tests, Dagster definitions, final repo audit, smoke checks | [Verification](#verification) |
+
+For the 20% presentation/defense criterion, the deck follows the same path:
+problem -> evidence gates -> LP mechanism -> regret results -> DT/HF shadow
+limits -> demo bridge -> conclusion. The rubric mapping is in
+[docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md](docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md).
+
 ## What It Proves
 
 The defendable product surface is an evidence system, not autonomous execution.

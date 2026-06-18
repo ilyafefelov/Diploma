@@ -1,11 +1,13 @@
 # Final University Rubric Matrix
 
-Date: 2026-06-17
+Date: 2026-06-18
 
-Scope: software product / experimental part of the diploma review, 50 points.
-This is an internal defense aid, not a guaranteed grade. Its purpose is to map
-each commission criterion to the exact demo steps, repository evidence, tests,
-and claim boundaries that should be shown during the final defense.
+Scope: software product / experimental part of the diploma review, 50 points,
+plus the presentation/defense criteria that the commission can evaluate during
+the same walkthrough. This is an internal defense aid, not a guaranteed grade.
+Its purpose is to map each commission criterion to the exact demo steps,
+repository evidence, tests, slide ranges, and claim boundaries that should be
+shown during the final defense.
 
 Defensible project statement:
 
@@ -32,6 +34,25 @@ HOLD/abstention, chart/regret evidence, and passing verification can support the
 upper end. Overclaiming execution, full DFL, or DT deployment can quickly push
 the same work into the mid-score band because the committee will grade it
 against a product that was not actually built.
+
+## Presentation / Defense Target
+
+The submitted deck should be defended as a short product/evidence walkthrough.
+Do not add new research claims during the talk; use the slides to explain the
+implemented scope and the validation evidence that is already in the repository.
+
+| Defense criterion | Target | Slide range / action | Repository anchor |
+| --- | ---: | --- | --- |
+| Logical talk and fit to topic | 4-5 / 5 | Slides 1-5: problem, task, evidence gates, source-first pipeline | [README](../../README.md), [Final runbook](FINAL_DEFENSE_RUNBOOK.md) |
+| Visual quality and structure | 4-5 / 5 | Slides 6-17: LP mechanism, evaluation, result ladder, DT/HF shadow limits, demo bridge | [Final demo assets](final-demo-assets/README.md) |
+| Depth of answers | 4 / 5 | Use `/docs`, `/operator`, `/defense`, and this matrix for Q&A evidence | [API endpoints](API_ENDPOINTS.md), [Evidence index](FINAL_EVIDENCE_INDEX.md) |
+| Practical value argument | 4-5 / 5 | Slides 18-21: conclusion, implementation architecture, GitHub link | [Business value note](BUSINESS_VALUE_NOTE.md) |
+| Confidence / boundary control | 4-5 / 5 | Repeat the closeout sentence: preview/read-model only, no `ProposedBid`, no market execution | [Current V13 boundary](CURRENT_GOAL_BOUNDARY_V13.md) |
+
+Expected defended presentation band: **16-19 / 20** when the speaker keeps the
+story linear, opens the live repo/dashboard evidence when asked, and avoids
+unsupported claims such as "trading bot", "deployed DT controller", or "full
+DFL controller".
 
 ## What To Show For Each Criterion
 
