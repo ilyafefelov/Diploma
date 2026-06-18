@@ -27,6 +27,8 @@ For the 20% presentation/defense criterion, the deck follows the same path:
 problem -> evidence gates -> LP mechanism -> regret results -> DT/HF shadow
 limits -> demo bridge -> conclusion. The rubric mapping is in
 [docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md](docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md).
+For a tighter commission walkthrough, use the
+[software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md).
 
 ## What It Proves
 
@@ -126,6 +128,7 @@ product surface.
 Final review helpers:
 
 - [University rubric matrix](docs/technical/FINAL_UNIVERSITY_RUBRIC_MATRIX.md)
+- [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
 - [Metrics atlas](docs/technical/FINAL_METRICS_ATLAS.md)
 - [Repository review checklist](docs/technical/FINAL_REVIEW_CHECKLIST.md)
 - [Business value note](docs/technical/BUSINESS_VALUE_NOTE.md)

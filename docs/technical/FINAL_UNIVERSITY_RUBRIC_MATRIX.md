@@ -9,6 +9,10 @@ Its purpose is to map each commission criterion to the exact demo steps,
 repository evidence, tests, slide ranges, and claim boundaries that should be
 shown during the final defense.
 
+For a shorter, reviewer-facing checklist focused only on the 50-point software
+product / experimental section, use
+[FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md](FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md).
+
 Defensible project statement:
 
 > Source-backed DAM/IDM hourly operator recommendation preview for BESS
