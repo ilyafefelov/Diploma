@@ -6589,3 +6589,99 @@
     linear-gradient(90deg, rgba(64, 129, 166, 0.035) 1px, transparent 1px);
   background-size: auto, 20px 20px;
 }
+
+/* Receipt-depth pass: make the side proof and KPI strip read as one polished academic instrument. */
+.bess-public-shell--narrative .bess-hero-side .bess-side-card {
+  position: relative;
+  overflow: hidden;
+  border-color: rgba(64, 129, 166, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(239, 250, 254, 0.7)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(64, 129, 166, 0.03) 1px, transparent 1px);
+  background-size: auto, 16px 16px, 16px 16px;
+  box-shadow:
+    0 8px 18px rgba(24, 89, 122, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.bess-public-shell--narrative .bess-hero-side .bess-side-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #0c7eb3, #78d9d5, #e1b34d);
+  opacity: 0.72;
+}
+
+.bess-public-shell--narrative .bess-hero-side .bess-side-card:nth-child(2)::before {
+  background: linear-gradient(90deg, #0c7eb3, #7fc7d8);
+}
+
+.bess-public-shell--narrative .bess-hero-side .bess-side-card:nth-child(3)::before {
+  background: linear-gradient(90deg, #22a879, #7fc7d8);
+}
+
+.bess-public-shell--narrative .bess-side-card > span,
+.bess-public-shell--narrative .bess-side-title span {
+  color: #09254a;
+  font-family: var(--bess-font-data);
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.bess-public-shell--narrative .bess-side-card dt,
+.bess-public-shell--narrative .bess-side-card p {
+  color: #456a84;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+}
+
+.bess-public-shell--narrative .bess-side-card dd,
+.bess-public-shell--narrative .bess-side-card p strong {
+  font-family: var(--bess-font-data);
+  font-size: 10.5px;
+}
+
+.bess-public-shell--narrative .bess-soc-gauge {
+  box-shadow:
+    inset 0 0 0 9px rgba(255, 255, 255, 0.82),
+    0 0 0 1px rgba(34, 168, 121, 0.08),
+    0 12px 26px rgba(34, 168, 121, 0.1);
+}
+
+.bess-public-shell--narrative .bess-kpi-rail {
+  border-color: rgba(64, 129, 166, 0.18);
+  box-shadow:
+    0 10px 22px rgba(24, 89, 122, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.bess-public-shell--narrative .bess-kpi-title {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(238, 250, 254, 0.58)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
+  background-size: auto, 14px 14px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light svg,
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric svg {
+  filter: drop-shadow(0 4px 8px rgba(12, 126, 179, 0.1));
+}
+
+.bess-public-shell--narrative .bess-first-screen-row {
+  position: relative;
+}
+
+.bess-public-shell--narrative .bess-first-screen-row::before {
+  content: "";
+  position: absolute;
+  inset: -5px -5px;
+  z-index: -1;
+  border: 1px solid rgba(64, 129, 166, 0.08);
+  border-radius: 9px;
+  background:
+    linear-gradient(90deg, rgba(64, 129, 166, 0.025) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(64, 129, 166, 0.022) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
