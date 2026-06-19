@@ -1,0 +1,25 @@
+{
+  "name": "project-intro-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare-assets": "node scripts/prepare-assets.mjs",
+    "render:silent": "npm run prepare-assets && remotion render src/index.ts ProjectIntro ../../docs/technical/final-demo-assets/project-intro.silent.mp4 --codec=h264 --concurrency=2 --overwrite",
+    "poster": "npm run prepare-assets && remotion still src/index.ts ProjectIntro ../../docs/technical/final-demo-assets/project-intro-poster.png --frame=90 --overwrite",
+    "mux": "node scripts/mux-audio.mjs",
+    "build": "npm run render:silent && npm run mux && npm run poster",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.387",
+    "remotion": "^4.0.387",
+    "react": "^19.2.1",
+    "react-dom": "^19.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^6.0.3"
+  }
+}

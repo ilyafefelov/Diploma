@@ -1,0 +1,13 @@
+Energy storage can create value when prices change hour by hour. But in electricity markets, a battery decision is not just a price signal. It has source evidence, physical limits, safety gates, and operator responsibility.
+
+Smart Energy Arbitrage 2026 turns that problem into a reviewable operator preview for Ukrainian BESS assets. It reads DAM and IDM price context, forecast rows, tenant state, and battery constraints, then presents hourly recommendations as evidence, not commands.
+
+On the operator dashboard, a reviewer can choose tenant, venue, and delivery date, inspect source readiness, compare schedule candidates, and see when the system abstains to HOLD. The default story is intentionally conservative: source-backed data first, deterministic feasibility checks, and market execution disabled.
+
+The experimental layer explains why the recommendation is credible. A strict LP and oracle contour provides the feasible decision reference. The V2 selector establishes a baseline at 206.37 UAH mean regret, while the schedule/value learner V2+ improves the headline evidence to 174.77 UAH.
+
+Transformer-based shadows are kept under strict gates: DT/V2+ reports 168.16 UAH mean regret, with 4 switches and 86 abstentions, and the HF value-aligned shadow shows a 158.71 UAH frozen regret signal as manual demo evidence. These are promising research signals, not production strategy switches.
+
+For potential partners, the near-term value is practical: faster operator review, clearer source traceability, safer abstention when evidence is weak, and a pilot-ready path toward operational validation. For technical reviewers, the value is reproducibility: tracked metrics, FastAPI read models, Dagster lineage, tests, and a public repository that refuses unsafe claims.
+
+Open the README, the operator preview, the defense dashboard, FastAPI docs, and the thesis paper. The boundary remains simple: source-backed operator preview, evidence first, human review, and no market execution.

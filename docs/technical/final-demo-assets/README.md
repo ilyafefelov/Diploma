@@ -1,6 +1,6 @@
 # Final Demo Assets
 
-Date: 2026-06-16
+Date: 2026-06-19
 
 This folder stores small, tracked screenshots and a short intro video used by
 the root README and final defense runbook. These assets are visual
@@ -13,18 +13,21 @@ README-facing assets:
 | --- | --- |
 | `operator-preview-desktop.png` | Root README hero and `/operator` proof surface |
 | `project-intro-poster.png` | Root README thumbnail for the English intro video |
-| `project-intro.mp4` | English concept-to-product intro with OpenAI TTS voiceover |
+| `project-intro.mp4` | English concept-to-product intro with OpenAI Speech API voiceover |
 | `defense-dashboard-desktop.png` | Root README evidence-surface screenshot for `/defense` |
 | `operator-preview-mobile.png` | Mobile layout check and optional reviewer context |
+| `project-intro-transcript.md` | Accessibility transcript and editable narration source |
 
 The root README links the poster to the GitHub Pages player at
 `docs/project-intro/index.html`; the MP4 remains a small tracked visual
 documentation artifact, not execution evidence.
 
-The intro video source lives in `project-intro-hyperframes/`. The voiceover is
-English narration generated with the OpenAI Speech API (`cedar` voice) from the
-tracked script text. It stays within the same no-execution claim boundary as
-the README.
+The current intro video source lives in `tools/project-intro-video/` as an
+isolated Remotion project. The voiceover is English narration generated with
+the OpenAI Speech API (`cedar` voice) from the tracked transcript. The rendered
+video, poster, narration WAV, and transcript stay within the same no-execution
+claim boundary as the README. The older `project-intro-hyperframes/` folder is
+kept only as historical source material for the previous short intro.
 
 Additional README visuals are reused from tracked thesis assets under
 `docs/thesis/chapters/assets/`; do not duplicate them here unless a future
