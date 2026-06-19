@@ -6404,5 +6404,120 @@
 @media (max-width: 760px) {
   .bess-public-shell--narrative .bess-chart-marker-layer {
     display: none;
+    pointer-events: none;
+  }
+}
+
+/* Responsive polish: keep the proof visible while lifting the dispatch field higher on tablets. */
+@media (min-width: 761px) and (max-width: 1180px) {
+  .bess-public-shell--narrative .bess-hero-copy--narrative {
+    gap: 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-rule {
+    margin-bottom: 7px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    margin-bottom: 0;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    margin-top: 5px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-evidence-stack {
+    gap: 7px;
+    margin-top: 4px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card,
+  .bess-public-shell--narrative .bess-hero-dispatch-legend {
+    min-height: 0;
+    padding: 9px 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card span,
+  .bess-public-shell--narrative .bess-hero-dispatch-legend strong {
+    font-size: 8.6px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card strong {
+    margin-top: 3px;
+    font-size: 11.5px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card em,
+  .bess-public-shell--narrative .bess-hero-dispatch-legend span {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative .bess-hero-meta {
+    gap: 6px;
+    margin-top: 5px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative .bess-chip {
+    min-height: 25px;
+    padding-inline: 8px;
+    font-size: 8.4px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-actions {
+    gap: 7px;
+    margin-top: 4px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-cta {
+    min-height: 34px;
+    padding-inline: 12px;
+    font-size: 9.4px;
+  }
+}
+
+.bess-public-shell--narrative .bess-kpi-card svg,
+.bess-public-shell--narrative .bess-proof-card svg {
+  width: 30px;
+  height: 30px;
+}
+
+@media (max-width: 760px) {
+  .bess-public-shell--narrative .bess-hero-receipt {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    overflow: hidden;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article {
+    min-height: 52px;
+    border-right: 1px solid rgba(64, 129, 166, 0.16);
+    border-bottom: 1px solid rgba(64, 129, 166, 0.16);
+    padding: 7px 8px;
+    text-align: left;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article:nth-child(2n) {
+    border-right: 1px solid rgba(64, 129, 166, 0.16);
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article:last-child {
+    border-bottom: 0;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt strong {
+    margin: 3px 0 1px;
+    font-size: 14px;
+    line-height: 1.02;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt span,
+  .bess-public-shell--narrative .bess-hero-receipt em {
+    font-size: 8px;
+    line-height: 1.15;
   }
 }
