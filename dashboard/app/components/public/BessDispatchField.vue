@@ -52,6 +52,7 @@ const sceneObjects = shallowRef<ThreeSceneObjects | null>(null)
 const reducedMotion = ref(false)
 const webglFailed = ref(false)
 const selectedIndex = ref(0)
+const annotationIndex = ref<number | null>(null)
 const viewMode = ref<ViewMode>('perspective')
 const isSceneNearViewport = ref(true)
 let intersectionObserver: IntersectionObserver | null = null
@@ -71,6 +72,8 @@ const sceneRows = computed(() => visibleRows.value.slice(0, 24))
 const hasSceneData = computed(() => visibleRows.value.length >= 2 && !props.sourceStatus.startsWith('blocked'))
 const selectedPoint = computed(() => sceneRows.value[selectedIndex.value] || sceneRows.value[bestDefaultIndex(sceneRows.value)] || null)
 const selectedAction = computed(() => actionFor(selectedPoint.value))
+const annotationPoint = computed(() => annotationIndex.value === null ? null : sceneRows.value[annotationIndex.value] || null)
+const annotationAction = computed(() => actionFor(annotationPoint.value))
 const selectedSocPercent = computed(() => {
   const capacity = numberValue(props.capacityMwh)
   if (!selectedPoint.value || capacity <= 0) {
@@ -78,12 +81,29 @@ const selectedSocPercent = computed(() => {
   }
   return numberValue(selectedPoint.value.soc_after_mwh) / capacity * 100
 })
+const annotationSocPercent = computed(() => {
+  const capacity = numberValue(props.capacityMwh)
+  if (!annotationPoint.value || capacity <= 0) {
+    return null
+  }
+  return numberValue(annotationPoint.value.soc_after_mwh) / capacity * 100
+})
 const sourceStatusLabel = computed(() => statusLabel(props.sourceStatus || 'pending_source'))
 const selectedPositionStyle = computed(() => {
   const denominator = Math.max(1, sceneRows.value.length - 1)
   const projectedX = 10 + (selectedIndex.value / denominator) * 78
   return {
     '--bess-selected-x': `${projectedX}%`
+  }
+})
+const annotationPositionStyle = computed(() => {
+  if (annotationIndex.value === null) {
+    return {}
+  }
+  const denominator = Math.max(1, sceneRows.value.length - 1)
+  const projectedX = 10 + (annotationIndex.value / denominator) * 78
+  return {
+    '--bess-annotation-x': `${projectedX}%`
   }
 })
 const priceScaleTicks = computed(() => {
@@ -1119,6 +1139,23 @@ function selectHour(index: number) {
   selectedIndex.value = index
 }
 
+function showAnnotation(index: number) {
+  annotationIndex.value = index
+}
+
+function clearAnnotation() {
+  annotationIndex.value = null
+}
+
+function clearAnnotationWhenLeavingField(event: PointerEvent | MouseEvent) {
+  const current = event.currentTarget
+  const related = event.relatedTarget
+  if (current instanceof Node && related instanceof Node && current.contains(related)) {
+    return
+  }
+  clearAnnotation()
+}
+
 function selectHourFromKeyboard(event: KeyboardEvent, index: number) {
   const rows = sceneRows.value
   if (rows.length === 0) {
@@ -1140,6 +1177,7 @@ function selectHourFromKeyboard(event: KeyboardEvent, index: number) {
   }
   event.preventDefault()
   selectedIndex.value = nextIndex
+  showAnnotation(nextIndex)
   const target = event.currentTarget
   if (target instanceof HTMLElement) {
     const buttons = Array.from(target.parentElement?.querySelectorAll<HTMLButtonElement>('.bess-field__hour') || [])
@@ -1149,6 +1187,7 @@ function selectHourFromKeyboard(event: KeyboardEvent, index: number) {
 
 function selectSignal(index: number) {
   selectHour(index)
+  showAnnotation(index)
 }
 
 function setViewMode(mode: ViewMode) {
@@ -1323,6 +1362,10 @@ function formatUah(value: unknown): string {
     @pointermove="handleFieldPointerMove"
     @pointerup="handleFieldPointerEnd"
     @pointercancel="handleFieldPointerEnd"
+    @pointerleave="clearAnnotation"
+    @pointerout="clearAnnotationWhenLeavingField"
+    @mouseleave="clearAnnotation"
+    @mouseout="clearAnnotationWhenLeavingField"
     @wheel="handleFieldWheel"
   >
     <div class="bess-field__canvas" ref="rootEl" aria-hidden="true" />
@@ -1398,34 +1441,42 @@ function formatUah(value: unknown): string {
     >
       <span />
     </div>
-    <aside v-if="selectedPoint" class="bess-field__annotation" aria-live="polite">
-      <div>
-        <span>Selected hour</span>
-        <strong>{{ hourLabel(selectedPoint.timestamp) }}</strong>
-      </div>
-      <dl>
+    <Transition name="bess-field-annotation">
+      <aside
+        v-if="annotationPoint"
+        class="bess-field__annotation"
+        :class="`bess-field__annotation--${annotationAction.className}`"
+        :style="annotationPositionStyle"
+        aria-live="polite"
+      >
         <div>
-          <dt>Action</dt>
-          <dd :class="`is-${selectedAction.className}`">{{ selectedAction.label }}</dd>
+          <span>Selected hour</span>
+          <strong>{{ hourLabel(annotationPoint.timestamp) }}</strong>
         </div>
-        <div>
-          <dt>Price</dt>
-          <dd>{{ formatNumber(selectedPoint.price_uah_mwh, 0) }} UAH/MWh</dd>
-        </div>
-        <div>
-          <dt>Power</dt>
-          <dd>{{ formatMw(selectedPoint.net_power_mw) }}</dd>
-        </div>
-        <div>
-          <dt>SoC</dt>
-          <dd>{{ selectedSocPercent === null ? formatMwh(selectedPoint.soc_after_mwh) : `${formatNumber(selectedSocPercent, 1)}%` }}</dd>
-        </div>
-        <div>
-          <dt>Net value</dt>
-          <dd>{{ formatUah(selectedPoint.net_value_uah) }}</dd>
-        </div>
-      </dl>
-    </aside>
+        <dl>
+          <div>
+            <dt>Action</dt>
+            <dd :class="`is-${annotationAction.className}`">{{ annotationAction.label }}</dd>
+          </div>
+          <div>
+            <dt>Price</dt>
+            <dd>{{ formatNumber(annotationPoint.price_uah_mwh, 0) }} UAH/MWh</dd>
+          </div>
+          <div>
+            <dt>Power</dt>
+            <dd>{{ formatMw(annotationPoint.net_power_mw) }}</dd>
+          </div>
+          <div>
+            <dt>SoC</dt>
+            <dd>{{ annotationSocPercent === null ? formatMwh(annotationPoint.soc_after_mwh) : `${formatNumber(annotationSocPercent, 1)}%` }}</dd>
+          </div>
+          <div>
+            <dt>Net value</dt>
+            <dd>{{ formatUah(annotationPoint.net_value_uah) }}</dd>
+          </div>
+        </dl>
+      </aside>
+    </Transition>
     <div v-if="signalMarkers.length > 0" class="bess-field__signal-stack" aria-label="Dispatch field signal shortcuts">
       <button
         v-for="marker in signalMarkers"
@@ -1438,7 +1489,10 @@ function formatUah(value: unknown): string {
         :data-label="`${marker.label} ${marker.hour}`"
         :data-value="marker.value"
         @pointerenter="selectSignal(marker.index)"
+        @pointerleave="clearAnnotation"
+        @mouseleave="clearAnnotation"
         @focus="selectSignal(marker.index)"
+        @blur="clearAnnotation"
         @click="selectSignal(marker.index)"
       >
         <span>{{ marker.label }}</span>
@@ -1481,8 +1535,11 @@ function formatUah(value: unknown): string {
         :aria-selected="selectedIndex === index"
         :tabindex="selectedIndex === index ? 0 : -1"
         :aria-label="`${hourLabel(row.timestamp)} ${actionFor(row).label}, ${formatNumber(row.price_uah_mwh, 0)} UAH per MWh, ${formatMw(row.net_power_mw)}`"
-        @pointerenter="selectHour(index)"
-        @focus="selectHour(index)"
+        @pointerenter="selectHour(index); showAnnotation(index)"
+        @pointerleave="clearAnnotation"
+        @mouseleave="clearAnnotation"
+        @focus="selectHour(index); showAnnotation(index)"
+        @blur="clearAnnotation"
         @click="selectHour(index)"
         @keydown="selectHourFromKeyboard($event, index)"
       >
@@ -1931,8 +1988,8 @@ function formatUah(value: unknown): string {
 .bess-field__annotation {
   position: absolute;
   z-index: 5;
-  top: 76px;
-  right: 16px;
+  top: 66px;
+  left: min(max(var(--bess-annotation-x, 78%), 132px), calc(100% - 96px));
   width: min(208px, calc(100% - 32px));
   border: 1px solid rgba(64, 129, 166, 0.13);
   border-radius: 8px;
@@ -1941,6 +1998,65 @@ function formatUah(value: unknown): string {
   background: rgba(255, 255, 255, 0.54);
   backdrop-filter: blur(12px);
   box-shadow: 0 8px 18px rgba(41, 111, 151, 0.045);
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease;
+}
+
+.bess-field__annotation::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  width: 1px;
+  height: 10px;
+  background: rgba(12, 126, 179, 0.3);
+  transform: translateX(-50%);
+}
+
+.bess-field__annotation::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid rgba(12, 126, 179, 0.54);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    0 0 0 6px rgba(12, 126, 179, 0.07),
+    0 0 0 15px rgba(12, 126, 179, 0.025);
+  transform: translateX(-50%);
+}
+
+.bess-field__annotation--charge::after {
+  border-color: rgba(225, 179, 77, 0.64);
+  box-shadow:
+    0 0 0 6px rgba(225, 179, 77, 0.08),
+    0 0 0 15px rgba(225, 179, 77, 0.026);
+}
+
+.bess-field__annotation--discharge::after {
+  border-color: rgba(27, 157, 126, 0.58);
+  box-shadow:
+    0 0 0 6px rgba(27, 157, 126, 0.07),
+    0 0 0 15px rgba(27, 157, 126, 0.024);
+}
+
+.bess-field-annotation-enter-active,
+.bess-field-annotation-leave-active {
+  transition:
+    opacity 160ms ease,
+    transform 180ms ease;
+}
+
+.bess-field-annotation-enter-from,
+.bess-field-annotation-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(8px) scale(0.96);
 }
 
 .bess-field__annotation > div {

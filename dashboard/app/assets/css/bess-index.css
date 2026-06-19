@@ -7746,3 +7746,401 @@
     margin-top: 3px;
   }
 }
+
+/* Browser annotation QA pass: hover receipts, wider hero theatre, and public-facing receipt polish. */
+.bess-public-shell--narrative .bess-hero-stage {
+  position: relative;
+}
+
+.bess-hero-preset-switcher {
+  position: absolute;
+  z-index: 8;
+  right: 14px;
+  bottom: 48px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  max-width: min(520px, calc(100% - 28px));
+  border: 1px solid rgba(64, 129, 166, 0.15);
+  border-radius: 7px;
+  padding: 6px;
+  color: #123552;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(238, 250, 254, 0.56)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.045) 1px, transparent 1px);
+  background-size: auto, 10px 10px;
+  box-shadow:
+    0 9px 18px rgba(24, 89, 122, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+}
+
+.bess-hero-preset-switcher > span {
+  color: #55758c;
+  font-family: var(--bess-font-data);
+  font-size: 8px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bess-hero-preset-switcher__buttons {
+  display: flex;
+  gap: 4px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.bess-hero-preset-switcher__buttons::-webkit-scrollbar {
+  display: none;
+}
+
+.bess-hero-preset-switcher button {
+  flex: 0 0 auto;
+  max-width: 164px;
+  min-height: 24px;
+  border: 1px solid rgba(64, 129, 166, 0.15);
+  border-radius: 5px;
+  padding: 4px 8px;
+  color: #315c75;
+  background: rgba(255, 255, 255, 0.62);
+  font-family: var(--bess-font-data);
+  font-size: 8.4px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.05;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.bess-hero-preset-switcher button[aria-pressed='true'] {
+  border-color: rgba(12, 126, 179, 0.42);
+  color: #ffffff;
+  background: linear-gradient(180deg, #168bd0, #0b70b9);
+  box-shadow: 0 8px 16px rgba(12, 126, 179, 0.14);
+}
+
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-columns: minmax(320px, 0.44fr) minmax(900px, 2.14fr) minmax(178px, 0.2fr);
+    gap: 9px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    max-width: 390px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 456px;
+  }
+}
+
+@media (min-width: 1540px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-columns: minmax(330px, 0.42fr) minmax(1010px, 2.34fr) minmax(178px, 0.18fr);
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 470px;
+  }
+}
+
+.bess-public-shell--narrative .bess-kpi-rail {
+  grid-template-columns: minmax(250px, 0.33fr) minmax(0, 1fr);
+  min-height: 94px;
+  overflow: hidden;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light {
+  gap: 12px;
+  min-width: 0;
+  min-height: 72px;
+  padding: 10px 14px 12px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light > .iconify,
+.bess-public-shell--narrative .bess-score-primary--light svg {
+  width: 42px;
+  height: 42px;
+  font-size: 42px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light .bess-score-value {
+  font-size: 30px;
+  line-height: 0.95;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail {
+  grid-template-columns: repeat(6, minmax(88px, 1fr));
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+  align-content: center;
+  min-width: 0;
+  min-height: 72px;
+  padding: 8px 9px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric > .iconify,
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric svg {
+  width: 30px;
+  height: 30px;
+  font-size: 30px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+  font-size: 14px;
+  line-height: 1.05;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer {
+  z-index: 2;
+}
+
+.bess-public-shell--narrative .bess-svg-tooltip {
+  pointer-events: none;
+}
+
+.bess-public-shell--narrative .bess-chart-marker {
+  z-index: 1;
+}
+
+.bess-public-shell--narrative .bess-chart-marker:hover,
+.bess-public-shell--narrative .bess-chart-marker:focus-visible,
+.bess-public-shell--narrative .bess-chart-marker.is-active {
+  z-index: 5;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker {
+  max-width: 56px;
+  min-width: 36px;
+  min-height: 18px;
+  padding: 2px 3px;
+  opacity: 0.62;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker span {
+  font-size: 5.8px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker strong {
+  font-size: 7px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker em {
+  font-size: 6px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker::before {
+  bottom: -6px;
+  height: 6px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker::after {
+  bottom: -11px;
+  width: 7px;
+  height: 7px;
+}
+
+.bess-public-shell--narrative .bess-concept-chart-wrap {
+  overflow: visible;
+}
+
+.bess-public-shell--narrative .bess-concept-chart-wrap .bess-svg-tooltip rect,
+.bess-public-shell--narrative .bess-chart-wrap .bess-svg-tooltip rect {
+  fill: rgba(249, 254, 255, 0.98);
+  stroke: rgba(12, 126, 179, 0.28);
+}
+
+.bess-public-shell--narrative .bess-concept-chart-panel {
+  min-height: 318px;
+}
+
+.bess-public-shell--narrative .bess-concept-chart-panel .bess-concept-panel-head {
+  margin-bottom: 8px;
+}
+
+.bess-public-shell--narrative .bess-svg-chart--compact {
+  overflow: visible;
+}
+
+.bess-public-shell--narrative .bess-concept-forecast-panel,
+.bess-public-shell--narrative .bess-workbench-panel--forecast {
+  box-shadow:
+    inset 3px 0 0 rgba(12, 126, 179, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 26px rgba(24, 89, 122, 0.04);
+}
+
+.bess-public-shell--narrative .bess-workbench-models {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bess-public-shell--narrative .bess-workbench-models li,
+.bess-public-shell--narrative .bess-concept-model-row {
+  border-color: rgba(64, 129, 166, 0.13);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(241, 251, 254, 0.48)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.035) 1px, transparent 1px);
+  background-size: auto, 12px 12px;
+}
+
+.bess-public-shell--narrative .bess-workbench-panel--forecast .bess-workbench-link,
+.bess-public-shell--narrative .bess-concept-forecast-panel .bess-workbench-link,
+.bess-public-shell--narrative .bess-concept-forecast-panel .bess-technical-link {
+  min-height: 30px;
+  border-radius: 6px;
+}
+
+.bess-public-shell--narrative .bess-section-grid--trace {
+  gap: 12px;
+}
+
+.bess-public-shell--narrative .bess-section-grid--trace .bess-chart-panel {
+  position: relative;
+  min-height: 300px;
+  overflow: hidden;
+  border-color: rgba(64, 129, 166, 0.16);
+  background:
+    linear-gradient(90deg, rgba(64, 129, 166, 0.035) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(64, 129, 166, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(240, 251, 254, 0.58));
+  background-size: 18px 18px, 18px 18px, auto;
+}
+
+.bess-public-shell--narrative .bess-section-grid--trace .bess-chart-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #0c7eb3, #56bea7 52%, #e1b34d);
+  opacity: 0.64;
+}
+
+.bess-public-shell--narrative .bess-section-grid--trace .bess-chart--short {
+  min-height: 220px;
+  height: 220px;
+}
+
+.bess-public-shell--narrative .bess-lead-actions {
+  align-content: stretch;
+  padding: 13px;
+}
+
+.bess-public-shell--narrative .bess-lead-action-card {
+  gap: 8px;
+  min-height: 124px;
+  border: 1px solid rgba(64, 129, 166, 0.1);
+  border-radius: 7px;
+  padding: 13px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(240, 251, 254, 0.42)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.035) 1px, transparent 1px);
+  background-size: auto, 12px 12px;
+}
+
+.bess-lead-action-list {
+  display: grid;
+  gap: 7px;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bess-lead-action-list li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #315c75;
+  font-family: var(--bess-font-data);
+  font-size: 9.4px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.15;
+}
+
+.bess-lead-action-list svg,
+.bess-lead-action-list .iconify {
+  width: 13px;
+  height: 13px;
+  color: #0c7eb3;
+  font-size: 13px;
+}
+
+.bess-public-shell--narrative .bess-footer-note {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) repeat(4, auto);
+  align-items: center;
+  gap: 14px;
+  border-color: rgba(64, 129, 166, 0.12);
+  padding: 10px 12px;
+  color: #315c75;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(240, 251, 254, 0.5)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.03) 1px, transparent 1px);
+  background-size: auto, 14px 14px;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.2;
+}
+
+.bess-public-shell--narrative .bess-footer-note a,
+.bess-public-shell--narrative .bess-footer-note span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.bess-public-shell--narrative .bess-footer-note a {
+  color: #0b67a0;
+}
+
+.bess-public-shell--narrative .bess-footer-note svg,
+.bess-public-shell--narrative .bess-footer-note .iconify {
+  width: 12px;
+  height: 12px;
+  font-size: 12px;
+}
+
+@media (max-width: 1180px) {
+  .bess-hero-preset-switcher {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    margin-top: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-footer-note {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-hero-preset-switcher {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bess-public-shell--narrative .bess-kpi-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-public-shell--narrative .bess-footer-note {
+    grid-template-columns: 1fr;
+  }
+}

@@ -217,7 +217,7 @@ watchEffect(() => {
   if (presets.value.length === 0) {
     return
   }
-  if (!selectedPresetId.value || !presets.value.some(preset => preset.preset_id === selectedPresetId.value)) {
+  if (!selectedPresetId.value || !presets.value.some(preset => String(preset.preset_id) === selectedPresetId.value)) {
     const firstPreset = presets.value[0]
     if (firstPreset) {
       selectedPresetId.value = String(firstPreset.preset_id)
@@ -255,7 +255,7 @@ onBeforeUnmount(() => {
 })
 
 const selectedPreset = computed<Record<string, any> | null>(() => (
-  presets.value.find(preset => preset.preset_id === selectedPresetId.value) || presets.value[0] || null
+  presets.value.find(preset => String(preset.preset_id) === selectedPresetId.value) || presets.value[0] || null
 ))
 
 const selectedSchedule = computed<Record<string, any>[]>(() => (
@@ -1099,6 +1099,20 @@ function pointsAttr(points: ChartPoint[]): string {
           <p v-if="threeFallbackReason && threeFallbackReason !== 'reduced_motion'" class="bess-field-note">
             Dispatch field fallback: {{ threeFallbackReason }}. Audit charts remain available below.
           </p>
+          <div v-if="presets.length > 1" class="bess-hero-preset-switcher" aria-label="Battery preset selector">
+            <span>Selected pack</span>
+            <div class="bess-hero-preset-switcher__buttons" role="group">
+              <button
+                v-for="preset in presets"
+                :key="`hero-preset-${preset.preset_id}`"
+                type="button"
+                :aria-pressed="selectedPresetId === String(preset.preset_id)"
+                @click="selectedPresetId = String(preset.preset_id)"
+              >
+                {{ preset.label }}
+              </button>
+            </div>
+          </div>
         </div>
 
         <aside class="bess-hero-side" aria-label="Index side receipts">
@@ -1449,8 +1463,8 @@ function pointsAttr(points: ChartPoint[]): string {
                 v-for="preset in presets"
                 :key="preset.preset_id"
                 type="button"
-                :aria-pressed="selectedPresetId === preset.preset_id"
-                @click="selectedPresetId = preset.preset_id"
+                :aria-pressed="selectedPresetId === String(preset.preset_id)"
+                @click="selectedPresetId = String(preset.preset_id)"
               >
                 {{ preset.label }}
               </button>
@@ -2027,6 +2041,11 @@ function pointsAttr(points: ChartPoint[]): string {
           <div class="bess-lead-action-card">
             <span>Interested in the full story?</span>
             <strong>Demo, PoC, recruiting, or research collaboration.</strong>
+            <ul class="bess-lead-action-list" aria-label="Collaboration routes">
+              <li><UIcon name="i-lucide-check-square" /> Demo &amp; deep-dive</li>
+              <li><UIcon name="i-lucide-check-square" /> Consulting / PoC</li>
+              <li><UIcon name="i-lucide-check-square" /> Recruiting / collaboration</li>
+            </ul>
           </div>
           <a class="bess-action-link bess-action-link--primary" :href="contactHref">
             <UIcon name="i-lucide-mail" />
@@ -2162,12 +2181,17 @@ function pointsAttr(points: ChartPoint[]): string {
       </section>
 
       <footer class="bess-footer-note bess-panel">
-        <strong>Autonomous publication path:</strong>
-        GitHub Actions publishes source-backed JSON under
-        <code>dashboard/public/data/bess-arbitrage-index</code>; GitHub Pages redeploys the
-        generated static dashboard after JSON updates. The current workflow is scheduled for
-        05:35 UTC daily and supports manual dispatch for same-day recovery. Vercel can be added
-        later as a connected mirror, but runtime writes are not required for v1.
+        <span>Ukraine BESS Arbitrage Index</span>
+        <a :href="source.source_url || 'https://www.oree.com.ua/'" target="_blank" rel="noreferrer">
+          Data: OREE
+          <UIcon name="i-lucide-external-link" />
+        </a>
+        <a :href="repoUrl" target="_blank" rel="noreferrer">
+          GitHub: transparent source of truth
+          <UIcon name="i-lucide-external-link" />
+        </a>
+        <span>License: MIT</span>
+        <span>Built by a data engineer &amp; researcher</span>
       </footer>
     </div>
   </main>
