@@ -1,0 +1,1246 @@
+.bess-public-shell {
+  min-height: 100dvh;
+  overflow-x: hidden;
+  color: #10243a;
+  background:
+    linear-gradient(180deg, rgba(244, 250, 252, 0.94) 0%, rgba(238, 246, 249, 0.96) 100%);
+}
+
+.bess-public-frame {
+  width: min(1240px, calc(100% - 32px));
+  min-width: 0;
+  margin: 0 auto;
+  padding: 24px 0 56px;
+}
+
+.bess-public-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.bess-public-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.bess-public-mark {
+  display: grid;
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(24, 89, 122, 0.22);
+  border-radius: 8px;
+  color: #065f8f;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(24, 89, 122, 0.09);
+}
+
+.bess-public-title {
+  display: block;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.bess-public-subtitle {
+  display: block;
+  margin: 2px 0 0;
+  color: #557084;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bess-public-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.bess-public-nav a,
+.bess-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  gap: 6px;
+  border: 1px solid rgba(24, 89, 122, 0.18);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #164260;
+  background: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.bess-public-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(360px, 0.92fr);
+  gap: 16px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+
+.bess-panel {
+  min-width: 0;
+  border: 1px solid rgba(24, 89, 122, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 44px rgba(24, 89, 122, 0.08);
+}
+
+.bess-panel--inset {
+  padding: 18px;
+}
+
+.bess-hero-copy {
+  display: grid;
+  align-content: space-between;
+  gap: 18px;
+}
+
+.bess-hero-copy h1 {
+  max-width: 760px;
+  margin: 0;
+  color: #0b1c2f;
+  font-size: 42px;
+  font-weight: 800;
+  line-height: 1.02;
+}
+
+.bess-hero-copy p {
+  max-width: 720px;
+  margin: 0;
+  color: #365973;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.bess-hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bess-score-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.bess-score-primary {
+  padding: 18px;
+  border: 1px solid rgba(24, 89, 122, 0.18);
+  border-radius: 8px;
+  background: #0f2940;
+  color: #f5fbff;
+}
+
+.bess-score-label {
+  margin: 0 0 8px;
+  color: rgba(230, 247, 255, 0.82);
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bess-score-value {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 800;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+
+.bess-score-meta {
+  margin: 8px 0 0;
+  color: rgba(230, 247, 255, 0.78);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.bess-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bess-metric {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(24, 89, 122, 0.14);
+  border-radius: 8px;
+  background: rgba(247, 251, 252, 0.94);
+}
+
+.bess-metric span {
+  display: block;
+  color: #637c8f;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bess-metric strong {
+  display: block;
+  margin-top: 6px;
+  color: #10243a;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.12;
+}
+
+.bess-section-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.bess-chart-panel {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+}
+
+.bess-section-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bess-section-header h2 {
+  margin: 0;
+  color: #10243a;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.bess-section-header p {
+  margin: 4px 0 0;
+  color: #5c7487;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.bess-segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.bess-segmented button {
+  min-height: 34px;
+  border: 1px solid rgba(24, 89, 122, 0.2);
+  border-radius: 8px;
+  padding: 0 12px;
+  color: #164260;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.bess-segmented button[aria-pressed='true'] {
+  border-color: #0c7eb3;
+  color: #ffffff;
+  background: #0c7eb3;
+}
+
+.bess-chart {
+  height: 330px;
+  min-height: 330px;
+  width: 100%;
+  overflow: hidden;
+}
+
+.bess-chart--short {
+  height: 260px;
+  min-height: 260px;
+}
+
+.bess-chart-placeholder {
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgba(49, 92, 131, 0.24);
+  border-radius: 8px;
+  color: #5c7587;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.bess-chart-wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.bess-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #315c83;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bess-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bess-legend-line,
+.bess-legend-bar {
+  display: inline-block;
+  width: 18px;
+  height: 4px;
+  border-radius: 999px;
+  background: #0c7eb3;
+}
+
+.bess-legend-bar {
+  height: 10px;
+  background: #76b82a;
+}
+
+.bess-svg-chart {
+  display: block;
+}
+
+.bess-svg-grid {
+  stroke: rgba(49, 92, 131, 0.14);
+  stroke-width: 1;
+}
+
+.bess-svg-axis,
+.bess-svg-axis-tick {
+  stroke: rgba(49, 92, 131, 0.28);
+  stroke-width: 1;
+}
+
+.bess-svg-label {
+  fill: #315c83;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bess-svg-bar {
+  opacity: 0.88;
+}
+
+.bess-svg-bar--discharge {
+  fill: #76b82a;
+}
+
+.bess-svg-bar--charge {
+  fill: #d59a2f;
+}
+
+.bess-svg-line {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bess-svg-line--price {
+  stroke: #0c7eb3;
+}
+
+.bess-svg-line--soc {
+  stroke: #164260;
+}
+
+.bess-svg-area {
+  fill: rgba(12, 126, 179, 0.11);
+}
+
+.bess-svg-point {
+  fill: #ffffff;
+  stroke: #0c7eb3;
+  stroke-width: 2;
+}
+
+.bess-empty-chart {
+  display: grid;
+  align-content: center;
+  gap: 8px;
+  border: 1px dashed rgba(49, 92, 131, 0.24);
+  border-radius: 8px;
+  padding: 24px;
+  color: #48657a;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.bess-empty-chart strong {
+  color: #102338;
+  font-size: 16px;
+}
+
+.bess-empty-chart span {
+  max-width: 560px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bess-detail-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bess-detail-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(24, 89, 122, 0.1);
+  padding-bottom: 9px;
+  color: #48657a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bess-detail-list span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-detail-list li:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.bess-detail-list strong {
+  min-width: 0;
+  color: #10243a;
+  font-weight: 850;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.bess-table-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.bess-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.bess-table th,
+.bess-table td {
+  border-bottom: 1px solid rgba(24, 89, 122, 0.12);
+  padding: 10px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.bess-table th {
+  color: #526b7d;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.bess-table td {
+  color: #18334a;
+  font-weight: 700;
+}
+
+.bess-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 8px;
+  padding: 0 8px;
+  background: rgba(12, 126, 179, 0.11);
+  color: #075a84;
+  font-size: 11px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.bess-status--blocked {
+  background: rgba(196, 82, 64, 0.12);
+  color: #8f2d1d;
+}
+
+.bess-footer-note {
+  margin-top: 16px;
+  padding: 14px 16px;
+  color: #435f75;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.5;
+}
+
+.bess-public-shell--narrative {
+  color: #112d49;
+  background:
+    linear-gradient(90deg, rgba(57, 119, 156, 0.055) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(57, 119, 156, 0.055) 1px, transparent 1px),
+    linear-gradient(180deg, #f7fcff 0%, #edf7fb 46%, #f9fbf4 100%);
+  background-size: 36px 36px, 36px 36px, auto;
+}
+
+.bess-public-shell--narrative .bess-public-frame {
+  width: min(1360px, calc(100% - 40px));
+}
+
+.bess-public-shell--narrative .bess-public-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
+.bess-public-shell--narrative .bess-public-mark {
+  color: #0e7cac;
+  background: #fdfefe;
+}
+
+.bess-public-shell--narrative .bess-public-subtitle,
+.bess-public-shell--narrative .bess-chip,
+.bess-public-shell--narrative .bess-score-label,
+.bess-public-shell--narrative .bess-kicker,
+.bess-public-shell--narrative .bess-ledger-item span,
+.bess-public-shell--narrative .bess-receipt-strip span,
+.bess-public-shell--narrative .bess-status,
+.bess-public-shell--narrative .bess-svg-label {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.bess-public-shell--narrative .bess-public-nav a,
+.bess-public-shell--narrative .bess-chip,
+.bess-technical-link {
+  border-color: rgba(46, 111, 150, 0.22);
+  background: rgba(255, 255, 255, 0.8);
+  color: #164764;
+  box-shadow: 0 6px 18px rgba(22, 76, 112, 0.06);
+}
+
+.bess-public-shell--narrative .bess-public-nav a {
+  min-height: auto;
+  border-width: 0 0 1px;
+  border-radius: 0;
+  padding: 0 0 6px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bess-public-shell--narrative .bess-public-nav a:hover,
+.bess-technical-link:hover {
+  border-color: rgba(10, 126, 179, 0.42);
+  color: #075f8c;
+  background: transparent;
+}
+
+.bess-public-shell--narrative .bess-chip {
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.bess-narrative-hero {
+  display: grid;
+  position: relative;
+  grid-template-columns: minmax(330px, 0.72fr) minmax(640px, 1.28fr);
+  grid-template-areas: "copy stage";
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+
+.bess-hero-copy--narrative {
+  grid-area: copy;
+  min-height: 460px;
+  border-color: transparent;
+  padding: 18px 18px 18px 0;
+  background:
+    linear-gradient(90deg, rgba(58, 116, 151, 0.045) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(58, 116, 151, 0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+  box-shadow: none;
+}
+
+.bess-hero-copy--narrative .bess-hero-meta {
+  margin-top: 10px;
+}
+
+.bess-hero-copy--narrative h1 {
+  color: #061b32;
+  font-size: 54px;
+  font-weight: 900;
+  line-height: 0.94;
+}
+
+.bess-hero-copy--narrative p {
+  max-width: 430px;
+  margin-top: 14px;
+  color: #2c5872;
+  font-size: 15px;
+  font-weight: 720;
+}
+
+.bess-hero-rule {
+  display: grid;
+  grid-template-columns: 84px 28px 12px;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.bess-hero-rule span {
+  display: block;
+  height: 5px;
+  border-radius: 999px;
+  background: #0c7eb3;
+}
+
+.bess-hero-rule span:nth-child(2) {
+  background: #7fc7d8;
+}
+
+.bess-hero-rule span:nth-child(3) {
+  background: #e1b34d;
+}
+
+.bess-hero-flow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(24, 89, 122, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.bess-hero-flow span {
+  min-width: 0;
+  border-right: 1px solid rgba(24, 89, 122, 0.12);
+  padding: 10px 8px;
+  color: #17435f;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+.bess-hero-flow span:last-child {
+  border-right: 0;
+}
+
+.bess-kicker {
+  margin: 0 0 8px;
+  color: #0c7eb3;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.bess-hero-stage {
+  grid-area: stage;
+  min-width: 0;
+  position: relative;
+}
+
+.bess-hero-stage::before,
+.bess-hero-stage::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.bess-hero-stage::before {
+  inset: 14px;
+  border: 1px solid rgba(12, 126, 179, 0.12);
+  border-radius: 7px;
+}
+
+.bess-hero-stage::after {
+  top: 0;
+  right: 34px;
+  width: 72px;
+  height: 72px;
+  border-top: 2px solid rgba(225, 179, 77, 0.7);
+  border-right: 2px solid rgba(225, 179, 77, 0.7);
+}
+
+.bess-kpi-rail {
+  grid-area: stage;
+  z-index: 5;
+  display: grid;
+  align-self: end;
+  justify-self: end;
+  width: min(292px, 46%);
+  margin: 0 18px 18px 0;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.bess-score-primary--light {
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(12, 45, 75, 0.98), rgba(18, 82, 111, 0.94));
+  box-shadow:
+    0 18px 34px rgba(12, 45, 75, 0.22),
+    inset 0 0 0 1px rgba(178, 224, 241, 0.14);
+}
+
+.bess-score-primary--light::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 4px;
+  background: linear-gradient(90deg, #78c96f, #e1b34d, #84d4e8);
+}
+
+.bess-metric-grid--rail {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.bess-metric-grid--rail .bess-metric {
+  padding: 10px;
+  border-color: rgba(24, 89, 122, 0.13);
+  background: rgba(255, 255, 255, 0.74);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 10px 22px rgba(23, 79, 113, 0.08);
+}
+
+.bess-metric-grid--rail .bess-metric span {
+  font-size: 9px;
+}
+
+.bess-metric-grid--rail .bess-metric strong {
+  font-size: 14px;
+}
+
+.bess-source-ledger {
+  display: grid;
+  position: relative;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(160px, 0.46fr) minmax(260px, 1fr) minmax(160px, 0.42fr);
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(24, 89, 122, 0.16);
+  border-radius: 8px;
+  margin: 16px 0;
+  background: rgba(252, 254, 255, 0.92);
+  box-shadow: 0 16px 36px rgba(24, 89, 122, 0.07);
+}
+
+.bess-source-ledger:not(.bess-source-ledger--compact)::after {
+  content: 'NO MARKET EXECUTION';
+  position: absolute;
+  right: 14px;
+  top: -1px;
+  border: 1px solid rgba(196, 82, 64, 0.2);
+  border-top: 0;
+  border-radius: 0 0 5px 5px;
+  padding: 5px 8px;
+  color: #8f2d1d;
+  background: rgba(255, 246, 242, 0.9);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.bess-source-ledger--compact {
+  grid-template-columns: minmax(180px, 0.5fr) minmax(260px, 1fr) minmax(120px, 0.28fr);
+  margin: 0;
+  box-shadow: none;
+}
+
+.bess-ledger-item {
+  min-width: 0;
+  padding: 12px 14px;
+  border-right: 1px solid rgba(24, 89, 122, 0.12);
+  background:
+    linear-gradient(90deg, rgba(41, 112, 155, 0.035) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(41, 112, 155, 0.035) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.bess-ledger-item:last-child {
+  border-right: 0;
+}
+
+.bess-ledger-item span,
+.bess-ledger-item strong,
+.bess-ledger-item a {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-ledger-item span {
+  color: #66879b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.bess-ledger-item strong,
+.bess-ledger-item a {
+  margin-top: 5px;
+  color: #143a57;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1.35;
+}
+
+.bess-ledger-item a {
+  text-decoration-color: rgba(12, 126, 179, 0.35);
+  text-underline-offset: 3px;
+}
+
+.bess-text-warn {
+  color: #9c4c19 !important;
+}
+
+.bess-autonomy-receipt {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.42fr) repeat(6, minmax(120px, 1fr));
+  gap: 8px;
+  margin: -4px 0 18px;
+}
+
+.bess-autonomy-stamp {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  border: 1px solid rgba(39, 133, 91, 0.24);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #155b3a;
+  background:
+    repeating-linear-gradient(
+      -12deg,
+      rgba(119, 199, 111, 0.14) 0,
+      rgba(119, 199, 111, 0.14) 5px,
+      rgba(255, 255, 255, 0.75) 5px,
+      rgba(255, 255, 255, 0.75) 10px
+    );
+}
+
+.bess-autonomy-stamp--warn {
+  border-color: rgba(196, 82, 64, 0.26);
+  color: #8f2d1d;
+  background:
+    repeating-linear-gradient(
+      -12deg,
+      rgba(225, 179, 77, 0.18) 0,
+      rgba(225, 179, 77, 0.18) 5px,
+      rgba(255, 255, 255, 0.75) 5px,
+      rgba(255, 255, 255, 0.75) 10px
+    );
+}
+
+.bess-autonomy-stamp span,
+.bess-autonomy-stamp strong {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-autonomy-stamp span {
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.bess-autonomy-stamp strong {
+  margin-top: 5px;
+  font-size: 18px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bess-section-grid--evidence {
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.34fr);
+}
+
+.bess-section-grid--evidence .bess-chart-panel,
+.bess-section-grid:not(.bess-section-grid--forecast):not(.bess-section-grid--methodology) .bess-chart-panel {
+  position: relative;
+}
+
+.bess-section-grid--evidence .bess-chart-panel::before,
+.bess-section-grid:not(.bess-section-grid--forecast):not(.bess-section-grid--methodology) .bess-chart-panel::before {
+  content: 'Figure';
+  position: absolute;
+  right: 14px;
+  top: 12px;
+  color: rgba(12, 126, 179, 0.72);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.bess-section-grid--forecast {
+  align-items: stretch;
+}
+
+.bess-section-grid--methodology {
+  align-items: start;
+}
+
+.bess-forecast-panel {
+  display: grid;
+  gap: 16px;
+}
+
+.bess-methodology-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.bess-receipt-strip {
+  min-width: 0;
+  border: 1px solid rgba(24, 89, 122, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(247, 253, 255, 0.95) 0,
+      rgba(247, 253, 255, 0.95) 13px,
+      rgba(234, 247, 251, 0.84) 13px,
+      rgba(234, 247, 251, 0.84) 14px
+    );
+}
+
+.bess-receipt-strip span,
+.bess-receipt-strip strong {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-receipt-strip span {
+  color: #66879b;
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.bess-receipt-strip strong {
+  margin-top: 6px;
+  color: #123552;
+  font-size: 14px;
+  font-weight: 850;
+  line-height: 1.3;
+}
+
+.bess-model-list,
+.bess-stage-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bess-model-list li,
+.bess-stage-list li {
+  min-width: 0;
+  border: 1px solid rgba(24, 89, 122, 0.12);
+  border-radius: 8px;
+  background: rgba(248, 253, 255, 0.78);
+}
+
+.bess-model-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+}
+
+.bess-model-list strong,
+.bess-model-list span,
+.bess-stage-list strong,
+.bess-stage-list span,
+.bess-stage-list p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-model-list strong {
+  display: block;
+  color: #123552;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.bess-model-list div > span {
+  display: block;
+  margin-top: 4px;
+  color: #58788f;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.bess-stage-list li {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.bess-stage-list > li > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 70px;
+  height: 30px;
+  border: 1px solid rgba(12, 126, 179, 0.22);
+  border-radius: 999px;
+  color: #075f8c;
+  background: #eef9fc;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.bess-stage-list strong {
+  display: block;
+  color: #123552;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.bess-stage-list p {
+  margin: 4px 0 0;
+  color: #55758c;
+  font-size: 12px;
+  font-weight: 680;
+  line-height: 1.45;
+}
+
+.bess-technical-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid rgba(24, 89, 122, 0.18);
+  border-radius: 8px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 850;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bess-field-fallback-shell {
+  display: grid;
+  min-height: 420px;
+  place-content: center;
+  gap: 8px;
+  border: 1px dashed rgba(49, 92, 131, 0.26);
+  border-radius: 8px;
+  padding: 24px;
+  color: #46677d;
+  background:
+    linear-gradient(90deg, rgba(70, 136, 175, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(70, 136, 175, 0.08) 1px, transparent 1px),
+    rgba(247, 253, 255, 0.94);
+  background-size: 28px 28px;
+  text-align: center;
+}
+
+.bess-field-fallback-shell strong {
+  color: #123552;
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.bess-field-fallback-shell span {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bess-field-note {
+  margin: 8px 0 0;
+  color: #5b7689;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.bess-legend-bar--green {
+  background: #76b82a;
+}
+
+.bess-legend-bar--yellow {
+  background: #dba83d;
+}
+
+.bess-detail-list--receipt strong {
+  max-width: 58%;
+}
+
+.bess-section-grid--methodology .bess-panel {
+  align-self: start;
+}
+
+@media (max-width: 920px) {
+  .bess-public-hero,
+  .bess-narrative-hero,
+  .bess-section-grid,
+  .bess-source-ledger,
+  .bess-source-ledger--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-narrative-hero {
+    align-items: start;
+    grid-template-areas:
+      "copy"
+      "stage"
+      "metrics";
+  }
+
+  .bess-hero-copy--narrative {
+    min-height: auto;
+  }
+
+  .bess-kpi-rail {
+    grid-area: metrics;
+    justify-self: stretch;
+    width: 100%;
+    margin: 0;
+    pointer-events: auto;
+  }
+
+  .bess-metric-grid--rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-public-topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .bess-public-nav {
+    justify-content: flex-start;
+  }
+
+  .bess-hero-copy h1 {
+    font-size: 34px;
+  }
+
+  .bess-ledger-item {
+    border-right: 0;
+    border-bottom: 1px solid rgba(24, 89, 122, 0.12);
+  }
+
+  .bess-ledger-item:last-child {
+    border-bottom: 0;
+  }
+
+  .bess-autonomy-receipt {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-methodology-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-frame {
+    width: min(100% - 20px, 1240px);
+    padding-top: 14px;
+  }
+
+  .bess-hero-copy h1 {
+    font-size: 29px;
+  }
+
+  .bess-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-metric-grid--rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-methodology-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-autonomy-receipt {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-section-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bess-model-list li,
+  .bess-stage-list li {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-model-list li {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bess-technical-link {
+    width: 100%;
+  }
+
+  .bess-detail-list {
+    display: grid;
+    gap: 8px;
+  }
+
+  .bess-detail-list li {
+    display: grid;
+    gap: 4px;
+  }
+
+  .bess-detail-list strong,
+  .bess-detail-list--receipt strong {
+    max-width: 100%;
+    text-align: left;
+  }
+
+  .bess-chart {
+    min-height: 300px;
+  }
+}

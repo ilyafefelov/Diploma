@@ -1,0 +1,57 @@
+{
+  "artifacts": {
+    "forecast_latest_json": "dashboard/public/data/bess-arbitrage-index/forecast/latest.json",
+    "forecast_scoreboard_json": "dashboard/public/data/bess-arbitrage-index/forecast_scoreboard.json",
+    "history_json": "dashboard/public/data/bess-arbitrage-index/history.json",
+    "latest_json": "dashboard/public/data/bess-arbitrage-index/latest.json"
+  },
+  "autonomy": {
+    "compute_layer": "github_actions_scheduled_static_json",
+    "host_layer": "vercel_git_auto_deploy",
+    "market_execution_enabled": false,
+    "proposed_bid_status": "not_emitted",
+    "schedule_cron_utc": "35 5 * * *",
+    "schedule_timezone_note": "05:35 UTC is 08:35 Europe/Kyiv during summer time"
+  },
+  "forecast": {
+    "actual_target_delivery_date": "2026-06-20",
+    "attempted_target_delivery_date": "2026-06-20",
+    "expected_target_delivery_date": "2026-06-20",
+    "history_row_count": 240,
+    "is_current_for_kyiv_schedule": true,
+    "model_statuses": [
+      {
+        "backend_status": "materialized",
+        "model_name": "strict_similar_day_baseline",
+        "point_count": 24,
+        "quality_boundary": "ranked_baseline"
+      },
+      {
+        "backend_status": "blocked",
+        "model_name": "nbeatsx_official_public_challenge_v0",
+        "point_count": 0,
+        "quality_boundary": "experimental_not_ranked"
+      },
+      {
+        "backend_status": "blocked",
+        "model_name": "tft_official_public_challenge_v0",
+        "point_count": 0,
+        "quality_boundary": "experimental_not_ranked"
+      }
+    ],
+    "status": "published",
+    "training_cutoff": "2026-06-19T23:00:00+00:00"
+  },
+  "generated_at": "2026-06-18T23:59:05.425919+00:00",
+  "publisher_timezone": "Europe/Kyiv",
+  "realized": {
+    "actual_delivery_date": "2026-06-18",
+    "attempted_delivery_date": "2026-06-18",
+    "expected_delivery_date": "2026-06-18",
+    "is_current_for_kyiv_schedule": true,
+    "row_count": 24,
+    "source_status": "complete_24_hour_delivery_day",
+    "status": "published"
+  },
+  "schema_version": "ukraine_bess_publication_status.v1"
+}

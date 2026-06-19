@@ -1,0 +1,63 @@
+{
+  "claim_boundary": "public_forecast_challenge_not_market_execution",
+  "generated_at": "2026-06-18T20:09:24.368273+00:00",
+  "market_execution_enabled": false,
+  "models": [
+    {
+      "backend_status": "blocked",
+      "blocker": "strict similar-day forecast needs source-backed history for 2026-06-18T00:00:00",
+      "claim_boundary": "public_forecast_challenge_not_market_execution",
+      "forecast_generated_at": "2026-06-18T20:09:24.368273+00:00",
+      "label": "Strict similar-day baseline",
+      "leakage_check_status": "not_ranked",
+      "market_execution_enabled": false,
+      "model_name": "strict_similar_day_baseline",
+      "point_count": 0,
+      "point_in_time_status": "not_materialized",
+      "points": [],
+      "quality_boundary": "blocked_source_gap",
+      "target_delivery_date": "2026-06-19",
+      "training_cutoff": "2026-06-17T23:00:00+00:00"
+    },
+    {
+      "backend_status": "blocked",
+      "blocker": "model_not_materialized_in_this_public_snapshot",
+      "claim_boundary": "public_forecast_challenge_not_market_execution",
+      "forecast_generated_at": "2026-06-18T20:09:24.368273+00:00",
+      "label": "NBEATSx public challenge",
+      "leakage_check_status": "not_ranked",
+      "market_execution_enabled": false,
+      "model_name": "nbeatsx_official_public_challenge_v0",
+      "point_count": 0,
+      "point_in_time_status": "not_materialized",
+      "points": [],
+      "quality_boundary": "experimental_not_ranked",
+      "target_delivery_date": "2026-06-19",
+      "training_cutoff": "2026-06-17T23:00:00+00:00"
+    },
+    {
+      "backend_status": "blocked",
+      "blocker": "model_not_materialized_in_this_public_snapshot",
+      "claim_boundary": "public_forecast_challenge_not_market_execution",
+      "forecast_generated_at": "2026-06-18T20:09:24.368273+00:00",
+      "label": "TFT public challenge",
+      "leakage_check_status": "not_ranked",
+      "market_execution_enabled": false,
+      "model_name": "tft_official_public_challenge_v0",
+      "point_count": 0,
+      "point_in_time_status": "not_materialized",
+      "points": [],
+      "quality_boundary": "experimental_not_ranked",
+      "target_delivery_date": "2026-06-19",
+      "training_cutoff": "2026-06-17T23:00:00+00:00"
+    }
+  ],
+  "proposed_bid_status": "not_emitted",
+  "schema_version": "ukraine_bess_forecast_challenge.v1",
+  "source": {
+    "history_row_count": 192,
+    "source_scope": "source_backed_observed_oree_history_only",
+    "training_cutoff": "2026-06-17T23:00:00+00:00"
+  },
+  "target_delivery_date": "2026-06-19"
+}
