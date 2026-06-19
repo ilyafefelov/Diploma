@@ -2,21 +2,18 @@
 
 Commission proof pack for a Ukrainian BESS energy-arbitrage operator preview.
 
-This repository implements a source-backed DAM/IDM hourly recommendation
-preview for a human BESS operator. The defensible product is a read-model
-evidence system: Dagster/FastAPI/Postgres backend, Nuxt operator dashboard,
-deterministic LP/V2+ evidence, and guarded DT/HF shadow research. It is not a
-trading bot, not a market-submission engine, and not production dispatch.
-
-![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
-
-Watch the English project intro:
+Start with the project intro:
 
 [![Project intro video poster](docs/technical/final-demo-assets/project-intro-poster.png)](https://ilyafefelov.github.io/Diploma/project-intro/)
 
-The video introduces the concept first, then the product surface: source-backed
-DAM/IDM operator preview, read-model evidence, deterministic boundaries, and no
-market execution.
+This repository implements a source-backed DAM/IDM hourly recommendation
+preview for a human BESS operator. It combines Dagster/FastAPI/Postgres,
+a Nuxt operator dashboard, deterministic LP/V2+ evidence, and bounded DT/HF
+shadow comparisons for research context. The defended boundary is explicit:
+operator preview, read-model evidence, no market execution, no `ProposedBid`,
+and no autonomous dispatch.
+
+![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
 
 Open first during a live review:
 
