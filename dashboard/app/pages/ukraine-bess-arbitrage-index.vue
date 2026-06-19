@@ -16,6 +16,7 @@ const runtimeConfig = useRuntimeConfig()
 const appBaseURL = String(runtimeConfig.app.baseURL || '/')
 const siteUrl = String(runtimeConfig.public.siteUrl || 'http://localhost:64163').replace(/\/$/, '')
 const canonicalUrl = `${siteUrl}/ukraine-bess-arbitrage-index`
+const ogImageUrl = `${siteUrl}/og/ukraine-bess-arbitrage-index.png`
 const repoUrl = 'https://github.com/ilyafefelov/Diploma'
 const contactEmail = 'ilyafefelov@gmail.com'
 const contactHref = `mailto:${contactEmail}?subject=${encodeURIComponent('Ukraine BESS Arbitrage Index / BESS analytics')}&body=${encodeURIComponent('Hi Illya, I saw the Ukraine BESS Arbitrage Index and would like to discuss BESS analytics / forecasting / energy optimization.')}`
@@ -84,9 +85,13 @@ useSeoMeta({
   ogDescription: 'Source-backed public BESS arbitrage analytics for Ukrainian DAM prices, built from committed JSON artifacts.',
   ogUrl: canonicalUrl,
   ogType: 'website',
+  ogImage: ogImageUrl,
+  ogImageAlt: 'Ukraine BESS Arbitrage Index public dashboard preview with BESS dispatch field and OREE DAM evidence.',
   twitterTitle: 'Ukraine BESS Arbitrage Index',
   twitterDescription: 'Daily source-backed BESS dispatch index and forecast challenge for Ukrainian DAM prices.',
-  twitterCard: 'summary_large_image'
+  twitterCard: 'summary_large_image',
+  twitterImage: ogImageUrl,
+  twitterImageAlt: 'Ukraine BESS Arbitrage Index public dashboard preview.'
 })
 
 useHead({
@@ -107,6 +112,14 @@ useHead({
     {
       name: 'author',
       content: 'Illya Fefelov'
+    },
+    {
+      property: 'og:image:width',
+      content: '1200'
+    },
+    {
+      property: 'og:image:height',
+      content: '630'
     }
   ],
   script: [

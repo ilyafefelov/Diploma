@@ -1,10 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+>
   <url>
     <loc>https://energy-index.full-iron.com/ukraine-bess-arbitrage-index</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://energy-index.full-iron.com/og/ukraine-bess-arbitrage-index.png</image:loc>
+      <image:title>Ukraine BESS Arbitrage Index dashboard preview</image:title>
+    </image:image>
   </url>
   <url>
     <loc>https://energy-index.full-iron.com/forecast-challenge</loc>
