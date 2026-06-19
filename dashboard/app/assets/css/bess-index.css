@@ -49,14 +49,37 @@
   line-height: 1.15;
 }
 
+.bess-public-subtitle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 2px;
+}
+
 .bess-public-subtitle {
   display: block;
-  margin: 2px 0 0;
+  margin: 0;
   color: #557084;
   font-size: 12px;
   font-weight: 700;
   line-height: 1.2;
   text-transform: uppercase;
+}
+
+.bess-research-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 17px;
+  border: 1px solid rgba(24, 89, 122, 0.16);
+  border-radius: 4px;
+  padding: 0 6px;
+  color: #4f6f86;
+  background: rgba(255, 255, 255, 0.68);
+  font-size: 9px;
+  font-weight: 780;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .bess-public-nav {
@@ -83,6 +106,10 @@
   max-width: 100%;
   overflow-wrap: anywhere;
   text-decoration: none;
+}
+
+.bess-public-nav a span:nth-child(2) {
+  display: none;
 }
 
 .bess-public-hero {
@@ -208,14 +235,14 @@
 .bess-section-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(320px, 0.42fr);
-  gap: 16px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .bess-chart-panel {
   display: grid;
   gap: 12px;
-  padding: 16px;
+  padding: 14px;
 }
 
 .bess-section-header {
@@ -228,8 +255,9 @@
 .bess-section-header h2 {
   margin: 0;
   color: #10243a;
-  font-size: 18px;
-  font-weight: 800;
+  font-family: var(--bess-font-display, var(--bess-font-ui, var(--font-sans)));
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1.2;
 }
 
@@ -483,6 +511,7 @@
   font-size: 11px;
   font-weight: 850;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .bess-status--blocked {
@@ -500,7 +529,22 @@
 }
 
 .bess-public-shell--narrative {
+  --bess-font-body: "Noto Sans", "Segoe UI", sans-serif;
+  --bess-font-brand: "Alumni Sans", "Advent Pro", "Noto Sans", sans-serif;
+  --bess-font-hero: "Noto Serif", "Noto Sans", "Segoe UI", serif;
+  --bess-font-display: "Advent Pro", "Noto Sans", sans-serif;
+  --bess-font-ui: "Advent Pro", "Noto Sans", sans-serif;
+  --bess-font-data: "Anonymous Pro", "Noto Sans Mono", "Noto Sans", monospace;
+  --bess-font-detail: "Noto Sans", "Noto Sans Mono", sans-serif;
+  --bess-weight-ui: 800;
+  --bess-weight-data: 700;
+  overflow-x: clip;
   color: #112d49;
+  font-family: var(--bess-font-body);
+  font-size-adjust: from-font;
+  font-optical-sizing: auto;
+  font-synthesis-style: none;
+  font-synthesis-weight: auto;
   background:
     linear-gradient(90deg, rgba(57, 119, 156, 0.055) 1px, transparent 1px),
     linear-gradient(0deg, rgba(57, 119, 156, 0.055) 1px, transparent 1px),
@@ -508,29 +552,125 @@
   background-size: 36px 36px, 36px 36px, auto;
 }
 
+.bess-public-shell--narrative :where(a, button, h1, h2, h3, p, span, strong, em, th, td, li, dt, dd) {
+  font-size-adjust: from-font;
+}
+
+/* BESS typography pass: Alumni brand, Noto Serif hero, Advent controls/display, Anonymous numeric receipts, Noto body. */
+.bess-public-shell--narrative :where(
+  .bess-public-title,
+  .bess-hero-copy--narrative h1,
+  .bess-section-header h2,
+  .bess-workbench-head h2,
+  .bess-lead-copy h2,
+  .bess-lead-card h3,
+  .bess-claim-panel .bess-section-header h2,
+  .bess-ladder-panel .bess-section-header h2
+) {
+  font-family: var(--bess-font-display);
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.bess-public-shell--narrative :where(
+  .bess-public-title,
+  .bess-hero-copy--narrative h1
+) {
+  font-family: var(--bess-font-hero);
+  font-weight: 800;
+  font-size-adjust: from-font;
+}
+
+.bess-public-shell--narrative :where(
+  .bess-public-nav a,
+  .bess-action-link,
+  .bess-hero-cta,
+  .bess-live-pill,
+  .bess-chip,
+  .bess-kicker,
+  .bess-kpi-title,
+  .bess-autonomy-stamp strong,
+  .bess-workbench-models strong,
+  .bess-workbench-ladder strong,
+  .bess-workbench-link
+) {
+  font-family: var(--bess-font-ui);
+  letter-spacing: 0;
+}
+
+.bess-public-shell--narrative :where(
+  .bess-score-value,
+  .bess-score-primary--light .bess-score-value,
+  .bess-metric strong,
+  .bess-metric-grid--rail .bess-metric strong,
+  .bess-hero-receipt strong,
+  .bess-ledger-item strong,
+  .bess-ledger-item a,
+  .bess-receipt-strip strong,
+  .bess-detail-list strong,
+  .bess-detail-list--receipt strong,
+  .bess-workbench-number strong,
+  .bess-workbench-stats dd,
+  .bess-model-table th,
+  .bess-model-table td,
+  .bess-table th,
+  .bess-table td,
+  .bess-status
+) {
+  font-family: var(--bess-font-data);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+  letter-spacing: 0;
+}
+
 .bess-public-shell--narrative .bess-public-frame {
-  width: min(1360px, calc(100% - 40px));
+  width: min(1700px, calc(100% - 40px));
+  padding-top: 14px;
 }
 
 .bess-public-shell--narrative .bess-public-brand {
+  gap: 10px;
   color: inherit;
   text-decoration: none;
 }
 
-.bess-public-shell--narrative .bess-public-mark {
-  color: #0e7cac;
-  background: #fdfefe;
+.bess-public-shell--narrative .bess-public-title {
+  color: #112d49;
+  font-family: var(--bess-font-hero);
+  font-size: 27px;
+  font-weight: 900;
+  line-height: 0.78;
+  text-transform: uppercase;
 }
 
-.bess-public-shell--narrative .bess-public-subtitle,
-.bess-public-shell--narrative .bess-chip,
+.bess-public-shell--narrative .bess-public-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  color: #0e7cac;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.5) 1px, transparent 1px),
+    linear-gradient(135deg, #2a92df, #0d63b7);
+  background-size: 9px 9px, 9px 9px, auto;
+  color: #ffffff;
+}
+
+.bess-public-shell--narrative .bess-research-chip,
 .bess-public-shell--narrative .bess-score-label,
-.bess-public-shell--narrative .bess-kicker,
 .bess-public-shell--narrative .bess-ledger-item span,
 .bess-public-shell--narrative .bess-receipt-strip span,
 .bess-public-shell--narrative .bess-status,
 .bess-public-shell--narrative .bess-svg-label {
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: var(--bess-font-data);
+  font-weight: var(--bess-weight-data);
+}
+
+.bess-public-shell--narrative .bess-public-subtitle {
+  color: #486d86;
+  font-family: var(--bess-font-detail);
+  font-size: 12px;
+  font-weight: 650;
 }
 
 .bess-public-shell--narrative .bess-public-nav a,
@@ -546,9 +686,13 @@
   min-height: auto;
   border-width: 0 0 1px;
   border-radius: 0;
-  padding: 0 0 6px;
+  padding: 0 0 8px;
   background: transparent;
   box-shadow: none;
+  font-family: var(--bess-font-ui);
+  font-size: 15px;
+  font-weight: var(--bess-weight-ui);
+  white-space: nowrap;
 }
 
 .bess-public-shell--narrative .bess-public-nav a:hover,
@@ -566,18 +710,23 @@
 .bess-narrative-hero {
   display: grid;
   position: relative;
-  grid-template-columns: minmax(330px, 0.72fr) minmax(640px, 1.28fr);
-  grid-template-areas: "copy stage";
-  gap: 18px;
+  grid-template-columns: minmax(450px, 0.72fr) minmax(680px, 1.38fr) minmax(205px, 0.32fr);
+  grid-template-areas:
+    "copy receipt receipt"
+    "copy stage side"
+    "metrics metrics side";
+  gap: 10px;
   align-items: stretch;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
 .bess-hero-copy--narrative {
+  container-name: bess-hero-copy;
+  container-type: inline-size;
   grid-area: copy;
-  min-height: 460px;
+  min-height: 0;
   border-color: transparent;
-  padding: 18px 18px 18px 0;
+  padding: 8px 12px 8px 0;
   background:
     linear-gradient(90deg, rgba(58, 116, 151, 0.045) 1px, transparent 1px),
     linear-gradient(0deg, rgba(58, 116, 151, 0.045) 1px, transparent 1px);
@@ -586,29 +735,32 @@
 }
 
 .bess-hero-copy--narrative .bess-hero-meta {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .bess-hero-copy--narrative h1 {
   color: #061b32;
-  font-size: 54px;
-  font-weight: 900;
-  line-height: 0.94;
+  font-family: var(--bess-font-hero);
+  font-size: clamp(42px, 3.55vw, 52px);
+  font-weight: 800;
+  line-height: 0.92;
+  text-wrap: balance;
 }
 
 .bess-hero-copy--narrative p {
-  max-width: 430px;
-  margin-top: 14px;
+  max-width: 380px;
+  margin-top: 9px;
   color: #2c5872;
-  font-size: 15px;
-  font-weight: 720;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.36;
 }
 
 .bess-hero-rule {
   display: grid;
   grid-template-columns: 84px 28px 12px;
   gap: 8px;
-  margin-bottom: 18px;
+  margin-bottom: 12px;
 }
 
 .bess-hero-rule span {
@@ -639,10 +791,11 @@
 .bess-hero-flow span {
   min-width: 0;
   border-right: 1px solid rgba(24, 89, 122, 0.12);
-  padding: 10px 8px;
+  padding: 8px 7px;
   color: #17435f;
   font-size: 11px;
-  font-weight: 900;
+  font-family: var(--bess-font-ui);
+  font-weight: var(--bess-weight-ui);
   line-height: 1.1;
   overflow-wrap: anywhere;
   text-align: center;
@@ -657,16 +810,23 @@
   margin: 0 0 8px;
   color: #0c7eb3;
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--bess-weight-data);
   letter-spacing: 0;
   line-height: 1.2;
   text-transform: uppercase;
 }
 
 .bess-hero-stage {
+  container-name: bess-hero-stage;
+  container-type: inline-size;
   grid-area: stage;
   min-width: 0;
   position: relative;
+}
+
+.bess-public-shell--narrative .bess-hero-stage .bess-field {
+  min-height: 360px;
+  height: 100%;
 }
 
 .bess-hero-stage::before,
@@ -692,26 +852,257 @@
   border-right: 2px solid rgba(225, 179, 77, 0.7);
 }
 
-.bess-kpi-rail {
-  grid-area: stage;
-  z-index: 5;
+.bess-hero-receipt {
+  grid-area: receipt;
   display: grid;
-  align-self: end;
-  justify-self: end;
-  width: min(292px, 46%);
-  margin: 0 18px 18px 0;
+  align-self: start;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(64, 129, 166, 0.24);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 251, 254, 0.82)),
+    linear-gradient(90deg, rgba(57, 119, 156, 0.04) 1px, transparent 1px);
+  background-size: auto, 18px 18px;
+  box-shadow:
+    0 16px 32px rgba(28, 91, 132, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.bess-hero-receipt article {
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  min-height: 66px;
+  border-right: 1px solid rgba(64, 129, 166, 0.16);
+  padding: 9px 12px;
+  text-align: center;
+}
+
+.bess-hero-receipt article:last-child {
+  border-right: 0;
+}
+
+.bess-hero-receipt span,
+.bess-hero-receipt em {
+  color: #355f7e;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.bess-hero-receipt strong {
+  display: block;
+  margin: 5px 0 3px;
+  color: #09254a;
+  font-family: var(--bess-font-data);
+  font-size: 20px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.bess-hero-receipt article:nth-child(2) em,
+.bess-hero-receipt article:nth-child(5) strong {
+  color: #087c62;
+}
+
+.bess-hero-receipt article:nth-child(5) strong {
+  color: #075fd1;
+  text-transform: uppercase;
+}
+
+.bess-hero-side {
+  grid-area: side;
+  display: grid;
   gap: 8px;
-  pointer-events: none;
+  min-width: 0;
+}
+
+.bess-side-card {
+  min-width: 0;
+  border: 1px solid rgba(64, 129, 166, 0.24);
+  border-radius: 8px;
+  padding: 10px;
+  color: #113957;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(242, 250, 253, 0.78));
+  box-shadow: 0 14px 28px rgba(28, 91, 132, 0.07);
+}
+
+.bess-side-card--soc {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+}
+
+.bess-side-card > span,
+.bess-side-title span {
+  color: #113957;
+  font-family: var(--bess-font-ui);
+  font-size: 14px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1.2;
+}
+
+.bess-side-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+}
+
+.bess-side-title svg {
+  width: 20px;
+  height: 20px;
+  color: #075fd1;
+}
+
+.bess-side-card dl {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+}
+
+.bess-side-card dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.bess-side-card dt,
+.bess-side-card p {
+  margin: 0;
+  color: #496e86;
+  font-size: 11px;
+  font-weight: 760;
+  line-height: 1.35;
+}
+
+.bess-side-card dd {
+  margin: 0;
+  color: #0f2e4a;
+  font-size: 11px;
+  font-weight: 850;
+  text-align: right;
+}
+
+.bess-side-card p strong {
+  color: #087c62;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bess-soc-gauge {
+  --bess-soc-percent: 0%;
+  display: grid;
+  width: 98px;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 999px;
+  margin-top: 7px;
+  background:
+    radial-gradient(circle at center, #f9fdff 0 55%, transparent 56%),
+    conic-gradient(#22a879 var(--bess-soc-percent), rgba(184, 222, 211, 0.72) 0);
+  box-shadow:
+    inset 0 0 0 9px rgba(255, 255, 255, 0.78),
+    0 14px 28px rgba(34, 168, 121, 0.12);
+}
+
+.bess-soc-gauge strong,
+.bess-soc-gauge small {
+  grid-area: 1 / 1;
+}
+
+.bess-soc-gauge strong {
+  margin-top: -8px;
+  color: #128368;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.bess-soc-gauge small {
+  margin-top: 24px;
+  color: #315b75;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.bess-kpi-rail {
+  grid-area: metrics;
+  display: grid;
+  position: relative;
+  grid-template-columns: minmax(230px, 0.36fr) minmax(0, 1fr);
+  align-self: stretch;
+  justify-self: stretch;
+  width: 100%;
+  margin: 0;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(64, 129, 166, 0.24);
+  border-radius: 8px;
+  padding-top: 23px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 251, 254, 0.82)),
+    linear-gradient(90deg, rgba(57, 119, 156, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(57, 119, 156, 0.035) 1px, transparent 1px);
+  background-size: auto, 18px 18px, 18px 18px;
+  box-shadow:
+    0 16px 32px rgba(28, 91, 132, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  pointer-events: auto;
+}
+
+.bess-kpi-title {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 24px;
+  border-bottom: 1px solid rgba(64, 129, 166, 0.13);
+  padding: 5px 11px 4px;
+  color: #315b75;
+  background: rgba(250, 254, 255, 0.72);
+  font-family: var(--bess-font-data);
+  font-size: 9px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bess-kpi-title strong {
+  color: #0c3f82;
+  font-weight: var(--bess-weight-data);
 }
 
 .bess-score-primary--light {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
   position: relative;
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgba(12, 45, 75, 0.98), rgba(18, 82, 111, 0.94));
-  box-shadow:
-    0 18px 34px rgba(12, 45, 75, 0.22),
-    inset 0 0 0 1px rgba(178, 224, 241, 0.14);
+  border: 0;
+  border-right: 1px solid rgba(64, 129, 166, 0.16);
+  border-radius: 0;
+  padding: 9px 13px 11px;
+  background: transparent;
+  color: #10243a;
+  box-shadow: none;
+}
+
+.bess-score-primary--light svg {
+  width: 28px;
+  height: 28px;
+  color: #0c7eb3;
+  stroke-width: 1.8;
 }
 
 .bess-score-primary--light::after {
@@ -722,24 +1113,85 @@
   background: linear-gradient(90deg, #78c96f, #e1b34d, #84d4e8);
 }
 
+.bess-score-primary--light .bess-score-label {
+  margin-bottom: 3px;
+  color: #4d6f86;
+  font-size: 9px;
+  font-family: var(--bess-font-data);
+}
+
+.bess-score-primary--light .bess-score-value {
+  color: #0c3f82;
+  font-family: var(--bess-font-data);
+  font-size: 30px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1;
+}
+
+.bess-score-primary--light .bess-score-meta {
+  margin-top: 5px;
+  color: #315b75;
+  font-size: 11px;
+}
+
 .bess-metric-grid--rail {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
 }
 
 .bess-metric-grid--rail .bess-metric {
-  padding: 10px;
-  border-color: rgba(24, 89, 122, 0.13);
-  background: rgba(255, 255, 255, 0.74);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 10px 22px rgba(23, 79, 113, 0.08);
+  display: grid;
+  align-content: center;
+  min-height: 87px;
+  border: 0;
+  border-right: 1px solid rgba(64, 129, 166, 0.14);
+  border-radius: 0;
+  padding: 9px 10px 10px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.bess-metric-grid--rail .bess-metric:last-child {
+  border-right: 0;
+}
+
+.bess-metric-grid--rail .bess-metric svg {
+  width: 18px;
+  height: 18px;
+  margin-bottom: 6px;
+  color: #0c7eb3;
+  stroke-width: 1.8;
+}
+
+.bess-metric-grid--rail .bess-metric:nth-child(3) svg,
+.bess-metric-grid--rail .bess-metric:nth-child(6) svg {
+  color: #179c7d;
+}
+
+.bess-metric-grid--rail .bess-metric:nth-child(4) svg {
+  color: #d59e2f;
 }
 
 .bess-metric-grid--rail .bess-metric span {
   font-size: 9px;
+  font-family: var(--bess-font-data);
 }
 
 .bess-metric-grid--rail .bess-metric strong {
-  font-size: 14px;
+  margin-top: 4px;
+  color: #0c3f82;
+  font-family: var(--bess-font-data);
+  font-size: 19px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.02;
+}
+
+.bess-proof-strip {
+  display: grid;
+  align-items: stretch;
+  grid-template-columns: minmax(420px, 0.46fr) minmax(0, 0.54fr);
+  gap: 6px;
+  margin: 6px 0 8px;
 }
 
 .bess-source-ledger {
@@ -750,9 +1202,18 @@
   overflow: hidden;
   border: 1px solid rgba(24, 89, 122, 0.16);
   border-radius: 8px;
-  margin: 16px 0;
+  margin: 10px 0;
   background: rgba(252, 254, 255, 0.92);
   box-shadow: 0 16px 36px rgba(24, 89, 122, 0.07);
+}
+
+.bess-proof-strip .bess-source-ledger {
+  grid-template-columns: minmax(150px, 0.86fr) minmax(86px, 0.38fr) minmax(178px, 1fr) minmax(82px, 0.36fr);
+  margin: 0;
+  border-color: rgba(24, 89, 122, 0.12);
+  border-radius: 7px;
+  background: rgba(252, 254, 255, 0.78);
+  box-shadow: 0 8px 18px rgba(24, 89, 122, 0.035);
 }
 
 .bess-source-ledger:not(.bess-source-ledger--compact)::after {
@@ -766,10 +1227,14 @@
   padding: 5px 8px;
   color: #8f2d1d;
   background: rgba(255, 246, 242, 0.9);
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: var(--bess-font-data);
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--bess-weight-data);
   letter-spacing: 0;
+}
+
+.bess-proof-strip .bess-source-ledger::after {
+  display: none;
 }
 
 .bess-source-ledger--compact {
@@ -780,12 +1245,19 @@
 
 .bess-ledger-item {
   min-width: 0;
-  padding: 12px 14px;
+  padding: 9px 12px;
   border-right: 1px solid rgba(24, 89, 122, 0.12);
   background:
     linear-gradient(90deg, rgba(41, 112, 155, 0.035) 1px, transparent 1px),
     linear-gradient(0deg, rgba(41, 112, 155, 0.035) 1px, transparent 1px);
   background-size: 18px 18px;
+}
+
+.bess-proof-strip .bess-ledger-item {
+  display: grid;
+  align-content: center;
+  min-height: 50px;
+  padding: 6px 8px;
 }
 
 .bess-ledger-item:last-child {
@@ -803,22 +1275,36 @@
 .bess-ledger-item span {
   color: #66879b;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--bess-weight-data);
   text-transform: uppercase;
 }
 
 .bess-ledger-item strong,
 .bess-ledger-item a {
-  margin-top: 5px;
+  margin-top: 3px;
   color: #143a57;
   font-size: 12px;
-  font-weight: 850;
-  line-height: 1.35;
+  font-weight: 830;
+  line-height: 1.25;
 }
 
 .bess-ledger-item a {
   text-decoration-color: rgba(12, 126, 179, 0.35);
   text-underline-offset: 3px;
+}
+
+.bess-proof-strip .bess-ledger-item span,
+.bess-proof-strip .bess-autonomy-stamp span,
+.bess-proof-strip .bess-receipt-strip span {
+  font-size: 8.2px;
+  line-height: 1.08;
+}
+
+.bess-proof-strip .bess-ledger-item strong,
+.bess-proof-strip .bess-ledger-item a {
+  margin-top: 2px;
+  font-size: 9.8px;
+  line-height: 1.14;
 }
 
 .bess-text-warn {
@@ -828,8 +1314,14 @@
 .bess-autonomy-receipt {
   display: grid;
   grid-template-columns: minmax(150px, 0.42fr) repeat(6, minmax(120px, 1fr));
-  gap: 8px;
-  margin: -4px 0 18px;
+  gap: 6px;
+  margin: -2px 0 10px;
+}
+
+.bess-proof-strip .bess-autonomy-receipt {
+  grid-template-columns: minmax(104px, 0.56fr) repeat(6, minmax(74px, 1fr));
+  gap: 4px;
+  margin: 0;
 }
 
 .bess-autonomy-stamp {
@@ -838,7 +1330,7 @@
   min-width: 0;
   border: 1px solid rgba(39, 133, 91, 0.24);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   color: #155b3a;
   background:
     repeating-linear-gradient(
@@ -871,22 +1363,583 @@
 }
 
 .bess-autonomy-stamp span {
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: var(--bess-font-data);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
 .bess-autonomy-stamp strong {
-  margin-top: 5px;
-  font-size: 18px;
-  font-weight: 900;
+  margin-top: 4px;
+  font-family: var(--bess-font-ui);
+  font-size: 16px;
+  font-weight: 700;
   line-height: 1;
   text-transform: uppercase;
 }
 
+.bess-proof-strip .bess-autonomy-stamp,
+.bess-proof-strip .bess-receipt-strip {
+  min-height: 50px;
+  border-radius: 7px;
+  padding: 6px 7px;
+}
+
+.bess-proof-strip .bess-autonomy-stamp strong {
+  margin-top: 2px;
+  font-size: 10px;
+  line-height: 1.08;
+}
+
+.bess-index-workbench {
+  container-name: bess-index-workbench;
+  container-type: inline-size;
+  display: grid;
+  grid-template-columns: minmax(260px, 0.82fr) minmax(330px, 1.08fr) minmax(330px, 1fr);
+  gap: 12px;
+  margin: 12px 0 14px;
+}
+
+.bess-workbench-panel {
+  container-type: inline-size;
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  min-height: 212px;
+  overflow: clip;
+  border: 1px solid rgba(64, 129, 166, 0.26);
+  border-radius: 8px;
+  padding: 14px;
+  color: #123552;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.93), rgba(247, 252, 254, 0.79)),
+    linear-gradient(90deg, rgba(70, 136, 175, 0.045) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(70, 136, 175, 0.04) 1px, transparent 1px);
+  background-size: auto, 18px 18px, 18px 18px;
+  box-shadow:
+    0 12px 26px rgba(24, 89, 122, 0.052),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.bess-workbench-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 3px;
+  background: linear-gradient(90deg, #0c7eb3, #7fc7d8 48%, #e1b34d);
+}
+
+.bess-workbench-panel--forecast::before {
+  background: linear-gradient(90deg, #0c7eb3, #56bea7 58%, rgba(12, 126, 179, 0.08));
+}
+
+.bess-workbench-panel--ladder::before {
+  background: linear-gradient(90deg, #e1b34d, #56bea7 52%, #0c7eb3);
+}
+
+.bess-workbench-panel::after {
+  content: '';
+  position: absolute;
+  right: 12px;
+  bottom: 10px;
+  width: 48px;
+  height: 12px;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(12, 126, 179, 0.16), rgba(12, 126, 179, 0.03)),
+    repeating-linear-gradient(90deg, rgba(12, 126, 179, 0.16) 0 1px, transparent 1px 8px);
+  opacity: 0.7;
+}
+
+.bess-workbench-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  border-bottom: 1px solid rgba(64, 129, 166, 0.12);
+  padding-bottom: 10px;
+}
+
+.bess-workbench-head > div {
+  min-width: 0;
+}
+
+.bess-workbench-head h2 {
+  margin: 0;
+  color: #082944;
+  font-family: var(--bess-font-display);
+  font-size: 20px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 0.98;
+}
+
+.bess-workbench-head > span {
+  flex: 0 0 auto;
+  max-width: 138px;
+  border: 1px solid rgba(24, 89, 122, 0.16);
+  border-radius: 5px;
+  padding: 5px 7px;
+  color: #075f8c;
+  background: rgba(255, 255, 255, 0.66);
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.bess-workbench-number {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.bess-workbench-number span,
+.bess-workbench-number em {
+  color: #55758c;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.bess-workbench-number strong {
+  color: #0c3f82;
+  font-family: var(--bess-font-data);
+  font-size: 28px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.bess-workbench-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(64, 129, 166, 0.12);
+  border-radius: 7px;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.bess-workbench-stats div {
+  min-width: 0;
+  border-right: 1px solid rgba(64, 129, 166, 0.1);
+  padding: 8px;
+}
+
+.bess-workbench-stats div:last-child {
+  border-right: 0;
+}
+
+.bess-workbench-stats dt,
+.bess-workbench-stats dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-workbench-stats dt {
+  color: #66879b;
+  font-family: var(--bess-font-data);
+  font-size: 9px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bess-workbench-stats dd {
+  margin-top: 5px;
+  color: #123552;
+  font-family: var(--bess-font-data);
+  font-size: 13px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.12;
+}
+
+.bess-workbench-models,
+.bess-workbench-ladder {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bess-workbench-models li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(94px, auto);
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border: 1px solid rgba(64, 129, 166, 0.12);
+  border-radius: 7px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.bess-workbench-models strong,
+.bess-workbench-models span,
+.bess-workbench-models em,
+.bess-workbench-ladder strong,
+.bess-workbench-ladder p {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-workbench-models strong {
+  display: block;
+  color: #123552;
+  font-family: var(--bess-font-ui);
+  font-size: 13px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1.08;
+}
+
+.bess-workbench-models span {
+  display: block;
+  margin-top: 4px;
+  color: #5c7a91;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.08;
+}
+
+.bess-workbench-models em {
+  justify-self: end;
+  border: 1px solid rgba(39, 133, 91, 0.18);
+  border-radius: 5px;
+  padding: 5px 6px;
+  color: #087c62;
+  background: rgba(230, 248, 239, 0.76);
+  font-family: var(--bess-font-data);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: var(--bess-weight-data);
+  line-height: 1;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.bess-workbench-models em.is-blocked {
+  border-color: rgba(196, 82, 64, 0.22);
+  color: #8f2d1d;
+  background: rgba(255, 246, 242, 0.8);
+}
+
+.bess-workbench-empty {
+  display: grid;
+  gap: 5px;
+  border: 1px dashed rgba(64, 129, 166, 0.22);
+  border-radius: 7px;
+  padding: 12px;
+  color: #496b80;
+  background: rgba(255, 255, 255, 0.44);
+}
+
+.bess-workbench-empty strong {
+  color: #123552;
+  font-family: var(--bess-font-ui);
+  font-size: 14px;
+  font-weight: var(--bess-weight-ui);
+}
+
+.bess-workbench-empty span {
+  font-size: 12px;
+  font-weight: 690;
+  line-height: 1.35;
+}
+
+.bess-workbench-ladder {
+  gap: 6px;
+}
+
+.bess-workbench-ladder li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+
+.bess-workbench-ladder li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 28px;
+  bottom: -6px;
+  left: 13px;
+  border-left: 1px solid rgba(12, 126, 179, 0.18);
+}
+
+.bess-workbench-ladder li > span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border: 1px solid rgba(12, 126, 179, 0.24);
+  border-radius: 999px;
+  color: #075f8c;
+  background: #ffffff;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: var(--bess-weight-data);
+}
+
+.bess-workbench-proof {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  min-width: 0;
+}
+
+.bess-workbench-proof span {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  border: 1px solid rgba(64, 129, 166, 0.13);
+  border-radius: 6px;
+  padding: 6px;
+  color: #315873;
+  background: rgba(255, 255, 255, 0.58);
+  font-family: var(--bess-font-data);
+  font-size: 9px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.bess-workbench-proof svg {
+  width: 13px;
+  height: 13px;
+  color: #0c7eb3;
+  stroke-width: 2.2;
+}
+
+.bess-workbench-ladder strong {
+  display: block;
+  color: #123552;
+  font-family: var(--bess-font-ui);
+  font-size: 13px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1.12;
+}
+
+.bess-workbench-ladder p {
+  display: -webkit-box;
+  margin: 2px 0 0;
+  overflow: clip;
+  color: #5d7d94;
+  font-size: 11px;
+  font-weight: 680;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+.bess-workbench-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 32px;
+  margin-top: auto;
+  border: 1px solid rgba(24, 89, 122, 0.18);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: #075f8c;
+  background: rgba(255, 255, 255, 0.56);
+  font-family: var(--bess-font-ui);
+  font-size: 13px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1;
+  text-decoration: none;
+}
+
+.bess-workbench-link svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2;
+}
+
+.bess-workbench-link--primary {
+  border-color: #0c7eb3;
+  color: #ffffff;
+  background: #0c7eb3;
+  box-shadow: 0 10px 20px rgba(12, 126, 179, 0.16);
+}
+
+@media (max-width: 1180px) {
+  .bess-index-workbench {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-workbench-panel--ladder {
+    grid-column: 1 / -1;
+    min-height: 0;
+  }
+
+  .bess-workbench-panel--ladder .bess-workbench-ladder {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .bess-workbench-panel--ladder .bess-workbench-ladder li {
+    grid-template-columns: 28px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 920px) {
+  .bess-index-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-workbench-panel--ladder {
+    grid-column: auto;
+  }
+
+  .bess-workbench-panel--ladder .bess-workbench-ladder {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-index-workbench {
+    gap: 8px;
+    margin: 8px 0 10px;
+  }
+
+  .bess-workbench-panel {
+    gap: 10px;
+    min-height: 0;
+    padding: 12px;
+  }
+
+  .bess-workbench-head {
+    gap: 8px;
+  }
+
+  .bess-workbench-head h2 {
+    font-size: 17px;
+    line-height: 1.02;
+  }
+
+  .bess-workbench-head > span {
+    max-width: 112px;
+    padding: 4px 6px;
+    font-size: 9px;
+  }
+
+  .bess-workbench-number strong {
+    font-size: 24px;
+  }
+
+  .bess-workbench-stats {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-workbench-stats div {
+    padding: 7px;
+  }
+
+  .bess-workbench-stats dd {
+    font-size: 12px;
+  }
+
+  .bess-workbench-models li {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+
+  .bess-workbench-models em {
+    justify-self: start;
+    text-align: left;
+  }
+
+  .bess-workbench-ladder p {
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .bess-workbench-proof {
+    grid-template-columns: 1fr;
+  }
+}
+
 .bess-section-grid--evidence {
   grid-template-columns: minmax(0, 1fr) minmax(280px, 0.34fr);
+}
+
+.bess-section-grid--evidence .bess-chart {
+  height: 270px;
+  min-height: 270px;
+}
+
+.bess-section-grid--evidence .bess-chart-panel {
+  gap: 10px;
+}
+
+.bess-section-grid--evidence .bess-section-header p {
+  max-width: 620px;
+  line-height: 1.34;
+}
+
+.bess-section-grid--evidence .bess-section-header {
+  align-items: start;
+  border-bottom: 1px solid rgba(64, 129, 166, 0.1);
+  padding-bottom: 10px;
+}
+
+.bess-section-grid--evidence .bess-segmented {
+  display: grid;
+  min-width: min(210px, 100%);
+  gap: 6px;
+  border: 1px solid rgba(24, 89, 122, 0.13);
+  border-radius: 8px;
+  padding: 5px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(239, 249, 252, 0.58)),
+    linear-gradient(90deg, rgba(70, 136, 175, 0.04) 1px, transparent 1px);
+  background-size: auto, 14px 14px;
+}
+
+.bess-section-grid--evidence .bess-segmented button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 30px;
+  border-radius: 6px;
+  padding: 0 11px;
+  font-size: 11px;
+  line-height: 1;
+  text-align: left;
+}
+
+.bess-section-grid--evidence .bess-chart-wrap {
+  gap: 7px;
+}
+
+.bess-section-grid--evidence .bess-chart-legend {
+  border-top: 1px solid rgba(64, 129, 166, 0.09);
+  padding-top: 7px;
+}
+
+.bess-preset-panel {
+  align-self: stretch;
 }
 
 .bess-section-grid--evidence .bess-chart-panel,
@@ -901,18 +1954,28 @@
   right: 14px;
   top: 12px;
   color: rgba(12, 126, 179, 0.72);
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: var(--bess-font-data);
   font-size: 10px;
   font-weight: 900;
   text-transform: uppercase;
 }
 
+.bess-public-shell--narrative .bess-section-grid.bess-section-grid--evidence .bess-chart-panel::before {
+  right: 236px;
+}
+
 .bess-section-grid--forecast {
   align-items: stretch;
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
 }
 
 .bess-section-grid--methodology {
   align-items: start;
+  grid-template-columns: minmax(300px, 0.42fr) minmax(0, 1fr);
+}
+
+.bess-section-grid--trace {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .bess-forecast-panel {
@@ -930,7 +1993,7 @@
   min-width: 0;
   border: 1px solid rgba(24, 89, 122, 0.14);
   border-radius: 8px;
-  padding: 12px;
+  padding: 9px 10px;
   background:
     repeating-linear-gradient(
       180deg,
@@ -951,16 +2014,23 @@
 .bess-receipt-strip span {
   color: #66879b;
   font-size: 10px;
-  font-weight: 900;
+  font-weight: var(--bess-weight-data);
   text-transform: uppercase;
 }
 
 .bess-receipt-strip strong {
-  margin-top: 6px;
+  margin-top: 4px;
   color: #123552;
-  font-size: 14px;
-  font-weight: 850;
+  font-family: var(--bess-font-data);
+  font-size: 13px;
+  font-weight: var(--bess-weight-data);
   line-height: 1.3;
+}
+
+.bess-proof-strip .bess-receipt-strip strong {
+  margin-top: 3px;
+  font-size: 10.5px;
+  line-height: 1.18;
 }
 
 .bess-model-list,
@@ -986,6 +2056,92 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px;
+}
+
+.bess-model-lanes-panel {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.bess-model-table-wrap {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border: 1px solid rgba(24, 89, 122, 0.14);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(245, 252, 255, 0.78)),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 39px,
+      rgba(24, 89, 122, 0.045) 39px,
+      rgba(24, 89, 122, 0.045) 40px
+    );
+}
+
+.bess-model-table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.bess-model-table th,
+.bess-model-table td {
+  border-right: 1px solid rgba(24, 89, 122, 0.11);
+  border-bottom: 1px solid rgba(24, 89, 122, 0.11);
+  padding: 10px;
+  color: #18334a;
+  font-weight: 760;
+  line-height: 1.25;
+  vertical-align: middle;
+}
+
+.bess-model-table th:last-child,
+.bess-model-table td:last-child {
+  border-right: 0;
+}
+
+.bess-model-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.bess-model-table th {
+  color: #526f82;
+  background: rgba(238, 249, 252, 0.82);
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: var(--bess-weight-data);
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bess-model-table td {
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.bess-model-table strong,
+.bess-model-table span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-model-table strong {
+  color: #123552;
+  font-family: var(--bess-font-data);
+  font-size: 12px;
+  font-weight: var(--bess-weight-data);
+}
+
+.bess-model-table td > span:not(.bess-status) {
+  margin-top: 4px;
+  color: #55758c;
+  font-size: 11px;
+  font-weight: 720;
 }
 
 .bess-model-list strong,
@@ -1029,15 +2185,17 @@
   border-radius: 999px;
   color: #075f8c;
   background: #eef9fc;
+  font-family: var(--bess-font-data);
   font-size: 11px;
-  font-weight: 900;
+  font-weight: var(--bess-weight-data);
 }
 
 .bess-stage-list strong {
   display: block;
   color: #123552;
-  font-size: 13px;
-  font-weight: 850;
+  font-family: var(--bess-font-ui);
+  font-size: 14px;
+  font-weight: var(--bess-weight-ui);
 }
 
 .bess-stage-list p {
@@ -1048,6 +2206,100 @@
   line-height: 1.45;
 }
 
+.bess-section-grid--methodology .bess-stage-list {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.bess-section-grid--methodology .bess-stage-list li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 8px;
+  min-height: 154px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 251, 253, 0.78)),
+    linear-gradient(90deg, rgba(70, 136, 175, 0.055) 1px, transparent 1px);
+  background-size: auto, 18px 18px;
+}
+
+.bess-section-grid--methodology .bess-stage-list li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 27px;
+  right: -8px;
+  width: 8px;
+  border-top: 1px solid rgba(12, 126, 179, 0.38);
+}
+
+.bess-section-grid--methodology .bess-stage-list > li > span {
+  width: 54px;
+  height: 34px;
+  border-color: rgba(12, 126, 179, 0.26);
+  color: #075f8c;
+  background: #ffffff;
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.bess-section-grid--methodology .bess-stage-list strong {
+  font-size: 12px;
+  line-height: 1.22;
+}
+
+.bess-section-grid--methodology .bess-stage-list p {
+  font-size: 11px;
+  line-height: 1.36;
+}
+
+.bess-ladder-guard {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(12, 126, 179, 0.16);
+  border-radius: 8px;
+  padding: 11px 12px;
+  color: #123552;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.86), rgba(240, 250, 253, 0.78)),
+    linear-gradient(90deg, rgba(86, 190, 167, 0.08), transparent 52%);
+}
+
+.bess-ladder-guard svg {
+  width: 28px;
+  height: 28px;
+  color: #0c7eb3;
+}
+
+.bess-ladder-guard > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-width: 0;
+}
+
+.bess-ladder-guard strong {
+  min-width: 0;
+  color: #082944;
+  font-family: var(--bess-font-ui);
+  font-size: 15px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1.2;
+}
+
+.bess-ladder-guard span {
+  min-width: 0;
+  color: #527289;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.32;
+  overflow-wrap: anywhere;
+}
+
 .bess-technical-link {
   display: inline-flex;
   align-items: center;
@@ -1056,8 +2308,9 @@
   border: 1px solid rgba(24, 89, 122, 0.18);
   border-radius: 8px;
   padding: 0 12px;
+  font-family: var(--bess-font-ui);
   font-size: 12px;
-  font-weight: 850;
+  font-weight: var(--bess-weight-ui);
   line-height: 1;
   text-decoration: none;
   white-space: nowrap;
@@ -1107,12 +2360,111 @@
   background: #dba83d;
 }
 
+.bess-claim-panel,
+.bess-ladder-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.bess-ladder-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.bess-claim-panel {
+  container-name: bess-claim-panel;
+  container-type: inline-size;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(247, 253, 255, 0.78)),
+    repeating-linear-gradient(
+      180deg,
+      transparent 0,
+      transparent 31px,
+      rgba(24, 89, 122, 0.045) 31px,
+      rgba(24, 89, 122, 0.045) 32px
+    );
+}
+
+.bess-claim-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, #0c7eb3, #56bea7 58%, #e1b34d);
+}
+
+.bess-claim-panel .bess-section-header {
+  border-bottom: 1px solid rgba(24, 89, 122, 0.12);
+  padding-bottom: 11px;
+}
+
+.bess-claim-panel .bess-section-header h2,
+.bess-ladder-panel .bess-section-header h2 {
+  font-size: 17px;
+}
+
+.bess-claim-panel .bess-section-header p,
+.bess-ladder-panel .bess-section-header p {
+  font-size: 12px;
+  line-height: 1.36;
+}
+
+.bess-detail-list--receipt {
+  gap: 0;
+  margin-top: 2px;
+}
+
+.bess-detail-list--receipt li {
+  display: grid;
+  grid-template-columns: minmax(108px, 0.43fr) minmax(0, 0.57fr);
+  align-items: start;
+  gap: 10px;
+  border-bottom-color: rgba(24, 89, 122, 0.11);
+  padding: 8px 0;
+}
+
+.bess-detail-list--receipt span {
+  color: #456982;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
 .bess-detail-list--receipt strong {
-  max-width: 58%;
+  max-width: none;
+  color: #071e35;
+  font-family: var(--bess-font-data);
+  font-size: 12px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.24;
+  text-align: right;
+}
+
+.bess-detail-list--receipt li:nth-child(3) strong,
+.bess-detail-list--receipt li:nth-child(4) strong,
+.bess-detail-list--receipt li:nth-child(5) strong {
+  font-size: 11px;
+}
+
+.bess-detail-list--receipt li:last-child strong {
+  color: #087c62;
 }
 
 .bess-section-grid--methodology .bess-panel {
   align-self: start;
+}
+
+@container bess-claim-panel (max-width: 320px) {
+  .bess-detail-list--receipt li {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .bess-detail-list--receipt strong {
+    text-align: left;
+  }
 }
 
 @media (max-width: 920px) {
@@ -1128,7 +2480,9 @@
     align-items: start;
     grid-template-areas:
       "copy"
+      "receipt"
       "stage"
+      "side"
       "metrics";
   }
 
@@ -1138,10 +2492,27 @@
 
   .bess-kpi-rail {
     grid-area: metrics;
+    grid-template-columns: 1fr;
     justify-self: stretch;
     width: 100%;
     margin: 0;
     pointer-events: auto;
+  }
+
+  .bess-hero-receipt {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-hero-receipt article {
+    min-height: 78px;
+  }
+
+  .bess-hero-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 460px;
   }
 
   .bess-metric-grid--rail {
@@ -1243,4 +2614,3622 @@
   .bess-chart {
     min-height: 300px;
   }
+
+  .bess-section-grid--evidence .bess-chart {
+    height: 230px;
+    min-height: 230px;
+  }
+
+  .bess-section-grid--evidence .bess-chart-panel,
+  .bess-preset-panel {
+    padding: 11px;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid.bess-section-grid--evidence .bess-chart-panel::before {
+    display: none;
+  }
+
+  .bess-section-grid--evidence .bess-section-header {
+    gap: 8px;
+  }
+
+  .bess-section-grid--evidence .bess-section-header h2,
+  .bess-preset-panel .bess-section-header h2 {
+    font-size: 16px;
+  }
+
+  .bess-section-grid--evidence .bess-section-header p {
+    font-size: 12px;
+    line-height: 1.28;
+  }
+
+  .bess-section-grid--evidence .bess-segmented {
+    gap: 6px;
+  }
+
+  .bess-section-grid--evidence .bess-segmented button {
+    min-height: 30px;
+    padding-inline: 9px;
+    font-size: 10px;
+  }
+
+  .bess-section-grid--evidence .bess-chart-legend {
+    gap: 8px;
+    font-size: 10px;
+  }
+
+  .bess-preset-panel .bess-section-header {
+    margin-bottom: 2px;
+  }
+
+  .bess-preset-panel .bess-detail-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    border: 1px solid rgba(24, 89, 122, 0.1);
+    border-radius: 8px;
+    overflow: clip;
+  }
+
+  .bess-preset-panel .bess-detail-list li {
+    min-height: 54px;
+    border-right: 1px solid rgba(24, 89, 122, 0.1);
+    border-bottom: 1px solid rgba(24, 89, 122, 0.1);
+    padding: 8px;
+  }
+
+  .bess-preset-panel .bess-detail-list li:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .bess-preset-panel .bess-detail-list li:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .bess-preset-panel .bess-detail-list span {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+
+  .bess-preset-panel .bess-detail-list strong {
+    font-size: 12px;
+    line-height: 1.14;
+  }
+}
+
+.bess-scroll-progress {
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  background: linear-gradient(90deg, #0c7eb3, #77c76f 58%, #e1b34d);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    @keyframes bessScrollProgress {
+      from {
+        transform: scaleX(0);
+      }
+
+      to {
+        transform: scaleX(1);
+      }
+    }
+
+    .bess-scroll-progress {
+      animation: bessScrollProgress auto linear;
+      animation-timeline: scroll(root);
+    }
+  }
+}
+
+.bess-public-shell--narrative :where(section, footer) {
+  scroll-margin-top: 104px;
+}
+
+.bess-public-shell--narrative .bess-public-topbar {
+  position: sticky;
+  z-index: 50;
+  top: 10px;
+  display: grid;
+  grid-template-columns: minmax(250px, 0.82fr) minmax(360px, 1fr) auto;
+  align-items: center;
+  margin-bottom: 14px;
+  border: 1px solid rgba(24, 89, 122, 0.16);
+  border-radius: 8px;
+  padding: 6px 9px;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.9), rgba(246, 252, 255, 0.82)),
+    linear-gradient(90deg, rgba(70, 136, 175, 0.04) 1px, transparent 1px);
+  background-size: auto, 18px 18px;
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 16px 36px rgba(24, 89, 122, 0.09),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.bess-public-shell--narrative .bess-public-nav {
+  justify-content: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 4px 2px;
+  scrollbar-width: none;
+}
+
+.bess-public-shell--narrative .bess-public-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.bess-public-shell--narrative .bess-public-nav a {
+  flex: 0 0 auto;
+  min-height: 28px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.bess-public-shell--narrative .bess-public-nav a:first-child {
+  border-color: #0c7eb3;
+  color: #075f8c;
+  background: transparent;
+}
+
+.bess-public-actions,
+.bess-lead-actions,
+.bess-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.bess-public-actions {
+  justify-content: flex-end;
+}
+
+.bess-action-link,
+.bess-hero-cta,
+.bess-live-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid rgba(24, 89, 122, 0.18);
+  border-radius: 7px;
+  padding: 0 10px;
+  color: #164260;
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.bess-action-icon {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+}
+
+.bess-action-link svg,
+.bess-hero-cta svg {
+  width: 15px;
+  height: 15px;
+}
+
+.bess-action-link--primary,
+.bess-hero-cta {
+  border-color: rgba(12, 126, 179, 0.36);
+  color: #ffffff;
+  background: #0c6f9f;
+  box-shadow: 0 10px 20px rgba(12, 111, 159, 0.16);
+}
+
+.bess-action-link:hover,
+.bess-hero-cta:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px rgba(12, 111, 159, 0.13);
+}
+
+.bess-hero-cta--ghost {
+  color: #164260;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none;
+}
+
+.bess-live-pill {
+  border-color: rgba(39, 133, 91, 0.2);
+  color: #155b3a;
+  background: rgba(237, 250, 242, 0.86);
+}
+
+.bess-live-pill span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #22a66c;
+  box-shadow: 0 0 0 5px rgba(34, 166, 108, 0.12);
+}
+
+.bess-live-pill--watch {
+  border-color: rgba(196, 82, 64, 0.2);
+  color: #8f2d1d;
+  background: rgba(255, 246, 242, 0.9);
+}
+
+.bess-live-pill--watch span {
+  background: #e1b34d;
+  box-shadow: 0 0 0 5px rgba(225, 179, 77, 0.14);
+}
+
+.bess-hero-actions {
+  margin-top: 12px;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative {
+  position: relative;
+  padding-top: 14px;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+  font-size: clamp(42px, 3.55vw, 52px);
+  letter-spacing: 0;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative p {
+  color: #254f69;
+}
+
+/* Academic surface polish pass: soften chrome while preserving dense evidence. */
+.bess-public-shell--narrative .bess-public-topbar {
+  border-color: rgba(64, 129, 166, 0.13);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.94), rgba(248, 253, 255, 0.9)),
+    linear-gradient(90deg, rgba(70, 136, 175, 0.035) 1px, transparent 1px);
+  box-shadow:
+    0 10px 26px rgba(24, 89, 122, 0.06),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.bess-public-shell--narrative .bess-public-title {
+  color: #17385a;
+  font-weight: 800;
+  line-height: 0.8;
+}
+
+.bess-public-shell--narrative .bess-public-subtitle {
+  color: #476f88;
+}
+
+.bess-public-shell--narrative .bess-public-nav a {
+  position: relative;
+  border: 0;
+  border-radius: 0;
+  padding-block: 6px 9px;
+  color: #254f69;
+  background: transparent;
+  box-shadow: none;
+  opacity: 0.92;
+  transition: color 160ms ease, opacity 160ms ease;
+}
+
+.bess-public-shell--narrative .bess-public-nav a::after {
+  content: '';
+  position: absolute;
+  right: 7px;
+  bottom: 3px;
+  left: 7px;
+  height: 2px;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.bess-public-shell--narrative .bess-public-nav a:hover {
+  color: #075f8c;
+  opacity: 1;
+}
+
+.bess-public-shell--narrative .bess-public-nav a:first-child {
+  border-color: transparent;
+  color: #075f8c;
+  background: transparent;
+}
+
+.bess-public-shell--narrative .bess-public-nav a:first-child::after {
+  background: linear-gradient(90deg, #0c7eb3, #7fc7d8);
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+  color: #0d3155;
+  font-size: clamp(42px, 3.55vw, 56px);
+  font-weight: 800;
+  line-height: 0.92;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative p {
+  color: #315f78;
+  max-width: 430px;
+  font-size: 13px;
+  font-weight: 610;
+  line-height: 1.48;
+}
+
+.bess-public-shell--narrative .bess-hero-meta {
+  gap: 6px;
+}
+
+.bess-public-shell--narrative .bess-hero-meta .bess-chip {
+  min-height: 28px;
+  border-color: rgba(64, 129, 166, 0.13);
+  border-radius: 5px;
+  padding-inline: 10px;
+  color: #245572;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: none;
+  font-size: 9.5px;
+  font-weight: var(--bess-weight-data);
+}
+
+.bess-public-shell--narrative .bess-hero-meta .bess-chip:last-child {
+  color: #17435f;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.bess-public-shell--narrative .bess-hero-rule {
+  grid-template-columns: 72px 22px 10px;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.bess-public-shell--narrative .bess-hero-rule span {
+  height: 4px;
+}
+
+.bess-public-shell--narrative .bess-hero-flow,
+.bess-public-shell--narrative .bess-hero-receipt,
+.bess-public-shell--narrative .bess-kpi-rail,
+.bess-public-shell--narrative .bess-side-card {
+  border-color: rgba(64, 129, 166, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(246, 252, 255, 0.72)),
+    linear-gradient(90deg, rgba(57, 119, 156, 0.035) 1px, transparent 1px);
+  box-shadow:
+    0 12px 28px rgba(28, 91, 132, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.bess-public-shell--narrative .bess-hero-flow span {
+  color: #335f78;
+  font-size: 9px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.08;
+}
+
+.bess-public-shell--narrative .bess-hero-flow {
+  border-radius: 6px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(247, 252, 254, 0.62)),
+    linear-gradient(90deg, rgba(57, 119, 156, 0.028) 1px, transparent 1px);
+}
+
+.bess-public-shell--narrative .bess-hero-receipt article,
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric,
+.bess-public-shell--narrative .bess-score-primary--light {
+  border-color: rgba(64, 129, 166, 0.13);
+}
+
+.bess-public-shell--narrative .bess-hero-receipt {
+  border-color: rgba(64, 129, 166, 0.16);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(248, 253, 255, 0.8)),
+    linear-gradient(90deg, rgba(57, 119, 156, 0.028) 1px, transparent 1px);
+  box-shadow:
+    0 10px 22px rgba(28, 91, 132, 0.045),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.bess-public-shell--narrative .bess-hero-receipt article {
+  min-height: 60px;
+  padding: 8px 10px;
+}
+
+.bess-public-shell--narrative .bess-hero-receipt span,
+.bess-public-shell--narrative .bess-hero-receipt em {
+  color: #4f748b;
+  font-size: 8.8px;
+  line-height: 1.18;
+}
+
+.bess-public-shell--narrative .bess-hero-receipt strong,
+.bess-public-shell--narrative .bess-score-primary--light .bess-score-value,
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+  color: #123f77;
+}
+
+.bess-public-shell--narrative .bess-hero-receipt strong {
+  margin: 4px 0 2px;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.bess-public-shell--narrative .bess-action-link,
+.bess-public-shell--narrative .bess-hero-cta,
+.bess-public-shell--narrative .bess-live-pill {
+  min-height: 32px;
+  border-color: rgba(64, 129, 166, 0.2);
+  font-weight: 760;
+}
+
+.bess-public-shell--narrative .bess-hero-cta:not(.bess-hero-cta--ghost),
+.bess-public-shell--narrative .bess-action-link--primary {
+  background: #0b78a9;
+  box-shadow: 0 10px 18px rgba(12, 111, 159, 0.12);
+}
+
+.bess-public-shell--narrative .bess-hero-cta--ghost {
+  color: #17435f;
+  background: rgba(255, 255, 255, 0.8);
+}
+
+/* Source-and-legend rail pass: restore the concept's left evidence cards without changing data claims. */
+.bess-hero-evidence-stack {
+  display: grid;
+  gap: 8px;
+  max-width: 330px;
+  margin-top: 14px;
+  color: #143b5c;
+}
+
+.bess-hero-source-card,
+.bess-hero-dispatch-legend {
+  border: 1px solid rgba(64, 129, 166, 0.18);
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(246, 252, 255, 0.64)),
+    linear-gradient(90deg, rgba(57, 119, 156, 0.032) 1px, transparent 1px);
+  background-size: auto, 14px 14px;
+  box-shadow:
+    0 8px 18px rgba(28, 91, 132, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.78);
+}
+
+.bess-hero-source-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 22px;
+  gap: 8px;
+  align-items: start;
+  min-inline-size: 0;
+  padding: 10px 11px;
+}
+
+.bess-hero-source-card span,
+.bess-hero-dispatch-legend strong {
+  color: #17385a;
+  font-family: var(--bess-font-ui);
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bess-hero-source-card strong,
+.bess-hero-source-card em {
+  display: block;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-hero-source-card strong {
+  margin-top: 4px;
+  color: #123f77;
+  font-family: var(--bess-font-detail);
+  font-size: 12px;
+  font-weight: 760;
+  line-height: 1.16;
+}
+
+.bess-hero-source-card em {
+  margin-top: 3px;
+  color: #446f88;
+  font-family: var(--bess-font-detail);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1.22;
+}
+
+.bess-hero-source-card svg {
+  width: 18px;
+  height: 18px;
+  color: #1a9a74;
+}
+
+.bess-hero-dispatch-legend {
+  display: grid;
+  gap: 8px;
+  padding: 10px 11px 11px;
+}
+
+.bess-hero-dispatch-legend span {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 7px;
+  align-items: center;
+  min-inline-size: 0;
+  color: #315f78;
+  font-family: var(--bess-font-detail);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.12;
+}
+
+.bess-hero-legend-key,
+.bess-hero-legend-line {
+  display: block;
+  inline-size: 13px;
+  block-size: 9px;
+  border-radius: 2px;
+}
+
+.bess-hero-legend-key--discharge {
+  background: #2e8bea;
+}
+
+.bess-hero-legend-key--charge {
+  background: #f0bd4f;
+}
+
+.bess-hero-legend-key--soc {
+  background: #62cbbb;
+}
+
+.bess-hero-legend-line {
+  block-size: 3px;
+  border-radius: 999px;
+  background: #187fc8;
+}
+
+@container bess-hero-copy (min-width: 360px) {
+  .bess-hero-evidence-stack {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@supports (text-box: trim-both cap alphabetic) {
+  .bess-public-shell--narrative :where(
+    .bess-public-nav a,
+    .bess-action-link,
+    .bess-hero-cta,
+    .bess-live-pill,
+    .bess-chip,
+    .bess-kicker,
+    .bess-score-label,
+    .bess-metric-grid--rail .bess-metric span
+  ) {
+    text-box: trim-both cap alphabetic;
+  }
+}
+
+.bess-lead-section {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1fr) minmax(210px, 0.36fr);
+  gap: 12px;
+  align-items: stretch;
+  border: 1px solid rgba(24, 89, 122, 0.19);
+  border-radius: 8px;
+  margin: 16px 0;
+  padding: 14px;
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.86), rgba(240, 250, 253, 0.72)),
+    linear-gradient(90deg, rgba(41, 112, 155, 0.045) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(41, 112, 155, 0.045) 1px, transparent 1px);
+  background-size: auto, 20px 20px, 20px 20px;
+  box-shadow: 0 18px 40px rgba(24, 89, 122, 0.07);
+}
+
+.bess-lead-section::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #0c7eb3, #56bea7 56%, #e1b34d);
+}
+
+.bess-lead-copy {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 4px 8px 4px 8px;
+}
+
+.bess-lead-copy h2 {
+  margin: 0;
+  color: #061b32;
+  font-family: var(--bess-font-display);
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 0.86;
+}
+
+.bess-lead-copy p {
+  margin: 8px 0 0;
+  color: #496b80;
+  font-size: 13px;
+  font-weight: 720;
+  line-height: 1.45;
+}
+
+.bess-lead-receipt {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 6px 0 0;
+  overflow: hidden;
+  border: 1px solid rgba(24, 89, 122, 0.13);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.bess-lead-receipt div {
+  min-width: 0;
+  border-right: 1px solid rgba(24, 89, 122, 0.1);
+  padding: 8px;
+}
+
+.bess-lead-receipt div:last-child {
+  border-right: 0;
+}
+
+.bess-lead-receipt dt,
+.bess-lead-receipt dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-lead-receipt dt {
+  color: #5a7b91;
+  font-family: var(--bess-font-data);
+  font-size: 8.5px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
+.bess-lead-receipt dd {
+  margin-top: 4px;
+  color: #123552;
+  font-family: var(--bess-font-data);
+  font-size: 10.5px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.14;
+}
+
+.bess-lead-routes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: start;
+  align-content: start;
+  min-width: 0;
+}
+
+.bess-lead-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-content: start;
+  column-gap: 8px;
+  align-self: start;
+  min-width: 0;
+  min-height: 118px;
+  border: 1px solid rgba(24, 89, 122, 0.13);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 253, 255, 0.66)),
+    linear-gradient(90deg, rgba(70, 136, 175, 0.05) 1px, transparent 1px);
+  background-size: auto, 16px 16px;
+}
+
+.bess-lead-card::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 32px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(12, 126, 179, 0.2), rgba(12, 126, 179, 0.02));
+}
+
+.bess-lead-card svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: #0c7eb3;
+}
+
+.bess-lead-card:nth-child(2) svg {
+  color: #1b9d7e;
+}
+
+.bess-lead-card:nth-child(2)::before {
+  background: linear-gradient(90deg, rgba(27, 157, 126, 0.2), rgba(27, 157, 126, 0.02));
+}
+
+.bess-lead-card:nth-child(3) svg {
+  color: #af7b11;
+}
+
+.bess-lead-card:nth-child(3)::before {
+  background: linear-gradient(90deg, rgba(225, 179, 77, 0.22), rgba(225, 179, 77, 0.02));
+}
+
+.bess-lead-card h3 {
+  margin: 0;
+  color: #123552;
+  font-family: var(--bess-font-ui);
+  font-size: 14px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1.15;
+}
+
+.bess-lead-card p {
+  grid-column: 2;
+  margin: 6px 0 0;
+  color: #55758c;
+  font-size: 12px;
+  font-weight: 690;
+  line-height: 1.42;
+}
+
+.bess-lead-actions {
+  display: grid;
+  gap: 8px;
+  align-content: center;
+  justify-content: stretch;
+  min-width: 0;
+  border: 1px solid rgba(24, 89, 122, 0.13);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(246, 252, 254, 0.7)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(12, 126, 179, 0.045) 0 1px,
+      transparent 1px 8px
+    );
+}
+
+.bess-lead-actions .bess-action-link {
+  width: 100%;
+}
+
+.bess-lead-action-card {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  border-bottom: 1px solid rgba(24, 89, 122, 0.12);
+  padding-bottom: 10px;
+}
+
+.bess-lead-action-card span,
+.bess-lead-action-card strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-lead-action-card span {
+  color: #0c3f82;
+  font-family: var(--bess-font-display);
+  font-size: 17px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1;
+}
+
+.bess-lead-action-card strong {
+  color: #4d6f86;
+  font-family: var(--bess-font-data);
+  font-size: 10.5px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.35;
+}
+
+.bess-deferred-section {
+  content-visibility: visible;
+}
+
+.bess-section-grid--methodology.bess-deferred-section {
+  content-visibility: visible;
+}
+
+@supports not (font-size-adjust: from-font) {
+  .bess-public-shell--narrative {
+    line-height: 1.46;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1,
+  .bess-lead-copy h2 {
+    line-height: 0.9;
+  }
+
+  .bess-hero-receipt strong,
+  .bess-score-primary--light .bess-score-value,
+  .bess-metric-grid--rail .bess-metric strong,
+  .bess-receipt-strip strong,
+  .bess-detail-list--receipt strong {
+    line-height: 1.14;
+  }
+}
+
+@media (max-width: 1180px) {
+  .bess-narrative-hero {
+    grid-template-columns: minmax(280px, 0.62fr) minmax(0, 1.38fr);
+    grid-template-areas:
+      "copy receipt"
+      "stage stage"
+      "side side"
+      "metrics metrics";
+  }
+
+  .bess-hero-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-kpi-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-metric-grid--rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-score-primary--light {
+    border-right: 0;
+    border-bottom: 1px solid rgba(64, 129, 166, 0.14);
+  }
+
+  .bess-metric-grid--rail .bess-metric {
+    min-height: 78px;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(-n + 3) {
+    border-bottom: 1px solid rgba(64, 129, 166, 0.14);
+  }
+
+  .bess-public-shell--narrative .bess-public-topbar {
+    grid-template-columns: minmax(270px, 1fr) minmax(0, 1.4fr);
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: 42px;
+  }
+
+  .bess-public-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  .bess-lead-section {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-lead-routes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-lead-actions {
+    grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, auto));
+    align-items: center;
+    justify-content: flex-start;
+  }
+
+  .bess-lead-action-card {
+    border-right: 1px solid rgba(24, 89, 122, 0.12);
+    border-bottom: 0;
+    padding-right: 12px;
+    padding-bottom: 0;
+  }
+
+  .bess-section-grid--forecast,
+  .bess-section-grid--methodology {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-section-grid--methodology .bess-stage-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-section-grid--methodology .bess-stage-list li:nth-child(3n)::after {
+    display: none;
+  }
+}
+
+@media (max-width: 920px) {
+  .bess-public-shell--narrative .bess-public-frame {
+    width: min(100%, calc(100% - 28px));
+    padding-top: 0;
+  }
+
+  .bess-narrative-hero {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "copy"
+      "stage"
+      "side"
+      "metrics"
+      "receipt";
+  }
+
+  .bess-hero-receipt {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-hero-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-kpi-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-metric-grid--rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-score-primary--light {
+    border-right: 0;
+    border-bottom: 1px solid rgba(64, 129, 166, 0.14);
+  }
+
+  .bess-metric-grid--rail .bess-metric {
+    min-height: 78px;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(-n + 3) {
+    border-bottom: 1px solid rgba(64, 129, 166, 0.14);
+  }
+
+  .bess-public-shell--narrative .bess-public-topbar {
+    top: 0;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: 10px;
+    row-gap: 8px;
+    border-radius: 0 0 8px 8px;
+    margin-inline: calc((100vw - 100%) / -2);
+    padding-inline: max(12px, calc((100vw - 100%) / 2 + 12px));
+    box-shadow:
+      0 10px 24px rgba(24, 89, 122, 0.08),
+      inset 0 -1px 0 rgba(64, 129, 166, 0.12);
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: 40px;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+  }
+
+  .bess-public-actions {
+    grid-column: 2;
+    grid-row: 1;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .bess-hero-actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(120px, 0.62fr);
+    gap: 8px;
+    overflow: visible;
+    padding-bottom: 0;
+  }
+
+  .bess-public-actions::-webkit-scrollbar {
+    display: none;
+  }
+
+  .bess-lead-routes {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-lead-receipt {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-lead-receipt div {
+    border-right: 0;
+    border-bottom: 1px solid rgba(24, 89, 122, 0.1);
+  }
+
+  .bess-lead-receipt div:last-child {
+    border-bottom: 0;
+  }
+
+  .bess-lead-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-lead-action-card {
+    border-right: 0;
+    border-bottom: 1px solid rgba(24, 89, 122, 0.12);
+    padding-right: 0;
+    padding-bottom: 10px;
+  }
+
+  .bess-section-grid--methodology .bess-stage-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-section-grid--methodology .bess-stage-list li::after {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative :where(section, footer) {
+    scroll-margin-top: 116px;
+  }
+
+  .bess-public-shell--narrative .bess-public-title {
+    font-size: 18px;
+    line-height: 0.92;
+  }
+
+  .bess-public-shell--narrative .bess-public-subtitle,
+  .bess-public-shell--narrative .bess-research-chip {
+    display: none;
+  }
+
+  .bess-public-shell--narrative .bess-public-topbar {
+    grid-template-columns: 1fr;
+    align-items: start;
+    gap: 6px;
+    padding-block: 6px;
+  }
+
+  .bess-public-shell--narrative .bess-public-mark {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+  }
+
+  .bess-public-shell--narrative .bess-public-brand {
+    gap: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav {
+    gap: 5px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 1px 0;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav a {
+    min-height: 26px;
+    padding: 5px 7px;
+    font-size: 10px;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav a span:first-child {
+    display: none;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav a span:nth-child(2) {
+    display: inline;
+  }
+
+  .bess-action-link,
+  .bess-hero-cta,
+  .bess-live-pill {
+    min-height: 31px;
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav,
+  .bess-public-actions,
+  .bess-hero-actions {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+
+  .bess-public-actions {
+    display: none;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav a {
+    flex: 0 0 auto;
+  }
+
+  .bess-narrative-hero {
+    gap: 8px;
+    grid-template-areas:
+      "copy"
+      "stage"
+      "metrics"
+      "side"
+      "receipt";
+  }
+
+  .bess-hero-copy--narrative {
+    padding: 4px 0 0;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: 31px;
+    line-height: 0.91;
+  }
+
+  .bess-hero-copy--narrative .bess-hero-meta,
+  .bess-hero-flow {
+    display: none;
+  }
+
+  .bess-hero-copy--narrative p {
+    max-width: none;
+    font-size: 12.5px;
+    line-height: 1.32;
+  }
+
+  .bess-hero-actions {
+    margin-top: 10px;
+  }
+
+  .bess-hero-receipt,
+  .bess-hero-side {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 360px;
+  }
+
+  .bess-hero-receipt {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-hero-receipt article {
+    min-height: 58px;
+    padding: 7px 8px;
+    text-align: left;
+  }
+
+  .bess-hero-receipt article {
+    border-right: 1px solid rgba(64, 129, 166, 0.16);
+    border-bottom: 1px solid rgba(64, 129, 166, 0.16);
+  }
+
+  .bess-hero-receipt article:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .bess-hero-receipt article:last-child {
+    grid-column: 1 / -1;
+    border-bottom: 0;
+  }
+
+  .bess-hero-receipt strong {
+    margin: 4px 0 2px;
+    font-size: 15px;
+  }
+
+  .bess-hero-receipt span,
+  .bess-hero-receipt em {
+    font-size: 9px;
+  }
+
+  .bess-hero-side {
+    gap: 6px;
+  }
+
+  .bess-side-card {
+    padding: 8px;
+  }
+
+  .bess-side-card--soc {
+    grid-template-columns: minmax(0, 1fr) auto;
+    justify-items: start;
+    align-items: center;
+    text-align: left;
+  }
+
+  .bess-side-card--soc > span {
+    align-self: center;
+  }
+
+  .bess-soc-gauge {
+    width: 76px;
+    margin-top: 0;
+  }
+
+  .bess-soc-gauge strong {
+    margin-top: -6px;
+    font-size: 16px;
+  }
+
+  .bess-soc-gauge small {
+    margin-top: 19px;
+    font-size: 9px;
+  }
+
+  .bess-side-title {
+    margin-bottom: 5px;
+  }
+
+  .bess-side-card dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px 10px;
+  }
+
+  .bess-side-card dl > div {
+    gap: 6px;
+  }
+
+  .bess-side-card dt,
+  .bess-side-card dd,
+  .bess-side-card p {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .bess-lead-section {
+    padding: 12px;
+  }
+
+  .bess-lead-copy h2 {
+    font-size: 19px;
+  }
+
+  .bess-section-grid--methodology .bess-stage-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .bess-section-grid--methodology .bess-stage-list li {
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .bess-section-grid--methodology .bess-stage-list > li > span {
+    width: 42px;
+    height: 25px;
+    font-size: 9px;
+  }
+
+  .bess-section-grid--methodology .bess-stage-list strong {
+    font-size: 10.5px;
+    line-height: 1.16;
+  }
+
+  .bess-section-grid--methodology .bess-stage-list p {
+    margin-top: 3px;
+    font-size: 9.5px;
+    line-height: 1.24;
+  }
+
+  .bess-claim-panel,
+  .bess-ladder-panel {
+    padding: 12px;
+  }
+
+  .bess-claim-panel .bess-section-header,
+  .bess-ladder-panel .bess-section-header {
+    padding-bottom: 8px;
+  }
+
+  .bess-claim-panel .bess-section-header h2,
+  .bess-ladder-panel .bess-section-header h2 {
+    font-size: 16px;
+  }
+
+  .bess-claim-panel .bess-section-header p,
+  .bess-ladder-panel .bess-section-header p {
+    font-size: 11px;
+    line-height: 1.28;
+  }
+
+  .bess-claim-panel .bess-detail-list--receipt {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+    border: 1px solid rgba(24, 89, 122, 0.1);
+    border-radius: 8px;
+    overflow: clip;
+  }
+
+  .bess-claim-panel .bess-detail-list--receipt li {
+    gap: 4px;
+    border-right: 1px solid rgba(24, 89, 122, 0.1);
+    border-bottom: 1px solid rgba(24, 89, 122, 0.1);
+    padding: 7px;
+  }
+
+  .bess-claim-panel .bess-detail-list--receipt li:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .bess-claim-panel .bess-detail-list--receipt li:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .bess-claim-panel .bess-detail-list--receipt span {
+    font-size: 8.5px;
+    line-height: 1.15;
+  }
+
+  .bess-claim-panel .bess-detail-list--receipt strong,
+  .bess-detail-list--receipt li:nth-child(3) strong,
+  .bess-detail-list--receipt li:nth-child(4) strong,
+  .bess-detail-list--receipt li:nth-child(5) strong {
+    font-size: 10px;
+    line-height: 1.15;
+    text-align: left;
+  }
+
+  .bess-ladder-guard {
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px 10px;
+    padding: 9px;
+  }
+
+  .bess-ladder-guard > div {
+    display: grid;
+    gap: 4px;
+  }
+
+  .bess-ladder-guard span {
+    grid-column: auto;
+  }
+
+  .bess-ladder-guard svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  .bess-model-table {
+    min-width: 620px;
+  }
+}
+
+@media (max-width: 1180px) {
+  .bess-proof-strip {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin: 8px 0;
+  }
+}
+
+@media (min-width: 760px) and (max-width: 920px) {
+  .bess-public-shell--narrative .bess-hero-receipt {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article {
+    min-height: 72px;
+    border-right: 1px solid rgba(64, 129, 166, 0.16);
+    border-bottom: 0;
+    padding-inline: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article:last-child {
+    border-right: 0;
+  }
+}
+
+@media (max-width: 920px) {
+  .bess-proof-strip .bess-source-ledger {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .bess-proof-strip .bess-ledger-item {
+    border-right: 1px solid rgba(24, 89, 122, 0.12);
+    border-bottom: 1px solid rgba(24, 89, 122, 0.12);
+  }
+
+  .bess-proof-strip .bess-ledger-item:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .bess-proof-strip .bess-ledger-item:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .bess-proof-strip .bess-autonomy-receipt {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-proof-strip {
+    gap: 6px;
+    margin: 6px 0 8px;
+  }
+
+  .bess-proof-strip .bess-autonomy-receipt {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-proof-strip .bess-autonomy-stamp {
+    grid-column: 1 / -1;
+  }
+
+  .bess-proof-strip .bess-ledger-item,
+  .bess-proof-strip .bess-autonomy-stamp,
+  .bess-proof-strip .bess-receipt-strip {
+    min-height: 0;
+    padding: 7px 8px;
+  }
+
+  .bess-proof-strip .bess-ledger-item span,
+  .bess-proof-strip .bess-autonomy-stamp span,
+  .bess-proof-strip .bess-receipt-strip span {
+    font-size: 8px;
+  }
+
+  .bess-proof-strip .bess-ledger-item strong,
+  .bess-proof-strip .bess-ledger-item a,
+  .bess-proof-strip .bess-autonomy-stamp strong,
+  .bess-proof-strip .bess-receipt-strip strong {
+    font-size: 10px;
+    line-height: 1.15;
+  }
+}
+
+@media (max-width: 1180px) {
+  .bess-kpi-rail {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-score-primary--light {
+    border-right: 0;
+    border-bottom: 1px solid rgba(64, 129, 166, 0.14);
+  }
+
+  .bess-metric-grid--rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-metric-grid--rail .bess-metric {
+    min-height: 78px;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(-n + 3) {
+    border-bottom: 1px solid rgba(64, 129, 166, 0.14);
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-kpi-rail {
+    padding-top: 22px;
+  }
+
+  .bess-kpi-title {
+    padding-inline: 9px;
+    min-height: 22px;
+  }
+
+  .bess-score-primary--light {
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .bess-score-primary--light svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .bess-score-primary--light .bess-score-label {
+    margin-bottom: 1px;
+  }
+
+  .bess-score-primary--light .bess-score-value {
+    font-size: 24px;
+  }
+
+  .bess-score-primary--light .bess-score-meta {
+    margin-top: 2px;
+    font-size: 10px;
+  }
+
+  .bess-metric-grid--rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-metric-grid--rail .bess-metric {
+    min-height: 63px;
+    border-right: 1px solid rgba(64, 129, 166, 0.14);
+    border-bottom: 1px solid rgba(64, 129, 166, 0.14);
+    padding: 6px;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(3n) {
+    border-right: 0;
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-child(2n) {
+    border-right: 1px solid rgba(64, 129, 166, 0.14);
+  }
+
+  .bess-metric-grid--rail .bess-metric:nth-last-child(-n + 3) {
+    border-bottom: 0;
+  }
+
+  .bess-metric-grid--rail .bess-metric svg {
+    width: 14px;
+    height: 14px;
+    margin-bottom: 3px;
+  }
+
+  .bess-metric-grid--rail .bess-metric span {
+    font-size: 8px;
+    line-height: 1.12;
+  }
+
+  .bess-metric-grid--rail .bess-metric strong {
+    margin-top: 2px;
+    font-size: 13px;
+    line-height: 1.08;
+  }
+}
+
+/* Compact responsive proof surface: keep evidence visible without a long mobile hero stack. */
+@media (max-width: 920px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    gap: 8px;
+    grid-template-areas:
+      "copy"
+      "stage"
+      "receipt"
+      "metrics"
+      "side";
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative {
+    padding-block-start: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: clamp(34px, 5.2vw, 40px);
+    line-height: 0.9;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    max-width: 680px;
+    margin-block-start: 7px;
+    font-size: 13px;
+    line-height: 1.3;
+  }
+
+  .bess-public-shell--narrative .bess-hero-flow {
+    display: none;
+  }
+
+  .bess-public-shell--narrative .bess-hero-evidence-stack {
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 0.58fr);
+    gap: 8px;
+    max-width: none;
+    margin-block-start: 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card,
+  .bess-public-shell--narrative .bess-hero-dispatch-legend {
+    padding: 9px 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-dispatch-legend {
+    gap: 6px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-meta {
+    margin-block-start: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-chip {
+    min-height: 26px;
+    padding-inline: 8px;
+    font-size: 9px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-actions {
+    margin-block-start: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 360px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article {
+    min-height: 62px;
+    padding: 6px 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt strong {
+    margin: 3px 0 2px;
+    font-size: 16px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .bess-public-shell--narrative .bess-side-card {
+    min-height: 0;
+    padding: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-side-card--soc {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .bess-public-shell--narrative .bess-soc-gauge {
+    width: 64px;
+    margin-block-start: 0;
+  }
+
+  .bess-public-shell--narrative .bess-soc-gauge strong {
+    font-size: 14px;
+  }
+
+  .bess-public-shell--narrative .bess-soc-gauge small {
+    font-size: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-side-card > span,
+  .bess-public-shell--narrative .bess-side-title span {
+    font-size: 12px;
+  }
+
+  .bess-public-shell--narrative .bess-side-card dt,
+  .bess-public-shell--narrative .bess-side-card dd,
+  .bess-public-shell--narrative .bess-side-card p {
+    font-size: 9.5px;
+    line-height: 1.2;
+  }
+
+  .bess-public-shell--narrative .bess-side-card dl > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) max-content;
+    align-items: baseline;
+  }
+
+  .bess-public-shell--narrative .bess-kpi-rail {
+    padding-block-start: 20px;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light {
+    min-height: 52px;
+    padding: 7px 9px;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light .bess-score-value {
+    font-size: 24px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+    min-height: 52px;
+    padding: 6px 7px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric svg {
+    width: 14px;
+    height: 14px;
+    margin-block-end: 2px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric span {
+    font-size: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+    font-size: 13px;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip {
+    gap: 6px;
+    margin: 6px 0 8px;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-source-ledger {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-receipt {
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-ledger-item,
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-stamp,
+  .bess-public-shell--narrative .bess-proof-strip .bess-receipt-strip {
+    min-height: 48px;
+    padding: 6px;
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: 30px;
+    line-height: 0.9;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    font-size: 12px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-actions {
+    grid-template-columns: repeat(2, minmax(132px, 1fr));
+  }
+
+  .bess-public-shell--narrative .bess-hero-evidence-stack {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    margin-block-start: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card {
+    min-height: 0;
+    padding: 7px 9px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card span,
+  .bess-public-shell--narrative .bess-hero-dispatch-legend strong {
+    font-size: 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card strong {
+    margin-top: 3px;
+    font-size: 11px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card em {
+    margin-top: 2px;
+    font-size: 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-dispatch-legend {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 5px 8px;
+    padding: 7px 9px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-dispatch-legend strong {
+    grid-column: 1 / -1;
+  }
+
+  .bess-public-shell--narrative .bess-hero-dispatch-legend span {
+    grid-template-columns: 12px minmax(0, 1fr);
+    gap: 5px;
+    font-size: 9.5px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-legend-key {
+    inline-size: 11px;
+    block-size: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-legend-line {
+    inline-size: 11px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 330px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt,
+  .bess-public-shell--narrative .bess-proof-strip .bess-source-ledger,
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-receipt {
+    display: flex;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline mandatory;
+    scrollbar-color: rgba(12, 126, 179, 0.42) rgba(209, 229, 238, 0.48);
+    scrollbar-width: thin;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article {
+    flex: 0 0 138px;
+    min-height: 54px;
+    border-right: 1px solid rgba(64, 129, 166, 0.16);
+    border-bottom: 0;
+    scroll-snap-align: start;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article:last-child {
+    grid-column: auto;
+    border-right: 0;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt strong {
+    font-size: 14px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    overflow: visible;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card {
+    min-width: 0;
+  }
+
+  /* Mobile side receipts use a compact grid, not a clipped horizontal rail. */
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card--soc {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card dl > div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card dd {
+    text-align: left;
+  }
+
+  .bess-public-shell--narrative .bess-kpi-rail {
+    padding-block-start: 20px;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-source-ledger,
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-receipt {
+    border-radius: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-ledger-item {
+    flex: 0 0 160px;
+    border-right: 1px solid rgba(24, 89, 122, 0.12);
+    border-bottom: 0;
+    scroll-snap-align: start;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-stamp,
+  .bess-public-shell--narrative .bess-proof-strip .bess-receipt-strip {
+    flex: 0 0 132px;
+    scroll-snap-align: start;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-stamp {
+    grid-column: auto;
+  }
+}
+
+/* First-screen density tuning: keep the academic receipt surface light and scannable. */
+.bess-public-shell--narrative .bess-kpi-rail {
+  padding-block-start: 21px;
+  box-shadow:
+    0 10px 22px rgba(28, 91, 132, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.bess-public-shell--narrative .bess-kpi-title {
+  min-height: 21px;
+  padding: 4px 9px 3px;
+  font-size: 8.2px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light {
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  padding: 7px 10px 8px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light svg {
+  width: 22px;
+  height: 22px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light .bess-score-label,
+.bess-public-shell--narrative .bess-score-primary--light .bess-score-meta {
+  font-size: 9px;
+  line-height: 1.1;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light .bess-score-value {
+  font-size: 26px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+  min-height: 68px;
+  padding: 7px 8px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric svg {
+  width: 15px;
+  height: 15px;
+  margin-bottom: 4px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric span {
+  font-size: 8.2px;
+  line-height: 1.08;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+  margin-top: 2px;
+  font-size: 16px;
+  line-height: 1.05;
+}
+
+.bess-public-shell--narrative .bess-index-workbench {
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+
+.bess-public-shell--narrative .bess-workbench-panel {
+  gap: 8px;
+  min-height: 176px;
+  border-color: rgba(64, 129, 166, 0.18);
+  padding: 10px 11px;
+  box-shadow:
+    0 8px 18px rgba(24, 89, 122, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.84);
+}
+
+.bess-public-shell--narrative .bess-workbench-panel::after {
+  opacity: 0.42;
+}
+
+.bess-public-shell--narrative .bess-workbench-head {
+  gap: 8px;
+  padding-bottom: 7px;
+}
+
+.bess-public-shell--narrative .bess-workbench-head h2 {
+  font-size: 17px;
+  line-height: 1;
+}
+
+.bess-public-shell--narrative .bess-workbench-head > span {
+  max-width: 118px;
+  padding: 4px 6px;
+  font-size: 8.5px;
+}
+
+.bess-public-shell--narrative .bess-workbench-number {
+  gap: 2px;
+}
+
+.bess-public-shell--narrative .bess-workbench-number span,
+.bess-public-shell--narrative .bess-workbench-number em {
+  font-size: 8.5px;
+}
+
+.bess-public-shell--narrative .bess-workbench-number strong {
+  font-size: 23px;
+}
+
+.bess-public-shell--narrative .bess-workbench-stats div {
+  padding: 6px 7px;
+}
+
+.bess-public-shell--narrative .bess-workbench-stats dt {
+  font-size: 8px;
+}
+
+.bess-public-shell--narrative .bess-workbench-stats dd {
+  margin-top: 3px;
+  font-size: 11px;
+}
+
+.bess-public-shell--narrative .bess-workbench-models,
+.bess-public-shell--narrative .bess-workbench-ladder {
+  gap: 5px;
+}
+
+.bess-public-shell--narrative .bess-workbench-models li {
+  grid-template-columns: minmax(0, 1fr) minmax(76px, auto);
+  gap: 6px;
+  border-radius: 6px;
+  padding: 6px 7px;
+}
+
+.bess-public-shell--narrative .bess-workbench-models strong,
+.bess-public-shell--narrative .bess-workbench-ladder strong {
+  font-size: 11.5px;
+}
+
+.bess-public-shell--narrative .bess-workbench-models span,
+.bess-public-shell--narrative .bess-workbench-ladder p {
+  font-size: 9.5px;
+}
+
+.bess-public-shell--narrative .bess-workbench-models em {
+  padding: 4px 5px;
+  font-size: 8px;
+}
+
+.bess-public-shell--narrative .bess-workbench-proof span {
+  padding: 5px;
+  font-size: 8px;
+}
+
+.bess-public-shell--narrative .bess-workbench-link {
+  min-height: 28px;
+  border-radius: 6px;
+  font-size: 11.5px;
+}
+
+@media (max-width: 1180px) {
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+    min-height: 62px;
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative .bess-kpi-rail {
+    padding-block-start: 19px;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light {
+    min-height: 46px;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light .bess-score-value {
+    font-size: 22px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+    min-height: 54px;
+    padding: 5px 6px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+    font-size: 12.5px;
+  }
+
+  .bess-public-shell--narrative .bess-workbench-panel {
+    gap: 8px;
+    padding: 10px;
+  }
+}
+
+/* Mobile evidence-first ordering: mirror the desktop concept with receipt before the field. */
+@media (max-width: 920px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-areas:
+      "copy"
+      "receipt"
+      "stage"
+      "metrics"
+      "side";
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative .bess-hero-copy--narrative {
+    padding-block-start: 6px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: 28px;
+    line-height: 0.9;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    margin-block-start: 6px;
+    font-size: 11.5px;
+    line-height: 1.28;
+  }
+
+  .bess-public-shell--narrative .bess-hero-actions {
+    gap: 8px;
+    margin-block-start: 7px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-cta {
+    min-height: 42px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 300px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article {
+    flex-basis: 132px;
+    min-height: 50px;
+    padding: 5px 7px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt strong {
+    font-size: 13px;
+  }
+}
+
+/* Concept alignment pass: active sticky navigation, lighter academic typography, calmer evidence chrome. */
+.bess-public-shell--narrative .bess-public-nav a:first-child::after {
+  background: transparent;
+}
+
+.bess-public-shell--narrative .bess-public-nav a.is-active,
+.bess-public-shell--narrative .bess-public-nav a[aria-current='page'] {
+  color: #075f8c;
+  opacity: 1;
+}
+
+.bess-public-shell--narrative .bess-public-nav a.is-active::after,
+.bess-public-shell--narrative .bess-public-nav a[aria-current='page']::after {
+  background: linear-gradient(90deg, #0c7eb3, #7fc7d8);
+}
+
+.bess-public-shell--narrative .bess-public-nav a:focus-visible,
+.bess-public-shell--narrative .bess-action-link:focus-visible,
+.bess-public-shell--narrative .bess-hero-cta:focus-visible,
+.bess-public-shell--narrative .bess-workbench-link:focus-visible {
+  outline: 2px solid rgba(12, 126, 179, 0.58);
+  outline-offset: 3px;
+}
+
+.bess-public-shell--narrative .bess-public-title {
+  font-size: 25px;
+  line-height: 0.86;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+  max-width: 540px;
+  font-family: var(--bess-font-display);
+  font-size: clamp(40px, 3.15vw, 50px);
+  font-weight: 700;
+  line-height: 0.98;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative p {
+  max-width: 450px;
+  font-size: 13.5px;
+  line-height: 1.44;
+}
+
+@media (min-width: 1181px) {
+  /* First-screen dispatch focus: give the WebGL field the same visual gravity as the concept. */
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-columns: minmax(400px, 0.62fr) minmax(760px, 1.52fr) minmax(190px, 0.28fr);
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 430px;
+  }
+}
+
+@media (min-width: 1181px) {
+  /* First-viewport receipt docking: keep the status strip visually attached to the dispatch field. */
+  .bess-public-shell--narrative .bess-hero-receipt {
+    align-self: end;
+  }
+}
+
+.bess-public-shell--narrative .bess-hero-receipt,
+.bess-public-shell--narrative .bess-kpi-rail,
+.bess-public-shell--narrative .bess-proof-strip .bess-source-ledger,
+.bess-public-shell--narrative .bess-proof-strip .bess-autonomy-receipt,
+.bess-public-shell--narrative .bess-workbench-panel,
+.bess-public-shell--narrative .bess-lead-section {
+  border-color: rgba(64, 129, 166, 0.14);
+  box-shadow:
+    0 8px 18px rgba(24, 89, 122, 0.035),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
+}
+
+.bess-public-shell--narrative .bess-hero-receipt article {
+  min-height: 58px;
+}
+
+.bess-public-shell--narrative .bess-workbench-panel::before {
+  height: 2px;
+  opacity: 0.82;
+}
+
+.bess-public-shell--narrative .bess-workbench-panel::after {
+  opacity: 0.24;
+}
+
+.bess-public-shell--narrative .bess-workbench-head h2,
+.bess-public-shell--narrative .bess-lead-copy h2 {
+  font-weight: 740;
+  line-height: 1.02;
+}
+
+.bess-public-shell--narrative .bess-workbench-models li,
+.bess-public-shell--narrative .bess-workbench-stats,
+.bess-public-shell--narrative .bess-workbench-proof span,
+.bess-public-shell--narrative .bess-lead-receipt,
+.bess-public-shell--narrative .bess-lead-card,
+.bess-public-shell--narrative .bess-lead-action-card {
+  border-color: rgba(64, 129, 166, 0.1);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.bess-public-shell--narrative .bess-workbench-link--primary,
+.bess-public-shell--narrative .bess-lead-actions .bess-action-link--primary {
+  background: #087eae;
+  box-shadow: 0 8px 16px rgba(8, 126, 174, 0.13);
+}
+
+@media (max-width: 920px) {
+  .bess-public-shell--narrative .bess-public-nav {
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 28px), transparent 100%);
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    max-width: 720px;
+    font-size: 36px;
+    line-height: 1;
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative .bess-public-title {
+    font-size: 17px;
+    line-height: 0.94;
+  }
+
+  .bess-public-shell--narrative .bess-public-nav {
+    padding-right: 18px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: 27px;
+    line-height: 0.98;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    font-size: 11.5px;
+    line-height: 1.32;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt {
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 22px), transparent 100%);
+  }
+}
+
+/* Lower receipt polish: reduce dashboard heaviness and keep panels aligned to the academic concept. */
+.bess-public-shell--narrative .bess-section-grid--evidence .bess-chart-panel,
+.bess-public-shell--narrative .bess-section-grid--forecast .bess-chart-panel,
+.bess-public-shell--narrative .bess-section-grid--methodology .bess-panel,
+.bess-public-shell--narrative .bess-workbench-panel,
+.bess-public-shell--narrative .bess-lead-section {
+  border-color: rgba(64, 129, 166, 0.12);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(248, 253, 255, 0.64)),
+    linear-gradient(90deg, rgba(70, 136, 175, 0.024) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(70, 136, 175, 0.02) 1px, transparent 1px);
+  background-size: auto, 18px 18px, 18px 18px;
+  box-shadow:
+    0 6px 14px rgba(24, 89, 122, 0.028),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.bess-public-shell--narrative .bess-workbench-panel {
+  min-height: 166px;
+}
+
+.bess-public-shell--narrative .bess-workbench-head h2,
+.bess-public-shell--narrative .bess-section-header h2,
+.bess-public-shell--narrative .bess-lead-copy h2 {
+  color: #12395a;
+  font-weight: 720;
+}
+
+.bess-public-shell--narrative .bess-workbench-head h2 {
+  font-size: 16px;
+}
+
+.bess-public-shell--narrative .bess-workbench-head > span,
+.bess-public-shell--narrative .bess-status,
+.bess-public-shell--narrative .bess-receipt-strip span,
+.bess-public-shell--narrative .bess-ledger-item span,
+.bess-public-shell--narrative .bess-workbench-number span,
+.bess-public-shell--narrative .bess-workbench-number em,
+.bess-public-shell--narrative .bess-workbench-stats dt,
+.bess-public-shell--narrative .bess-lead-receipt dt {
+  color: #638296;
+  font-weight: 650;
+}
+
+.bess-public-shell--narrative .bess-workbench-models li,
+.bess-public-shell--narrative .bess-workbench-stats,
+.bess-public-shell--narrative .bess-workbench-proof span,
+.bess-public-shell--narrative .bess-model-table-wrap,
+.bess-public-shell--narrative .bess-stage-list li,
+.bess-public-shell--narrative .bess-receipt-strip,
+.bess-public-shell--narrative .bess-lead-card,
+.bess-public-shell--narrative .bess-lead-actions,
+.bess-public-shell--narrative .bess-lead-receipt {
+  border-color: rgba(64, 129, 166, 0.09);
+  background-color: rgba(255, 255, 255, 0.42);
+  box-shadow: none;
+}
+
+.bess-public-shell--narrative .bess-workbench-models strong,
+.bess-public-shell--narrative .bess-workbench-ladder strong,
+.bess-public-shell--narrative .bess-lead-card h3 {
+  color: #1b4766;
+  font-family: var(--bess-font-detail);
+  font-weight: 720;
+}
+
+.bess-public-shell--narrative .bess-workbench-models span,
+.bess-public-shell--narrative .bess-workbench-ladder p,
+.bess-public-shell--narrative .bess-lead-card p,
+.bess-public-shell--narrative .bess-lead-copy p {
+  color: #58788e;
+  font-family: var(--bess-font-detail);
+  font-weight: 560;
+}
+
+.bess-public-shell--narrative .bess-lead-section::before {
+  width: 2px;
+}
+
+.bess-public-shell--narrative .bess-lead-copy h2 {
+  font-size: 27px;
+  line-height: 0.96;
+}
+
+.bess-public-shell--narrative .bess-lead-card {
+  min-height: 100px;
+  padding: 10px;
+}
+
+.bess-public-shell--narrative .bess-lead-card::before {
+  opacity: 0.55;
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative .bess-workbench-head h2 {
+    font-size: 15px;
+  }
+
+  .bess-public-shell--narrative .bess-lead-copy h2 {
+    font-size: 22px;
+  }
+}
+
+/* Academic type-rhythm pass: separate the condensed brand from the readable Noto Serif hero. */
+.bess-public-shell--narrative .bess-public-title {
+  font-family: var(--bess-font-brand);
+  font-size: 25px;
+  font-weight: 850;
+  line-height: 0.82;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+  max-width: 500px;
+  color: #112f56;
+  font-family: var(--bess-font-hero);
+  font-size: 38px;
+  font-weight: 700;
+  line-height: 1.03;
+  text-wrap: balance;
+}
+
+.bess-public-shell--narrative .bess-hero-copy--narrative p {
+  max-width: 432px;
+  color: #365f79;
+  font-family: var(--bess-font-detail);
+  font-size: 13px;
+  font-weight: 520;
+  line-height: 1.48;
+  text-wrap: pretty;
+}
+
+.bess-public-shell--narrative .bess-hero-meta .bess-chip {
+  min-height: 25px;
+  padding-inline: 9px;
+  font-weight: 650;
+}
+
+.bess-public-shell--narrative .bess-hero-actions {
+  margin-top: 10px;
+}
+
+.bess-public-shell--narrative .bess-hero-flow span,
+.bess-public-shell--narrative .bess-kpi-title,
+.bess-public-shell--narrative .bess-score-label,
+.bess-public-shell--narrative .bess-score-meta,
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric span {
+  font-family: var(--bess-font-detail);
+  font-weight: 560;
+  letter-spacing: 0;
+}
+
+.bess-public-shell--narrative .bess-kpi-rail {
+  padding-block-start: 20px;
+}
+
+.bess-public-shell--narrative .bess-kpi-title {
+  min-height: 22px;
+  color: #315b76;
+  font-size: 9px;
+}
+
+.bess-public-shell--narrative .bess-kpi-title strong {
+  font-family: var(--bess-font-data);
+  font-weight: 700;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light {
+  grid-template-columns: 30px minmax(0, 1fr);
+  padding: 8px 10px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light .bess-score-value {
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+  min-height: 62px;
+  padding: 7px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (max-width: 920px) {
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    max-width: 680px;
+    font-size: 34px;
+    line-height: 1.04;
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative .bess-public-title {
+    font-size: 17px;
+    line-height: 0.94;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    font-size: 26px;
+    line-height: 1.02;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    font-size: 11.5px;
+    line-height: 1.34;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light .bess-score-value {
+    font-size: 21px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+    font-size: 12px;
+  }
+}
+
+/* Receipt ledger alignment pass: closer to the concept single-sheet evidence strip. */
+.bess-public-shell--narrative .bess-kpi-rail {
+  container: bess-kpi-rail / inline-size;
+  border-color: rgba(64, 129, 166, 0.14);
+  border-radius: 7px;
+  padding-block-start: 21px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(248, 253, 255, 0.68)),
+    linear-gradient(90deg, rgba(57, 119, 156, 0.026) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(57, 119, 156, 0.022) 1px, transparent 1px);
+  background-size: auto, 18px 18px, 18px 18px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 4px 12px rgba(24, 89, 122, 0.02);
+}
+
+.bess-public-shell--narrative .bess-kpi-title {
+  min-height: 21px;
+  border-bottom-color: rgba(64, 129, 166, 0.09);
+  padding: 4px 10px 3px;
+  background: rgba(255, 255, 255, 0.48);
+  color: #3f6780;
+  font-size: 8.4px;
+  line-height: 1.05;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light {
+  min-height: 70px;
+  border-right-color: rgba(64, 129, 166, 0.11);
+  padding: 8px 11px 10px;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light::after {
+  height: 3px;
+  background: linear-gradient(90deg, rgba(120, 201, 111, 0.84), rgba(225, 179, 77, 0.78), rgba(132, 212, 232, 0.82));
+}
+
+.bess-public-shell--narrative .bess-score-primary--light svg {
+  width: 24px;
+  height: 24px;
+  color: #126ea2;
+  stroke-width: 1.7;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light .bess-score-value {
+  color: #123f75;
+  font-size: 24px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+  min-height: 64px;
+  border-right-color: rgba(64, 129, 166, 0.1);
+  padding: 7px 8px 8px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric svg {
+  width: 16px;
+  height: 16px;
+  margin-bottom: 5px;
+  opacity: 0.86;
+  stroke-width: 1.7;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric strong {
+  margin-top: 3px;
+  color: #123f75;
+  font-size: 13px;
+}
+
+.bess-public-shell--narrative .bess-proof-strip {
+  gap: 4px;
+  margin-block: 4px 8px;
+}
+
+.bess-public-shell--narrative .bess-proof-strip .bess-source-ledger,
+.bess-public-shell--narrative .bess-proof-strip .bess-autonomy-receipt {
+  border-color: rgba(64, 129, 166, 0.08);
+  background: rgba(255, 255, 255, 0.54);
+  box-shadow: none;
+}
+
+.bess-public-shell--narrative .bess-proof-strip .bess-ledger-item,
+.bess-public-shell--narrative .bess-proof-strip .bess-autonomy-stamp,
+.bess-public-shell--narrative .bess-proof-strip .bess-receipt-strip {
+  min-height: 44px;
+  border-color: rgba(64, 129, 166, 0.08);
+  background-color: rgba(255, 255, 255, 0.38);
+}
+
+@container bess-kpi-rail (max-width: 720px) {
+  .bess-public-shell--narrative .bess-score-primary--light {
+    min-height: 62px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+    min-height: 58px;
+  }
+}
+
+/* Intermediate tablet side receipts: prevent narrow right-rail values from clipping. */
+@media (max-width: 1500px) and (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card dl > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card dd {
+    overflow-wrap: anywhere;
+    text-align: left;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card p {
+    overflow-wrap: anywhere;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card dt,
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card dd,
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card p {
+    font-size: 9.5px;
+    line-height: 1.18;
+  }
+}
+
+/* Concept fidelity pass: wider evidence fields, stronger receipt icons, interactive SVG affordances. */
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-columns: minmax(340px, 0.5fr) minmax(760px, 1.84fr) minmax(170px, 0.22fr);
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence {
+    grid-template-columns: minmax(0, 1.32fr) minmax(230px, 0.24fr);
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence .bess-chart {
+    height: 320px;
+    min-height: 320px;
+  }
+}
+
+.bess-public-shell--narrative .bess-score-primary--light {
+  grid-template-columns: 38px minmax(0, 1fr);
+}
+
+.bess-public-shell--narrative .bess-score-primary--light svg {
+  width: 30px;
+  height: 30px;
+  stroke-width: 1.85;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric svg {
+  width: 25px;
+  height: 25px;
+  margin-bottom: 6px;
+  stroke-width: 1.8;
+}
+
+.bess-public-shell--narrative .bess-score-primary--light > .iconify {
+  width: 30px;
+  height: 30px;
+  color: #126ea2;
+  font-size: 30px;
+}
+
+.bess-public-shell--narrative .bess-metric-grid--rail .bess-metric > .iconify {
+  width: 25px;
+  height: 25px;
+  margin-bottom: 6px;
+  color: #0c7eb3;
+  font-size: 25px;
+}
+
+.bess-public-shell--narrative .bess-section-grid--evidence .bess-chart-panel {
+  background:
+    linear-gradient(90deg, rgba(57, 119, 156, 0.028) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(57, 119, 156, 0.024) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(246, 253, 255, 0.68));
+  background-size: 18px 18px, 18px 18px, auto;
+}
+
+.bess-public-shell--narrative .bess-section-grid--evidence .bess-svg-chart {
+  border: 1px solid rgba(64, 129, 166, 0.11);
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, rgba(57, 119, 156, 0.04) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(57, 119, 156, 0.034) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(239, 250, 254, 0.38));
+  background-size: 22px 22px, 22px 22px, auto;
+}
+
+.bess-svg-hit {
+  fill: transparent;
+  outline: none;
+  cursor: crosshair;
+}
+
+.bess-svg-hit:focus-visible {
+  stroke: rgba(12, 126, 179, 0.48);
+  stroke-width: 2;
+}
+
+.bess-svg-active-line {
+  stroke: rgba(12, 126, 179, 0.42);
+  stroke-dasharray: 5 7;
+  stroke-width: 1.2;
+}
+
+.bess-svg-active-ripple {
+  fill: none;
+  stroke: rgba(12, 126, 179, 0.32);
+  stroke-width: 2;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bessSvgRipple 2.4s ease-out infinite;
+}
+
+.bess-svg-active-ripple--late {
+  stroke: rgba(12, 126, 179, 0.18);
+  animation-delay: 0.64s;
+}
+
+.bess-svg-active-point {
+  fill: #ffffff;
+  stroke: #0c7eb3;
+  stroke-width: 3;
+  filter: drop-shadow(0 5px 10px rgba(12, 126, 179, 0.16));
+}
+
+.bess-svg-tooltip rect {
+  fill: rgba(255, 255, 255, 0.82);
+  stroke: rgba(64, 129, 166, 0.18);
+  filter: drop-shadow(0 8px 14px rgba(24, 89, 122, 0.08));
+}
+
+.bess-svg-tooltip text {
+  fill: #12395a;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@keyframes bessSvgRipple {
+  0% {
+    opacity: 0.82;
+    transform: scale(0.72);
+  }
+
+  72%, 100% {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bess-svg-active-ripple {
+    animation: none;
+    opacity: 0.35;
+  }
+}
+
+/* Concept viewport pass: bring the source-backed evidence row closer to the first desktop fold. */
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-columns: minmax(380px, 0.58fr) minmax(780px, 1.58fr) minmax(180px, 0.24fr);
+    gap: 8px;
+    margin-bottom: 7px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative {
+    padding-block: 4px 6px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    max-width: 500px;
+    font-size: 36px;
+    line-height: 1.02;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    margin-top: 7px;
+    font-size: 12.5px;
+    line-height: 1.38;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 392px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article {
+    min-height: 52px;
+    padding: 6px 9px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt span,
+  .bess-public-shell--narrative .bess-hero-receipt em {
+    font-size: 9px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt strong {
+    margin-block: 3px 2px;
+    font-size: 17px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side {
+    gap: 7px;
+    align-content: start;
+    align-items: start;
+    grid-auto-rows: auto;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card {
+    min-height: 0;
+    width: 100%;
+    padding: 8px 9px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-side .bess-side-card--soc {
+    min-height: 136px;
+  }
+
+  .bess-public-shell--narrative .bess-soc-gauge {
+    width: 74px;
+    margin-top: 5px;
+  }
+
+  .bess-public-shell--narrative .bess-side-title {
+    gap: 6px;
+    margin-bottom: 5px;
+  }
+
+  .bess-public-shell--narrative .bess-side-title svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .bess-public-shell--narrative .bess-side-card > span,
+  .bess-public-shell--narrative .bess-side-title span {
+    font-size: 12px;
+  }
+
+  .bess-public-shell--narrative .bess-side-card dl {
+    gap: 4px;
+  }
+
+  .bess-public-shell--narrative .bess-side-card dt,
+  .bess-public-shell--narrative .bess-side-card dd,
+  .bess-public-shell--narrative .bess-side-card p {
+    font-size: 9.5px;
+    line-height: 1.18;
+  }
+
+  .bess-public-shell--narrative .bess-kpi-rail {
+    padding: 9px 12px;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light {
+    min-height: 58px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric {
+    min-height: 56px;
+    padding: 7px 8px;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip {
+    margin-block: 2px 6px;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-source-ledger,
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-receipt {
+    gap: 5px;
+    min-height: 42px;
+    padding: 5px;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip .bess-ledger-item,
+  .bess-public-shell--narrative .bess-proof-strip .bess-autonomy-stamp,
+  .bess-public-shell--narrative .bess-proof-strip .bess-receipt-strip {
+    min-height: 38px;
+    padding: 5px 6px;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence {
+    grid-template-columns: minmax(0, 1.72fr) minmax(190px, 0.22fr);
+    gap: 8px;
+    margin-block-start: 0;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence .bess-chart-panel {
+    gap: 7px;
+    padding: 10px 11px;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence .bess-section-header {
+    align-items: center;
+    padding-bottom: 7px;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence .bess-section-header h2 {
+    font-size: 19px;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence .bess-section-header p {
+    max-width: 700px;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence .bess-chart {
+    height: 300px;
+    min-height: 300px;
+  }
+
+  .bess-public-shell--narrative .bess-preset-panel {
+    padding: 10px;
+  }
+}
+
+.bess-public-shell--narrative .bess-svg-hit {
+  touch-action: manipulation;
+}
+
+.bess-public-shell--narrative .bess-svg-hit:hover {
+  fill: rgba(12, 126, 179, 0.035);
+}
+
+.bess-public-shell--narrative .bess-svg-hit:focus-visible {
+  fill: rgba(12, 126, 179, 0.055);
+  outline: none;
+}
+
+.bess-public-shell--narrative .bess-svg-bar {
+  filter: drop-shadow(0 5px 8px rgba(24, 89, 122, 0.07));
+}
+
+.bess-public-shell--narrative .bess-svg-label {
+  fill: #296080;
+  font-family: var(--bess-font-data);
+  font-size: 10px;
+  font-weight: 760;
+}
+
+.bess-sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.bess-field__signal-stack button::after {
+  content: attr(data-label) '\A' attr(data-value);
+  max-width: 92px;
+  padding: 3px 5px 4px;
+  line-height: 1.1;
+  opacity: 0.82;
+  text-align: center;
+  white-space: pre;
+}
+
+.bess-field__signal-stack button {
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  min-height: 22px;
+}
+
+/* Concept lower-row pass: bring chart, forecast, and promotion back into the first desktop viewport. */
+.bess-first-screen-row {
+  display: none;
+}
+
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-first-screen-row {
+    display: grid;
+    grid-template-columns: minmax(430px, 0.74fr) minmax(390px, 0.5fr) minmax(430px, 0.56fr);
+    gap: 8px;
+    margin-block-start: 7px;
+    align-items: stretch;
+  }
+
+  .bess-public-shell--narrative .bess-first-screen-row .bess-panel {
+    min-width: 0;
+    min-height: 282px;
+    border-color: rgba(64, 129, 166, 0.16);
+    border-radius: 7px;
+    padding: 10px 11px;
+    background:
+      linear-gradient(90deg, rgba(57, 119, 156, 0.032) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(57, 119, 156, 0.026) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(244, 252, 255, 0.68));
+    background-size: 18px 18px, 18px 18px, auto;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.9),
+      0 8px 18px rgba(24, 89, 122, 0.025);
+  }
+
+  .bess-public-shell--narrative .bess-concept-chart-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-panel-head {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    border-bottom: 1px solid rgba(64, 129, 166, 0.1);
+    padding-bottom: 7px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-panel-head > div {
+    min-width: 0;
+  }
+
+  .bess-public-shell--narrative .bess-concept-panel-head h2 {
+    margin: 2px 0 0;
+    color: #0b3563;
+    font-family: var(--bess-font-ui);
+    font-size: 17px;
+    font-weight: 840;
+    line-height: 0.98;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  .bess-public-shell--narrative .bess-concept-panel-head > span,
+  .bess-public-shell--narrative .bess-concept-panel-head .bess-technical-link {
+    flex: 0 0 auto;
+    border: 1px solid rgba(12, 126, 179, 0.16);
+    border-radius: 5px;
+    padding: 3px 6px;
+    color: #0c7eb3;
+    background: rgba(255, 255, 255, 0.66);
+    font-family: var(--bess-font-data);
+    font-size: 9px;
+    font-weight: 760;
+    line-height: 1;
+    text-transform: uppercase;
+  }
+
+  .bess-public-shell--narrative .bess-concept-chart-wrap {
+    display: grid;
+    min-height: 0;
+    gap: 6px;
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact {
+    height: 212px;
+    min-height: 212px;
+    border: 1px solid rgba(64, 129, 166, 0.12);
+    border-radius: 7px;
+    background:
+      linear-gradient(90deg, rgba(57, 119, 156, 0.05) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(57, 119, 156, 0.04) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(238, 250, 254, 0.36));
+    background-size: 22px 22px, 22px 22px, auto;
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact .bess-svg-label {
+    font-size: 9px;
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact .bess-svg-label--hour {
+    fill: #0b67a0;
+    font-weight: 820;
+  }
+
+  .bess-public-shell--narrative .bess-svg-tooltip--compact rect {
+    fill: rgba(244, 253, 255, 0.94);
+    stroke: rgba(12, 126, 179, 0.22);
+  }
+
+  .bess-public-shell--narrative .bess-chart-legend--compact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    border-top: 0;
+    padding-top: 0;
+    color: #315b76;
+    font-family: var(--bess-font-data);
+    font-size: 9.5px;
+    font-weight: 760;
+  }
+
+  .bess-public-shell--narrative .bess-concept-forecast-panel,
+  .bess-public-shell--narrative .bess-concept-ladder-panel {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-list {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    min-height: 0;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    min-height: 45px;
+    border: 1px solid rgba(64, 129, 166, 0.12);
+    border-radius: 6px;
+    padding: 7px 8px;
+    color: inherit;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.64), rgba(244, 252, 255, 0.48)),
+      linear-gradient(90deg, rgba(12, 126, 179, 0.025) 1px, transparent 1px);
+    background-size: auto, 14px 14px;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row:hover,
+  .bess-public-shell--narrative .bess-concept-model-row:focus-visible {
+    border-color: rgba(12, 126, 179, 0.3);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(12, 126, 179, 0.11);
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row strong,
+  .bess-public-shell--narrative .bess-concept-model-row em,
+  .bess-public-shell--narrative .bess-concept-model-row i {
+    display: block;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-family: var(--bess-font-data);
+    font-style: normal;
+    line-height: 1.1;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row strong {
+    color: #123f75;
+    font-size: 11.5px;
+    font-weight: 760;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row em {
+    margin-top: 3px;
+    color: #5f7f96;
+    font-size: 9.5px;
+    font-weight: 700;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row i {
+    border: 1px solid rgba(38, 160, 122, 0.2);
+    border-radius: 5px;
+    padding: 4px 5px;
+    color: #168066;
+    background: rgba(216, 246, 235, 0.66);
+    font-size: 8.5px;
+    font-weight: 760;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row i.is-blocked {
+    border-color: rgba(213, 112, 68, 0.24);
+    color: #a85025;
+    background: rgba(255, 239, 226, 0.78);
+  }
+
+  .bess-public-shell--narrative .bess-concept-footnote {
+    margin: 0;
+    color: #466b82;
+    font-size: 10.5px;
+    font-weight: 650;
+    line-height: 1.25;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder {
+    display: grid;
+    align-content: start;
+    gap: 5px;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder li {
+    display: grid;
+    grid-template-columns: 26px minmax(0, 1fr);
+    gap: 7px;
+    align-items: start;
+    min-height: 34px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder li > span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    border: 1px solid rgba(12, 126, 179, 0.22);
+    border-radius: 999px;
+    color: #075fd1;
+    background: rgba(240, 249, 252, 0.9);
+    font-family: var(--bess-font-data);
+    font-size: 10px;
+    font-weight: 760;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder strong,
+  .bess-public-shell--narrative .bess-concept-ladder p {
+    display: block;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.13;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder strong {
+    color: #123f75;
+    font-family: var(--bess-font-detail);
+    font-size: 10.5px;
+    font-weight: 780;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder p {
+    margin-top: 2px;
+    color: #466b82;
+    font-size: 9px;
+    font-weight: 620;
+  }
+
+  .bess-public-shell--narrative .bess-concept-cta {
+    min-height: 34px;
+    border-radius: 6px;
+  }
+
+  .bess-public-shell--narrative .bess-section-grid--evidence {
+    display: none;
+  }
+}
+
+/* First-screen row refinement: lighter academic panels and less bottom-edge clutter. */
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-first-screen-row {
+    gap: 7px;
+  }
+
+  .bess-public-shell--narrative .bess-first-screen-row .bess-panel {
+    border-color: rgba(64, 129, 166, 0.12);
+    background:
+      linear-gradient(90deg, rgba(57, 119, 156, 0.024) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(57, 119, 156, 0.02) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(245, 252, 255, 0.56));
+    background-size: 18px 18px, 18px 18px, auto;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.88),
+      0 4px 10px rgba(24, 89, 122, 0.018);
+  }
+
+  .bess-public-shell--narrative .bess-concept-panel-head {
+    border-bottom-color: rgba(64, 129, 166, 0.075);
+    padding-bottom: 6px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-panel-head h2 {
+    color: #0d3d6e;
+    font-size: 16.5px;
+    line-height: 1;
+  }
+
+  .bess-public-shell--narrative .bess-concept-panel-head > span,
+  .bess-public-shell--narrative .bess-concept-panel-head .bess-technical-link {
+    border-color: rgba(12, 126, 179, 0.12);
+    color: #0c6f9e;
+    background: rgba(255, 255, 255, 0.48);
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact {
+    border-color: rgba(64, 129, 166, 0.09);
+    background:
+      linear-gradient(90deg, rgba(57, 119, 156, 0.034) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(57, 119, 156, 0.03) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(239, 250, 254, 0.26));
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.48);
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row {
+    min-height: 42px;
+    border-color: rgba(64, 129, 166, 0.095);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(244, 252, 255, 0.38)),
+      linear-gradient(90deg, rgba(12, 126, 179, 0.018) 1px, transparent 1px);
+    background-size: auto, 14px 14px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row strong {
+    font-size: 11px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-model-row i {
+    padding: 3px 5px;
+    font-size: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder {
+    gap: 4px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder li {
+    min-height: 31px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-ladder p {
+    font-size: 8.7px;
+    line-height: 1.1;
+  }
+
+  .bess-public-shell--narrative .bess-proof-strip {
+    margin-block-start: 28px;
+  }
+}
+
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-hero-copy--narrative {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-rows: 64px 404px auto;
+  }
+
+  .bess-public-shell--narrative .bess-hero-rule {
+    margin-bottom: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    max-width: 390px;
+    font-size: 33px;
+    line-height: 0.98;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative p {
+    max-width: 370px;
+    margin-top: 7px;
+    font-size: 12px;
+    line-height: 1.32;
+  }
+
+  .bess-public-shell--narrative .bess-hero-evidence-stack {
+    gap: 6px;
+    max-width: 330px;
+    margin-top: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card {
+    min-height: 0;
+    padding: 8px 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-dispatch-legend {
+    gap: 6px;
+    min-height: 0;
+    padding: 8px 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card span,
+  .bess-public-shell--narrative .bess-hero-dispatch-legend strong {
+    font-size: 9.5px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card strong {
+    margin-top: 3px;
+    font-size: 11px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-source-card em,
+  .bess-public-shell--narrative .bess-hero-dispatch-legend span {
+    font-size: 10px;
+    line-height: 1.08;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative .bess-hero-meta {
+    display: none;
+  }
+
+  .bess-public-shell--narrative .bess-hero-meta .bess-chip {
+    min-height: 23px;
+    padding-inline: 7px;
+    font-size: 8.4px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-actions {
+    display: none;
+  }
+
+  .bess-public-shell--narrative .bess-hero-cta {
+    min-height: 28px;
+    padding-inline: 9px;
+    font-size: 10px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-flow {
+    display: none;
+  }
+
+  .bess-public-shell--narrative .bess-hero-flow span {
+    min-height: 24px;
+    padding: 6px 5px;
+    font-size: 8px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt {
+    align-self: stretch;
+  }
+
+  .bess-public-shell--narrative .bess-hero-receipt article {
+    min-height: 0;
+    padding-block: 5px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 404px;
+  }
+}
+
+/* Final concept-alignment pass for the public fold. */
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-columns: minmax(420px, 0.6fr) minmax(760px, 1.84fr) minmax(166px, 0.2fr);
+    grid-template-rows: 64px 414px auto;
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    max-width: 406px;
+    font-size: 32px;
+    line-height: 1;
+    text-wrap: pretty;
+  }
+
+  .bess-public-shell--narrative .bess-hero-evidence-stack {
+    max-width: 374px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 414px;
+  }
+
+  .bess-public-shell--narrative .bess-first-screen-row {
+    grid-template-columns: minmax(520px, 0.92fr) minmax(360px, 0.48fr) minmax(360px, 0.48fr);
+  }
+
+  .bess-public-shell--narrative .bess-first-screen-row .bess-panel {
+    min-height: 294px;
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact {
+    height: 226px;
+    min-height: 226px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-chart-panel {
+    gap: 9px;
+  }
+
+  .bess-public-shell--narrative .bess-concept-forecast-panel,
+  .bess-public-shell--narrative .bess-concept-ladder-panel {
+    min-width: 0;
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light {
+    grid-template-columns: 44px minmax(0, 1fr);
+  }
+
+  .bess-public-shell--narrative .bess-score-primary--light > .iconify,
+  .bess-public-shell--narrative .bess-score-primary--light svg {
+    width: 34px;
+    height: 34px;
+    font-size: 34px;
+  }
+
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric > .iconify,
+  .bess-public-shell--narrative .bess-metric-grid--rail .bess-metric svg {
+    width: 29px;
+    height: 29px;
+    margin-bottom: 5px;
+    font-size: 29px;
+  }
+}
+
+@media (min-width: 1540px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    grid-template-columns: minmax(440px, 0.58fr) minmax(860px, 1.98fr) minmax(188px, 0.22fr);
+  }
+
+  .bess-public-shell--narrative .bess-hero-copy--narrative h1 {
+    max-width: 420px;
+    font-size: 34px;
+    text-wrap: pretty;
+  }
+}
+
+.bess-public-shell--narrative .bess-svg-chart {
+  overflow: visible;
+}
+
+.bess-public-shell--narrative .bess-svg-label--hour {
+  fill: #0b67a0;
+  font-family: var(--bess-font-data);
+  font-weight: 820;
+}
+
+.bess-public-shell--narrative .bess-svg-hit {
+  fill: transparent;
+  transition: fill 120ms ease;
+}
+
+.bess-public-shell--narrative .bess-svg-hit:hover,
+.bess-public-shell--narrative .bess-svg-hit:focus-visible {
+  fill: rgba(12, 126, 179, 0.045);
+}
+
+.bess-public-shell--narrative .bess-svg-tooltip text:first-of-type {
+  fill: #0c3f82;
+  font-weight: 820;
+}
+
+.bess-public-shell--narrative .bess-svg-active-line {
+  stroke-width: 1.45;
+}
+
+.bess-public-shell--narrative .bess-svg-active-point {
+  filter:
+    drop-shadow(0 0 0 rgba(255, 255, 255, 1))
+    drop-shadow(0 6px 12px rgba(12, 126, 179, 0.18));
+}
+
+/* Evidence chart encoding pass: DAM price blue, dispatch blue/yellow, SOC green. */
+.bess-public-shell--narrative .bess-svg-bar--discharge {
+  fill: #2e8bea;
+}
+
+.bess-public-shell--narrative .bess-svg-bar--charge {
+  fill: #e1a83a;
+}
+
+.bess-public-shell--narrative .bess-svg-line--price {
+  stroke: #0c7eb3;
+  stroke-width: 4;
+}
+
+.bess-public-shell--narrative .bess-svg-line--soc {
+  stroke: #1aa783;
+  stroke-width: 2.4;
+  stroke-dasharray: 0;
+  opacity: 0.9;
+}
+
+.bess-public-shell--narrative .bess-svg-label--soc {
+  fill: #15906f;
+  font-size: 9.5px;
+  font-weight: 820;
+}
+
+.bess-public-shell--narrative .bess-svg-active-point--soc {
+  fill: #ffffff;
+  stroke: #1aa783;
+  stroke-width: 2.4;
+  filter: drop-shadow(0 5px 9px rgba(26, 167, 131, 0.16));
+}
+
+.bess-public-shell--narrative .bess-legend-bar--green {
+  background: #2e8bea;
+}
+
+.bess-public-shell--narrative .bess-legend-bar--yellow {
+  background: #e1a83a;
+}
+
+.bess-public-shell--narrative .bess-legend-line--soc {
+  background: #1aa783;
 }

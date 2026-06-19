@@ -1,5 +1,6 @@
 @theme static {
-  --font-sans: 'Montserrat', 'Segoe UI', sans-serif;
+  --font-sans: 'Noto Sans', 'Segoe UI', sans-serif;
+  --font-mono: 'Noto Sans Mono', 'Noto Sans', monospace;
 
   --color-green-50: #EFFDF5;
   --color-green-100: #D9FBE8;
