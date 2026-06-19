@@ -7,7 +7,7 @@
   },
   "autonomy": {
     "compute_layer": "github_actions_scheduled_static_json",
-    "host_layer": "vercel_git_auto_deploy",
+    "host_layer": "github_pages_workflow_static_host",
     "market_execution_enabled": false,
     "proposed_bid_status": "not_emitted",
     "schedule_cron_utc": "35 5 * * *",

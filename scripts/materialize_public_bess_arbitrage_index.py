@@ -249,7 +249,7 @@ def _publication_status_payload(
         },
         "autonomy": {
             "compute_layer": "github_actions_scheduled_static_json",
-            "host_layer": "vercel_git_auto_deploy",
+            "host_layer": "github_pages_workflow_static_host",
             "schedule_cron_utc": "35 5 * * *",
             "schedule_timezone_note": "05:35 UTC is 08:35 Europe/Kyiv during summer time",
             "market_execution_enabled": False,

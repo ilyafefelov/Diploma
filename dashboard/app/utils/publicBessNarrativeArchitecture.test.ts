@@ -14,6 +14,8 @@ describe('public BESS narrative architecture', () => {
     expect(page).toContain("'/data/bess-arbitrage-index/publication_status.json'")
     expect(page).toContain('<BessDispatchField')
     expect(page).toContain('SVG evidence charts below remain the analytical source of truth')
+    expect(page).toContain('GitHub Pages redeploys')
+    expect(page).not.toContain('GitHub to Vercel publication lane')
 
     expect(field).toContain("await import('three')")
     expect(field).toContain('prefers-reduced-motion: reduce')
