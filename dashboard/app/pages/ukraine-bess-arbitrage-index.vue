@@ -463,7 +463,7 @@ function pointsAttr(points: ChartPoint[]): string {
             <span>OREE rows</span>
             <span>LP dispatch</span>
             <span>GitHub JSON</span>
-            <span>Vercel page</span>
+            <span>Static page</span>
           </div>
         </div>
 
@@ -956,8 +956,8 @@ function pointsAttr(points: ChartPoint[]): string {
               <p class="bess-kicker">Methodology receipt</p>
               <h2>What this page can and cannot claim</h2>
               <p>
-                The public MVP is an autonomous GitHub to Vercel publication lane. GitHub
-                Actions scrapes and computes JSON; Vercel serves the committed artifact.
+                The public MVP is an autonomous GitHub Actions to GitHub Pages publication lane.
+                GitHub Actions scrapes and computes JSON; the static host serves the committed artifact.
               </p>
             </div>
           </div>
@@ -1000,9 +1000,10 @@ function pointsAttr(points: ChartPoint[]): string {
       <footer class="bess-footer-note bess-panel">
         <strong>Autonomous publication path:</strong>
         GitHub Actions publishes source-backed JSON under
-        <code>dashboard/public/data/bess-arbitrage-index</code>; Vercel redeploys the connected
-        static web app from Git pushes. The current workflow is scheduled for 05:35 UTC daily and
-        supports manual dispatch for same-day recovery. Vercel runtime writes are not required for v1.
+        <code>dashboard/public/data/bess-arbitrage-index</code>; GitHub Pages redeploys the
+        generated static dashboard after JSON updates. The current workflow is scheduled for
+        05:35 UTC daily and supports manual dispatch for same-day recovery. Vercel can be added
+        later as a connected mirror, but runtime writes are not required for v1.
       </footer>
     </div>
   </main>
