@@ -160,7 +160,7 @@ const IntroVisual: React.FC<{ progress: number; frame: number; fps: number }> = 
   frame,
   fps,
 }) => {
-  const pulse = spring({ frame, fps, config: { damping: 80, stiffness: 90 } });
+  const pulse = spring({ frame, fps, config: { damping: 70, stiffness: 80 } });
   const chartProgress = interpolate(progress, [0.08, 0.56], [0, 1], {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
@@ -168,42 +168,56 @@ const IntroVisual: React.FC<{ progress: number; frame: number; fps: number }> = 
   const path = pricePath(chartProgress);
 
   return (
-    <section style={visualStyle}>
-      <div style={marketPanelStyle}>
+    <section style={introStageStyle}>
+      <div style={introMarketCardStyle}>
         <div style={panelHeaderStyle}>
-          <span>DAM/IDM price context</span>
+          <span>DAM/IDM market signal</span>
           <span style={{ color: colors.lime }}>source-backed</span>
         </div>
-        <svg width="620" height="320" viewBox="0 0 780 360" style={{ overflow: "visible" }}>
-          <g opacity="0.32">
-            {[0, 1, 2, 3, 4].map((item) => (
+        <svg width="820" height="300" viewBox="0 0 820 300" style={{ overflow: "visible" }}>
+          <g opacity="0.34">
+            {[0, 1, 2, 3].map((item) => (
               <line
                 key={item}
-                x1="42"
-                x2="740"
-                y1={58 + item * 62}
-                y2={58 + item * 62}
+                x1="46"
+                x2="770"
+                y1={62 + item * 58}
+                y2={62 + item * 58}
                 stroke={colors.line}
                 strokeWidth="2"
               />
             ))}
           </g>
-          <path d={path} fill="none" stroke={colors.cyan} strokeLinecap="round" strokeWidth="8" />
-          <circle cx={80 + chartProgress * 630} cy={180 - Math.sin(chartProgress * 8) * 94} r="10" fill={colors.lime} />
+          <path
+            d={path}
+            fill="none"
+            stroke={colors.cyan}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="8"
+            transform="translate(8 -22) scale(1.05 0.88)"
+          />
+          <circle
+            cx={82 + chartProgress * 660}
+            cy={138 - Math.sin(chartProgress * 8) * 74}
+            r="11"
+            fill={colors.lime}
+          />
         </svg>
-        <div style={decisionRowStyle}>
-          <DecisionChip label="Charge" value="low-price hours" color={colors.amber} />
+        <div style={introDecisionRowStyle}>
+          <DecisionChip label="Charge" value="low-price review" color={colors.amber} />
           <DecisionChip label="Hold" value="weak evidence" color={colors.cyan} />
-          <DecisionChip label="Discharge" value="high-value hours" color={colors.lime} />
+          <DecisionChip label="Discharge" value="high-value review" color={colors.lime} />
         </div>
       </div>
-      <div style={batteryPanelStyle}>
-        <p style={cardEyebrowStyle}>Battery envelope</p>
-        <div style={batteryShellStyle}>
-          <div style={{ ...batteryFillStyle, height: `${54 + pulse * 14}%` }} />
-        </div>
-        <p style={bigNumberStyle}>SOC 57%</p>
-        <p style={smallTextStyle}>Recommendation preview only. The operator reviews before action.</p>
+      <div style={introFlowStyle}>
+        <IntroFlowStep index="1" title="Price context" body="official rows first; forecasts only for unpublished horizons" />
+        <IntroFlowStep
+          index="2"
+          title="Battery envelope"
+          body={`SOC ${Math.round(57 + pulse * 2)}%; physical limits stay visible`}
+        />
+        <IntroFlowStep index="3" title="Human review" body="recommendation preview, never a market command" />
       </div>
     </section>
   );
@@ -278,9 +292,7 @@ const BusinessVisual: React.FC<{ progress: number }> = ({ progress }) => {
 
   return (
     <section style={businessGridStyle}>
-      <div style={businessLeftStyle}>
-        <Img src={staticFile("assets/pipeline.png")} style={businessImageStyle} />
-      </div>
+      <PilotPath progress={progress} />
       <div style={businessCardsStyle}>
         {items.map(([title, body], index) => (
           <div
@@ -299,6 +311,61 @@ const BusinessVisual: React.FC<{ progress: number }> = ({ progress }) => {
         ))}
       </div>
     </section>
+  );
+};
+
+const IntroFlowStep: React.FC<{ index: string; title: string; body: string }> = ({
+  index,
+  title,
+  body,
+}) => (
+  <div style={introFlowStepStyle}>
+    <span style={introFlowIndexStyle}>{index}</span>
+    <div>
+      <p style={introFlowTitleStyle}>{title}</p>
+      <p style={introFlowBodyStyle}>{body}</p>
+    </div>
+  </div>
+);
+
+const PilotPath: React.FC<{ progress: number }> = ({ progress }) => {
+  const stages = [
+    ["Review now", "source-backed preview", "operator sees context, value, and abstention"],
+    ["Pilot next", "measured validation", "source quality and BESS constraints stay auditable"],
+    ["Scale later", "controlled operations", "execution remains behind explicit promotion gates"],
+  ];
+
+  return (
+    <div style={pilotPathStyle}>
+      <div style={pilotHeaderStyle}>
+        <span>Partner pilot path</span>
+        <span style={{ color: colors.lime }}>evidence-first</span>
+      </div>
+      <div style={pilotRailStyle}>
+        <div
+          style={{
+            ...pilotRailFillStyle,
+            width: `${interpolate(progress, [0.08, 0.72], [18, 100], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            })}%`,
+          }}
+        />
+      </div>
+      <div style={pilotStageGridStyle}>
+        {stages.map(([title, label, body], index) => (
+          <div key={title} style={pilotStageStyle}>
+            <span style={pilotStageNumberStyle}>{index + 1}</span>
+            <p style={pilotStageTitleStyle}>{title}</p>
+            <p style={pilotStageLabelStyle}>{label}</p>
+            <p style={pilotStageBodyStyle}>{body}</p>
+          </div>
+        ))}
+      </div>
+      <div style={pilotBoundaryStyle}>
+        near-term value: faster review / clearer evidence / safer abstention
+      </div>
+    </div>
   );
 };
 
@@ -506,13 +573,16 @@ const visualStyle: React.CSSProperties = {
   minHeight: 720,
 };
 
-const marketPanelStyle: React.CSSProperties = {
-  position: "absolute",
-  top: 0,
-  left: 0,
-  width: 700,
-  height: 518,
-  padding: 30,
+const introStageStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateRows: "1fr auto",
+  gap: 24,
+  minHeight: 700,
+};
+
+const introMarketCardStyle: React.CSSProperties = {
+  minHeight: 455,
+  padding: 32,
   border: "1px solid rgba(125,211,252,0.34)",
   borderRadius: 24,
   background: colors.panel,
@@ -534,6 +604,12 @@ const decisionRowStyle: React.CSSProperties = {
   gap: 12,
 };
 
+const introDecisionRowStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gap: 14,
+};
+
 const decisionChipStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -547,56 +623,50 @@ const decisionChipStyle: React.CSSProperties = {
   overflow: "hidden",
 };
 
-const batteryPanelStyle: React.CSSProperties = {
-  position: "absolute",
-  right: -20,
-  bottom: 48,
-  width: 286,
-  height: 408,
-  padding: 22,
-  border: "1px solid rgba(163,255,18,0.38)",
-  borderRadius: 28,
-  background: "rgba(10, 45, 34, 0.76)",
+const introFlowStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 14,
+  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
 };
 
-const batteryShellStyle: React.CSSProperties = {
-  position: "relative",
-  width: 98,
-  height: 190,
-  margin: "20px auto",
-  border: "8px solid rgba(232,248,255,0.72)",
-  borderRadius: 22,
-  overflow: "hidden",
+const introFlowStepStyle: React.CSSProperties = {
+  alignItems: "flex-start",
+  display: "grid",
+  gap: 14,
+  gridTemplateColumns: "42px 1fr",
+  minHeight: 128,
+  padding: 20,
+  border: "1px solid rgba(163,255,18,0.24)",
+  borderRadius: 20,
+  background: "rgba(6, 25, 40, 0.9)",
 };
 
-const batteryFillStyle: React.CSSProperties = {
-  position: "absolute",
-  left: 0,
-  right: 0,
-  bottom: 0,
-  background: `linear-gradient(180deg, ${colors.lime}, #0ea5e9)`,
-};
-
-const bigNumberStyle: React.CSSProperties = {
-  margin: "0 0 8px",
+const introFlowIndexStyle: React.CSSProperties = {
+  alignItems: "center",
+  background: "rgba(163,255,18,0.18)",
+  border: "1px solid rgba(163,255,18,0.42)",
+  borderRadius: "50%",
   color: colors.lime,
-  fontSize: 50,
-  fontWeight: 900,
+  display: "flex",
+  fontSize: 22,
+  fontWeight: 950,
+  height: 42,
+  justifyContent: "center",
+  width: 42,
 };
 
-const smallTextStyle: React.CSSProperties = {
+const introFlowTitleStyle: React.CSSProperties = {
+  margin: "0 0 6px",
+  color: colors.text,
+  fontSize: 23,
+  fontWeight: 950,
+};
+
+const introFlowBodyStyle: React.CSSProperties = {
   margin: 0,
   color: colors.muted,
-  fontSize: 20,
-  lineHeight: 1.3,
-};
-
-const cardEyebrowStyle: React.CSSProperties = {
-  margin: 0,
-  color: colors.lime,
-  fontSize: 22,
-  fontWeight: 900,
-  textTransform: "uppercase",
+  fontSize: 18,
+  lineHeight: 1.26,
 };
 
 const screenshotFrameStyle: React.CSSProperties = {
@@ -717,7 +787,8 @@ const evidenceImageGridStyle: React.CSSProperties = {
 const evidenceImageStyle: React.CSSProperties = {
   width: "100%",
   height: 250,
-  objectFit: "cover",
+  objectFit: "contain",
+  background: "rgba(4, 21, 34, 0.82)",
   border: "1px solid rgba(125,211,252,0.28)",
   borderRadius: 20,
 };
@@ -736,20 +807,115 @@ const businessLeftStyle: React.CSSProperties = {
   minHeight: 580,
 };
 
-const businessImageStyle: React.CSSProperties = {
-  width: "100%",
-  height: "100%",
-  objectFit: "cover",
+const businessCardsStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 14,
+  alignContent: "start",
 };
 
-const businessCardsStyle: React.CSSProperties = {
+const pilotPathStyle: React.CSSProperties = {
+  minHeight: 540,
+  padding: 26,
+  border: "1px solid rgba(125,211,252,0.32)",
+  borderRadius: 24,
+  background: colors.panel,
+  boxShadow: "0 26px 80px rgba(0,0,0,0.24)",
+};
+
+const pilotHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  color: colors.text,
+  fontSize: 24,
+  fontWeight: 900,
+  marginBottom: 20,
+};
+
+const pilotRailStyle: React.CSSProperties = {
+  height: 10,
+  borderRadius: 999,
+  background: "rgba(125,211,252,0.18)",
+  overflow: "hidden",
+  marginBottom: 20,
+};
+
+const pilotRailFillStyle: React.CSSProperties = {
+  height: "100%",
+  borderRadius: 999,
+  background: `linear-gradient(90deg, ${colors.lime}, ${colors.cyan})`,
+};
+
+const pilotStageGridStyle: React.CSSProperties = {
   display: "grid",
   gap: 18,
 };
 
+const pilotStageStyle: React.CSSProperties = {
+  display: "grid",
+  gap: 12,
+  gridTemplateColumns: "52px 1fr",
+  minHeight: 108,
+  padding: 18,
+  border: "1px solid rgba(125,211,252,0.24)",
+  borderRadius: 20,
+  background: "rgba(3, 15, 25, 0.58)",
+};
+
+const pilotStageNumberStyle: React.CSSProperties = {
+  alignItems: "center",
+  background: "rgba(125,211,252,0.15)",
+  border: "1px solid rgba(125,211,252,0.38)",
+  borderRadius: 18,
+  color: colors.lime,
+  display: "flex",
+  fontSize: 26,
+  fontWeight: 950,
+  height: 52,
+  justifyContent: "center",
+  width: 52,
+};
+
+const pilotStageTitleStyle: React.CSSProperties = {
+  gridColumn: "2 / 3",
+  gridRow: "1 / 2",
+  margin: 0,
+  color: colors.text,
+  fontSize: 25,
+  fontWeight: 950,
+};
+
+const pilotStageLabelStyle: React.CSSProperties = {
+  gridColumn: "2 / 3",
+  margin: "-6px 0 0",
+  color: colors.lime,
+  fontSize: 16,
+  fontWeight: 900,
+  textTransform: "uppercase",
+};
+
+const pilotStageBodyStyle: React.CSSProperties = {
+  gridColumn: "2 / 3",
+  margin: 0,
+  color: colors.muted,
+  fontSize: 18,
+  lineHeight: 1.26,
+};
+
+const pilotBoundaryStyle: React.CSSProperties = {
+  marginTop: 16,
+  padding: "13px 16px",
+  border: "1px solid rgba(163,255,18,0.32)",
+  borderRadius: 18,
+  background: "rgba(163,255,18,0.10)",
+  color: "#eaffd1",
+  fontSize: 17,
+  fontWeight: 900,
+};
+
 const businessCardStyle: React.CSSProperties = {
   position: "relative",
-  padding: "26px 26px 26px 82px",
+  minHeight: 118,
+  padding: "19px 22px 18px 68px",
   border: "1px solid rgba(163,255,18,0.26)",
   borderRadius: 20,
   background: "rgba(6, 25, 40, 0.88)",
@@ -757,8 +923,8 @@ const businessCardStyle: React.CSSProperties = {
 
 const businessIndexStyle: React.CSSProperties = {
   position: "absolute",
-  left: 24,
-  top: 28,
+  left: 21,
+  top: 19,
   color: colors.lime,
   fontSize: 28,
   fontWeight: 950,
@@ -767,14 +933,15 @@ const businessIndexStyle: React.CSSProperties = {
 const businessTitleStyle: React.CSSProperties = {
   margin: "0 0 4px",
   color: colors.text,
-  fontSize: 28,
+  fontSize: 24,
   fontWeight: 900,
 };
 
 const businessBodyStyle: React.CSSProperties = {
   margin: 0,
   color: colors.muted,
-  fontSize: 22,
+  fontSize: 21,
+  lineHeight: 1.32,
 };
 
 const closeStyle: React.CSSProperties = {
