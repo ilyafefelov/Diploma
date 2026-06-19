@@ -1155,6 +1155,29 @@ function setViewMode(mode: ViewMode) {
   viewMode.value = mode
 }
 
+function renderSceneNow() {
+  const objects = sceneObjects.value
+  if (!objects) {
+    return
+  }
+  frameCamera(objects)
+  objects.renderer.render(objects.scene, objects.camera)
+}
+
+function nudgeOrbit(direction: -1 | 1) {
+  if (viewMode.value === 'plan') {
+    viewMode.value = 'perspective'
+  }
+  interactionRotation = clamp(interactionRotation + direction * 0.085, -0.28, 0.28)
+  renderSceneNow()
+}
+
+function resetOrbit() {
+  interactionRotation = 0
+  interactionZoom = 0
+  renderSceneNow()
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
@@ -1318,6 +1341,32 @@ function formatUah(value: unknown): string {
         @click="setViewMode(option.id)"
       >
         {{ option.label }}
+      </button>
+    </div>
+    <div class="bess-field__orbit-controls" role="group" aria-label="Dispatch field orbit controls">
+      <button
+        type="button"
+        aria-label="Rotate dispatch field left"
+        title="Rotate left"
+        @click="nudgeOrbit(-1)"
+      >
+        <UIcon name="i-lucide-rotate-ccw" />
+      </button>
+      <button
+        type="button"
+        aria-label="Reset dispatch field view"
+        title="Reset view"
+        @click="resetOrbit"
+      >
+        <UIcon name="i-lucide-locate-fixed" />
+      </button>
+      <button
+        type="button"
+        aria-label="Rotate dispatch field right"
+        title="Rotate right"
+        @click="nudgeOrbit(1)"
+      >
+        <UIcon name="i-lucide-rotate-cw" />
       </button>
     </div>
     <div class="bess-field__legend" aria-hidden="true">
@@ -1625,6 +1674,57 @@ function formatUah(value: unknown): string {
 .bess-field__mode-toggle button:focus-visible {
   outline: 2px solid #0c7eb3;
   outline-offset: 2px;
+}
+
+.bess-field__orbit-controls {
+  position: absolute;
+  z-index: 9;
+  right: 18px;
+  bottom: 96px;
+  display: grid;
+  grid-template-columns: repeat(3, 25px);
+  gap: 5px;
+  border: 1px solid rgba(64, 129, 166, 0.11);
+  border-radius: 7px;
+  padding: 4px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(238, 250, 254, 0.38)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
+  background-size: auto, 10px 10px;
+  box-shadow:
+    0 8px 16px rgba(41, 111, 151, 0.055),
+    inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+}
+
+.bess-field__orbit-controls button {
+  display: grid;
+  min-width: 25px;
+  min-height: 25px;
+  place-items: center;
+  border: 1px solid rgba(12, 126, 179, 0.11);
+  border-radius: 5px;
+  padding: 0;
+  color: #0c7eb3;
+  background: rgba(255, 255, 255, 0.56);
+  cursor: pointer;
+}
+
+.bess-field__orbit-controls button:hover,
+.bess-field__orbit-controls button:focus-visible {
+  border-color: rgba(12, 126, 179, 0.28);
+  color: #075f91;
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(12, 126, 179, 0.09),
+    0 6px 12px rgba(41, 111, 151, 0.08);
+}
+
+.bess-field__orbit-controls svg,
+.bess-field__orbit-controls .iconify {
+  width: 13px;
+  height: 13px;
+  font-size: 13px;
 }
 
 .bess-field__legend {
@@ -2343,6 +2443,7 @@ function formatUah(value: unknown): string {
 
   .bess-field__scale,
   .bess-field__analysis-tape,
+  .bess-field__orbit-controls,
   .bess-field__crosshair {
     display: none;
   }
