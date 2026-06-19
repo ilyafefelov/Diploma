@@ -2002,31 +2002,76 @@ function formatUah(value: unknown): string {
 .bess-field__signal-stack {
   position: absolute;
   z-index: 6;
-  top: 74px;
-  left: 50%;
-  display: flex;
-  width: min(380px, calc(100% - 520px));
-  min-width: 300px;
-  gap: 5px;
-  transform: translateX(-50%);
+  inset: 72px 194px 118px 126px;
+  display: block;
+  min-width: 0;
+  pointer-events: none;
 }
 
 .bess-field__signal-stack button {
+  position: absolute;
+  left: var(--bess-marker-x);
+  top: var(--bess-marker-y);
   display: grid;
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 40px;
-  border: 1px solid rgba(64, 129, 166, 0.11);
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "label hour"
+    "value value";
+  align-items: center;
+  column-gap: 4px;
+  min-width: 58px;
+  max-width: 86px;
+  min-height: 28px;
+  border: 1px solid rgba(64, 129, 166, 0.16);
   border-radius: 7px;
-  padding: 6px 7px;
+  padding: 4px 5px 5px;
   color: #123552;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(241, 250, 253, 0.46)),
-    linear-gradient(90deg, rgba(64, 129, 166, 0.035) 1px, transparent 1px);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(236, 249, 254, 0.58)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
   background-size: auto, 12px 12px;
-  box-shadow: 0 6px 14px rgba(41, 111, 151, 0.04);
+  box-shadow:
+    0 7px 14px rgba(41, 111, 151, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.88);
   cursor: pointer;
+  opacity: 0.86;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    opacity 160ms ease,
+    transform 160ms ease;
   backdrop-filter: blur(10px);
+}
+
+.bess-field__signal-stack button::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 1px;
+  height: 9px;
+  background: rgba(12, 126, 179, 0.3);
+  transform: translateX(-50%);
+}
+
+.bess-field__signal-stack button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -17px;
+  width: 11px;
+  height: 11px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background:
+    radial-gradient(circle, currentColor 0 2px, rgba(255, 255, 255, 0.78) 2px 100%);
+  box-shadow:
+    0 0 0 6px rgba(12, 126, 179, 0.07),
+    0 0 0 12px rgba(12, 126, 179, 0.026);
+  opacity: 0.82;
+  transform: translateX(-50%);
 }
 
 .bess-field__signal-stack button:hover,
@@ -2035,7 +2080,8 @@ function formatUah(value: unknown): string {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(231, 247, 253, 0.58)),
     linear-gradient(90deg, rgba(64, 129, 166, 0.045) 1px, transparent 1px);
-  transform: translateY(-1px);
+  opacity: 1;
+  transform: translate(-50%, -58%) scale(1.06);
 }
 
 .bess-field__signal-stack button:focus-visible {
@@ -2053,33 +2099,38 @@ function formatUah(value: unknown): string {
 }
 
 .bess-field__signal-stack span {
+  grid-area: label;
   color: #55758c;
-  font-size: 8px;
+  font-size: 7px;
   font-weight: 900;
   line-height: 1;
   text-transform: uppercase;
 }
 
 .bess-field__signal-stack strong {
+  grid-area: hour;
   margin-top: 3px;
   color: #061b32;
   font-family: var(--bess-font-data, "Anonymous Pro", "Noto Sans Mono", "Noto Sans", monospace);
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 700;
   line-height: 1;
+  text-align: right;
 }
 
 .bess-field__signal-stack em {
+  grid-area: value;
   margin-top: 3px;
   color: #315c75;
   font-family: var(--bess-font-data, "Anonymous Pro", "Noto Sans Mono", "Noto Sans", monospace);
-  font-size: 9px;
+  font-size: 7.5px;
   font-style: normal;
   font-weight: 700;
   line-height: 1;
 }
 
 .bess-field__signal--peak {
+  color: #0b67a0;
   box-shadow:
     inset 2px 0 0 rgba(12, 126, 179, 0.58),
     0 6px 14px rgba(41, 111, 151, 0.04);
@@ -2087,12 +2138,20 @@ function formatUah(value: unknown): string {
 
 .bess-field__signal--valley,
 .bess-field__signal--charge {
+  color: #a76c08;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 247, 225, 0.62)),
+    linear-gradient(90deg, rgba(225, 168, 58, 0.07) 1px, transparent 1px);
   box-shadow:
     inset 2px 0 0 rgba(225, 179, 77, 0.62),
     0 6px 14px rgba(122, 82, 14, 0.035);
 }
 
 .bess-field__signal--discharge {
+  color: #0a7a63;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(228, 251, 245, 0.62)),
+    linear-gradient(90deg, rgba(26, 167, 131, 0.07) 1px, transparent 1px);
   box-shadow:
     inset 2px 0 0 rgba(27, 157, 126, 0.58),
     0 6px 14px rgba(32, 103, 145, 0.04);
@@ -2257,10 +2316,13 @@ function formatUah(value: unknown): string {
   display: grid;
   grid-template-columns: repeat(24, minmax(8px, 1fr));
   gap: 2px;
-  border: 1px solid rgba(64, 129, 166, 0.08);
+  border: 1px solid rgba(64, 129, 166, 0.12);
   border-radius: 7px;
-  padding: 4px;
-  background: rgba(255, 255, 255, 0.28);
+  padding: 5px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(233, 249, 254, 0.24)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
+  background-size: auto, 12px 12px;
   backdrop-filter: blur(8px);
 }
 
@@ -2269,7 +2331,7 @@ function formatUah(value: unknown): string {
   min-width: 0;
   min-height: 20px;
   place-items: center;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: 4px;
   padding: 0;
   color: #315c75;
@@ -2278,23 +2340,28 @@ function formatUah(value: unknown): string {
 }
 
 .bess-field__hour span {
+  color: inherit;
+  font-family: var(--bess-font-data, "Anonymous Pro", "Noto Sans Mono", "Noto Sans", monospace);
   font-size: 8px;
   font-weight: 900;
   line-height: 1;
 }
 
 .bess-field__hour--discharge {
+  color: #0a7a63;
   background: rgba(85, 188, 164, 0.28);
 }
 
 .bess-field__hour--charge {
+  color: #a76c08;
   background: rgba(239, 191, 83, 0.32);
 }
 
 .bess-field__hour.is-selected {
   box-shadow:
     0 0 0 1px #0a77a8,
-    0 6px 12px rgba(10, 119, 168, 0.12);
+    0 0 0 6px rgba(10, 119, 168, 0.08),
+    0 7px 14px rgba(10, 119, 168, 0.13);
   color: #061b32;
   background: rgba(255, 255, 255, 0.82);
 }
@@ -3095,5 +3162,110 @@ function formatUah(value: unknown): string {
     linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(236, 250, 253, 0.54)),
     linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
   background-size: auto, 12px 12px;
+}
+
+/* Final signal-callout override: keep the ripple pins and restore compact readable shortcut buttons. */
+.bess-field__signal-stack button {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "label hour"
+    "value value";
+  align-items: center;
+  column-gap: 4px;
+  width: auto;
+  min-width: 58px;
+  max-width: 92px;
+  height: auto;
+  min-height: 28px;
+  border-radius: 7px;
+  padding: 4px 6px 5px;
+  overflow: visible;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(236, 249, 254, 0.62)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.052) 1px, transparent 1px);
+  background-size: auto, 11px 11px;
+  box-shadow:
+    0 7px 14px rgba(32, 103, 145, 0.08),
+    0 0 0 1px rgba(10, 119, 168, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+  opacity: 0.86;
+}
+
+.bess-field__signal-stack button::before {
+  position: absolute;
+  left: 50%;
+  bottom: -9px;
+  width: 1px;
+  height: 9px;
+  border-radius: 0;
+  background: rgba(12, 126, 179, 0.34);
+  box-shadow: none;
+  transform: translateX(-50%);
+}
+
+.bess-field__signal-stack button::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -18px;
+  width: 10px;
+  height: 10px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 0;
+  background:
+    radial-gradient(circle, currentColor 0 2px, rgba(255, 255, 255, 0.86) 2px 100%);
+  box-shadow:
+    0 0 0 6px rgba(10, 119, 168, 0.07),
+    0 0 0 13px rgba(10, 119, 168, 0.025);
+  opacity: 0.88;
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.bess-field__signal-stack button:hover,
+.bess-field__signal-stack button.is-selected {
+  opacity: 1;
+  transform: translate(-50%, -58%) scale(1.05);
+}
+
+.bess-field__signal-stack button:hover::after,
+.bess-field__signal-stack button.is-selected::after,
+.bess-field__signal-stack button:focus-visible::after {
+  transform: translateX(-50%);
+}
+
+.bess-field__signal-stack span,
+.bess-field__signal-stack strong,
+.bess-field__signal-stack em {
+  position: static;
+  display: block;
+  width: auto;
+  height: auto;
+  overflow: hidden;
+  clip-path: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bess-field__signal-stack span {
+  grid-area: label;
+  color: #55758c;
+  font-size: 6.8px;
+}
+
+.bess-field__signal-stack strong {
+  grid-area: hour;
+  color: #061b32;
+  font-size: 8.4px;
+  text-align: right;
+}
+
+.bess-field__signal-stack em {
+  grid-area: value;
+  max-width: 80px;
+  color: #315c75;
+  font-size: 7.2px;
 }
 </style>

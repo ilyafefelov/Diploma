@@ -154,8 +154,17 @@ describe('public BESS narrative architecture', () => {
     expect(css).toContain('grid-template-columns: minmax(340px, 0.74fr) minmax(480px, 1.05fr) minmax(250px, 0.45fr)')
     expect(css).toContain('@container bess-lead-funnel (max-width: 980px)')
     expect(css).toContain('contain: layout style paint')
+    expect(css).toContain('Dispatch evidence theatre pass: align the 3D field, compact figure, and full receipt graph into one marker language.')
+    expect(css).toContain('container: bess-dispatch-proof / inline-size')
+    expect(css).toContain('grid-template-columns: minmax(760px, 1fr) minmax(260px, 0.31fr)')
+    expect(css).toContain('height: 372px')
+    expect(css).toContain('minmax(680px, 1.28fr) minmax(300px, 0.4fr) minmax(330px, 0.44fr)')
     expect(field).toContain('container-name: bess-field')
     expect(field).toContain('@container bess-field')
+    expect(field).toContain('left: var(--bess-marker-x)')
+    expect(field).toContain('top: var(--bess-marker-y)')
+    expect(field).toContain('box-shadow:')
+    expect(field).toContain('0 0 0 6px rgba(10, 119, 168, 0.08)')
   })
 
   it('keeps the public page on the selected retro academic font system', () => {
