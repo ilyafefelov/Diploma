@@ -1,0 +1,17 @@
+{
+  "claim_boundary": "public_forecast_challenge_not_market_execution",
+  "generated_at": "2026-06-18T19:57:35.275938+00:00",
+  "market_execution_enabled": false,
+  "models": [],
+  "proposed_bid_status": "not_emitted",
+  "schema_version": "ukraine_bess_forecast_challenge.v1",
+  "source": {
+    "blocker": "No module named 'httpx'",
+    "blocker_type": "ModuleNotFoundError",
+    "history_row_count": 0,
+    "source_scope": "source_backed_observed_oree_history_only",
+    "source_status": "blocked_no_complete_history",
+    "training_cutoff": null
+  },
+  "target_delivery_date": "2026-06-19"
+}

@@ -24,6 +24,9 @@ checkpoints/
 
 # Local data and generated analysis
 data/
+!dashboard/public/data/
+!dashboard/public/data/bess-arbitrage-index/
+!dashboard/public/data/bess-arbitrage-index/**
 analysis_outputs/
 output/
 outputs/
@@ -49,6 +52,9 @@ docs\agents.md
 .codex/
 .code/
 .github/
+!.github/
+!.github/workflows/
+!.github/workflows/*.yml
 .codex-remote-attachments/
 .obsidian/
 master_execution_prompt.md

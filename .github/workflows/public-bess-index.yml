@@ -1,0 +1,101 @@
+name: Publish public BESS index
+
+on:
+  schedule:
+    - cron: "35 5 * * *"
+  workflow_dispatch:
+    inputs:
+      delivery_date:
+        description: "Optional realized index delivery date, YYYY-MM-DD"
+        required: false
+        type: string
+      target_delivery_date:
+        description: "Optional forecast challenge target date, YYYY-MM-DD"
+        required: false
+        type: string
+      fail_on_fetch_error:
+        description: "Fail instead of preserving previous JSON when OREE fetch is unavailable"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-bess-index-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-public-json:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: src
+      OUTPUT_DIR: dashboard/public/data/bess-arbitrage-index
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Resolve Kyiv publication dates
+        id: dates
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "delivery_date=$(TZ=Europe/Kyiv date -d 'yesterday' +%F)" >> "$GITHUB_OUTPUT"
+          echo "target_delivery_date=$(TZ=Europe/Kyiv date -d 'tomorrow' +%F)" >> "$GITHUB_OUTPUT"
+
+      - name: Materialize realized BESS index
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--output-dir "$OUTPUT_DIR" --delivery-date "${{ steps.dates.outputs.delivery_date }}")
+          if [ -n "${{ github.event.inputs.delivery_date || '' }}" ]; then
+            args+=(--delivery-date "${{ github.event.inputs.delivery_date }}")
+          fi
+          if [ "${{ github.event.inputs.fail_on_fetch_error || false }}" = "true" ]; then
+            args+=(--fail-on-fetch-error)
+          fi
+          uv run --no-project \
+            --with cvxpy \
+            --with httpx \
+            --with beautifulsoup4 \
+            python scripts/materialize_public_bess_arbitrage_index.py "${args[@]}"
+
+      - name: Materialize forecast challenge
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=(--output-dir "$OUTPUT_DIR" --history-days 10 --target-delivery-date "${{ steps.dates.outputs.target_delivery_date }}")
+          if [ -n "${{ github.event.inputs.target_delivery_date || '' }}" ]; then
+            args+=(--target-delivery-date "${{ github.event.inputs.target_delivery_date }}")
+          fi
+          if [ "${{ github.event.inputs.fail_on_fetch_error || false }}" = "true" ]; then
+            args+=(--fail-on-fetch-error)
+          fi
+          uv run --no-project \
+            --with httpx \
+            --with beautifulsoup4 \
+            python scripts/materialize_public_forecast_challenge.py "${args[@]}"
+
+      - name: Commit public JSON changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git status --short "$OUTPUT_DIR"
+          if [ -z "$(git status --porcelain "$OUTPUT_DIR")" ]; then
+            echo "No public BESS JSON changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f "$OUTPUT_DIR"
+          git commit -m "Update public BESS index data"
+          git push origin "HEAD:${{ github.ref_name }}"

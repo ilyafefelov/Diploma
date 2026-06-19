@@ -1,0 +1,16 @@
+{
+  "claim_boundary": "public_forecast_challenge_not_market_execution",
+  "generated_at": "2026-06-18T19:57:35.275938+00:00",
+  "market_execution_enabled": false,
+  "metrics": [
+    "mae_uah_mwh",
+    "rmse_uah_mwh",
+    "dispatch_regret_uah",
+    "value_capture_ratio"
+  ],
+  "proposed_bid_status": "not_emitted",
+  "row_count": 0,
+  "rows": [],
+  "schema_version": "ukraine_bess_forecast_scoreboard.v1",
+  "score_status": "pending_realized_forecast_pairs"
+}
