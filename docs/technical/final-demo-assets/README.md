@@ -13,18 +13,18 @@ README-facing assets:
 | --- | --- |
 | `operator-preview-desktop.png` | Root README hero and `/operator` proof surface |
 | `project-intro-poster.png` | Root README thumbnail for the English intro video |
-| `project-intro.mp4` | 42-second English concept-to-product intro with local voiceover |
+| `project-intro.mp4` | 42-second English concept-to-product intro with OpenAI TTS voiceover |
+| `defense-dashboard-desktop.png` | Root README evidence-surface screenshot for `/defense` |
+| `operator-preview-mobile.png` | Mobile layout check and optional reviewer context |
 
 The root README links the poster to the GitHub Pages player at
 `docs/project-intro/index.html`; the MP4 remains a small tracked visual
 documentation artifact, not execution evidence.
-| `defense-dashboard-desktop.png` | Root README evidence-surface screenshot for `/defense` |
-| `operator-preview-mobile.png` | Mobile layout check and optional reviewer context |
 
-The intro video source lives in `project-intro-hyperframes/`. The voiceover was
-generated locally with HyperFrames/Kokoro because no `OPENAI_API_KEY` was
-available in the local shell; the narration is English and stays within the
-same no-execution claim boundary as the README.
+The intro video source lives in `project-intro-hyperframes/`. The voiceover is
+English narration generated with the OpenAI Speech API (`cedar` voice) from the
+tracked script text. It stays within the same no-execution claim boundary as
+the README.
 
 Additional README visuals are reused from tracked thesis assets under
 `docs/thesis/chapters/assets/`; do not duplicate them here unless a future
