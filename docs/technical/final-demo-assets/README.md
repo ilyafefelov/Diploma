@@ -2,17 +2,25 @@
 
 Date: 2026-06-16
 
-This folder stores small, tracked screenshots used by the root README and final
-defense runbook. These images are visual documentation only; they do not change
-the evidence status, model promotion status, or market-execution boundary.
+This folder stores small, tracked screenshots and a short intro video used by
+the root README and final defense runbook. These assets are visual
+documentation only; they do not change the evidence status, model promotion
+status, or market-execution boundary.
 
 README-facing assets:
 
 | File | Use |
 | --- | --- |
 | `operator-preview-desktop.png` | Root README hero and `/operator` proof surface |
+| `project-intro-poster.png` | Root README thumbnail for the English intro video |
+| `project-intro.mp4` | 42-second English concept-to-product intro with local voiceover |
 | `defense-dashboard-desktop.png` | Root README evidence-surface screenshot for `/defense` |
 | `operator-preview-mobile.png` | Mobile layout check and optional reviewer context |
+
+The intro video source lives in `project-intro-hyperframes/`. The voiceover was
+generated locally with HyperFrames/Kokoro because no `OPENAI_API_KEY` was
+available in the local shell; the narration is English and stays within the
+same no-execution claim boundary as the README.
 
 Additional README visuals are reused from tracked thesis assets under
 `docs/thesis/chapters/assets/`; do not duplicate them here unless a future

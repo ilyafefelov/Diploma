@@ -28,7 +28,12 @@ function Invoke-AuditStep {
 }
 
 function Test-GeneratedArtifactsNotTracked {
-  $tracked = @(
+  $allowedGitHubWorkflowFiles = @(
+    ".github/workflows/dashboard-pages.yml",
+    ".github/workflows/public-bess-index.yml"
+  )
+
+  $tracked = @(@(
     git ls-files `
       outputs `
       output `
@@ -54,7 +59,10 @@ function Test-GeneratedArtifactsNotTracked {
       dashboard/.nuxt `
       dashboard/.output `
       dashboard/.vercel | Where-Object { $_ }
-  )
+  ) | Where-Object {
+    $normalized = $_ -replace "\\", "/"
+    -not ($allowedGitHubWorkflowFiles -contains $normalized)
+  })
 
   if ($tracked.Count -gt 0) {
     $preview = $tracked | Select-Object -First 25

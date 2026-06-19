@@ -10,6 +10,14 @@ trading bot, not a market-submission engine, and not production dispatch.
 
 ![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
 
+Watch the 42-second English intro video:
+
+[![Project intro video poster](docs/technical/final-demo-assets/project-intro-poster.png)](docs/technical/final-demo-assets/project-intro.mp4)
+
+The video introduces the concept first, then the product surface: source-backed
+DAM/IDM operator preview, read-model evidence, deterministic boundaries, and no
+market execution.
+
 Open first during a live review:
 
 1. `/operator` for the primary demo surface.

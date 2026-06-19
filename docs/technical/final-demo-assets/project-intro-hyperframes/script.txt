@@ -1,0 +1,7 @@
+Energy storage can create value when prices move hour by hour.
+But a battery operator should not receive a black-box trading command.
+This project builds a source-backed DAM and IDM hourly recommendation preview.
+The stack connects OREE price context, forecast rows, deterministic LP evidence, FastAPI read models, and a Nuxt operator dashboard.
+The operator sees schedule candidates, regret evidence, readiness gates, and explicit no-execution boundaries.
+The repository proves the software product and the experimental method: not market execution, not a ProposedBid, and not autonomous dispatch.
+Open the operator dashboard, the defense dashboard, and FastAPI docs to review the product path.

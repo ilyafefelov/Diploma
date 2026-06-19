@@ -55,6 +55,9 @@ docs\agents.md
 !.github/
 !.github/workflows/
 !.github/workflows/*.yml
+.github/CODEOWNERS
+.github/workflows/final-repo-audit.yml
+.github/workflows/hf-value-aligned-shadow-browser-smoke.yml
 .codex-remote-attachments/
 .obsidian/
 master_execution_prompt.md
