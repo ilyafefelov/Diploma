@@ -506,6 +506,77 @@ const dispatchActivePoint = computed(() => {
   return svg.points[index]
 })
 
+const dispatchChartMarkers = computed(() => {
+  const svg = dispatchSvg.value
+  if (!svg || svg.points.length === 0) {
+    return []
+  }
+  const points = svg.points
+  let peakIndex = 0
+  let lowIndex = 0
+  let moveIndex = 0
+  let peakPrice = -Infinity
+  let lowPrice = Infinity
+  let largestMove = -Infinity
+
+  points.forEach((point, index) => {
+    if (point.price > peakPrice) {
+      peakPrice = point.price
+      peakIndex = index
+    }
+    if (point.price < lowPrice) {
+      lowPrice = point.price
+      lowIndex = index
+    }
+    const move = Math.abs(point.power)
+    if (move > largestMove) {
+      largestMove = move
+      moveIndex = index
+    }
+  })
+
+  const used = new Set<number>()
+  const markers: Array<{
+    key: string
+    label: string
+    value: string
+    index: number
+    tone: string
+    style: Record<string, string>
+  }> = []
+  const addMarker = (key: string, label: string, index: number, value: string, tone: string) => {
+    if (used.has(index)) {
+      return
+    }
+    used.add(index)
+    const point = points[index]
+    if (!point) {
+      return
+    }
+    const x = (point.x / svg.width) * 100
+    const y = Math.max(8, Math.min(74, (point.priceY / svg.height) * 100 - 10))
+    markers.push({
+      key,
+      label,
+      value,
+      index,
+      tone,
+      style: {
+        '--bess-marker-left': `${x}%`,
+        '--bess-marker-top': `${y}%`
+      }
+    })
+  }
+
+  const peakPoint = points[peakIndex]
+  const lowPoint = points[lowIndex]
+  const movePoint = points[moveIndex]
+  addMarker('peak-price', 'Peak', peakIndex, `${formatNumber(peakPoint?.price, 0)} UAH`, 'peak')
+  addMarker('low-price', 'Low', lowIndex, `${formatNumber(lowPoint?.price, 0)} UAH`, 'low')
+  addMarker('largest-move', 'Move', moveIndex, formatMw(movePoint?.power), (movePoint?.power ?? 0) < 0 ? 'charge' : 'discharge')
+  return markers
+})
+
 const socSvg = computed(() => {
   const rows = selectedSchedule.value
   if (rows.length === 0) {
@@ -1052,6 +1123,24 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
 
           <div v-if="dispatchSvg" class="bess-concept-chart-wrap">
+            <div class="bess-chart-marker-layer bess-chart-marker-layer--compact" aria-label="Key dispatch hour shortcuts">
+              <button
+                v-for="marker in dispatchChartMarkers"
+                :key="`compact-marker-${marker.key}`"
+                type="button"
+                :class="['bess-chart-marker', `bess-chart-marker--${marker.tone}`, { 'is-active': dispatchActiveIndex === marker.index }]"
+                :style="marker.style"
+                :aria-pressed="dispatchActiveIndex === marker.index"
+                :aria-label="`${marker.label} hour ${dispatchSvg.points[marker.index]?.hour || ''}: ${marker.value}`"
+                @pointerenter="selectDispatchPoint(marker.index)"
+                @focus="selectDispatchPoint(marker.index)"
+                @click="selectDispatchPoint(marker.index)"
+              >
+                <span>{{ marker.label }}</span>
+                <strong>{{ dispatchSvg.points[marker.index]?.hour }}</strong>
+                <em>{{ marker.value }}</em>
+              </button>
+            </div>
             <svg
               class="bess-chart bess-svg-chart bess-svg-chart--compact"
               :viewBox="`0 0 ${dispatchSvg.width} ${dispatchSvg.height}`"
@@ -1286,6 +1375,24 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
 
           <div v-if="dispatchSvg" class="bess-chart-wrap">
+            <div class="bess-chart-marker-layer" aria-label="Key dispatch hour shortcuts">
+              <button
+                v-for="marker in dispatchChartMarkers"
+                :key="`marker-${marker.key}`"
+                type="button"
+                :class="['bess-chart-marker', `bess-chart-marker--${marker.tone}`, { 'is-active': dispatchActiveIndex === marker.index }]"
+                :style="marker.style"
+                :aria-pressed="dispatchActiveIndex === marker.index"
+                :aria-label="`${marker.label} hour ${dispatchSvg.points[marker.index]?.hour || ''}: ${marker.value}`"
+                @pointerenter="selectDispatchPoint(marker.index)"
+                @focus="selectDispatchPoint(marker.index)"
+                @click="selectDispatchPoint(marker.index)"
+              >
+                <span>{{ marker.label }}</span>
+                <strong>{{ dispatchSvg.points[marker.index]?.hour }}</strong>
+                <em>{{ marker.value }}</em>
+              </button>
+            </div>
             <svg
               class="bess-chart bess-svg-chart"
               :viewBox="`0 0 ${dispatchSvg.width} ${dispatchSvg.height}`"

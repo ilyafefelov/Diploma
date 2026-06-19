@@ -6233,3 +6233,176 @@
 .bess-public-shell--narrative .bess-legend-line--soc {
   background: #1aa783;
 }
+
+/* Chart marker pass: restore compact peak/low/move buttons without cluttering the evidence graph. */
+.bess-public-shell--narrative .bess-chart-wrap,
+.bess-public-shell--narrative .bess-concept-chart-wrap {
+  position: relative;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.bess-public-shell--narrative .bess-chart-marker {
+  position: absolute;
+  left: var(--bess-marker-left);
+  top: var(--bess-marker-top);
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "label hour"
+    "value value";
+  align-items: center;
+  column-gap: 4px;
+  min-width: 54px;
+  max-width: 86px;
+  min-height: 26px;
+  border: 1px solid rgba(12, 126, 179, 0.22);
+  border-radius: 6px;
+  padding: 3px 5px 4px;
+  color: #0c3f6f;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(232, 249, 255, 0.72)),
+    linear-gradient(90deg, rgba(12, 126, 179, 0.08), transparent);
+  box-shadow:
+    0 8px 16px rgba(24, 89, 122, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  font-family: var(--bess-font-data);
+  line-height: 1;
+  opacity: 0.88;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.bess-public-shell--narrative .bess-chart-marker::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 1px;
+  height: 8px;
+  background: rgba(12, 126, 179, 0.28);
+  transform: translateX(-50%);
+}
+
+.bess-public-shell--narrative .bess-chart-marker::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -13px;
+  width: 8px;
+  height: 8px;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 0 0 5px rgba(12, 126, 179, 0.08);
+  opacity: 0.8;
+  transform: translateX(-50%);
+}
+
+.bess-public-shell--narrative .bess-chart-marker span {
+  grid-area: label;
+  font-size: 7.5px;
+  font-weight: 840;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.bess-public-shell--narrative .bess-chart-marker strong {
+  grid-area: hour;
+  font-size: 9px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.bess-public-shell--narrative .bess-chart-marker em {
+  grid-area: value;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 740;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bess-public-shell--narrative .bess-chart-marker:hover,
+.bess-public-shell--narrative .bess-chart-marker:focus-visible,
+.bess-public-shell--narrative .bess-chart-marker.is-active {
+  z-index: 2;
+  border-color: rgba(12, 126, 179, 0.46);
+  opacity: 1;
+  outline: none;
+  box-shadow:
+    0 10px 18px rgba(24, 89, 122, 0.13),
+    0 0 0 4px rgba(12, 126, 179, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+  transform: translate(-50%, -54%) scale(1.04);
+}
+
+.bess-public-shell--narrative .bess-chart-marker--peak {
+  color: #0b67a0;
+  border-color: rgba(12, 126, 179, 0.28);
+}
+
+.bess-public-shell--narrative .bess-chart-marker--low,
+.bess-public-shell--narrative .bess-chart-marker--charge {
+  color: #a76c08;
+  border-color: rgba(225, 168, 58, 0.38);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 247, 225, 0.78)),
+    linear-gradient(90deg, rgba(225, 168, 58, 0.12), transparent);
+}
+
+.bess-public-shell--narrative .bess-chart-marker--discharge {
+  color: #0a7a63;
+  border-color: rgba(26, 167, 131, 0.32);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(228, 251, 245, 0.78)),
+    linear-gradient(90deg, rgba(26, 167, 131, 0.12), transparent);
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker {
+  min-width: 48px;
+  min-height: 23px;
+  padding: 2px 4px 3px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker span {
+  font-size: 7px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker strong {
+  font-size: 8px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker em {
+  font-size: 7.5px;
+}
+
+.bess-public-shell--narrative .bess-svg-label--hour {
+  fill: #0b67a0;
+  font-family: var(--bess-font-data);
+  font-size: 10.5px;
+  font-weight: 860;
+}
+
+.bess-public-shell--narrative .bess-svg-hit:hover + .bess-svg-hit,
+.bess-public-shell--narrative .bess-svg-active .bess-svg-active-point {
+  filter: drop-shadow(0 0 8px rgba(12, 126, 179, 0.22));
+}
+
+@media (max-width: 760px) {
+  .bess-public-shell--narrative .bess-chart-marker-layer {
+    display: none;
+  }
+}
