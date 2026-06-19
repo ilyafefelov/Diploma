@@ -10,9 +10,9 @@ trading bot, not a market-submission engine, and not production dispatch.
 
 ![Operator preview dashboard](docs/technical/final-demo-assets/operator-preview-desktop.png)
 
-Watch the 42-second English intro video:
+Watch the 42-second English intro video on GitHub Pages:
 
-[![Project intro video poster](docs/technical/final-demo-assets/project-intro-poster.png)](docs/technical/final-demo-assets/project-intro.mp4)
+[![Project intro video poster](docs/technical/final-demo-assets/project-intro-poster.png)](https://ilyafefelov.github.io/Diploma/project-intro/)
 
 The video introduces the concept first, then the product surface: source-backed
 DAM/IDM operator preview, read-model evidence, deterministic boundaries, and no

@@ -14,6 +14,10 @@ README-facing assets:
 | `operator-preview-desktop.png` | Root README hero and `/operator` proof surface |
 | `project-intro-poster.png` | Root README thumbnail for the English intro video |
 | `project-intro.mp4` | 42-second English concept-to-product intro with local voiceover |
+
+The root README links the poster to the GitHub Pages player at
+`docs/project-intro/index.html`; the MP4 remains a small tracked visual
+documentation artifact, not execution evidence.
 | `defense-dashboard-desktop.png` | Root README evidence-surface screenshot for `/defense` |
 | `operator-preview-mobile.png` | Mobile layout check and optional reviewer context |
 
