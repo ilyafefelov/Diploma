@@ -5,7 +5,7 @@
   "scripts": {
     "prepare-assets": "node scripts/prepare-assets.mjs",
     "render:silent": "npm run prepare-assets && remotion render src/index.ts ProjectIntro ../../docs/technical/final-demo-assets/project-intro.silent.mp4 --codec=h264 --concurrency=2 --overwrite",
-    "poster": "npm run prepare-assets && remotion still src/index.ts ProjectIntro ../../docs/technical/final-demo-assets/project-intro-poster.png --frame=90 --overwrite",
+    "poster": "npm run prepare-assets && remotion still src/index.ts ProjectIntroPoster ../../docs/technical/final-demo-assets/project-intro-poster.png --frame=90 --overwrite",
     "mux": "node scripts/mux-audio.mjs",
     "build": "npm run render:silent && npm run mux && npm run poster",
     "check": "tsc --noEmit"

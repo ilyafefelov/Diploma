@@ -59,6 +59,25 @@ export const ProjectIntro: React.FC = () => {
   );
 };
 
+export const ProjectIntroPoster: React.FC = () => {
+  return (
+    <>
+      <ProjectIntro />
+      <PosterPlayOverlay />
+    </>
+  );
+};
+
+const PosterPlayOverlay: React.FC = () => {
+  return (
+    <AbsoluteFill style={posterOverlayStyle}>
+      <div style={posterPlayButtonStyle}>
+        <div style={posterPlayTriangleStyle} />
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 const activeScene = (time: number): SceneConfig => {
   return scenes.find((scene) => time >= scene.start && time < scene.end) ?? scenes[scenes.length - 1];
 };
@@ -379,6 +398,37 @@ const rootStyle: React.CSSProperties = {
   color: colors.text,
   fontFamily: "Inter, Segoe UI, Arial, sans-serif",
   overflow: "hidden",
+};
+
+const posterOverlayStyle: React.CSSProperties = {
+  alignItems: "center",
+  display: "flex",
+  justifyContent: "center",
+  pointerEvents: "none",
+  zIndex: 30,
+};
+
+const posterPlayButtonStyle: React.CSSProperties = {
+  alignItems: "center",
+  backdropFilter: "blur(10px)",
+  background:
+    "linear-gradient(135deg, rgba(163,255,18,0.92), rgba(125,211,252,0.92))",
+  border: "5px solid rgba(244,251,255,0.88)",
+  borderRadius: "50%",
+  boxShadow: "0 28px 90px rgba(0,0,0,0.46), 0 0 0 20px rgba(244,251,255,0.08)",
+  display: "flex",
+  height: 210,
+  justifyContent: "center",
+  width: 210,
+};
+
+const posterPlayTriangleStyle: React.CSSProperties = {
+  borderBottom: "48px solid transparent",
+  borderLeft: "76px solid #061521",
+  borderTop: "48px solid transparent",
+  height: 0,
+  marginLeft: 16,
+  width: 0,
 };
 
 const chromeStyle: React.CSSProperties = {

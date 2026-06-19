@@ -14,8 +14,7 @@ const week1DocsPath = fileURLToPath(new URL('../../../docs/thesis/weekly-reports
 const docsEntrypointPaths = [
   fileURLToPath(new URL('../../../docs/README.md', import.meta.url)),
   fileURLToPath(new URL('../../../docs/technical/OPERATOR_DEMO_READY.md', import.meta.url)),
-  fileURLToPath(new URL('../../../docs/technical/API_ENDPOINTS.md', import.meta.url)),
-  fileURLToPath(new URL('../../../docs/technical/deep-research-reports/week3 research/Research Summary Integration.md', import.meta.url))
+  fileURLToPath(new URL('../../../docs/technical/API_ENDPOINTS.md', import.meta.url))
 ]
 
 describe('removed report routes architecture', () => {

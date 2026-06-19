@@ -1,6 +1,6 @@
 import React from "react";
 import { Composition } from "remotion";
-import { ProjectIntro } from "./video";
+import { ProjectIntro, ProjectIntroPoster } from "./video";
 
 export const FPS = 30;
 export const WIDTH = 1920;
@@ -9,13 +9,23 @@ export const DURATION_SECONDS = 126;
 
 export const RemotionRoot: React.FC = () => {
   return (
-    <Composition
-      id="ProjectIntro"
-      component={ProjectIntro}
-      durationInFrames={DURATION_SECONDS * FPS}
-      fps={FPS}
-      height={HEIGHT}
-      width={WIDTH}
-    />
+    <>
+      <Composition
+        id="ProjectIntro"
+        component={ProjectIntro}
+        durationInFrames={DURATION_SECONDS * FPS}
+        fps={FPS}
+        height={HEIGHT}
+        width={WIDTH}
+      />
+      <Composition
+        id="ProjectIntroPoster"
+        component={ProjectIntroPoster}
+        durationInFrames={DURATION_SECONDS * FPS}
+        fps={FPS}
+        height={HEIGHT}
+        width={WIDTH}
+      />
+    </>
   );
 };
