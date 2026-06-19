@@ -20,9 +20,11 @@ Open first during a live review:
 1. `/operator` for the primary demo surface.
 2. `/defense` for evidence and explanation panels.
 3. FastAPI `/docs` for read-model endpoint contracts.
-4. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
+4. [Published thesis paper](https://docs.google.com/document/d/e/2PACX-1vTlKZCfuUzw-e_khUYXPo8d86tnCZuGOriLbKMNqYJ9fjrFyDb2FrBZ99GmT06ba6oXK9AehyLn7yLu/pub)
+   for the full academic write-up.
+5. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
    for the 50-point software/experimental rubric.
-5. [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md)
+6. [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md)
    for the exact fallback path if the live stack is unavailable.
 
 ## Table Of Contents
