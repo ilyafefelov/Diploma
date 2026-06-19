@@ -7,8 +7,11 @@ const SVG_WIDTH = 760
 const SVG_HEIGHT = 300
 const SVG_MARGIN = { top: 24, right: 26, bottom: 34, left: 58 }
 const SERIES_COLORS = ['#0c7eb3', '#76b82a', '#164260', '#b25e09']
+const runtimeConfig = useRuntimeConfig()
+const appBaseURL = String(runtimeConfig.app.baseURL || '/')
 
 const { data: forecastData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/forecast/latest.json', {
+  baseURL: appBaseURL,
   key: 'public-bess-forecast-latest',
   server: false,
   default: () => ({ models: [] })
