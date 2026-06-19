@@ -6937,3 +6937,183 @@
     display: none;
   }
 }
+
+/* Data-theatre refinement: unify the first viewport into one academic instrument panel. */
+@media (min-width: 1181px) {
+  .bess-public-shell--narrative .bess-narrative-hero {
+    position: relative;
+    isolation: isolate;
+  }
+
+  .bess-public-shell--narrative .bess-narrative-hero::before {
+    content: "";
+    position: absolute;
+    inset: 72px -7px -7px 30%;
+    z-index: -1;
+    border: 1px solid rgba(64, 129, 166, 0.09);
+    border-radius: 9px;
+    background:
+      linear-gradient(90deg, rgba(64, 129, 166, 0.028) 1px, transparent 1px),
+      linear-gradient(0deg, rgba(64, 129, 166, 0.024) 1px, transparent 1px),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(229, 247, 253, 0.18));
+    background-size: 24px 24px, 24px 24px, auto;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.72),
+      0 18px 42px rgba(24, 89, 122, 0.035);
+    pointer-events: none;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage {
+    padding-inline: 3px;
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    border-color: rgba(12, 126, 179, 0.28);
+    box-shadow:
+      0 14px 30px rgba(24, 89, 122, 0.065),
+      0 0 0 1px rgba(255, 255, 255, 0.84),
+      inset 0 0 0 1px rgba(115, 190, 220, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  }
+
+  .bess-public-shell--narrative .bess-hero-stage .bess-field::after {
+    content: "";
+    position: absolute;
+    inset: auto 28px 62px 74px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(12, 126, 179, 0.35), rgba(225, 179, 77, 0.2), transparent);
+    filter: blur(0.2px);
+    opacity: 0.8;
+    pointer-events: none;
+  }
+
+  .bess-public-shell--narrative .bess-kpi-rail {
+    margin-block-start: 34px;
+  }
+
+  .bess-field__orbit-controls {
+    right: 16px;
+    bottom: 112px;
+    grid-template-columns: repeat(3, 28px);
+    gap: 4px;
+    padding: 4px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(236, 250, 254, 0.44)),
+      linear-gradient(90deg, rgba(64, 129, 166, 0.055) 1px, transparent 1px);
+    background-size: auto, 10px 10px;
+  }
+
+  .bess-field__orbit-controls button {
+    min-width: 28px;
+    min-height: 28px;
+  }
+
+  .bess-field__orbit-controls svg,
+  .bess-field__orbit-controls .iconify {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+  }
+
+  .bess-field__signal-stack button {
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+
+  .bess-field__signal-stack button:hover,
+  .bess-field__signal-stack button.is-selected {
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+
+  .bess-field__signal-stack button::after {
+    letter-spacing: 0;
+    text-transform: uppercase;
+  }
+
+  .bess-public-shell--narrative .bess-first-screen-row {
+    grid-template-columns: minmax(610px, 1.16fr) minmax(320px, 0.42fr) minmax(350px, 0.48fr);
+  }
+
+  .bess-public-shell--narrative .bess-first-screen-row .bess-panel {
+    border-color: rgba(64, 129, 166, 0.18);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.92),
+      0 10px 24px rgba(24, 89, 122, 0.035);
+  }
+
+  .bess-public-shell--narrative .bess-concept-chart-panel {
+    grid-template-rows: auto minmax(224px, 1fr);
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact {
+    height: 238px;
+    min-height: 238px;
+    border-color: rgba(12, 126, 179, 0.16);
+  }
+
+  .bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker {
+    min-width: 40px;
+    max-width: 62px;
+    min-height: 19px;
+    padding: 2px 4px;
+    opacity: 0.72;
+  }
+
+  .bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker span {
+    font-size: 6.2px;
+  }
+
+  .bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker strong {
+    font-size: 7.6px;
+  }
+
+  .bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker em {
+    font-size: 6.4px;
+  }
+
+  .bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker:hover,
+  .bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker:focus-visible,
+  .bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker.is-active {
+    opacity: 1;
+    transform: translate(-50%, -58%) scale(1.04);
+  }
+
+  .bess-public-shell--narrative .bess-svg-tooltip--compact rect {
+    fill: rgba(248, 254, 255, 0.96);
+    stroke: rgba(12, 126, 179, 0.28);
+    filter:
+      drop-shadow(0 10px 18px rgba(24, 89, 122, 0.11))
+      drop-shadow(0 0 12px rgba(12, 126, 179, 0.08));
+  }
+
+  .bess-public-shell--narrative .bess-svg-active-line {
+    stroke-width: 1.4;
+  }
+
+  .bess-public-shell--narrative .bess-svg-active-point {
+    filter:
+      drop-shadow(0 6px 11px rgba(12, 126, 179, 0.18))
+      drop-shadow(0 0 10px rgba(12, 126, 179, 0.16));
+  }
+}
+
+@media (min-width: 1540px) {
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 448px;
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact {
+    height: 260px;
+    min-height: 260px;
+  }
+}
+
+@media (min-width: 1181px) and (max-height: 920px) {
+  .bess-public-shell--narrative .bess-hero-stage .bess-field {
+    min-height: 408px;
+  }
+
+  .bess-public-shell--narrative .bess-svg-chart--compact {
+    height: 224px;
+    min-height: 224px;
+  }
+}
