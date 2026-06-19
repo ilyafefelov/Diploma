@@ -6,7 +6,7 @@ type NodeRuntimeGlobal = typeof globalThis & {
 }
 
 const env = (globalThis as NodeRuntimeGlobal).process?.env ?? {}
-const siteUrl = env.NUXT_PUBLIC_SITE_URL || (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : 'http://localhost:64163')
+const siteUrl = env.NUXT_PUBLIC_SITE_URL || 'https://energy-index.full-iron.com'
 const baseURL = env.NUXT_APP_BASE_URL || '/'
 
 export default defineNuxtConfig({

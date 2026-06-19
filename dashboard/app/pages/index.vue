@@ -1,3 +1,3 @@
 <script setup lang="ts">
-await navigateTo('/operator', { redirectCode: 302 })
+await navigateTo('/ukraine-bess-arbitrage-index', { redirectCode: 301 })
 </script>

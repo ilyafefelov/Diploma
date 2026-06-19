@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://energy-index.full-iron.com/sitemap.xml

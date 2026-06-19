@@ -7592,3 +7592,157 @@
     min-height: 228px;
   }
 }
+
+/* Forecast trust rail pass: make forecast lanes and promotion ladder read as source-backed receipts. */
+.bess-public-shell--narrative .bess-concept-forecast-panel,
+.bess-public-shell--narrative .bess-concept-ladder-panel {
+  container: bess-trust-panel / inline-size;
+  position: relative;
+  overflow: clip;
+  border-color: rgba(64, 129, 166, 0.17);
+  background:
+    linear-gradient(90deg, rgba(12, 126, 179, 0.05) 0 1px, transparent 1px),
+    linear-gradient(0deg, rgba(12, 126, 179, 0.036) 0 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(238, 250, 254, 0.46));
+  background-size: 18px 18px, 18px 18px, auto;
+  box-shadow:
+    inset 3px 0 0 rgba(12, 126, 179, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 14px 26px rgba(24, 89, 122, 0.035);
+}
+
+.bess-public-shell--narrative .bess-concept-forecast-panel::after,
+.bess-public-shell--narrative .bess-concept-ladder-panel::after {
+  content: "";
+  position: absolute;
+  inset: auto 10px 9px 10px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(12, 126, 179, 0.2), rgba(26, 167, 131, 0.16), transparent);
+  pointer-events: none;
+}
+
+.bess-public-shell--narrative .bess-concept-forecast-panel .bess-concept-panel-head,
+.bess-public-shell--narrative .bess-concept-ladder-panel .bess-concept-panel-head {
+  align-items: start;
+  border-bottom-color: rgba(64, 129, 166, 0.12);
+}
+
+.bess-public-shell--narrative .bess-concept-forecast-panel .bess-kicker,
+.bess-public-shell--narrative .bess-concept-ladder-panel .bess-kicker {
+  color: #087eb5;
+  letter-spacing: 0.045em;
+}
+
+.bess-public-shell--narrative .bess-concept-model-list {
+  counter-reset: bess-lane;
+}
+
+.bess-public-shell--narrative .bess-concept-model-row {
+  counter-increment: bess-lane;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  min-height: 50px;
+  border-color: rgba(64, 129, 166, 0.13);
+  padding: 7px 8px 7px 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(242, 252, 255, 0.52)),
+    linear-gradient(90deg, rgba(12, 126, 179, 0.05) 0 3px, transparent 3px);
+  background-size: auto, auto;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.84),
+    0 6px 13px rgba(24, 89, 122, 0.025);
+}
+
+.bess-public-shell--narrative .bess-concept-model-row::before {
+  content: counter(bess-lane, decimal-leading-zero);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 21px;
+  height: 21px;
+  border: 1px solid rgba(12, 126, 179, 0.24);
+  border-radius: 999px;
+  color: #0b67a0;
+  background:
+    radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.95), rgba(238, 250, 254, 0.78)),
+    rgba(255, 255, 255, 0.8);
+  font-family: var(--bess-font-data);
+  font-size: 8px;
+  font-weight: 900;
+}
+
+.bess-public-shell--narrative .bess-concept-model-row i {
+  min-width: 72px;
+  border-radius: 999px;
+  padding-inline: 7px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+}
+
+.bess-public-shell--narrative .bess-concept-model-row:hover,
+.bess-public-shell--narrative .bess-concept-model-row:focus-visible {
+  transform: translateY(-1px);
+}
+
+.bess-public-shell--narrative .bess-concept-ladder {
+  position: relative;
+  gap: 6px;
+}
+
+.bess-public-shell--narrative .bess-concept-ladder::before {
+  content: "";
+  position: absolute;
+  left: 11px;
+  top: 20px;
+  bottom: 18px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(12, 126, 179, 0.42), rgba(26, 167, 131, 0.2), rgba(64, 129, 166, 0.12));
+}
+
+.bess-public-shell--narrative .bess-concept-ladder li {
+  position: relative;
+  grid-template-columns: 28px minmax(0, 1fr);
+  min-height: 39px;
+  border: 1px solid rgba(64, 129, 166, 0.1);
+  border-radius: 7px;
+  padding: 5px 6px 5px 0;
+  background: rgba(255, 255, 255, 0.43);
+}
+
+.bess-public-shell--narrative .bess-concept-ladder li:first-child {
+  border-color: rgba(26, 167, 131, 0.22);
+  background:
+    linear-gradient(90deg, rgba(26, 167, 131, 0.095), rgba(255, 255, 255, 0.48) 42%),
+    rgba(255, 255, 255, 0.56);
+}
+
+.bess-public-shell--narrative .bess-concept-ladder li:first-child > span {
+  border-color: rgba(26, 167, 131, 0.44);
+  color: #0d8069;
+  background: rgba(216, 246, 235, 0.9);
+  box-shadow:
+    0 0 0 4px rgba(26, 167, 131, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.bess-public-shell--narrative .bess-concept-cta {
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid rgba(12, 126, 179, 0.2);
+  background:
+    linear-gradient(135deg, #0b83bd, #126fe2 58%, #1aa783);
+  box-shadow:
+    0 12px 22px rgba(8, 126, 174, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+@container bess-trust-panel (max-width: 340px) {
+  .bess-concept-model-row {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+
+  .bess-concept-model-row i {
+    grid-column: 2;
+    justify-self: start;
+    min-width: 0;
+    margin-top: 3px;
+  }
+}

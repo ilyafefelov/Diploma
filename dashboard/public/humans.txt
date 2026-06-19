@@ -1,0 +1,10 @@
+Ukraine BESS Arbitrage Index
+
+Public URL: https://energy-index.full-iron.com/ukraine-bess-arbitrage-index
+Repository: https://github.com/ilyafefelov/Diploma
+
+Built by Illya Fefelov as post-defense public work around BESS analytics,
+Ukrainian DAM prices, forecast challenges, and no-execution energy optimization evidence.
+
+Boundary: public demo only. No market bids, no dispatch commands, no private
+operator controls, and no YASNO/DTEK integration claim.

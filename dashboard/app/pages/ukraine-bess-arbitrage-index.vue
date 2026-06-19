@@ -79,9 +79,11 @@ const { data: publicationStatusData } = await useFetch<PublicPayload>('/data/bes
 useSeoMeta({
   title: 'Ukraine BESS Arbitrage Index | Ukrainian DAM BESS Analytics',
   description: 'Daily source-backed BESS dispatch and arbitrage index for Ukrainian OREE day-ahead prices, with forecast challenge artifacts and no market execution claims.',
+  robots: 'index, follow, max-image-preview:large',
   ogTitle: 'Ukraine BESS Arbitrage Index',
   ogDescription: 'Source-backed public BESS arbitrage analytics for Ukrainian DAM prices, built from committed JSON artifacts.',
   ogUrl: canonicalUrl,
+  ogType: 'website',
   twitterTitle: 'Ukraine BESS Arbitrage Index',
   twitterDescription: 'Daily source-backed BESS dispatch index and forecast challenge for Ukrainian DAM prices.',
   twitterCard: 'summary_large_image'
@@ -89,12 +91,22 @@ useSeoMeta({
 
 useHead({
   link: [
-    { rel: 'canonical', href: canonicalUrl }
+    { rel: 'canonical', href: canonicalUrl },
+    { rel: 'sitemap', type: 'application/xml', href: `${siteUrl}/sitemap.xml` },
+    { rel: 'alternate', type: 'text/plain', href: `${siteUrl}/llms.txt`, title: 'LLMs and agent summary' }
   ],
   meta: [
     {
       name: 'keywords',
       content: 'Ukraine BESS, battery energy storage, arbitrage, OREE, DAM prices, energy optimization, forecast challenge, C&I energy analytics'
+    },
+    {
+      name: 'application-name',
+      content: 'Ukraine BESS Arbitrage Index'
+    },
+    {
+      name: 'author',
+      content: 'Illya Fefelov'
     }
   ],
   script: [
@@ -113,6 +125,64 @@ useHead({
         url: canonicalUrl,
         programmingLanguage: ['TypeScript', 'Vue', 'Python'],
         applicationCategory: 'Energy analytics'
+      })
+    },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'Dataset',
+        name: 'Ukraine BESS Arbitrage Index public JSON artifacts',
+        description: 'Daily committed JSON artifacts for realized public BESS arbitrage index, forecast challenge rows, and publication status.',
+        url: canonicalUrl,
+        license: 'https://opensource.org/license/mit',
+        creator: {
+          '@type': 'Person',
+          name: 'Illya Fefelov',
+          email: contactEmail
+        },
+        distribution: [
+          {
+            '@type': 'DataDownload',
+            encodingFormat: 'application/json',
+            contentUrl: `${siteUrl}/data/bess-arbitrage-index/latest.json`
+          },
+          {
+            '@type': 'DataDownload',
+            encodingFormat: 'application/json',
+            contentUrl: `${siteUrl}/data/bess-arbitrage-index/forecast/latest.json`
+          },
+          {
+            '@type': 'DataDownload',
+            encodingFormat: 'application/json',
+            contentUrl: `${siteUrl}/data/bess-arbitrage-index/publication_status.json`
+          }
+        ],
+        isBasedOn: {
+          '@type': 'Dataset',
+          name: 'OREE Day-Ahead Market public price rows',
+          url: 'https://www.oree.com.ua/'
+        }
+      })
+    },
+    {
+      type: 'application/ld+json',
+      innerHTML: JSON.stringify({
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'Ukraine BESS Arbitrage Index',
+        url: siteUrl,
+        description: 'Public source-backed BESS arbitrage index and forecast challenge for Ukrainian DAM prices.',
+        inLanguage: 'en',
+        publisher: {
+          '@type': 'Person',
+          name: 'Illya Fefelov'
+        },
+        potentialAction: {
+          '@type': 'ContactAction',
+          target: contactHref,
+          name: 'Request BESS analytics demo'
+        }
       })
     }
   ]
