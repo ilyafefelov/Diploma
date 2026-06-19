@@ -2912,4 +2912,87 @@ function formatUah(value: unknown): string {
 .bess-field__hour:focus-visible {
   background: rgba(255, 255, 255, 0.78);
 }
+
+/* Concept refinement: keep the field cinematic, but make labels appear only when they add evidence. */
+.bess-field__crosshair::before {
+  border-left-color: rgba(10, 119, 168, 0.24);
+  box-shadow: 0 0 18px rgba(10, 119, 168, 0.11);
+}
+
+.bess-field__crosshair span {
+  width: 40px;
+  height: 40px;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.98) 0 9%, rgba(10, 119, 168, 0.24) 10% 15%, transparent 16%),
+    radial-gradient(circle at center, rgba(10, 119, 168, 0.14), transparent 68%);
+  box-shadow:
+    0 0 0 8px rgba(10, 119, 168, 0.055),
+    0 0 0 20px rgba(10, 119, 168, 0.035),
+    0 0 42px rgba(10, 119, 168, 0.15),
+    0 18px 28px rgba(10, 119, 168, 0.1);
+}
+
+.bess-field__crosshair span::before {
+  inset: -12px;
+  border-color: rgba(10, 119, 168, 0.3);
+}
+
+.bess-field__crosshair span::after {
+  inset: -24px;
+  border-color: rgba(10, 119, 168, 0.16);
+}
+
+.bess-field__annotation {
+  border-color: rgba(64, 129, 166, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(226, 247, 253, 0.5)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.05) 1px, transparent 1px);
+  background-size: auto, 12px 12px;
+  box-shadow:
+    0 12px 24px rgba(41, 111, 151, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.92);
+}
+
+.bess-field__signal-stack button {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  min-height: 18px;
+  box-shadow:
+    0 0 0 4px rgba(10, 119, 168, 0.05),
+    0 0 0 10px rgba(10, 119, 168, 0.025),
+    0 8px 14px rgba(32, 103, 145, 0.07);
+}
+
+.bess-field__signal-stack button::after {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 2px);
+}
+
+.bess-field__signal-stack button.is-selected::after {
+  opacity: 0.95;
+}
+
+.bess-field__signal-stack button:hover::after,
+.bess-field__signal-stack button.is-selected::after,
+.bess-field__signal-stack button:focus-visible::after {
+  transform: translate(-50%, -3px);
+}
+
+.bess-field__signal-stack button:hover,
+.bess-field__signal-stack button.is-selected {
+  box-shadow:
+    0 0 0 6px rgba(10, 119, 168, 0.08),
+    0 0 0 15px rgba(10, 119, 168, 0.035),
+    0 10px 20px rgba(32, 103, 145, 0.1);
+}
+
+.bess-field__hud > div,
+.bess-field__analysis-tape {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(236, 250, 253, 0.54)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
+  background-size: auto, 12px 12px;
+}
 </style>

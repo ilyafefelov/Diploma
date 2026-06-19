@@ -6521,3 +6521,71 @@
     line-height: 1.15;
   }
 }
+
+/* Evidence-chart refinement: keep shortcuts useful without letting them dominate the proof figure. */
+.bess-public-shell--narrative .bess-concept-chart-panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(244, 251, 254, 0.74)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.035) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(64, 129, 166, 0.03) 1px, transparent 1px);
+  background-size: auto, 20px 20px, 20px 20px;
+}
+
+.bess-public-shell--narrative .bess-concept-chart-wrap {
+  border-radius: 7px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(231, 248, 253, 0.18));
+}
+
+.bess-public-shell--narrative .bess-chart-marker {
+  min-width: 50px;
+  max-width: 78px;
+  min-height: 23px;
+  padding: 2px 4px 3px;
+  opacity: 0.72;
+}
+
+.bess-public-shell--narrative .bess-chart-marker::after {
+  box-shadow:
+    0 0 0 4px rgba(12, 126, 179, 0.07),
+    0 0 0 10px rgba(12, 126, 179, 0.025);
+}
+
+.bess-public-shell--narrative .bess-chart-marker span {
+  font-size: 6.8px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker strong {
+  font-size: 8px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker em {
+  font-size: 7.2px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker {
+  min-width: 44px;
+  max-width: 68px;
+  min-height: 20px;
+  padding: 2px 3px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker span {
+  font-size: 6.2px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker strong {
+  font-size: 7.2px;
+}
+
+.bess-public-shell--narrative .bess-chart-marker-layer--compact .bess-chart-marker em {
+  font-size: 6.7px;
+}
+
+.bess-public-shell--narrative .bess-kpi-rail,
+.bess-public-shell--narrative .bess-proof-strip {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(244, 251, 254, 0.7)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.035) 1px, transparent 1px);
+  background-size: auto, 20px 20px;
+}
