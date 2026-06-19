@@ -7,9 +7,11 @@ type NodeRuntimeGlobal = typeof globalThis & {
 
 const env = (globalThis as NodeRuntimeGlobal).process?.env ?? {}
 const siteUrl = env.NUXT_PUBLIC_SITE_URL || (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : 'http://localhost:64163')
+const baseURL = env.NUXT_APP_BASE_URL || '/'
 
 export default defineNuxtConfig({
   app: {
+    baseURL,
     head: {
       link: [
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },

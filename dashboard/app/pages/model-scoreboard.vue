@@ -2,8 +2,11 @@
 import { computed } from 'vue'
 
 type PublicPayload = Record<string, any>
+const runtimeConfig = useRuntimeConfig()
+const appBaseURL = String(runtimeConfig.app.baseURL || '/')
 
 const { data: scoreboardData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/forecast_scoreboard.json', {
+  baseURL: appBaseURL,
   key: 'public-bess-forecast-scoreboard',
   server: false,
   default: () => ({ rows: [] })

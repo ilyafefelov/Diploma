@@ -9,32 +9,39 @@ const SVG_WIDTH = 760
 const SVG_HEIGHT = 320
 const SVG_SHORT_HEIGHT = 260
 const SVG_MARGIN = { top: 24, right: 28, bottom: 36, left: 64 }
+const runtimeConfig = useRuntimeConfig()
+const appBaseURL = String(runtimeConfig.app.baseURL || '/')
 
 const { data: latestData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/latest.json', {
+  baseURL: appBaseURL,
   key: 'public-bess-index-latest-narrative',
   server: false,
   default: () => ({ presets: [], source: {}, summary: {}, methodology: {} })
 })
 
 const { data: historyData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/history.json', {
+  baseURL: appBaseURL,
   key: 'public-bess-index-history-narrative',
   server: false,
   default: () => ({ rows: [] })
 })
 
 const { data: forecastData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/forecast/latest.json', {
+  baseURL: appBaseURL,
   key: 'public-bess-forecast-latest-narrative',
   server: false,
   default: () => ({ models: [], source: {} })
 })
 
 const { data: scoreboardData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/forecast_scoreboard.json', {
+  baseURL: appBaseURL,
   key: 'public-bess-forecast-scoreboard-narrative',
   server: false,
   default: () => ({ rows: [], metrics: [] })
 })
 
 const { data: publicationStatusData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/publication_status.json', {
+  baseURL: appBaseURL,
   key: 'public-bess-publication-status-narrative',
   server: false,
   default: () => ({ realized: {}, forecast: {}, autonomy: {}, artifacts: {} })
