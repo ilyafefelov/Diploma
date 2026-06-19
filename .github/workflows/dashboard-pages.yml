@@ -6,6 +6,9 @@ on:
       - main
     paths:
       - dashboard/**
+      - docs/project-intro/**
+      - docs/technical/final-demo-assets/project-intro.mp4
+      - docs/technical/final-demo-assets/project-intro-poster.png
       - .github/workflows/dashboard-pages.yml
   workflow_run:
     workflows:
@@ -53,6 +56,16 @@ jobs:
           NUXT_APP_BASE_URL: /Diploma/
           NUXT_PUBLIC_SITE_URL: https://ilyafefelov.github.io/Diploma
         run: npm run generate
+
+      - name: Add project intro video page
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dashboard/.output/public/project-intro
+          mkdir -p dashboard/.output/public/technical/final-demo-assets
+          cp docs/project-intro/index.html dashboard/.output/public/project-intro/index.html
+          cp docs/technical/final-demo-assets/project-intro.mp4 dashboard/.output/public/technical/final-demo-assets/project-intro.mp4
+          cp docs/technical/final-demo-assets/project-intro-poster.png dashboard/.output/public/technical/final-demo-assets/project-intro-poster.png
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
