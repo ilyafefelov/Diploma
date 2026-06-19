@@ -12,16 +12,7 @@ trading bot, not a market-submission engine, and not production dispatch.
 
 Watch the 42-second English intro video:
 
-<video
-  src="https://raw.githubusercontent.com/ilyafefelov/Diploma/main/docs/technical/final-demo-assets/project-intro.mp4"
-  poster="https://raw.githubusercontent.com/ilyafefelov/Diploma/main/docs/technical/final-demo-assets/project-intro-poster.png"
-  controls
-  width="100%"
->
-  Project intro video.
-</video>
-
-[Open the playable GitHub Pages video](https://ilyafefelov.github.io/Diploma/project-intro/)
+[![Project intro video poster](docs/technical/final-demo-assets/project-intro-poster.png)](https://ilyafefelov.github.io/Diploma/project-intro/)
 
 The video introduces the concept first, then the product surface: source-backed
 DAM/IDM operator preview, read-model evidence, deterministic boundaries, and no
