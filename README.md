@@ -1,5 +1,11 @@
 # Smart Energy Arbitrage 2026
 
+<p>
+  <a href="https://docs.google.com/document/d/e/2PACX-1vTlKZCfuUzw-e_khUYXPo8d86tnCZuGOriLbKMNqYJ9fjrFyDb2FrBZ99GmT06ba6oXK9AehyLn7yLu/pub">
+    <img alt="Open published thesis paper" src="https://img.shields.io/badge/Published%20Thesis%20Paper-Open-1a73e8?style=for-the-badge&logo=googledocs&logoColor=white">
+  </a>
+</p>
+
 Commission proof pack for a Ukrainian BESS energy-arbitrage operator preview.
 
 Start with the project intro:
