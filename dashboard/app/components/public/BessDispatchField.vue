@@ -78,6 +78,7 @@ const selectedSocPercent = computed(() => {
   }
   return numberValue(selectedPoint.value.soc_after_mwh) / capacity * 100
 })
+const sourceStatusLabel = computed(() => statusLabel(props.sourceStatus || 'pending_source'))
 const selectedPositionStyle = computed(() => {
   const denominator = Math.max(1, sceneRows.value.length - 1)
   const projectedX = 10 + (selectedIndex.value / denominator) * 78
@@ -118,7 +119,7 @@ const fieldReceiptRows = computed(() => {
   return [
     {
       label: 'Price span',
-      value: `${formatNumber(Math.min(...prices), 0)}-${formatNumber(Math.max(...prices), 0)}`
+      value: `${formatNumber(Math.min(...prices), 0)}-${formatNumber(Math.max(...prices), 0)} UAH`
     },
     {
       label: 'Dispatch hours',
@@ -1183,6 +1184,17 @@ function actionFor(point: DispatchPoint | null) {
   return { label: 'Hold', className: 'hold' }
 }
 
+function statusLabel(value: string): string {
+  const labels: Record<string, string> = {
+    complete_24_hour_delivery_day: 'Complete 24-hour day',
+    pending_source: 'Pending source',
+    pending: 'Pending',
+    blocked_missing_source: 'Blocked source',
+    blocked_no_complete_dispatch_rows: 'Blocked rows'
+  }
+  return labels[value] || value.replace(/_/g, ' ')
+}
+
 function selectNearestHourFromPointer(event: PointerEvent) {
   const target = event.target
   if (target instanceof Element && target.closest('button, a')) {
@@ -1392,7 +1404,7 @@ function formatUah(value: unknown): string {
       </div>
       <div>
         <span>Source</span>
-        <strong>{{ sourceStatus || 'pending' }}</strong>
+        <strong :title="sourceStatus">{{ sourceStatusLabel }}</strong>
       </div>
     </div>
     <div class="bess-field__interaction-hints" aria-hidden="true">
@@ -2874,13 +2886,18 @@ function formatUah(value: unknown): string {
     linear-gradient(90deg, rgba(64, 129, 166, 0.05) 1px, transparent 1px);
   background-size: auto, 10px 10px;
   font-size: 7px;
-  opacity: 0.74;
+  opacity: 0.44;
 }
 
 .bess-field__signal-stack button:hover::after,
 .bess-field__signal-stack button.is-selected::after,
 .bess-field__signal-stack button:focus-visible::after {
   opacity: 1;
+  border-color: rgba(12, 126, 179, 0.2);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(242, 251, 254, 0.68)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.06) 1px, transparent 1px);
+  box-shadow: 0 8px 14px rgba(41, 111, 151, 0.07);
 }
 
 .bess-field__hour:focus-visible,
