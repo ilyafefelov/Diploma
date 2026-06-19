@@ -23,7 +23,7 @@ Open first during a live review:
 ## Public / Post-Defense Work
 
 Public preview:
-[Ukraine BESS Arbitrage Index](https://dashboard-27k0lx6x6-illya-fefelovs-projects.vercel.app/ukraine-bess-arbitrage-index).
+[Ukraine BESS Arbitrage Index](https://dashboard-hdl41ukhy-illya-fefelovs-projects.vercel.app/ukraine-bess-arbitrage-index).
 
 This page is a post-defense public demo and portfolio surface built after the
 defended operator-preview submission. It is not the private operator dashboard,
