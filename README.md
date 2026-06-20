@@ -37,10 +37,29 @@ Open first during a live review:
 6. [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md)
    for the exact fallback path if the live stack is unavailable.
 
+## Public / Post-Defense Work
+
+Public preview:
+[![Public Preview](https://img.shields.io/badge/Public%20Preview-energy--index.full--iron.com%2Fukraine--bess--arbitrage--index-0c7eb3?style=flat-square&logo=vercel&logoColor=white)](https://energy-index.full-iron.com/ukraine-bess-arbitrage-index)
+[Ukraine BESS Arbitrage Index](https://energy-index.full-iron.com/ukraine-bess-arbitrage-index).
+
+This page is a post-defense public demo and portfolio surface built after the
+defended operator-preview submission. It is not the private operator dashboard,
+not the defended private operator functionality, and not a market-control
+system. It uses public/static JSON evidence for a no-execution BESS arbitrage
+index: no market bids, no dispatch commands, no private tenant controls, and no
+YASNO/DTEK integration claim.
+
+Use the public page as a lead-generation and research portfolio entry. Use
+`/operator`, `/defense`, and the evidence links below for the original
+commission-facing operator-preview path.
+
 ## Table Of Contents
 
 Recommended reading order for the commission:
 
+- [Public / Post-Defense Work](#public--post-defense-work) links the public
+  demo while separating it from the private operator functionality.
 - [Commission Review Checklist](#commission-review-checklist) maps the project
   to the 50-point software/experimental rubric.
 - [Commission 90-Second Path](#commission-90-second-path) gives the shortest

@@ -1,0 +1,36 @@
+# Ukraine BESS Arbitrage Index
+
+> Public, source-backed BESS arbitrage analytics for Ukrainian OREE Day-Ahead Market prices.
+
+Canonical public URL: https://energy-index.full-iron.com/ukraine-bess-arbitrage-index
+
+This site is a post-defense public demo and portfolio surface for energy analytics.
+It is not the private operator dashboard, not production dispatch software, and not a market bid or market-control system.
+
+## Main Public Pages
+
+- [Ukraine BESS Arbitrage Index](https://energy-index.full-iron.com/ukraine-bess-arbitrage-index): realized perfect-hindsight public BESS index from committed JSON artifacts.
+- [Forecast Challenge](https://energy-index.full-iron.com/forecast-challenge): timestamped forecast artifacts and readiness labels.
+- [Model Scoreboard](https://energy-index.full-iron.com/model-scoreboard): rolling forecast score area; ranked only after realized source data exists.
+
+## Public Data Artifacts
+
+- [Latest realized index JSON](https://energy-index.full-iron.com/data/bess-arbitrage-index/latest.json)
+- [History JSON](https://energy-index.full-iron.com/data/bess-arbitrage-index/history.json)
+- [Latest forecast JSON](https://energy-index.full-iron.com/data/bess-arbitrage-index/forecast/latest.json)
+- [Forecast scoreboard JSON](https://energy-index.full-iron.com/data/bess-arbitrage-index/forecast_scoreboard.json)
+- [Publication status JSON](https://energy-index.full-iron.com/data/bess-arbitrage-index/publication_status.json)
+
+## Claim Boundary
+
+- `market_execution_enabled=false`
+- `proposed_bid_status=not_emitted`
+- No market bids.
+- No battery dispatch commands.
+- No private tenant controls.
+- No YASNO/DTEK integration claim.
+
+## Source And Repository
+
+- Source data: OREE Day-Ahead Market public price rows.
+- Repository: https://github.com/ilyafefelov/Diploma

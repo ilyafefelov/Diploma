@@ -6,7 +6,7 @@ type NodeRuntimeGlobal = typeof globalThis & {
 }
 
 const env = (globalThis as NodeRuntimeGlobal).process?.env ?? {}
-const siteUrl = env.NUXT_PUBLIC_SITE_URL || (env.VERCEL_URL ? `https://${env.VERCEL_URL}` : 'http://localhost:64163')
+const siteUrl = env.NUXT_PUBLIC_SITE_URL || 'https://energy-index.full-iron.com'
 const baseURL = env.NUXT_APP_BASE_URL || '/'
 
 export default defineNuxtConfig({
@@ -18,7 +18,7 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
         {
           rel: 'stylesheet',
-          href: 'https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800;900&display=swap'
+          href: 'https://fonts.googleapis.com/css2?family=Advent+Pro:wght@500;600;700;800&family=Alumni+Sans:wght@500;600;700;800;900&family=Anonymous+Pro:wght@400;700&family=Noto+Sans:wght@400;500;600;700;800;900&family=Noto+Sans+Mono:wght@400;500;600;700&family=Noto+Serif:wght@600;700;800&subset=latin,cyrillic&display=swap'
         }
       ]
     }
