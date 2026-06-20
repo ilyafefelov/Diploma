@@ -435,7 +435,7 @@ const promotionStages = [
   }
 ]
 
-const leadRoutes = [
+const connectRoutes = [
   {
     icon: 'i-lucide-factory',
     title: 'For C&I integrators',
@@ -1147,6 +1147,20 @@ function pointsAttr(points: ChartPoint[]): string {
                 <dd>{{ formatNumber(numberValue(selectedBattery.round_trip_efficiency) * 100, 0) }}%</dd>
               </div>
             </dl>
+            <div v-if="presets.length > 1" class="bess-battery-preset-switcher" aria-label="Battery preset selector">
+              <span>Switch preset</span>
+              <div class="bess-battery-preset-switcher__buttons" role="group">
+                <button
+                  v-for="preset in presets"
+                  :key="`side-preset-${preset.preset_id}`"
+                  type="button"
+                  :aria-pressed="selectedPresetId === String(preset.preset_id)"
+                  @click="selectedPresetId = String(preset.preset_id)"
+                >
+                  {{ preset.label }}
+                </button>
+              </div>
+            </div>
           </article>
 
           <article class="bess-side-card">
@@ -1854,42 +1868,6 @@ function pointsAttr(points: ChartPoint[]): string {
           </a>
         </article>
 
-        <article class="bess-workbench-panel bess-workbench-panel--ladder">
-          <div class="bess-workbench-head">
-            <div>
-              <p class="bess-kicker">Promotion Ladder</p>
-              <h2>What earns trust next</h2>
-            </div>
-            <span>No execution</span>
-          </div>
-          <div class="bess-workbench-proof" aria-label="Public readiness state">
-            <span>
-              <UIcon name="i-lucide-check" />
-              Deterministic public index
-            </span>
-            <span>
-              <UIcon name="i-lucide-clock-3" />
-              Forecasts scored after fact
-            </span>
-            <span>
-              <UIcon name="i-lucide-lock-keyhole" />
-              DT/HF DT gated
-            </span>
-          </div>
-          <ol class="bess-workbench-ladder">
-            <li v-for="stage in workbenchStages" :key="`workbench-${stage.stage}`">
-              <span>{{ stage.stage.replace('Stage ', '') }}</span>
-              <div>
-                <strong>{{ stage.title }}</strong>
-                <p>{{ stage.body }}</p>
-              </div>
-            </li>
-          </ol>
-          <a class="bess-workbench-link bess-workbench-link--primary" :href="contactHref">
-            <span>Let's connect</span>
-            <UIcon name="i-lucide-arrow-right" />
-          </a>
-        </article>
       </section>
 
       <section id="scoreboard" class="bess-panel bess-chart-panel bess-deferred-section" aria-label="Model scoreboard preview">
@@ -1952,7 +1930,7 @@ function pointsAttr(points: ChartPoint[]): string {
         </div>
       </section>
 
-      <section id="methodology" class="bess-section-grid bess-section-grid--methodology bess-deferred-section" aria-label="Methodology and promotion ladder">
+      <section id="methodology" class="bess-section-grid bess-section-grid--methodology bess-section-grid--methodology-single bess-deferred-section" aria-label="Methodology and claim boundary">
         <div class="bess-panel bess-panel--inset bess-claim-panel">
           <div class="bess-section-header">
             <div>
@@ -1979,46 +1957,21 @@ function pointsAttr(points: ChartPoint[]): string {
             </li>
           </dl>
         </div>
-
-        <div class="bess-panel bess-panel--inset bess-ladder-panel">
-          <div class="bess-section-header">
-            <div>
-              <p class="bess-kicker">Promotion ladder</p>
-              <h2>How ML earns visibility</h2>
-              <p>Forecast models, schedule selection, V2+ and DT/HF DT move up only after rolling public evidence.</p>
-            </div>
-          </div>
-          <ol class="bess-stage-list">
-            <li v-for="stage in promotionStages" :key="stage.stage">
-              <span>{{ stage.stage }}</span>
-              <div>
-                <strong>{{ stage.title }}</strong>
-                <p>{{ stage.body }}</p>
-              </div>
-            </li>
-          </ol>
-          <div class="bess-ladder-guard" aria-label="Public claim boundary">
-            <UIcon name="i-lucide-shield-check" />
-            <div>
-              <strong>No market execution.</strong>
-              <span>No bids generated. No utility integration claim.</span>
-            </div>
-          </div>
-        </div>
       </section>
 
-      <section id="contact" class="bess-lead-section" aria-label="Lead generation use cases">
-        <div class="bess-lead-copy">
-          <p class="bess-kicker">Portfolio and lead route</p>
-          <h2>One link for technical proof, commercial relevance, and a clean claim boundary.</h2>
+      <section id="contact" class="bess-story-connect-panel bess-deferred-section" aria-label="Interested in the full story">
+        <div class="bess-story-connect__copy">
+          <p class="bess-kicker">Interested in the full story?</p>
+          <h2>Connect on BESS analytics, recruiting, or research collaboration.</h2>
           <p>
-            The page is designed to start conversations about BESS analytics, forecasting,
-            optimization, and product/data roles without claiming live market execution.
+            This is a public post-defense demo page: source-backed index, transparent JSON artifacts,
+            forecast challenge preview, and portfolio-grade product evidence. It is not private operator
+            functionality and it does not claim live market execution.
           </p>
-          <dl class="bess-lead-receipt" aria-label="Lead generation receipt">
+          <dl class="bess-story-connect__receipt" aria-label="Public demo receipt">
             <div>
               <dt>Artifact type</dt>
-              <dd>Public evidence page</dd>
+              <dd>Public demo page</dd>
             </div>
             <div>
               <dt>Claim boundary</dt>
@@ -2030,17 +1983,17 @@ function pointsAttr(points: ChartPoint[]): string {
             </div>
           </dl>
         </div>
-        <div class="bess-lead-routes">
-          <article v-for="route in leadRoutes" :key="route.title" class="bess-lead-card">
+        <div class="bess-story-connect__routes">
+          <article v-for="route in connectRoutes" :key="route.title" class="bess-story-connect__route">
             <UIcon :name="route.icon" />
             <h3>{{ route.title }}</h3>
             <p>{{ route.body }}</p>
           </article>
         </div>
-        <div class="bess-lead-actions">
-          <div class="bess-lead-action-card">
-            <span>Interested in the full story?</span>
-            <strong>Demo, PoC, recruiting, or research collaboration.</strong>
+        <div class="bess-story-connect__actions">
+          <div class="bess-story-connect__action-card">
+            <span>Next routes</span>
+            <strong>Short demo, technical deep-dive, PoC discussion, or hiring conversation.</strong>
             <ul class="bess-lead-action-list" aria-label="Collaboration routes">
               <li><UIcon name="i-lucide-check-square" /> Demo &amp; deep-dive</li>
               <li><UIcon name="i-lucide-check-square" /> Consulting / PoC</li>
@@ -2049,12 +2002,17 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
           <a class="bess-action-link bess-action-link--primary" :href="contactHref">
             <UIcon name="i-lucide-mail" />
-            Contact author
+            Let's connect
           </a>
           <a class="bess-action-link" :href="repoUrl" target="_blank" rel="noreferrer">
             <UIcon name="i-lucide-github" />
             Review source
           </a>
+        </div>
+        <div class="bess-story-connect__guard" aria-label="Public claim boundary">
+          <UIcon name="i-lucide-shield-check" />
+          <strong>No market execution.</strong>
+          <span>No bids generated. No utility integration claim.</span>
         </div>
       </section>
 
@@ -2181,9 +2139,9 @@ function pointsAttr(points: ChartPoint[]): string {
       </section>
 
       <footer class="bess-footer-note bess-panel">
-        <span>Ukraine BESS Arbitrage Index</span>
+        <span class="bess-footer-brand">Ukraine BESS Arbitrage Index</span>
         <a :href="source.source_url || 'https://www.oree.com.ua/'" target="_blank" rel="noreferrer">
-          Data: OREE
+          Data: OREE (oree.com.ua)
           <UIcon name="i-lucide-external-link" />
         </a>
         <a :href="repoUrl" target="_blank" rel="noreferrer">
@@ -2191,7 +2149,10 @@ function pointsAttr(points: ChartPoint[]): string {
           <UIcon name="i-lucide-external-link" />
         </a>
         <span>License: MIT</span>
-        <span>Built by a data engineer &amp; researcher</span>
+        <span class="bess-footer-author">
+          Built by a data engineer &amp; researcher
+          <UIcon name="i-lucide-heart" />
+        </span>
       </footer>
     </div>
   </main>

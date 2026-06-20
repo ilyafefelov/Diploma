@@ -8144,3 +8144,434 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Funnel cleanup: visible preset switcher, one promotion ladder, blue contact block, and a docked public footer. */
+.bess-public-shell--narrative {
+  padding-bottom: 72px;
+}
+
+.bess-public-shell--narrative .bess-index-workbench {
+  grid-template-columns: minmax(300px, 0.78fr) minmax(420px, 1.22fr);
+}
+
+.bess-section-grid--methodology-single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.bess-battery-preset-switcher {
+  display: grid;
+  gap: 7px;
+  margin-top: 11px;
+  border-top: 1px solid rgba(64, 129, 166, 0.14);
+  padding-top: 10px;
+}
+
+.bess-battery-preset-switcher > span {
+  color: #56778e;
+  font-family: var(--bess-font-data);
+  font-size: 9px;
+  font-weight: var(--bess-weight-data);
+  letter-spacing: 0;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.bess-battery-preset-switcher__buttons {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+
+.bess-battery-preset-switcher button {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid rgba(64, 129, 166, 0.18);
+  border-radius: 6px;
+  padding: 7px 8px;
+  color: #123552;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(242, 251, 254, 0.58)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
+  background-size: auto, 12px 12px;
+  font-family: var(--bess-font-data);
+  font-size: 9px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.08;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bess-battery-preset-switcher button:hover {
+  border-color: rgba(12, 126, 179, 0.34);
+  color: #075f8c;
+}
+
+.bess-battery-preset-switcher button[aria-pressed='true'] {
+  border-color: rgba(12, 126, 179, 0.48);
+  color: #ffffff;
+  background:
+    linear-gradient(180deg, #168bd0, #0b70b9),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  box-shadow:
+    0 10px 18px rgba(12, 126, 179, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.bess-story-connect-panel {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(330px, 0.7fr) minmax(500px, 1.08fr) minmax(250px, 0.42fr);
+  gap: 18px;
+  align-items: stretch;
+  margin: 18px 0 16px;
+  border: 1px solid rgba(12, 126, 179, 0.22);
+  border-radius: 8px;
+  padding: 16px;
+  overflow: hidden;
+  color: #0c2f4d;
+  background:
+    linear-gradient(90deg, rgba(12, 126, 179, 0.07) 0 1px, transparent 1px),
+    linear-gradient(0deg, rgba(12, 126, 179, 0.04) 0 1px, transparent 1px),
+    linear-gradient(135deg, rgba(225, 247, 255, 0.92), rgba(255, 255, 255, 0.78) 48%, rgba(211, 239, 252, 0.74));
+  background-size: 20px 20px, 20px 20px, auto;
+  box-shadow:
+    0 16px 34px rgba(24, 89, 122, 0.07),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+}
+
+.bess-story-connect-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, #0c7eb3, #56bea7 52%, #e1b34d);
+}
+
+.bess-story-connect__copy,
+.bess-story-connect__actions {
+  min-width: 0;
+}
+
+.bess-story-connect__copy {
+  display: grid;
+  align-content: center;
+  gap: 9px;
+  padding-left: 8px;
+}
+
+.bess-story-connect__copy h2 {
+  max-width: 520px;
+  margin: 0;
+  color: #061b32;
+  font-family: var(--bess-font-hero);
+  font-size: 30px;
+  font-weight: 720;
+  line-height: 1.03;
+}
+
+.bess-story-connect__copy p {
+  max-width: 580px;
+  margin: 0;
+  color: #42667e;
+  font-size: 13px;
+  font-weight: 690;
+  line-height: 1.45;
+}
+
+.bess-story-connect__receipt {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 4px 0 0;
+  overflow: hidden;
+  border: 1px solid rgba(64, 129, 166, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.48);
+}
+
+.bess-story-connect__receipt div {
+  min-width: 0;
+  border-right: 1px solid rgba(64, 129, 166, 0.12);
+  padding: 8px;
+}
+
+.bess-story-connect__receipt div:last-child {
+  border-right: 0;
+}
+
+.bess-story-connect__receipt dt,
+.bess-story-connect__receipt dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.bess-story-connect__receipt dt {
+  color: #5a7b91;
+  font-family: var(--bess-font-data);
+  font-size: 8.5px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.08;
+  text-transform: uppercase;
+}
+
+.bess-story-connect__receipt dd {
+  margin-top: 4px;
+  color: #123552;
+  font-family: var(--bess-font-data);
+  font-size: 10.5px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.14;
+}
+
+.bess-story-connect__routes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  min-width: 0;
+}
+
+.bess-story-connect__route {
+  position: relative;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-content: start;
+  column-gap: 10px;
+  min-width: 0;
+  min-height: 154px;
+  border: 1px solid rgba(64, 129, 166, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(240, 251, 254, 0.48)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.036) 1px, transparent 1px);
+  background-size: auto, 14px 14px;
+}
+
+.bess-story-connect__route::after {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(12, 126, 179, 0.2), rgba(12, 126, 179, 0.02));
+}
+
+.bess-story-connect__route svg,
+.bess-story-connect__route > .iconify {
+  width: 23px;
+  height: 23px;
+  color: #0c7eb3;
+}
+
+.bess-story-connect__route:nth-child(2) svg,
+.bess-story-connect__route:nth-child(2) > .iconify {
+  color: #1b9d7e;
+}
+
+.bess-story-connect__route:nth-child(3) svg,
+.bess-story-connect__route:nth-child(3) > .iconify {
+  color: #af7b11;
+}
+
+.bess-story-connect__route h3 {
+  margin: 0;
+  color: #123552;
+  font-family: var(--bess-font-ui);
+  font-size: 15px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1.08;
+}
+
+.bess-story-connect__route p {
+  grid-column: 2;
+  margin: 8px 0 0;
+  color: #54758b;
+  font-size: 12px;
+  font-weight: 690;
+  line-height: 1.4;
+}
+
+.bess-story-connect__actions {
+  display: grid;
+  gap: 9px;
+  align-content: center;
+  border: 1px solid rgba(64, 129, 166, 0.14);
+  border-radius: 8px;
+  padding: 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), rgba(239, 250, 254, 0.52)),
+    repeating-linear-gradient(-12deg, rgba(12, 126, 179, 0.03) 0 5px, transparent 5px 12px);
+}
+
+.bess-story-connect__actions .bess-action-link {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.bess-story-connect__action-card {
+  display: grid;
+  gap: 5px;
+  border-bottom: 1px solid rgba(64, 129, 166, 0.12);
+  padding-bottom: 10px;
+}
+
+.bess-story-connect__action-card span {
+  color: #0c3f82;
+  font-family: var(--bess-font-display);
+  font-size: 18px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1;
+}
+
+.bess-story-connect__action-card strong {
+  color: #4d6f86;
+  font-family: var(--bess-font-data);
+  font-size: 10.5px;
+  font-weight: var(--bess-weight-data);
+  line-height: 1.35;
+}
+
+.bess-story-connect__guard {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 50px;
+  border: 1px solid rgba(12, 126, 179, 0.18);
+  border-radius: 8px;
+  padding: 10px 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(239, 250, 254, 0.52)),
+    linear-gradient(90deg, rgba(12, 126, 179, 0.04) 1px, transparent 1px);
+  background-size: auto, 14px 14px;
+  color: #5a768c;
+  font-family: var(--bess-font-ui);
+  font-size: 15px;
+  font-weight: 780;
+}
+
+.bess-story-connect__guard svg,
+.bess-story-connect__guard .iconify {
+  width: 22px;
+  height: 22px;
+  color: #0c7eb3;
+}
+
+.bess-story-connect__guard strong {
+  color: #071e35;
+  font-family: var(--bess-font-display);
+  font-size: 21px;
+  font-weight: var(--bess-weight-ui);
+  line-height: 1;
+}
+
+.bess-public-shell--narrative .bess-footer-note {
+  position: fixed;
+  left: 50%;
+  bottom: 8px;
+  z-index: 90;
+  width: min(1700px, calc(100vw - 40px));
+  transform: translateX(-50%);
+  grid-template-columns: minmax(190px, 1fr) auto auto auto minmax(230px, auto);
+  border-color: rgba(64, 129, 166, 0.18);
+  border-radius: 8px;
+  padding: 9px 12px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(240, 251, 254, 0.74)),
+    linear-gradient(90deg, rgba(64, 129, 166, 0.04) 1px, transparent 1px);
+  background-size: auto, 14px 14px;
+  box-shadow:
+    0 14px 28px rgba(24, 89, 122, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+}
+
+.bess-public-shell--narrative .bess-footer-brand {
+  color: #123552;
+}
+
+.bess-public-shell--narrative .bess-footer-author {
+  justify-content: flex-end;
+}
+
+.bess-public-shell--narrative .bess-footer-author svg,
+.bess-public-shell--narrative .bess-footer-author .iconify {
+  color: #126fbc;
+}
+
+@media (max-width: 1180px) {
+  .bess-public-shell--narrative .bess-index-workbench,
+  .bess-story-connect-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-story-connect__routes {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bess-public-shell--narrative .bess-footer-note {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
+  .bess-public-shell--narrative .bess-footer-author,
+  .bess-public-shell--narrative .bess-footer-note span:nth-of-type(2) {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .bess-story-connect__routes {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-story-connect__route {
+    min-height: 0;
+  }
+}
+
+@media (max-width: 640px) {
+  .bess-public-shell--narrative {
+    padding-bottom: 96px;
+  }
+
+  .bess-battery-preset-switcher__buttons,
+  .bess-story-connect__receipt {
+    grid-template-columns: 1fr;
+  }
+
+  .bess-story-connect__receipt div {
+    border-right: 0;
+    border-bottom: 1px solid rgba(64, 129, 166, 0.12);
+  }
+
+  .bess-story-connect__receipt div:last-child {
+    border-bottom: 0;
+  }
+
+  .bess-story-connect__copy h2 {
+    font-size: 24px;
+  }
+
+  .bess-story-connect__guard {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .bess-public-shell--narrative .bess-footer-note {
+    bottom: 6px;
+    width: calc(100vw - 16px);
+    grid-template-columns: 1fr;
+    gap: 5px;
+    padding: 8px 10px;
+  }
+
+  .bess-public-shell--narrative .bess-footer-note a:nth-of-type(2) {
+    display: none;
+  }
+}
