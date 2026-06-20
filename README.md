@@ -23,6 +23,7 @@ Open first during a live review:
 ## Public / Post-Defense Work
 
 Public preview:
+[![Public Preview](https://img.shields.io/badge/Public%20Preview-energy--index.full--iron.com%2Fukraine--bess--arbitrage--index-0c7eb3?style=flat-square&logo=vercel&logoColor=white)](https://energy-index.full-iron.com/ukraine-bess-arbitrage-index)
 [Ukraine BESS Arbitrage Index](https://energy-index.full-iron.com/ukraine-bess-arbitrage-index).
 
 This page is a post-defense public demo and portfolio surface built after the
