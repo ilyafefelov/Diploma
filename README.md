@@ -7,8 +7,9 @@
 </p>
 
 =====================
+## **Operator Preview. Private Operator Preview. Defense **
 
-Commission proof pack for a Ukrainian BESS energy-arbitrage operator preview.
+**Commission proof pack** for a Ukrainian BESS energy-arbitrage operator preview:
 
 Start with the project intro:
 
