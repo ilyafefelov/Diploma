@@ -61,6 +61,17 @@ it triggers a Vercel production refresh for `energy-index.full-iron.com`.
 Configure either `VERCEL_DEPLOY_HOOK_URL`, or the CLI fallback secrets
 `VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`.
 
+Social automation:
+`.github/workflows/public-bess-social-daily.yml` creates a daily X/Twitter
+post for the dedicated index account after the public JSON workflow succeeds.
+`.github/workflows/public-bess-social-weekly.yml` creates a weekly personal
+post for `x.com/fefelov` on Mondays. Both workflows generate a PNG/text outbox
+artifact even when API credentials are missing, and post only when the matching
+X secrets are configured. Required daily-account secrets are
+`X_DAILY_API_KEY`, `X_DAILY_API_SECRET`, `X_DAILY_ACCESS_TOKEN`, and
+`X_DAILY_ACCESS_TOKEN_SECRET`; personal-account secrets use the same names with
+the `X_PERSONAL_` prefix.
+
 ## Table Of Contents
 
 Recommended reading order for the commission:

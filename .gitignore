@@ -12,6 +12,7 @@ __pycache__/
 .env.*
 .tmp_dagster_home*/
 .tmp_runtime/
+.tmp_social_outbox*/
 .tmp_uv_cache*/
 .uv-cache/
 tmp_uv_cache*/
