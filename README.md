@@ -54,6 +54,13 @@ Use the public page as a lead-generation and research portfolio entry. Use
 `/operator`, `/defense`, and the evidence links below for the original
 commission-facing operator-preview path.
 
+Publication automation:
+the public JSON publisher runs from `.github/workflows/public-bess-index.yml`.
+After it commits fresh JSON under `dashboard/public/data/bess-arbitrage-index`,
+it triggers a Vercel production refresh for `energy-index.full-iron.com`.
+Configure either `VERCEL_DEPLOY_HOOK_URL`, or the CLI fallback secrets
+`VERCEL_TOKEN`, `VERCEL_ORG_ID`, and `VERCEL_PROJECT_ID`.
+
 ## Table Of Contents
 
 Recommended reading order for the commission:
