@@ -1,0 +1,72 @@
+name: Publish public BESS daily social post
+
+on:
+  workflow_run:
+    workflows:
+      - Publish public BESS index
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-bess-social-daily
+  cancel-in-progress: false
+
+jobs:
+  daily-x-post:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    env:
+      X_DAILY_HANDLE: ${{ secrets.X_DAILY_HANDLE || 'UkraineBESSIndex' }}
+      X_DAILY_API_KEY: ${{ secrets.X_DAILY_API_KEY }}
+      X_DAILY_API_SECRET: ${{ secrets.X_DAILY_API_SECRET }}
+      X_DAILY_ACCESS_TOKEN: ${{ secrets.X_DAILY_ACCESS_TOKEN }}
+      X_DAILY_ACCESS_TOKEN_SECRET: ${{ secrets.X_DAILY_ACCESS_TOKEN_SECRET }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Build and publish daily X post
+        run: |
+          uv run --no-project \
+            --with pillow \
+            --with tweepy \
+            python scripts/social_bess_index.py daily \
+              --x-account daily \
+              --output-dir .social-outbox
+
+      - name: Upload social outbox artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: public-bess-daily-social-outbox
+          path: .social-outbox
+
+      - name: Commit social log
+        run: |
+          set -euo pipefail
+          if [ ! -f docs/marketing/social_log.json ]; then
+            echo "No social log to commit."
+            exit 0
+          fi
+          if [ -z "$(git status --porcelain docs/marketing/social_log.json)" ]; then
+            echo "No social log changes."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/marketing/social_log.json
+          git commit -m "Record public BESS daily social post"
+          git push origin HEAD:main

@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Ukraine BESS Arbitrage Index X Card</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Advent+Pro:wght@600;700&family=Alumni+Sans:wght@700;800&family=Noto+Serif:wght@700&family=Noto+Sans:wght@500;700;800&display=swap");
+
+      :root {
+        --ink: #082744;
+        --muted: #486b84;
+        --blue: #0a76c7;
+        --blue-2: #36a8e8;
+        --green: #38ad8b;
+        --mint: #80d7c6;
+        --yellow: #e5ba4f;
+        --paper: rgba(255, 255, 255, 0.82);
+        --line: rgba(18, 104, 159, 0.18);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        width: 1600px;
+        height: 900px;
+        margin: 0;
+        overflow: hidden;
+        color: var(--ink);
+        background:
+          linear-gradient(90deg, rgba(18, 104, 159, 0.075) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(18, 104, 159, 0.055) 1px, transparent 1px),
+          radial-gradient(circle at 77% 22%, rgba(139, 222, 238, 0.5), transparent 34%),
+          linear-gradient(145deg, #f6fcff 0%, #ffffff 45%, #e8f6fb 100%);
+        background-size: 34px 34px, 34px 34px, auto, auto;
+        font-family: "Noto Sans", Arial, sans-serif;
+      }
+
+      .card {
+        position: relative;
+        display: grid;
+        grid-template-columns: 0.88fr 1.12fr;
+        gap: 54px;
+        width: 100%;
+        height: 100%;
+        padding: 48px 70px 42px;
+      }
+
+      .left,
+      .right {
+        min-width: 0;
+      }
+
+      .left {
+        display: grid;
+        align-content: space-between;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .mark {
+        width: 76px;
+        height: 76px;
+        border: 2px solid rgba(10, 118, 199, 0.36);
+        border-radius: 8px;
+        background:
+          linear-gradient(90deg, rgba(255, 255, 255, 0.46) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(255, 255, 255, 0.46) 1px, transparent 1px),
+          linear-gradient(135deg, #0d80d8, #70c9ec);
+        background-size: 19px 19px, 19px 19px, auto;
+        box-shadow: 0 20px 34px rgba(11, 115, 200, 0.18);
+      }
+
+      .brand-text strong {
+        display: block;
+        font-family: "Alumni Sans", "Noto Sans", sans-serif;
+        font-size: 48px;
+        font-weight: 800;
+        line-height: 0.9;
+        text-transform: uppercase;
+      }
+
+      .brand-text span,
+      .kicker,
+      .tag {
+        font-family: "Advent Pro", "Noto Sans", sans-serif;
+        font-weight: 700;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+      }
+
+      .brand-text span {
+        color: var(--muted);
+        font-size: 23px;
+      }
+
+      .hero-copy {
+        display: grid;
+        gap: 22px;
+        margin-top: 28px;
+      }
+
+      .kicker {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        color: var(--blue);
+        font-size: 29px;
+      }
+
+      .kicker::before,
+      .kicker::after {
+        content: "";
+        width: 74px;
+        height: 5px;
+        border-radius: 99px;
+        background: var(--blue);
+      }
+
+      .kicker::after {
+        width: 22px;
+        background: var(--yellow);
+      }
+
+      h1 {
+        max-width: 610px;
+        margin: 0;
+        color: var(--ink);
+        font-family: "Noto Serif", Georgia, serif;
+        font-size: 68px;
+        font-weight: 700;
+        line-height: 0.98;
+      }
+
+      .question {
+        max-width: 590px;
+        margin: 0;
+        color: #214765;
+        font-size: 27px;
+        font-weight: 800;
+        line-height: 1.18;
+      }
+
+      .badges {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+      }
+
+      .badge {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 16px 18px;
+        background: var(--paper);
+      }
+
+      .badge span {
+        display: block;
+        color: #607c91;
+        font-family: "Advent Pro", "Noto Sans", sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .badge strong {
+        display: block;
+        margin-top: 7px;
+        font-family: "Alumni Sans", "Noto Sans", sans-serif;
+        font-size: 36px;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        border-top: 1px solid var(--line);
+        padding-top: 20px;
+        color: #456b84;
+        font-family: "Advent Pro", "Noto Sans", sans-serif;
+        font-size: 24px;
+        font-weight: 700;
+      }
+
+      .footer strong {
+        color: var(--ink);
+      }
+
+      .right {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 18px;
+      }
+
+      .panel {
+        border: 1px solid rgba(10, 118, 199, 0.28);
+        border-radius: 10px;
+        background:
+          linear-gradient(90deg, rgba(10, 118, 199, 0.06) 1px, transparent 1px),
+          linear-gradient(0deg, rgba(10, 118, 199, 0.045) 1px, transparent 1px),
+          rgba(255, 255, 255, 0.74);
+        background-size: 26px 26px, 26px 26px, auto;
+        box-shadow: 0 22px 60px rgba(8, 39, 68, 0.08);
+      }
+
+      .receipt-strip {
+        display: grid;
+        grid-template-columns: 1.1fr 0.8fr 0.9fr;
+        overflow: hidden;
+      }
+
+      .receipt-strip > div {
+        min-height: 104px;
+        padding: 18px 24px;
+        border-right: 1px solid var(--line);
+      }
+
+      .receipt-strip > div:last-child {
+        border-right: 0;
+      }
+
+      .label {
+        color: #587b94;
+        font-family: "Advent Pro", "Noto Sans", sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .big {
+        display: block;
+        margin-top: 8px;
+        font-family: "Noto Serif", Georgia, serif;
+        font-size: 31px;
+        font-weight: 700;
+      }
+
+      .small {
+        display: block;
+        margin-top: 4px;
+        color: #426983;
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .chart-panel {
+        position: relative;
+        overflow: hidden;
+        min-height: 455px;
+        padding: 20px 26px 14px;
+      }
+
+      .chart-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: start;
+        gap: 20px;
+        margin-bottom: 12px;
+      }
+
+      .chart-title {
+        font-family: "Alumni Sans", "Noto Sans", sans-serif;
+        font-size: 36px;
+        font-weight: 800;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .chart-subtitle {
+        margin-top: 5px;
+        color: #466b83;
+        font-size: 17px;
+        font-weight: 700;
+      }
+
+      .tag {
+        border: 1px solid rgba(10, 118, 199, 0.24);
+        border-radius: 999px;
+        padding: 8px 13px;
+        color: var(--blue);
+        background: rgba(255, 255, 255, 0.7);
+        font-size: 17px;
+      }
+
+      #chart {
+        width: 100%;
+        height: 330px;
+        overflow: visible;
+      }
+
+      .axis,
+      .grid {
+        stroke: rgba(8, 39, 68, 0.12);
+        stroke-width: 1;
+      }
+
+      .price {
+        fill: none;
+        stroke: var(--blue);
+        stroke-width: 5;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+
+      .soc {
+        fill: none;
+        stroke: var(--green);
+        stroke-width: 3.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        opacity: 0.88;
+      }
+
+      .bar-discharge {
+        fill: url(#blueBar);
+      }
+
+      .bar-charge {
+        fill: url(#yellowBar);
+      }
+
+      .callout {
+        filter: drop-shadow(0 12px 20px rgba(8, 39, 68, 0.12));
+      }
+
+      .callout rect {
+        fill: rgba(255, 255, 255, 0.92);
+        stroke: rgba(10, 118, 199, 0.24);
+      }
+
+      .callout text {
+        fill: var(--ink);
+        font-family: "Advent Pro", "Noto Sans", sans-serif;
+        font-weight: 700;
+      }
+
+      .legend {
+        display: flex;
+        gap: 18px;
+        align-items: center;
+        margin-top: -4px;
+        color: #365d78;
+        font-size: 15px;
+        font-weight: 800;
+      }
+
+      .legend i {
+        display: inline-block;
+        width: 20px;
+        height: 8px;
+        margin-right: 6px;
+        border-radius: 99px;
+      }
+
+      .legend .blue {
+        background: var(--blue);
+      }
+
+      .legend .yellow {
+        background: var(--yellow);
+      }
+
+      .legend .green {
+        background: var(--green);
+      }
+
+      .bottom-strip {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        overflow: hidden;
+      }
+
+      .bottom-strip div {
+        padding: 14px 20px;
+        border-right: 1px solid var(--line);
+      }
+
+      .bottom-strip div:last-child {
+        border-right: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="card">
+      <div class="left">
+        <div>
+          <header class="brand">
+            <div class="mark" aria-hidden="true"></div>
+            <div class="brand-text">
+              <strong>Fulliron</strong>
+              <span>Public Path Project</span>
+            </div>
+          </header>
+
+          <main class="hero-copy">
+            <div class="kicker">Ukraine BESS Arbitrage Index</div>
+            <h1>Battery storage value, made public and source-backed.</h1>
+            <p class="question">
+              A daily public receipt for what a standard BESS could capture on Ukrainian DAM prices.
+            </p>
+            <div class="badges">
+              <div class="badge">
+                <span>Source</span>
+                <strong>OREE DAM</strong>
+              </div>
+              <div class="badge">
+                <span>Boundary</span>
+                <strong>No execution</strong>
+              </div>
+            </div>
+          </main>
+        </div>
+
+        <footer class="footer">
+          <span><strong>Public demo:</strong> energy-index.full-iron.com</span>
+        </footer>
+      </div>
+
+      <div class="right">
+        <section class="panel receipt-strip" aria-label="Index receipt">
+          <div>
+            <span class="label">Delivery date</span>
+            <strong class="big">20 Jun 2026</strong>
+            <span class="small">24 / 24 official hourly rows</span>
+          </div>
+          <div>
+            <span class="label">Net value</span>
+            <strong class="big">2,012 UAH</strong>
+            <span class="small">100 kW / 215 kWh pack</span>
+          </div>
+          <div>
+            <span class="label">Normalized</span>
+            <strong class="big">9,359 UAH/MWh</strong>
+            <span class="small">No bids generated</span>
+          </div>
+        </section>
+
+        <section class="panel chart-panel">
+          <div class="chart-head">
+            <div>
+              <div class="chart-title">Dispatch and price receipt</div>
+              <div class="chart-subtitle">Bars show BESS action. Blue line shows official DAM price.</div>
+            </div>
+            <div class="tag">Public demo</div>
+          </div>
+          <svg id="chart" viewBox="0 0 840 395" role="img" aria-label="BESS dispatch and DAM price chart">
+            <defs>
+              <linearGradient id="blueBar" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#0a76c7" />
+                <stop offset="100%" stop-color="#6cc9f0" />
+              </linearGradient>
+              <linearGradient id="yellowBar" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0%" stop-color="#e5ba4f" />
+                <stop offset="100%" stop-color="#f2d778" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="legend">
+            <span><i class="blue"></i>Discharge</span>
+            <span><i class="yellow"></i>Charge</span>
+            <span><i class="green"></i>SOC</span>
+          </div>
+        </section>
+
+        <section class="panel bottom-strip" aria-label="Claim boundary">
+          <div>
+            <span class="label">Claim boundary</span>
+            <strong class="small">Public index, not market execution</strong>
+          </div>
+          <div>
+            <span class="label">Lead path</span>
+            <strong class="small">BESS analytics / forecasting / product design</strong>
+          </div>
+          <div>
+            <span class="label">Call to action</span>
+            <strong class="small">Feedback, pilots, recruiting, investment conversations</strong>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <script>
+      const prices = [8880, 7500, 6850, 6800, 6800, 6707, 6537, 4600, 1800, 1149, 187, 187, 187, 187, 80, 80, 698, 2321, 6400, 14975, 13500, 12000, 12000, 9500]
+      const powers = [0.093, 0, 0, 0, 0, 0, 0, 0, 0, 0, -0.001, 0, 0, 0, -0.1, -0.1, 0, 0, 0, 0.1, 0.085, 0, 0, -0.1]
+      const soc = [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 50, 95, 95, 95, 95, 47, 5, 5, 5, 50]
+
+      const svg = document.getElementById("chart")
+      const W = 840
+      const H = 395
+      const pad = { left: 54, right: 26, top: 28, bottom: 48 }
+      const innerW = W - pad.left - pad.right
+      const innerH = H - pad.top - pad.bottom
+      const x = (i) => pad.left + (innerW * i) / 23
+      const yPrice = (value) => pad.top + innerH - (innerH * value) / 15000
+      const ySoc = (value) => pad.top + innerH - (innerH * value) / 100
+      const zero = pad.top + innerH * 0.56
+      const powerScale = innerH * 0.33 / 0.1
+
+      function el(name, attrs = {}) {
+        const node = document.createElementNS("http://www.w3.org/2000/svg", name)
+        for (const [key, value] of Object.entries(attrs)) node.setAttribute(key, value)
+        svg.appendChild(node)
+        return node
+      }
+
+      for (let g = 0; g <= 4; g += 1) {
+        const yy = pad.top + (innerH * g) / 4
+        el("line", { x1: pad.left, x2: W - pad.right, y1: yy, y2: yy, class: "grid" })
+      }
+      for (let i = 0; i < 24; i += 3) {
+        const xx = x(i)
+        el("line", { x1: xx, x2: xx, y1: pad.top, y2: pad.top + innerH, class: "grid" })
+        const t = el("text", { x: xx, y: H - 18, "text-anchor": "middle", fill: "#4b7088", "font-size": 14, "font-weight": 800 })
+        t.textContent = String(i).padStart(2, "0")
+      }
+      el("line", { x1: pad.left, x2: W - pad.right, y1: zero, y2: zero, stroke: "rgba(8,39,68,0.18)", "stroke-width": 1.3 })
+
+      prices.forEach((price, i) => {
+        const p = powers[i]
+        if (Math.abs(p) < 0.008) return
+        const barW = 17
+        const h = Math.max(4, Math.abs(p) * powerScale)
+        el("rect", {
+          x: x(i) - barW / 2,
+          y: p > 0 ? zero - h : zero,
+          width: barW,
+          height: h,
+          rx: 4,
+          class: p > 0 ? "bar-discharge" : "bar-charge",
+        })
+      })
+
+      const pricePath = prices.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${yPrice(v).toFixed(1)}`).join(" ")
+      const socPath = soc.map((v, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${ySoc(v).toFixed(1)}`).join(" ")
+      el("path", { d: socPath, class: "soc" })
+      el("path", { d: pricePath, class: "price" })
+
+      const peakIndex = prices.indexOf(Math.max(...prices))
+      const lowIndex = prices.indexOf(Math.min(...prices))
+      for (const [i, title, value] of [
+        [peakIndex, "PEAK 19:00", "14,975 UAH/MWh"],
+        [lowIndex, "LOW 14:00", "80 UAH/MWh"],
+      ]) {
+        const cx = x(i)
+        const cy = yPrice(prices[i])
+        el("circle", { cx, cy, r: 7, fill: "#fff", stroke: "#0a76c7", "stroke-width": 3 })
+        const group = el("g", { class: "callout" })
+        const boxX = Math.min(Math.max(cx - 72, pad.left + 4), W - pad.right - 144)
+        const boxY = Math.max(cy - 72, pad.top + 4)
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect")
+        rect.setAttribute("x", boxX)
+        rect.setAttribute("y", boxY)
+        rect.setAttribute("width", 144)
+        rect.setAttribute("height", 54)
+        rect.setAttribute("rx", 8)
+        group.appendChild(rect)
+        const txt1 = document.createElementNS("http://www.w3.org/2000/svg", "text")
+        txt1.setAttribute("x", boxX + 12)
+        txt1.setAttribute("y", boxY + 22)
+        txt1.setAttribute("font-size", 13)
+        txt1.textContent = title
+        group.appendChild(txt1)
+        const txt2 = document.createElementNS("http://www.w3.org/2000/svg", "text")
+        txt2.setAttribute("x", boxX + 12)
+        txt2.setAttribute("y", boxY + 41)
+        txt2.setAttribute("font-size", 16)
+        txt2.textContent = value
+        group.appendChild(txt2)
+      }
+    </script>
+  </body>
+</html>

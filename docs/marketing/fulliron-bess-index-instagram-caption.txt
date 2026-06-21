@@ -1,0 +1,20 @@
+A small public path project from my energy-arbitrage work:
+
+Ukraine BESS Arbitrage Index.
+
+The public page asks a simple question:
+How much value could a standard battery capture on Ukrainian day-ahead electricity prices?
+
+It uses official OREE DAM price data, computes a source-backed BESS dispatch receipt, and keeps the claim boundary explicit:
+
+No bids.
+No market execution.
+No utility integration claim.
+Public demo only.
+
+This is part of my post-defense work around energy analytics, optimization, forecasting, ML boundaries, and product design.
+
+Public demo:
+https://energy-index.full-iron.com/ukraine-bess-arbitrage-index
+
+#Ukraine #EnergyAnalytics #BESS #BatteryStorage #DataProducts #Fulliron
