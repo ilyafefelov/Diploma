@@ -86,12 +86,14 @@ jobs:
             python scripts/materialize_public_forecast_challenge.py "${args[@]}"
 
       - name: Commit public JSON changes
+        id: commit_public_json
         shell: bash
         run: |
           set -euo pipefail
           git status --short "$OUTPUT_DIR"
           if [ -z "$(git status --porcelain "$OUTPUT_DIR")" ]; then
             echo "No public BESS JSON changes to commit."
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
@@ -99,3 +101,31 @@ jobs:
           git add -f "$OUTPUT_DIR"
           git commit -m "Update public BESS index data"
           git push origin "HEAD:${{ github.ref_name }}"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Vercel production deploy
+        if: steps.commit_public_json.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        working-directory: dashboard
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "$VERCEL_DEPLOY_HOOK_URL" ]; then
+            curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
+            echo "Triggered Vercel production deploy hook."
+            exit 0
+          fi
+
+          if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
+            mkdir -p .vercel
+            printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
+            npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+            exit 0
+          fi
+
+          echo "::error title=Vercel deploy not configured::Set VERCEL_DEPLOY_HOOK_URL or VERCEL_TOKEN + VERCEL_ORG_ID + VERCEL_PROJECT_ID as repository secrets."
+          exit 1
