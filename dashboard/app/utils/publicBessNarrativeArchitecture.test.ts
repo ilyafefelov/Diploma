@@ -3,15 +3,17 @@ import { describe, expect, it } from 'vitest'
 import { readDashboardFixture } from './test-fixtures/operatorHudTestFixtures'
 
 describe('public BESS narrative architecture', () => {
-  it('renders the public route from committed JSON artifacts only', () => {
+  it('renders the public route from live committed GitHub JSON artifacts', () => {
     const page = readDashboardFixture('../pages/ukraine-bess-arbitrage-index.vue')
     const field = readDashboardFixture('../components/public/BessDispatchField.vue')
 
-    expect(page).toContain("'/data/bess-arbitrage-index/latest.json'")
-    expect(page).toContain("'/data/bess-arbitrage-index/history.json'")
-    expect(page).toContain("'/data/bess-arbitrage-index/forecast/latest.json'")
-    expect(page).toContain("'/data/bess-arbitrage-index/forecast_scoreboard.json'")
-    expect(page).toContain("'/data/bess-arbitrage-index/publication_status.json'")
+    expect(page).toContain("publicBessDataUrl('latest.json')")
+    expect(page).toContain("publicBessDataUrl('history.json')")
+    expect(page).toContain("publicBessDataUrl('forecast/latest.json')")
+    expect(page).toContain("publicBessDataUrl('forecast_scoreboard.json')")
+    expect(page).toContain("publicBessDataUrl('publication_status.json')")
+    expect(page).toContain("publicBessDataContentUrl('latest.json')")
+    expect(page).toContain('transform: parsePublicBessPayload')
     expect(page).toContain('<BessDispatchField')
     expect(page).toContain('SVG evidence charts below remain the analytical source of truth')
     expect(page).toContain('GitHub: transparent source of truth')

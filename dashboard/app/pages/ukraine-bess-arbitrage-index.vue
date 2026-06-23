@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
 import BessDispatchField from '~/components/public/BessDispatchField.vue'
+import { parsePublicBessPayload, publicBessDataContentUrl, publicBessDataUrl } from '~/utils/publicBessData'
 
 type PublicPayload = Record<string, any>
 type ChartPoint = { x: number, y: number }
@@ -13,7 +14,6 @@ const SVG_HEIGHT = 340
 const SVG_SHORT_HEIGHT = 260
 const SVG_MARGIN = { top: 24, right: 28, bottom: 36, left: 64 }
 const runtimeConfig = useRuntimeConfig()
-const appBaseURL = String(runtimeConfig.app.baseURL || '/')
 const siteUrl = String(runtimeConfig.public.siteUrl || 'http://localhost:64163').replace(/\/$/, '')
 const canonicalUrl = `${siteUrl}/ukraine-bess-arbitrage-index`
 const ogImageUrl = `${siteUrl}/og/ukraine-bess-arbitrage-index.png`
@@ -42,38 +42,38 @@ const initialScrollResetScript = `(function () {
   } catch (error) {}
 }());`
 
-const { data: latestData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/latest.json', {
-  baseURL: appBaseURL,
+const { data: latestData } = await useFetch<PublicPayload>(publicBessDataUrl('latest.json'), {
   key: 'public-bess-index-latest-narrative',
   server: false,
+  transform: parsePublicBessPayload,
   default: () => ({ presets: [], source: {}, summary: {}, methodology: {} })
 })
 
-const { data: historyData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/history.json', {
-  baseURL: appBaseURL,
+const { data: historyData } = await useFetch<PublicPayload>(publicBessDataUrl('history.json'), {
   key: 'public-bess-index-history-narrative',
   server: false,
+  transform: parsePublicBessPayload,
   default: () => ({ rows: [] })
 })
 
-const { data: forecastData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/forecast/latest.json', {
-  baseURL: appBaseURL,
+const { data: forecastData } = await useFetch<PublicPayload>(publicBessDataUrl('forecast/latest.json'), {
   key: 'public-bess-forecast-latest-narrative',
   server: false,
+  transform: parsePublicBessPayload,
   default: () => ({ models: [], source: {} })
 })
 
-const { data: scoreboardData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/forecast_scoreboard.json', {
-  baseURL: appBaseURL,
+const { data: scoreboardData } = await useFetch<PublicPayload>(publicBessDataUrl('forecast_scoreboard.json'), {
   key: 'public-bess-forecast-scoreboard-narrative',
   server: false,
+  transform: parsePublicBessPayload,
   default: () => ({ rows: [], metrics: [] })
 })
 
-const { data: publicationStatusData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/publication_status.json', {
-  baseURL: appBaseURL,
+const { data: publicationStatusData } = await useFetch<PublicPayload>(publicBessDataUrl('publication_status.json'), {
   key: 'public-bess-publication-status-narrative',
   server: false,
+  transform: parsePublicBessPayload,
   default: () => ({ realized: {}, forecast: {}, autonomy: {}, artifacts: {} })
 })
 
@@ -158,17 +158,17 @@ useHead({
           {
             '@type': 'DataDownload',
             encodingFormat: 'application/json',
-            contentUrl: `${siteUrl}/data/bess-arbitrage-index/latest.json`
+            contentUrl: publicBessDataContentUrl('latest.json')
           },
           {
             '@type': 'DataDownload',
             encodingFormat: 'application/json',
-            contentUrl: `${siteUrl}/data/bess-arbitrage-index/forecast/latest.json`
+            contentUrl: publicBessDataContentUrl('forecast/latest.json')
           },
           {
             '@type': 'DataDownload',
             encodingFormat: 'application/json',
-            contentUrl: `${siteUrl}/data/bess-arbitrage-index/publication_status.json`
+            contentUrl: publicBessDataContentUrl('publication_status.json')
           }
         ],
         isBasedOn: {
