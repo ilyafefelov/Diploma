@@ -52,15 +52,44 @@ jobs:
           echo "delivery_date=$(TZ=Europe/Kyiv date -d 'yesterday' +%F)" >> "$GITHUB_OUTPUT"
           echo "target_delivery_date=$(TZ=Europe/Kyiv date -d 'tomorrow' +%F)" >> "$GITHUB_OUTPUT"
 
+      - name: Resolve publisher inputs
+        id: publish_inputs
+        shell: bash
+        env:
+          DEFAULT_DELIVERY_DATE: ${{ steps.dates.outputs.delivery_date }}
+          DEFAULT_TARGET_DELIVERY_DATE: ${{ steps.dates.outputs.target_delivery_date }}
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+
+          with open(os.environ["GITHUB_EVENT_PATH"], "r", encoding="utf-8") as handle:
+              event = json.load(handle)
+
+          inputs = event.get("inputs") or {}
+
+          def event_input(name: str) -> str:
+              value = inputs.get(name, "")
+              if value is None:
+                  return ""
+              return str(value).strip()
+
+          delivery_date = event_input("delivery_date") or os.environ["DEFAULT_DELIVERY_DATE"]
+          target_delivery_date = event_input("target_delivery_date") or os.environ["DEFAULT_TARGET_DELIVERY_DATE"]
+          fail_on_fetch_error = event_input("fail_on_fetch_error").lower() in {"1", "true", "yes"}
+
+          print(f"delivery_date={delivery_date}")
+          print(f"target_delivery_date={target_delivery_date}")
+          print(f"fail_on_fetch_error={'true' if fail_on_fetch_error else 'false'}")
+          PY
+
       - name: Materialize realized BESS index
         shell: bash
         run: |
           set -euo pipefail
-          args=(--output-dir "$OUTPUT_DIR" --delivery-date "${{ steps.dates.outputs.delivery_date }}")
-          if [ -n "${{ github.event.inputs.delivery_date || '' }}" ]; then
-            args+=(--delivery-date "${{ github.event.inputs.delivery_date }}")
-          fi
-          if [ "${{ github.event.inputs.fail_on_fetch_error || false }}" = "true" ]; then
+          args=(--output-dir "$OUTPUT_DIR" --delivery-date "${{ steps.publish_inputs.outputs.delivery_date }}")
+          if [ "${{ steps.publish_inputs.outputs.fail_on_fetch_error }}" = "true" ]; then
             args+=(--fail-on-fetch-error)
           fi
           uv run --no-project \
@@ -73,11 +102,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          args=(--output-dir "$OUTPUT_DIR" --history-days 10 --target-delivery-date "${{ steps.dates.outputs.target_delivery_date }}")
-          if [ -n "${{ github.event.inputs.target_delivery_date || '' }}" ]; then
-            args+=(--target-delivery-date "${{ github.event.inputs.target_delivery_date }}")
-          fi
-          if [ "${{ github.event.inputs.fail_on_fetch_error || false }}" = "true" ]; then
+          args=(--output-dir "$OUTPUT_DIR" --history-days 10 --target-delivery-date "${{ steps.publish_inputs.outputs.target_delivery_date }}")
+          if [ "${{ steps.publish_inputs.outputs.fail_on_fetch_error }}" = "true" ]; then
             args+=(--fail-on-fetch-error)
           fi
           uv run --no-project \
@@ -108,19 +134,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          expected_delivery_date="${{ github.event.inputs.delivery_date || steps.dates.outputs.delivery_date }}"
+          expected_delivery_date="${{ steps.publish_inputs.outputs.delivery_date }}"
           raw_url="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/$OUTPUT_DIR/latest.json?run=${{ github.run_id }}"
           for attempt in {1..12}; do
             actual_delivery_date="$(python - "$raw_url" <<'PY'
-import json
-import sys
-import urllib.request
+          import json
+          import sys
+          import urllib.request
 
-with urllib.request.urlopen(sys.argv[1], timeout=20) as response:
-    payload = json.load(response)
-print(payload["source"]["delivery_date"])
-PY
-)"
+          with urllib.request.urlopen(sys.argv[1], timeout=20) as response:
+              payload = json.load(response)
+          print(payload["source"]["delivery_date"])
+          PY
+            )"
             if [ "$actual_delivery_date" = "$expected_delivery_date" ]; then
               echo "GitHub raw latest.json is fresh for $actual_delivery_date."
               exit 0
