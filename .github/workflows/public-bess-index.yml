@@ -103,7 +103,35 @@ jobs:
           git push origin "HEAD:${{ github.ref_name }}"
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
-      - name: Trigger Vercel production deploy
+      - name: Verify GitHub raw public JSON freshness
+        if: steps.commit_public_json.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          expected_delivery_date="${{ github.event.inputs.delivery_date || steps.dates.outputs.delivery_date }}"
+          raw_url="https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/$OUTPUT_DIR/latest.json?run=${{ github.run_id }}"
+          for attempt in {1..12}; do
+            actual_delivery_date="$(python - "$raw_url" <<'PY'
+import json
+import sys
+import urllib.request
+
+with urllib.request.urlopen(sys.argv[1], timeout=20) as response:
+    payload = json.load(response)
+print(payload["source"]["delivery_date"])
+PY
+)"
+            if [ "$actual_delivery_date" = "$expected_delivery_date" ]; then
+              echo "GitHub raw latest.json is fresh for $actual_delivery_date."
+              exit 0
+            fi
+            echo "GitHub raw latest.json returned $actual_delivery_date, expected $expected_delivery_date; retrying..."
+            sleep 10
+          done
+          echo "::error title=GitHub raw latest.json stale::Expected $expected_delivery_date from $raw_url."
+          exit 1
+
+      - name: Best-effort trigger Vercel production deploy
         if: steps.commit_public_json.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         working-directory: dashboard
         env:
@@ -115,17 +143,23 @@ jobs:
         run: |
           set -euo pipefail
           if [ -n "$VERCEL_DEPLOY_HOOK_URL" ]; then
-            curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"
-            echo "Triggered Vercel production deploy hook."
+            if curl -fsS -X POST "$VERCEL_DEPLOY_HOOK_URL"; then
+              echo "Triggered Vercel production deploy hook."
+            else
+              echo "::warning title=Vercel deploy hook failed::Public JSON is already committed and available through GitHub raw."
+            fi
             exit 0
           fi
 
           if [ -n "$VERCEL_TOKEN" ] && [ -n "$VERCEL_ORG_ID" ] && [ -n "$VERCEL_PROJECT_ID" ]; then
             mkdir -p .vercel
             printf '{"orgId":"%s","projectId":"%s"}\n' "$VERCEL_ORG_ID" "$VERCEL_PROJECT_ID" > .vercel/project.json
-            npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+            if npx --yes vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"; then
+              echo "Triggered Vercel production deploy through CLI."
+            else
+              echo "::warning title=Vercel CLI deploy failed::Public JSON is already committed and available through GitHub raw."
+            fi
             exit 0
           fi
 
-          echo "::error title=Vercel deploy not configured::Set VERCEL_DEPLOY_HOOK_URL or VERCEL_TOKEN + VERCEL_ORG_ID + VERCEL_PROJECT_ID as repository secrets."
-          exit 1
+          echo "::warning title=Vercel deploy not configured::Set VERCEL_DEPLOY_HOOK_URL or VERCEL_TOKEN + VERCEL_ORG_ID + VERCEL_PROJECT_ID to redeploy static code. Public JSON freshness no longer depends on this step."

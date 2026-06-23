@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { parsePublicBessPayload, publicBessDataUrl } from '~/utils/publicBessData'
 
 type PublicPayload = Record<string, any>
-const runtimeConfig = useRuntimeConfig()
-const appBaseURL = String(runtimeConfig.app.baseURL || '/')
 
-const { data: scoreboardData } = await useFetch<PublicPayload>('/data/bess-arbitrage-index/forecast_scoreboard.json', {
-  baseURL: appBaseURL,
+const { data: scoreboardData } = await useFetch<PublicPayload>(publicBessDataUrl('forecast_scoreboard.json'), {
   key: 'public-bess-forecast-scoreboard',
   server: false,
+  transform: parsePublicBessPayload,
   default: () => ({ rows: [] })
 })
 

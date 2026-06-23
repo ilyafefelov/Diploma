@@ -8,6 +8,9 @@ type NodeRuntimeGlobal = typeof globalThis & {
 const env = (globalThis as NodeRuntimeGlobal).process?.env ?? {}
 const siteUrl = env.NUXT_PUBLIC_SITE_URL || 'https://energy-index.full-iron.com'
 const baseURL = env.NUXT_APP_BASE_URL || '/'
+const bessDataBaseUrl =
+  env.NUXT_PUBLIC_BESS_DATA_BASE_URL ||
+  'https://raw.githubusercontent.com/ilyafefelov/Diploma/main/dashboard/public/data/bess-arbitrage-index'
 
 export default defineNuxtConfig({
   app: {
@@ -46,7 +49,8 @@ export default defineNuxtConfig({
     public: {
       siteUrl,
       siteName: 'Ukraine BESS Arbitrage Index',
-      siteDescription: 'Source-backed public BESS arbitrage index for Ukrainian DAM prices.'
+      siteDescription: 'Source-backed public BESS arbitrage index for Ukrainian DAM prices.',
+      bessDataBaseUrl
     }
   },
 
