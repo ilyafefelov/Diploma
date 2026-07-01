@@ -20,7 +20,7 @@ dependencies = [
     "polars",                  # Швидка обробка в Silver-шарі [7, 8]
     "pydantic>=2.0",           # Детермінований Gatekeeper [9, 10]
     # AI та Диференційована Оптимізація
-    "torch==2.9.1",            # CUDA 12.6 wheel for local/HF official training stability [11, 12]
+    "torch==2.12.1",            # CUDA 12.6 wheel for local/HF official training stability [11, 12]
     "cvxpylayers",             # Реалізація теореми про неявну функцію [13, 14]
     "cvxpy",                   # Опис задач оптимізації [13, 14]
     "optuna",                  # Гіперпараметрична оптимізація стратегій [15-17]
