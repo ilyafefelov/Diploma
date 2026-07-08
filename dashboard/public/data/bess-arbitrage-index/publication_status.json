@@ -14,9 +14,9 @@
     "schedule_timezone_note": "05:35 UTC is 08:35 Europe/Kyiv during summer time"
   },
   "forecast": {
-    "actual_target_delivery_date": "2026-07-08",
-    "attempted_target_delivery_date": "2026-07-08",
-    "expected_target_delivery_date": "2026-07-08",
+    "actual_target_delivery_date": "2026-07-09",
+    "attempted_target_delivery_date": "2026-07-09",
+    "expected_target_delivery_date": "2026-07-09",
     "history_row_count": 240,
     "is_current_for_kyiv_schedule": true,
     "model_statuses": [
@@ -40,14 +40,14 @@
       }
     ],
     "status": "published",
-    "training_cutoff": "2026-07-07T23:00:00+00:00"
+    "training_cutoff": "2026-07-08T23:00:00+00:00"
   },
-  "generated_at": "2026-07-07T06:51:17.934415+00:00",
+  "generated_at": "2026-07-08T06:23:16.665977+00:00",
   "publisher_timezone": "Europe/Kyiv",
   "realized": {
-    "actual_delivery_date": "2026-07-06",
-    "attempted_delivery_date": "2026-07-06",
-    "expected_delivery_date": "2026-07-06",
+    "actual_delivery_date": "2026-07-07",
+    "attempted_delivery_date": "2026-07-07",
+    "expected_delivery_date": "2026-07-07",
     "is_current_for_kyiv_schedule": true,
     "row_count": 24,
     "source_status": "complete_24_hour_delivery_day",
