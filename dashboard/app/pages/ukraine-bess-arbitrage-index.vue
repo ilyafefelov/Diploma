@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
+import BessActionPreviewRail from '~/components/public/BessActionPreviewRail.vue'
 import BessDispatchField from '~/components/public/BessDispatchField.vue'
 import { parsePublicBessPayload, publicBessDataContentUrl, publicBessDataUrl } from '~/utils/publicBessData'
 
@@ -1222,6 +1223,17 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
         </aside>
       </section>
+
+      <BessActionPreviewRail
+        class="bess-deferred-section"
+        :realized-schedule="selectedSchedule"
+        :forecast-models="models"
+        :preset-label="selectedPreset?.label || 'selected BESS preset'"
+        :delivery-date="deliveryDate"
+        :contact-href="contactHref"
+        :claim-boundary="claimBoundaryRaw"
+        :proposed-bid-status="proposedBidStatusRaw"
+      />
 
       <section class="bess-first-screen-row bess-deferred-section" aria-label="First-screen evidence, forecast, and promotion summary">
         <article class="bess-panel bess-panel--inset bess-concept-chart-panel">

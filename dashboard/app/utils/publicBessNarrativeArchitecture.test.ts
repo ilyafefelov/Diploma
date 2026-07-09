@@ -6,6 +6,7 @@ describe('public BESS narrative architecture', () => {
   it('renders the public route from live committed GitHub JSON artifacts', () => {
     const page = readDashboardFixture('../pages/ukraine-bess-arbitrage-index.vue')
     const field = readDashboardFixture('../components/public/BessDispatchField.vue')
+    const actionRail = readDashboardFixture('../components/public/BessActionPreviewRail.vue')
 
     expect(page).toContain("publicBessDataUrl('latest.json')")
     expect(page).toContain("publicBessDataUrl('history.json')")
@@ -15,6 +16,10 @@ describe('public BESS narrative architecture', () => {
     expect(page).toContain("publicBessDataContentUrl('latest.json')")
     expect(page).toContain('transform: parsePublicBessPayload')
     expect(page).toContain('<BessDispatchField')
+    expect(page).toContain('<BessActionPreviewRail')
+    expect(page).toContain(':realized-schedule="selectedSchedule"')
+    expect(page).toContain(':forecast-models="models"')
+    expect(page.indexOf('<BessActionPreviewRail')).toBeLessThan(page.indexOf('Price, Dispatch &amp; SoC'))
     expect(page).toContain('SVG evidence charts below remain the analytical source of truth')
     expect(page).toContain('GitHub: transparent source of truth')
     expect(page).not.toContain('Autonomous publication path')
@@ -40,6 +45,14 @@ describe('public BESS narrative architecture', () => {
     expect(field).toContain('viewModeOptions')
     expect(field).toContain('setViewMode')
     expect(field).toContain("viewMode.value === 'plan'")
+    expect(actionRail).toContain('props.realizedSchedule.slice(0, 24)')
+    expect(actionRail).toContain('forecastPointsRaw.value.slice(0, 2)')
+    expect(actionRail).toContain('class="bess-action-preview__item"')
+    expect(actionRail).toContain('role="listitem"')
+    expect(actionRail).toContain('Forecast price-signal preview')
+    expect(actionRail).toContain('No bids generated')
+    expect(actionRail).toContain('not_emitted')
+    expect(actionRail).toContain('public_bess_arbitrage_index_not_market_execution')
   })
 
   it('resets reload scroll on the public narrative route without relying on section hashes', () => {
@@ -64,6 +77,7 @@ describe('public BESS narrative architecture', () => {
     const page = readDashboardFixture('../pages/ukraine-bess-arbitrage-index.vue')
     const css = readDashboardFixture('../assets/css/bess-index.css')
     const field = readDashboardFixture('../components/public/BessDispatchField.vue')
+    const actionRail = readDashboardFixture('../components/public/BessActionPreviewRail.vue')
 
     expect(page).toContain("Let's connect")
     expect(page).toContain('mailto:')
@@ -91,6 +105,7 @@ describe('public BESS narrative architecture', () => {
     expect(page).toContain('bess-svg-label--soc')
     expect(page).toContain('SOC {{')
     expect(page).toContain('bess-chart-data-table')
+    expect(page).toContain('BessActionPreviewRail')
     expect(page).toContain('24-hour BESS dispatch schedule evidence')
     expect(page).toContain('OREE (Оператор ринку)')
     expect(page).toContain('Day-Ahead Market (DAM) · OES Ukraine')
@@ -201,6 +216,17 @@ describe('public BESS narrative architecture', () => {
     expect(field).toContain('top: var(--bess-marker-y)')
     expect(field).toContain('box-shadow:')
     expect(field).toContain('0 0 0 6px rgba(10, 119, 168, 0.08)')
+    expect(actionRail).toContain('Operator-style preview')
+    expect(actionRail).toContain('Want this calibrated?')
+    expect(actionRail).toContain('Turn the public receipt into a private facility review.')
+    expect(actionRail).toContain('Discuss setup')
+    expect(actionRail).toContain('bess-action-chip--preview')
+    expect(actionRail).toContain('aria-pressed')
+    expect(actionRail).toContain('Charge watch')
+    expect(actionRail).toContain('Discharge watch')
+    expect(actionRail).toContain('Hold watch')
+    expect(actionRail).toContain('claimBoundaryLabel')
+    expect(actionRail).toContain('proposedBidStatusLabel')
   })
 
   it('keeps the public page on the selected retro academic font system', () => {
@@ -367,15 +393,25 @@ describe('public BESS narrative architecture', () => {
 
   it('keeps the public claim boundary explicit and non-executing', () => {
     const page = readDashboardFixture('../pages/ukraine-bess-arbitrage-index.vue')
+    const actionRail = readDashboardFixture('../components/public/BessActionPreviewRail.vue')
 
     expect(page).toContain('No market execution')
     expect(page).toContain('not_market_execution')
     expect(page).toContain('not_emitted')
+    expect(actionRail).toContain('Public read-model only')
+    expect(actionRail).toContain('not private operator commands')
+    expect(actionRail).toContain('No bids generated')
+    expect(actionRail).toContain('not_emitted')
     expect(page).toContain('DT / HF DT challenger')
     expect(page).toContain('never default market execution')
     expect(page).not.toContain('Market bids generated')
     expect(page).not.toContain('Forecast guaranteed')
     expect(page).not.toContain('DT controller deployed')
+    expect(actionRail).not.toContain('Market bids generated')
+    expect(actionRail).not.toContain('Forecast guaranteed')
+    expect(actionRail).not.toContain('DT controller deployed')
+    expect(actionRail).not.toContain('market instruction')
+    expect(actionRail).not.toContain('execute')
   })
 
   it('covers published, blocked, and empty forecast artifact states', () => {
