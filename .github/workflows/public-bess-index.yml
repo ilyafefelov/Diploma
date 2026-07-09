@@ -3,6 +3,7 @@ name: Publish public BESS index
 on:
   schedule:
     - cron: "35 5 * * *"
+    - cron: "35 8 * * *"
   workflow_dispatch:
     inputs:
       delivery_date:
@@ -14,9 +15,9 @@ on:
         required: false
         type: string
       fail_on_fetch_error:
-        description: "Fail instead of preserving previous JSON when OREE fetch is unavailable"
+        description: "Fail when OREE cannot provide fresh source rows; false only for an intentional diagnostic run"
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -58,6 +59,7 @@ jobs:
         env:
           DEFAULT_DELIVERY_DATE: ${{ steps.dates.outputs.delivery_date }}
           DEFAULT_TARGET_DELIVERY_DATE: ${{ steps.dates.outputs.target_delivery_date }}
+          DEFAULT_FAIL_ON_FETCH_ERROR: "true"
         run: |
           set -euo pipefail
           python - <<'PY' >> "$GITHUB_OUTPUT"
@@ -77,7 +79,10 @@ jobs:
 
           delivery_date = event_input("delivery_date") or os.environ["DEFAULT_DELIVERY_DATE"]
           target_delivery_date = event_input("target_delivery_date") or os.environ["DEFAULT_TARGET_DELIVERY_DATE"]
-          fail_on_fetch_error = event_input("fail_on_fetch_error").lower() in {"1", "true", "yes"}
+          fail_on_fetch_error_input = event_input("fail_on_fetch_error")
+          fail_on_fetch_error = (
+              fail_on_fetch_error_input or os.environ["DEFAULT_FAIL_ON_FETCH_ERROR"]
+          ).lower() in {"1", "true", "yes"}
 
           print(f"delivery_date={delivery_date}")
           print(f"target_delivery_date={target_delivery_date}")
@@ -130,7 +135,6 @@ jobs:
           echo "changed=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify GitHub raw public JSON freshness
-        if: steps.commit_public_json.outputs.changed == 'true' || github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail

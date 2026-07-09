@@ -250,8 +250,8 @@ def _publication_status_payload(
         "autonomy": {
             "compute_layer": "github_actions_scheduled_static_json",
             "host_layer": "github_pages_workflow_static_host",
-            "schedule_cron_utc": "35 5 * * *",
-            "schedule_timezone_note": "05:35 UTC is 08:35 Europe/Kyiv during summer time",
+            "schedule_cron_utc": "35 5,8 * * *",
+            "schedule_timezone_note": "05:35 UTC is the primary run and 08:35 UTC is the retry (08:35 / 11:35 Europe/Kyiv during summer time)",
             "market_execution_enabled": False,
             "proposed_bid_status": "not_emitted",
         },
