@@ -96,8 +96,9 @@ DFL controller".
 1. Open [README](../../README.md) and state the product boundary.
 2. Open `/operator` and show one source-backed DAM/IDM preview.
 3. Show one non-HOLD action and one HOLD/abstention/fail-closed case.
-4. Open `/defense` and point to V2+, DT/V2+, and HF as layered evidence with
-   different promotion levels.
+4. Open `/defense` and point to V2+, the historical `dt_v2_plus` random-forest
+   exact-mirror diagnostic, and the separate HF transformer-backbone path as
+   different evidence lineages, none implying market promotion.
 5. Open `/docs` or [API_ENDPOINTS.md](API_ENDPOINTS.md) and show read-model
    endpoints plus the non-execution boundary.
 6. Show verification commands or recent terminal output for typecheck, unit

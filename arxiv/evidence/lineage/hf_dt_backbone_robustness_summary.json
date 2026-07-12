@@ -1,0 +1,80 @@
+{
+  "bootstrap_ci": {
+    "iterations": 1000,
+    "mean_minus_canonical_high": -8.572001178465968,
+    "mean_minus_canonical_low": -10.133034752146415,
+    "mean_minus_v2_plus_high": -15.18540117846598,
+    "mean_minus_v2_plus_low": -16.746434752146428,
+    "mean_regret_high": 159.58459882153403,
+    "mean_regret_low": 158.02356524785358
+  },
+  "canonical_comparison": {
+    "canonical_pass_level": "secondary",
+    "canonical_safe_switch_mean_regret_uah": 168.1566,
+    "market_execution_enabled": false,
+    "mean_hf_mean_regret_uah": 158.71213017569647,
+    "mean_hf_minus_canonical_uah": -9.444469824303525,
+    "mean_hf_minus_v2_plus_uah": -16.057869824303538,
+    "median_hf_mean_regret_uah": 158.44160319434272,
+    "median_hf_minus_canonical_uah": -9.714996805657279,
+    "v2_plus_baseline_mean_regret_uah": 174.77
+  },
+  "claim_scope": "hf_safe_switch_scorer_robustness_shadow_not_promotable_not_market_execution",
+  "dt_promotion_gate_passed": false,
+  "generated_at": "2026-06-01T09:10:27.273117+00:00",
+  "market_execution_enabled": false,
+  "promotion_gate_passed": false,
+  "publication_receipt_verified": false,
+  "robustness_gate_config": {
+    "max_median_switch_loss_count": 3.0,
+    "max_positive_switch_delta_uah": 50.0,
+    "min_canonical_win_count": 4,
+    "min_required_seed_count": 5,
+    "requires_every_seed_to_beat_v2_plus_baseline": true
+  },
+  "robustness_gate_passed": true,
+  "robustness_gate_reason": "passed",
+  "run_slug": "week5_hf_safe_switch_scorer_robustness_2026_06_01",
+  "seed_count": 5,
+  "seeds": [
+    7,
+    42,
+    2026,
+    20260525,
+    20260601
+  ],
+  "selected_operating_threshold_uah": 100.0,
+  "selected_threshold_metrics": {
+    "all_seeds_beat_v2_plus_baseline": true,
+    "market_execution_enabled": false,
+    "max_positive_switch_delta_uah": 47.90452194213867,
+    "max_switch_loss_count": 4.0,
+    "mean_minus_v2_plus_baseline_uah": -16.057869824303538,
+    "median_minus_canonical_safe_switch_uah": -9.714996805657279,
+    "median_switch_loss_count": 0.0,
+    "robustness_gate_passed": true,
+    "robustness_gate_reason": "passed",
+    "seed_count": 5,
+    "seeds_beating_canonical_count": 5,
+    "seeds_beating_v2_plus_baseline_count": 5,
+    "selected_mean_regret_max": 160.42875314553578,
+    "selected_mean_regret_mean": 158.71213017569647,
+    "selected_mean_regret_median": 158.44160319434272,
+    "selected_mean_regret_min": 157.6521479209264,
+    "selected_mean_regret_std": 0.9272161918098751,
+    "threshold_uah": 100.0
+  },
+  "selected_threshold_selection_reason": "guard_passed_best_mean",
+  "source_publication_timestamp_available": false,
+  "thresholds_uah": [
+    0.0,
+    5.0,
+    10.0,
+    20.0,
+    30.0,
+    40.0,
+    50.0,
+    75.0,
+    100.0
+  ]
+}

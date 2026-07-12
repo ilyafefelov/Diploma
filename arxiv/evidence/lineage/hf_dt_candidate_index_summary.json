@@ -1,0 +1,103 @@
+{
+  "attached_artifacts": {
+    "evaluation_summary_json": "dt_research_shadow_evaluation_summary.json",
+    "selected_preview_json": "dt_research_shadow_selected_schedule_preview.json",
+    "smoke_summary_json": "dt_research_shadow_smoke_summary.json"
+  },
+  "claim_scope": "dt_research_shadow_transformer_smoke_not_promotable_not_market_execution",
+  "comparison_controls": [
+    "strict_lp_oracle_reference",
+    "schedule_value_learner_v2_plus_teacher_comparator_fallback",
+    "behavior_cloning_majority_family_reference"
+  ],
+  "deterministic_safety_projection_passed": true,
+  "dt_promotion_gate_passed": false,
+  "dt_tensor_contract": {
+    "action_feasibility_mask_applied_to_eval": true,
+    "action_feasibility_mask_applied_to_loss": true,
+    "action_feasibility_mask_attached": true,
+    "action_feasibility_mask_shape": [
+      180,
+      4,
+      4
+    ],
+    "action_target": "candidate_index_or_schedule_family",
+    "actions_shape": [
+      180,
+      4
+    ],
+    "candidate_id_targets_attached": true,
+    "candidate_id_targets_shape": [
+      180,
+      4
+    ],
+    "candidate_mask_attached": true,
+    "candidate_mask_shape": [
+      180,
+      4
+    ],
+    "feasibility_mask_name": "candidate_mask",
+    "market_execution_enabled": false,
+    "raw_hourly_buy_sell_hold_action_target": false,
+    "return_to_go_target": "negative_regret_delta_vs_v2_plus_or_strict_reference",
+    "returns_to_go_shape": [
+      180,
+      4,
+      1
+    ],
+    "reward_contract_passed": true,
+    "schedule_family_targets_attached": true,
+    "schedule_family_targets_shape": [
+      180,
+      4
+    ],
+    "state_context_groups": [
+      "forecast_context",
+      "battery_soc_context",
+      "tenant_context",
+      "candidate_value_regret_context",
+      "gate_context"
+    ],
+    "state_contract_passed": true,
+    "states_shape": [
+      180,
+      4,
+      20
+    ]
+  },
+  "evaluation_metrics": {
+    "accuracy_secondary": 1.0,
+    "behavior_cloning_mean_regret_uah": 622.2489393870036,
+    "behavior_cloning_mean_value_uah": 3289.2353322347003,
+    "dt_selected_mean_regret_uah": 460.30227225613265,
+    "dt_selected_mean_value_uah": 3451.1820139567058,
+    "eval_cross_entropy_loss": 0.5493592023849487,
+    "infeasible_action_prediction_count": 0.0,
+    "strict_mean_regret_uah": 310.5828074415939,
+    "strict_mean_value_uah": 3600.9014824761284,
+    "v2_plus_mean_regret_uah": 174.7683985736635,
+    "v2_plus_mean_value_uah": 3736.715885416667
+  },
+  "evaluation_packet_summary": {
+    "claim_scope": "dt_research_shadow_evaluation_packet_not_promotable_not_market_execution",
+    "market_execution_enabled": false,
+    "primary_metric": "regret_value_vs_strict_v2_plus_behavior",
+    "summary_json": "dt_research_shadow_evaluation_summary.json",
+    "validation_json": "dt_research_shadow_evaluation_validation.json",
+    "validation_passed": true
+  },
+  "evaluation_sequence_count": 90,
+  "hf_decision_transformer_available": true,
+  "hf_decision_transformer_status": "hf_decision_transformer_importable",
+  "hf_transformers_available": true,
+  "loss_function": "cross_entropy_candidate_index",
+  "market_execution_enabled": false,
+  "model_backbone": "huggingface_decision_transformer_model",
+  "model_backbone_selection_reason": "hf_requested",
+  "promotable_v13_permitted_training_rows": 0,
+  "requested_model_backbone": "hf",
+  "research_shadow_training_rows": 360,
+  "train_loss_first": 1.3308606147766113,
+  "train_loss_last": 0.8863298892974854,
+  "train_sequence_count": 90
+}

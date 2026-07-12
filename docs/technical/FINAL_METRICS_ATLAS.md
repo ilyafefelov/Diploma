@@ -21,11 +21,11 @@ production strategy switch. `market_execution_enabled=false` remains fixed.
 | Schedule/Value Learner V2+ mean regret | 174.77 UAH | `docs/technical/DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md`, `docs/thesis/chapters/04-results-and-discussion.md` | headline/default evidence | no market payload |
 | Schedule/Value Learner V2+ median regret | 67.30 UAH | `docs/thesis/chapters/04-results-and-discussion.md` | headline/default evidence | no market payload |
 | V2+ rolling robustness | 4 / 4 windows | `docs/thesis/chapters/04-results-and-discussion.md` | headline robustness | offline/read-model evidence |
-| DT/V2+ safe-switch mean regret | 168.16 UAH | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | secondary research evidence | not promoted, no default switch |
-| DT/V2+ safe-switch median regret | 61.71 UAH | `docs/thesis/chapters/04-results-and-discussion.md` | secondary research evidence | shadow only |
-| DT/V2+ non-V2+ switches | 4 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | secondary research evidence | V2+ remains fallback |
-| DT/V2+ abstentions | 86 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | secondary research evidence | abstain-to-V2+ behavior |
-| DT/V2+ recovered opportunities | 3 / 15 opportunities | `docs/thesis/chapters/04-results-and-discussion.md` | secondary research evidence | not deployed control |
+| Random-forest V2+ safe-switch mean regret | 168.16 UAH | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | exact-mirror in-packet diagnostic | historical artifact id `dt_v2_plus`; not DT or OOS |
+| Random-forest V2+ safe-switch median regret | 61.71 UAH | `docs/thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md` | exact-mirror in-packet diagnostic | four switches occur on one date |
+| Random-forest non-V2+ switches | 4 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | in-packet diagnostic | V2+ remains fallback; one distinct switch date |
+| Random-forest abstentions | 86 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | in-packet diagnostic | abstain-to-V2+ behavior |
+| Random-forest recovered opportunities | 3 / 15 filtered opportunities | `docs/thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md` | historical diagnostic | denominator requires the stored selector filter |
 | HF value-aligned frozen mean regret signal | 158.71 UAH | `docs/technical/final-evidence/hf_safe_switch_robustness_summary.md`, `docs/technical/final-evidence/hf_value_aligned_shadow_promotion_proof.md` | manual shadow/demo evidence | candidate-library only |
 | HF value-aligned non-fallback days | 20 / 32 source-backed DAM days | `docs/technical/final-evidence/hf_value_aligned_shadow_promotion_proof.md` | manual shadow/demo evidence | no production promotion |
 | HF readiness matrix | 8 / 8 DAM/IDM cases | `docs/technical/final-evidence/hf_value_aligned_forecast_readiness_summary.md` | demo readiness | preview context only |

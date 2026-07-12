@@ -117,11 +117,11 @@ market execution, production promotion, or `ProposedBid` emission.
 9. Show:
    - one non-HOLD case when value and safety guards pass;
    - one HOLD/fallback case when guards abstain.
-10. Use the `Defense path` button or open `/defense` and show V2+, DT/V2+,
+10. Use the `Defense path` button or open `/defense` and show V2+, the historical random-forest artifact, and HF,
     and HF as layered evidence:
    - V2+ is headline/default evidence;
-   - DT/V2+ is secondary shadow evidence;
-   - HF value-aligned is manual shadow/demo evidence.
+   - historical `dt_v2_plus` is a random-forest exact-mirror diagnostic, not DT/OOS evidence;
+   - HF value-aligned is a separate transformer-backbone manual diagnostic/read-model path without independent realized-regret evidence.
 11. End on `market_execution_enabled=false`, no `ProposedBid`, no market order
     payload.
 
@@ -205,6 +205,7 @@ If the full wrapper is too slow, run the focused checks from the root README.
 ## Correct Closeout Sentence
 
 The project is ready to defend as a source-backed DAM/IDM hourly operator
-recommendation preview with V2+ headline offline evidence, DT/V2+ secondary
-safe-switch evidence, and HF value-aligned manual shadow evidence. Market
+recommendation preview with V2+ headline retrospective evidence, a historical
+`dt_v2_plus` random-forest exact-mirror diagnostic, and separate HF
+transformer-backbone manual/read-model evidence. Market
 execution remains disabled.

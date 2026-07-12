@@ -1,0 +1,36 @@
+\section{Source-Backed Operator Preview}
+
+\subsection{From evidence to a human-readable surface}
+
+An operator-facing read model should answer four questions: what source backs the selected horizon, what hourly schedule is being previewed, how the method performed against a fallback in historical evidence, and which gates prevent further action. The dashboard therefore displays a recommendation schedule, source mode, strategy label, value or regret evidence where available, and readiness status. It does not expose a market-order endpoint.
+
+For published DAM hours, official OREE rows are used \cite{oree2026dam}. For unpublished targets, forecast-store or request-time scenarios can populate a preview with explicit labels such as pre-publication forecast or same-day refresh. Synthetic prices are not inserted when source context is absent; the request is blocked or returns an explicit abstention. This behavior makes an unavailable source visible rather than hiding it behind a plausible chart.
+
+One materialized operator packet contains 24 DAM recommendation rows: one BUY, two SELL, and 21 HOLD. The action count is not a quality metric. A day with mostly HOLD can be correct when price spread, SOC, efficiency, degradation, or risk does not justify cycling. Historical decision value and gate status are more meaningful than the number of active labels.
+
+\subsection{DAM and IDM boundary}
+
+The primary paper evidence is DAM. The read model supports hourly DAM and IDM contexts for latest, today, tomorrow, and day+2 targets. A readiness packet evaluates eight combinations and returns 24 source-backed rows in all eight, with no blocked case and six cases containing at least one non-HOLD row. The source modes comprise two official published cases, one same-day forecast refresh, and five pre-publication forecasts.
+
+This is a software and data-readiness result, not IDM performance evidence. The study does not implement or evaluate 15-minute intraday products, continuous trading, order matching, settlement, or market submission. Describing ``8/8 readiness'' without this qualification would be misleading. It means the operator surface can retrieve or materialize a complete hourly context for the tested requests.
+
+This request-level retrieval check is distinct from the blocked V13 acquisition
+gate. The former asks whether eight selected API/read-model requests return a
+complete hourly context; the latter asks whether every tenant/source family has
+the governed examples and explicit source-publication evidence required to
+permit model training. Thus 8/8 retrieval and \code{permits_model_training=false}
+are compatible states.
+
+\subsection{Human oversight and abstention}
+
+The HF value-aligned source is manually selectable. A user chooses a tenant, venue, and date; the backend loads source-backed context; the finite candidate generator constructs feasible templates; the scorer ranks them; and deterministic guards either allow a non-HOLD preview or return V2+/HOLD. This sequence is designed for review. The user can inspect price context, SOC path, estimated value, and the reason for abstention.
+
+Four supervisor/demo cases passed end-to-end evidence checks: two nonfallback examples and two guarded abstentions. The packet includes an official DAM proof value of 2765.72 UAH and a forecast DAM action value of 318.86 UAH. These are case-specific preview values, not realized profit claims. All execution flags remain false.
+
+The abstention design is a practical safety contribution. Models trained on limited historical coverage are most uncertain precisely when conditions differ from prior examples. A forced-action interface would turn uncertainty into a charge or discharge label. The guarded interface instead makes insufficient evidence a visible state. This aligns the machine-learning behavior with operator responsibility.
+
+\subsection{No-execution contract}
+
+The system emits recommendation rows and evidence metadata, not \code{ProposedBid}, \code{ClearedTrade}, or \code{DispatchCommand} objects. It has no authorization to submit to OREE, no settlement reconciliation, and no inverter actuation. An internal evidence-screen label changes only the recorded research status; it does not change operational mode.
+
+Future execution would require a separate bounded context: verified publication and submission timing, legal and contractual authority, credentials and signing, idempotent order handling, receipt capture, position and settlement reconciliation, telemetry validation, failsafe control, monitoring, and incident response. None of these requirements can be inferred from lower regret in a backtest.

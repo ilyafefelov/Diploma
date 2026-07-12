@@ -1,0 +1,227 @@
+{
+  "best_metrics": {
+    "abstention_count": 63,
+    "market_execution_enabled": false,
+    "non_v2_plus_switch_count": 27,
+    "selected_mean_regret_uah": 168.65519472389585,
+    "selected_mean_value_uah": 3742.8290974934894,
+    "selected_median_regret_uah": 61.06303596496582,
+    "selected_minus_v2_plus_mean_regret_uah": -6.113203849767645,
+    "switch_loss_count": 7,
+    "switch_mean_regret_delta_uah": -20.37734616589215,
+    "switch_tie_count": 14,
+    "switch_win_count": 6,
+    "v2_plus_mean_regret_uah": 174.7683985736635
+  },
+  "best_threshold_uah": 50.0,
+  "candidate_families": [
+    "raw_reference",
+    "schedule_value_learner_v2_plus",
+    "schedule_value_learner_v2_reference",
+    "strict_reference"
+  ],
+  "canonical_comparison": {
+    "canonical_pass_level": "secondary",
+    "canonical_safe_switch_mean_regret_uah": 168.1566,
+    "hf_beats_canonical_safe_switch": false,
+    "hf_beats_v2_plus_baseline": true,
+    "hf_minus_canonical_safe_switch_mean_regret_uah": 0.4985947238958488,
+    "hf_minus_v2_plus_baseline_mean_regret_uah": -6.114805276104164,
+    "hf_safe_switch_selected_mean_regret_uah": 168.65519472389585,
+    "market_execution_enabled": false,
+    "v2_plus_baseline_mean_regret_uah": 174.77
+  },
+  "checkpoint": {
+    "candidate_count": 4,
+    "claim_scope": "hf_safe_switch_candidate_scorer_shadow_not_promotable_not_market_execution",
+    "dt_promotion_gate_passed": false,
+    "format": "huggingface_save_pretrained",
+    "head_dim": 2,
+    "hidden_dim": 64,
+    "load_smoke_passed": true,
+    "market_execution_enabled": false,
+    "num_heads": 2,
+    "num_layers": 2,
+    "path": "data\\research_runs\\week5_hf_safe_switch_candidate_scorer_2026_06_01\\hf_safe_switch_scorer_model_checkpoint",
+    "permits_model_training": false,
+    "saved": true,
+    "state_dim": 29
+  },
+  "claim_scope": "hf_safe_switch_candidate_scorer_shadow_not_promotable_not_market_execution",
+  "dataset_summary": {
+    "candidate_count": 4,
+    "evaluation_anchor_count": 90,
+    "promotable_v13_permitted_training_rows": 0,
+    "research_shadow_training_rows": 360,
+    "teacher_row_count": 720,
+    "train_anchor_count": 90
+  },
+  "dt_promotion_gate_passed": false,
+  "eval_prediction_diagnostics": {
+    "mean_actual_regret_delta_uah": 153.72333600710132,
+    "mean_predicted_regret_delta_uah": 139.14808247453635,
+    "rmse_regret_delta_uah": 80.46773529052734
+  },
+  "family_tail_risk": {
+    "raw_reference": 0.5888888888888889,
+    "schedule_value_learner_v2_plus": 0.0,
+    "schedule_value_learner_v2_reference": 0.06666666666666667,
+    "strict_reference": 0.34444444444444444
+  },
+  "feature_count": 29,
+  "feature_names": [
+    "selector_feature_forecast_spread_uah_mwh",
+    "selector_feature_terminal_soc_delta_fraction",
+    "selector_feature_total_throughput_delta_mwh",
+    "selector_feature_total_degradation_penalty_uah",
+    "selector_feature_soc_min_slack_fraction",
+    "selector_feature_candidate_index",
+    "selector_feature_candidate_count",
+    "selector_feature_anchor_hour",
+    "selector_feature_anchor_day_of_year",
+    "selector_feature_anchor_month",
+    "selector_feature_anchor_day_of_month",
+    "selector_feature_forecast_mean_uah_mwh",
+    "selector_feature_forecast_std_uah_mwh",
+    "selector_feature_forecast_range_uah_mwh",
+    "selector_feature_forecast_top3_mean_uah_mwh",
+    "selector_feature_forecast_bottom3_mean_uah_mwh",
+    "selector_feature_forecast_peak_hour",
+    "selector_feature_forecast_trough_hour",
+    "selector_feature_forecast_peak_trough_gap_hours",
+    "selector_feature_forecast_objective_uah",
+    "selector_feature_dispatch_dot_centered_forecast",
+    "selector_feature_charge_hour_count",
+    "selector_feature_discharge_hour_count",
+    "selector_feature_first_charge_hour",
+    "selector_feature_first_discharge_hour",
+    "candidate_family=raw_reference",
+    "candidate_family=schedule_value_learner_v2_plus",
+    "candidate_family=schedule_value_learner_v2_reference",
+    "candidate_family=strict_reference"
+  ],
+  "feature_set": "expanded_prior_context_v1",
+  "generated_at": "2026-06-01T08:10:58.035540+00:00",
+  "market_execution_enabled": false,
+  "method": "DecisionTransformerModel encoder with candidate-level regret-delta regression, tail-risk BCE, pairwise safe-switch ranking, and V2+ fallback.",
+  "model_backbone": "huggingface_decision_transformer_model",
+  "promotion_gate_passed": false,
+  "publication_receipt_verified": false,
+  "run_slug": "week5_hf_safe_switch_candidate_scorer_2026_06_01",
+  "selection_config": {
+    "max_family_tail_risk_probability": 0.5,
+    "pairwise_margin_scaled": 0.2,
+    "regret_scale_uah": 100.0,
+    "safe_switch_extra_weight": 30.0,
+    "tail_risk_loss_threshold_uah": 150.0,
+    "thresholds_uah": [
+      0.0,
+      5.0,
+      10.0,
+      20.0,
+      50.0
+    ]
+  },
+  "source_publication_timestamp_available": false,
+  "threshold_results": [
+    {
+      "metrics": {
+        "abstention_count": 39,
+        "market_execution_enabled": false,
+        "non_v2_plus_switch_count": 51,
+        "selected_mean_regret_uah": 173.20798892606464,
+        "selected_mean_value_uah": 3738.276302083333,
+        "selected_median_regret_uah": 66.89236068725586,
+        "selected_minus_v2_plus_mean_regret_uah": -1.5604096475988627,
+        "switch_loss_count": 19,
+        "switch_mean_regret_delta_uah": -2.753664083997993,
+        "switch_tie_count": 26,
+        "switch_win_count": 6,
+        "v2_plus_mean_regret_uah": 174.7683985736635
+      },
+      "threshold_uah": 0.0
+    },
+    {
+      "metrics": {
+        "abstention_count": 42,
+        "market_execution_enabled": false,
+        "non_v2_plus_switch_count": 48,
+        "selected_mean_regret_uah": 173.20765272407897,
+        "selected_mean_value_uah": 3738.2766384548613,
+        "selected_median_regret_uah": 66.89236068725586,
+        "selected_minus_v2_plus_mean_regret_uah": -1.5607458495845397,
+        "switch_loss_count": 18,
+        "switch_mean_regret_delta_uah": -2.926398467971012,
+        "switch_tie_count": 24,
+        "switch_win_count": 6,
+        "v2_plus_mean_regret_uah": 174.7683985736635
+      },
+      "threshold_uah": 5.0
+    },
+    {
+      "metrics": {
+        "abstention_count": 45,
+        "market_execution_enabled": false,
+        "non_v2_plus_switch_count": 45,
+        "selected_mean_regret_uah": 173.20765272407897,
+        "selected_mean_value_uah": 3738.2766384548613,
+        "selected_median_regret_uah": 66.89236068725586,
+        "selected_minus_v2_plus_mean_regret_uah": -1.5607458495845397,
+        "switch_loss_count": 18,
+        "switch_mean_regret_delta_uah": -3.1214916991690793,
+        "switch_tie_count": 21,
+        "switch_win_count": 6,
+        "v2_plus_mean_regret_uah": 174.7683985736635
+      },
+      "threshold_uah": 10.0
+    },
+    {
+      "metrics": {
+        "abstention_count": 49,
+        "market_execution_enabled": false,
+        "non_v2_plus_switch_count": 41,
+        "selected_mean_regret_uah": 171.61002174644835,
+        "selected_mean_value_uah": 3739.8742730034724,
+        "selected_median_regret_uah": 64.95924758911133,
+        "selected_minus_v2_plus_mean_regret_uah": -3.158376827215155,
+        "switch_loss_count": 14,
+        "switch_mean_regret_delta_uah": -6.933022303643023,
+        "switch_tie_count": 21,
+        "switch_win_count": 6,
+        "v2_plus_mean_regret_uah": 174.7683985736635
+      },
+      "threshold_uah": 20.0
+    },
+    {
+      "metrics": {
+        "abstention_count": 63,
+        "market_execution_enabled": false,
+        "non_v2_plus_switch_count": 27,
+        "selected_mean_regret_uah": 168.65519472389585,
+        "selected_mean_value_uah": 3742.8290974934894,
+        "selected_median_regret_uah": 61.06303596496582,
+        "selected_minus_v2_plus_mean_regret_uah": -6.113203849767645,
+        "switch_loss_count": 7,
+        "switch_mean_regret_delta_uah": -20.37734616589215,
+        "switch_tie_count": 14,
+        "switch_win_count": 6,
+        "v2_plus_mean_regret_uah": 174.7683985736635
+      },
+      "threshold_uah": 50.0
+    }
+  ],
+  "train_prediction_diagnostics": {
+    "mean_actual_regret_delta_uah": 153.72333600710132,
+    "mean_predicted_regret_delta_uah": 139.14808247453635,
+    "rmse_regret_delta_uah": 80.46773529052734
+  },
+  "training": {
+    "max_epochs": 500,
+    "train_loss_first": 2235.22998046875,
+    "train_loss_last": 4.108390808105469,
+    "train_pairwise_ranking_loss_first": 0.11325439065694809,
+    "train_pairwise_ranking_loss_last": 0.0,
+    "train_weighted_mse_first": 2234.9794921875,
+    "train_weighted_mse_last": 4.049679279327393
+  }
+}

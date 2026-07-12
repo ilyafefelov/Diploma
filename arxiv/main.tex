@@ -1,0 +1,62 @@
+\documentclass[10pt,twocolumn]{article}
+
+\usepackage[a4paper,margin=0.72in,columnsep=0.26in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage{microtype}
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs,tabularx,array}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{balance}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}}
+\sisetup{detect-all,group-separator={,},group-minimum-digits=4}
+\setlist{nosep,leftmargin=*}
+\captionsetup{font=small,labelfont=bf}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\uah}{UAH}
+\setlength{\emergencystretch}{2em}
+\urlstyle{same}
+
+\hypersetup{
+  pdftitle={Decision-Value Evaluation of BESS Arbitrage Recommendations: A Reproducible Retrospective Study of Ukraine's Day-Ahead Market},
+  pdfauthor={Illya Fefelov},
+  pdfsubject={BESS arbitrage, decision-value evaluation, and evidence-governed operator preview},
+  pdfkeywords={battery energy storage, energy arbitrage, regret, rolling-origin evaluation, Ukraine}
+}
+
+\title{Decision-Value Evaluation of BESS Arbitrage Recommendations:\\A Reproducible Retrospective Study of Ukraine's Day-Ahead Market}
+\author{Illya Fefelov\thanks{Based on a Master's thesis defended in 2026.}\\
+\small Neoversity\\
+\small \href{https://orcid.org/0009-0001-9500-4455}{ORCID: 0009-0001-9500-4455}\\
+\small \url{https://github.com/ilyafefelov/Diploma}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\input{sections/00-abstract}
+\input{sections/01-introduction}
+\input{sections/02-related-work}
+\input{sections/03-formulation}
+\input{sections/04-data-protocol}
+\input{sections/05-results}
+\input{sections/06-operator-preview}
+\input{sections/07-discussion-limitations}
+\input{sections/08-conclusion}
+\input{sections/09-statements}
+
+\balance
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

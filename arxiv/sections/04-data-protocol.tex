@@ -1,0 +1,112 @@
+\section{Data and Experimental Protocol}
+
+\subsection{Sources and panel construction}
+
+The core market input is Ukrainian OREE DAM hourly data \cite{oree2026dam}. Calendar and weather context can be joined under point-in-time rules, with Open-Meteo as the documented weather source \cite{openmeteo2026archive}. The global-panel lane uses five configured BESS profiles: a Kyiv mall, Lviv office, Dnipro factory, Kharkiv hospital, and Odesa hotel. They are simulation/configuration profiles, not claims of deployed commercial sites. All five use the same DAM price vector on a given date while differing in battery capacity, power, efficiency, and SOC settings.
+
+The tracked V2+ configuration is described as a 365-anchor Ukrainian panel. The main retrospective slice contains 18 distinct anchor dates crossed with five configured profiles, hence 90 paired profile-date rows. The effective temporal sample is 18 dates, not 90 independent market outcomes. Each row represents one 24-hour schedule. Raw global-panel NBEATSx and its prior-only horizon-calibrated variant are co-primary sensitivity sources. Calibration uses earlier rolling residuals and excludes the current target's realized values.
+
+The role-summary artifact contains 90 rows for every source-role combination, with five profiles, 18 dates, regret, decision value, oracle value, and configured safety counts. For the calibrated source, mean oracle value is 3911.48 UAH per 24-hour profile-date schedule. Strict, V2, and V2+ mean decision values are 3600.90, 3705.12, and 3736.72 UAH. These are retrospective evaluator outputs for the configured profiles, not guaranteed revenue.
+
+\subsection{Rolling-origin evaluation}
+
+Random train-test shuffling would expose future regimes to a time-series selector and is unsuitable here. The study uses rolling-origin replay, following out-of-sample testing logic for temporally ordered data \cite{tashman2000outofsample}. At each anchor, the selector sees only earlier information; realized prices are used afterward for scoring. Four adjacent windows each contain 18 dates crossed with five profiles. Window 1, dated 2026-04-12 to 2026-04-29 in the stored timestamps, is the same main retrospective slice reported in Tables~\ref{tab:05:results:1} and~\ref{tab:05:results:2}. It is not an extra test in addition to the four windows.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{rolling-origin.png}
+\caption{Rolling-origin protocol and point-in-time evidence boundary.}
+\label{fig:04:data:protocol:1}
+\end{figure*}
+
+The four windows span 2026-04-12 to 2026-04-29, 2026-03-17 to 2026-04-11, 2026-02-27 to 2026-03-16, and 2026-02-09 to 2026-02-26 in the stored timestamp convention. Minimum prior anchor counts are 347, 329, 311, and 293. Both sources use the same windows, and raw, strict, V2, and V2+ are paired row-for-row within each source/profile/date.
+
+The repository labels a source robust when V2+ beats both strict and V2 in every window. Because the windows are adjacent, share one market process, and arise from one development history, they are sensitivity replays rather than independent replications. They show that the ordering is not confined to the latest slice; they do not establish stationarity or confirmatory generalization.
+
+\subsection{Common LP/oracle scoring}
+
+Each candidate price vector or selected schedule family enters the same LP and scoring contour. The optimizer enforces the configured physical constraints, and the realized-price evaluator computes schedule value. The oracle uses the same battery configuration and realized prices. Thus, regret differences are attributable to candidate information and selection rather than to different evaluators.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{lp-scoring.png}
+\caption{Common LP schedule and oracle scoring contour.}
+\label{fig:04:data:protocol:2}
+\end{figure*}
+
+The primary descriptive metrics are mean regret and median regret. Mean regret captures total decision-value loss but can be influenced by difficult anchors. Median regret shows typical behavior. Safety-violation counts verify the configured physical checks. Mean decision value provides an intuitive counterpart to regret, while mean oracle value confirms the common reference. Improvement ratios are derived from the unrounded regret values.
+
+\subsection{Comparators and challengers}
+
+The comparison includes four paired roles: raw forecast, strict reference, V2 reference, and V2+ selection. Raw and horizon-calibrated NBEATSx are reported symmetrically as co-primary sensitivity sources. No source is selected as confirmatory on the basis of the latest-window result.
+
+Subsequent challengers are reported with their stored screen status. TFT quantiles test schedule diversity. Poland lag-24 tests governed neighboring-market context. The canonical random forest uses expanded prior context and seeds 42, 2026, and 7. Its features, 500 trees, depth 6, one-sample leaf minimum, 20 UAH switch threshold, 150 UAH tail-loss threshold, and 0.5 family-risk cap come from the frozen artifact; no evidence was located that these choices were fixed before the latest slice was inspected.
+
+The HF Decision Transformer candidate-index experiment is a separate smoke path. Its training rows are copies of the same retrospective comparison rows shifted backward in time solely to exercise tensor construction and training. The configuration uses context length 4, three epochs, hidden dimension 48, two layers, two heads, and seed 20260526. This construction is not independent historical training data.
+
+No new model experiment was run for this paper. Values are read from frozen packets, the metrics atlas, the evidence manifest, and tracked summaries. The dependence-aware summaries marked below are reconstruction analyses over frozen rows, not model retuning.
+
+\subsection{Comparator and evaluator configuration}
+
+Table~\ref{tab:04:data:protocol:1} records the common physical configuration. Capacity, power, round-trip efficiency, initial SOC, and SOC bounds come from \code{simulations/tenants.yml}.
+
+\begin{table*}[t]
+\centering
+\caption{Configured BESS profiles used in every paired comparison.}
+\label{tab:04:data:protocol:1}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrl@{}}
+\toprule
+Configured profile & Capacity (kWh) & Max power (kW) & Round-trip efficiency & Initial SOC & SOC bounds \\
+\midrule
+Kyiv mall & 280 & 140 & 0.92 & 0.52 & 0.05--0.95 \\
+Lviv office & 150 & 75 & 0.90 & 0.55 & 0.10--0.90 \\
+Dnipro factory & 500 & 250 & 0.92 & 0.50 & 0.05--0.95 \\
+Kharkiv hospital & 400 & 200 & 0.92 & 0.70 & 0.10--0.95 \\
+Odesa hotel & 200 & 100 & 0.90 & 0.48 & 0.10--0.90 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+The LP horizon is 24 one-hour intervals. Charge and discharge efficiencies are each the square root of round-trip efficiency. Initial SOC resets to the configured profile value for each profile-date evaluation; no terminal SOC equality is imposed. The LP has no explicit charge/discharge complementarity constraint. No post-solve feasibility repair is applied to raw, strict, V2, or V2+ schedules; they are generated within the same LP constraints.
+
+The degradation proxy assumes 210 USD/kWh capex, 43.9129 UAH/USD, 15 years, and one cycle per day. Cycle cost is divided by twice the profile capacity, producing a common throughput penalty of approximately 842.17 UAH/MWh. It is an engineering proxy, not measured ageing.
+
+\begin{table*}[t]
+\centering
+\caption{Comparator, selector, and evaluator information sets.}
+\label{tab:04:data:protocol:2}
+\small
+\begin{tabularx}{\textwidth}{@{}YYYY@{}}
+\toprule
+Component & Decision-time information and training & Candidate/fallback behavior & Evaluation role \\
+\midrule
+Raw NBEATSx & One source-specific 24-hour forecast vector & LP schedule from the raw vector & Co-primary retrospective sensitivity source \\
+Calibrated NBEATSx & Raw forecast plus horizon corrections estimated from earlier residuals & LP schedule from the calibrated vector & Co-primary retrospective sensitivity source \\
+\code{strict_similar_day} & Historical observed prices only; repo lag rule is 24 h for weekday indices Tue--Fri and 168 h otherwise & One deterministic similar-day forecast; no learned fallback & Frozen comparator paired on every profile-date \\
+V2 & Earlier anchors; blend weights 0.25/0.5/0.75; at least 14 prior residual anchors & Chooses among frozen V2-era schedule families & Retrospective comparator \\
+V2+ & Earlier anchors; 1\% prior mean-improvement threshold; added extrema, spread, $\pm 1$ h shift, 3/6 h block, and terminal-target candidates & Defaults to V2 when prior evidence is insufficient & Retrospective schedule-family selector \\
+Random-forest safe-switch & 360 training candidates that are exact timestamp-shifted copies of the 360 evaluation candidates; 500 trees, depth 6, leaf minimum 1 & Switches only if predicted improvement $\geq 20$ UAH and family risk $\leq 0.5$; otherwise V2+ & Exact-mirror in-packet diagnostic; historical id \code{dt_v2_plus}; not DT or OOS evidence \\
+HF Decision Transformer & Mirrored copies of the same comparison packet; candidate-index cross-entropy; context 4, 3 epochs, hidden 48, 2 layers/heads & Chooses among raw, strict, V2, V2+ families & Tensor/training-path smoke only \\
+Common LP/oracle & Profile parameters in Table~\ref{tab:04:data:protocol:1}; 24 h; realized prices unavailable to candidates & Oracle uses realized prices only after selection; same solver and rows for all roles & Per-profile-date retrospective scorer \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+The study does not assign the four rolling windows to independent tuning, validation, and test roles. They are repeated prior-only replays in one research sequence. Accordingly, ``validation,'' ``test,'' and ``promotion'' strings retained in artifact field names are provenance labels, not claims of a confirmatory design fixed before evaluation.
+
+\subsection{Reproducibility and trust checks}
+
+The V2+ packet records Dagster run \code{b09194b2-8bf7-42fb-bcc7-1567ca47037c}; the leakage-audit materialization is \code{8f93c0fe-d954-4690-84bf-e3c3f0ed8aa6}; and rolling replay is \code{8832f41e-e605-4107-ab6d-028676faa223}. The evidence manifest reports hashes and claim scope.
+
+The random-forest aggregate reads three per-seed metric files and a frozen V2+ baseline. The corrected parser reports 720 non-empty vectors and maximum length 24 for actual-price, dispatch, forecast-price, and SOC fields. This establishes correct vector parsing, not model generalization.
+
+The ancillary model-lineage audit pairs every training candidate with its
+evaluation candidate after shifting the timestamp by one year. Across 44
+reported model-input and target columns, all 360 pairs are identical. The audit
+also checks the selected-row packet and finds that every nonfallback RF row is
+supported by the same delivery date, 2026-04-15. This construction is disclosed
+as leakage for performance estimation even though realized-regret fields are
+not passed as inference-time features.

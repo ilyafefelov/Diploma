@@ -1,0 +1,181 @@
+\section{Results}
+
+\subsection{Main retrospective slice}
+
+Table~\ref{tab:05:results:1} reports the calibrated-source details for the latest retrospective window. Its 90 rows are 18 dates crossed with five configured profiles sharing one DAM price vector per date. V2+ mean regret is 174.77 UAH, versus 310.58 UAH for strict and 206.37 UAH for V2. Median regret is 67.30 UAH, versus 198.39 and 96.02 UAH. The raw forecast schedule has mean regret 622.25 UAH and median 290.22 UAH.
+
+\begin{table*}[t]
+\centering
+\caption{Calibrated-source DAM comparison on the main retrospective window (18 dates $\times$ five configured profiles).}
+\label{tab:05:results:1}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Comparator & Mean regret (UAH) & Median regret (UAH) & Mean decision value (UAH) & Mean oracle value (UAH) & Configured safety violations (of 90) \\
+\midrule
+Raw calibrated NBEATSx schedule & 622.25 & 290.22 & 3289.24 & 3911.48 & 0 \\
+Frozen strict reference & 310.58 & 198.39 & 3600.90 & 3911.48 & 0 \\
+Schedule/Value Learner V2 & 206.37 & 96.02 & 3705.12 & 3911.48 & 0 \\
+Schedule/Value Learner V2+ & \textbf{174.77} & \textbf{67.30} & \textbf{3736.72} & 3911.48 & 0 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+Within this slice, V2+ mean regret is 43.73\% below strict, 15.31\% below V2, and 71.91\% below the raw schedule. These are descriptive paired contrasts. The zero counts mean 0 of 90 profile-date schedules violated the LP's modeled SOC/power checks for each row in Table~\ref{tab:05:results:1}. They do not test thermal behavior, telemetry errors, nonlinear ageing, market rules, or hardware control.
+
+The raw result illustrates the paper's methodological point. NBEATSx is a legitimate forecasting architecture \cite{olivares2023nbeatsx}, but its output is not automatically a good storage schedule. Schedule value depends on extrema order, spread shape, SOC path, and throughput. V2+ operates at the schedule-family level, where these consequences become visible.
+
+The strict comparator remains useful despite its higher regret. It provides a leakage-resistant control and a fallback when learned evidence is weak. V2+ should be interpreted as an improvement over that control within the evaluated packet, not as evidence that the control can be removed from the system.
+
+\subsection{Co-primary source sensitivity and grouped reporting}
+
+Table~\ref{tab:05:results:2} reports both NBEATSx sources symmetrically. The calibrated source has lower V2+ mean regret in this slice, but it was not selected independently of these results. Therefore 174.77 and 193.36 UAH are co-primary sensitivity estimates rather than a chosen estimate and a secondary parity check.
+
+\begin{table*}[t]
+\centering
+\caption{Co-primary retrospective sensitivity comparison by NBEATSx source.}
+\label{tab:05:results:2}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+Source & Strict mean regret & Raw mean regret & V2 mean regret & V2+ mean regret & V2+ vs. strict & V2+ vs. V2 \\
+\midrule
+Horizon-calibrated NBEATSx & 310.58 & 622.25 & 206.37 & \textbf{174.77} & 43.73\% & 15.31\% \\
+Raw global-panel NBEATSx & 310.58 & 771.26 & 225.44 & \textbf{193.36} & 37.74\% & 14.23\% \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+For the raw source, V2+ mean regret is 193.36 UAH, versus 310.58 UAH for strict and 225.44 UAH for V2. The within-source reductions are 37.74\% and 14.23\%. Both sources preserve the same ordering, while absolute values remain source-sensitive.
+
+Normalizing each profile's regret by its configured energy capacity preserves
+the ordering despite capacities ranging from 0.15 to 0.50 MWh. For the
+calibrated source, strict, V2, and V2+ means are 996.17, 678.83, and 584.18
+UAH/MWh of capacity. For the raw source they are 996.17, 735.08, and 623.91
+UAH/MWh. Equal weighting of configured profiles remains a design choice; this
+normalization is a scale sensitivity, not fleet external validity.
+
+To preserve the shared daily price process, uncertainty is computed from paired date-cluster means rather than from 90 profile-date rows. A circular moving-block percentile bootstrap resamples three-date blocks for 20,000 replicates with seed 20260712. Three dates is a compromise between retaining several blocks in an 18-date series and preserving short local dependence. For the calibrated source, the mean strict-minus-V2+ regret difference is 135.81 UAH (95\% bootstrap interval 64.27--217.10) and is positive on 14 of 18 dates; the V2-minus-V2+ difference is 31.60 UAH (12.88--50.51) and is positive on 12 dates. For the raw source, the corresponding differences are 117.22 UAH (57.97--185.21; 14/18 positive dates) and 32.08 UAH (13.48--53.18; 14/18). Repeating the percentile procedure with block lengths 2, 3, 4, and 6 leaves every interval above zero: lower bounds range from 56.69 to 64.27 UAH for calibrated strict-minus-V2+, 11.34 to 13.44 for calibrated V2-minus-V2+, 49.28 to 63.72 for raw strict-minus-V2+, and 12.00 to 13.89 for raw V2-minus-V2+. These intervals quantify retrospective paired effects under declared resampling schemes; they do not turn the adjacent dates into independent market replications.
+
+\begin{table*}[t]
+\centering
+\caption{Paired date-cluster differences in mean regret (comparator minus V2+, UAH).}
+\label{tab:05:results:3}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Source & Comparator & Mean difference & 95\% moving-block interval & Positive dates \\
+\midrule
+Horizon-calibrated & Strict & 135.81 & [64.27, 217.10] & 14/18 \\
+Horizon-calibrated & V2 & 31.60 & [12.88, 50.51] & 12/18 \\
+Raw global-panel & Strict & 117.22 & [57.97, 185.21] & 14/18 \\
+Raw global-panel & V2 & 32.08 & [13.48, 53.18] & 14/18 \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+Profile-level means expose heterogeneity while retaining the common 18-date window. Calibrated-source V2+ regret ranges from 97.82 UAH for the configured Lviv office profile to 291.43 UAH for the Dnipro factory profile. The raw-source ordering is similar but not identical: Lviv remains lowest at 90.28 UAH and Dnipro highest at 349.26 UAH. Thus the aggregate is not driven by a single configured profile, although the five rows below are descriptive profile summaries rather than independent market samples.
+
+\begin{table}[t]
+\centering
+\caption{V2+ mean regret by configured BESS profile and co-primary source (UAH).}
+\label{tab:05:results:4}
+\small
+\begin{tabularx}{\columnwidth}{@{}Yrr@{}}
+\toprule
+Configured profile & Horizon-calibrated & Raw global-panel \\
+\midrule
+Kyiv mall & 173.39 & 178.35 \\
+Lviv office & 97.82 & 90.28 \\
+Dnipro factory & 291.43 & 349.26 \\
+Kharkiv hospital & 195.73 & 224.93 \\
+Odesa hotel & 115.47 & 123.97 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Rolling-window sensitivity}
+
+V2+ mean regret is below strict and frozen V2 in four of four windows for both sources. Table~\ref{tab:05:results:5} gives calibrated-source values. Window 1 is the main retrospective slice, not an additional evaluation. The windows differ substantially in difficulty. In Window 4, strict, V2, and V2+ means are 1020.23, 922.63, and 882.01 UAH. The repeated ordering is useful sensitivity evidence, but adjacent windows are not independent replications.
+
+\begin{table*}[t]
+\centering
+\caption{Rolling-window sensitivity for horizon-calibrated NBEATSx.}
+\label{tab:05:results:5}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llrrrrrl@{}}
+\toprule
+Window & Retrospective period & Prior anchors & Strict mean & V2 mean & V2+ mean & V2+ improvement vs. V2 & Stored screen \\
+\midrule
+1 & 2026-04-12 to 2026-04-29 & 347 & 310.58 & 206.37 & \textbf{174.77} & 15.31\% & Pass \\
+2 & 2026-03-17 to 2026-04-11 & 329 & 847.30 & 312.71 & \textbf{226.12} & 27.69\% & Pass \\
+3 & 2026-02-27 to 2026-03-16 & 311 & 664.68 & 497.07 & \textbf{393.27} & 20.88\% & Pass \\
+4 & 2026-02-09 to 2026-02-26 & 293 & 1020.23 & 922.63 & \textbf{882.01} & 4.40\% & Pass \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+The raw source has V2+ means of 193.36, 279.02, 411.50, and 820.12 UAH. Window 4 is the narrowest comparison, with 820.12 UAH for V2+ and 843.47 UAH for V2. Gains are not uniform, and no inference is made beyond the observed sequence.
+
+\subsection{Regret decomposition and residual opportunity}
+
+The regret-decomposition packet explains where V2 still loses value. For the calibrated source, 34 anchors are labeled \code{selector_chose_wrong_family}, with mean V2 regret 355.01 UAH and mean best-candidate regret 219.20 UAH. Nineteen anchors are labeled \code{forecast_extrema_rank_wrong}; 22 are \code{candidate_library_missing_good_schedule}; 11 are \code{strict_already_near_oracle}; and four retain a \code{decision_value_gap_remaining} label.
+
+These categories do not claim causal identification, but they guide model design. ``Selector chose wrong family'' suggests that a better candidate existed in the finite library and that prior-only selection is the bottleneck. ``Candidate library missing good schedule'' indicates that no selector can recover value without new schedules. ``Forecast extrema rank wrong'' suggests a forecast-shape limitation. ``Strict already near oracle'' identifies anchors where aggressive switching has little upside.
+
+An oracle-gap audit performed after the tie-break correction gives a complementary view. For the calibrated source, V2+ selected the best available candidate on 71 of 90 anchors; on 19 anchors a better candidate existed but was not selected. The mean missed-candidate gap on those diagnostic rows is 101.83 UAH. For the raw source, the corresponding counts are 59 and 31, with a mean missed gap of 93.25 UAH. Realized regret is used only to label this audit after selection. The audit therefore motivates a future safe-switch model but cannot serve as an input to the historical decision.
+
+\subsection{Model-lineage audit and non-independent diagnostics}
+
+The next experiment targets rare cases in which a non-V2+ candidate appears beneficial. Its artifact lineage uses \code{dt_v2_plus}, but the command specifies \code{--model-kind random_forest}, \code{--feature-set expanded_prior_context_v1}, 500 trees, maximum depth 6, and a 20 UAH switch threshold. The estimator is a regret-aware random forest, not a Decision Transformer. Its 360 training candidate rows are exact timestamp-shifted copies of its 360 evaluation candidate rows across every audited model input and target. It is therefore an in-packet construction diagnostic, not an out-of-sample experiment.
+
+Across three stored seed runs, mean regret on the same packet is 168.1566 UAH, versus 174.77 UAH for calibrated-source V2+. Median regret is 61.71 versus 67.30 UAH. The selector switches on 4 of 90 profile-date rows and abstains on 86. All four changed profile rows occur on delivery date 2026-04-15; they are not four distinct market episodes. Realized scoring records three wins and one tie, with zero observed 150-UAH tail losses. These correlated, post-hoc counts do not estimate a switching success rate or zero risk.
+
+\begin{table*}[t]
+\centering
+\caption{Model-lineage audit: implementation identity, evidence packet, and permitted interpretation.}
+\label{tab:05:results:6}
+\small
+\begin{tabularx}{\textwidth}{@{}YYYY@{}}
+\toprule
+Lineage & Actual implementation & Stored observation & Permitted interpretation \\
+\midrule
+V2+ main comparison & Prior-only deterministic schedule-family selector & 174.77/193.36 UAH calibrated/raw mean regret; four adjacent windows & Main descriptive retrospective result \\
+Historical \code{dt_v2_plus} & \code{RandomForestRegressor}, 500 trees, depth 6 & 168.16 UAH; 4/90 profile rows, all on one date & Exact-mirror in-packet diagnostic; not DT, OOS, or inferential evidence \\
+HF candidate-index smoke & Hugging Face \code{DecisionTransformerModel}; hidden 48, 2 layers/heads & 460.30 UAH on mirrored packet & Tensor/training-path diagnostic for this objective only \\
+HF value-aligned scorer & Hugging Face DT backbone; hidden 64, 2 layers/heads, 170,400 parameters & 158.71 UAH; threshold selected on mirrored packet & Non-independent scorer diagnostic, not a full return-conditioned policy \\
+HF 32-day read-model audit & Loaded HF scorer over finite schedule templates & 20/32 nonfallback; mean selected value 1174.29 UAH & Source/read-model readiness; no realized-regret outcome \\
+Custom DT prototype / LAVA lane & Causal PyTorch transformer prototype / tabular-ridge readiness bridge & No canonical promoted thesis result & Architecture/prototype evidence only \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+The RF difference is narrow and entirely supported by one delivery date. Thresholds 0, 5, 10, and 20 UAH produce the same 168.16 UAH mean, four switches, and 86 abstentions; at 50 UAH, switches fall to three. Because these thresholds were examined on the same exact-mirror packet, this is construction sensitivity, not robustness evidence. Most rows still use V2+.
+
+The 166.0 UAH cutoff declared in the frozen aggregate is missed by about 2.16 UAH. No dated pre-evaluation protocol for that cutoff, the feature set, hyperparameters, risk cap, or switch threshold was located. The aggregate reports identical seed-level paths and means; its stored p-value has no inferential interpretation and is not used here. The correct interpretation is an invariant in-packet diagnostic; \code{promotion_gate_passed=false} is preserved.
+
+\subsection{Separate transformer and read-model lineages}
+
+The Hugging Face Decision Transformer line is separate from the random forest. Its candidate-index smoke uses copies of the same 90 comparison rows shifted backward to exercise sequence construction and training. It selects no V2+ rows and yields mean regret 460.30 UAH, versus 174.77 UAH for calibrated-source V2+. The best-available after-the-fact diagnostic is 153.27 UAH.
+
+This result shows only that this mirrored-row implementation and candidate-index objective did not recover V2+ on the packet. It is not an out-of-sample comparison and does not support a general negative conclusion about Decision Transformer or sequence modeling. The construction is especially narrow given known dependence on trajectory coverage and structure \cite{bhargava2023whendt}. The later random forest learns a value gap and preserves V2+ as fallback; that change must not be attributed to Decision Transformer.
+
+A later HF value-aligned shadow uses a genuine \code{DecisionTransformerModel} backbone over a finite schedule library and deterministic gates. Actions, rewards, and returns-to-go are zero in its scorer input, so it is a transformer-backbone candidate scorer rather than a full return-conditioned DT policy. Its 158.71 UAH frozen diagnostic uses the same mirrored packet, and the operating threshold is selected on that packet. A separate DAM read-model packet covers 32 source-backed days and selects nonfallback candidates on 20, reporting mean selected value 1174.29 UAH but no realized regret. Its reported zero safety failures means zero violations under configured deterministic checks; it does not cover unmodeled thermal, telemetry, ageing, or market constraints.
+
+These results are not directly interchangeable with the 90-row retrospective comparison. The HF proof has a different construction, finite templates, and a day-level packet. Its 158.71 UAH value is a frozen diagnostic. The value-aligned path is an engineering demonstration of guarded selection and abstention.
+
+\subsection{Negative and near-miss evidence}
+
+Additional experiments show where the repository retained its fallback. The best TFT quantile V2+ row has mean regret 225.47 UAH and median 121.00 UAH, worse than calibrated-source V2+ on the same packet. TFT remains useful for uncertainty and complementary schedules \cite{lim2021tft,jiang2024ptft}, but this packet does not support replacement.
+
+A richer Poland lag-24 route has mean regret 177.34 UAH and median 39.46 UAH. A prior-only Poland veto has mean 167.05 UAH and median 55.97 UAH, with 34 challenger rows and 56 fallback rows. Its stored improvement ratio is 4.41\%, below the internal 5\% screen. These are retrospective near-miss diagnostics, not independent selection evidence.
+
+The V13 source-readiness gate also remains blocked. Staged safe-switch support reaches the required 20 prior examples for the configured tenant/source pairs, but explicit OREE DAM/IDM source-publication evidence for the relevant preview contour is incomplete. \code{dt_lava_ready=false} and \code{permits_model_training=false} remain the correct states. This blocker is independent of market-submission receipts, which would be needed for a future execution contour.

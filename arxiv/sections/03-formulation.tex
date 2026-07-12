@@ -1,0 +1,116 @@
+\section{Problem Formulation and Guarded Decision Pipeline}
+
+\subsection{Hourly storage value}
+
+Consider hourly intervals $t=1,\ldots,T$, with $T=24$ for a daily schedule. Let $p_t$ denote the realized or scenario price in UAH/MWh, $c_t\geq 0$ market-side charging power, $d_t\geq 0$ market-side discharging power, $e_t$ stored energy, $\eta_c$ and $\eta_d$ charging and discharging efficiency, $\Delta t$ the interval duration, and $\gamma$ a throughput degradation-cost coefficient in UAH/MWh of throughput. For schedule $s$, the evaluated value is
+
+\begin{equation}
+V(s)=\sum_{t=1}^{T}\left[p_t(d_t-c_t)\Delta t-\gamma(c_t+d_t)\Delta t\right].
+\end{equation}
+
+Efficiency enters the energy dynamics,
+
+\begin{equation}
+e_{t+1}=e_t+\eta_c c_t\Delta t-\frac{d_t\Delta t}{\eta_d},
+\end{equation}
+
+The LP constrains the initial state, SOC bounds, and charge/discharge power. It does not impose terminal SOC equality. Charge and discharge variables are nonnegative and have no explicit complementarity constraint; efficiency losses and the positive throughput penalty discourage simultaneous operation, but do not make it structurally impossible. Revenue is evaluated at market-side flow, so efficiency is not multiplied into the revenue term twice. The same evaluator is applied row-for-row to raw, strict, V2, and V2+ candidates.
+
+The oracle schedule $s^\star$ is computed with realized prices for evaluation only. Regret is
+
+\begin{equation}
+R(s)=V(s^\star)-V(s).
+\end{equation}
+
+Lower regret is better. The oracle does not provide a feature to the candidate generator or selector. It labels value lost after a decision has been fixed. Mean-regret improvement of candidate $a$ over comparator $b$ is
+
+\begin{equation}
+I(a,b)=\frac{\overline{R}_b-\overline{R}_a}{\overline{R}_b}.
+\end{equation}
+
+The repository's internal evidence screen also considers median regret, rolling-window behavior, configured safety checks, and the no-execution flag. In this paper those fields are reported descriptively; a lower mean on one retrospective slice is not treated as confirmatory evidence.
+
+\subsection{Source and temporal-availability contract}
+
+The source contract is evaluated for each market venue, delivery date, and hour. For a published target, the official OREE row is the price context \cite{oree2026dam}. A forecast cannot be relabeled as the published price. For an unpublished target, a complete forecast scenario can be used as input to candidate generation, provided every covariate was available before the decision time. Weather histories and forecasts are governed in the same way \cite{openmeteo2026archive}.
+
+This rule addresses two forms of leakage. The first is statistical future leakage, in which realized target values or later covariates enter training or selection. The second is publication leakage, in which a row is treated as known before the source actually made it available. Rolling-origin splitting addresses the first; source snapshots, timestamps, and provenance fields address the second. Observation time is not silently converted into an official publication timestamp.
+
+The primary quantitative packet concerns DAM. The API and dashboard can display analogous hourly IDM recommendation rows, but the study does not evaluate intraday bid submission, 15-minute products, or settlement. IDM is therefore described as a read-model capability. This prevents the existence of a route or schema from being mistaken for empirical market performance.
+
+\subsection{Candidate generation and V2+ selection}
+
+The frozen \code{strict_similar_day} method is the conservative comparator and fallback. It is time-respecting and simple, making it useful even when it is not the lowest-regret method. A raw forecast candidate passes a price vector through the LP. V2 then uses prior evidence to choose among a frozen set of schedule families. V2+ keeps V2 as the default and adds deterministic candidates designed around diagnosed regret modes:
+
+\begin{itemize}
+\item \code{rank_extrema_perturbation_v2_plus}, which emphasizes the ordering of high and low price hours;
+\item \code{robust_spread_penalty_v2_plus}, which shrinks brittle high-spread shapes;
+\item \code{strict_neighborhood_shift_v2_plus}, which tests small timing shifts around the strict schedule;
+\item \code{temporal_block_reconciled_v2_plus}, which smooths or reconciles local temporal blocks;
+\item \code{soc_terminal_target_v2_plus}, which probes terminal-SOC pressure.
+\end{itemize}
+
+Candidate generation uses no realized price from the evaluated anchor. On earlier anchors, the selector compares V2 with V2+ families through prior regret evidence. It selects a V2+ family only when prior mean improvement over V2 reaches the configured 1\% threshold; otherwise it returns V2. The selected retrospective schedule is then evaluated by the same realized-price LP/oracle scorer as every comparator.
+
+\paragraph{V2+ selection algorithm.} For each profile and anchor, the frozen
+procedure is: (1) construct the strict and raw-forecast LP schedules; (2)
+construct the V2 schedule families and the five V2+ families listed above using
+only the current scenario and configured battery state; (3) collect, separately
+for each family, regret observations from earlier anchors only; (4) compute the
+prior mean improvement of each V2+ family over the V2 reference; (5) admit only
+families whose prior improvement is at least 1\%, then select the lowest prior-
+regret admitted family, breaking ties by stable family/candidate identifier; and
+(6) return V2 when no family is admitted. Realized price and current-anchor
+regret enter only the subsequent common scorer. The stored mutation audit
+changes current-anchor regret without changing the selected family.
+
+This separation is important. The selector may use prior family regret, forecast spread, forecast objective value, throughput, degradation proxy, SOC slack, and stable candidate identity. It may not use realized regret for the anchor being selected. A mutation audit changed evaluated-anchor regret while holding prior evidence fixed. Tie-breaking was corrected to use only prior-family regret and stable identifiers; the stored descriptive V2+ estimates were unchanged.
+
+\subsection{Internal evidence screens}
+
+The repository's V2+ screen requires lower mean regret than V2, no median degradation, at least 5\% mean improvement over strict, sufficient coverage, no violations under the configured LP checks, and a minimum number of passing rolling windows. Because forecast-source status was compared on the latest window, the screen is not treated here as a confirmatory promotion test. Its fields are retained as an auditable historical decision record.
+
+The canonical random-forest safe-switch has a separate internal rubric. It predicts improvement relative to V2+ and switches only when predicted gain is at least 20 UAH and family tail-risk probability is at most 0.5; a tail loss is defined as regret at least 150 UAH worse than V2+. Otherwise it abstains. The frozen aggregate declares mean-regret cutoffs of 166.0 UAH (primary) and 178.26 UAH (secondary), but no dated pre-evaluation protocol was located. The paper therefore treats the 168.1566 UAH result as a retrospective smoke diagnostic; \code{promotion_gate_passed=false}.
+
+\subsection{Evidence architecture}
+
+The implementation is organized as an evidence pipeline. Bronze assets preserve source snapshots and provenance. Silver assets normalize timestamps, market rows, weather, tenant identifiers, and battery state. Gold assets create forecasts, candidate schedules, LP scores, selector traces, checks, and summaries. A read model exposes materialized evidence to an operator-facing interface. Strict schemas prevent a recommendation-preview contract from silently becoming an execution contract.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{evidence-pipeline.png}
+\caption{Evidence pipeline from governed sources to an operator read model.}
+\label{fig:03:formulation:1}
+\end{figure*}
+
+The pipeline produces artifacts rather than an opaque final score. The V2+ comparison packet contains a role summary, selection trace, strict rows, regret-decomposition summary, rolling robustness table, run identifier, and claim boundary. The canonical random-forest run contains per-seed metrics, aggregate metrics, and a vector-parse manifest. This structure permits a reviewer to trace each number to rows and commands in the repository \cite{fefelov2026repo}.
+
+\begin{table*}[t]
+\centering
+\caption{Evidence contract linking claims to minimum artifacts and forbidden interpretations.}
+\label{tab:03:formulation:evidence-contract}
+\small
+\begin{tabularx}{\textwidth}{@{}YYY@{}}
+\toprule
+Claim surface & Minimum auditable artifact & Interpretation explicitly excluded \\
+\midrule
+V2+ retrospective regret & Paired source/role/profile/date rows, common scorer, date-cluster summaries, rolling table, hashes & Confirmatory holdout, independent five-site trial, or profit guarantee \\
+Learned challenger & Estimator class/config, train/evaluation row lineage, selected rows, frozen threshold, independent-period flag & Model-family attribution from an artifact name; OOS claim from mirrored rows \\
+Source-backed preview & Source mode, delivery horizon, publication/observation provenance, complete 24-row contract & Official price claim for a forecast or market-submission receipt \\
+Safety/readiness & Modeled constraint checks, abstention reason, promotion and execution flags & Hardware safety, legal trading authority, or market execution \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\subsection{Guarded shadow path}
+
+The operator-facing shadow path is intentionally finite. Given a tenant, venue, delivery date, and source-backed 24-hour price context, it constructs a small library of fallback/SOC-maintain, conservative reference, balanced, and value-aligned templates. Features include estimated value, SOC path, throughput, degradation proxy, and deterministic safety violations. A shadow scorer estimates improvement and tail risk. Non-HOLD recommendations are displayed only when the value guard, risk cap, family guard, physical feasibility, and zero-safety-violation checks pass. Otherwise, the system shows an abstention and the V2+/HOLD fallback.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{guarded-boundary.png}
+\caption{Gatekeeper and read-model boundary. Source, physical-feasibility, and risk checks either permit an operator preview or return abstention; no execution payload is emitted.}
+\label{fig:03:formulation:2}
+\end{figure*}
+
+This is not a full optimizer. A finite candidate library can miss feasible schedules outside its templates. Nor is the scorer a market controller. It ranks preconstructed schedules for manual preview, and the response contains no \code{ProposedBid}, market order, or inverter command.

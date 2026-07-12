@@ -32,9 +32,13 @@ Open first during a live review:
 3. FastAPI `/docs` for read-model endpoint contracts.
 4. [Published thesis paper](https://docs.google.com/document/d/e/2PACX-1vTlKZCfuUzw-e_khUYXPo8d86tnCZuGOriLbKMNqYJ9fjrFyDb2FrBZ99GmT06ba6oXK9AehyLn7yLu/pub)
    for the full academic write-up.
-5. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
+5. [Post-defense model-lineage erratum](docs/thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md)
+   correcting the historical `dt_v2_plus` artifact from Decision Transformer to random forest.
+6. [arXiv release candidate](arxiv/SUBMISSION_READINESS.md) for the corrected
+   16-page article, source archive, and reproducibility evidence.
+7. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
    for the 50-point software/experimental rubric.
-6. [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md)
+8. [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md)
    for the exact fallback path if the live stack is unavailable.
 
 ## Public / Post-Defense Work
@@ -142,8 +146,8 @@ The defendable product surface is an evidence system, not autonomous execution.
 | Strict LP/oracle comparator | 310.58 UAH mean regret | evaluator, not UI default |
 | V2 forecast selector | 206.37 UAH mean regret | historical baseline |
 | Schedule/Value Learner V2+ | 174.77 UAH mean regret | headline/default evidence |
-| DT/V2+ safe-switch | 168.16 UAH mean regret, 4 switches / 86 abstentions | secondary shadow evidence |
-| HF value-aligned shadow | 158.71 UAH frozen mean regret signal, 20/32 non-fallback days, 8/8 readiness | manual shadow/demo preview |
+| Random-forest V2+ diagnostic (historical id `dt_v2_plus`) | 168.16 UAH, 4 profile-row switches / 86 abstentions | exact-mirror packet; all switches on one date; not DT/OOS evidence |
+| HF `DecisionTransformerModel`-backbone scorer | 158.71 UAH mirrored-packet diagnostic; separate 20/32-day non-fallback read-model audit | manual preview; no independent realized-regret result |
 
 Boundary: `market_execution_enabled=false`, no `ProposedBid`, no market order
 payload, no production LP replacement, and no V13 training claim.
@@ -179,8 +183,8 @@ flowchart LR
   B --> C["Silver readiness and feature tables"]
   C --> D["Strict LP/oracle evaluator"]
   C --> E["Schedule/Value Learner V2+"]
-  C --> G["DT safe-switch shadow"]
-  C --> H["HF value-aligned shadow"]
+  C --> G["Random-forest safe-switch diagnostic"]
+  C --> H["HF DT-backbone shadow scorer"]
   D --> I["Regret/value evidence packets"]
   E --> I
   G --> I
@@ -312,8 +316,9 @@ uv run dg list defs --assets "tag:read_model_boundary=not_market_execution"
 In the Dagster UI, use `tag:dfl_v2_plus=true`, `tag:dfl_dt_v2_plus=true`,
 `tag:dfl_hfdt=true`, `tag:hfdt_live_shadow_preview=true`,
 `tag:operator_preview=true`, and
-`tag:read_model_boundary=not_market_execution` to find V2+, DT/V2+,
-HFDT shadow evidence, final operator-preview evidence assets, and explicit
+`tag:read_model_boundary=not_market_execution` to find V2+, the historical
+`dt_v2_plus` random-forest diagnostic, HFDT shadow evidence, final
+operator-preview evidence assets, and explicit
 read-model/non-execution assets.
 
 If a fresh dashboard returns `404` or `502` for current backend routes, suspect a

@@ -2,7 +2,7 @@
 
 ## Мета демо
 
-Показати фінальний defendable evidence path: V2+ лишається headline offline schedule/value result, corrected DT/V2+ safe-switch selector є secondary research evidence, dashboard показує це тільки як research badge, а market execution не ввімкнено.
+Показати фінальний defendable evidence path: V2+ лишається headline retrospective schedule/value result; історичний `dt_v2_plus` artifact є random-forest exact-mirror diagnostic, не DT/OOS evidence; dashboard показує learned challengers тільки як research/read-model diagnostics, а market execution не ввімкнено.
 
 ## Передумови
 
@@ -23,7 +23,7 @@
 - V2+ має mean regret `174.77` UAH, median regret `67.30` UAH і rolling robustness `4 / 4`.
 - Це offline/read-model evidence, а не live trading system.
 
-## Крок 2. Пояснити corrected DT/V2+ safe-switch evidence
+## Крок 2. Пояснити post-defense random-forest model-lineage correction
 
 Відкрити:
 
@@ -35,9 +35,9 @@
 
 - Старий `0 / 90` switches result не використовується як висновок: він був stale parsing artifact.
 - Double-encoded vector parsing виправлено; manifest має `non_empty_vector_count=720` і `max_vector_length=24` для real vector columns.
-- Canonical 3-seed aggregate має `n_seeds=3`, `mean_test_regret=168.1566`, `pass_level=secondary`.
+- Canonical 3-seed aggregate відтворює `mean_test_regret=168.1566`, але всі seeds мають ідентичний path; training rows exact-mirror evaluation rows.
 - На seed summaries selector робить `4 / 90` non-V2+ switches і `86 / 90` abstentions.
-- Це позитивна research evidence, але не primary success, бо threshold primary `<=166.0` UAH.
+- Це construction diagnostic, не positive/OOS evidence; головний blocker — exact mirroring і одна switch date, а не лише threshold `<=166.0` UAH.
 
 Не казати:
 
@@ -58,7 +58,7 @@
 
 - Thresholds `0`, `5`, `10`, `20` дали однаковий secondary result: `168.16` UAH, `4 / 90` switches, `86 / 90` abstentions.
 - Threshold `50` лишив mean regret `168.16` UAH, але зменшив switches до `3 / 90`.
-- Це означає: signal реальний, але вузький; для диплома це чесна secondary evidence, не promotion claim.
+- Це означає лише same-packet threshold invariance; exact mirroring не дозволяє називати signal robust або promotion evidence.
 
 ## Крок 4. Показати dashboard research badge
 
@@ -98,4 +98,4 @@ npm -C dashboard run typecheck
 
 Фінальний меседж:
 
-> Поточний дипломний результат defendable як credentialless DAM/IDM hourly recommendation preview з V2+ headline offline evidence. Corrected DT/V2+ safe-switch selector показує кращий regret (`168.16` UAH проти `174.77` UAH), але тільки як canonical secondary research evidence. Dashboard показує це як research badge, не як default action. `promotion_gate_passed=false`, `market_execution_enabled=false`, і no market submission залишається незмінною межею.
+> Поточний дипломний результат defendable як credentialless DAM/IDM hourly recommendation preview з V2+ headline retrospective evidence. Історичний `dt_v2_plus` result (`168.16` UAH) створено random forest на exact-mirror packet; усі чотири changed profile rows належать одній delivery date. Це не DT/OOS performance evidence. Dashboard показує challenger лише як research badge, не як default action. `promotion_gate_passed=false`, `market_execution_enabled=false`, і no market submission залишається незмінною межею.

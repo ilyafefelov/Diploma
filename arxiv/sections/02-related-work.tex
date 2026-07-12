@@ -1,0 +1,56 @@
+\section{Related Work}
+
+\subsection{Electricity-price forecasting as an input to decisions}
+
+Electricity prices combine daily and weekly seasonality with weather, demand, system constraints, market rules, and rare spikes. Lago et al. provide a broad review and an open benchmark for day-ahead electricity-price forecasting, emphasizing sound evaluation practice and strong statistical and neural baselines \cite{lago2021epf}. Their analysis supports the use of rigorous time-series protocols, but it also highlights why a single error metric cannot describe every downstream application.
+
+NBEATSx extends basis-expansion forecasting with exogenous variables and has demonstrated competitive performance in electricity-price forecasting \cite{olivares2023nbeatsx}. It is well suited to a pipeline in which calendar, weather, and other point-in-time covariates are available. The present study uses NBEATSx as a forecast adapter. This wording matters: NBEATSx generates a price scenario, not a battery decision. A deterministic optimizer converts the scenario into a schedule, and realized prices determine its final value.
+
+Temporal Fusion Transformer (TFT) is a multi-horizon architecture that combines static covariates, known future inputs, observed inputs, variable selection, recurrent processing, and attention-based interpretation \cite{lim2021tft}. Probabilistic variants can expose lower, median, and upper scenarios, as illustrated by penalized TFT work for electricity-price forecasting \cite{jiang2024ptft}. In a storage pipeline, these quantiles can diversify schedule candidates or diagnose uncertainty. They do not constitute three independent price authorities, and uncertainty-aware forecasts still require downstream constraint handling.
+
+This paper treats NBEATSx and TFT as sources of candidate price paths. It does not rank one forecast architecture as universally superior. Raw and horizon-calibrated NBEATSx are co-primary sensitivity sources because both were inspected on the same retrospective slice. For the calibrated source, the raw schedule had mean regret 622.25 UAH and V2+ had 174.77 UAH; for the raw source, the corresponding values were 771.26 and 193.36 UAH. These within-source contrasts illustrate why a forecast vector should not be equated with a storage recommendation.
+
+\subsection{Constrained storage scheduling}
+
+Short-term storage scheduling can be expressed with linear energy-balance, SOC, charging, discharging, power, and efficiency constraints. Park et al. give a linear formulation for short-term energy-storage operation \cite{park2017esslp}. Such formulations are attractive as evaluators because every forecast or selector can be passed through the same feasible contour. The optimizer is deterministic, inspectable, and sufficiently fast for repeated rolling-origin analysis.
+
+Battery representation determines the meaning of any economic result. Reviews of lithium-ion BESS models distinguish simple power-energy models from more detailed electrical, thermal, ageing, and electrochemical approaches \cite{vykhodtsev2022review}. Ageing-aware scheduling can integrate degradation into mixed-integer optimization \cite{hesse2019ageing}, and nonlinear or semi-empirical degradation models can materially change preferred schedules \cite{maheshwari2020degradation,kumtepeli2020arbitrage}. More recent profitability analysis likewise shows that dynamic efficiency and degradation affect net arbitrage value \cite{grimaldi2024profitability}.
+
+The evaluator used here is a techno-economic abstraction, not a full digital twin. It enforces SOC, power, and efficiency constraints and applies a throughput-based degradation penalty. This is suitable for controlled comparison, but the resulting UAH values should not be read as certified asset lifetime forecasts. Storage technology reports provide context for efficiency, cycle life, cost, and other parameters \cite{augustine2021storage}, while a production deployment would require commissioning data and asset-specific validation.
+
+European analyses indicate that BESS value depends strongly on market design and available services \cite{hu2022europeanbess}. The present study does not transfer a European revenue result to Ukraine. It uses Ukrainian DAM evidence and treats cross-border or neighboring-market data as separate governed research features. Similarly, reinforcement-learning work on energy and reserve bidding \cite{li2024temporalrl} and distributional approaches to imbalance arbitrage \cite{madahi2023distributional} motivate future research but do not establish the execution readiness of this system.
+
+\subsection{Decision-focused learning and multistage value}
+
+Predict-then-optimize systems can fail when minimizing prediction loss does not minimize decision loss. Elmachtoub and Grigas formalize this problem and propose a loss linked to optimization quality \cite{elmachtoub2022spo}. DFL now includes optimization-layer differentiation, structured surrogates, perturbation methods, and other approaches \cite{mandi2024dfl}. Differentiable convex optimization layers \cite{agrawal2019cvxpylayers} and OptNet \cite{amos2017optnet} show how constrained problems can appear inside neural networks.
+
+Storage arbitrage is not merely a one-shot decision. A charge action changes future feasible actions, so a multistage formulation is natural. Decision-focused electricity-price prediction for ESS arbitrage directly demonstrates the relevance of downstream regret \cite{sang2022essdfl}. Differentiable multistage forecasting further develops the connection between forecast parameters and sequential decisions \cite{persak2024multistage}. Perturbed DFL has also been proposed for strategic storage \cite{yi2024perturbed}, and predict-then-bid research extends the question toward bidding behavior \cite{yi2025predictbid}.
+
+These works define an important research direction but a stricter claim than the one supported here. V2+ is a schedule/value selector evaluated by regret. It is not trained end to end through market clearing, it does not model strategic interaction, and it does not create bids. Calling it ``full DFL'' would obscure the difference between decision-aware selection and a differentiable predict-then-bid system. The paper therefore uses ``decision-value evaluation'' for the implemented contour and reserves ``DFL'' for the broader research family.
+
+\subsection{Decision Transformers and guarded shadows}
+
+Decision Transformer recasts offline reinforcement learning as return-conditioned sequence modeling \cite{chen2021dt}. Instead of fitting a conventional value or policy function, the model predicts actions from trajectories containing desired returns, states, and past actions. Its suitability depends on the coverage and quality of the offline dataset; empirical analysis has identified conditions under which Decision Transformers are more or less appropriate \cite{bhargava2023whendt}. For a safety-relevant storage problem, sparse coverage of beneficial schedule switches is a serious constraint.
+
+Two model lines must be separated in this study. First, the canonical safe-switch aggregate saved under \code{runs/dt_v2_plus/} is produced with \code{model_kind=random_forest}, using the ensemble family introduced by Breiman \cite{breiman2001randomforests}. Its features summarize prior context and its target is regret improvement relative to the V2+ fallback. The directory name records the experiment lineage, not the estimator class. Second, Hugging Face Decision Transformer experiments form a distinct shadow line. An early apples-to-apples candidate-index experiment produced mean regret of 460.30 UAH, which is worse than V2+. Later HF value-aligned shadow packets use a finite candidate library, predicted value gaps, tail-risk guards, and deterministic safety checks. Those packets are useful operator-preview evidence, but they do not transform the random-forest result into a Decision Transformer result.
+
+The guarded architecture is related to selective prediction: a challenger acts only when evidence exceeds a threshold; otherwise, it abstains to a known fallback. This is operationally preferable to forcing a model to issue a charge or discharge instruction on every day. In the present evidence, abstention is not classified as failure. It is the intended response when prior context does not support a safe switch.
+
+\subsection{Positioning and gap addressed by this paper}
+
+The literature provides the main technical components: price forecasting, constrained storage scheduling, decision-aware learning, sequence policies, and fallback behavior. This paper does not claim a new member of any of those method families.
+
+Relative to DFL \cite{elmachtoub2022spo,mandi2024dfl,sang2022essdfl}, the optimizer is not differentiated through and V2+ is a prior-only schedule-family selector. Relative to Decision Transformer \cite{chen2021dt,bhargava2023whendt}, the canonical safe-switch is a random forest and the HF path is only a mirrored-training smoke. Relative to selective prediction, reject options, safe policy improvement, and fallback control, abstention to V2+ is an applied system pattern rather than a new theoretical guarantee.
+
+The novelty is therefore an architecture and evidence-governance contribution in a Ukrainian DAM application. It connects source-timed price context, paired LP/oracle evaluation, explicit negative evidence, safe-switch abstention, artifact lineage, and an operator-preview boundary. The reproducibility contribution is the mapping from claims to configs, rows, run identifiers, and hashes; public packaging limitations are stated later.
+
+The evidence contract enforces four distinctions:
+
+\begin{itemize}
+\item a forecast is not a feasible schedule;
+\item a lower offline regret is not an executable bid;
+\item a research-shadow model is not a deployed controller;
+\item source availability for a preview is not equivalent to submission and settlement readiness.
+\end{itemize}
+
+This contract is useful for an applied thesis and an emerging market context. It permits descriptive quantitative comparisons while retaining negative evidence and operational blockers. The estimates can therefore be inspected without being amplified by model nomenclature.

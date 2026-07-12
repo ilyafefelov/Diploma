@@ -1,0 +1,284 @@
+{
+  "run_slug": "hf_live_safe_switch_value_aligned_shadow_promotion_proof_2026_05_01_2026_06_01",
+  "claim_scope": "value_aligned_hf_live_shadow_candidate_library_promotion_proof",
+  "generated_at_utc": "2026-06-01T13:24:20.396182+00:00",
+  "promotion_gate_scope": "value_aligned_shadow_candidate_library",
+  "shadow_promotion_gate_passed": true,
+  "production_market_promotion_gate_passed": false,
+  "market_execution_enabled": false,
+  "market_order_payload_emitted": false,
+  "proposed_bid_emitted": false,
+  "dt_lava_ready": false,
+  "candidate_template_grid_id": "candidate_library_value_aligned",
+  "baseline_template_grid_id": "default",
+  "selected_operating_threshold_uah": 100.0,
+  "source_price_scope": "official_oree_observed_rows_only",
+  "source_backed_day_count": 32.0,
+  "baseline_switch_rate": 0.40625,
+  "value_aligned_switch_rate": 0.625,
+  "selected_nonfallback_day_count": 20.0,
+  "selected_nonfallback_days": [
+    {
+      "target_delivery_date": "2026-05-01",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-04-30T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -126.07929992675781,
+      "predicted_tail_risk_probability": 0.2567062973976135,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 2028.1500594990837,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-02",
+      "candidate_family": "strict_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-01T23:00:00|strict_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -448.46337890625,
+      "predicted_tail_risk_probability": 0.32632893323898315,
+      "family_tail_risk_probability": 0.34444444444444444,
+      "schedule_value_uah": 2765.7152014288035,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-04",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-03T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -304.265380859375,
+      "predicted_tail_risk_probability": 0.19270814955234528,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 2298.3500594990837,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-05",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-04T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -295.87896728515625,
+      "predicted_tail_risk_probability": 0.31052112579345703,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 1649.0300594990836,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-06",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-05T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -366.3245544433594,
+      "predicted_tail_risk_probability": 0.1634242683649063,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 1912.0900594990837,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-07",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-06T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -262.6250305175781,
+      "predicted_tail_risk_probability": 0.1944521814584732,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 1800.7200594990838,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-08",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-07T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -314.836669921875,
+      "predicted_tail_risk_probability": 0.2080695629119873,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 1762.6400594990835,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-09",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-08T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -358.121337890625,
+      "predicted_tail_risk_probability": 0.20307257771492004,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 1714.5500594990838,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-12",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-11T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -153.60987854003906,
+      "predicted_tail_risk_probability": 0.13758458197116852,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 1464.6985302035837,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-14",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-13T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -140.46078491210938,
+      "predicted_tail_risk_probability": 0.2328650802373886,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 2728.2207594990837,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-15",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-14T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -134.4021759033203,
+      "predicted_tail_risk_probability": 0.15316326916217804,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 1507.3306114878196,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-16",
+      "candidate_family": "strict_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-15T23:00:00|strict_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -348.1963195800781,
+      "predicted_tail_risk_probability": 0.262024462223053,
+      "family_tail_risk_probability": 0.34444444444444444,
+      "schedule_value_uah": 1968.7652014288033,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-17",
+      "candidate_family": "raw_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-16T23:00:00|raw_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -189.28515625,
+      "predicted_tail_risk_probability": 0.2762437164783478,
+      "family_tail_risk_probability": 0.5888888888888889,
+      "schedule_value_uah": 1468.2900594990836,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-18",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-17T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -122.36042022705078,
+      "predicted_tail_risk_probability": 0.17598338425159454,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 1694.224174713167,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-20",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-19T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -111.71502685546875,
+      "predicted_tail_risk_probability": 0.17348772287368774,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 1532.8329697877282,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-21",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-20T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -117.75758361816406,
+      "predicted_tail_risk_probability": 0.18740488588809967,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 1701.8714581128982,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-24",
+      "candidate_family": "strict_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-23T23:00:00|strict_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -194.41253662109375,
+      "predicted_tail_risk_probability": 0.2826191782951355,
+      "family_tail_risk_probability": 0.34444444444444444,
+      "schedule_value_uah": 2018.7902014288034,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-25",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-24T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -109.81485748291016,
+      "predicted_tail_risk_probability": 0.21155305206775665,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 2104.704814807512,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-30",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-29T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -102.66182708740234,
+      "predicted_tail_risk_probability": 0.2342737913131714,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 1994.5276896705684,
+      "safety_violation_count": 0.0
+    },
+    {
+      "target_delivery_date": "2026-05-31",
+      "candidate_family": "schedule_value_learner_v2_reference",
+      "candidate_id": "client_003_dnipro_factory|official_oree_dam_live|2026-05-30T23:00:00|schedule_value_learner_v2_reference|live",
+      "predicted_regret_delta_vs_v2_plus_uah": -108.20622253417969,
+      "predicted_tail_risk_probability": 0.22688594460487366,
+      "family_tail_risk_probability": 0.06666666666666667,
+      "schedule_value_uah": 1461.7540889774757,
+      "safety_violation_count": 0.0
+    }
+  ],
+  "mean_selected_value_uah": 1174.2892555480912,
+  "mean_best_template_value_uah": 2590.9497029966697,
+  "mean_selected_vs_best_template_value_gap_uah": 1416.6604474485785,
+  "selected_value_improvement_vs_default_uah": 645.3912023143322,
+  "value_gap_ratio_vs_default": 0.39748498175945224,
+  "tail_failure_delta_vs_default_count": -16.0,
+  "safety_failure_count": 0.0,
+  "hf_frozen_mean_regret_uah": 158.71213017569647,
+  "v2_plus_baseline_mean_regret_uah": 174.77,
+  "hf_minus_v2_plus_mean_regret_uah": -16.057869824303538,
+  "robustness_gate_passed": true,
+  "canonical_safe_switch_mean_regret_uah": 168.1566,
+  "gate_results": {
+    "source_backed_multi_day_window": {
+      "passed": true,
+      "observed": 32.0,
+      "required": ">= 20"
+    },
+    "multi_day_nonfallback_switch_rate": {
+      "passed": true,
+      "observed": 0.625,
+      "required": ">= 0.6"
+    },
+    "selected_value_improvement": {
+      "passed": true,
+      "observed": 645.3912023143322,
+      "required": "> 0 UAH"
+    },
+    "value_gap_ratio": {
+      "passed": true,
+      "observed": 0.39748498175945224,
+      "required": "<= 0.5"
+    },
+    "tail_risk_control": {
+      "passed": true,
+      "observed": -16.0,
+      "required": "<= 0"
+    },
+    "zero_safety_failures": {
+      "passed": true,
+      "observed": 0.0,
+      "required": "<= 0"
+    },
+    "hf_robustness_gate": {
+      "passed": true,
+      "observed": true,
+      "required": "true"
+    },
+    "frozen_regret_vs_v2_plus": {
+      "passed": true,
+      "observed": -16.057869824303538,
+      "required": "< 0 UAH"
+    }
+  },
+  "blocking_reasons": [],
+  "artifact_inputs": {
+    "audit_summary_json": "data/research_runs/hf_live_safe_switch_value_aligned_audit_2026_05_01_2026_06_01/summary.json",
+    "threshold_summary_csv": "data/research_runs/hf_live_safe_switch_value_aligned_audit_2026_05_01_2026_06_01/threshold_summary.csv",
+    "candidate_scores_csv": "data/research_runs/hf_live_safe_switch_value_aligned_audit_2026_05_01_2026_06_01/candidate_scores.csv",
+    "robustness_summary_json": "data/research_runs/week5_hf_safe_switch_scorer_robustness_2026_06_01/robustness_summary.json",
+    "canonical_aggregate_json": "runs/dt_v2_plus/aggregate.json"
+  }
+}

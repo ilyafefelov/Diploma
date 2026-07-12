@@ -1,0 +1,204 @@
+{
+  "nbeatsx_official_global_panel_horizon_calibrated_v1": {
+    "row_count": 360,
+    "date_count": 18,
+    "tenant_count": 5,
+    "roles": {
+      "raw_reference": {
+        "mean_regret_uah": 622.2489421796947,
+        "median_regret_uah": 290.2201427564962,
+        "mean_regret_uah_per_mwh_capacity": 2102.9448023514396,
+        "mean_decision_value_uah": 3289.235342627423,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      },
+      "strict_reference": {
+        "mean_regret_uah": 310.58280814033515,
+        "median_regret_uah": 198.38615278850557,
+        "mean_regret_uah_per_mwh_capacity": 996.1737938598183,
+        "mean_decision_value_uah": 3600.901476666783,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      },
+      "schedule_value_learner_v2_reference": {
+        "mean_regret_uah": 206.3667938276445,
+        "median_regret_uah": 96.02061414616037,
+        "mean_regret_uah_per_mwh_capacity": 678.8264230966065,
+        "mean_decision_value_uah": 3705.1174909858737,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      },
+      "schedule_value_learner_v2_plus": {
+        "mean_regret_uah": 174.7683983151615,
+        "median_regret_uah": 67.30027299009589,
+        "mean_regret_uah_per_mwh_capacity": 584.1807692582956,
+        "mean_decision_value_uah": 3736.715886498357,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      }
+    },
+    "paired_date_effects": {
+      "strict_minus_v2_plus": {
+        "mean_uah": 135.8144098251736,
+        "moving_block_bootstrap_95_ci_uah": [
+          64.2706117474575,
+          217.1037774557274
+        ],
+        "block_length_sensitivity_95_ci_uah": {
+          "2": [
+            62.70772807397966,
+            217.29240208404872
+          ],
+          "3": [
+            64.2706117474575,
+            217.1037774557274
+          ],
+          "4": [
+            63.33542344283569,
+            213.1524365779693
+          ],
+          "6": [
+            56.68991079484741,
+            216.1306074638878
+          ]
+        },
+        "positive_date_count": 14,
+        "date_count": 18,
+        "bootstrap_replicates": 20000,
+        "block_length_dates": 3,
+        "seed": 20260712
+      },
+      "v2_minus_v2_plus": {
+        "mean_uah": 31.598395512482984,
+        "moving_block_bootstrap_95_ci_uah": [
+          12.876019597204634,
+          50.51052464864355
+        ],
+        "block_length_sensitivity_95_ci_uah": {
+          "2": [
+            13.443412850475621,
+            50.60553710244748
+          ],
+          "3": [
+            12.876019597204634,
+            50.51052464864355
+          ],
+          "4": [
+            12.056249422349302,
+            49.714670069247966
+          ],
+          "6": [
+            11.33557430327579,
+            51.501760527743784
+          ]
+        },
+        "positive_date_count": 12,
+        "date_count": 18,
+        "bootstrap_replicates": 20000,
+        "block_length_dates": 3,
+        "seed": 20260712
+      }
+    }
+  },
+  "nbeatsx_official_global_panel_v1": {
+    "row_count": 360,
+    "date_count": 18,
+    "tenant_count": 5,
+    "roles": {
+      "raw_reference": {
+        "mean_regret_uah": 771.2554242876997,
+        "median_regret_uah": 393.49193950386666,
+        "mean_regret_uah_per_mwh_capacity": 2528.8411894415326,
+        "mean_decision_value_uah": 3140.2288605194185,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      },
+      "strict_reference": {
+        "mean_regret_uah": 310.58280814033515,
+        "median_regret_uah": 198.38615278850557,
+        "mean_regret_uah_per_mwh_capacity": 996.1737938598183,
+        "mean_decision_value_uah": 3600.901476666783,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      },
+      "schedule_value_learner_v2_reference": {
+        "mean_regret_uah": 225.4365753345227,
+        "median_regret_uah": 109.69182779096298,
+        "mean_regret_uah_per_mwh_capacity": 735.0827910329585,
+        "mean_decision_value_uah": 3686.047709527724,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      },
+      "schedule_value_learner_v2_plus": {
+        "mean_regret_uah": 193.35903850044008,
+        "median_regret_uah": 68.89100618414295,
+        "mean_regret_uah_per_mwh_capacity": 623.9140031094958,
+        "mean_decision_value_uah": 3718.1252463618066,
+        "mean_oracle_value_uah": 3911.484284807118,
+        "safety_violation_count": 0
+      }
+    },
+    "paired_date_effects": {
+      "strict_minus_v2_plus": {
+        "mean_uah": 117.22376963989505,
+        "moving_block_bootstrap_95_ci_uah": [
+          57.972290449305696,
+          185.21191465763852
+        ],
+        "block_length_sensitivity_95_ci_uah": {
+          "2": [
+            49.28324373611241,
+            192.9968500267395
+          ],
+          "3": [
+            57.972290449305696,
+            185.21191465763852
+          ],
+          "4": [
+            63.71520258704351,
+            174.89367646901314
+          ],
+          "6": [
+            60.42363930574879,
+            176.14840923558342
+          ]
+        },
+        "positive_date_count": 14,
+        "date_count": 18,
+        "bootstrap_replicates": 20000,
+        "block_length_dates": 3,
+        "seed": 20260712
+      },
+      "v2_minus_v2_plus": {
+        "mean_uah": 32.077536834082615,
+        "moving_block_bootstrap_95_ci_uah": [
+          13.481855956965626,
+          53.18305586145166
+        ],
+        "block_length_sensitivity_95_ci_uah": {
+          "2": [
+            13.893531554976313,
+            51.58048193964306
+          ],
+          "3": [
+            13.481855956965626,
+            53.18305586145166
+          ],
+          "4": [
+            12.456353689291555,
+            53.404485969362895
+          ],
+          "6": [
+            12.003658603277753,
+            55.13445120719535
+          ]
+        },
+        "positive_date_count": 14,
+        "date_count": 18,
+        "bootstrap_replicates": 20000,
+        "block_length_dates": 3,
+        "seed": 20260712
+      }
+    }
+  }
+}

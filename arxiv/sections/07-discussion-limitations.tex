@@ -1,0 +1,55 @@
+\section{Discussion and Limitations}
+
+\subsection{What the result demonstrates}
+
+The main conclusion is architectural rather than brand-specific. In this retrospective packet, a constrained schedule-selection layer has lower regret than a raw forecast schedule and a conservative heuristic under a common LP/oracle. V2+ combines a deterministic candidate library, prior-only family evidence, and V2 fallback. Similar ordering appears in mean and median summaries and four adjacent windows.
+
+The study also demonstrates disciplined negative evidence. TFT, Poland features, raw Decision Transformer selection, and several candidate-value variants did not replace the fallback under their stored screens. The random forest remains an in-packet diagnostic despite a lower packet mean because its training candidates are exact timestamp-shifted copies of its evaluation candidates, all four changed profile rows occur on one delivery date, it misses the declared 166.0 UAH cutoff, and it has no independent evaluation period.
+
+For practitioners, the regret decomposition suggests that modeling effort should be targeted. If no useful candidate exists, selector complexity will not help. If a useful candidate exists but is missed, prior-context features and selective prediction are plausible targets. If strict is already near oracle, abstention is appropriate. This decomposition is more actionable than a single forecast score.
+
+\subsection{Statistical limitations}
+
+The main slice contains 90 profile-date rows but only 18 distinct dates. Five configured profiles share one market price process, and the dates are temporally ordered. The four windows are adjacent sensitivity replays within a limited 2026 period. The paired date-block summaries inserted in Section 5 treat each date as a cluster containing all five profiles; they are more appropriate than row-wise IID intervals but still cannot establish behavior outside the period.
+
+The canonical random-forest aggregate uses three nominal seeds, but the selected path and mean regret are identical across seeds, producing zero aggregate standard deviation. Its stored p-value has no inferential interpretation and is not evidence of stochastic replication. The paper relies on packet-level lineage and explicit caveats rather than statistical significance.
+
+The RF outcome is sparse and clustered: four profile-row switches on one delivery date drive the entire difference. Three are wins and one is a tie; 0 of 4 exceeds the configured 150 UAH tail-loss threshold. This is zero observed modeled tail losses in one correlated market episode, not a zero-risk estimate. Threshold sensitivity was performed on the same exact-mirror packet. A later period could remove or reverse the opportunity.
+
+\subsection{Data and market limitations}
+
+The primary performance evidence is DAM. IDM support is a read-model capability, and the paper does not claim IDM bidding performance. The market context is Ukrainian; transferring the numerical result to another bidding zone would require local price, publication, currency, rules, and battery-context validation. Neighboring-market features require licensing, timezone/DST, publication-time, and domain-shift checks before they can become official training covariates.
+
+The panel uses five configured BESS profiles rather than measured commercial sites. It varies capacity, power, efficiency, and SOC settings but does not prove fleet-scale external validity. Measured telemetry, sensor quality, outages, maintenance states, and operator constraints would add uncertainty absent from this replay.
+
+Source-readiness evidence is incomplete for the V13 research gate. A first-seen observation cannot be assumed to be an official publication timestamp, and a source preview is not a submission receipt. These distinctions limit the claims but prevent a more serious provenance error.
+
+\subsection{Physical-model limitations}
+
+The LP uses a power-energy battery model with efficiency, SOC, power constraints, and a throughput degradation proxy. Initial SOC resets for each profile-date and terminal SOC is unconstrained, so reported decision value is conditional one-day evaluator value rather than a repeatable chained multi-day profit estimate. The formulation has no explicit charge/discharge complementarity constraint, and the compact bundle does not preserve enough hourly solver output to audit whether numerically simultaneous flows occur. It also does not capture temperature-dependent efficiency, cell imbalance, nonlinear voltage behavior, calendar ageing, detailed state of health, or manufacturer-specific control limits. Literature on electro-thermal and degradation-aware scheduling shows that these factors can change value \cite{hesse2019ageing,maheshwari2020degradation,kumtepeli2020arbitrage}.
+
+The oracle is also conditional on this simplified model. It is an oracle for the configured LP and realized price vector, not a universal upper bound on realizable asset profit. A richer digital twin could change both selected and oracle schedules. The current strength is comparative consistency: every method faces the same abstraction.
+
+\subsection{Method limitations}
+
+V2+ searches a finite, hand-designed candidate library. It can miss feasible schedules outside the included families. Its prior-only selector can also miss a better available family, as the oracle-gap audit shows. A full differentiable decision-focused system might learn forecast parameters that better support optimization \cite{mandi2024dfl,sang2022essdfl}, while a predict-then-bid formulation could model strategic market interaction \cite{yi2025predictbid}. Those are future systems, not alternate labels for V2+.
+
+The HF value-aligned path is finite and cannot claim LP optimality. Its frozen 158.71 UAH diagnostic is threshold-selected on the same mirrored packet used to build its training representation; it is not independent of the co-primary V2+ packet. The separate 32-day read-model audit has no realized-regret outcome. The paper retains both as clearly separated engineering diagnostics only.
+
+Decision Transformer remains exploratory. Its 460.30 UAH value comes from mirrored training rows and indicates only that this smoke implementation did not recover V2+ on the packet. It cannot establish inadequacy of candidate-index imitation under genuine out-of-sample training, still less a general DT conclusion. Better trajectory construction, return conditioning, data volume, and value-aligned targets may help \cite{bhargava2023whendt}.
+
+\subsection{Operational and ethical limitations}
+
+No human-subject data are used, but operator-facing energy recommendations can still create harm if presented as authorized commands. The interface must preserve source labels, uncertainty, fallback reasons, and the no-execution boundary. Human oversight is not a decorative confirmation button; the system has been designed so that there is no executable market or hardware action to confirm.
+
+Economic values are backtest evidence, not promises of profit. They exclude parts of a production revenue stack and operational cost structure, including settlement effects, imbalance exposure, taxes, fees, downtime, and detailed ageing. Users should not make investment decisions from the reported UAH values alone.
+
+\subsection{Future work}
+
+The nearest research step is prospective validation of a frozen challenger under the unchanged V2+ fallback and oracle scorer. A future protocol should timestamp estimator identity, features, hyperparameters, risk rules, and thresholds before evaluation, then require a genuinely later period, multi-period coverage, profile-level reporting, stable gains after costs, and a documented default-switch policy. A zero-tail-loss requirement would need a meaningful prospective denominator. Terminal-SOC equality or value, chained SOC, and explicit non-simultaneous charge/discharge sensitivity should be added before interpreting daily evaluator value as repeatable arbitrage value.
+
+A second direction is candidate-library expansion. Teacher schedules from a richer LP or MIP could provide diverse but feasible actions. Distillation could predict schedule vectors or family scores, followed by deterministic projection and repair. Comparison against the optimizer must remain on frozen windows.
+
+A third direction is stronger uncertainty and source context. TFT quantiles and governed neighboring-market covariates could be admitted only after point-in-time coverage and robustness gates. Better source-publication evidence would support more precise readiness claims, while market-submission receipts would remain a separate requirement.
+
+Finally, user-specific operational constraints should enter the optimizer or repair layer explicitly: critical-load reserves, protected hours, minimum backup SOC, maintenance windows, tariff rules, and asset preferences. UI labels are not a substitute for formal constraints.

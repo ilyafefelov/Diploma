@@ -1,0 +1,37 @@
+\section{Statements}
+
+\subsection{Data Availability Statement}
+
+The exact code, tracked configurations, paper sources, and evidence bundle are archived under the immutable repository tag cited in \cite{fefelov2026repo}. A compact bundle under \path{anc/evidence/frozen/} contains 720 paired source/role/profile/date rows, aggregate JSON, date-cluster summaries, and capacity-normalized profile summaries. \path{anc/evidence/reconstruct_headline.py} recomputes the co-primary tables, percentile moving-block intervals, and block-length sensitivity. A separate lineage bundle contains the complete RF teacher/selected rows and compact HF summaries; \path{anc/evidence/audit_model_lineage.py} verifies estimator identity, exact mirroring, and switch-date concentration. Tests and SHA-256 hashes are included. These files recompute reported aggregates and audit lineage; full raw-to-result Dagster rematerialization additionally requires the repository data acquisition pipeline. The public market source is JSC Market Operator \cite{oree2026dam}, and weather documentation is provided by Open-Meteo \cite{openmeteo2026archive}.
+
+\subsection{Code and Evidence Availability}
+
+The \href{https://github.com/ilyafefelov/Diploma}{repository landing page} provides project context; the \href{https://github.com/ilyafefelov/Diploma/tree/v2026-arxiv-v1}{v2026-arxiv-v1 tag} is the reproducibility citation containing the exact TeX and ancillary bundle. Large local Dagster materializations are not required for recomputing the reported aggregate tables but remain necessary for full pipeline rematerialization.
+
+\subsection{Ethics Declaration}
+
+This study did not involve human participants, personal data, animals, or clinical intervention. It used market, weather, configured tenant, and simulated/read-model evidence. The main ethical and safety concern is misrepresentation of a recommendation preview as an authorized trading or hardware-control system. The implementation prevents this by retaining human review, explicit source status, guarded abstention, and \code{market_execution_enabled=false}.
+
+\subsection{Author Contributions (CRediT)}
+
+Illya Fefelov: Conceptualization, Methodology, Software, Validation, Formal Analysis, Investigation, Data Curation, Visualization, Writing -- Original Draft, Writing -- Review \& Editing, and Project Administration.
+
+\subsection{Conflict of Interest Statement}
+
+The author declares no known financial or personal conflict of interest that could have influenced the work reported in this paper.
+
+\subsection{Funding Acknowledgment}
+
+This research received no external funding.
+
+\subsection{AI Disclosure}
+
+AI Disclosure: This paper was prepared with AI assistance for literature-search planning, repository and model-lineage inspection, code-assisted aggregate checks, structure planning, draft revision, citation verification, and TeX/package preparation. The author inspected the cited source text, reran the frozen reconstruction and lineage checks, reviewed every claim against repository artifacts, and made all scientific and submission decisions. Illya Fefelov remains solely responsible for the accuracy, integrity, analyses, interpretations, and final text.
+
+\subsection{Thesis Provenance}
+
+This article is a revised and corrected derivative of the Master's thesis \emph{Development of an Evidence-Backed Hourly Recommendation System for BESS Energy Arbitrage in Ukraine's DAM/IDM Markets}, defended in June 2026 at Neoversity \cite{fefelov2026thesis}. It removes degree-administration material and focuses on the research question, verified results, limitations, and reproducibility evidence. A dated public erratum corrects the thesis's attribution of the historical \code{dt_v2_plus} random-forest artifact to Decision Transformer.
+
+\subsection{Classification Note}
+
+The intended primary arXiv category is \code{eess.SY} because the paper centers on a constrained energy-system decision pipeline and operator-facing safety boundary. No \code{cs.LG} cross-list is requested for version 1 because the learned-challenger evidence is not a genuinely temporally separated evaluation and no new ML method is claimed. Category assignment remains subject to arXiv moderation.

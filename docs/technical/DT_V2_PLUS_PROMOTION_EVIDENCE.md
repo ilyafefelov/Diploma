@@ -1,19 +1,21 @@
-# DT V2+ Promotion Evidence
+# Historical `dt_v2_plus` Random-Forest Diagnostic
 
 Date: 2026-05-26
 
-This note documents the offline challenger gate for the residual DT/V2+
-selector. The gate is not market execution and not a dashboard/API default
-switch.
+This note preserves the historical offline challenger gate while applying the
+post-defense model-lineage correction. The estimator is random forest, not
+Decision Transformer. Its training rows exactly mirror the evaluation packet,
+so the stored gate is a construction diagnostic and cannot support promotion.
 
 ## Boundary
 
 - V2+ remains the champion/default/fallback.
-- The residual DT selector is a challenger that may switch only on rare
-  predicted safe-switch cases.
+- The historical selector is `RandomForestRegressor`; `dt_v2_plus` is only its
+  deprecated artifact identifier.
 - Strict/oracle regret is used only as frozen final-holdout scoring evidence,
   not as a runtime selector input.
-- `promotion_evidence_passed` is an offline evidence flag only.
+- The historical `promotion_evidence_passed=true` field is superseded by the
+  exact-mirror audit and must not be interpreted as valid promotion evidence.
 - `promotion_gate_passed=false`, `market_execution_enabled=false`,
   `dt_lava_ready=false`, `permits_model_training=false`.
 - No `ProposedBid` is emitted.
@@ -82,9 +84,9 @@ Key files:
 
 | Metric | Value |
 |---|---:|
-| Promotion evidence passed | `true` |
+| Historical stored `promotion_evidence_passed` | `true` (superseded; invalid for promotion after exact-mirror audit) |
 | Promotion blocker | `none` |
-| Final-holdout anchors | `90` |
+| Historically labelled final-holdout anchors | `90` (not independent of mirrored training rows) |
 | Selector mean regret | `168.16` UAH |
 | V2+ mean regret | `174.77` UAH |
 | Selector minus V2+ mean regret | `-6.61` UAH |
@@ -98,14 +100,13 @@ Key files:
 
 ## Interpretation
 
-The gate confirms the next research target and shows a useful residual
-safe-switch signal. The frozen teacher/oracle evidence contains rare safe-switch
-opportunities; the expanded prior-context random-forest selector recovers `3`
-winning opportunities and makes `4 / 90` non-V2+ switches with no configured
-tail-risk losses.
+The stored arithmetic is reproducible, but the 360 training candidates are
+exact timestamp-shifted copies of the 360 evaluation candidates, and all four
+nonfallback profile rows occur on one delivery date. The `3 / 15` and `0`
+tail-loss counts are correlated, post-hoc packet diagnostics rather than rate or
+safety estimates. The three nominal seeds select the same path, so the stored
+p-value is non-inferential.
 
-This is still not a production promotion. The evidence threshold used here is
-`3%` mean-regret improvement versus V2+ for a research challenger screen, while
-full production promotion remains a separate explicit gate. V2+ remains the
-operator default/fallback until a later promotion gate is intentionally added
-and passed.
+V2+ remains the comparator/fallback. Any future promotion requires a new frozen
+protocol, estimator identity, features and thresholds fixed before a genuinely
+later evaluation period, plus meaningful multi-date tail-risk evidence.

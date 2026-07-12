@@ -41,7 +41,7 @@ inverter dispatch.
 - Official/source-backed price context is preferred; forecast-store rows are
   used only for unpublished horizons.
 - V2+ remains the headline/default evidence.
-- DT/V2+ and HF are useful shadow/manual research paths, not promoted control.
+- The historical `dt_v2_plus` artifact is a random-forest exact-mirror diagnostic, not DT/OOS evidence; the separate HF transformer-backbone path is also manual/non-independent evidence, not promoted control.
 - A HOLD or abstention is a valid safety outcome.
 
 ## What It Should Not Claim

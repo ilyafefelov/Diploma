@@ -25,9 +25,11 @@ and oracle contour provides the feasible decision reference. The V2 selector
 establishes a baseline at 206.37 UAH mean regret, while the schedule/value
 learner V2+ improves the headline evidence to 174.77 UAH.
 
-Transformer-based shadows are kept under strict gates: DT/V2+ reports 168.16
-UAH mean regret, with 4 switches and 86 abstentions, and the HF value-aligned
-shadow shows a 158.71 UAH frozen regret signal as manual demo evidence. These
+Post-defense model-lineage audit corrected the 168.16 UAH artifact: historical
+`dt_v2_plus` is random forest trained on exact mirrored rows, with four
+profile-row switches on one date, not transformer/OOS evidence. The separate HF
+transformer-backbone shadow shows a 158.71 UAH mirrored-packet diagnostic and a
+distinct read-model audit without realized regret. These
 are promising research signals, not production strategy switches.
 
 For potential partners, the near-term value is practical: faster operator

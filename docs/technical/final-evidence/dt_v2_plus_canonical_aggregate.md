@@ -1,4 +1,7 @@
-# DT/V2+ Canonical Aggregate
+# Random-Forest V2+ Safe-Switch Canonical Aggregate
+
+`dt_v2_plus` is a deprecated historical artifact identifier. The estimator is
+`RandomForestRegressor`, not Decision Transformer.
 
 Source local artifacts:
 
@@ -9,7 +12,8 @@ Source local artifacts:
 
 | Field | Value |
 | --- | ---: |
-| Model | `dt_v2_plus` |
+| Historical artifact id | `dt_v2_plus` |
+| Estimator | `RandomForestRegressor` (500 trees, depth 6, leaf minimum 1) |
 | Seeds | `3` |
 | Baseline V2+ mean regret | `174.77` UAH |
 | Mean test regret | `168.1566` UAH |
@@ -29,6 +33,10 @@ vector length `24` for each real vector column:
 - `forecast_price_uah_mwh_vector`
 - `soc_fraction_vector`
 
-Interpretation: the corrected DT/V2+ safe-switch signal is real enough for
-secondary research evidence, but not primary promotion or dashboard default.
+Interpretation: the teacher rows are exact timestamp-shifted copies of the
+evaluation packet, and all four nonfallback profile-row changes occur on one
+delivery date. The numerical result is an in-packet pipeline diagnostic, not an
+out-of-sample estimate or transformer result. The three nominal seeds produce
+the same path, so the stored zero standard deviation and p-value are not
+inferential evidence. It does not support promotion or a dashboard default.
 

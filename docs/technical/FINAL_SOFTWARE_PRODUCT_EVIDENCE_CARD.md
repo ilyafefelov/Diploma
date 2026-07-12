@@ -32,8 +32,9 @@ deployed DT controller, full DFL controller, or production dispatch system.
 2. Open `/operator` and show tenant, DAM/IDM venue, target-date controls, and
    the first-viewport boundary strip.
 3. Show a normal preview row and a fail-closed HOLD/source-readiness case.
-4. Open `/defense` and point to V2+ as headline evidence, DT/V2+ as secondary
-   shadow evidence, and HF value-aligned as manual shadow/demo evidence.
+4. Open `/defense` and point to V2+ as headline retrospective evidence, the
+   historical `dt_v2_plus` random-forest exact-mirror diagnostic, and HF
+   value-aligned as a separate manual transformer-backbone/read-model path.
 5. Open FastAPI `/docs` or [API endpoints](API_ENDPOINTS.md) and show that the
    API is a read-model surface, not a market order surface.
 6. Show verification output or the commands under [README verification](../../README.md#verification).

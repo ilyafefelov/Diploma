@@ -59,8 +59,9 @@ live defense demo.
 - Show target-date modes: latest official, today, tomorrow, day+2.
 - Select `HF live safe-switch value-aligned shadow`.
 - Show one non-HOLD case and one guarded HOLD/fallback case when available.
-- End at `/defense` and explain V2+ headline evidence, DT/V2+ secondary
-  evidence, and HF manual shadow/demo evidence.
+- End at `/defense` and explain V2+ headline retrospective evidence, the
+  historical `dt_v2_plus` random-forest exact-mirror diagnostic, and the
+  separate HF transformer-backbone manual/read-model evidence.
 
 ## 4. API/Docs Consistency
 
