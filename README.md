@@ -148,6 +148,7 @@ The defendable product surface is an evidence system, not autonomous execution.
 | Schedule/Value Learner V2+ | 174.77 UAH mean regret | headline/default evidence |
 | Random-forest V2+ diagnostic (historical id `dt_v2_plus`) | 168.16 UAH, 4 profile-row switches / 86 abstentions | exact-mirror packet; all switches on one date; not DT/OOS evidence |
 | Post-defense RF temporal suite | 14 protocol rows; 0 beneficial, 11 ties/full abstention, 3 harmful | zero candidate-content overlap; negative retrospective evidence; no promotion |
+| Post-defense return-conditioned DT suite | 36 runs; 0 beneficial, 33 ties, 3 harmful | genuine nonzero actions/RTG with temporal separation; decision-aware DT ties 18/18; not full DFL or promotion |
 | HF `DecisionTransformerModel`-backbone scorer | 158.71 UAH mirrored-packet diagnostic; separate 20/32-day non-fallback read-model audit | manual preview; no independent realized-regret result |
 
 Boundary: `market_execution_enabled=false`, no `ProposedBid`, no market order

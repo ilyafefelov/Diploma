@@ -9,6 +9,7 @@ import polars as pl
 import torch
 
 from smart_arbitrage.dfl.dt_research_shadow import (
+    audit_dt_research_shadow_temporal_independence,
     build_dt_research_shadow_teacher_rows_from_candidate_library,
     build_dt_research_shadow_teacher_rows_from_temporal_v2_plus_strict_rows,
     build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
@@ -811,6 +812,29 @@ def test_dt_research_shadow_adapts_distinct_temporal_strict_rows_without_mirrori
     assert set(evaluation["research_shadow_source_kind"]) == {
         "v2_plus_strict_rows_temporal_evaluation_adapter"
     }
+    assert audit_dt_research_shadow_temporal_independence(teacher_rows) == {
+        "train_candidate_row_count": 8,
+        "evaluation_candidate_row_count": 8,
+        "content_overlap_candidate_row_count": 0,
+        "content_overlap_ratio": 0.0,
+        "exact_content_mirror": False,
+        "independent_holdout": True,
+    }
+
+
+def test_dt_research_shadow_detects_timestamp_shifted_content_mirror() -> None:
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
+        strict_rows_frame=_v2_plus_strict_rows(),
+    )
+
+    audit = audit_dt_research_shadow_temporal_independence(teacher_rows)
+
+    assert audit["train_candidate_row_count"] == 8
+    assert audit["evaluation_candidate_row_count"] == 8
+    assert audit["content_overlap_candidate_row_count"] == 8
+    assert audit["content_overlap_ratio"] == 1.0
+    assert audit["exact_content_mirror"] is True
+    assert audit["independent_holdout"] is False
 
 
 def test_dt_research_shadow_marks_single_v2_plus_distillation_target_per_candidate_set() -> None:

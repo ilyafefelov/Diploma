@@ -25,6 +25,9 @@ production strategy switch. `market_execution_enabled=false` remains fixed.
 | Random-forest V2+ safe-switch median regret | 61.71 UAH | `docs/thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md` | exact-mirror in-packet diagnostic | four switches occur on one date |
 | Random-forest non-V2+ switches | 4 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | in-packet diagnostic | V2+ remains fallback; one distinct switch date |
 | Random-forest abstentions | 86 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | in-packet diagnostic | abstain-to-V2+ behavior |
+| Temporal DT primary suite | 0 / 36 beneficial; 33 ties; 3 harmful | `docs/technical/final-evidence/dt_temporal_v2_plus_experiment.md` | post-defense, zero-overlap temporal research shadow | two sources, three windows, two objectives, three seeds |
+| Decision-aware temporal DT | 18 / 18 ties with V2+ | `runs/dt_temporal_v2_plus/temporal_suite_rows.csv` | DFL-style candidate ranking, not full differentiable DFL | no non-V2+ switches; not promoted |
+| Cross-entropy temporal DT | 15 / 18 ties; 3 harmful | `runs/dt_temporal_v2_plus/temporal_suite_rows.csv` | candidate-index imitation | harmful deltas +10.12, +12.28, +21.09 UAH |
 | Random-forest recovered opportunities | 3 / 15 filtered opportunities | `docs/thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md` | historical diagnostic | denominator requires the stored selector filter |
 | RF temporal suite latest-window delta | 0.00 UAH | `docs/technical/final-evidence/rf_safe_switch_temporal_replay.md` | post-defense negative evidence | both sources and thresholds 0/5/10/20/50 fully abstain |
 | RF temporal suite beneficial protocols | 0 / 14 rows | `docs/technical/final-evidence/rf_safe_switch_temporal_replay.md` | post-defense negative evidence | zero content overlap throughout |

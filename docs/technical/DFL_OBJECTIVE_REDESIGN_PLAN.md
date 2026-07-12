@@ -150,6 +150,28 @@ not beat frozen V2+, so the final thesis headline stays with V2+ while the next
 DFL branch should focus on richer candidate values/families rather than another
 small DT over the same trajectory objective.
 
+## Post-Defense Time-Separated DT Check
+
+A later corrective experiment removes the mirrored-row limitation from the DT
+comparison and trains Hugging Face `DecisionTransformerModel` with nonzero
+candidate actions and regret-based return-to-go values. The 36-run matrix covers
+two sources, three temporally separated rolling protocols, candidate-index
+cross entropy and decision-aware regret/value ranking, and three seeds.
+
+- zero runs improve on frozen V2+;
+- decision-aware DT ties V2+ in 18/18 runs and makes no non-V2+ switch;
+- cross-entropy DT ties in 15/18 and is harmful in 3/18;
+- harmful mean-regret deltas are +10.12, +12.28, and +21.09 UAH;
+- all train/evaluation model-input-plus-target overlap counts are zero;
+- `promotable_v13_permitted_training_rows=0` and
+  `market_execution_enabled=false` remain unchanged.
+
+This supports the redesign thesis: changing to a transformer does not solve the
+absence of a robust point-in-time safe-switch signal. Decision-aware abstention
+is safer than candidate-label imitation, but a V2+ tie is not a model gain and
+is not full differentiable DFL. See
+[dt_temporal_v2_plus_experiment.md](final-evidence/dt_temporal_v2_plus_experiment.md).
+
 ## Candidate-Value DFL v3 Slice
 
 The next branch is implemented as Candidate-Value DFL v3:

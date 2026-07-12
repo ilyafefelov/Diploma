@@ -33,6 +33,14 @@ strict/oracle, and is exposed only as a manual dashboard preview source. The
 separate apples-to-apples DT packet compares against the real V2+ result and
 does not beat it (`460.30` UAH DT mean regret versus `174.77` UAH V2+).
 
+A post-defense time-separated DT suite now replaces the mirrored-row smoke as
+the strongest DT generalization check. Across 36 runs (two sources, three
+rolling protocols, two objectives, and three seeds), zero runs beat V2+. The
+decision-aware regret/value objective ties V2+ in 18/18 runs; candidate-index
+cross entropy ties in 15/18 and is worse in 3/18. Every run uses nonzero action
+targets and return-to-go values with zero train/evaluation content overlap.
+This is honest negative research-shadow evidence, not DT or DFL promotion.
+
 ## Promotion Rules
 
 DAM/IDM hourly recommendation preview may use observed OREE rows and offline

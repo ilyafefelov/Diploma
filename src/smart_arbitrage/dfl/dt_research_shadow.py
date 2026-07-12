@@ -8,6 +8,7 @@ non-executable.
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime, timedelta
 import ast
@@ -69,6 +70,26 @@ DEFAULT_DECISION_AWARE_RANKING_WEIGHT: Final[float] = 1.0
 DEFAULT_DISTILLATION_WEIGHT: Final[float] = 1.0
 DEFAULT_MIN_PREDICTED_IMPROVEMENT_UAH: Final[float] = 50.0
 DEFAULT_MAX_FAMILY_TAIL_RISK_PROBABILITY: Final[float] = 0.5
+DT_TEMPORAL_CONTENT_FINGERPRINT_COLUMNS: Final[tuple[str, ...]] = (
+    "forecast_price_uah_mwh_vector",
+    "dispatch_mw_vector",
+    "soc_fraction_vector",
+    "decision_value_uah",
+    "oracle_value_uah",
+    "regret_uah",
+    "forecast_spread_uah_mwh",
+    "forecast_top_k_actual_overlap",
+    "forecast_bottom_k_actual_overlap",
+    "soc_min_slack_fraction",
+    "safety_violation_count",
+    "total_throughput_mwh",
+    "total_degradation_penalty_uah",
+    "dt_candidate_index_target",
+    "dt_schedule_family_target",
+    "return_to_go_regret_target_uah",
+    "regret_delta_vs_v2_plus_uah",
+    "schedule_value_uah",
+)
 
 STATE_FEATURE_NAMES: Final[tuple[str, ...]] = (
     "forecast_vector_mean_scaled",
@@ -417,6 +438,58 @@ def build_dt_research_shadow_teacher_rows_from_temporal_v2_plus_strict_rows(
         raise ValueError("No temporal V2+ strict rows could be adapted for DT shadow.")
     return pl.DataFrame(adapted_rows).sort(
         ["tenant_id", "source_model_name", "anchor_timestamp", "teacher_candidate_index"]
+    )
+
+
+def audit_dt_research_shadow_temporal_independence(
+    teacher_rows_frame: pl.DataFrame,
+) -> dict[str, int | float | bool]:
+    """Audit model-input-plus-target overlap without using identifiers or time."""
+
+    frame = _normalized_teacher_rows(teacher_rows_frame)
+    missing = [
+        column
+        for column in DT_TEMPORAL_CONTENT_FINGERPRINT_COLUMNS
+        if column not in frame.columns
+    ]
+    if missing:
+        raise ValueError(f"DT temporal independence audit missing columns: {missing}")
+    train = frame.filter(pl.col("split_name") == "train_selection")
+    evaluation = frame.filter(pl.col("split_name") == "final_holdout")
+    if train.is_empty() or evaluation.is_empty():
+        raise ValueError("DT temporal independence audit requires train and evaluation rows.")
+    train_fingerprints = Counter(
+        _dt_temporal_content_fingerprint(row)
+        for row in train.iter_rows(named=True)
+    )
+    evaluation_fingerprints = Counter(
+        _dt_temporal_content_fingerprint(row)
+        for row in evaluation.iter_rows(named=True)
+    )
+    overlap_count = sum((train_fingerprints & evaluation_fingerprints).values())
+    evaluation_count = evaluation.height
+    exact_content_mirror = (
+        train.height == evaluation_count == overlap_count and evaluation_count > 0
+    )
+    return {
+        "train_candidate_row_count": train.height,
+        "evaluation_candidate_row_count": evaluation_count,
+        "content_overlap_candidate_row_count": overlap_count,
+        "content_overlap_ratio": overlap_count / evaluation_count,
+        "exact_content_mirror": exact_content_mirror,
+        "independent_holdout": overlap_count == 0,
+    }
+
+
+def _dt_temporal_content_fingerprint(row: Mapping[str, Any]) -> tuple[str, ...]:
+    return tuple(
+        json.dumps(
+            _jsonable(row.get(column)),
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        )
+        for column in DT_TEMPORAL_CONTENT_FINGERPRINT_COLUMNS
     )
 
 
