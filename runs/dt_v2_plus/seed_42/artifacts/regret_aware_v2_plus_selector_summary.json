@@ -8,6 +8,7 @@
     "abstains_to_v2_plus_when_signal_is_weak": true,
     "dt_lava_ready": false,
     "dt_promotion_gate_passed": false,
+    "independent_holdout": false,
     "market_execution_enabled": false,
     "mirrored_training_rows_possible": true,
     "no_dashboard_api_default_switch": true,
@@ -62,6 +63,14 @@
     "v2_plus_mean_value_uah": 3736.715886498357,
     "v2_plus_median_regret_uah": 67.30027299009589
   },
+  "evaluation_independence": {
+    "content_overlap_candidate_row_count": 360,
+    "content_overlap_ratio": 1.0,
+    "evaluation_candidate_row_count": 360,
+    "exact_content_mirror": true,
+    "independent_holdout": false,
+    "train_candidate_row_count": 360
+  },
   "feature_leakage_guard": {
     "forbidden_feature_tokens": [
       "actual",
@@ -108,7 +117,7 @@
     "candidate_family=strict_reference"
   ],
   "feature_set": "expanded_prior_context_v1",
-  "generated_at": "2026-05-31T22:48:53+00:00",
+  "generated_at": "2026-07-12T15:43:01+00:00",
   "input_summary": {
     "candidate_families": [
       "raw_reference",

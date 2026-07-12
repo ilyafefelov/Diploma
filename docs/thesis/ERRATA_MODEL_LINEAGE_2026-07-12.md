@@ -34,14 +34,56 @@ sharing one DAM price path. Therefore:
 - 4/90 switches are four profile outcomes on one market episode, not four
   independent dates;
 - 0/4 observed tail losses is not an estimate of zero risk;
-- identical results across three nominal seeds and the stored p-value have no
-  valid inferential interpretation.
+- identical results across three nominal seeds and the previously stored
+  p-value have no valid inferential interpretation; the corrected aggregate
+  stores `null`.
 
 The HF frozen 158.7121 UAH diagnostic also uses the mirrored packet and selects
 its threshold on that packet. A separate 32-day read-model audit reports 20/32
 nonfallback days and mean selected value 1174.29 UAH, but does not contain a
 realized-regret outcome. These results must not be combined as independent
 evidence.
+
+## Post-defense corrective replay
+
+After discovering the mirror, the same random-forest safe-switch family was
+replayed with earlier rolling windows 4, 3, and 2 used for training and window 1
+used for evaluation. The resulting split has 1,080 training candidate rows and
+360 evaluation candidate rows, with 0 overlapping model-input-plus-target
+fingerprints.
+
+On the 90 profile-date evaluation rows (18 distinct market dates), the RF
+abstained to V2+ on all 90 rows. Its mean regret was therefore 174.7684 UAH,
+identical to V2+, with zero switches and zero distinct switch dates. Seeds 42,
+2026, and 7 produced the same all-abstain path; they are stability checks, not
+independent replications.
+
+This post-defense result does not retroactively become part of the defended
+thesis. It is a retrospective, time-separated corrective replay, not untouched
+prospective confirmation. It does not reproduce the 168.1566 UAH diagnostic
+and provides no evidence for promoting the RF safe-switch.
+
+### Expanded corrective suite for release 1.1
+
+The corrective protocol was then expanded to both co-primary NBEATSx sources,
+evaluation windows 1, 2, and 3 with strictly earlier training windows, latest-
+window thresholds 0, 5, 10, 20, and 50 UAH, and three-seed checks at the frozen
+20 UAH operating point. All 14 protocol rows have zero train/evaluation content
+overlap.
+
+No protocol row improves on V2+. Both latest-window source lines abstain on all
+90 rows at every evaluated threshold. Calibrated window 2 also abstains. Three
+earlier-window protocols increase regret at primary seed 42:
+
+- calibrated window 3: +123.08 UAH, 43 switches, 19 observed tail losses;
+- raw window 2: +65.18 UAH, 5 switches, 4 observed tail losses;
+- raw window 3: +96.44 UAH, 8 switches, 5 observed tail losses.
+
+The direction is stable across seeds 42, 2026, and 7. Calibrated-window-3 harm
+ranges from +107.50 to +123.08 UAH with 36--43 switches; the raw-window harms
+remain +65.18 and +96.44 UAH, with 5 and 8--9 switches respectively. Seeds and
+adjacent windows are sensitivity checks, not independent market replications.
+This expanded negative evidence strengthens the non-promotion conclusion.
 
 ## Corrected labels
 
@@ -65,3 +107,6 @@ configured BESS profiles, not confirmatory prospective validation or market
 execution.
 
 Machine-readable audit: `arxiv/evidence/lineage/model_lineage_audit.json`.
+
+Corrective suite summary:
+`arxiv/evidence/lineage/rf_safe_switch_temporal_suite_summary.json`.

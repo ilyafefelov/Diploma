@@ -1,0 +1,97 @@
+{
+  "claim_scope": "rf_safe_switch_temporal_replay_retrospective_not_market_execution",
+  "date_cluster_summary": {
+    "date_loss_count": 0,
+    "date_tie_count": 18,
+    "date_win_count": 0,
+    "distinct_market_date_count": 18,
+    "mean_selector_minus_v2_plus_regret_uah": 0.0,
+    "moving_block_bootstrap": {
+      "block_length_dates": 3,
+      "ci_high_uah": 0.0,
+      "ci_low_uah": 0.0,
+      "iterations": 20000,
+      "seed": 20260712
+    },
+    "unit": "market_date_mean_across_configured_profiles"
+  },
+  "estimator_class": "random_forest",
+  "evaluation": {
+    "abstention_count": 90,
+    "distinct_market_date_count": 18,
+    "distinct_switch_date_count": 0,
+    "distinct_switch_dates": [],
+    "non_v2_plus_switch_count": 0,
+    "observed_tail_loss_count": 0,
+    "profile_date_row_count": 90,
+    "selector_mean_regret_uah": 174.7683983151615,
+    "selector_minus_v2_plus_mean_regret_uah": 0.0,
+    "v2_plus_mean_regret_uah": 174.7683983151615
+  },
+  "evaluation_independence": {
+    "content_overlap_candidate_row_count": 0,
+    "content_overlap_ratio": 0.0,
+    "evaluation_candidate_row_count": 360,
+    "exact_content_mirror": false,
+    "independent_holdout": true,
+    "train_candidate_row_count": 1080
+  },
+  "evaluation_strict_row_count": 360,
+  "evaluation_window_index": 1,
+  "generated_at": "2026-07-12T19:44:35+00:00",
+  "interpretation": "retrospective time-separated replay; not untouched prospective confirmation",
+  "market_execution_enabled": false,
+  "model": "random_forest_v2_plus_safe_switch",
+  "primary_seed": 42,
+  "promotion_gate_passed": false,
+  "run_slug": "rf_safe_switch_temporal_suite_calibrated_w1_t20",
+  "seed_sensitivity": {
+    "interpretation": "model-stability sensitivity, not independent replication",
+    "rows": [
+      {
+        "abstention_count": 90,
+        "non_v2_plus_switch_count": 0,
+        "seed": 42,
+        "selector_mean_regret_uah": 174.7683983151615,
+        "selector_minus_v2_plus_mean_regret_uah": 0.0,
+        "v2_plus_mean_regret_uah": 174.7683983151615
+      },
+      {
+        "abstention_count": 90,
+        "non_v2_plus_switch_count": 0,
+        "seed": 2026,
+        "selector_mean_regret_uah": 174.7683983151615,
+        "selector_minus_v2_plus_mean_regret_uah": 0.0,
+        "v2_plus_mean_regret_uah": 174.7683983151615
+      },
+      {
+        "abstention_count": 90,
+        "non_v2_plus_switch_count": 0,
+        "seed": 7,
+        "selector_mean_regret_uah": 174.7683983151615,
+        "selector_minus_v2_plus_mean_regret_uah": 0.0,
+        "v2_plus_mean_regret_uah": 174.7683983151615
+      }
+    ],
+    "seed_count": 3,
+    "seeds": [
+      42,
+      2026,
+      7
+    ],
+    "selector_mean_regret_mean_uah": 174.7683983151615,
+    "selector_mean_regret_std_uah": 0.0
+  },
+  "selector_config": {
+    "max_family_tail_risk_probability": 0.5,
+    "min_predicted_improvement_uah": 20.0,
+    "tail_risk_loss_threshold_uah": 150.0
+  },
+  "source_model_name": "nbeatsx_official_global_panel_horizon_calibrated_v1",
+  "training_strict_row_count": 1080,
+  "training_window_indices": [
+    4,
+    3,
+    2
+  ]
+}

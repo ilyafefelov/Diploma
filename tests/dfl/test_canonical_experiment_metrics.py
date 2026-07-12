@@ -36,6 +36,20 @@ def test_canonical_metrics_payload_validates_required_fields() -> None:
         validate_canonical_experiment_metrics_payload(payload)
 
 
+def test_canonical_metrics_payload_rejects_estimator_model_label_mismatch() -> None:
+    payload = _metrics_payload(test_regret_mean=168.16)
+    payload.update(
+        {
+            "model": "dt_v2_plus",
+            "estimator_class": "random_forest",
+            "artifact_identifier": "dt_v2_plus",
+        }
+    )
+
+    with pytest.raises(ValueError, match="model label must identify random_forest"):
+        validate_canonical_experiment_metrics_payload(payload)
+
+
 def test_pass_level_marks_current_safe_switch_result_as_secondary() -> None:
     result = classify_experiment_pass_level(
         mean_test_regret=168.15664125116336,
@@ -129,6 +143,50 @@ def test_aggregate_cli_writes_primary_summary_for_three_seed_model(tmp_path: Pat
     assert aggregate["baseline_mean_regret"] == pytest.approx(BASELINE_V2_PLUS_MEAN_REGRET_UAH)
 
 
+def test_aggregate_cli_suppresses_inference_for_non_independent_packet(
+    tmp_path: Path,
+) -> None:
+    model_dir = tmp_path / "runs" / "dt_v2_plus"
+    for seed in (42, 2026, 7):
+        seed_dir = model_dir / f"seed_{seed}"
+        seed_dir.mkdir(parents=True)
+        payload = _metrics_payload(seed=seed, test_regret_mean=168.1566)
+        payload.update(
+            {
+                "model": "random_forest_v2_plus_safe_switch",
+                "estimator_class": "random_forest",
+                "artifact_identifier": "dt_v2_plus",
+                "independent_holdout": False,
+                "evaluation_content_overlap_ratio": 1.0,
+            }
+        )
+        (seed_dir / "metrics.json").write_text(
+            json.dumps(payload),
+            encoding="utf-8",
+        )
+    baseline_path = tmp_path / "baseline_seed_means.json"
+    baseline_path.write_text(json.dumps([174.77, 174.77, 174.77]), encoding="utf-8")
+
+    exit_code = aggregate_canonical_experiment_metrics(
+        [
+            "--model-dir",
+            str(model_dir),
+            "--baseline-seed-means-json",
+            str(baseline_path),
+        ]
+    )
+
+    assert exit_code == 0
+    aggregate = json.loads((model_dir / "aggregate.json").read_text(encoding="utf-8"))
+    assert aggregate["independent_holdout"] is False
+    assert aggregate["inference_valid"] is False
+    assert aggregate["t_pvalue_vs_v2plus"] is None
+    assert aggregate["pass_level"] == "diagnostic_only"
+    assert aggregate["model"] == "random_forest_v2_plus_safe_switch"
+    assert aggregate["estimator_class"] == "random_forest"
+    assert aggregate["artifact_identifier"] == "dt_v2_plus"
+
+
 def test_welch_pvalue_returns_one_for_identical_seed_means_without_warning() -> None:
     with warnings.catch_warnings():
         warnings.simplefilter("error")
@@ -184,10 +242,60 @@ def test_dt_v2_plus_seed_metrics_cli_creates_required_aggregation_inputs(
         metrics_path = model_dir / f"seed_{seed}" / "metrics.json"
         metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
         assert metrics["seed"] == seed
-        assert metrics["model"] == "dt_v2_plus"
+        assert metrics["model"] == "weighted_ridge_v2_plus_safe_switch"
+        assert metrics["estimator_class"] == "weighted_ridge"
+        assert metrics["independent_holdout"] is True
+        assert metrics["evaluation_content_overlap_ratio"] == 0.0
         assert metrics["test_regret_mean"] == pytest.approx(100.0)
         assert metrics["market_execution_enabled"] is False
         assert metrics["promotion_gate_passed"] is False
+
+
+def test_dt_v2_plus_seed_metrics_cli_labels_exact_mirror_as_rf_diagnostic(
+    tmp_path: Path,
+) -> None:
+    from tests.dfl.test_regret_aware_v2_plus_selector import (
+        _exact_mirror_teacher_rows_for_regret_aware_selector,
+    )
+
+    teacher_rows_csv = tmp_path / "teacher_rows.csv"
+    model_dir = tmp_path / "runs" / "dt_v2_plus"
+    baseline_path = tmp_path / "runs" / "v2plus" / "baseline_seed_means.json"
+    _csv_ready(_exact_mirror_teacher_rows_for_regret_aware_selector()).write_csv(
+        teacher_rows_csv
+    )
+
+    exit_code = materialize_dt_v2_plus_canonical_seed_metrics(
+        [
+            "--teacher-rows-csv",
+            str(teacher_rows_csv),
+            "--model-dir",
+            str(model_dir),
+            "--baseline-seed-means-json",
+            str(baseline_path),
+            "--seeds",
+            "42",
+            "--model-kind",
+            "random_forest",
+            "--git-commit",
+            "abc1234",
+        ]
+    )
+
+    assert exit_code == 0
+    metrics = json.loads(
+        (model_dir / "seed_42" / "metrics.json").read_text(encoding="utf-8")
+    )
+    manifest = json.loads(
+        (model_dir / "canonical_seed_metrics_manifest.json").read_text(encoding="utf-8")
+    )
+    assert metrics["model"] == "random_forest_v2_plus_safe_switch"
+    assert metrics["estimator_class"] == "random_forest"
+    assert metrics["artifact_identifier"] == "dt_v2_plus"
+    assert metrics["independent_holdout"] is False
+    assert metrics["evaluation_content_overlap_ratio"] == 1.0
+    assert manifest["evaluation_independence"]["exact_content_mirror"] is True
+    assert manifest["inference_valid"] is False
 
 
 def _metrics_payload(

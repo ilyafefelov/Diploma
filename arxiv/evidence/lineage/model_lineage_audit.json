@@ -67,6 +67,45 @@
     "independent_holdout": false,
     "interpretation": "exact-mirror in-packet pipeline diagnostic"
   },
+  "temporal_replay": {
+    "training_candidate_row_count": 1080,
+    "evaluation_candidate_row_count": 360,
+    "content_overlap_candidate_row_count": 0,
+    "independent_holdout": true,
+    "profile_date_row_count": 90,
+    "distinct_market_date_count": 18,
+    "switch_count": 0,
+    "abstention_count": 90,
+    "selector_minus_v2_plus_mean_regret_uah": 0.0,
+    "promotion_gate_passed": false,
+    "market_execution_enabled": false,
+    "interpretation": "retrospective time-separated replay; not untouched prospective confirmation"
+  },
+  "temporal_suite": {
+    "run_count": 14,
+    "source_model_count": 2,
+    "evaluation_window_indices": [
+      1,
+      2,
+      3
+    ],
+    "thresholds_uah": [
+      0.0,
+      5.0,
+      10.0,
+      20.0,
+      50.0
+    ],
+    "all_independent_holdouts": true,
+    "maximum_content_overlap_ratio": 0.0,
+    "beneficial_protocol_count": 0,
+    "tie_protocol_count": 11,
+    "harmful_protocol_count": 3,
+    "maximum_primary_seed_harm_uah": 123.08140686958836,
+    "promotion_gate_passed": false,
+    "market_execution_enabled": false,
+    "interpretation": "protocol and model-stability sensitivity over retrospective, time-separated replays; rows are not independent replications"
+  },
   "hf_diagnostics": {
     "architecture": "Hugging Face DecisionTransformerModel backbone candidate scorer",
     "frozen_mean_regret_uah": 158.71213017569647,
@@ -76,5 +115,5 @@
     "read_model_mean_selected_value_uah": 1174.2892555480912,
     "read_model_audit_has_realized_regret": false
   },
-  "claim_boundary": "The 168.1566 UAH artifact is random forest, not Decision Transformer; RF and HF frozen values are non-independent diagnostics, not OOS estimates."
+  "claim_boundary": "The 168.1566 UAH artifact is random forest, not Decision Transformer; RF and HF frozen values are non-independent diagnostics, not OOS estimates. The post-defense temporal replay removes candidate-content overlap but the wider temporal suite finds no beneficial protocol and three harmful protocols, so it does not support promotion."
 }

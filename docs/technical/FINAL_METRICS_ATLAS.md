@@ -26,6 +26,9 @@ production strategy switch. `market_execution_enabled=false` remains fixed.
 | Random-forest non-V2+ switches | 4 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | in-packet diagnostic | V2+ remains fallback; one distinct switch date |
 | Random-forest abstentions | 86 / 90 rows | `docs/technical/final-evidence/dt_v2_plus_canonical_aggregate.md` | in-packet diagnostic | abstain-to-V2+ behavior |
 | Random-forest recovered opportunities | 3 / 15 filtered opportunities | `docs/thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md` | historical diagnostic | denominator requires the stored selector filter |
+| RF temporal suite latest-window delta | 0.00 UAH | `docs/technical/final-evidence/rf_safe_switch_temporal_replay.md` | post-defense negative evidence | both sources and thresholds 0/5/10/20/50 fully abstain |
+| RF temporal suite beneficial protocols | 0 / 14 rows | `docs/technical/final-evidence/rf_safe_switch_temporal_replay.md` | post-defense negative evidence | zero content overlap throughout |
+| RF temporal suite harmful protocols | 3 / 14 rows | `docs/technical/final-evidence/rf_safe_switch_temporal_replay.md` | post-defense negative evidence | primary-seed harm +65.18 to +123.08 UAH; direction stable across three seeds |
 | HF value-aligned frozen mean regret signal | 158.71 UAH | `docs/technical/final-evidence/hf_safe_switch_robustness_summary.md`, `docs/technical/final-evidence/hf_value_aligned_shadow_promotion_proof.md` | manual shadow/demo evidence | candidate-library only |
 | HF value-aligned non-fallback days | 20 / 32 source-backed DAM days | `docs/technical/final-evidence/hf_value_aligned_shadow_promotion_proof.md` | manual shadow/demo evidence | no production promotion |
 | HF readiness matrix | 8 / 8 DAM/IDM cases | `docs/technical/final-evidence/hf_value_aligned_forecast_readiness_summary.md` | demo readiness | preview context only |

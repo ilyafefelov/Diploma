@@ -40,6 +40,37 @@ class ModelLineageAuditCliTest(unittest.TestCase):
             self.assertEqual(audit["rf_selection"]["distinct_switch_dates"], ["2026-04-15"])
             self.assertEqual(audit["hf_diagnostics"]["frozen_mean_regret_uah"], 158.71213017569647)
             self.assertEqual(audit["hf_diagnostics"]["read_model_audit_day_count"], 32)
+            temporal_replay = audit["temporal_replay"]
+            self.assertEqual(temporal_replay["training_candidate_row_count"], 1080)
+            self.assertEqual(temporal_replay["evaluation_candidate_row_count"], 360)
+            self.assertEqual(temporal_replay["content_overlap_candidate_row_count"], 0)
+            self.assertTrue(temporal_replay["independent_holdout"])
+            self.assertEqual(temporal_replay["profile_date_row_count"], 90)
+            self.assertEqual(temporal_replay["distinct_market_date_count"], 18)
+            self.assertEqual(temporal_replay["switch_count"], 0)
+            self.assertEqual(temporal_replay["abstention_count"], 90)
+            self.assertEqual(
+                temporal_replay["selector_minus_v2_plus_mean_regret_uah"], 0.0
+            )
+            self.assertFalse(temporal_replay["promotion_gate_passed"])
+            self.assertFalse(temporal_replay["market_execution_enabled"])
+            temporal_suite = audit["temporal_suite"]
+            self.assertEqual(temporal_suite["run_count"], 14)
+            self.assertEqual(temporal_suite["source_model_count"], 2)
+            self.assertEqual(temporal_suite["evaluation_window_indices"], [1, 2, 3])
+            self.assertEqual(
+                temporal_suite["thresholds_uah"], [0.0, 5.0, 10.0, 20.0, 50.0]
+            )
+            self.assertTrue(temporal_suite["all_independent_holdouts"])
+            self.assertEqual(temporal_suite["maximum_content_overlap_ratio"], 0.0)
+            self.assertEqual(temporal_suite["beneficial_protocol_count"], 0)
+            self.assertEqual(temporal_suite["harmful_protocol_count"], 3)
+            self.assertAlmostEqual(
+                temporal_suite["maximum_primary_seed_harm_uah"],
+                123.08140686958836,
+            )
+            self.assertFalse(temporal_suite["promotion_gate_passed"])
+            self.assertFalse(temporal_suite["market_execution_enabled"])
 
 
 if __name__ == "__main__":

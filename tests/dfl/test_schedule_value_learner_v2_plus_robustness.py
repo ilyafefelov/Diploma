@@ -9,6 +9,7 @@ import pytest
 from smart_arbitrage.dfl.schedule_value_learner_v2_plus_robustness import (
     DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_ROBUSTNESS_CLAIM_SCOPE,
     build_dfl_schedule_value_learner_v2_plus_robustness_frame,
+    build_dfl_schedule_value_learner_v2_plus_rolling_strict_rows_frame,
     evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate,
     validate_dfl_schedule_value_learner_v2_plus_robustness_evidence,
 )
@@ -51,6 +52,33 @@ def test_v2_plus_robustness_generates_four_latest_first_windows() -> None:
         FIRST_ANCHOR + timedelta(days=50),
         FIRST_ANCHOR + timedelta(days=32),
     ]
+
+
+def test_v2_plus_rolling_strict_rows_preserve_distinct_evaluation_windows() -> None:
+    strict_rows = build_dfl_schedule_value_learner_v2_plus_rolling_strict_rows_frame(
+        _candidate_library_104(v2_plus_window_regrets=[70.0, 70.0, 70.0, 85.0]),
+        tenant_ids=TENANTS,
+        forecast_model_names=SOURCE_MODELS,
+        validation_window_count=4,
+        validation_anchor_count=18,
+        min_prior_anchors_before_window=30,
+    )
+
+    assert strict_rows.height == 4 * 2 * 5 * 18 * 4
+    assert set(strict_rows["evaluation_window_index"]) == {1, 2, 3, 4}
+    assert set(strict_rows["split_name"]) == {"final_holdout"}
+    latest = strict_rows.filter(
+        (pl.col("source_model_name") == SOURCE_MODELS[0])
+        & (pl.col("evaluation_window_index") == 1)
+    )
+    assert latest["anchor_timestamp"].n_unique() == 18
+    assert latest["tenant_id"].n_unique() == 5
+    assert set(latest["selection_role"]) == {
+        "raw_reference",
+        "schedule_value_learner_v2_plus",
+        "schedule_value_learner_v2_reference",
+        "strict_reference",
+    }
 
 
 def test_v2_plus_robustness_selection_uses_prior_not_validation_actuals() -> None:

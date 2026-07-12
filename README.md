@@ -34,8 +34,8 @@ Open first during a live review:
    for the full academic write-up.
 5. [Post-defense model-lineage erratum](docs/thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md)
    correcting the historical `dt_v2_plus` artifact from Decision Transformer to random forest.
-6. [arXiv release candidate](arxiv/SUBMISSION_READINESS.md) for the corrected
-   16-page article, source archive, and reproducibility evidence.
+6. [arXiv v1.1 correction release](arxiv/SUBMISSION_READINESS.md) for the
+   corrected 17-page article, source archive, and reproducibility evidence.
 7. [Software product evidence card](docs/technical/FINAL_SOFTWARE_PRODUCT_EVIDENCE_CARD.md)
    for the 50-point software/experimental rubric.
 8. [Final defense runbook](docs/technical/FINAL_DEFENSE_RUNBOOK.md)
@@ -147,6 +147,7 @@ The defendable product surface is an evidence system, not autonomous execution.
 | V2 forecast selector | 206.37 UAH mean regret | historical baseline |
 | Schedule/Value Learner V2+ | 174.77 UAH mean regret | headline/default evidence |
 | Random-forest V2+ diagnostic (historical id `dt_v2_plus`) | 168.16 UAH, 4 profile-row switches / 86 abstentions | exact-mirror packet; all switches on one date; not DT/OOS evidence |
+| Post-defense RF temporal suite | 14 protocol rows; 0 beneficial, 11 ties/full abstention, 3 harmful | zero candidate-content overlap; negative retrospective evidence; no promotion |
 | HF `DecisionTransformerModel`-backbone scorer | 158.71 UAH mirrored-packet diagnostic; separate 20/32-day non-fallback read-model audit | manual preview; no independent realized-regret result |
 
 Boundary: `market_execution_enabled=false`, no `ProposedBid`, no market order

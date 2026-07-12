@@ -166,6 +166,12 @@ def build_regret_aware_v2_plus_selector_packet(
         feature_set=feature_set,
         model_kind=model_kind,
     )
+    evaluation_independence = _evaluation_independence(
+        train_rows=train_rows,
+        evaluation_rows=final_rows,
+        feature_names=feature_names,
+        family_names=family_names,
+    )
     leakage = _feature_leakage_guard(feature_names)
     if leakage["uses_realized_regret_as_feature"]:
         raise ValueError("regret-aware V2+ selector feature set contains label columns.")
@@ -208,6 +214,7 @@ def build_regret_aware_v2_plus_selector_packet(
         max_family_tail_risk_probability=max_family_tail_risk_probability,
         ridge_l2=ridge_l2,
         family_tail_risk=family_tail_risk,
+        evaluation_independence=evaluation_independence,
         model_kind=model_kind,
         feature_set=feature_set,
         random_seed=random_seed,
@@ -861,6 +868,7 @@ def _summary(
     max_family_tail_risk_probability: float,
     ridge_l2: float,
     family_tail_risk: Mapping[str, Mapping[str, float]],
+    evaluation_independence: Mapping[str, Any],
     model_kind: str,
     feature_set: str,
     random_seed: int,
@@ -891,6 +899,7 @@ def _summary(
         "random_seed": random_seed,
         "feature_names": list(feature_names),
         "feature_leakage_guard": dict(leakage),
+        "evaluation_independence": dict(evaluation_independence),
         "training": {
             "train_row_count": len(train_rows),
             "train_anchor_count": len({_anchor_key(row) for row in train_rows}),
@@ -938,7 +947,12 @@ def _summary(
         },
         "boundary": {
             "research_shadow_not_promotable": True,
-            "mirrored_training_rows_possible": True,
+            "mirrored_training_rows_possible": bool(
+                evaluation_independence["content_overlap_candidate_row_count"]
+            ),
+            "independent_holdout": bool(
+                evaluation_independence["independent_holdout"]
+            ),
             "out_of_sample_generalization_claim": False,
             "abstains_to_v2_plus_when_signal_is_weak": True,
             "raw_hourly_buy_sell_hold_action_target": False,
@@ -955,6 +969,63 @@ def _summary(
             "summary_markdown": SUMMARY_MD_NAME,
         },
     }
+
+
+def _evaluation_independence(
+    *,
+    train_rows: Sequence[Mapping[str, Any]],
+    evaluation_rows: Sequence[Mapping[str, Any]],
+    feature_names: Sequence[str],
+    family_names: Sequence[str],
+) -> dict[str, int | float | bool]:
+    train_fingerprints = Counter(
+        _model_input_target_fingerprint(
+            row,
+            feature_names=feature_names,
+            family_names=family_names,
+        )
+        for row in train_rows
+    )
+    evaluation_fingerprints = Counter(
+        _model_input_target_fingerprint(
+            row,
+            feature_names=feature_names,
+            family_names=family_names,
+        )
+        for row in evaluation_rows
+    )
+    overlap_count = sum((train_fingerprints & evaluation_fingerprints).values())
+    evaluation_count = len(evaluation_rows)
+    exact_content_mirror = (
+        len(train_rows) == evaluation_count == overlap_count
+        and evaluation_count > 0
+    )
+    return {
+        "train_candidate_row_count": len(train_rows),
+        "evaluation_candidate_row_count": evaluation_count,
+        "content_overlap_candidate_row_count": overlap_count,
+        "content_overlap_ratio": (
+            overlap_count / evaluation_count if evaluation_count > 0 else 0.0
+        ),
+        "exact_content_mirror": exact_content_mirror,
+        "independent_holdout": overlap_count == 0,
+    }
+
+
+def _model_input_target_fingerprint(
+    row: Mapping[str, Any],
+    *,
+    feature_names: Sequence[str],
+    family_names: Sequence[str],
+) -> tuple[float, ...]:
+    return (
+        *_feature_values(
+            row,
+            feature_names=feature_names,
+            family_names=family_names,
+        ),
+        _target(row),
+    )
 
 
 def _summary_markdown(summary: Mapping[str, Any]) -> str:

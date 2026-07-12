@@ -160,7 +160,38 @@ Custom DT prototype / LAVA lane & Causal PyTorch transformer prototype / tabular
 
 The RF difference is narrow and entirely supported by one delivery date. Thresholds 0, 5, 10, and 20 UAH produce the same 168.16 UAH mean, four switches, and 86 abstentions; at 50 UAH, switches fall to three. Because these thresholds were examined on the same exact-mirror packet, this is construction sensitivity, not robustness evidence. Most rows still use V2+.
 
-The 166.0 UAH cutoff declared in the frozen aggregate is missed by about 2.16 UAH. No dated pre-evaluation protocol for that cutoff, the feature set, hyperparameters, risk cap, or switch threshold was located. The aggregate reports identical seed-level paths and means; its stored p-value has no inferential interpretation and is not used here. The correct interpretation is an invariant in-packet diagnostic; \code{promotion_gate_passed=false} is preserved.
+The 166.0 UAH cutoff declared in the frozen aggregate is missed by about 2.16 UAH. No dated pre-evaluation protocol for that cutoff, the feature set, hyperparameters, risk cap, or switch threshold was located. The legacy aggregate reports identical seed-level paths and means; its numerical p-value has no inferential interpretation. The corrected aggregate stores a null p-value and classifies the result as diagnostic only. The correct interpretation is an invariant in-packet diagnostic; \code{promotion_gate_passed=false} is preserved.
+
+\subsection{Post-defense temporal replay of the random-forest switch}
+
+After the lineage audit, the RF safe-switch was rerun over both co-primary NBEATSx sources and three time-separated rolling protocols. Evaluation window 1 trains on windows 4/3/2, window 2 on 4/3, and window 3 on 4. Every evaluation contains 360 candidate rows, 90 profile-date outcomes, and 18 market dates. Exact fingerprints over model inputs and targets find zero train/evaluation overlaps in all 14 materialized protocol rows, rather than the 360 of 360 overlap in the historical packet. This is a post-defense corrective suite, not part of the defended thesis.
+
+Table~\ref{tab:05:results:7} reports the frozen 20 UAH operating threshold. The latest window fully abstains for both sources and exactly reproduces the corresponding V2+ mean. Calibrated window 2 also abstains. The other three rows switch and increase regret. At primary seed 42, calibrated window 3 is 123.08 UAH worse than V2+, with 43 switches and 19 observed 150-UAH tail losses. Raw windows 2 and 3 are 65.18 and 96.44 UAH worse, with 4 of 5 and 5 of 8 primary-seed switches reaching the tail-loss definition. The sign remains harmful across seeds 42, 2026, and 7. Calibrated-window-3 deltas range from 107.50 to 123.08 UAH with 36--43 switches; raw-window deltas remain 65.18 and 96.44 UAH, with 5 and 8--9 switches.
+
+\begin{table*}[t]
+\centering
+\caption{Post-defense RF temporal suite at the frozen 20 UAH threshold. Positive delta means higher regret than V2+. Switch and tail-loss counts use primary seed 42; the range covers seeds 42, 2026, and 7.}
+\label{tab:05:results:7}
+\small
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{@{}llrrrrrr@{}}
+\toprule
+Source & Evaluation/train windows & RF mean & V2+ mean & RF minus V2+ & Switches & Tail losses & Seed delta range \\
+\midrule
+Horizon-calibrated & 1 / 4,3,2 & 174.77 & 174.77 & 0.00 & 0 & 0 & [0.00, 0.00] \\
+Horizon-calibrated & 2 / 4,3 & 226.12 & 226.12 & 0.00 & 0 & 0 & [0.00, 0.00] \\
+Horizon-calibrated & 3 / 4 & 516.35 & 393.27 & +123.08 & 43 & 19 & [+107.50, +123.08] \\
+Raw global-panel & 1 / 4,3,2 & 193.36 & 193.36 & 0.00 & 0 & 0 & [0.00, 0.00] \\
+Raw global-panel & 2 / 4,3 & 344.20 & 279.02 & +65.18 & 5 & 4 & [+65.18, +65.18] \\
+Raw global-panel & 3 / 4 & 507.94 & 411.50 & +96.44 & 8 & 5 & [+96.44, +96.44] \\
+\bottomrule
+\end{tabular}%
+}
+\end{table*}
+
+Latest-window thresholds 0, 5, 10, 20, and 50 UAH all produce zero switches for both sources; at threshold 0, every row still has predicted improvement below the threshold. Across the complete suite, zero protocol rows improve on V2+, eleven are full-abstention ties, and three are harmful. For calibrated window 3, the market-date-cluster mean-delta interval is [49.98, 202.10] UAH and 11 of 18 dates are losses. The raw-window-2 and raw-window-3 intervals are [0.00, 195.53] and [0.00, 289.32] because their losses are sparse and clustered.
+
+The suite therefore does not reproduce the 168.1566 UAH mirror-packet diagnostic and supplies negative evidence for RF promotion. It was constructed after the mirror was discovered, so it remains retrospective rather than untouched prospective confirmation. Seeds, thresholds, and adjacent windows are sensitivity analyses, not independent market replications.
 
 \subsection{Separate transformer and read-model lineages}
 

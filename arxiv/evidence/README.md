@@ -60,9 +60,12 @@ regret using the tracked 0.15--0.50 MWh profile capacities.
 | `lineage/hf_dt_backbone_robustness_summary.json` | 2,810 bytes | `F38C47FBA391F02C613555040D0FDEAB5FE96C538FBC1DAB1F0C85CF6CA81F28` |
 | `lineage/hf_dt_backbone_scorer_summary.json` | 8,812 bytes | `1A6605C47B6C7E52C7B400A080F793465D75A9FB8D031E9AE5002DE5E8C0C647` |
 | `lineage/hf_dt_candidate_index_summary.json` | 3,607 bytes | `88DEBABE7C7573F7426F3C5FD6F30BE2755E24C9A0B5282EABD397A94116597F` |
-| `lineage/model_lineage_audit.json` | 2,964 bytes | `3C7F8E3AC689FC69A6FBE889E6CECD81F941FFDA7B06E3829F7F631C0AA0BEE9` |
+| `lineage/model_lineage_audit.json` | 4,423 bytes | `19FC7A45EB805C3C1D8E986B403E0CEA3328118E7F8DE4B4E78A3345C04AF6FE` |
 | `lineage/rf_safe_switch_selected_rows.csv` | 52,909 bytes | `D5DE57B8139D27F39E0F808D5C16C8EBF0BF44B5EC9420CC2D26D053730EBC71` |
 | `lineage/rf_safe_switch_summary.json` | 6,274 bytes | `E103FF58DDD75D18D83C65ABAA88734E4D71AEEB9C8997D89E345EAE9410BBBC` |
+| `lineage/rf_safe_switch_temporal_replay_summary.json` | 3,196 bytes | `8963979345BB3DF31815DDB60E6D225BB86C9637810745812BB31D24D5D976AD` |
+| `lineage/rf_safe_switch_temporal_suite_summary.json` | 18,703 bytes | `6209A0A221808A3176D5D328DEB4F2061D5EDA63C0548645637CC366E44A2E76` |
+| `lineage/rf_safe_switch_temporal_suite_rows.csv` | 4,024 bytes | `0F8F6D94A2B1F7A9E4CEE172B008083E6810B99B1AEFD12A9F2A68ABE93AA32D` |
 | `lineage/rf_safe_switch_teacher_rows.csv` | 2,125,966 bytes | `1BC2699BE55869D30F8262F32F73AB0FD407F6E02096B987D3DC5F25145F5655` |
 | `lineage/v2_plus_rolling_robustness.csv` | 10,036 bytes | `19614B57BBDE6E7074A7C17BC3162425F31AF37ED25FEDA9AA685DB1AC8D3D9F` |
 
@@ -71,3 +74,11 @@ forest trained on exact timestamp-shifted copies of the evaluation packet and
 that its four switches occur on one date. The HF frozen result remains a
 separate mirrored-packet diagnostic; the 32-day read-model audit is reported
 separately and contains no realized-regret estimate.
+
+The post-defense RF temporal suite is a separate corrective artifact. Across 14
+protocol rows, two source models, three evaluation windows, five latest-window
+thresholds, and three-seed checks for the frozen 20 UAH operating point, every
+train/evaluation content-overlap count is zero. No protocol improves on V2+;
+three earlier-window protocols increase mean regret, with the largest primary-
+seed increase equal to 123.0814 UAH. This is negative retrospective evidence,
+not prospective confirmation.

@@ -111,10 +111,23 @@ def audit(lineage_dir: Path) -> dict[str, object]:
     )
 
     rf_summary = _load_json(lineage_dir / "rf_safe_switch_summary.json")
+    temporal_summary = _load_json(
+        lineage_dir / "rf_safe_switch_temporal_replay_summary.json"
+    )
+    temporal_suite = _load_json(
+        lineage_dir / "rf_safe_switch_temporal_suite_summary.json"
+    )
     hf_robustness = _load_json(lineage_dir / "hf_dt_backbone_robustness_summary.json")
     hf_read_model = _load_json(lineage_dir / "hf_32_day_read_model_audit.json")
 
     evaluation = rf_summary["evaluation"]
+    temporal_independence = temporal_summary["evaluation_independence"]
+    temporal_evaluation = temporal_summary["evaluation"]
+    temporal_suite_rows = temporal_suite["rows"]
+    temporal_suite_deltas = [
+        float(row["selector_minus_v2_plus_mean_regret_uah"])
+        for row in temporal_suite_rows
+    ]
     canonical_comparison = hf_robustness["canonical_comparison"]
     return {
         "canonical_artifact_identifier": "dt_v2_plus",
@@ -138,6 +151,59 @@ def audit(lineage_dir: Path) -> dict[str, object]:
             "independent_holdout": False,
             "interpretation": "exact-mirror in-packet pipeline diagnostic",
         },
+        "temporal_replay": {
+            "training_candidate_row_count": temporal_independence[
+                "train_candidate_row_count"
+            ],
+            "evaluation_candidate_row_count": temporal_independence[
+                "evaluation_candidate_row_count"
+            ],
+            "content_overlap_candidate_row_count": temporal_independence[
+                "content_overlap_candidate_row_count"
+            ],
+            "independent_holdout": temporal_independence["independent_holdout"],
+            "profile_date_row_count": temporal_evaluation["profile_date_row_count"],
+            "distinct_market_date_count": temporal_evaluation[
+                "distinct_market_date_count"
+            ],
+            "switch_count": temporal_evaluation["non_v2_plus_switch_count"],
+            "abstention_count": temporal_evaluation["abstention_count"],
+            "selector_minus_v2_plus_mean_regret_uah": temporal_evaluation[
+                "selector_minus_v2_plus_mean_regret_uah"
+            ],
+            "promotion_gate_passed": temporal_summary["promotion_gate_passed"],
+            "market_execution_enabled": temporal_summary[
+                "market_execution_enabled"
+            ],
+            "interpretation": temporal_summary["interpretation"],
+        },
+        "temporal_suite": {
+            "run_count": temporal_suite["run_count"],
+            "source_model_count": len(temporal_suite["source_model_names"]),
+            "evaluation_window_indices": temporal_suite[
+                "evaluation_window_indices"
+            ],
+            "thresholds_uah": temporal_suite["thresholds_uah"],
+            "all_independent_holdouts": temporal_suite[
+                "all_independent_holdouts"
+            ],
+            "maximum_content_overlap_ratio": temporal_suite[
+                "maximum_content_overlap_ratio"
+            ],
+            "beneficial_protocol_count": sum(
+                delta < 0.0 for delta in temporal_suite_deltas
+            ),
+            "tie_protocol_count": sum(delta == 0.0 for delta in temporal_suite_deltas),
+            "harmful_protocol_count": sum(
+                delta > 0.0 for delta in temporal_suite_deltas
+            ),
+            "maximum_primary_seed_harm_uah": max(temporal_suite_deltas),
+            "promotion_gate_passed": temporal_suite["promotion_gate_passed"],
+            "market_execution_enabled": temporal_suite[
+                "market_execution_enabled"
+            ],
+            "interpretation": temporal_suite["interpretation"],
+        },
         "hf_diagnostics": {
             "architecture": "Hugging Face DecisionTransformerModel backbone candidate scorer",
             "frozen_mean_regret_uah": canonical_comparison["mean_hf_mean_regret_uah"],
@@ -151,7 +217,10 @@ def audit(lineage_dir: Path) -> dict[str, object]:
         },
         "claim_boundary": (
             "The 168.1566 UAH artifact is random forest, not Decision Transformer; "
-            "RF and HF frozen values are non-independent diagnostics, not OOS estimates."
+            "RF and HF frozen values are non-independent diagnostics, not OOS estimates. "
+            "The post-defense temporal replay removes candidate-content overlap but "
+            "the wider temporal suite finds no beneficial protocol and three harmful "
+            "protocols, so it does not support promotion."
         ),
     }
 
