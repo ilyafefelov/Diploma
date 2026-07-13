@@ -10,6 +10,7 @@ full-history context.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Final
 
 import numpy as np
@@ -161,6 +162,159 @@ def build_aligned_dfl_context_tensor(frame: pl.DataFrame) -> AlignedDflContextTe
         features=np.stack(vectors, axis=0),
         feature_names=ALIGNED_DFL_FEATURE_COLUMNS,
     )
+
+
+def build_aligned_dfl_context_frame(
+    hourly_context: pl.DataFrame,
+    rolling_quantile_rows: pl.DataFrame,
+) -> pl.DataFrame:
+    """Join source-backed hourly covariates to rolling TFT quantile forecasts.
+
+    The output has one row per tenant/anchor. Forecast quantiles remain model
+    inputs; realized prices are retained only as labels. Poland inputs are
+    accepted only on the governed experimental-ablation route, never silently
+    promoted into official headline training.
+    """
+
+    hourly_required = {
+        "tenant_id",
+        "ds",
+        "lag_24_price_uah_mwh",
+        "weather_temperature",
+        "hour_sin",
+        "hour_cos",
+        "entsoe_pl_lag24_day_ahead_price_uah_mwh",
+        "external_feature_training_status",
+    }
+    rolling_required = {
+        "tenant_id",
+        "anchor_timestamp",
+        "starting_soc_fraction",
+        "oracle_value_uah",
+        "regret_uah",
+        "forecast_model_name",
+        "evaluation_payload",
+    }
+    missing_hourly = sorted(hourly_required.difference(hourly_context.columns))
+    if missing_hourly:
+        raise ValueError(f"hourly_context is missing columns: {missing_hourly}")
+    missing_rolling = sorted(rolling_required.difference(rolling_quantile_rows.columns))
+    if missing_rolling:
+        raise ValueError(f"rolling_quantile_rows is missing columns: {missing_rolling}")
+    statuses = set(hourly_context["external_feature_training_status"].unique().to_list())
+    if statuses != {"experimental_ablation_only"}:
+        raise ValueError(
+            "aligned DFL Poland context requires experimental_ablation_only source status."
+        )
+
+    hourly_by_key: dict[tuple[str, datetime], dict[str, object]] = {}
+    for row in hourly_context.select(sorted(hourly_required)).iter_rows(named=True):
+        timestamp = row["ds"]
+        if not isinstance(timestamp, datetime):
+            raise TypeError("hourly_context.ds must contain datetime values.")
+        hourly_by_key[(str(row["tenant_id"]), timestamp)] = row
+
+    grouped: dict[tuple[str, datetime, float], dict[str, dict[str, object]]] = {}
+    for row in rolling_quantile_rows.iter_rows(named=True):
+        anchor = row["anchor_timestamp"]
+        if not isinstance(anchor, datetime):
+            raise TypeError("rolling_quantile_rows.anchor_timestamp must contain datetimes.")
+        role = _tft_quantile_role(str(row["forecast_model_name"]))
+        if role is None:
+            continue
+        key = (str(row["tenant_id"]), anchor, float(row["starting_soc_fraction"]))
+        quantiles = grouped.setdefault(key, {})
+        if role in quantiles:
+            raise ValueError(f"Duplicate {role} row for aligned DFL key: {key}")
+        quantiles[role] = row
+
+    rows: list[dict[str, object]] = []
+    for key, quantiles in sorted(grouped.items(), key=lambda item: item[0]):
+        if set(quantiles) != {"p10", "p50", "p90"}:
+            continue
+        tenant_id, anchor_timestamp, starting_soc_fraction = key
+        vectors = {
+            role: _horizon_vectors(quantiles[role]["evaluation_payload"])
+            for role in ("p10", "p50", "p90")
+        }
+        timestamps = vectors["p50"]["timestamps"]
+        actual_prices = vectors["p50"]["actual_prices"]
+        for role in ("p10", "p90"):
+            if vectors[role]["timestamps"] != timestamps:
+                raise ValueError(f"TFT quantile horizons disagree for aligned DFL key: {key}")
+            if vectors[role]["actual_prices"] != actual_prices:
+                raise ValueError(f"TFT quantile labels disagree for aligned DFL key: {key}")
+        hourly_rows = [hourly_by_key.get((tenant_id, timestamp)) for timestamp in timestamps]
+        if any(row is None for row in hourly_rows):
+            raise ValueError(f"Missing hourly source context for aligned DFL key: {key}")
+        resolved_hourly = [row for row in hourly_rows if row is not None]
+        p50_row = quantiles["p50"]
+        rows.append(
+            {
+                "tenant_id": tenant_id,
+                "source_model_name": str(p50_row["forecast_model_name"]),
+                "anchor_timestamp": anchor_timestamp,
+                "starting_soc_fraction": starting_soc_fraction,
+                "forecast_p10_uah_mwh": vectors["p10"]["forecast_prices"],
+                "forecast_p50_uah_mwh": vectors["p50"]["forecast_prices"],
+                "forecast_p90_uah_mwh": vectors["p90"]["forecast_prices"],
+                "price_lag_24_uah_mwh": [
+                    float(row["lag_24_price_uah_mwh"]) for row in resolved_hourly
+                ],
+                "weather_temperature_c": [
+                    float(row["weather_temperature"]) for row in resolved_hourly
+                ],
+                "calendar_hour_sin": [float(row["hour_sin"]) for row in resolved_hourly],
+                "calendar_hour_cos": [float(row["hour_cos"]) for row in resolved_hourly],
+                "poland_lag24_uah_mwh": [
+                    float(row["entsoe_pl_lag24_day_ahead_price_uah_mwh"])
+                    for row in resolved_hourly
+                ],
+                "actual_price_uah_mwh_vector": actual_prices,
+                "oracle_value_uah": float(p50_row["oracle_value_uah"]),
+                "raw_regret_uah": float(p50_row["regret_uah"]),
+                "market_execution_enabled": False,
+                "claim_scope": "aligned_dfl_experimental_poland_context_not_market_execution",
+            }
+        )
+    if not rows:
+        raise ValueError("No complete p10/p50/p90 aligned DFL examples were found.")
+    return pl.DataFrame(rows).sort(["tenant_id", "anchor_timestamp"])
+
+
+def _tft_quantile_role(model_name: str) -> str | None:
+    if not model_name.startswith("tft_"):
+        return None
+    if "p10" in model_name:
+        return "p10"
+    if "p90" in model_name:
+        return "p90"
+    if model_name.endswith("_v1"):
+        return "p50"
+    return None
+
+
+def _horizon_vectors(payload: object) -> dict[str, list[object]]:
+    if not isinstance(payload, dict):
+        raise TypeError("evaluation_payload must be a mapping.")
+    horizon = payload.get("horizon")
+    if not isinstance(horizon, list) or not horizon:
+        raise ValueError("evaluation_payload.horizon must be a non-empty list.")
+    timestamps: list[datetime] = []
+    forecast_prices: list[float] = []
+    actual_prices: list[float] = []
+    for point in horizon:
+        if not isinstance(point, dict):
+            raise TypeError("evaluation_payload.horizon entries must be mappings.")
+        interval_start = datetime.fromisoformat(str(point["interval_start"]).replace("Z", "+00:00"))
+        timestamps.append(interval_start.replace(tzinfo=None))
+        forecast_prices.append(float(point["forecast_price_uah_mwh"]))
+        actual_prices.append(float(point["actual_price_uah_mwh"]))
+    return {
+        "timestamps": timestamps,
+        "forecast_prices": forecast_prices,
+        "actual_prices": actual_prices,
+    }
 
 
 def assess_aligned_dfl_feature_readiness(frame: pl.DataFrame) -> dict[str, object]:

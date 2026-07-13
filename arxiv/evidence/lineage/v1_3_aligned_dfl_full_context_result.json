@@ -1,0 +1,25 @@
+{
+  "artifact": "v1_3_aligned_dfl_full_context_result",
+  "protocol": "aligned_full_context_experimental_poland",
+  "source_run_id": "5e2f4096-9034-4f99-8a20-d034fba48c45",
+  "joined_frame_run_id": "07a445c0-cf03-4b1f-b13f-d613c89e6d01",
+  "context_examples": 1825,
+  "anchors_per_tenant": 365,
+  "split_per_tenant": {"train": 319, "validation": 28, "test": 18},
+  "selected_hybrid_weight": 0.5,
+  "selected_smoothing_weight": 0.0,
+  "strict_test": {
+    "profile_rows": 90,
+    "distinct_market_dates": 18,
+    "forecast_mean_regret_uah": 284.929981236323,
+    "hybrid_mean_regret_uah": 267.0265420968606,
+    "hybrid_minus_forecast_uah": -17.903439139462364,
+    "relative_regret_reduction": 0.06283456593433544,
+    "raw_tft_p50_mean_regret_uah": 2033.5835017634458
+  },
+  "differentiable_solver_solved_inaccurate_warning_count": 4,
+  "external_feature_status": "experimental_ablation_only",
+  "official_training_allowed": false,
+  "market_execution_enabled": false,
+  "claim_scope": "positive_aligned_dfl_research_not_official_headline_or_dt_permission"
+}
