@@ -1,0 +1,32 @@
+{
+  "artifact": "v1_3_aligned_dfl_source_gate_result",
+  "status": "not_eligible_for_training",
+  "dagster_run_id": "cee056c5-4e4a-421e-8f50-a1ce6ae75cfe",
+  "materialization_config": "configs/real_data_official_global_panel_tft_quantile_schedule_value_365_week3.yaml",
+  "panel": {
+    "artifact_name": "official_global_panel_training_frame",
+    "sha256": "216c3e709e0b2f3183c910b02e5b9924cb068f9b238d79a4e13e73a1dd35f85f",
+    "row_count": 58190,
+    "tenant_count": 5,
+    "date_range": ["2025-01-01T00:00:00", "2026-04-30T23:00:00"],
+    "external_feature_training_status": "blocked_by_governance",
+    "missing_preregistered_features": [
+      "forecast_p10_uah_mwh",
+      "forecast_p50_uah_mwh",
+      "forecast_p90_uah_mwh",
+      "poland_lag24_uah_mwh"
+    ],
+    "external_training_blockers": [
+      "licensing",
+      "timezone",
+      "currency",
+      "market_rules",
+      "temporal_availability",
+      "domain_shift"
+    ]
+  },
+  "decision": "do_not_train_aligned_dfl",
+  "next_gate": "governed_source_backed_joined_panel_with_availability_timestamps",
+  "market_execution_enabled": false,
+  "claim_scope": "aligned_dfl_source_readiness_not_model_performance"
+}
