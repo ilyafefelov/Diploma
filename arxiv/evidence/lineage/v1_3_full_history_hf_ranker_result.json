@@ -1,0 +1,46 @@
+{
+  "artifact": "v1_3_full_history_hf_ranker_full_80",
+  "claim_scope": "full_history_hf_candidate_ranker_future_test_not_market_execution",
+  "future_test_protocol": {
+    "train_anchor_count": 319,
+    "validation_anchor_count": 28,
+    "test_anchor_count_per_tenant_source": 18,
+    "profiles": 5,
+    "threshold_selected_on": "validation",
+    "market_execution_enabled": false
+  },
+  "candidate_universe": {
+    "token_count": 18,
+    "reference_kind": "fixed_universe_frozen_v2_plus",
+    "published_v1_2_complete_library_calibrated_mean_regret_uah": 174.7684,
+    "comparison_boundary": "internal fixed-universe baseline only; no claim against published V1.2 V2+"
+  },
+  "source_results": {
+    "calibrated": {
+      "frozen_threshold_uah": 0.0,
+      "baseline_mean_regret_uah": 182.3036973153949,
+      "ranker_mean_regret_uah": 206.5037332436277,
+      "ranker_minus_baseline_mean_regret_uah": 24.200036328865423,
+      "switch_count": 37,
+      "switch_wins": 5,
+      "switch_losses": 27,
+      "result": "negative"
+    },
+    "raw_sensitivity": {
+      "frozen_threshold_uah": 0.0,
+      "baseline_mean_regret_uah": 191.64319066600882,
+      "ranker_mean_regret_uah": 194.03000530493526,
+      "ranker_minus_baseline_mean_regret_uah": 2.3868153042263454,
+      "switch_count": 1,
+      "switch_wins": 0,
+      "switch_losses": 1,
+      "result": "negative"
+    }
+  },
+  "promotion": {
+    "minimum_calibrated_improvement_ratio": 0.05,
+    "passed": false,
+    "reason": "Both frozen future-test lanes are worse than their compatible fixed-universe V2+ baselines."
+  },
+  "interpretation": "Negative evidence for this HF candidate-set encoder; not a claim about full DFL or a temporal Decision Transformer policy."
+}
