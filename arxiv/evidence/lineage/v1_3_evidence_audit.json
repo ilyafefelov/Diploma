@@ -1,0 +1,20 @@
+{
+  "action_target_appears_in_state": true,
+  "corrected_claim_scope": "legacy_candidate_list_diagnostic_not_causal_dt_policy_evidence",
+  "legacy_packet_is_time_ordered_trajectory": false,
+  "legacy_packet_uses_candidate_list_tokens": true,
+  "legacy_sequence_group_keys": [
+    "tenant_id",
+    "source_model_name",
+    "anchor_timestamp"
+  ],
+  "market_execution_enabled": false,
+  "outcome_derived_state_features": [
+    "forecast_top_k_actual_overlap",
+    "forecast_bottom_k_actual_overlap",
+    "schedule_value_scaled",
+    "regret_delta_vs_v2_plus_scaled",
+    "return_to_go_scaled"
+  ],
+  "retract_temporal_dt_policy_claim": true
+}
