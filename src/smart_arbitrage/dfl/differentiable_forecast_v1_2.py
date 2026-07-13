@@ -219,6 +219,7 @@ def training_objective(
     soc_max_fraction: float = 0.95,
     round_trip_efficiency: float = 0.92,
     degradation_cost_per_mwh: float = 0.0,
+    enforce_terminal_soc_equality: bool = True,
 ) -> TrainingObjectiveResult:
     if predicted_prices.shape != actual_prices.shape or predicted_prices.ndim != 2:
         raise ValueError("predicted_prices and actual_prices must share a 2D shape.")
@@ -242,6 +243,7 @@ def training_objective(
         round_trip_efficiency=round_trip_efficiency,
         degradation_cost_per_mwh=degradation_cost_per_mwh,
         quadratic_regularization=1e-3,
+        enforce_terminal_soc_equality=enforce_terminal_soc_equality,
         fallback_to_surrogate=False,
         solver_args={"eps": 1e-6, "max_iters": 10000},
     )
@@ -267,6 +269,7 @@ def profile_aware_training_objective(
     predicted_prices: torch.Tensor,
     actual_prices: torch.Tensor,
     examples: list[TemporalPriceExample],
+    enforce_terminal_soc_equality: bool = True,
 ) -> TrainingObjectiveResult:
     """Weight tenant-specific differentiable storage losses over one batch."""
 
@@ -279,6 +282,7 @@ def profile_aware_training_objective(
             objective_kind=objective_kind,
             predicted_prices=predicted_prices,
             actual_prices=actual_prices,
+            enforce_terminal_soc_equality=enforce_terminal_soc_equality,
         )
     tenant_indices: dict[str, list[int]] = {}
     for index, example in enumerate(examples):
@@ -309,6 +313,7 @@ def profile_aware_training_objective(
             degradation_cost_per_mwh=(
                 defaults.metrics.degradation_cost_per_mwh_throughput_uah
             ),
+            enforce_terminal_soc_equality=enforce_terminal_soc_equality,
         )
         weight = len(indices) / total_count
         weighted_losses.append(tenant_result.loss * weight)

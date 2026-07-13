@@ -17,6 +17,12 @@ import polars as pl
 import torch
 from torch import nn
 
+from smart_arbitrage.dfl.differentiable_forecast_v1_2 import (
+    TemporalPriceExample,
+    TrainingObjectiveResult,
+    profile_aware_training_objective,
+)
+
 ALIGNED_DFL_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "forecast_p50_uah_mwh",
     "price_lag_24_uah_mwh",
@@ -77,6 +83,42 @@ def warm_start_hybrid_transformer(
     """Copy the forecast checkpoint into the same-architecture hybrid model."""
 
     hybrid_model.load_state_dict(forecast_model.state_dict())
+
+
+def hybrid_forecast_decision_loss(
+    *,
+    predicted_prices: torch.Tensor,
+    actual_prices: torch.Tensor,
+    examples: list[TemporalPriceExample],
+    hybrid_weight: float,
+    smoothing_weight: float,
+) -> TrainingObjectiveResult:
+    """Combine forecast and storage-decision objectives under one contract."""
+
+    if not 0.0 <= hybrid_weight <= 1.0:
+        raise ValueError("hybrid_weight must be in [0, 1].")
+    if smoothing_weight < 0.0:
+        raise ValueError("smoothing_weight must be non-negative.")
+    forecast_mse = torch.mean(torch.square(predicted_prices - actual_prices))
+    decision = profile_aware_training_objective(
+        objective_kind="decision_focused",
+        predicted_prices=predicted_prices,
+        actual_prices=actual_prices,
+        examples=examples,
+        enforce_terminal_soc_equality=False,
+    )
+    smoothness = torch.mean(torch.square(predicted_prices[:, 1:] - predicted_prices[:, :-1]))
+    loss = (
+        (1.0 - hybrid_weight) * (forecast_mse / 1_000_000.0)
+        + hybrid_weight * decision.loss
+        + smoothing_weight * (smoothness / 1_000_000.0)
+    )
+    return TrainingObjectiveResult(
+        loss=loss,
+        forecast_mse=forecast_mse,
+        realized_value_uah=decision.realized_value_uah,
+        solver_status=decision.solver_status,
+    )
 
 
 def build_aligned_dfl_context_tensor(frame: pl.DataFrame) -> AlignedDflContextTensor:

@@ -9,8 +9,10 @@ from smart_arbitrage.dfl.aligned_differentiable_dfl import (
     AlignedDflTransformer,
     assess_aligned_dfl_feature_readiness,
     build_aligned_dfl_context_tensor,
+    hybrid_forecast_decision_loss,
     warm_start_hybrid_transformer,
 )
+from smart_arbitrage.dfl.differentiable_forecast_v1_2 import TemporalPriceExample
 
 
 def test_aligned_dfl_context_requires_all_preregistered_prior_features() -> None:
@@ -56,6 +58,32 @@ def test_aligned_dfl_uses_same_transformer_and_warm_start_for_hybrid_loss() -> N
         forecast_model.parameters(), hybrid_model.parameters(), strict=True
     ):
         assert torch.equal(forecast_parameter, hybrid_parameter)
+
+
+def test_aligned_dfl_hybrid_loss_uses_unconstrained_terminal_storage_contract() -> None:
+    prices = torch.tensor([[100.0, 1000.0]], dtype=torch.float64)
+    result = hybrid_forecast_decision_loss(
+        predicted_prices=prices,
+        actual_prices=prices,
+        examples=[
+            TemporalPriceExample(
+                tenant_id="client_001_kyiv_mall",
+                source_model_name="calibrated",
+                anchor_timestamp=datetime(2026, 1, 1, 23),
+                window_index=1,
+                starting_soc_fraction=0.5,
+                forecast_prices=(100.0, 1000.0),
+                actual_prices=(100.0, 1000.0),
+                oracle_value_uah=100.0,
+                raw_regret_uah=10.0,
+            )
+        ],
+        hybrid_weight=0.5,
+        smoothing_weight=0.01,
+    )
+
+    assert torch.isfinite(result.loss)
+    assert "cvxpylayer" in result.solver_status
 
 
 def _context_frame() -> pl.DataFrame:
