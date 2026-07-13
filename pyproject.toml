@@ -51,7 +51,7 @@ sota = [
     "lightning",               # PyTorch Forecasting trainer runtime
 ]
 dt = [
-    "transformers>=4.53,<5",    # Hugging Face DecisionTransformerModel for research-shadow DT smoke
+    "transformers>=5.5.0,<6",    # Hugging Face DecisionTransformerModel for research-shadow DT smoke
 ]
 
 [tool.uv.sources]
