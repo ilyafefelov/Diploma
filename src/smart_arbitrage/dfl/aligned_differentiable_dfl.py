@@ -14,6 +14,8 @@ from typing import Final
 
 import numpy as np
 import polars as pl
+import torch
+from torch import nn
 
 ALIGNED_DFL_FEATURE_COLUMNS: Final[tuple[str, ...]] = (
     "forecast_p50_uah_mwh",
@@ -39,6 +41,42 @@ class AlignedDflContextTensor:
 
     features: np.ndarray
     feature_names: tuple[str, ...]
+
+
+class AlignedDflTransformer(nn.Module):
+    """One contextual forecast architecture shared by both aligned losses."""
+
+    def __init__(self, *, feature_count: int, hidden_dim: int) -> None:
+        super().__init__()
+        if feature_count <= 0 or hidden_dim <= 0 or hidden_dim % 2:
+            raise ValueError("feature_count and even hidden_dim must be positive.")
+        self.input_projection = nn.Linear(feature_count, hidden_dim)
+        layer = nn.TransformerEncoderLayer(
+            d_model=hidden_dim,
+            nhead=2,
+            dim_feedforward=hidden_dim * 2,
+            dropout=0.0,
+            activation="gelu",
+            batch_first=True,
+            norm_first=True,
+        )
+        self.encoder = nn.TransformerEncoder(layer, num_layers=2)
+        self.output = nn.Linear(hidden_dim, 1)
+
+    def forward(self, context: torch.Tensor) -> torch.Tensor:
+        if context.ndim != 3:
+            raise ValueError("aligned DFL context must have shape [batch, horizon, feature].")
+        return self.output(self.encoder(self.input_projection(context))).squeeze(-1)
+
+
+def warm_start_hybrid_transformer(
+    *,
+    forecast_model: AlignedDflTransformer,
+    hybrid_model: AlignedDflTransformer,
+) -> None:
+    """Copy the forecast checkpoint into the same-architecture hybrid model."""
+
+    hybrid_model.load_state_dict(forecast_model.state_dict())
 
 
 def build_aligned_dfl_context_tensor(frame: pl.DataFrame) -> AlignedDflContextTensor:
