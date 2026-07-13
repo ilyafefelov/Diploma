@@ -119,3 +119,18 @@ def build_aligned_dfl_context_tensor(frame: pl.DataFrame) -> AlignedDflContextTe
         features=np.stack(vectors, axis=0),
         feature_names=ALIGNED_DFL_FEATURE_COLUMNS,
     )
+
+
+def assess_aligned_dfl_feature_readiness(frame: pl.DataFrame) -> dict[str, object]:
+    """Report whether an artifact can enter the aligned DFL training protocol."""
+
+    required = _IDENTITY_COLUMNS | _LABEL_COLUMNS | set(ALIGNED_DFL_FEATURE_COLUMNS)
+    missing = sorted(required.difference(frame.columns))
+    return {
+        "ready": not missing and frame.height > 0,
+        "row_count": frame.height,
+        "required_feature_columns": list(ALIGNED_DFL_FEATURE_COLUMNS),
+        "missing_columns": missing,
+        "market_execution_enabled": False,
+        "claim_scope": "aligned_dfl_feature_readiness_not_market_execution",
+    }

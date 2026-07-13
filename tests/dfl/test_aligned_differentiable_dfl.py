@@ -7,6 +7,7 @@ import torch
 from smart_arbitrage.dfl.aligned_differentiable_dfl import (
     ALIGNED_DFL_FEATURE_COLUMNS,
     AlignedDflTransformer,
+    assess_aligned_dfl_feature_readiness,
     build_aligned_dfl_context_tensor,
     warm_start_hybrid_transformer,
 )
@@ -24,6 +25,14 @@ def test_aligned_dfl_context_excludes_outcomes_from_model_inputs() -> None:
     assert result.features.shape == (1, 2, len(ALIGNED_DFL_FEATURE_COLUMNS))
     assert "actual_price_uah_mwh_vector" not in result.feature_names
     assert "regret_uah" not in result.feature_names
+
+
+def test_aligned_dfl_readiness_reports_missing_feature_families() -> None:
+    readiness = assess_aligned_dfl_feature_readiness(_context_frame().drop("weather_temperature_c"))
+
+    assert readiness["ready"] is False
+    assert readiness["row_count"] == 1
+    assert readiness["missing_columns"] == ["weather_temperature_c"]
 
 
 def test_aligned_dfl_uses_same_transformer_and_warm_start_for_hybrid_loss() -> None:
