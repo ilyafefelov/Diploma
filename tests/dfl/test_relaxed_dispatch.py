@@ -51,6 +51,22 @@ def test_relaxed_dispatch_scales_large_uah_prices() -> None:
     assert result.discharge_mw[3] > result.charge_mw[3]
 
 
+def test_relaxed_dispatch_can_match_strict_unconstrained_terminal_soc() -> None:
+    result = solve_relaxed_dispatch(
+        prices_uah_mwh=[100.0, 1000.0],
+        starting_soc_fraction=0.5,
+        capacity_mwh=1.0,
+        max_power_mw=0.25,
+        soc_min_fraction=0.05,
+        soc_max_fraction=0.95,
+        degradation_cost_per_mwh=0.0,
+        enforce_terminal_soc_equality=False,
+    )
+
+    assert result.discharge_mw[1] > result.charge_mw[1]
+    assert result.soc_fraction[-1] < 0.5
+
+
 def test_relaxed_dispatch_uses_bounded_surrogate_when_solver_fails(monkeypatch) -> None:
     def failing_layer(*args: object, **kwargs: object) -> object:
         raise RuntimeError("synthetic cvxpylayer failure")

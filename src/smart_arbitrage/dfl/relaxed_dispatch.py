@@ -44,6 +44,7 @@ def solve_relaxed_dispatch(
     degradation_cost_per_mwh: float = 0.0,
     quadratic_regularization: float = 0.0,
     price_scale_uah_per_mwh: float = DEFAULT_RELAXED_PRICE_SCALE_UAH_PER_MWH,
+    enforce_terminal_soc_equality: bool = True,
     fallback_to_surrogate: bool = True,
 ) -> RelaxedDispatchResult:
     """Solve a relaxed differentiable LP for one storage horizon.
@@ -75,6 +76,7 @@ def solve_relaxed_dispatch(
         degradation_cost_per_mwh=degradation_cost_per_mwh,
         quadratic_regularization=quadratic_regularization,
         price_scale_uah_per_mwh=price_scale_uah_per_mwh,
+        enforce_terminal_soc_equality=enforce_terminal_soc_equality,
         fallback_to_surrogate=fallback_to_surrogate,
         solver_args={"eps": 1e-8, "max_iters": 10000},
     )
@@ -116,6 +118,7 @@ def solve_relaxed_dispatch_tensor(
     degradation_cost_per_mwh: float = 0.0,
     quadratic_regularization: float = 0.0,
     price_scale_uah_per_mwh: float = DEFAULT_RELAXED_PRICE_SCALE_UAH_PER_MWH,
+    enforce_terminal_soc_equality: bool = True,
     fallback_to_surrogate: bool = True,
     solver_args: dict[str, float | int] | None = None,
 ) -> RelaxedDispatchTensorResult:
@@ -151,6 +154,7 @@ def solve_relaxed_dispatch_tensor(
             round_trip_efficiency,
             degradation_cost_per_mwh / price_scale_uah_per_mwh,
             quadratic_regularization,
+            enforce_terminal_soc_equality,
         )
         charge, discharge, soc = layer(
             prices / price_scale_uah_per_mwh,
@@ -194,6 +198,7 @@ def _relaxed_dispatch_layer(
     round_trip_efficiency: float,
     degradation_cost_per_mwh: float,
     quadratic_regularization: float = 0.0,
+    enforce_terminal_soc_equality: bool = True,
 ) -> CvxpyLayer:
     prices = cp.Parameter(horizon_hours)
     charge = cp.Variable(horizon_hours, nonneg=True)
@@ -202,12 +207,13 @@ def _relaxed_dispatch_layer(
     one_way_efficiency = sqrt(round_trip_efficiency)
     constraints = [
         soc[0] == starting_soc_fraction,
-        soc[horizon_hours] == starting_soc_fraction,
         charge <= max_power_mw,
         discharge <= max_power_mw,
         soc >= soc_min_fraction,
         soc <= soc_max_fraction,
     ]
+    if enforce_terminal_soc_equality:
+        constraints.append(soc[horizon_hours] == starting_soc_fraction)
     for step_index in range(horizon_hours):
         constraints.append(
             soc[step_index + 1]
