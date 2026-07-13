@@ -42,6 +42,7 @@ def solve_relaxed_dispatch(
     soc_max_fraction: float,
     round_trip_efficiency: float = 1.0,
     degradation_cost_per_mwh: float = 0.0,
+    quadratic_regularization: float = 0.0,
     price_scale_uah_per_mwh: float = DEFAULT_RELAXED_PRICE_SCALE_UAH_PER_MWH,
     fallback_to_surrogate: bool = True,
 ) -> RelaxedDispatchResult:
@@ -60,6 +61,7 @@ def solve_relaxed_dispatch(
         soc_max_fraction=soc_max_fraction,
         round_trip_efficiency=round_trip_efficiency,
         degradation_cost_per_mwh=degradation_cost_per_mwh,
+        quadratic_regularization=quadratic_regularization,
         price_scale_uah_per_mwh=price_scale_uah_per_mwh,
     )
     result = solve_relaxed_dispatch_tensor(
@@ -71,13 +73,23 @@ def solve_relaxed_dispatch(
         soc_max_fraction=soc_max_fraction,
         round_trip_efficiency=round_trip_efficiency,
         degradation_cost_per_mwh=degradation_cost_per_mwh,
+        quadratic_regularization=quadratic_regularization,
         price_scale_uah_per_mwh=price_scale_uah_per_mwh,
         fallback_to_surrogate=fallback_to_surrogate,
         solver_args={"eps": 1e-8, "max_iters": 10000},
     )
-    charge_values = _tensor_to_list(result.charge_mw)
-    discharge_values = _tensor_to_list(result.discharge_mw)
-    soc_values = _tensor_to_list(result.soc_fraction)
+    charge_values = [
+        min(max_power_mw, max(0.0, value))
+        for value in _tensor_to_list(result.charge_mw)
+    ]
+    discharge_values = [
+        min(max_power_mw, max(0.0, value))
+        for value in _tensor_to_list(result.discharge_mw)
+    ]
+    soc_values = [
+        min(soc_max_fraction, max(soc_min_fraction, value))
+        for value in _tensor_to_list(result.soc_fraction)
+    ]
     objective_value = sum(
         price * (discharge_value - charge_value)
         - degradation_cost_per_mwh * (charge_value + discharge_value)
@@ -102,6 +114,7 @@ def solve_relaxed_dispatch_tensor(
     soc_max_fraction: float,
     round_trip_efficiency: float = 1.0,
     degradation_cost_per_mwh: float = 0.0,
+    quadratic_regularization: float = 0.0,
     price_scale_uah_per_mwh: float = DEFAULT_RELAXED_PRICE_SCALE_UAH_PER_MWH,
     fallback_to_surrogate: bool = True,
     solver_args: dict[str, float | int] | None = None,
@@ -122,6 +135,7 @@ def solve_relaxed_dispatch_tensor(
         soc_max_fraction=soc_max_fraction,
         round_trip_efficiency=round_trip_efficiency,
         degradation_cost_per_mwh=degradation_cost_per_mwh,
+        quadratic_regularization=quadratic_regularization,
         price_scale_uah_per_mwh=price_scale_uah_per_mwh,
     )
     prices = prices_uah_mwh.to(dtype=torch.float64)
@@ -136,6 +150,7 @@ def solve_relaxed_dispatch_tensor(
             soc_max_fraction,
             round_trip_efficiency,
             degradation_cost_per_mwh / price_scale_uah_per_mwh,
+            quadratic_regularization,
         )
         charge, discharge, soc = layer(
             prices / price_scale_uah_per_mwh,
@@ -147,7 +162,11 @@ def solve_relaxed_dispatch_tensor(
             charge_mw=charge,
             discharge_mw=discharge,
             soc_fraction=soc,
-            solver_status="cvxpylayer_scaled",
+            solver_status=(
+                "cvxpylayer_scaled_strictly_convex"
+                if quadratic_regularization > 0.0
+                else "cvxpylayer_scaled"
+            ),
         )
     except Exception as exc:
         if not fallback_to_surrogate:
@@ -174,6 +193,7 @@ def _relaxed_dispatch_layer(
     soc_max_fraction: float,
     round_trip_efficiency: float,
     degradation_cost_per_mwh: float,
+    quadratic_regularization: float = 0.0,
 ) -> CvxpyLayer:
     prices = cp.Parameter(horizon_hours)
     charge = cp.Variable(horizon_hours, nonneg=True)
@@ -195,7 +215,12 @@ def _relaxed_dispatch_layer(
             + (charge[step_index] * one_way_efficiency / capacity_mwh)
             - (discharge[step_index] / one_way_efficiency / capacity_mwh)
         )
-    cost = cp.sum(cp.multiply(prices, charge - discharge)) + degradation_cost_per_mwh * cp.sum(charge + discharge)
+    cost = (
+        cp.sum(cp.multiply(prices, charge - discharge))
+        + degradation_cost_per_mwh * cp.sum(charge + discharge)
+        + quadratic_regularization
+        * (cp.sum_squares(charge) + cp.sum_squares(discharge))
+    )
     problem = cp.Problem(cp.Minimize(cost), constraints)
     if not problem.is_dpp():
         raise ValueError("relaxed dispatch LP must satisfy DPP for cvxpylayers.")
@@ -212,6 +237,7 @@ def _validate_inputs(
     soc_max_fraction: float,
     round_trip_efficiency: float,
     degradation_cost_per_mwh: float,
+    quadratic_regularization: float,
     price_scale_uah_per_mwh: float,
 ) -> None:
     if not prices_uah_mwh:
@@ -226,6 +252,8 @@ def _validate_inputs(
         raise ValueError("round_trip_efficiency must be in (0, 1].")
     if degradation_cost_per_mwh < 0.0:
         raise ValueError("degradation_cost_per_mwh cannot be negative.")
+    if quadratic_regularization < 0.0 or not isfinite(quadratic_regularization):
+        raise ValueError("quadratic_regularization must be finite and non-negative.")
     if price_scale_uah_per_mwh <= 0.0 or not isfinite(price_scale_uah_per_mwh):
         raise ValueError("price_scale_uah_per_mwh must be a finite positive value.")
 
@@ -240,6 +268,7 @@ def _validate_tensor_inputs(
     soc_max_fraction: float,
     round_trip_efficiency: float,
     degradation_cost_per_mwh: float,
+    quadratic_regularization: float,
     price_scale_uah_per_mwh: float,
 ) -> None:
     if prices_uah_mwh.ndim not in {1, 2}:
@@ -255,6 +284,7 @@ def _validate_tensor_inputs(
         soc_max_fraction=soc_max_fraction,
         round_trip_efficiency=round_trip_efficiency,
         degradation_cost_per_mwh=degradation_cost_per_mwh,
+        quadratic_regularization=quadratic_regularization,
         price_scale_uah_per_mwh=price_scale_uah_per_mwh,
     )
 

@@ -41,6 +41,20 @@ cross entropy ties in 15/18 and is worse in 3/18. Every run uses nonzero action
 targets and return-to-go values with zero train/evaluation content overlap.
 This is honest negative research-shadow evidence, not DT or DFL promotion.
 
+The preregistered v1.2 differentiable forecast-to-storage suite now provides a
+separate result. Across 72 runs, zero beats V2+ and all remain non-promotable.
+The profile-aware differentiable layer executes without surrogate fallback in
+all 36 decision-focused runs. Transformer correction has lower strict regret
+than a matched MLP in 28/36 comparisons; the forecast-loss transformer improves
+the raw schedule in 15/18 runs. This is positive transformer-architecture
+evidence and negative V2+ promotion evidence, not full predict-then-bid.
+
+The public OREE path was probed again for June/July 2026 and a 24-row DAM day
+was observed. No row-level source publication timestamp or HTTP Last-Modified
+metadata was exposed, so HTTP Date and first-seen time remain retrieval-only
+evidence. Closing V13 still requires an authenticated source-signed
+XMtrade/SCMO response or export accepted by the receipt contract.
+
 ## Promotion Rules
 
 DAM/IDM hourly recommendation preview may use observed OREE rows and offline

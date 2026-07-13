@@ -56,18 +56,24 @@ regret using the tracked 0.15--0.50 MWh profile capacities.
 
 | File | Size | SHA-256 |
 |---|---:|---|
-| `lineage/hf_32_day_read_model_audit.json` | 13,483 bytes | `057A63F6536673745E6105B488D862A6AF2C5A1F9D12F6B18E030D48CF6C20DE` |
+| `lineage/hf_32_day_read_model_audit.json` | 13,489 bytes | `891227749348AD7EA05B0B0B75A6BDE7467C26E8E17B9722EFEBFAECC7AA9F29` |
 | `lineage/hf_dt_backbone_robustness_summary.json` | 2,810 bytes | `F38C47FBA391F02C613555040D0FDEAB5FE96C538FBC1DAB1F0C85CF6CA81F28` |
 | `lineage/hf_dt_backbone_scorer_summary.json` | 8,812 bytes | `1A6605C47B6C7E52C7B400A080F793465D75A9FB8D031E9AE5002DE5E8C0C647` |
 | `lineage/hf_dt_candidate_index_summary.json` | 3,607 bytes | `88DEBABE7C7573F7426F3C5FD6F30BE2755E24C9A0B5282EABD397A94116597F` |
 | `lineage/model_lineage_audit.json` | 4,423 bytes | `19FC7A45EB805C3C1D8E986B403E0CEA3328118E7F8DE4B4E78A3345C04AF6FE` |
-| `lineage/rf_safe_switch_selected_rows.csv` | 52,909 bytes | `D5DE57B8139D27F39E0F808D5C16C8EBF0BF44B5EC9420CC2D26D053730EBC71` |
+| `lineage/rf_safe_switch_selected_rows.csv` | 53,000 bytes | `901709B8D37346AFBB5806DA2CA59104752F08F159C01E3F1B173C0E84038E98` |
 | `lineage/rf_safe_switch_summary.json` | 6,274 bytes | `E103FF58DDD75D18D83C65ABAA88734E4D71AEEB9C8997D89E345EAE9410BBBC` |
 | `lineage/rf_safe_switch_temporal_replay_summary.json` | 3,196 bytes | `8963979345BB3DF31815DDB60E6D225BB86C9637810745812BB31D24D5D976AD` |
 | `lineage/rf_safe_switch_temporal_suite_summary.json` | 18,703 bytes | `6209A0A221808A3176D5D328DEB4F2061D5EDA63C0548645637CC366E44A2E76` |
 | `lineage/rf_safe_switch_temporal_suite_rows.csv` | 4,024 bytes | `0F8F6D94A2B1F7A9E4CEE172B008083E6810B99B1AEFD12A9F2A68ABE93AA32D` |
-| `lineage/rf_safe_switch_teacher_rows.csv` | 2,125,966 bytes | `1BC2699BE55869D30F8262F32F73AB0FD407F6E02096B987D3DC5F25145F5655` |
+| `lineage/rf_safe_switch_teacher_rows.csv` | 2,126,687 bytes | `C0CC40742D25A3B33D24D473FA00D8FEEFED31BB978126E4B452B35E9B16BB1D` |
 | `lineage/v2_plus_rolling_robustness.csv` | 10,036 bytes | `19614B57BBDE6E7074A7C17BC3162425F31AF37ED25FEDA9AA685DB1AC8D3D9F` |
+| `lineage/dt_temporal_v2_plus_suite_summary.json` | 1,891 bytes | `A2A6A7327D92216208D78794B0DC5EC7306E7344BC32F11E14A4B36C453B12FC` |
+| `lineage/dt_temporal_v2_plus_suite_rows.csv` | 17,977 bytes | `C0E42161A9D58E8EFE8D8F22F3F4A3AC02F848764447632B643536E6AF99245E` |
+| `lineage/v1_2_differentiable_dfl_suite_summary.json` | 993 bytes | `8803C9B07B3D97A7D99D8A4F695158533F56B52D04402C2C2C2D75BF101579A9` |
+| `lineage/v1_2_differentiable_dfl_suite_rows.csv` | 31,553 bytes | `52782A1EE8504BF0D8181B3FB992085FCD634DC5D474BD3D58748F14E9891193` |
+| `lineage/v1_2_differentiable_dfl_paired_profile_rows.csv` | 1,558,839 bytes | `FFF4C7818CDA6F8B6B4DF4AFBE10570F7A657705930256700A4218E4BC40C857` |
+| `lineage/v1_2_oree_public_probe_summary.json` | 1,288 bytes | `C0F934FE417920537D5421BC5A5405A0FEFA4CED0E482BC442B2934D6825A0D3` |
 
 The lineage audit proves that the historical `dt_v2_plus` artifact is a random
 forest trained on exact timestamp-shifted copies of the evaluation packet and
@@ -82,3 +88,13 @@ train/evaluation content-overlap count is zero. No protocol improves on V2+;
 three earlier-window protocols increase mean regret, with the largest primary-
 seed increase equal to 123.0814 UAH. This is negative retrospective evidence,
 not prospective confirmation.
+
+Version 1.2 adds two time-separated model packets. The genuine return-
+conditioned Decision Transformer suite contains 36 runs: 33 tie V2+ and three
+are harmful. The differentiable forecast-to-storage suite contains 72 runs and
+6,480 paired profile rows. No run beats V2+, while transformer correction has
+lower strict regret than matched MLP in 28/36 comparisons and the forecast-loss
+transformer improves the raw schedule in 15/18 runs. The decision-focused loss
+uses five tenant-specific battery/degradation contracts. The OREE public probe is
+also retained to show that 24 available DAM rows still lack the explicit source
+publication timestamp required by V13.

@@ -1,52 +1,58 @@
 # arXiv submission readiness
 
-Status: **v1.1 corrective sources, PDF, evidence, and source archive are
-release-ready. The defended thesis PDF and immutable v1 tag remain unchanged.
-An arXiv upload is still blocked by the author's license choice, possible
-endorsement, and inspection of arXiv's server-generated preview.**
+Status: **v1.2 sources, PDF, evidence, and isolated source archive are
+release-ready. The defended thesis, v1, and v1.1 remain unchanged. An arXiv
+upload still requires the author's irreversible license choice and inspection
+of arXiv's server-generated preview.**
 
 ## Candidate files
 
-- PDF: `build/main.pdf` -- 17 pages, 4 figures, 10 tables; SHA-256
-  `FFED0736BCADDA424D4BE01273FE61070B9E631FB9406DEEDFEBA163622334F1`.
-- Source archive: `submission/arxiv-bess-paper-source-v1.1.zip` -- 473,560 bytes,
-  SHA-256
-  `A444B90EA5F6071B4FF795DABE5EA6010F73CD57A4C475DEA48C1A7F213F0BCB`.
-- Metadata: `arxiv-metadata.md` -- 1,656-character ASCII abstract.
-- Primary category: `eess.SY`.
-- Cross-list: none for version 1.
-- Provenance comment: `Based on a Master's thesis defended in 2026.`
+- PDF: `build/main.pdf` -- 18 pages, 4 figures, 11 tables; 427,721 bytes;
+  SHA-256 `8F2F8B52D176B30C475B94CC86EBE8F5E3706975E203E830421DF6B2071CD8A0`.
+- Source archive: `submission/arxiv-bess-paper-source-v1.2.zip` -- 798,541
+  bytes; SHA-256
+  `AD960DD28746E2A32DBF741FEFD5749D8E52EF2CD3B8A05E3336D804F1F747BA`.
+- Metadata abstract: 1,616 ASCII characters, below arXiv's 1,920-character
+  limit.
+- Primary category: `eess.SY`; `cs.LG` cross-list remains optional.
+- Provenance comment: `Version 1.2. Based on a Master's thesis defended in
+  2026.`
 
 ## Local acceptance results
 
-- Tectonic source build: passed.
-- Isolated build from extracted v1.1 source archive: passed (17 pages).
-- PDF visual inspection: revised pages 1 and 8--17 inspected; unchanged pages
-  2--7 retain the previously inspected layout. Tables and references remain
-  readable.
-- Headline reconstruction test: passed.
-- Model-lineage audit test: passed.
-- Declared ancillary SHA-256 hashes: 16/16 matched, including the temporal
-  replay, temporal-suite JSON/CSV, and regenerated combined lineage audit.
-- Citation keys: 31 used, 31 bibliography entries, no missing/uncited/duplicates.
-- Metadata abstract: 1,656 characters, below arXiv's 1,920-character limit.
-- Package scan: 37 allowlisted entries; no absolute local paths, secrets,
-  runtime caches, build logs, or compiled PDF.
+- Tectonic source build: passed (18 pages).
+- Isolated build from extracted v1.2 source archive: passed (18 pages).
+- PDF visual inspection: pages 1 and 10--18 inspected; the new DT/DFL table is
+  readable and no clipping or overlap was observed.
+- Package evidence tests: 5/5 passed using stock Python.
+- Focused DFL/relaxed-layer tests: 10/10 passed.
+- New and touched source checks: Ruff passed; targeted Mypy passed; 29 focused
+  DFL/assets/DT Pytest tests and 5 stock-Python evidence tests passed after
+  restoring the legacy private-layer default.
+- Repository-wide Pytest initially reported 1,084 passed and 11 failed. Five
+  DFL failures were a v1.2 compatibility regression and now pass. The six
+  remaining rerun failures are environment/worktree blockers: two expect a
+  local V13 acquisition packet, two invoke a fresh `uv` build that lacks a
+  Windows C++/NMake toolchain for `diffcp`, and two expect untracked local
+  `AGENTS.md`/pulse files absent from this worktree.
+- Repository-wide Mypy reports seven existing errors in untouched publication
+  modules; targeted Mypy for every v1.2 Python surface passes.
+- Dagster definitions validation: passed for all code locations.
+- Package scan: 44 files; no cache, bytecode, log, auxiliary, or compiled-PDF
+  files.
+- Old `arxiv-bess-paper-source-v1.1.zip` remains present and unchanged.
 
 ## Claim boundary
 
-The central result is the retrospective V2+ comparison over 18 distinct DAM
-dates and five configured profiles. The historical `dt_v2_plus` artifact is a
-random forest trained on exact mirrored representations, with four profile-row
-switches on one date. The separate HF transformer-backbone result is also a
-mirrored-packet diagnostic; the 32-day read-model audit has no realized-regret
-outcome. None is OOS learned-model evidence or market execution.
+V2+ remains the primary result. The genuine time-separated Decision Transformer
+suite has 0 beneficial, 33 tie, and 3 harmful runs versus V2+. The
+preregistered differentiable forecast-to-storage suite has 0 beneficial and 72
+harmful runs versus V2+, while transformer correction beats matched MLP in
+28/36 comparisons and the forecast-loss transformer improves raw schedules in
+15/18 runs. This is positive architecture evidence and negative promotion
+evidence.
 
-The post-defense RF temporal suite contains 14 protocol rows spanning two
-source models, three evaluation windows, latest-window threshold sensitivity,
-and three-seed checks at the frozen 20 UAH threshold. All rows have zero
-candidate-content overlap. No row improves V2+: 11 tie through full abstention,
-while three earlier-window protocols increase mean regret by 65.18--123.08 UAH
-at primary seed 42 and remain harmful across all three seeds. This is negative
-retrospective evidence, not prospective confirmation and not part of the
-defended thesis.
+The public OREE probe retrieved a complete 24-row DAM day but no explicit
+source publication timestamp. V13 therefore remains externally blocked with
+`promotable_v13_permitted_training_rows=0` and
+`market_execution_enabled=false`.

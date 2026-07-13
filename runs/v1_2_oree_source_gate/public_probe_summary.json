@@ -1,0 +1,32 @@
+{
+  "claim_scope": "v1_2_oree_public_source_gate_audit_not_receipt",
+  "dam_observation": {
+    "can_satisfy_v13_explicit_receipts": false,
+    "delivery_date": "2026-07-13",
+    "first_observed_at_utc": "2026-07-12T23:27:17.323978+00:00",
+    "observation_rows": 24,
+    "publication_observation_status": "observed_without_source_publication_timestamp",
+    "source_probe_status": "hdata_found",
+    "source_url": "https://www.oree.com.ua/index.php/control/results_mo/DAM"
+  },
+  "monthly_probes": [
+    {
+      "http_date_header_is_retrieval_metadata_only": true,
+      "http_last_modified_present": false,
+      "receipt_status": "not_sufficient_for_v13_receipts",
+      "requested_month": "06.2026",
+      "row_level_publication_metadata_found": false
+    },
+    {
+      "http_date_header_is_retrieval_metadata_only": true,
+      "http_last_modified_present": false,
+      "receipt_status": "not_sufficient_for_v13_receipts",
+      "requested_month": "07.2026",
+      "row_level_publication_metadata_found": false
+    }
+  ],
+  "public_path_gate_closed": false,
+  "required_external_step": "obtain an authenticated source-signed XMtrade/SCMO response or export accepted by the V13 receipt contract",
+  "promotable_v13_permitted_training_rows": 0,
+  "market_execution_enabled": false
+}

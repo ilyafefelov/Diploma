@@ -203,10 +203,41 @@ A later HF value-aligned shadow uses a genuine \code{DecisionTransformerModel} b
 
 These results are not directly interchangeable with the 90-row retrospective comparison. The HF proof has a different construction, finite templates, and a day-level packet. Its 158.71 UAH value is a frozen diagnostic. The value-aligned path is an engineering demonstration of guarded selection and abstention.
 
+\subsection{Time-separated Decision Transformer correction}
+
+After the lineage defect was identified, a separate temporal suite trained an actual Hugging Face \code{DecisionTransformerModel} on earlier rolling windows and evaluated later windows. Its trajectories contain nonzero action targets, regret-derived rewards, and nonzero returns-to-go; the train/evaluation candidate-content overlap count is zero in every run. The suite crosses two source lanes, three temporal protocols, candidate-index cross entropy and a decision-aware regret/value objective, and three seeds, for 36 runs.
+
+No run improves on frozen V2+. The decision-aware objective abstains to V2+ and ties in 18/18 runs. Candidate-index cross entropy ties in 15/18 and is harmful in 3/18, increasing mean regret by 10.12, 12.28, and 21.09 UAH in the affected protocol/seed runs. A 10-epoch sensitivity converts those switches to abstention rather than gains. This is stronger evidence than the mirrored smoke because it tests genuine temporal separation, but it is still retrospective and data-limited. It is published as negative DT evidence rather than hidden or promoted.
+
+\subsection{Preregistered differentiable forecast-to-storage suite}
+
+Version 1.2 also preregistered a distinct differentiable experiment before training. MLP and transformer price correctors were trained either with forecast loss or with realized storage value differentiated through strictly convex \code{cvxpylayers} problems. The decision loss uses each tenant's capacity, power, starting SOC, efficiency, SOC bounds, and degradation contract; checkpoints use only an earlier inner-validation slice. Every schedule was then recomputed and scored by the frozen strict LP/oracle contour. The experiment uses the same two sources, three temporal protocols, and three seeds, yielding 72 runs of 90 profile rows over 18 dates. All safety-violation and content-overlap counts are zero; all 36 decision-focused runs use the differentiable layer without surrogate fallback.
+
+\begin{table}[t]
+\centering
+\caption{Post-defense differentiable suite. Delta versus raw is negative when the trained model improves the raw schedule.}
+\label{tab:dfl-v12}
+\small
+\begin{tabular}{llrrr}
+\toprule
+Objective & Model & Regret & $\Delta$ raw & Better/raw \\
+\midrule
+Decision & MLP & 836.39 & +124.56 & 5/18 \\
+Decision & Transformer & 741.06 & +29.23 & 7/18 \\
+Forecast & MLP & 854.21 & +142.38 & 5/18 \\
+Forecast & Transformer & 676.05 & -35.78 & 15/18 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The primary promotion result remains negative: zero of 72 runs beats V2+, and even the least harmful individual run is +196.11 UAH relative to it. The architecture comparison is more informative. Transformer correction has lower strict regret than matched MLP in 28/36 comparisons and by 136.74 UAH on average. Under forecast-loss training, the transformer improves the raw schedule in 15/18 runs and in five of six source/window aggregates; their mean deltas are -31.71, -34.57, and -43.46 UAH for calibrated NBEATSx and -118.29, -7.20, and +20.54 UAH for raw NBEATSx. The one harmful aggregate is not suppressed.
+
+The positive signal does not establish that the decision-focused objective is superior. Profile-aware decision training improves the MLP relative to matched forecast-loss training by 17.82 UAH, but worsens the transformer by 65.01 UAH and wins only 6/18 transformer comparisons. The defensible result is therefore narrower: sequence-aware price correction learns decision-relevant structure better than this MLP and often improves the raw schedule, but neither ordinary nor differentiable transformer training recovers the hand-designed V2+ candidate selector.
+
 \subsection{Negative and near-miss evidence}
 
 Additional experiments show where the repository retained its fallback. The best TFT quantile V2+ row has mean regret 225.47 UAH and median 121.00 UAH, worse than calibrated-source V2+ on the same packet. TFT remains useful for uncertainty and complementary schedules \cite{lim2021tft,jiang2024ptft}, but this packet does not support replacement.
 
 A richer Poland lag-24 route has mean regret 177.34 UAH and median 39.46 UAH. A prior-only Poland veto has mean 167.05 UAH and median 55.97 UAH, with 34 challenger rows and 56 fallback rows. Its stored improvement ratio is 4.41\%, below the internal 5\% screen. These are retrospective near-miss diagnostics, not independent selection evidence.
 
-The V13 source-readiness gate also remains blocked. Staged safe-switch support reaches the required 20 prior examples for the configured tenant/source pairs, but explicit OREE DAM/IDM source-publication evidence for the relevant preview contour is incomplete. \code{dt_lava_ready=false} and \code{permits_model_training=false} remain the correct states. This blocker is independent of market-submission receipts, which would be needed for a future execution contour.
+The V13 source-readiness gate also remains blocked. Staged safe-switch support reaches the required 20 prior examples for the configured tenant/source pairs, but explicit OREE DAM/IDM source-publication evidence for the relevant preview contour is incomplete. A July 2026 public probe retrieved 24 DAM rows, but the rows had no source publication timestamp; HTTP \code{Date} and first-observed time were retained as retrieval evidence only. The official XMtrade/PXS specification identifies an authenticated, signed response path, but credentials or a valid signed export are required. \code{promotable_v13_permitted_training_rows=0} remains the correct state.

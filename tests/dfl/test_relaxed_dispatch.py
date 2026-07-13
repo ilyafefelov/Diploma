@@ -1,6 +1,7 @@
 from datetime import datetime
 
 import pytest
+import torch
 
 from smart_arbitrage.assets.gold.baseline_solver import (
     BaselineForecastPoint,
@@ -10,6 +11,7 @@ from smart_arbitrage.assets.gold.baseline_solver import (
 from smart_arbitrage.gatekeeper.schemas import BatteryPhysicalMetrics
 import smart_arbitrage.dfl.relaxed_dispatch as relaxed_dispatch
 from smart_arbitrage.dfl.relaxed_dispatch import solve_relaxed_dispatch
+from smart_arbitrage.dfl.relaxed_dispatch import solve_relaxed_dispatch_tensor
 
 
 def test_relaxed_dispatch_layer_returns_feasible_charge_then_discharge() -> None:
@@ -133,3 +135,32 @@ def test_relaxed_dispatch_rejects_invalid_horizon() -> None:
             soc_min_fraction=0.05,
             soc_max_fraction=0.95,
         )
+
+
+def test_strictly_convex_relaxed_dispatch_has_finite_price_gradients() -> None:
+    prices = torch.tensor(
+        [[1000.0, 4000.0, 1200.0, 6000.0]],
+        dtype=torch.float64,
+        requires_grad=True,
+    )
+
+    result = solve_relaxed_dispatch_tensor(
+        prices_uah_mwh=prices,
+        starting_soc_fraction=0.5,
+        capacity_mwh=1.0,
+        max_power_mw=0.25,
+        soc_min_fraction=0.05,
+        soc_max_fraction=0.95,
+        round_trip_efficiency=0.92,
+        quadratic_regularization=1e-4,
+        fallback_to_surrogate=False,
+    )
+    realized_value = torch.sum(
+        prices.detach() * (result.discharge_mw - result.charge_mw)
+    )
+    realized_value.backward()
+
+    assert result.solver_status == "cvxpylayer_scaled_strictly_convex"
+    assert prices.grad is not None
+    assert torch.isfinite(prices.grad).all()
+    assert torch.count_nonzero(prices.grad).item() > 0

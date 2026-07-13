@@ -1,0 +1,61 @@
+{
+  "all_protocols_independent": true,
+  "all_runs_have_action_targets": true,
+  "all_runs_have_nonzero_return_conditioning": true,
+  "beneficial_run_count": 0,
+  "claim_scope": "dt_temporal_v2_plus_research_shadow_not_full_dfl_not_market_execution",
+  "dt_promotion_gate_passed": false,
+  "evaluation_window_indices": [
+    1,
+    2,
+    3
+  ],
+  "full_differentiable_dfl": false,
+  "generated_at": "2026-07-12T22:50:55+00:00",
+  "harmful_run_count": 3,
+  "interpretation": "time-separated return-conditioned DT research shadow; decision-aware objective is DFL-style candidate ranking, not a differentiable forecast-storage-market-clearing stack",
+  "market_execution_enabled": false,
+  "model_config": {
+    "context_length": 4,
+    "hidden_dim": 64,
+    "learning_rate": 0.001,
+    "max_epochs": 3,
+    "max_family_tail_risk_probability": 0.5,
+    "min_predicted_improvement_uah": 20.0,
+    "num_heads": 2,
+    "num_layers": 2
+  },
+  "objective_kinds": [
+    "cross_entropy_candidate_index",
+    "decision_aware_regret_value_ranking"
+  ],
+  "objective_summary": {
+    "cross_entropy_candidate_index": {
+      "beneficial_run_count": 0,
+      "harmful_run_count": 3,
+      "mean_dt_minus_v2_plus_regret_uah": 2.416558324848787,
+      "run_count": 18,
+      "tie_run_count": 15
+    },
+    "decision_aware_regret_value_ranking": {
+      "beneficial_run_count": 0,
+      "harmful_run_count": 0,
+      "mean_dt_minus_v2_plus_regret_uah": 0.0,
+      "run_count": 18,
+      "tie_run_count": 18
+    }
+  },
+  "promotable_v13_permitted_training_rows": 0,
+  "protocol_run_count": 36,
+  "run_slug": "dt_temporal_v2_plus_experiment_2026_07_13",
+  "seeds": [
+    42,
+    2026,
+    7
+  ],
+  "source_model_names": [
+    "nbeatsx_official_global_panel_horizon_calibrated_v1",
+    "nbeatsx_official_global_panel_v1"
+  ],
+  "tie_run_count": 33
+}
