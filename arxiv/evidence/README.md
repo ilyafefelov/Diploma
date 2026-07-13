@@ -74,6 +74,10 @@ regret using the tracked 0.15--0.50 MWh profile capacities.
 | `lineage/v1_2_differentiable_dfl_suite_rows.csv` | 31,553 bytes | `52782A1EE8504BF0D8181B3FB992085FCD634DC5D474BD3D58748F14E9891193` |
 | `lineage/v1_2_differentiable_dfl_paired_profile_rows.csv` | 1,558,839 bytes | `FFF4C7818CDA6F8B6B4DF4AFBE10570F7A657705930256700A4218E4BC40C857` |
 | `lineage/v1_2_oree_public_probe_summary.json` | 1,288 bytes | `C0F934FE417920537D5421BC5A5405A0FEFA4CED0E482BC442B2934D6825A0D3` |
+| `lineage/v1_3_evidence_audit.json` | 661 bytes | `160B061E905D67C75970C4DA676EA88DDA64369EEAD8344306D5930896DB0BC7` |
+| `lineage/v1_3_full_history_hf_ranker_result.json` | 1,729 bytes | `A4168345D592CE2372E6406C81F6D1416E6B6F4AE64786E6786F9EAF8E94CA66` |
+| `lineage/v1_3_aligned_dfl_source_gate_result.json` | 1,180 bytes | `D6E72D348A875FE1CD823A887CA413EB649E38AFE1140B6DFBAFD8282E335B35` |
+| `lineage/v1_3_aligned_dfl_full_context_result.json` | 1,060 bytes | `3689A038E9F87292FEB1B0DB3D050355F554C61F1B0B45FFB83A6FA3151AE309` |
 
 The lineage audit proves that the historical `dt_v2_plus` artifact is a random
 forest trained on exact timestamp-shifted copies of the evaluation packet and
@@ -89,12 +93,18 @@ three earlier-window protocols increase mean regret, with the largest primary-
 seed increase equal to 123.0814 UAH. This is negative retrospective evidence,
 not prospective confirmation.
 
-Version 1.2 adds two time-separated model packets. The genuine return-
-conditioned Decision Transformer suite contains 36 runs: 33 tie V2+ and three
-are harmful. The differentiable forecast-to-storage suite contains 72 runs and
-6,480 paired profile rows. No run beats V2+, while transformer correction has
-lower strict regret than matched MLP in 28/36 comparisons and the forecast-loss
-transformer improves the raw schedule in 15/18 runs. The decision-focused loss
-uses five tenant-specific battery/degradation contracts. The OREE public probe is
-also retained to show that 24 available DAM rows still lack the explicit source
-publication timestamp required by V13.
+Version 1.2 retains two reproducible model packets. The former 36-run
+candidate-list suite is reclassified by the v1.3 lineage audit as an
+invalid/non-causal diagnostic: it is neither a temporal trajectory nor causal
+DT-policy evidence. The differentiable forecast-to-storage suite contains 72
+runs and 6,480 paired profile rows; it is negative only for its exact
+small-data residual-corrector implementation with mismatched terminal-SOC
+contracts. The OREE public probe is retained to show that 24 available DAM rows
+still lack the explicit source publication timestamp required by V13.
+
+Version 1.3 adds the machine-readable correction, a frozen full-history HF
+candidate-set encoder result (negative relative to its compatible V2+
+fallback), and an aligned full-context DFL result. The latter improves strict
+regret by 17.9034 UAH relative to the same forecast-loss transformer on an
+18-date future block, but uses experimental Poland context and is not V2+
+promotion or permission to train temporal DT.

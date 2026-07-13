@@ -1,6 +1,6 @@
 # Final Evidence Index
 
-Date: 2026-06-16
+Date: 2026-07-13
 
 Purpose: provide a compact, GitHub-safe index of the evidence needed for final
 repository review and thesis defense. This file intentionally links to tracked
@@ -20,9 +20,11 @@ Global boundary:
 | --- | --- | --- | --- |
 | V2+ is the headline/default schedule-value evidence | Confirmed | [DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md](DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md), [regret ladder](../thesis/chapters/assets/compact-fig-4-1-regret-ladder.png) | offline/read-model evidence only |
 | Historical `dt_v2_plus` random forest is lower than V2+ on an exact-mirror packet | In-packet diagnostic only | [corrected model-lineage aggregate](final-evidence/dt_v2_plus_canonical_aggregate.md), [post-defense erratum](../thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md) | not DT, not OOS, not promoted |
-| Time-separated return-conditioned DT does not beat V2+ | 36-run post-defense negative evidence | [temporal DT experiment](final-evidence/dt_temporal_v2_plus_experiment.md), `runs/dt_temporal_v2_plus/` | 0 beneficial; decision-aware 18/18 ties; no promotion |
+| Legacy v1.2 temporal DT suite | Invalid/non-causal candidate-list diagnostic | [v1.3 evidence correction](final-evidence/v1_3_evidence_correction.md), [machine audit](../../arxiv/evidence/lineage/v1_3_evidence_audit.json) | not a time-ordered policy; outcome-derived state and target leakage; no DT conclusion |
 | RF temporal suite has zero content overlap and no beneficial protocol | Negative post-defense evidence | [temporal suite](final-evidence/rf_safe_switch_temporal_replay.md) | latest windows abstain; three earlier protocols are harmful; not prospective or promoted |
 | HF value-aligned shadow has the strongest live shadow/demo signal | Manual shadow/demo evidence | [HF promotion proof](final-evidence/hf_value_aligned_shadow_promotion_proof.md), [HF robustness summary](final-evidence/hf_safe_switch_robustness_summary.md) | manual preview only |
+| Full-history HF candidate-set encoder is worse than its frozen compatible V2+ fallback | v1.3 negative evidence | [full-history ranker result](final-evidence/v1_3_full_history_hf_ranker_results.md), [result JSON](../../arxiv/evidence/lineage/v1_3_full_history_hf_ranker_result.json) | candidate-set encoder, not temporal DT; fallback retained |
+| Aligned hybrid DFL improves the same forecast transformer on a frozen future block | v1.3 positive within-architecture evidence | [aligned DFL result](final-evidence/v1_3_aligned_dfl_full_context_result.md), [result JSON](../../arxiv/evidence/lineage/v1_3_aligned_dfl_full_context_result.json) | experimental Poland context; -17.9034 UAH vs same architecture, not V2+ promotion or DT permission |
 | HF value-aligned shadow covers DAM/IDM latest/today/tomorrow/day+2 readiness | Confirmed readiness | [HF readiness summary](final-evidence/hf_value_aligned_forecast_readiness_summary.md), [HF readiness matrix](../thesis/chapters/assets/compact-fig-4-8-hf-readiness-matrix.png) | source-backed preview rows only |
 | HF demo packet gives commission-ready positive and abstention cases | Confirmed demo packet | [HF demo packet](final-evidence/hf_live_safe_switch_value_aligned_shadow_demo_packet.md), [defense runbook](FINAL_DEFENSE_RUNBOOK.md) | no market order payload |
 | V13 remains an acquisition/source-readiness gate | Blocked/precondition only | [CURRENT_GOAL_BOUNDARY_V13.md](CURRENT_GOAL_BOUNDARY_V13.md), [DFL_UA_CONTEXT_ACQUISITION_V13.md](DFL_UA_CONTEXT_ACQUISITION_V13.md) | not a modeling/training success |
@@ -33,7 +35,10 @@ Global boundary:
 | Packet | Why it matters |
 | --- | --- |
 | [final-evidence/dt_v2_plus_canonical_aggregate.md](final-evidence/dt_v2_plus_canonical_aggregate.md) | Gives the random-forest identity, exact-mirror limitation, single switch date, and vector-parse trust check for the historical `dt_v2_plus` artifact. |
-| [final-evidence/dt_temporal_v2_plus_experiment.md](final-evidence/dt_temporal_v2_plus_experiment.md) | Reports the genuine return-conditioned HF DT and decision-aware objective on zero-overlap temporal protocols. |
+| [final-evidence/dt_temporal_v2_plus_experiment.md](final-evidence/dt_temporal_v2_plus_experiment.md) | Historical v1.2 candidate-list packet; see the v1.3 correction before interpreting it. |
+| [final-evidence/v1_3_evidence_correction.md](final-evidence/v1_3_evidence_correction.md) | Corrects the legacy candidate-list suite to invalid/non-causal diagnostic scope without altering v1.2. |
+| [final-evidence/v1_3_full_history_hf_ranker_results.md](final-evidence/v1_3_full_history_hf_ranker_results.md) | Frozen full-history HF candidate-set encoder result; negative relative to its compatible fallback. |
+| [final-evidence/v1_3_aligned_dfl_full_context_result.md](final-evidence/v1_3_aligned_dfl_full_context_result.md) | Same-architecture forecast versus hybrid DFL result on the experimental, temporal full-context panel. |
 | [final-evidence/rf_safe_switch_temporal_replay.md](final-evidence/rf_safe_switch_temporal_replay.md) | Gives the 14-row independent-content temporal suite: zero beneficial protocols, eleven abstention ties, and three harmful earlier-window protocols. |
 | [final-evidence/hf_safe_switch_robustness_summary.md](final-evidence/hf_safe_switch_robustness_summary.md) | Shows the HF shadow robustness gate and frozen regret signal. |
 | [final-evidence/hf_value_aligned_shadow_promotion_proof.md](final-evidence/hf_value_aligned_shadow_promotion_proof.md) | Shows the value-aligned candidate-library gate and non-execution flags. |

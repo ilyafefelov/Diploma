@@ -11,7 +11,7 @@ designed, implemented, and passed.
 
 ## Current Evidence
 
-The current V13 acquisition packet remains blocked:
+The official V13 acquisition/training packet remains blocked:
 
 - readiness rows: `ready_rows=0/5`;
 - decision: `data_acquisition_needed`;
@@ -23,7 +23,10 @@ The current V13 acquisition packet remains blocked:
 - execution boundary: `market_execution_enabled=false`.
 
 This is a valid source-readiness result. It is not a failed model run and not a
-reason to promote another selector over the same evidence.
+reason to promote another selector over the same evidence. The token-backed
+ENTSO-E Poland lag-24 ablation used for the v1.3 aligned-DFL experiment does
+not close this Ukrainian V13 source-family gate: it remains
+`experimental_ablation_only` pending domain-shift validation.
 
 Direct DT Candidate Shadow now answers a narrower engineering question: the repo
 can train a HF DecisionTransformer over candidate-index/schedule-family teacher
@@ -33,21 +36,28 @@ strict/oracle, and is exposed only as a manual dashboard preview source. The
 separate apples-to-apples DT packet compares against the real V2+ result and
 does not beat it (`460.30` UAH DT mean regret versus `174.77` UAH V2+).
 
-A post-defense time-separated DT suite now replaces the mirrored-row smoke as
-the strongest DT generalization check. Across 36 runs (two sources, three
-rolling protocols, two objectives, and three seeds), zero runs beat V2+. The
-decision-aware regret/value objective ties V2+ in 18/18 runs; candidate-index
-cross entropy ties in 15/18 and is worse in 3/18. Every run uses nonzero action
-targets and return-to-go values with zero train/evaluation content overlap.
-This is honest negative research-shadow evidence, not DT or DFL promotion.
+The v1.2 temporal DT suite is no longer a DT generalization check. The v1.3
+audit found that its tokens were candidate rows within one anchor rather than
+time-ordered transitions, and that its state included outcome-derived fields
+and the target candidate index. It is therefore retained only as a reproducible
+**invalid/non-causal candidate-list diagnostic**, not as positive or negative
+evidence about a temporal Decision Transformer policy.
 
-The preregistered v1.2 differentiable forecast-to-storage suite now provides a
-separate result. Across 72 runs, zero beats V2+ and all remain non-promotable.
-The profile-aware differentiable layer executes without surrogate fallback in
-all 36 decision-focused runs. Transformer correction has lower strict regret
-than a matched MLP in 28/36 comparisons; the forecast-loss transformer improves
-the raw schedule in 15/18 runs. This is positive transformer-architecture
-evidence and negative V2+ promotion evidence, not full predict-then-bid.
+The v1.2 differentiable forecast-to-storage suite remains negative evidence
+only for its tested small-data residual corrector: a six-epoch MLP/one-layer
+transformer correction with a relaxed terminal-SOC-equality training contract
+and a different strict-evaluation terminal policy. It is not evidence against
+aligned DFL or temporal DT.
+
+The v1.3 full-history HF candidate-set encoder is a separate frozen negative
+result: on the 18-token compatible universe it is worse than its internal V2+
+fallback in both calibrated and raw lanes. It is not a temporal DT policy.
+
+The v1.3 aligned DFL experiment supplies a distinct, positive
+within-architecture result: on 18 untouched future dates across five profiles,
+the warm-started hybrid transformer has mean strict regret 267.0265 UAH versus
+284.9300 UAH for the same forecast-loss transformer (-17.9034 UAH; 6.28%).
+It is experimental Poland-context evidence, not a V2+ promotion or a DT gate.
 
 The public OREE path was probed again for June/July 2026 and a 24-row DAM day
 was observed. No row-level source publication timestamp or HTTP Last-Modified
