@@ -78,6 +78,7 @@ regret using the tracked 0.15--0.50 MWh profile capacities.
 | `lineage/v1_3_full_history_hf_ranker_result.json` | 1,729 bytes | `A4168345D592CE2372E6406C81F6D1416E6B6F4AE64786E6786F9EAF8E94CA66` |
 | `lineage/v1_3_aligned_dfl_source_gate_result.json` | 1,180 bytes | `D6E72D348A875FE1CD823A887CA413EB649E38AFE1140B6DFBAFD8282E335B35` |
 | `lineage/v1_3_aligned_dfl_full_context_result.json` | 1,060 bytes | `3689A038E9F87292FEB1B0DB3D050355F554C61F1B0B45FFB83A6FA3151AE309` |
+| `lineage/v1_3_causal_temporal_episode_corpus.json` | 794 bytes | `E5ECAC839DBD2754C2FFB2D0D801040745063C44D59BDE679569F73C1F08B037` |
 
 The lineage audit proves that the historical `dt_v2_plus` artifact is a random
 forest trained on exact timestamp-shifted copies of the evaluation packet and
@@ -108,3 +109,9 @@ fallback), and an aligned full-context DFL result. The latter improves strict
 regret by 17.9034 UAH relative to the same forecast-loss transformer on an
 18-date future block, but uses experimental Poland context and is not V2+
 promotion or permission to train temporal DT.
+
+The v1.3 causal temporal corpus contains 1,825 24-hour episodes and 43,800
+rows. It stores point-in-time forecast/context state separately from realized
+price, reward, and return-to-go labels. It is preparatory evidence only:
+`dt_training_eligible=false` and the independent V13 source-family gate remains
+blocked.

@@ -59,6 +59,12 @@ the warm-started hybrid transformer has mean strict regret 267.0265 UAH versus
 284.9300 UAH for the same forecast-loss transformer (-17.9034 UAH; 6.28%).
 It is experimental Poland-context evidence, not a V2+ promotion or a DT gate.
 
+Version 1.3 also materialized a causal temporal corpus from the same context:
+1,825 chronological 24-hour episodes (43,800 rows), with forecasts and prior
+context in state and realized price/reward/return-to-go labels kept separate.
+This resolves the legacy candidate-list/data-contract defect but does not
+override the independent V13 source-family training block.
+
 The public OREE path was probed again for June/July 2026 and a 24-row DAM day
 was observed. No row-level source publication timestamp or HTTP Last-Modified
 metadata was exposed, so HTTP Date and first-seen time remain retrieval-only

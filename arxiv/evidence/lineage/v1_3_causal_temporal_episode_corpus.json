@@ -1,0 +1,24 @@
+{
+  "artifact": "v1_3_causal_temporal_episode_corpus",
+  "input_context_artifact": "aligned_dfl_full_context_frame",
+  "input_context_examples": 1825,
+  "episode_count": 1825,
+  "row_count": 43800,
+  "steps_per_episode": 24,
+  "state_feature_families": [
+    "forecast_p10_p50_p90",
+    "ukrainian_price_lag_24",
+    "weather",
+    "calendar",
+    "poland_lag_24",
+    "teacher_soc_before"
+  ],
+  "teacher_schedule_input": "strict_lp_on_forecast_p50_only",
+  "realized_price_in_state": false,
+  "realized_price_label": "label_actual_price_uah_mwh",
+  "time_ordered_episode_contract": true,
+  "dt_training_eligible": false,
+  "official_v13_training_gate_passed": false,
+  "market_execution_enabled": false,
+  "claim_scope": "causal_temporal_episode_corpus_not_dt_training_or_market_execution"
+}
