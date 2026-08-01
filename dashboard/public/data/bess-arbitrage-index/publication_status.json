@@ -14,9 +14,9 @@
     "schedule_timezone_note": "05:35 UTC is the primary run and 08:35 UTC is the retry (08:35 / 11:35 Europe/Kyiv during summer time)"
   },
   "forecast": {
-    "actual_target_delivery_date": "2026-08-01",
-    "attempted_target_delivery_date": "2026-08-01",
-    "expected_target_delivery_date": "2026-08-01",
+    "actual_target_delivery_date": "2026-08-02",
+    "attempted_target_delivery_date": "2026-08-02",
+    "expected_target_delivery_date": "2026-08-02",
     "history_row_count": 240,
     "is_current_for_kyiv_schedule": true,
     "model_statuses": [
@@ -40,14 +40,14 @@
       }
     ],
     "status": "published",
-    "training_cutoff": "2026-07-31T23:00:00+00:00"
+    "training_cutoff": "2026-08-01T23:00:00+00:00"
   },
-  "generated_at": "2026-07-31T09:32:59.800043+00:00",
+  "generated_at": "2026-08-01T06:22:59.577396+00:00",
   "publisher_timezone": "Europe/Kyiv",
   "realized": {
-    "actual_delivery_date": "2026-07-30",
-    "attempted_delivery_date": "2026-07-30",
-    "expected_delivery_date": "2026-07-30",
+    "actual_delivery_date": "2026-07-31",
+    "attempted_delivery_date": "2026-07-31",
+    "expected_delivery_date": "2026-07-31",
     "is_current_for_kyiv_schedule": true,
     "row_count": 24,
     "source_status": "complete_24_hour_delivery_day",
