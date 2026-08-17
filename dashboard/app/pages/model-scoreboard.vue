@@ -1,23 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type {
+  PublicBessScoreboardArtifact as PublicPayload,
+  PublicBessScoreboardRow as ScoreboardRow
+} from '~/utils/publicBessArtifactTypes'
 import { parsePublicBessPayload, publicBessDataUrl } from '~/utils/publicBessData'
-
-interface ScoreboardRow {
-  model_name?: string
-  target_delivery_date?: string
-  mae_uah_mwh?: unknown
-  rmse_uah_mwh?: unknown
-  dispatch_regret_uah?: unknown
-  value_capture_ratio?: unknown
-  claim_boundary?: string
-}
-
-interface PublicPayload {
-  rows?: ScoreboardRow[]
-  row_count?: number
-  generated_at?: string
-  score_status?: string
-}
 
 const { data: scoreboardData } = await useFetch<PublicPayload>(publicBessDataUrl('forecast_scoreboard.json'), {
   key: 'public-bess-forecast-scoreboard',

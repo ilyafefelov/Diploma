@@ -2,54 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, watchEffect } from 'vue'
 import BessActionPreviewRail from '~/components/public/BessActionPreviewRail.vue'
 import BessDispatchField from '~/components/public/BessDispatchField.vue'
+import type {
+  PublicBessIndexArtifact as PublicPayload,
+  PublicBessRecord as PublicRecord
+} from '~/utils/publicBessArtifactTypes'
 import { parsePublicBessPayload, publicBessDataContentUrl, publicBessDataUrl } from '~/utils/publicBessData'
 
-interface PublicRecord {
-  [key: string]: unknown
-  preset_id?: string
-  label?: string
-  timestamp?: string
-  delivery_date?: string
-  source_url?: string
-  source_name?: string
-  model_name?: string
-  backend_status?: string
-  quality_boundary?: string
-  point_in_time_status?: string
-  score_status?: string
-  training_cutoff?: string
-  forecast_generated_at?: string
-  generated_at?: string
-  points?: PublicRecord[]
-  hourly_schedule?: PublicRecord[]
-  metrics?: PublicRecord
-  battery?: PublicRecord
-  capacity_mwh?: number
-}
-
-interface PublicPayload {
-  presets?: PublicRecord[]
-  rows?: PublicRecord[]
-  models?: PublicRecord[]
-  metrics?: string[]
-  source?: PublicRecord
-  realized?: PublicRecord
-  forecast?: PublicRecord
-  autonomy?: PublicRecord
-  generated_at?: string
-  target_delivery_date?: string
-  score_status?: string
-  row_count?: number
-  claim_boundary?: string
-  proposed_bid_status?: string
-  market_execution_enabled?: boolean
-  methodology?: {
-    optimization_grain?: string
-    objective?: string
-    terminal_soc?: string
-    degradation_proxy?: string
-  }
-}
 type ChartPoint = { x: number, y: number }
 type BessIndexWindow = Window & {
   __bessIndexPreviousScrollRestoration?: ScrollRestoration

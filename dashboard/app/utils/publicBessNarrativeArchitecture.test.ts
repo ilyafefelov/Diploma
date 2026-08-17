@@ -3,6 +3,20 @@ import { describe, expect, it } from 'vitest'
 import { readDashboardFixture } from './test-fixtures/operatorHudTestFixtures'
 
 describe('public BESS narrative architecture', () => {
+  it('shares the tracked public artifact contracts across every public data route', () => {
+    const contracts = readDashboardFixture('./publicBessArtifactTypes.ts')
+    const pages = [
+      readDashboardFixture('../pages/ukraine-bess-arbitrage-index.vue'),
+      readDashboardFixture('../pages/forecast-challenge.vue'),
+      readDashboardFixture('../pages/model-scoreboard.vue')
+    ]
+
+    expect(contracts).toContain('export interface PublicBessIndexArtifact')
+    expect(contracts).toContain('export interface PublicBessForecastArtifact')
+    expect(contracts).toContain('export interface PublicBessScoreboardArtifact')
+    pages.forEach(page => expect(page).toContain('~/utils/publicBessArtifactTypes'))
+  })
+
   it('renders the public route from live committed GitHub JSON artifacts', () => {
     const page = readDashboardFixture('../pages/ukraine-bess-arbitrage-index.vue')
     const field = readDashboardFixture('../components/public/BessDispatchField.vue')

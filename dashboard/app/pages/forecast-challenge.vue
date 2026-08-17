@@ -1,30 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type {
+  PublicBessForecastArtifact as PublicPayload,
+  PublicBessForecastModel as ForecastModel
+} from '~/utils/publicBessArtifactTypes'
 import { parsePublicBessPayload, publicBessDataUrl } from '~/utils/publicBessData'
-
-interface ForecastPoint {
-  timestamp?: string
-  forecast_price_uah_mwh?: unknown
-}
-
-interface ForecastModel {
-  model_name?: string
-  label?: string
-  backend_status?: string
-  quality_boundary?: string
-  point_count?: number
-  points?: ForecastPoint[]
-}
-
-interface PublicPayload {
-  models?: ForecastModel[]
-  source?: {
-    history_row_count?: number
-  }
-  generated_at?: string
-  target_delivery_date?: string
-  market_execution_enabled?: boolean
-}
 
 const SVG_WIDTH = 760
 const SVG_HEIGHT = 300

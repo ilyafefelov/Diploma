@@ -5,6 +5,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import yaml
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -863,6 +865,14 @@ def test_tracked_v13_sources_preserve_claim_boundary() -> None:
     assert "candidate_can_satisfy_v13_without_validation=false" in tracked_boundary
     assert "market_execution_enabled=false" in tracked_boundary
 
+    avoid_section = current_boundary.split("## Required Wording", maxsplit=1)[1].split("Avoid:", maxsplit=1)[1]
+    assert '"live DAM/IDM bidding"' in avoid_section
+    assert '"market-submittable bids"' in avoid_section
+    assert '"deployed Decision Transformer controller"' in avoid_section
+    assert '"full differentiable DFL controller"' in avoid_section
+    assert '"`ProposedBid` output"' in avoid_section
+    assert '"dashboard/API default strategy switch."' in avoid_section
+
     required_scripts = (
         "validate_ua_context_safe_switch_examples_v13.py",
         "audit_ua_context_safe_switch_candidates_v13.py",
@@ -1184,18 +1194,35 @@ def test_pull_request_ci_covers_python_dashboard_and_package_audits() -> None:
     workflow_path = PROJECT_ROOT / ".github" / "workflows" / "ci.yml"
     assert workflow_path.is_file()
 
-    workflow = workflow_path.read_text(encoding="utf-8")
-    assert "pull_request:" in workflow
-    assert "uv sync --extra dev --extra dt" in workflow
-    assert "python -m ruff check src tests api" in workflow
-    assert "python -m mypy --config-file pyproject.toml" in workflow
-    assert "python -m pytest -p no:cacheprovider tests" in workflow
-    assert "dg check defs" in workflow
-    assert "npm run lint" in workflow
-    assert "npm run typecheck" in workflow
-    assert "npm exec -- vitest run" in workflow
-    assert "npm run generate" in workflow
-    assert workflow.count("npm audit --audit-level=low") == 2
+    workflow_text = workflow_path.read_text(encoding="utf-8")
+    workflow = yaml.safe_load(workflow_text)
+    jobs = workflow["jobs"]
+
+    assert "pull_request:" in workflow_text
+    assert set(jobs) == {"python", "dashboard", "intro-video"}
+
+    python_runs = {step.get("run") for step in jobs["python"]["steps"] if "run" in step}
+    assert {
+        "uv sync --extra dev --extra dt",
+        "uv run python -m ruff check src tests api",
+        "uv run python -m mypy --config-file pyproject.toml",
+        "uv run python -m pytest -p no:cacheprovider tests",
+        "uv run dg check defs",
+        "docker compose config --quiet",
+    } <= python_runs
+
+    dashboard_runs = {step.get("run") for step in jobs["dashboard"]["steps"] if "run" in step}
+    assert {
+        "npm ci",
+        "npm audit --audit-level=low",
+        "npm run lint",
+        "npm run typecheck",
+        "npm exec -- vitest run",
+        "npm run generate",
+    } <= dashboard_runs
+
+    intro_runs = {step.get("run") for step in jobs["intro-video"]["steps"] if "run" in step}
+    assert {"npm ci", "npm run check", "npm audit --audit-level=low"} <= intro_runs
 
 
 def test_github_workflows_use_node24_compatible_action_majors() -> None:

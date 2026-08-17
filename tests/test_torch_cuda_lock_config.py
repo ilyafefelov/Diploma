@@ -1,10 +1,11 @@
 from pathlib import Path
 import tomllib
 
-from packaging.version import Version
-
-
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _release_version(value: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in value.split("+", maxsplit=1)[0].split("."))
 
 
 def test_project_pins_torch_to_cuda_126_for_windows_and_linux() -> None:
@@ -47,7 +48,7 @@ def test_dt_extra_provides_hugging_face_transformers_without_changing_torch_pin(
 
     assert "dt" in pyproject["project"]["optional-dependencies"]
     assert "transformers>=5.5,<6" in pyproject["project"]["optional-dependencies"]["dt"]
-    assert Version(packages["transformers"]["version"]) >= Version("5.5")
+    assert _release_version(packages["transformers"]["version"]) >= (5, 5)
 
     torch_package = packages["torch"]
     assert torch_package["version"] == "2.13.0+cu126"
