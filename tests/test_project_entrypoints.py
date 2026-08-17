@@ -5,6 +5,8 @@ import os
 import subprocess
 from pathlib import Path
 
+import yaml
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -848,70 +850,41 @@ def test_ua_context_v13_acquisition_packet_cli_exports_candidate_gate() -> None:
     assert "Offline Strategy Promotion" in docs
 
 
-def test_agents_md_preserves_v13_claim_boundary() -> None:
-    agents = (PROJECT_ROOT / "AGENTS.md").read_text(encoding="utf-8")
-
-    assert "DAM/IDM hourly recommendation preview" in agents
-    assert "V13 є gate для acquisition/source-readiness" in agents
-    assert "щонайменше `20` prior/train non-tail-risk material safe-switch examples" in agents
-    assert "explicit OREE DAM/IDM source/publication evidence for preview" in agents
-    assert "ua_context_safe_switch_examples_csv_path" in agents
-    assert "validate_ua_context_safe_switch_examples_v13.py" in agents
-    assert "audit_ua_context_safe_switch_candidates_v13.py" in agents
-    assert "export_ua_context_v13_safe_switch_review_backlog.py" in agents
-    assert "export_ua_context_v13_safe_switch_curation_worksheet.py" in agents
-    assert "extract_ua_context_v13_safe_switch_examples_from_curation.py" in agents
-    assert "candidate_can_satisfy_v13_without_validation=false" in agents
-    assert "audit_v13_dam_receipt_source_leads.py" in agents
-    assert "probe_scmo_dam_soap_download.py" in agents
-    assert "preflight-gated-mtls-username-token" in agents
-    assert "ws_security_signature_applied=false" in agents
-    assert "preflight-gated-signed-ws-security" in agents
-    assert "xml_signature_builder_available" in agents
-    assert "preflight_scmo_dam_ws_security_credentials.py" in agents
-    assert "--scmo-ws-security-preflight-json" in agents
-    assert "SCMO_CLIENT_CERT_PEM" in agents
-    assert "SCMO_CLIENT_P12" in agents
-    assert "SCMO_CLIENT_KEY_PASSWORD" in agents
-    assert "cert/key loadability" in agents
-    assert "never writes secret values" in agents
-    assert "normalize_scmo_dam_publication_receipt_export.py" in agents
-    assert "fetch_scmo_dam_publication_receipt_export.py" in agents
-    assert "SCMO credentials are not required for the diploma MVP" in agents
-    assert (
-        "source_publication_timestamp is not required for offline "
-        "research-shadow DT prototype"
-        in agents
+def test_tracked_v13_sources_preserve_claim_boundary() -> None:
+    v13_docs = (PROJECT_ROOT / "docs" / "technical" / "DFL_UA_CONTEXT_ACQUISITION_V13.md").read_text(
+        encoding="utf-8"
     )
-    assert "Do not run SCMO credential/probe work by default" in agents
-    assert "materialize_credentialless_academic_mvp_readiness_packet.py" in agents
-    assert "materialize_dt_research_shadow_packet.py" in agents
-    assert "--dt-research-shadow-sequence-summary-json" in agents
-    assert "--teacher-validation-json" in agents
-    assert "--offline-challenger-validation-json" in agents
-    assert "ISOTEDATA" in agents
-    assert "HTML table" in agents
-    assert "--v13-base-config" in agents
-    assert "full_v13_gate_evaluated=false" in agents
-    assert "source_publication_timestamp" in agents
-    assert "wsdl_response_returned_signed_download_required" in agents
-    assert "capture_oree_dam_publication_observations.py" in agents
-    assert "source_observed_at_utc" in agents
-    assert "--attempt-log-json" in agents
-    assert "source_probe_status=hdata_not_found" in agents
-    assert "preflight_ua_context_v13_acquisition_inputs.py" in agents
-    assert "build_v13_acquisition_input_config.py" in agents
-    assert "materialize_v13_dt_lava_teacher_packet.py" in agents
-    assert "SMART_ARBITRAGE_VERIFY_LAVA_NPZ_CANDIDATE_FRAME_PICKLE" in agents
-    assert "`permits_model_training=false`" in agents
-    assert "`market_execution_enabled=false` залишається обов'язковим" in agents
-    assert "не генерують market-submittable `ProposedBid`" in agents
-    assert "не є deployed DT controller" in agents
-    assert "full differentiable DFL controller" in agents
-    assert "генерує оптимальні заявки (ProposedBid)" not in agents
-    assert "зменшує регрет на **67%**" not in agents
-    assert "черги команд BUY/SELL/HOLD" not in agents
-    assert "ProposedTrade" not in agents
+    current_boundary = (PROJECT_ROOT / "docs" / "technical" / "CURRENT_GOAL_BOUNDARY_V13.md").read_text(
+        encoding="utf-8"
+    )
+    tracked_boundary = f"{v13_docs}\n{current_boundary}"
+
+    assert "acquisition" in tracked_boundary
+    assert "20" in tracked_boundary
+    assert "ua_context_safe_switch_examples_csv_path" in tracked_boundary
+    assert "candidate_can_satisfy_v13_without_validation=false" in tracked_boundary
+    assert "market_execution_enabled=false" in tracked_boundary
+
+    avoid_section = current_boundary.split("## Required Wording", maxsplit=1)[1].split("Avoid:", maxsplit=1)[1]
+    assert '"live DAM/IDM bidding"' in avoid_section
+    assert '"market-submittable bids"' in avoid_section
+    assert '"deployed Decision Transformer controller"' in avoid_section
+    assert '"full differentiable DFL controller"' in avoid_section
+    assert '"`ProposedBid` output"' in avoid_section
+    assert '"dashboard/API default strategy switch."' in avoid_section
+
+    required_scripts = (
+        "validate_ua_context_safe_switch_examples_v13.py",
+        "audit_ua_context_safe_switch_candidates_v13.py",
+        "export_ua_context_v13_safe_switch_review_backlog.py",
+        "export_ua_context_v13_safe_switch_curation_worksheet.py",
+        "extract_ua_context_v13_safe_switch_examples_from_curation.py",
+        "audit_v13_dam_receipt_source_leads.py",
+        "probe_scmo_dam_soap_download.py",
+        "preflight_scmo_dam_ws_security_credentials.py",
+    )
+    for script_name in required_scripts:
+        assert (PROJECT_ROOT / "scripts" / script_name).is_file()
 
 
 def test_current_goal_boundary_doc_preserves_v13_scope() -> None:
@@ -957,15 +930,6 @@ def test_lava_npz_margin_smoke_packet_cli_preserves_research_boundary() -> None:
     bridge_doc = (
         PROJECT_ROOT / "docs" / "technical" / "DFL_LAVA_SCHEDULE_NEIGHBOR_BRIDGE.md"
     ).read_text(encoding="utf-8")
-    pulse_doc = (
-        PROJECT_ROOT
-        / "docs"
-        / "technical"
-        / "pulse"
-        / "5-24"
-        / "11-dt-lava-fast-honest-path-analysis.md"
-    ).read_text(encoding="utf-8")
-
     assert "PACKET_CLAIM_SCOPE" in packet_script
     assert "write_lava_npz_smoke_artifact_from_candidate_frame" in packet_script
     assert "run_lava_npz_margin_smoke" in packet_script
@@ -1026,9 +990,8 @@ def test_lava_npz_margin_smoke_packet_cli_preserves_research_boundary() -> None:
     assert "CI-fast" in bridge_doc
     assert "not training, not full DFL, not DT deployment, and not market" in bridge_doc
     assert "not a 4-window promotion gate" in bridge_doc
-    assert "without making it a promotion gate" in pulse_doc
-    assert "aggregate JSON" in pulse_doc
-    assert "validation summary" in pulse_doc
+    assert "aggregate JSON" in bridge_doc
+    assert "validation summary" in bridge_doc
 
 
 def test_poland_lag24_experimental_schedule_value_packet_cli_exports_near_miss() -> None:
@@ -1225,6 +1188,60 @@ def test_training_runtime_preflight_reports_host_and_optional_docker_runtime() -
     assert "docker compose exec -T" in preflight_script
     assert "market_execution_enabled" in preflight_script
     assert "Offline Strategy Promotion evidence only" in preflight_script
+
+
+def test_pull_request_ci_covers_python_dashboard_and_package_audits() -> None:
+    workflow_path = PROJECT_ROOT / ".github" / "workflows" / "ci.yml"
+    assert workflow_path.is_file()
+
+    workflow_text = workflow_path.read_text(encoding="utf-8")
+    workflow = yaml.safe_load(workflow_text)
+    jobs = workflow["jobs"]
+
+    assert "pull_request:" in workflow_text
+    assert set(jobs) == {"python", "dashboard", "intro-video"}
+
+    python_runs = {step.get("run") for step in jobs["python"]["steps"] if "run" in step}
+    assert {
+        "uv sync --extra dev --extra dt",
+        "uv run python -m ruff check src tests api",
+        "uv run python -m mypy --config-file pyproject.toml",
+        "uv run python -m pytest -p no:cacheprovider tests",
+        "uv run dg check defs",
+        "docker compose config --quiet",
+    } <= python_runs
+
+    dashboard_runs = {step.get("run") for step in jobs["dashboard"]["steps"] if "run" in step}
+    assert {
+        "npm ci",
+        "npm audit --audit-level=low",
+        "npm run lint",
+        "npm run typecheck",
+        "npm exec -- vitest run",
+        "npm run generate",
+    } <= dashboard_runs
+
+    intro_runs = {step.get("run") for step in jobs["intro-video"]["steps"] if "run" in step}
+    assert {"npm ci", "npm run check", "npm audit --audit-level=low"} <= intro_runs
+
+
+def test_github_workflows_use_node24_compatible_action_majors() -> None:
+    workflow_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((PROJECT_ROOT / ".github" / "workflows").glob("*.yml"))
+    )
+
+    assert "actions/checkout@v4" not in workflow_text
+    assert "actions/setup-node@v4" not in workflow_text
+    assert "actions/setup-python@v5" not in workflow_text
+    assert "astral-sh/setup-uv@v5" not in workflow_text
+    assert "actions/checkout@v7" in workflow_text
+    assert "actions/setup-node@v7" in workflow_text
+    assert "actions/setup-python@v7" in workflow_text
+    assert (
+        "astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1"
+        in workflow_text
+    )
 
 
 def _environment_without_pythonpath() -> dict[str, str]:

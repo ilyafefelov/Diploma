@@ -159,7 +159,7 @@ const controlPlaneErrorMessage = (error: unknown): string | null => {
   }
 
   if ('data' in error) {
-    const data = (error as { data?: { detail?: unknown; message?: unknown } }).data
+    const data = (error as { data?: { detail?: unknown, message?: unknown } }).data
     if (typeof data?.detail === 'string') {
       return data.detail
     }

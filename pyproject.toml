@@ -20,7 +20,7 @@ dependencies = [
     "polars",                  # Швидка обробка в Silver-шарі [7, 8]
     "pydantic>=2.0",           # Детермінований Gatekeeper [9, 10]
     # AI та Диференційована Оптимізація
-    "torch==2.9.1",            # CUDA 12.6 wheel for local/HF official training stability [11, 12]
+    "torch==2.13.0",           # CUDA 12.6 wheel for local/HF official training stability [11, 12]
     "cvxpylayers",             # Реалізація теореми про неявну функцію [13, 14]
     "cvxpy",                   # Опис задач оптимізації [13, 14]
     "optuna",                  # Гіперпараметрична оптимізація стратегій [15-17]
@@ -31,7 +31,7 @@ dependencies = [
 ]
 
 [build-system]
-requires = ["setuptools>=69"]
+requires = ["setuptools>=83.0.0"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
@@ -51,7 +51,7 @@ sota = [
     "lightning",               # PyTorch Forecasting trainer runtime
 ]
 dt = [
-    "transformers>=4.53,<5",    # Hugging Face DecisionTransformerModel for research-shadow DT smoke
+    "transformers>=5.5,<6",     # Hugging Face DecisionTransformerModel for research-shadow DT smoke
 ]
 
 [tool.uv.sources]

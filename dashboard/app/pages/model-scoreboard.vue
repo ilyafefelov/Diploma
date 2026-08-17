@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import type {
+  PublicBessScoreboardArtifact as PublicPayload,
+  PublicBessScoreboardRow as ScoreboardRow
+} from '~/utils/publicBessArtifactTypes'
 import { parsePublicBessPayload, publicBessDataUrl } from '~/utils/publicBessData'
-
-type PublicPayload = Record<string, any>
 
 const { data: scoreboardData } = await useFetch<PublicPayload>(publicBessDataUrl('forecast_scoreboard.json'), {
   key: 'public-bess-forecast-scoreboard',
@@ -11,7 +13,7 @@ const { data: scoreboardData } = await useFetch<PublicPayload>(publicBessDataUrl
   default: () => ({ rows: [] })
 })
 
-const rows = computed<Record<string, any>[]>(() => (
+const rows = computed<ScoreboardRow[]>(() => (
   Array.isArray(scoreboardData.value?.rows) ? scoreboardData.value.rows : []
 ))
 
@@ -34,15 +36,25 @@ const formatMetric = (value: unknown, suffix = '') => {
     <div class="bess-public-frame">
       <header class="bess-public-topbar">
         <div class="bess-public-brand">
-          <div class="bess-public-mark" aria-hidden="true">
+          <div
+            class="bess-public-mark"
+            aria-hidden="true"
+          >
             <UIcon name="i-lucide-table-properties" />
           </div>
           <div>
-            <p class="bess-public-subtitle">Rolling evidence</p>
-            <p class="bess-public-title">Model Scoreboard</p>
+            <p class="bess-public-subtitle">
+              Rolling evidence
+            </p>
+            <p class="bess-public-title">
+              Model Scoreboard
+            </p>
           </div>
         </div>
-        <nav class="bess-public-nav" aria-label="Public BESS views">
+        <nav
+          class="bess-public-nav"
+          aria-label="Public BESS views"
+        >
           <NuxtLink to="/ukraine-bess-arbitrage-index">Index</NuxtLink>
           <NuxtLink to="/forecast-challenge">Forecast Challenge</NuxtLink>
           <NuxtLink to="/model-scoreboard">Model Scoreboard</NuxtLink>
@@ -67,7 +79,9 @@ const formatMetric = (value: unknown, suffix = '') => {
 
         <aside class="bess-score-stack">
           <div class="bess-score-primary">
-            <p class="bess-score-label">Score status</p>
+            <p class="bess-score-label">
+              Score status
+            </p>
             <p class="bess-score-value">
               {{ scoreboardData?.score_status || 'pending' }}
             </p>
@@ -100,9 +114,14 @@ const formatMetric = (value: unknown, suffix = '') => {
             </thead>
             <tbody>
               <tr v-if="rows.length === 0">
-                <td colspan="7">No scored forecast pairs yet.</td>
+                <td colspan="7">
+                  No scored forecast pairs yet.
+                </td>
               </tr>
-              <tr v-for="row in rows" :key="`${row.model_name}-${row.target_delivery_date}`">
+              <tr
+                v-for="row in rows"
+                :key="`${row.model_name}-${row.target_delivery_date}`"
+              >
                 <td>{{ row.model_name }}</td>
                 <td>{{ row.target_delivery_date }}</td>
                 <td>{{ formatMetric(row.mae_uah_mwh, ' UAH/MWh') }}</td>

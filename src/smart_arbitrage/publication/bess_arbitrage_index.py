@@ -7,7 +7,7 @@ market-execution payload.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from math import sqrt
@@ -167,7 +167,8 @@ def build_public_bess_arbitrage_history_payload(
     for preset in latest_payload.get("presets", []):
         if not isinstance(preset, Mapping):
             continue
-        metrics = preset.get("metrics") if isinstance(preset.get("metrics"), Mapping) else {}
+        metrics_value = preset.get("metrics")
+        metrics: Mapping[str, Any] = metrics_value if isinstance(metrics_value, Mapping) else {}
         row = {
             "delivery_date": delivery_date,
             "generated_at": generated_at,
@@ -421,8 +422,10 @@ def _as_float_list(values: object, expected_length: int) -> list[float]:
         raise RuntimeError("Expected solver values, received None.")
     if hasattr(values, "tolist"):
         raw_values = values.tolist()
+    elif isinstance(values, Iterable):
+        raw_values = list(values)
     else:
-        raw_values = list(values)  # type: ignore[arg-type]
+        raise TypeError("Expected solver values to be iterable.")
     flattened = [float(item) for item in raw_values]
     if len(flattened) != expected_length:
         raise RuntimeError("Unexpected solver output length.")

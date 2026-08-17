@@ -8,12 +8,19 @@ type NodeRuntimeGlobal = typeof globalThis & {
 const env = (globalThis as NodeRuntimeGlobal).process?.env ?? {}
 const siteUrl = env.NUXT_PUBLIC_SITE_URL || 'https://energy-index.full-iron.com'
 const baseURL = env.NUXT_APP_BASE_URL || '/'
-const bessDataBaseUrl =
-  env.NUXT_PUBLIC_BESS_DATA_BASE_URL ||
-  'https://raw.githubusercontent.com/ilyafefelov/Diploma/main/dashboard/public/data/bess-arbitrage-index'
+const bessDataBaseUrl
+  = env.NUXT_PUBLIC_BESS_DATA_BASE_URL
+    || 'https://raw.githubusercontent.com/ilyafefelov/Diploma/main/dashboard/public/data/bess-arbitrage-index'
 
 export default defineNuxtConfig({
-  app: {
+
+  modules: [
+    '@nuxt/eslint',
+    '@nuxt/ui'
+  ],
+  devtools: {
+    enabled: false
+  }, app: {
     baseURL,
     head: {
       link: [
@@ -27,25 +34,10 @@ export default defineNuxtConfig({
     }
   },
 
-  modules: [
-    '@nuxt/eslint',
-    '@nuxt/ui'
-  ],
+  css: ['~/assets/css/main.css'],
 
   ui: {
     fonts: false
-  },
-
-  devtools: {
-    enabled: false
-  },
-
-  css: ['~/assets/css/main.css'],
-
-  vite: {
-    optimizeDeps: {
-      include: ['three']
-    }
   },
 
   runtimeConfig: {
@@ -60,6 +52,12 @@ export default defineNuxtConfig({
 
   compatibilityDate: '2025-01-15',
 
+  vite: {
+    optimizeDeps: {
+      include: ['three']
+    }
+  },
+
   eslint: {
     config: {
       stylistic: {
@@ -67,5 +65,14 @@ export default defineNuxtConfig({
         braceStyle: '1tbs'
       }
     }
+  },
+  icon: {
+    serverBundle: {
+      collections: ['lucide', 'simple-icons']
+    },
+    clientBundle: {
+      scan: true
+    }
   }
+
 })

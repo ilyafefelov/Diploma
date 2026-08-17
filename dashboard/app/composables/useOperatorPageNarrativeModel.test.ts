@@ -1,11 +1,11 @@
 import { ref } from 'vue'
 import { describe, expect, it, vi } from 'vitest'
 
+import { useOperatorPageNarrativeModel } from './useOperatorPageNarrativeModel'
+
 vi.mock('~/utils/operatorResearchMetrics', () => ({
   buildOperatorResearchMetrics: () => []
 }))
-
-import { useOperatorPageNarrativeModel } from './useOperatorPageNarrativeModel'
 
 describe('useOperatorPageNarrativeModel', () => {
   it('keeps selected shadow source copy when live HF shadow has no schedule rows', () => {

@@ -1,8 +1,8 @@
 import { computed } from 'vue'
 
-import { useDefenseDashboard } from './useDefenseDashboard'
-
-type DefenseDashboard = ReturnType<typeof useDefenseDashboard>
+type DefenseDashboard = ReturnType<
+  typeof import('./useDefenseDashboard')['useDefenseDashboard']
+>
 
 export const useDefenseDashboardPanelRefs = (defense: DefenseDashboard) => ({
   defenseAcademicMvpReadiness: computed(() => defense.academicMvpReadiness.value ?? null),

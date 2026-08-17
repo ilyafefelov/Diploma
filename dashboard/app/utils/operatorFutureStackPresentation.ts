@@ -23,7 +23,7 @@ export {
 } from '../lib/operator-future/operatorFuturePreviewSources'
 export { formatHour, formatStrategyAxisLabel } from '../lib/operator-future/operatorFutureStackLabels'
 
-export type PolicyValueMode='selected'|'official'
+export type PolicyValueMode = 'selected' | 'official'
 
 export interface FutureStackSummaryItem {
   label: string

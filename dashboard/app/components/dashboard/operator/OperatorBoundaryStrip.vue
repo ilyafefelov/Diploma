@@ -5,7 +5,6 @@ const boundaryItems = [
   { label: 'No market payload', icon: 'i-lucide-file-x-2' },
   { label: 'Human review required', icon: 'i-lucide-user-check' }
 ]
-
 </script>
 
 <template>

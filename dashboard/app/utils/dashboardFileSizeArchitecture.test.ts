@@ -10,6 +10,9 @@ const sourceExtensions = new Set(['.css', '.ts', '.vue'])
 // operator/defense dashboard budget strict while allowing that static page.
 const publicIndexExceptions = new Set([
   '/assets/css/bess-index.css',
+  '/components/public/BessActionPreviewRail.vue',
+  '/components/public/BessDispatchField.vue',
+  '/utils/publicBessNarrativeArchitecture.test.ts',
   '/pages/ukraine-bess-arbitrage-index.vue'
 ])
 

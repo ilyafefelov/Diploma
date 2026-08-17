@@ -227,7 +227,8 @@ def _publication_status_payload(
     scoreboard_path: Path | None,
     error_payload: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    source = latest_payload.get("source") if isinstance(latest_payload.get("source"), Mapping) else {}
+    source_value = latest_payload.get("source")
+    source: Mapping[str, Any] = source_value if isinstance(source_value, Mapping) else {}
     actual_delivery_date = str(source.get("delivery_date") or "")
     is_current = actual_delivery_date == expected_delivery_day.isoformat()
     payload: dict[str, Any] = {
