@@ -242,6 +242,7 @@ describe('public BESS narrative architecture', () => {
     expect(nuxtConfig).toContain('Noto+Sans+Mono')
     expect(nuxtConfig).toContain('Noto+Serif')
     expect(nuxtConfig).toContain('subset=latin,cyrillic')
+    expect(nuxtConfig).toMatch(/ui:\s*\{\s*fonts: false\s*\}/)
     expect(tokens).toContain("--font-sans: 'Noto Sans'")
     expect(tokens).toContain("--font-mono: 'Noto Sans Mono'")
     expect(css).toContain('--bess-font-brand: "Alumni Sans"')
