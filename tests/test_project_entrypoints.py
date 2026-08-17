@@ -1238,7 +1238,10 @@ def test_github_workflows_use_node24_compatible_action_majors() -> None:
     assert "actions/checkout@v7" in workflow_text
     assert "actions/setup-node@v7" in workflow_text
     assert "actions/setup-python@v7" in workflow_text
-    assert "astral-sh/setup-uv@v10" in workflow_text
+    assert (
+        "astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1"
+        in workflow_text
+    )
 
 
 def _environment_without_pythonpath() -> dict[str, str]:
