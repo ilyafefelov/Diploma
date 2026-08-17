@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 
-import { useDefenseDashboard } from './useDefenseDashboard'
+import type { useDefenseDashboard } from './useDefenseDashboard'
 
 type DefenseDashboard = ReturnType<typeof useDefenseDashboard>
 

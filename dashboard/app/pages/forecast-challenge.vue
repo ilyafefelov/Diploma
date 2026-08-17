@@ -2,7 +2,29 @@
 import { computed } from 'vue'
 import { parsePublicBessPayload, publicBessDataUrl } from '~/utils/publicBessData'
 
-type PublicPayload = Record<string, any>
+interface ForecastPoint {
+  timestamp?: string
+  forecast_price_uah_mwh?: unknown
+}
+
+interface ForecastModel {
+  model_name?: string
+  label?: string
+  backend_status?: string
+  quality_boundary?: string
+  point_count?: number
+  points?: ForecastPoint[]
+}
+
+interface PublicPayload {
+  models?: ForecastModel[]
+  source?: {
+    history_row_count?: number
+  }
+  generated_at?: string
+  target_delivery_date?: string
+  market_execution_enabled?: boolean
+}
 
 const SVG_WIDTH = 760
 const SVG_HEIGHT = 300
@@ -16,7 +38,7 @@ const { data: forecastData } = await useFetch<PublicPayload>(publicBessDataUrl('
   default: () => ({ models: [] })
 })
 
-const models = computed<Record<string, any>[]>(() => (
+const models = computed<ForecastModel[]>(() => (
   Array.isArray(forecastData.value?.models) ? forecastData.value.models : []
 ))
 const forecastPointModels = computed(() => (
@@ -27,10 +49,10 @@ const hasForecastPoints = computed(() => forecastPointModels.value.length > 0)
 
 const forecastSvg = computed(() => {
   const allValues = forecastPointModels.value.flatMap(model => (
-    model.points.map((point: Record<string, any>) => numberValue(point.forecast_price_uah_mwh))
+    (model.points || []).map(point => numberValue(point.forecast_price_uah_mwh))
   ))
   const domain = domainFor(allValues)
-  const maxPointCount = Math.max(0, ...forecastPointModels.value.map(model => model.points.length))
+  const maxPointCount = Math.max(0, ...forecastPointModels.value.map(model => model.points?.length || 0))
   const xFor = xScale(maxPointCount, SVG_WIDTH)
   const yFor = yScale(domain, SVG_HEIGHT)
   const referencePoints = forecastPointModels.value[0]?.points || []
@@ -40,7 +62,7 @@ const forecastSvg = computed(() => {
     series: forecastPointModels.value.map((model, modelIndex) => ({
       label: String(model.label || model.model_name),
       color: SERIES_COLORS[modelIndex % SERIES_COLORS.length],
-      line: pointsAttr(model.points.map((point: Record<string, any>, pointIndex: number) => ({
+      line: pointsAttr((model.points || []).map((point, pointIndex) => ({
         x: xFor(pointIndex),
         y: yFor(numberValue(point.forecast_price_uah_mwh))
       })))
@@ -136,15 +158,25 @@ function pointsAttr(points: { x: number, y: number }[]) {
     <div class="bess-public-frame">
       <header class="bess-public-topbar">
         <div class="bess-public-brand">
-          <div class="bess-public-mark" aria-hidden="true">
+          <div
+            class="bess-public-mark"
+            aria-hidden="true"
+          >
             <UIcon name="i-lucide-line-chart" />
           </div>
           <div>
-            <p class="bess-public-subtitle">Forward public forecast</p>
-            <p class="bess-public-title">Forecast Challenge</p>
+            <p class="bess-public-subtitle">
+              Forward public forecast
+            </p>
+            <p class="bess-public-title">
+              Forecast Challenge
+            </p>
           </div>
         </div>
-        <nav class="bess-public-nav" aria-label="Public BESS views">
+        <nav
+          class="bess-public-nav"
+          aria-label="Public BESS views"
+        >
           <NuxtLink to="/ukraine-bess-arbitrage-index">Index</NuxtLink>
           <NuxtLink to="/forecast-challenge">Forecast Challenge</NuxtLink>
           <NuxtLink to="/model-scoreboard">Model Scoreboard</NuxtLink>
@@ -169,7 +201,9 @@ function pointsAttr(points: { x: number, y: number }[]) {
 
         <aside class="bess-score-stack">
           <div class="bess-score-primary">
-            <p class="bess-score-label">Active forecast</p>
+            <p class="bess-score-label">
+              Active forecast
+            </p>
             <p class="bess-score-value">
               {{ primaryModel?.label || 'Pending source-backed history' }}
             </p>
@@ -202,14 +236,26 @@ function pointsAttr(points: { x: number, y: number }[]) {
               <p>Visible model rows are point-in-time snapshots, not dispatch or market bids.</p>
             </div>
           </div>
-          <div v-if="!hasForecastPoints" class="bess-chart bess-empty-chart">
+          <div
+            v-if="!hasForecastPoints"
+            class="bess-chart bess-empty-chart"
+          >
             <strong>No materialized forecast points in this snapshot.</strong>
             <span>Source-backed history and blocked model rows stay visible until NBEATSx/TFT outputs are committed.</span>
           </div>
-          <div v-else class="bess-chart-wrap">
+          <div
+            v-else
+            class="bess-chart-wrap"
+          >
             <div class="bess-chart-legend">
-              <span v-for="series in forecastSvg.series" :key="series.label">
-                <i class="bess-legend-line" :style="{ background: series.color }" />{{ series.label }}
+              <span
+                v-for="series in forecastSvg.series"
+                :key="series.label"
+              >
+                <i
+                  class="bess-legend-line"
+                  :style="{ background: series.color }"
+                />{{ series.label }}
               </span>
             </div>
             <svg
@@ -218,9 +264,23 @@ function pointsAttr(points: { x: number, y: number }[]) {
               role="img"
               aria-label="Published price forecasts by model"
             >
-              <g v-for="tick in forecastSvg.yTicks" :key="`forecast-y-${tick.label}`">
-                <line class="bess-svg-grid" :x1="58" :x2="forecastSvg.width - 26" :y1="tick.y" :y2="tick.y" />
-                <text class="bess-svg-label" :x="48" :y="tick.y + 4" text-anchor="end">{{ tick.label }}</text>
+              <g
+                v-for="tick in forecastSvg.yTicks"
+                :key="`forecast-y-${tick.label}`"
+              >
+                <line
+                  class="bess-svg-grid"
+                  :x1="58"
+                  :x2="forecastSvg.width - 26"
+                  :y1="tick.y"
+                  :y2="tick.y"
+                />
+                <text
+                  class="bess-svg-label"
+                  :x="48"
+                  :y="tick.y + 4"
+                  text-anchor="end"
+                >{{ tick.label }}</text>
               </g>
               <polyline
                 v-for="series in forecastSvg.series"
@@ -229,8 +289,16 @@ function pointsAttr(points: { x: number, y: number }[]) {
                 :points="series.line"
                 :style="{ stroke: series.color }"
               />
-              <g v-for="tick in forecastSvg.xTicks" :key="`forecast-x-${tick.label}`">
-                <text class="bess-svg-label" :x="tick.x" :y="forecastSvg.height - 10" text-anchor="middle">{{ tick.label }}</text>
+              <g
+                v-for="tick in forecastSvg.xTicks"
+                :key="`forecast-x-${tick.label}`"
+              >
+                <text
+                  class="bess-svg-label"
+                  :x="tick.x"
+                  :y="forecastSvg.height - 10"
+                  text-anchor="middle"
+                >{{ tick.label }}</text>
               </g>
             </svg>
           </div>
@@ -244,7 +312,10 @@ function pointsAttr(points: { x: number, y: number }[]) {
             </div>
           </div>
           <ul class="bess-detail-list">
-            <li v-for="model in models" :key="model.model_name">
+            <li
+              v-for="model in models"
+              :key="model.model_name"
+            >
               <span>{{ model.label || model.model_name }}</span>
               <strong>{{ model.backend_status }} · {{ model.quality_boundary }}</strong>
             </li>

@@ -1,5 +1,5 @@
-const DEFAULT_PUBLIC_BESS_DATA_BASE_URL =
-  'https://raw.githubusercontent.com/ilyafefelov/Diploma/main/dashboard/public/data/bess-arbitrage-index'
+const DEFAULT_PUBLIC_BESS_DATA_BASE_URL
+  = 'https://raw.githubusercontent.com/ilyafefelov/Diploma/main/dashboard/public/data/bess-arbitrage-index'
 
 function publicBessDataBaseUrl(): string {
   const runtimeConfig = useRuntimeConfig()

@@ -243,12 +243,12 @@ def draw_social_card(
     plot = (chart_x + 72, chart_y + 122, chart_x + chart_w - 48, chart_y + chart_h - 86)
     px0, py0, px1, py1 = plot
     for g in range(5):
-        gy = py0 + (py1 - py0) * g / 4
-        draw.line((px0, gy, px1, gy), fill="#e1eef5")
+        chart_grid_y = py0 + (py1 - py0) * g / 4
+        draw.line((px0, chart_grid_y, px1, chart_grid_y), fill="#e1eef5")
     for i in range(0, 24, 3):
-        gx = px0 + (px1 - px0) * i / 23
-        draw.line((gx, py0, gx, py1), fill="#e8f3f8")
-        draw.text((gx - 9, py1 + 17), f"{i:02d}", fill=muted, font=font(14, True))
+        chart_grid_x = px0 + (px1 - px0) * i / 23
+        draw.line((chart_grid_x, py0, chart_grid_x, py1), fill="#e8f3f8")
+        draw.text((chart_grid_x - 9, py1 + 17), f"{i:02d}", fill=muted, font=font(14, True))
 
     max_price = max(max(snapshot.prices), 1.0)
     zero_y = py0 + (py1 - py0) * 0.58
@@ -267,11 +267,15 @@ def draw_social_card(
     for i, power in enumerate(snapshot.powers):
         if abs(power) < 0.008:
             continue
-        x = x_at(i)
+        chart_x_position = x_at(i)
         bar_h = max(4, abs(power) * power_scale)
         color = blue if power > 0 else yellow
         y0 = zero_y - bar_h if power > 0 else zero_y
-        draw.rounded_rectangle((x - 8, y0, x + 8, y0 + bar_h), radius=4, fill=color)
+        draw.rounded_rectangle(
+            (chart_x_position - 8, y0, chart_x_position + 8, y0 + bar_h),
+            radius=4,
+            fill=color,
+        )
 
     price_points = [(x_at(i), y_price(value)) for i, value in enumerate(snapshot.prices)]
     soc_points = [(x_at(i), y_soc(value)) for i, value in enumerate(snapshot.soc_percent)]

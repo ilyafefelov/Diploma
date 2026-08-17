@@ -90,5 +90,4 @@ describe('operator shadow preview adapter', () => {
     expect(safeSwitch?.readiness_warnings.join(' ')).toContain('Safe-switch DT shadow improves V2+')
     expect(safeSwitch?.readiness_warnings.join(' ')).toContain('3 recovered safe-switch wins')
   })
-
 })

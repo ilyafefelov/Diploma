@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    name: Python and Dagster
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      PYTHONPATH: src
+      UV_LINK_MODE: copy
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install Python dependencies
+        run: uv sync --extra dev --extra dt
+
+      - name: Run Ruff
+        run: uv run python -m ruff check src tests api
+
+      - name: Run mypy
+        run: uv run python -m mypy --config-file pyproject.toml
+
+      - name: Run Python tests
+        run: uv run python -m pytest -p no:cacheprovider tests
+
+      - name: Validate Dagster definitions
+        run: uv run dg check defs
+
+      - name: Validate Compose wiring
+        run: docker compose config --quiet
+
+  dashboard:
+    name: Dashboard
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+
+      - name: Install dashboard dependencies
+        working-directory: dashboard
+        run: npm ci
+
+      - name: Audit dashboard dependencies
+        working-directory: dashboard
+        run: npm audit --audit-level=low
+
+      - name: Lint dashboard
+        working-directory: dashboard
+        run: npm run lint
+
+      - name: Type-check dashboard
+        working-directory: dashboard
+        run: npm run typecheck
+
+      - name: Test dashboard
+        working-directory: dashboard
+        run: npm exec -- vitest run
+
+      - name: Generate static dashboard
+        working-directory: dashboard
+        env:
+          NUXT_APP_BASE_URL: /Diploma/
+          NUXT_PUBLIC_SITE_URL: https://ilyafefelov.github.io/Diploma
+        run: npm run generate
+
+  intro-video:
+    name: Intro video package
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tools/project-intro-video/package-lock.json
+
+      - name: Install intro-video dependencies
+        working-directory: tools/project-intro-video
+        run: npm ci
+
+      - name: Check intro-video package
+        working-directory: tools/project-intro-video
+        run: npm run check
+
+      - name: Audit intro-video dependencies
+        working-directory: tools/project-intro-video
+        run: npm audit --audit-level=low

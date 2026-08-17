@@ -245,7 +245,8 @@ def _publication_status_payload(
     scoreboard_path: Path,
     error_payload: Mapping[str, Any] | None,
 ) -> dict[str, Any]:
-    source = latest_payload.get("source") if isinstance(latest_payload.get("source"), Mapping) else {}
+    source_value = latest_payload.get("source")
+    source: Mapping[str, Any] = source_value if isinstance(source_value, Mapping) else {}
     actual_target_date = str(latest_payload.get("target_delivery_date") or "")
     model_statuses = [
         {

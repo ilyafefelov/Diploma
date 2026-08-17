@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { OperatorMarketVenue } from '~/types/operator-dashboard'
-import type { OperatorTimelineSegment } from '~/types/operator-dashboard'
+import type { OperatorMarketVenue, OperatorTimelineSegment } from '~/types/operator-dashboard'
+
 import type { ShadowHourlyRecommendationRow } from '~/utils/operatorShadowPreview'
 
 const props = defineProps<{

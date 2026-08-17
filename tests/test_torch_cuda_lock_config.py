@@ -1,6 +1,8 @@
 from pathlib import Path
 import tomllib
 
+from packaging.version import Version
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -8,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def test_project_pins_torch_to_cuda_126_for_windows_and_linux() -> None:
     pyproject = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
-    assert "torch==2.9.1" in pyproject["project"]["dependencies"]
+    assert "torch==2.13.0" in pyproject["project"]["dependencies"]
 
     torch_sources = pyproject["tool"]["uv"]["sources"]["torch"]
     assert {
@@ -32,7 +34,7 @@ def test_lockfile_resolves_torch_from_cuda_126_index() -> None:
     packages = {package["name"]: package for package in lockfile["package"]}
 
     torch_package = packages["torch"]
-    assert torch_package["version"] == "2.9.1+cu126"
+    assert torch_package["version"] == "2.13.0+cu126"
     assert torch_package["source"] == {
         "registry": "https://download.pytorch.org/whl/cu126"
     }
@@ -44,11 +46,11 @@ def test_dt_extra_provides_hugging_face_transformers_without_changing_torch_pin(
     packages = {package["name"]: package for package in lockfile["package"]}
 
     assert "dt" in pyproject["project"]["optional-dependencies"]
-    assert "transformers>=4.53,<5" in pyproject["project"]["optional-dependencies"]["dt"]
-    assert packages["transformers"]["version"] >= "4.53"
+    assert "transformers>=5.5,<6" in pyproject["project"]["optional-dependencies"]["dt"]
+    assert Version(packages["transformers"]["version"]) >= Version("5.5")
 
     torch_package = packages["torch"]
-    assert torch_package["version"] == "2.9.1+cu126"
+    assert torch_package["version"] == "2.13.0+cu126"
     assert torch_package["source"] == {
         "registry": "https://download.pytorch.org/whl/cu126"
     }

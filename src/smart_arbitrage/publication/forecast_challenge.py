@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
-from typing import Any, Final
+from typing import Any, Final, cast
 
 from smart_arbitrage.publication.bess_arbitrage_index import (
     PUBLIC_FORECAST_CHALLENGE_CLAIM_BOUNDARY,
@@ -203,7 +203,12 @@ def _supplied_model_series(
         model_name = str(forecast.get("model_name") or "").strip()
         if not model_name:
             continue
-        points = forecast.get("points") if isinstance(forecast.get("points"), list) else []
+        points_value = forecast.get("points")
+        points = (
+            cast(Sequence[Mapping[str, Any]], points_value)
+            if isinstance(points_value, list)
+            else []
+        )
         generated_at = _datetime_value(forecast.get("forecast_generated_at") or forecast.get("generated_at"))
         training_cutoff = _datetime_value(forecast.get("training_cutoff"))
         series.append(

@@ -36,10 +36,10 @@ const darkCategoryAxis = (
   type: 'category',
   data,
   axisLabel: {
-      color: dashboardChartTokens.axisTextOnDark,
-      fontSize: 10,
-      fontWeight: 800,
-      hideOverlap: formatter ? false : true,
+    color: dashboardChartTokens.axisTextOnDark,
+    fontSize: 10,
+    fontWeight: 800,
+    hideOverlap: formatter ? false : true,
     interval: 0,
     rotate,
     formatter

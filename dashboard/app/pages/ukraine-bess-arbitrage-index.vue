@@ -4,7 +4,52 @@ import BessActionPreviewRail from '~/components/public/BessActionPreviewRail.vue
 import BessDispatchField from '~/components/public/BessDispatchField.vue'
 import { parsePublicBessPayload, publicBessDataContentUrl, publicBessDataUrl } from '~/utils/publicBessData'
 
-type PublicPayload = Record<string, any>
+interface PublicRecord {
+  [key: string]: unknown
+  preset_id?: string
+  label?: string
+  timestamp?: string
+  delivery_date?: string
+  source_url?: string
+  source_name?: string
+  model_name?: string
+  backend_status?: string
+  quality_boundary?: string
+  point_in_time_status?: string
+  score_status?: string
+  training_cutoff?: string
+  forecast_generated_at?: string
+  generated_at?: string
+  points?: PublicRecord[]
+  hourly_schedule?: PublicRecord[]
+  metrics?: PublicRecord
+  battery?: PublicRecord
+  capacity_mwh?: number
+}
+
+interface PublicPayload {
+  presets?: PublicRecord[]
+  rows?: PublicRecord[]
+  models?: PublicRecord[]
+  metrics?: string[]
+  source?: PublicRecord
+  realized?: PublicRecord
+  forecast?: PublicRecord
+  autonomy?: PublicRecord
+  generated_at?: string
+  target_delivery_date?: string
+  score_status?: string
+  row_count?: number
+  claim_boundary?: string
+  proposed_bid_status?: string
+  market_execution_enabled?: boolean
+  methodology?: {
+    optimization_grain?: string
+    objective?: string
+    terminal_soc?: string
+    degradation_proxy?: string
+  }
+}
 type ChartPoint = { x: number, y: number }
 type BessIndexWindow = Window & {
   __bessIndexPreviousScrollRestoration?: ScrollRestoration
@@ -133,12 +178,12 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'SoftwareSourceCode',
-        name: 'Ukraine BESS Arbitrage Index',
-        description: 'Source-backed public BESS dispatch and arbitrage index for Ukrainian day-ahead electricity prices.',
-        codeRepository: repoUrl,
-        url: canonicalUrl,
-        programmingLanguage: ['TypeScript', 'Vue', 'Python'],
-        applicationCategory: 'Energy analytics'
+        'name': 'Ukraine BESS Arbitrage Index',
+        'description': 'Source-backed public BESS dispatch and arbitrage index for Ukrainian day-ahead electricity prices.',
+        'codeRepository': repoUrl,
+        'url': canonicalUrl,
+        'programmingLanguage': ['TypeScript', 'Vue', 'Python'],
+        'applicationCategory': 'Energy analytics'
       })
     },
     {
@@ -146,36 +191,36 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'Dataset',
-        name: 'Ukraine BESS Arbitrage Index public JSON artifacts',
-        description: 'Daily committed JSON artifacts for realized public BESS arbitrage index, forecast challenge rows, and publication status.',
-        url: canonicalUrl,
-        license: 'https://opensource.org/license/mit',
-        creator: {
+        'name': 'Ukraine BESS Arbitrage Index public JSON artifacts',
+        'description': 'Daily committed JSON artifacts for realized public BESS arbitrage index, forecast challenge rows, and publication status.',
+        'url': canonicalUrl,
+        'license': 'https://opensource.org/license/mit',
+        'creator': {
           '@type': 'Person',
-          name: 'Illya Fefelov',
-          email: contactEmail
+          'name': 'Illya Fefelov',
+          'email': contactEmail
         },
-        distribution: [
+        'distribution': [
           {
             '@type': 'DataDownload',
-            encodingFormat: 'application/json',
-            contentUrl: publicBessDataContentUrl('latest.json')
+            'encodingFormat': 'application/json',
+            'contentUrl': publicBessDataContentUrl('latest.json')
           },
           {
             '@type': 'DataDownload',
-            encodingFormat: 'application/json',
-            contentUrl: publicBessDataContentUrl('forecast/latest.json')
+            'encodingFormat': 'application/json',
+            'contentUrl': publicBessDataContentUrl('forecast/latest.json')
           },
           {
             '@type': 'DataDownload',
-            encodingFormat: 'application/json',
-            contentUrl: publicBessDataContentUrl('publication_status.json')
+            'encodingFormat': 'application/json',
+            'contentUrl': publicBessDataContentUrl('publication_status.json')
           }
         ],
-        isBasedOn: {
+        'isBasedOn': {
           '@type': 'Dataset',
-          name: 'OREE Day-Ahead Market public price rows',
-          url: 'https://www.oree.com.ua/'
+          'name': 'OREE Day-Ahead Market public price rows',
+          'url': 'https://www.oree.com.ua/'
         }
       })
     },
@@ -184,18 +229,18 @@ useHead({
       innerHTML: JSON.stringify({
         '@context': 'https://schema.org',
         '@type': 'WebSite',
-        name: 'Ukraine BESS Arbitrage Index',
-        url: siteUrl,
-        description: 'Public source-backed BESS arbitrage index and forecast challenge for Ukrainian DAM prices.',
-        inLanguage: 'en',
-        publisher: {
+        'name': 'Ukraine BESS Arbitrage Index',
+        'url': siteUrl,
+        'description': 'Public source-backed BESS arbitrage index and forecast challenge for Ukrainian DAM prices.',
+        'inLanguage': 'en',
+        'publisher': {
           '@type': 'Person',
-          name: 'Illya Fefelov'
+          'name': 'Illya Fefelov'
         },
-        potentialAction: {
+        'potentialAction': {
           '@type': 'ContactAction',
-          target: contactHref,
-          name: 'Request BESS analytics demo'
+          'target': contactHref,
+          'name': 'Request BESS analytics demo'
         }
       })
     }
@@ -210,7 +255,7 @@ const dispatchHoverIndex = ref<number | null>(null)
 const observedSectionIds = ['index', 'forecast', 'scoreboard', 'methodology', 'contact'] as const
 let sectionObserver: IntersectionObserver | null = null
 
-const presets = computed<Record<string, any>[]>(() => (
+const presets = computed<PublicRecord[]>(() => (
   Array.isArray(latestData.value?.presets) ? latestData.value.presets : []
 ))
 
@@ -255,19 +300,19 @@ onBeforeUnmount(() => {
   }
 })
 
-const selectedPreset = computed<Record<string, any> | null>(() => (
+const selectedPreset = computed<PublicRecord | null>(() => (
   presets.value.find(preset => String(preset.preset_id) === selectedPresetId.value) || presets.value[0] || null
 ))
 
-const selectedSchedule = computed<Record<string, any>[]>(() => (
+const selectedSchedule = computed<PublicRecord[]>(() => (
   Array.isArray(selectedPreset.value?.hourly_schedule) ? selectedPreset.value.hourly_schedule : []
 ))
 
-const selectedMetrics = computed<Record<string, any>>(() => (
+const selectedMetrics = computed<PublicRecord>(() => (
   selectedPreset.value?.metrics || {}
 ))
 
-const selectedBattery = computed<Record<string, any>>(() => (
+const selectedBattery = computed<PublicRecord>(() => (
   selectedPreset.value?.battery || {}
 ))
 
@@ -287,7 +332,7 @@ const finalSocGaugeStyle = computed(() => ({
   '--bess-soc-percent': `${finalSocPercent.value ?? 0}%`
 }))
 
-const source = computed<Record<string, any>>(() => (
+const source = computed<PublicRecord>(() => (
   latestData.value?.source || {}
 ))
 
@@ -298,21 +343,21 @@ const forecastGeneratedAt = computed(() => compactIso(forecastData.value?.genera
 const deliveryDate = computed(() => String(source.value.delivery_date || 'pending'))
 const rowCount = computed(() => Number(source.value.row_count || selectedSchedule.value.length || 0))
 
-const historyRowsForPreset = computed<Record<string, any>[]>(() => (
+const historyRowsForPreset = computed<PublicRecord[]>(() => (
   Array.isArray(historyData.value?.rows)
-    ? historyData.value.rows.filter((row: Record<string, any>) => row.preset_id === selectedPreset.value?.preset_id)
+    ? historyData.value.rows.filter((row: PublicRecord) => row.preset_id === selectedPreset.value?.preset_id)
     : []
 ))
 
-const models = computed<Record<string, any>[]>(() => (
+const models = computed<PublicRecord[]>(() => (
   Array.isArray(forecastData.value?.models) ? forecastData.value.models : []
 ))
 
-const primaryForecast = computed<Record<string, any> | null>(() => (
+const primaryForecast = computed<PublicRecord | null>(() => (
   models.value.find(model => Array.isArray(model.points) && model.points.length > 0) || models.value[0] || null
 ))
 
-const scoreboardRows = computed<Record<string, any>[]>(() => (
+const scoreboardRows = computed<PublicRecord[]>(() => (
   Array.isArray(scoreboardData.value?.rows) ? scoreboardData.value.rows : []
 ))
 
@@ -320,15 +365,15 @@ const scoreboardMetrics = computed<string[]>(() => (
   Array.isArray(scoreboardData.value?.metrics) ? scoreboardData.value.metrics : []
 ))
 
-const realizedPublication = computed<Record<string, any>>(() => (
+const realizedPublication = computed<PublicRecord>(() => (
   publicationStatusData.value?.realized || {}
 ))
 
-const forecastPublication = computed<Record<string, any>>(() => (
+const forecastPublication = computed<PublicRecord>(() => (
   publicationStatusData.value?.forecast || {}
 ))
 
-const autonomyPublication = computed<Record<string, any>>(() => (
+const autonomyPublication = computed<PublicRecord>(() => (
   publicationStatusData.value?.autonomy || {}
 ))
 
@@ -454,7 +499,7 @@ const connectRoutes = [
   }
 ]
 
-const workbenchModels = computed<Record<string, any>[]>(() => models.value.slice(0, 3))
+const workbenchModels = computed<PublicRecord[]>(() => models.value.slice(0, 3))
 const workbenchStages = promotionStages.slice(0, 4)
 
 const dispatchSvg = computed(() => {
@@ -963,11 +1008,22 @@ function pointsAttr(points: ChartPoint[]): string {
 
 <template>
   <main class="bess-public-shell bess-public-shell--narrative">
-    <div class="bess-scroll-progress" aria-hidden="true" />
+    <div
+      class="bess-scroll-progress"
+      aria-hidden="true"
+    />
     <div class="bess-public-frame">
       <header class="bess-public-topbar">
-        <a class="bess-public-brand" href="#index" aria-label="Ukraine BESS Arbitrage Index" @click.prevent="navigateToSection('index')">
-          <span class="bess-public-mark" aria-hidden="true">
+        <a
+          class="bess-public-brand"
+          href="#index"
+          aria-label="Ukraine BESS Arbitrage Index"
+          @click.prevent="navigateToSection('index')"
+        >
+          <span
+            class="bess-public-mark"
+            aria-hidden="true"
+          >
             <UIcon name="i-lucide-chart-no-axes-combined" />
           </span>
           <span>
@@ -978,46 +1034,97 @@ function pointsAttr(points: ChartPoint[]): string {
             </span>
           </span>
         </a>
-        <nav class="bess-public-nav" aria-label="Public index sections">
-          <a href="#index" :class="{ 'is-active': activeSection === 'index' }" :aria-current="activeSection === 'index' ? 'page' : undefined" @click.prevent="navigateToSection('index')">
+        <nav
+          class="bess-public-nav"
+          aria-label="Public index sections"
+        >
+          <a
+            href="#index"
+            :class="{ 'is-active': activeSection === 'index' }"
+            :aria-current="activeSection === 'index' ? 'page' : undefined"
+            @click.prevent="navigateToSection('index')"
+          >
             <span>Index</span>
             <span aria-hidden="true">Index</span>
           </a>
-          <a href="#forecast" :class="{ 'is-active': activeSection === 'forecast' }" :aria-current="activeSection === 'forecast' ? 'page' : undefined" @click.prevent="navigateToSection('forecast')">
+          <a
+            href="#forecast"
+            :class="{ 'is-active': activeSection === 'forecast' }"
+            :aria-current="activeSection === 'forecast' ? 'page' : undefined"
+            @click.prevent="navigateToSection('forecast')"
+          >
             <span>Forecast Challenge</span>
             <span aria-hidden="true">Forecast</span>
           </a>
-          <a href="#scoreboard" :class="{ 'is-active': activeSection === 'scoreboard' }" :aria-current="activeSection === 'scoreboard' ? 'page' : undefined" @click.prevent="navigateToSection('scoreboard')">
+          <a
+            href="#scoreboard"
+            :class="{ 'is-active': activeSection === 'scoreboard' }"
+            :aria-current="activeSection === 'scoreboard' ? 'page' : undefined"
+            @click.prevent="navigateToSection('scoreboard')"
+          >
             <span>Model Scoreboard</span>
             <span aria-hidden="true">Models</span>
           </a>
-          <a href="#methodology" :class="{ 'is-active': activeSection === 'methodology' }" :aria-current="activeSection === 'methodology' ? 'page' : undefined" @click.prevent="navigateToSection('methodology')">
+          <a
+            href="#methodology"
+            :class="{ 'is-active': activeSection === 'methodology' }"
+            :aria-current="activeSection === 'methodology' ? 'page' : undefined"
+            @click.prevent="navigateToSection('methodology')"
+          >
             <span>Methodology</span>
             <span aria-hidden="true">Method</span>
           </a>
-          <a href="#contact" :class="{ 'is-active': activeSection === 'contact' }" :aria-current="activeSection === 'contact' ? 'page' : undefined" @click.prevent="navigateToSection('contact')">
+          <a
+            href="#contact"
+            :class="{ 'is-active': activeSection === 'contact' }"
+            :aria-current="activeSection === 'contact' ? 'page' : undefined"
+            @click.prevent="navigateToSection('contact')"
+          >
             <span>About</span>
             <span aria-hidden="true">About</span>
           </a>
         </nav>
-        <div class="bess-public-actions" aria-label="Public index actions">
-          <span class="bess-live-pill" :class="{ 'bess-live-pill--watch': freshnessLabel !== 'LIVE' }">
+        <div
+          class="bess-public-actions"
+          aria-label="Public index actions"
+        >
+          <span
+            class="bess-live-pill"
+            :class="{ 'bess-live-pill--watch': freshnessLabel !== 'LIVE' }"
+          >
             <span aria-hidden="true" />
             {{ freshnessLabel === 'LIVE' ? 'Live Data' : 'Freshness Watch' }}
           </span>
-          <a class="bess-action-link bess-action-icon" :href="repoUrl" target="_blank" rel="noreferrer" aria-label="Open GitHub source">
+          <a
+            class="bess-action-link bess-action-icon"
+            :href="repoUrl"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Open GitHub source"
+          >
             <UIcon name="i-lucide-github" />
           </a>
-          <a class="bess-action-link bess-action-icon" :href="contactHref" aria-label="Discuss BESS analytics">
+          <a
+            class="bess-action-link bess-action-icon"
+            :href="contactHref"
+            aria-label="Discuss BESS analytics"
+          >
             <UIcon name="i-lucide-send" />
           </a>
         </div>
       </header>
 
-      <section id="index" class="bess-narrative-hero" aria-labelledby="bess-index-title">
+      <section
+        id="index"
+        class="bess-narrative-hero"
+        aria-labelledby="bess-index-title"
+      >
         <div class="bess-panel bess-panel--inset bess-hero-copy bess-hero-copy--narrative">
           <div>
-            <div class="bess-hero-rule" aria-hidden="true">
+            <div
+              class="bess-hero-rule"
+              aria-hidden="true"
+            >
               <span />
               <span />
               <span />
@@ -1031,7 +1138,10 @@ function pointsAttr(points: ChartPoint[]): string {
             </p>
           </div>
 
-          <div class="bess-hero-evidence-stack" aria-label="Source and dispatch legend">
+          <div
+            class="bess-hero-evidence-stack"
+            aria-label="Source and dispatch legend"
+          >
             <article class="bess-hero-source-card">
               <div>
                 <span>Source</span>
@@ -1040,7 +1150,10 @@ function pointsAttr(points: ChartPoint[]): string {
               </div>
               <UIcon name="i-lucide-circle-check" />
             </article>
-            <article class="bess-hero-dispatch-legend" aria-label="Dispatch legend">
+            <article
+              class="bess-hero-dispatch-legend"
+              aria-label="Dispatch legend"
+            >
               <strong>Dispatch legend</strong>
               <span><i class="bess-hero-legend-key bess-hero-legend-key--discharge" /> Discharge (to grid)</span>
               <span><i class="bess-hero-legend-key bess-hero-legend-key--charge" /> Charge (from grid)</span>
@@ -1056,16 +1169,28 @@ function pointsAttr(points: ChartPoint[]): string {
             <span class="bess-chip">No market execution</span>
           </div>
           <div class="bess-hero-actions">
-            <a class="bess-hero-cta" href="#contact" @click.prevent="navigateToSection('contact')">
+            <a
+              class="bess-hero-cta"
+              href="#contact"
+              @click.prevent="navigateToSection('contact')"
+            >
               <UIcon name="i-lucide-sparkles" />
               Let's connect
             </a>
-            <a class="bess-hero-cta bess-hero-cta--ghost" :href="repoUrl" target="_blank" rel="noreferrer">
+            <a
+              class="bess-hero-cta bess-hero-cta--ghost"
+              :href="repoUrl"
+              target="_blank"
+              rel="noreferrer"
+            >
               <UIcon name="i-lucide-file-json-2" />
               Audit JSON
             </a>
           </div>
-          <div class="bess-hero-flow" aria-label="Autonomous publication flow">
+          <div
+            class="bess-hero-flow"
+            aria-label="Autonomous publication flow"
+          >
             <span>OREE rows</span>
             <span>LP dispatch</span>
             <span>GitHub JSON</span>
@@ -1073,15 +1198,24 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
         </div>
 
-        <section class="bess-hero-receipt" aria-label="Index generation receipt">
-          <article v-for="row in heroReceiptRows" :key="row.label">
+        <section
+          class="bess-hero-receipt"
+          aria-label="Index generation receipt"
+        >
+          <article
+            v-for="row in heroReceiptRows"
+            :key="row.label"
+          >
             <span>{{ row.label }}</span>
             <strong>{{ row.value }}</strong>
             <em>{{ row.meta }}</em>
           </article>
         </section>
 
-        <div class="bess-hero-stage" aria-label="Animated BESS dispatch field">
+        <div
+          class="bess-hero-stage"
+          aria-label="Animated BESS dispatch field"
+        >
           <ClientOnly>
             <BessDispatchField
               :schedule="selectedSchedule"
@@ -1097,12 +1231,22 @@ function pointsAttr(points: ChartPoint[]): string {
               </div>
             </template>
           </ClientOnly>
-          <p v-if="threeFallbackReason && threeFallbackReason !== 'reduced_motion'" class="bess-field-note">
+          <p
+            v-if="threeFallbackReason && threeFallbackReason !== 'reduced_motion'"
+            class="bess-field-note"
+          >
             Dispatch field fallback: {{ threeFallbackReason }}. Audit charts remain available below.
           </p>
-          <div v-if="presets.length > 1" class="bess-hero-preset-switcher" aria-label="Battery preset selector">
+          <div
+            v-if="presets.length > 1"
+            class="bess-hero-preset-switcher"
+            aria-label="Battery preset selector"
+          >
             <span>Selected pack</span>
-            <div class="bess-hero-preset-switcher__buttons" role="group">
+            <div
+              class="bess-hero-preset-switcher__buttons"
+              role="group"
+            >
               <button
                 v-for="preset in presets"
                 :key="`hero-preset-${preset.preset_id}`"
@@ -1116,10 +1260,16 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
         </div>
 
-        <aside class="bess-hero-side" aria-label="Index side receipts">
+        <aside
+          class="bess-hero-side"
+          aria-label="Index side receipts"
+        >
           <article class="bess-side-card bess-side-card--soc">
             <span>End of Day SOC</span>
-            <div class="bess-soc-gauge" :style="finalSocGaugeStyle">
+            <div
+              class="bess-soc-gauge"
+              :style="finalSocGaugeStyle"
+            >
               <strong>{{ finalSocPercent === null ? 'Pending' : `${formatNumber(finalSocPercent, 1)}%` }}</strong>
               <small>Target: {{ formatNumber(numberValue(selectedBattery.initial_soc_fraction) * 100, 0) }}%</small>
             </div>
@@ -1148,9 +1298,16 @@ function pointsAttr(points: ChartPoint[]): string {
                 <dd>{{ formatNumber(numberValue(selectedBattery.round_trip_efficiency) * 100, 0) }}%</dd>
               </div>
             </dl>
-            <div v-if="presets.length > 1" class="bess-battery-preset-switcher" aria-label="Battery preset selector">
+            <div
+              v-if="presets.length > 1"
+              class="bess-battery-preset-switcher"
+              aria-label="Battery preset selector"
+            >
               <span>Switch preset</span>
-              <div class="bess-battery-preset-switcher__buttons" role="group">
+              <div
+                class="bess-battery-preset-switcher__buttons"
+                role="group"
+              >
                 <button
                   v-for="preset in presets"
                   :key="`side-preset-${preset.preset_id}`"
@@ -1176,7 +1333,10 @@ function pointsAttr(points: ChartPoint[]): string {
           </article>
         </aside>
 
-        <aside class="bess-kpi-rail" aria-label="Headline index metrics">
+        <aside
+          class="bess-kpi-rail"
+          aria-label="Headline index metrics"
+        >
           <div class="bess-kpi-title">
             <span>Perfect-hindsight index receipt</span>
             <strong>{{ deliveryDate }}</strong>
@@ -1184,9 +1344,15 @@ function pointsAttr(points: ChartPoint[]): string {
           <div class="bess-score-primary bess-score-primary--light">
             <UIcon name="i-lucide-coins" />
             <div>
-              <p class="bess-score-label">Net value</p>
-              <p class="bess-score-value">{{ formatUah(selectedMetrics.net_value_uah) }}</p>
-              <p class="bess-score-meta">{{ selectedPreset?.label || 'Battery preset pending' }}</p>
+              <p class="bess-score-label">
+                Net value
+              </p>
+              <p class="bess-score-value">
+                {{ formatUah(selectedMetrics.net_value_uah) }}
+              </p>
+              <p class="bess-score-meta">
+                {{ selectedPreset?.label || 'Battery preset pending' }}
+              </p>
             </div>
           </div>
           <div class="bess-metric-grid bess-metric-grid--rail">
@@ -1235,18 +1401,29 @@ function pointsAttr(points: ChartPoint[]): string {
         :proposed-bid-status="proposedBidStatusRaw"
       />
 
-      <section class="bess-first-screen-row bess-deferred-section" aria-label="First-screen evidence, forecast, and promotion summary">
+      <section
+        class="bess-first-screen-row bess-deferred-section"
+        aria-label="First-screen evidence, forecast, and promotion summary"
+      >
         <article class="bess-panel bess-panel--inset bess-concept-chart-panel">
           <div class="bess-concept-panel-head">
             <div>
-              <p class="bess-kicker">Price, Dispatch &amp; SoC</p>
+              <p class="bess-kicker">
+                Price, Dispatch &amp; SoC
+              </p>
               <h2>24-hour evidence</h2>
             </div>
             <span>Figure</span>
           </div>
 
-          <div v-if="dispatchSvg" class="bess-concept-chart-wrap">
-            <div class="bess-chart-marker-layer bess-chart-marker-layer--compact" aria-label="Key dispatch hour shortcuts">
+          <div
+            v-if="dispatchSvg"
+            class="bess-concept-chart-wrap"
+          >
+            <div
+              class="bess-chart-marker-layer bess-chart-marker-layer--compact"
+              aria-label="Key dispatch hour shortcuts"
+            >
               <button
                 v-for="marker in dispatchChartMarkers"
                 :key="`compact-marker-${marker.key}`"
@@ -1322,9 +1499,19 @@ function pointsAttr(points: ChartPoint[]): string {
                 :aria-label="`${bar.hour} ${bar.kind}`"
                 @pointerenter="selectDispatchPoint(index)"
               />
-              <polyline class="bess-svg-line bess-svg-line--price" :points="dispatchSvg.priceLine" />
-              <polyline class="bess-svg-line bess-svg-line--soc" :points="dispatchSvg.socLine" />
-              <g v-if="dispatchActivePoint" class="bess-svg-active" aria-hidden="true">
+              <polyline
+                class="bess-svg-line bess-svg-line--price"
+                :points="dispatchSvg.priceLine"
+              />
+              <polyline
+                class="bess-svg-line bess-svg-line--soc"
+                :points="dispatchSvg.socLine"
+              />
+              <g
+                v-if="dispatchActivePoint"
+                class="bess-svg-active"
+                aria-hidden="true"
+              >
                 <line
                   class="bess-svg-active-line"
                   :x1="dispatchActivePoint.x"
@@ -1332,17 +1519,59 @@ function pointsAttr(points: ChartPoint[]): string {
                   :y1="SVG_MARGIN.top"
                   :y2="dispatchSvg.height - SVG_MARGIN.bottom"
                 />
-                <circle class="bess-svg-active-ripple" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.priceY" r="18" />
-                <circle class="bess-svg-active-ripple bess-svg-active-ripple--late" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.priceY" r="27" />
-                <circle class="bess-svg-active-point" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.priceY" r="5" />
-                <circle class="bess-svg-active-point bess-svg-active-point--soc" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.socY" r="4" />
-                <g class="bess-svg-tooltip bess-svg-tooltip--compact" :transform="`translate(${dispatchActivePoint.tooltipX} ${dispatchActivePoint.tooltipY})`">
-                  <rect width="170" height="64" rx="7" />
-                  <text x="9" y="15">Hour {{ dispatchActivePoint.hour }}</text>
-                  <text x="9" y="29">{{ formatNumber(dispatchActivePoint.price, 0) }} UAH/MWh</text>
-                  <text x="9" y="43">{{ formatMw(dispatchActivePoint.power) }}</text>
-                  <text x="9" y="57">SOC {{ dispatchActivePoint.socPercent === null ? formatMwh(dispatchActivePoint.soc) : `${formatNumber(dispatchActivePoint.socPercent, 1)}%` }}</text>
-                  <text x="108" y="57">{{ formatUah(dispatchActivePoint.value) }}</text>
+                <circle
+                  class="bess-svg-active-ripple"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.priceY"
+                  r="18"
+                />
+                <circle
+                  class="bess-svg-active-ripple bess-svg-active-ripple--late"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.priceY"
+                  r="27"
+                />
+                <circle
+                  class="bess-svg-active-point"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.priceY"
+                  r="5"
+                />
+                <circle
+                  class="bess-svg-active-point bess-svg-active-point--soc"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.socY"
+                  r="4"
+                />
+                <g
+                  class="bess-svg-tooltip bess-svg-tooltip--compact"
+                  :transform="`translate(${dispatchActivePoint.tooltipX} ${dispatchActivePoint.tooltipY})`"
+                >
+                  <rect
+                    width="170"
+                    height="64"
+                    rx="7"
+                  />
+                  <text
+                    x="9"
+                    y="15"
+                  >Hour {{ dispatchActivePoint.hour }}</text>
+                  <text
+                    x="9"
+                    y="29"
+                  >{{ formatNumber(dispatchActivePoint.price, 0) }} UAH/MWh</text>
+                  <text
+                    x="9"
+                    y="43"
+                  >{{ formatMw(dispatchActivePoint.power) }}</text>
+                  <text
+                    x="9"
+                    y="57"
+                  >SOC {{ dispatchActivePoint.socPercent === null ? formatMwh(dispatchActivePoint.soc) : `${formatNumber(dispatchActivePoint.socPercent, 1)}%` }}</text>
+                  <text
+                    x="108"
+                    y="57"
+                  >{{ formatUah(dispatchActivePoint.value) }}</text>
                 </g>
               </g>
               <text
@@ -1393,14 +1622,25 @@ function pointsAttr(points: ChartPoint[]): string {
               <caption>Compact 24-hour BESS dispatch schedule evidence</caption>
               <thead>
                 <tr>
-                  <th scope="col">Hour</th>
-                  <th scope="col">DAM price</th>
-                  <th scope="col">Dispatch power</th>
-                  <th scope="col">Net value</th>
+                  <th scope="col">
+                    Hour
+                  </th>
+                  <th scope="col">
+                    DAM price
+                  </th>
+                  <th scope="col">
+                    Dispatch power
+                  </th>
+                  <th scope="col">
+                    Net value
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="point in dispatchSvg.points" :key="`compact-dispatch-row-${point.hour}`">
+                <tr
+                  v-for="point in dispatchSvg.points"
+                  :key="`compact-dispatch-row-${point.hour}`"
+                >
                   <td>{{ point.hour }}</td>
                   <td>{{ formatNumber(point.price, 0) }} UAH/MWh</td>
                   <td>{{ formatMw(point.power) }}</td>
@@ -1409,7 +1649,10 @@ function pointsAttr(points: ChartPoint[]): string {
               </tbody>
             </table>
           </div>
-          <div v-else class="bess-empty-chart bess-empty-chart--compact">
+          <div
+            v-else
+            class="bess-empty-chart bess-empty-chart--compact"
+          >
             <strong>No complete dispatch rows yet.</strong>
             <span>Daily JSON will populate this chart after publication.</span>
           </div>
@@ -1418,14 +1661,22 @@ function pointsAttr(points: ChartPoint[]): string {
         <article class="bess-panel bess-panel--inset bess-concept-forecast-panel">
           <div class="bess-concept-panel-head">
             <div>
-              <p class="bess-kicker">Forecast Challenge</p>
+              <p class="bess-kicker">
+                Forecast Challenge
+              </p>
               <h2>Tomorrow lanes</h2>
             </div>
-            <NuxtLink class="bess-technical-link" to="/forecast-challenge">
+            <NuxtLink
+              class="bess-technical-link"
+              to="/forecast-challenge"
+            >
               Leaderboard
             </NuxtLink>
           </div>
-          <div v-if="workbenchModels.length > 0" class="bess-concept-model-list">
+          <div
+            v-if="workbenchModels.length > 0"
+            class="bess-concept-model-list"
+          >
             <button
               v-for="(model, index) in workbenchModels"
               :key="`${model.model_name || model.label || 'concept-model'}-${index}`"
@@ -1442,23 +1693,33 @@ function pointsAttr(points: ChartPoint[]): string {
               </i>
             </button>
           </div>
-          <div v-else class="bess-empty-chart bess-empty-chart--compact">
+          <div
+            v-else
+            class="bess-empty-chart bess-empty-chart--compact"
+          >
             <strong>No forecast artifact yet.</strong>
             <span>Forecast rows will appear after the publisher commits a timestamped JSON artifact.</span>
           </div>
-          <p class="bess-concept-footnote">Scored only after official OREE data is published.</p>
+          <p class="bess-concept-footnote">
+            Scored only after official OREE data is published.
+          </p>
         </article>
 
         <article class="bess-panel bess-panel--inset bess-concept-ladder-panel">
           <div class="bess-concept-panel-head">
             <div>
-              <p class="bess-kicker">Promotion Ladder</p>
+              <p class="bess-kicker">
+                Promotion Ladder
+              </p>
               <h2>What earns trust next</h2>
             </div>
             <span>No execution</span>
           </div>
           <ol class="bess-concept-ladder">
-            <li v-for="stage in workbenchStages" :key="`concept-${stage.stage}`">
+            <li
+              v-for="stage in workbenchStages"
+              :key="`concept-${stage.stage}`"
+            >
               <span>{{ stage.stage.replace('Stage ', '') }}</span>
               <div>
                 <strong>{{ stage.title }}</strong>
@@ -1466,25 +1727,36 @@ function pointsAttr(points: ChartPoint[]): string {
               </div>
             </li>
           </ol>
-          <a class="bess-workbench-link bess-workbench-link--primary bess-concept-cta" :href="contactHref">
+          <a
+            class="bess-workbench-link bess-workbench-link--primary bess-concept-cta"
+            :href="contactHref"
+          >
             <span>Let's connect</span>
             <UIcon name="i-lucide-arrow-right" />
           </a>
         </article>
       </section>
 
-      <section class="bess-section-grid bess-section-grid--evidence bess-deferred-section" aria-label="Dispatch evidence">
+      <section
+        class="bess-section-grid bess-section-grid--evidence bess-deferred-section"
+        aria-label="Dispatch evidence"
+      >
         <div class="bess-panel bess-chart-panel">
           <div class="bess-section-header">
             <div>
-              <p class="bess-kicker">Dispatch and price receipt</p>
+              <p class="bess-kicker">
+                Dispatch and price receipt
+              </p>
               <h2>24-hour schedule evidence</h2>
               <p>
                 Bars show charge and discharge power. The blue line shows observed DAM price.
                 This chart is source-backed evidence, not a proposed bid.
               </p>
             </div>
-            <div class="bess-segmented" aria-label="Battery preset selector">
+            <div
+              class="bess-segmented"
+              aria-label="Battery preset selector"
+            >
               <button
                 v-for="preset in presets"
                 :key="preset.preset_id"
@@ -1497,8 +1769,14 @@ function pointsAttr(points: ChartPoint[]): string {
             </div>
           </div>
 
-          <div v-if="dispatchSvg" class="bess-chart-wrap">
-            <div class="bess-chart-marker-layer" aria-label="Key dispatch hour shortcuts">
+          <div
+            v-if="dispatchSvg"
+            class="bess-chart-wrap"
+          >
+            <div
+              class="bess-chart-marker-layer"
+              aria-label="Key dispatch hour shortcuts"
+            >
               <button
                 v-for="marker in dispatchChartMarkers"
                 :key="`marker-${marker.key}`"
@@ -1564,9 +1842,19 @@ function pointsAttr(points: ChartPoint[]): string {
                 :aria-label="`${bar.hour} ${bar.kind}`"
                 @pointerenter="selectDispatchPoint(index)"
               />
-              <polyline class="bess-svg-line bess-svg-line--price" :points="dispatchSvg.priceLine" />
-              <polyline class="bess-svg-line bess-svg-line--soc" :points="dispatchSvg.socLine" />
-              <g v-if="dispatchActivePoint" class="bess-svg-active" aria-hidden="true">
+              <polyline
+                class="bess-svg-line bess-svg-line--price"
+                :points="dispatchSvg.priceLine"
+              />
+              <polyline
+                class="bess-svg-line bess-svg-line--soc"
+                :points="dispatchSvg.socLine"
+              />
+              <g
+                v-if="dispatchActivePoint"
+                class="bess-svg-active"
+                aria-hidden="true"
+              >
                 <line
                   class="bess-svg-active-line"
                   :x1="dispatchActivePoint.x"
@@ -1574,17 +1862,59 @@ function pointsAttr(points: ChartPoint[]): string {
                   :y1="SVG_MARGIN.top"
                   :y2="dispatchSvg.height - SVG_MARGIN.bottom"
                 />
-                <circle class="bess-svg-active-ripple" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.priceY" r="21" />
-                <circle class="bess-svg-active-ripple bess-svg-active-ripple--late" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.priceY" r="30" />
-                <circle class="bess-svg-active-point" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.priceY" r="5" />
-                <circle class="bess-svg-active-point bess-svg-active-point--soc" :cx="dispatchActivePoint.x" :cy="dispatchActivePoint.socY" r="4" />
-                <g class="bess-svg-tooltip" :transform="`translate(${dispatchActivePoint.tooltipX} ${dispatchActivePoint.tooltipY})`">
-                  <rect width="184" height="72" rx="7" />
-                  <text x="10" y="16">Hour {{ dispatchActivePoint.hour }}</text>
-                  <text x="10" y="31">Price {{ formatNumber(dispatchActivePoint.price, 0) }} UAH/MWh</text>
-                  <text x="10" y="46">Power {{ formatMw(dispatchActivePoint.power) }}</text>
-                  <text x="10" y="61">SOC {{ dispatchActivePoint.socPercent === null ? formatMwh(dispatchActivePoint.soc) : `${formatNumber(dispatchActivePoint.socPercent, 1)}%` }}</text>
-                  <text x="118" y="61">{{ formatUah(dispatchActivePoint.value) }}</text>
+                <circle
+                  class="bess-svg-active-ripple"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.priceY"
+                  r="21"
+                />
+                <circle
+                  class="bess-svg-active-ripple bess-svg-active-ripple--late"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.priceY"
+                  r="30"
+                />
+                <circle
+                  class="bess-svg-active-point"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.priceY"
+                  r="5"
+                />
+                <circle
+                  class="bess-svg-active-point bess-svg-active-point--soc"
+                  :cx="dispatchActivePoint.x"
+                  :cy="dispatchActivePoint.socY"
+                  r="4"
+                />
+                <g
+                  class="bess-svg-tooltip"
+                  :transform="`translate(${dispatchActivePoint.tooltipX} ${dispatchActivePoint.tooltipY})`"
+                >
+                  <rect
+                    width="184"
+                    height="72"
+                    rx="7"
+                  />
+                  <text
+                    x="10"
+                    y="16"
+                  >Hour {{ dispatchActivePoint.hour }}</text>
+                  <text
+                    x="10"
+                    y="31"
+                  >Price {{ formatNumber(dispatchActivePoint.price, 0) }} UAH/MWh</text>
+                  <text
+                    x="10"
+                    y="46"
+                  >Power {{ formatMw(dispatchActivePoint.power) }}</text>
+                  <text
+                    x="10"
+                    y="61"
+                  >SOC {{ dispatchActivePoint.socPercent === null ? formatMwh(dispatchActivePoint.soc) : `${formatNumber(dispatchActivePoint.socPercent, 1)}%` }}</text>
+                  <text
+                    x="118"
+                    y="61"
+                  >{{ formatUah(dispatchActivePoint.value) }}</text>
                 </g>
               </g>
               <text
@@ -1625,14 +1955,25 @@ function pointsAttr(points: ChartPoint[]): string {
               <caption>24-hour BESS dispatch schedule evidence</caption>
               <thead>
                 <tr>
-                  <th scope="col">Hour</th>
-                  <th scope="col">DAM price</th>
-                  <th scope="col">Dispatch power</th>
-                  <th scope="col">Net value</th>
+                  <th scope="col">
+                    Hour
+                  </th>
+                  <th scope="col">
+                    DAM price
+                  </th>
+                  <th scope="col">
+                    Dispatch power
+                  </th>
+                  <th scope="col">
+                    Net value
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="point in dispatchSvg.points" :key="`dispatch-row-${point.hour}`">
+                <tr
+                  v-for="point in dispatchSvg.points"
+                  :key="`dispatch-row-${point.hour}`"
+                >
                   <td>{{ point.hour }}</td>
                   <td>{{ formatNumber(point.price, 0) }} UAH/MWh</td>
                   <td>{{ formatMw(point.power) }}</td>
@@ -1641,7 +1982,10 @@ function pointsAttr(points: ChartPoint[]): string {
               </tbody>
             </table>
           </div>
-          <div v-else class="bess-empty-chart">
+          <div
+            v-else
+            class="bess-empty-chart"
+          >
             <strong>No complete dispatch rows yet.</strong>
             <span>The page will populate when the daily GitHub publisher commits a complete source-backed JSON file.</span>
           </div>
@@ -1650,7 +1994,9 @@ function pointsAttr(points: ChartPoint[]): string {
         <aside class="bess-panel bess-panel--inset bess-preset-panel">
           <div class="bess-section-header">
             <div>
-              <p class="bess-kicker">Battery assumptions</p>
+              <p class="bess-kicker">
+                Battery assumptions
+              </p>
               <h2>Preset receipt</h2>
             </div>
           </div>
@@ -1683,18 +2029,32 @@ function pointsAttr(points: ChartPoint[]): string {
         </aside>
       </section>
 
-      <section class="bess-proof-strip" aria-label="Source, claim, and publication proof">
-        <div class="bess-source-ledger" aria-label="Source and claim boundary">
+      <section
+        class="bess-proof-strip"
+        aria-label="Source, claim, and publication proof"
+      >
+        <div
+          class="bess-source-ledger"
+          aria-label="Source and claim boundary"
+        >
           <div class="bess-ledger-item">
             <span>Official source</span>
-            <a v-if="source.source_url" :href="source.source_url" target="_blank" rel="noreferrer">
+            <a
+              v-if="source.source_url"
+              :href="source.source_url"
+              target="_blank"
+              rel="noreferrer"
+            >
               {{ source.source_name || 'OREE DAM hourly prices' }}
             </a>
             <strong v-else>{{ source.source_name || 'OREE DAM hourly prices' }}</strong>
           </div>
           <div class="bess-ledger-item">
             <span>Status</span>
-            <strong :class="{ 'bess-text-warn': isBlocked }" :title="sourceStatus">{{ receiptLabel(sourceStatus) }}</strong>
+            <strong
+              :class="{ 'bess-text-warn': isBlocked }"
+              :title="sourceStatus"
+            >{{ receiptLabel(sourceStatus) }}</strong>
           </div>
           <div class="bess-ledger-item">
             <span>Claim boundary</span>
@@ -1706,8 +2066,14 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
         </div>
 
-        <div class="bess-autonomy-receipt" aria-label="Autonomous publication status">
-          <div class="bess-autonomy-stamp" :class="{ 'bess-autonomy-stamp--warn': realizedFreshStatus !== 'current_for_kyiv_schedule' || forecastFreshStatus !== 'current_for_kyiv_schedule' }">
+        <div
+          class="bess-autonomy-receipt"
+          aria-label="Autonomous publication status"
+        >
+          <div
+            class="bess-autonomy-stamp"
+            :class="{ 'bess-autonomy-stamp--warn': realizedFreshStatus !== 'current_for_kyiv_schedule' || forecastFreshStatus !== 'current_for_kyiv_schedule' }"
+          >
             <span>Autonomous lane</span>
             <strong>{{ realizedFreshStatus === 'current_for_kyiv_schedule' && forecastFreshStatus === 'current_for_kyiv_schedule' ? 'current' : 'watch freshness' }}</strong>
           </div>
@@ -1738,18 +2104,27 @@ function pointsAttr(points: ChartPoint[]): string {
         </div>
       </section>
 
-      <section id="forecast" class="bess-section-grid bess-section-grid--forecast bess-deferred-section" aria-label="Forecast challenge preview">
+      <section
+        id="forecast"
+        class="bess-section-grid bess-section-grid--forecast bess-deferred-section"
+        aria-label="Forecast challenge preview"
+      >
         <div class="bess-panel bess-panel--inset bess-forecast-panel">
           <div class="bess-section-header">
             <div>
-              <p class="bess-kicker">Forecast Challenge</p>
+              <p class="bess-kicker">
+                Forecast Challenge
+              </p>
               <h2>Forecasts stay separate from the realized index</h2>
               <p>
                 Public forecasts are committed before realized rows are scored. The realized
                 deterministic index above is not blended with forecast model output.
               </p>
             </div>
-            <NuxtLink class="bess-technical-link" to="/forecast-challenge">
+            <NuxtLink
+              class="bess-technical-link"
+              to="/forecast-challenge"
+            >
               Open technical page
             </NuxtLink>
           </div>
@@ -1777,11 +2152,16 @@ function pointsAttr(points: ChartPoint[]): string {
         <aside class="bess-panel bess-panel--inset bess-model-lanes-panel">
           <div class="bess-section-header">
             <div>
-              <p class="bess-kicker">Readiness</p>
+              <p class="bess-kicker">
+                Readiness
+              </p>
               <h2>Visible model lanes</h2>
             </div>
           </div>
-          <div v-if="models.length > 0" class="bess-model-table-wrap">
+          <div
+            v-if="models.length > 0"
+            class="bess-model-table-wrap"
+          >
             <table class="bess-model-table">
               <thead>
                 <tr>
@@ -1793,7 +2173,10 @@ function pointsAttr(points: ChartPoint[]): string {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(model, index) in models" :key="`${model.model_name || model.label || 'model'}-${index}`">
+                <tr
+                  v-for="(model, index) in models"
+                  :key="`${model.model_name || model.label || 'model'}-${index}`"
+                >
                   <td>
                     <strong>{{ model.label || model.model_name || 'Unnamed model' }}</strong>
                     <span>{{ model.quality_boundary || model.point_in_time_status || 'quality_boundary_pending' }}</span>
@@ -1801,7 +2184,10 @@ function pointsAttr(points: ChartPoint[]): string {
                   <td>{{ compactIso(model.training_cutoff || forecastData?.source?.training_cutoff) }}</td>
                   <td>{{ compactIso(model.forecast_generated_at || model.generated_at || forecastGeneratedAt) }}</td>
                   <td>
-                    <span class="bess-status" :class="{ 'bess-status--blocked': model.backend_status === 'blocked' }">
+                    <span
+                      class="bess-status"
+                      :class="{ 'bess-status--blocked': model.backend_status === 'blocked' }"
+                    >
                       {{ model.backend_status || model.point_in_time_status || 'pending' }}
                     </span>
                   </td>
@@ -1810,18 +2196,26 @@ function pointsAttr(points: ChartPoint[]): string {
               </tbody>
             </table>
           </div>
-          <div v-else class="bess-empty-chart bess-empty-chart--compact">
+          <div
+            v-else
+            class="bess-empty-chart bess-empty-chart--compact"
+          >
             <strong>No forecast artifact yet.</strong>
             <span>The daily publisher has not committed model rows for this snapshot.</span>
           </div>
         </aside>
       </section>
 
-      <section class="bess-index-workbench bess-deferred-section" aria-label="Index evidence, forecast, and lead overview">
+      <section
+        class="bess-index-workbench bess-deferred-section"
+        aria-label="Index evidence, forecast, and lead overview"
+      >
         <article class="bess-workbench-panel bess-workbench-panel--evidence">
           <div class="bess-workbench-head">
             <div>
-              <p class="bess-kicker">Evidence</p>
+              <p class="bess-kicker">
+                Evidence
+              </p>
               <h2>Realized dispatch receipt</h2>
             </div>
             <span>{{ deliveryDate }}</span>
@@ -1845,7 +2239,11 @@ function pointsAttr(points: ChartPoint[]): string {
               <dd>{{ formatMwh(selectedMetrics.throughput_mwh) }}</dd>
             </div>
           </dl>
-          <a class="bess-workbench-link" href="#methodology" @click.prevent="navigateToSection('methodology')">
+          <a
+            class="bess-workbench-link"
+            href="#methodology"
+            @click.prevent="navigateToSection('methodology')"
+          >
             <span>Read methodology</span>
             <UIcon name="i-lucide-arrow-right" />
           </a>
@@ -1854,13 +2252,21 @@ function pointsAttr(points: ChartPoint[]): string {
         <article class="bess-workbench-panel bess-workbench-panel--forecast">
           <div class="bess-workbench-head">
             <div>
-              <p class="bess-kicker">Forecast Challenge</p>
+              <p class="bess-kicker">
+                Forecast Challenge
+              </p>
               <h2>Public model lanes</h2>
             </div>
             <span>{{ forecastData?.score_status || 'pending' }}</span>
           </div>
-          <ul v-if="workbenchModels.length > 0" class="bess-workbench-models">
-            <li v-for="(model, index) in workbenchModels" :key="`${model.model_name || model.label || 'workbench-model'}-${index}`">
+          <ul
+            v-if="workbenchModels.length > 0"
+            class="bess-workbench-models"
+          >
+            <li
+              v-for="(model, index) in workbenchModels"
+              :key="`${model.model_name || model.label || 'workbench-model'}-${index}`"
+            >
               <div>
                 <strong>{{ model.label || model.model_name || 'Unnamed model' }}</strong>
                 <span>{{ compactIso(model.forecast_generated_at || model.generated_at || forecastGeneratedAt) }}</span>
@@ -1870,29 +2276,44 @@ function pointsAttr(points: ChartPoint[]): string {
               </em>
             </li>
           </ul>
-          <div v-else class="bess-workbench-empty">
+          <div
+            v-else
+            class="bess-workbench-empty"
+          >
             <strong>No forecast artifact yet.</strong>
             <span>Forecast rows will appear after the publisher commits a timestamped JSON artifact.</span>
           </div>
-          <a class="bess-workbench-link" href="#forecast" @click.prevent="navigateToSection('forecast')">
+          <a
+            class="bess-workbench-link"
+            href="#forecast"
+            @click.prevent="navigateToSection('forecast')"
+          >
             <span>Open forecast receipt</span>
             <UIcon name="i-lucide-arrow-right" />
           </a>
         </article>
-
       </section>
 
-      <section id="scoreboard" class="bess-panel bess-chart-panel bess-deferred-section" aria-label="Model scoreboard preview">
+      <section
+        id="scoreboard"
+        class="bess-panel bess-chart-panel bess-deferred-section"
+        aria-label="Model scoreboard preview"
+      >
         <div class="bess-section-header">
           <div>
-            <p class="bess-kicker">Model Scoreboard</p>
+            <p class="bess-kicker">
+              Model Scoreboard
+            </p>
             <h2>Rolling realized performance</h2>
             <p>
               Rows appear only after a forecast committed before realization can be scored
               against official OREE rows.
             </p>
           </div>
-          <NuxtLink class="bess-technical-link" to="/model-scoreboard">
+          <NuxtLink
+            class="bess-technical-link"
+            to="/model-scoreboard"
+          >
             Open scoreboard
           </NuxtLink>
         </div>
@@ -1912,7 +2333,10 @@ function pointsAttr(points: ChartPoint[]): string {
           </div>
         </div>
 
-        <div v-if="scoreboardRows.length > 0" class="bess-table-wrap">
+        <div
+          v-if="scoreboardRows.length > 0"
+          class="bess-table-wrap"
+        >
           <table class="bess-table">
             <thead>
               <tr>
@@ -1925,7 +2349,10 @@ function pointsAttr(points: ChartPoint[]): string {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in scoreboardRows" :key="`${row.model_name}-${row.window_start}-${row.window_end}`">
+              <tr
+                v-for="row in scoreboardRows"
+                :key="`${row.model_name}-${row.window_start}-${row.window_end}`"
+              >
                 <td>{{ row.model_name }}</td>
                 <td>{{ row.window_start }} to {{ row.window_end }}</td>
                 <td>{{ formatNumber(row.mae_uah_mwh, 2) }}</td>
@@ -1936,17 +2363,26 @@ function pointsAttr(points: ChartPoint[]): string {
             </tbody>
           </table>
         </div>
-        <div v-else class="bess-empty-chart">
+        <div
+          v-else
+          class="bess-empty-chart"
+        >
           <strong>No scored forecast pairs yet.</strong>
           <span>That is a useful public state: it means the page refuses to rank models before source-backed realized rows exist.</span>
         </div>
       </section>
 
-      <section id="methodology" class="bess-section-grid bess-section-grid--methodology bess-section-grid--methodology-single bess-deferred-section" aria-label="Methodology and claim boundary">
+      <section
+        id="methodology"
+        class="bess-section-grid bess-section-grid--methodology bess-section-grid--methodology-single bess-deferred-section"
+        aria-label="Methodology and claim boundary"
+      >
         <div class="bess-panel bess-panel--inset bess-claim-panel">
           <div class="bess-section-header">
             <div>
-              <p class="bess-kicker">Methodology receipt</p>
+              <p class="bess-kicker">
+                Methodology receipt
+              </p>
               <h2>What this page can and cannot claim</h2>
               <p>
                 The public MVP is an autonomous GitHub Actions to GitHub Pages publication lane.
@@ -1955,7 +2391,10 @@ function pointsAttr(points: ChartPoint[]): string {
             </div>
           </div>
           <dl class="bess-detail-list bess-detail-list--receipt">
-            <li v-for="row in indexMethodologyRows" :key="row.label">
+            <li
+              v-for="row in indexMethodologyRows"
+              :key="row.label"
+            >
               <span>{{ row.label }}</span>
               <strong>{{ row.value }}</strong>
             </li>
@@ -1971,16 +2410,25 @@ function pointsAttr(points: ChartPoint[]): string {
         </div>
       </section>
 
-      <section id="contact" class="bess-story-connect-panel bess-deferred-section" aria-label="Interested in the full story">
+      <section
+        id="contact"
+        class="bess-story-connect-panel bess-deferred-section"
+        aria-label="Interested in the full story"
+      >
         <div class="bess-story-connect__copy">
-          <p class="bess-kicker">Interested in the full story?</p>
+          <p class="bess-kicker">
+            Interested in the full story?
+          </p>
           <h2>Connect on BESS analytics, recruiting, or research collaboration.</h2>
           <p>
             This is a public post-defense demo page: source-backed index, transparent JSON artifacts,
             forecast challenge preview, and portfolio-grade product evidence. It is not private operator
             functionality and it does not claim live market execution.
           </p>
-          <dl class="bess-story-connect__receipt" aria-label="Public demo receipt">
+          <dl
+            class="bess-story-connect__receipt"
+            aria-label="Public demo receipt"
+          >
             <div>
               <dt>Artifact type</dt>
               <dd>Public demo page</dd>
@@ -1996,7 +2444,11 @@ function pointsAttr(points: ChartPoint[]): string {
           </dl>
         </div>
         <div class="bess-story-connect__routes">
-          <article v-for="route in connectRoutes" :key="route.title" class="bess-story-connect__route">
+          <article
+            v-for="route in connectRoutes"
+            :key="route.title"
+            class="bess-story-connect__route"
+          >
             <UIcon :name="route.icon" />
             <h3>{{ route.title }}</h3>
             <p>{{ route.body }}</p>
@@ -2006,33 +2458,52 @@ function pointsAttr(points: ChartPoint[]): string {
           <div class="bess-story-connect__action-card">
             <span>Next routes</span>
             <strong>Short demo, technical deep-dive, PoC discussion, or hiring conversation.</strong>
-            <ul class="bess-lead-action-list" aria-label="Collaboration routes">
+            <ul
+              class="bess-lead-action-list"
+              aria-label="Collaboration routes"
+            >
               <li><UIcon name="i-lucide-check-square" /> Demo &amp; deep-dive</li>
               <li><UIcon name="i-lucide-check-square" /> Consulting / PoC</li>
               <li><UIcon name="i-lucide-check-square" /> Recruiting / collaboration</li>
             </ul>
           </div>
-          <a class="bess-action-link bess-action-link--primary" :href="contactHref">
+          <a
+            class="bess-action-link bess-action-link--primary"
+            :href="contactHref"
+          >
             <UIcon name="i-lucide-mail" />
             Let's connect
           </a>
-          <a class="bess-action-link" :href="repoUrl" target="_blank" rel="noreferrer">
+          <a
+            class="bess-action-link"
+            :href="repoUrl"
+            target="_blank"
+            rel="noreferrer"
+          >
             <UIcon name="i-lucide-github" />
             Review source
           </a>
         </div>
-        <div class="bess-story-connect__guard" aria-label="Public claim boundary">
+        <div
+          class="bess-story-connect__guard"
+          aria-label="Public claim boundary"
+        >
           <UIcon name="i-lucide-shield-check" />
           <strong>No market execution.</strong>
           <span>No bids generated. No utility integration claim.</span>
         </div>
       </section>
 
-      <section class="bess-section-grid bess-deferred-section bess-section-grid--trace" aria-label="State of charge and history">
+      <section
+        class="bess-section-grid bess-deferred-section bess-section-grid--trace"
+        aria-label="State of charge and history"
+      >
         <div class="bess-panel bess-chart-panel">
           <div class="bess-section-header">
             <div>
-              <p class="bess-kicker">SOC trace</p>
+              <p class="bess-kicker">
+                SOC trace
+              </p>
               <h2>State of charge after each hour</h2>
               <p>Terminal SoC is constrained to equal the initial SoC for the realized daily receipt.</p>
             </div>
@@ -2063,7 +2534,10 @@ function pointsAttr(points: ChartPoint[]): string {
             >
               {{ tick.label }}
             </text>
-            <polyline class="bess-svg-line bess-svg-line--soc" :points="socSvg.line" />
+            <polyline
+              class="bess-svg-line bess-svg-line--soc"
+              :points="socSvg.line"
+            />
             <text
               v-for="tick in socSvg.xTicks"
               :key="`soc-hour-${tick.label}`"
@@ -2075,7 +2549,10 @@ function pointsAttr(points: ChartPoint[]): string {
               {{ tick.label }}
             </text>
           </svg>
-          <div v-else class="bess-empty-chart">
+          <div
+            v-else
+            class="bess-empty-chart"
+          >
             <strong>No SOC trace yet.</strong>
             <span>Waiting for source-backed dispatch rows.</span>
           </div>
@@ -2084,7 +2561,9 @@ function pointsAttr(points: ChartPoint[]): string {
         <div class="bess-panel bess-chart-panel">
           <div class="bess-section-header">
             <div>
-              <p class="bess-kicker">Rolling receipt</p>
+              <p class="bess-kicker">
+                Rolling receipt
+              </p>
               <h2>Recent realized value</h2>
               <p>History only uses committed public index rows for the selected preset.</p>
             </div>
@@ -2143,7 +2622,10 @@ function pointsAttr(points: ChartPoint[]): string {
               {{ tick.label }}
             </text>
           </svg>
-          <div v-else class="bess-empty-chart">
+          <div
+            v-else
+            class="bess-empty-chart"
+          >
             <strong>History is not populated yet.</strong>
             <span>The rolling strip appears after the first public history artifact is committed.</span>
           </div>
@@ -2152,11 +2634,19 @@ function pointsAttr(points: ChartPoint[]): string {
 
       <footer class="bess-footer-note bess-panel">
         <span class="bess-footer-brand">Ukraine BESS Arbitrage Index</span>
-        <a :href="source.source_url || 'https://www.oree.com.ua/'" target="_blank" rel="noreferrer">
+        <a
+          :href="source.source_url || 'https://www.oree.com.ua/'"
+          target="_blank"
+          rel="noreferrer"
+        >
           Data: OREE (oree.com.ua)
           <UIcon name="i-lucide-external-link" />
         </a>
-        <a :href="repoUrl" target="_blank" rel="noreferrer">
+        <a
+          :href="repoUrl"
+          target="_blank"
+          rel="noreferrer"
+        >
           GitHub: transparent source of truth
           <UIcon name="i-lucide-external-link" />
         </a>

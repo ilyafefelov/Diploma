@@ -373,7 +373,7 @@ describe('operator market preview request wiring', () => {
   })
 
   it('clears stale selected shadow rows while loading a new shadow preview', async () => {
-    const pendingFetch = new Promise(resolve => {
+    const pendingFetch = new Promise((resolve) => {
       setTimeout(() => resolve({
         preview_source_id: HF_VALUE_SOURCE,
         preview_source_label: HF_VALUE_LABEL,
@@ -536,5 +536,4 @@ describe('operator market preview request wiring', () => {
     }
     expect(queries.some(query => 'target_delivery_window_start' in query)).toBe(false)
   })
-
 })

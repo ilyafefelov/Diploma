@@ -329,8 +329,8 @@ onBeforeUnmount(() => {
 
       <div class="operator-body">
         <OperatorSidebar
-          :tenants="tenants"
           v-model:selected-tenant-id="selectedTenantId"
+          :tenants="tenants"
           :nav-items="operatorNavItems"
           :active-registry-summary="activeRegistrySummary"
           :battery-asset-label="batteryAssetLabel"
@@ -340,6 +340,10 @@ onBeforeUnmount(() => {
 
         <section class="operator-main-stage">
           <OperatorMarketConsole
+            v-model:selected-market-venue="selectedMarketVenue"
+            v-model:selected-target-delivery-date="selectedTargetDeliveryDate"
+            v-model:selected-chart-horizon="selectedChartHorizon"
+            v-model:explanation-mode="explanationMode"
             :tenants="tenants"
             :selected-tenant-id="selectedTenantId"
             :registry-envelope="registryEnvelope"
@@ -349,10 +353,6 @@ onBeforeUnmount(() => {
             :operator-recommendation="selectedVisibleOperatorRecommendation"
             :market-preview-error="pError"
             :target-date-shortcuts="targetDateShortcuts"
-            v-model:selected-market-venue="selectedMarketVenue"
-            v-model:selected-target-delivery-date="selectedTargetDeliveryDate"
-            v-model:selected-chart-horizon="selectedChartHorizon"
-            v-model:explanation-mode="explanationMode"
             :is-registry-loading="isLoading"
             :is-signal-preview-loading="pBusy || isPreviewEnsuring"
             :signal-preview-last-loaded-label="pLoaded"

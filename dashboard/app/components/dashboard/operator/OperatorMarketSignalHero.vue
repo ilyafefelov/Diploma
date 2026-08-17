@@ -125,13 +125,13 @@ const selectedTargetWindowEnd = computed(() => {
 const forecastWindowPeriodLabel = computed(() => {
   const startLabel = formatPeriodDateTime(
     activeOperatorRecommendation.value?.target_delivery_window_start
-      || visibleSignalPreview.value?.forecast_window_start
-      || selectedTargetWindowStart.value
+    || visibleSignalPreview.value?.forecast_window_start
+    || selectedTargetWindowStart.value
   )
   const endLabel = formatPeriodDateTime(
     activeOperatorRecommendation.value?.target_delivery_window_end
-      || visibleSignalPreview.value?.forecast_window_end
-      || selectedTargetWindowEnd.value
+    || visibleSignalPreview.value?.forecast_window_end
+    || selectedTargetWindowEnd.value
   )
 
   if (startLabel === 'date pending' || endLabel === 'date pending') {
@@ -173,7 +173,6 @@ const forecastSpread = computed(() => {
   return maxMarketPrice.value - minMarketPrice.value
 })
 
-const contextRowCount = computed(() => visibleSignalPreview.value?.market_price.length ?? 0)
 const sourceContextRowCount = computed(() => {
   if (!activeOperatorRecommendation.value) {
     return 0
