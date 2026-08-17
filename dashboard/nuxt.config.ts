@@ -32,6 +32,10 @@ export default defineNuxtConfig({
     '@nuxt/ui'
   ],
 
+  ui: {
+    fonts: false
+  },
+
   devtools: {
     enabled: false
   },
