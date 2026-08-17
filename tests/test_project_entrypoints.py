@@ -1198,6 +1198,22 @@ def test_pull_request_ci_covers_python_dashboard_and_package_audits() -> None:
     assert workflow.count("npm audit --audit-level=low") == 2
 
 
+def test_github_workflows_use_node24_compatible_action_majors() -> None:
+    workflow_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in sorted((PROJECT_ROOT / ".github" / "workflows").glob("*.yml"))
+    )
+
+    assert "actions/checkout@v4" not in workflow_text
+    assert "actions/setup-node@v4" not in workflow_text
+    assert "actions/setup-python@v5" not in workflow_text
+    assert "astral-sh/setup-uv@v5" not in workflow_text
+    assert "actions/checkout@v7" in workflow_text
+    assert "actions/setup-node@v7" in workflow_text
+    assert "actions/setup-python@v7" in workflow_text
+    assert "astral-sh/setup-uv@v10" in workflow_text
+
+
 def _environment_without_pythonpath() -> dict[str, str]:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
