@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue'
+import type {
+  PublicBessEnforcedConstraint,
+  PublicBessGovernanceBoundary,
+  PublicBessNotModeledConstraint
+} from '~/utils/publicBessArtifactTypes'
 
 type PublicRow = Record<string, unknown>
 type ActionTone = 'charge' | 'discharge' | 'hold'
+type GovernanceConstraint = PublicBessEnforcedConstraint | PublicBessNotModeledConstraint
 type ActionPoint = {
   key: string
   hour: string
@@ -28,7 +34,20 @@ const props = defineProps<{
   contactHref: string
   claimBoundary: string
   proposedBidStatus: string
+  governance?: PublicBessGovernanceBoundary
 }>()
+
+const governanceLabels: Record<GovernanceConstraint, string> = {
+  'power_limit': 'Power limit',
+  'state_of_charge_bounds': 'State-of-charge bounds',
+  'round_trip_efficiency': 'Round-trip efficiency',
+  'terminal_soc_equals_initial_soc': 'Terminal SOC equals initial SOC',
+  'degradation_proxy': 'Degradation proxy',
+  'tenant_operating_calendar': 'Tenant operating calendar',
+  'maintenance_or_outage_availability': 'Maintenance or outage availability',
+  'live_battery_telemetry': 'Live battery telemetry',
+  'market_eligibility_and_execution': 'Market eligibility and execution'
+}
 
 const selectedKey = ref('')
 
@@ -85,7 +104,7 @@ const realizedPoints = computed<ActionPoint[]>(() => (
       value,
       soc,
       intensity: intensityFor(price, realizedPriceRange.value),
-      sourceLabel: 'Realized perfect-hindsight dispatch',
+      sourceLabel: 'Perfect-hindsight analytical schedule',
       boundaryLabel: 'Historical index evidence',
       isForecast: false,
       status: 'official DAM rows'
@@ -285,6 +304,10 @@ function receiptLabel(value: string): string {
     .replace(/^public_/, '')
     .replace(/_/g, ' ')
 }
+
+function governanceLabel(value: GovernanceConstraint): string {
+  return governanceLabels[value]
+}
 </script>
 
 <template>
@@ -297,15 +320,15 @@ function receiptLabel(value: string): string {
         <p class="bess-kicker">
           Operator-style preview
         </p>
-        <h2>Action tape from the realized index, plus a 2h forecast preview.</h2>
+        <h2>Analytical schedule from the realized index, plus a 2h forecast preview.</h2>
         <p>
-          Public read-model only. The chips show yesterday's deterministic dispatch evidence and a short
+          Public read-model only. The chips show yesterday's deterministic analytical schedule and a short
           forecast price-signal preview, not private operator commands.
         </p>
       </div>
       <div
         class="bess-action-preview__summary"
-        aria-label="Realized dispatch action count summary"
+        aria-label="Analytical schedule action count summary"
       >
         <span><i class="is-discharge" />{{ actionCounts.discharge }} discharge</span>
         <span><i class="is-charge" />{{ actionCounts.charge }} charge</span>
@@ -316,7 +339,7 @@ function receiptLabel(value: string): string {
     <div class="bess-action-preview__body">
       <div class="bess-action-preview__track-shell">
         <div class="bess-action-preview__track-head">
-          <span>Last published 24h dispatch</span>
+          <span>Last published 24h analytical schedule</span>
           <strong>{{ presetLabel || 'selected BESS preset' }}</strong>
         </div>
 
@@ -324,7 +347,7 @@ function receiptLabel(value: string): string {
           <div
             class="bess-action-preview__track"
             role="list"
-            aria-label="24 realized dispatch actions"
+            aria-label="24 analytical schedule actions"
           >
             <div
               v-for="point in realizedPoints"
@@ -409,7 +432,7 @@ function receiptLabel(value: string): string {
       <aside
         v-if="selectedPoint"
         class="bess-action-preview__receipt"
-        aria-label="Selected action receipt"
+        aria-label="Selected analytical schedule hour"
       >
         <div class="bess-action-preview__receipt-top">
           <span>{{ selectedPoint.isForecast ? 'Preview hour' : 'Selected hour' }}</span>
@@ -444,13 +467,46 @@ function receiptLabel(value: string): string {
         </p>
       </aside>
 
+      <aside
+        v-if="governance"
+        class="bess-action-preview__governance"
+        aria-label="Declared analytical model boundary"
+      >
+        <div>
+          <p class="bess-kicker">
+            Declared analytical model boundary
+          </p>
+          <h3>Analytical constraints applied</h3>
+          <ul>
+            <li
+              v-for="constraint in governance.enforced_constraints"
+              :key="constraint"
+            >
+              {{ governanceLabel(constraint) }}
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3>Not modeled in the public index</h3>
+          <ul>
+            <li
+              v-for="constraint in governance.not_modeled_constraints"
+              :key="constraint"
+            >
+              {{ governanceLabel(constraint) }}
+            </li>
+          </ul>
+        </div>
+        <p>Declared metadata, not a source-publication receipt.</p>
+      </aside>
+
       <aside class="bess-action-preview__lead">
         <UIcon name="i-lucide-sparkles" />
         <div>
           <p class="bess-kicker">
             Want this calibrated?
           </p>
-          <h3>Turn the public receipt into a private facility review.</h3>
+          <h3>Turn the public read model into a private facility review.</h3>
           <p>
             Load profile, PV/BESS specs, tariff or market scope, and operating constraints can become
             a private savings and schedule-selection review.
@@ -912,6 +968,40 @@ function receiptLabel(value: string): string {
   color: #0b63c7;
 }
 
+.bess-action-preview__governance {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+  border: 1px solid rgba(30, 121, 202, 0.2);
+  border-radius: 7px;
+  padding: 13px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.bess-action-preview__governance h3 {
+  margin: 2px 0 8px;
+  color: #082b55;
+  font-size: 16px;
+}
+
+.bess-action-preview__governance ul {
+  display: grid;
+  gap: 5px;
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(8, 43, 85, 0.76);
+  font-family: var(--bess-font-data, "Anonymous Pro", monospace);
+  font-size: 12px;
+}
+
+.bess-action-preview__governance > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: rgba(8, 43, 85, 0.62);
+  font-size: 12px;
+}
+
 .bess-action-preview__lead {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -982,6 +1072,16 @@ function receiptLabel(value: string): string {
 
   .bess-action-preview__preview-lane {
     overflow-x: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  .bess-action-preview__governance {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bess-action-preview__governance > p {
+    grid-column: 1;
   }
 }
 

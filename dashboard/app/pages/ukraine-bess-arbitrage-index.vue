@@ -1357,6 +1357,7 @@ function pointsAttr(points: ChartPoint[]): string {
         :contact-href="contactHref"
         :claim-boundary="claimBoundaryRaw"
         :proposed-bid-status="proposedBidStatusRaw"
+        :governance="latestData?.governance"
       />
 
       <section

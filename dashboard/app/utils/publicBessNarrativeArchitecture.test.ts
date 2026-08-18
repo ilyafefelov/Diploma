@@ -232,7 +232,7 @@ describe('public BESS narrative architecture', () => {
     expect(field).toContain('0 0 0 6px rgba(10, 119, 168, 0.08)')
     expect(actionRail).toContain('Operator-style preview')
     expect(actionRail).toContain('Want this calibrated?')
-    expect(actionRail).toContain('Turn the public receipt into a private facility review.')
+    expect(actionRail).toContain('Turn the public read model into a private facility review.')
     expect(actionRail).toContain('Discuss setup')
     expect(actionRail).toContain('bess-action-chip--preview')
     expect(actionRail).toContain('aria-pressed')
@@ -409,6 +409,7 @@ describe('public BESS narrative architecture', () => {
   it('keeps the public claim boundary explicit and non-executing', () => {
     const page = readDashboardFixture('../pages/ukraine-bess-arbitrage-index.vue')
     const actionRail = readDashboardFixture('../components/public/BessActionPreviewRail.vue')
+    const contracts = readDashboardFixture('./publicBessArtifactTypes.ts')
 
     expect(page).toContain('No market execution')
     expect(page).toContain('not_market_execution')
@@ -427,6 +428,20 @@ describe('public BESS narrative architecture', () => {
     expect(actionRail).not.toContain('DT controller deployed')
     expect(actionRail).not.toContain('market instruction')
     expect(actionRail).not.toContain('execute')
+    expect(contracts).toContain('export interface PublicBessGovernanceBoundary')
+    expect(page).toContain(':governance="latestData?.governance"')
+    expect(actionRail).toContain('v-if="governance"')
+    expect(actionRail).toContain('Declared analytical model boundary')
+    expect(actionRail).toContain('Analytical constraints applied')
+    expect(actionRail).toContain('Not modeled in the public index')
+    expect(actionRail).toContain('Declared metadata, not a source-publication receipt.')
+    expect(actionRail).toContain('\'state_of_charge_bounds\': \'State-of-charge bounds\'')
+    expect(actionRail).toContain('\'terminal_soc_equals_initial_soc\': \'Terminal SOC equals initial SOC\'')
+    expect(actionRail).toContain('\'market_eligibility_and_execution\': \'Market eligibility and execution\'')
+    expect(actionRail).not.toContain('Public constraint receipt')
+    expect(actionRail).not.toContain('Realized perfect-hindsight dispatch')
+    expect(actionRail).not.toContain('Last published 24h dispatch')
+    expect(actionRail).not.toContain('Turn the public receipt')
   })
 
   it('covers published, blocked, and empty forecast artifact states', () => {

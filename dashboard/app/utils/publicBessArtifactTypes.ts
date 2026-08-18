@@ -62,6 +62,28 @@ export interface PublicBessScoreboardArtifact {
   score_status?: string
 }
 
+export type PublicBessEnforcedConstraint
+  = | 'power_limit'
+    | 'state_of_charge_bounds'
+    | 'round_trip_efficiency'
+    | 'terminal_soc_equals_initial_soc'
+    | 'degradation_proxy'
+
+export type PublicBessNotModeledConstraint
+  = | 'tenant_operating_calendar'
+    | 'maintenance_or_outage_availability'
+    | 'live_battery_telemetry'
+    | 'market_eligibility_and_execution'
+
+export interface PublicBessGovernanceBoundary {
+  calculation_scope: 'generic_physical_bess_analytical_read_model'
+  enforced_constraints: PublicBessEnforcedConstraint[]
+  not_modeled_constraints: PublicBessNotModeledConstraint[]
+  operator_context_status: 'facility_specific_context_not_in_public_index'
+  metadata_status: 'declared_model_boundary_not_source_receipt'
+  schedule_status: 'perfect_hindsight_analytical_schedule_not_dispatch_command'
+}
+
 export interface PublicBessIndexArtifact {
   presets?: PublicBessRecord[]
   rows?: PublicBessRecord[]
@@ -78,6 +100,7 @@ export interface PublicBessIndexArtifact {
   claim_boundary?: string
   proposed_bid_status?: string
   market_execution_enabled?: boolean
+  governance?: PublicBessGovernanceBoundary
   methodology?: {
     optimization_grain?: string
     objective?: string

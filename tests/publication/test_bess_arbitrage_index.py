@@ -1,15 +1,39 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 import pytest
+from pydantic import ValidationError
 
 from smart_arbitrage.publication.bess_arbitrage_index import (
-    PUBLIC_BESS_INDEX_CLAIM_BOUNDARY,
     DEFAULT_PUBLIC_BATTERY_PRESETS,
+    PUBLIC_BESS_INDEX_CLAIM_BOUNDARY,
+    PublicBessGovernanceBoundary,
+    build_blocked_public_bess_arbitrage_index_payload,
     build_public_bess_arbitrage_index_payload,
     build_public_bess_arbitrage_history_payload,
 )
+
+
+EXPECTED_GOVERNANCE_BOUNDARY = {
+    "calculation_scope": "generic_physical_bess_analytical_read_model",
+    "enforced_constraints": [
+        "power_limit",
+        "state_of_charge_bounds",
+        "round_trip_efficiency",
+        "terminal_soc_equals_initial_soc",
+        "degradation_proxy",
+    ],
+    "not_modeled_constraints": [
+        "tenant_operating_calendar",
+        "maintenance_or_outage_availability",
+        "live_battery_telemetry",
+        "market_eligibility_and_execution",
+    ],
+    "operator_context_status": "facility_specific_context_not_in_public_index",
+    "metadata_status": "declared_model_boundary_not_source_receipt",
+    "schedule_status": "perfect_hindsight_analytical_schedule_not_dispatch_command",
+}
 
 
 def test_public_bess_index_solves_two_presets_without_market_execution() -> None:
@@ -32,6 +56,7 @@ def test_public_bess_index_solves_two_presets_without_market_execution() -> None
     assert payload["market_execution_enabled"] is False
     assert payload["proposed_bid_status"] == "not_emitted"
     assert payload["claim_boundary"] == PUBLIC_BESS_INDEX_CLAIM_BOUNDARY
+    assert payload["governance"] == EXPECTED_GOVERNANCE_BOUNDARY
     assert payload["source"]["delivery_date"] == "2026-06-15"
     assert payload["source"]["row_count"] == 24
     assert [preset["preset_id"] for preset in payload["presets"]] == [
@@ -49,6 +74,31 @@ def test_public_bess_index_solves_two_presets_without_market_execution() -> None
         assert len(preset["hourly_schedule"]) == 24
         assert max(abs(point["net_power_mw"]) for point in preset["hourly_schedule"]) <= (
             preset["battery"]["max_power_mw"] + 1e-6
+        )
+
+
+def test_blocked_public_bess_payload_keeps_the_same_declared_governance_boundary() -> None:
+    payload = build_blocked_public_bess_arbitrage_index_payload(
+        delivery_day=date(2026, 6, 15),
+        generated_at=datetime(2026, 6, 16, 7, 30),
+        error=RuntimeError("official source unavailable"),
+    )
+
+    assert payload["governance"] == EXPECTED_GOVERNANCE_BOUNDARY
+    assert payload["generated_at"] == "2026-06-16T07:30:00+00:00"
+    assert payload["market_execution_enabled"] is False
+    assert payload["proposed_bid_status"] == "not_emitted"
+
+
+def test_public_bess_governance_contract_rejects_unknown_constraints() -> None:
+    with pytest.raises(ValidationError):
+        PublicBessGovernanceBoundary.model_validate(
+            {
+                "enforced_constraints": (
+                    "power_limit",
+                    "unverified_market_constraint",
+                ),
+            }
         )
 
 
