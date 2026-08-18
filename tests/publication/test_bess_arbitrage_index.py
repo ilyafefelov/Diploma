@@ -85,6 +85,7 @@ def test_blocked_public_bess_payload_keeps_the_same_declared_governance_boundary
     )
 
     assert payload["governance"] == EXPECTED_GOVERNANCE_BOUNDARY
+    assert payload["generated_at"] == "2026-06-16T07:30:00+00:00"
     assert payload["market_execution_enabled"] is False
     assert payload["proposed_bid_status"] == "not_emitted"
 

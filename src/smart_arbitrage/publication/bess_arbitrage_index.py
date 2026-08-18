@@ -207,7 +207,7 @@ def build_blocked_public_bess_arbitrage_index_payload(
 
     return {
         "schema_version": "ukraine_bess_arbitrage_index.v1",
-        "generated_at": generated_at.astimezone(UTC).isoformat(),
+        "generated_at": _utc_iso(generated_at),
         "market_venue": DEFAULT_MARKET_VENUE,
         "market_zone": DEFAULT_MARKET_ZONE,
         "market_timezone": DEFAULT_MARKET_TIMEZONE,
