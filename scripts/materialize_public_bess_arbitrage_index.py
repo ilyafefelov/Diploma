@@ -11,8 +11,7 @@ from typing import Any, Final
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from smart_arbitrage.publication.bess_arbitrage_index import (
-    OREE_DAM_RESULTS_URL,
-    PUBLIC_BESS_INDEX_CLAIM_BOUNDARY,
+    build_blocked_public_bess_arbitrage_index_payload,
     build_public_bess_arbitrage_history_payload,
     build_public_bess_arbitrage_index_payload,
 )
@@ -91,7 +90,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(json.dumps(_read_json(status_path), indent=2, sort_keys=True))
             return 0
-        latest_payload = _blocked_latest_payload(
+        latest_payload = build_blocked_public_bess_arbitrage_index_payload(
             delivery_day=delivery_day,
             generated_at=generated_at,
             error=error,
@@ -137,46 +136,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     )
     return 0
-
-
-def _blocked_latest_payload(
-    *,
-    delivery_day: date,
-    generated_at: datetime,
-    error: Exception,
-) -> dict[str, Any]:
-    return {
-        "schema_version": "ukraine_bess_arbitrage_index.v1",
-        "generated_at": generated_at.astimezone(UTC).isoformat(),
-        "market_venue": "DAM",
-        "market_zone": "OES Ukraine",
-        "market_timezone": "Europe/Kyiv",
-        "source": {
-            "source_name": "OREE DAM hourly prices",
-            "source_url": OREE_DAM_RESULTS_URL,
-            "delivery_date": delivery_day.isoformat(),
-            "row_count": 0,
-            "source_scope": "official_observed_hourly_prices_only",
-            "source_status": "blocked_no_complete_oree_delivery_day",
-            "blocker_type": type(error).__name__,
-            "blocker": str(error),
-        },
-        "methodology": {
-            "index_kind": "realized_perfect_hindsight_daily_dispatch",
-            "objective": "not_computed_without_complete_official_rows",
-            "not_market_execution": True,
-        },
-        "presets": [],
-        "summary": {
-            "headline_preset_id": None,
-            "headline_net_value_uah": 0.0,
-            "headline_normalized_uah_per_mwh_capacity": 0.0,
-            "preset_count": 0,
-        },
-        "claim_boundary": PUBLIC_BESS_INDEX_CLAIM_BOUNDARY,
-        "market_execution_enabled": False,
-        "proposed_bid_status": "not_emitted",
-    }
 
 
 def _read_input_price_rows(path: Path) -> list[dict[str, Any]]:

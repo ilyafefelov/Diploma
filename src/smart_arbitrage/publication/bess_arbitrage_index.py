@@ -11,7 +11,9 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from math import sqrt
-from typing import Any, Final
+from typing import Any, Final, Literal
+
+from pydantic import BaseModel, ConfigDict
 
 
 PUBLIC_BESS_INDEX_CLAIM_BOUNDARY: Final[str] = (
@@ -32,6 +34,53 @@ DEMO_BATTERY_CAPEX_USD_PER_KWH: Final[float] = 210.0
 DEMO_USD_TO_UAH_RATE: Final[float] = 43.9129
 DEMO_BATTERY_LIFETIME_YEARS: Final[int] = 15
 DEMO_BATTERY_CYCLES_PER_DAY: Final[float] = 1.0
+
+
+PublicBessEnforcedConstraint = Literal[
+    "power_limit",
+    "state_of_charge_bounds",
+    "round_trip_efficiency",
+    "terminal_soc_equals_initial_soc",
+    "degradation_proxy",
+]
+PublicBessNotModeledConstraint = Literal[
+    "tenant_operating_calendar",
+    "maintenance_or_outage_availability",
+    "live_battery_telemetry",
+    "market_eligibility_and_execution",
+]
+
+
+class PublicBessGovernanceBoundary(BaseModel):
+    """Declared analytical model boundary for the public BESS read model."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+
+    calculation_scope: Literal["generic_physical_bess_analytical_read_model"] = (
+        "generic_physical_bess_analytical_read_model"
+    )
+    enforced_constraints: tuple[PublicBessEnforcedConstraint, ...] = (
+        "power_limit",
+        "state_of_charge_bounds",
+        "round_trip_efficiency",
+        "terminal_soc_equals_initial_soc",
+        "degradation_proxy",
+    )
+    not_modeled_constraints: tuple[PublicBessNotModeledConstraint, ...] = (
+        "tenant_operating_calendar",
+        "maintenance_or_outage_availability",
+        "live_battery_telemetry",
+        "market_eligibility_and_execution",
+    )
+    operator_context_status: Literal["facility_specific_context_not_in_public_index"] = (
+        "facility_specific_context_not_in_public_index"
+    )
+    metadata_status: Literal["declared_model_boundary_not_source_receipt"] = (
+        "declared_model_boundary_not_source_receipt"
+    )
+    schedule_status: Literal[
+        "perfect_hindsight_analytical_schedule_not_dispatch_command"
+    ] = "perfect_hindsight_analytical_schedule_not_dispatch_command"
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,12 +188,62 @@ def build_public_bess_arbitrage_index_payload(
             ),
             "not_market_execution": True,
         },
+        "governance": public_bess_index_governance_payload(),
         "presets": preset_payloads,
         "summary": _summary_payload(preset_payloads),
         "claim_boundary": PUBLIC_BESS_INDEX_CLAIM_BOUNDARY,
         "market_execution_enabled": False,
         "proposed_bid_status": "not_emitted",
     }
+
+
+def build_blocked_public_bess_arbitrage_index_payload(
+    *,
+    delivery_day: date,
+    generated_at: datetime,
+    error: Exception,
+) -> dict[str, Any]:
+    """Build a fail-closed public payload without inventing source evidence."""
+
+    return {
+        "schema_version": "ukraine_bess_arbitrage_index.v1",
+        "generated_at": generated_at.astimezone(UTC).isoformat(),
+        "market_venue": DEFAULT_MARKET_VENUE,
+        "market_zone": DEFAULT_MARKET_ZONE,
+        "market_timezone": DEFAULT_MARKET_TIMEZONE,
+        "source": {
+            "source_name": "OREE DAM hourly prices",
+            "source_url": OREE_DAM_RESULTS_URL,
+            "delivery_date": delivery_day.isoformat(),
+            "row_count": 0,
+            "source_scope": "official_observed_hourly_prices_only",
+            "source_status": "blocked_no_complete_oree_delivery_day",
+            "blocker_type": type(error).__name__,
+            "blocker": str(error),
+        },
+        "methodology": {
+            "index_kind": "realized_perfect_hindsight_daily_dispatch",
+            "objective": "not_computed_without_complete_official_rows",
+            "not_market_execution": True,
+        },
+        "governance": public_bess_index_governance_payload(),
+        "presets": [],
+        "summary": {
+            "headline_preset_id": None,
+            "headline_net_value_uah": 0.0,
+            "headline_normalized_uah_per_mwh_capacity": 0.0,
+            "preset_count": 0,
+        },
+        "claim_boundary": PUBLIC_BESS_INDEX_CLAIM_BOUNDARY,
+        "market_execution_enabled": False,
+        "proposed_bid_status": "not_emitted",
+    }
+
+
+def public_bess_index_governance_payload() -> dict[str, Any]:
+    """Serialize the validated public analytical model boundary."""
+
+    return PublicBessGovernanceBoundary().model_dump(mode="json")
 
 
 def build_public_bess_arbitrage_history_payload(
