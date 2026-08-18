@@ -261,7 +261,9 @@ def build_public_bess_arbitrage_history_payload(
         if delivery_date and preset_id:
             rows_by_key[(delivery_date, preset_id)] = dict(row)
 
-    delivery_date = str((latest_payload.get("source") or {}).get("delivery_date") or "")
+    source_value = latest_payload.get("source")
+    source: Mapping[str, Any] = source_value if isinstance(source_value, Mapping) else {}
+    delivery_date = str(source.get("delivery_date") or "")
     generated_at = str(latest_payload.get("generated_at") or "")
     for preset in latest_payload.get("presets", []):
         if not isinstance(preset, Mapping):
@@ -525,6 +527,8 @@ def _as_float_list(values: object, expected_length: int) -> list[float]:
         raw_values = list(values)
     else:
         raise TypeError("Expected solver values to be iterable.")
+    if isinstance(raw_values, str | bytes) or not isinstance(raw_values, Iterable):
+        raise TypeError("Expected iterable solver values.")
     flattened = [float(item) for item in raw_values]
     if len(flattened) != expected_length:
         raise RuntimeError("Unexpected solver output length.")

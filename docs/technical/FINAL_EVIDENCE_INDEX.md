@@ -19,7 +19,8 @@ Global boundary:
 | Claim | Current status | Tracked evidence | Boundary |
 | --- | --- | --- | --- |
 | V2+ is the headline/default schedule-value evidence | Confirmed | [DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md](DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS.md), [regret ladder](../thesis/chapters/assets/compact-fig-4-1-regret-ladder.png) | offline/read-model evidence only |
-| DT/V2+ safe-switch improves over V2+ in the corrected canonical packet but remains secondary | Secondary research evidence | [DT/V2+ canonical aggregate](final-evidence/dt_v2_plus_canonical_aggregate.md), [DT_V2_PLUS_PROMOTION_EVIDENCE.md](DT_V2_PLUS_PROMOTION_EVIDENCE.md) | not promoted, no default switch |
+| Historical `dt_v2_plus` random forest is lower than V2+ on an exact-mirror packet | In-packet diagnostic only | [corrected model-lineage aggregate](final-evidence/dt_v2_plus_canonical_aggregate.md), [post-defense erratum](../thesis/ERRATA_MODEL_LINEAGE_2026-07-12.md) | not DT, not OOS, not promoted |
+| RF temporal suite has zero content overlap and no beneficial protocol | Negative post-defense evidence | [temporal suite](final-evidence/rf_safe_switch_temporal_replay.md) | latest windows abstain; three earlier protocols are harmful; not prospective or promoted |
 | HF value-aligned shadow has the strongest live shadow/demo signal | Manual shadow/demo evidence | [HF promotion proof](final-evidence/hf_value_aligned_shadow_promotion_proof.md), [HF robustness summary](final-evidence/hf_safe_switch_robustness_summary.md) | manual preview only |
 | HF value-aligned shadow covers DAM/IDM latest/today/tomorrow/day+2 readiness | Confirmed readiness | [HF readiness summary](final-evidence/hf_value_aligned_forecast_readiness_summary.md), [HF readiness matrix](../thesis/chapters/assets/compact-fig-4-8-hf-readiness-matrix.png) | source-backed preview rows only |
 | HF demo packet gives commission-ready positive and abstention cases | Confirmed demo packet | [HF demo packet](final-evidence/hf_live_safe_switch_value_aligned_shadow_demo_packet.md), [defense runbook](FINAL_DEFENSE_RUNBOOK.md) | no market order payload |
@@ -30,7 +31,8 @@ Global boundary:
 
 | Packet | Why it matters |
 | --- | --- |
-| [final-evidence/dt_v2_plus_canonical_aggregate.md](final-evidence/dt_v2_plus_canonical_aggregate.md) | Gives the corrected DT/V2+ canonical result with the vector-parse trust check. |
+| [final-evidence/dt_v2_plus_canonical_aggregate.md](final-evidence/dt_v2_plus_canonical_aggregate.md) | Gives the random-forest identity, exact-mirror limitation, single switch date, and vector-parse trust check for the historical `dt_v2_plus` artifact. |
+| [final-evidence/rf_safe_switch_temporal_replay.md](final-evidence/rf_safe_switch_temporal_replay.md) | Gives the 14-row independent-content temporal suite: zero beneficial protocols, eleven abstention ties, and three harmful earlier-window protocols. |
 | [final-evidence/hf_safe_switch_robustness_summary.md](final-evidence/hf_safe_switch_robustness_summary.md) | Shows the HF shadow robustness gate and frozen regret signal. |
 | [final-evidence/hf_value_aligned_shadow_promotion_proof.md](final-evidence/hf_value_aligned_shadow_promotion_proof.md) | Shows the value-aligned candidate-library gate and non-execution flags. |
 | [final-evidence/hf_value_aligned_forecast_readiness_summary.md](final-evidence/hf_value_aligned_forecast_readiness_summary.md) | Shows 8/8 DAM/IDM readiness cases for latest/today/tomorrow/day+2. |

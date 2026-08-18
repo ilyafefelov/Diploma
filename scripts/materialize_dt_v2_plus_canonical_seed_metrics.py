@@ -9,7 +9,7 @@ import statistics
 import subprocess
 import sys
 import time
-from typing import Sequence
+from typing import Any, Sequence
 
 import polars as pl
 
@@ -26,7 +26,9 @@ from smart_arbitrage.dfl.canonical_experiment_metrics import (  # noqa: E402
 )
 from smart_arbitrage.dfl.regret_aware_v2_plus_selector import (  # noqa: E402
     FEATURE_SET_EXPANDED,
+    MODEL_KIND_HIST_GRADIENT_BOOSTING,
     MODEL_KIND_RANDOM_FOREST,
+    MODEL_KIND_WEIGHTED_RIDGE,
     V2_PLUS_FAMILY_ALIASES,
     build_regret_aware_v2_plus_selector_packet,
     parse_selector_vector,
@@ -91,23 +93,29 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     git_commit = args.git_commit or _git_commit()
     seed_metrics_paths: list[Path] = []
+    evaluation_independence: dict[str, Any] | None = None
     for seed in seeds:
-        seed_metrics_paths.append(
-            _write_seed_metrics(
-                teacher_rows=teacher_rows,
-                seed=seed,
-                model_dir=args.model_dir,
-                run_slug=f"{args.run_slug_prefix}_seed_{seed}",
-                git_commit=git_commit,
-                cmd=_cmd_text(argv),
-                model_kind=args.model_kind,
-                feature_set=args.feature_set,
-                min_predicted_improvement_uah=args.min_predicted_improvement_uah,
-                tail_risk_loss_threshold_uah=args.tail_risk_loss_threshold_uah,
-                max_family_tail_risk_probability=args.max_family_tail_risk_probability,
-                ridge_l2=args.ridge_l2,
-            )
+        metrics_path, seed_independence = _write_seed_metrics(
+            teacher_rows=teacher_rows,
+            seed=seed,
+            model_dir=args.model_dir,
+            run_slug=f"{args.run_slug_prefix}_seed_{seed}",
+            git_commit=git_commit,
+            cmd=_cmd_text(argv),
+            model_kind=args.model_kind,
+            feature_set=args.feature_set,
+            min_predicted_improvement_uah=args.min_predicted_improvement_uah,
+            tail_risk_loss_threshold_uah=args.tail_risk_loss_threshold_uah,
+            max_family_tail_risk_probability=args.max_family_tail_risk_probability,
+            ridge_l2=args.ridge_l2,
         )
+        seed_metrics_paths.append(metrics_path)
+        if evaluation_independence is None:
+            evaluation_independence = seed_independence
+        elif evaluation_independence != seed_independence:
+            raise ValueError("seed runs produced inconsistent evaluation independence audits.")
+    if evaluation_independence is None:
+        raise ValueError("canonical seed metrics require at least one seed result.")
 
     manifest = {
         "claim_scope": CANONICAL_EXPERIMENT_CLAIM_SCOPE,
@@ -119,6 +127,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "teacher_rows_csv": str(args.teacher_rows_csv),
         "source_model_name": args.source_model_name,
         "vector_parse_summary": vector_parse_summary,
+        "estimator_class": args.model_kind,
+        "model": _model_name(args.model_kind),
+        "artifact_identifier": "dt_v2_plus",
+        "evaluation_independence": evaluation_independence,
+        "inference_valid": bool(evaluation_independence["independent_holdout"]),
         "market_execution_enabled": False,
         "promotion_gate_passed": False,
     }
@@ -158,7 +171,7 @@ def _write_seed_metrics(
     tail_risk_loss_threshold_uah: float,
     max_family_tail_risk_probability: float,
     ridge_l2: float,
-) -> Path:
+) -> tuple[Path, dict[str, Any]]:
     started = time.perf_counter()
     result = build_regret_aware_v2_plus_selector_packet(
         teacher_rows,
@@ -183,10 +196,17 @@ def _write_seed_metrics(
     regret_mean = statistics.fmean(regrets)
     regret_std = statistics.pstdev(regrets) if len(regrets) > 1 else 0.0
     elapsed_s = time.perf_counter() - started
+    independence = dict(result["summary"]["evaluation_independence"])
     payload = validate_canonical_experiment_metrics_payload(
         {
             "run_id": run_slug,
-            "model": "dt_v2_plus",
+            "model": _model_name(model_kind),
+            "estimator_class": model_kind,
+            "artifact_identifier": "dt_v2_plus",
+            "independent_holdout": bool(independence["independent_holdout"]),
+            "evaluation_content_overlap_ratio": float(
+                independence["content_overlap_ratio"]
+            ),
             "seed": seed,
             "epoch": 0,
             "val_regret_mean": regret_mean,
@@ -208,7 +228,20 @@ def _write_seed_metrics(
         json.dumps(payload, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    return metrics_path
+    return metrics_path, independence
+
+
+def _model_name(model_kind: str) -> str:
+    model_names = {
+        MODEL_KIND_WEIGHTED_RIDGE: "weighted_ridge_v2_plus_safe_switch",
+        MODEL_KIND_HIST_GRADIENT_BOOSTING: (
+            "hist_gradient_boosting_v2_plus_safe_switch"
+        ),
+        MODEL_KIND_RANDOM_FOREST: "random_forest_v2_plus_safe_switch",
+    }
+    if model_kind not in model_names:
+        raise ValueError(f"unsupported selector model kind: {model_kind}")
+    return model_names[model_kind]
 
 
 def _v2_plus_final_holdout_mean_regret(teacher_rows: pl.DataFrame) -> float:

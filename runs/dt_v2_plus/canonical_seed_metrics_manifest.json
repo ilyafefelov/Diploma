@@ -1,8 +1,20 @@
 {
+  "artifact_identifier": "dt_v2_plus",
   "baseline_mean_regret": 174.7683983151615,
   "baseline_seed_means_json": "runs\\v2plus\\baseline_seed_means.json",
   "claim_scope": "canonical_offline_experiment_metrics_not_market_execution",
+  "estimator_class": "random_forest",
+  "evaluation_independence": {
+    "content_overlap_candidate_row_count": 360,
+    "content_overlap_ratio": 1.0,
+    "evaluation_candidate_row_count": 360,
+    "exact_content_mirror": true,
+    "independent_holdout": false,
+    "train_candidate_row_count": 360
+  },
+  "inference_valid": false,
   "market_execution_enabled": false,
+  "model": "random_forest_v2_plus_safe_switch",
   "model_dir": "runs\\dt_v2_plus",
   "promotion_gate_passed": false,
   "seed_metrics": [

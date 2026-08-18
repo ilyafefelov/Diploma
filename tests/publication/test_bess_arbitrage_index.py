@@ -148,3 +148,11 @@ def test_public_bess_history_merges_latest_by_delivery_date_and_preset() -> None
         "2026-06-15",
     ]
     assert history["rows"][-1]["net_value_uah"] == 125.0
+
+
+def test_public_bess_history_treats_non_mapping_source_as_missing() -> None:
+    history = build_public_bess_arbitrage_history_payload(
+        latest_payload={"generated_at": "2026-06-16T07:30:00+00:00", "source": "invalid", "presets": []},
+    )
+
+    assert history["row_count"] == 0

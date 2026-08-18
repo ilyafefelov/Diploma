@@ -117,6 +117,27 @@ def test_regret_aware_v2_plus_selector_supports_random_forest_safe_switch_model(
     assert summary["boundary"]["market_execution_enabled"] is False
 
 
+def test_regret_aware_v2_plus_selector_detects_exact_content_mirror() -> None:
+    result = build_regret_aware_v2_plus_selector_packet(
+        _exact_mirror_teacher_rows_for_regret_aware_selector(),
+        run_slug="regret-aware-exact-mirror-test",
+        min_predicted_improvement_uah=0.0,
+        model_kind=MODEL_KIND_RANDOM_FOREST,
+        feature_set=FEATURE_SET_EXPANDED,
+    )
+
+    independence = result["summary"]["evaluation_independence"]
+
+    assert independence == {
+        "train_candidate_row_count": 4,
+        "evaluation_candidate_row_count": 4,
+        "content_overlap_candidate_row_count": 4,
+        "content_overlap_ratio": 1.0,
+        "exact_content_mirror": True,
+        "independent_holdout": False,
+    }
+
+
 def test_regret_aware_v2_plus_selector_cli_writes_research_shadow_packet(tmp_path) -> None:
     teacher_rows_csv = tmp_path / "teacher_rows.csv"
     output_dir = tmp_path / "selector_packet"
@@ -226,6 +247,25 @@ def _teacher_rows_for_regret_aware_selector() -> pl.DataFrame:
             )
         )
     return pl.DataFrame(rows)
+
+
+def _exact_mirror_teacher_rows_for_regret_aware_selector() -> pl.DataFrame:
+    train_rows = _teacher_rows_for_regret_aware_selector().filter(
+        pl.col("split_name") == "train_selection"
+    )
+    final_rows: list[dict[str, object]] = []
+    for row in train_rows.iter_rows(named=True):
+        mirrored = dict(row)
+        anchor = mirrored["anchor_timestamp"]
+        if not isinstance(anchor, datetime):
+            raise TypeError("test fixture anchor_timestamp must be datetime")
+        mirrored["anchor_timestamp"] = anchor.replace(year=anchor.year + 1)
+        mirrored["split_name"] = "final_holdout"
+        final_rows.append(mirrored)
+    return pl.concat(
+        [train_rows, pl.DataFrame(final_rows, infer_schema_length=None)],
+        how="diagonal_relaxed",
+    )
 
 
 def _csv_ready(frame: pl.DataFrame) -> pl.DataFrame:

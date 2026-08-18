@@ -51,6 +51,11 @@ _NON_NEGATIVE_FLOAT_FIELDS: Final[frozenset[str]] = frozenset(
         "max_mem_gb",
     }
 )
+_MODEL_LABEL_PREFIX_BY_ESTIMATOR: Final[dict[str, str]] = {
+    "weighted_ridge": "weighted_ridge",
+    "hist_gradient_boosting": "hist_gradient_boosting",
+    "random_forest": "random_forest",
+}
 
 
 def validate_canonical_experiment_metrics_payload(
@@ -88,6 +93,28 @@ def validate_canonical_experiment_metrics_payload(
         normalized["claim_scope"] = claim_scope
     else:
         normalized["claim_scope"] = CANONICAL_EXPERIMENT_CLAIM_SCOPE
+    if "estimator_class" in payload:
+        estimator_class = _required_str(payload, "estimator_class")
+        _validate_model_estimator_lineage(
+            model=str(normalized["model"]),
+            estimator_class=estimator_class,
+        )
+        normalized["estimator_class"] = estimator_class
+    if "artifact_identifier" in payload:
+        normalized["artifact_identifier"] = _required_str(
+            payload,
+            "artifact_identifier",
+        )
+    if "independent_holdout" in payload:
+        normalized["independent_holdout"] = _required_bool(
+            payload,
+            "independent_holdout",
+        )
+    if "evaluation_content_overlap_ratio" in payload:
+        overlap_ratio = _required_float(payload, "evaluation_content_overlap_ratio")
+        if not 0.0 <= overlap_ratio <= 1.0:
+            raise ValueError("evaluation_content_overlap_ratio must be between 0 and 1.")
+        normalized["evaluation_content_overlap_ratio"] = overlap_ratio
     normalized["market_execution_enabled"] = False
     normalized["promotion_gate_passed"] = False
     return normalized
@@ -171,20 +198,45 @@ def aggregate_canonical_model_dir(
     seed_test_regrets = [float(payload["test_regret_mean"]) for payload in best_payloads]
     mean_test_regret = mean(seed_test_regrets)
     std_test_regret = pstdev(seed_test_regrets) if len(seed_test_regrets) > 1 else 0.0
-    pvalue = welch_t_pvalue(seed_test_regrets, baseline_seed_means)
-    pass_level = classify_experiment_pass_level(
-        mean_test_regret=mean_test_regret,
-        t_pvalue_vs_v2plus=pvalue,
+    estimator_class = _consistent_optional_text(best_payloads, "estimator_class")
+    artifact_identifier = _consistent_optional_text(
+        best_payloads, "artifact_identifier"
     )
-    return {
+    payload_model = _consistent_optional_text(best_payloads, "model")
+    independent_holdout = all(
+        bool(payload.get("independent_holdout", True)) for payload in best_payloads
+    )
+    pvalue = (
+        welch_t_pvalue(seed_test_regrets, baseline_seed_means)
+        if independent_holdout
+        else None
+    )
+    pass_level = (
+        classify_experiment_pass_level(
+            mean_test_regret=mean_test_regret,
+            t_pvalue_vs_v2plus=pvalue,
+        )
+        if pvalue is not None
+        else "diagnostic_only"
+    )
+    aggregate = {
         "claim_scope": CANONICAL_EXPERIMENT_CLAIM_SCOPE,
-        "model": model_dir.name,
+        "model": payload_model if estimator_class is not None else model_dir.name,
         "n_seeds": len(seed_test_regrets),
         "seeds": seed_values,
         "mean_test_regret": round(mean_test_regret, 4),
         "std_test_regret": round(std_test_regret, 4),
-        "t_pvalue_vs_v2plus": round(pvalue, 6),
+        "t_pvalue_vs_v2plus": round(pvalue, 6) if pvalue is not None else None,
         "pass_level": pass_level,
+        "independent_holdout": independent_holdout,
+        "inference_valid": independent_holdout,
+        "maximum_evaluation_content_overlap_ratio": max(
+            (
+                float(payload.get("evaluation_content_overlap_ratio", 0.0))
+                for payload in best_payloads
+            ),
+            default=0.0,
+        ),
         "baseline_mean_regret": round(float(baseline_mean), 4),
         "baseline_seed_count": len(baseline_seed_means or []),
         "primary_success_threshold": PRIMARY_SUCCESS_MEAN_REGRET_UAH,
@@ -193,6 +245,26 @@ def aggregate_canonical_model_dir(
         "market_execution_enabled": False,
         "promotion_gate_passed": False,
     }
+    if estimator_class is not None:
+        aggregate["estimator_class"] = estimator_class
+    if artifact_identifier is not None:
+        aggregate["artifact_identifier"] = artifact_identifier
+    return aggregate
+
+
+def _consistent_optional_text(
+    payloads: Sequence[Mapping[str, Any]], key: str
+) -> str | None:
+    values = [payload.get(key) for payload in payloads]
+    populated = [value for value in values if value is not None]
+    if not populated:
+        return None
+    if len(populated) != len(values):
+        raise ValueError(f"canonical metrics must consistently declare {key}.")
+    unique = {str(value) for value in populated}
+    if len(unique) != 1:
+        raise ValueError(f"canonical metrics must use one {key}; found {sorted(unique)}.")
+    return unique.pop()
 
 
 def write_canonical_aggregate(path: Path, aggregate: Mapping[str, Any]) -> None:
@@ -331,6 +403,23 @@ def _required_float(payload: Mapping[str, Any], field_name: str) -> float:
     if not math.isfinite(normalized):
         raise ValueError(f"{field_name} must be finite.")
     return normalized
+
+
+def _required_bool(payload: Mapping[str, Any], field_name: str) -> bool:
+    value = payload[field_name]
+    if not isinstance(value, bool):
+        raise ValueError(f"{field_name} must be a boolean.")
+    return value
+
+
+def _validate_model_estimator_lineage(*, model: str, estimator_class: str) -> None:
+    expected_prefix = _MODEL_LABEL_PREFIX_BY_ESTIMATOR.get(estimator_class)
+    if expected_prefix is None:
+        return
+    if not model.startswith(expected_prefix):
+        raise ValueError(
+            f"model label must identify {estimator_class}; observed model={model!r}."
+        )
 
 
 def _optional_float(value: Any) -> float | None:
