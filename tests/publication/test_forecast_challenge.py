@@ -77,3 +77,30 @@ def test_public_forecast_challenge_blocks_baseline_when_similar_day_source_is_mi
     assert baseline["quality_boundary"] == "blocked_source_gap"
     assert baseline["point_count"] == 0
     assert payload["market_execution_enabled"] is False
+
+
+def test_public_forecast_challenge_ignores_non_mapping_model_points() -> None:
+    start = datetime(2026, 6, 8)
+    payload = build_public_forecast_challenge_payload(
+        [
+            {
+                "timestamp": start + timedelta(hours=hour),
+                "price_uah_mwh": 2400.0 + (hour % 24) * 100.0,
+                "source_url": "https://www.oree.com.ua/index.php/PXS/get_pxs_hdata/example",
+            }
+            for hour in range(8 * 24)
+        ],
+        target_delivery_date=date(2026, 6, 16),
+        generated_at=datetime(2026, 6, 15, 7, 0),
+        model_forecasts=[
+            {
+                "model_name": "malformed_external_model",
+                "forecast_generated_at": "2026-06-15T07:00:00+00:00",
+                "training_cutoff": "2026-06-15T06:00:00+00:00",
+                "points": ["not a public forecast point"],
+            }
+        ],
+    )
+
+    model = next(model for model in payload["models"] if model["model_name"] == "malformed_external_model")
+    assert model["point_count"] == 0

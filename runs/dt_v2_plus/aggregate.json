@@ -1,13 +1,18 @@
 {
   "alpha": 0.05,
+  "artifact_identifier": "dt_v2_plus",
   "baseline_mean_regret": 174.77,
   "baseline_seed_count": 3,
   "claim_scope": "canonical_offline_experiment_metrics_not_market_execution",
+  "estimator_class": "random_forest",
+  "independent_holdout": false,
+  "inference_valid": false,
   "market_execution_enabled": false,
+  "maximum_evaluation_content_overlap_ratio": 1.0,
   "mean_test_regret": 168.1566,
-  "model": "dt_v2_plus",
+  "model": "random_forest_v2_plus_safe_switch",
   "n_seeds": 3,
-  "pass_level": "secondary",
+  "pass_level": "diagnostic_only",
   "primary_success_threshold": 166.0,
   "promotion_gate_passed": false,
   "secondary_success_threshold": 178.26,
@@ -17,5 +22,5 @@
     7
   ],
   "std_test_regret": 0.0,
-  "t_pvalue_vs_v2plus": 0.0
+  "t_pvalue_vs_v2plus": null
 }

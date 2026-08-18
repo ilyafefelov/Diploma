@@ -369,6 +369,65 @@ def build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
         raise ValueError("mirror_training_offset_days must be positive.")
     frame = _normalized_v2_plus_strict_rows(strict_rows_frame)
     best_labels = _best_available_label_lookup(regret_decomposition_frame)
+    adapted_rows = _adapt_v2_plus_strict_rows(
+        frame,
+        split_name="train_selection",
+        anchor_offset_days=-mirror_training_offset_days,
+        source_kind="v2_plus_strict_rows_mirrored_training_adapter",
+        best_labels=best_labels,
+    )
+    adapted_rows.extend(
+        _adapt_v2_plus_strict_rows(
+            frame,
+            split_name="final_holdout",
+            anchor_offset_days=0,
+            source_kind="v2_plus_strict_rows_real_final_holdout_adapter",
+            best_labels=best_labels,
+        )
+    )
+    if not adapted_rows:
+        raise ValueError("No V2+ strict rows could be adapted for DT shadow.")
+    return pl.DataFrame(adapted_rows)
+
+
+def build_dt_research_shadow_teacher_rows_from_temporal_v2_plus_strict_rows(
+    *,
+    training_strict_rows_frame: pl.DataFrame,
+    evaluation_strict_rows_frame: pl.DataFrame,
+) -> pl.DataFrame:
+    """Adapt genuinely distinct strict-row windows without timestamp mirroring."""
+
+    adapted_rows = _adapt_v2_plus_strict_rows(
+        _normalized_v2_plus_strict_rows(training_strict_rows_frame),
+        split_name="train_selection",
+        anchor_offset_days=0,
+        source_kind="v2_plus_strict_rows_temporal_training_adapter",
+        best_labels={},
+    )
+    adapted_rows.extend(
+        _adapt_v2_plus_strict_rows(
+            _normalized_v2_plus_strict_rows(evaluation_strict_rows_frame),
+            split_name="final_holdout",
+            anchor_offset_days=0,
+            source_kind="v2_plus_strict_rows_temporal_evaluation_adapter",
+            best_labels={},
+        )
+    )
+    if not adapted_rows:
+        raise ValueError("No temporal V2+ strict rows could be adapted for DT shadow.")
+    return pl.DataFrame(adapted_rows).sort(
+        ["tenant_id", "source_model_name", "anchor_timestamp", "teacher_candidate_index"]
+    )
+
+
+def _adapt_v2_plus_strict_rows(
+    frame: pl.DataFrame,
+    *,
+    split_name: str,
+    anchor_offset_days: int,
+    source_kind: str,
+    best_labels: Mapping[tuple[str, str, str], Mapping[str, Any]],
+) -> list[dict[str, Any]]:
     role_to_index = {
         role: index for index, role in enumerate(V2_PLUS_STRICT_ROLE_TO_FAMILY)
     }
@@ -390,41 +449,34 @@ def build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
             anchor = row["anchor_timestamp"]
             if not isinstance(anchor, datetime):
                 raise ValueError("anchor_timestamp must parse as datetime.")
-            for split_name, anchor_timestamp in (
-                (
-                    "train_selection",
-                    anchor - timedelta(days=mirror_training_offset_days),
-                ),
-                ("final_holdout", anchor),
-            ):
-                v2_plus_selected_candidate_index = role_to_index[
+            anchor_timestamp = anchor + timedelta(days=anchor_offset_days)
+            v2_plus_selected_candidate_index = role_to_index[
+                "schedule_value_learner_v2_plus"
+            ]
+            v2_plus_selected_candidate_id = _v2_plus_strict_candidate_id(
+                row=v2_row,
+                anchor_timestamp=anchor_timestamp,
+                family=V2_PLUS_STRICT_ROLE_TO_FAMILY[
                     "schedule_value_learner_v2_plus"
-                ]
-                v2_plus_selected_candidate_id = _v2_plus_strict_candidate_id(
-                    row=v2_row,
+                ],
+                candidate_index=v2_plus_selected_candidate_index,
+            )
+            adapted_rows.append(
+                _v2_plus_strict_teacher_row(
+                    row=row,
+                    split_name=split_name,
                     anchor_timestamp=anchor_timestamp,
-                    family=V2_PLUS_STRICT_ROLE_TO_FAMILY[
-                        "schedule_value_learner_v2_plus"
-                    ],
-                    candidate_index=v2_plus_selected_candidate_index,
+                    candidate_index=role_to_index[role],
+                    candidate_count=candidate_count,
+                    family=V2_PLUS_STRICT_ROLE_TO_FAMILY[role],
+                    v2_regret=v2_regret,
+                    best_label=best_labels.get(_anchor_key(row)),
+                    v2_plus_selected_candidate_index=v2_plus_selected_candidate_index,
+                    v2_plus_selected_candidate_id=v2_plus_selected_candidate_id,
+                    research_shadow_source_kind=source_kind,
                 )
-                adapted_rows.append(
-                    _v2_plus_strict_teacher_row(
-                        row=row,
-                        split_name=split_name,
-                        anchor_timestamp=anchor_timestamp,
-                        candidate_index=role_to_index[role],
-                        candidate_count=candidate_count,
-                        family=V2_PLUS_STRICT_ROLE_TO_FAMILY[role],
-                        v2_regret=v2_regret,
-                        best_label=best_labels.get(_anchor_key(row)),
-                        v2_plus_selected_candidate_index=v2_plus_selected_candidate_index,
-                        v2_plus_selected_candidate_id=v2_plus_selected_candidate_id,
-                    )
-                )
-    if not adapted_rows:
-        raise ValueError("No V2+ strict rows could be adapted for DT shadow.")
-    return pl.DataFrame(adapted_rows)
+            )
+    return adapted_rows
 
 
 def build_dt_research_shadow_sequence_packet(
@@ -1250,6 +1302,7 @@ def _v2_plus_strict_teacher_row(
     best_label: Mapping[str, Any] | None,
     v2_plus_selected_candidate_index: int,
     v2_plus_selected_candidate_id: str,
+    research_shadow_source_kind: str,
 ) -> dict[str, Any]:
     payload = _json_mapping(row.get("evaluation_payload"))
     horizon = _list_value(payload.get("horizon"))
@@ -1385,9 +1438,7 @@ def _v2_plus_strict_teacher_row(
         "promotion_gate_passed": False,
         "market_execution_gate_passed": False,
         "not_deployed_dt_control": True,
-        "research_shadow_source_kind": (
-            "v2_plus_strict_rows_mirrored_training_adapter"
-        ),
+        "research_shadow_source_kind": research_shadow_source_kind,
         "research_shadow_reward_reference": "real_v2_plus_strict_rows_comparator",
         "publication_receipt_verified": False,
         "source_publication_timestamp_available": False,

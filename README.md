@@ -142,8 +142,8 @@ The defendable product surface is an evidence system, not autonomous execution.
 | Strict LP/oracle comparator | 310.58 UAH mean regret | evaluator, not UI default |
 | V2 forecast selector | 206.37 UAH mean regret | historical baseline |
 | Schedule/Value Learner V2+ | 174.77 UAH mean regret | headline/default evidence |
-| DT/V2+ safe-switch | 168.16 UAH mean regret, 4 switches / 86 abstentions | secondary shadow evidence |
-| HF value-aligned shadow | 158.71 UAH frozen mean regret signal, 20/32 non-fallback days, 8/8 readiness | manual shadow/demo preview |
+| Random-forest V2+ safe-switch (historical artifact id `dt_v2_plus`) | 168.16 UAH mean regret, 4 switches / 86 abstentions | exact-mirror in-packet diagnostic; not DT or OOS evidence |
+| HF DecisionTransformerModel-backbone scorer | 158.71 UAH mirrored-packet diagnostic; separate 20/32-day non-fallback read-model audit | manual shadow/demo preview; not OOS evidence |
 
 Boundary: `market_execution_enabled=false`, no `ProposedBid`, no market order
 payload, no production LP replacement, and no V13 training claim.
@@ -179,8 +179,8 @@ flowchart LR
   B --> C["Silver readiness and feature tables"]
   C --> D["Strict LP/oracle evaluator"]
   C --> E["Schedule/Value Learner V2+"]
-  C --> G["DT safe-switch shadow"]
-  C --> H["HF value-aligned shadow"]
+  C --> G["Random-forest safe-switch diagnostic"]
+  C --> H["HF DT-backbone shadow scorer"]
   D --> I["Regret/value evidence packets"]
   E --> I
   G --> I
@@ -312,7 +312,8 @@ uv run dg list defs --assets "tag:read_model_boundary=not_market_execution"
 In the Dagster UI, use `tag:dfl_v2_plus=true`, `tag:dfl_dt_v2_plus=true`,
 `tag:dfl_hfdt=true`, `tag:hfdt_live_shadow_preview=true`,
 `tag:operator_preview=true`, and
-`tag:read_model_boundary=not_market_execution` to find V2+, DT/V2+,
+`tag:read_model_boundary=not_market_execution` to find V2+, the historical
+`dt_v2_plus` random-forest diagnostic,
 HFDT shadow evidence, final operator-preview evidence assets, and explicit
 read-model/non-execution assets.
 

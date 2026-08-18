@@ -205,7 +205,7 @@ def _supplied_model_series(
             continue
         points_value = forecast.get("points")
         points = (
-            cast(Sequence[Mapping[str, Any]], points_value)
+            [point for point in cast(Sequence[object], points_value) if isinstance(point, Mapping)]
             if isinstance(points_value, list)
             else []
         )

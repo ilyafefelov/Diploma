@@ -10,6 +10,7 @@ import torch
 
 from smart_arbitrage.dfl.dt_research_shadow import (
     build_dt_research_shadow_teacher_rows_from_candidate_library,
+    build_dt_research_shadow_teacher_rows_from_temporal_v2_plus_strict_rows,
     build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows,
     build_dt_research_shadow_sequence_packet,
     run_dt_research_shadow_smoke,
@@ -759,6 +760,16 @@ def test_dt_research_shadow_adapts_real_v2_plus_strict_rows_for_apples_to_apples
     }
     assert teacher_rows.filter(pl.col("split_name") == "train_selection").height == 8
     assert teacher_rows.filter(pl.col("split_name") == "final_holdout").height == 8
+    assert set(
+        teacher_rows.filter(pl.col("split_name") == "train_selection")[
+            "research_shadow_source_kind"
+        ]
+    ) == {"v2_plus_strict_rows_mirrored_training_adapter"}
+    assert set(
+        teacher_rows.filter(pl.col("split_name") == "final_holdout")[
+            "research_shadow_source_kind"
+        ]
+    ) == {"v2_plus_strict_rows_real_final_holdout_adapter"}
     assert (
         teacher_rows.select(pl.col("market_execution_enabled").any()).item()
         is False
@@ -784,6 +795,32 @@ def test_dt_research_shadow_adapts_real_v2_plus_strict_rows_for_apples_to_apples
         )["regret_delta_vs_v2_plus_uah"].to_list()
         == [0.0, 0.0, 0.0, 0.0]
     )
+
+
+def test_dt_research_shadow_adapts_distinct_temporal_strict_rows_without_mirroring() -> None:
+    evaluation_rows = _v2_plus_strict_rows()
+    training_rows = evaluation_rows.with_columns(
+        (pl.col("anchor_timestamp") - pl.duration(days=60)).alias("anchor_timestamp"),
+        (pl.col("regret_uah") + 5.0).alias("regret_uah"),
+        (pl.col("decision_value_uah") - 5.0).alias("decision_value_uah"),
+    )
+
+    teacher_rows = build_dt_research_shadow_teacher_rows_from_temporal_v2_plus_strict_rows(
+        training_strict_rows_frame=training_rows,
+        evaluation_strict_rows_frame=evaluation_rows,
+    )
+
+    train = teacher_rows.filter(pl.col("split_name") == "train_selection")
+    evaluation = teacher_rows.filter(pl.col("split_name") == "final_holdout")
+    assert train.height == 8
+    assert evaluation.height == 8
+    assert train["anchor_timestamp"].max() < evaluation["anchor_timestamp"].min()
+    assert set(train["research_shadow_source_kind"]) == {
+        "v2_plus_strict_rows_temporal_training_adapter"
+    }
+    assert set(evaluation["research_shadow_source_kind"]) == {
+        "v2_plus_strict_rows_temporal_evaluation_adapter"
+    }
 
 
 def test_dt_research_shadow_marks_single_v2_plus_distillation_target_per_candidate_set() -> None:

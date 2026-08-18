@@ -134,6 +134,66 @@ def build_dfl_schedule_value_learner_v2_plus_robustness_frame(
     return pl.DataFrame(rows)
 
 
+def build_dfl_schedule_value_learner_v2_plus_rolling_strict_rows_frame(
+    schedule_candidate_library_frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    forecast_model_names: tuple[str, ...],
+    validation_window_count: int = DEFAULT_ROLLING_VALIDATION_WINDOW_COUNT,
+    validation_anchor_count: int = DEFAULT_VALIDATION_ANCHOR_COUNT,
+    min_prior_anchors_before_window: int = DEFAULT_MIN_PRIOR_ANCHORS_BEFORE_WINDOW,
+    min_prior_mean_improvement_ratio_vs_v2: float = 0.01,
+) -> pl.DataFrame:
+    """Materialize candidate-level strict rows for distinct rolling windows."""
+
+    _validate_config(
+        tenant_ids=tenant_ids,
+        forecast_model_names=forecast_model_names,
+        validation_window_count=validation_window_count,
+        validation_anchor_count=validation_anchor_count,
+        min_prior_anchors_before_window=min_prior_anchors_before_window,
+        min_robust_passing_windows=1,
+    )
+    v2._validate_library_frame(schedule_candidate_library_frame)
+    frames: list[pl.DataFrame] = []
+    for source_model_name in forecast_model_names:
+        windows = _rolling_windows(
+            schedule_candidate_library_frame,
+            tenant_ids=tenant_ids,
+            source_model_name=source_model_name,
+            validation_window_count=validation_window_count,
+            validation_anchor_count=validation_anchor_count,
+            min_prior_anchors_before_window=min_prior_anchors_before_window,
+        )
+        for window in windows:
+            frames.append(
+                _rolling_window_strict_frame(
+                    schedule_candidate_library_frame,
+                    tenant_ids=tenant_ids,
+                    source_model_name=source_model_name,
+                    window=window,
+                    validation_anchor_count=validation_anchor_count,
+                    min_prior_mean_improvement_ratio_vs_v2=(
+                        min_prior_mean_improvement_ratio_vs_v2
+                    ),
+                ).with_columns(
+                    pl.lit(int(window["window_index"])).alias(
+                        "evaluation_window_index"
+                    ),
+                    pl.lit("final_holdout").alias("split_name"),
+                )
+            )
+    return pl.concat(frames, how="diagonal_relaxed").sort(
+        [
+            "source_model_name",
+            "evaluation_window_index",
+            "tenant_id",
+            "anchor_timestamp",
+            "selection_role",
+        ]
+    )
+
+
 def validate_dfl_schedule_value_learner_v2_plus_robustness_evidence(
     robustness_frame: pl.DataFrame,
     *,
@@ -281,37 +341,15 @@ def _window_summary_row(
     min_mean_regret_improvement_ratio: float,
     min_prior_mean_improvement_ratio_vs_v2: float,
 ) -> dict[str, Any]:
-    validation_anchors = set(window["validation_anchors"])
-    validation_start = v2._datetime_value(
-        window["validation_start_anchor_timestamp"],
-        field_name="validation_start_anchor_timestamp",
-    )
-    rolling_frame = _rolling_split_frame(
+    strict_frame, v2_plus_learner_frame = _rolling_window_frames(
         frame,
         tenant_ids=tenant_ids,
         source_model_name=source_model_name,
-        validation_anchors=validation_anchors,
-        validation_start=validation_start,
-    )
-    base_frame = _base_library_frame(rolling_frame)
-    v2_learner_frame = v2.build_dfl_schedule_value_learner_v2_frame(
-        base_frame,
-        tenant_ids=tenant_ids,
-        forecast_model_names=(source_model_name,),
-        final_validation_anchor_count_per_tenant=validation_anchor_count,
-    )
-    v2_plus_learner_frame = build_dfl_schedule_value_learner_v2_plus_frame(
-        rolling_frame,
-        v2_learner_frame,
-        tenant_ids=tenant_ids,
-        forecast_model_names=(source_model_name,),
-        final_validation_anchor_count_per_tenant=validation_anchor_count,
-        min_prior_mean_improvement_ratio_vs_v2=min_prior_mean_improvement_ratio_vs_v2,
-    )
-    strict_frame = build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
-        rolling_frame,
-        v2_plus_learner_frame,
-        v2_learner_frame,
+        window=window,
+        validation_anchor_count=validation_anchor_count,
+        min_prior_mean_improvement_ratio_vs_v2=(
+            min_prior_mean_improvement_ratio_vs_v2
+        ),
     )
     strict_rows = _role_rows(strict_frame, source_model_name, "strict_reference")
     raw_rows = _role_rows(strict_frame, source_model_name, "raw_reference")
@@ -381,6 +419,72 @@ def _window_summary_row(
         "not_full_dfl": True,
         "not_market_execution": True,
     }
+
+
+def _rolling_window_strict_frame(
+    frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_name: str,
+    window: dict[str, Any],
+    validation_anchor_count: int,
+    min_prior_mean_improvement_ratio_vs_v2: float,
+) -> pl.DataFrame:
+    strict_frame, _ = _rolling_window_frames(
+        frame,
+        tenant_ids=tenant_ids,
+        source_model_name=source_model_name,
+        window=window,
+        validation_anchor_count=validation_anchor_count,
+        min_prior_mean_improvement_ratio_vs_v2=(
+            min_prior_mean_improvement_ratio_vs_v2
+        ),
+    )
+    return strict_frame
+
+
+def _rolling_window_frames(
+    frame: pl.DataFrame,
+    *,
+    tenant_ids: tuple[str, ...],
+    source_model_name: str,
+    window: dict[str, Any],
+    validation_anchor_count: int,
+    min_prior_mean_improvement_ratio_vs_v2: float,
+) -> tuple[pl.DataFrame, pl.DataFrame]:
+    validation_start = v2._datetime_value(
+        window["validation_start_anchor_timestamp"],
+        field_name="validation_start_anchor_timestamp",
+    )
+    rolling_frame = _rolling_split_frame(
+        frame,
+        tenant_ids=tenant_ids,
+        source_model_name=source_model_name,
+        validation_anchors=set(window["validation_anchors"]),
+        validation_start=validation_start,
+    )
+    v2_learner_frame = v2.build_dfl_schedule_value_learner_v2_frame(
+        _base_library_frame(rolling_frame),
+        tenant_ids=tenant_ids,
+        forecast_model_names=(source_model_name,),
+        final_validation_anchor_count_per_tenant=validation_anchor_count,
+    )
+    v2_plus_learner_frame = build_dfl_schedule_value_learner_v2_plus_frame(
+        rolling_frame,
+        v2_learner_frame,
+        tenant_ids=tenant_ids,
+        forecast_model_names=(source_model_name,),
+        final_validation_anchor_count_per_tenant=validation_anchor_count,
+        min_prior_mean_improvement_ratio_vs_v2=min_prior_mean_improvement_ratio_vs_v2,
+    )
+    return (
+        build_dfl_schedule_value_learner_v2_plus_strict_lp_benchmark_frame(
+            rolling_frame,
+            v2_plus_learner_frame,
+            v2_learner_frame,
+        ),
+        v2_plus_learner_frame,
+    )
 
 
 def _base_library_frame(frame: pl.DataFrame) -> pl.DataFrame:
@@ -645,6 +749,7 @@ def _ordered_unique(values: Any) -> list[str]:
 __all__ = [
     "DFL_SCHEDULE_VALUE_LEARNER_V2_PLUS_ROBUSTNESS_CLAIM_SCOPE",
     "build_dfl_schedule_value_learner_v2_plus_robustness_frame",
+    "build_dfl_schedule_value_learner_v2_plus_rolling_strict_rows_frame",
     "evaluate_dfl_schedule_value_learner_v2_plus_robustness_gate",
     "validate_dfl_schedule_value_learner_v2_plus_robustness_evidence",
 ]

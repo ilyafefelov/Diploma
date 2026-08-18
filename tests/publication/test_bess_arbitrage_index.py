@@ -12,6 +12,7 @@ from smart_arbitrage.publication.bess_arbitrage_index import (
     build_blocked_public_bess_arbitrage_index_payload,
     build_public_bess_arbitrage_index_payload,
     build_public_bess_arbitrage_history_payload,
+    _as_float_list,
 )
 
 
@@ -148,3 +149,16 @@ def test_public_bess_history_merges_latest_by_delivery_date_and_preset() -> None
         "2026-06-15",
     ]
     assert history["rows"][-1]["net_value_uah"] == 125.0
+
+
+def test_public_bess_history_treats_non_mapping_source_as_missing() -> None:
+    history = build_public_bess_arbitrage_history_payload(
+        latest_payload={"generated_at": "2026-06-16T07:30:00+00:00", "source": "invalid", "presets": []},
+    )
+
+    assert history["row_count"] == 0
+
+
+def test_solver_values_reject_text_before_iterable_coercion() -> None:
+    with pytest.raises(TypeError, match="Expected iterable solver values"):
+        _as_float_list("12", expected_length=2)
