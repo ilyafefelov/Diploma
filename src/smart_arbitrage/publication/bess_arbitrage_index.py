@@ -521,6 +521,8 @@ def _optional_float_value(value: Any) -> float | None:
 def _as_float_list(values: object, expected_length: int) -> list[float]:
     if values is None:
         raise RuntimeError("Expected solver values, received None.")
+    if isinstance(values, str | bytes):
+        raise TypeError("Expected iterable solver values.")
     if hasattr(values, "tolist"):
         raw_values = values.tolist()
     elif isinstance(values, Iterable):

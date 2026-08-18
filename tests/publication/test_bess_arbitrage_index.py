@@ -12,6 +12,7 @@ from smart_arbitrage.publication.bess_arbitrage_index import (
     build_blocked_public_bess_arbitrage_index_payload,
     build_public_bess_arbitrage_index_payload,
     build_public_bess_arbitrage_history_payload,
+    _as_float_list,
 )
 
 
@@ -156,3 +157,8 @@ def test_public_bess_history_treats_non_mapping_source_as_missing() -> None:
     )
 
     assert history["row_count"] == 0
+
+
+def test_solver_values_reject_text_before_iterable_coercion() -> None:
+    with pytest.raises(TypeError, match="Expected iterable solver values"):
+        _as_float_list("12", expected_length=2)

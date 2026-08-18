@@ -381,7 +381,7 @@ def build_dt_research_shadow_teacher_rows_from_v2_plus_strict_rows(
             frame,
             split_name="final_holdout",
             anchor_offset_days=0,
-            source_kind="v2_plus_strict_rows_mirrored_training_adapter",
+            source_kind="v2_plus_strict_rows_real_final_holdout_adapter",
             best_labels=best_labels,
         )
     )

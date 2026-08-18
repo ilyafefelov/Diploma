@@ -760,6 +760,16 @@ def test_dt_research_shadow_adapts_real_v2_plus_strict_rows_for_apples_to_apples
     }
     assert teacher_rows.filter(pl.col("split_name") == "train_selection").height == 8
     assert teacher_rows.filter(pl.col("split_name") == "final_holdout").height == 8
+    assert set(
+        teacher_rows.filter(pl.col("split_name") == "train_selection")[
+            "research_shadow_source_kind"
+        ]
+    ) == {"v2_plus_strict_rows_mirrored_training_adapter"}
+    assert set(
+        teacher_rows.filter(pl.col("split_name") == "final_holdout")[
+            "research_shadow_source_kind"
+        ]
+    ) == {"v2_plus_strict_rows_real_final_holdout_adapter"}
     assert (
         teacher_rows.select(pl.col("market_execution_enabled").any()).item()
         is False
