@@ -1,9 +1,14 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue'
-import type { PublicBessGovernanceBoundary } from '~/utils/publicBessArtifactTypes'
+import type {
+  PublicBessEnforcedConstraint,
+  PublicBessGovernanceBoundary,
+  PublicBessNotModeledConstraint
+} from '~/utils/publicBessArtifactTypes'
 
 type PublicRow = Record<string, unknown>
 type ActionTone = 'charge' | 'discharge' | 'hold'
+type GovernanceConstraint = PublicBessEnforcedConstraint | PublicBessNotModeledConstraint
 type ActionPoint = {
   key: string
   hour: string
@@ -31,6 +36,18 @@ const props = defineProps<{
   proposedBidStatus: string
   governance?: PublicBessGovernanceBoundary
 }>()
+
+const governanceLabels: Record<GovernanceConstraint, string> = {
+  'power_limit': 'Power limit',
+  'state_of_charge_bounds': 'State-of-charge bounds',
+  'round_trip_efficiency': 'Round-trip efficiency',
+  'terminal_soc_equals_initial_soc': 'Terminal SOC equals initial SOC',
+  'degradation_proxy': 'Degradation proxy',
+  'tenant_operating_calendar': 'Tenant operating calendar',
+  'maintenance_or_outage_availability': 'Maintenance or outage availability',
+  'live_battery_telemetry': 'Live battery telemetry',
+  'market_eligibility_and_execution': 'Market eligibility and execution'
+}
 
 const selectedKey = ref('')
 
@@ -287,6 +304,10 @@ function receiptLabel(value: string): string {
     .replace(/^public_/, '')
     .replace(/_/g, ' ')
 }
+
+function governanceLabel(value: GovernanceConstraint): string {
+  return governanceLabels[value]
+}
 </script>
 
 <template>
@@ -461,7 +482,7 @@ function receiptLabel(value: string): string {
               v-for="constraint in governance.enforced_constraints"
               :key="constraint"
             >
-              {{ receiptLabel(constraint) }}
+              {{ governanceLabel(constraint) }}
             </li>
           </ul>
         </div>
@@ -472,7 +493,7 @@ function receiptLabel(value: string): string {
               v-for="constraint in governance.not_modeled_constraints"
               :key="constraint"
             >
-              {{ receiptLabel(constraint) }}
+              {{ governanceLabel(constraint) }}
             </li>
           </ul>
         </div>

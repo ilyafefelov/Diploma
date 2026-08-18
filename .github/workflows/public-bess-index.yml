@@ -101,6 +101,7 @@ jobs:
             --with cvxpy \
             --with httpx \
             --with beautifulsoup4 \
+            --with 'pydantic>=2,<3' \
             python scripts/materialize_public_bess_arbitrage_index.py "${args[@]}"
 
       - name: Materialize forecast challenge
@@ -114,6 +115,7 @@ jobs:
           uv run --no-project \
             --with httpx \
             --with beautifulsoup4 \
+            --with 'pydantic>=2,<3' \
             python scripts/materialize_public_forecast_challenge.py "${args[@]}"
 
       - name: Commit public JSON changes
