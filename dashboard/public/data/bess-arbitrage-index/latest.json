@@ -1,6 +1,25 @@
 {
   "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
-  "generated_at": "2026-08-18T08:50:25.126122+00:00",
+  "generated_at": "2026-08-18T11:51:34.691272+00:00",
+  "governance": {
+    "calculation_scope": "generic_physical_bess_analytical_read_model",
+    "enforced_constraints": [
+      "power_limit",
+      "state_of_charge_bounds",
+      "round_trip_efficiency",
+      "terminal_soc_equals_initial_soc",
+      "degradation_proxy"
+    ],
+    "metadata_status": "declared_model_boundary_not_source_receipt",
+    "not_modeled_constraints": [
+      "tenant_operating_calendar",
+      "maintenance_or_outage_availability",
+      "live_battery_telemetry",
+      "market_eligibility_and_execution"
+    ],
+    "operator_context_status": "facility_specific_context_not_in_public_index",
+    "schedule_status": "perfect_hindsight_analytical_schedule_not_dispatch_command"
+  },
   "market_execution_enabled": false,
   "market_timezone": "Europe/Kyiv",
   "market_venue": "DAM",
