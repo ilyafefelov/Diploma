@@ -67,6 +67,16 @@ def build_rf_safe_switch_temporal_replay_packet(
         raise ValueError("temporal replay has no training strict rows.")
     if evaluation_strict_rows.is_empty():
         raise ValueError("temporal replay has no evaluation strict rows.")
+    latest_training_anchor = training_strict_rows["anchor_timestamp"].max()
+    earliest_evaluation_anchor = evaluation_strict_rows["anchor_timestamp"].min()
+    if not isinstance(latest_training_anchor, datetime) or not isinstance(
+        earliest_evaluation_anchor, datetime
+    ):
+        raise ValueError("temporal replay requires datetime anchor timestamps.")
+    if latest_training_anchor >= earliest_evaluation_anchor:
+        raise ValueError(
+            "temporal replay training anchors must predate evaluation anchors."
+        )
 
     teacher_rows = (
         build_dt_research_shadow_teacher_rows_from_temporal_v2_plus_strict_rows(

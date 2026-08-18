@@ -4,6 +4,8 @@ import json
 from pathlib import Path
 import pickle
 
+import pytest
+
 from scripts.materialize_rf_safe_switch_temporal_replay import (
     main as materialize_rf_safe_switch_temporal_replay,
 )
@@ -64,6 +66,32 @@ def test_rf_safe_switch_temporal_replay_uses_distinct_rolling_windows() -> None:
     assert summary["market_execution_enabled"] is False
     assert summary["promotion_gate_passed"] is False
     assert packet["teacher_rows"].height == (3 * 18 * 5 * 4) + (18 * 5 * 4)
+
+
+def test_rf_safe_switch_temporal_replay_rejects_future_training_windows() -> None:
+    rolling_strict_rows = (
+        build_dfl_schedule_value_learner_v2_plus_rolling_strict_rows_frame(
+            _candidate_library_104(
+                v2_plus_window_regrets=[70.0, 70.0, 70.0, 85.0]
+            ),
+            tenant_ids=TENANTS,
+            forecast_model_names=SOURCE_MODELS,
+            validation_window_count=4,
+            validation_anchor_count=18,
+            min_prior_anchors_before_window=30,
+        )
+    )
+
+    with pytest.raises(ValueError, match="training anchors must predate evaluation anchors"):
+        build_rf_safe_switch_temporal_replay_packet(
+            rolling_strict_rows,
+            run_slug="rf-safe-switch-reversed-temporal-test",
+            source_model_name=SOURCE_MODELS[0],
+            training_window_indices=(1,),
+            evaluation_window_index=2,
+            seeds=(42,),
+            bootstrap_iterations=100,
+        )
 
 
 def test_rf_safe_switch_temporal_replay_cli_writes_evidence_packet(
