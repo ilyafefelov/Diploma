@@ -1,34 +1,10 @@
 {
   "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
-  "generated_at": "2026-10-05T08:58:21.573536+00:00",
+  "generated_at": "2026-10-06T05:45:12.222381+00:00",
   "market_execution_enabled": false,
   "proposed_bid_status": "not_emitted",
   "row_count": 180,
   "rows": [
-    {
-      "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
-      "delivery_date": "2026-07-07",
-      "equivalent_full_cycles": 0.93573,
-      "generated_at": "2026-07-08T06:23:11.382772+00:00",
-      "label": "100 kW / 215 kWh C&I pack",
-      "market_execution_enabled": false,
-      "net_value_uah": 1187.481375,
-      "normalized_uah_per_mwh_capacity": 5523.169186,
-      "preset_id": "bess_100kw_215kwh",
-      "throughput_mwh": 0.402364
-    },
-    {
-      "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
-      "delivery_date": "2026-07-07",
-      "equivalent_full_cycles": 0.972131,
-      "generated_at": "2026-07-08T06:23:11.382772+00:00",
-      "label": "500 kW / 1 MWh C&I pack",
-      "market_execution_enabled": false,
-      "net_value_uah": 5552.545613,
-      "normalized_uah_per_mwh_capacity": 5552.545613,
-      "preset_id": "bess_500kw_1mwh",
-      "throughput_mwh": 1.944261
-    },
     {
       "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
       "delivery_date": "2026-07-08",
@@ -2164,6 +2140,30 @@
       "normalized_uah_per_mwh_capacity": 5723.578941,
       "preset_id": "bess_500kw_1mwh",
       "throughput_mwh": 4.503911
+    },
+    {
+      "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
+      "delivery_date": "2026-10-05",
+      "equivalent_full_cycles": 2.251958,
+      "generated_at": "2026-10-06T05:45:12.222381+00:00",
+      "label": "100 kW / 215 kWh C&I pack",
+      "market_execution_enabled": false,
+      "net_value_uah": 2469.084054,
+      "normalized_uah_per_mwh_capacity": 11484.111879,
+      "preset_id": "bess_100kw_215kwh",
+      "throughput_mwh": 0.968342
+    },
+    {
+      "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
+      "delivery_date": "2026-10-05",
+      "equivalent_full_cycles": 2.251956,
+      "generated_at": "2026-10-06T05:45:12.222381+00:00",
+      "label": "500 kW / 1 MWh C&I pack",
+      "market_execution_enabled": false,
+      "net_value_uah": 11607.955537,
+      "normalized_uah_per_mwh_capacity": 11607.955537,
+      "preset_id": "bess_500kw_1mwh",
+      "throughput_mwh": 4.503913
     }
   ],
   "schema_version": "ukraine_bess_arbitrage_index_history.v1"
