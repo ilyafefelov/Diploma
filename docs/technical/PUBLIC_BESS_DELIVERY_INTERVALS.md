@@ -27,6 +27,10 @@ A normal target hour uses the first occurrence when the source repeats. This is
 an explicit forecast assumption, not a modification of observed prices. Missing
 source wall hours block the baseline. History retains both source occurrences,
 and training cutoffs serialize the actual final UTC instant.
+Observed history must be exactly hour-aligned before the local-hour lookup.
+Supplied-model generation/cutoff metadata uses UTC for legacy naive values;
+explicit metadata offsets preserve their absolute instant. These metadata fields
+are separate from naive Kyiv delivery timestamps.
 
 Regression fixture `tests/publication/oree_2026_10_25.json` is the unmodified
 read-only response retrieved on 2026-10-28 from

@@ -218,8 +218,8 @@ def _supplied_model_series(
             if isinstance(points_value, list)
             else []
         )
-        generated_at = _datetime_value(forecast.get("forecast_generated_at") or forecast.get("generated_at"))
-        training_cutoff = _datetime_value(forecast.get("training_cutoff"))
+        generated_at = _metadata_datetime(forecast.get("forecast_generated_at") or forecast.get("generated_at"))
+        training_cutoff = _metadata_datetime(forecast.get("training_cutoff"))
         series.append(
             _model_series_payload(
                 model_name=model_name,
@@ -250,6 +250,8 @@ def _normalize_history(rows: Sequence[Mapping[str, Any] | PublicPricePoint]) -> 
         )
     if not points:
         raise ValueError("forecast challenge requires source-backed history rows")
+    if any(point.timestamp.minute or point.timestamp.second or point.timestamp.microsecond for point in points):
+        raise ValueError("forecast challenge requires hour-aligned observed delivery intervals")
     if len({point.timestamp for point in points}) != len(points):
         raise ValueError("forecast challenge requires unique observed delivery intervals")
     return sorted(points, key=lambda point: point.timestamp)
@@ -261,6 +263,15 @@ def _training_cutoff(history: Sequence[PublicPricePoint]) -> datetime:
 
 def _datetime_value(value: Any) -> datetime:
     return delivery_timestamp(value)
+
+
+def _metadata_datetime(value: Any) -> datetime:
+    """Model metadata uses UTC for legacy naive values, unlike delivery wall times."""
+    if isinstance(value, str) and value.strip():
+        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if not isinstance(value, datetime):
+        raise TypeError("model metadata timestamp must be a datetime or ISO datetime string")
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 def _float_value(value: Any) -> float:
