@@ -1,0 +1,231 @@
+{
+  "claim_boundary": "public_forecast_challenge_not_market_execution",
+  "generated_at": "2026-10-28T05:37:56.052285+00:00",
+  "market_execution_enabled": false,
+  "models": [
+    {
+      "backend_status": "materialized",
+      "claim_boundary": "public_forecast_challenge_not_market_execution",
+      "forecast_generated_at": "2026-10-28T05:37:56.052285+00:00",
+      "label": "Strict similar-day baseline",
+      "leakage_check_status": "source_timestamp_before_target",
+      "market_execution_enabled": false,
+      "model_name": "strict_similar_day_baseline",
+      "point_count": 24,
+      "point_in_time_status": "generated_before_target_publication",
+      "points": [
+        {
+          "forecast_price_uah_mwh": 4970.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T00:00:00",
+          "timestamp": "2026-10-29T00:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4970.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T01:00:00",
+          "timestamp": "2026-10-29T01:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4950.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T02:00:00",
+          "timestamp": "2026-10-29T02:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4950.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T03:00:00",
+          "timestamp": "2026-10-29T03:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4950.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T04:00:00",
+          "timestamp": "2026-10-29T04:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4950.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T05:00:00",
+          "timestamp": "2026-10-29T05:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4970.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T06:00:00",
+          "timestamp": "2026-10-29T06:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5540.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T07:00:00",
+          "timestamp": "2026-10-29T07:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5540.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T08:00:00",
+          "timestamp": "2026-10-29T08:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5150.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T09:00:00",
+          "timestamp": "2026-10-29T09:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5100.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T10:00:00",
+          "timestamp": "2026-10-29T10:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4990.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T11:00:00",
+          "timestamp": "2026-10-29T11:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4990.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T12:00:00",
+          "timestamp": "2026-10-29T12:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 4990.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T13:00:00",
+          "timestamp": "2026-10-29T13:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5150.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T14:00:00",
+          "timestamp": "2026-10-29T14:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 6300.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T15:00:00",
+          "timestamp": "2026-10-29T15:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 6500.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T16:00:00",
+          "timestamp": "2026-10-29T16:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 8000.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T17:00:00",
+          "timestamp": "2026-10-29T17:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 6500.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T18:00:00",
+          "timestamp": "2026-10-29T18:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 6300.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T19:00:00",
+          "timestamp": "2026-10-29T19:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5640.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T20:00:00",
+          "timestamp": "2026-10-29T20:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5640.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T21:00:00",
+          "timestamp": "2026-10-29T21:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5340.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T22:00:00",
+          "timestamp": "2026-10-29T22:00:00"
+        },
+        {
+          "forecast_price_uah_mwh": 5320.0,
+          "leakage_check_status": "source_timestamp_before_target",
+          "point_in_time_status": "generated_before_target_publication",
+          "source_timestamp": "2026-10-28T23:00:00",
+          "timestamp": "2026-10-29T23:00:00"
+        }
+      ],
+      "quality_boundary": "ranked_baseline",
+      "target_delivery_date": "2026-10-29",
+      "training_cutoff": "2026-10-28T23:00:00+00:00"
+    },
+    {
+      "backend_status": "blocked",
+      "blocker": "model_not_materialized_in_this_public_snapshot",
+      "claim_boundary": "public_forecast_challenge_not_market_execution",
+      "forecast_generated_at": "2026-10-28T05:37:56.052285+00:00",
+      "label": "NBEATSx public challenge",
+      "leakage_check_status": "not_ranked",
+      "market_execution_enabled": false,
+      "model_name": "nbeatsx_official_public_challenge_v0",
+      "point_count": 0,
+      "point_in_time_status": "not_materialized",
+      "points": [],
+      "quality_boundary": "experimental_not_ranked",
+      "target_delivery_date": "2026-10-29",
+      "training_cutoff": "2026-10-28T23:00:00+00:00"
+    },
+    {
+      "backend_status": "blocked",
+      "blocker": "model_not_materialized_in_this_public_snapshot",
+      "claim_boundary": "public_forecast_challenge_not_market_execution",
+      "forecast_generated_at": "2026-10-28T05:37:56.052285+00:00",
+      "label": "TFT public challenge",
+      "leakage_check_status": "not_ranked",
+      "market_execution_enabled": false,
+      "model_name": "tft_official_public_challenge_v0",
+      "point_count": 0,
+      "point_in_time_status": "not_materialized",
+      "points": [],
+      "quality_boundary": "experimental_not_ranked",
+      "target_delivery_date": "2026-10-29",
+      "training_cutoff": "2026-10-28T23:00:00+00:00"
+    }
+  ],
+  "proposed_bid_status": "not_emitted",
+  "schema_version": "ukraine_bess_forecast_challenge.v1",
+  "source": {
+    "history_row_count": 216,
+    "source_scope": "source_backed_observed_oree_history_only",
+    "training_cutoff": "2026-10-28T23:00:00+00:00"
+  },
+  "target_delivery_date": "2026-10-29"
+}
