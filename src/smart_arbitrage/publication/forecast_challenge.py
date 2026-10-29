@@ -10,6 +10,7 @@ from smart_arbitrage.publication.bess_arbitrage_index import (
     PUBLIC_FORECAST_CHALLENGE_CLAIM_BOUNDARY,
     PublicPricePoint,
 )
+from smart_arbitrage.publication.delivery_day import KYIV, delivery_intervals, delivery_timestamp, delivery_iso
 
 STRICT_SIMILAR_DAY_MODEL_NAME: Final[str] = "strict_similar_day_baseline"
 NBEATSX_PUBLIC_MODEL_NAME: Final[str] = "nbeatsx_official_public_challenge_v0"
@@ -115,22 +116,30 @@ def _strict_similar_day_forecast(
     *,
     target_delivery_date: date,
 ) -> list[dict[str, Any]]:
-    by_timestamp = {point.timestamp: point for point in history}
+    by_local_hour = {
+        (local.date(), local.hour, local.fold): point
+        for point in history
+        for local in [point.timestamp.astimezone(KYIV)]
+    }
     points: list[dict[str, Any]] = []
-    for hour in range(24):
-        forecast_timestamp = datetime.combine(target_delivery_date, datetime.min.time()) + timedelta(hours=hour)
-        source_timestamp = _similar_day_source_timestamp(forecast_timestamp)
-        source_point = by_timestamp.get(source_timestamp)
+    for forecast_timestamp in delivery_intervals(target_delivery_date):
+        local_target = forecast_timestamp.astimezone(KYIV)
+        source_day = target_delivery_date - timedelta(days=1 if target_delivery_date.weekday() in {1, 2, 3, 4} else 7)
+        # Similar-day forecasts align by local hour. A single source occurrence
+        # may forecast both target folds; distinct observed source folds stay intact.
+        source_point = by_local_hour.get((source_day, local_target.hour, local_target.fold))
+        if source_point is None and local_target.fold:
+            source_point = by_local_hour.get((source_day, local_target.hour, 0))
         if source_point is None:
             raise ValueError(
                 "strict similar-day forecast needs source-backed history for "
-                f"{source_timestamp.isoformat()}"
+                f"{source_day.isoformat()} hour {local_target.hour}"
             )
         points.append(
             {
-                "timestamp": forecast_timestamp.isoformat(),
+                "timestamp": delivery_iso(forecast_timestamp),
                 "forecast_price_uah_mwh": round(source_point.price_uah_mwh, 6),
-                "source_timestamp": source_timestamp.isoformat(),
+                "source_timestamp": delivery_iso(source_point.timestamp),
                 "point_in_time_status": "generated_before_target_publication",
                 "leakage_check_status": "source_timestamp_before_target",
             }
@@ -209,8 +218,8 @@ def _supplied_model_series(
             if isinstance(points_value, list)
             else []
         )
-        generated_at = _datetime_value(forecast.get("forecast_generated_at") or forecast.get("generated_at"))
-        training_cutoff = _datetime_value(forecast.get("training_cutoff"))
+        generated_at = _metadata_datetime(forecast.get("forecast_generated_at") or forecast.get("generated_at"))
+        training_cutoff = _metadata_datetime(forecast.get("training_cutoff"))
         series.append(
             _model_series_payload(
                 model_name=model_name,
@@ -229,7 +238,7 @@ def _normalize_history(rows: Sequence[Mapping[str, Any] | PublicPricePoint]) -> 
     points: list[PublicPricePoint] = []
     for row in rows:
         if isinstance(row, PublicPricePoint):
-            points.append(row)
+            points.append(PublicPricePoint(delivery_timestamp(row.timestamp), row.price_uah_mwh, row.volume_mwh, row.source_url))
             continue
         points.append(
             PublicPricePoint(
@@ -241,6 +250,10 @@ def _normalize_history(rows: Sequence[Mapping[str, Any] | PublicPricePoint]) -> 
         )
     if not points:
         raise ValueError("forecast challenge requires source-backed history rows")
+    if any(point.timestamp.minute or point.timestamp.second or point.timestamp.microsecond for point in points):
+        raise ValueError("forecast challenge requires hour-aligned observed delivery intervals")
+    if len({point.timestamp for point in points}) != len(points):
+        raise ValueError("forecast challenge requires unique observed delivery intervals")
     return sorted(points, key=lambda point: point.timestamp)
 
 
@@ -248,18 +261,17 @@ def _training_cutoff(history: Sequence[PublicPricePoint]) -> datetime:
     return max(point.timestamp for point in history)
 
 
-def _similar_day_source_timestamp(target_timestamp: datetime) -> datetime:
-    if target_timestamp.weekday() in {1, 2, 3, 4}:
-        return target_timestamp - timedelta(hours=24)
-    return target_timestamp - timedelta(hours=168)
-
-
 def _datetime_value(value: Any) -> datetime:
-    if isinstance(value, datetime):
-        return value.replace(tzinfo=None)
+    return delivery_timestamp(value)
+
+
+def _metadata_datetime(value: Any) -> datetime:
+    """Model metadata uses UTC for legacy naive values, unlike delivery wall times."""
     if isinstance(value, str) and value.strip():
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
-    raise TypeError("timestamp must be a datetime or ISO datetime string")
+        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if not isinstance(value, datetime):
+        raise TypeError("model metadata timestamp must be a datetime or ISO datetime string")
+    return value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
 
 
 def _float_value(value: Any) -> float:
