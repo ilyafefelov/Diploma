@@ -14,17 +14,17 @@
     "schedule_timezone_note": "05:35 UTC is the primary run and 08:35 UTC is the retry (08:35 / 11:35 Europe/Kyiv during summer time)"
   },
   "forecast": {
-    "actual_target_delivery_date": "2026-11-01",
-    "attempted_target_delivery_date": "2026-11-01",
-    "expected_target_delivery_date": "2026-11-01",
+    "actual_target_delivery_date": "2026-11-02",
+    "attempted_target_delivery_date": "2026-11-02",
+    "expected_target_delivery_date": "2026-11-02",
     "history_row_count": 216,
     "is_current_for_kyiv_schedule": true,
     "model_statuses": [
       {
-        "backend_status": "blocked",
+        "backend_status": "materialized",
         "model_name": "strict_similar_day_baseline",
-        "point_count": 0,
-        "quality_boundary": "blocked_source_gap"
+        "point_count": 24,
+        "quality_boundary": "ranked_baseline"
       },
       {
         "backend_status": "blocked",
@@ -40,14 +40,14 @@
       }
     ],
     "status": "published",
-    "training_cutoff": "2026-10-31T23:00:00+00:00"
+    "training_cutoff": "2026-11-01T23:00:00+00:00"
   },
-  "generated_at": "2026-10-31T08:38:40.357502+00:00",
+  "generated_at": "2026-11-01T05:36:56.225299+00:00",
   "publisher_timezone": "Europe/Kyiv",
   "realized": {
-    "actual_delivery_date": "2026-10-30",
-    "attempted_delivery_date": "2026-10-30",
-    "expected_delivery_date": "2026-10-30",
+    "actual_delivery_date": "2026-10-31",
+    "attempted_delivery_date": "2026-10-31",
+    "expected_delivery_date": "2026-10-31",
     "is_current_for_kyiv_schedule": true,
     "row_count": 24,
     "source_status": "complete_24_hour_delivery_day",
