@@ -26,6 +26,7 @@ class IndexSnapshot:
     prices: list[float]
     powers: list[float]
     soc_percent: list[float]
+    timestamps: list[str]
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -61,6 +62,7 @@ def load_snapshot(latest_path: Path) -> IndexSnapshot:
         prices=[float(row["price_uah_mwh"]) for row in schedule],
         powers=[float(row["net_power_mw"]) for row in schedule],
         soc_percent=[float(row["soc_after_mwh"]) / capacity * 100 for row in schedule],
+        timestamps=[str(row["timestamp"]) for row in schedule],
     )
 
 
@@ -229,7 +231,7 @@ def draw_social_card(
         draw.text((x0 + 24, receipt_y + 22), label, fill="#5d7b92", font=font(19, True))
         for j, wrapped in enumerate(textwrap.wrap(value, width=16)):
             draw.text((x0 + 24, receipt_y + 58 + j * 36), wrapped, fill=ink, font=font(28, True, serif=True))
-    draw.text((receipt_x + 24, receipt_y + 114), f"{snapshot.row_count} / 24 official hourly rows", fill=muted, font=font(18, True))
+    draw.text((receipt_x + 24, receipt_y + 114), f"{snapshot.row_count} official hourly rows", fill=muted, font=font(18, True))
 
     chart_x, chart_y, chart_w, chart_h = 744, 246, 786, 468
     draw.rounded_rectangle((chart_x, chart_y, chart_x + chart_w, chart_y + chart_h), radius=10, fill="#ffffff", outline=line)
@@ -245,17 +247,24 @@ def draw_social_card(
     for g in range(5):
         chart_grid_y = py0 + (py1 - py0) * g / 4
         draw.line((px0, chart_grid_y, px1, chart_grid_y), fill="#e1eef5")
-    for i in range(0, 24, 3):
-        chart_grid_x = px0 + (px1 - px0) * i / 23
+    last_index = max(1, len(snapshot.prices) - 1)
+
+    def hour_label(i: int) -> str:
+        stamp = snapshot.timestamps[i]
+        return stamp[11:16] + (stamp[19:] if snapshot.row_count != 24 else "")
+
+    tick_stride = 6 if snapshot.row_count != 24 else 3
+    for i in range(0, len(snapshot.prices), tick_stride):
+        chart_grid_x = px0 + (px1 - px0) * i / last_index
         draw.line((chart_grid_x, py0, chart_grid_x, py1), fill="#e8f3f8")
-        draw.text((chart_grid_x - 9, py1 + 17), f"{i:02d}", fill=muted, font=font(14, True))
+        draw.text((chart_grid_x - 9, py1 + 17), hour_label(i), fill=muted, font=font(14, True))
 
     max_price = max(max(snapshot.prices), 1.0)
     zero_y = py0 + (py1 - py0) * 0.58
     draw.line((px0, zero_y, px1, zero_y), fill="#c6ddeb")
 
     def x_at(i: int) -> float:
-        return px0 + (px1 - px0) * i / 23
+        return px0 + (px1 - px0) * i / last_index
 
     def y_price(value: float) -> float:
         return py1 - (py1 - py0) * value / max_price
@@ -285,8 +294,8 @@ def draw_social_card(
     peak_i = snapshot.prices.index(max(snapshot.prices))
     low_i = snapshot.prices.index(min(snapshot.prices))
     for i, label, value in (
-        (peak_i, f"PEAK {peak_i:02d}:00", f"{format_uah(snapshot.prices[peak_i])} UAH/MWh"),
-        (low_i, f"LOW {low_i:02d}:00", f"{format_uah(snapshot.prices[low_i])} UAH/MWh"),
+        (peak_i, f"PEAK {hour_label(peak_i)}", f"{format_uah(snapshot.prices[peak_i])} UAH/MWh"),
+        (low_i, f"LOW {hour_label(low_i)}", f"{format_uah(snapshot.prices[low_i])} UAH/MWh"),
     ):
         cx, cy = price_points[i]
         draw.ellipse((cx - 7, cy - 7, cx + 7, cy + 7), fill="#ffffff", outline=blue, width=3)
@@ -328,7 +337,7 @@ def daily_text(snapshot: IndexSnapshot, public_url: str) -> str:
         [
             f"Ukraine BESS Arbitrage Index - {snapshot.delivery_date}",
             "",
-            f"Official OREE DAM rows: {snapshot.row_count}/24",
+            f"Official OREE DAM rows: {snapshot.row_count}",
             f"Standard 100 kW / 215 kWh BESS: {format_uah(snapshot.net_value_uah)} UAH",
             "Public demo only. No bids. No execution.",
             "",

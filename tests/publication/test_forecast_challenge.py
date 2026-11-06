@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
+import pytest
+
 from smart_arbitrage.publication.bess_arbitrage_index import (
     PUBLIC_FORECAST_CHALLENGE_CLAIM_BOUNDARY,
 )
@@ -14,7 +16,9 @@ from smart_arbitrage.publication.forecast_challenge import (
 )
 
 
-def test_public_forecast_challenge_publishes_baseline_and_blocks_unmaterialized_ml() -> None:
+def test_public_forecast_challenge_publishes_baseline_and_blocks_unmaterialized_ml() -> (
+    None
+):
     start = datetime(2026, 6, 8)
     history = [
         {
@@ -40,14 +44,24 @@ def test_public_forecast_challenge_publishes_baseline_and_blocks_unmaterialized_
         TFT_PUBLIC_MODEL_NAME,
     }
     assert models[STRICT_SIMILAR_DAY_MODEL_NAME]["point_count"] == 24
-    assert models[STRICT_SIMILAR_DAY_MODEL_NAME]["quality_boundary"] == "ranked_baseline"
-    assert models[STRICT_SIMILAR_DAY_MODEL_NAME]["points"][0]["forecast_price_uah_mwh"] == 2400.0
-    assert models[NBEATSX_PUBLIC_MODEL_NAME]["quality_boundary"] == "experimental_not_ranked"
+    assert (
+        models[STRICT_SIMILAR_DAY_MODEL_NAME]["quality_boundary"] == "ranked_baseline"
+    )
+    assert (
+        models[STRICT_SIMILAR_DAY_MODEL_NAME]["points"][0]["forecast_price_uah_mwh"]
+        == 2400.0
+    )
+    assert (
+        models[NBEATSX_PUBLIC_MODEL_NAME]["quality_boundary"]
+        == "experimental_not_ranked"
+    )
     assert models[TFT_PUBLIC_MODEL_NAME]["backend_status"] == "blocked"
 
 
 def test_empty_forecast_scoreboard_keeps_non_execution_boundary() -> None:
-    payload = build_empty_forecast_scoreboard_payload(generated_at=datetime(2026, 6, 15, 8, 0))
+    payload = build_empty_forecast_scoreboard_payload(
+        generated_at=datetime(2026, 6, 15, 8, 0)
+    )
 
     assert payload["row_count"] == 0
     assert payload["score_status"] == "pending_realized_forecast_pairs"
@@ -55,7 +69,9 @@ def test_empty_forecast_scoreboard_keeps_non_execution_boundary() -> None:
     assert payload["proposed_bid_status"] == "not_emitted"
 
 
-def test_public_forecast_challenge_blocks_baseline_when_similar_day_source_is_missing() -> None:
+def test_public_forecast_challenge_blocks_baseline_when_similar_day_source_is_missing() -> (
+    None
+):
     history = [
         {
             "timestamp": datetime(2026, 6, 10) + timedelta(hours=hour),
@@ -102,5 +118,81 @@ def test_public_forecast_challenge_ignores_non_mapping_model_points() -> None:
         ],
     )
 
-    model = next(model for model in payload["models"] if model["model_name"] == "malformed_external_model")
+    model = next(
+        model
+        for model in payload["models"]
+        if model["model_name"] == "malformed_external_model"
+    )
     assert model["point_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "offset", [timedelta(minutes=1), timedelta(seconds=1), timedelta(microseconds=1)]
+)
+def test_public_forecast_challenge_rejects_off_grid_history(offset: timedelta) -> None:
+    history = [
+        {
+            "timestamp": datetime(2026, 6, 15) + timedelta(hours=hour) + offset,
+            "price_uah_mwh": 2400.0 + hour,
+        }
+        for hour in range(24)
+    ]
+    with pytest.raises(ValueError, match="hour-aligned"):
+        build_public_forecast_challenge_payload(
+            history, target_delivery_date=date(2026, 6, 16)
+        )
+
+
+@pytest.mark.parametrize(
+    "generated,cutoff,expected_generated,expected_cutoff",
+    [
+        (
+            "2026-06-15T07:00:00",
+            "2026-06-15T06:00:00",
+            "2026-06-15T07:00:00+00:00",
+            "2026-06-15T06:00:00+00:00",
+        ),
+        (
+            datetime(2026, 6, 15, 7),
+            datetime(2026, 6, 15, 6),
+            "2026-06-15T07:00:00+00:00",
+            "2026-06-15T06:00:00+00:00",
+        ),
+        (
+            "2026-06-15T07:00:00+03:00",
+            "2026-06-15T06:00:00+03:00",
+            "2026-06-15T04:00:00+00:00",
+            "2026-06-15T03:00:00+00:00",
+        ),
+    ],
+)
+def test_supplied_model_metadata_preserves_naive_utc_and_explicit_offsets(
+    generated,
+    cutoff,
+    expected_generated,
+    expected_cutoff,
+) -> None:
+    history = [
+        {
+            "timestamp": datetime(2026, 6, 15) + timedelta(hours=hour),
+            "price_uah_mwh": 2400.0 + hour,
+        }
+        for hour in range(24)
+    ]
+    payload = build_public_forecast_challenge_payload(
+        history,
+        target_delivery_date=date(2026, 6, 16),
+        model_forecasts=[
+            {
+                "model_name": "metadata_probe",
+                "forecast_generated_at": generated,
+                "training_cutoff": cutoff,
+                "points": [],
+            }
+        ],
+    )
+    model = next(
+        model for model in payload["models"] if model["model_name"] == "metadata_probe"
+    )
+    assert model["forecast_generated_at"] == expected_generated
+    assert model["training_cutoff"] == expected_cutoff
