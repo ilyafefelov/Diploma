@@ -1,6 +1,6 @@
 {
   "claim_boundary": "public_bess_arbitrage_index_not_market_execution",
-  "generated_at": "2026-11-26T05:37:35.897951+00:00",
+  "generated_at": "2026-11-26T08:39:01.989864+00:00",
   "governance": {
     "calculation_scope": "generic_physical_bess_analytical_read_model",
     "enforced_constraints": [
