@@ -9,11 +9,12 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime
 from math import sqrt
 from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ConfigDict
+from smart_arbitrage.publication.delivery_day import KYIV, delivery_intervals, delivery_timestamp, delivery_iso
 
 
 PUBLIC_BESS_INDEX_CLAIM_BOUNDARY: Final[str] = (
@@ -174,7 +175,7 @@ def build_public_bess_arbitrage_index_payload(
             "delivery_date": delivery_day.isoformat(),
             "row_count": len(prices),
             "source_scope": "official_observed_hourly_prices_only",
-            "source_status": "complete_24_hour_delivery_day",
+            "source_status": f"complete_{len(prices)}_hour_delivery_day",
         },
         "methodology": {
             "index_kind": "realized_perfect_hindsight_daily_dispatch",
@@ -408,7 +409,7 @@ def _schedule_point_payload(
     net_value = gross_market_value - degradation_penalty
     return {
         "step_index": step_index,
-        "timestamp": _naive_iso(price.timestamp),
+        "timestamp": delivery_iso(price.timestamp),
         "price_uah_mwh": _round(price.price_uah_mwh),
         "volume_mwh": _round(price.volume_mwh) if price.volume_mwh is not None else None,
         "charge_mw": _round(charge_mw),
@@ -456,7 +457,7 @@ def _normalize_price_points(
 
 def _price_point(row: Mapping[str, Any] | PublicPricePoint) -> PublicPricePoint:
     if isinstance(row, PublicPricePoint):
-        return row
+        return PublicPricePoint(delivery_timestamp(row.timestamp), row.price_uah_mwh, row.volume_mwh, row.source_url)
     timestamp = _datetime_value(row.get("timestamp"))
     return PublicPricePoint(
         timestamp=timestamp,
@@ -467,16 +468,14 @@ def _price_point(row: Mapping[str, Any] | PublicPricePoint) -> PublicPricePoint:
 
 
 def _complete_delivery_date(prices: Sequence[PublicPricePoint]) -> date:
-    if len(prices) != 24:
-        raise ValueError("public BESS index requires exactly 24 hourly delivery rows")
-    delivery_dates = {point.timestamp.date() for point in prices}
+    delivery_dates = {point.timestamp.astimezone(KYIV).date() for point in prices}
     if len(delivery_dates) != 1:
         raise ValueError("public BESS index requires one delivery date per payload")
     delivery_day = next(iter(delivery_dates))
-    expected = [datetime.combine(delivery_day, datetime.min.time()) + timedelta(hours=hour) for hour in range(24)]
-    actual = [point.timestamp.replace(tzinfo=None, minute=0, second=0, microsecond=0) for point in prices]
+    expected = delivery_intervals(delivery_day)
+    actual = [point.timestamp for point in prices]
     if actual != expected:
-        raise ValueError("public BESS index requires consecutive midnight-to-23:00 hourly rows")
+        raise ValueError(f"public BESS index requires exactly {len(expected)} consecutive hourly delivery intervals")
     return delivery_day
 
 
@@ -496,11 +495,7 @@ def _require_cvxpy() -> Any:
 
 
 def _datetime_value(value: Any) -> datetime:
-    if isinstance(value, datetime):
-        return value.replace(tzinfo=None, minute=value.minute, second=value.second, microsecond=value.microsecond)
-    if isinstance(value, str) and value.strip():
-        return datetime.fromisoformat(value.replace("Z", "+00:00")).replace(tzinfo=None)
-    raise TypeError("timestamp must be a datetime or ISO datetime string")
+    return delivery_timestamp(value)
 
 
 def _float_value(value: Any, *, field_name: str) -> float:
@@ -542,10 +537,6 @@ def _round(value: float | int | None, digits: int = 6) -> float:
         return 0.0
     rounded = round(float(value), digits)
     return 0.0 if abs(rounded) < 10 ** -digits else rounded
-
-
-def _naive_iso(value: datetime) -> str:
-    return value.replace(tzinfo=None).isoformat()
 
 
 def _utc_iso(value: datetime) -> str:

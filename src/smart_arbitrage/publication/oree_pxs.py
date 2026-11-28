@@ -9,6 +9,7 @@ import time
 from typing import Any, Final
 
 from smart_arbitrage.publication.bess_arbitrage_index import OREE_DAM_RESULTS_URL
+from smart_arbitrage.publication.delivery_day import delivery_intervals
 
 OREE_PXS_GET_RESULTS_URL: Final[str] = "https://www.oree.com.ua/index.php/PXS/get_pxs_res"
 OREE_PXS_HDATA_URL_PREFIX: Final[str] = "https://www.oree.com.ua/index.php/PXS/get_pxs_hdata"
@@ -55,8 +56,9 @@ def fetch_oree_dam_price_rows(delivery_day: date) -> list[dict[str, Any]]:
             ):
                 rows_by_timestamp[row["timestamp"]] = row
     rows = [rows_by_timestamp[timestamp] for timestamp in sorted(rows_by_timestamp)]
-    if len(rows) != 24:
-        raise ValueError(f"OREE DAM hdata produced {len(rows)} rows; expected 24")
+    expected = delivery_intervals(delivery_day)
+    if [row["timestamp"] for row in rows] != expected:
+        raise ValueError(f"OREE DAM hdata produced {len(rows)} rows; expected {len(expected)} delivery intervals")
     return rows
 
 
@@ -71,14 +73,16 @@ def price_rows_from_hdata_payload(
     labels = payload.get("labels") or list(range(1, len(prices) + 1))
     if not isinstance(labels, Sequence) or isinstance(labels, (str, bytes)):
         raise TypeError("OREE PXS payload field 'labels' must be a sequence")
+    intervals = delivery_intervals(delivery_day)
+    if len(prices) != len(intervals) or len(labels) != len(intervals):
+        raise ValueError(f"OREE PXS requires {len(intervals)} hourly prices and labels for {delivery_day}")
+    ordinals = [int(str(label).strip()) for label in labels]
+    if sorted(ordinals) != list(range(1, len(intervals) + 1)):
+        raise ValueError("OREE PXS labels must identify every delivery interval exactly once")
 
     rows: list[dict[str, Any]] = []
-    for row_index, label in enumerate(labels):
-        hour = _hour_index(label)
-        timestamp = datetime.combine(
-            delivery_day,
-            datetime.min.time().replace(hour=hour - 1),
-        )
+    for row_index, ordinal in enumerate(ordinals):
+        timestamp = intervals[ordinal - 1]
         rows.append(
             {
                 "timestamp": timestamp,
@@ -87,7 +91,7 @@ def price_rows_from_hdata_payload(
                 "source_url": f"{OREE_PXS_HDATA_URL_PREFIX}/{hdata_link}",
             }
         )
-    return rows
+    return sorted(rows, key=lambda row: row["timestamp"])
 
 
 def _decode_response_text(response: Any) -> str:
@@ -103,13 +107,6 @@ def _sequence(payload: Mapping[str, Any], key: str) -> Sequence[Any]:
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
         raise TypeError(f"OREE PXS payload field {key!r} must be a sequence")
     return value
-
-
-def _hour_index(value: Any) -> int:
-    hour = int(str(value).strip())
-    if not 1 <= hour <= 24:
-        raise ValueError("OREE PXS delivery hour must be in 1..24")
-    return hour
 
 
 def _optional_float(value: Any) -> float | None:
